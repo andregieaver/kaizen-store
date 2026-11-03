@@ -4,7 +4,8 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { MakeApiToken, RevokeApiToken } from "@/components/admin/api-tokens";
 import { Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { API_ROUTES, API_SCOPES } from "@/lib/admin-api";
+import { API_SCOPES } from "@/lib/admin-api";
+import { API_ROUTES } from "@/lib/admin-api-routes";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { siteUrl } from "@/lib/site";
@@ -144,6 +145,9 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
                 </li>
               ))}
             </ul>
+            <a href={`${base}/openapi.json`} className="self-start text-sm underline underline-offset-2">
+              {w.contract}
+            </a>
           </div>
         </Card>
       </div>

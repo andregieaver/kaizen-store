@@ -2,6 +2,9 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { ADMIN_API_BY_NAME, routeOf, SEND_CARRIERS } from "@/lib/admin-api-routes";
+import { ADMIN_RATE } from "@/lib/admin-openapi";
+import { STOREFRONT_RATE } from "@/lib/storefront-api";
 import { toMarket } from "@/lib/markets";
 
 type Row = Record<string, unknown>;
@@ -15,12 +18,16 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, s
 
 const route = await import("@/app/api/admin/v1/[...path]/route");
 const { makeApiToken, revokeApiToken } = await import("./api-tokens");
+const { CARRIERS } = await import("./order-admin");
+const { BUDGETS } = await import("./request-budget");
 const { newStore, place, pay, variantId, mainLocation, movementsOf } = await import("./inventory-test-support");
 
 /**
  * The Admin API (wave 9 unit B, D355): a token reaches its own store only and its scopes only; reads carry money as minor units in each
  * market's own currency (euro for Finland); writes go through the screens' functions (a draft made by the editor's save, stock with source
  * `api`, a parcel with tracking by `markSent()`), each audited with the token's name; a live product and publishing stay the owner's.
+ *
+ * Every answer of a success is parsed with its operation's `response` in `ADMIN_API` (D438), so the published contract is what is sent.
  */
 
 let store: Awaited<ReturnType<typeof newStore>>;
@@ -48,8 +55,20 @@ async function call(
     }),
     { params: Promise.resolve({ path: url.pathname.replace("/api/admin/v1/", "").split("/").filter(Boolean) }) } as never,
   );
-  return { status: response.status, body: (await response.json()) as Answer, headers: response.headers };
+  const answer = (await response.json()) as Answer;
+  // The contract (D438): a success is exactly what its operation's response schema describes.
+  if (response.status < 300) {
+    const op = routeOf(method, url.pathname.replace("/api/admin/v1/", "").split("/").filter(Boolean));
+    if (!op) throw new Error(`${method} ${path} answered ${response.status} without an operation`);
+    const checked = ADMIN_API_BY_NAME[op.name].response.safeParse(answer);
+    if (!checked.success) throw new Error(`${op.name}'s answer is not its contract: ${checked.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
+    parsed.add(op.name);
+  }
+  return { status: response.status, body: answer, headers: response.headers };
 }
+
+/** The operations whose answers were parsed: at the end, every operation's. */
+const parsed = new Set<string>();
 
 beforeAll(async () => {
   store = await newStore("api");
@@ -71,6 +90,14 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await closeDb();
+});
+
+describe("the contract (D438)", () => {
+  it("names the carriers a parcel may have and the budget the document states", () => {
+    expect([...SEND_CARRIERS]).toEqual(CARRIERS.map((c) => c.id));
+    expect({ perToken: BUDGETS.api.visitor, perStore: BUDGETS.api.store }).toEqual(ADMIN_RATE);
+    expect({ perToken: BUDGETS.storefront.visitor, perStore: BUDGETS.storefront.store }).toEqual(STOREFRONT_RATE);
+  });
 });
 
 describe("tokens and scopes", () => {
@@ -252,5 +279,58 @@ describe("a POST with an Idempotency-Key (PSI DATA-03)", () => {
     expect(other.body.error.message).toContain("used for another request");
     // Without a key, a POST is done each time it is sent, as before.
     expect((await call("POST", "products", full, { ...input, variants: [{ sku: `${sku}-B` }] })).status).toBe(201);
+  });
+});
+
+describe("bodies read with the registry's zod (D438)", () => {
+  it("tells a caller what is wrong in the API's words before a screen's checks, and takes what it took before", async () => {
+    const percent = await call("POST", "discounts", full, { code: `TXT${Date.now()}`, kind: "percent", percent: "15" });
+    expect(percent.status).toBe(422);
+    expect(percent.body.error.message).toMatch(/^percent: /);
+    // The screen's own checks still run after the API's: a code of the wrong shape is the form's refusal.
+    const shape = await call("POST", "discounts", full, { code: "a b", kind: "percent" });
+    expect(shape.status).toBe(422);
+    expect(shape.body.error.message).toContain("Use 3–40 letters");
+    const [customer] = await db().execute<Row>(sql`
+      insert into commerce.customers (store_id, email, name) values (${store.storeId}::uuid, ${`body-${Date.now()}@example.com`}, 'Ola') returning id
+    `);
+    const tagless = await call("POST", `customers/${String(customer.id)}/tags`, full, {});
+    expect(tagless.status).toBe(422);
+    expect(tagless.body.error.message).toMatch(/^tag: /);
+    const made = await makeApiToken(store.member, { name: "Rules", scopes: ["checkout:write"] });
+    if (!made.ok) throw new Error(made.problem);
+    const rule = await call("POST", "checkout/rules", made.token, { name: "Flat", effect: { kind: "order_delivery", options: ["flat"] } });
+    const switched = await call("PATCH", `checkout/rules/${rule.body.data.id}`, made.token, { enabled: "yes" });
+    expect(switched.status).toBe(422);
+    expect(switched.body.error.message).toMatch(/^enabled: /);
+    expect((await call("PATCH", `checkout/rules/${rule.body.data.id}`, made.token, { enabled: true })).status).toBe(200);
+    expect((await call("DELETE", `checkout/rules/${rule.body.data.id}`, made.token)).status).toBe(200);
+  });
+});
+
+describe("every operation's answer (D438)", () => {
+  it("is parsed with its contract, the documents and orders of another store included", async () => {
+    const order = await place(store.storeId, [[SKU, 1]], fi);
+    await pay(store.storeId, order, store.account);
+    expect((await call("GET", `orders/${order.orderId}`, full)).status).toBe(200);
+    expect((await call("GET", "customers?limit=2", full)).status).toBe(200);
+    // An invoice and a credit note as UBL need a seller with its details: the invoices' own fixture makes one.
+    const fx = await import("./invoice-test-fixture");
+    const seller = await fx.makeStore("apiubl");
+    const paid = await fx.paidOrder(seller, [[SKU, 2]]);
+    const invoice = (await fx.invoiceOf(seller.storeId, paid.orderId))!;
+    await db().execute(sql`
+      insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status)
+      select p.store_id, p.id, 1000, 'Skadet', ${`re_api_${paid.orderId.slice(0, 8)}`}, 'succeeded' from commerce.payments p
+      where p.store_id = ${seller.storeId}::uuid and p.order_id = ${paid.orderId}::uuid and p.status = 'captured' limit 1
+    `);
+    const [note] = await fx.notesOf(seller.storeId, paid.orderId);
+    const reader = await makeApiToken(await fx.ownerOf(seller), { name: "Accounts", scopes: ["orders:read"] });
+    if (!reader.ok) throw new Error(reader.problem);
+    const ubl = await call("GET", `invoices/${invoice.id}/ubl`, reader.token);
+    expect(ubl.status).toBe(200);
+    expect(ubl.body.data.xml).toContain(invoice.documentNumber);
+    expect((await call("GET", `credit-notes/${note.id}/ubl`, reader.token)).status).toBe(200);
+    expect([...parsed].sort()).toEqual(Object.keys(ADMIN_API_BY_NAME).sort());
   });
 });

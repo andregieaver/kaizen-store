@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { API_ROUTES, API_SCOPES, bearerToken, grants, pageSize, PAGE_MAX, routeOf } from "./admin-api";
+import { API_SCOPES, bearerToken, grants, pageSize, PAGE_MAX } from "./admin-api";
+import { API_ROUTES, routeOf } from "./admin-api-routes";
 
 const ID = "5c2c8f0e-3a9d-4c7b-9e21-0d6f1a2b3c4d";
 const TOKEN = `kf_${"A".repeat(43)}`;

@@ -70,6 +70,10 @@ describe("the store's MCP server for Kaizen Life (D96)", () => {
 
   it("lists every tool with the store it is for, and answers from the owner's stores only", async () => {
     expect(mcp.MCP_TOOLS.find((t) => t.name === "sales_summary")?.inputSchema).toMatchObject({ required: ["store"] });
+    // tools/list answers each tool's title and MCP annotations too (D438).
+    const listed = await mcp.mcpToolsFor(caller!);
+    expect(listed.find((t) => t.name === "sales_summary")).toMatchObject({ title: "Sales summary", annotations: { readOnlyHint: true, destructiveHint: false } });
+    expect(listed.find((t) => t.name === "refund_order")).toMatchObject({ annotations: { readOnlyHint: false, destructiveHint: true } });
     expect(await mcp.callMcpTool(caller!, "list_stores", {}, () => {})).toEqual({
       content: [{ type: "text", text: JSON.stringify({ stores: [{ slug, name: "Kaffe" }] }) }],
     });

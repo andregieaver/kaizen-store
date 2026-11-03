@@ -16,6 +16,7 @@ import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
 import { escapeSlack, slackMessage } from "@/lib/slack";
 import { ID_HEADER, PAYLOAD_VERSION, signWebhook, SIGNATURE_HEADER, TIMESTAMP_HEADER, TOPIC_HEADER } from "@/lib/webhook-signature";
+import { topicOf, WEBHOOK_RETRY_SECONDS, WEBHOOK_TIMEOUT_SECONDS, type WebhookSubject } from "@/lib/webhook-topics";
 
 import { audit, type Membership } from "./auth";
 import { notifyEndpointOff } from "./endpoint-emails";
@@ -37,9 +38,9 @@ type Row = Record<string, unknown>;
  * messages (`slackMessage()`), and only those are kept for it.
  */
 
-/** When to try again after each failed try; after the last, the delivery has failed. */
-const RETRY_SECONDS = [60, 300, 1800, 7200, 21600];
-const TIMEOUT_MS = 10_000;
+/** When to try again after each failed try; after the last, the delivery has failed (published in the topics' catalogue, D438). */
+const RETRY_SECONDS: readonly number[] = WEBHOOK_RETRY_SECONDS;
+const TIMEOUT_MS = WEBHOOK_TIMEOUT_SECONDS * 1000;
 const KEEP_DAYS = 30;
 
 export type StoreIntegration = {
@@ -204,7 +205,7 @@ function address(a: Address) {
   };
 }
 
-async function orderData(storeId: string, storeSlug: string, orderId: string) {
+async function orderData(storeId: string, storeSlug: string, orderId: string): Promise<WebhookSubject<"order"> | null> {
   const order = await getOrder(storeId, orderId);
   if (!order) return null;
   const [extra] = await db().execute<Row>(sql`
@@ -250,13 +251,13 @@ async function orderData(storeId: string, storeSlug: string, orderId: string) {
       total: money(line.totalMinor),
       delivery: line.delivery,
     })),
-    shipment: (extra?.shipment as Record<string, string> | null) ?? null,
+    shipment: (extra?.shipment as WebhookSubject<"order">["shipment"]) ?? null,
     subscription_id: order.subscriptionId,
     admin_url: `${siteUrl()}/admin/${storeSlug}/orders/${order.id}`,
   };
 }
 
-async function customerData(storeId: string, storeSlug: string, customerId: string) {
+async function customerData(storeId: string, storeSlug: string, customerId: string): Promise<WebhookSubject<"customer"> | null> {
   const [row] = await db().execute<Row>(sql`
     select id, email, name, phone, created_at, email_verified_at is not null as verified
     from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid
@@ -273,7 +274,7 @@ async function customerData(storeId: string, storeSlug: string, customerId: stri
   };
 }
 
-async function subscriptionData(storeId: string, storeSlug: string, subscriptionId: string) {
+async function subscriptionData(storeId: string, storeSlug: string, subscriptionId: string): Promise<WebhookSubject<"subscription"> | null> {
   const [row] = await db().execute<Row>(sql`
     select id, number, status, email, currency, total_minor, interval, interval_count, current_period_end, created_at
     from commerce.subscriptions where store_id = ${storeId}::uuid and id = ${subscriptionId}::uuid
@@ -283,7 +284,7 @@ async function subscriptionData(storeId: string, storeSlug: string, subscription
   return {
     id: String(row.id),
     number: String(row.number),
-    status: String(row.status),
+    status: String(row.status) as WebhookSubject<"subscription">["status"],
     email: String(row.email),
     currency,
     total_per_renewal: amount(Number(row.total_minor), currency),
@@ -294,12 +295,29 @@ async function subscriptionData(storeId: string, storeSlug: string, subscription
   };
 }
 
-/** What an event is about, as it is now; null when it is gone (or the event has no subject the services are sent). Workflows (D356) test it too. */
+/**
+ * What an event is about, as it is now; null when it is gone (or the event has no subject the services are sent). Workflows (D356) test it
+ * too. Each subject is built as its topic's contract says (`WEBHOOK_TOPICS`, D438) and checked against it: a payload of another shape is
+ * logged with where it differs (never a value) and sent as built, so a drift is found without a delivery being held back.
+ */
 export async function subjectData(
   store: { id: string; slug: string; name: string },
   event: string,
   subjectId: string | null,
 ): Promise<Record<string, unknown> | null> {
+  const data = await buildSubject(store, event, subjectId);
+  const topic = topicOf(event);
+  if (data && topic) {
+    const checked = topic.data.safeParse(data);
+    if (!checked.success) {
+      const at = [...new Set(checked.error.issues.map((i) => i.path.map((p) => (typeof p === "number" ? "#" : String(p))).join(".")))].slice(0, 5);
+      log("error", "webhooks.payload_shape", { storeId: store.id, topic: event, at: at.join(" ") });
+    }
+  }
+  return data;
+}
+
+async function buildSubject(store: { id: string; slug: string; name: string }, event: string, subjectId: string | null): Promise<Record<string, unknown> | null> {
   if (event === "support.waiting") return { support: await supportWaitingData(store.id, store.slug) };
   if (!subjectId) return null;
   if (event.startsWith("order.")) {
@@ -382,7 +400,7 @@ export async function endpointPayload(
 }
 
 /** A return as an endpoint gets it (D354): its number, kind, state, lines and what is refunded, in the order's own currency. */
-async function returnData(storeId: string, storeSlug: string, returnId: string) {
+async function returnData(storeId: string, storeSlug: string, returnId: string): Promise<WebhookSubject<"return"> | null> {
   const [row] = await db().execute<Row>(sql`
     select r.id, r.number, r.kind, r.status::text as status, r.created_at, r.order_id, o.number as order_number, o.currency,
       r.refund_minor, r.withdrawal_request_id is not null as withdrawal,
@@ -397,21 +415,21 @@ async function returnData(storeId: string, storeSlug: string, returnId: string) 
   return {
     id: String(row.id),
     number: String(row.number ?? ""),
-    kind: String(row.kind),
-    status: String(row.status),
+    kind: String(row.kind) as WebhookSubject<"return">["kind"],
+    status: String(row.status) as WebhookSubject<"return">["status"],
     withdrawal: Boolean(row.withdrawal),
     order_id: String(row.order_id),
     order_number: String(row.order_number),
     currency,
     refund: row.refund_minor === null ? null : amount(Number(row.refund_minor), currency),
-    lines: row.lines as unknown[],
+    lines: row.lines as WebhookSubject<"return">["lines"],
     created_at: new Date(String(row.created_at)).toISOString(),
     admin_url: `${siteUrl()}/admin/${storeSlug}/returns/${String(row.id)}`,
   };
 }
 
 /** A confirmed withdrawal (D153): which order and when, never a reason (none is asked). The shopper's details are the order's. */
-async function withdrawalData(storeId: string, storeSlug: string, withdrawalId: string) {
+async function withdrawalData(storeId: string, storeSlug: string, withdrawalId: string): Promise<WebhookSubject<"withdrawal"> | null> {
   const [row] = await db().execute<Row>(sql`
     select w.id, w.order_id, o.number as order_number, w.channel, w.confirmed_at, w.acknowledgement_reference
     from commerce.withdrawal_requests w join commerce.orders o on o.id = w.order_id
@@ -430,7 +448,7 @@ async function withdrawalData(storeId: string, storeSlug: string, withdrawalId: 
 }
 
 /** A product as the admin keeps it: its handle, state, kind, title in the store's main language and its variants with their SKUs. */
-async function productData(storeId: string, storeSlug: string, productId: string) {
+async function productData(storeId: string, storeSlug: string, productId: string): Promise<WebhookSubject<"product"> | null> {
   const [row] = await db().execute<Row>(sql`
     select p.id, p.handle, p.status::text as status, p.kind, p.created_at, p.updated_at,
       (select t.title from commerce.product_translations t where t.product_id = p.id
@@ -445,9 +463,9 @@ async function productData(storeId: string, storeSlug: string, productId: string
     id: String(row.id),
     handle: String(row.handle),
     title: String(row.title ?? ""),
-    status: String(row.status),
-    kind: String(row.kind),
-    variants: row.variants as unknown[],
+    status: String(row.status) as WebhookSubject<"product">["status"],
+    kind: String(row.kind) as WebhookSubject<"product">["kind"],
+    variants: row.variants as WebhookSubject<"product">["variants"],
     created_at: new Date(String(row.created_at)).toISOString(),
     updated_at: new Date(String(row.updated_at)).toISOString(),
     admin_url: `${siteUrl()}/admin/${storeSlug}/products/${String(row.id)}`,
@@ -455,7 +473,7 @@ async function productData(storeId: string, storeSlug: string, productId: string
 }
 
 /** A variant whose stock fell to its low-stock level (D172): what is available now, as the store reads it. */
-async function stockData(storeId: string, variantId: string) {
+async function stockData(storeId: string, variantId: string): Promise<WebhookSubject<"stock"> | null> {
   const [row] = await db().execute<Row>(sql`
     select v.id, v.sku, v.product_id, a.stock_at_crossing, a.crossed_at,
       (select va.raw_available from commerce.variant_availability va where va.variant_id = v.id) as available
@@ -474,7 +492,7 @@ async function stockData(storeId: string, variantId: string) {
 }
 
 /** A discount code as made (D31, D299): its code, kind, amount and dates. */
-async function discountData(storeId: string, storeSlug: string, codeId: string) {
+async function discountData(storeId: string, storeSlug: string, codeId: string): Promise<WebhookSubject<"discount"> | null> {
   const [row] = await db().execute<Row>(sql`
     select id, code, kind, percent, amounts, starts_at, ends_at, usage_limit
     from commerce.discount_codes where store_id = ${storeId}::uuid and id = ${codeId}::uuid
@@ -483,10 +501,10 @@ async function discountData(storeId: string, storeSlug: string, codeId: string) 
   return {
     id: String(row.id),
     code: String(row.code),
-    kind: String(row.kind),
+    kind: String(row.kind) as WebhookSubject<"discount">["kind"],
     percent: row.percent === null ? null : Number(row.percent),
     // Amounts off, per country, in minor units of the country's currency.
-    amounts: row.amounts ?? null,
+    amounts: (row.amounts ?? null) as WebhookSubject<"discount">["amounts"],
     starts_at: row.starts_at ? new Date(String(row.starts_at)).toISOString() : null,
     ends_at: row.ends_at ? new Date(String(row.ends_at)).toISOString() : null,
     usage_limit: row.usage_limit === null ? null : Number(row.usage_limit),
@@ -498,15 +516,15 @@ async function discountData(storeId: string, storeSlug: string, codeId: string) 
  * A support conversation waiting for a person (D216, step 14): how many of the store's wait now and the inbox's address. Never the
  * conversation, the customer's name, email or words, so the subject is not read beyond the store.
  */
-async function supportWaitingData(storeId: string, storeSlug: string) {
+async function supportWaitingData(storeId: string, storeSlug: string): Promise<WebhookSubject<"support">> {
   const [row] = await db().execute<Row>(sql`
     select count(*)::int as waiting from commerce.support_conversations where store_id = ${storeId}::uuid and status = 'open' and handler = 'queue'
   `);
   return { waiting: Number(row?.waiting ?? 0), admin_url: `${siteUrl()}/admin/${storeSlug}/support` };
 }
 
-/** What a test sends when the store has no orders yet: the fields a real order has. */
-function sampleOrder(country: string, currency: string) {
+/** What a test sends when the store has no orders yet: the fields a real order has (its topic's contract, D438). */
+function sampleOrder(country: string, currency: string): WebhookSubject<"order"> {
   const address = { name: "Sample Customer", line1: "Sample Street 1", line2: "", postal_code: "12345", city: "Sample City", country, phone: "" };
   return {
     id: "00000000-0000-4000-8000-000000000000",
@@ -521,8 +539,11 @@ function sampleOrder(country: string, currency: string) {
     shipping: 99,
     discount: 0,
     credits_used: 0,
+    referral_discount: 0,
     discount_code: "",
     vat: 99.4,
+    vat_kind: "standard",
+    vat_relief: 0,
     total: 497,
     refunded: 0,
     shipping_address: address,

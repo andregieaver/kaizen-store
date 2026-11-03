@@ -195,7 +195,7 @@ a new folder that is not (PSI SEC-01). Pages and server actions are held by the 
 | Route | Who calls it | First check |
 |---|---|---|
 | `/api/ab` | a visitor's browser (A/B test assignment, D148) | `sameSite()`, budget `ab` |
-| `/api/admin` | an owner's tools (the Admin API, D355) | a scoped token (`apiCaller()`), budget, idempotency keys (2.9) |
+| `/api/admin` | an owner's tools (the Admin API, D355) | a scoped token (`apiCaller()`), budget, idempotency keys (2.9); `v1/openapi.json` is the public contract (D438), no data |
 | `/api/ads` | a visitor's browser (ad click ids, D303) | `sameSite()` |
 | `/api/auth` | a shopper signing in with Google (D375) | `sameSite()`, Google's signed answer and a state cookie |
 | `/api/blog` | a visitor commenting (D341) | `sameSite()`; a comment has a status (pending, approved, rejected, spam) the owner moderates |
@@ -212,7 +212,7 @@ a new folder that is not (PSI SEC-01). Pages and server actions are held by the 
 | `/api/health` | the deploy check and monitors | public; names no host or connection mode |
 | `/api/integrations` | an owner connecting Slack or Mollie (D101, D292) | a signed-in account with the owner's role (`requireAccount()`, `checkOwnerRole()`) |
 | `/api/marketing` | a press on a broadcast's link (D297) | the target looked up in the broadcast's own content (no open redirect); nothing of the person kept |
-| `/api/mcp` | an owner's MCP client (the store's MCP server) | a bearer token, the member's own permissions (2.7) |
+| `/api/mcp` | an owner's MCP client (the store's MCP server) | a bearer token, the member's own permissions (2.7); `catalogue.json` is the public tool catalogue (D438), no store's data |
 | `/api/mollie` | Mollie's webhook | the payment re-fetched from Mollie, never the body believed (2.8) |
 | `/api/platform` | the admin's live-site editing (edit pass, page CSS) | a signed-in account and its assurance (`getAccount()`, `getAssurance()`) |
 | `/api/private` | a visitor unlocking a private store (D339) | `sameSite()`, budget `unlock` failing closed |
@@ -223,12 +223,13 @@ a new folder that is not (PSI SEC-01). Pages and server actions are held by the 
 | `/api/reviews` | visitors reading more reviews and their pictures (D301) | the reviews feature on and the store open; a picture only of a published review, not hidden |
 | `/api/shop` | a shopper back from Google sign-in (D375) | the sign-in's own state |
 | `/api/stock-requests` | a visitor asking to hear when an item is back (D298) | `sameSite()`; a confirmation email before anything is sent |
-| `/api/storefront` | a headless front end (the storefront API, D362) | a storefront token of the store (`asStorefront()`), budget per token (2.9) |
+| `/api/storefront` | a headless front end (the storefront API, D362) | a storefront token of the store (`asStorefront()`), budget per token (2.9); `v1/openapi.json` is the public contract, no data |
 | `/api/stripe` | Stripe's webhooks | `constructEvent()` signature (2.8) |
-| `/api/ucp` | shopping agents (D353) | budget; read-only tools, a cart handed to the store's own checkout (2.9) |
+| `/api/ucp` | shopping agents (D353) | budget; read-only tools, a cart handed to the store's own checkout (2.9); `catalogue.json` is the public tool catalogue (D438) |
 | `/api/unsubscribe` | a person leaving a list | the email's own token |
 | `/api/usage` | Vercel's usage drain | the drain's secret, compared in constant time (2.8) |
 | `/api/visit` | a visitor's browser (counted visits, speed, D152, D336) | `sameSite()`; counts only, no person |
+| `/api/webhooks` | anyone building a webhook receiver (D438) | none: `v1/topics.json` is the public catalogue of topics, payload shapes and signature steps, generated from code, no store's data |
 | `/api/wordpress` | the WordPress plugin (D169) | the plugin's token for its store (`asPlugin()`, 2.9) |
 
 ## 3. Data that leaves for good
