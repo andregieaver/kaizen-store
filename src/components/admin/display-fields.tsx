@@ -15,6 +15,8 @@ import {
   conditionProblem,
   displayKind,
   newCondition,
+  scheduleOf,
+  withSchedule,
   type Condition,
   type ConditionGroup,
   type DisplayKind,
@@ -118,6 +120,91 @@ export function DisplayFields({
       </p>
       {typeof show === "object" && <RuleBuilder rules={show.rules} onChange={(rules) => onChange(rules.length > 0 ? { rules } : undefined)} setup={setup} choices={choices} />}
     </div>
+  );
+}
+
+/**
+ * *Show from* and *Show until* (D432): a part's schedule one step from its settings, under General, instead of two (Advanced,
+ * Visibility, Conditional logic, Date and time). It reads and writes Display's own date condition (`scheduleOf()`,
+ * `withSchedule()`), so the other conditions stay and Display shows the same dates. A part set never to show, or whose dates
+ * differ between its groups of conditions, says so and leaves them to Display. A start after its end is not written.
+ */
+export function ScheduleFields({
+  show,
+  onChange,
+  kaizen,
+  locked,
+}: {
+  show: Show | undefined;
+  onChange: (show: Show | undefined) => void;
+  kaizen: boolean;
+  locked?: string;
+}) {
+  const id = useId();
+  const w = useAdminText("blocks").display.schedule;
+  const current = scheduleOf(show);
+  const [from, setFrom] = useState(current && current !== "own" ? (current.from ?? "") : "");
+  const [until, setUntil] = useState(current && current !== "own" ? (current.to ?? "") : "");
+  const wrong = Boolean(from && until && from >= until);
+  const write = (nextFrom: string, nextUntil: string) => {
+    setFrom(nextFrom);
+    setUntil(nextUntil);
+    if (nextFrom && nextUntil && nextFrom >= nextUntil) return;
+    onChange(withSchedule(show, nextFrom || nextUntil ? { ...(nextFrom && { from: nextFrom }), ...(nextUntil && { to: nextUntil }) } : null));
+  };
+  const note = locked ?? (show === "never" ? w.never : current === "own" ? w.own : null);
+  return (
+    <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
+      <legend className="float-left mb-1 w-full font-medium">{w.legend}</legend>
+      {note ? (
+        <p className="text-sm text-muted">{note}</p>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label htmlFor={`${id}-from`} className="flex flex-col gap-1 text-sm font-medium">
+              {w.from}
+              <input
+                id={`${id}-from`}
+                type="datetime-local"
+                value={from}
+                aria-describedby={`${id}-hint`}
+                aria-invalid={wrong || undefined}
+                onChange={(event) => write(event.target.value, until)}
+                className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal"
+              />
+            </label>
+            <label htmlFor={`${id}-until`} className="flex flex-col gap-1 text-sm font-medium">
+              {w.until}
+              <input
+                id={`${id}-until`}
+                type="datetime-local"
+                value={until}
+                min={from || undefined}
+                aria-describedby={`${id}-hint`}
+                aria-invalid={wrong || undefined}
+                onChange={(event) => write(from, event.target.value)}
+                className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal"
+              />
+            </label>
+          </div>
+          {wrong && (
+            <p role="alert" className="text-sm text-(--danger)">
+              {w.order}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p id={`${id}-hint`} className="text-xs text-muted">
+              {kaizen ? w.kaizenHint : w.storeHint}
+            </p>
+            {(from || until) && (
+              <button type="button" onClick={() => write("", "")} className="min-h-10 rounded-md border border-line px-3 text-sm">
+                {w.clear}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </fieldset>
   );
 }
 
@@ -489,7 +576,16 @@ export function IdChoice({
 export function displayMark(show: Show | undefined, w?: DisplayWords): { tone: "plain" | "rules"; text: string } | null {
   const kind = displayKind(show);
   if (kind === "always") return null;
-  const text = kind === "never" ? (w?.neverShown ?? "Never shown") : kind === "rules" ? (w?.byConditions ?? "Shown by conditions") : (w?.kinds[kind] ?? DISPLAY_LABELS[kind]);
+  // Dates alone (D432) are a schedule: said so, rather than the conditions behind them.
+  const onlyDates = typeof show === "object" && show.rules.every((group) => group.every((c) => c.fact === "date"));
+  const text =
+    kind === "never"
+      ? (w?.neverShown ?? "Never shown")
+      : kind === "rules"
+        ? onlyDates
+          ? (w?.scheduled ?? "Scheduled")
+          : (w?.byConditions ?? "Shown by conditions")
+        : (w?.kinds[kind] ?? DISPLAY_LABELS[kind]);
   return { tone: kind === "rules" ? "rules" : "plain", text };
 }
 

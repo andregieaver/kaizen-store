@@ -16,9 +16,11 @@ import {
   pageRuleIds,
   publicRows,
   ruleIds,
+  scheduleOf,
   showSchema,
   showsFor,
   withoutRuleIds,
+  withSchedule,
   type Condition,
   type Show,
   type VisitorFacts,
@@ -424,3 +426,58 @@ describe("what anyone may read of a page", () => {
     for (const hidden of ["Members", "draft", "VIP"]) expect(knowledge).not.toContain(hidden);
   });
 });
+
+describe("a part's schedule, Show from and Show until (D432)", () => {
+  const date = (from?: string, to?: string): Condition => ({ fact: "date", op: "between", value: { ...(from && { from }), ...(to && { to }) } });
+  const country: Condition = { fact: "country", op: "in", value: ["NO"] };
+
+  it("is written as Display's own date condition, either end open, and read back", () => {
+    const show = withSchedule(undefined, { from: "2026-12-01T00:00", to: "2026-12-24T18:00" });
+    expect(show).toEqual({ rules: [[date("2026-12-01T00:00", "2026-12-24T18:00")]] });
+    expect(scheduleOf(show)).toEqual({ from: "2026-12-01T00:00", to: "2026-12-24T18:00" });
+    expect(withSchedule(undefined, { to: "2026-12-24T18:00" })).toEqual({ rules: [[date(undefined, "2026-12-24T18:00")]] });
+    expect(showSchema.safeParse(show).success).toBe(true);
+    expect(scheduleOf(undefined)).toBeNull();
+    expect(scheduleOf("signedIn")).toBeNull();
+    expect(scheduleOf({ rules: [[country]] })).toBeNull();
+  });
+
+  it("keeps every other condition, in every group, and a plain signed in or out beside the dates", () => {
+    expect(withSchedule({ rules: [[country], [{ fact: "buyer", op: "is", value: "business" }]] }, { from: "2026-12-01T00:00" })).toEqual({
+      rules: [
+        [country, date("2026-12-01T00:00")],
+        [{ fact: "buyer", op: "is", value: "business" }, date("2026-12-01T00:00")],
+      ],
+    });
+    expect(withSchedule("signedIn", { to: "2027-01-01T00:00" })).toEqual({ rules: [[{ fact: "signedIn", op: "is", value: true }, date(undefined, "2027-01-01T00:00")]] });
+    // A new schedule replaces the old one rather than adding a second date.
+    expect(withSchedule({ rules: [[country, date("2026-01-01T00:00")]] }, { from: "2026-02-01T00:00" })).toEqual({ rules: [[country, date("2026-02-01T00:00")]] });
+  });
+
+  it("takes only the dates away, back to what was there besides them", () => {
+    expect(withSchedule({ rules: [[date("2026-12-01T00:00")]] }, null)).toBeUndefined();
+    expect(withSchedule({ rules: [[country, date("2026-12-01T00:00")]] }, null)).toEqual({ rules: [[country]] });
+    expect(withSchedule({ rules: [[{ fact: "signedIn", op: "is", value: false }, date("2026-12-01T00:00")]] }, null)).toBe("signedOut");
+    // A group that held only the date holds nothing then, which is everyone.
+    expect(withSchedule({ rules: [[date("2026-12-01T00:00")], [country, date("2026-12-01T00:00")]] }, null)).toBeUndefined();
+    expect(withSchedule({ rules: [[country]] }, { from: "", to: "" })).toEqual({ rules: [[country]] });
+  });
+
+  it("leaves Never as it is, and says when the dates are Display's own to show", () => {
+    expect(withSchedule("never", { from: "2026-12-01T00:00" })).toBe("never");
+    expect(scheduleOf({ rules: [[date("2026-12-01T00:00")], [date("2026-12-05T00:00")]] })).toBe("own");
+    expect(scheduleOf({ rules: [[date("2026-12-01T00:00"), date(undefined, "2026-12-24T00:00")]] })).toBe("own");
+    expect(scheduleOf({ rules: [[date("2026-12-01T00:00")], [country]] })).toBe("own");
+    expect(scheduleOf({ rules: [[country, date("2026-12-01T00:00")], [date("2026-12-01T00:00")]] })).toEqual({ from: "2026-12-01T00:00" });
+  });
+
+  it("shows only between its dates, in the store's time zone", () => {
+    const show = withSchedule(undefined, { from: "2026-12-01T00:00", to: "2026-12-24T18:00" })!;
+    const at = (iso: string) => ({ timeZone: "Europe/Oslo", now: new Date(iso) }) as unknown as VisitorFacts;
+    expect(showsFor(show, at("2026-11-30T22:59:00Z"))).toBe(false);
+    expect(showsFor(show, at("2026-11-30T23:00:00Z"))).toBe(true);
+    expect(showsFor(show, at("2026-12-24T16:59:00Z"))).toBe(true);
+    expect(showsFor(show, at("2026-12-24T17:00:00Z"))).toBe(false);
+  });
+});
+

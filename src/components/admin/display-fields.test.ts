@@ -144,6 +144,11 @@ describe("the canvas's eyes", () => {
     expect(displayMark("never")).toEqual({ tone: "plain", text: "Never shown" });
     expect(displayMark("signedIn")).toEqual({ tone: "plain", text: "Signed-in visitors" });
     expect(displayMark({ rules: [[{ fact: "signedIn", op: "is", value: true }]] })).toEqual({ tone: "rules", text: "Shown by conditions" });
+    // Dates alone are a schedule (D432); dates beside another condition are conditions.
+    expect(displayMark({ rules: [[{ fact: "date", op: "between", value: { from: "2026-12-01T00:00" } }]] })).toEqual({ tone: "rules", text: "Scheduled" });
+    expect(
+      displayMark({ rules: [[{ fact: "signedIn", op: "is", value: true }, { fact: "date", op: "between", value: { from: "2026-12-01T00:00" } }]] }),
+    ).toEqual({ tone: "rules", text: "Shown by conditions" });
     const blue = renderToString(createElement(DisplayBadge, { show: "signedOut" }));
     expect(blue).toContain('data-builder-display="plain"');
     expect(blue).toContain("text-(--chart-1)");

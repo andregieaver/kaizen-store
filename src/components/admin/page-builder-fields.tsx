@@ -208,12 +208,19 @@ export function ImageFields({
   );
 }
 
+/**
+ * What the builder adds at the foot of a settings dialog's General tab for the part the dialog is for: its schedule, *Show from*
+ * and *Show until* (D432), in every row's, column's and component's settings without each dialog naming it.
+ */
+export const GeneralFoot = createContext<ReactNode>(null);
+
 const SETTINGS_TABS = [{ key: "general" }, { key: "style" }, { key: "motion" }, { key: "advanced" }] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
 
 /** A settings dialog's four tabs (D48, D128): what it holds, how it looks, how it moves, and its id and classes. */
 export function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
   const [tab, setTab] = useState<SettingsTab>("general");
+  const foot = useContext(GeneralFoot);
   const id = useId();
   const fw = useAdminText("builder").fields;
   const select = (index: number) => {
@@ -246,6 +253,7 @@ export function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
       </div>
       <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab}`} className="flex flex-col gap-5">
         {panels[tab]}
+        {tab === "general" && foot}
       </div>
     </div>
   );

@@ -215,6 +215,51 @@ export const showSchema = z.union([
 export const displayKind = (show: Show | undefined): DisplayKind =>
   show === undefined ? "always" : typeof show === "string" ? show : "rules";
 
+/**
+ * A part's schedule (D432): the local dates and times in the store's time zone it shows between, either end open. It is kept as
+ * Display's own date condition (`date` between), so the server draws it as any condition; the builder's *Show from* and *Show
+ * until* only read and write it, one step from the part's settings instead of two.
+ */
+export type Schedule = { from?: string; to?: string };
+
+/**
+ * The schedule a part's Display holds: null for none, the schedule when every group of its conditions holds one and the same date
+ * condition (a group being "and", the date then limits the whole), and "own" when its date conditions differ between groups or a
+ * group holds two, which only Display's rule builder can show.
+ */
+export function scheduleOf(show: Show | undefined): Schedule | null | "own" {
+  if (typeof show !== "object") return null;
+  const dates = show.rules.map((group) => group.filter((c): c is Extract<Condition, { fact: "date" }> => c.fact === "date"));
+  if (dates.every((found) => found.length === 0)) return null;
+  const first = dates[0][0];
+  if (!first || dates.some((found) => found.length !== 1 || found[0].value.from !== first.value.from || found[0].value.to !== first.value.to)) return "own";
+  return { ...(first.value.from && { from: first.value.from }), ...(first.value.to && { to: first.value.to }) };
+}
+
+/**
+ * A Display with its schedule set, or taken away with null: every other condition is kept, a plain "signed in" or "signed out"
+ * becomes the same as a condition beside the dates, and Never stays Never. Taking the dates away leaves what was there besides
+ * them: a group that held only the date then holds nothing, which shows the part to everyone.
+ */
+export function withSchedule(show: Show | undefined, schedule: Schedule | null): Show | undefined {
+  if (show === "never") return show;
+  const date: Condition | null =
+    schedule && (schedule.from || schedule.to)
+      ? { fact: "date", op: "between", value: { ...(schedule.from && { from: schedule.from }), ...(schedule.to && { to: schedule.to }) } }
+      : null;
+  const groups: ConditionGroup[] =
+    show === undefined || show === "always"
+      ? [[]]
+      : show === "signedIn" || show === "signedOut"
+        ? [[{ fact: "signedIn", op: "is", value: show === "signedIn" }]]
+        : show.rules;
+  const next = groups.map((group) => [...group.filter((c) => c.fact !== "date"), ...(date ? [date] : [])]);
+  if (next.some((group) => group.length === 0)) return undefined;
+  const [only] = next;
+  if (next.length === 1 && only.length === 1 && only[0].fact === "signedIn") return only[0].value ? "signedIn" : "signedOut";
+  return { rules: next };
+}
+
 /** Whether the server has to look at the visitor to draw the part: signed in, signed out or conditions. */
 export const isConditional = (show: Show | undefined): boolean => show !== undefined && show !== "always" && show !== "never";
 

@@ -89,9 +89,9 @@ import type { PageOwnerContext } from "./page-context";
 import { FloatingPanel as SettingsPanel } from "./floating-panel";
 import { Modal } from "./modal";
 import { RichTextEditor } from "./rich-text-editor";
-import { DisplayBadge, DisplayFields, DisplayLegend, showPatch, type DisplaySetup } from "./display-fields";
+import { DisplayBadge, DisplayFields, DisplayLegend, ScheduleFields, showPatch, type DisplaySetup } from "./display-fields";
 import { displayLocked, factsOffered, type Show } from "@/lib/visibility";
-import { SpacingFields, ImageFields, SettingsTabs, BackgroundFields, ThemeRowWidths, ThemeSections, useStyleName, RowWidthChoices, RowFields, ColumnSizeFields, BackgroundAtSize, ColumnLinkFields, ShapeChoice, AdvancedFields, NumberField, FrameFields, HeadingFields, ButtonFields, ButtonStyleFields, GridPreview, ColumnsFields, ContentGridFields, GridStyleFields, field } from "./page-builder-fields";
+import { GeneralFoot, SpacingFields, ImageFields, SettingsTabs, BackgroundFields, ThemeRowWidths, ThemeSections, useStyleName, RowWidthChoices, RowFields, ColumnSizeFields, BackgroundAtSize, ColumnLinkFields, ShapeChoice, AdvancedFields, NumberField, FrameFields, HeadingFields, ButtonFields, ButtonStyleFields, GridPreview, ColumnsFields, ContentGridFields, GridStyleFields, field } from "./page-builder-fields";
 import { BlockIcon, Icon, LayoutPreview } from "./page-builder-icons";
 
 /**
@@ -3588,8 +3588,33 @@ function Dialogs({
     return <BackgroundAtSize key={size} part={part} size={size} onChange={(patch) => sizedPatch(target, patch)} onPatch={plainPatch(target)} />;
   };
 
+  /** The part a settings dialog is for, by the dialog: a component, a column of a row, or a row. */
+  const dialogTarget: Styled | null =
+    dialog?.kind === "edit-block"
+      ? { kind: "block", id: dialog.blockId }
+      : dialog?.kind === "edit-row"
+        ? dialog.columnId
+          ? { kind: "column", id: dialog.columnId }
+          : { kind: "row", id: dialog.rowId }
+        : null;
+  /** Its schedule at the foot of General (D432): every part that has Display, which a component in an FAQ's answer has not. */
+  const scheduleFoot = (() => {
+    if (!dialogTarget || !displaySetup.facts.includes("date")) return null;
+    const part = partOf(rows, dialogTarget);
+    if (!part || (dialogTarget.kind === "block" && findBlock(rows, dialogTarget.id)?.parent)) return null;
+    return (
+      <ScheduleFields
+        key={`${dialogTarget.kind}-${dialogTarget.id}`}
+        show={part.visibility?.show}
+        kaizen={displaySetup.kaizen}
+        locked={displayLocked(part) ?? undefined}
+        onChange={(show) => plainPatch(dialogTarget)(showPatch(part.visibility, show))}
+      />
+    );
+  })();
+
   return (
-    <>
+    <GeneralFoot.Provider value={scheduleFoot}>
       <SettingsPanel
         open={block?.type === "richText"}
         onClose={onClose}
@@ -4366,7 +4391,7 @@ function Dialogs({
           upload={upload}
         />
       )}
-    </>
+    </GeneralFoot.Provider>
   );
 }
 
