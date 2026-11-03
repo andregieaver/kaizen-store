@@ -35,6 +35,8 @@ const { newPlainStore } = await import("./order-ops-fixture");
 const { staffActor } = await import("./order-actor");
 const { changeLine } = await import("./cart");
 const { storeById } = await import("./shopper-emails");
+const { payPageFor } = await import("./draft-pay");
+const { getStore } = await import("./stores");
 const { formFromDraft, inputFromForm } = await import("@/lib/draft-editor");
 
 type Row = Record<string, unknown>;
@@ -65,11 +67,20 @@ async function quoteStore(label: string, mode: "off" | "everyone" | "business" =
   return store;
 }
 
-const onRequest = (store: TestStore, sku: string) =>
-  db().execute(sql`
+/**
+ * Prices a product on request. The template's demo bundle is priced from the white mug and the tote, and a product priced on request is never a
+ * part of such a bundle (D433): the bundle is given a price of its own first, as its owner would.
+ */
+const onRequest = async (store: TestStore, sku: string) => {
+  await db().execute(sql`
+    update commerce.products set bundle_pricing = 'fixed', bundle_percent_off = null
+    where store_id = ${store.storeId}::uuid and kind = 'bundle' and bundle_pricing = 'computed'
+  `);
+  return db().execute(sql`
     update commerce.products set price_on_request = true
     where store_id = ${store.storeId}::uuid and id = (select product_id from commerce.product_variants where store_id = ${store.storeId}::uuid and sku = ${sku})
   `);
+};
 
 const ask = async (store: TestStore, over: Record<string, unknown> = {}, who = visitor()) =>
   requestQuote(
@@ -258,6 +269,13 @@ describe("from the request to the quote sent", () => {
     const [mail] = await emailsOf(store, "draft.pay_link");
     expect(mail).toMatchObject({ to_address: "kari@example.com", status: "logged" });
     expect(String(mail.subject)).toMatch(/quote|tilbud/i);
+    // The link opens the draft's pay page, which reads as the quote (D435).
+    const [html] = await db().execute<Row>(sql`select html from commerce.email_messages where store_id = ${store.storeId}::uuid and kind = 'draft.pay_link'`);
+    const token = /\/account\/pay\/([A-Za-z0-9_-]{43})/.exec(String(html.html))?.[1];
+    expect(token).toBeTruthy();
+    const full = (await getStore(store.slug))!;
+    const page = await payPageFor({ store: full, market: full.markets.find((m) => m.code === "NO")! }, token!);
+    expect(page).toMatchObject({ state: "ready", draft: { source: "quote" } });
     expect(await quoteRequestsWaiting(store.storeId)).toBe(0);
     // A staff member's later save keeps the typed price (a product priced on request is never at its list price).
     const after = (await getDraft(store.storeId, draftId))!;

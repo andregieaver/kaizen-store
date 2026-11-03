@@ -51,7 +51,21 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   `src/lib/icu-lite.ts`) and read into `t()`/`emailText()` key by key. A new
   English message needs nothing more, except one that chooses by a number or a
   yes/no, which goes in `CHOOSING` with a case in `ui-catalog.test.ts`; a
-  placeholder in a plain text is `{name}` only. The languages stores can offer
+  placeholder in a plain text is `{name}` only. It reaches the translated
+  languages by itself (D436, `src/server/ui-nightly.ts`, pure parts in
+  `src/lib/ui-nightly.ts`): once a night from 02:00 Oslo time the five-minute
+  dispatcher's `uiTranslations` claims the day (`claimDay()`, kept as
+  `daily.ui-translations`) and the platform's AI translates, for each language
+  that is switched on, not written by hand and already has interface text, the
+  keys it has none for (`planGeneration(lang, "missing")`, `generateChunk(…,
+  { accountId: null }, …, { missingOnly: true })`): never one that has a text
+  (a person's or one whose English changed), never a hand-written-only one,
+  at most `UI_NIGHT_KEYS_PER_LANGUAGE` a language and two minutes of calls a
+  night, kept as unreviewed AI drafts and audited with no account
+  (`nightly: true`); it waits while AI that acts on its own is paused. A
+  language nobody translated stays English until a platform admin presses
+  *Translate*; a text that must never be machine-translated goes under a
+  `HAND_WRITTEN_ONLY` prefix before it is added. The languages stores can offer
   are `commerce.platform_languages` (`/admin/platform/languages`), never a
   list in code; never read the texts from the database while rendering (they
   are in memory, `src/server/ui-text.ts`).

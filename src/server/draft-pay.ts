@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { t } from "@/lib/i18n";
@@ -14,6 +15,7 @@ import type { PlacedOrder } from "./checkout";
 import { getCheckoutInfo, getOrder, type OrderView } from "./orders";
 import { openPaymentSession, paymentConnection } from "./payment-session";
 import type { Store } from "./stores";
+import { col, typedRow } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -34,35 +36,52 @@ export type PayPage =
       state: "ready" | "paid" | "expired" | "payments_off";
       /** The buyer's own order: lines, totals, VAT, the staff discount under the name staff gave it, shipping. A custom price is the price agreed: no "was" price. */
       order: OrderView | null;
-      draft: { number: string; noteToBuyer: string | null; expiresAt: string };
+      /** `source`: `staff`, or `quote` when the draft is a shopper's request for a quote (D431), which the page words as a quote (D435). */
+      draft: { number: string; noteToBuyer: string | null; expiresAt: string; source: DraftSource };
       /** The store's terms at checkout: `link`, `checkbox` (the tick must be ticked to pay) or `off`. */
       terms: Store["termsAtCheckout"];
     };
 
+/** Who made the draft (`draft_orders.source`, D431). */
+export type DraftSource = "staff" | "quote";
+
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
+const DRAFT_ROW = z.object({
+  id: col.uuid,
+  number: col.text,
+  status: col.text,
+  order_id: col.uuid.nullable(),
+  note_to_buyer: col.textOrNull,
+  expires_at: col.timestampOrNull,
+  source: z.enum(["staff", "quote"]),
+});
+
 /** The draft behind a token, within this store: null for any token that is not the current one of one of its drafts. */
-async function draftByToken(storeId: string, token: string): Promise<Row | null> {
+async function draftByToken(storeId: string, token: string): Promise<z.output<typeof DRAFT_ROW> | null> {
   if (!TOKEN.test(token)) return null;
-  const [row] = await db().execute<Row>(sql`
-    select id, number, status, order_id, note_to_buyer, expires_at from commerce.draft_orders
-    where store_id = ${storeId}::uuid and pay_token_hash = ${hashPayToken(token)}
-  `);
-  return row ?? null;
+  return typedRow(
+    DRAFT_ROW,
+    sql`
+      select id, number, status, order_id, note_to_buyer, expires_at, source from commerce.draft_orders
+      where store_id = ${storeId}::uuid and pay_token_hash = ${hashPayToken(token)}
+    `,
+  );
 }
 
 /** The page's state. A passed expiry is expired without waiting for the job (`expireDrafts()`). */
 export async function payPageFor(shop: PayShop, token: string): Promise<PayPage> {
   const storeId = shop.store.id;
   const draft = await draftByToken(storeId, token);
-  if (!draft || !draft.order_id) return { state: "not_found" };
-  const order = await getOrder(storeId, String(draft.order_id));
+  // A draft with a token is a sent one (or one that ended after it was sent), which always names its order and its expiry (`draft_orders_rules()`).
+  if (!draft || !draft.order_id || !draft.expires_at) return { state: "not_found" };
+  const order = await getOrder(storeId, draft.order_id);
   if (!order) return { state: "not_found" };
   // The order belongs to one market: its VAT, its currency, its legal pages and the countries Stripe may ask an address in were decided for it. The same link under another country's address is not found
   // (the language and the currency of the view may differ: `no-en-eur` is Norway's too).
   if (order.marketCode.trim().toUpperCase() !== shop.market.code.toUpperCase()) return { state: "not_found" };
-  const expiresAt = new Date(String(draft.expires_at)).toISOString();
-  const base = { draft: { number: String(draft.number), noteToBuyer: draft.note_to_buyer ? String(draft.note_to_buyer) : null, expiresAt }, terms: shop.store.termsAtCheckout };
+  const expiresAt = draft.expires_at;
+  const base = { draft: { number: draft.number, noteToBuyer: draft.note_to_buyer || null, expiresAt, source: draft.source }, terms: shop.store.termsAtCheckout };
   if (draft.status === "paid" || order.status === "paid" || order.status === "fulfilled" || order.status === "closed") return { state: "paid", order, ...base };
   if (draft.status !== "sent" || order.status !== "pending_payment" || new Date(expiresAt).getTime() <= Date.now()) return { state: "expired", order: null, ...base };
   const info = await getCheckoutInfo(storeId, order.marketCode);
@@ -141,7 +160,7 @@ export async function startDraftPayment(shop: PayShop, token: string, options: {
   if (page.terms === "checkbox" && !options.termsTicked) return { ok: false, problem: "terms" };
   const draftRow = await draftByToken(store.id, token);
   if (!draftRow) return { ok: false, problem: "not_found" };
-  const draftId = String(draftRow.id);
+  const draftId = draftRow.id;
   if (!(await takePress(store.id, draftId))) return { ok: false, problem: "limit" };
   // The acceptance is recorded first. `link` mode goes on when it cannot be recorded (the order simply has no record); `checkbox` mode does not start the payment.
   const recorded: TermsRecordResult = await recordTermsForOrder(store, market, order.id);

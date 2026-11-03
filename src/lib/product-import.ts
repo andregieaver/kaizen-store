@@ -12,7 +12,19 @@
  * or switched off by leaving it out of the input, never deleted; a product that cannot be published becomes a draft (or is skipped).
  */
 import { withVat, withoutVat } from "./b2b";
-import { PRODUCT_STATUSES, DELIVERY_WORDS, groupProducts, optionNamesOf, orderedPictures, parseTermList, priceBasisOf } from "./product-csv";
+import {
+  PRODUCT_STATUSES,
+  DELIVERY_WORDS,
+  LANGUAGE_COLUMN,
+  PRICE_WORD_PLACES,
+  groupProducts,
+  optionNamesOf,
+  orderedPictures,
+  parseTermList,
+  priceBasisOf,
+  priceWordColumn,
+  priceWordsModeOf,
+} from "./product-csv";
 import type { FileFinding, Grouped, NeutralFile, ProductCsvContext, ProductDraft, StoredProduct, DraftVariant } from "./product-csv";
 import { addressableFields, ambiguousFieldNames, isPriceColumn } from "./product-csv";
 import { finding, type DryRunCounts, type Finding, type ItemOutcome, type Severity } from "./data-job";
@@ -27,6 +39,9 @@ import { BASES, baseFits, isBase, isUnit, normaliseMeasureAmount } from "./unit-
 import { isPictureAddress } from "./picture-address";
 import { pictureItem } from "./product-media";
 import { keepForCategory } from "./product-taxonomy";
+import { CLAIM_LABELS } from "./claims";
+import { wordsIn, type PriceWords, type ProductPriceWords, type WordsByLocale } from "./price-words";
+import { cleanPriceWord, priceWordProblem, type PriceWordProblem } from "./price-words-check";
 
 // ---------------------------------------------------------------------------
 // Options
@@ -183,7 +198,7 @@ export function checkFile(file: NeutralFile, grouped: Grouped, env: PlanEnv): Fi
     if (price && !marketCodes.has(price[1].toUpperCase()) && !file.findings.some((f) => f.column === column)) {
       add(finding("price.market_unknown", { column, name: price[1].toUpperCase() }));
     }
-    const text = /^(?:title|description|safety_information|seo_title|seo_description):(.+)$/.exec(column);
+    const text = LANGUAGE_COLUMN.exec(column);
     if (text && !ctx.locales.includes(text[1])) add(finding("column.ignored", { column, reason: "The store does not offer that language" }));
   }
   // Custom fields: a name the store does not have is ignored, one two fields share is an error for the column.
@@ -245,8 +260,20 @@ type Canon = {
   options: [string, string[]][];
   categories: string[];
   tags: string[];
+  /** Price on request (D431) and the words around the price as shoppers read them in each language (D429). */
+  priceOnRequest: boolean;
+  priceWords: string | [string, string, string][];
   variants: unknown[];
 };
+
+/** A product's words around its price as compared: the mode, or its own words as each of the store's languages shows them, tidied. */
+function canonicalWords(choice: ProductPriceWords | undefined, ctx: ProductCsvContext): Canon["priceWords"] {
+  if (!choice || choice.mode !== "own") return choice?.mode ?? "inherit";
+  return ctx.locales.map((l) => {
+    const shown = wordsIn(choice.words, l, ctx.primaryLocale);
+    return [l, cleanPriceWord(shown.prefix), cleanPriceWord(shown.suffix)] as [string, string, string];
+  });
+}
 
 /** A product in the form two products are compared in: amounts as minor units, texts trimmed, ids in order. */
 export function canonical(input: ProductInput, archived: boolean, ctx: ProductCsvContext): Canon {
@@ -261,6 +288,8 @@ export function canonical(input: ProductInput, archived: boolean, ctx: ProductCs
     options: input.options.map((o) => [o.name, [...o.values]] as [string, string[]]),
     categories: [...input.categories].sort(),
     tags: [...input.tags].sort(),
+    priceOnRequest: Boolean(input.priceOnRequest),
+    priceWords: canonicalWords(input.priceWords, ctx),
     variants: input.variants.map((v) => ({
       id: v.id,
       options: Object.entries(v.options).sort(([a], [b]) => (a < b ? -1 : 1)),
@@ -567,6 +596,63 @@ function overlayVariant(c: Ctx, base: VariantInput, dv: DraftVariant, names: { p
   return { variant: out };
 }
 
+/** What is wrong with a word around the price, for a finding: the column says where, and the words themselves are never quoted. */
+function priceWordReason(problem: PriceWordProblem): string {
+  switch (problem.kind) {
+    case "long":
+      return `at most ${problem.max} characters`;
+    case "plain":
+      return "plain words only, with no tags or line breaks";
+    case "percent":
+      return "no percentages: the store shows a reduction itself, with the lowest price of the last 30 days";
+    case "claim":
+      return `they could mislead shoppers (${CLAIM_LABELS[problem.claim].toLowerCase()})`;
+  }
+}
+
+/**
+ * The words around the price the file gives (D429, D434), laid over the product's. `price_words` says whose they are (blank keeps the product's
+ * choice); with its own, each `price_prefix` and `price_suffix` cell the file has replaces that word in its language (blank: no word there), and a
+ * language whose columns the file leaves out keeps its words. Each word is checked as the editor checks it (`priceWordProblem()`). A file with
+ * none of these columns (an older export, Shopify's or WooCommerce's) leaves the product's words as they are.
+ */
+function overlayPriceWords(c: Ctx, input: ProductInput, p: Record<string, string>): void {
+  const { ctx } = c.env;
+  const cells = ctx.locales
+    .flatMap((locale) => PRICE_WORD_PLACES.map((place) => ({ locale, place, column: priceWordColumn(place, locale, ctx.primaryLocale) })))
+    .filter((cell) => has(c, cell.column));
+  if (!has(c, "price_words") && cells.length === 0) return;
+  const had: ProductPriceWords = input.priceWords ?? { mode: "inherit" };
+  let mode = had.mode;
+  if (has(c, "price_words") && t(p.price_words) !== "") {
+    const named = priceWordsModeOf(p.price_words);
+    if (named === null) {
+      err(c, "price_words.unknown", { column: "price_words" });
+      return;
+    }
+    mode = named;
+  }
+  if (mode !== "own") {
+    // Words with the store's or none are not the product's: said, and left out.
+    if (cells.some((cell) => t(p[cell.column]) !== "")) err(c, "price_words.ignored", { column: "price_words" }, "warning");
+    input.priceWords = { mode };
+    return;
+  }
+  const words: WordsByLocale = had.mode === "own" ? clone(had.words) : {};
+  for (const { locale, place, column } of cells) {
+    const typed = p[column] ?? "";
+    const problem = priceWordProblem(typed);
+    if (problem) {
+      err(c, "price_words.invalid", { column, reason: priceWordReason(problem) });
+      continue;
+    }
+    // A language that took the main language's words keeps the other word as it was shown.
+    const shown: PriceWords = words[locale] ?? wordsIn(words, locale, ctx.primaryLocale);
+    words[locale] = { ...shown, [place]: cleanPriceWord(typed) };
+  }
+  input.priceWords = { mode: "own", words };
+}
+
 /** Lays a draft over the stored product and decides what to write. */
 export function planProduct(draft: ProductDraft, file: NeutralFile, env: PlanEnv, snapshot: StoreSnapshot, extra: { blocked?: Finding | null; duplicateSku?: string | null } = {}): ProductPlan {
   const { ctx, options } = env;
@@ -640,6 +726,16 @@ export function planProduct(draft: ProductDraft, file: NeutralFile, env: PlanEnv
       input.standardAttributes = keepForCategory(found.attributeIds, input.standardAttributes ?? {});
     }
   }
+
+  // Price on request (D431) and the words around the price (D429), D434: a blank cell keeps what the product has, as a status does. Whether a
+  // product in a bundle priced from its products' prices may be priced on request (D433) is for `saveProduct()`, which knows the bundles.
+  if (has(c, "price_on_request") && t(p.price_on_request) !== "") {
+    const on = parseBool(p.price_on_request);
+    if (on === null) err(c, "price_on_request.invalid", { column: "price_on_request" });
+    else if (on && input.kind !== "goods") err(c, "price_on_request.not_goods", { column: "price_on_request" });
+    else input.priceOnRequest = on;
+  }
+  overlayPriceWords(c, input, p);
 
   // Status ----------------------------------------------------------------------------------------------------------------
   let wantsArchived = stored?.archived ?? false;

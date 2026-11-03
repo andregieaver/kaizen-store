@@ -5,6 +5,7 @@ import { IMPORT_MAX_PRODUCTS, IMPORT_MAX_ROWS } from "./data-limits";
 import { MAX_MEDIA, MAX_VARIANTS } from "./product-input";
 import { pictureItem } from "./product-media";
 import { readNeutral, groupProducts } from "./product-csv";
+import { readShopify } from "./product-csv-shopify";
 import {
   DEFAULT_IMPORT_OPTIONS,
   checkFile,
@@ -530,6 +531,84 @@ describe("what the whole file says", () => {
     seen(plan([HEAD, ["Bad Handle", "A", "S", "1"], ["a", "", "S1", "1"], ["b", "B", "", "1"], ["c", "C", "S2", "x"], ["d", "D", "S3", "-1"]]).products);
     expect([...made].sort()).toEqual(["price.negative", "price.unreadable", "row.handle_invalid", "save.failed", "sku.missing"]);
     expect(FINDING_CODES.length).toBeGreaterThan(45);
+  });
+});
+
+describe("price on request and the words around the price (D434)", () => {
+  const words = { "nb-NO": { prefix: "Kun", suffix: ",-" }, "sv-SE": { prefix: "", suffix: "/st" } };
+  const stored = boot(ctx, { priceOnRequest: true, priceWords: { mode: "own", words } });
+  const own = (rows: string[][], over: Partial<StoredProduct> = {}) => plan(rows, { stored: [{ ...stored, ...over }] }).products[0];
+
+  it("reads price_on_request as true or false, keeps it on a blank cell, and refuses another word or a product that is not goods", () => {
+    const off = own([["handle", "price_on_request"], ["winter-boot", "false"]]);
+    expect([off.outcome, off.input?.priceOnRequest]).toEqual(["updated", false]);
+    expect(own([["handle", "price_on_request"], ["winter-boot", "TRUE"]]).outcome).toBe("unchanged");
+    expect(own([["handle", "price_on_request"], ["winter-boot", ""]]).outcome).toBe("unchanged");
+    const on = plan([["handle", "price_on_request"], ["winter-boot", "ja"]], { stored: [boot(ctx)] }).products[0];
+    expect([on.outcome, on.input?.priceOnRequest]).toEqual(["updated", true]);
+    expect(codes(own([["handle", "price_on_request"], ["winter-boot", "maybe"]]))).toEqual(["price_on_request.invalid"]);
+    const stay = boot(ctx, { kind: "stay" });
+    expect(codes(plan([["handle", "price_on_request"], ["winter-boot", "true"]], { stored: [stay] }).products[0])).toEqual(["price_on_request.not_goods"]);
+    expect(plan([["handle", "price_on_request"], ["winter-boot", "false"]], { stored: [stay] }).products[0].outcome).toBe("unchanged");
+    // A new product is priced on request from the file too.
+    expect(plan([[...HEAD, "price_on_request"], ["new-lamp", "Lampe", "L-1", "100", "true"]]).products[0].input?.priceOnRequest).toBe(true);
+  });
+
+  it("reads price_words as store, none or own, keeps the choice on a blank cell, and refuses another word", () => {
+    expect(own([["handle", "price_words"], ["winter-boot", "store"]]).input?.priceWords).toEqual({ mode: "inherit" });
+    expect(own([["handle", "price_words"], ["winter-boot", "None"]]).input?.priceWords).toEqual({ mode: "none" });
+    expect(own([["handle", "price_words"], ["winter-boot", "own"]]).outcome).toBe("unchanged");
+    expect(own([["handle", "price_words"], ["winter-boot", ""]]).outcome).toBe("unchanged");
+    expect(codes(own([["handle", "price_words"], ["winter-boot", "inherit"]]))).toEqual(["price_words.unknown"]);
+  });
+
+  it("reads its own words per language as the text columns are, a blank cell for no word, and leaves a language the file has not alone", () => {
+    const p = own([["handle", "price_words", "price_prefix", "price_suffix", "price_suffix:sv-SE"], ["winter-boot", "own", "Bare", "  per   par ", ""]]);
+    expect(p.outcome).toBe("updated");
+    expect(p.input?.priceWords).toEqual({ mode: "own", words: { "nb-NO": { prefix: "Bare", suffix: "per par" }, "sv-SE": { prefix: "", suffix: "" } } });
+    // A product that showed the store's words gets its own: the language the file names, the others taking the main language's (none).
+    const fresh = plan([["handle", "price_words", "price_prefix:en-GB"], ["winter-boot", "own", "Only"]], { stored: [boot(ctx)] }).products[0];
+    expect(fresh.input?.priceWords).toEqual({ mode: "own", words: { "en-GB": { prefix: "Only", suffix: "" } } });
+    // English took the main language's words: given a prefix of its own, it keeps the suffix it showed.
+    const en = own([["handle", "price_prefix:en-GB"], ["winter-boot", "Only"]]);
+    expect(en.input?.priceWords).toEqual({ mode: "own", words: { ...words, "en-GB": { prefix: "Only", suffix: ",-" } } });
+  });
+
+  it("checks each word as the editor does, naming the column and never quoting it", () => {
+    const p = own([["handle", "price_prefix", "price_suffix:sv-SE", "price_prefix:en-GB"], ["winter-boot", "Beste pris", "x".repeat(30), "20 % off"]]);
+    expect(p.outcome).toBe("skipped");
+    expect(p.findings.map((f) => [f.code, f.column])).toEqual([
+      ["price_words.invalid", "price_prefix"],
+      ["price_words.invalid", "price_suffix:sv-SE"],
+      ["price_words.invalid", "price_prefix:en-GB"],
+    ]);
+    expect(p.findings[0].text).toMatch(/could mislead shoppers \(best or lowest price claim\)/);
+    expect(p.findings[1].text).toMatch(/at most 24 characters/);
+    expect(p.findings[2].text).toMatch(/no percentages/);
+    for (const f of p.findings) expect(f.text).not.toMatch(/Beste|xxxx|20 %/);
+    expect(codes(own([["handle", "price_prefix"], ["winter-boot", "<b>Kun</b>"]]))).toEqual(["price_words.invalid"]);
+  });
+
+  it("leaves out the words of a language the store does not offer, saying so", () => {
+    const r = plan([["handle", "price_prefix:da-DK"], ["winter-boot", "Kun"]], { stored: [stored] });
+    expect(r.fileFindings.map((f) => [f.finding.code, f.finding.column])).toEqual([["column.ignored", "price_prefix:da-DK"]]);
+    expect(r.products[0].outcome).toBe("unchanged");
+  });
+
+  it("says the words are left out when the product shows the store's or none", () => {
+    const p = own([["handle", "price_words", "price_prefix"], ["winter-boot", "store", "Kun"]]);
+    expect(p.outcome).toBe("updated");
+    expect(p.input?.priceWords).toEqual({ mode: "inherit" });
+    expect(p.findings.map((f) => [f.code, f.severity])).toEqual([["price_words.ignored", "warning"]]);
+    expect(own([["handle", "price_words", "price_prefix"], ["winter-boot", "none", ""]]).findings).toEqual([]);
+  });
+
+  it("keeps the product's values when the file has none of these columns: an older export, a Shopify or a WooCommerce file", () => {
+    const older = own([["handle", "title"], ["winter-boot", "Ny tittel"]]);
+    expect([older.outcome, older.input?.priceOnRequest, older.input?.priceWords]).toEqual(["updated", true, { mode: "own", words }]);
+    const header = ["URL handle", "Title", "SKU", "Price"];
+    const shopify = planImport(readShopify([header, ["winter-boot", "Ny tittel", "BOOT-BLK-42", "1249.00"]], ctx), snapshotOf([stored]), env(ctx, { options: { ...DEFAULT_IMPORT_OPTIONS, pricesIncludeVat: true } }));
+    expect(shopify.products[0].input).toMatchObject({ priceOnRequest: true, priceWords: { mode: "own", words } });
   });
 });
 

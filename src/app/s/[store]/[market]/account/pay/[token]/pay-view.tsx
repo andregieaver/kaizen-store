@@ -23,6 +23,8 @@ export type PayPageFound = Exclude<PayPage, { state: "not_found" }>;
  * shipping, the staff discount under the name staff gave it, the VAT, the total, the store's note, how long the link is valid, the right of withdrawal in one sentence with a link to the store's
  * information page where it has one, the store's terms exactly as the checkout draws them, and one button that states the amount to pay. A custom price is shown as the price agreed, never with a "was" price.
  * Four more states are each one plain sentence: paid, expired (or replaced, or cancelled), and payments off. Every state here is hand-written text that needs legal review (`m.draftPay`).
+ * A shopper's request for a quote (D431, `draft.source = 'quote'`) reads as the quote (D435, `m.draftPay.quote`): its heading, the line that paying accepts it, the summary, the validity, the
+ * button (*Accept and pay*), and the paid, expired and processing sentences; a staff draft keeps the order's words.
  * No cookie, no tracking and no Stripe.js: the button hands the buyer to Stripe's own page.
  */
 export function PayView({
@@ -44,6 +46,11 @@ export function PayView({
 }) {
   const m = t(market.lang);
   const w = m.draftPay;
+  // A quote's own words where the page would say "order" (D435); everything else is the same page.
+  const q = page.draft.source === "quote" ? w.quote : null;
+  const heading = (number: string) => (q ? q.heading(number, store.name) : w.heading(number));
+  const expired = q ? q.expired : w.expired;
+  const paid = q ? q.paid : w.paid;
   const contact = store.details.contactEmail;
   const sentence = (text: string) => (
     <p role="status" className="text-lg">
@@ -57,12 +64,12 @@ export function PayView({
     </div>
   );
   const order = page.order;
-  if (page.state === "expired" || !order) return <Frame heading={store.name}>{after(w.expired)}</Frame>;
+  if (page.state === "expired" || !order) return <Frame heading={store.name}>{after(expired)}</Frame>;
   if (page.state === "paid") {
     return (
-      <Frame heading={w.heading(order.number)}>
+      <Frame heading={heading(order.number)}>
         <p role="status" className="text-lg">
-          {w.paid}
+          {paid}
         </p>
       </Frame>
     );
@@ -73,18 +80,18 @@ export function PayView({
   const date = new Date(page.draft.expiresAt).toLocaleString(market.locale, { dateStyle: "long", timeStyle: "short", timeZone: store.timeZone });
   const seller = store.details;
   const problems: PayProblemWords = {
-    not_found: w.expired,
-    expired: w.expired,
-    paid: w.paid,
+    not_found: expired,
+    expired,
+    paid,
     payments_off: w.paymentsOff,
     terms: w.termsRequired,
-    processing: m.problemProcessing,
+    processing: q ? q.processing : m.problemProcessing,
     payment_error: w.startFailed,
     limit: w.startFailed,
   };
   return (
-    <Frame heading={w.heading(order.number)}>
-      <p>{w.intro}</p>
+    <Frame heading={heading(order.number)}>
+      <p>{q ? q.intro : w.intro}</p>
 
       {/* The seller: the page has no site footer, so who sells is said here (the name, the number, the address, a way to write). */}
       <section aria-labelledby="pay-seller" className="flex flex-col gap-1 rounded-lg border border-border p-4">
@@ -109,7 +116,7 @@ export function PayView({
         )}
       </section>
 
-      <section aria-label={m.orderSummary} className="rounded-lg border border-border p-4">
+      <section aria-label={q ? q.summary : m.orderSummary} className="rounded-lg border border-border p-4">
         <ul className="divide-y divide-border">
           {order.lines.map((line) => (
             <li key={line.id} className="flex items-center gap-3 py-2">
@@ -175,7 +182,7 @@ export function PayView({
         </section>
       )}
 
-      <p className="text-sm text-muted">{w.validUntil(date)}</p>
+      <p className="text-sm text-muted">{q ? q.validUntil(date) : w.validUntil(date)}</p>
 
       {/* The sentence is the order email's rule (`withdrawBlocks()`): goods sent to a private buyer. A business has no statutory right, and a service's period runs from another day and can be lost by performance, so
           neither is told a goods-receipt period here. Their terms are the store's own, linked below where it has them. */}
@@ -211,7 +218,7 @@ export function PayView({
           display={terms}
           template={terms ? termsTemplate(m.terms, terms) : ""}
           newTab={m.terms.newTab}
-          labels={{ pay: m.pay(money(order.totalMinor)), paying: m.startingPayment, stripeNote: w.stripeNote }}
+          labels={{ pay: q ? q.pay(money(order.totalMinor)) : m.pay(money(order.totalMinor)), paying: m.startingPayment, stripeNote: w.stripeNote }}
           problems={problems}
         />
       ) : (

@@ -11,7 +11,7 @@ import { testDb, testStore } from "./db";
  * the test presses it and asserts the problem the page then shows. Held elsewhere: the money, the webhook and the order (integration tests with the fake Stripe).
  */
 
-type Fixture = { slug: string; storeId: string; orderId: string; draftId: string; token: string; number: string };
+type Fixture = { slug: string; storeId: string; storeName: string; orderId: string; draftId: string; token: string; number: string };
 
 type Options = {
   /** `sent` (the default), `paid`, `expired` or `cancelled`: where the draft and its order are. */
@@ -26,6 +26,8 @@ type Options = {
   noContact?: boolean;
   /** The market the order was made in (the link only opens under its own country's address); Norway when left out. */
   market?: "NO" | "SE" | "DK";
+  /** The draft is a shopper's request for a quote (D431), sent as a quote: the page reads as one (D435). */
+  quote?: boolean;
 };
 
 const MARKETS = {
@@ -63,9 +65,11 @@ async function payLink(options: Options = {}): Promise<Fixture> {
     }
 
     const [draft] = await db`
-      insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, email, note_to_buyer)
-      values (${store.id}, 'D-1', ${market}, ${m.slug}, ${m.currency}, ${m.locale}, 'kari@example.com', ${options.note ?? null})
+      insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, email, note_to_buyer, source, request_note)
+      values (${store.id}, 'D-1', ${market}, ${m.slug}, ${m.currency}, ${m.locale}, 'kari@example.com', ${options.note ?? null}, ${options.quote ? "quote" : "staff"},
+        ${options.quote ? "Trenger 2 til kontoret" : null})
       returning id`;
+    const [{ name: storeName }] = await db`select name from commerce.stores where id = ${store.id}`;
 
     const discount = options.discount ? 10000 : 0;
     const total = 125000 + 9900 - discount;
@@ -89,7 +93,7 @@ async function payLink(options: Options = {}): Promise<Fixture> {
     if (state === "paid") await db`update commerce.draft_orders set status = 'paid', paid_at = now() where id = ${draft.id}`;
     if (state === "expired") await db`update commerce.draft_orders set status = 'expired' where id = ${draft.id}`;
     if (state === "cancelled") await db`update commerce.draft_orders set status = 'cancelled' where id = ${draft.id}`;
-    return { slug: store.slug, storeId: store.id, orderId: order.id, draftId: draft.id, token, number };
+    return { slug: store.slug, storeId: store.id, storeName: String(storeName), orderId: order.id, draftId: draft.id, token, number };
   } finally {
     await db.end();
   }
@@ -201,6 +205,51 @@ test("a token that is another store's, malformed or unknown is the same page as 
   // And a link of this store does not open under another's address.
   await page.goto(`/s/${other.slug}/no/account/pay/${f.token}`);
   await expect(page.getByText("Ullgenser")).toHaveCount(0);
+});
+
+test("a quote's pay link reads as the quote the shopper asked for, and its button accepts it (D435)", async ({ page }) => {
+  const f = await payLink({ quote: true });
+  await page.goto(`/s/${f.slug}/no/account/pay/${f.token}`);
+
+  await expect(page.getByRole("heading", { level: 1, name: `Ditt tilbud ${f.number} fra ${f.storeName}` })).toBeVisible();
+  await expect(page.getByText("Dette er tilbudet du ba om. Se over det, og betal når du er klar. Når du betaler, godtar du tilbudet og legger inn bestillingen.")).toBeVisible();
+  // The same seller, lines and total as a staff draft's page, under the quote's name.
+  await expect(page.getByRole("region", { name: "Selger" })).toContainText("Lenkebutikken AS");
+  const quote = page.getByRole("region", { name: "Tilbudet ditt" });
+  await expect(quote).toContainText("2 × Ullgenser");
+  await expect(quote).toContainText(/1\s?349,00\s*kr/);
+  await expect(page.getByText(/Tilbudet gjelder til/)).toBeVisible();
+  // Nothing calls it an order the store made for them.
+  await expect(page.getByRole("heading", { level: 1, name: `Bestilling ${f.number}` })).toHaveCount(0);
+  await expect(page.getByText("Butikken har laget denne bestillingen til deg.")).toHaveCount(0);
+  await expect(page.getByText(/Lenken gjelder til/)).toHaveCount(0);
+  const own = page.locator("[data-pay-link]");
+  await expect(own.getByRole("button")).toHaveCount(1);
+  await expect(own.getByRole("button", { name: /^Godta og betal / })).toBeEnabled();
+  await expect(own.getByRole("button", { name: /^Betal / })).toHaveCount(0);
+
+  // Pressed where Stripe cannot be reached: said on the same page, and the order is as it was.
+  await own.getByRole("button", { name: /^Godta og betal / }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Butikken kan ikke ta imot betaling akkurat nå." })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/account/pay/${f.token}$`));
+});
+
+test("a paid quote says it was accepted, and an expired one that it can no longer be (D435)", async ({ page }) => {
+  const paid = await payLink({ quote: true, state: "paid" });
+  await page.goto(`/s/${paid.slug}/no/account/pay/${paid.token}`);
+  await expect(page.getByRole("heading", { level: 1, name: `Ditt tilbud ${paid.number} fra ${paid.storeName}` })).toBeVisible();
+  await expect(page.getByText("Du har godtatt tilbudet og betalt. Takk!")).toBeVisible();
+  await expect(page.locator("[data-pay-link]").getByRole("button")).toHaveCount(0);
+
+  for (const options of [{ quote: true, state: "expired" }, { quote: true, lapsed: true }] as Options[]) {
+    const f = await payLink(options);
+    await page.goto(`/s/${f.slug}/no/account/pay/${f.token}`);
+    await expect(page.getByText("Dette tilbudet kan ikke lenger godtas. Be butikken om et nytt.")).toBeVisible();
+    await expect(page.getByText("Kontakt butikken: hei@lenkebutikken.test")).toBeVisible();
+    await expect(page.getByText("Denne lenken virker ikke lenger.")).toHaveCount(0);
+    await expect(page.getByText("Ullgenser")).toHaveCount(0);
+    await expect(page.locator("[data-pay-link]").getByRole("button")).toHaveCount(0);
+  }
 });
 
 test("a link is said in Swedish and Danish when it was made for those markets", async ({ page }) => {

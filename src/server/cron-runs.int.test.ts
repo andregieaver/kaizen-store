@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const { closeDb, db } = await import("@/db/client");
-const { cronJobRows, runJobs, tracked } = await import("./cron-runs");
+const { claimDay, cronJobRows, runJobs, tracked } = await import("./cron-runs");
 const { cronHealth } = await import("@/lib/cron-health");
 
 const prefix = `test-${Date.now().toString(36)}`;
@@ -83,5 +83,20 @@ describe("the cron run ledger (PSI 2026-10-24, REL-06)", () => {
     expect((await rowOf(`${prefix}.b`))!.failures).toBe(1);
     expect((await rowOf(`${prefix}.c`))!.failures).toBe(0);
     quiet.mockRestore();
+  });
+
+  it("gives a once-a-day job's day to one run, in the job's own time zone, and the next day to the first run of it (D436)", async () => {
+    const job = `${prefix}.daily`;
+    // 23:30 UTC on 14 January is already the 15th in Oslo.
+    expect(await claimDay(job, "2030-01-15", "Europe/Oslo", new Date("2030-01-14T23:30:00Z"))).toBe(true);
+    expect(await claimDay(job, "2030-01-15", "Europe/Oslo", new Date("2030-01-15T10:00:00Z"))).toBe(false);
+    // Two runs at once: one gets the day.
+    const both = await Promise.all([
+      claimDay(job, "2030-01-16", "Europe/Oslo", new Date("2030-01-16T01:00:00Z")),
+      claimDay(job, "2030-01-16", "Europe/Oslo", new Date("2030-01-16T01:00:01Z")),
+    ]);
+    expect(both.filter(Boolean)).toHaveLength(1);
+    expect(await claimDay(job, "2030-01-16", "Europe/Oslo", new Date("2030-01-16T22:00:00Z"))).toBe(false);
+    expect(await rowOf(job)).toMatchObject({ everySeconds: 86_400 });
   });
 });

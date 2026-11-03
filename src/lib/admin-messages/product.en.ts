@@ -424,6 +424,7 @@ export const productEn = {
     empty: "Nothing in the bundle yet.",
     inStock: "{count} in stock",
     otherVat: "Takes another VAT category than the bundle, so the bundle cannot be sold. Give them one, or take it out.",
+    onRequest: "Priced on request, so the bundle cannot take its price from it. Give the bundle a price of its own, or show this product's price.",
     unusable: "Archived or switched off, so the bundle cannot be sold. Bring it back, or take it out.",
     stockTitle: "Bundles you can sell",
     stock: { one: "{count} bundle in stock", many: "{count} bundles in stock" },

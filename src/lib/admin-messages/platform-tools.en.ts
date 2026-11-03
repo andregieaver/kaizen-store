@@ -285,6 +285,7 @@ export const platformToolsEn = {
     coverage: "Interface: {translated} of {total} translated{stale}, {reviewed} reviewed.",
     outOfDate: ", {n} out of date",
     notTranslated: "Interface: not translated yet (shows English).",
+    nightly: "Each night, texts added since are translated by AI into every language translated here, up to {n} a language, as drafts to review.",
     uses: { one: "{n} store uses it.", many: "{n} stores use it." },
     locales: "Locales, the main one first",
     save: "Save",

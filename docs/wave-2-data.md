@@ -443,12 +443,25 @@ first, then creation), then its extra picture rows.
 `handle`, `status` (`draft`, `active`, `archived`), `kind` (`goods`, `appointment`, `stay`, `rental`), `vat_category` (a code from `commerce.vat_categories`), `title`,
 `description`, `safety_information`, `seo_title`, `seo_description` (the primary language), then for each other store language `title:{locale}`,
 `description:{locale}`, `safety_information:{locale}`, `seo_title:{locale}`, `seo_description:{locale}`; `categories` (names, a path as `Parent / Child`,
-joined with ` | `), `tags` (joined with ` | `); `option1_name`, `option1_value`, `option2_name`, `option2_value`, `option3_name`, `option3_value`; `variant_id`,
+joined with ` | `), `tags` (joined with ` | `), `standard_category` (D327: the standard taxonomy's full English path); `price_on_request` (`true`/`false`,
+D431, goods only; D434), `price_words` (whose words go around the product's price, D429: `store` the store's, `none` none, `own` its own; D434), `price_prefix`,
+`price_suffix` (its own words in the primary language), then for each other store language `price_prefix:{locale}`, `price_suffix:{locale}`; `option1_name`, `option1_value`, `option2_name`, `option2_value`, `option3_name`, `option3_value`; `variant_id`,
 `sku`, `gtin`, `active` (`true`/`false`), `delivery` (`physical`, `digital`, `service`), `weight_grams`, `hs_code`, `origin_country`, `cost` (main
 currency, without VAT, `decimalAmount()`), `stock`, `stock_policy` (`deny`, `continue`; goods only), `backorder_days` (1 to 90, only with `continue`), `low_stock_threshold` (the owner's warning
 level, goods only; wave 3, D172), `measure_amount`, `measure_unit`, `measure_base` (the unit price, D160), `price_basis`
-(`incl_vat` / `excl_vat`), then one `price:{COUNTRY}` per market of the store (`price:NO`, `price:SE`); `image_url`, `image_position`, `image_alt`,
+(`incl_vat` / `excl_vat`), then one `price:{COUNTRY}` per market of the store (`price:NO`, `price:SE`), `not_sold_in` (D335); `image_url`, `image_position`, `image_alt`,
 `variant_image_url`; and `field:{name}` per plain custom field (4.1.4). A product-level cell is on the product's first row only.
+
+*Price on request and the words around the price (D434).* Export writes `price_on_request` as `true` or `false` and `price_words` for every product; with
+`own`, each language's `price_prefix` and `price_suffix` hold the words a shopper reading it sees (a language with no words of its own shows, and the file
+says, the main language's), else they are empty. Import: a blank `price_on_request` or `price_words` keeps what the product has (as `status` and `active`
+do); `true` on a product that is not goods is `price_on_request.not_goods`, another word `price_on_request.invalid` or `price_words.unknown`. The word
+columns are read only when the product's words are its own (from the cell, or kept): each cell the file has replaces that word in its language, blank
+for no word, tidied and checked by the editor's own `priceWordProblem()` (`price_words.invalid` names the column and never quotes the cell), and a
+language whose columns the file leaves out keeps its words; words given with `store` or `none` are left out with `price_words.ignored`. A file with
+none of these columns (an export from before D434, Shopify's, WooCommerce's) leaves the product's values as they are. The save is `saveProduct()`'s,
+so a product in a bundle priced from its products' prices is not priced on request (D433, `save.failed` with the editor's sentence). Two products
+compare equal (4.1.3) when their flag and the words each of the store's languages shows are the same.
 
 **4.1.3 Round trip.** Export then import with the same options changes nothing (`unchanged` for every product, no write, section 2.2 rule 5). The cell
 escape of `toCsv()` (a leading `'` before `= + - @ tab CR`) is **undone on import** (one leading `'` is removed when the next character is one of those),
@@ -511,7 +524,8 @@ is in the lines layout only.
 (warning, with the editor's reasons), `value.cleared` (warning), `media.too_many` (error), `media.address_invalid`, `media.fetch_failed` (warning),
 `term.created` (info), `field.unknown`, `field.ambiguous`, `field.invalid`, `column.ignored` (info, with the reason), `giftcard.not_supported` (error),
 `inventory.continue_selling_ignored` (warning: backorders arrive in wave 3), `tax.ignored` (warning: "Charge tax" or a tax code was in the file; the product keeps
-its VAT category, and **an import never sets the category `exempt`**), `compare_at.ignored` (info), `save.failed` (error, with the editor's sentence).
+its VAT category, and **an import never sets the category `exempt`**), `compare_at.ignored` (info), `save.failed` (error, with the editor's sentence);
+D434: `price_on_request.invalid`, `price_on_request.not_goods`, `price_words.unknown`, `price_words.invalid` (with the column), `price_words.ignored` (warning).
 
 ### 4.5 Money, rounding and the price rules
 

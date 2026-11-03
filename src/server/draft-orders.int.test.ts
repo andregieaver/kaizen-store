@@ -446,6 +446,8 @@ describe("sending a draft", () => {
     // The link in the mail is the draft's live one.
     const page = await payPageFor(await shop(store), tokenOf(link![0]));
     expect(page.state).toBe("ready");
+    // A staff draft's page keeps the order's words (D435).
+    expect(page).toMatchObject({ draft: { source: "staff" } });
   });
 
   it("sends again with a NEW token that kills the old one, at most five times a day, and 60 links an hour for the store", async () => {

@@ -173,9 +173,12 @@ describe("how prices show, and who may request a quote", () => {
   it("prices a product on request with its own words, as the product editor saves it, and get_product says so", async () => {
     const store = await quoteStore("qt-product");
     const c = ctx(store);
+    // Goods in no bundle priced from its parts: such a part is never priced on request (D433).
     const [product] = await db().execute<Row>(sql`
-      select p.id, p.handle from commerce.products p join commerce.product_variants v on v.product_id = p.id
-      where p.store_id = ${store.storeId}::uuid and v.sku = 'DEMO-MUG-WHITE'
+      select p.id, p.handle from commerce.products p
+      where p.store_id = ${store.storeId}::uuid and p.kind = 'goods' and not p.subscription_only
+        and not exists (select 1 from commerce.bundle_components bc join commerce.product_variants v on v.id = bc.component_variant_id where v.product_id = p.id)
+      order by p.handle limit 1
     `);
     await runOwnerTool(c, "update_product", { product: String(product.handle), price_on_request: true, price_words: { follow: "own", words: [{ language: "nb", before: "Fra", after: "" }] } });
     const [kept] = await db().execute<Row>(sql`select price_on_request, price_words from commerce.products where id = ${product.id}::uuid`);

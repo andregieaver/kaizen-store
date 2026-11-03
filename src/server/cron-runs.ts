@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { FAILING_AFTER, type CronJobRow } from "@/lib/cron-health";
@@ -8,6 +9,7 @@ import { FAILING_AFTER, type CronJobRow } from "@/lib/cron-health";
 import { cronAuthorised } from "./cron-auth";
 import { log } from "./log";
 import { textList } from "./sql-arrays";
+import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -68,6 +70,24 @@ export async function tracked<T>(job: string, everySeconds: number, run: () => P
     await record(job, everySeconds, started, error);
     return null;
   }
+}
+
+/**
+ * The day of a once-a-day job that runs from the five-minute dispatcher (D436): claims `day` (the date in `timeZone`) for `job` in the
+ * ledger and answers true for the one run that took it, false when a run already did, so overlapping runs and the day's later ones leave
+ * it alone (a run that then fails waits for the next day). The claimed run works inside `tracked(job, 86_400, …)`, which keeps how it
+ * went, so the platform home says when the job is late (more than a day and six hours) or keeps failing.
+ */
+export async function claimDay(job: string, day: string, timeZone: string, now: Date = new Date()): Promise<boolean> {
+  const claimed = await typedRows(
+    z.object({ job: col.text }),
+    sql`
+      insert into commerce.cron_jobs as j (job, every_seconds, last_started_at) values (${job}, 86400, ${now.toISOString()}::timestamptz)
+      on conflict (job) do update set last_started_at = excluded.last_started_at, every_seconds = excluded.every_seconds
+        where j.last_started_at is null or (j.last_started_at at time zone ${timeZone})::date < ${day}::date
+      returning j.job`,
+  );
+  return claimed.length > 0;
 }
 
 /** A job's key as the ledger keeps it: `storeCopies` → `store-copies` (the table takes lower case only). */
