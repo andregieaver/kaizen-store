@@ -21,6 +21,20 @@ const TAG_AREAS: Record<string, DocArea> = {
   Customers: "customers",
   Discounts: "marketing",
   Checkout: "settings",
+  "Categories and tags": "products",
+  Media: "products",
+  "Price lists": "products",
+  "Bulk jobs": "products",
+  "Draft orders": "quotes",
+  Returns: "returns",
+  Subscriptions: "orders",
+  Segments: "marketing",
+  "Gift cards": "marketing",
+  Content: "website",
+  Menus: "website",
+  Reports: "analytics",
+  Settings: "settings",
+  "Webhook endpoints": "webhooks",
 };
 
 /** What a webhook topic is about, as the docs' areas. */
@@ -34,6 +48,13 @@ const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   product: "products",
   stock: "stock",
   discount: "marketing",
+  review: "marketing",
+  gift_card: "marketing",
+  draft: "quotes",
+  fulfilment: "shipping",
+  inventory: "stock",
+  refund: "payments",
+  erasure: "customers",
 };
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
