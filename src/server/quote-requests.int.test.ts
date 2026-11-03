@@ -110,6 +110,10 @@ describe("asking for a quote", () => {
     const receipts = await emailsOf(store, "quote.received");
     expect(receipts).toHaveLength(1);
     expect(receipts[0]).toMatchObject({ to_address: "kari@example.com", status: "logged" });
+    // Nothing the shopper typed is in it: the address is anyone's, and the store's mail is no way to send a stranger's words.
+    const [receipt] = await db().execute<Row>(sql`select html from commerce.email_messages where store_id = ${store.storeId}::uuid and kind = 'quote.received'`);
+    expect(String(receipt.html)).not.toContain("for the office");
+    expect(String(receipt.html)).not.toContain("Nordmann AS");
     const alerts = await emailsOf(store, "staff.quote_requested");
     expect(alerts.length).toBeGreaterThan(0);
     // Staff are told the request's number and lines, never who asked.

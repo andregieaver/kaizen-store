@@ -23,7 +23,6 @@ import {
   quotableLine,
   quoteOffered,
   quoteRequestPlace,
-  type CheckedQuote,
   type QuoteFields,
   type QuoteMode,
   type QuoteProblems,
@@ -213,7 +212,7 @@ export async function requestQuote(raw: unknown, visitor: string, path = "/"): P
   });
   if (!made) return { status: 429, body: { ok: false, error: "busy" } };
   log("info", "quote.requested", { storeId: store.id, draftId: made.id, lines: wanted.length });
-  await afterRequest(store.id, made.id, request);
+  await afterRequest(store.id, made.id);
   return { status: 200, body: { ok: true } };
 }
 
@@ -236,7 +235,7 @@ async function cartLines(storeId: string, market: Market, customerId: string | n
 }
 
 /** The staff's alert and push, and the shopper's receipt: each logged on failure, none undoing the request. */
-async function afterRequest(storeId: string, draftId: string, request: CheckedQuote) {
+async function afterRequest(storeId: string, draftId: string) {
   try {
     await sendQuoteRequestedAlert(storeId, draftId);
   } catch (error) {
@@ -248,7 +247,7 @@ async function afterRequest(storeId: string, draftId: string, request: CheckedQu
     log("error", "quote.push_failed", { storeId, draftId }, error);
   }
   try {
-    await sendQuoteReceipt(storeId, draftId, request.note);
+    await sendQuoteReceipt(storeId, draftId);
   } catch (error) {
     log("error", "quote.receipt_failed", { storeId, draftId }, error);
   }
@@ -275,8 +274,12 @@ async function draftForEmail(storeId: string, draftId: string) {
   return { draft, ctx, lines };
 }
 
-/** The receipt of a request (`quote.received`), to the address the shopper typed, in the language they asked in: what they asked about and their note. */
-export async function sendQuoteReceipt(storeId: string, draftId: string, note: string | null, send: typeof sendEmail = sendEmail): Promise<SendOutcome> {
+/**
+ * The receipt of a request (`quote.received`), to the address the shopper typed, in the language they asked in: what they asked about, from the
+ * catalogue. Nothing they typed is in it (as a form's confirmation, D93): the address is anyone's, so a note in it would let a stranger send their
+ * words to it from the store. The note stays on the draft for staff.
+ */
+export async function sendQuoteReceipt(storeId: string, draftId: string, send: typeof sendEmail = sendEmail): Promise<SendOutcome> {
   const found = await draftForEmail(storeId, draftId);
   if (!found) return "failed";
   const { draft, ctx, lines } = found;
@@ -287,7 +290,6 @@ export async function sendQuoteReceipt(storeId: string, draftId: string, note: s
     { type: "paragraph", text: w.receivedIntro(store.name) },
     { type: "paragraph", text: `${w.linesHeading}:` },
     { type: "lines", rows: lines.map((l) => ({ label: `${l.quantity} × ${l.title}`, value: "" })) },
-    ...(note ? [{ type: "paragraph" as const, text: `${w.noteHeading}:\n${note}` }] : []),
     { type: "paragraph", text: w.notYou },
   ];
   const email = renderEmail({ subject: w.receivedSubject(store.name), preview: w.receivedIntro(store.name), blocks, footer: emailFooter(store, text), lang: ctx.lang });
