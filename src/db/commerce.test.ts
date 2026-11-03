@@ -7312,6 +7312,8 @@ describe("how a store shows prices and quantities (D429, D430)", () => {
     expect(await one("select price_words from commerce.products where store_id = $1", [copy])).toEqual({
       price_words: { mode: "own", words: { "nb-NO": { prefix: "", suffix: "/stk" } } },
     });
+  });
+});
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Request a quote and price on request (D431)
@@ -7383,6 +7385,9 @@ describe("request a quote and price on request (D431)", () => {
     const template = await createStore(`quote-template-${++counter}`, ["NO"]);
     const { productId } = await createProduct({ storeId: template });
     await db.query("update commerce.products set price_on_request = true, status = 'active' where id = $1", [productId]);
+    // And a product's own words around its price (D429), from a template as from a copy.
+    const words = { mode: "own", words: { "nb-NO": { prefix: "Fra", suffix: "/stk" } } };
+    await db.query("update commerce.products set price_words = $2::jsonb where id = $1", [productId, JSON.stringify(words)]);
     const owner = await createAccount(`quote-owner-${counter}@example.com`);
     const { id: cloned } = await one<{ id: string }>("select commerce.clone_store($1, $2, 'Copy', $3) as id", [template, `quote-clone-${counter}`, owner]);
     const { id: duplicated } = await one<{ id: string }>("select commerce.duplicate_store($1, $2, 'Copy', $3) as id", [template, `quote-dup-${counter}`, owner]);
@@ -7390,6 +7395,8 @@ describe("request a quote and price on request (D431)", () => {
       const { rows } = await db.query<{ price_on_request: boolean }>("select price_on_request from commerce.products where store_id = $1", [copy]);
       expect(rows.length, copy).toBeGreaterThan(0);
       expect(rows.every((r) => r.price_on_request)).toBe(true);
+      const { rows: worded } = await db.query<{ price_words: unknown }>("select price_words from commerce.products where store_id = $1", [copy]);
+      expect(worded.map((r) => r.price_words), copy).toEqual(worded.map(() => words));
     }
   });
 });

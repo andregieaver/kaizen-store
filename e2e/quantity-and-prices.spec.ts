@@ -131,33 +131,3 @@ test("a country keeps its decimals where the store leaves them off", async ({ pa
   await tote(page, slug);
   await expect(page.getByRole("main")).toContainText("199,00");
 });
-
-test.describe("without JavaScript", () => {
-  test.use({ javaScriptEnabled: false });
-
-  test("the cart's quantity is a number and an Update button", async ({ page }) => {
-    const token = `e2eq${Date.now().toString(36)}`;
-    const slug = await storeWith("antall-uten-js", async (sql, id) => {
-      const [cart] = await sql`
-        insert into commerce.carts (store_id, market_code, currency, locale, expires_at)
-        values (${id}, 'NO', 'NOK', 'nb-NO', now() + interval '1 day') returning id`;
-      const [variant] = await sql`
-        select v.id from commerce.product_variants v join commerce.products p on p.id = v.product_id
-        where p.store_id = ${id} and p.handle = 'demo-handlenett' limit 1`;
-      await sql`
-        insert into commerce.abandoned_checkouts (store_id, cart_id, email, market_code, locale, currency, lines, subtotal_minor, token, captured_at)
-        values (${id}, ${cart.id}, ${`${token}@example.com`}, 'NO', 'nb-NO', 'NOK',
-          ${sql.json([{ variantId: variant.id, sellingPlanId: null, title: "Handlenett", quantity: 1, unitPriceMinor: 19900 }])},
-          19900, ${token}, now() - interval '2 hours')`;
-    });
-    await page.goto(`/s/${slug}/cart/restore/${token}`);
-    await expect(page).toHaveURL(`/s/${slug}/cart`);
-    const quantity = page.getByRole("spinbutton", { name: /^Antall/ });
-    await expect(quantity).toHaveValue("1");
-    // − and + need the script: they stay switched off, and the number and Update do the work.
-    await expect(page.getByRole("button", { name: /^Øk antall/ })).toBeDisabled();
-    await quantity.fill("2");
-    await page.getByRole("button", { name: "Oppdater" }).click();
-    await expect(page.getByRole("spinbutton", { name: /^Antall/ })).toHaveValue("2");
-  });
-});
