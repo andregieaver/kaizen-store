@@ -19,8 +19,19 @@ export const WORKFLOW_TRIGGERS: readonly WorkflowTrigger[] = [...EVENTS.map((e) 
 export const isWorkflowTrigger = (value: string): value is WorkflowTrigger => (WORKFLOW_TRIGGERS as readonly string[]).includes(value);
 
 /** What an event is about, by its trigger: the key its data is under (`order`, `product`, …). */
-export function subjectOf(trigger: WorkflowTrigger): "order" | "customer" | "subscription" | "return" | "withdrawal" | "product" | "stock" | "discount" | "support" | "schedule" {
+export function subjectOf(
+  trigger: WorkflowTrigger,
+): "order" | "customer" | "subscription" | "return" | "withdrawal" | "product" | "stock" | "discount" | "support" | "inventory" | "fulfilment" | "refund" | "draft" | "erasure" | "gift_card" | "review" | "schedule" {
   if (trigger === "schedule") return "schedule";
+  if (trigger === "inventory.updated") return "inventory";
+  if (trigger.startsWith("fulfilment.")) return "fulfilment";
+  if (trigger === "refund.created") return "refund";
+  if (trigger === "quote.requested" || trigger === "draft.sent") return "draft";
+  if (trigger === "return.updated") return "return";
+  if (trigger === "customer.updated") return "customer";
+  if (trigger === "customer.erased") return "erasure";
+  if (trigger === "gift_card.issued") return "gift_card";
+  if (trigger === "review.created") return "review";
   if (trigger.startsWith("order.")) return "order";
   if (trigger.startsWith("subscription.")) return "subscription";
   if (trigger.startsWith("product.")) return "product";
@@ -78,6 +89,37 @@ export const WORKFLOW_FIELDS: Record<ReturnType<typeof subjectOf>, WorkflowField
     { key: "discount.code", kind: "text" },
   ],
   support: [{ key: "support.waiting", kind: "number" }],
+  fulfilment: [
+    { key: "fulfilment.carrier", kind: "text" },
+    { key: "fulfilment.undone", kind: "yes_no" },
+    { key: "fulfilment.lines.sku", kind: "text" },
+  ],
+  refund: [
+    { key: "refund.amount", kind: "number" },
+    { key: "refund.currency", kind: "text" },
+    { key: "refund.kind", kind: "text" },
+  ],
+  erasure: [],
+  gift_card: [
+    { key: "gift_card.currency", kind: "text" },
+    { key: "gift_card.initial", kind: "number" },
+    { key: "gift_card.source", kind: "text" },
+  ],
+  review: [
+    { key: "review.rating", kind: "number" },
+    { key: "review.status", kind: "text" },
+    { key: "review.verified", kind: "yes_no" },
+  ],
+  draft: [
+    { key: "draft.source", kind: "text" },
+    { key: "draft.currency", kind: "text" },
+    { key: "draft.lines.sku", kind: "text" },
+  ],
+  inventory: [
+    { key: "inventory.sku", kind: "text" },
+    { key: "inventory.on_hand", kind: "number" },
+    { key: "inventory.available", kind: "number" },
+  ],
   schedule: [],
 };
 

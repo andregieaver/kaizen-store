@@ -243,7 +243,7 @@ describe("a round trip changes nothing", () => {
         ["second", "unchanged", null, []],
         ["winter-boot", "unchanged", null, []],
       ]);
-      expect(plan.dry).toEqual({ toCreate: 0, toUpdate: 0, unchanged: 2, withProblems: 0 });
+      expect(plan.dry).toEqual({ toCreate: 0, toUpdate: 0, unchanged: 2, withProblems: 0, onShop: 0 });
     });
   }
 

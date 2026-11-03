@@ -14,18 +14,24 @@ import { writeCsv, type Cell } from "./csv";
 // ---------------------------------------------------------------------------
 
 /**
- * What is copied, in the order it is brought over: collections after products (they are the products' categories), customers before
- * orders (an order is tied to its customer by email), menus after what they link to, redirects last.
+ * What is copied, in the order it is brought over: the countries first (prices, shipping and codes are per country), collections after
+ * products (they are the products' categories), customers before orders (an order is tied to its customer by email), discount codes after
+ * the products and categories they name, menus after what they link to, redirects and the look last.
  */
-export const COPY_FEEDS = ["products", "collections", "customers", "orders", "pages", "articles", "menus", "redirects"] as const;
+export const COPY_FEEDS = ["countries", "shipping", "products", "collections", "customers", "orders", "discounts", "pages", "articles", "menus", "redirects", "look"] as const;
 export type CopyFeed = (typeof COPY_FEEDS)[number];
 
 /**
  * How a feed is brought over: `import` feeds become a file their import checks at once (D165, D366, D384, D168); `later` (collections)
  * is a file the product import checks once the products are in, since a store has one open product import; `direct` feeds (pages, blog
- * posts, menus) are written one by one by their editor's own writer (`savePage()`, `saveStoreMenu()`), since no file import exists for them.
+ * posts, menus, and step 5b's countries, shipping, discount codes and look) are written one by one by their editor's own writer (`savePage()`,
+ * `saveStoreMenu()`, `setMarkets()`, `saveShippingSettings()`, `saveDiscount()`, the look's `design_look`), since no file import exists for them.
  */
 export const FEED_KIND: Record<CopyFeed, "import" | "later" | "direct"> = {
+  countries: "direct",
+  shipping: "direct",
+  discounts: "direct",
+  look: "direct",
   products: "import",
   collections: "later",
   customers: "import",
@@ -70,8 +76,12 @@ export const BULK_QUERIES: Record<CopyFeed, string> = {
   collections: `{ collections { edges { node { id handle title products { edges { node { handle } } } } } } }`,
   pages: `{ pages { edges { node { id handle title body isPublished } } } }`,
   articles: `{ articles { edges { node { id handle title body isPublished author { name } blog { handle title } } } } }`,
-  // Menus are few and small, and read by an ordinary query (`MENUS_QUERY`); this is never sent.
+  // These are few and small, and read by ordinary queries (`MENUS_QUERY`, `src/lib/shopify-settings.ts`); never sent.
   menus: "",
+  countries: "",
+  shipping: "",
+  discounts: "",
+  look: "",
 };
 
 /** The shop's menus, three levels deep (the most a menu here has). */
@@ -87,6 +97,10 @@ export const FEED_FILES: Record<CopyFeed, string> = {
   pages: "shopify-pages.jsonl",
   articles: "shopify-articles.jsonl",
   menus: "shopify-menus.jsonl",
+  countries: "shopify-countries.jsonl",
+  shipping: "shopify-shipping.jsonl",
+  discounts: "shopify-discounts.jsonl",
+  look: "shopify-look.jsonl",
 };
 
 // ---------------------------------------------------------------------------
@@ -425,7 +439,7 @@ export function redirectsFile(tree: BulkTree): { csv: string; redirects: number 
 }
 
 /** A category's name from a collection's title: the product import reads `/` as a level and `|` between categories, so neither is in a name. */
-const categoryName = (title: string): string => title.replace(/[/|]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 80);
+export const categoryName = (title: string): string => title.replace(/[/|]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 80);
 
 /**
  * The collections as Kaizena Flow's own product file (`handle`, `sku`, `variant_id`, `categories`), only the categories column filled: the
@@ -566,6 +580,10 @@ export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: 
     case "articles":
       return { csv: text, count: directItems(tree).length };
     case "menus":
+    case "countries":
+    case "shipping":
+    case "discounts":
+    case "look":
       return { csv: text, count: tree.roots.length };
   }
 }
@@ -600,6 +618,10 @@ export const EMPTY_COPY: CopyState = {
   startedAt: null,
   apply: false,
   feeds: {
+    countries: { stage: "waiting" },
+    shipping: { stage: "waiting" },
+    discounts: { stage: "waiting" },
+    look: { stage: "waiting" },
     products: { stage: "waiting" },
     collections: { stage: "waiting" },
     customers: { stage: "waiting" },
@@ -674,8 +696,11 @@ export function nextToApply(state: CopyState): CopyFeed | null {
   return null;
 }
 
-/** The order feeds are READ in: what the rest refers to first, menus by their own small query last. */
-export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus"];
+/** The order feeds are READ in: the bulk reads first, then the few read by their own small queries (`PLAIN_FEEDS`). */
+export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus", "countries", "shipping", "discounts", "look"];
+
+/** The feeds read by an ordinary query, in one tick, rather than a bulk operation. */
+export const PLAIN_FEEDS: readonly CopyFeed[] = ["menus", "countries", "shipping", "discounts", "look"];
 
 /** The feed to read next: one bulk operation at a time per shop, in `READ_ORDER`. */
 export function nextToRead(state: CopyState): CopyFeed | null {

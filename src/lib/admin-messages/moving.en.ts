@@ -73,10 +73,10 @@ export const movingEn = {
   },
   copy: {
     title: "Copy your shop",
-    text: "We copy your products, customers, past orders and redirects into this store. Nothing is saved here until you press Bring it over, and nothing changes on Shopify.",
+    text: "We copy your products, customers, past orders, pages, menus, countries, shipping, discount codes and look into this store. Nothing is saved here until you press Bring it over, and nothing changes on Shopify.",
     start: "Copy my shop",
     starting: "Starting …",
-    feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects", collections: "Collections", pages: "Pages", articles: "Blog posts", menus: "Menus" },
+    feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects", collections: "Collections", pages: "Pages", articles: "Blog posts", menus: "Menus", countries: "Countries", shipping: "Shipping", discounts: "Discount codes", look: "Look" },
     stages: {
       waiting: "Waiting",
       reading: "Reading from Shopify …",
@@ -102,7 +102,7 @@ export const movingEn = {
     },
     bring: "Bring it over",
     bringing: "Starting …",
-    bringText: "Products, customers, past orders and redirects are saved here, in that order. A product that needs a picture or its maker is saved as a draft and listed.",
+    bringText: "Everything is saved here in the order above. A product that needs a picture or its maker is saved as a draft and listed. Discount codes come switched off, and your look comes as a theme to try: your shop keeps its look until you choose it.",
     liveNote: "Copied products show in your shop at once. To look at them first, put your shop behind a password before you press Bring it over.",
     liveLink: "Put the shop behind a password",
     done: "Everything is here ✓",
@@ -111,6 +111,8 @@ export const movingEn = {
     againAsk: "Start the copy again? What is already here stays; a product read again is updated, not doubled.",
     cancel: "Cancel",
     files: "Use Shopify's file instead",
+    setHere: "Set it up here",
+    lookHere: "Look at it",
   },
   files: {
     products: "Import products",

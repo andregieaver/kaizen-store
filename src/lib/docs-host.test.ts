@@ -94,6 +94,9 @@ describe("the docs on their own host (D442)", () => {
     expect(on("/owners/getting-started/create-your-store.md")).toEqual({ rewrite: "/docs/md/owners/getting-started/create-your-store" });
     expect(on("/no/owners/getting-started/create-your-store.md")).toEqual({ rewrite: "/docs/md/no/owners/getting-started/create-your-store" });
     expect(on("/changelog.md")).toEqual({ rewrite: "/docs/md/changelog" });
+    // The generated reference's pages (E4), its front page too.
+    expect(on("/reference/admin-api/products.md")).toEqual({ rewrite: "/docs/md/reference/admin-api/products" });
+    expect(on("/reference.md")).toEqual({ rewrite: "/docs/md/reference" });
   });
 
   it("sends any other address on the host to Kaizena Flow's, and leaves the API, Next.js's files and public alone", () => {

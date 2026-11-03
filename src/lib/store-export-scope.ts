@@ -24,6 +24,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   ai_usage: "record",
   analytics_alert_sends: "record",
   api_tokens: "secret",
+  // A picture an Admin API caller was sending (D440): its token's, gone a day after.
+  api_uploads: "record",
   // Which app an owner cut off for which person (D439): about a connection, set again after a move.
   oauth_store_cutoffs: "secret",
   appointment_settings: "catalogue",

@@ -10,8 +10,24 @@ import { Button } from "./ui";
 type Answer = { ok: true; token?: string } | { ok: false; message: string };
 type Async = Promise<Answer>;
 
-/** Makes an Admin API token (D355) and shows it once. */
-export function MakeApiToken({ scopes, make }: { scopes: string[]; make: (form: FormData) => Async }) {
+/** One scope to tick, in the owner's words with its name beside. */
+function ScopeBox({ scope, words }: { scope: string; words: string }) {
+  return (
+    <label className="flex items-start gap-2 text-sm">
+      <input type="checkbox" name="scopes" value={scope} className="mt-0.5 size-4" />
+      <span>
+        {words}
+        <code className="block text-xs text-muted">{scope}</code>
+      </span>
+    </label>
+  );
+}
+
+/**
+ * Makes an Admin API token (D355) and shows it once. The everyday scopes are ticked in the open; the powers (D440: what the AI manager asks
+ * the owner's yes for) wait under *Customise*, one deliberate step away.
+ */
+export function MakeApiToken({ scopes, powers, make }: { scopes: string[]; powers: string[]; make: (form: FormData) => Async }) {
   const w = useAdminText("notifications").apiTokens;
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
@@ -62,15 +78,19 @@ export function MakeApiToken({ scopes, make }: { scopes: string[]; make: (form: 
         <legend className="mb-1 text-sm font-medium">{w.scopes}</legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {scopes.map((scope) => (
-            <label key={scope} className="flex items-start gap-2 text-sm">
-              <input type="checkbox" name="scopes" value={scope} className="mt-0.5 size-4" />
-              <span>
-                {w.scopeWords[scope] ?? scope}
-                <code className="block text-xs text-muted">{scope}</code>
-              </span>
-            </label>
+            <ScopeBox key={scope} scope={scope} words={w.scopeWords[scope] ?? scope} />
           ))}
         </div>
+        {powers.length > 0 && (
+          <details className="mt-2">
+            <summary className="cursor-pointer text-sm font-medium">{w.powers}</summary>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {powers.map((scope) => (
+                <ScopeBox key={scope} scope={scope} words={w.scopeWords[scope] ?? scope} />
+              ))}
+            </div>
+          </details>
+        )}
       </fieldset>
       {problem && (
         <p role="alert" className="text-sm text-danger-text">

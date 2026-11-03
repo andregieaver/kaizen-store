@@ -87,7 +87,24 @@ export type IntegrationEvent =
   | "product.created"
   | "product.updated"
   | "stock.low"
-  | "discount.created";
+  | "discount.created"
+  // D440 (wave 14 unit C): for an owner's own endpoints only.
+  | "inventory.updated"
+  | "product.archived"
+  | "order.created"
+  | "order.updated"
+  | "fulfilment.created"
+  | "fulfilment.updated"
+  | "refund.created"
+  | "return.updated"
+  | "quote.requested"
+  | "draft.sent"
+  | "customer.updated"
+  | "customer.erased"
+  | "subscription.renewed"
+  | "subscription.payment_failed"
+  | "gift_card.issued"
+  | "review.created";
 
 export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "order.paid", label: "Order paid", hint: "A shopper paid, or a subscription renewed." },
@@ -103,6 +120,22 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "product.updated", label: "Product changed", hint: "A product was saved." },
   { id: "stock.low", label: "Stock low", hint: "A variant's stock fell to its low-stock level." },
   { id: "discount.created", label: "Discount code created", hint: "A discount code was made." },
+  { id: "inventory.updated", label: "Stock changed", hint: "A variant's stock on hand moved at a location: one event per variant and minute, with its stock as it is then." },
+  { id: "product.archived", label: "Product archived", hint: "A product was put away: off the site and out of the admin's lists." },
+  { id: "order.created", label: "Order created", hint: "An order was made, paid or still waiting for payment: at checkout, from a draft or by a subscription." },
+  { id: "order.updated", label: "Order edited", hint: "A change to an order's lines or prices was applied (D174)." },
+  { id: "fulfilment.created", label: "Parcel sent", hint: "A parcel of an order was recorded, with its carrier and tracking." },
+  { id: "fulfilment.updated", label: "Parcel changed", hint: "A parcel's tracking moved on, its tracking number changed, or it was undone." },
+  { id: "refund.created", label: "Refund made", hint: "Money went back to a customer, to the payment or as store credit: the refund itself." },
+  { id: "return.updated", label: "Return changed", hint: "A return moved on: approved, declined, on its way, received, inspected, closed or cancelled." },
+  { id: "quote.requested", label: "Quote requested", hint: "A shopper asked for a quote: a draft order to price and send." },
+  { id: "draft.sent", label: "Draft order sent", hint: "A draft order or quote was sent to the customer with its pay link." },
+  { id: "customer.updated", label: "Customer changed", hint: "A customer's name, email, phone, address or company was changed, by them or by staff." },
+  { id: "customer.erased", label: "Customer erased", hint: "A customer's account was erased at their request (D162): only its id, so you can erase what you keep too." },
+  { id: "subscription.renewed", label: "Subscription renewed", hint: "A subscription's renewal was paid." },
+  { id: "subscription.payment_failed", label: "Subscription payment failed", hint: "A subscription's renewal could not be charged: it waits for the subscriber's payment." },
+  { id: "gift_card.issued", label: "Gift card issued", hint: "A gift card or store credit was issued: never its code." },
+  { id: "review.created", label: "Review written", hint: "A buyer wrote a product review, waiting for the store's check or published at once." },
   { id: "support.waiting", label: "Someone waiting in support", hint: "A customer has waited for a person in the support chat as long as the support settings say: how many wait now, and a link to the inbox. Never who they are or what they wrote." },
 ];
 
@@ -116,6 +149,22 @@ const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
   "product.updated",
   "stock.low",
   "discount.created",
+  "inventory.updated",
+  "product.archived",
+  "order.created",
+  "order.updated",
+  "fulfilment.created",
+  "fulfilment.updated",
+  "refund.created",
+  "return.updated",
+  "quote.requested",
+  "draft.sent",
+  "customer.updated",
+  "customer.erased",
+  "subscription.renewed",
+  "subscription.payment_failed",
+  "gift_card.issued",
+  "review.created",
 ]);
 
 /** The events a service (Zapier, Make, Slack) may be sent. */

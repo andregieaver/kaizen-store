@@ -37,7 +37,60 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   function that reads its body with `readBody()` (never a raw body: the API says what is wrong before the screen's own checks) and builds
   its answer as `AdminAnswer<name>`, and a call in `admin-api.int.test.ts`, which parses every answer with its schema and fails until every
   operation's was parsed; then the contract's next version (*API contracts*, under the Admin API). A gated effect (publishing, a live product, a refund,
-  an email a person decides) is refused as `gated`, never run.
+  an email a person decides) is refused as `gated`, never run, unless the token holds the power scope for it (D440: `products:publish`),
+  which is checked in the handler (`holds()`) on top of the route's own scope.
+  **What a scope allows (D440 review):** the twelve scopes of D355 (`SCOPES_BEFORE_D440`) allow what they did then and never more, so an
+  operation that existed keeps its scope and every new write gets a scope no older token holds (`products:manage`, `orders:manage`,
+  `customers:manage`, `content:write`, or a power); a new read may sit under its area's read scope. What an owner tool asks the owner's
+  yes for (`gate` `public`, `send` or `spend` in `OWNER_TOOLS`) is a power (`API_POWERS`: `products:publish`, `orders:send`,
+  `orders:refund`, `customers:email`, `discounts:publish`, `gift_cards:write`, `content:publish`, `webhooks:write`), offered on the token
+  screen under *Customise*; `admin-api-routes.test.ts` holds the registry to both. Every scope of an area reads it (`grants()`). Each
+  scope's words say exactly what it allows: the token screen's (`scopeWords`, every language) and the contract's (`SCOPE_TEXT`). Powers
+  are the Admin API's only: no OAuth level grants one, and before `kfa_` tokens reach this API (unit D) each power must be checked against
+  the person's permission at every call.
+  **Its breadth (wave 14 unit C, D440, `docs/wave-14-developer-platform.md` C1 to C4):** each slice's entries live in their own file
+  (`src/lib/admin-api-catalogue.ts`, …) spread into `ADMIN_API`, written with `admin-api-shapes.ts`, and their handlers in the server file of
+  the same name over `admin-api-kit.ts` (`ok()`, `fail()`, `readBody()`, `paging()` with `cursorAt()` and `sinceWhere()`, `record()`). Every
+  entry names the staff `permission` (D158) its screen asks and, where it has one, the store `feature` (D178): the route refuses a missing
+  permission as `forbidden` (`memberCan()`: a store that is not open keeps, as the admin does, only `orders:*`, `customers:*`,
+  `analytics:*`, `support:read`, `billing:read`, `staff:read` and `owner`, so its products, discounts, website and settings are refused
+  read or changed) and a feature off as `feature_off`, before the handler runs. A list of the store's records takes `?updated_after=` over
+  the row's own change time (an order's is `ORDER_UPDATED`, its timeline's latest entry); the short lists of one thing do not (stock
+  locations, a product's gallery, an order's refunds and notes, content types, webhook endpoints and deliveries). Every list pages under a
+  cursor exact to the microsecond, keyed by what makes a row one (a stock level by variant and location). An `Idempotency-Key` stands for
+  the method, the whole path and the body (`claimIdempotencyKey()`). Pictures come only through `POST /media/uploads` (a row of
+  `commerce.api_uploads`, written only by `src/server/api-uploads.ts`, and a one-time signed address in the private `api-uploads` bucket,
+  picture types only up to `UPLOAD_MAX_BYTES`, the bucket's own limit) and `POST /media`, which checks the file from its bytes (at most
+  `UPLOAD_MAX_PIXELS`, read before it is decoded), shrinks it as the admin's browser does (`shrinkPicture()`), counts it against storage
+  and keeps it with `storePicture()`; a product's gallery, categories and tags change only through `updateProductTool()`. `inventory.updated` waits for the next whole minute (`queue_integration_event()`), so a variant's moves in
+  that minute are one delivery built as the stock is then. Orders (C2, `admin-api-orders.ts`): a draft changes only through the editor's own
+  state (`formFromDraft()`, the API's change laid over it, `inputFromForm()`, `saveDraft()` against its version), is sent only by
+  `sendDraft()` and a request declined only by `declineQuote()`; money goes back only through `refundOrder()` with the power `orders:refund`
+  (a store credit's code is never answered); an unpaid order is cancelled only by `cancelUnpaidByStaff()` (its payment pages closed first);
+  a return moves only through the returns page's steps; notes and tags through `addOrderNote()` and `changeOrderTags()`. The orders' topics are
+  queued by triggers where they happen (`order.created` on insert, `order.updated` on `edited_at`, `fulfilment.*` on shipments and
+  `shipment_tracking`, `refund.created` for money or store credit that went through, `return.updated` on a status, `quote.requested` and
+  `draft.sent` on `draft_orders`), copied history never. Customers and marketing (C3, `admin-api-customers.ts`): a customer changes only through
+  `createCustomer()`/`updateCustomer()` (the form's whole state from `staffFormValues()` with the change laid over it), a discount code only
+  through `saveDiscount()` with its stored form (what it reaches and who may use it stay the admin's), a gift card only through
+  `issueGiftCard()` and `deactivateGiftCard()` with the power `gift_cards:write`, a subscription only through `changeSubscription()` as staff
+  (with the subscriber's email); a segment is answered with how many it holds, never who, and a subscription never with its manage link.
+  Something shown once (a gift card's code, a draft's pay link, a webhook secret, an upload address) is answered once and never kept for a
+  replay: the handler gives `ApiAnswer.replay` without it, and only that is kept under the `Idempotency-Key`. A customer's email (what they
+  sign in with) changes only with the power `customers:email`. `customer.erased` is queued by `eraseSubject()` in its own transaction with
+  the account's id alone, and its payload is built without reading anything; in the same transaction every delivery about the person (their
+  account, orders, subscriptions, drafts and reviews) loses its payload and is marked `erased_at`, a waiting one is not sent, and
+  `resendDelivery()` never sends one again. Content, the store and operations (C4,
+  `admin-api-content.ts`): a page or article is written only through `savePage()` (a draft; publishing with the power `content:publish`, its
+  checker's blocking issues acknowledged by id; a draft carrying `globalEdits` is refused, as global parts change every page using them; a
+  new address of a page never published that moves published pages under it takes `content:publish`), an entry only through
+  `saveEntry()`/`publishEntry()` (a published entry's new address takes `content:publish`), an endpoint only through the
+  Integrations page's writers with the power `webhooks:write` (its secret answered once, its address never), a saved report run only by
+  `runReport()`, and the product file only through the Data page's own steps with the storage named for each call (`jobDeps()`); order and
+  customer files stay in the admin (owner-only, personal data). An import by a token without `products:publish` is checked with
+  `draftsOnly` (the plan refuses a product it would publish, archive, bring back or change on the site, `product.on_site`, in the check and
+  again in the apply's fresh plan; a job's options are fixed once checked) and counts them (`dry.onShop`): its apply is refused as `gated`
+  and the job cancelled when the count is not 0, or when the job was not checked drafts only. Settings are read, never written, over the API.
 
 - **API contracts (wave 14 unit A, D438, `src/lib/admin-api-routes.ts`, `src/lib/webhook-topics.ts`, `src/lib/mcp-catalogue.ts`, `src/lib/api-contract.ts`)**, for this API, the storefront API, the webhooks and the MCP servers:
   what outside callers rely on is described once, in code, and everything published is generated from it: the Admin API's operations
@@ -121,7 +174,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)
 
-- **Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)**: built in the plan's steps (section 17 says which). Step 1, the old shop's links, is a rule of Redirects (`docs/rules/admin/website.md`). Step 2 connects Kaizena Flow's own Shopify app (`shopify/shopify.app.toml`, `shopifyEnv()`; off without `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET`) at Settings → Moving in, the owner's alone: read scopes only (`SHOPIFY_SCOPES`, never a `write_`, the file and the code kept equal by `shopify.test.ts`), Shopify's authorization code grant with `expiring=1`, its callback checked for the sealed state (store, account, shop), Shopify's HMAC and an anchored `myshopify.com` name before the code is spent, the tokens encrypted in `commerce.shop_moves` (written only by `shopify-connect.ts`, `never` in `COPY_RULES`, `secret` in the store's file), refreshed under the row's lock (`shopifyAccess()`; a refused refresh or a 401 disconnects), and every call to Shopify built only from a name `isMyshopify()` passed. A later step reads Shopify only through `shopifyGraphql()`. Step 4's copy (`src/server/shopify-copy.ts`) writes no table but `shop_moves.copy`: each feed becomes Shopify's own export file (`src/lib/shopify-copy.ts`) and goes through its import's register, check and apply, never a writer of its own; a new feed is a bulk query, a file its import reads back (tested by reading the file with the import's own reader in `shopify-copy.test.ts`) and a row of `STEPS`. Where no import exists (pages, blog posts, menus) a feed goes to that table's own writer (`savePage()`, `saveBlog()`, `saveStoreMenu()`), never SQL of its own, leaves an address or name already taken alone, and turns HTML into rich text only through `htmlToRichText()` (`src/lib/html-rich-text.ts`), whose output `cleanRichText()` always takes. Step 3's report (`src/server/shopify-report.ts`) keeps nothing it reads and shows a figure Shopify did not give as unknown, never as 0; a new figure is a field of one of its query groups and of `shopReport()`, with its case in `shopify-report.test.ts`. Shopify's webhooks (`/api/shopify/webhooks`) answer 401 without its HMAC over the raw body; `app/uninstalled` drops the tokens, `shop/redact` deletes the rows; a new topic is a case in `handleShopifyWebhook()` and in the app's file.
+- **Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)**: built in the plan's steps (section 17 says which). Step 1, the old shop's links, is a rule of Redirects (`docs/rules/admin/website.md`). Step 2 connects Kaizena Flow's own Shopify app (`shopify/shopify.app.toml`, `shopifyEnv()`; off without `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET`) at Settings → Moving in, the owner's alone: read scopes only (`SHOPIFY_SCOPES`, never a `write_`, the file and the code kept equal by `shopify.test.ts`), Shopify's authorization code grant with `expiring=1`, its callback checked for the sealed state (store, account, shop), Shopify's HMAC and an anchored `myshopify.com` name before the code is spent, the tokens encrypted in `commerce.shop_moves` (written only by `shopify-connect.ts`, `never` in `COPY_RULES`, `secret` in the store's file), refreshed under the row's lock (`shopifyAccess()`; a refused refresh or a 401 disconnects), and every call to Shopify built only from a name `isMyshopify()` passed. A later step reads Shopify only through `shopifyGraphql()`. Step 4's copy (`src/server/shopify-copy.ts`) writes no table but `shop_moves.copy`: each feed becomes Shopify's own export file (`src/lib/shopify-copy.ts`) and goes through its import's register, check and apply, never a writer of its own; a new feed is a bulk query, a file its import reads back (tested by reading the file with the import's own reader in `shopify-copy.test.ts`) and a row of `STEPS`. Where no import exists (pages, blog posts, menus) a feed goes to that table's own writer (`savePage()`, `saveBlog()`, `saveStoreMenu()`), never SQL of its own, leaves an address or name already taken alone, and turns HTML into rich text only through `htmlToRichText()` (`src/lib/html-rich-text.ts`), whose output `cleanRichText()` always takes. The shop's settings (countries, shipping, discount codes, look; `src/server/shopify-settings-copy.ts`) go only through `setMarkets()`, `saveShippingSettings()`, `saveDiscount()` and `design_look`: a country is only ever added, a rate or code of the store's own is never overwritten, every copied code is saved switched off and the look never made live, and what ours cannot say as Shopify did is counted, never bent to fit. Step 3's report (`src/server/shopify-report.ts`) keeps nothing it reads and shows a figure Shopify did not give as unknown, never as 0; a new figure is a field of one of its query groups and of `shopReport()`, with its case in `shopify-report.test.ts`. Shopify's webhooks (`/api/shopify/webhooks`) answer 401 without its HMAC over the raw body; `app/uninstalled` drops the tokens, `shop/redact` deletes the rows; a new topic is a case in `handleShopifyWebhook()` and in the app's file.
 
 ## Kaizen Life (D95, `src/server/kaizen-life.ts`)
 

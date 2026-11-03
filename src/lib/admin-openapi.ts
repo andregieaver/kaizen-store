@@ -1,4 +1,4 @@
-import { API_ERRORS, API_SCOPES, PAGE_DEFAULT, PAGE_MAX, type ApiErrorCode } from "./admin-api";
+import { API_ERRORS, API_SCOPES, PAGE_DEFAULT, PAGE_MAX, type ApiErrorCode, type ApiScope } from "./admin-api";
 import { ADMIN_API, errorsOf, type AdminOperation } from "./admin-api-routes";
 import { errorEnvelope, jsonSchemaOf, OPENAPI_DIALECT, parametersOf, pathParams, type JsonSchema } from "./openapi";
 import { webhookOpenApi } from "./webhook-topics";
@@ -16,28 +16,74 @@ export const ADMIN_RATE = { perToken: 120, perStore: 1200 } as const;
 /** What each refusal means, for the document and the reference. */
 export const API_ERROR_WORDS: Record<ApiErrorCode, string> = {
   unauthorized: "No valid token in `Authorization: Bearer kf_…`, or one that was revoked.",
-  forbidden: "The token does not hold the scope the operation needs; the message names it.",
+  forbidden: "The token does not hold the scope the operation needs, or its owner does not hold the staff permission it needs in the store now (a store that is not open, as in the admin, keeps open only its orders, customers, reports and the owner's own pages such as its webhooks; its products, discounts, website and settings, read or changed, are refused); the message names which.",
   not_found: "No such route, or nothing with that id in the token's store (another store's ids are simply not found).",
   method: "The method is not one this path takes.",
   invalid: "Nothing was done: a body, query or cursor that is not as described, or a check of the screen it goes through; the message says what.",
-  gated: "Only the owner does this, in the admin: publishing, changing a product on the site, a copied order.",
+  gated: "The request needs a power beside the operation's scope (the message names it): changing a product, category or address on the site, an import that would, or a customer's email. A copied order is never changed.",
+  feature_off: "The store has switched off the feature the operation stands behind (Settings, Store features); the message names it.",
   conflict: "Nothing was done: it clashes with how things are now (nothing left to send), or an `Idempotency-Key` is in use or was used for another request.",
   rate_limited: "More calls than the budget allows; `Retry-After` says how many seconds to wait.",
   failed: "Something went wrong on our side; nothing more was done. It is safe to try again.",
 };
 
-/** What each resource's scopes open, for the document and the docs' search (D443). */
-export const SCOPE_WORDS: Record<string, string> = {
-  products: "Products, their variants and prices.",
-  inventory: "Stock locations and levels.",
-  orders: "Orders, parcels, invoices and credit notes.",
-  customers: "Customer accounts and their tags.",
-  discounts: "Discount codes.",
-  checkout: "Checkout rules and questions.",
+/**
+ * What each scope allows, exactly (D440 review): the twelve a token could hold before D440 allow what they did then and no more (each read
+ * also reads what D440 added of its area); every write D440 added has a scope of its own; the powers are what the AI manager asks the
+ * owner's yes for. Every scope of an area also reads it.
+ */
+export const SCOPE_TEXT: Record<ApiScope, string> = {
+  "products:read": "Read products, categories and tags, the media library and products' galleries, price lists and their prices, and the product file's jobs.",
+  "products:write": "Make products and change drafts (a product on the site only with `products:publish` too).",
+  "products:manage":
+    "Make categories and tags, upload pictures to the media library, import the product file (only drafts without `products:publish`), and put a draft in a category or tag and change its gallery.",
+  "inventory:read": "Read stock locations and levels.",
+  "inventory:write": "Adjust and set stock.",
+  "orders:read": "Read orders with their addresses, invoices and credit notes, refunds and notes, draft orders and requests for a quote, returns and subscriptions.",
+  "orders:write": "Record parcels with tracking.",
+  "orders:manage": "Make and change draft orders, and add notes and tags to orders.",
+  "customers:read": "Read customers and their tags, their store credit and bonus credits, and segments.",
+  "customers:write": "Tag customers.",
+  "customers:manage": "Add customers and change their name, phone, address and company (their email only with `customers:email` too).",
+  "discounts:read": "Read discount codes.",
+  "discounts:write": "Make discount codes.",
+  "checkout:read": "Read checkout rules and questions.",
+  "checkout:write": "Change checkout rules and questions.",
+  "content:read": "Read pages, blog articles, content types and entries, and menus.",
+  "content:write": "Write drafts of pages, blog articles and content entries; nothing on the site changes.",
+  "settings:read": "Read the store's countries, currencies, languages, shipping, tax profile and price display.",
+  "reports:read": "Run saved reports on the data as it is now.",
+  "products:publish":
+    "A power: publish, unpublish, archive and bring back products; change a product on the site (its fields, gallery, categories and tags); rename and delete categories and tags; set price lists' prices; import a file that does any of these.",
+  "orders:send": "A power: send draft orders (a pay link) and decline requests for a quote, approve, decline and receive returns, pause and cancel subscriptions. Each emails the customer.",
+  "orders:refund": "A power: refund orders through the admin's own refund, to the payment or as store credit, and cancel orders not paid yet.",
+  "customers:email": "A power: change the email a customer signs in with (codes to sign in are sent to it).",
+  "discounts:publish": "A power: change discount codes and switch them off.",
+  "gift_cards:write": "A power: issue, read and deactivate gift cards. A card's code is answered once, when it is issued.",
+  "content:publish": "A power: publish pages, blog articles and content entries, and change the address of one on the site (or of pages under it).",
+  "webhooks:write": "A power: add, change and remove the owner's webhook endpoints, read their deliveries and send one again, as on the Integrations page.",
 };
 
+const scopeWords = (scope: ApiScope): string => SCOPE_TEXT[scope];
+
 const TAGS = [
-  { name: "Products", description: "Products as the admin keeps them. Drafts only are written: what shoppers see is the owner's." },
+  { name: "Products", description: "Products as the admin keeps them. Drafts are written with `products:write`; what shoppers see (publishing, a product on the site, archiving) only with `products:publish`." },
+  { name: "Categories and tags", description: "Product categories and tags (D50), and a product put in or out of one." },
+  { name: "Media", description: "The media library's pictures, sent through a one-time upload address and checked as the library checks them, and a product's gallery." },
+  { name: "Price lists", description: "Price lists for customer groups and companies (D321), and their fixed prices." },
+  { name: "Draft orders", description: "Draft orders staff make and shoppers' requests for a quote (D173, D431), sent as a pay link or declined." },
+  { name: "Returns", description: "Withdrawals and voluntary returns (D153): approved, declined and received as the returns page does them." },
+  { name: "Segments", description: "Saved segments of customers and subscribers (D296), with how many each holds." },
+  { name: "Gift cards", description: "Gift cards and store credit (D300, D364): issued, listed and deactivated; a code is never answered after its issue." },
+  { name: "Subscriptions", description: "Customers' subscriptions (D29): read, paused and cancelled as the subscription page does." },
+  { name: "Pages", description: "The store's pages (D42): drafts written through the editor's own save; publishing with `content:publish`." },
+  { name: "Blog", description: "The store's blog articles (D57, D341), as pages are." },
+  { name: "Content", description: "Content types and their entries (D326)." },
+  { name: "Menus", description: "The store's menus (D85), read." },
+  { name: "Settings", description: "The store's settings, read." },
+  { name: "Reports", description: "Saved reports (D345), run on the data as it is now." },
+  { name: "Webhook endpoints", description: "The owner's own endpoints (D354) and their deliveries, with `webhooks:write`." },
+  { name: "Bulk jobs", description: "The product file of the Data page (D165): exported, and imported with a dry run first." },
   { name: "Inventory", description: "Stock per variant and location, adjusted or counted as the Inventory page does." },
   { name: "Orders", description: "Orders in their own currency, parcels with tracking, and invoices and credit notes as EN 16931 UBL." },
   { name: "Customers", description: "Customer accounts and their tags." },
@@ -78,10 +124,12 @@ function operation(o: AdminOperation): JsonSchema {
   return {
     operationId: o.name,
     summary: o.summary,
-    description: `${o.description} Needs the scope \`${o.scope}\`${o.scope.endsWith(":read") ? ` (or \`${o.scope.replace(/:read$/, ":write")}\`)` : ""}.`,
+    description: `${o.description} Needs the scope \`${o.scope}\`${o.scope.endsWith(":read") ? ` (or \`${o.scope.replace(/:read$/, ":write")}\`)` : ""}, and the token's owner the permission \`${o.permission}\`${"feature" in o ? `; the store's feature \`${o.feature}\` on` : ""}.`,
     tags: [o.tag],
     security: [{ adminToken: [o.scope] }],
     "x-required-scope": o.scope,
+    "x-permission": o.permission,
+    ...("feature" in o && { "x-feature": o.feature }),
     ...(isPaged(o) && { "x-pagination": { style: "cursor", query: "after", answer: "next", limit: "limit", default: PAGE_DEFAULT, max: PAGE_MAX } }),
     ...(parameters.length > 0 && { parameters }),
     ...("body" in o && { requestBody: { required: true, content: { "application/json": { schema: jsonSchemaOf(o.body) } } } }),
@@ -107,7 +155,7 @@ export function adminOpenApi(server: string, contractVersion?: string) {
       title: "Kaizena Flow Admin API",
       version: ADMIN_API_VERSION,
       description: [
-        "A store's own data for the owner's integrations: products, stock, orders, customers, discounts and checkout rules. A token (`kf_…`) is made by an owner in Settings, Apps and API for one store, with the scopes it needs, and acts as its maker; every change goes through the admin's own screens and is audited with the token's name.",
+        "A store's own data for the owner's integrations: products, categories, pictures and price lists, stock, orders, drafts and returns, customers, discounts, gift cards and subscriptions, pages and content, settings, reports, webhook endpoints and the product file, and checkout rules. A token (`kf_…`) is made by an owner in Settings, Apps and API for one store, with the scopes it needs, and acts as its maker; every change goes through the admin's own screens and is audited with the token's name.",
         "Money is integer minor units with an ISO 4217 code. Lists are pages of at most 100 under a cursor: give a page's `next` as `?after=` for the next one.",
         `A token may make ${ADMIN_RATE.perToken} calls a minute, and a store's tokens ${ADMIN_RATE.perStore} together; past that the answer is 429 with \`Retry-After\`.`,
         "A POST with an `Idempotency-Key` header is done once: the same key with the same request gets the first answer again for 24 hours (`Idempotent-Replayed: true`).",
@@ -118,7 +166,7 @@ export function adminOpenApi(server: string, contractVersion?: string) {
     servers: [{ url: server }],
     security: [{ adminToken: [] }],
     tags: TAGS,
-    "x-scopes": API_SCOPES.map((scope) => ({ scope, description: `${scope.endsWith(":write") ? "Read and change" : "Read"}: ${SCOPE_WORDS[scope.split(":")[0]] ?? scope}` })),
+    "x-scopes": API_SCOPES.map((scope) => ({ scope, description: scopeWords(scope) })),
     "x-rate-limit": { window: "minute", per_token: ADMIN_RATE.perToken, per_store: ADMIN_RATE.perStore },
     components: {
       securitySchemes: {

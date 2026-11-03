@@ -14,6 +14,7 @@ import {
   FEED_FILES,
   FEED_KIND,
   MENUS_QUERY,
+  PLAIN_FEEDS,
   copyReady,
   copyStateOf,
   directItems,
@@ -55,6 +56,7 @@ import { storeTag } from "./stores";
 import { memberCan } from "./permissions";
 import { safeFetch } from "./replicate-fetch";
 import { shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
+import { SETTINGS_FEEDS, applySettingsFeed, readSettingsFeed } from "./shopify-settings-copy";
 
 type Row = Record<string, unknown>;
 
@@ -308,6 +310,7 @@ async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, dep
   const text = f.path ? await keptFile(f.path, deps) : null;
   if (text === null) return { ...f, stage: "failed", problem: "storage" };
   const tree = readBulkLines(text);
+  if (SETTINGS_FEEDS.includes(feed)) return applySettingsFeed(member, feed, f, tree.roots);
   const cursor = f.cursor ?? 0;
   const size = DIRECT_BATCH[feed] ?? 10;
   let made = f.made ?? 0;
@@ -429,6 +432,9 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
     if (next === "menus") {
       const answer = await shopifyGraphql<{ menus?: { nodes?: Record<string, unknown>[] } }>(storeId, MENUS_QUERY, {}, deps);
       state.feeds.menus = answer.ok ? await stage(member, "menus", (answer.data.menus?.nodes ?? []).map((m) => JSON.stringify(m)).join("\n"), deps) : { stage: "failed", problem: "shopify_refused" };
+    } else if (next && PLAIN_FEEDS.includes(next)) {
+      const read = await readSettingsFeed(storeId, next, deps);
+      state.feeds[next] = read.ok ? await stage(member, next, read.text, deps) : { stage: "failed", problem: "shopify_refused" };
     } else if (next) {
       const run = await shopifyGraphql<BulkRun>(storeId, BULK_RUN, { query: BULK_QUERIES[next] }, deps);
       const id = run.ok ? run.data.bulkOperationRunQuery?.bulkOperation?.id : undefined;

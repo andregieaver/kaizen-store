@@ -218,7 +218,8 @@ export async function saveDiscount(
   const startsAt = osloTime(d.startsAt);
   const endsAt = osloTime(d.endsAt);
   if (startsAt && endsAt && startsAt >= endsAt) problems.push("The code must end after it starts.");
-  if (d.productIds) {
+  // A code on categories alone has an empty product list: nothing to look up.
+  if (d.productIds && d.productIds.length > 0) {
     const [row] = await db().execute<Row>(sql`
       select count(*)::int as n from commerce.products
       where store_id = ${store.id}::uuid and id in (${sql.join(d.productIds.map((p) => sql`${p}::uuid`), sql`, `)})

@@ -7,7 +7,7 @@ import sharp from "sharp";
 
 import { db } from "@/db/client";
 import { DELIMITER_WORDS, parseCsv, type ParsedCsv } from "@/lib/csv";
-import { finding, summariseCounts, type Finding, type ItemSummary, type JobCounts, EMPTY_COUNTS } from "@/lib/data-job";
+import { finding, summariseCounts, type DryRunCounts, type Finding, type ItemSummary, type JobCounts, EMPTY_COUNTS } from "@/lib/data-job";
 import { BULK_CHUNK, IMPORT_MAX_BYTES, IMPORT_MAX_PRODUCTS, IMPORT_MAX_ROWS, IMPORT_PICTURE_MAX_BYTES, IMPORT_PICTURE_TYPES, IMPORT_PICTURE_WIDTH, IMPORT_THUMBNAIL_WIDTH } from "@/lib/data-limits";
 import { groupProducts, readNeutral, type FileFinding, type Grouped, type NeutralFile, type ProductCsvContext, type ProductDraft } from "@/lib/product-csv";
 import { detectFormat, readShopify } from "@/lib/product-csv-shopify";
@@ -203,9 +203,9 @@ export async function checkImport(member: Membership, jobId: string, rawOptions:
 }
 
 /** The numbers a checked job shows before it is applied. */
-export const dryCountsOf = (job: Pick<DataJob, "counts">): { toCreate: number; toUpdate: number; unchanged: number; withProblems: number } => {
+export const dryCountsOf = (job: Pick<DataJob, "counts">): DryRunCounts => {
   const d = (job.counts.dry ?? {}) as Record<string, unknown>;
-  return { toCreate: Number(d.toCreate ?? 0), toUpdate: Number(d.toUpdate ?? 0), unchanged: Number(d.unchanged ?? 0), withProblems: Number(d.withProblems ?? 0) };
+  return { toCreate: Number(d.toCreate ?? 0), toUpdate: Number(d.toUpdate ?? 0), unchanged: Number(d.unchanged ?? 0), withProblems: Number(d.withProblems ?? 0), onShop: Number(d.onShop ?? 0) };
 };
 
 /**
@@ -317,12 +317,12 @@ async function snapshotFor(p: Prepared, drafts: readonly ProductDraft[]): Promis
 // The check: a dry run
 // ---------------------------------------------------------------------------
 
-type CheckCursor = { next: number; files: number; filesWritten: boolean; dry: { toCreate: number; toUpdate: number; unchanged: number; withProblems: number }; warnings: number; errors: number };
+type CheckCursor = { next: number; files: number; filesWritten: boolean; dry: DryRunCounts; warnings: number; errors: number };
 
 const checkCursor = (job: DataJob): CheckCursor => {
   const c = job.cursor as Partial<CheckCursor>;
-  const d = (c.dry ?? {}) as Partial<CheckCursor["dry"]>;
-  return { next: Number(c.next ?? 0), files: Number(c.files ?? 0), filesWritten: c.filesWritten === true, dry: { toCreate: Number(d.toCreate ?? 0), toUpdate: Number(d.toUpdate ?? 0), unchanged: Number(d.unchanged ?? 0), withProblems: Number(d.withProblems ?? 0) }, warnings: Number(c.warnings ?? 0), errors: Number(c.errors ?? 0) };
+  const d = (c.dry ?? {}) as Partial<DryRunCounts>;
+  return { next: Number(c.next ?? 0), files: Number(c.files ?? 0), filesWritten: c.filesWritten === true, dry: { toCreate: Number(d.toCreate ?? 0), toUpdate: Number(d.toUpdate ?? 0), unchanged: Number(d.unchanged ?? 0), withProblems: Number(d.withProblems ?? 0), onShop: Number(d.onShop ?? 0) }, warnings: Number(c.warnings ?? 0), errors: Number(c.errors ?? 0) };
 };
 
 const fileItem = (seq: number, f: FileFinding): ItemInput => ({ seq, kind: "file", ref: null, rows: f.rows, outcome: "checked", messages: [f.finding], changes: {} });
@@ -354,6 +354,7 @@ export async function runImportCheck(job: DataJob, deps: DataDeps, until: number
       cursor.dry.toUpdate += one.toUpdate;
       cursor.dry.unchanged += one.unchanged;
       cursor.dry.withProblems += one.withProblems;
+      cursor.dry.onShop += one.onShop;
       for (const f of plan.findings) {
         if (f.severity === "error") cursor.errors += 1;
         if (f.severity === "warning") cursor.warnings += 1;

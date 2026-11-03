@@ -4,24 +4,45 @@ import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { isUuid, pageSize, type ApiErrorCode } from "@/lib/admin-api";
-import { ADMIN_API_BY_NAME, bodyProblems, ORDER_STATES, PRODUCT_STATES, type AdminAnswer, type AdminApiName, type AdminBody, type ApiRoute } from "@/lib/admin-api-routes";
+import { isUuid } from "@/lib/admin-api";
+import { ADMIN_API_BY_NAME, bodyProblems, ORDER_STATES, type AdminAnswer, type ApiRoute } from "@/lib/admin-api-routes";
 import { DISCOUNT_KINDS } from "@/lib/discounts";
-import { PRODUCT_KINDS } from "@/lib/product-input";
 
+import { answerCatalogue, CATALOGUE_NAMES, type CatalogueRoute } from "./admin-api-catalogue";
+import { answerContent, CONTENT_NAMES, type ContentRoute } from "./admin-api-content";
+import { answerCustomers, CUSTOMERS_NAMES, type CustomersRoute } from "./admin-api-customers";
+import { answerOrders, ORDERS_NAMES, type OrdersRoute } from "./admin-api-orders";
+import {
+  asTool,
+  fail,
+  holds,
+  jsonBody,
+  ok,
+  byVariantId,
+  paging,
+  productById,
+  productOut,
+  readBody,
+  readProducts,
+  record,
+  sinceWhere,
+  cursorAt,
+  toolCtx,
+  type ApiAnswer,
+} from "./admin-api-kit";
 import type { ApiCaller } from "./api-tokens";
-import { audit } from "./auth";
 import { deleteCheckoutField, deleteCheckoutRule, listCheckoutFields, listCheckoutRules, saveCheckoutField, saveCheckoutRule, switchCheckoutField, switchCheckoutRule } from "./checkout-rules";
 import { saveDiscount } from "./discounts";
 import { documentUbl } from "./einvoices";
 import { adjustStock } from "./inventory";
 import { log } from "./log";
 import { getOrderAdmin, markSent, sendRefusalText } from "./order-admin";
-import { OwnerToolError } from "./owner-tool-error";
 import { createProductTool, findProduct, updateProductTool } from "./product-tools";
 import { addTag, removeTag } from "./segments";
 import { sendShipped } from "./shopper-emails";
 import { col, typedRows } from "./typed-rows";
+
+export { ApiError, decodeCursor, encodeCursor, type ApiAnswer } from "./admin-api-kit";
 
 /**
  * The Admin API's handlers (wave 9 unit B, D355): each route reads the store's own data or changes it only through the function its screen
@@ -35,150 +56,27 @@ import { col, typedRows } from "./typed-rows";
  * (`admin_api.answer_shape`, the paths only) and still sent, so a drift is found without a caller being refused.
  */
 
-export class ApiError extends Error {
-  constructor(
-    readonly code: ApiErrorCode,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-const fail = (code: ApiErrorCode, message: string): never => {
-  throw new ApiError(code, message);
-};
-
-export type ApiAnswer = { status: number; body: unknown };
-
-/** An operation's answer, built as its registry entry says it is. */
-const ok = <N extends AdminApiName>(_name: N, body: AdminAnswer<N>, status = 200): ApiAnswer => ({ status, body });
-
-/** A cursor: the last row's time and id, so the next page starts after it whatever is added meanwhile. */
-export function encodeCursor(at: string, id: string): string {
-  return Buffer.from(`${at}|${id}`, "utf8").toString("base64url");
-}
-
-export function decodeCursor(value: string | null): { at: string; id: string } | null {
-  if (!value || value.length > 200) return null;
-  const [at, id] = Buffer.from(value, "base64url").toString("utf8").split("|");
-  return at && isUuid(id) && !Number.isNaN(Date.parse(at)) ? { at: new Date(at).toISOString(), id } : null;
-}
-
-/** A page of rows ordered newest first by `created_at, id`: the condition for rows after the cursor, and the answer's `next`. */
-function paging(params: URLSearchParams, column: SQL, idColumn: SQL) {
-  const limit = pageSize(params.get("limit"));
-  const raw = params.get("after");
-  const after = decodeCursor(raw);
-  if (raw && !after) fail("invalid", "The cursor in after is not one this API gave.");
-  const where = after ? sql`(${column}, ${idColumn}) < (${after.at}::timestamptz, ${after.id}::uuid)` : sql`true`;
-  const next = <R extends { id: string; created_at: string }>(rows: R[]) => (rows.length > limit ? encodeCursor(rows[limit - 1].created_at, rows[limit - 1].id) : null);
-  return { limit, where, next };
-}
-
-const record = (caller: ApiCaller, what: string, details: Record<string, unknown>, target?: { type: string; id: string }) =>
-  audit(caller.member.account.id, caller.member.store.id, `integration.api_${what}`, { token: caller.token.name, ...details }, target ? { target } : {});
-
-async function jsonBody(request: Request): Promise<Record<string, unknown>> {
-  const text = await request.text();
-  if (text.length > 1_000_000) fail("invalid", "The body is larger than 1 MB.");
-  if (!text.trim()) return {};
-  try {
-    const value = JSON.parse(text) as unknown;
-    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : fail("invalid", "The body is a JSON object.");
-  } catch {
-    return fail("invalid", "The body is not JSON.");
-  }
-}
-
-/** The body of a write, read with its operation's zod: a 422 in the API's own words before any screen's check runs. */
-async function readBody<N extends AdminApiName>(name: N, request: Request): Promise<AdminBody<N>> {
-  const raw = await jsonBody(request);
-  const op = ADMIN_API_BY_NAME[name] as { body?: z.ZodType };
-  if (!op.body) return fail("failed", `${name} takes no body.`);
-  const parsed = op.body.safeParse(raw);
-  if (!parsed.success) return fail("invalid", bodyProblems(parsed.error.issues).join(" "));
-  return parsed.data as AdminBody<N>;
-}
-
-/** A refusal from the screens' functions, as a 422 with their own words. */
-async function asTool<T>(run: () => Promise<T>): Promise<T> {
-  try {
-    return await run();
-  } catch (error) {
-    if (error instanceof OwnerToolError) return fail("invalid", error.message);
-    throw error;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Products
-// ---------------------------------------------------------------------------
-
-const productRow = z.object({
-  id: col.uuid,
-  handle: col.text,
-  status: z.enum(PRODUCT_STATES),
-  kind: z.enum(PRODUCT_KINDS),
-  title: col.textOrNull,
-  created_at: col.timestamp,
-  updated_at: col.timestamp,
-  variants: z.array(
-    z.object({
-      id: z.string(),
-      sku: z.string().nullable(),
-      active: z.boolean(),
-      options: z.record(z.string(), z.string()).nullable(),
-      prices: z.array(z.object({ market: z.string(), currency: z.string(), amount_minor: z.number() })),
-    }),
-  ),
-});
-
-async function readProducts(storeId: string, where: SQL, limit: number) {
-  // Prices as the admin keeps them (`kept_prices`: every current price, VAT included), per market in its own currency.
-  return typedRows(
-    productRow,
-    sql`
-      select p.id, p.handle, p.status::text as status, p.kind, p.created_at, p.updated_at,
-        (select t.title from commerce.product_translations t where t.product_id = p.id
-          order by (t.locale = (select m.default_locale from commerce.markets m join commerce.stores s on s.id = m.store_id
-            where s.id = p.store_id and m.active order by (m.code = s.country) desc nulls last, m.created_at limit 1)) desc, t.locale limit 1) as title,
-        coalesce((select json_agg(json_build_object('id', v.id, 'sku', v.sku, 'active', v.active, 'options', v.options,
-            'prices', coalesce((select json_agg(json_build_object('market', kp.market_code, 'currency', trim(kp.currency), 'amount_minor', kp.amount_minor) order by kp.market_code)
-              from commerce.kept_prices kp where kp.variant_id = v.id), '[]'::json)) order by v.created_at, v.id)
-          from commerce.product_variants v where v.product_id = p.id), '[]'::json) as variants
-      from commerce.products p
-      where p.store_id = ${storeId}::uuid and ${where}
-      order by p.created_at desc, p.id desc
-      limit ${limit}
-    `,
-  );
-}
-
-const productOut = (row: z.output<typeof productRow>): AdminAnswer<"products.get">["data"] => ({
-  id: row.id,
-  handle: row.handle,
-  title: row.title ?? "",
-  status: row.status,
-  kind: row.kind,
-  created_at: row.created_at,
-  updated_at: row.updated_at,
-  variants: row.variants,
-});
-
-async function productById(caller: ApiCaller, id: string) {
-  const [row] = await readProducts(caller.member.store.id, sql`p.id = ${id}::uuid`, 1);
-  return row ? productOut(row) : fail("not_found", "No such product in this store.");
-}
-
-const toolCtx = (caller: ApiCaller) => ({ account: caller.member.account, store: caller.member.store, invalidate: () => {} });
-
 // ---------------------------------------------------------------------------
 // Orders
 // ---------------------------------------------------------------------------
 
 type ApiOrder = AdminAnswer<"orders.get">["data"];
 
-async function orderOut(storeId: string, id: string): Promise<ApiOrder | null> {
+/**
+ * When an order last changed (D440): placed, or its timeline's latest entry (paid, sent, refunded, edited, noted, …), a parcel or a tag; what
+ * `updated_after` reads and each answer's `updated_at` says. `o` is the order's row.
+ */
+export const ORDER_UPDATED = sql`greatest(o.placed_at,
+  (select max(e.created_at) from commerce.order_events e where e.store_id = o.store_id and e.order_id = o.id),
+  (select max(s.created_at) from commerce.shipments s where s.store_id = o.store_id and s.order_id = o.id),
+  (select max(t.created_at) from commerce.order_tags t where t.store_id = o.store_id and t.order_id = o.id))`;
+
+async function orderUpdatedAt(storeId: string, id: string): Promise<string> {
+  const [row] = await typedRows(z.object({ at: col.timestamp }), sql`select ${ORDER_UPDATED} as at from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${id}::uuid`);
+  return row.at;
+}
+
+export async function orderOut(storeId: string, id: string): Promise<ApiOrder | null> {
   const order = await getOrderAdmin(storeId, id);
   if (!order) return null;
   const toSend = new Map(order.fulfilment.lines.map((line) => [line.lineId, line.toSend]));
@@ -224,28 +122,20 @@ async function orderOut(storeId: string, id: string): Promise<ApiOrder | null> {
       .filter((s) => !s.undone)
       .map((s) => ({ id: s.id, carrier: s.carrier, tracking_number: s.trackingNumber, tracking_url: s.trackingUrl, created_at: s.createdAt, lines: s.lines.map((l) => ({ line_id: l.lineId, quantity: l.quantity })) })),
     tags: order.tags.map((t) => t.label),
+    updated_at: await orderUpdatedAt(storeId, order.id),
   };
+}
+
+/** The ids of a store's rows changed after `?updated_after=`, from a `select id … where store_id = …` of a table with `updated_at`; null when it is not asked. */
+async function changedSince(params: URLSearchParams, rows: SQL): Promise<Set<string> | null> {
+  if (!params.get("updated_after")) return null;
+  const found = await typedRows(z.object({ id: col.uuid }), sql`select r.id from (${rows} and ${sinceWhere(params, sql`updated_at`)}) r`);
+  return new Set(found.map((r) => r.id));
 }
 
 // ---------------------------------------------------------------------------
 // Inventory
 // ---------------------------------------------------------------------------
-
-/** The rows with every variant named by its id: a SKU the store does not have is refused before anything is written. */
-async function byVariantId<R extends { variant_id?: string; sku?: string }>(storeId: string, rows: R[]): Promise<(R & { variant_id: string })[]> {
-  const skus = [...new Set(rows.flatMap((r) => (r.sku ? [r.sku] : [])))];
-  const found =
-    skus.length === 0
-      ? []
-      : await typedRows(
-          z.object({ id: col.uuid, sku: col.text }),
-          sql`select id, sku from commerce.product_variants where store_id = ${storeId}::uuid and sku in (${sql.join(skus.map((s) => sql`${s}`), sql`, `)})`,
-        );
-  const ids = new Map(found.map((row) => [row.sku, row.id]));
-  const missing = skus.filter((s) => !ids.has(s));
-  if (missing.length > 0) fail("invalid", `No variant with the SKU ${missing.slice(0, 5).join(", ")} in this store.`);
-  return rows.map((row) => ({ ...row, variant_id: row.variant_id ?? ids.get(row.sku!)! }));
-}
 
 async function levelsNow(storeId: string, rows: { variant_id: string; location_id: string }[]): Promise<Map<string, number>> {
   const found = await typedRows(
@@ -288,7 +178,22 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
   return answer;
 }
 
+const isCatalogue = (route: ApiRoute): route is CatalogueRoute => (CATALOGUE_NAMES as readonly string[]).includes(route.name);
+const isOrders = (route: ApiRoute): route is OrdersRoute => (ORDERS_NAMES as readonly string[]).includes(route.name);
+const isCustomers = (route: ApiRoute): route is CustomersRoute => (CUSTOMERS_NAMES as readonly string[]).includes(route.name);
+const isContent = (route: ApiRoute): route is ContentRoute => (CONTENT_NAMES as readonly string[]).includes(route.name);
+/** The operations of unit A and before, answered here; each slice of wave 14 unit C answers its own (D440). */
+type CoreRoute = Exclude<ApiRoute, CatalogueRoute | OrdersRoute | CustomersRoute | ContentRoute>;
+
 async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request): Promise<ApiAnswer> {
+  if (isCatalogue(route)) return answerCatalogue(caller, route, request);
+  if (isOrders(route)) return answerOrders(caller, route, request);
+  if (isCustomers(route)) return answerCustomers(caller, route, request);
+  if (isContent(route)) return answerContent(caller, route, request);
+  return answerCore(caller, route as CoreRoute, request);
+}
+
+async function answerCore(caller: ApiCaller, route: CoreRoute, request: Request): Promise<ApiAnswer> {
   const storeId = caller.member.store.id;
   const params = new URL(request.url).searchParams;
   switch (route.name) {
@@ -296,7 +201,7 @@ async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request)
       const page = paging(params, sql`p.created_at`, sql`p.id`);
       const status = params.get("status");
       const statusWhere = status === "draft" || status === "active" || status === "archived" ? sql`p.status = ${status}::commerce.product_status` : sql`true`;
-      const rows = await readProducts(storeId, sql`${page.where} and ${statusWhere}`, page.limit + 1);
+      const rows = await readProducts(storeId, sql`${page.where} and ${statusWhere} and ${sinceWhere(params, sql`p.updated_at`)}`, page.limit + 1);
       return ok(route.name, { data: rows.slice(0, page.limit).map(productOut), next: page.next(rows) });
     }
     case "products.get":
@@ -312,9 +217,10 @@ async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request)
     case "products.update": {
       const found = await asTool(() => findProduct(caller.member.store, route.id));
       // Changing what shoppers see is the owner's, in the admin (a gated change for the AI manager too).
-      if (found.status === "active") return fail("gated", "A live product is changed in the admin. Over the API, change drafts only.");
+      // Changing what shoppers see takes `products:publish` (D440): what the AI manager asks the owner's yes for.
+      if (found.status === "active" && !holds(caller, "products:publish")) return fail("gated", "A live product is changed only by a token with products:publish, or in the admin.");
       const raw = await jsonBody(request);
-      if (raw.status !== undefined) return fail("gated", "Publishing a product is the owner's, in the admin.");
+      if (raw.status !== undefined) return fail("gated", "A product's status changes with POST /products/{id}/publish, /unpublish or /archive (products:publish), or in the admin.");
       const parsed = ADMIN_API_BY_NAME[route.name].body.safeParse(raw);
       if (!parsed.success) return fail("invalid", bodyProblems(parsed.error.issues).join(" "));
       await asTool(() => updateProductTool(toolCtx(caller), { ...parsed.data, product: route.id, pictures: undefined, add_pictures: undefined }));
@@ -332,21 +238,37 @@ async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request)
       const variant = params.get("variant_id");
       const location = params.get("location_id");
       if ((variant && !isUuid(variant)) || (location && !isUuid(location))) return fail("invalid", "variant_id and location_id are ids.");
-      const page = paging(params, sql`l.updated_at`, sql`l.variant_id`);
+      // A level is a variant at a location: the cursor's key is both, hashed into the shape of an id (D440 review), so two levels of a
+      // variant moved at the same moment are never split across a page and skipped.
+      const key = sql`md5(l.variant_id::text || l.location_id::text)::uuid`;
+      const page = paging(params, sql`l.updated_at`, key);
       const rows = await typedRows(
-        z.object({ id: col.uuid, created_at: col.timestamp, location_id: col.uuid, sku: col.textOrNull, on_hand: col.int, available: z.number().nullable(), can_buy: z.boolean().nullable() }),
+        z.object({
+          id: z.string(),
+          created_at: col.timestamp,
+          cursor_at: z.string(),
+          variant_id: col.uuid,
+          location_id: col.uuid,
+          sku: col.textOrNull,
+          on_hand: col.int,
+          available: z.number().nullable(),
+          can_buy: z.boolean().nullable(),
+        }),
         sql`
-          select l.variant_id as id, l.updated_at as created_at, l.location_id, v.sku, l.on_hand, va.raw_available as available, va.can_buy
+          select ${key} as id, l.updated_at as created_at, ${cursorAt(sql`l.updated_at`)} as cursor_at, l.variant_id, l.location_id, v.sku, l.on_hand,
+            va.raw_available as available, va.can_buy
           from commerce.inventory_levels l
           join commerce.product_variants v on v.id = l.variant_id
           left join commerce.variant_availability va on va.variant_id = l.variant_id
-          where l.store_id = ${storeId}::uuid and ${page.where}
+          where l.store_id = ${storeId}::uuid and ${page.where} and ${sinceWhere(params, sql`l.updated_at`)}
             and ${variant ? sql`l.variant_id = ${variant}::uuid` : sql`true`} and ${location ? sql`l.location_id = ${location}::uuid` : sql`true`}
-          order by l.updated_at desc, l.variant_id desc, l.location_id
+          order by l.updated_at desc, ${key} desc
           limit ${page.limit + 1}
         `,
       );
-      const data = rows.slice(0, page.limit).map((r) => ({ variant_id: r.id, location_id: r.location_id, sku: r.sku, on_hand: r.on_hand, available: r.available, can_buy: r.can_buy, updated_at: r.created_at }));
+      const data = rows
+        .slice(0, page.limit)
+        .map((r) => ({ variant_id: r.variant_id, location_id: r.location_id, sku: r.sku, on_hand: r.on_hand, available: r.available, can_buy: r.can_buy, updated_at: r.created_at }));
       return ok(route.name, { data, next: page.next(rows) });
     }
     case "inventory.adjust": {
@@ -399,10 +321,10 @@ async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request)
       if (status && !(ORDER_STATES as readonly string[]).includes(status)) return fail("invalid", `status is one of ${ORDER_STATES.join(", ")}.`);
       const toFulfil = params.get("unfulfilled") === "true";
       const rows = await typedRows(
-        z.object({ id: col.uuid, created_at: col.timestamp }),
+        z.object({ id: col.uuid, created_at: col.timestamp, cursor_at: z.string() }),
         sql`
-          select o.id, o.placed_at as created_at from commerce.orders o
-          where o.store_id = ${storeId}::uuid and o.copied_from is null and ${page.where}
+          select o.id, o.placed_at as created_at, ${cursorAt(sql`o.placed_at`)} as cursor_at from commerce.orders o
+          where o.store_id = ${storeId}::uuid and o.copied_from is null and ${page.where} and ${sinceWhere(params, ORDER_UPDATED)}
             and ${status ? sql`o.status = ${status}` : sql`true`}
             and ${toFulfil ? sql`o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.order_id = o.id and commerce.line_to_send(l.id) > 0)` : sql`true`}
           order by o.placed_at desc, o.id desc
@@ -453,13 +375,16 @@ async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request)
           created_at: col.timestamp,
           verified: col.bool,
           tags: z.array(z.string()),
+          updated_at: col.timestamp,
+          cursor_at: z.string(),
         }),
         sql`
-          select c.id, c.email, c.name, c.phone, c.created_at, c.email_verified_at is not null as verified,
+          select c.id, c.email, c.name, c.phone, c.created_at, ${cursorAt(sql`c.created_at`)} as cursor_at, c.updated_at, c.email_verified_at is not null as verified,
             coalesce((select array_agg(t.label order by t.label) from commerce.customer_tags t where t.store_id = c.store_id and t.email = lower(c.email)), '{}') as tags
           from commerce.customers c
           where c.store_id = ${storeId}::uuid and c.copied_from is null
-            and ${route.name === "customers.get" ? sql`c.id = ${route.id}::uuid` : page.where}
+            and ${route.name === "customers.get" ? sql`c.id = ${route.id}::uuid` : sql`${page.where} and ${sinceWhere(params, sql`c.updated_at`)}`}
+            and ${route.name === "customers.list" && params.get("email") ? sql`lower(c.email) = lower(${params.get("email")!.trim()})` : sql`true`}
           order by c.created_at desc, c.id desc
           limit ${route.name === "customers.get" ? 1 : page.limit + 1}
         `,
@@ -472,6 +397,7 @@ async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request)
         email_verified: r.verified,
         tags: r.tags,
         created_at: r.created_at,
+        updated_at: r.updated_at,
       });
       if (route.name === "customers.get") return ok(route.name, { data: rows[0] ? out(rows[0]) : fail("not_found", "No such customer in this store.") });
       return ok(route.name, { data: rows.slice(0, page.limit).map(out), next: page.next(rows) });
@@ -509,14 +435,20 @@ async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request)
           ends_at: col.timestampOrNull,
           usage_limit: z.number().nullable(),
           created_at: col.timestamp,
+          updated_at: col.timestamp,
+          cursor_at: z.string(),
         }),
         sql`
-          select d.id, d.code, d.kind, d.percent, d.amounts, d.active, d.starts_at, d.ends_at, d.usage_limit, d.created_at
-          from commerce.discount_codes d where d.store_id = ${storeId}::uuid and ${page.where}
+          select d.id, d.code, d.kind, d.percent, d.amounts, d.active, d.starts_at, d.ends_at, d.usage_limit, d.created_at, d.updated_at, ${cursorAt(sql`d.created_at`)} as cursor_at
+          from commerce.discount_codes d where d.store_id = ${storeId}::uuid and ${page.where} and ${sinceWhere(params, sql`d.updated_at`)}
           order by d.created_at desc, d.id desc limit ${page.limit + 1}
         `,
       );
-      return ok(route.name, { data: rows.slice(0, page.limit).map(({ amounts, ...r }) => ({ ...r, amounts_minor: amounts ?? {} })), next: page.next(rows) });
+      const out = ({ amounts, cursor_at, ...r }: (typeof rows)[number]) => {
+        void cursor_at;
+        return { ...r, amounts_minor: amounts ?? {} };
+      };
+      return ok(route.name, { data: rows.slice(0, page.limit).map(out), next: page.next(rows) });
     }
     case "discounts.create": {
       const input = await readBody(route.name, request);
@@ -539,10 +471,15 @@ async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request)
       return ok(route.name, { data: { id: saved.id } }, 201);
     }
     // Checkout rules and questions (D399): through the Shipping page's own writers, which audit each change in the token holder's name.
-    case "checkout.rules":
-      return ok(route.name, { data: (await listCheckoutRules(storeId)).map(({ skips, ...rule }) => ({ ...rule, skipped: skips })) });
-    case "checkout.fields":
-      return ok(route.name, { data: await listCheckoutFields(db(), storeId) });
+    case "checkout.rules": {
+      const changed = await changedSince(params, sql`select id from commerce.checkout_rules where store_id = ${storeId}::uuid`);
+      const rules = (await listCheckoutRules(storeId)).filter((r) => !changed || changed.has(r.id));
+      return ok(route.name, { data: rules.map(({ skips, ...rule }) => ({ ...rule, skipped: skips })) });
+    }
+    case "checkout.fields": {
+      const changed = await changedSince(params, sql`select id from commerce.checkout_fields where store_id = ${storeId}::uuid`);
+      return ok(route.name, { data: (await listCheckoutFields(db(), storeId)).filter((f) => !changed || changed.has(f.id)) });
+    }
     case "checkout.rule_create": {
       const input = await readBody(route.name, request);
       const saved = await saveCheckoutRule(caller.member, null, input);

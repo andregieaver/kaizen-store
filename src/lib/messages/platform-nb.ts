@@ -439,6 +439,7 @@ export const platformNb: PlatformMessages = {
     previous: "Forrige",
     next: "Neste",
     checked: "Sist kontrollert {date}",
+    madeFrom: "Laget fra API-kontrakten, versjon {version}",
     inAdmin: "I administrasjonen:",
     language: "Språk",
     markdown: "Denne siden som Markdown",

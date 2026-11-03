@@ -217,6 +217,10 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
     pages: `${base}/pages`,
     articles: `${base}/articles`,
     menus: `${base}/menus`,
+    countries: `${base}/settings/countries`,
+    shipping: `${base}/settings/shipping`,
+    discounts: `${base}/discounts`,
+    look: `${base}/settings/design/themes`,
   };
   const rows: CopyRow[] = COPY_FEEDS.map((feed) => {
     const f = view.state.feeds[feed];

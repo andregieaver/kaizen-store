@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { docPage } from "@/lib/docs-content";
+import { docsPageAt } from "@/lib/docs-content";
 import { readDocsFeedback } from "@/lib/docs-feedback";
 import { fail, sameSite } from "@/server/chat-route";
 import { docsIndex } from "@/server/docs";
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   if (!asked) return fail(400, "The answer could not be read.");
   try {
     if (asked.kind === "vote") {
-      if (!docPage(docsIndex(), asked.path, asked.lang)) return fail(404, "No such page in the docs.");
+      if (!docsPageAt(docsIndex(), asked.path, asked.lang)) return fail(404, "No such page in the docs.");
       const id = await recordDocsVote(asked);
       return Response.json({ id }, { status: 201, headers: { "Cache-Control": "no-store" } });
     }

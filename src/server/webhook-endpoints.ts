@@ -201,9 +201,9 @@ export async function removeEndpoint({ account, store }: Membership, id: string)
  * Sends a delivery again (a failed one, or one that arrived and is wanted once more): a new delivery of the same content, the payload's `id`
  * kept so the receiver can tell it is the same event. Only for an endpoint that is on.
  */
-export async function resendDelivery({ account, store }: Membership, deliveryId: string): Promise<"queued" | "off" | "gone"> {
+export async function resendDelivery({ account, store }: Membership, deliveryId: string): Promise<"queued" | "off" | "gone" | "erased"> {
   const row = await typedRow(
-    z.object({ endpoint_id: col.uuid, enabled: col.bool, id: col.uuid.nullable() }),
+    z.object({ endpoint_id: col.uuid, enabled: col.bool, erased: col.bool, id: col.uuid.nullable() }),
     sql`
       with source as (
         select d.* from commerce.integration_deliveries d
@@ -211,16 +211,19 @@ export async function resendDelivery({ account, store }: Membership, deliveryId:
         where d.store_id = ${store.id}::uuid and d.id = ${deliveryId}::uuid and d.status <> 'pending'
       ),
       made as (
+        -- A delivery about a person who was erased is never sent again (D440 review).
         insert into commerce.integration_deliveries (store_id, provider, event, subject_id, endpoint_id, payload)
         select s.store_id, s.provider, s.event, s.subject_id, s.endpoint_id, s.payload
         from source s join commerce.webhook_endpoints e on e.id = s.endpoint_id and e.enabled
+        where s.erased_at is null
         returning id
       )
-      select s.endpoint_id, e.enabled, (select id from made) as id
+      select s.endpoint_id, e.enabled, s.erased_at is not null as erased, (select id from made) as id
       from source s join commerce.webhook_endpoints e on e.id = s.endpoint_id
     `,
   );
   if (!row) return "gone";
+  if (row.erased) return "erased";
   if (!row.id) return "off";
   await audit(account.id, store.id, "integration.endpoint_resent", {}, { target: { type: "webhook_endpoint", id: row.endpoint_id } });
   return "queued";

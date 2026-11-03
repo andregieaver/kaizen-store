@@ -70,10 +70,10 @@ export const movingNb: MovingMessages = {
   },
   copy: {
     title: "Kopier butikken",
-    text: "Vi kopierer produktene, kundene, tidligere ordrer og omdirigeringene til denne butikken. Ingenting lagres her før du trykker Ta det over, og ingenting endres i Shopify.",
+    text: "Vi kopierer produktene, kundene, tidligere ordrer, sidene, menyene, landene, frakten, rabattkodene og utseendet til denne butikken. Ingenting lagres her før du trykker Ta det over, og ingenting endres i Shopify.",
     start: "Kopier butikken min",
     starting: "Starter …",
-    feeds: { products: "Produkter", customers: "Kunder", orders: "Tidligere ordrer", redirects: "Omdirigeringer", collections: "Kolleksjoner", pages: "Sider", articles: "Blogginnlegg", menus: "Menyer" },
+    feeds: { products: "Produkter", customers: "Kunder", orders: "Tidligere ordrer", redirects: "Omdirigeringer", collections: "Kolleksjoner", pages: "Sider", articles: "Blogginnlegg", menus: "Menyer", countries: "Land", shipping: "Frakt", discounts: "Rabattkoder", look: "Utseende" },
     stages: {
       waiting: "Venter",
       reading: "Leser fra Shopify …",
@@ -99,7 +99,7 @@ export const movingNb: MovingMessages = {
     },
     bring: "Ta det over",
     bringing: "Starter …",
-    bringText: "Produkter, kunder, tidligere ordrer og omdirigeringer lagres her, i den rekkefølgen. Et produkt som mangler bilde eller produsent, lagres som utkast og listes opp.",
+    bringText: "Alt lagres her i rekkefølgen over. Et produkt som mangler bilde eller produsent, lagres som utkast og listes opp. Rabattkodene kommer slått av, og utseendet kommer som et tema du kan prøve: butikken beholder utseendet sitt til du velger det.",
     liveNote: "Kopierte produkter vises i butikken med en gang. Vil du se på dem først, legg butikken bak et passord før du trykker Ta det over.",
     liveLink: "Legg butikken bak et passord",
     done: "Alt er her ✓",
@@ -108,6 +108,8 @@ export const movingNb: MovingMessages = {
     againAsk: "Starte kopieringen på nytt? Det som allerede er her, blir værende; et produkt som leses på nytt, oppdateres i stedet for å bli dobbelt.",
     cancel: "Avbryt",
     files: "Bruk Shopifys fil i stedet",
+    setHere: "Ordne det her",
+    lookHere: "Se på det",
   },
   files: {
     products: "Importer produkter",
