@@ -77,7 +77,7 @@ export function OldShopStart({ read, initial = "", again = false }: { read: OldS
           id={`${id}-address`}
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          placeholder="myshop.com"
+          placeholder={w.start.placeholder}
           inputMode="url"
           autoComplete="url"
           spellCheck={false}
@@ -280,7 +280,7 @@ function OldRow({ row, redirect, canWrite }: { row: NeedingRow; redirect: OldSho
                   {fillWords(t.redirectPathTo, { path: row.path })}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  <input id={`${id}-to`} value={target} onChange={(e) => setTarget(e.target.value)} placeholder="/category/shoes" autoComplete="off" spellCheck={false} className={`${field} min-w-40 flex-1 font-mono`} />
+                  <input id={`${id}-to`} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={w.table.targetPlaceholder} autoComplete="off" spellCheck={false} className={`${field} min-w-40 flex-1 font-mono`} />
                   <button type="submit" disabled={pending || target.trim() === ""} className={primary}>
                     {t.add}
                   </button>

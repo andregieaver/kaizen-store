@@ -170,6 +170,7 @@ export const redirectsNb: RedirectsMessages = {
     intro: "Flytter du fra Shopify eller en annen nettbutikk? Sjekk at alle lenker til den gamle butikken, fra Google, andre nettsteder og gamle e-poster, fortsatt fører et sted her.",
     start: {
       label: "Adressen til den gamle butikken",
+      placeholder: "minbutikk.no",
       button: "Sjekk den gamle butikken",
       working: "Leser den gamle butikken …",
       help: "Vi leser listen over sider som den gamle butikken gir søkemotorer (nettstedskartet). Ingenting endres i den gamle butikken, og sidene kopieres ikke.",
@@ -209,7 +210,7 @@ export const redirectsNb: RedirectsMessages = {
     again: "Sjekk igjen",
     forget: "Glem denne butikken",
     forgetAsk: "Glemme lenkene til den gamle butikken? Omdirigeringene du har laget, blir værende.",
-    table: { caption: "Gamle lenker som ikke fører noen steder ennå", address: "Gammel adresse", what: "Hva det var", fix: "Fiks den", goesTo: "Går til {path} når du trykker Fiks" },
+    table: { caption: "Gamle lenker som ikke fører noen steder ennå", address: "Gammel adresse", what: "Hva det var", fix: "Fiks den", targetPlaceholder: "/category/sko", goesTo: "Går til {path} når du trykker Fiks" },
     notes: {
       title: "Slik virker det",
       sitemap: "Bare nettstedskartet leses: listen over adresser som den gamle butikken gir søkemotorer.",

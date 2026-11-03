@@ -174,6 +174,7 @@ export const redirectsEn = {
     intro: "Moving from Shopify or another shop? Check that every link to your old shop, from Google, other websites and old emails, still leads somewhere here.",
     start: {
       label: "Your old shop's address",
+      placeholder: "myshop.com",
       button: "Check my old shop",
       working: "Reading your old shop …",
       help: "We read the list of pages your old shop gives search engines (its sitemap). Nothing changes on your old shop, and its pages are not copied.",
@@ -213,7 +214,7 @@ export const redirectsEn = {
     again: "Check again",
     forget: "Forget this shop",
     forgetAsk: "Forget your old shop's links? The redirects you made stay.",
-    table: { caption: "Old links that lead nowhere yet", address: "Old address", what: "What it was", fix: "Fix it", goesTo: "Goes to {path} when you press Fix" },
+    table: { caption: "Old links that lead nowhere yet", address: "Old address", what: "What it was", fix: "Fix it", targetPlaceholder: "/category/shoes", goesTo: "Goes to {path} when you press Fix" },
     notes: {
       title: "How this works",
       sitemap: "Only the sitemap is read: the list of addresses your old shop gives search engines.",

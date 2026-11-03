@@ -70,6 +70,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   media: "files",
   mollie_connections: "secret",
   not_found_hits: "record",
+  old_shops: "record",
   order_discount_codes: "record",
   order_line_components: "record",
   page_ai_jobs: "record",

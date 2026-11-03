@@ -36,10 +36,11 @@ describe("the addresses of the pages", () => {
     expect(redirectPaths("demo")).toEqual({
       list: "/admin/demo/redirects",
       report: "/admin/demo/redirects/404s",
+      oldShop: "/admin/demo/redirects/old-shop",
       import: "/admin/demo/redirects/import",
       export: "/admin/demo/redirects/export",
     });
-    expect(REDIRECT_TABS.map((t) => t.id)).toEqual(["list", "report", "import", "export"]);
+    expect(REDIRECT_TABS.map((t) => t.id)).toEqual(["list", "report", "oldShop", "import", "export"]);
   });
 
   it("leave the defaults out of the list's and the report's addresses", () => {
