@@ -24,6 +24,7 @@ import {
 import type { Membership } from "./auth";
 import { IMPORTS_BUCKET, dataStorage, getJob, type DataDeps, type DataJob } from "./data-job-store";
 import {
+  cancelJob,
   registerCustomerImport,
   registerHistoryImport,
   registerImport,
@@ -133,11 +134,20 @@ async function save(storeId: string, state: CopyState): Promise<void> {
   `);
 }
 
-/** *Copy my shop*: a fresh copy, every feed waiting to be read. The imports' jobs of an earlier copy stay as they are. */
+/**
+ * *Copy my shop* (and *Start again*): a fresh copy, every feed waiting to be read. An earlier copy's imports that were never applied
+ * (uploaded, checking or checked) are cancelled first, since a store has one open import of each kind; an applied one stays as it is.
+ */
 export async function startCopy(member: Membership): Promise<{ ok: boolean }> {
   if (!memberCan(member, OWNER)) return { ok: false };
   const state = await stateOf(member.store.id);
   if (!state) return { ok: false };
+  for (const feed of COPY_FEEDS) {
+    const id = state.feeds[feed].job;
+    if (!id) continue;
+    const job = await getJob(member.store.id, id);
+    if (job && (job.status === "uploaded" || job.status === "checking" || job.status === "checked")) await cancelJob(member, id);
+  }
   await save(member.store.id, { ...EMPTY_COPY, startedAt: new Date().toISOString() });
   log("info", "shopify.copy_started", { storeId: member.store.id });
   return { ok: true };

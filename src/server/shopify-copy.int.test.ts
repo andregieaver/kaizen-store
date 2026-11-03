@@ -145,6 +145,14 @@ describe("copying a Shopify shop", () => {
     expect([view.state.feeds.customers.stage, view.state.feeds.customers.problem]).toEqual(["failed", "shopify_refused"]);
     expect(view.state.feeds.orders.stage).toBe("checked");
     expect((await stateRow()).lease).toBeUndefined();
+    // Start again: the unapplied products import of this copy is cancelled, so a new one can be opened.
+    const before = (await copy.copyView(owner))!.state.feeds.products.job!;
+    refuse = new Set();
+    expect(await copy.startCopy(owner)).toEqual({ ok: true });
+    const [{ status }] = await db().execute<Row>(sql`select status from commerce.data_jobs where id = ${before}::uuid`);
+    expect(status).toBe("cancelled");
+    await settle(owner);
+    expect((await copy.copyView(owner))!.state.feeds.products.stage).toBe("checked");
   });
 
   it("is the owner's alone", async () => {
