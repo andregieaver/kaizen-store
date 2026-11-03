@@ -99,6 +99,8 @@ export const draftsEn = {
       intro: "A shopper asked for this quote on the site. Check the lines, type a price for each line priced on request, and press Send quote: they get an email with a link to accept it by paying.",
       note: "Their note",
       noNote: "They wrote no note.",
+      company: "Their company",
+      companyHint: "As they typed it. To invoice the company, add it with its organisation number under Billing address and company.",
       decline: "Decline the request",
       declineHint: "The customer is emailed your reply, and the request is never sent. It is deleted 30 days later.",
       reply: "Your reply to the customer",

@@ -82,7 +82,7 @@ import {
   VIEW_TITLE_MAX,
 } from "../lib/order-limits";
 import { GRANTABLE_PERMISSIONS } from "../lib/permission-keys";
-import { QUOTE_NOTE_MAX, QUOTE_REPLY_MAX } from "../lib/quotes";
+import { QUOTE_COMPANY_MAX, QUOTE_NOTE_MAX, QUOTE_REPLY_MAX } from "../lib/quotes";
 import { COUNTS_FROM, PERIOD_UNITS, RETENTION_BASES, RETENTION_KINDS } from "../lib/retention";
 import { RETURN_REASONS } from "../lib/withdrawal";
 import { EDITABLE_NOTIFICATIONS, NOTIFICATION_IDS, REQUIRED_NOTIFICATIONS } from "../lib/notifications";
@@ -13250,6 +13250,11 @@ export const draftOrders = commerce.table(
     source: text("source").notNull().default("staff"),
     /** A quote request's note as the shopper wrote it (cleaned like any shopper text); shown to staff only. */
     requestNote: text("request_note"),
+    /**
+     * The company a shopper typed on a request for a quote (D431, D433 fix): their own words, shown to staff beside the note. It never makes the
+     * draft a business sale by itself: `company_name` and `organisation_number` are the buyer staff confirm (or a signed-in company account's).
+     */
+    requestCompany: text("request_company"),
     /** A quote request staff declined (D431): when, and the short reply emailed to the shopper. A declined request is never sent. */
     quoteDeclinedAt: timestamp("quote_declined_at", { withTimezone: true }),
     quoteReply: text("quote_reply"),
@@ -13293,6 +13298,7 @@ export const draftOrders = commerce.table(
     check("draft_orders_valid_days", sql`${t.validDays} is null or ${t.validDays} between ${lit(DRAFT_VALID_DAYS_MIN)} and ${lit(DRAFT_VALID_DAYS_MAX)}`),
     check("draft_orders_pay_sends", sql`${t.paySendsToday} >= 0`),
     check("draft_orders_source", sql`${t.source} in ('staff', 'quote')`),
+    check("draft_orders_request_company", sql`${t.requestCompany} is null or (${t.source} = 'quote' and char_length(${t.requestCompany}) <= ${lit(QUOTE_COMPANY_MAX)})`),
     check(
       "draft_orders_quote",
       sql`(${t.source} = 'quote' or (${t.requestNote} is null and ${t.quoteDeclinedAt} is null))

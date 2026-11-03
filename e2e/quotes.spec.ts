@@ -30,7 +30,7 @@ const quotesFor = async (storeId: string) => {
   const sql = testDb();
   try {
     return await sql`
-      select d.email, d.request_note, d.company_name, d.shipping_address, l.quantity, l.price_requested, l.unit_price_minor
+      select d.email, d.request_note, d.request_company, d.company_name, d.shipping_address, l.quantity, l.price_requested, l.unit_price_minor
       from commerce.draft_orders d join commerce.draft_order_lines l on l.draft_id = d.id
       where d.store_id = ${storeId} and d.source = 'quote' order by d.created_at, l.position`;
   } finally {
@@ -94,7 +94,7 @@ test("where the store offers quotes to everyone, Request a quote is beside Add t
 
   const rows = await quotesFor(store.id);
   expect(rows).toHaveLength(1);
-  expect(rows[0]).toMatchObject({ email: "ola@example.com", company_name: "Nordmann AS", price_requested: false });
+  expect(rows[0]).toMatchObject({ email: "ola@example.com", request_company: "Nordmann AS", company_name: null, price_requested: false });
   expect(Number(rows[0].unit_price_minor)).toBeGreaterThan(0);
 });
 

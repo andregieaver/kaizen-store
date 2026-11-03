@@ -44,7 +44,7 @@ test.beforeAll(async () => {
     requestedProductId = String(variant.product_id);
     await sql`update commerce.products set price_on_request = true where id = ${requestedProductId}`;
     const [draft] = await sql`
-      insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, source, email, shipping_address, company_name, request_note)
+      insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, source, email, shipping_address, request_company, request_note)
       values (${storeId}, commerce.next_draft_number(${storeId}), 'NO', 'no', 'NOK', 'nb-NO', 'quote', ${`kari-${RUN.toLowerCase()}@example.com`},
         ${sql.json({ name: "Kari Nordmann" })}, 'Nordmann AS', ${`Ten for the office, please (${RUN}).`})
       returning id`;

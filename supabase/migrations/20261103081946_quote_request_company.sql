@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."draft_orders" ADD COLUMN "request_company" text;--> statement-breakpoint
+ALTER TABLE "commerce"."draft_orders" ADD CONSTRAINT "draft_orders_request_company" CHECK ("commerce"."draft_orders"."request_company" is null or ("commerce"."draft_orders"."source" = 'quote' and char_length("commerce"."draft_orders"."request_company") <= 120));

@@ -28,7 +28,8 @@ export const QUOTE_LINES_MAX = 50;
 /** Requests a store takes in a day, and a visitor in an hour across the store's forms (`VISITOR_HOURLY` of D93). */
 export const QUOTES_PER_STORE_DAY = 100;
 const NAME_MAX = 120;
-const COMPANY_MAX = 120;
+/** The company a shopper types on a request: refused, not cut, beyond this (also the database's limit, `draft_orders_request_company`). */
+export const QUOTE_COMPANY_MAX = 120;
 const PHONE_MAX = 40;
 
 /**
@@ -150,7 +151,7 @@ export function checkQuoteRequest(
     return value;
   };
   const name = text("name", NAME_MAX);
-  const company = text("company", COMPANY_MAX);
+  const company = text("company", QUOTE_COMPANY_MAX);
 
   let phone: string | null = null;
   if (fields.phone !== "hidden") {

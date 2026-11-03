@@ -94,6 +94,8 @@ export const draftsNb: DraftsMessages = {
       intro: "En kunde ba om dette tilbudet på nettsiden. Sjekk linjene, skriv inn en pris for hver linje med pris på forespørsel, og trykk Send tilbud: kunden får en e-post med en lenke for å godta det ved å betale.",
       note: "Meldingen deres",
       noNote: "De skrev ingen melding.",
+      company: "Bedriften deres",
+      companyHint: "Slik de skrev det. For å fakturere bedriften, legg den inn med organisasjonsnummer under Fakturaadresse og bedrift.",
       decline: "Avslå forespørselen",
       declineHint: "Kunden får svaret ditt på e-post, og forespørselen sendes aldri. Den slettes 30 dager senere.",
       reply: "Svaret ditt til kunden",
