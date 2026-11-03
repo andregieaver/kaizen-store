@@ -5,7 +5,7 @@ the steps the store owner has to do, and how can we make the migration as painle
 the plan in docs/. Remember, we need to make the migration so simple and easy to follow that Homer Simpson could do it without breaking a
 sweat."
 
-**This file is a plan only: nothing here is built yet.** Section 13 holds the questions only the owner can settle. Section 14 lists the
+**This file is the plan; section 17 says which steps are built.** Section 13 holds the questions only the owner can settle. Section 14 lists the
 spikes to run before code. Code, tests and texts follow this file. If they disagree, this file is corrected first.
 
 ---
@@ -504,4 +504,35 @@ As built, differences from 8.2:
   copies nothing.
 - **Shopify's own redirects** are not read yet (they need the API, step 3). Their file can be imported on the Import tab as before.
 - **The limits**: 60 sitemap files and 20,000 addresses (Shopify lists 5,000 per file); the page says when a shop lists more.
+
+**Step 2, Connect (3 November 2026).** Settings → *Moving in* (`/admin/{store}/settings/moving`, the owner's). Homer types any address of
+his shop and presses **Connect Shopify**; Shopify's own page asks him to allow Kaizena Flow to read the shop, and he comes back to
+*Connected to {shop name}* with what it holds (*312 products · 2,180 customers · 940 orders*, counted by Shopify), one press to **Check
+your old links** (step 1, read from the shop's own domain), the file imports for the rest until step 4, and *Disconnect*.
+
+- **The app** is Kaizena Flow's own, described in `shopify/shopify.app.toml` (read scopes only, not embedded, the callback, `app/uninstalled`
+  and the three privacy topics). It is made once in Shopify's Dev Dashboard; until `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET` are set
+  in production the page offers the file imports alone, in their order.
+- **The token**: Shopify now asks new public apps for *expiring* offline tokens (`expiring=1`: an access token of an hour and a refresh
+  token of 90 days, read 3 November 2026 at
+  <https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/authorization-code-grant>). Both are encrypted in
+  `commerce.shop_moves` and refreshed a minute early under the row's lock; a refused refresh, a 401, `app/uninstalled` or *Disconnect*
+  drops them, and `shop/redact` deletes the row.
+- **The callback** spends the code only after the sealed state (the store, the account that pressed and the shop), Shopify's HMAC over
+  the query, the anchored `myshopify.com` name and the same owner signed in now all agree.
+- **Spike S2 answered**: every Shopify storefront answers `/meta.json` with its `myshopify_domain` (tried on a live shop on 3 November
+  2026), and its pages carry `Shopify.shop = "…"`; `findShopifyShop()` asks the first, then the second. A bare handle, a
+  `myshopify.com` address and Shopify's admin address (`admin.shopify.com/store/{handle}`) are read as they are.
+- **Left for the owner** (section 13 and 14): make the app in Shopify's Dev Dashboard under Kaizena Flow's Partner organization (set its
+  `client_id` in the file and deploy it with the Shopify CLI), set the two variables in Vercel, ask Shopify for `read_all_orders` (then
+  add it to the file and set `SHOPIFY_ALL_ORDERS=1`) and for protected customer data (names, emails and addresses need Shopify's approval
+  of the app's data use before Copy can read them). Until `read_all_orders` is approved, Shopify counts and gives the last 60 days of
+  orders.
+
+**How steps 1 and 2 reached production.** A new admin page is a new entry in the admin map, and the map is part of the AI manager's
+prompt, so the agents' eval replay (D391) fails until the eval is recorded again on production; a push with a migration waits for every
+check, so step 1's first push (CI #929) neither applied its migration nor deployed. The tables and the server went first, without the
+pages (`a4441a2`, both migrations); the pages followed in a push of their own without a migration, which deploys at once. **After it
+deploys, run the agents' eval on Platform → AI and commit its recording as `src/data/agent-eval-recording.json`**, so CI's replay
+passes again. A later step that adds a page and a migration ships the same way: migration first, page after.
 

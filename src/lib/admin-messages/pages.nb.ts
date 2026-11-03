@@ -541,6 +541,14 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Sider som ikke ble funnet",
     keywords: ["side ikke funnet", "404", "brutte lenker", "manglende sider", "døde lenker", "404-rapport"],
   },
+  "store:settings.moving": {
+    title: "Flytt inn",
+    keywords: ["shopify", "flytte", "flytt inn", "koble til shopify", "bytte plattform", "importere butikk"],
+  },
+  "store:redirects.old-shop": {
+    title: "Lenkene til den gamle nettbutikken",
+    keywords: ["gammel butikk", "flytte", "flytte fra shopify", "shopify", "gamle lenker", "nettstedskart", "seo"],
+  },
   "store:navigation": {
     title: "Topptekst og bunntekst",
     keywords: ["topptekst", "bunntekst", "logo", "favikon", "nettstedsikon", "header", "footer"],

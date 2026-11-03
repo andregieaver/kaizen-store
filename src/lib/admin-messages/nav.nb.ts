@@ -218,6 +218,8 @@ export const NAV_NB: Record<string, string> = {
     "Opplysningene om virksomheten, stedene og kontaktinformasjonen som kundene og fakturaene viser.",
   Domains: "Domener",
   "The addresses the store is reached at.": "Adressene butikken nås på.",
+  "Moving in": "Flytt inn",
+  "Bring a shop over from Shopify: connect it, check its old links, and import the rest.": "Flytt en butikk fra Shopify: koble den til, sjekk de gamle lenkene og importer resten.",
   Countries: "Land",
   "The countries the store sells to, and its own country.": "Landene butikken selger til, og dens eget land.",
   "Languages and currencies": "Språk og valutaer",

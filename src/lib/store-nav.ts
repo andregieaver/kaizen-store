@@ -247,6 +247,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/settings/company", "Company", "The business details, places and contact information shoppers and invoices show."),
           item("/settings/domains", "Domains", "The addresses the store is reached at."),
+          item("/settings/moving", "Moving in", "Bring a shop over from Shopify: connect it, check its old links, and import the rest."),
           item("/settings/countries", "Countries", "The countries the store sells to, and its own country."),
           item("/settings/localization", "Languages and currencies", "The languages and currencies the store offers, and the exchange rates."),
           item("/settings/features", "Features", "Switch the online shop and the store's features on or off: subscriptions, bookings, countries, languages, selling to businesses and more."),
