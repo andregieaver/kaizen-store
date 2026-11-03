@@ -75,8 +75,8 @@ test("the Norwegian page is the owners' track in Norwegian; the developers' trac
   await expect(page.getByText("Sist kontrollert 3. november 2026")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Brødsmulesti" }).getByRole("link", { name: "Butikkeiere" })).toHaveAttribute("href", "/no/docs/owners");
   await expect(page.getByRole("navigation", { name: "Språk" }).getByRole("link", { name: "English" })).toHaveAttribute("href", PAGE);
-  // A link to another owners' page stays in Norwegian.
-  await expect(page.getByRole("link", { name: "legg inn ditt første produkt" })).toHaveAttribute("href", "/no/docs/owners/getting-started/your-first-product");
+  // A link to another owners' page stays in Norwegian (the article's own words; the tree and the pager name the page with a capital).
+  await expect(page.getByRole("link", { name: "legg inn ditt første produkt", exact: true })).toHaveAttribute("href", "/no/docs/owners/getting-started/your-first-product");
   await page.goto("/no/docs");
   await expect(page.getByRole("region", { name: /Utviklere/ }).getByRole("link", { name: "Utviklere" })).toHaveAttribute("href", "/docs/developers");
   expect((await request.get("/no/docs/developers/overview/introduction")).status()).toBe(404);
