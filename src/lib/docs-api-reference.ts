@@ -684,7 +684,7 @@ export function docsApiReference(options: ReferenceOptions = {}): { reference: D
     toc: 2,
     markdown: para(
       `## Admin API {#admin-api}`,
-      `A token (${mdCode("kf_…")}) holds the scopes its owner chose when making it, and each operation needs one. A ${mdCode(":write")} scope reads too: a token that may change products may read them.`,
+      `A token (${mdCode("kf_…")}) holds the scopes its owner chose when making it, and each operation needs one. Every scope of an area also reads it: a token that may change products may read them. The powers, marked so, are what the AI manager asks the owner's yes for; the token screen keeps them under *Customise*.`,
       mdTable(
         ["Scope", "What it opens", "Operations"],
         API_SCOPES.map((scope) => [link(mdCode(scope), `#${anchorOf(scope)}`), mdCell(scopeWords.get(scope) ?? ""), String(ADMIN_API.filter((o) => o.scope === scope).length)]),

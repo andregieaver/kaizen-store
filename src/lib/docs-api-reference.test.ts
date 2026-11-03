@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import { API_ERRORS, API_SCOPES } from "./admin-api";
 import { ADMIN_API, type AdminOperation } from "./admin-api-routes";
+import { anchorOf } from "./docs-schema";
 import { matchPath } from "./admin-map";
 import { adminExample, docsApiReference, referenceItemUrls, storefrontExample, topicExample, type OperationExample } from "./docs-api-reference";
 import { curlSample, javascriptSample, javascriptSignatureCheck, phpSignatureCheck, pythonLiteral, pythonSample, pythonSignatureCheck, TOKEN_ENV } from "./docs-api-samples";
@@ -101,7 +102,7 @@ describe("the generated reference (D442, E4)", () => {
     const mcp = reference.pages.filter((p) => p.parent === "reference/mcp");
     for (const tool of MCP_TOOLS) expect(mcp.some((p) => p.headings.some((h) => h.id === tool.name.replace(/_/g, "-"))), tool.name).toBe(true);
     for (const tool of UCP_TOOLS) expect(headingIds("reference/mcp/shopping-agents")).toContain(tool.name.replace(/_/g, "-"));
-    for (const scope of API_SCOPES) expect(headingIds("reference/scopes")).toContain(scope.replace(/:/g, "-"));
+    for (const scope of API_SCOPES) expect(headingIds("reference/scopes")).toContain(anchorOf(scope));
     for (const code of Object.keys(API_ERRORS)) expect(headingIds("reference/errors")).toContain(code.replace(/_/g, "-"));
     expect(page("reference/rate-limits").markdown).toContain("| 120 a connection, across its stores | 1,200 | a minute |");
   });
