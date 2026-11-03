@@ -38,8 +38,6 @@ export function BackToAdmin({ storeSlug, adminOrigin }: { storeSlug: string; adm
   if (!path) return null;
   return (
     <>
-      {/* Room at the end of the page, so the button never hides the footer. */}
-      <div aria-hidden className="h-16 print:hidden" />
       <a
         href={`${adminOrigin}${path}`}
         lang="en"
