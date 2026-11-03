@@ -68,7 +68,7 @@ export function PayView({
     );
   }
 
-  const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
   const vatWords = vatText(market.lang);
   const date = new Date(page.draft.expiresAt).toLocaleString(market.locale, { dateStyle: "long", timeStyle: "short", timeZone: store.timeZone });
   const seller = store.details;
@@ -117,7 +117,7 @@ export function PayView({
               <span className="min-w-0 flex-1 break-words">
                 {`${line.quantity} × ${line.title}`}
                 {/* The price per kg, litre or metre of what was priced (D160). A custom item has none. */}
-                <LineUnitPrice shownMinor={line.unitPriceMinor} measure={line.measure} currency={order.currency} locale={market.locale} m={m} />
+                <LineUnitPrice shownMinor={line.unitPriceMinor} measure={line.measure} currency={order.currency} locale={market.locale} decimals={market.priceStyle?.decimals} m={m} />
                 {/* Units on backorder and the days the store states (D172). */}
                 <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} locale={market.locale} />
               </span>

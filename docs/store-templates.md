@@ -183,7 +183,7 @@ the operational set-up:
 
 | Copied | Why |
 |---|---|
-| `stores`: `audience`, `business_popup`, `open_cart_on_add`, `terms_at_checkout`, `locales`, `rates_auto`, `custom_css` | Who it sells to, how the cart and checkout behave, which languages, the CSS its pages rely on. |
+| `stores`: `audience`, `business_popup`, `open_cart_on_add`, `terms_at_checkout`, `locales`, `rates_auto`, `custom_css`, `price_decimals`, `price_words`, `quantity_picker` | Who it sells to, how the cart and checkout behave, which languages, the CSS its pages rely on, how prices and the quantity chooser are shown (D429, D430). |
 | `store_currencies` | The currencies it shows and their rates. |
 | Draft pages and articles (not `variant`), as drafts, with their field values, and page roles that point at them | The legal page drafts (terms, privacy, returns…) and any page not yet published, never published for the owner. |
 | `order_settings`: gift messages, automatic archiving, draft validity | Checkout and order handling choices (`staff_mark_paid` stays off: it is a power, the owner's to give). |

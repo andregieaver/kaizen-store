@@ -25,7 +25,7 @@ test("a reminder's button brings the cart back, and its unsubscribe link asks be
 
   await page.goto(`/s/demo/no/cart/restore/${token}`);
   await expect(page).toHaveURL("/s/demo/no/cart");
-  await expect(page.getByLabel("Antall")).toHaveValue("3");
+  await expect(page.getByRole("spinbutton", { name: /^Antall/ })).toHaveValue("3");
 
   await page.goto(`/s/demo/no/unsubscribe/${token}`);
   await expect(page.getByRole("heading", { level: 1, name: "Påminnelser om handlekurven" })).toBeVisible();

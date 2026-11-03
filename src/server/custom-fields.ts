@@ -784,7 +784,7 @@ function fieldWords(store: Awaited<ReturnType<typeof getStore>>, marketSlug: str
   return {
     yes: m.customFields.yes,
     no: m.customFields.no,
-    money: (value) => shownMoney(value, locale, store && market ? { currency: market.currency, rates: store.localization.rates } : undefined),
+    money: (value) => shownMoney(value, locale, store && market ? { currency: market.currency, rates: store.localization.rates } : undefined, market?.priceStyle),
   };
 }
 

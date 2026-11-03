@@ -23,7 +23,7 @@ export const productEn = {
   },
   advanced: {
     title: "Advanced",
-    text: "The standard category, who buys it, prices by quantity, subscriptions, product safety, tax, returns and where it is sold.",
+    text: "The standard category, who buys it, words around its price, prices by quantity, subscriptions, product safety, tax, returns and where it is sold.",
   },
   terms: {
     title: "Categories and tags",
@@ -349,6 +349,34 @@ export const productEn = {
     addAnother: "Add another purchase option",
     only: "Only sell as a subscription (no one-time purchase)",
     keepPrice: "Subscribers keep the price they signed up at. Changing or removing an option affects new subscribers only.",
+  },
+  /** Words before and after the product's price (D429): the store's, none, or its own by language. */
+  priceWords: {
+    title: "Words around the price",
+    intro: "Short words before or after this product's price, such as “Only” or “/pc”, wherever shoppers see its price. Never beside the cart's lines or totals, on invoices or in feeds.",
+    choices: {
+      inherit: { label: "The store's words", hint: "As set under Settings, Prices and quantity." },
+      none: { label: "None", hint: "Just the price, whatever the store's words." },
+      own: { label: "Its own words", hint: "For this product only, in each of your languages." },
+    },
+    storeWords: "The store's now: {words}",
+    storeNone: "The store has none now.",
+    before: "Before the price",
+    after: "After the price",
+    inLanguage: "In {language}",
+    problems: {
+      long: "At most {max} characters.",
+      plain: "Write plain words, with no tags, line breaks or special spaces.",
+      percent: "Leave percentages out: the store shows a reduction itself, with the lowest price of the last 30 days.",
+      claim: "“{phrase}” could mislead shoppers ({kind}). Write it another way.",
+    },
+    claimKinds: {
+      green: "a general green claim",
+      urgency: "urgency or scarcity",
+      bestPrice: "a best or lowest price",
+      price: "an amount of money",
+      stock: "a stock level",
+    },
   },
   audience: {
     title: "Customers",

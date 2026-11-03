@@ -35,6 +35,8 @@ import { unitPriceProblems } from "@/lib/unit-price-rules";
 import { limitRefusal } from "@/lib/usage-format";
 import { FEATURES_BY_ID, featureOffText, featureOn, kindFeature } from "@/lib/store-features";
 import { MEDIA_KINDS, mediaFileOk, type MediaItemKind, type VideoSource } from "@/lib/product-media";
+import { INHERIT_WORDS, parseProductPriceWords, productWordsColumn, type WordsByLocale } from "@/lib/price-words";
+import { cleanWords, priceWordSentence, wordsProblems } from "@/lib/price-words-check";
 
 import { bundleForEdit, componentProblems, saveBundleComponents } from "./bundles";
 import { profileChoices } from "./shipping-admin";
@@ -115,6 +117,8 @@ export type EditorContext = {
   shippingProfiles?: { id: string; name: string }[];
   /** Markets whose prices a rule works out from another's (D335 A.2): an empty price there is the rule's, not "not sold". */
   ruledMarkets?: string[];
+  /** The store's words around a product's price by language (D429), which a product follows unless it has its own. */
+  priceWords: WordsByLocale;
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
@@ -190,7 +194,14 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     aiWriting: Boolean((await aiFor(store.id))?.textModel),
     shippingProfiles: await profileChoices(store.id),
     ruledMarkets: (await marketPriceRules(store.id)).map((r) => r.market),
+    priceWords: store.priceWords,
   };
+}
+
+/** `products.price_words` for a product's choice (D429): SQL null to follow the store's words, never a JSON null. */
+function priceWordsValue(choice: NonNullable<ProductInput["priceWords"]>) {
+  const column = productWordsColumn(choice);
+  return column === null ? sql`null::jsonb` : sql`${JSON.stringify(column)}::jsonb`;
 }
 
 /** A stay's or rental's host (D71), if one of the store's own; everything else is the store's. */
@@ -379,7 +390,7 @@ export async function getProductForEdit(
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
            delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id, sold_by_measure, shipping_profile_id,
-           standard_category, standard_attributes
+           standard_category, standard_attributes, price_words
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
@@ -608,6 +619,7 @@ export async function getProductForEdit(
     shippingProfileId: product.shipping_profile_id ? String(product.shipping_profile_id) : null,
     standardCategory: product.standard_category ? String(product.standard_category) : null,
     standardAttributes: (product.standard_attributes ?? {}) as StandardAttributes,
+    priceWords: parseProductPriceWords(product.price_words),
     availability: await availabilityOf(store.id, productId),
     countryTexts: await countryTextsOf(store.id, productId),
     appointment: isBooked(kind)
@@ -912,6 +924,13 @@ export async function saveProduct(
     if (unknown.length > 0) return { ok: false, problems: [`No variant with the SKU ${unknown.join(", ")} to switch off.`] };
   }
 
+  // Its own words around its price (D429): each checked, kept tidied and only for the store's languages.
+  if (input.priceWords?.mode === "own") {
+    const found = wordsProblems(input.priceWords.words, context.locales);
+    if (found.length > 0) return { ok: false, problems: found.map(priceWordSentence) };
+    input.priceWords = { mode: "own", words: cleanWords(input.priceWords.words, context.locales) };
+  }
+
   // A description for one country (D338): only the countries the editor shows, in the store's languages.
   if (input.countryTexts) {
     const shown = new Set(context.markets.map((m) => m.code));
@@ -1136,7 +1155,8 @@ async function upsertProduct(
         bundle_pricing = ${bundlePricing(input)}, bundle_percent_off = ${bundlePercent(input)},
         shipping_profile_id = ${input.shippingProfileId === undefined ? sql`shipping_profile_id` : sql`(select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid)`},
         standard_category = ${input.standardCategory === undefined ? sql`standard_category` : sql`${input.standardCategory}`},
-        standard_attributes = ${input.standardCategory === undefined ? sql`standard_attributes` : sql`${JSON.stringify(input.standardAttributes ?? {})}::jsonb`}
+        standard_attributes = ${input.standardCategory === undefined ? sql`standard_attributes` : sql`${JSON.stringify(input.standardAttributes ?? {})}::jsonb`},
+        price_words = ${input.priceWords === undefined ? sql`price_words` : priceWordsValue(input.priceWords)}
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -1147,14 +1167,15 @@ async function upsertProduct(
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
       delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id,
-      sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off, standard_category, standard_attributes
+      sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off, standard_category, standard_attributes, price_words
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
       ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}, ${hostOf(storeId, input)},
       ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}, (select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid),
       ${bundlePricing(input)}, ${bundlePercent(input)}, ${input.standardCategory ?? null},
-      ${JSON.stringify(input.standardCategory ? (input.standardAttributes ?? {}) : {})}::jsonb
+      ${JSON.stringify(input.standardCategory ? (input.standardAttributes ?? {}) : {})}::jsonb,
+      ${priceWordsValue(input.priceWords ?? INHERIT_WORDS)}
     )
     returning id
   `);

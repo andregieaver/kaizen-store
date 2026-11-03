@@ -7,6 +7,7 @@ import { LOCATIONS_MAX, policyProblem, stockPolicyFields } from "./inventory";
 import { PRICE_BREAKS_MAX, priceBreakProblems } from "./price-breaks";
 import { MAX_ORDER_QUANTITY, ruleProblem } from "./quantity-rules";
 import { minorUnitDigits } from "./money";
+import { PRICE_WORD_MAX } from "./price-words";
 import { isPictureAddress } from "./picture-address";
 import { MAX_MEDIA, MEDIA_KINDS, VIDEO_SOURCES, mediaProblems } from "./product-media";
 import { CATEGORY_ID, MAX_ATTRIBUTE_VALUES } from "./product-taxonomy";
@@ -401,6 +402,23 @@ export const productInput = z.object({
   countryTexts: z
     .array(z.object({ market: z.string().regex(/^[A-Z]{2}$/), locale: z.string().min(2).max(10), description: text(10_000) }))
     .max(200)
+    .optional(),
+  /**
+   * Its own words before and after its price (D429, `price-words.ts`): the store's, none, or its own by language. Left out, the product keeps
+   * what it has (an import, the AI manager, an older editor); the server checks each word (`priceWordProblem()`) for the store's languages.
+   */
+  priceWords: z
+    .discriminatedUnion("mode", [
+      z.object({ mode: z.literal("inherit") }),
+      z.object({ mode: z.literal("none") }),
+      z.object({
+        mode: z.literal("own"),
+        words: z.record(
+          z.string().min(2).max(10),
+          z.object({ prefix: z.string().max(PRICE_WORD_MAX * 4), suffix: z.string().max(PRICE_WORD_MAX * 4) }),
+        ),
+      }),
+    ])
     .optional(),
   /** How new variants are delivered; each variant can differ. */
   delivery: z.enum(DELIVERIES).default("physical"),

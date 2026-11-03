@@ -136,7 +136,7 @@ export async function sendIssuedCard(
   const locale = store.markets.find((market) => market.locale.startsWith(card.lang))?.locale ?? card.lang;
   const email = cardEmail(store, {
     code: card.code,
-    amount: formatMoney(card.amountMinor, card.currency, locale),
+    amount: formatMoney(card.amountMinor, card.currency, locale, styleFor(store, card.currency)),
     lang: card.lang,
     locale,
     marketCode: null,
@@ -157,6 +157,9 @@ export async function sendIssuedCard(
   });
 }
 
+/** How a card's amount is written (D429): with the decimals of the country that keeps its currency, else of the store's own. */
+const styleFor = (store: EmailStore, currency: string) => (store.markets.find((m) => m.nativeCurrency === currency) ?? store.markets[0])?.priceStyle;
+
 /** One card: a code, its email, and the card marked sent once the email is out. */
 async function deliverOne(store: EmailStore, card: Row): Promise<"sent" | "failed"> {
   const storeId = store.id;
@@ -170,7 +173,7 @@ async function deliverOne(store: EmailStore, card: Row): Promise<"sent" | "faile
 
   const lang = String(card.locale ?? "").slice(0, 2) || "en";
   const m = t(lang);
-  const amount = formatMoney(Number(card.initial_minor), String(card.currency).trim(), String(card.locale || "en"));
+  const amount = formatMoney(Number(card.initial_minor), String(card.currency).trim(), String(card.locale || "en"), styleFor(store, String(card.currency).trim()));
   const recipient = card.recipient_email ? String(card.recipient_email) : null;
   const to = recipient ?? String(card.buyer_email);
   const email = cardEmail(store, {
@@ -237,7 +240,7 @@ export async function sendRefundCredit(
   const locale = store.markets.find((market) => market.locale.startsWith(card.lang))?.locale ?? card.lang;
   const email = cardEmail(store, {
     code: card.code,
-    amount: formatMoney(card.amountMinor, card.currency, locale),
+    amount: formatMoney(card.amountMinor, card.currency, locale, styleFor(store, card.currency)),
     lang: card.lang,
     locale,
     marketCode: card.marketCode,

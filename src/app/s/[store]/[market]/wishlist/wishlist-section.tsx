@@ -6,6 +6,7 @@ import { optionLabel, t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";
 import { formatMoney } from "@/lib/money";
+import { withWords } from "@/lib/price-words";
 import { canOffer } from "@/lib/stock-words";
 import { shownAmount } from "@/lib/pricing";
 import { getBuyer } from "@/server/b2b";
@@ -54,15 +55,20 @@ async function Wishlist({ store, market, query }: { store: Store; market: Market
         quantity: row.quantity,
         subscriptionOnly: product.subscriptionOnly,
         booking: product.kind !== "goods",
-        fromPrice: `${product.variants.length > 1 ? `${m.fromPrice} ` : ""}${formatMoney(
-          Math.min(...product.variants.map((v) => shownAmount(v.price.amountMinor, v.price.vat, buyer))),
-          product.variants[0]?.price.currency ?? market.currency,
-          market.locale,
+        // The product's price with the owner's words around it (D429); each variant's below is the amount alone.
+        fromPrice: `${product.variants.length > 1 ? `${m.fromPrice} ` : ""}${withWords(
+          formatMoney(
+            Math.min(...product.variants.map((v) => shownAmount(v.price.amountMinor, v.price.vat, buyer))),
+            product.variants[0]?.price.currency ?? market.currency,
+            market.locale,
+            market.priceStyle,
+          ),
+          product.variants[0]?.price.words,
         )}`,
         variants: product.variants.map((v) => ({
           id: v.id,
           label: optionLabel(m, v.options) || product.title,
-          price: formatMoney(shownAmount(v.price.amountMinor, v.price.vat, buyer), v.price.currency, market.locale),
+          price: formatMoney(shownAmount(v.price.amountMinor, v.price.vat, buyer), v.price.currency, market.locale, market.priceStyle),
           available: v.delivery !== "physical" || canOffer(stock.get(v.id)),
         })),
       },

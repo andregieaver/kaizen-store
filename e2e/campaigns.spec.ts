@@ -42,8 +42,8 @@ test("3 for 2 takes the cheapest free, and a free product is added over an amoun
   await expect(page.getByText("Gave: Gratis notatbok")).toHaveCount(0);
 
   // Three bags: one free (−199,00), 398,00 left, over 300,00: a free notebook.
-  await page.getByLabel("Antall").fill("3");
-  await page.getByRole("button", { name: "Oppdater" }).click();
+  await page.getByRole("spinbutton", { name: /^Antall/ }).fill("3");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).press("Enter");
   await expect(summary).toContainText("Rabatt (Tre for to)");
   await expect(summary).toContainText("−199,00");
   await expect(page.getByText("Gave: Gratis notatbok")).toBeVisible();
@@ -160,16 +160,16 @@ test("a tiered campaign shows its ladder and the cart how far the next step and 
   await expect(summary).not.toContainText("Rabatt (");
 
   // Three bags: the top step, 20 % off 597,00 is 119,40, and 477,60 is still 22,40 short of free shipping.
-  await page.getByLabel("Antall").fill("3");
-  await page.getByRole("button", { name: "Oppdater" }).click();
+  await page.getByRole("spinbutton", { name: /^Antall/ }).fill("3");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).press("Enter");
   await expect(summary).toContainText("Rabatt (Kjøp mer)");
   await expect(summary).toContainText("−119,40");
   await expect(next).toContainText(/Handle for .*22,40/);
   await expect(next).not.toContainText("Kjøp 1 til");
 
   // Four bags: 636,80 after the 20 %, so the shipping is free too: −159,20 and −99,00 in one row, and 636,80 to pay.
-  await page.getByLabel("Antall").fill("4");
-  await page.getByRole("button", { name: "Oppdater" }).click();
+  await page.getByRole("spinbutton", { name: /^Antall/ }).fill("4");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).press("Enter");
   await expect(summary).toContainText("Rabatt (Kjøp mer, Fri frakt)");
   await expect(summary).toContainText("−258,20");
   await expect(summary.locator("[data-campaign-next]")).toHaveCount(0);
@@ -191,13 +191,13 @@ test("buy 2 get 1 free is told on the product page and takes the cheapest off in
   await page.goto(`/s/${slug}/no/cart`);
   const summary = page.getByRole("complementary");
   // Two bags: nothing to give yet.
-  await page.getByLabel("Antall").fill("2");
-  await page.getByRole("button", { name: "Oppdater" }).click();
+  await page.getByRole("spinbutton", { name: /^Antall/ }).fill("2");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).press("Enter");
   await expect(summary).toContainText("398,00");
   await expect(summary).not.toContainText("Rabatt (");
   // Three bags at 199,00: one free.
-  await page.getByLabel("Antall").fill("3");
-  await page.getByRole("button", { name: "Oppdater" }).click();
+  await page.getByRole("spinbutton", { name: /^Antall/ }).fill("3");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).press("Enter");
   await expect(summary).toContainText("Rabatt (Kjøp to)");
   await expect(summary).toContainText("−199,00");
 });

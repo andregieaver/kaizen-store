@@ -7231,3 +7231,86 @@ describe("notices of illegal content (DSA art. 16, D411)", () => {
     ).rejects.toThrow(/content_reports_source/);
   });
 });
+
+// Prices with or without decimals, the words around a product's price (D429) and the quantity chooser (D430).
+describe("how a store shows prices and quantities (D429, D430)", () => {
+  const rejects = (sql: string, params: unknown[], pattern: RegExp) => expect(db.query(sql, params)).rejects.toThrow(pattern);
+  let shop: string;
+
+  beforeAll(async () => {
+    shop = await createStore("price-display", ["NO", "DE"]);
+  });
+
+  it("starts with decimals always, no words and − and + buttons, and takes only the known choices", async () => {
+    expect(await one("select price_decimals, price_words, quantity_picker from commerce.stores where id = $1", [shop])).toEqual({
+      price_decimals: "always",
+      price_words: {},
+      quantity_picker: "buttons",
+    });
+    await db.query("update commerce.stores set price_decimals = 'hide_whole', quantity_picker = 'box' where id = $1", [shop]);
+    await db.query("update commerce.stores set quantity_picker = 'hidden' where id = $1", [shop]);
+    await rejects("update commerce.stores set price_decimals = 'round' where id = $1", [shop], /stores_price_decimals/);
+    await rejects("update commerce.stores set quantity_picker = 'slider' where id = $1", [shop], /stores_quantity_picker/);
+  });
+
+  it("keeps a store's words by language as short plain text", async () => {
+    const words = (value: unknown) => db.query("update commerce.stores set price_words = $2::jsonb where id = $1", [shop, JSON.stringify(value)]);
+    await words({ "nb-NO": { prefix: "Kun", suffix: ",-" }, "de-DE": { prefix: "", suffix: "/Stk." } });
+    await words({ "nb-NO": { prefix: "x".repeat(24), suffix: "" } });
+    await words({});
+    await expect(words({ "nb-NO": { prefix: "x".repeat(25), suffix: "" } })).rejects.toThrow(/stores_price_words/);
+    await expect(words({ "nb-NO": { prefix: "<b>Kun</b>", suffix: "" } })).rejects.toThrow(/stores_price_words/);
+    await expect(words({ "nb-NO": { prefix: 5, suffix: "" } })).rejects.toThrow(/stores_price_words/);
+    await expect(words({ "nb-NO": "Kun" })).rejects.toThrow(/stores_price_words/);
+    await expect(words([{ prefix: "Kun" }])).rejects.toThrow(/stores_price_words/);
+  });
+
+  it("lets a country follow the store's decimals or choose its own", async () => {
+    await db.query("update commerce.markets set price_decimals = 'hide_whole' where store_id = $1 and code = 'NO'", [shop]);
+    await db.query("update commerce.markets set price_decimals = null where store_id = $1 and code = 'NO'", [shop]);
+    await rejects("update commerce.markets set price_decimals = 'never' where store_id = $1 and code = 'DE'", [shop], /markets_price_decimals/);
+  });
+
+  it("keeps a product's choice: the store's (null), none, or its own words by language", async () => {
+    const { productId } = await createProduct({ storeId: shop });
+    const set = (value: unknown) =>
+      db.query("update commerce.products set price_words = $2::jsonb where id = $1", [productId, value === null ? null : JSON.stringify(value)]);
+    await set(null);
+    await set({ mode: "none" });
+    await set({ mode: "own", words: { "nb-NO": { prefix: "Fra kun", suffix: "/stk" } } });
+    await set({ mode: "own", words: {} });
+    await expect(set({ mode: "own" })).rejects.toThrow(/products_price_words/);
+    await expect(set({ mode: "store" })).rejects.toThrow(/products_price_words/);
+    await expect(set({ mode: "own", words: { "nb-NO": { prefix: "y".repeat(25), suffix: "" } } })).rejects.toThrow(/products_price_words/);
+    await expect(set({ mode: "own", words: { "nb-NO": { prefix: "", suffix: "<i>" } } })).rejects.toThrow(/products_price_words/);
+    // A JSON null is not the store's: only SQL null follows it.
+    await expect(db.query("update commerce.products set price_words = 'null'::jsonb where id = $1", [productId])).rejects.toThrow(/products_price_words/);
+  });
+
+  it("comes along when the store is copied: its choices, each country's decimals and a product's own words (D129)", async () => {
+    const owner = await createAccount("price-display-copier@example.com");
+    const source = await createStore("price-display-source", ["NO", "DE"]);
+    await db.query(
+      `update commerce.stores set price_decimals = 'hide_whole', quantity_picker = 'box',
+         price_words = '{"nb-NO": {"prefix": "Kun", "suffix": ",-"}}' where id = $1`,
+      [source],
+    );
+    await db.query("update commerce.markets set price_decimals = 'always' where store_id = $1 and code = 'DE'", [source]);
+    const { productId } = await createProduct({ storeId: source });
+    await db.query(`update commerce.products set price_words = '{"mode": "own", "words": {"nb-NO": {"prefix": "", "suffix": "/stk"}}}' where id = $1`, [productId]);
+    const { id: copy } = await one<{ id: string }>("select commerce.duplicate_store($1, 'price-display-copy', 'Copy', $2) as id", [source, owner]);
+    expect(await one("select price_decimals, price_words, quantity_picker from commerce.stores where id = $1", [copy])).toEqual({
+      price_decimals: "hide_whole",
+      price_words: { "nb-NO": { prefix: "Kun", suffix: ",-" } },
+      quantity_picker: "box",
+    });
+    const { rows } = await db.query("select code, price_decimals from commerce.markets where store_id = $1 order by code", [copy]);
+    expect(rows).toEqual([
+      { code: "DE", price_decimals: "always" },
+      { code: "NO", price_decimals: null },
+    ]);
+    expect(await one("select price_words from commerce.products where store_id = $1", [copy])).toEqual({
+      price_words: { mode: "own", words: { "nb-NO": { prefix: "", suffix: "/stk" } } },
+    });
+  });
+});

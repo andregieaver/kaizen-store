@@ -1,6 +1,6 @@
 import type { RedeemedCode, ShopperReward } from "@/lib/bonus-rewards";
 import type { Messages } from "@/lib/i18n";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type PriceDecimals } from "@/lib/money";
 
 /**
  * My account's rewards and birthday (D401), under the credits: each reward with its cost and a button that spends the credits and makes the
@@ -17,6 +17,7 @@ export function BonusRewardsSection({
   outcome,
   redeem,
   saveBirthday,
+  decimals,
 }: {
   rewards: ShopperReward[];
   codes: RedeemedCode[];
@@ -29,9 +30,11 @@ export function BonusRewardsSection({
   outcome: "ok" | "failed" | null;
   redeem: (rewardId: string) => Promise<void>;
   saveBirthday: (form: FormData) => Promise<void>;
+  /** The market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
 }) {
   const b = m.bonus;
-  const money = (minor: number) => formatMoney(minor, currency, locale);
+  const money = (minor: number) => formatMoney(minor, currency, locale, { decimals });
   const [month, day] = birthday ? birthday.split("-") : ["", ""];
   return (
     <>

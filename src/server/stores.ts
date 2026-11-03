@@ -25,6 +25,9 @@ import { featureOn, normaliseFeatures, type FeatureId } from "@/lib/store-featur
 import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
 import { rememberStoreAddress, type StoreAddress } from "@/lib/store-address";
 import { localized } from "@/lib/store-localized";
+import { isPriceDecimals, type PriceDecimals } from "@/lib/money";
+import { parseWordsByLocale, type WordsByLocale } from "@/lib/price-words";
+import { isQuantityPicker, type QuantityPicker } from "@/lib/quantity-stepper";
 
 export type StoreStatus = "active" | "suspended" | "closed";
 
@@ -56,6 +59,15 @@ export type Store = {
   businessPopup: boolean;
   /** On phones, open the slide-out cart once something is added to it (D64). */
   openCartOnAdd: boolean;
+  /**
+   * Prices with or without decimals, the store's own choice (D429); a market may differ, so shoppers' amounts are written with the market's
+   * `priceStyle`, never with this. The settings page edits it.
+   */
+  priceDecimals: PriceDecimals;
+  /** The store's words before and after a product's price, by language (D429); the markets carry them with the main language. */
+  priceWords: WordsByLocale;
+  /** The quantity chooser on a product page (D430): − and + buttons, a number box alone, or none; a layout's buy part may differ. */
+  quantityPicker: QuantityPicker;
   /** The store's return rules as search engines are told them (D153): the window, who pays return shipping, excluded goods. */
   returnPolicy: ReturnPolicyFacts;
   /** Cookieless visit counting for the analytics is on (D152); off until the owner switches it on. */
@@ -209,6 +221,7 @@ async function readStore(slug: string): Promise<Store | null> {
       s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
       s.terms_at_checkout, s.customer_accounts, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
+      s.price_decimals, s.price_words, s.quantity_picker,
       s.locales, s.rates_auto, s.rates_updated_at,
       (
         select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
@@ -233,13 +246,13 @@ async function readStore(slug: string): Promise<Store | null> {
       ) as payments_test,
       coalesce(
         json_agg(json_build_object(
-          'code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale
+          'code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale, 'priceDecimals', m.price_decimals
         ) order by (m.code = s.country) desc nulls last, m.created_at, m.code)
           filter (where m.code is not null),
         '[]'
       ) as markets,
       (
-        select coalesce(json_agg(json_build_object('code', a.code, 'currency', a.currency, 'defaultLocale', a.default_locale)
+        select coalesce(json_agg(json_build_object('code', a.code, 'currency', a.currency, 'defaultLocale', a.default_locale, 'priceDecimals', a.price_decimals)
           order by a.active desc, (a.code = s.country) desc nulls last, a.created_at, a.code), '[]')
         from commerce.markets a where a.store_id = s.id
       ) as all_markets,
@@ -280,6 +293,9 @@ async function readStore(slug: string): Promise<Store | null> {
     chosenAudience: parseStoreAudience(row.audience),
     businessPopup: Boolean(row.business_popup) && effectiveAudience(row.audience, normaliseFeatures(((row.features ?? []) as unknown[]).map(String))) === "both",
     openCartOnAdd: Boolean(row.open_cart_on_add),
+    priceDecimals: isPriceDecimals(row.price_decimals) ? row.price_decimals : "always",
+    priceWords: parseWordsByLocale(row.price_words),
+    quantityPicker: isQuantityPicker(row.quantity_picker) ? row.quantity_picker : "buttons",
     returnPolicy: returnPolicyOf(row.return_policy),
     visitCounting: Boolean(row.visit_counting),
     privateMode: Boolean(row.private_mode) && !row.is_template && !row.starter,

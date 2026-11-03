@@ -83,7 +83,7 @@ async function requireCheckout(store: Store, market: Market) {
 }
 
 const moneyOf = (view: CheckoutView, market: Market) => (minor: number) =>
-  formatMoney(minor, view.order.currency, market.locale);
+  formatMoney(minor, view.order.currency, market.locale, market.priceStyle);
 
 /**
  * Kaizen's checkout (decision D22): the order placed from the cart, paid with
@@ -209,6 +209,7 @@ function itemsList(view: CheckoutView, market: Market) {
               gift={line.gift}
               currency={order.currency}
               locale={market.locale}
+              decimals={market.priceStyle?.decimals}
               m={m}
             />
             {/* What is on backorder (D172): the order's own figure, provisional until it is paid. */}
@@ -274,6 +275,7 @@ function creditsBlock(store: Store, market: Market, view: CheckoutView) {
       locale={market.locale}
       signInHref={marketPath(store.slug, market.slug, "/account")}
       action={checkoutCreditsAction.bind(null, store.slug, market.slug)}
+      decimals={market.priceStyle?.decimals}
     />
   );
 }
@@ -472,6 +474,7 @@ async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
       initial={options}
       currency={order.currency}
       locale={market.locale}
+      decimals={market.priceStyle?.decimals}
       business={order.company !== null}
       vatRate={order.shippingVatRate}
       timeZone={store.timeZone}

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { BackorderLine } from "@/components/backorder-note";
 import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
+import { CartQuantity } from "@/components/cart-quantity";
 import { ExpressArea } from "@/components/express-area";
 import { KlarnaMessage } from "@/components/klarna-message";
 import { stripeLocale } from "@/lib/checkout";
@@ -24,7 +25,7 @@ import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { nextStepText } from "@/lib/campaign-notices";
 import { campaignLabel } from "@/lib/campaigns";
-import { lineMax, ruleWords } from "@/lib/quantity-rules";
+import { ruleWords } from "@/lib/quantity-rules";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { cartCustomsSentences, customsText } from "@/lib/customs-text";
 import { optionLabel, type Messages } from "@/lib/i18n";
@@ -78,7 +79,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
   const every = plan ? m.planEvery(plan.interval, plan.intervalCount) : "";
   // Businesses see amounts without VAT, and the VAT on its own line (B2B); they pay the total with it.
   const business = buyer === "business";
-  const money = (minor: number) => formatMoney(minor, cart.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, cart.currency, market.locale, market.priceStyle);
   // Each line at its product's VAT rate, shipping at the standard one, as checkout works it out (D65).
   const net = (minor: number, rate = checkout.vatRate) => money(business ? withoutVat(minor, rate) : minor);
   const sumNet = (parts: { minor: number; rate: number }[]) =>
@@ -130,7 +131,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
         facts: companyFacts,
         chosen: chosenPlace?.id ?? null,
         poNumber: cart.companyPurchase.poNumber,
-        limitText: companyFacts.limit && chosenPlace?.role === "orderer" ? formatMoney(companyFacts.limit.minor, companyFacts.limit.currency, market.locale) : null,
+        limitText: companyFacts.limit && chosenPlace?.role === "orderer" ? formatMoney(companyFacts.limit.minor, companyFacts.limit.currency, market.locale, market.priceStyle) : null,
       }
     : null;
   // The store's own questions at checkout (D357), with what the cart holds of the answers.
@@ -362,6 +363,7 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
                   measure={line.measure}
                   currency={cart.currency}
                   locale={market.locale}
+                  decimals={market.priceStyle?.decimals}
                   m={m}
                 />
                 {line.booking && (
@@ -438,29 +440,23 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
 
             <div className="flex flex-wrap items-end gap-2">
               {/* An appointment is one place at one time (D65), a stay its nights (D67): nothing to count. */}
+              {/* − and + (D430), saved a moment after the last change; the number and Update without a script. */}
               {line.status !== "unavailable" && !line.booking && (
-                <form action={updateCartLine} className="flex items-end gap-2">
-                  <input type="hidden" name="store" value={store.slug} />
-                  <input type="hidden" name="market" value={market.slug} />
-                  <input type="hidden" name="variantId" value={line.variantId} />
-                  {line.plan && <input type="hidden" name="sellingPlanId" value={line.plan.id} />}
-                  {line.giftCard?.key && <input type="hidden" name="giftCardKey" value={line.giftCard.key} />}
-                  <label className="flex flex-col text-sm">
-                    {m.quantity}
-                    <input
-                      type="number"
-                      name="quantity"
-                      min={line.rule.min}
-                      max={lineMax(line.rule)}
-                      step={line.rule.step}
-                      defaultValue={line.quantity}
-                      className={`min-h-11 ${drawer ? "w-16" : "w-20"} rounded-md border border-border bg-background px-2`}
-                    />
-                  </label>
-                  <button type="submit" className="min-h-11 rounded-md border border-border px-3 text-sm">
-                    {m.update}
-                  </button>
-                </form>
+                <CartQuantity
+                  action={updateCartLine}
+                  fields={{
+                    store: store.slug,
+                    market: market.slug,
+                    variantId: line.variantId,
+                    ...(line.plan && { sellingPlanId: line.plan.id }),
+                    ...(line.giftCard?.key && { giftCardKey: line.giftCard.key }),
+                  }}
+                  rule={line.rule}
+                  quantity={line.quantity}
+                  labels={{ quantity: m.quantity, less: m.quantityLess, more: m.quantityMore, update: m.update, saving: m.quantitySaving }}
+                  context={line.title}
+                  compact={drawer}
+                />
               )}
               <form action={updateCartLine}>
                 <input type="hidden" name="store" value={store.slug} />
@@ -780,6 +776,7 @@ function creditsForm({ store, market, m, view }: Draw) {
       locale={market.locale}
       signInHref={marketPath(store.slug, market.slug, "/account")}
       action={setCartCreditsAction.bind(null, store.slug, market.slug)}
+      decimals={market.priceStyle?.decimals}
     />
   );
 }

@@ -28,6 +28,7 @@ import { menuLinkSchema, type MenuLink } from "./navigation";
 import { modalDomId, repeatedModalKey, type RowModal } from "./page-modal";
 import { rowModalSchema } from "./page-modal-schema";
 import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
+import { QUANTITY_PICKERS, type QuantityPicker } from "./quantity-stepper";
 import { displaysProblem, publicRows, showSchema, type Show } from "./visibility";
 import { withoutIcons } from "./table-icons";
 import { foldTypography, textGradientSchema, typographyAtSchema, typographyFamilies, typographyGroupsSchema, type TextGradient, type TypographyGroups, type TypographyGroupsAt } from "./typography";
@@ -1026,6 +1027,8 @@ export type ProductBlock = PartBase & {
   loop?: Pick<LoopConfig, "layout" | "columns" | "slots" | "linkWholeCard">;
   /** Buy: from this many variants each option is a list of its own (D320); 12 unless set (`OPTIONS_FROM`). */
   optionsFrom?: number;
+  /** Buy: how the shopper chooses how many (D430): − and + buttons, the number box alone, or none; the store's (`stores.quantity_picker`) unless set. */
+  quantity?: QuantityPicker;
 };
 
 /**
@@ -3061,6 +3064,7 @@ const productBlock = z.object({
   source: z.literal("store").optional(),
   loop: loopSettings.optional(),
   optionsFrom: z.number().int().min(2, "Lists per option start at 2 variants or more.").max(2048, "Lists per option start at 2,048 variants at most.").optional(),
+  quantity: z.enum(QUANTITY_PICKERS as [QuantityPicker, ...QuantityPicker[]], "Choose how shoppers pick a quantity.").optional(),
   ...partBase,
 });
 

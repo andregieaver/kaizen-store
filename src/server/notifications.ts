@@ -18,7 +18,7 @@ import {
   type TemplatedSlots,
 } from "@/lib/email-template";
 import { deliveryEmailText, emailText, type EmailText } from "@/lib/email-text";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type MoneyStyle } from "@/lib/money";
 import { sampleOrder, samplePlaceholders, type SampleOrder } from "@/lib/notification-sample";
 import {
   NOTIFICATIONS,
@@ -337,10 +337,11 @@ const STAND_INS: Record<string, string[]> = {
 };
 
 /** The sample order's market for a language: the store's country in that language when it has one, its currency the country's own. */
-function sampleMarket(store: EmailStore, lang: string): { currency: string; locale: string } {
+function sampleMarket(store: EmailStore, lang: string): { currency: string; locale: string; priceStyle: MoneyStyle } {
   const locale = store.localization.locales.find((l) => templateLocale(l) === lang) ?? store.markets[0]?.ownLocale ?? "en-GB";
   const market = store.markets.find((m) => templateLocale(m.ownLocale) === lang) ?? store.markets[0];
-  return { currency: market?.nativeCurrency ?? "EUR", locale };
+  // The country's way with a whole amount's decimals (D429), as the email itself will write its amounts.
+  return { currency: market?.nativeCurrency ?? "EUR", locale, priceStyle: market?.priceStyle };
 }
 
 export type NotificationPreview = {
@@ -374,7 +375,7 @@ export async function previewNotification(storeId: string, id: string, lang: str
   const problems = template ? templateProblems(template, id) : [];
   const slots = withTemplate(standard, template, id, values);
   const text: EmailText = emailText(locale);
-  const money = (minor: number) => formatMoney(minor, sample.currency, sample.locale);
+  const money = (minor: number) => formatMoney(minor, sample.currency, sample.locale, market.priceStyle);
   const ordered = ["order.confirmation", "subscription.renewed", "order.sent", "order.parcel_out_for_delivery", "order.parcel_delivered", "order.ready_for_pickup"].includes(id);
   const blocks: EmailBlock[] = [
     { type: "heading", text: slots.heading },

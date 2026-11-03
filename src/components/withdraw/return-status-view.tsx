@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { Messages } from "@/lib/i18n";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type PriceDecimals } from "@/lib/money";
 import { formatDeclaration, formatStoreDay } from "@/lib/return-time";
 import { isEnded, type ReturnStatus } from "@/lib/return-status";
 import type { ShopperReturn } from "@/server/returns";
@@ -20,7 +20,14 @@ export type StatusExtras = {
   wishForm: ReactNode | null;
 };
 
-type Props = { m: R; ret: ShopperReturn; locale: string; extras?: StatusExtras };
+type Props = {
+  m: R;
+  ret: ShopperReturn;
+  locale: string;
+  extras?: StatusExtras;
+  /** The market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
+};
 
 /** A web address only when it is one the shopper's browser may open: the store pastes it, and a page does not trust it. */
 const safeHref = (value: string | null): string | null => (value && /^https:\/\/\S+$/.test(value) ? value : null);
@@ -30,7 +37,7 @@ const safeHref = (value: string | null): string | null => (value && /^https:\/\/
  * Read only. It shows the order number and the goods, never the shopper's email or address. Drawn from `getShopperReturn()`;
  * the page, and the tests, give it the same data.
  */
-export function ReturnStatusView({ m, ret, locale, extras }: Props) {
+export function ReturnStatusView({ m, ret, locale, extras, decimals }: Props) {
   const status = ret.status as ReturnStatus;
   const open = !isEnded(status);
   const day = (iso: string) => new Intl.DateTimeFormat(safeLocale(locale), { dateStyle: "long", timeZone: ret.timeZone }).format(new Date(iso));
@@ -110,7 +117,7 @@ export function ReturnStatusView({ m, ret, locale, extras }: Props) {
             </div>
           )}
           {ret.label.source === "carrier" && extras ? (
-            <BookedLabel ret={ret} extras={extras} locale={locale} />
+            <BookedLabel ret={ret} extras={extras} locale={locale} decimals={decimals} />
           ) : (
             labelHref && (
               <p>
@@ -131,9 +138,9 @@ export function ReturnStatusView({ m, ret, locale, extras }: Props) {
         </section>
       )}
 
-      {extras && <ExchangeState ret={ret} extras={extras} locale={locale} />}
+      {extras && <ExchangeState ret={ret} extras={extras} locale={locale} decimals={decimals} />}
 
-      {refunded && <p role="status">{m.refunded(formatMoney(ret.refundMinor!, ret.currency, locale), day(ret.refundedAt!))}</p>}
+      {refunded && <p role="status">{m.refunded(formatMoney(ret.refundMinor!, ret.currency, locale, { decimals }), day(ret.refundedAt!))}</p>}
       {ret.outcome === "no_refund" && <p>{m.noRefund}</p>}
       {ret.acknowledgementReference && (
         <p className="text-sm text-muted">
@@ -149,7 +156,7 @@ export function ReturnStatusView({ m, ret, locale, extras }: Props) {
  * store's keys), the carrier, the tracking number with its link, whether it is a test label, and who pays (`LabelCost`), or that it is free for the shopper
  * when the store pays.
  */
-function BookedLabel({ ret, extras, locale }: { ret: ShopperReturn; extras: StatusExtras; locale: string }) {
+function BookedLabel({ ret, extras, locale, decimals }: { ret: ShopperReturn; extras: StatusExtras; locale: string; decimals?: PriceDecimals }) {
   const l = extras.words.returnLabel;
   const trackingHref = safeHref(ret.label.trackingUrl);
   return (
@@ -184,7 +191,7 @@ function BookedLabel({ ret, extras, locale }: { ret: ShopperReturn; extras: Stat
       {ret.whoPaysReturn === "store" ? (
         <p className="text-sm">{l.freeForYou}</p>
       ) : (
-        <LabelCost ret={ret} words={l} locale={locale} />
+        <LabelCost ret={ret} words={l} locale={locale} decimals={decimals} />
       )}
     </div>
   );
@@ -194,19 +201,19 @@ function BookedLabel({ ret, extras, locale }: { ret: ShopperReturn; extras: Stat
  * What the label takes off the refund, for a shopper who pays return shipping (4.8, As built): once refunded, what was taken off; before, the label's cost
  * only *if* the parcel is sent with it (nothing is taken off at booking, staff confirm at refund time). A test label cannot be used and is never taken off.
  */
-function LabelCost({ ret, words: l, locale }: { ret: ShopperReturn; words: StatusExtras["words"]["returnLabel"]; locale: string }) {
+function LabelCost({ ret, words: l, locale, decimals }: { ret: ShopperReturn; words: StatusExtras["words"]["returnLabel"]; locale: string; decimals?: PriceDecimals }) {
   if (ret.label.test) return null;
-  if (ret.refundMinor !== null) return ret.returnShippingMinor > 0 ? <p className="text-sm">{l.costOff(formatMoney(ret.returnShippingMinor, ret.currency, locale))}</p> : null;
-  return ret.label.costMinor !== null && ret.label.costMinor > 0 ? <p className="text-sm">{l.costIfUsed(formatMoney(ret.label.costMinor, ret.currency, locale))}</p> : null;
+  if (ret.refundMinor !== null) return ret.returnShippingMinor > 0 ? <p className="text-sm">{l.costOff(formatMoney(ret.returnShippingMinor, ret.currency, locale, { decimals }))}</p> : null;
+  return ret.label.costMinor !== null && ret.label.costMinor > 0 ? <p className="text-sm">{l.costIfUsed(formatMoney(ret.label.costMinor, ret.currency, locale, { decimals }))}</p> : null;
 }
 
 /**
  * The exchange beside the return's steps (D239 2.1): the customer's wish (the form while it can be made, or that it was sent), then the newest proposal's
  * state in plain words. The proposal's own page is reached from the store's email only: its token is kept as a hash, so this page cannot link to it.
  */
-function ExchangeState({ ret, extras, locale }: { ret: ShopperReturn; extras: StatusExtras; locale: string }) {
+function ExchangeState({ ret, extras, locale, decimals }: { ret: ShopperReturn; extras: StatusExtras; locale: string; decimals?: PriceDecimals }) {
   const x = extras.words.exchange;
-  const money = (minor: number) => formatMoney(minor, ret.currency, locale);
+  const money = (minor: number) => formatMoney(minor, ret.currency, locale, { decimals });
   const when = (iso: string) => new Date(iso).toLocaleString(safeLocale(locale), { dateStyle: "long", timeStyle: "short", timeZone: ret.timeZone });
   const ex = ret.exchange;
   if (!ex) {

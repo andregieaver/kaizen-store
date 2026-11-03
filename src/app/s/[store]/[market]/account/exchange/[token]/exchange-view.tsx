@@ -47,7 +47,7 @@ export function ExchangeView({
   const x = m.exchange;
   const { exchange } = page;
   // The exchange is in the original order's own currency (D109: never converted again).
-  const money = (minor: number) => formatMoney(minor, exchange.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, exchange.currency, market.locale, market.priceStyle);
   const date = (iso: string | null) => (iso ? new Date(iso).toLocaleString(market.locale, { dateStyle: "long", timeStyle: "short", timeZone: store.timeZone }) : null);
   const storeName = store.details.legalName ?? store.name;
   const contact = store.details.contactEmail;

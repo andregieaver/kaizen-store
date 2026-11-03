@@ -65,6 +65,7 @@ async function AccountBonus({ params, searchParams }: { params: Props["params"];
       locale={market.locale}
       base={base}
       orderIds={Object.fromEntries(orders.map((order) => [order.number, order.id]))}
+      decimals={market.priceStyle?.decimals}
     />
     <BonusRewardsSection
       rewards={rewards}
@@ -77,6 +78,7 @@ async function AccountBonus({ params, searchParams }: { params: Props["params"];
       outcome={outcome}
       redeem={redeemRewardAction.bind(null, store.slug, market.slug)}
       saveBirthday={birthdayAction.bind(null, store.slug, market.slug)}
+      decimals={market.priceStyle?.decimals}
     />
     </>
   );

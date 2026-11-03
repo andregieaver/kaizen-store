@@ -1,4 +1,7 @@
 import { parseStoreAudience, vatShown, withoutVat, type Buyer, type VatShown } from "./b2b";
+import type { PriceStyle } from "./markets";
+import type { PriceDecimals } from "./money";
+import { shownPriceWords, type PriceWords, type ProductPriceWords } from "./price-words";
 import type { ShownMeasure } from "./unit-price";
 
 /**
@@ -21,9 +24,25 @@ export type PriceView = {
    * content (or not goods).
    */
   measure: ShownMeasure | null;
+  /** How its amounts are written (D429): `hide_whole` leaves a whole amount's decimals off; absent keeps them. Set by `styledPrice()`. */
+  decimals?: PriceDecimals;
+  /**
+   * The owner's words before and after the amount (D429), in the shopper's language: a product's price only (the catalogue's), never a
+   * line, a total or the 30-day reference. Absent for none. Set by `styledPrice()`.
+   */
+  words?: PriceWords;
 };
 
 export type PriceVat = { rate: number; shown: VatShown };
+
+/**
+ * A product's price as its market shows it (D429): with the market's decimals and the words around it in `locale`, the product's own over
+ * the store's. The catalogue's readers call it, so every card, grid, search result, product page and chat card shows the same.
+ */
+export function styledPrice(view: PriceView, style: PriceStyle | undefined, product: ProductPriceWords, locale: string): PriceView {
+  const words = shownPriceWords(style?.words, product, locale);
+  return { ...view, ...(style?.decimals === "hide_whole" && { decimals: style.decimals }), ...(words && { words }) };
+}
 
 /** Prices as consumers see them: with VAT. */
 export const WITH_VAT: PriceVat = { rate: 0, shown: "incl" };

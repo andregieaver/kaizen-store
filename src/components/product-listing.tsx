@@ -259,7 +259,7 @@ function dialogFacets(facets: ListingFacets, m: Messages, market: Market): Filte
 }
 
 function dialogLabels(facets: ListingFacets, m: Messages, market: Market) {
-  const whole = (amount: number) => formatMoney(amount * 10 ** minorUnitDigits(market.currency), market.currency, market.locale);
+  const whole = (amount: number) => formatMoney(amount * 10 ** minorUnitDigits(market.currency), market.currency, market.locale, market.priceStyle);
   return {
     open: m.listing.open,
     title: m.listing.title,
@@ -284,7 +284,7 @@ function dialogLabels(facets: ListingFacets, m: Messages, market: Market) {
 /** How a chosen filter reads, in the shopper's language, with names from the store. */
 function chosenText(item: ChosenFilter, filters: ListingFilters, facets: ListingFacets, terms: Term[], m: Messages, market: Market): string {
   const labels = m.options as Record<string, string>;
-  const whole = (amount: number) => formatMoney(Math.round(amount * 10 ** minorUnitDigits(market.currency)), market.currency, market.locale);
+  const whole = (amount: number) => formatMoney(Math.round(amount * 10 ** minorUnitDigits(market.currency)), market.currency, market.locale, market.priceStyle);
   switch (item.type) {
     case "kind":
       return capitalise(m.search.kinds[item.value]);

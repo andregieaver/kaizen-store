@@ -284,6 +284,9 @@ export const NAV_NB: Record<string, string> = {
   "Apps and API": "Apper og API",
   Workflows: "Arbeidsflyter",
   "Checkout rules": "Regler i kassen",
+  "Prices and quantity": "Priser og antall",
+  "How shoppers see prices, with or without ,00 on whole amounts and your words before and after them, and how they choose how many.":
+    "Hvordan kundene ser prisene, med eller uten ,00 på hele beløp og med dine ord før og etter dem, og hvordan de velger antall.",
   Staging: "Klargjøring",
   "Gather changes to pages, the look and menus, compare them with what visitors see, and make them live together.": "Samle endringer i sider, utseende og menyer, sammenlign dem med det besøkende ser, og publiser dem samtidig.",
   "Hide or rename a delivery option, leave a payment method out or stop an order when the basket matches; and questions the checkout asks.": "Skjul eller gi nytt navn til et leveringsvalg, hold en betalingsmåte utenfor eller stopp en bestilling når handlekurven passer; og spørsmål kassen stiller.",

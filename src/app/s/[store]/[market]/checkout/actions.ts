@@ -139,7 +139,7 @@ export async function checkoutCodeAction(
     const check = await checkCodeForOrder(cartShop, open.orderId, text);
     if (!check.ok) {
       return {
-        problem: codeProblemText(m, check, (minor) => formatMoney(minor, shop.market.currency, shop.market.locale)),
+        problem: codeProblemText(m, check, (minor) => formatMoney(minor, shop.market.currency, shop.market.locale, shop.market.priceStyle)),
         tried: text,
       };
     }

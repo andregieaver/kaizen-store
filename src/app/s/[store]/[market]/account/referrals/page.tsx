@@ -52,6 +52,7 @@ async function AccountReferrals({ params }: { params: Props["params"] }) {
       m={t(market.lang)}
       locale={market.locale}
       base={base}
+      decimals={market.priceStyle?.decimals}
     />
   );
 }

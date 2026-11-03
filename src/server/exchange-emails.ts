@@ -48,7 +48,7 @@ async function send(storeId: string, kind: string, key: string, x: ExchangeView,
   const [to] = recipientsOf(facts);
   if (!to) return null;
   const { store, market, text } = ctx;
-  const money = (minor: number) => formatMoney(minor, x.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, x.currency, market.locale, market.priceStyle);
   const fixed = await build(text, money, ctx, facts);
   const [names] = await db().execute<Row>(sql`
     select shipping_address ->> 'name' as shipping_name, billing_address ->> 'name' as billing_name from commerce.orders
@@ -219,7 +219,7 @@ export async function sendLabelReady(storeId: string, returnId: string): Promise
   const [to] = recipientsOf(facts);
   if (!to) return null;
   const { store, market, text } = ctx;
-  const money = (minor: number) => formatMoney(minor, facts.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, facts.currency, market.locale, market.priceStyle);
   const carrierName = r.label_carrier_id === "bring" ? "Posten / Bring" : String(r.label_carrier_id ?? "");
   const cost = r.label_cost_minor === null || r.label_cost_minor === undefined ? null : Number(r.label_cost_minor);
   const fixed = {

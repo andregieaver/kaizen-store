@@ -222,10 +222,13 @@ export type ChatSite = { kind: "store"; store: Store; market: Market } | { kind:
 /** Rounds of tools before the model must answer. */
 const ROUNDS = 4;
 
-/** A price as a sentence, the way the store shows it (B2B: with or without VAT, or both). */
+/**
+ * A price as a sentence, the way the store shows it (B2B: with or without VAT, or both; with the market's decimals, D429). The owner's words
+ * around the price are the cards' alone: the model is told the amount, never words it could repeat as its own.
+ */
 function priceText(price: PriceView, locale: string, lang: string, from: boolean): string {
   const m = t(lang);
-  const amount = (minor: number) => formatMoney(minor, price.currency, locale);
+  const amount = (minor: number) => formatMoney(minor, price.currency, locale, { decimals: price.decimals });
   const excl = Math.round(price.amountMinor / (1 + price.vat.rate));
   const shown =
     price.vat.shown === "excl"
@@ -242,7 +245,7 @@ function priceText(price: PriceView, locale: string, lang: string, from: boolean
 function offersOn(site: Extract<ChatSite, { kind: "store" }>, notices: CampaignNotices, productId: string, { gifts }: { gifts: boolean }): { card: string[]; told: string[] } {
   const { market } = site;
   const m = t(market.lang);
-  const money = (minor: number) => formatMoney(minor, market.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, market.currency, market.locale, market.priceStyle);
   const mine = noticesFor(notices, productId);
   const say = (n: CampaignNotice) => `${n.name}: ${noticeText(n, m, money)}${n.signIn ? ` (${m.campaigns.signIn})` : ""}`;
   return { card: cardNotices(mine).map((n) => noticeText(n, m, money, { card: true })), told: mine.filter((n) => gifts || n.kind !== "gift").map(say) };
@@ -254,7 +257,16 @@ function card(site: Extract<ChatSite, { kind: "store" }>, product: Pick<GridProd
     title: product.title,
     href: marketPath(site.store.slug, site.market.slug, `/p/${product.handle}`),
     image: product.image,
-    price: { amountMinor: product.price.amountMinor, currency: product.price.currency, referenceMinor: product.price.referenceMinor, vat: product.price.vat, measure: product.price.measure },
+    price: {
+      amountMinor: product.price.amountMinor,
+      currency: product.price.currency,
+      referenceMinor: product.price.referenceMinor,
+      vat: product.price.vat,
+      measure: product.price.measure,
+      // The market's decimals and the owner's words around the price (D429), drawn by the widget as the store's own cards draw them.
+      ...(product.price.decimals && { decimals: product.price.decimals }),
+      ...(product.price.words && { words: product.price.words }),
+    },
     from,
     ...(offers.length > 0 && { offers }),
   };

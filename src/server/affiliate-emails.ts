@@ -52,7 +52,7 @@ export async function sendReferrerRewardEmail(storeId: string, orderId: string):
   // The credits are in the store's credits currency; the referrer reads them in the market's when the store has a rate.
   const program = await bonusProgram(db(), storeId);
   const shown = convertCredits(Number(row.reward_minor), program.currency, market.currency, program.rates, "down");
-  const amount = shown === null ? formatMoney(Number(row.reward_minor), program.currency, market.locale) : formatMoney(shown, market.currency, market.locale);
+  const amount = shown === null ? formatMoney(Number(row.reward_minor), program.currency, market.locale, market.priceStyle) : formatMoney(shown, market.currency, market.locale, market.priceStyle);
   const at = row.available_at ? new Date(String(row.available_at)) : null;
   const words = affiliateRewardText(text, {
     store: store.name,

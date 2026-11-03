@@ -145,7 +145,7 @@ async function Deliveries({ store, market, query: asked }: { store: Store; marke
     );
   }
 
-  const money = (minor: number) => formatMoney(minor, list.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, list.currency, market.locale, market.priceStyle);
   const vatLabels = { vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded };
   // The total mixes VAT rates: it is shown as charged, with VAT.
   const withVat = WITH_VAT;
@@ -239,7 +239,7 @@ async function Deliveries({ store, market, query: asked }: { store: Store; marke
                   </Link>
                   <p className="text-sm text-muted">
                     {line.available && line.unitMinor !== null ? (
-                      <VatAmount amountMinor={line.unitMinor} currency={list.currency} locale={market.locale} vat={line.vat} labels={vatLabels} />
+                      <VatAmount amountMinor={line.unitMinor} currency={list.currency} locale={market.locale} vat={line.vat} labels={vatLabels} decimals={market.priceStyle?.decimals} />
                     ) : (
                       d.unavailable
                     )}
@@ -253,6 +253,7 @@ async function Deliveries({ store, market, query: asked }: { store: Store; marke
                       vat={line.vat}
                       measure={line.measure}
                       labels={unitLabelsOf(m)}
+                      decimals={market.priceStyle?.decimals}
                     />
                   )}
                 </div>
@@ -286,7 +287,7 @@ async function Deliveries({ store, market, query: asked }: { store: Store; marke
             <div className="flex justify-between font-medium">
               <dt>{d.total}</dt>
               <dd className="tabular-nums">
-                <VatAmount amountMinor={list.estimate.totalMinor} currency={list.currency} locale={market.locale} vat={withVat} labels={vatLabels} />
+                <VatAmount amountMinor={list.estimate.totalMinor} currency={list.currency} locale={market.locale} vat={withVat} labels={vatLabels} decimals={market.priceStyle?.decimals} />
               </dd>
             </div>
           </dl>

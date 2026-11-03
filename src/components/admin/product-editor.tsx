@@ -59,6 +59,8 @@ import {
 } from "@/lib/product-input";
 import { backorderMayPassAgreed, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, THRESHOLD_MAX } from "@/lib/inventory";
 import { lineMax, MAX_ORDER_QUANTITY, ruleProblem } from "@/lib/quantity-rules";
+import { INHERIT_WORDS, NO_WORDS, PRICE_WORD_MAX, shownPriceWords, withWords, wordsIn, type PriceWords, type ProductPriceWords } from "@/lib/price-words";
+import { priceWordProblem } from "@/lib/price-words-check";
 import type { ProductMessages } from "@/lib/admin-messages/product.en";
 import type { ProductFacts, WriteRequest, WrittenText } from "@/lib/product-writing";
 import { EXCERPT_FIELD_MAX, summarize } from "@/lib/seo";
@@ -521,6 +523,7 @@ export function ProductEditor(props: Props) {
             }}
           />
           {context.audience === "both" && <AudienceSection product={product} update={update} />}
+          {product.kind !== "gift_card" && <PriceWordsSection product={product} update={update} context={context} languageNames={languageNames} />}
           {(product.kind === "goods" || product.kind === "bundle") && <PriceBreaksSection product={product} update={update} context={context} />}
           {!isBooked(product.kind) && (
             <>
@@ -2690,6 +2693,110 @@ function AudienceSection({ product, update }: SectionProps) {
           ))}
         </div>
       </fieldset>
+    </section>
+  );
+}
+
+/**
+ * The words before and after the product's price (D429): the store's (the default, shown as they are now), none, or its own in each of the
+ * store's languages, each word checked as it is typed (`priceWordProblem()`) and again by the server. A gift card's amounts carry none.
+ */
+function PriceWordsSection({
+  product,
+  update,
+  context,
+  languageNames,
+}: SectionProps & { context: EditorContext; languageNames: Record<string, string> }) {
+  const w = useAdminText("product").priceWords;
+  const choice = product.priceWords ?? INHERIT_WORDS;
+  const ownWords = choice.mode === "own" ? choice.words : {};
+  // The store's words (an editor context from before D429 has none).
+  const storeByLocale = context.priceWords ?? {};
+  const storeWords = shownPriceWords({ byLocale: storeByLocale, main: context.primaryLocale }, INHERIT_WORDS, context.primaryLocale);
+  const choose = (mode: ProductPriceWords["mode"]) =>
+    update((p) => ({
+      ...p,
+      priceWords:
+        mode === "own"
+          ? {
+              mode,
+              // Starting from the store's words in each language, so the owner changes what is there.
+              words: Object.fromEntries(context.locales.map((locale) => [locale, wordsIn(storeByLocale, locale, context.primaryLocale)])),
+            }
+          : { mode },
+    }));
+  const setWord = (locale: string, place: keyof PriceWords, value: string) =>
+    update((p) => {
+      const current = p.priceWords?.mode === "own" ? p.priceWords.words : {};
+      return { ...p, priceWords: { mode: "own", words: { ...current, [locale]: { ...NO_WORDS, ...current[locale], [place]: value } } } };
+    });
+  const problemText = (text: string) => {
+    const found = priceWordProblem(text);
+    if (!found) return null;
+    if (found.kind === "long") return fillWords(w.problems.long, { max: found.max });
+    if (found.kind === "claim") return fillWords(w.problems.claim, { phrase: found.phrase, kind: w.claimKinds[found.claim] });
+    return w.problems[found.kind];
+  };
+  return (
+    <section aria-labelledby="price-words-heading" className={card}>
+      <fieldset>
+        <legend id="price-words-heading" className="mb-1 font-medium">
+          {w.title}
+        </legend>
+        <p className="mb-4 text-sm text-muted">{w.intro}</p>
+        <div className="flex flex-col gap-2 text-sm">
+          {(["inherit", "none", "own"] as const).map((mode) => (
+            <label key={mode} className="flex items-start gap-2">
+              <input type="radio" name="product-price-words" checked={choice.mode === mode} onChange={() => choose(mode)} className="mt-0.5 size-4" />
+              <span>
+                {w.choices[mode].label}
+                <span className="block text-muted">
+                  {mode === "inherit" ? (storeWords ? fillWords(w.storeWords, { words: withWords("…", storeWords) }) : w.storeNone) : w.choices[mode].hint}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {choice.mode === "own" && (
+        <div className="mt-4 flex flex-col gap-4">
+          {context.locales.map((locale) => {
+            const words = ownWords[locale] ?? NO_WORDS;
+            return (
+              <fieldset key={locale} className="flex flex-col gap-2">
+                {context.locales.length > 1 && (
+                  <legend className="mb-1 text-sm font-medium">{fillWords(w.inLanguage, { language: languageNames[locale] ?? locale })}</legend>
+                )}
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  {(["prefix", "suffix"] as const).map((place) => {
+                    const problem = problemText(words[place]);
+                    const id = `price-words-${locale}-${place}`;
+                    return (
+                      <label key={place} className="flex flex-1 flex-col gap-1 text-sm">
+                        {place === "prefix" ? w.before : w.after}
+                        <input
+                          value={words[place]}
+                          lang={locale}
+                          maxLength={PRICE_WORD_MAX * 2}
+                          onChange={(event) => setWord(locale, place, event.target.value)}
+                          aria-invalid={problem ? true : undefined}
+                          aria-describedby={problem ? `${id}-problem` : undefined}
+                          className="min-h-10 rounded-md border border-edge bg-card px-3"
+                        />
+                        {problem && (
+                          <span id={`${id}-problem`} className="text-danger-text">
+                            {problem}
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

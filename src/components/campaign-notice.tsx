@@ -11,7 +11,7 @@ import { formatMoney } from "@/lib/money";
  */
 export function CampaignNotices({ notices, market, m }: { notices: CampaignNotice[]; market: Market; m: Messages }) {
   if (notices.length === 0) return null;
-  const money = (minor: number) => formatMoney(minor, market.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, market.currency, market.locale, market.priceStyle);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
   return (
     <ul className="flex flex-col gap-2" aria-label={notices.map((notice) => notice.name).join(", ")}>

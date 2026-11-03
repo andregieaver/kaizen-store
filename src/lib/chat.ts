@@ -2,6 +2,8 @@ import { findClaims } from "./claims";
 import type { ReturnPolicyFacts } from "./structured-data";
 import type { SupportCard, SupportChip } from "./support-visitor";
 import type { ShownMeasure } from "./unit-price";
+import type { PriceDecimals } from "./money";
+import type { PriceWords } from "./price-words";
 
 /**
  * The chat agent (D81), the pure parts: what a visitor's request and the
@@ -34,6 +36,10 @@ export type ChatProduct = {
     vat: { rate: number; shown: "incl" | "excl" | "choice" };
     /** What is in the variant the price is of, with the base the market shows (D160): the widget works out the unit price from it, never the model. */
     measure: ShownMeasure | null;
+    /** The market's decimals on a whole amount (D429); absent keeps them. */
+    decimals?: PriceDecimals;
+    /** The owner's words before and after the price (D429), in the shopper's language; absent for none. */
+    words?: PriceWords;
   };
   from: boolean;
   /** The store's campaigns on the product (D115), in the shopper's words, for a badge on the card. */

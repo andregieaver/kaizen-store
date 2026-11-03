@@ -95,7 +95,7 @@ async function AccountCreator({ params }: { params: Props["params"] }) {
   }
 
   const link = page.code ? affiliateLink(store.slug, page.code) : null;
-  const money = (minor: number, currency: string) => formatMoney(minor, currency, market.locale);
+  const money = (minor: number, currency: string) => formatMoney(minor, currency, market.locale, market.priceStyle);
   const day = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString(market.locale, { dateStyle: "medium" });
   return (
     <>

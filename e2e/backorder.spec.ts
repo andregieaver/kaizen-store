@@ -37,16 +37,16 @@ test("a variant that keeps selling at zero says it is on backorder, is bought, a
   await expect(page.getByText(/Bare .* igjen|Ikke nok på lager/).filter({ visible: true })).toHaveCount(0);
 
   // Any quantity up to the line's maximum (20, the field's own limit), where a variant that stops at zero would be settled on its stock.
-  await page.getByLabel("Antall").fill("5");
-  await page.getByRole("button", { name: "Oppdater" }).click();
-  await expect(page.getByLabel("Antall")).toHaveValue("5");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).fill("5");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).press("Enter");
+  await expect(page.getByRole("spinbutton", { name: /^Antall/ })).toHaveValue("5");
   await expect(page.getByText("5 på restordre: forventes sendt innen 7 dager").filter({ visible: true })).toBeVisible();
   // The price is the same per unit as for any line: 5 x 349 kr, with VAT included as always.
   await expect(page.getByRole("complementary")).toContainText(/1\s745,00/);
 
-  await page.getByLabel("Antall").fill("20");
-  await page.getByRole("button", { name: "Oppdater" }).click();
-  await expect(page.getByLabel("Antall")).toHaveValue("20");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).fill("20");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).press("Enter");
+  await expect(page.getByRole("spinbutton", { name: /^Antall/ })).toHaveValue("20");
   await expect(page.getByText("20 på restordre: forventes sendt innen 7 dager").filter({ visible: true })).toBeVisible();
 });
 

@@ -585,6 +585,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:integrations.google-reviews": { title: "Google-omtaler", keywords: ["google-omtaler", "google", "omtaler", "anmeldelser", "vurdering"] },
   "store:staging": { title: "Klargjøring", keywords: ["klargjøring", "lansering", "publiser samlet", "sammenlign", "versjoner", "forhåndsvisning"] },
   "store:checkout-rules": { title: "Regler i kassen", keywords: ["kasse", "regler", "skjul frakt", "betalingsmåter", "spørsmål", "egne felt", "bestillingsnotat"] },
+  "store:prices": {
+    title: "Priser og antall",
+    keywords: ["priser", "desimaler", ",00", "øre", "prisformat", "ord før prisen", "ord etter prisen", "kun", "per stk", "antall", "pluss minus", "antallvelger"],
+  },
   "store:workflows": { title: "Arbeidsflyter", keywords: ["arbeidsflyt", "automatisering", "flyt", "utløser", "tidsplan", "regler"] },
   "store:api": { title: "Apper og API", keywords: ["api", "nøkler", "utviklere", "lager", "3pl", "regnskap", "integrasjon"] },
   "store:ai": { title: "KI", keywords: ["ki", "kunstig intelligens", "modell", "leverandør", "openai"] },

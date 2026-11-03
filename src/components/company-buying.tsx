@@ -1,4 +1,4 @@
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type PriceDecimals } from "@/lib/money";
 import type { Messages } from "@/lib/i18n";
 import type { ApprovalOrder } from "@/server/company-approvals";
 import type { TermsDisplay } from "@/lib/checkout-terms";
@@ -19,10 +19,13 @@ export function CompanyApprovals({
   store,
   market,
   terms,
+  decimals,
 }: {
   toApprove: ApprovalOrder[];
   mine: ApprovalOrder[];
   locale: string;
+  /** The market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
   m: Messages["companyAccount"];
   decide: (orderId: string, approve: boolean) => (form: FormData) => Promise<void>;
   pay: (orderId: string) => (form: FormData) => Promise<void>;
@@ -34,7 +37,7 @@ export function CompanyApprovals({
   const box = "divide-y divide-border rounded-lg border border-border";
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium" });
   const facts = (order: ApprovalOrder) =>
-    [formatMoney(order.totalMinor, order.currency, locale), order.location && m.forLocation(order.location), order.poNumber && m.poShown(order.poNumber), date(order.placedAt)]
+    [formatMoney(order.totalMinor, order.currency, locale, { decimals }), order.location && m.forLocation(order.location), order.poNumber && m.poShown(order.poNumber), date(order.placedAt)]
       .filter(Boolean)
       .join(" · ");
   return (

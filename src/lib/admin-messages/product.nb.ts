@@ -22,7 +22,7 @@ export const productNb: ProductMessages = {
   },
   advanced: {
     title: "Avansert",
-    text: "Standardkategori, hvem som kjøper, pris etter antall, abonnement, produktsikkerhet, avgift, retur og hvor den selges.",
+    text: "Standardkategori, hvem som kjøper, ord rundt prisen, pris etter antall, abonnement, produktsikkerhet, avgift, retur og hvor den selges.",
   },
   terms: {
     title: "Kategorier og stikkord",
@@ -349,6 +349,33 @@ export const productNb: ProductMessages = {
     addAnother: "Legg til et kjøpsvalg til",
     only: "Selg bare som abonnement (ikke som enkeltkjøp)",
     keepPrice: "Abonnentene beholder prisen de startet med. Endrer eller fjerner du et valg, gjelder det bare nye abonnenter.",
+  },
+  priceWords: {
+    title: "Ord rundt prisen",
+    intro: "Korte ord før eller etter prisen på denne varen, som «Kun» eller «/stk», overalt der kundene ser prisen. Aldri ved linjene eller summene i handlekurven, på fakturaer eller i feeder.",
+    choices: {
+      inherit: { label: "Butikkens ord", hint: "Slik de er satt under Innstillinger, Priser og antall." },
+      none: { label: "Ingen", hint: "Bare prisen, uansett butikkens ord." },
+      own: { label: "Egne ord", hint: "Bare for denne varen, på hvert av språkene dine." },
+    },
+    storeWords: "Butikkens nå: {words}",
+    storeNone: "Butikken har ingen nå.",
+    before: "Før prisen",
+    after: "Etter prisen",
+    inLanguage: "På {language}",
+    problems: {
+      long: "Høyst {max} tegn.",
+      plain: "Skriv vanlige ord, uten tagger, linjeskift eller spesielle mellomrom.",
+      percent: "La prosenter være: butikken viser selv en reduksjon, med laveste pris de siste 30 dagene.",
+      claim: "«{phrase}» kan villede kundene ({kind}). Skriv det på en annen måte.",
+    },
+    claimKinds: {
+      green: "en generell miljøpåstand",
+      urgency: "hastverk eller knapphet",
+      bestPrice: "en påstand om beste eller laveste pris",
+      price: "et pengebeløp",
+      stock: "et lagernivå",
+    },
   },
   audience: {
     title: "Kunder",

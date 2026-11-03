@@ -13,6 +13,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Prices only change through `commerce.set_price`; variants taken out are
   switched off, never deleted. Pictures are shrunk to WebP in the browser
   (1600 px plus a 480 px thumbnail) and uploaded with `uploadImageAction`.
+  A product's own words around its price (D429, `products.price_words`: null for the store's, `{"mode": "none"}`, or its own
+  by language) are `ProductInput.priceWords`, left out by an import or a tool so the product keeps them; `saveProduct()` checks
+  each word (`priceWordProblem()`) for the store's languages and writes SQL null, never a JSON null, to follow the store.
 
 ## Checkout (`src/server/checkout.ts`, decision D16)
 
@@ -382,6 +385,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `quantityProblem()` refuses is refused (`changeLine()`'s `quantity`), a line the rule no longer allows has status `quantity` and blocks checkout,
   and `placeOrder()` refuses it (`quantity`); the WordPress quote and hand-over fit lines with `fitQuantity()`. A new way to put goods in a cart
   asks the rule the same way; drafts, order changes, exchanges and a subscription's later changes are staff's or the subscriber's and are not held to it.
+  The shopper's chooser (D430, `QuantityStepper`, `src/lib/quantity-stepper.ts`) steps and puts right a typed number by the same rule
+  (`stepUp()`, `stepDown()`, `snapQuantity()`), on the product page (where `pickerFor()` offers it: goods and bundles whose rule leaves a
+  choice, as the store's `quantity_picker` or the layout's buy part says) and on each cart line; the server still holds what it is sent to the rule.
   Price breaks (E2, `src/lib/price-breaks.ts`, `src/server/price-breaks.ts`): a product's `price_breaks` (from N units in one line, a percentage off or
   a unit price per market, one variant or every variant, at most 10) price a line only through `commerce.line_price()` (the lowest of the market
   price, the breaks the quantity reaches and the buyer's list offers; `buyer_price()` at one unit), read by `getCart()`, `orderLineRows()`, the

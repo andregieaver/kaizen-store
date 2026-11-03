@@ -47,7 +47,7 @@ export async function emailFactsFor(store: EmailStore, content: BroadcastContent
     ids.products.length > 0 ? listGridProducts(store.id, market, { categoryIds: [], tagIds: [], sort: "given", limit: 48, ids: ids.products }) : [],
     ids.campaigns.length > 0 ? campaignNotices(store.id, market) : { items: [] },
   ]);
-  const money = (minor: number) => formatMoney(minor, market.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, market.currency, market.locale, market.priceStyle);
   const date = new Intl.DateTimeFormat(market.locale, { dateStyle: "long" });
   return {
     products: new Map(products.map((p) => [p.id, { title: p.title, image: p.image?.url ?? null, alt: p.image?.alt || p.title, ...priceLines(p, market) }])),
@@ -87,7 +87,7 @@ export async function findProductFacts(store: Pick<EmailStore, "id">, market: Ma
 /** `running_campaigns`: the campaigns the store announces in the market now (the same for every shopper), in the shop's words. */
 export async function campaignFacts(store: Pick<EmailStore, "id">, market: Market): Promise<CampaignFact[]> {
   const m = t(market.lang);
-  const money = (minor: number) => formatMoney(minor, market.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, market.currency, market.locale, market.priceStyle);
   const notices = await campaignNotices(store.id, market);
   return notices.items.map((notice) => ({
     id: notice.id,

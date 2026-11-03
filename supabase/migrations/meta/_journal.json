@@ -4376,6 +4376,20 @@
       "when": 1793661420236,
       "tag": "20261102231700_knowledge_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 625,
+      "version": "7",
+      "when": 1793667410991,
+      "tag": "20261103005650_price_display",
+      "breakpoints": true
+    },
+    {
+      "idx": 626,
+      "version": "7",
+      "when": 1793669661019,
+      "tag": "20261103013420_price_display_copy",
+      "breakpoints": true
     }
   ]
 }

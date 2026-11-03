@@ -49,7 +49,7 @@ async function Catalogue({ params }: { params: Props["params"] }) {
   const messages = t(market.lang);
   const m = messages.buyerCatalogue;
   const items = await buyerCatalogue(store.id, customer.id, market.code, market.locale);
-  const money = (nativeMinor: number) => formatMoney(shown(market, nativeMinor), market.currency, market.locale);
+  const money = (nativeMinor: number) => formatMoney(shown(market, nativeMinor), market.currency, market.locale, market.priceStyle);
 
   return (
     <>

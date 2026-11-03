@@ -896,6 +896,11 @@ const PAGES: readonly AdminPage[] = [
     feature: "shop",
   }),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
+  store("prices", "/settings/prices", "Prices and quantity", "Store", "How shoppers see prices and choose a quantity (D429, D430): whether whole amounts show ,00 (always, or hidden on whole amounts; never rounded), per country; short words before and after a product's price, per language, which a product can override; and the quantity chooser on product pages (− and + buttons, a number box or none), which a product layout's Buy component can override.", {
+    keywords: ["decimals", ",00", "øre", "cents", "price format", "prefix", "suffix", "from only", "per piece", "quantity", "plus minus", "stepper", "antall"],
+    tasks: ["Hide ,00 on whole prices", "Write words before or after prices", "Choose how shoppers pick a quantity"],
+    feature: "shop",
+  }),
   store("checkout-rules", "/settings/checkout", "Checkout rules", "Store", "Checkout rules and questions (D357): rules on the basket (country, value, weight, products, categories, tags, customer groups) that hide or rename a delivery option, leave payment methods out or stop the order with the owner's words, applied by the cart and checkout alike and listed with the times one was left out; and questions the checkout asks, kept on the order.", {
     keywords: ["checkout", "rules", "hide shipping", "payment methods", "questions", "custom fields", "order notes", "functions"],
     feature: "shop",

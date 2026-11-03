@@ -31,9 +31,9 @@ test("add to cart, change quantity within stock, and remove", async ({ page }) =
   await expect(page.getByText("Farge: Svart").filter({ visible: true })).toBeVisible();
 
   // Only 3 black mugs are in stock: asking for 5 settles on 3.
-  await page.getByLabel("Antall").fill("5");
-  await page.getByRole("button", { name: "Oppdater" }).click();
-  await expect(page.getByLabel("Antall")).toHaveValue("3");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).fill("5");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).press("Enter");
+  await expect(page.getByRole("spinbutton", { name: /^Antall/ })).toHaveValue("3");
   await expect(page.getByRole("link", { name: "Handlekurv (3)" })).toBeVisible();
   await expect(page.getByRole("complementary")).toContainText("747,00");
   // Shipping and total are shown before checkout; the demo store takes no payments.
@@ -62,9 +62,9 @@ test.describe("on a phone", () => {
     // The product page stays under it.
     await expect(page.getByRole("heading", { level: 1, name: "Demo: Anteckningsbok A5" })).toBeAttached();
 
-    await drawer.getByLabel("Antal").fill("2");
-    await drawer.getByRole("button", { name: "Uppdatera" }).click();
-    await expect(drawer.getByLabel("Antal")).toHaveValue("2");
+    await drawer.getByRole("spinbutton", { name: /^Antal/ }).fill("2");
+    await drawer.getByRole("spinbutton", { name: /^Antal/ }).press("Enter");
+    await expect(drawer.getByRole("spinbutton", { name: /^Antal/ })).toHaveValue("2");
     await expect(drawer).toBeVisible();
 
     await drawer.getByRole("button", { name: "Stäng varukorgen" }).click();

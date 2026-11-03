@@ -91,7 +91,7 @@ async function Orders({ params, searchParams }: Pick<Props, "params" | "searchPa
                   </span>
                 </span>
                 <span className="text-right">
-                  <span className="block">{formatMoney(order.totalMinor, order.currency, market.locale)}</span>
+                  <span className="block">{formatMoney(order.totalMinor, order.currency, market.locale, market.priceStyle)}</span>
                   <span className="block text-sm text-muted">{a.status[order.status] ?? order.status}</span>
                 </span>
               </Link>

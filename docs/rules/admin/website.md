@@ -411,7 +411,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `DEFAULT_PRODUCT_LAYOUT`. A new part goes in `PRODUCT_PARTS`,
   `ProductBlock`'s settings, `ProductPartView`, `productPartShows()` and the
   builder's `ProductFields`/`ProductStandIn`. Keep the product's details
-  outside `<Suspense>`; only the buy part streams in.
+  outside `<Suspense>`; only the buy part streams in. The buy part's
+  `quantity` (D430: `buttons`, `box` or `hidden`) overrides the store's
+  quantity chooser (`stores.quantity_picker`) on the layout's pages; absent,
+  the store's applies (`pickerFor()`).
 
 ## Modals (D121, `src/lib/page-modal.ts`, `src/components/page-modal.tsx`, `ModalFields`)
 

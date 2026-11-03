@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { EmailBlock, EmailContent } from "./email-layout";
-import { formatMoney } from "./money";
+import { formatMoney, type PriceDecimals } from "./money";
 
 /**
  * Reminders about carts left at checkout (D33). The texts, their checks
@@ -225,11 +225,13 @@ export function buildReminderEmail(input: {
   unsubscribeUrl: string;
   /** A store's cart, or Kaizen's plan (D33). */
   purpose?: "cart" | "plan";
+  /** The shopper's market's way with a whole amount's decimals (D429); absent keeps them. */
+  decimals?: PriceDecimals;
 }): EmailContent {
   const lang = input.locale.split("-")[0];
   const words = input.purpose === "plan" ? PLAN_WORDS : (WORDS[lang] ?? WORDS.en);
   const values = { store: input.storeName, code: input.code ?? "" };
-  const money = (minor: number) => formatMoney(minor, input.currency, input.locale);
+  const money = (minor: number) => formatMoney(minor, input.currency, input.locale, { decimals: input.decimals });
   const total = input.lines.reduce((sum, line) => sum + line.unitPriceMinor * line.quantity, 0);
   const blocks: EmailBlock[] = [
     { type: "heading", text: fill(input.text.heading, values) },

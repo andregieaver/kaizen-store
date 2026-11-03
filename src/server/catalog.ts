@@ -9,7 +9,8 @@ import { attributeName, categoryPath, googleCategory, isCategory, valueName } fr
 import { parseProductAudience, type ProductAudience } from "@/lib/b2b";
 import { parseRentalPeriod, type RentalPeriod } from "@/lib/booking-ranges";
 import { isNative, shown, type Market } from "@/lib/markets";
-import { priceVat, priceView, type PriceView } from "@/lib/pricing";
+import { priceVat, priceView, styledPrice, type PriceView } from "@/lib/pricing";
+import { parseProductPriceWords } from "@/lib/price-words";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import type { ShownGroup } from "@/lib/custom-fields";
 import { planPrice, type PlanInterval } from "@/lib/subscriptions";
@@ -165,6 +166,10 @@ const EARLIEST_PREORDER = sql`min(v.preorder_until) filter (where v.stock_policy
 const shownMeasure = (row: Row, market: Pick<Market, "code">): ShownMeasure | null =>
   shownMeasureFromColumns(row.measure_amount, row.measure_unit, row.measure_base, market.code);
 
+/** A product's price as its market shows it (D429): the market's decimals, and the words around it in the market's language (`price_words`). */
+const styled = (view: PriceView, row: Row, market: Market): PriceView =>
+  styledPrice(view, market.priceStyle, parseProductPriceWords(row.price_words), market.locale);
+
 /** Who a product is for (B2B): only in stores selling to both does it matter. */
 const productAudience = (row: Row): ProductAudience =>
   row.store_audience === "both" ? parseProductAudience(row.audience) : "all";
@@ -193,7 +198,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       case when p.subscription_only then (
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
-      p.audience,
+      p.audience, p.price_words,
       ${STORE_AUDIENCE} as store_audience,
       commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate
     from commerce.products p
@@ -234,10 +239,13 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       title: str(row.title),
       image: summaryImage(row),
       // Kept in the country's own currency; shown in the one chosen (D109).
-      price:
+      price: styled(
         discount === null
           ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat, shownMeasure(row, market))
           : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat, shownMeasure(row, market)),
+        row,
+        market,
+      ),
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
       audience: productAudience(row),
       preorderUntil: row.preorder_until ? str(row.preorder_until) : null,
@@ -256,7 +264,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
   const [product] = await readDb().execute<Row>(sql`
     select
       p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes,
-      p.audience, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
+      p.audience, p.price_words, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
       -- The country's own description over its language's (D338), else the language's. A country whose language the product is not
       -- written in reads the description in the language it falls back to, so the country's own is the one written in that language.
@@ -361,7 +369,11 @@ export async function getProduct(storeId: string, market: Market, handle: string
       sku: str(v.sku),
       gtin: v.gtin ? str(v.gtin) : null,
       options: (v.options ?? {}) as Record<string, string>,
-      price: priceView(shown(market, num(v.amount_minor)), market.currency, orNull(numOrNull(v.prior_30d_minor), (n) => shown(market, n)), vat, shownMeasure(v, market)),
+      price: styled(
+        priceView(shown(market, num(v.amount_minor)), market.currency, orNull(numOrNull(v.prior_30d_minor), (n) => shown(market, n)), vat, shownMeasure(v, market)),
+        product,
+        market,
+      ),
       measure: shownMeasure(v, market),
       delivery: parseDelivery(v.delivery),
       rentalPeriod: parseRentalPeriod(v.rental_period),
@@ -519,7 +531,7 @@ export async function listGridProducts(
       case when p.subscription_only then (
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
-      p.audience,
+      p.audience, p.price_words,
       ${STORE_AUDIENCE} as store_audience,
       commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate
     from commerce.products p
@@ -565,10 +577,13 @@ export async function listGridProducts(
       excerpt: str(row.excerpt),
       image: summaryImage(row),
       // Kept in the country's own currency; shown in the one chosen (D109).
-      price:
+      price: styled(
         discount === null
           ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat, shownMeasure(row, market))
           : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat, shownMeasure(row, market)),
+        row,
+        market,
+      ),
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
       audience: productAudience(row),
       preorderUntil: row.preorder_until ? str(row.preorder_until) : null,

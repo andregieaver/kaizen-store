@@ -665,6 +665,11 @@ export const en = {
   emptyCart: "Your cart is empty.",
   quantity: "Quantity",
   update: "Update",
+  /** The quantity chooser's buttons (D430), said to a screen reader; on a cart line the product's name follows. */
+  quantityLess: "Decrease quantity",
+  quantityMore: "Increase quantity",
+  /** Said while a cart line's new quantity is being saved (D430). */
+  quantitySaving: "Updating the cart…",
   remove: "Remove",
   subtotal: "Subtotal",
   shippingAtCheckout: "Shipping and delivery times are shown at checkout.",

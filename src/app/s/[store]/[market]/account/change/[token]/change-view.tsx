@@ -63,7 +63,7 @@ export function ChangeView({
   }
 
   // The change is in the order's own currency (D109: never converted again).
-  const money = (minor: number) => formatMoney(minor, edit.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, edit.currency, market.locale, market.priceStyle);
   const date = edit.expiresAt ? new Date(edit.expiresAt).toLocaleString(market.locale, { dateStyle: "long", timeStyle: "short", timeZone: store.timeZone }) : null;
   const seller = store.details;
   const removed = edit.lines.filter((line) => line.kind !== "add");

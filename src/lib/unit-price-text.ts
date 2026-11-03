@@ -3,7 +3,7 @@
  * (`unit-price.ts`); these only write it, in the market's currency and the shown language.
  */
 import type { Messages } from "./i18n";
-import { formatMoney } from "./money";
+import { formatMoney, type MoneyStyle } from "./money";
 import type { PriceVat } from "./pricing";
 import { unitPrice, unitPriceShown, type Base, type ShownMeasure } from "./unit-price";
 
@@ -20,14 +20,18 @@ export function unitLabelsOf(m: UnitPriceMessages): UnitLabels {
   return { spoken: m.unitPrice.spoken("{amount}", "{base}"), bases: m.unitPrice.bases };
 }
 
-/** A unit price written for the eye ("199,60 kr/kg") and for a screen reader ("Unit price: 199,60 kr per kg"), from plain labels. */
+/**
+ * A unit price written for the eye ("199,60 kr/kg") and for a screen reader ("Unit price: 199,60 kr per kg"), from plain labels; with the
+ * shopper's market's decimals where `style` is given (D429: "200 kr/kg").
+ */
 export function unitPriceWords(
   unit: { minor: number; base: Base },
   currency: string,
   locale: string,
   labels: UnitLabels,
+  style?: MoneyStyle,
 ): { text: string; spoken: string } {
-  const amount = formatMoney(unit.minor, currency, locale);
+  const amount = formatMoney(unit.minor, currency, locale, style);
   const base = labels.bases[unit.base];
   return { text: `${amount}/${base}`, spoken: labels.spoken.replace("{amount}", () => amount).replace("{base}", () => base) };
 }

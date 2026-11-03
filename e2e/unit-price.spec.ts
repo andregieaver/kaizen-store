@@ -125,9 +125,9 @@ test("the cart shows it for one unit whatever the quantity", async ({ page }) =>
   await expect(page.getByRole("heading", { level: 1, name: "Handlekurv" })).toBeVisible();
   const lines = page.getByRole("list").filter({ hasText: "Demo: Keramikkopp" }).first();
   await expect(lines.locator("[data-unit-price]")).toContainText(/498,00\s*kr\/kg/);
-  await page.getByLabel("Antall").fill("2");
-  await page.getByRole("button", { name: "Oppdater" }).click();
-  await expect(page.getByLabel("Antall")).toHaveValue("2");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).fill("2");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).press("Enter");
+  await expect(page.getByRole("spinbutton", { name: /^Antall/ })).toHaveValue("2");
   await expect(lines.locator("[data-unit-price]")).toContainText(/498,00\s*kr\/kg/);
   await expect(page.getByRole("complementary")).toContainText("498,00");
 });

@@ -9,7 +9,18 @@ import { VatAmount } from "./price";
  * A price at a quantity, never a reduction (decision 3): no struck-through price and no 30-day reference. Amounts are in the market's view
  * (`shown()`), with the store's VAT display.
  */
-export function PriceBreakTable({ steps, price, locale, m }: { steps: BreakStep[]; price: Pick<PriceView, "currency" | "vat">; locale: string; m: Messages }) {
+export function PriceBreakTable({
+  steps,
+  price,
+  locale,
+  m,
+}: {
+  steps: BreakStep[];
+  /** The variant's price: its currency, VAT display and decimals (D429); the owner's words are its own, never a break's. */
+  price: Pick<PriceView, "currency" | "vat" | "decimals">;
+  locale: string;
+  m: Messages;
+}) {
   return (
     <table className="w-full text-sm">
       <caption className="pb-1 text-left font-medium">{m.priceBreaks.title}</caption>
@@ -26,7 +37,7 @@ export function PriceBreakTable({ steps, price, locale, m }: { steps: BreakStep[
               {m.priceBreaks.from(step.from)}
             </th>
             <td className="py-1 text-right">
-              <VatAmount amountMinor={step.amountMinor} currency={price.currency} locale={locale} vat={price.vat} labels={m} />
+              <VatAmount amountMinor={step.amountMinor} currency={price.currency} locale={locale} vat={price.vat} labels={m} decimals={price.decimals} />
             </td>
           </tr>
         ))}

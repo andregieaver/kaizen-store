@@ -1068,14 +1068,32 @@ export function ProductCard({ product, locale, labels, onOpen }: { product: Chat
         )}
         <span className="font-semibold">
           {product.from && <span className="font-normal">{labels.fromPrice} </span>}
-          <VatAmount amountMinor={price.amountMinor} currency={price.currency} locale={locale} vat={price.vat} labels={labels} />
+          <VatAmount
+            amountMinor={price.amountMinor}
+            currency={price.currency}
+            locale={locale}
+            vat={price.vat}
+            labels={labels}
+            decimals={price.decimals}
+            words={price.words}
+          />
         </span>
         {price.referenceMinor !== null && (
           <span className="text-xs text-muted">
-            {labels.priorPrice}: <VatAmount amountMinor={price.referenceMinor} currency={price.currency} locale={locale} vat={price.vat} labels={labels} label={false} />
+            {labels.priorPrice}:{" "}
+            <VatAmount amountMinor={price.referenceMinor} currency={price.currency} locale={locale} vat={price.vat} labels={labels} label={false} decimals={price.decimals} />
           </span>
         )}
-        <UnitLine amountMinor={price.amountMinor} currency={price.currency} locale={locale} vat={price.vat} measure={price.measure} labels={labels.unit} inline />
+        <UnitLine
+          amountMinor={price.amountMinor}
+          currency={price.currency}
+          locale={locale}
+          vat={price.vat}
+          measure={price.measure}
+          labels={labels.unit}
+          inline
+          decimals={price.decimals}
+        />
       </span>
     </Link>
   );

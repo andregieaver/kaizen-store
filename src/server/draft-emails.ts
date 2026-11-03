@@ -31,7 +31,7 @@ export async function sendDraftLink(storeId: string, draftId: string, token: str
   if (!ctx) return "failed";
   const { store, market, text, m } = ctx;
   const words = text.draft;
-  const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
   const url = `${marketUrl(store.slug, String(draft.market_slug), `/account/pay/${token}`)}`;
   const until = new Date(String(draft.expires_at)).toLocaleDateString(market.locale, { dateStyle: "long" });
   const note = draft.note_to_buyer ? String(draft.note_to_buyer) : null;

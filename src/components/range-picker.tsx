@@ -8,7 +8,7 @@ import { rangeDatesAction, rentalTimesAction, type RentalTimeChoice } from "@/ap
 import { rangeCount, rangeOpen, type RangeCalendar, type RangeKind, type RentalPeriod } from "@/lib/booking-ranges";
 import { bookingPrice, type Season } from "@/lib/booking-prices";
 import { addDays, zonedTime } from "@/lib/booking-slots";
-import { minorUnitDigits } from "@/lib/money";
+import { minorUnitDigits, type PriceDecimals } from "@/lib/money";
 import type { PriceVat } from "@/lib/pricing";
 
 import { AffiliateField } from "./affiliate-field";
@@ -93,8 +93,8 @@ export function RangePicker({
     price: ReactNode;
     image?: VariantPicture | null;
     period: RentalPeriod;
-    /** The price of a night, day, half day or hour before seasons (D70), kept with VAT, and how it is shown (B2B). */
-    base: { amountMinor: number; currency: string; vat: PriceVat };
+    /** The price of a night, day, half day or hour before seasons (D70), kept with VAT, and how it is shown (B2B; decimals, D429). */
+    base: { amountMinor: number; currency: string; vat: PriceVat; decimals?: PriceDecimals };
   }[];
   /** The seasons and fee per booking (D70), for the total before adding. */
   pricing: { seasons: Season[]; feeMinor: number };
@@ -358,7 +358,7 @@ export function RangePicker({
         <p className="text-sm" data-range-total>
           <span className="font-medium">
             {labels.total}:{" "}
-            <VatAmount amountMinor={total} currency={base.currency} locale={locale} vat={base.vat} labels={labels} />
+            <VatAmount amountMinor={total} currency={base.currency} locale={locale} vat={base.vat} labels={labels} decimals={base.decimals} />
           </span>
           {pricing.feeMinor > 0 && <span className="block text-muted">{labels.feeIncluded}</span>}
         </p>

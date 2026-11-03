@@ -22,7 +22,7 @@ import { t, type Messages } from "@/lib/i18n";
 import { conversionFor, localizationOf } from "@/lib/localization";
 import { marketSlug } from "@/lib/market-slug";
 import { findMarket, toMarket, type Market, type MarketRow } from "@/lib/markets";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, isPriceDecimals } from "@/lib/money";
 import { marketUrl, storeSiteUrl } from "@/lib/paths";
 import { absoluteUrl } from "@/lib/seo";
 import { cutoffWeekday, formatDeliveryDate, weekdayName } from "@/lib/standing-orders";
@@ -58,7 +58,8 @@ async function storeById(storeId: string): Promise<EmailStore | null> {
     select s.id, s.slug, s.name, s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.locales,
       (select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
          from commerce.store_currencies c where c.store_id = s.id) as currencies,
-      coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale)
+      coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale,
+          'priceDecimals', coalesce(m.price_decimals, s.price_decimals))
         order by (m.code = s.country) desc nulls last, m.created_at) filter (where m.code is not null), '[]') as markets
     from commerce.stores s
     left join commerce.markets m on m.store_id = s.id
@@ -69,7 +70,10 @@ async function storeById(storeId: string): Promise<EmailStore | null> {
   // Links in the email are shaped as the store's addresses are (D181): without the country while it sells in one.
   await knowStoreAddress(String(row.slug));
   const text = (value: unknown) => (value === null || value === undefined ? null : String(value));
-  const markets = (row.markets as MarketRow[]).map(toMarket);
+  // Each country's way with a whole amount's decimals (D429): the store's emails to shoppers write amounts as its pages do.
+  const markets = (row.markets as (MarketRow & { priceDecimals?: unknown })[]).map(({ priceDecimals, ...market }) =>
+    toMarket({ ...market, priceStyle: { decimals: isPriceDecimals(priceDecimals) ? priceDecimals : "always" } }),
+  );
   return {
     id: String(row.id),
     slug: String(row.slug),
@@ -302,7 +306,7 @@ export async function sendOrderConfirmation(
   const ctx = await context(storeId, order.marketCode, order.locale, order.currency);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
-  const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
   const subscription = order.subscriptionId ? await getSubscriptionForOrder(storeId, orderId) : null;
   const renewal = subscription !== null && subscription.number !== order.number;
   const kind = renewal ? "subscription.renewed" : "order.confirmation";
@@ -497,7 +501,7 @@ async function orderNotice(
   const ctx = await context(storeId, order.marketCode, order.locale, order.currency);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
-  const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
   const built = build({ order, text, money, store, m });
   const fixedIntro = [built.intro, built.introTail].filter(Boolean).join(" ");
   const slots =
@@ -1042,7 +1046,7 @@ export async function sendSubscriptionChanged(
   const ctx = await context(storeId, subscription.marketCode, subscription.locale);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
-  const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale, market.priceStyle);
   const date = (value: string | null) =>
     value ? new Date(value).toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "Europe/Oslo" }) : "";
   const intro =
@@ -1090,7 +1094,7 @@ export async function sendRenewalReminder(
   const ctx = await context(storeId, subscription.marketCode, subscription.locale);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
-  const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale, market.priceStyle);
   const date = chargeAt.toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
   const amount = money(subscription.totalMinor);
   const intro = kind === "trial" ? text.trialIntro(date, amount) : text.reminderIntro(date, amount);
@@ -1193,10 +1197,10 @@ async function bookingEmail(
   const order = row?.order_id ? await getOrder(storeId, String(row.order_id)) : null;
   const line = order?.lines.find((l): l is BookedLine => l.booking?.id === bookingId);
   if (!order?.email || !line) return null;
-  const money = (minor: number) => formatMoney(minor, order.currency, order.locale);
   const ctx = await context(storeId, order.marketCode, order.locale, order.currency);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
+  const money = (minor: number) => formatMoney(minor, order.currency, order.locale, market.priceStyle);
   const when = formatBookingTime(line.booking.startsAt, order.locale, line.booking.timeZone);
   const built = build({ order, line, when, text, store, m, money });
   const url = await orderUrl(storeId, store, market, order.id);
@@ -1481,7 +1485,7 @@ export async function sendDeliveryPrepared(storeId: string, listId: string, date
   const day = formatDeliveryDate(date, locale);
   const leftOut = (delivery.left_out ?? []) as { title: string; wanted: number; got: number }[];
   const order = delivery.order_id ? await getOrder(storeId, String(delivery.order_id)) : null;
-  const money = (minor: number) => formatMoney(minor, order?.currency ?? market.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, order?.currency ?? market.currency, market.locale, market.priceStyle);
   const intro = order ? d.preparedIntro(day) : d.nothingIntro(day);
   const email = renderEmail({
     subject: d.preparedSubject(store.name, day),
@@ -1531,7 +1535,7 @@ export async function sendDeliveryCard(storeId: string, orderId: string): Promis
   if (!ctx || !order) return null;
   const { store, market, text } = ctx;
   const d = text.deliveries;
-  const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
   const intro = d.cardIntro(order.number, money(order.totalMinor));
   const email = renderEmail({
     subject: d.cardSubject(store.name, order.number),
@@ -1577,7 +1581,7 @@ export async function sendApprovalWaiting(storeId: string, orderId: string, to: 
   const { row, ctx } = found;
   const { store, market, text } = ctx;
   const a = text.approval;
-  const amount = formatMoney(Number(row.total_minor), String(row.currency).trim(), market.locale);
+  const amount = formatMoney(Number(row.total_minor), String(row.currency).trim(), market.locale, market.priceStyle);
   const email = renderEmail({
     subject: a.waitingSubject(store.name, String(row.number)),
     preview: a.waitingHeading,

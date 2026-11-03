@@ -31,7 +31,10 @@ export type WordpressPrice = {
 
 type Words = Pick<Messages, "vatIncluded" | "vatExcluded" | "fromPrice" | "priorPrice" | "unitPrice">;
 
-/** A price written out. `price.vat.shown` `excl` shows without VAT; `incl` and `choice` (a store selling to both) with it. */
+/**
+ * A price written out. `price.vat.shown` `excl` shows without VAT; `incl` and `choice` (a store selling to both) with it. Its amounts follow
+ * the view's decimals (D429: a market's price read by the catalogue for a marketing email); the owner's words are not written here.
+ */
 export function wordpressPrice(price: PriceView, from: boolean, locale: string, m: Words): WordpressPrice {
   const excl = price.vat.shown === "excl";
   const amount = (minor: number) => (excl ? withoutVat(minor, price.vat.rate) : minor);
@@ -40,14 +43,14 @@ export function wordpressPrice(price: PriceView, from: boolean, locale: string, 
   if (price.measure) {
     const shown = unitPriceShown(price.amountMinor, price.vat, price.measure, price.measure.base);
     const result = excl ? shown.excl : shown.incl;
-    if (result?.ok) unit_text = unitPriceWords(result, price.currency, locale, unitLabelsOf(m)).text;
+    if (result?.ok) unit_text = unitPriceWords(result, price.currency, locale, unitLabelsOf(m), price).text;
   }
   return {
-    text: formatMoney(shownMinor, price.currency, locale),
+    text: formatMoney(shownMinor, price.currency, locale, price),
     vat_label: excl ? m.vatExcluded : m.vatIncluded,
     from_label: from ? m.fromPrice : null,
     prior_label: price.referenceMinor !== null ? m.priorPrice : null,
-    prior_text: price.referenceMinor !== null ? formatMoney(amount(price.referenceMinor), price.currency, locale) : null,
+    prior_text: price.referenceMinor !== null ? formatMoney(amount(price.referenceMinor), price.currency, locale, price) : null,
     unit_text,
     amount_minor: shownMinor,
     amount_decimal: (shownMinor / 10 ** minorUnitDigits(price.currency)).toFixed(minorUnitDigits(price.currency)),

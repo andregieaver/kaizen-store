@@ -1,4 +1,6 @@
 import { marketSlug, parseMarketSlug } from "./market-slug";
+import type { PriceDecimals } from "./money";
+import type { StoreWords } from "./price-words";
 
 /**
  * A market is a country a store sells to (`commerce.markets`), shown to a
@@ -28,9 +30,18 @@ export type Market = {
   ownLocale: string;
   /** What turns an amount in `nativeCurrency` into `currency`: times `factor`, rounded to a multiple of `step` (1 and 1 when they are the same). */
   conversion: { factor: number; step: number };
+  /**
+   * How prices are shown to shoppers here (D429): with or without decimals on a whole amount (the market's own choice, else the store's),
+   * and the store's words around a product's price. `formatMoney(minor, currency, market.locale, market.priceStyle)` writes a shopper's
+   * amount; absent (a market read without it) is decimals always and no words.
+   */
+  priceStyle?: PriceStyle;
 };
 
-export type MarketRow = { code: string; currency: string; defaultLocale: string };
+/** How a market shows prices (D429): decimals on whole amounts, and the store's words around a product's price by language. */
+export type PriceStyle = { decimals: PriceDecimals; words?: StoreWords };
+
+export type MarketRow = { code: string; currency: string; defaultLocale: string; priceStyle?: PriceStyle };
 
 /** The language and currency a shopper chose, when not the country's own, and how amounts convert into the currency. */
 export type MarketView = { locale?: string; currency?: string; conversion?: { factor: number; step: number } };
@@ -70,6 +81,7 @@ export function showMarket(row: MarketRow, view: MarketView): Market {
     nativeCurrency: native,
     ownLocale: row.defaultLocale,
     conversion: currency === native ? SAME : (view.conversion ?? SAME),
+    ...(row.priceStyle && { priceStyle: row.priceStyle }),
   };
 }
 
@@ -77,7 +89,7 @@ export function showMarket(row: MarketRow, view: MarketView): Market {
 export function inView(market: Market, view: MarketView): Market {
   const currency = view.currency ?? market.currency;
   return showMarket(
-    { code: market.code, currency: market.nativeCurrency, defaultLocale: market.ownLocale },
+    { code: market.code, currency: market.nativeCurrency, defaultLocale: market.ownLocale, priceStyle: market.priceStyle },
     { locale: view.locale ?? market.locale, currency, conversion: view.conversion ?? (currency === market.currency ? market.conversion : undefined) },
   );
 }
@@ -119,7 +131,7 @@ export function findMarket(
     currency = parsed.currency;
     conversion = found;
   }
-  return showMarket({ code: own.code, currency: own.nativeCurrency, defaultLocale: own.ownLocale }, { locale, currency, conversion });
+  return showMarket({ code: own.code, currency: own.nativeCurrency, defaultLocale: own.ownLocale, priceStyle: own.priceStyle }, { locale, currency, conversion });
 }
 
 /**

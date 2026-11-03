@@ -5,8 +5,10 @@ import { useActionState, useEffect, useState } from "react";
 
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
 import { withoutVat, type StoreAudience } from "@/lib/b2b";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type PriceDecimals } from "@/lib/money";
+import { withWords, type PriceWords } from "@/lib/price-words";
 import type { PriceVat } from "@/lib/pricing";
+import type { QuantityRule } from "@/lib/quantity-rules";
 import { planPrice } from "@/lib/subscriptions";
 
 import { AffiliateField } from "./affiliate-field";
@@ -19,6 +21,8 @@ import { Dropdown } from "./dropdown";
 import { HidingBottomBar } from "./store-chrome";
 import { useVariantChoice } from "./variant-choice";
 import { useKeepFocus } from "./keep-focus";
+import { useQuantityChoice } from "./quantity-choice";
+import { QuantityStepper, type QuantityStepperLabels } from "./quantity-stepper";
 
 export type BarVariant = {
   id: string;
@@ -28,6 +32,8 @@ export type BarVariant = {
   /** Said when the cart holds as many as one line may (a variant on backorder, D172). */
   capped?: string;
   image?: { url: string; alt: string } | null;
+  /** Its quantity rule (D323) where the shopper chooses how many (D430); absent adds one, which the cart makes the rule's minimum. */
+  rule?: QuantityRule;
 };
 
 const initial: AddToCartState = { outcome: "idle", quantity: 0 };
@@ -36,6 +42,8 @@ const initial: AddToCartState = { outcome: "idle", quantity: 0 };
  * A product page's bottom bar on phones (D30): the price and add to cart,
  * always at the thumb. With several variants, the shopper picks one here;
  * the purchase option chosen on the page applies, as for the page's buttons.
+ * Where the shopper chooses how many (D430), a second row holds the chooser,
+ * sharing its number with the buy box's, beside Add to cart.
  */
 export function ProductBar({
   store,
@@ -49,6 +57,9 @@ export function ProductBar({
   labels,
   openCart = false,
   choosesOnPage = false,
+  decimals,
+  words,
+  quantity,
 }: {
   store: string;
   market: string;
@@ -64,6 +75,12 @@ export function ProductBar({
   labels: AddToCartLabels & { chooseVariant: string; soldOut: string; goCart: string };
   /** Each option is chosen in a list of its own on the page (D320): the bar names the variant chosen there and adds it, with no list of every variant. */
   choosesOnPage?: boolean;
+  /** The market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
+  /** The owner's words around the product's price (D429), in the shopper's language. */
+  words?: PriceWords;
+  /** The quantity chooser (D430), for each variant with a `rule`: − and + beside the number, or the number alone. */
+  quantity?: { buttons: boolean; labels: QuantityStepperLabels };
 }) {
   const [state, action, pending] = useActionState(addToCart, initial);
   const keepFocus = useKeepFocus(pending);
@@ -84,9 +101,11 @@ export function ProductBar({
   }, [state]);
 
   if (!variant) return null;
+  // The variant's rule where the shopper chooses how many (D430).
+  const counted = quantity && variant.rule ? { rule: variant.rule, offer: quantity } : null;
   const money = (v: BarVariant) => {
     const amount = plan ? planPrice(v.amountMinor, plan.discountPercent) : v.amountMinor;
-    return formatMoney(vat.shown !== "incl" && buyer === "business" ? withoutVat(amount, vat.rate) : amount, currency, locale);
+    return withWords(formatMoney(vat.shown !== "incl" && buyer === "business" ? withoutVat(amount, vat.rate) : amount, currency, locale, { decimals }), words);
   };
   const message =
     state.outcome === "added"
@@ -103,15 +122,15 @@ export function ProductBar({
 
   return (
     <HidingBottomBar product>
-      <form action={action} onSubmit={keepFocus} className="relative flex items-center gap-3 px-4 py-3">
+      <form action={action} onSubmit={keepFocus} className={`relative flex gap-x-3 gap-y-2 px-4 py-3 ${counted ? "flex-wrap items-end" : "items-center"}`}>
         <input type="hidden" name="store" value={store} />
         <input type="hidden" name="market" value={market} />
         <input type="hidden" name="variantId" value={variant.id} />
-        <input type="hidden" name="quantity" value="1" />
+        {!counted && <input type="hidden" name="quantity" value="1" />}
         <AffiliateField store={store} />
         <RecommendField />
         {plan && <input type="hidden" name="sellingPlanId" value={plan.id} />}
-        <div className="min-w-0 flex-1" aria-live="polite">
+        <div className={`min-w-0 flex-1 ${counted ? "basis-full" : ""}`} aria-live="polite">
           {shown && message ? (
             <p className="text-sm">
               {message}{" "}
@@ -147,14 +166,31 @@ export function ProductBar({
             <p className="font-semibold">{money(variant)}</p>
           )}
         </div>
+        {counted && <BarQuantity key={variant.id} variantId={variant.id} rule={counted.rule} offer={counted.offer} disabled={!variant.available} />}
         <button
           type="submit"
           disabled={!variant.available || pending}
-          className="min-h-11 shrink-0 button-primary px-5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+          className={`min-h-11 shrink-0 button-primary px-5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${counted ? "flex-1" : ""}`}
         >
           {!variant.available ? labels.soldOut : pending ? labels.adding : labels.addToCart}
         </button>
       </form>
     </HidingBottomBar>
   );
+}
+
+/** The bar's quantity chooser (D430): the buy box's number, so either adds the same; "Quantity" said to a screen reader only. */
+function BarQuantity({
+  variantId,
+  rule,
+  offer,
+  disabled,
+}: {
+  variantId: string;
+  rule: QuantityRule;
+  offer: { buttons: boolean; labels: QuantityStepperLabels };
+  disabled: boolean;
+}) {
+  const [n, setN] = useQuantityChoice(variantId, rule);
+  return <QuantityStepper rule={rule} value={n} onChange={setN} labels={offer.labels} buttons={offer.buttons} disabled={disabled} hideLabel compact />;
 }

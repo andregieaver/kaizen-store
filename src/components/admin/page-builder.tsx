@@ -2,6 +2,7 @@
 
 import { ButtonHoverField, HoverTimingFields } from "./hover-fields";
 import { OPTIONS_FROM } from "@/lib/variant-options";
+import { QUANTITY_PICKERS, isQuantityPicker } from "@/lib/quantity-stepper";
 import { HOVER_DURATION_DEFAULT } from "@/lib/hover-timing";
 import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, type Breakpoints, type Size } from "@/lib/breakpoints";
 import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
@@ -5741,6 +5742,25 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
           max={2048}
           onChange={(n) => onChange({ optionsFrom: n === OPTIONS_FROM ? undefined : Math.min(2048, Math.max(2, n)) })}
         />
+      )}
+      {block.part === "buy" && (
+        // How shoppers choose how many on this layout's pages (D430): the store's choice (Settings, Prices and quantity) unless set here.
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          {pw.quantity}
+          <select
+            value={block.quantity ?? ""}
+            onChange={(event) => onChange({ quantity: isQuantityPicker(event.target.value) ? event.target.value : undefined })}
+            className="min-h-10 rounded-md border border-edge bg-card px-3 font-normal"
+          >
+            <option value="">{pw.quantityStore}</option>
+            {QUANTITY_PICKERS.map((picker) => (
+              <option key={picker} value={picker}>
+                {pw.quantityPickers[picker]}
+              </option>
+            ))}
+          </select>
+          <span className="font-normal text-muted">{pw.quantityHint}</span>
+        </label>
       )}
       {headed && (
         <>

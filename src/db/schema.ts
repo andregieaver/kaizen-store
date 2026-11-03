@@ -628,6 +628,24 @@ export const stores = commerce.table(
     businessPopup: boolean("business_popup").notNull().default(false),
     /** On phones, open the slide-out cart (D64) once something is added to it. */
     openCartOnAdd: boolean("open_cart_on_add").notNull().default(false),
+    /**
+     * Prices with or without decimals (D429, `src/lib/money.ts`): `always` (499,00 kr, the default) or `hide_whole` (499 kr where the amount
+     * is whole; 499,50 kr stays so). Never a rounding: what is shown is what is charged. A market may differ (`markets.price_decimals`). Every
+     * amount a shopper sees on the storefront and in the store's emails to shoppers follows it; legal documents and the admin keep their
+     * decimals. Written only by `savePriceDisplay()` (`src/server/price-display.ts`).
+     */
+    priceDecimals: text("price_decimals").notNull().default("always"),
+    /**
+     * The owner's words before and after a product's price (D429, `src/lib/price-words.ts`), by language:
+     * `{ "nb-NO": { "prefix": "Kun", "suffix": ",-" } }`. A language without its own takes the main language's; a product may have its own
+     * (`products.price_words`). Plain text of at most 24 characters each, refused when the claims filter finds a claim.
+     */
+    priceWords: jsonb("price_words").notNull().default({}),
+    /**
+     * The quantity chooser on a product page (D430, `QuantityStepper`): `buttons` (a number with − and +, the default), `box` (the number
+     * alone) or `hidden` (Add to cart puts in the rule's minimum, as before). A product layout's buy part may choose otherwise.
+     */
+    quantityPicker: text("quantity_picker").notNull().default("buttons"),
     /** The AI manager may change DNS records of the store's kept zones without asking (D315 decision 5, `docs/domains.md` 7.1). */
     domainDnsAuto: boolean("domain_dns_auto").notNull().default(false),
     /** A platform admin opened buying domains for this store before it opens to all (D315 decision 9). */
@@ -746,6 +764,15 @@ export const stores = commerce.table(
     ),
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
+    check("stores_price_decimals", sql`${t.priceDecimals} in ('always', 'hide_whole')`),
+    check("stores_quantity_picker", sql`${t.quantityPicker} in ('buttons', 'box', 'hidden')`),
+    // Price words (D429): an object of languages, each an object of words of at most 24 characters with no tag, 4,000 bytes in all.
+    check(
+      "stores_price_words",
+      sql`jsonb_typeof(${t.priceWords}) = 'object' and octet_length(${t.priceWords}::text) <= 4000
+        and not jsonb_path_exists(${t.priceWords}, '$.* ? (@.type() != "object")')
+        and not jsonb_path_exists(${t.priceWords}, '$.*.* ? (@.type() != "string" || @ like_regex "^.{25}" flag "s" || @ like_regex "[<>]")')`,
+    ),
     check(
       "stores_slug_format",
       sql`${t.slug} ~ '^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$'`,
@@ -1931,6 +1958,8 @@ export const markets = commerce.table(
     defaultLocale: text("default_locale").notNull(),
     locales: text("locales").array().notNull(),
     active: boolean("active").notNull().default(false),
+    /** Prices with or without decimals in this country (D429): `always` or `hide_whole`; null follows the store's (`stores.price_decimals`). */
+    priceDecimals: text("price_decimals"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -1938,6 +1967,7 @@ export const markets = commerce.table(
     unique("markets_store_code_currency_key").on(t.storeId, t.code, t.currency),
     index("markets_code_idx").on(t.code),
     check("markets_default_locale_listed", sql`${t.defaultLocale} = any(${t.locales})`),
+    check("markets_price_decimals", sql`${t.priceDecimals} is null or ${t.priceDecimals} in ('always', 'hide_whole')`),
   ],
 );
 
@@ -2370,6 +2400,11 @@ export const products = commerce.table(
     /** The category's attributes' chosen values: an attribute id to its value ids (`{"1": [2503]}`); `{}` for none. */
     standardAttributes: jsonb("standard_attributes").notNull().default({}),
     /**
+     * The product's own words around its price (D429, `src/lib/price-words.ts`): null follows the store's (`stores.price_words`);
+     * `{"mode": "none"}` shows none; `{"mode": "own", "words": {"nb-NO": {"prefix": "Fra kun", "suffix": "/stk"}}}` its own by language.
+     */
+    priceWords: jsonb("price_words"),
+    /**
      * When the product first became active (wave 2, D168): set by a trigger and never cleared. A handle that changes leaves a redirect only for a
      * product that was ever live (`OLD.status <> 'draft'` or this set). No backfill: a product active or archived today counts as ever live.
      */
@@ -2422,6 +2457,18 @@ export const products = commerce.table(
     check("products_standard_attributes", sql`jsonb_typeof(${t.standardAttributes}) = 'object' and (${t.standardCategory} is not null or ${t.standardAttributes} = '{}'::jsonb)`),
     index("products_standard_category_idx").on(t.storeId, t.standardCategory),
     index("products_standard_attributes_idx").using("gin", t.standardAttributes.op("jsonb_path_ops")),
+    // Its own price words (D429): none, or its own by language with the store's rules for each word (`stores_price_words`). A missing
+    // `mode` or `words` would make the test unknown, which a check lets through: `coalesce` makes it a refusal.
+    check(
+      "products_price_words",
+      sql`${t.priceWords} is null or coalesce(
+        octet_length(${t.priceWords}::text) <= 4000
+        and (${t.priceWords} = '{"mode": "none"}'::jsonb
+          or (${t.priceWords} ->> 'mode' = 'own' and jsonb_typeof(${t.priceWords} -> 'words') = 'object'
+            and not jsonb_path_exists(${t.priceWords}, '$.words.* ? (@.type() != "object")')
+            and not jsonb_path_exists(${t.priceWords}, '$.words.*.* ? (@.type() != "string" || @ like_regex "^.{25}" flag "s" || @ like_regex "[<>]")'))),
+        false)`,
+    ),
   ],
 );
 

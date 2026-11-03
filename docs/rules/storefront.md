@@ -509,6 +509,15 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
 
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
+  Prices with or without decimals (D429): an amount a shopper reads is written with its market's style,
+  `formatMoney(minor, currency, market.locale, market.priceStyle)` (`Market.priceStyle` from `localized()`: the country's
+  `markets.price_decimals`, else the store's `stores.price_decimals`), which leaves only zeros off a whole amount and never
+  rounds; a `PriceView` carries it as `decimals`. A new place that shows shoppers an amount (a page, a client component, an
+  email to a shopper) passes the style; invoices, credit notes, UBL, tax reports, feeds and the admin never do. The owner's
+  words around a product's price (`stores.price_words`, `products.price_words`) are put on a product's `PriceView` by the
+  catalogue's reads (`styledPrice()`, as `words`) and drawn by `VatAmount` around the amount, inside the automatic labels;
+  a new place that shows a product's price shows them (`withWords()` for plain text), and a cart line, a total, the
+  30-day reference, an invoice or a feed never does. The chat's model is told the amount, never the words.
 
 ## Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`, a themed select-only combobox with pictures), never a native…
 
@@ -541,6 +550,8 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   must agree with what `placeOrder()` charges; `checkout-kinds.int.test.ts`
   takes every kind of product from the cart to a paid order and holds the
   two together, so a new kind of product gets a scenario there.
+  A line's quantity is `CartQuantity` (D430): the − and + chooser (`QuantityStepper`), saved through `updateCartLine` a
+  moment after the last change; its Update button is drawn only without a script, so the form still works without one.
 
 ## Payment credentials and payment-method switches are store settings edited in the admin, never environment variables (decision D15)
 

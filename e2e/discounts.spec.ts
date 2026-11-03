@@ -38,8 +38,8 @@ test("a discount code comes off the cart, says why when it cannot or cannot besi
   await expect(summary.getByRole("alert")).toContainText("300,00");
 
   // With two, 10 % comes off: 398,00 − 39,80 + 99,00 shipping.
-  await page.getByLabel("Antall").fill("2");
-  await page.getByRole("button", { name: "Oppdater" }).click();
+  await page.getByRole("spinbutton", { name: /^Antall/ }).fill("2");
+  await page.getByRole("spinbutton", { name: /^Antall/ }).press("Enter");
   await expect(summary).toContainText(`Rabatt (${code})`);
   await expect(summary).toContainText("−39,80");
   await expect(summary).toContainText("457,20");

@@ -66,7 +66,7 @@ export function OwnBookings({
                   ...bookingChangesLabels(
                     m,
                     formatBookingTime(until, market.locale, booking.timeZone),
-                    paidOnline > 0 ? formatMoney(paidOnline, order.currency, market.locale) : null,
+                    paidOnline > 0 ? formatMoney(paidOnline, order.currency, market.locale, market.priceStyle) : null,
                   ),
                   ...(isRange(booking) && { changeUntil: m.stay.cancelUntil(formatBookingTime(until, market.locale, booking.timeZone)) }),
                 }}

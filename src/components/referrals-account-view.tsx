@@ -3,7 +3,7 @@ import Link from "next/link";
 import { friendLabel, type ShopperReferrals } from "@/lib/affiliates";
 import { earnPercentText } from "@/lib/bonus-shopper";
 import type { Messages } from "@/lib/i18n";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type PriceDecimals } from "@/lib/money";
 
 import { CopyLinkButton } from "./copy-link-button";
 
@@ -19,6 +19,7 @@ export function ReferralsAccountView({
   m,
   locale,
   base,
+  decimals,
 }: {
   referrals: ShopperReferrals;
   /** The customer's full link, or null while they have none. */
@@ -27,9 +28,11 @@ export function ReferralsAccountView({
   locale: string;
   /** The market's own path, for the link to the credits page. */
   base: string;
+  /** The market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
 }) {
   const a = m.affiliate;
-  const money = (minor: number) => formatMoney(minor, referrals.currency, locale);
+  const money = (minor: number) => formatMoney(minor, referrals.currency, locale, { decimals });
   const s = referrals.settings;
   const counted = referrals.friends.filter((friend) => friend.status !== "rejected");
   const wait = referrals.pendingDays > 0 ? a.waitAfter(m.bonus.dayCount(referrals.pendingDays)) : a.waitNow;

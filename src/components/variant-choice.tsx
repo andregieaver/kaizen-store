@@ -2,15 +2,17 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
+import type { QuantityRule } from "@/lib/quantity-rules";
 import { trackShop } from "@/lib/shop-events";
 import { OPTIONS_FROM, buyableValues, nearestVariant, optionsOf } from "@/lib/variant-options";
 
 import { TrackContext, trackedItem, type ShopTrack } from "./shop-track";
 
-import { AddToCart, type AddToCartLabels } from "./add-to-cart";
+import { AddToCart, type AddToCartLabels, type QuantityOffer } from "./add-to-cart";
 import { AddToDelivery, type AddToDeliveryLabels } from "./add-to-delivery";
 import { BackInStock, type BackInStockLabels } from "./back-in-stock";
 import { Dropdown } from "./dropdown";
+import { QuantityChoice } from "./quantity-choice";
 import { ExpressArea, type ExpressSetup } from "./express-area";
 import { KlarnaMessage, type KlarnaSetup } from "./klarna-message";
 import { showVariantPicture, type VariantPicture } from "./variant-picture";
@@ -42,6 +44,7 @@ export function VariantChoice({
 }) {
   const choice = useState(initial);
   const chosen = choice[0];
+
   const viewed = useRef(new Set<string>());
   useEffect(() => showVariantPicture(productId, pictures[chosen] ?? null), [productId, pictures, chosen]);
   useEffect(() => announceVariant(productId, chosen), [productId, chosen]);
@@ -55,7 +58,10 @@ export function VariantChoice({
   }, [track, chosen]);
   return (
     <TrackContext.Provider value={track}>
-      <ChosenVariant.Provider value={choice}>{children}</ChosenVariant.Provider>
+      <ChosenVariant.Provider value={choice}>
+        {/* How many (D430): shared by the buy box's chooser and the phone's bar, as the variant is. */}
+        <QuantityChoice>{children}</QuantityChoice>
+      </ChosenVariant.Provider>
     </TrackContext.Provider>
   );
 }
@@ -83,6 +89,8 @@ export type OfferedVariant = {
   priceIndex: number;
   /** Its price breaks (D323), as a place in the part's `breakTables`; none for a variant whose breaks lower nothing. */
   breakIndex?: number;
+  /** Its quantity rule (D323), where the shopper chooses how many (D430); absent where Add to cart puts in the rule's minimum. */
+  rule?: QuantityRule;
 };
 
 /** A price as the server drew it, once for every variant that has it. */
@@ -115,6 +123,7 @@ export function VariantPurchase({
   notify,
   express,
   klarna,
+  quantity,
 }: {
   variants: OfferedVariant[];
   prices: OfferedPrice[];
@@ -135,6 +144,8 @@ export function VariantPurchase({
   express?: ExpressSetup & { variants: string[] };
   /** Klarna's line under the price (D373), each price's amount by its place in `prices`. */
   klarna?: KlarnaSetup & { amounts: number[] };
+  /** The quantity chooser (D430): with − and + or the number alone, for each variant that has a `rule`; absent where it is hidden. */
+  quantity?: Omit<QuantityOffer, "rule">;
 }) {
   const [chosen, setChosen] = useVariantChoice(variants[0]?.id ?? "");
   const variant = variants.find((v) => v.id === chosen) ?? variants[0];
@@ -187,6 +198,7 @@ export function VariantPurchase({
             openCart={openCart}
             labels={labels}
             capped={variant.capped}
+            quantity={quantity && variant.rule ? { ...quantity, rule: variant.rule } : undefined}
           />
           {klarna && klarna.amounts[variant.priceIndex] !== undefined && (
             <KlarnaMessage key={`klarna-${variant.id}`} {...klarna} amountMinor={klarna.amounts[variant.priceIndex]} />

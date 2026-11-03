@@ -3,7 +3,7 @@ import Link from "next/link";
 import { earnPercentText, pendingParts } from "@/lib/bonus-shopper";
 import { isGrantKind, type ShopperBonus } from "@/lib/bonus";
 import type { Messages } from "@/lib/i18n";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type PriceDecimals } from "@/lib/money";
 
 import { waitPhrase } from "./bonus-credits";
 
@@ -20,6 +20,7 @@ export function BonusAccountView({
   base,
   orderIds,
   now = new Date(),
+  decimals,
 }: {
   bonus: ShopperBonus;
   m: Messages;
@@ -27,9 +28,11 @@ export function BonusAccountView({
   base: string;
   orderIds: Record<string, string>;
   now?: Date;
+  /** The market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
 }) {
   const b = m.bonus;
-  const money = (minor: number) => formatMoney(minor, bonus.currency, locale);
+  const money = (minor: number) => formatMoney(minor, bonus.currency, locale, { decimals });
   const day = (iso: string, style: "long" | "medium" = "medium") =>
     new Date(iso).toLocaleDateString(locale, { dateStyle: style });
   const { balance } = bonus;
@@ -155,11 +158,14 @@ export function BonusCard({
   m,
   locale,
   base,
+  decimals,
 }: {
   bonus: ShopperBonus;
   m: Messages;
   locale: string;
   base: string;
+  /** The market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
 }) {
   if (!bonus.enabled) return null;
   return (
@@ -170,7 +176,7 @@ export function BonusCard({
       <span>
         <span className="font-medium">{m.bonus.title}</span>
         <span className="block text-sm text-muted">
-          {m.bonus.cardAvailable(formatMoney(bonus.balance.availableMinor, bonus.currency, locale))}
+          {m.bonus.cardAvailable(formatMoney(bonus.balance.availableMinor, bonus.currency, locale, { decimals }))}
         </span>
       </span>
       <span aria-hidden="true">→</span>

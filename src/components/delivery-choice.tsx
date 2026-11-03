@@ -10,7 +10,7 @@ import {
 import { withoutVat } from "@/lib/b2b";
 import type { DeliveryKind } from "@/lib/delivery-options";
 import type { ShownDeliveryOption, ShownDeliveryOptions } from "@/lib/delivery-words";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type PriceDecimals } from "@/lib/money";
 import { formatWindow } from "@/lib/porterbuddy";
 
 export type DeliveryChoiceLabels = {
@@ -72,12 +72,15 @@ export function DeliveryChoice({
   vatRate,
   timeZone,
   labels,
+  decimals,
 }: {
   store: string;
   market: string;
   initial: ShownDeliveryOptions;
   currency: string;
   locale: string;
+  /** The market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
   /** The store's time zone, in which delivery windows are written. */
   timeZone: string;
   /** A business sees prices without VAT (B2B). */
@@ -102,7 +105,7 @@ export function DeliveryChoice({
       : null;
   const below = options.localBelowMinimum;
   const localFrom = below
-    ? labels.localFrom.replace("{minimum}", formatMoney(business ? withoutVat(below.minimumMinor, vatRate) : below.minimumMinor, currency, locale))
+    ? labels.localFrom.replace("{minimum}", formatMoney(business ? withoutVat(below.minimumMinor, vatRate) : below.minimumMinor, currency, locale, { decimals }))
     : null;
   return (
     <section aria-labelledby="delivery-choice-heading" className="flex flex-col gap-3 rounded-lg border border-border p-4">
@@ -158,6 +161,7 @@ export function DeliveryChoice({
         vatRate={vatRate}
         timeZone={timeZone}
         labels={labels}
+        decimals={decimals}
       />
     </section>
   );
@@ -175,10 +179,12 @@ function Choice({
   vatRate,
   timeZone,
   labels,
+  decimals,
 }: {
   store: string;
   market: string;
   options: ShownDeliveryOption[];
+  decimals?: PriceDecimals;
   note: string;
   localFrom: string | null;
   currency: string;
@@ -198,7 +204,7 @@ function Choice({
   );
   if (options.length === 0 && !localFrom) return null;
   const option = options.find((o) => o.id === picked) ?? options[0];
-  const money = (minor: number) => (minor === 0 ? labels.free : formatMoney(business ? withoutVat(minor, vatRate) : minor, currency, locale));
+  const money = (minor: number) => (minor === 0 ? labels.free : formatMoney(business ? withoutVat(minor, vatRate) : minor, currency, locale, { decimals }));
   const local = option ? kindOf(option) === "local" : false;
   // Nothing to do when the choice is what the order already has (with the same pickup point, or the same note for the driver).
   const unchanged = !option || (option.selected && (!option.needsPickupPoint || option.pickupPointId === pickup) && (!local || driverNote.trim() === note.trim()));

@@ -83,7 +83,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
   const m = t(market.lang);
   const a = m.account;
   const vatWords = vatText(market.lang);
-  const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long" });
   const address = order.shippingAddress;
   // Bonus credits (D130): what this order earned and from when they can be used.
@@ -152,6 +152,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
                   gift={line.gift}
                   currency={order.currency}
                   locale={market.locale}
+                  decimals={market.priceStyle?.decimals}
                   m={m}
                 />
                 <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} locale={market.locale} />

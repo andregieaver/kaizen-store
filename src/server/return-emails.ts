@@ -315,7 +315,7 @@ async function returnMail(
   const [to] = recipientsOf(mail.facts);
   if (!to) return null;
   const { store, market, text } = mail.ctx;
-  const money = (minor: number) => formatMoney(minor, mail.facts.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, mail.facts.currency, market.locale, market.priceStyle);
   const fixed = build(mail, text, money);
   // The store's own subject, heading and intro in the order's language (D238 4.2); the blocks stay the code's.
   const [names] = await db().execute<Row>(sql`

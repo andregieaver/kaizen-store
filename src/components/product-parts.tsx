@@ -37,6 +37,7 @@ import { fieldHeading, fieldToShow, groupHeading, groupsToShow } from "@/lib/fie
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { BreakStep } from "@/lib/price-breaks";
 import { lineMax, ruleWords, type QuantityRule } from "@/lib/quantity-rules";
+import { pickerFor, type QuantityPicker } from "@/lib/quantity-stepper";
 import { inView, shown, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { todayIn } from "@/lib/analytics-period";
@@ -238,7 +239,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           <section aria-label={product.title} className={forBusiness}>
             <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
               <MemberNotice store={store} m={m} />
-              <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} />
+              <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} />
             </Suspense>
           </section>
         );
@@ -250,7 +251,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           </h2>
           <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
             <MemberNotice store={store} m={m} />
-            <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} />
+            <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} />
           </Suspense>
         </section>
       );
@@ -486,7 +487,10 @@ async function GiftCardPurchase({ store, product, market, m }: { store: Store; p
       market={market.slug}
       cartHref={marketPath(store.slug, market.slug, "/cart")}
       openCart={store.openCartOnAdd}
-      amounts={product.variants.map((variant) => ({ variantId: variant.id, label: formatMoney(variant.price.amountMinor, variant.price.currency, market.locale) }))}
+      amounts={product.variants.map((variant) => ({
+        variantId: variant.id,
+        label: formatMoney(variant.price.amountMinor, variant.price.currency, market.locale, market.priceStyle),
+      }))}
       today={todayIn(new Date(), store.timeZone)}
       labels={browserText(market.lang).giftCard}
       cartLabels={{
@@ -685,7 +689,7 @@ async function RangeBooking({
   const { seasons, feeMinor } = pricing;
   const shown = product.variants.find((v) => v.rentalPeriod === "day") ?? product.variants[0];
   const amount = (minor: number) => (
-    <VatAmount amountMinor={minor} currency={shown.price.currency} locale={market.locale} vat={shown.price.vat} labels={m} label={false} />
+    <VatAmount amountMinor={minor} currency={shown.price.currency} locale={market.locale} vat={shown.price.vat} labels={m} label={false} decimals={shown.price.decimals} />
   );
   const dayMonth = new Intl.DateTimeFormat(market.locale, { day: "numeric", month: "long", timeZone: "UTC" });
   const weekdayName = new Intl.DateTimeFormat(market.locale, { weekday: "short", timeZone: "UTC" });
@@ -772,7 +776,7 @@ async function RangeBooking({
           price: <Price price={variant.price} locale={market.locale} m={m} />,
           image: variant.image,
           period: variant.rentalPeriod,
-          base: { amountMinor: variant.price.amountMinor, currency: variant.price.currency, vat: variant.price.vat },
+          base: { amountMinor: variant.price.amountMinor, currency: variant.price.currency, vat: variant.price.vat, decimals: variant.price.decimals },
         }))}
         pricing={pricing}
         locale={market.locale}
@@ -828,6 +832,7 @@ async function VariantsWithStock({
   market,
   m,
   optionsFrom,
+  quantity,
 }: {
   store: Store;
   product: ProductDetail;
@@ -835,6 +840,8 @@ async function VariantsWithStock({
   m: Messages;
   /** From this many variants each option is a list of its own (D320, the buy part's `optionsFrom`). */
   optionsFrom?: number;
+  /** The buy part's own quantity chooser (D430, `ProductBlock.quantity`); absent follows the store's (`stores.quantity_picker`). */
+  quantity?: QuantityPicker;
 }) {
   // Only sold as a subscription, and subscriptions are in the country's own currency (D109).
   if (product.needsNativeCurrency) {
@@ -883,6 +890,13 @@ async function VariantsWithStock({
   // A variant that keeps selling is capped by the line maximum, not by what is in stock, so the message must not say it is.
   const cappedNote = (variant: ProductDetail["variants"][number]) =>
     availability.get(variant.id)?.stockPolicy === "continue" ? m.backorder.capped(lineMax(ruleOfVariant(variant))) : undefined;
+  // How many to buy (D430): the buy part's chooser, else the store's, for each variant whose rule leaves a choice; none for other kinds.
+  const chooser = (variant: ProductDetail["variants"][number]) => pickerFor(store.quantityPicker, quantity, product.kind, ruleOfVariant(variant));
+  const counted = product.variants.map(chooser).find((picker) => picker !== null) ?? null;
+  const quantityOffer = counted
+    ? { buttons: counted === "buttons", labels: { quantity: m.quantity, less: m.quantityLess, more: m.quantityMore } }
+    : undefined;
+  const ruleIfCounted = (variant: ProductDetail["variants"][number]) => (chooser(variant) ? { rule: ruleOfVariant(variant) } : {});
 
   const plans = product.plans.map((plan) => ({
     id: plan.id,
@@ -891,7 +905,7 @@ async function VariantsWithStock({
     note: [
       plan.discountPercent > 0 && m.planSave(plan.discountPercent),
       plan.trialDays > 0 && m.planTrial(plan.trialDays),
-      plan.signupFeeMinor > 0 && m.planSignupFee(formatMoney(plan.signupFeeMinor, market.currency, market.locale)),
+      plan.signupFeeMinor > 0 && m.planSignupFee(formatMoney(plan.signupFeeMinor, market.currency, market.locale, market.priceStyle)),
       plan.minCycles > 0 && m.planMinCycles(plan.minCycles),
     ]
       .filter(Boolean)
@@ -920,6 +934,8 @@ async function VariantsWithStock({
             labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
             measure={price.measure}
             unitLabels={unitLabelsOf(m)}
+            decimals={price.decimals}
+            words={price.words}
           >
             <Price price={price} locale={market.locale} m={m} yours={yours} />
           </PlanPrice>
@@ -931,6 +947,7 @@ async function VariantsWithStock({
             locale={market.locale}
             vat={price.vat}
             labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
+            decimals={price.decimals}
           />
         ),
       });
@@ -989,8 +1006,10 @@ async function VariantsWithStock({
               capped: cappedNote(variant),
               priceIndex: priced.index(offered(variant)),
               breakIndex: breakTables.index(variant),
+              ...ruleIfCounted(variant),
             };
           })}
+          quantity={quantityOffer}
           prices={priced.prices}
           breakTables={breakTables.tables}
           express={
@@ -1044,6 +1063,9 @@ async function VariantsWithStock({
         storeAudience={store.audience}
         openCart={store.openCartOnAdd}
         choosesOnPage={product.variants.length >= (optionsFrom ?? OPTIONS_FROM) && Object.keys(product.variants[0].options).length > 0}
+        decimals={product.variants[0].price.decimals}
+        words={product.variants[0].price.words}
+        quantity={quantityOffer}
         variants={product.variants.map((variant) => ({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,
@@ -1051,6 +1073,7 @@ async function VariantsWithStock({
           available: available(variant),
           capped: cappedNote(variant),
           image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
+          ...ruleIfCounted(variant),
         }))}
         labels={{
           addToCart: m.addToCart,

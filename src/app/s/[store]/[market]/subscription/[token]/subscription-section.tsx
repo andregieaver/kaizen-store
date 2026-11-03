@@ -33,7 +33,7 @@ async function Details({ store, market, token }: { store: Store; market: Market;
   const m: Messages = t(market.lang);
   const subscription = /^[0-9a-f]{64}$/.test(token) ? await getSubscriptionByToken(store.id, token) : null;
   if (!subscription) notFound();
-  const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale, market.priceStyle);
   const date = (iso: string) =>
     new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
   const allowed = allowedChanges(subscription);

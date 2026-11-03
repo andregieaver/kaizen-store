@@ -4,7 +4,7 @@ import { BonusCreditsForm } from "@/components/lazy/shop";
 import { creditsInputValue, creditsMode, earnPercentText, type CreditsState } from "@/lib/bonus-shopper";
 import type { CartBonus } from "@/lib/bonus";
 import type { Messages } from "@/lib/i18n";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type PriceDecimals } from "@/lib/money";
 
 /** How long until credits earned on this order can be used, as a phrase: "14 days after you pay". */
 export function waitPhrase(m: Messages, pendingDays: number): string {
@@ -24,6 +24,7 @@ export function BonusCredits({
   locale,
   signInHref,
   action,
+  decimals,
 }: {
   bonus: CartBonus;
   m: Messages;
@@ -31,10 +32,12 @@ export function BonusCredits({
   locale: string;
   signInHref: string;
   action: (state: CreditsState, form: FormData) => Promise<CreditsState>;
+  /** The market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
 }) {
   const mode = creditsMode(bonus);
   if (mode === "off") return null;
-  const money = (minor: number) => formatMoney(minor, currency, locale);
+  const money = (minor: number) => formatMoney(minor, currency, locale, { decimals });
   const b = m.bonus;
 
   if (mode === "guest") {

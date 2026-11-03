@@ -10,6 +10,7 @@ import { SearchBox } from "@/components/lazy/blocks";
 import { t, type Messages } from "@/lib/i18n";
 import { parseListingParams } from "@/lib/listing-filters";
 import { formatMoney } from "@/lib/money";
+import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { encodeAddress } from "@/lib/redirect-path";
 import type { SearchFilters } from "@/lib/query-understanding";
@@ -157,10 +158,10 @@ const exactHref = (path: string, typed: string) => `${path}?q=${encodeURICompone
  * here from checked numbers. Nothing the model wrote is shown but the
  * shopper's own words it kept.
  */
-function describeFilters(filters: SearchFilters, terms: Term[], m: Messages, market: { locale: string; currency: string }): string[] {
+function describeFilters(filters: SearchFilters, terms: Term[], m: Messages, market: Pick<Market, "locale" | "currency" | "priceStyle">): string[] {
   const name = (slug: string, kind: Term["kind"]) => terms.find((term) => term.kind === kind && term.slug === slug)?.name;
   // The shopper's own amount, not a product's price: shown as they typed it, with VAT as products' prices are compared.
-  const money = (minor: number) => formatMoney(minor, market.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, market.currency, market.locale, market.priceStyle);
   const { minPriceMinor: min, maxPriceMinor: max } = filters;
   return [
     filters.text ? m.search.words(filters.text) : null,

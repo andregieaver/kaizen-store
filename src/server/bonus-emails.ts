@@ -42,7 +42,7 @@ export async function sendBonusExpiryEmail(reminder: BonusExpiryReminder): Promi
   const words = bonusExpiryText(text, {
     store: store.name,
     customerName: String(customer.name ?? ""),
-    amount: formatMoney(reminder.amountMinor, reminder.currency, market.locale),
+    amount: formatMoney(reminder.amountMinor, reminder.currency, market.locale, market.priceStyle),
     expiresOn: expiresOn.toLocaleDateString(market.locale, { dateStyle: "long" }),
     url: `${marketUrl(store.slug, market.slug, "/account/bonus")}`,
   });

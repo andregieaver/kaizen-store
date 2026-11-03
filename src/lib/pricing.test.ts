@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { priceView, stockLevel, WITH_VAT } from "./pricing";
+import { priceView, stockLevel, styledPrice, WITH_VAT } from "./pricing";
 
 describe("priceView", () => {
   it("shows the 30-day reference only for a genuine reduction", () => {
@@ -38,5 +38,24 @@ describe("stockLevel", () => {
     expect(stockLevel(3)).toBe("low");
     expect(stockLevel(5)).toBe("low");
     expect(stockLevel(6)).toBe("in_stock");
+  });
+});
+
+// D429: a product's price as its market shows it.
+describe("styledPrice", () => {
+  const view = priceView(49900, "NOK", 59900);
+  const style = { decimals: "hide_whole" as const, words: { byLocale: { "nb-NO": { prefix: "Kun", suffix: ",-" } }, main: "nb-NO" } };
+
+  it("carries the market's decimals and the store's words in the shopper's language", () => {
+    expect(styledPrice(view, style, { mode: "inherit" }, "nb-NO")).toEqual({ ...view, decimals: "hide_whole", words: { prefix: "Kun", suffix: ",-" } });
+  });
+
+  it("leaves both out where the market keeps its decimals and the product shows no words", () => {
+    expect(styledPrice(view, { decimals: "always" }, { mode: "none" }, "nb-NO")).toEqual(view);
+    expect(styledPrice(view, undefined, { mode: "inherit" }, "nb-NO")).toEqual(view);
+  });
+
+  it("takes the product's own words over the store's", () => {
+    expect(styledPrice(view, style, { mode: "own", words: { "nb-NO": { prefix: "", suffix: "/stk" } } }, "nb-NO").words).toEqual({ prefix: "", suffix: "/stk" });
   });
 });

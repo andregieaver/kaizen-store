@@ -42,7 +42,7 @@ export async function applyCreditsForm(storeSlug: string, marketSlug: string, fo
   if (!shop) return { state: { status: "idle", message: "" }, changed: false, shop: null, cartId: null };
   const { store, market } = shop;
   const m = t(market.lang).bonus;
-  const money = (minor: number) => formatMoney(minor, market.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, market.currency, market.locale, market.priceStyle);
   const problem = (message: string): CreditsOutcome => ({
     state: { status: "problem", message },
     changed: false,

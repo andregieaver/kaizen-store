@@ -90,6 +90,7 @@ async function Company({ params, searchParams }: { params: Props["params"]; sear
         toApprove={toApprove}
         mine={waiting}
         locale={market.locale}
+        decimals={market.priceStyle?.decimals}
         m={m}
         decide={(orderId, approve) => decideApprovalAction.bind(null, store.slug, market.slug, orderId, approve)}
         pay={(orderId) => payApprovedAction.bind(null, store.slug, market.slug, orderId)}

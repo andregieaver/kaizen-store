@@ -47,6 +47,7 @@ async function ReturnStatus({ params }: { params: Props["params"] }) {
       m={m.returns}
       ret={ret}
       locale={market.locale}
+      decimals={market.priceStyle?.decimals}
       extras={{
         words: { exchange: m.exchange, returnLabel: m.returnLabel, exchangeWish: m.exchangeWish },
         labelRoute: ret.label.source === "carrier" ? marketPath(store.slug, market.slug, `/returns/${token}/label`) : null,

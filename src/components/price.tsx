@@ -1,6 +1,7 @@
 import { withoutVat } from "@/lib/b2b";
 import type { Messages } from "@/lib/i18n";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, type PriceDecimals } from "@/lib/money";
+import { afterAmount, beforeAmount, type PriceWords } from "@/lib/price-words";
 import type { PriceVat, PriceView } from "@/lib/pricing";
 import { unitPrice, unitPriceShown, type ShownMeasure, type UnitPriceResult } from "@/lib/unit-price";
 import { unitLabelsOf, unitPriceWords, type UnitLabels } from "@/lib/unit-price-text";
@@ -10,7 +11,8 @@ export type VatLabels = { vatIncluded: string; vatExcluded: string };
 /**
  * An amount kept with VAT, as the store shows it (B2B): with VAT, without,
  * or both, with the page's first script showing the one for the shopper's
- * kind (`for-private`, `for-business` in globals.css).
+ * kind (`for-private`, `for-business` in globals.css). A product's price may
+ * have the owner's words around the amount (D429), before the VAT label.
  */
 export function VatAmount({
   amountMinor,
@@ -19,6 +21,8 @@ export function VatAmount({
   vat,
   labels,
   label = true,
+  decimals,
+  words,
 }: {
   amountMinor: number;
   currency: string;
@@ -27,10 +31,24 @@ export function VatAmount({
   labels: VatLabels;
   /** Whether to say "incl. VAT" or "excl. VAT" after it. */
   label?: boolean;
+  /** The shopper's market's way with a whole amount's decimals (D429); absent keeps them. */
+  decimals?: PriceDecimals;
+  /** The owner's words before and after a product's price (D429), never a line's or a total's. */
+  words?: PriceWords;
 }) {
   const shown = (excl: boolean) => (
     <>
-      {formatMoney(excl ? withoutVat(amountMinor, vat.rate) : amountMinor, currency, locale)}
+      {words?.prefix && (
+        <span className="font-normal" data-price-prefix="">
+          {beforeAmount(words.prefix)}
+        </span>
+      )}
+      {formatMoney(excl ? withoutVat(amountMinor, vat.rate) : amountMinor, currency, locale, { decimals })}
+      {words?.suffix && (
+        <span className="font-normal" data-price-suffix="">
+          {afterAmount(words.suffix)}
+        </span>
+      )}
       {label && (
         <>
           {" "}
@@ -49,9 +67,21 @@ export function VatAmount({
 }
 
 /** One unit price, drawn for the eye and said for a screen reader (D160): "199,60 kr/kg", "Unit price: 199,60 kr per kg". */
-function UnitFigure({ result, currency, locale, labels }: { result: UnitPriceResult | undefined; currency: string; locale: string; labels: UnitLabels }) {
+function UnitFigure({
+  result,
+  currency,
+  locale,
+  labels,
+  decimals,
+}: {
+  result: UnitPriceResult | undefined;
+  currency: string;
+  locale: string;
+  labels: UnitLabels;
+  decimals?: PriceDecimals;
+}) {
   if (!result?.ok) return null;
-  const words = unitPriceWords(result, currency, locale, labels);
+  const words = unitPriceWords(result, currency, locale, labels, { decimals });
   return (
     <>
       <span aria-hidden="true">{words.text}</span>
@@ -75,6 +105,7 @@ export function UnitLine({
   measure,
   labels,
   inline = false,
+  decimals,
 }: {
   amountMinor: number;
   currency: string;
@@ -84,12 +115,14 @@ export function UnitLine({
   labels: UnitLabels;
   /** Drawn as a block of its own inside inline content (a link, a card), so no paragraph. */
   inline?: boolean;
+  /** The shopper's market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
 }) {
   if (!measure) return null;
   const Wrapper = inline ? "span" : "p";
   const className = inline ? "block text-xs text-muted" : "text-sm text-muted";
   const shown = unitPriceShown(amountMinor, vat, measure, measure.base);
-  const figure = (result: UnitPriceResult | undefined) => <UnitFigure result={result} currency={currency} locale={locale} labels={labels} />;
+  const figure = (result: UnitPriceResult | undefined) => <UnitFigure result={result} currency={currency} locale={locale} labels={labels} decimals={decimals} />;
   if (vat.shown === "choice") {
     if (!shown.incl?.ok && !shown.excl?.ok) return null;
     return (
@@ -120,6 +153,7 @@ export function LineUnitPrice({
   currency,
   locale,
   m,
+  decimals,
 }: {
   shownMinor: number | null;
   measure: ShownMeasure | null;
@@ -127,13 +161,15 @@ export function LineUnitPrice({
   currency: string;
   locale: string;
   m: Pick<Messages, "unitPrice">;
+  /** The shopper's market's way with a whole amount's decimals (D429). */
+  decimals?: PriceDecimals;
 }) {
   if (!measure || gift || shownMinor === null) return null;
   const result = unitPrice(shownMinor, measure, measure.base);
   if (!result.ok) return null;
   return (
     <span className="block text-sm text-muted" data-unit-price="">
-      <UnitFigure result={result} currency={currency} locale={locale} labels={unitLabelsOf(m)} />
+      <UnitFigure result={result} currency={currency} locale={locale} labels={unitLabelsOf(m)} decimals={decimals} />
     </span>
   );
 }
@@ -167,7 +203,16 @@ export function Price({
       <p className={large ? "text-2xl font-semibold" : "font-semibold"} data-kz-text={textRole}>
         {from && <span className="font-normal">{m.fromPrice} </span>}
         {yours && <span className="font-normal">{m.yourPrice}: </span>}
-        <VatAmount amountMinor={price.amountMinor} currency={price.currency} locale={locale} vat={price.vat} labels={m} />
+        {/* The owner's words (D429) sit around the amount, inside the automatic labels: "From Kun 499 kr/stk incl. VAT". */}
+        <VatAmount
+          amountMinor={price.amountMinor}
+          currency={price.currency}
+          locale={locale}
+          vat={price.vat}
+          labels={m}
+          decimals={price.decimals}
+          words={price.words}
+        />
       </p>
       {price.referenceMinor !== null && (
         <p className="text-sm text-muted">
@@ -179,6 +224,7 @@ export function Price({
             vat={price.vat}
             labels={m}
             label={false}
+            decimals={price.decimals}
           />
         </p>
       )}
@@ -189,6 +235,7 @@ export function Price({
         vat={price.vat}
         measure={price.measure}
         labels={unitLabelsOf(m)}
+        decimals={price.decimals}
       />
     </div>
   );

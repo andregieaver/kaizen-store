@@ -1,6 +1,6 @@
 import { convertMinor, type Rates } from "./currency";
 import { mainCurrency, type Market } from "./markets";
-import { formatMoney, isCurrency, minorUnitDigits } from "./money";
+import { formatMoney, isCurrency, minorUnitDigits, type MoneyStyle } from "./money";
 
 /**
  * Money in custom fields (D120): an amount for information, not a price
@@ -63,9 +63,10 @@ export function amountText(amountMinor: number, currency: string): string {
  * What a shopper reads: the amount in `to.currency` at the store's rates,
  * formatted in their language; in its own currency when there is no
  * `to`, no rate for the pair, or the currency is one this code cannot format.
- * Empty for something that is not money, so nothing wrong is ever drawn.
+ * Empty for something that is not money, so nothing wrong is ever drawn. `style` is the shopper's market's way with a whole amount's decimals
+ * (D429).
  */
-export function shownMoney(value: unknown, locale: string, to?: { currency: string; rates: Rates }): string {
+export function shownMoney(value: unknown, locale: string, to?: { currency: string; rates: Rates }, style?: MoneyStyle): string {
   if (
     !isMoney(value) ||
     !Number.isSafeInteger(value.amountMinor) ||
@@ -75,9 +76,9 @@ export function shownMoney(value: unknown, locale: string, to?: { currency: stri
     return "";
   if (to && to.currency !== value.currency && isCurrency(to.currency)) {
     const converted = convertMinor(value.amountMinor, value.currency, to.currency, to.rates);
-    if (converted !== null && Number.isSafeInteger(converted)) return formatMoney(converted, to.currency, locale);
+    if (converted !== null && Number.isSafeInteger(converted)) return formatMoney(converted, to.currency, locale, style);
   }
-  return formatMoney(value.amountMinor, value.currency, locale);
+  return formatMoney(value.amountMinor, value.currency, locale, style);
 }
 
 /** The currencies a store offers for money fields: its main one first, then the others it can show (`store.localization`), only those money knows. */

@@ -141,7 +141,8 @@ describe("what a new store is copied from", () => {
     const spa = await createStarter("spa-source", true);
     await db.query(
       `update commerce.stores set modules = array['bookings'], time_zone = 'Europe/Stockholm', audience = 'both', terms_at_checkout = 'checkbox',
-         open_cart_on_add = true, custom_css = '.a{}', tracking = '{"x": 1}', legal_name = 'Template AS' where id = $1`,
+         open_cart_on_add = true, custom_css = '.a{}', tracking = '{"x": 1}', legal_name = 'Template AS',
+         price_decimals = 'hide_whole', price_words = '{"nb-NO": {"prefix": "Kun", "suffix": ""}}', quantity_picker = 'hidden' where id = $1`,
       [spa.store],
     );
     const { id: page } = await one<{ id: string }>(
@@ -159,7 +160,8 @@ describe("what a new store is copied from", () => {
       owner,
     ]);
     const store = await one<Record<string, unknown>>(
-      `select modules, time_zone, audience, terms_at_checkout, open_cart_on_add, custom_css, tracking, legal_name, starter, made_from_starter
+      `select modules, time_zone, audience, terms_at_checkout, open_cart_on_add, custom_css, tracking, legal_name, starter, made_from_starter,
+         price_decimals, price_words, quantity_picker
        from commerce.stores where id = $1`,
       [made],
     );
@@ -174,6 +176,10 @@ describe("what a new store is copied from", () => {
       legal_name: null,
       starter: false,
       made_from_starter: spa.starter,
+      // How prices and quantities are shown (D429, D430) is a setting, so the starter's comes along.
+      price_decimals: "hide_whole",
+      price_words: { "nb-NO": { prefix: "Kun", suffix: "" } },
+      quantity_picker: "hidden",
     });
     const copied = await one<Record<string, unknown>>(
       `select

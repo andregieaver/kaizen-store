@@ -154,7 +154,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
         </Link>
       )}
 
-      <BonusCard bonus={bonus} m={m} locale={market.locale} base={base} />
+      <BonusCard bonus={bonus} m={m} locale={market.locale} base={base} decimals={market.priceStyle?.decimals} />
       <ReferralCard enabled={referrals.on} m={m} base={base} />
       {creators && (
         <Link
@@ -188,7 +188,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
                     </span>
                   </span>
                   <span className="text-right">
-                    <span className="block">{formatMoney(order.totalMinor, order.currency, market.locale)}</span>
+                    <span className="block">{formatMoney(order.totalMinor, order.currency, market.locale, market.priceStyle)}</span>
                     <span className="block text-sm text-muted">{a.status[order.status] ?? order.status}</span>
                   </span>
                 </Link>
@@ -215,7 +215,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
                 <span className="min-w-0">
                   <span className="font-medium">{s.titles.join(", ")}</span>
                   <span className="block text-sm text-muted">
-                    {m.planEvery(s.interval, s.intervalCount)} · {formatMoney(s.totalMinor, s.currency, market.locale)} ·{" "}
+                    {m.planEvery(s.interval, s.intervalCount)} · {formatMoney(s.totalMinor, s.currency, market.locale, market.priceStyle)} ·{" "}
                     {m.subscriptionStatus[s.status as keyof typeof m.subscriptionStatus] ?? s.status}
                   </span>
                   {s.status !== "cancelled" && <RenewalNote subscription={s} m={m} date={date} />}

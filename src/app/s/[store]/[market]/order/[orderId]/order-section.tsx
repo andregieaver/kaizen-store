@@ -60,7 +60,7 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
   const order = await getShopperOrder(store.id, orderId, sessionId);
   if (!order) notFound();
   const m: Messages = t(market.lang);
-  const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
+  const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null && line.giftCard === null);
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
   const [downloads, subscription, account, returns, terms, documents, fulfilment, tracking, exchange] = await Promise.all([
@@ -326,6 +326,7 @@ function linesList({ market, order, m, money }: OrderView) {
               gift={line.gift}
               currency={order.currency}
               locale={market.locale}
+              decimals={market.priceStyle?.decimals}
               m={m}
             />
             {/* Units on backorder and the days stated when it was sold (D172): never a date, never "in stock". */}

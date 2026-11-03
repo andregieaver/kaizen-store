@@ -455,6 +455,7 @@ async function sendReminder(input: {
     code: discount,
     restoreUrl: links.restoreUrl,
     unsubscribeUrl: links.unsubscribeUrl,
+    decimals: market.priceStyle?.decimals,
   });
   if (input.test) content.subject = `[Test] ${content.subject}`;
   return sendEmail({

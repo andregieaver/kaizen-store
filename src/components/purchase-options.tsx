@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
 
+import type { PriceDecimals } from "@/lib/money";
+import type { PriceWords } from "@/lib/price-words";
 import type { PriceVat } from "@/lib/pricing";
 import { planPrice } from "@/lib/subscriptions";
 import type { ShownMeasure } from "@/lib/unit-price";
@@ -82,6 +84,8 @@ export function PlanPrice({
   labels,
   measure = null,
   unitLabels,
+  decimals,
+  words,
   children,
 }: {
   amountMinor: number;
@@ -91,6 +95,9 @@ export function PlanPrice({
   labels: VatLabels;
   measure?: ShownMeasure | null;
   unitLabels?: UnitLabels;
+  /** The market's way with a whole amount's decimals and the owner's words around the price (D429), as the price bought once has them. */
+  decimals?: PriceDecimals;
+  words?: PriceWords;
   children: ReactNode;
 }) {
   const plan = useChosenPlan();
@@ -104,6 +111,8 @@ export function PlanPrice({
           locale={locale}
           vat={vat}
           labels={labels}
+          decimals={decimals}
+          words={words}
         />
       </p>
       <p className="text-sm text-muted">{plan.label}</p>
@@ -115,25 +124,28 @@ export function PlanPrice({
           vat={vat}
           measure={measure}
           labels={unitLabels}
+          decimals={decimals}
         />
       )}
     </div>
   );
 }
 
-/** A variant's amount alone for the chosen purchase option, for lists where the full price does not fit. */
+/** A variant's amount alone for the chosen purchase option, for lists where the full price does not fit (no words around it, D429). */
 export function PlanAmount({
   amountMinor,
   currency,
   locale,
   vat,
   labels,
+  decimals,
 }: {
   amountMinor: number;
   currency: string;
   locale: string;
   vat: PriceVat;
   labels: VatLabels;
+  decimals?: PriceDecimals;
 }) {
   const plan = useChosenPlan();
   return (
@@ -144,6 +156,7 @@ export function PlanAmount({
       vat={vat}
       labels={labels}
       label={false}
+      decimals={decimals}
     />
   );
 }

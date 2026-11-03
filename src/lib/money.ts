@@ -42,20 +42,38 @@ export function minorUnitDigits(currency: string): number {
 const DISPLAY_DIGITS: Record<string, number> = { HUF: 0 };
 
 /**
+ * Prices with or without decimals (D429): `always` writes every amount with its currency's decimals (499,00 kr), `hide_whole` leaves them off
+ * a whole amount (499 kr) and keeps them on any other (499,50 kr). It never rounds, so what is shown is what is charged. A store's choice,
+ * which a market may change (`stores.price_decimals`, `markets.price_decimals`); shoppers' pages and emails follow it, legal documents
+ * (invoices, credit notes, UBL, tax reports) and the admin never do.
+ */
+export type PriceDecimals = "always" | "hide_whole";
+
+export const PRICE_DECIMALS: readonly PriceDecimals[] = ["always", "hide_whole"];
+
+export const isPriceDecimals = (value: unknown): value is PriceDecimals => value === "always" || value === "hide_whole";
+
+/** How an amount is written beyond its currency and locale (D429): absent, or `decimals` absent, is `always`. A market's `priceStyle` is one. */
+export type MoneyStyle = { decimals?: PriceDecimals } | null | undefined;
+
+/**
  * Formats an amount in minor units for a locale, e.g. 1999 EUR → "19,99 €".
- * HUF shows whole forints (`DISPLAY_DIGITS`); every other currency its own decimals.
+ * HUF shows whole forints (`DISPLAY_DIGITS`); every other currency its own decimals, but none on a whole amount where `style` hides them
+ * (D429: 49900 NOK → "499 kr", 49950 NOK → "499,50 kr").
  */
 export function formatMoney(
   amountMinor: number,
   currency: string,
   locale: string,
+  style?: MoneyStyle,
 ): string {
   if (!Number.isSafeInteger(amountMinor)) {
     throw new RangeError(
       `Amount must be a whole number of minor units: ${amountMinor}`,
     );
   }
-  const shown = DISPLAY_DIGITS[currency];
+  // A whole amount loses only zeros, so nothing is rounded.
+  const shown = DISPLAY_DIGITS[currency] ?? (style?.decimals === "hide_whole" && amountMinor % 10 ** minorUnitDigits(currency) === 0 ? 0 : undefined);
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
