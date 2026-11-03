@@ -190,7 +190,7 @@ describe("registration (RFC 7591)", () => {
 
 describe("scopes (B3)", () => {
   it("are one per permission key, plus stores:read", () => {
-    expect(OAUTH_SCOPES).toEqual(["stores:read", ...PERMISSION_KEYS, "products:publish", "orders:refund", "gift_cards:write", "content:publish", "webhooks:write"]);
+    expect(OAUTH_SCOPES).toEqual(["stores:read", ...PERMISSION_KEYS]);
     expect(READ_SCOPES.every((s) => s.endsWith(":read"))).toBe(true);
   });
 
@@ -204,11 +204,6 @@ describe("scopes (B3)", () => {
     expect(levelScopes("read", staff)).toEqual(["stores:read", "orders:read", "products:read"]);
     expect(levelScopes("propose", staff)).toEqual(["stores:read", "orders:read", "orders:write", "products:read"]);
     expect(levelScopes("change", [...GRANTABLE_PERMISSIONS, ...OWNER_HELD])).toEqual(OAUTH_SCOPES);
-    // A power (D440) only under Read and change, and only on the permission it rests on; it is never a key of the cap.
-    expect(levelScopes("propose", ["products:read", "products:write"])).not.toContain("products:publish");
-    expect(levelScopes("change", ["products:read", "products:write"])).toContain("products:publish");
-    expect(levelScopes("change", ["products:read", "orders:write"])).not.toContain("products:publish");
-    expect(scopeKeys(["products:write", "products:publish"])).toEqual(["products:read", "products:write"]);
   });
 
   it("narrow a level to what Lisa ticks, never widen it", () => {
@@ -216,8 +211,7 @@ describe("scopes (B3)", () => {
     expect(grantScopes("propose", held, ["orders:read"])).toEqual(["stores:read", "orders:read"]);
     // Ticked outside the level or outside what is held: never added.
     expect(grantScopes("read", held, ["orders:write", "owner", "billing:write"])).toEqual(["stores:read", "orders:read"]);
-    // Read and change also gives the powers (D440) resting on what is held: refunds rest on orders:write.
-    expect(grantScopes("change", held, null)).toEqual(["stores:read", "orders:read", "orders:write", "products:read", "orders:refund"]);
+    expect(grantScopes("change", held, null)).toEqual(["stores:read", "orders:read", "orders:write", "products:read"]);
     expect(grantScopes("change", held, [])).toEqual(["stores:read"]);
   });
 

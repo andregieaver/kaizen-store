@@ -8,9 +8,10 @@ import { RETURN_KINDS, RETURN_STATUSES } from "./return-status";
 
 /**
  * The Admin API's orders (wave 14 unit C2, D440, `docs/wave-14-developer-platform.md` C2): draft orders and requests for a quote through the
- * draft editor's own functions (D173, D431), refunds only through `refundOrder()` with the new power scope `orders:refund` (D174), returns'
- * decisions and arrival (D153), an order's notes and tags, and cancelling an order nobody paid. Entries of `ADMIN_API`; their handlers are
- * `src/server/admin-api-orders.ts`. Pure.
+ * draft editor's own functions (D173, D431), made and changed with `orders:manage` and sent or declined with the power `orders:send`;
+ * refunds only through `refundOrder()`, and cancelling an order nobody paid, with the power `orders:refund` (D174); returns' decisions and
+ * arrival (D153), which email the customer, with `orders:send`; an order's notes and tags with `orders:manage`. Entries of `ADMIN_API`; their
+ * handlers are `src/server/admin-api-orders.ts`. Pure.
  */
 
 // Draft orders and requests for a quote (D173, D431) ------------------------------------
@@ -291,7 +292,7 @@ export const ORDERS_API = [
     name: "drafts.create",
     method: "POST",
     path: "/drafts",
-    scope: "orders:write",
+    scope: "orders:manage",
     permission: "orders:write",
     feature: "shop",
     tag: "Draft orders",
@@ -306,7 +307,7 @@ export const ORDERS_API = [
     name: "drafts.update",
     method: "PATCH",
     path: "/drafts/{id}",
-    scope: "orders:write",
+    scope: "orders:manage",
     permission: "orders:write",
     feature: "shop",
     tag: "Draft orders",
@@ -322,7 +323,7 @@ export const ORDERS_API = [
     name: "drafts.send",
     method: "POST",
     path: "/drafts/{id}/send",
-    scope: "orders:write",
+    scope: "orders:send",
     permission: "orders:write",
     feature: "shop",
     tag: "Draft orders",
@@ -348,7 +349,7 @@ export const ORDERS_API = [
     name: "drafts.decline",
     method: "POST",
     path: "/drafts/{id}/decline",
-    scope: "orders:write",
+    scope: "orders:send",
     permission: "orders:write",
     feature: "shop",
     tag: "Draft orders",
@@ -395,7 +396,7 @@ export const ORDERS_API = [
     name: "orders.cancel",
     method: "POST",
     path: "/orders/{id}/cancel",
-    scope: "orders:write",
+    scope: "orders:refund",
     permission: "orders:write",
     tag: "Orders",
     summary: "Cancel an unpaid order",
@@ -426,7 +427,7 @@ export const ORDERS_API = [
     name: "orders.note",
     method: "POST",
     path: "/orders/{id}/notes",
-    scope: "orders:write",
+    scope: "orders:manage",
     permission: "orders:write",
     tag: "Orders",
     summary: "Add a note to an order",
@@ -441,7 +442,7 @@ export const ORDERS_API = [
     name: "orders.tag",
     method: "POST",
     path: "/orders/{id}/tags",
-    scope: "orders:write",
+    scope: "orders:manage",
     permission: "orders:write",
     tag: "Orders",
     summary: "Tag an order",
@@ -456,7 +457,7 @@ export const ORDERS_API = [
     name: "orders.untag",
     method: "DELETE",
     path: "/orders/{id}/tags/{tag}",
-    scope: "orders:write",
+    scope: "orders:manage",
     permission: "orders:write",
     tag: "Orders",
     summary: "Remove an order's tag",
@@ -504,7 +505,7 @@ export const ORDERS_API = [
     name: "returns.approve",
     method: "POST",
     path: "/returns/{id}/approve",
-    scope: "orders:write",
+    scope: "orders:send",
     permission: "orders:write",
     tag: "Returns",
     summary: "Approve a return",
@@ -519,7 +520,7 @@ export const ORDERS_API = [
     name: "returns.decline",
     method: "POST",
     path: "/returns/{id}/decline",
-    scope: "orders:write",
+    scope: "orders:send",
     permission: "orders:write",
     tag: "Returns",
     summary: "Decline a return",
@@ -534,7 +535,7 @@ export const ORDERS_API = [
     name: "returns.receive",
     method: "POST",
     path: "/returns/{id}/receive",
-    scope: "orders:write",
+    scope: "orders:send",
     permission: "orders:write",
     tag: "Returns",
     summary: "Mark a return received",

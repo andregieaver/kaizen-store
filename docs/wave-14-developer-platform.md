@@ -210,6 +210,11 @@ yes for. Price lists' prices (D321). Updated-since filters (`?updated_after=`) o
   an app directory).
 - **Installing** is unit B's flow with the app's client: the owner chooses the store, sees the scopes, and approves. Each installation has
   its own tokens, usable on the Admin API (`Authorization: Bearer kfa_…`) and on the MCP server. A changed scope list asks the owner again.
+- **Powers (D440 review).** The Admin API's powers (`products:publish`, `orders:send`, `orders:refund`, `customers:email`,
+  `discounts:publish`, `gift_cards:write`, `content:publish`, `webhooks:write`) are no OAuth scope yet and no level grants one. Before
+  `kfa_` tokens work on the Admin API, each power a grant holds is checked against the person's current permission at every call (as the
+  route checks the operation's own permission), and the consent screen says what each one does without asking, in words that claim only
+  that.
 - **Uninstalling** revokes the installation's tokens at once, sends `app.uninstalled`, and stops the app's webhooks.
 - **Controls:** a budget per installation, the app named in every audit entry, and the store's *Apps* screen listing what is installed
   with *Remove*.

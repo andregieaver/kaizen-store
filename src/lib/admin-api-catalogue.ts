@@ -8,8 +8,9 @@ import { TERM_NAME_MAX } from "./taxonomy";
 
 /**
  * The Admin API's catalogue (wave 14 unit C1, D440, `docs/wave-14-developer-platform.md` C1): categories and tags and a product's place in
- * them, the media library's uploads and a product's gallery, publishing and archiving with `products:publish` (what `update_product` asks
- * the owner's yes for), and price lists' fixed prices (D321). Entries of `ADMIN_API`; their handlers are `src/server/admin-api-catalogue.ts`.
+ * them, the media library's uploads and a product's gallery, with `products:manage`; publishing and archiving, renaming or deleting a
+ * category or tag, a product on the site and price lists' fixed prices (D321) with the power `products:publish` (what `update_product`,
+ * `update_category` and `set_price_list_prices` ask the owner's yes for). Entries of `ADMIN_API`; their handlers are `src/server/admin-api-catalogue.ts`.
  * Pure.
  */
 
@@ -61,8 +62,13 @@ const termProductParams = byId.extend({ product_id: id.describe("The product.") 
 
 /** What an upload may be: the pictures the library keeps, before the server shrinks them as the admin's browser does. */
 export const UPLOAD_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const;
-/** The most bytes an uploaded picture may have before it is shrunk (the library keeps at most 4 MB once shrunk). */
+/**
+ * The most bytes an uploaded picture may have before it is shrunk (the library keeps at most 4 MB once shrunk): the `api-uploads` bucket's
+ * own limit (migration `20261103201100_api_review`), so Storage refuses a larger file before Kaizena Flow reads it.
+ */
 export const UPLOAD_MAX_BYTES = 20 * 1024 * 1024;
+/** The most pixels a picture may have (D440 review): one larger is refused before it is decoded to be shrunk. */
+export const UPLOAD_MAX_PIXELS = 50_000_000;
 /** How long an upload address can be used. */
 export const UPLOAD_SECONDS = 2 * 60 * 60;
 
@@ -73,7 +79,10 @@ export const uploadBody = z.object({
 
 export const apiUpload = z.object({
   upload_id: id.describe("Give it to `POST /media` once the file is sent."),
-  upload_url: z.string().describe("A one-time address: PUT the file's bytes there with the same Content-Type, once."),
+  upload_url: z
+    .string()
+    .nullable()
+    .describe("A one-time address: PUT the file's bytes there with the same Content-Type, once. Answered once: a replay of the request (the same Idempotency-Key) answers null."),
   method: z.literal("PUT"),
   headers: z.record(z.string(), z.string()).describe("The headers to send with the PUT."),
   expires_at: when.describe("The address and the upload id end then."),
@@ -205,7 +214,7 @@ export const CATALOGUE_API = [
     name: "categories.create",
     method: "POST",
     path: "/categories",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Categories and tags",
     summary: "Create a category",
@@ -219,7 +228,7 @@ export const CATALOGUE_API = [
     name: "categories.update",
     method: "PATCH",
     path: "/categories/{id}",
-    scope: "products:write",
+    scope: "products:publish",
     permission: "products:write",
     tag: "Categories and tags",
     summary: "Change a category",
@@ -234,7 +243,7 @@ export const CATALOGUE_API = [
     name: "categories.delete",
     method: "DELETE",
     path: "/categories/{id}",
-    scope: "products:write",
+    scope: "products:publish",
     permission: "products:write",
     tag: "Categories and tags",
     summary: "Delete a category",
@@ -248,7 +257,7 @@ export const CATALOGUE_API = [
     name: "categories.add_product",
     method: "POST",
     path: "/categories/{id}/products",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Categories and tags",
     summary: "Put a product in a category",
@@ -264,7 +273,7 @@ export const CATALOGUE_API = [
     name: "categories.remove_product",
     method: "DELETE",
     path: "/categories/{id}/products/{product_id}",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Categories and tags",
     summary: "Take a product out of a category",
@@ -307,7 +316,7 @@ export const CATALOGUE_API = [
     name: "tags.create",
     method: "POST",
     path: "/tags",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Categories and tags",
     summary: "Create a tag",
@@ -321,7 +330,7 @@ export const CATALOGUE_API = [
     name: "tags.update",
     method: "PATCH",
     path: "/tags/{id}",
-    scope: "products:write",
+    scope: "products:publish",
     permission: "products:write",
     tag: "Categories and tags",
     summary: "Change a tag",
@@ -336,7 +345,7 @@ export const CATALOGUE_API = [
     name: "tags.delete",
     method: "DELETE",
     path: "/tags/{id}",
-    scope: "products:write",
+    scope: "products:publish",
     permission: "products:write",
     tag: "Categories and tags",
     summary: "Delete a tag",
@@ -350,7 +359,7 @@ export const CATALOGUE_API = [
     name: "tags.add_product",
     method: "POST",
     path: "/tags/{id}/products",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Categories and tags",
     summary: "Tag a product",
@@ -365,7 +374,7 @@ export const CATALOGUE_API = [
     name: "tags.remove_product",
     method: "DELETE",
     path: "/tags/{id}/products/{product_id}",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Categories and tags",
     summary: "Take a tag off a product",
@@ -380,7 +389,7 @@ export const CATALOGUE_API = [
     name: "media.upload",
     method: "POST",
     path: "/media/uploads",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Media",
     summary: "Start an upload",
@@ -394,7 +403,7 @@ export const CATALOGUE_API = [
     name: "media.create",
     method: "POST",
     path: "/media",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Media",
     summary: "Keep an uploaded picture",
@@ -436,7 +445,7 @@ export const CATALOGUE_API = [
     name: "products.media_add",
     method: "POST",
     path: "/products/{id}/media",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Media",
     summary: "Add a picture to a product",
@@ -452,7 +461,7 @@ export const CATALOGUE_API = [
     name: "products.media_order",
     method: "PATCH",
     path: "/products/{id}/media",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Media",
     summary: "Order a product's pictures",
@@ -467,7 +476,7 @@ export const CATALOGUE_API = [
     name: "products.media_remove",
     method: "DELETE",
     path: "/products/{id}/media/{media_id}",
-    scope: "products:write",
+    scope: "products:manage",
     permission: "products:write",
     tag: "Media",
     summary: "Take a picture off a product",
@@ -574,7 +583,7 @@ export const CATALOGUE_API = [
     name: "price_lists.set_prices",
     method: "POST",
     path: "/price-lists/{id}/prices",
-    scope: "products:write",
+    scope: "products:publish",
     permission: "customers:write",
     feature: "shop",
     tag: "Price lists",

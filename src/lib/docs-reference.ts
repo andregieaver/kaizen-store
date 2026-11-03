@@ -6,7 +6,7 @@
 
 import { API_ERRORS, API_SCOPES, type ApiErrorCode } from "./admin-api";
 import { ADMIN_API, errorsOf } from "./admin-api-routes";
-import { API_ERROR_WORDS, SCOPE_WORDS } from "./admin-openapi";
+import { API_ERROR_WORDS, SCOPE_TEXT } from "./admin-openapi";
 import type { DocArea } from "./docs-content";
 import type { DocsReferenceItem } from "./docs-index";
 import { MCP_TOOLS } from "./mcp-catalogue";
@@ -73,16 +73,13 @@ export function docsReferenceItems(): DocsReferenceItem[] {
     text: API_ERROR_WORDS[code],
     areas: ["errors", "admin-api"] as DocArea[],
   }));
-  const scopes = API_SCOPES.map((scope) => {
-    const [resource, access] = scope.split(":");
-    return {
-      item: "scope" as const,
-      id: scope,
-      title: scope,
-      code: scope,
-      text: `${SCOPE_WORDS[resource] ?? ""} ${access === "write" ? "Read and change; a write scope also reads." : "Read only."}`.trim(),
-      areas: ["authentication", "admin-api"] as DocArea[],
-    };
-  });
+  const scopes = API_SCOPES.map((scope) => ({
+    item: "scope" as const,
+    id: scope,
+    title: scope,
+    code: scope,
+    text: SCOPE_TEXT[scope],
+    areas: ["authentication", "admin-api"] as DocArea[],
+  }));
   return [...operations, ...topics, ...tools, ...agentTools, ...errors, ...scopes];
 }

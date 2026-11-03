@@ -30,7 +30,8 @@ async function handle(method: ApiMethod, request: Request, { params }: RouteCont
   await connection();
   const caller = await apiCaller(request.headers.get("authorization"));
   if (!caller) return error("unauthorized", "Give a valid token as Authorization: Bearer kf_….", { "WWW-Authenticate": "Bearer" });
-  const route = routeOf(method, (await params).path);
+  const path = (await params).path;
+  const route = routeOf(method, path);
   if (!route) return error("not_found", "No such route.");
   if (!grants(caller.token.scopes, route.scope)) return error("forbidden", `This token does not have the scope ${route.scope}.`);
   const operation = ADMIN_API_BY_NAME[route.name];
@@ -45,9 +46,10 @@ async function handle(method: ApiMethod, request: Request, { params }: RouteCont
     const wait = retryAfter();
     return error("rate_limited", `Too many requests. Try again in ${wait} seconds.`, { "Retry-After": String(wait) });
   }
-  // A POST with an Idempotency-Key (PSI DATA-03): done once, its answer kept for the same request.
+  // A POST with an Idempotency-Key (PSI DATA-03): done once, its answer kept for the same request, which is its method, its whole path
+  // (the order it refunds, D440 review) and its body.
   const key = method === "POST" ? request.headers.get("idempotency-key") : null;
-  const once = key === null ? null : await claimIdempotencyKey(caller.token.id, key, route.name, await request.clone().text());
+  const once = key === null ? null : await claimIdempotencyKey(caller.token.id, key, `${method} /${path.join("/")}`, await request.clone().text());
   if (once?.kind === "refused") return error(once.code, once.message);
   if (once?.kind === "replay") return Response.json(once.answer.body, { status: once.answer.status, headers: { ...HEADERS, "Idempotent-Replayed": "true" } });
   try {

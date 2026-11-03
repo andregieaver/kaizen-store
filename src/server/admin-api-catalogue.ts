@@ -259,11 +259,9 @@ export async function answerCatalogue(caller: ApiCaller, route: CatalogueRoute, 
       const started = await startUpload({ storeId, tokenId: caller.token.id }, { contentType: input.content_type, sizeBytes: input.size_bytes });
       if (!started.ok) return fail(started.code, started.problem);
       await record(caller, "upload_started", { bytes: input.size_bytes });
-      return ok(
-        route.name,
-        { data: { upload_id: started.id, upload_url: started.url, method: "PUT", headers: { "Content-Type": input.content_type }, expires_at: started.expiresAt } },
-        201,
-      );
+      const data = { upload_id: started.id, upload_url: started.url, method: "PUT" as const, headers: { "Content-Type": input.content_type }, expires_at: started.expiresAt };
+      // The address carries a token that can still be used: answered this once, never kept for a replay (D440 review).
+      return { ...ok(route.name, { data }, 201), replay: { data: { ...data, upload_url: null } } };
     }
     case "media.create": {
       const input = await readBody(route.name, request);

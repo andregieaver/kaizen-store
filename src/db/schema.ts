@@ -7804,12 +7804,22 @@ export const integrationDeliveries = commerce.table(
     lastError: text("last_error"),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /**
+     * When the person it was about was erased (D162, D440 review): its payload is gone, a pending one is not sent, and it is never sent
+     * again (`resendDelivery()`).
+     */
+    erasedAt: timestamp("erased_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
     index("integration_deliveries_due_idx").on(t.nextAttemptAt).where(sql`${t.status} = 'pending'`),
     index("integration_deliveries_store_idx").on(t.storeId, t.provider, t.createdAt),
     index("integration_deliveries_endpoint_idx").on(t.endpointId, t.createdAt),
+    // The deliveries not built yet, which `queue_integration_event()` looks for before queuing one more (one per endpoint, subject and
+    // event; `inventory.updated` per minute) inside the transaction that moved the stock.
+    index("integration_deliveries_unbuilt_idx")
+      .on(t.endpointId, t.subjectId, t.event)
+      .where(sql`${t.status} = 'pending' and ${t.payload} is null`),
     check("integration_deliveries_endpoint", sql`(${t.provider} = 'webhook') = (${t.endpointId} is not null)`),
     check("integration_deliveries_status", sql`${t.status} in ('pending', 'delivered', 'failed')`),
   ],

@@ -5,7 +5,7 @@
  * imports beyond the permission keys, so the consent screen's client part can read the scopes and levels too; PKCE, which hashes, is
  * `oauth-pkce.ts`. The server is `src/server/oauth.ts` (grants and tokens) and `src/server/oauth-clients.ts` (clients).
  */
-import { AREAS, isPermissionKey, PERMISSION_KEYS, type PermissionKey } from "./permission-keys";
+import { AREAS, PERMISSION_KEYS, type PermissionKey } from "./permission-keys";
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Scopes and access levels (B3)
@@ -14,26 +14,11 @@ import { AREAS, isPermissionKey, PERMISSION_KEYS, type PermissionKey } from "./p
 /** Listing the stores and what each offers: every grant holds it. */
 export const STORES_READ = "stores:read" as const;
 
-/**
- * Powers beyond a staff permission (D440): what the AI manager asks the owner's yes for, which an Admin API token or a grant may hold so its
- * caller can do it without asking. Each rests on the permission named here: a person is offered it only while they hold that permission,
- * and only under *Read and change*. It is no key of a role, so it never widens what a person may do in the admin.
- */
-export const POWER_SCOPES = {
-  "products:publish": "products:write",
-  "orders:refund": "orders:write",
-  "gift_cards:write": "products:write",
-  "content:publish": "website:write",
-  "webhooks:write": "owner",
-} as const satisfies Record<string, PermissionKey>;
-export type PowerScope = keyof typeof POWER_SCOPES;
-export const isPowerScope = (value: unknown): value is PowerScope => typeof value === "string" && Object.hasOwn(POWER_SCOPES, value);
-
-/** A scope: one per staff permission key (D158), as `TOOL_PERMISSIONS` and the Admin API name them, `stores:read`, and the powers (D440). */
-export type OAuthScope = typeof STORES_READ | PermissionKey | PowerScope;
+/** A scope: one per staff permission key (D158), as `TOOL_PERMISSIONS` and the Admin API name them, plus `stores:read`. */
+export type OAuthScope = typeof STORES_READ | PermissionKey;
 
 /** Every scope, in the order the consent screen and the metadata list them. */
-export const OAUTH_SCOPES: readonly OAuthScope[] = [STORES_READ, ...PERMISSION_KEYS, ...(Object.keys(POWER_SCOPES) as PowerScope[])];
+export const OAUTH_SCOPES: readonly OAuthScope[] = [STORES_READ, ...PERMISSION_KEYS];
 
 export const isOAuthScope = (value: unknown): value is OAuthScope => (OAUTH_SCOPES as readonly unknown[]).includes(value);
 
@@ -60,8 +45,8 @@ export function normaliseScopes(keys: readonly string[], { storesRead = true }: 
   return OAUTH_SCOPES.filter((scope) => wanted.has(scope));
 }
 
-/** The permission keys among scopes (`stores:read` and the powers are no keys): the cap a grant puts on a person's role (`PermissionHolder.limit`). */
-export const scopeKeys = (scopes: readonly string[]): PermissionKey[] => normaliseScopes(scopes, { storesRead: false }).filter((s): s is PermissionKey => isPermissionKey(s));
+/** The permission keys among scopes (`stores:read` is no key): the cap a grant puts on a person's role (`PermissionHolder.limit`). */
+export const scopeKeys = (scopes: readonly string[]): PermissionKey[] => normaliseScopes(scopes, { storesRead: false }).filter((s): s is PermissionKey => s !== STORES_READ);
 
 /**
  * The person's one choice on the consent screen (Homer's view): *Read only*; *Read and propose changes*, the default, where every change
@@ -72,14 +57,9 @@ export type AccessLevel = (typeof ACCESS_LEVELS)[number];
 export const DEFAULT_LEVEL: AccessLevel = "propose";
 export const isAccessLevel = (value: unknown): value is AccessLevel => (ACCESS_LEVELS as readonly unknown[]).includes(value);
 
-/**
- * The scopes a level gives a person who holds `held` (their keys in the stores they connect, together): never more than they hold. *Read and
- * change* also gives the powers (D440) whose permission they hold.
- */
+/** The scopes a level gives a person who holds `held` (their keys in the stores they connect, together): never more than they hold. */
 export function levelScopes(level: AccessLevel, held: readonly PermissionKey[]): OAuthScope[] {
-  if (level === "read") return normaliseScopes(held.filter((key) => key.endsWith(":read")));
-  const powers = level === "change" ? (Object.entries(POWER_SCOPES) as [PowerScope, PermissionKey][]).filter(([, rests]) => held.includes(rests)).map(([power]) => power) : [];
-  return normaliseScopes([...held, ...powers]);
+  return normaliseScopes(level === "read" ? held.filter((key) => key.endsWith(":read")) : held);
 }
 
 /**

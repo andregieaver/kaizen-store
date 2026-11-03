@@ -683,6 +683,34 @@ async function blankAssistantTraces(tx: Tx, s: PrivacySubject): Promise<number> 
   return blanked + memories;
 }
 
+/**
+ * The deliveries to the owner's endpoints and services about the person (D440 review): of their account, their orders and subscriptions,
+ * their draft orders and their reviews, the payloads that name them. Each loses its payload and is marked erased; one still waiting is not
+ * sent (`failed`, not retried), and none is sent again (`resendDelivery()`). `customer.erased` itself is queued after, carrying ids only.
+ */
+async function eraseDeliveries(tx: Tx, s: PrivacySubject): Promise<number> {
+  const sid = s.storeId;
+  const cid = s.customerId;
+  const rows = await tx.execute<Row>(sql`
+    with subjects as (
+      select ${cid}::uuid as id where ${cid}::uuid is not null
+      union all select unnest(${uuidList(s.orderIds)})
+      union all select unnest(${uuidList(s.subscriptionIds)})
+      union all select id from commerce.draft_orders where store_id = ${sid}::uuid and customer_id = ${cid}::uuid
+      union all select id from commerce.product_reviews where store_id = ${sid}::uuid and source = 'buyer' and buyer_key = any(${textList(buyerKeysOf(cid, s.addresses))})
+    )
+    update commerce.integration_deliveries d set
+      payload = null,
+      erased_at = now(),
+      status = case when d.status = 'pending' then 'failed' else d.status end,
+      last_error = case when d.status = 'pending' then 'Not sent: the person it was about was erased.' else d.last_error end
+    where d.store_id = ${sid}::uuid and d.erased_at is null and d.subject_id in (select id from subjects where id is not null)
+    returning d.id
+  `);
+  if (rows.length > 0) log("info", "privacy.deliveries_erased", { deliveries: rows.length });
+  return rows.length;
+}
+
 /** The subject's rows, all of it or none: the bodies of 2.4 step 3. */
 async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promise<{ counts: EraseCounts; avatar: string | null; pictures: StoredPicture[] }> {
   const sid = s.storeId;
@@ -695,6 +723,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   // What the AI manager's tools may have copied of the person into the store's conversations (PSI REG-03, `docs/dpia-ai.md` R6): read before
   // their orders are anonymised, blanked in the same transaction.
   await blankAssistantTraces(tx, s);
+  // What the owner's endpoints were sent, or wait to be sent, about the person (D440 review), read before their drafts and reviews go.
+  await eraseDeliveries(tx, s);
 
   // An order still waiting for payment is not a sale: it is cancelled first (its stock goes back, its payment is marked cancelled, a subscription that
   // never started is expired), so a payment that somehow arrives later finds a cancelled order, which `complete_order_payment()` still completes

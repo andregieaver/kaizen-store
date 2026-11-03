@@ -7,16 +7,28 @@ import { CONTENT_API } from "@/lib/admin-api-content";
 import type { AdminAnswer, ApiRoute } from "@/lib/admin-api-routes";
 import { entryStatus, type Entry } from "@/lib/content-types";
 import { moneyCurrencies } from "@/lib/field-money";
+import { parseImportOptions } from "@/lib/product-import";
 import { issueId, type PageIssue } from "@/lib/page-a11y";
 import type { PageType } from "@/lib/page-content";
 
-import { fail, jsonBody, ok, readBody, record, sinceWhere, type ApiAnswer } from "./admin-api-kit";
+import { fail, holds, jsonBody, ok, readBody, record, sinceWhere, type ApiAnswer } from "./admin-api-kit";
 import type { ApiCaller } from "./api-tokens";
 import { uploadUrl } from "./api-uploads";
 import { getEntry, listEntries, publishEntry, saveEntry, type EntryContext } from "./content-entries";
 import { getContentType, listContentTypes } from "./content-types";
 import { dataStorage, safeName, type DataDeps, type DataJob } from "./data-job-store";
-import { downloadPart, importProblemsCsv, jobFor, registerImport, requestProductExport, startImportApply, startImportCheck, startImportUpload } from "./data-jobs";
+import {
+  cancelJob,
+  downloadPart,
+  dryCountsOf,
+  importProblemsCsv,
+  jobFor,
+  registerImport,
+  requestProductExport,
+  startImportApply,
+  startImportCheck,
+  startImportUpload,
+} from "./data-jobs";
 import { listStoreMenus } from "./menus";
 import { getPageForEdit, listPages, savePage } from "./pages";
 import { readPriceDisplay } from "./price-display";
@@ -56,6 +68,40 @@ async function pageById(caller: ApiCaller, id: string, type: PageType): Promise<
     updated_at: page.updatedAt,
     draft: page.draft as unknown as Record<string, unknown>,
   };
+}
+
+/**
+ * A draft as the API saves it (D440): the page's own draft and nothing past it. The editor also sends the global parts it changed
+ * (`globalEdits`), which its save spreads to every page using them, published ones and the header and footer included: over the API that
+ * is refused, as global parts change in the admin. Field entries (`fields`) are the editor's own save beside the page's: left out.
+ */
+function draftOf(draft: Record<string, unknown>): Record<string, unknown> {
+  if (Object.hasOwn(draft, "globalEdits")) {
+    return fail("invalid", "globalEdits: a draft over the API changes this page only. Global parts, and the pages that use them, change in the admin.");
+  }
+  const own = { ...draft };
+  delete own.fields;
+  return own;
+}
+
+/**
+ * A page that was never published moves to its new address with its draft, and the pages under it with it (`savePage()`): one of those
+ * that is published moves on the site at once, which takes `content:publish` (D440).
+ */
+async function moveRefusal(caller: ApiCaller, id: string, type: PageType, draft: Record<string, unknown>): Promise<void> {
+  if (type !== "page" || typeof draft.slug !== "string" || holds(caller, "content:publish")) return;
+  const [moved] = await typedRows(
+    z.object({ moves: col.bool }),
+    sql`
+      select exists (
+        select 1 from commerce.pages c
+        where c.store_id = p.store_id and c.type = 'page' and c.published_at is not null and left(c.slug, length(p.slug) + 1) = p.slug || '/'
+      ) as moves
+      from commerce.pages p
+      where p.store_id = ${caller.member.store.id}::uuid and p.id = ${id}::uuid and p.type = 'page' and p.published_at is null and p.slug <> ${draft.slug}
+    `,
+  );
+  if (moved?.moves) return fail("gated", "Pages under this one are on the site, and a new address moves them now: that takes a token with content:publish.");
 }
 
 /** A refusal of the editor's save: the checker's blocking issues are a 409 that names them, the rest a 422. */
@@ -182,7 +228,7 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
     case "articles.create": {
       const type = pageType(route.name);
       const { draft } = route.name === "pages.create" ? await readBody("pages.create", request) : await readBody("articles.create", request);
-      const saved = await savePage(account, storeId, null, draft, { publish: false, type });
+      const saved = await savePage(account, storeId, null, draftOf(draft), { publish: false, type });
       if (!saved.ok) return pageRefusal(saved);
       await record(caller, `${type}_created`, {}, { type, id: saved.id });
       return ok(route.name, { data: await pageById(caller, saved.id, type) }, 201);
@@ -192,8 +238,10 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
       const type = pageType(route.name);
       await pageById(caller, route.id, type);
       const { draft } = route.name === "pages.update" ? await readBody("pages.update", request) : await readBody("articles.update", request);
+      const own = draftOf(draft);
+      await moveRefusal(caller, route.id, type, own);
       // The draft only: what the site shows stays as published until it is published again.
-      const saved = await savePage(account, storeId, route.id, draft, { publish: false, type });
+      const saved = await savePage(account, storeId, route.id, own, { publish: false, type });
       if (!saved.ok) return pageRefusal(saved);
       await record(caller, `${type}_draft_saved`, {}, { type, id: route.id });
       return ok(route.name, { data: await pageById(caller, route.id, type) });
@@ -234,6 +282,10 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
     case "content.entry_update": {
       const entry = (await getEntry(storeId, route.id)) ?? fail("not_found", "No such entry in this store.");
       const input = await readBody(route.name, request);
+      // An entry's address is not part of its draft: a published entry's moves on the site at once (D440).
+      if (input.slug !== undefined && input.slug !== entry.slug && entry.publishedAt !== null && !holds(caller, "content:publish")) {
+        return fail("gated", "The entry is on the site, and its address changes there at once: that takes a token with content:publish.");
+      }
       const saved = await saveEntry(entryContext(caller), {
         id: entry.id,
         typeId: entry.typeId,
@@ -380,6 +432,7 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
       const sent = await resendDelivery(caller.member, route.delivery_id);
       if (sent === "gone") return fail("conflict", "That delivery is still being sent: wait for it to end.");
       if (sent === "off") return fail("conflict", "The endpoint is switched off: switch it on first.");
+      if (sent === "erased") return fail("conflict", "The person this delivery was about was erased: it is not sent again.");
       await record(caller, "delivery_resent", {}, { type: "webhook_endpoint", id: route.id });
       return ok(route.name, { data: { queued: true } });
     }
@@ -397,14 +450,18 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
       if (!started.ok) return fail(/not set up/i.test(started.problem) ? "failed" : "invalid", started.problem);
       const uploadId = started.path.split("/")[1];
       await record(caller, "product_import_started", {});
-      return ok(route.name, { data: { upload_id: uploadId, upload_url: uploadUrl(started.path, { token: started.token }), method: "PUT", headers: { "Content-Type": "text/csv" } } }, 201);
+      const data = { upload_id: uploadId, upload_url: uploadUrl(started.path, { token: started.token }), method: "PUT" as const, headers: { "Content-Type": "text/csv" } };
+      // The address carries a token that can still be used: answered this once, never kept for a replay (D440 review).
+      return { ...ok(route.name, { data }, 201), replay: { data: { ...data, upload_url: null } } };
     }
     case "jobs.product_import_check": {
       const input = await readBody(route.name, request);
       // The upload's own address in the store's folder: the id and name it was started with, never a path a caller names.
       const registered = await registerImport(caller.member, { path: `${storeId}/${route.id}/${safeName(input.file_name)}`, name: input.file_name }, jobDeps());
       if (!registered.ok) return fail("invalid", registered.problems.join(" "));
-      const checked = await startImportCheck(caller.member, registered.jobId, input.options, jobDeps());
+      // Without `products:publish`, the check is of drafts only (D440): what would reach the shop is counted and refused, there and in the apply.
+      const options = holds(caller, "products:publish") ? input.options : { ...input.options, draftsOnly: true };
+      const checked = await startImportCheck(caller.member, registered.jobId, options, jobDeps());
       if (!checked.ok) return fail("conflict", checked.problem);
       await record(caller, "product_import_checked", {}, { type: "data_job", id: registered.jobId });
       return ok(route.name, { data: jobOut(await productJob(caller, registered.jobId)) }, 201);
@@ -413,6 +470,24 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
       const job = await productJob(caller, route.id);
       await jsonBody(request);
       if (job.kind !== "product_import") return fail("conflict", "Only a checked import is applied.");
+      // What shoppers see takes `products:publish` (D440), as /publish, /archive and a change of a live product do. Without it, the apply
+      // is of an import checked as drafts only (its options are fixed then), and the check counted no product the file would publish,
+      // archive, bring back or change on the site; one that went on the site since is refused as the apply plans it again.
+      if (!holds(caller, "products:publish")) {
+        const onShop = dryCountsOf(job).onShop;
+        const draftsOnly = parseImportOptions(job.options).draftsOnly;
+        if (onShop > 0 && draftsOnly) {
+          // Checked by a token like this one: nothing of it can be applied as it is, so it is closed and the next file can be imported.
+          await cancelJob(caller.member, job.id, jobDeps());
+          return fail(
+            "gated",
+            `${onShop === 1 ? "1 product" : `${onShop} products`} in the file would be published, archived, brought back or changed on the site: that takes a token with products:publish. The import is cancelled: leave those products out of the file and import it again, or import it in the admin.`,
+          );
+        }
+        if (!draftsOnly) {
+          return fail("gated", "This import was checked to change what shoppers see, which takes a token with products:publish. Check it again with this token to import drafts only.");
+        }
+      }
       const applied = await startImportApply(caller.member, route.id, jobDeps());
       if (!applied.ok) return fail("conflict", applied.problem);
       await record(caller, "product_import_applied", {}, { type: "data_job", id: route.id });

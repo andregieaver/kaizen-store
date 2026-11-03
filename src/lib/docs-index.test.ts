@@ -123,7 +123,7 @@ describe("the docs' search index as rows (D443)", () => {
     });
     expect(rows.find((r) => r.key === "ref:topic:order.paid")).toMatchObject({ code: "order.paid", areas: ["webhooks", "orders"] });
     expect(rows.find((r) => r.key === "ref:error:not_found")).toMatchObject({ code: "404 not_found", areas: ["errors", "admin-api"] });
-    expect(rows.find((r) => r.key === "ref:scope:orders:write")?.text).toContain("Read and change");
+    expect(rows.find((r) => r.key === "ref:scope:orders:write")?.text).toContain("Record parcels with tracking");
     // Reference items come after every article in the reading order.
     const lastArticle = Math.max(...rows.filter((r) => r.item === "section").map((r) => r.reading));
     expect(Math.min(...rows.filter((r) => r.doc.startsWith("ref:")).map((r) => r.reading))).toBeGreaterThan(lastArticle);

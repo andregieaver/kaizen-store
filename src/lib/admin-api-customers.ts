@@ -6,10 +6,11 @@ import { GIFT_CARD_STATES } from "./gift-card-admin";
 
 /**
  * The Admin API's customers and marketing (wave 14 unit C3, D440, `docs/wave-14-developer-platform.md` C3): customers made, changed and
- * found by email through the customer page's own writers (D366), segments read (D296), a discount code changed or switched off through the
- * admin's form (D299), gift cards issued, listed and deactivated with the power scope `gift_cards:write` (D300; a code is answered once, at
- * issue, never after and never kept), subscriptions read, paused and cancelled (D29), and a customer's store credit (D364) and loyalty credits
- * (D130) read. Entries of `ADMIN_API`; their handlers are `src/server/admin-api-customers.ts`. Pure.
+ * found by email through the customer page's own writers (D366) with `customers:manage` (their sign-in email only with the power
+ * `customers:email`), segments read (D296), a discount code changed or switched off through the admin's form (D299) with the power
+ * `discounts:publish`, gift cards issued, listed and deactivated with the power `gift_cards:write` (D300; a code is answered once, at issue,
+ * never after and never kept), subscriptions read, and paused and cancelled with the power `orders:send` (D29: the subscriber is emailed),
+ * and a customer's store credit (D364) and loyalty credits (D130) read. Entries of `ADMIN_API`; their handlers are `src/server/admin-api-customers.ts`. Pure.
  */
 
 // Customers (D366) ---------------------------------------------------------------------
@@ -167,7 +168,7 @@ export const CUSTOMERS_API = [
     name: "customers.create",
     method: "POST",
     path: "/customers",
-    scope: "customers:write",
+    scope: "customers:manage",
     permission: "customers:write",
     tag: "Customers",
     summary: "Create a customer",
@@ -181,16 +182,17 @@ export const CUSTOMERS_API = [
     name: "customers.update",
     method: "PATCH",
     path: "/customers/{id}",
-    scope: "customers:write",
+    scope: "customers:manage",
     permission: "customers:write",
     tag: "Customers",
     summary: "Change a customer",
-    description: "Changes only what is given of the customer's name, email, phone, address and company, through the customer page's own writer.",
+    description:
+      "Changes only what is given of the customer's name, email, phone, address and company, through the customer page's own writer. The email is what the customer signs in with: changing it takes the power `customers:email` too (else `gated`).",
     params: byId,
     body: customerUpdateBody,
     response: one(z.object({ id, email: z.string(), name: z.string(), phone: z.string(), email_verified: z.boolean(), tags: z.array(z.string()), created_at: when, updated_at: when })),
     status: 200,
-    errors: ["not_found", "invalid", "conflict"],
+    errors: ["not_found", "invalid", "gated", "conflict"],
   }),
   op({
     name: "customers.store_credit",
@@ -267,7 +269,7 @@ export const CUSTOMERS_API = [
     name: "discounts.update",
     method: "PATCH",
     path: "/discounts/{id}",
-    scope: "discounts:write",
+    scope: "discounts:publish",
     permission: "marketing:write",
     tag: "Discounts",
     summary: "Change a discount code",
@@ -283,7 +285,7 @@ export const CUSTOMERS_API = [
     name: "discounts.disable",
     method: "POST",
     path: "/discounts/{id}/disable",
-    scope: "discounts:write",
+    scope: "discounts:publish",
     permission: "marketing:write",
     tag: "Discounts",
     summary: "Switch a discount code off",
@@ -390,7 +392,7 @@ export const CUSTOMERS_API = [
     name: "subscriptions.pause",
     method: "POST",
     path: "/subscriptions/{id}/pause",
-    scope: "orders:write",
+    scope: "orders:send",
     permission: "orders:write",
     feature: "subscriptions",
     tag: "Subscriptions",
@@ -406,7 +408,7 @@ export const CUSTOMERS_API = [
     name: "subscriptions.cancel",
     method: "POST",
     path: "/subscriptions/{id}/cancel",
-    scope: "orders:write",
+    scope: "orders:send",
     permission: "orders:write",
     feature: "subscriptions",
     tag: "Subscriptions",

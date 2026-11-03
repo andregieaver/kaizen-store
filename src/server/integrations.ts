@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import {
@@ -24,6 +25,7 @@ import { log } from "./log";
 import { getOrder, type Address } from "./orders";
 import { safeFetch } from "./replicate-fetch";
 import { encryptionKey } from "./settings";
+import { col, typedRow } from "./typed-rows";
 import { FAILING_DAYS, openEndpoint } from "./webhook-endpoints";
 
 type Row = Record<string, unknown>;
@@ -522,7 +524,17 @@ async function stockData(storeId: string, variantId: string): Promise<WebhookSub
  * now as the store reads it. The event waits for its minute, so this is the stock after every change in it.
  */
 async function inventoryData(storeId: string, storeSlug: string, variantId: string): Promise<WebhookSubject<"inventory"> | null> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      sku: col.textOrNull,
+      product_id: col.uuid,
+      on_hand: col.minor,
+      available: col.int.nullable(),
+      locations: z.array(z.object({ location_id: col.uuid, on_hand: col.int })),
+      updated_at: col.timestamp,
+    }),
+    sql`
     select v.id, v.sku, v.product_id,
       coalesce((select sum(l.on_hand) from commerce.inventory_levels l where l.store_id = v.store_id and l.variant_id = v.id), 0)::bigint as on_hand,
       (select va.raw_available from commerce.variant_availability va where va.variant_id = v.id) as available,
@@ -530,16 +542,17 @@ async function inventoryData(storeId: string, storeSlug: string, variantId: stri
         from commerce.inventory_levels l where l.store_id = v.store_id and l.variant_id = v.id), '[]'::json) as locations,
       coalesce((select max(l.updated_at) from commerce.inventory_levels l where l.store_id = v.store_id and l.variant_id = v.id), v.created_at) as updated_at
     from commerce.product_variants v where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid
-  `);
+  `,
+  );
   if (!row) return null;
   return {
-    variant_id: String(row.id),
-    product_id: String(row.product_id),
-    sku: String(row.sku ?? ""),
-    on_hand: Number(row.on_hand),
-    available: row.available === null ? null : Number(row.available),
-    locations: row.locations as WebhookSubject<"inventory">["locations"],
-    updated_at: new Date(String(row.updated_at)).toISOString(),
+    variant_id: row.id,
+    product_id: row.product_id,
+    sku: row.sku ?? "",
+    on_hand: row.on_hand,
+    available: row.available,
+    locations: row.locations,
+    updated_at: row.updated_at,
     admin_url: `${siteUrl()}/admin/${storeSlug}/inventory`,
   };
 }
@@ -581,74 +594,101 @@ async function fulfilmentData(storeId: string, storeSlug: string, shipmentId: st
 
 /** A refund (D440, `refund.created`): how much went back, in the order's currency, and how; never its reason, which staff wrote. */
 async function refundData(storeId: string, storeSlug: string, refundId: string): Promise<WebhookSubject<"refund"> | null> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    z.object({ id: col.uuid, order_id: col.uuid, order_number: col.text, currency: col.currency, amount_minor: col.minor, kind: col.text, restocked: col.bool, created_at: col.timestamp }),
+    sql`
     select r.id, p.order_id, o.number as order_number, trim(p.currency) as currency, r.amount_minor, r.kind, coalesce(jsonb_typeof(r.restocked) = 'array' and jsonb_array_length(r.restocked) > 0, false) as restocked, r.created_at
     from commerce.refunds r
     join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
     join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
     where r.store_id = ${storeId}::uuid and r.id = ${refundId}::uuid
-  `);
+  `,
+  );
   if (!row) return null;
-  const currency = String(row.currency);
   return {
-    id: String(row.id),
-    order_id: String(row.order_id),
-    order_number: String(row.order_number),
-    currency,
-    amount: amount(Number(row.amount_minor), currency),
-    kind: String(row.kind) === "store_credit" ? "store_credit" : "money",
-    restocked: Boolean(row.restocked),
-    created_at: new Date(String(row.created_at)).toISOString(),
-    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/${String(row.order_id)}`,
+    id: row.id,
+    order_id: row.order_id,
+    order_number: row.order_number,
+    currency: row.currency,
+    amount: amount(row.amount_minor, row.currency),
+    kind: row.kind === "store_credit" ? "store_credit" : "money",
+    restocked: row.restocked,
+    created_at: row.created_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/${row.order_id}`,
   };
 }
 
 /** A draft order or a shopper's request for a quote (D440, `quote.requested`, `draft.sent`): its lines and prices as saved, and its order once sent. */
 async function draftData(storeId: string, storeSlug: string, draftId: string): Promise<WebhookSubject<"draft"> | null> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      number: col.text,
+      status: col.text,
+      source: col.text,
+      market_code: col.text,
+      currency: col.currency,
+      email: col.text,
+      order_id: col.uuid.nullable(),
+      expires_at: col.timestampOrNull,
+      created_at: col.timestamp,
+      lines: z.array(z.object({ sku: col.textOrNull, title: col.text, quantity: col.int, unit_price_minor: col.minor, requested: col.bool })),
+    }),
+    sql`
     select d.id, d.number, d.status, d.source, d.market_code, trim(d.currency) as currency, coalesce(d.email, '') as email, d.order_id, d.expires_at, d.created_at,
       coalesce((select json_agg(json_build_object('sku', l.sku, 'title', l.title, 'quantity', l.quantity, 'unit_price_minor', l.unit_price_minor, 'requested', l.price_requested)
         order by l.position, l.id) from commerce.draft_order_lines l where l.store_id = d.store_id and l.draft_id = d.id), '[]'::json) as lines
     from commerce.draft_orders d where d.store_id = ${storeId}::uuid and d.id = ${draftId}::uuid
-  `);
+  `,
+  );
   if (!row) return null;
-  const currency = String(row.currency);
-  const lines = row.lines as { sku: string | null; title: string; quantity: number; unit_price_minor: number; requested: boolean }[];
   return {
-    id: String(row.id),
-    number: String(row.number),
-    status: String(row.status) as WebhookSubject<"draft">["status"],
-    source: String(row.source) === "quote" ? "quote" : "staff",
-    market: String(row.market_code),
-    currency,
-    email: String(row.email),
-    lines: lines.map((l) => ({ sku: l.sku ?? "", title: l.title, quantity: Number(l.quantity), unit_price: l.requested ? null : amount(Number(l.unit_price_minor), currency) })),
-    order_id: row.order_id ? String(row.order_id) : null,
-    expires_at: row.expires_at ? new Date(String(row.expires_at)).toISOString() : null,
-    created_at: new Date(String(row.created_at)).toISOString(),
-    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/drafts/${String(row.id)}`,
+    id: row.id,
+    number: row.number,
+    status: row.status as WebhookSubject<"draft">["status"],
+    source: row.source === "quote" ? "quote" : "staff",
+    market: row.market_code,
+    currency: row.currency,
+    email: row.email,
+    lines: row.lines.map((l) => ({ sku: l.sku ?? "", title: l.title, quantity: l.quantity, unit_price: l.requested ? null : amount(l.unit_price_minor, row.currency) })),
+    order_id: row.order_id,
+    expires_at: row.expires_at,
+    created_at: row.created_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/drafts/${row.id}`,
   };
 }
 
 /** A gift card or store credit (D440, `gift_card.issued`): what it holds and how it came; never its code, which is kept only as a hash. */
 async function giftCardData(storeId: string, storeSlug: string, cardId: string): Promise<WebhookSubject<"gift_card"> | null> {
-  const [row] = await db().execute<Row>(sql`
-    select g.id, g.last4, trim(g.currency) as currency, g.initial_minor, commerce.gift_card_balance(g.id) as balance, g.source, g.test_mode, g.issued_at, g.expires_at
-    from commerce.gift_cards g where g.store_id = ${storeId}::uuid and g.id = ${cardId}::uuid
-  `);
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      last4: col.textOrNull,
+      currency: col.currency,
+      initial_minor: col.minor,
+      balance: col.minor,
+      source: col.text,
+      test_mode: col.bool,
+      issued_at: col.timestamp,
+      expires_at: col.timestampOrNull,
+    }),
+    sql`
+      select g.id, g.last4, trim(g.currency) as currency, g.initial_minor, commerce.gift_card_balance(g.id) as balance, g.source, g.test_mode, g.issued_at, g.expires_at
+      from commerce.gift_cards g where g.store_id = ${storeId}::uuid and g.id = ${cardId}::uuid
+    `,
+  );
   if (!row) return null;
-  const currency = String(row.currency);
   return {
-    id: String(row.id),
-    last4: row.last4 ? String(row.last4) : null,
-    currency,
-    initial: amount(Number(row.initial_minor), currency),
-    balance: amount(Number(row.balance), currency),
-    source: String(row.source) as WebhookSubject<"gift_card">["source"],
-    test: Boolean(row.test_mode),
-    issued_at: new Date(String(row.issued_at)).toISOString(),
-    expires_at: row.expires_at ? new Date(String(row.expires_at)).toISOString() : null,
-    admin_url: `${siteUrl()}/admin/${storeSlug}/gift-cards/${String(row.id)}`,
+    id: row.id,
+    last4: row.last4 || null,
+    currency: row.currency,
+    initial: amount(row.initial_minor, row.currency),
+    balance: amount(row.balance, row.currency),
+    source: row.source as WebhookSubject<"gift_card">["source"],
+    test: row.test_mode,
+    issued_at: row.issued_at,
+    expires_at: row.expires_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/gift-cards/${row.id}`,
   };
 }
 

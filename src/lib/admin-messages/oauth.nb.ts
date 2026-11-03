@@ -45,13 +45,6 @@ export const oauthNb: OauthMessages = {
     owner: "Det bare en eier kan gjøre: abonnementet, betalinger, domener, teamet, og AI-assistenten, som leser alle deler av butikken",
     read: "Se {area}",
     write: "Endre {area}",
-    powers: {
-      "products:publish": "Publisere produkter og endre produkter som er på nettstedet, uten å spørre deg først",
-      "orders:refund": "Refundere bestillinger, uten å spørre deg først",
-      "gift_cards:write": "Utstede og deaktivere gavekort, uten å spørre deg først",
-      "content:publish": "Publisere sider, blogginnlegg og innhold, uten å spørre deg først",
-      "webhooks:write": "Legge til og endre butikkens webhook-adresser, som mottar hendelsene",
-    },
   },
   areas: {
     orders: "Ordre",

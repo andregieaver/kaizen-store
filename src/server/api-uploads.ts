@@ -6,10 +6,10 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { UPLOAD_MAX_BYTES, UPLOAD_SECONDS } from "@/lib/admin-api-catalogue";
+import { UPLOAD_MAX_BYTES, UPLOAD_MAX_PIXELS, UPLOAD_SECONDS } from "@/lib/admin-api-catalogue";
 
 import { shrinkPicture } from "./ai-pictures";
-import { dataStorage, IMPORTS_BUCKET, type DataStorage } from "./data-job-store";
+import { API_UPLOADS_BUCKET, dataStorage, IMPORTS_BUCKET, type DataStorage } from "./data-job-store";
 import { storageRefusal } from "./limits";
 import { log } from "./log";
 import { describeMedia, storePicture } from "./media-library";
@@ -18,8 +18,9 @@ import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * Pictures sent over the Admin API (wave 14 unit C1, D440): the only writer of `commerce.api_uploads`. `POST /media/uploads` keeps a row and
- * gives a one-time signed address in the private `imports` bucket (`{store}/api-uploads/{id}`); `POST /media` claims the row once, reads the
- * file there and checks it as the media library checks an upload (D88): a JPEG, PNG, WebP or AVIF read from its own bytes, shrunk as the
+ * gives a one-time signed address in the private `api-uploads` bucket (`{store}/api-uploads/{id}`), which takes picture types only up to
+ * `UPLOAD_MAX_BYTES`; `POST /media` claims the row once, reads the file there and checks it as the media library checks an upload (D88): a
+ * JPEG, PNG, WebP or AVIF read from its own bytes and of at most `UPLOAD_MAX_PIXELS`, shrunk as the
  * admin's browser shrinks pictures (D213: WebP, at most 1600 pixels wide, and a 480-pixel copy), counted against the store's storage, and
  * kept by `storePicture()`, the library's own writer. The file it was sent as is removed then; a row and its file go a day after they end.
  */
@@ -29,11 +30,11 @@ export type UploadStarted = { ok: true; id: string; url: string; expiresAt: stri
 /** The formats a picture may be, read from its bytes (sharp names AVIF `heif`). */
 const FORMATS = new Set(["jpeg", "png", "webp", "heif"]);
 
-/** Where a signed upload is sent: the address Storage gave, or the one its token makes (also the product file's, D165). */
-export function uploadUrl(path: string, started: { token: string; url?: string }): string {
+/** Where a signed upload is sent: the address Storage gave, or the one its token makes (also the product file's, D165, in `imports`). */
+export function uploadUrl(path: string, started: { token: string; url?: string }, bucket: string = IMPORTS_BUCKET): string {
   if (started.url) return started.url;
   const base = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/, "");
-  return `${base}/storage/v1/object/upload/sign/${IMPORTS_BUCKET}/${path}?token=${encodeURIComponent(started.token)}`;
+  return `${base}/storage/v1/object/upload/sign/${bucket}/${path}?token=${encodeURIComponent(started.token)}`;
 }
 
 /** Starts an upload for a token: its row and a one-time address, for `UPLOAD_SECONDS`. */
@@ -47,7 +48,7 @@ export async function startUpload(
   if (full) return { ok: false, code: "invalid", problem: full };
   const id = randomUUID();
   const path = `${owner.storeId}/api-uploads/${id}`;
-  const started = await storage.signedUpload(path);
+  const started = await storage.signedUpload(path, API_UPLOADS_BUCKET);
   if (!started) return { ok: false, code: "failed", problem: "The upload could not be started. Try again." };
   const row = await typedRow(
     z.object({ expires_at: col.timestamp }),
@@ -57,7 +58,7 @@ export async function startUpload(
       returning expires_at
     `,
   );
-  return { ok: true, id, url: uploadUrl(path, started), expiresAt: row!.expires_at };
+  return { ok: true, id, url: uploadUrl(path, started, API_UPLOADS_BUCKET), expiresAt: row!.expires_at };
 }
 
 export type UploadKept = { ok: true; mediaId: string } | { ok: false; code: "not_found" | "invalid" | "conflict" | "failed"; problem: string };
@@ -92,11 +93,15 @@ export async function keepUpload(
     await db().execute(sql`update commerce.api_uploads set used_at = null where store_id = ${owner.storeId}::uuid and id = ${input.uploadId}::uuid and media_id is null`);
     return outcome;
   };
-  const bytes = await storage.download(IMPORTS_BUCKET, claimed.path);
+  const bytes = await storage.download(API_UPLOADS_BUCKET, claimed.path);
   if (!bytes || bytes.byteLength === 0) return release({ ok: false, code: "invalid", problem: "No file was sent to the upload's address yet." });
   if (bytes.byteLength > UPLOAD_MAX_BYTES) return release({ ok: false, code: "invalid", problem: `The file is larger than ${UPLOAD_MAX_BYTES / 1024 / 1024} MB.` });
   const kind = await pictureKind(bytes);
   if (!kind || !FORMATS.has(kind.format)) return release({ ok: false, code: "invalid", problem: "Use a JPEG, PNG, WebP or AVIF picture." });
+  // Read from its header before it is decoded: a small file can claim a huge picture (D440 review).
+  if (kind.width * kind.height > UPLOAD_MAX_PIXELS) {
+    return release({ ok: false, code: "invalid", problem: `The picture is larger than ${UPLOAD_MAX_PIXELS / 1_000_000} million pixels. Make it smaller first.` });
+  }
   let shrunk: Awaited<ReturnType<typeof shrinkPicture>>;
   try {
     shrunk = await shrinkPicture(bytes);
@@ -117,7 +122,7 @@ export async function keepUpload(
   // Words a person gave are staff's (the AI never writes over them); left out, the library's AI writes them (D89).
   if (input.alt?.trim()) await describeMedia({ storeId: owner.storeId, storeSlug: null }, owner.accountId, stored.id, { alt: input.alt, translations: {} });
   await db().execute(sql`update commerce.api_uploads set media_id = ${stored.id}::uuid where store_id = ${owner.storeId}::uuid and id = ${input.uploadId}::uuid`);
-  await storage.remove(IMPORTS_BUCKET, [claimed.path]).catch(() => false);
+  await storage.remove(API_UPLOADS_BUCKET, [claimed.path]).catch(() => false);
   return { ok: true, mediaId: stored.id };
 }
 
@@ -129,7 +134,7 @@ export async function pruneApiUploads(storage: DataStorage | null = dataStorage(
     sql`select id, path from commerce.api_uploads where expires_at < now() - interval '1 day' order by expires_at limit 500`,
   );
   if (old.length === 0) return 0;
-  if (!(await storage.remove(IMPORTS_BUCKET, old.map((r) => r.path)).catch(() => false))) {
+  if (!(await storage.remove(API_UPLOADS_BUCKET, old.map((r) => r.path)).catch(() => false))) {
     log("warn", "api_uploads.prune_failed", { rows: old.length });
     return 0;
   }

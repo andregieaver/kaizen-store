@@ -1,4 +1,4 @@
-import { API_ERRORS, API_SCOPES, PAGE_DEFAULT, PAGE_MAX, type ApiErrorCode } from "./admin-api";
+import { API_ERRORS, API_SCOPES, PAGE_DEFAULT, PAGE_MAX, type ApiErrorCode, type ApiScope } from "./admin-api";
 import { ADMIN_API, errorsOf, type AdminOperation } from "./admin-api-routes";
 import { errorEnvelope, jsonSchemaOf, OPENAPI_DIALECT, parametersOf, pathParams, type JsonSchema } from "./openapi";
 import { webhookOpenApi } from "./webhook-topics";
@@ -16,41 +16,55 @@ export const ADMIN_RATE = { perToken: 120, perStore: 1200 } as const;
 /** What each refusal means, for the document and the reference. */
 export const API_ERROR_WORDS: Record<ApiErrorCode, string> = {
   unauthorized: "No valid token in `Authorization: Bearer kf_…`, or one that was revoked.",
-  forbidden: "The token does not hold the scope the operation needs, or its owner does not hold the staff permission it needs in the store now (a store that is not open allows no change to it); the message names which.",
+  forbidden: "The token does not hold the scope the operation needs, or its owner does not hold the staff permission it needs in the store now (a store that is not open, as in the admin, keeps open only its orders, customers, reports and the owner's own pages such as its webhooks; its products, discounts, website and settings, read or changed, are refused); the message names which.",
   not_found: "No such route, or nothing with that id in the token's store (another store's ids are simply not found).",
   method: "The method is not one this path takes.",
   invalid: "Nothing was done: a body, query or cursor that is not as described, or a check of the screen it goes through; the message says what.",
-  gated: "Only the owner does this, in the admin, or a token with the scope that allows it: publishing or changing a product on the site (`products:publish`); a copied order is never changed.",
+  gated: "The request needs a power beside the operation's scope (the message names it): changing a product, category or address on the site, an import that would, or a customer's email. A copied order is never changed.",
   feature_off: "The store has switched off the feature the operation stands behind (Settings, Store features); the message names it.",
   conflict: "Nothing was done: it clashes with how things are now (nothing left to send), or an `Idempotency-Key` is in use or was used for another request.",
   rate_limited: "More calls than the budget allows; `Retry-After` says how many seconds to wait.",
   failed: "Something went wrong on our side; nothing more was done. It is safe to try again.",
 };
 
-/** What each resource's scopes open, for the document and the docs' search (D443). */
-export const SCOPE_WORDS: Record<string, string> = {
-  products: "Products, their variants and prices, categories and tags, pictures and price lists.",
-  inventory: "Stock locations and levels.",
-  orders: "Orders, parcels, invoices and credit notes, draft orders and requests for a quote, returns, notes and tags.",
-  customers: "Customer accounts and their tags, their store credit and bonus credits, and segments.",
-  discounts: "Discount codes.",
-  checkout: "Checkout rules and questions.",
-  content: "Pages, blog articles, content entries and menus, as drafts.",
-  settings: "The store's countries, currencies, languages, shipping, tax profile and price display.",
-  reports: "Saved reports, run on the data as it is now.",
+/**
+ * What each scope allows, exactly (D440 review): the twelve a token could hold before D440 allow what they did then and no more (each read
+ * also reads what D440 added of its area); every write D440 added has a scope of its own; the powers are what the AI manager asks the
+ * owner's yes for. Every scope of an area also reads it.
+ */
+export const SCOPE_TEXT: Record<ApiScope, string> = {
+  "products:read": "Read products, categories and tags, the media library and products' galleries, price lists and their prices, and the product file's jobs.",
+  "products:write": "Make products and change drafts (a product on the site only with `products:publish` too).",
+  "products:manage":
+    "Make categories and tags, upload pictures to the media library, import the product file (only drafts without `products:publish`), and put a draft in a category or tag and change its gallery.",
+  "inventory:read": "Read stock locations and levels.",
+  "inventory:write": "Adjust and set stock.",
+  "orders:read": "Read orders with their addresses, invoices and credit notes, refunds and notes, draft orders and requests for a quote, returns and subscriptions.",
+  "orders:write": "Record parcels with tracking.",
+  "orders:manage": "Make and change draft orders, and add notes and tags to orders.",
+  "customers:read": "Read customers and their tags, their store credit and bonus credits, and segments.",
+  "customers:write": "Tag customers.",
+  "customers:manage": "Add customers and change their name, phone, address and company (their email only with `customers:email` too).",
+  "discounts:read": "Read discount codes.",
+  "discounts:write": "Make discount codes.",
+  "checkout:read": "Read checkout rules and questions.",
+  "checkout:write": "Change checkout rules and questions.",
+  "content:read": "Read pages, blog articles, content types and entries, and menus.",
+  "content:write": "Write drafts of pages, blog articles and content entries; nothing on the site changes.",
+  "settings:read": "Read the store's countries, currencies, languages, shipping, tax profile and price display.",
+  "reports:read": "Run saved reports on the data as it is now.",
+  "products:publish":
+    "A power: publish, unpublish, archive and bring back products; change a product on the site (its fields, gallery, categories and tags); rename and delete categories and tags; set price lists' prices; import a file that does any of these.",
+  "orders:send": "A power: send draft orders (a pay link) and decline requests for a quote, approve, decline and receive returns, pause and cancel subscriptions. Each emails the customer.",
+  "orders:refund": "A power: refund orders through the admin's own refund, to the payment or as store credit, and cancel orders not paid yet.",
+  "customers:email": "A power: change the email a customer signs in with (codes to sign in are sent to it).",
+  "discounts:publish": "A power: change discount codes and switch them off.",
+  "gift_cards:write": "A power: issue, read and deactivate gift cards. A card's code is answered once, when it is issued.",
+  "content:publish": "A power: publish pages, blog articles and content entries, and change the address of one on the site (or of pages under it).",
+  "webhooks:write": "A power: add, change and remove the owner's webhook endpoints, read their deliveries and send one again, as on the Integrations page.",
 };
 
-/** Scopes that are not a read or a write of their area (D440): what each lets a token do. */
-export const SCOPE_POWERS: Record<string, string> = {
-  "products:publish": "Publish, unpublish and archive products, and change products on the site: what the AI manager asks the owner's yes for.",
-  "orders:refund": "Refund orders through the admin's own refund, to the payment or as store credit: what the AI manager asks the owner's yes for.",
-  "gift_cards:write": "Issue, read and deactivate gift cards: money of the store's. A card's code is answered once, when it is issued.",
-  "content:publish": "Publish pages, blog articles and content entries: what the AI manager asks the owner's yes for.",
-  "webhooks:write": "Add, change and remove the owner's webhook endpoints and read their deliveries: the owner's own, as on the Integrations page.",
-};
-
-const scopeWords = (scope: string): string =>
-  SCOPE_POWERS[scope] ?? `${scope.endsWith(":write") ? "Read and change" : "Read"}: ${SCOPE_WORDS[scope.split(":")[0]] ?? scope}`;
+const scopeWords = (scope: ApiScope): string => SCOPE_TEXT[scope];
 
 const TAGS = [
   { name: "Products", description: "Products as the admin keeps them. Drafts are written with `products:write`; what shoppers see (publishing, a product on the site, archiving) only with `products:publish`." },

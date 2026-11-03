@@ -39,19 +39,30 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   operation's was parsed; then the contract's next version (*API contracts*, under the Admin API). A gated effect (publishing, a live product, a refund,
   an email a person decides) is refused as `gated`, never run, unless the token holds the power scope for it (D440: `products:publish`),
   which is checked in the handler (`holds()`) on top of the route's own scope.
+  **What a scope allows (D440 review):** the twelve scopes of D355 (`SCOPES_BEFORE_D440`) allow what they did then and never more, so an
+  operation that existed keeps its scope and every new write gets a scope no older token holds (`products:manage`, `orders:manage`,
+  `customers:manage`, `content:write`, or a power); a new read may sit under its area's read scope. What an owner tool asks the owner's
+  yes for (`gate` `public`, `send` or `spend` in `OWNER_TOOLS`) is a power (`API_POWERS`: `products:publish`, `orders:send`,
+  `orders:refund`, `customers:email`, `discounts:publish`, `gift_cards:write`, `content:publish`, `webhooks:write`), offered on the token
+  screen under *Customise*; `admin-api-routes.test.ts` holds the registry to both. Every scope of an area reads it (`grants()`). Each
+  scope's words say exactly what it allows: the token screen's (`scopeWords`, every language) and the contract's (`SCOPE_TEXT`). Powers
+  are the Admin API's only: no OAuth level grants one, and before `kfa_` tokens reach this API (unit D) each power must be checked against
+  the person's permission at every call.
   **Its breadth (wave 14 unit C, D440, `docs/wave-14-developer-platform.md` C1 to C4):** each slice's entries live in their own file
   (`src/lib/admin-api-catalogue.ts`, …) spread into `ADMIN_API`, written with `admin-api-shapes.ts`, and their handlers in the server file of
   the same name over `admin-api-kit.ts` (`ok()`, `fail()`, `readBody()`, `paging()` with `cursorAt()` and `sinceWhere()`, `record()`). Every
   entry names the staff `permission` (D158) its screen asks and, where it has one, the store `feature` (D178): the route refuses a missing
-  permission as `forbidden` (`memberCan()`, so a store that is not open allows no change) and a feature off as `feature_off`, before the
-  handler runs. Every list takes `?updated_after=` over the row's own change time (an order's is `ORDER_UPDATED`, its timeline's latest
-  entry) and pages under a cursor exact to the microsecond. A scope that is no read or write of an area is a power (`POWER_SCOPES` in
-  `src/lib/oauth.ts`, resting on a permission, offered on the consent screen only under *Read and change*, never a key of a role), added
-  together to `API_SCOPES`, the token screen's words, the consent screen's words and the OpenAPI document (`SCOPE_POWERS`). Pictures come
-  only through `POST /media/uploads` (a row of `commerce.api_uploads`, written only by `src/server/api-uploads.ts`, and a one-time signed
-  address in the private `imports` bucket) and `POST /media`, which checks the file from its bytes, shrinks it as the admin's browser does
-  (`shrinkPicture()`), counts it against storage and keeps it with `storePicture()`; a product's gallery, categories and tags change only
-  through `updateProductTool()`. `inventory.updated` waits for the next whole minute (`queue_integration_event()`), so a variant's moves in
+  permission as `forbidden` (`memberCan()`: a store that is not open keeps, as the admin does, only `orders:*`, `customers:*`,
+  `analytics:*`, `support:read`, `billing:read`, `staff:read` and `owner`, so its products, discounts, website and settings are refused
+  read or changed) and a feature off as `feature_off`, before the handler runs. A list of the store's records takes `?updated_after=` over
+  the row's own change time (an order's is `ORDER_UPDATED`, its timeline's latest entry); the short lists of one thing do not (stock
+  locations, a product's gallery, an order's refunds and notes, content types, webhook endpoints and deliveries). Every list pages under a
+  cursor exact to the microsecond, keyed by what makes a row one (a stock level by variant and location). An `Idempotency-Key` stands for
+  the method, the whole path and the body (`claimIdempotencyKey()`). Pictures come only through `POST /media/uploads` (a row of
+  `commerce.api_uploads`, written only by `src/server/api-uploads.ts`, and a one-time signed address in the private `api-uploads` bucket,
+  picture types only up to `UPLOAD_MAX_BYTES`, the bucket's own limit) and `POST /media`, which checks the file from its bytes (at most
+  `UPLOAD_MAX_PIXELS`, read before it is decoded), shrinks it as the admin's browser does (`shrinkPicture()`), counts it against storage
+  and keeps it with `storePicture()`; a product's gallery, categories and tags change only through `updateProductTool()`. `inventory.updated` waits for the next whole minute (`queue_integration_event()`), so a variant's moves in
   that minute are one delivery built as the stock is then. Orders (C2, `admin-api-orders.ts`): a draft changes only through the editor's own
   state (`formFromDraft()`, the API's change laid over it, `inputFromForm()`, `saveDraft()` against its version), is sent only by
   `sendDraft()` and a request declined only by `declineQuote()`; money goes back only through `refundOrder()` with the power `orders:refund`
@@ -64,14 +75,22 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   through `saveDiscount()` with its stored form (what it reaches and who may use it stay the admin's), a gift card only through
   `issueGiftCard()` and `deactivateGiftCard()` with the power `gift_cards:write`, a subscription only through `changeSubscription()` as staff
   (with the subscriber's email); a segment is answered with how many it holds, never who, and a subscription never with its manage link.
-  Something shown once (a gift card's code, a draft's pay link) is answered once and never kept for a replay: the handler gives
-  `ApiAnswer.replay` without it, and only that is kept under the `Idempotency-Key`. `customer.erased` is queued by `eraseSubject()` in its
-  own transaction with the account's id alone, and its payload is built without reading anything. Content, the store and operations (C4,
+  Something shown once (a gift card's code, a draft's pay link, a webhook secret, an upload address) is answered once and never kept for a
+  replay: the handler gives `ApiAnswer.replay` without it, and only that is kept under the `Idempotency-Key`. A customer's email (what they
+  sign in with) changes only with the power `customers:email`. `customer.erased` is queued by `eraseSubject()` in its own transaction with
+  the account's id alone, and its payload is built without reading anything; in the same transaction every delivery about the person (their
+  account, orders, subscriptions, drafts and reviews) loses its payload and is marked `erased_at`, a waiting one is not sent, and
+  `resendDelivery()` never sends one again. Content, the store and operations (C4,
   `admin-api-content.ts`): a page or article is written only through `savePage()` (a draft; publishing with the power `content:publish`, its
-  checker's blocking issues acknowledged by id), an entry only through `saveEntry()`/`publishEntry()`, an endpoint only through the
+  checker's blocking issues acknowledged by id; a draft carrying `globalEdits` is refused, as global parts change every page using them; a
+  new address of a page never published that moves published pages under it takes `content:publish`), an entry only through
+  `saveEntry()`/`publishEntry()` (a published entry's new address takes `content:publish`), an endpoint only through the
   Integrations page's writers with the power `webhooks:write` (its secret answered once, its address never), a saved report run only by
   `runReport()`, and the product file only through the Data page's own steps with the storage named for each call (`jobDeps()`); order and
-  customer files stay in the admin (owner-only, personal data). Settings are read, never written, over the API.
+  customer files stay in the admin (owner-only, personal data). An import by a token without `products:publish` is checked with
+  `draftsOnly` (the plan refuses a product it would publish, archive, bring back or change on the site, `product.on_site`, in the check and
+  again in the apply's fresh plan; a job's options are fixed once checked) and counts them (`dry.onShop`): its apply is refused as `gated`
+  and the job cancelled when the count is not 0, or when the job was not checked drafts only. Settings are read, never written, over the API.
 
 - **API contracts (wave 14 unit A, D438, `src/lib/admin-api-routes.ts`, `src/lib/webhook-topics.ts`, `src/lib/mcp-catalogue.ts`, `src/lib/api-contract.ts`)**, for this API, the storefront API, the webhooks and the MCP servers:
   what outside callers rely on is described once, in code, and everything published is generated from it: the Admin API's operations

@@ -1,8 +1,7 @@
-import { STORES_READ } from "./oauth";
+import { STORES_READ, type OAuthScope } from "./oauth";
 import { OWNER_TOOLS, toolDefinition, type GateCategory, type OwnerTool } from "./owner-tools";
 import { TOOL_FEATURES } from "./owner-tool-features";
 import { TOOL_PERMISSIONS } from "./owner-tool-permissions";
-import type { PermissionKey } from "./permission-keys";
 import { GATED_WHEN_LIVE } from "./product-tools";
 import { GATED_WHEN_OPEN } from "./setup-tools";
 
@@ -84,9 +83,8 @@ export const toolPermission = (name: string): string | null => (Object.hasOwn(TO
 /**
  * The scope a call of an owner MCP tool needs from an OAuth grant (D439, B3): `stores:read` to list the stores, the owner's key to ask the
  * store's assistant (it is the owner's, as `/assistant` is), and each owner tool's own permission key. Null for a name that is no tool.
- * Never one of the Admin API's power scopes (D440): no tool needs more than its permission.
  */
-export function toolScope(name: string): typeof STORES_READ | PermissionKey | null {
+export function toolScope(name: string): OAuthScope | null {
   if (name === "list_stores") return STORES_READ;
   if (name === "ask_store_assistant") return "owner";
   return Object.hasOwn(TOOL_PERMISSIONS, name) ? TOOL_PERMISSIONS[name as keyof typeof TOOL_PERMISSIONS] : null;

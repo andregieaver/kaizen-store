@@ -238,21 +238,37 @@ async function answerCore(caller: ApiCaller, route: CoreRoute, request: Request)
       const variant = params.get("variant_id");
       const location = params.get("location_id");
       if ((variant && !isUuid(variant)) || (location && !isUuid(location))) return fail("invalid", "variant_id and location_id are ids.");
-      const page = paging(params, sql`l.updated_at`, sql`l.variant_id`);
+      // A level is a variant at a location: the cursor's key is both, hashed into the shape of an id (D440 review), so two levels of a
+      // variant moved at the same moment are never split across a page and skipped.
+      const key = sql`md5(l.variant_id::text || l.location_id::text)::uuid`;
+      const page = paging(params, sql`l.updated_at`, key);
       const rows = await typedRows(
-        z.object({ id: col.uuid, created_at: col.timestamp, cursor_at: z.string(), location_id: col.uuid, sku: col.textOrNull, on_hand: col.int, available: z.number().nullable(), can_buy: z.boolean().nullable() }),
+        z.object({
+          id: z.string(),
+          created_at: col.timestamp,
+          cursor_at: z.string(),
+          variant_id: col.uuid,
+          location_id: col.uuid,
+          sku: col.textOrNull,
+          on_hand: col.int,
+          available: z.number().nullable(),
+          can_buy: z.boolean().nullable(),
+        }),
         sql`
-          select l.variant_id as id, l.updated_at as created_at, ${cursorAt(sql`l.updated_at`)} as cursor_at, l.location_id, v.sku, l.on_hand, va.raw_available as available, va.can_buy
+          select ${key} as id, l.updated_at as created_at, ${cursorAt(sql`l.updated_at`)} as cursor_at, l.variant_id, l.location_id, v.sku, l.on_hand,
+            va.raw_available as available, va.can_buy
           from commerce.inventory_levels l
           join commerce.product_variants v on v.id = l.variant_id
           left join commerce.variant_availability va on va.variant_id = l.variant_id
           where l.store_id = ${storeId}::uuid and ${page.where} and ${sinceWhere(params, sql`l.updated_at`)}
             and ${variant ? sql`l.variant_id = ${variant}::uuid` : sql`true`} and ${location ? sql`l.location_id = ${location}::uuid` : sql`true`}
-          order by l.updated_at desc, l.variant_id desc, l.location_id
+          order by l.updated_at desc, ${key} desc
           limit ${page.limit + 1}
         `,
       );
-      const data = rows.slice(0, page.limit).map((r) => ({ variant_id: r.id, location_id: r.location_id, sku: r.sku, on_hand: r.on_hand, available: r.available, can_buy: r.can_buy, updated_at: r.created_at }));
+      const data = rows
+        .slice(0, page.limit)
+        .map((r) => ({ variant_id: r.variant_id, location_id: r.location_id, sku: r.sku, on_hand: r.on_hand, available: r.available, can_buy: r.can_buy, updated_at: r.created_at }));
       return ok(route.name, { data, next: page.next(rows) });
     }
     case "inventory.adjust": {

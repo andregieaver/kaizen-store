@@ -9,7 +9,7 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-03
-sources: [D438, D439]
+sources: [D438, D439, D440]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
@@ -29,11 +29,30 @@ Content, the store and operations (wave 14 unit C4, D440).
 - Menus: `GET /menus` and `GET /menus/{id}`. The store's settings: `GET /settings` (markets, currencies, languages, shipping rates and
   methods, tax profile, price display).
 - Saved reports (D345): `GET /reports` and `GET /reports/{id}/run`.
-- Webhook endpoints (D354) with `webhooks:write`: `GET`, `POST /webhooks` (the signing secret answered once), `PATCH` and `DELETE
+- Webhook endpoints (D354) with `webhooks:write`: `GET`, `POST /webhooks` (the signing secret answered once: a replay under its `Idempotency-Key` answers it as `null`), `PATCH` and `DELETE
   /webhooks/{id}`, `GET /webhooks/{id}/deliveries` and `POST /webhooks/{id}/deliveries/{delivery_id}/resend`.
 - The product file of the Data page (D165) as jobs: `POST /jobs/product-exports`, `POST /jobs/product-imports` (a one-time upload
   address), `POST /jobs/product-imports/{id}/check` (the dry run), `POST /jobs/{id}/apply`, `GET /jobs/{id}` and `GET /jobs/{id}/download`.
 - A token may now hold every scope at once.
+- Every write added since 1.1 has a scope no token made before it holds, so an older token gains nothing beyond reading its own areas:
+  `products:manage` (categories and tags made, pictures uploaded, the product file imported as drafts, a draft put in a category or given
+  pictures), `orders:manage` (draft orders made and changed, an order's notes and tags) and `customers:manage` (customers added and
+  changed, never their email). Every scope of an area also reads it.
+- What the AI manager asks the owner's yes for is a power: `products:publish` also renames and deletes categories and tags and sets price
+  lists' prices; `orders:send` (new) sends draft orders, declines quotes, decides and receives returns, and pauses and cancels
+  subscriptions; `orders:refund` also cancels an order not paid yet; `customers:email` (new) changes the email a customer signs in with;
+  `discounts:publish` (new) changes discount codes and switches them off. A call that needs a power beside its scope answers `gated`,
+  naming it.
+- An import by a token without `products:publish` is checked as drafts only: `counts.dry.onShop` counts the products the file would
+  publish, archive, bring back or change on the site, and `POST /jobs/{id}/apply` refuses them as `gated` and cancels the import.
+- A page's or article's draft that carries `globalEdits` is refused: global parts change in the admin. A page's new address that moves
+  published pages under it, and a published entry's new address, take `content:publish`.
+- `Idempotency-Key` stands for the method, the whole path and the body: the same key on another order's route is refused, never answered
+  with the first one's answer.
+- Upload addresses (`POST /media/uploads`, `POST /jobs/product-imports`) are answered once: a replay answers `upload_url` as `null`.
+  Pictures go to a bucket of their own and may be at most 20 MB and 50 million pixels.
+- `GET /inventory/levels` pages by variant and location, so no level is skipped between pages.
+- A webhook delivery about a person who was erased loses its payload, and resending it answers `conflict`.
 
 ## 1.3 — 2026-11-03
 
@@ -81,10 +100,12 @@ The catalogue (wave 14 unit C1, D440).
   `/archive`, `/unarchive`), and change a product that is on the site (its fields, categories, tags and pictures). With `products:write`
   alone those still answer `gated`, as before.
 - Price lists (D321): `GET /price-lists`, and `GET` and `POST /price-lists/{id}/prices` with fixed prices in minor units.
-- `?updated_after=` on every list, and `updated_at` on orders, customers and discount codes, for incremental sync. A page's cursor now
+- `?updated_after=` on every list of the store's records (not on the short lists that belong to one thing, such as an order's refunds and
+  notes or a product's gallery), and `updated_at` on orders, customers and discount codes, for incremental sync. A page's cursor now
   keeps its row's time to the microsecond, so rows made in one go are never skipped between pages.
 - Each operation names the staff permission its screen asks for (`x-permission`) and the store feature it stands behind (`x-feature`): a
-  store that is not open answers `forbidden` to what its admin refuses there (changes, and reading its products and website), and a
+  store that is not open answers `forbidden` to what its admin refuses there (its products, discounts, website and settings, read or
+  changed; its orders, customers and reports stay open), and a
   feature switched off answers the new code `feature_off` (403).
 - Webhooks: `inventory.updated` (a variant's stock on hand moved; one event per variant and minute, carrying the stock as it is then) and
   `product.archived`.

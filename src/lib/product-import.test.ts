@@ -510,8 +510,8 @@ describe("what the whole file says", () => {
       { stored: [stored] },
     );
     expect(r.products.map((p) => p.outcome)).toEqual(["unchanged", "created", "skipped", "skipped", "created"]);
-    expect(r.dry).toEqual({ toCreate: 2, toUpdate: 0, unchanged: 1, withProblems: 2 });
-    expect(dryRunCounts([], [])).toEqual({ toCreate: 0, toUpdate: 0, unchanged: 0, withProblems: 0 });
+    expect(r.dry).toEqual({ toCreate: 2, toUpdate: 0, unchanged: 1, withProblems: 2, onShop: 0 });
+    expect(dryRunCounts([], [])).toEqual({ toCreate: 0, toUpdate: 0, unchanged: 0, withProblems: 0, onShop: 0 });
   });
 
   it("makes an item of a plan: the dry run says checked and keeps what would happen", () => {
@@ -616,11 +616,52 @@ describe("options", () => {
   it("reads the member's choices, with the default for anything unknown", () => {
     expect(parseImportOptions(undefined)).toEqual(DEFAULT_IMPORT_OPTIONS);
     expect(parseImportOptions({ mode: "update", unpublishable: "skip", missingVariants: "switch_off", pricesIncludeVat: false, priceMarket: "se", manufacturerId: OPERATOR })).toEqual({
-      mode: "update", unpublishable: "skip", missingVariants: "switch_off", pricesIncludeVat: false, priceMarket: "SE", manufacturerId: OPERATOR, redirects: true,
+      mode: "update", unpublishable: "skip", missingVariants: "switch_off", pricesIncludeVat: false, priceMarket: "SE", manufacturerId: OPERATOR, redirects: true, draftsOnly: false,
     });
     // Redirects from the old shop's addresses are on unless turned off in so many words (D384).
     expect(parseImportOptions({ redirects: false }).redirects).toBe(false);
     expect(parseImportOptions({ redirects: "no" }).redirects).toBe(true);
     expect(parseImportOptions({ mode: "delete", unpublishable: "x", missingVariants: "delete", pricesIncludeVat: "yes", priceMarket: "Norway", manufacturerId: "x" })).toEqual(DEFAULT_IMPORT_OPTIONS);
+  });
+});
+
+describe("what shoppers see (D440): an import of drafts only", () => {
+  const live = boot(ctx);
+  const draft = boot(ctx, { status: "draft" });
+  const archived = boot(ctx, { archived: true, status: "draft" });
+  const retitle = [["handle", "title"], ["winter-boot", "Ny"]];
+  const publish = [[...HEAD, "status", "image_url"], ["a", "A", "S1", "100", "active", "/demo/a.svg"]];
+
+  it("marks each product the apply would publish, archive, bring back or change on the site, and counts them", () => {
+    expect(plan([HEAD, ["new-shoe", "Ny sko", "SHOE-1", "499,50"]]).products[0].onShop).toBe(false);
+    expect(plan(retitle, { stored: [draft] }).products[0].onShop).toBe(false);
+    expect(plan(retitle, { stored: [live] }).products[0].onShop).toBe(true);
+    expect(plan([["handle", "status"], ["winter-boot", "archived"]], { stored: [draft] }).products[0].onShop).toBe(true);
+    expect(plan([["handle", "status", "title"], ["winter-boot", "draft", "Ny"]], { stored: [archived] }).products[0].onShop).toBe(true);
+    expect(plan(publish).products[0].onShop).toBe(true);
+    // One that cannot be published is saved as a draft: nothing of it reaches the site.
+    expect(plan([[...HEAD, "status"], ["a", "A", "S1", "100", "active"]]).products[0].onShop).toBe(false);
+    expect(plan(publish).dry.onShop).toBe(1);
+    expect(plan(retitle, { stored: [live] }).dry.onShop).toBe(1);
+    expect(plan(retitle, { stored: [draft] }).dry.onShop).toBe(0);
+  });
+
+  it("refuses those when drafts only are imported, and writes the drafts as before", () => {
+    const refused = plan(publish, { options: { draftsOnly: true } }).products[0];
+    expect(refused.outcome).toBe("skipped");
+    expect(refused.input).toBeNull();
+    expect(codes(refused)).toEqual(["product.on_site"]);
+    expect(refused.findings[0].severity).toBe("error");
+    // Refused, still counted: the apply is refused for them.
+    expect(plan(publish, { options: { draftsOnly: true } }).dry).toMatchObject({ toCreate: 0, withProblems: 1, onShop: 1 });
+    expect(plan(retitle, { stored: [live], options: { draftsOnly: true } }).products[0].outcome).toBe("skipped");
+    expect(plan([["handle", "status"], ["winter-boot", "archived"]], { stored: [draft], options: { draftsOnly: true } }).products[0].outcome).toBe("skipped");
+    const kept = plan(retitle, { stored: [draft], options: { draftsOnly: true } }).products[0];
+    expect(kept.outcome).toBe("updated");
+    expect(kept.input?.status).toBe("draft");
+    expect(plan([HEAD, ["new-shoe", "Ny sko", "SHOE-1", "499,50"]], { options: { draftsOnly: true } }).products[0].outcome).toBe("created");
+    expect(parseImportOptions({ draftsOnly: true }).draftsOnly).toBe(true);
+    expect(parseImportOptions({ draftsOnly: "yes" }).draftsOnly).toBe(false);
+    expect(DEFAULT_IMPORT_OPTIONS.draftsOnly).toBe(false);
   });
 });

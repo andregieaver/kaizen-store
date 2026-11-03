@@ -6,10 +6,11 @@ import { z } from "zod";
 import { CUSTOMERS_API, SUBSCRIPTION_STATES_API } from "@/lib/admin-api-customers";
 import type { AdminAnswer, ApiRoute } from "@/lib/admin-api-routes";
 import { DISCOUNT_KINDS } from "@/lib/discounts";
+import { sameEmail } from "@/lib/email-address";
 import { GIFT_CARD_STATES } from "@/lib/gift-card-admin";
 import { formatPriceInput } from "@/lib/product-input";
 
-import { cursorAt, fail, ok, paging, readBody, record, sinceWhere, type ApiAnswer } from "./admin-api-kit";
+import { cursorAt, fail, holds, ok, paging, readBody, record, sinceWhere, type ApiAnswer } from "./admin-api-kit";
 import type { ApiCaller } from "./api-tokens";
 import { customerBonus } from "./bonus";
 import { createCustomer, staffFormValues, updateCustomer, type StaffProblem } from "./customer-staff";
@@ -244,6 +245,10 @@ export async function answerCustomers(caller: ApiCaller, route: CustomersRoute, 
       await customerById(storeId, route.id);
       const change = await readBody(route.name, request);
       const form = (await staffFormValues(storeId, route.id)) ?? fail("not_found", "No such customer in this store.");
+      // The email is what the customer signs in with (codes are emailed to it, D32): changing it is a power of its own (D440).
+      if (change.email !== undefined && !sameEmail(change.email, form.email) && !holds(caller, "customers:email")) {
+        return fail("gated", "Changing a customer's email takes a token with customers:email: it is the address they sign in with.");
+      }
       const address = change.address === undefined ? null : change.address;
       const saved = await updateCustomer(caller.member, route.id, {
         email: change.email ?? form.email,
