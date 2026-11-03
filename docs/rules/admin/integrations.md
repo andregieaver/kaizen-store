@@ -86,7 +86,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   carry their grant and expire with it. A client's name is shown and passed on only through `safeClientName()`, and names that could pass
   for Kaizena Flow are refused. A wrong authorization request goes back only to a client Kaizena Flow vouches for (`sendsErrorsBack()`).
   A store's or the site's budget counts an ask only within the caller's own (`budgetRoom()`); the token endpoint is counted per client.
-  MCP calls are held to `memberCan()`. Every MCP call, refused ones too, is audited
+  MCP calls are held to `memberCan()`. Its prompt names the assistant (`managerPrompt()`'s `outside`, quoted by `assistantName()`, which
+  cleans it with `safeClientName()`), and the manager's prompt version covers that drawing. Every MCP call, refused ones too, is audited
   (`integration.mcp_call`, `via: "mcp"` and the client) and budgeted (`takeMcpBudget()`: 120 a minute a grant, 1,200 a store), batches at
   most ten, bodies at most 100 KB. A new owner tool needs nothing here beyond its permission key; a new resource (the Admin API, unit D) is an
   entry of `OAUTH_RESOURCES` and of `oauth_grants_resource`, and its door reads tokens with `oauthAccess()`. Never log or audit a token, code
