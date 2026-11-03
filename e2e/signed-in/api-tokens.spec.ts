@@ -16,11 +16,14 @@ const run = Date.now().toString(36);
 const POWERS = "Customise: what the AI manager asks your yes for";
 
 /** A scope's checkbox, found by the scope's own name printed under its words. */
-const scopeBox = (page: Page, scope: string) => page.getByRole("checkbox", { name: new RegExp(`${scope}$`) });
+const scopeBox = (page: Page, scope: string) => tokenForm(page).getByRole("checkbox", { name: new RegExp(`${scope}$`) });
+
+/** The Admin API token's form (the page also makes storefront tokens and adds apps, each with a name of its own). */
+const tokenForm = (page: Page) => page.locator("form").filter({ has: page.getByRole("button", { name: "Make a token" }) });
 
 async function makeToken(page: Page, name: string, scopes: string[], powers: string[] = []): Promise<string> {
   await page.goto(`/admin/${E2E_STORE}/settings/api`);
-  await page.getByLabel("Name", { exact: true }).fill(name);
+  await tokenForm(page).getByLabel("Name", { exact: true }).fill(name);
   for (const scope of scopes) await scopeBox(page, scope).check();
   if (powers.length > 0) {
     await page.getByText(POWERS, { exact: true }).click();
