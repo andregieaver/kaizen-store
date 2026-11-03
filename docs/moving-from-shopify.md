@@ -510,7 +510,7 @@ his shop and presses **Connect Shopify**; Shopify's own page asks him to allow K
 *Connected to {shop name}* with what it holds (*312 products · 2,180 customers · 940 orders*, counted by Shopify), one press to **Check
 your old links** (step 1, read from the shop's own domain), the file imports for the rest until step 4, and *Disconnect*.
 
-- **The app** is Kaizena Flow's own, described in `shopify/shopify.app.toml` (read scopes only, not embedded, the callback, `app/uninstalled`
+- **The app** (`kaizena-flow-3` in Shopify's Dev Dashboard, released from this file with `shopify app deploy` on 3 November 2026; the dashboard's form has no place for webhooks, and Shopify refuses them in the file while the legacy install flow is on, so the app uses Shopify managed installation with the same scopes as the authorize address) is Kaizena Flow's own, described in `shopify/shopify.app.toml` (read scopes only, not embedded, the callback, `app/uninstalled`
   and the three privacy topics). It is made once in Shopify's Dev Dashboard; until `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET` are set
   in production the page offers the file imports alone, in their order.
 - **The token**: Shopify now asks new public apps for *expiring* offline tokens (`expiring=1`: an access token of an hour and a refresh
