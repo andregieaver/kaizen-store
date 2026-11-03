@@ -15,6 +15,8 @@ import {
   FEED_KIND,
   MENUS_QUERY,
   PLAIN_FEEDS,
+  VENDORS_FILE,
+  vendorLines,
   copyReady,
   copyStateOf,
   directItems,
@@ -28,6 +30,7 @@ import {
   type DirectItem,
   type FeedProblem,
   type FeedState,
+  type VendorLine,
 } from "@/lib/shopify-copy";
 
 import type { Membership } from "./auth";
@@ -240,6 +243,26 @@ async function keptFile(path: string, deps: CopyDeps): Promise<string | null> {
   return bytes ? new TextDecoder().decode(bytes) : null;
 }
 
+/** The products' vendors (D445 step 6) kept beside the products' file: its path, or null when there are none or storage would not take it. */
+async function keepVendors(member: Membership, text: string, deps: CopyDeps): Promise<string | null> {
+  const lines = vendorLines(readBulkLines(text));
+  const storage = storageOf(deps);
+  if (lines.length === 0 || !storage) return null;
+  const path = `${member.store.id}/${randomUUID()}/${VENDORS_FILE}`;
+  return (await storage.upload(IMPORTS_BUCKET, path, new TextEncoder().encode(lines.map((l) => JSON.stringify(l)).join("\n")), "text/plain")) ? path : null;
+}
+
+/** The vendors the last copy read, for *Who makes your products?* (owner only); empty when the copy kept none (one started before step 6). */
+export async function copiedVendors(member: Membership, deps: CopyDeps = {}): Promise<VendorLine[]> {
+  if (!memberCan(member, OWNER)) return [];
+  const path = (await stateOf(member.store.id))?.feeds.products.vendors;
+  const text = path ? await keptFile(path, deps) : null;
+  if (!text) return [];
+  return readBulkLines(text).roots.flatMap((r) =>
+    typeof r.handle === "string" && typeof r.vendor === "string" ? [{ vendor: r.vendor, handle: r.handle, active: r.active === true }] : [],
+  );
+}
+
 /** A finished read of a `later` or `direct` feed: its file kept, the feed ready to be brought over (or empty). */
 async function stage(member: Membership, feed: CopyFeed, text: string, deps: CopyDeps): Promise<FeedState> {
   const { csv, count } = fileOfFeed(feed, text);
@@ -421,6 +444,10 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
         if (FEED_KIND[feed] === "import") {
           const handed = await hand(member, feed, file.text, deps);
           state.feeds[feed] = "empty" in handed ? { stage: "empty", count: 0 } : "problem" in handed ? { stage: "failed", problem: handed.problem } : { stage: "checking", job: handed.job, count: handed.count };
+          if (feed === "products" && "job" in handed) {
+            const vendors = await keepVendors(member, file.text, deps);
+            if (vendors) state.feeds.products.vendors = vendors;
+          }
         } else state.feeds[feed] = await stage(member, feed, file.text, deps);
       } else if (status === "FAILED" || status === "CANCELED" || status === "CANCELING" || status === "EXPIRED") {
         log("warn", "shopify.copy_read_failed", { storeId, feed, status, code: poll.data.node?.errorCode ?? null });

@@ -629,6 +629,24 @@ collections, customers, past orders, discount codes, pages, posts, menus, redire
 The queries for shipping, codes and the look were written from Shopify's reference and are first met on a real shop when the owner
 presses *Start again*; one Shopify refuses says so on its own line and the rest goes on.
 
+### Step 6: *Who makes your products?* (built 3 November 2026)
+
+On Moving in, once the copy has stopped moving: one row per Shopify vendor whose copied products here still have no manufacturer
+(`makerGroups()`, `src/lib/shopify-makers.ts`), most products first, products without a vendor in a row of their own.
+
+- **Where the vendors come from**: the products' bulk read now asks for `vendor`, and the vendors are kept beside the products' file
+  (`shopify-vendors.jsonl` in the imports bucket, `copy.feeds.products.vendors`), so the screen reads no Shopify and works after a
+  disconnect. A copy started before step 6 kept none: *Start again* reads them.
+- **The question**: *Is Nordic Wool the maker?* **Yes** opens Nordic Wool as a new company with its name filled in (or the store's company
+  of that name); **No, someone else** opens one of the store's companies or a blank one. The product editor's own company picker
+  (`OperatorPicker`, now `src/components/admin/operator-picker.tsx`). A maker outside the EU (the database's `in_eu`) asks for the EU
+  responsible person too, and nothing is saved without one. The vendor is never taken as the maker without the owner's press.
+- **Saving** (`saveVendorMaker()`, `src/server/shopify-makers.ts`): the company is kept as the editor keeps one (`chooseOperator()`), then
+  the bulk editor's new action *Set the manufacturer* (`manufacturer`, field `maker`, migration `20261103220311_bulk_makers` widening the
+  two checks) names it on every product of that vendor still without one, 500 at a time, with the bulk editor's seven-day undo
+  (*Undo* links to the bulk page). Then the ones that were on sale in Shopify are put on sale by its *Set status* action, whose save
+  refuses one still missing something (a picture), and the page says how many.
+
 Left for later: the logo and favicon, metafields, gift cards and the email list (step 8); reviews (they live in review apps, not in
 Shopify, spike S6); a catch-up copy on move day.
 

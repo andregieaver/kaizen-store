@@ -1112,6 +1112,11 @@ class FieldProblems extends Error {
   }
 }
 
+/** One of the store's economic operators (GPSR Art. 19), chosen or added as the product editor does; its id, or null for none. */
+export async function chooseOperator(storeId: string, choice: OperatorChoice): Promise<string | null> {
+  return db().transaction((tx) => resolveOperator(tx, storeId, choice));
+}
+
 async function resolveOperator(tx: Tx, storeId: string, choice: OperatorChoice): Promise<string | null> {
   if (choice === null) return null;
   if ("id" in choice) {

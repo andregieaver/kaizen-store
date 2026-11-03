@@ -6,6 +6,7 @@ import { detectFormat } from "./product-csv-shopify";
 import { readRedirectFile } from "./redirect-csv";
 import {
   COPY_FEEDS,
+  vendorLines,
   EMPTY_COPY,
   collectionsFile,
   directItems,
@@ -266,5 +267,24 @@ describe("collections, pages, blog posts and menus", () => {
         { label: { "nb-NO": "Wool" }, link: { kind: "product", handle: "wool-hat" }, depth: 2 },
       ],
     });
+  });
+});
+
+describe("the products' vendors", () => {
+  it("keeps each product's vendor, handle and whether it was on sale, gift cards left out", () => {
+    const tree = readBulkLines(
+      [
+        { id: "gid://shopify/Product/1", handle: "hat", vendor: " Nordic  Wool ", status: "ACTIVE", isGiftCard: false },
+        { id: "gid://shopify/Product/2", handle: "scarf", vendor: null, status: "DRAFT", isGiftCard: false },
+        { id: "gid://shopify/Product/3", handle: "card", vendor: "Shop", status: "ACTIVE", isGiftCard: true },
+        { sku: "x", __parentId: "gid://shopify/Product/1" },
+      ]
+        .map((o) => JSON.stringify(o))
+        .join("\n"),
+    );
+    expect(vendorLines(tree)).toEqual([
+      { vendor: "Nordic Wool", handle: "hat", active: true },
+      { vendor: "", handle: "scarf", active: false },
+    ]);
   });
 });

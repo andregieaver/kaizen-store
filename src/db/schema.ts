@@ -13076,7 +13076,7 @@ export const bulkEditBatches = commerce.table(
       .where(sql`${t.undoOf} is not null`),
     check(
       "bulk_edit_batches_action",
-      sql`${t.action} in ('status', 'archive', 'unarchive', 'terms_add', 'terms_remove', 'price', 'stock', 'grid', 'undo', 'sell_in', 'stop_selling_in')`,
+      sql`${t.action} in ('status', 'archive', 'unarchive', 'terms_add', 'terms_remove', 'price', 'stock', 'grid', 'undo', 'sell_in', 'stop_selling_in', 'manufacturer')`,
     ),
     check("bulk_edit_batches_undo", sql`(${t.action} = 'undo') = (${t.undoOf} is not null)`),
     check("bulk_edit_batches_json", sql`jsonb_typeof(${t.params}) = 'object' and jsonb_typeof(${t.counts}) = 'object'`),
@@ -13119,7 +13119,7 @@ export const bulkEditItems = commerce.table(
     check("bulk_edit_items_outcome", sql`${t.outcome} in ('changed', 'unchanged', 'failed', 'undone')`),
     check(
       "bulk_edit_items_field",
-      sql`${t.field} in ('status', 'archived', 'terms', 'stock', 'cost', 'sku', 'availability') or ${t.field} ~ '^price:[A-Z]{2}$'`,
+      sql`${t.field} in ('status', 'archived', 'terms', 'stock', 'cost', 'sku', 'availability', 'maker') or ${t.field} ~ '^price:[A-Z]{2}$'`,
     ),
     check("bulk_edit_items_failed_reason", sql`${t.outcome} <> 'failed' or length(trim(coalesce(${t.reason}, ''))) > 0`),
     check("bulk_edit_items_reason", sql`${t.reason} is null or length(${t.reason}) <= 500`),
