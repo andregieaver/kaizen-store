@@ -108,3 +108,22 @@ export function googleEnv(
   if (!/^[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/.test(clientId)) throw new Error("GOOGLE_CLIENT_ID must be a Google OAuth client id (….apps.googleusercontent.com).");
   return { clientId, clientSecret };
 }
+
+/**
+ * Kaizena Flow's own Shopify app for moving a shop in (D445 step 2, `docs/moving-from-shopify.md` 4.2, `shopify/shopify.app.toml`): its
+ * client id and secret from Shopify's Dev Dashboard, with `{SITE_URL}/api/shopify/callback` as its redirect address. `SHOPIFY_ALL_ORDERS=1`
+ * once Shopify has approved `read_all_orders` for the app. Null without both: *Connect Shopify* is not offered and the files stay the way in.
+ */
+export function shopifyEnv(
+  source: Record<string, string | undefined> = {
+    SHOPIFY_CLIENT_ID: process.env.SHOPIFY_CLIENT_ID,
+    SHOPIFY_CLIENT_SECRET: process.env.SHOPIFY_CLIENT_SECRET,
+    SHOPIFY_ALL_ORDERS: process.env.SHOPIFY_ALL_ORDERS,
+  },
+): { clientId: string; clientSecret: string; allOrders: boolean } | null {
+  const clientId = source.SHOPIFY_CLIENT_ID?.trim();
+  const clientSecret = source.SHOPIFY_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(clientId)) throw new Error("SHOPIFY_CLIENT_ID must be the app's client id from Shopify's Dev Dashboard.");
+  return { clientId, clientSecret, allOrders: source.SHOPIFY_ALL_ORDERS?.trim() === "1" };
+}

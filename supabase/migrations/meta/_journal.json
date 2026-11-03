@@ -4439,6 +4439,13 @@
       "when": 1793716845169,
       "tag": "20261103144045_old_shops",
       "breakpoints": true
+    },
+    {
+      "idx": 634,
+      "version": "7",
+      "when": 1793718775065,
+      "tag": "20261103151254_shop_moves",
+      "breakpoints": true
     }
   ]
 }

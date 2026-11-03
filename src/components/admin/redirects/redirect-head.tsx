@@ -6,8 +6,8 @@ import { redirectPaths, redirectTabs, type RedirectTab } from "@/lib/redirect-ad
 import { PageHeader } from "@/components/admin/ui";
 
 /**
- * The head of every redirect page (wave 2, D168, `docs/wave-2-redirects.md` 2.2, 2.3): the title, what the page is for and the five tabs (the redirects, the
- * report of pages not found, the old shop's links (D445), import and export). Full width like the other admin pages; the admin's tokens only. The active tab is marked with
+ * The head of every redirect page (wave 2, D168, `docs/wave-2-redirects.md` 2.2, 2.3): the title, what the page is for and the four tabs (the redirects, the
+ * report of pages not found, import and export). Full width like the other admin pages; the admin's tokens only. The active tab is marked with
  * `aria-current`, so it works without a script.
  */
 export function RedirectsHead({

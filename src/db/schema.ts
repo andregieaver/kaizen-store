@@ -13077,6 +13077,44 @@ export const oldShops = commerce.table(
   ],
 );
 
+/**
+ * A store's move from another platform (D445, `docs/moving-from-shopify.md` 3, 10), one row a store and source; step 2 keeps the connection:
+ * the Shopify shop's own name, what it is called, its address, the scopes it granted, and the app's expiring offline token with its refresh
+ * token (both encrypted with `SETTINGS_ENCRYPTION_KEY`, gone once disconnected). Written only by `src/server/shopify-connect.ts`; the
+ * owner's alone. Never copied, never in the store's file.
+ */
+export const shopMoves = commerce.table(
+  "shop_moves",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    shopDomain: text("shop_domain").notNull(),
+    shopName: text("shop_name").notNull().default(""),
+    primaryDomain: text("primary_domain"),
+    status: text("status").notNull(),
+    scopes: text("scopes").notNull().default(""),
+    accessToken: text("access_token"),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }),
+    refreshToken: text("refresh_token"),
+    refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }),
+    connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
+    connectedAt: timestamp("connected_at", { withTimezone: true }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.source] }),
+    index("shop_moves_shop_idx").on(t.source, t.shopDomain),
+    index("shop_moves_connected_by_idx").on(t.connectedBy),
+    check("shop_moves_source", sql`${t.source} in ('shopify')`),
+    check("shop_moves_shop", sql`${t.shopDomain} ~ '^[a-z0-9][a-z0-9-]*\\.myshopify\\.com$' and length(${t.shopDomain}) <= 120`),
+    check("shop_moves_status", sql`${t.status} in ('connected', 'disconnected')`),
+    check("shop_moves_token", sql`${t.status} <> 'connected' or ${t.accessToken} is not null`),
+    check("shop_moves_name", sql`length(${t.shopName}) <= 200 and (${t.primaryDomain} is null or length(${t.primaryDomain}) <= 255)`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Orders: tags, saved views, settings, draft orders (wave 3, run 2, D173, docs/wave-3-orders.md 3.2)
 // ---------------------------------------------------------------------------
