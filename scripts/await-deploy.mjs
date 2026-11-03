@@ -9,7 +9,11 @@
  *   EXPECTED_COMMIT     the commit to wait for (default GITHUB_SHA)
  *   DEPLOY_WAIT_SECONDS how long to wait (default 1200)
  *
- * It reads nothing secret and prints only commits and states.
+ * Once production runs it, the routes that answer outsiders are each called once without a token (`SMOKE_CHECKS`): each must refuse
+ * with 401. A route whose module cannot load answers 500 to everyone on Vercel, where every function starts fresh, while a local server
+ * that served other pages first loads it in another order and works (D440: the Admin API's import cycle); this is where that shows.
+ *
+ * It reads nothing secret and prints only commits, paths and statuses.
  */
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
@@ -45,6 +49,35 @@ function includesWith(cwd) {
   };
 }
 
+/** Routes for outsiders, called without a token after a deploy: each must answer with its refusal, never a 500. */
+export const SMOKE_CHECKS = [
+  { method: "GET", path: "/api/admin/v1/orders", expect: 401 },
+  { method: "POST", path: "/api/mcp", expect: 401 },
+];
+
+/** The checks whose status was not the one expected, as `METHOD path: status (expected n)` lines; empty when all hold. */
+export function smokeProblems(results) {
+  return results.filter((r) => r.status !== r.expect).map((r) => `${r.method} ${r.path}: ${r.status ?? "no answer"} (expected ${r.expect})`);
+}
+
+async function smokeResults(url) {
+  return Promise.all(
+    SMOKE_CHECKS.map(async (check) => {
+      try {
+        const response = await fetch(`${url}${check.path}`, {
+          method: check.method,
+          headers: { "Cache-Control": "no-store", ...(check.method === "POST" ? { "Content-Type": "application/json" } : {}) },
+          body: check.method === "POST" ? "{}" : undefined,
+          signal: AbortSignal.timeout(15_000),
+        });
+        return { ...check, status: response.status };
+      } catch {
+        return { ...check, status: null };
+      }
+    }),
+  );
+}
+
 async function reportedCommit(url) {
   try {
     const response = await fetch(`${url}/api/health`, { headers: { "Cache-Control": "no-store" }, signal: AbortSignal.timeout(15_000) });
@@ -70,6 +103,17 @@ async function main() {
     last = await reportedCommit(url);
     if (deployVerdict(expected, last, includes) === "live") {
       console.log(last === expected ? `Production runs ${expected}.` : `Production runs ${last}, which includes ${expected}.`);
+      // Twice at most, a minute apart: a function still starting may answer late once.
+      let problems = smokeProblems(await smokeResults(url));
+      if (problems.length > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 60_000));
+        problems = smokeProblems(await smokeResults(url));
+      }
+      if (problems.length > 0) {
+        console.error(`Production runs the commit, but a route refuses no one as it should:\n${problems.join("\n")}`);
+        process.exit(1);
+      }
+      console.log(`Each route for outsiders refuses a call without a token (${SMOKE_CHECKS.length}).`);
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 15_000));

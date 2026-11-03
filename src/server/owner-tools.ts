@@ -2290,7 +2290,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
   else claimsFail(claimsIn(...groupTexts(input.input as OwnerToolInput<"create_field_group">)));
 }
 
-const HANDLERS: Record<OwnerToolName, Handler> = {
+/**
+ * Every tool's handler, made on first use rather than while this module loads (D440): many of the modules it names import, through long
+ * chains, a module that imports this one, so a route that reaches one of them first (the Admin API reaches the product tools) would
+ * otherwise read a handler before its module had finished loading and fail every call with a ReferenceError.
+ */
+let handlers: Record<OwnerToolName, Handler> | null = null;
+const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   // The website's pages (D308): the same handlers serve Kaizena Flow's own site with no store.
   get_page: (ctx: OwnerToolContext, input: OwnerToolInput<"get_page">) => getPageTool(ctx, input),
   list_page_builds: (ctx: OwnerToolContext, input: OwnerToolInput<"list_page_builds">) => listPageBuildsTool(ctx, input),
@@ -2567,7 +2573,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   start_experiment: startExperimentTool,
   stop_experiment: stopExperimentTool,
   apply_winner: applyWinnerTool,
-};
+});
 
 /**
  * Runs a tool for the store's owner, its arguments checked first. Gated
@@ -2580,7 +2586,7 @@ export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unk
   requireToolPermission(ctx, name);
   const input = readToolInput(tool, raw);
   if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
-  const result = await HANDLERS[name as OwnerToolName](ctx, input.input as never);
+  const result = await handlersOf()[name as OwnerToolName](ctx, input.input as never);
   if (tool.gate || AUDITED_UNGATED.has(name)) {
     // The catalogue tools' entries are the Products area's, the page tools' the Website's and the setup tools' the Settings' (D308), so a member who may read those sees them in the activity log.
     const area = PRODUCT_TOOLS.has(name)
