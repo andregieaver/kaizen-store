@@ -154,7 +154,7 @@ export function ScheduleFields({
   };
   const note = locked ?? (show === "never" ? w.never : current === "own" ? w.own : null);
   return (
-    <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
+    <fieldset className="flex flex-col gap-3 border-t border-line pt-4">
       <legend className="float-left mb-1 w-full font-medium">{w.legend}</legend>
       {note ? (
         <p className="text-sm text-muted">{note}</p>
