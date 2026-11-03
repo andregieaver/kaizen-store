@@ -107,10 +107,13 @@ export function docsSitemap(index: DocsIndex): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join("\n")}\n</urlset>\n`;
 }
 
-/** The docs' host's rules for crawlers: everything open, and its sitemap; null while the docs have no host (Kaizena Flow's own apply). */
+/**
+ * The docs' host's rules for crawlers: everything open but the search's result pages (D443: a search is for readers, its pages hold nothing
+ * the articles do not), and its sitemap; null while the docs have no host (Kaizena Flow's own apply, and the search page says `noindex`).
+ */
 export function docsRobots(): string | null {
   const origin = docsOrigin();
-  return origin ? `User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n` : null;
+  return origin ? `User-agent: *\nAllow: /\nDisallow: /search\nDisallow: /no/search\n\nSitemap: ${origin}/sitemap.xml\n` : null;
 }
 
 /** A `YYYY-MM-DD` day in a language's words (3 November 2026, 3. november 2026). */

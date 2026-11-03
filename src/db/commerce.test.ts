@@ -7634,3 +7634,79 @@ describe("the authorization server's clients, grants and tokens (D439)", () => {
     expect((await one<{ n: number }>("select count(*)::int as n from commerce.oauth_store_cutoffs where client_id = $1", [clientId])).n).toBe(0);
   });
 });
+
+describe("the docs' search (D443)", () => {
+  const insert = (key: string, over: Record<string, unknown> = {}) => {
+    const row: Record<string, unknown> = {
+      doc: key.split("#")[0],
+      item: "section",
+      track: "owners",
+      kind: "how-to",
+      lang: "en",
+      areas: ["products"],
+      url: "owners/a/b",
+      title: "Title",
+      headings: "",
+      text: "Words.",
+      position: 0,
+      reading: 0,
+      text_hash: "h",
+      space: null,
+      embedding: null,
+      ...over,
+    };
+    return db.query(
+      `insert into commerce.docs_index (key, doc, item, track, kind, lang, areas, url, title, headings, summary, text, position, reading, text_hash, space, embedding)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, '', $11, $12, $13, $14, $15, $16::extensions.vector)`,
+      [key, row.doc, row.item, row.track, row.kind, row.lang, row.areas, row.url, row.title, row.headings, row.text, row.position, row.reading, row.text_hash, row.space, row.embedding],
+    );
+  };
+
+  it("keeps each part once, stemmed in its own language with its title weighing most, and its title's trigrams for typos", async () => {
+    await insert("en:owners/a/b#", { title: "Add your products", text: "Prices include VAT." });
+    await insert("nb:owners/a/b#", { lang: "nb", title: "Legg inn produktene dine", text: "Prisene er med mva." });
+    await expect(insert("en:owners/a/b#")).rejects.toThrow(/docs_index_key|duplicate/);
+    const en = await one<{ hit: boolean; vector: string }>(
+      "select search @@ websearch_to_tsquery(commerce.search_config('en'), 'product') as hit, search::text as vector from commerce.docs_index where key = 'en:owners/a/b#'",
+    );
+    expect(en.hit).toBe(true);
+    expect(en.vector).toContain("'product':3A");
+    const nb = await one<{ hit: boolean }>("select search @@ websearch_to_tsquery(commerce.search_config('nb'), 'produkt') as hit from commerce.docs_index where key = 'nb:owners/a/b#'");
+    expect(nb.hit).toBe(true);
+    // The unstemmed words take the start of a word while it is typed; the trigrams a title typed wrong.
+    const typing = await one<{ hit: boolean; close: number }>(
+      "select words @@ to_tsquery('pg_catalog.simple', 'produc:*') as hit, extensions.word_similarity('prodcuts', trgm) as close from commerce.docs_index where key = 'en:owners/a/b#'",
+    );
+    expect(typing.hit).toBe(true);
+    expect(typing.close).toBeGreaterThan(0.3);
+  });
+
+  it("holds a part to the docs' tracks, kinds, items and languages, a vector to its model, and an address to a docs page", async () => {
+    await expect(insert("x:1", { item: "page" })).rejects.toThrow(/docs_index_item_check/);
+    await expect(insert("x:2", { track: "shoppers" })).rejects.toThrow(/docs_index_track_check/);
+    await expect(insert("x:3", { kind: "story" })).rejects.toThrow(/docs_index_kind_check/);
+    await expect(insert("x:4", { lang: "sv" })).rejects.toThrow(/docs_index_lang_check/);
+    await expect(insert("x:5", { url: "https://elsewhere.example" })).rejects.toThrow(/docs_index_url_check/);
+    await expect(insert("x:6", { areas: [] })).rejects.toThrow(/docs_index_areas_check/);
+    await expect(insert("x:7", { space: "m" })).rejects.toThrow(/docs_index_embedded/);
+    await insert("x:8", { space: "m", embedding: "[1,0]" });
+    const near = await one<{ d: number }>("select embedding OPERATOR(extensions.<=>) '[1,0]'::extensions.vector as d from commerce.docs_index where key = 'x:8'");
+    expect(near.d).toBeCloseTo(0);
+    await db.query("delete from commerce.docs_index");
+  });
+
+  it("keeps one fingerprint, misses under tidy words, and reads per page and day, each with row-level security on", async () => {
+    await db.query("insert into commerce.docs_index_state (hash, rows) values ('a', 1)");
+    await expect(db.query("insert into commerce.docs_index_state (id, hash, rows) values (2, 'b', 1)")).rejects.toThrow(/docs_index_state_one/);
+    await db.query("insert into commerce.docs_search_misses (query, lang) values ('gift cards', 'en')");
+    await expect(db.query("insert into commerce.docs_search_misses (query, lang) values ('x', 'en')")).rejects.toThrow(/docs_search_misses_query/);
+    await expect(db.query("insert into commerce.docs_search_misses (query, lang) values ('gift cards', 'en')")).rejects.toThrow(/duplicate|pk/);
+    await db.query("insert into commerce.docs_reads (path, lang, day) values ('owners/a/b', 'nb', current_date)");
+    await expect(db.query("insert into commerce.docs_reads (path, lang, day) values ('../etc', 'nb', current_date)")).rejects.toThrow(/docs_reads_path/);
+    await expect(db.query("insert into commerce.docs_reads (path, lang, day, reads) values ('owners/a/c', 'nb', current_date, 0)")).rejects.toThrow(/docs_reads_count/);
+    for (const table of ["docs_index", "docs_index_state", "docs_search_misses", "docs_reads"]) {
+      const row = await one<{ relrowsecurity: boolean }>("select relrowsecurity from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname = 'commerce' and c.relname = $1", [table]);
+      expect(row.relrowsecurity, table).toBe(true);
+    }
+  });
+});

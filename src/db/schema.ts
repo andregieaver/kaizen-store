@@ -13261,6 +13261,8 @@ export const shopMoves = commerce.table(
     refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }),
     connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
     connectedAt: timestamp("connected_at", { withTimezone: true }),
+    /** Step 4's copy (`copyStateOf()` in `src/lib/shopify-copy.ts`): each feed's stage, its bulk operation and its import job, and a short lease. */
+    copy: jsonb("copy").notNull().default(sql`'{}'::jsonb`),
     updatedAt: updatedAt(),
   },
   (t) => [
@@ -13272,6 +13274,7 @@ export const shopMoves = commerce.table(
     check("shop_moves_status", sql`${t.status} in ('connected', 'disconnected')`),
     check("shop_moves_token", sql`${t.status} <> 'connected' or ${t.accessToken} is not null`),
     check("shop_moves_name", sql`length(${t.shopName}) <= 200 and (${t.primaryDomain} is null or length(${t.primaryDomain}) <= 255)`),
+    check("shop_moves_copy", sql`jsonb_typeof(${t.copy}) = 'object'`),
   ],
 );
 
@@ -16642,5 +16645,68 @@ export const docsFeedback = commerce.table(
     check("docs_feedback_path", sql`${t.path} ~ '^[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*){0,4}$'`),
     check("docs_feedback_lang", sql`${t.lang} in ('en', 'nb')`),
     check("docs_feedback_comment", sql`${t.comment} is null or char_length(${t.comment}) between 1 and 500`),
+  ],
+);
+
+/**
+ * The docs' search index (wave 14 unit E3, D443): which rows `commerce.docs_index` holds (SQL only, as `knowledge_chunks`: its vector is a
+ * type of another schema), as the fingerprint of the rows `docsIndexRows()` made and when they were written. One row. The five-minute
+ * dispatcher compares it with the deployment's own and rewrites the index when they differ (`refreshDocsIndex()`).
+ */
+export const docsIndexState = commerce.table(
+  "docs_index_state",
+  {
+    id: smallint("id").primaryKey().default(1),
+    /** sha256 of `docsIndexFingerprint()`. */
+    hash: text("hash").notNull(),
+    rows: integer("rows").notNull(),
+    writtenAt: timestamp("written_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("docs_index_state_one", sql`${t.id} = 1`), check("docs_index_state_rows", sql`${t.rows} >= 0`)],
+);
+
+/**
+ * Searches of the docs that found nothing (D443), for the docs' gap list on Platform → Docs feedback: the words as a search reads them
+ * (`missQuery()`, never what looks like an email address, a long number or a token), their language and how often. Nothing about who
+ * searched; one reader's same search is counted once an hour (a counter keyed by a daily hash of their address, kept two days, as the
+ * budgets' are). Forgotten after 180 days without a miss.
+ */
+export const docsSearchMisses = commerce.table(
+  "docs_search_misses",
+  {
+    query: text("query").notNull(),
+    lang: text("lang").notNull(),
+    misses: integer("misses").notNull().default(1),
+    firstAt: timestamp("first_at", { withTimezone: true }).notNull().defaultNow(),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.query, t.lang] }),
+    index("docs_search_misses_last_idx").on(t.lastAt),
+    check("docs_search_misses_query", sql`char_length(${t.query}) between 2 and 100`),
+    check("docs_search_misses_lang", sql`${t.lang} in ('en', 'nb')`),
+    check("docs_search_misses_count", sql`${t.misses} >= 1`),
+  ],
+);
+
+/**
+ * How often each docs page was read (D443), for the docs' *Most read* order: a count per page, language and day, nothing about the reader
+ * (one reader's reads of a page count once an hour, as misses do). Sent by the page itself (`DocsReadCount`, not with Global Privacy Control
+ * or Do Not Track); kept 90 days.
+ */
+export const docsReads = commerce.table(
+  "docs_reads",
+  {
+    path: text("path").notNull(),
+    lang: text("lang").notNull(),
+    day: date("day").notNull(),
+    reads: integer("reads").notNull().default(1),
+  },
+  (t) => [
+    primaryKey({ columns: [t.path, t.lang, t.day] }),
+    index("docs_reads_day_idx").on(t.day),
+    check("docs_reads_path", sql`${t.path} ~ '^[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*){0,4}$'`),
+    check("docs_reads_lang", sql`${t.lang} in ('en', 'nb')`),
+    check("docs_reads_count", sql`${t.reads} >= 1`),
   ],
 );

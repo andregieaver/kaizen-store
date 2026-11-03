@@ -26,7 +26,8 @@ export const API_ERROR_WORDS: Record<ApiErrorCode, string> = {
   failed: "Something went wrong on our side; nothing more was done. It is safe to try again.",
 };
 
-const SCOPE_WORDS: Record<string, string> = {
+/** What each resource's scopes open, for the document and the docs' search (D443). */
+export const SCOPE_WORDS: Record<string, string> = {
   products: "Products, their variants and prices.",
   inventory: "Stock locations and levels.",
   orders: "Orders, parcels, invoices and credit notes.",

@@ -99,7 +99,10 @@ test("the host has its own sitemap, rules for crawlers and llms.txt, and Kaizena
   expect(sitemap?.status()).toBe(200);
   expect(await sitemap?.text()).toContain(`<loc>${docs(PAGE)}</loc>`);
   const robots = await page.goto(docs("/robots.txt"));
-  expect(await robots?.text()).toContain(`Sitemap: ${docs("/sitemap.xml")}`);
+  const rules = await robots?.text();
+  expect(rules).toContain(`Sitemap: ${docs("/sitemap.xml")}`);
+  // The search's result pages are for readers (D443).
+  expect(rules).toContain("Disallow: /search\n");
   expect((await fetchOnHost(page, "/llms.txt")).text).toContain(`(${docs(`${PAGE}.md`)})`);
   expect((await fetchOnHost(page, "/llms-full.txt")).status).toBe(200);
   expect(await (await request.get("/sitemap.xml")).text()).not.toContain("/docs/sitemap.xml");
@@ -123,4 +126,25 @@ test("Was this page helpful? answers on the host", async ({ page }) => {
   } finally {
     await sql.end();
   }
+});
+
+test("the search answers on the host: its page at /search, its dialog's results linking within the host", async ({ page, request }) => {
+  const response = await page.goto(docs("/search?q=create+your+store&lang=en"));
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1, name: "Search the docs" })).toBeVisible();
+  await expect(page.locator("a[data-docs-hit]").first()).toHaveAttribute("href", "/owners/getting-started/create-your-store");
+  const norwegian = await page.goto(docs("/no/search?q=nettbutikken&lang=nb"));
+  expect(norwegian?.status()).toBe(200);
+  await expect(page.locator("a[data-docs-hit]").first()).toHaveAttribute("href", "/no/owners/getting-started/create-your-store");
+  // Kaizena Flow's own /docs/search moves there with its search.
+  const moved = await request.get("/docs/search?q=token", { maxRedirects: 0 });
+  expect(moved.status()).toBe(308);
+  expect(moved.headers().location).toBe(docs("/search?q=token"));
+  // The dialog on a page of the host searches through the API, which every host answers.
+  await page.goto(docs(PAGE), { waitUntil: "networkidle" });
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Search the docs" });
+  await dialog.getByRole("searchbox").fill("setup steps");
+  await expect(dialog.getByRole("link", { name: /Follow the setup steps/ })).toHaveAttribute("href", "/owners/getting-started/create-your-store#follow-the-setup-steps");
+  await expect(dialog.getByRole("link", { name: "Open this search as a page" })).toHaveAttribute("href", "/search?q=setup+steps&track=owners&lang=en");
 });

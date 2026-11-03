@@ -6,6 +6,11 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { hint } from "@/components/admin/data/ui";
 import { CheckOldLinks, ShopifyConnectForm, ShopifyDisconnect } from "@/components/admin/moving/shopify-connect";
+import { ShopCopy, type CopyRow } from "@/components/admin/moving/shop-copy";
+import { COPY_FEEDS, copyDone, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
+import { copyView, feedJobPage } from "@/server/shopify-copy";
+import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
+import type { DataJob } from "@/server/data-job-store";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -17,7 +22,7 @@ import { checkShopify } from "@/server/shopify-report";
 import { figureText, type ShopReport } from "@/lib/shopify-report";
 import type { MovingMessages } from "@/lib/admin-messages/moving.en";
 
-import { checkOldLinksAction, connectShopifyAction, disconnectShopifyAction } from "./actions";
+import { advanceCopyAction, bringItOverAction, checkOldLinksAction, connectShopifyAction, disconnectShopifyAction, startCopyAction } from "./actions";
 
 export const metadata: Metadata = { title: "Moving in" };
 
@@ -94,11 +99,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
                 {countWords(connection.missing.length, w.connected.missing, { n: connection.missing.length })}
               </p>
             )}
+            <CopyPanel storeSlug={store.slug} />
             <CheckOldLinks check={checkOldLinksAction.bind(null, store.slug)} />
-            <div className="flex flex-col gap-2">
-              <p className="text-sm">{w.connected.copySoon}</p>
-              {fileList}
-            </div>
             <ShopifyDisconnect disconnect={disconnectShopifyAction.bind(null, store.slug)} />
           </div>
         </Card>
@@ -171,6 +173,68 @@ function ShopReportBody({ report, words, locale }: { report: ShopReport; words: 
       )}
       <p className={hint}>{r.counted}</p>
     </section>
+  );
+}
+
+/** What a feed's dry run found: how many would come over, how many need a look. */
+function dryOf(feed: CopyFeed, job: DataJob | undefined): { ready: number | null; needLook: number | null } {
+  if (!job || !job.counts.dry) return { ready: null, needLook: null };
+  switch (feed) {
+    case "products": {
+      const d = dryCountsOf(job);
+      return { ready: d.toCreate + d.toUpdate + d.unchanged, needLook: d.withProblems };
+    }
+    case "customers": {
+      const d = customerDryCountsOf(job);
+      return { ready: d.toCreate + d.toUpdate, needLook: d.withProblems };
+    }
+    case "orders": {
+      const d = historyDryCountsOf(job);
+      return { ready: d.toCreate + d.already, needLook: d.withProblems };
+    }
+    case "redirects": {
+      const d = redirectDryCountsOf(job);
+      return { ready: d.toCreate + d.toReplace + d.unchanged, needLook: d.withErrors };
+    }
+  }
+}
+
+/** *Copy my shop* (D445 step 4): where each part of the copy is, from `shop_moves.copy` and the imports' own jobs. */
+async function CopyPanel({ storeSlug }: { storeSlug: string }) {
+  const member = await requireOwnerRole(storeSlug);
+  const view = await copyView(member);
+  if (!view) return null;
+  const base = `/admin/${storeSlug}`;
+  const files: Record<CopyFeed, string> = {
+    products: `${base}/products/import`,
+    customers: `${base}/customers/import`,
+    orders: `${base}/orders/history-import`,
+    redirects: `${base}/redirects/import`,
+  };
+  const rows: CopyRow[] = COPY_FEEDS.map((feed) => {
+    const f = view.state.feeds[feed];
+    const dry = dryOf(feed, view.jobs[feed]);
+    return {
+      feed,
+      stage: f.stage,
+      count: f.count ?? null,
+      problem: f.problem ?? null,
+      href: f.job ? feedJobPage(feed, storeSlug, f.job) : null,
+      fileHref: files[feed],
+      ready: dry.ready,
+      needLook: dry.needLook,
+    };
+  });
+  return (
+    <ShopCopy
+      started={view.state.startedAt !== null}
+      moving={copyMoving(view.state)}
+      ready={copyReady(view.state)}
+      done={copyDone(view.state)}
+      rows={rows}
+      privateHref={`${base}/settings/private`}
+      actions={{ start: startCopyAction.bind(null, storeSlug), advance: advanceCopyAction.bind(null, storeSlug), bring: bringItOverAction.bind(null, storeSlug) }}
+    />
   );
 }
 

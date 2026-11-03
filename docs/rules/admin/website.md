@@ -556,8 +556,23 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   page also answers as Markdown at its address plus `.md` (the route `/docs/md/…`), and the docs have their own `sitemap.xml`, `llms.txt`,
   `llms-full.txt` and, on their host, `robots.txt` (`docs-text.ts`). *Was this page helpful?* is `commerce.docs_feedback`, holding nothing
   about the reader, written only by `src/server/docs-feedback.ts` through `/api/docs/feedback` (`sameSite()`, budget `docs_feedback`, a
-  page the docs have, a sentence only by its answer's id within the hour) and read at `/admin/platform/docs/feedback`. Search (E3), the
-  generated reference (E4) and the guide (E5) build on `DOCS_SEARCH_EVENT`, `docsReferencePath()` and the host's `/reference`.
+  page the docs have, a sentence only by its answer's id within the hour) and read at `/admin/platform/docs/feedback`. The generated
+  reference (E4) and the guide (E5) build on `docsReferencePath()`, the host's `/reference` and the search below (its index and its hand-over).
+- **The docs' search (wave 14 unit E3, D443, `src/lib/docs-search.ts`, `src/lib/docs-search-rules.ts`, `src/lib/docs-index.ts`, `src/lib/docs-reference.ts`,
+  `src/server/docs-search.ts`)**: one engine, `searchDocs()`, behind the API `GET /api/docs/search` (public, no same-site rule, budget `docs_search` that
+  fails closed), the dialog and the search page `/docs/search` (`/search` on the docs' host), whose panel (`DocsSearchPanel`) is the same in both. Its
+  index, `commerce.docs_index` (SQL only), is rows `docsIndexRows()` makes from the articles and unit A's contracts, written only by `refreshDocsIndex()`
+  when their fingerprint moved (the five-minute dispatcher; a search that meets an empty index writes it first), with vectors from the platform's AI when
+  it has an embedding model; search works without them. A new article or contract needs nothing more: its rows come with the deploy. Never read the
+  contracts (`docs-reference.ts`) from a docs page: a section's filters (`DocsSectionFilters`) count its own articles' rows at build. A reference item
+  leads to the article that names it in `operations` or `tools`, else to `REFERENCE_PAGES` until unit E4's pages. Every filter value, order and
+  *Show more* is a link to the search page with the search in its address (a plain click with JavaScript searches in place), so the page works without
+  JavaScript (drawn at request, `instant = false`, nothing streamed) and an address shares a search; keep it so. A synonym goes in `DOCS_SYNONYMS` only
+  when readers are known to use the word for what the docs name otherwise, both ways, reviewed. Misses (`docs_search_misses`, the words by `missQuery()`)
+  and reads (`docs_reads`, for *Most read*, never under GPC or DNT) are counts with nothing about the reader, one reader's same search or page once an
+  hour, through `/api/docs/search/miss` and `/api/docs/read` (`sameSite()`, budgets `docs_miss` and `docs_read`); the gap list is at Platform → Docs
+  feedback. The guide's hand-over (`DOCS_ASK_EVENT`, `?ask=`) is shown only while `DOCS_GUIDE_READY`, which unit E5 sets. Words are
+  `platformText(lang).docs.finder` in English and Norwegian.
 
 ## Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made in the browser by `squareIcon()`), linked by `siteIcons()` in every…
 

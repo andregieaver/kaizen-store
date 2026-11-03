@@ -550,6 +550,31 @@ As built, differences from the plan (3 and 12, step 3):
   gives as a lower bound shows as *10,000+*.
 - **Compare-at prices** are judged from a sample of 250 variants, enough to know whether to say it.
 
+**Step 4, Copy, part 1 (3 November 2026).** Under *Here's your shop*, **Copy my shop** reads the connected shop and lines up products,
+customers, past orders and redirects; a line for each says where it is (*Reading from Shopify …*, *Ready · 312 found · 4 need a look*,
+*Here ✓*), with *See what will happen* on the import's own page. Nothing is saved until **Bring it over**, which saves them in that order.
+
+As built (`src/lib/shopify-copy.ts` pure, `src/server/shopify-copy.ts`):
+
+- **The move writes nothing of its own.** Each feed is read by one Shopify bulk operation (one at a time per shop), written as the very file
+  Shopify's own export makes (its product, customer and order exports, its redirect file), and handed to the import that already guards
+  its table: registered, then its dry run, then, after *Bring it over*, its apply. Every rule of those imports holds unchanged (the VAT
+  question, no compare-at price, a product without a picture or maker saved as a draft, the old product address redirected, copied orders
+  never paid or counted, customers never subscribed); the file and its findings are on the import's own page for Lisa.
+- **What Homer is not asked**: the product import's VAT question is answered from the shop's own `taxesIncluded`, and its prices go to the
+  store's country in the shop's currency.
+- **The progress** is `shop_moves.copy` (`copyStateOf()` reads it back field by field), moved on by the open page every few seconds under a
+  90-second lease, so two tabs never start the same read. A read left half-way goes on at the next visit; Shopify keeps a finished read's file
+  for a week. A feed Shopify refuses (protected customer data not yet approved, for instance) is said in one sentence with the file import
+  beside it, and the rest goes on.
+- **Order**: customers are applied before orders, so a past order is tied to its customer by email.
+- **The limits are the imports'**: a feed whose file would pass 15 MB is refused with a sentence and the file imports beside it.
+- **Copied products show at once** unless the shop is behind a password (private mode, D339): the page says so before *Bring it over*, with
+  the link. Turning private mode on by itself is left for move day (step 7), where opening the shop is part of the plan.
+
+Left for part 2 (step 5) and later: countries, shipping and look (4.3), collections, pages, blogs, menus, metafields, discounts; reviews
+(they live in review apps, not in Shopify, spike S6); a catch-up copy on move day.
+
 **How steps 1 and 2 reached production.** A new admin page is a new entry in the admin map, and the map is part of the AI manager's
 prompt, so the agents' eval replay (D391) fails until the eval is recorded again on production; a push with a migration waits for every
 check, so step 1's first push (CI #929) neither applied its migration nor deployed. The tables and the server went first, without the

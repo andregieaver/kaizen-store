@@ -45,6 +45,14 @@ export const BUDGETS = {
   // The docs' "Was this page helpful?" (D442): a yes or no and a sentence a page; one reader reads many pages in an hour, a flood of
   // answers from many is stopped by the whole site's ceiling, counted under no store.
   docs_feedback: { window: "hour", visitor: 60, store: 3000 },
+  // The docs' search (D443): the dialog asks once a pause in typing and the search page once a search, so two a second at most from one
+  // reader; the whole site's ceiling (under no store) stops a flood from many. Each search may ask the platform's AI for its words' vector,
+  // which costs money, so a failed count refuses (`FAIL_CLOSED`) rather than letting searches through unmetered.
+  docs_search: { window: "minute", visitor: 120, store: 6000 },
+  // A docs page read, for *Most read* (D443): one a page view, and one reader's same page counts once an hour anyway.
+  docs_read: { window: "hour", visitor: 600, store: 60000 },
+  // A search of the docs that found nothing, for their gap list (D443): one reader's same search counts once an hour anyway.
+  docs_miss: { window: "hour", visitor: 60, store: 3000 },
   // Wrong admin passwords kept in the audit log (PSI SEC-02, SEC-11), which keeps entries 24 months: one visitor trying many addresses
   // writes at most this many an hour, the whole platform ten times more. The tries are still counted per address beyond it.
   sign_in_audit: { window: "hour", visitor: 20, store: 600 },
@@ -68,9 +76,10 @@ export type BudgetEndpoint = keyof typeof BUDGETS;
 
 /**
  * Endpoints a failed count refuses rather than allows (PSI SEC-10): guessing a password must not get easier while the database struggles,
- * nor the notice form become a way to send mail from Kaizena Flow's address.
+ * nor the notice form become a way to send mail from Kaizena Flow's address, nor the docs' search a way to spend the platform's AI unmetered
+ * (D443: each search may embed its words).
  */
-export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch"]);
+export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search"]);
 
 /** The bucket names of an endpoint, for the store and a visitor. */
 export function budgetBuckets(endpoint: BudgetEndpoint, visitor: string): { store: string; visitor: string } {

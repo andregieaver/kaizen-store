@@ -8,6 +8,8 @@ import { SHOPIFY_STATE_COOKIE, SHOPIFY_STATE_MINUTES, SHOPIFY_STATE_PATH } from 
 import { readOldShop } from "@/server/old-shop";
 import { checkPermission } from "@/server/permissions";
 import { disconnectShopify, shopifyConnection, startShopifyConnect, type StartProblem } from "@/server/shopify-connect";
+import { advanceCopy, bringItOver, startCopy } from "@/server/shopify-copy";
+import { copyMoving } from "@/lib/shopify-copy";
 
 /**
  * Settings → Moving in (D445 step 2): connect the Shopify shop (the state cookie set here, then Shopify's own page), disconnect it, and the
@@ -43,4 +45,32 @@ export async function checkOldLinksAction(storeSlug: string): Promise<{ ok: fals
   const read = await readOldShop(member, connection.primaryDomain ?? connection.shop);
   if (!read.ok) return { ok: false };
   redirect(`/admin/${member.store.slug}/redirects/old-shop`);
+}
+
+/** *Copy my shop*: a fresh copy, every feed waiting to be read (D445 step 4). */
+export async function startCopyAction(storeSlug: string): Promise<{ ok: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false };
+  const result = await startCopy(member);
+  if (result.ok) await advanceCopy(member);
+  refresh();
+  return result;
+}
+
+/** One step of the copy, asked by the open page while it moves; says whether it still moves. */
+export async function advanceCopyAction(storeSlug: string): Promise<{ moving: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { moving: false };
+  const state = await advanceCopy(member);
+  return { moving: state ? copyMoving(state) : false };
+}
+
+/** *Bring it over*: the checked feeds applied in order. */
+export async function bringItOverAction(storeSlug: string): Promise<{ ok: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false };
+  const result = await bringItOver(member);
+  if (result.ok) await advanceCopy(member);
+  refresh();
+  return result;
 }

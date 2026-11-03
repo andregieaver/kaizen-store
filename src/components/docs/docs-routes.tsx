@@ -28,6 +28,8 @@ import { docsIndex } from "@/server/docs";
 import { DocsFeedback } from "./docs-feedback";
 import { DocsBreadcrumbs, DocsPager, DocsShell, DocsToc, DocsTopBar, DocsTree, type DocsCrumb, type DocsLanguages, type DocsWords } from "./docs-frame";
 import { DocsMarkdown, type DocsMarkdownContext } from "./docs-markdown";
+import { DocsReadCount } from "./docs-read-count";
+import { DocsSectionFilters } from "./docs-section-filters";
 
 /**
  * The docs' routes (wave 14 unit E1, D442), drawn the same in each language's route group: `(docs)` at `/docs` and `(docs-nb)` at `/no/docs`
@@ -187,6 +189,7 @@ export function DocsPageRoute({ lang, segments }: { lang: DocLang; segments: rea
             </div>
           </article>
           <MarkdownLink href={docsMarkdownPath(DOCS_CHANGELOG_PATH)} words={words} />
+          <DocsReadCount path={DOCS_CHANGELOG_PATH} lang="en" />
         </DocsShell>
       );
     }
@@ -223,6 +226,7 @@ export function DocsPageRoute({ lang, segments }: { lang: DocLang; segments: rea
           <h1 className={`mt-4 ${HEADING}`}>{section.title}</h1>
           {section.summary && <p className="mt-3 max-w-2xl text-lg text-muted">{section.summary}</p>}
           <PageList pages={entry.pages} />
+          <DocsSectionFilters index={index} track={place.track} slug={place.slug} lang={lang} words={words} />
         </DocsShell>
       );
     }
@@ -257,6 +261,7 @@ export function DocsPageRoute({ lang, segments }: { lang: DocLang; segments: rea
             </a>
           </p>
           <DocsFeedback path={page.path} lang={lang} words={words.feedback} />
+          <DocsReadCount path={page.path} lang={lang} />
           <DocsPager previous={previous} next={next} words={words} />
         </DocsShell>
       );
