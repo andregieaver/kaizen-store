@@ -67,11 +67,20 @@ async function quoteStore(label: string, mode: "off" | "everyone" | "business" =
   return store;
 }
 
-const onRequest = (store: TestStore, sku: string) =>
-  db().execute(sql`
+/**
+ * Prices a product on request. The template's demo bundle is priced from the white mug and the tote, and a product priced on request is never a
+ * part of such a bundle (D433): the bundle is given a price of its own first, as its owner would.
+ */
+const onRequest = async (store: TestStore, sku: string) => {
+  await db().execute(sql`
+    update commerce.products set bundle_pricing = 'fixed', bundle_percent_off = null
+    where store_id = ${store.storeId}::uuid and kind = 'bundle' and bundle_pricing = 'computed'
+  `);
+  return db().execute(sql`
     update commerce.products set price_on_request = true
     where store_id = ${store.storeId}::uuid and id = (select product_id from commerce.product_variants where store_id = ${store.storeId}::uuid and sku = ${sku})
   `);
+};
 
 const ask = async (store: TestStore, over: Record<string, unknown> = {}, who = visitor()) =>
   requestQuote(

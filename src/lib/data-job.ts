@@ -246,6 +246,18 @@ export const FINDINGS = {
     severity: "warning",
     sentence: (p) => `The product category of ${prod(p)} is not in the standard taxonomy, so it was left as it was.`,
   },
+  // Price on request (D431) and the words around the price (D429) in the product file (D434).
+  "price_on_request.invalid": { severity: "error", sentence: (p) => `The price_on_request cell of ${prod(p)} is not true or false.` },
+  "price_on_request.not_goods": { severity: "error", sentence: (p) => `${prod(p)} is not goods, so it cannot be priced on request.` },
+  "price_words.unknown": { severity: "error", sentence: (p) => `The price_words cell of ${prod(p)} is not store, none or own.` },
+  "price_words.invalid": {
+    severity: "error",
+    sentence: (p) => `The words in ${col(p)} of ${prod(p)} cannot be shown around a price${p.reason ? `: ${p.reason}` : ""}.`,
+  },
+  "price_words.ignored": {
+    severity: "warning",
+    sentence: (p) => `${prod(p)} shows the store's words around its price, or none, so the words in its price_prefix and price_suffix columns were left out.`,
+  },
   "tax.ignored": {
     severity: "warning",
     sentence: (p) => `Charge tax or a tax code was in the file for ${prod(p)}. It keeps its VAT category, and an import never sets the exempt category.`,

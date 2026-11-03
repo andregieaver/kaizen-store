@@ -423,6 +423,7 @@ export const productNb: ProductMessages = {
     empty: "Ingenting i pakken ennå.",
     inStock: "{count} på lager",
     otherVat: "Har en annen mva-kategori enn pakken, så pakken kan ikke selges. Gi dem samme, eller ta den ut.",
+    onRequest: "Har pris på forespørsel, så pakken kan ikke ta prisen sin fra den. Gi pakken en egen pris, eller vis prisen på dette produktet.",
     unusable: "Arkivert eller slått av, så pakken kan ikke selges. Hent den tilbake, eller ta den ut.",
     stockTitle: "Pakker du kan selge",
     stock: { one: "{count} pakke på lager", many: "{count} pakker på lager" },

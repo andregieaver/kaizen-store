@@ -142,6 +142,8 @@ export function BundleSection({
                     {fact && fact.status !== "archived" && fact.active && fact.vatCategory !== product.vatCategory && (
                       <span className="block text-danger-text">{w.otherVat}</span>
                     )}
+                    {/* A product priced on request goes only in a bundle with a price of its own (D433). */}
+                    {fact && fact.priceOnRequest && bundle.pricing === "computed" && <span className="block text-danger-text">{w.onRequest}</span>}
                   </span>
                   <label className="flex items-center gap-2">
                     <span className="text-muted">{w.quantity}</span>
