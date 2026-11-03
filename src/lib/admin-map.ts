@@ -848,6 +848,10 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["See the most asked-for missing addresses", "Redirect a missing address", "Hide an address", "Download the report"],
     keywords: ["404", "not found", "broken links", "missing pages", "dead links", "404 report", "fix broken links", "side ikke funnet"],
   }),
+  store("redirects.old-shop", "/redirects/old-shop", "Your old shop's links", "Store", "For a store moving from Shopify or another shop: type the old shop's address and its sitemap is read (never its pages), then the page says how many of its old links lead somewhere here, fixes every one whose product, collection, page or post is here under the same name in one press, and suggests targets for the rest. Its counts stand beside this store's. Needs the right to change the website.", {
+    tasks: ["Check the old shop's links", "Fix the old links in one press", "Compare the old shop with this one", "Check again after an import"],
+    keywords: ["moving", "migrate", "shopify", "old shop", "old links", "sitemap", "seo", "move from shopify", "gammel butikk", "flytte"],
+  }),
   store("navigation", "/settings/navigation", "Header and footer", "Store", "Logos, site icon, which menus the standard header and footer show, and business details.", {
     keywords: ["logo", "favicon"],
   }),

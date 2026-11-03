@@ -22,15 +22,17 @@ type W = RedirectsMessages;
 export const redirectPaths = (slug: string) => ({
   list: `/admin/${slug}/redirects`,
   report: `/admin/${slug}/redirects/404s`,
+  oldShop: `/admin/${slug}/redirects/old-shop`,
   import: `/admin/${slug}/redirects/import`,
   export: `/admin/${slug}/redirects/export`,
 });
 
 /** The tabs on every redirect page. */
-export type RedirectTab = "list" | "report" | "import" | "export";
+export type RedirectTab = "list" | "report" | "oldShop" | "import" | "export";
 export const redirectTabs = (w: W = redirectsEn): readonly { id: RedirectTab; label: string }[] => [
   { id: "list", label: w.tabs.list },
   { id: "report", label: w.tabs.report },
+  { id: "oldShop", label: w.tabs.oldShop },
   { id: "import", label: w.tabs.import },
   { id: "export", label: w.tabs.export },
 ];

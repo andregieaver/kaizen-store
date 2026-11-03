@@ -486,3 +486,22 @@ Each step runs end to end against a Shopify development store first (spike S10).
 - It never runs Shopify theme code or apps.
 - It never imports a compare-at price, or turns a vendor into a manufacturer without the owner's yes.
 - It never emails anyone before Move, and never subscribes anyone Shopify didn't record as subscribed.
+
+## 17. What is built
+
+**Step 1, the old shop's links (3 November 2026).** Redirects → *Old shop*. The owner types the old shop's address and presses *Check my
+old shop*. Its sitemap is read once (`src/server/old-shop.ts`), and the page says *612 of 650 old links lead somewhere*, offers **Fix 38
+for me** for every old link whose same thing is live here (a product imported from Shopify keeps its handle, so `/products/{handle}` goes
+to `/p/{handle}`), and lists the rest with the 404 report's suggestions. Below it, the old shop's products, collections, pages and blog
+posts are counted beside this store's: the reconciliation of 8.3, from the sitemap, until step 3 reads Shopify's own counts. *Check
+again* after each import picks up what was imported since.
+
+As built, differences from 8.2:
+
+- **Nothing is fetched from this store.** Where an old address leads is worked out from the database by the resolver's own rule
+  (`followChain()`), so the check is the same answer a shopper would get, without a request per address.
+- **Only the sitemap is read**, so it works before Connect exists, for any shop with a sitemap (WooCommerce's shapes are mapped too), and
+  copies nothing.
+- **Shopify's own redirects** are not read yet (they need the API, step 3). Their file can be imported on the Import tab as before.
+- **The limits**: 60 sitemap files and 20,000 addresses (Shopify lists 5,000 per file); the page says when a shop lists more.
+

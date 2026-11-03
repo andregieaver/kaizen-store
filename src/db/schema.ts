@@ -13050,6 +13050,33 @@ export const notFoundIgnored = commerce.table(
   ],
 );
 
+/**
+ * The old shop a store is moving from (D445 step 1, `docs/moving-from-shopify.md` 8.2): the addresses its sitemap listed when it was last read,
+ * in the normal form of a redirect's source, so the check of where each leads here is worked out again on every view without reading the old
+ * shop again. One row a store, at most 20,000 addresses; written only by `src/server/old-shop.ts`. A shop's public addresses, never a person's.
+ */
+export const oldShops = commerce.table(
+  "old_shops",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    origin: text("origin").notNull(),
+    paths: text("paths").array().notNull(),
+    /** The sitemap files read, and whether the shop listed more addresses or files than are kept. */
+    files: integer("files").notNull(),
+    truncated: boolean("truncated").notNull().default(false),
+    readBy: uuid("read_by").references(() => accounts.id, { onDelete: "set null" }),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("old_shops_read_by_idx").on(t.readBy),
+    check("old_shops_origin", sql`${t.origin} ~ '^https?://[^/?#]+$' and length(${t.origin}) <= 300`),
+    check("old_shops_paths", sql`cardinality(${t.paths}) <= 20000`),
+    check("old_shops_files", sql`${t.files} between 0 and 1000`),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Orders: tags, saved views, settings, draft orders (wave 3, run 2, D173, docs/wave-3-orders.md 3.2)
 // ---------------------------------------------------------------------------
