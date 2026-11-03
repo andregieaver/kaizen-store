@@ -180,6 +180,7 @@ function ShopReportBody({ report, words, locale }: { report: ShopReport; words: 
 function dryOf(feed: CopyFeed, job: DataJob | undefined): { ready: number | null; needLook: number | null } {
   if (!job || !job.counts.dry) return { ready: null, needLook: null };
   switch (feed) {
+    case "collections":
     case "products": {
       const d = dryCountsOf(job);
       return { ready: d.toCreate + d.toUpdate + d.unchanged, needLook: d.withProblems };
@@ -196,6 +197,8 @@ function dryOf(feed: CopyFeed, job: DataJob | undefined): { ready: number | null
       const d = redirectDryCountsOf(job);
       return { ready: d.toCreate + d.toReplace + d.unchanged, needLook: d.withErrors };
     }
+    default:
+      return { ready: null, needLook: null };
   }
 }
 
@@ -210,6 +213,10 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
     customers: `${base}/customers/import`,
     orders: `${base}/orders/history-import`,
     redirects: `${base}/redirects/import`,
+    collections: `${base}/products/import`,
+    pages: `${base}/pages`,
+    articles: `${base}/articles`,
+    menus: `${base}/menus`,
   };
   const rows: CopyRow[] = COPY_FEEDS.map((feed) => {
     const f = view.state.feeds[feed];
@@ -222,7 +229,8 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
       href: f.job ? feedJobPage(feed, storeSlug, f.job) : null,
       fileHref: files[feed],
       ready: dry.ready,
-      needLook: dry.needLook,
+      // A page, post or menu that could not be written is counted by the copy itself (it has no import page).
+      needLook: f.refused ?? dry.needLook,
     };
   });
   return (
