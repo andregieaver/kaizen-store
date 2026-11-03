@@ -533,6 +533,6 @@ your old links** (step 1, read from the shop's own domain), the file imports for
 prompt, so the agents' eval replay (D391) fails until the eval is recorded again on production; a push with a migration waits for every
 check, so step 1's first push (CI #929) neither applied its migration nor deployed. The tables and the server went first, without the
 pages (`a4441a2`, both migrations); the pages followed in a push of their own without a migration, which deploys at once. **After it
-deploys, run the agents' eval on Platform → AI and commit its recording as `src/data/agent-eval-recording.json`**, so CI's replay
+deploys, press *Check the assistants' safety* in the Test card of Platform → AI, then *Download the recording* of that run (listed under *Earlier runs* with "the prompts as they are"), and commit it as `src/data/agent-eval-recording.json`**, so CI's replay
 passes again. A later step that adds a page and a migration ships the same way: migration first, page after.
 
