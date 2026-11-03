@@ -112,8 +112,8 @@ export type NotFoundReport = {
 /** The rows that carry suggestions: reading a pool of live addresses is the costly part of the report, so the leading rows only. */
 export const SUGGESTED_ROWS = 100;
 
-/** Live addresses of the store that share a word with the missing ones, as candidates for `suggestTargets()`: a few thousand at most, never the whole catalogue. */
-async function candidatesFor(storeId: string, paths: readonly string[]): Promise<Candidate[]> {
+/** Live addresses of the store that share a word with the missing ones, as candidates for `suggestTargets()`: a few thousand at most, never the whole catalogue. Also the old shop's check (D445). */
+export async function candidatesFor(storeId: string, paths: readonly string[]): Promise<Candidate[]> {
   const words = [...new Set(paths.flatMap((p) => wordsOf(lastPartOf(p))))].slice(0, 300);
   if (words.length === 0) return [];
   const like = pgTextArray(words.map((w) => `%${w.replace(/[\\%_]/g, "\\$&")}%`));

@@ -43,6 +43,8 @@ import { websiteEn, type WebsiteMessages } from "./admin-messages/website.en";
 import { websiteNb } from "./admin-messages/website.nb";
 import { designEn, type DesignMessages } from "./admin-messages/design.en";
 import { designNb } from "./admin-messages/design.nb";
+import { movingEn, type MovingMessages } from "./admin-messages/moving.en";
+import { movingNb } from "./admin-messages/moving.nb";
 import { redirectsEn, type RedirectsMessages } from "./admin-messages/redirects.en";
 import { redirectsNb } from "./admin-messages/redirects.nb";
 import { experimentsEn, type ExperimentsMessages } from "./admin-messages/experiments.en";
@@ -107,6 +109,8 @@ import { blogEn, type BlogMessages } from "./admin-messages/blog.en";
 import { blogNb } from "./admin-messages/blog.nb";
 import { schedulesEn, type SchedulesMessages } from "./admin-messages/schedules.en";
 import { schedulesNb } from "./admin-messages/schedules.nb";
+import { oauthEn, type OauthMessages } from "./admin-messages/oauth.en";
+import { oauthNb } from "./admin-messages/oauth.nb";
 
 /**
  * The admin's words by area and language (D312, `docs/platform-admin-i18n.md` 3.3): one pair of catalogues per area in
@@ -149,6 +153,7 @@ export type AdminAreaMessages = {
   website: WebsiteMessages;
   design: DesignMessages;
   redirects: RedirectsMessages;
+  moving: MovingMessages;
   experiments: ExperimentsMessages;
   products: ProductsMessages;
   product: ProductMessages;
@@ -168,6 +173,7 @@ export type AdminAreaMessages = {
   signIn: SignInMessages;
   blog: BlogMessages;
   schedules: SchedulesMessages;
+  oauth: OauthMessages;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -208,6 +214,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   website: { en: websiteEn, nb: websiteNb },
   design: { en: designEn, nb: designNb },
   redirects: { en: redirectsEn, nb: redirectsNb },
+  moving: { en: movingEn, nb: movingNb },
   experiments: { en: experimentsEn, nb: experimentsNb },
   products: { en: productsEn, nb: productsNb },
   product: { en: productEn, nb: productNb },
@@ -227,6 +234,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   signIn: { en: signInEn, nb: signInNb },
   blog: { en: blogEn, nb: blogNb },
   schedules: { en: schedulesEn, nb: schedulesNb },
+  oauth: { en: oauthEn, nb: oauthNb },
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

@@ -81,6 +81,11 @@ describe("the docs on their own host (D442)", () => {
     for (const file of ["sitemap.xml", "robots.txt", "llms.txt", "llms-full.txt"]) expect(on(`/${file}`)).toEqual({ rewrite: `/docs/${file}` });
     expect(on("/no")).toEqual({ rewrite: "/no/docs" });
     expect(on("/no/owners/getting-started/create-your-store")).toEqual({ rewrite: "/no/docs/owners/getting-started/create-your-store" });
+    // The search page (D443), in each language; nothing else under it.
+    expect(on("/search")).toEqual({ rewrite: "/docs/search" });
+    expect(on("/no/search")).toEqual({ rewrite: "/no/docs/search" });
+    expect(on("/searching")).toEqual({ redirect: "https://kaizenaflow.com/searching" });
+    expect(on("/no/searches")).toEqual({ redirect: "https://kaizenaflow.com/no/searches" });
   });
 
   it("answers each page's Markdown at its address plus .md", () => {
@@ -111,6 +116,8 @@ describe("the docs on their own host (D442)", () => {
     expect(route(routes, "kaizenaflow.com", "/docs/llms.txt")).toEqual({ redirect: "https://docs.kaizenaflow.com/llms.txt" });
     expect(route(routes, "kaizenaflow.com", "/no/docs")).toEqual({ redirect: "https://docs.kaizenaflow.com/no" });
     expect(route(routes, "kaizenaflow.com", "/no/docs/owners/a")).toEqual({ redirect: "https://docs.kaizenaflow.com/no/owners/a" });
+    expect(route(routes, "kaizenaflow.com", "/docs/search")).toEqual({ redirect: "https://docs.kaizenaflow.com/search" });
+    expect(route(routes, "kaizenaflow.com", "/no/docs/search")).toEqual({ redirect: "https://docs.kaizenaflow.com/no/search" });
     expect(route(routes, "demo.kaizenstore.site", "/docs")).toEqual({ rewrite: "/s/demo/docs" });
     expect(route(routes, "kaizenaflow.com", "/blog")).toEqual({});
     expect(route(routes, "docs.kaizenaflow.com", "/docs")).toEqual({ redirect: "https://kaizenaflow.com/docs" });

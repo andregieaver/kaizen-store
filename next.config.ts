@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from "next/constants";
 
-import { baseRouteHeaders, payRouteHeaders } from "./src/lib/csp";
+import { baseRouteHeaders, oauthRouteHeaders, payRouteHeaders } from "./src/lib/csp";
 import { storeDomain, storeHosts } from "./src/lib/paths";
 import { siteUrl } from "./src/lib/site";
 import { LEGACY_THEME_REDIRECTS } from "./src/lib/theme-admin-paths";
@@ -67,6 +67,8 @@ const nextConfig: NextConfig = {
     // keys are globs over the route's path with its groups (`/(docs)/docs/…`, `/(docs-nb)/no/docs/…`, `/api/docs/feedback`, the admin's).
     "/**/docs": DOCS_FILES,
     "/**/docs/**": DOCS_FILES,
+    // The five-minute dispatcher writes the docs' search index from the same files after a deploy that changed them (D443).
+    "/api/cron/cart-reminders": DOCS_FILES,
   },
   experimental: {
     // On Vercel, Turbopack without its build cache (its compile held 7.2 GB with it, 5.8 GB without) and one worker for the pages
@@ -98,6 +100,8 @@ export default async function config(phase: string): Promise<NextConfig> {
     headers: async () => [
       ...baseRouteHeaders(themesOrigin(), { supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL }),
       ...payRouteHeaders({ supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL, vercel: Boolean(process.env.VERCEL) }),
+      // The consent screens are framed by nobody (D439).
+      ...oauthRouteHeaders(),
     ],
     // Work moved to the owner's level (D123): its old store-level addresses go to the new ones.
     redirects: async () => [...LEGACY_WORK_REDIRECTS, ...LEGACY_THEME_REDIRECTS, ...themes.redirects, ...docs.redirects, ...routes.redirects],

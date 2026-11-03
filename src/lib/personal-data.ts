@@ -279,6 +279,10 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  docs_index:
+    "The docs' search index (D443): the parts of Kaizena Flow's own articles and the items of its API contracts, written from the repository; no person's data.",
+  docs_search_misses:
+    "Searches of the docs that found nothing (D443), counted for the gap list: the words as a search reads them (never kept when they look like an email address, a long number or a token), the language and a count. Never tied to a reader (a reader's same search is counted once an hour by a counter keyed by the budgets' daily hash, gone after two days), so no request could find a person's rows; forgotten after 180 days without a miss, and a platform admin takes off the list any that names someone.",
   docs_feedback:
     "Whether a docs page helped (D442): the page's path and language, yes or no, and an optional sentence. Never tied to a reader (no address, account, cookie or browser is kept), so no request could find a person's rows; the form asks readers to leave personal details out, and a platform admin deletes a sentence that names someone anyway.",
   bonus_rewards:"A store's loyalty rewards (D401): their names and costs are the store's words, no person's.",
@@ -297,6 +301,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   site_staging_pages: "Which pages a set of changes made ready together holds (D358): ids only.",
   workflow_runs: "Each run of a workflow (D356): the event, the id of what it was about, whether its conditions held and each action's outcome; no name, address or words of a customer, kept 90 days.",
   api_tokens: "Admin API tokens (D355): a name the owner gives, the scopes, the token's hash and first characters, who made it and when it was last used; no customer.",
+  oauth_clients: "The clients of Kaizena Flow's authorization server (D439): an AI assistant's or app's name, addresses and logo as it published or registered them, whether Kaizena Flow verified or blocked it, and when it was seen; no person.",
   webhook_endpoints: "An owner's own endpoints (D354): a name the owner gives, the address and secret encrypted, the topics and whether it works; no customer (the deliveries' payloads are `integration_deliveries`').",
   live_drills: "A run of a store's money paths in Stripe's test mode (D406): the kinds asked, who asked (an admin's account) and each outcome with order numbers and amounts; no shopper.",
   speed_samples: "How fast one page load was (D336): the store day, the page's kind (front page, product, category, list, page), phone or computer and four timings; no address, visitor, IP address or user agent.",
@@ -365,6 +370,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   redirects: "The store's own addresses (D168): a path on the store that sends to another, and the staff account that made it. A path is the store's page, never a person's; no visitor, IP address or query string is kept.",
   not_found_hits: "Counts of requests for addresses the store did not have (D168), by day; no IP address, user agent, cookie, referrer or query string is kept, and addresses that could hold a person's data (a token, an email, an id) are never recorded.",
   not_found_ignored: "An address staff hid from the 404 report (D168) and the staff account that did it; never a person's data (the address passed the same filter as the report's).",
+  old_shops: "The public addresses of the shop a store moved from (D445) and the staff account that read them; never a person's data.",
+  shop_moves: "A store's connection to the Shopify shop it moves from (D445): the shop's name and address, encrypted tokens and the account that connected it; never a shopper's data.",
   data_jobs: "An import or export (D165): its kind, options, counts and the staff account that ran it. The customer and order files it points to are the `storage:exports` entry; the job itself holds no shopper's data.",
   data_job_items: "A product of an import or a finding about the file (D165): a handle, a SKU, row numbers and a plain sentence that never quotes a cell.",
   data_job_assets: "A picture address an import fetched and the library address it became (D165): product pictures only.",

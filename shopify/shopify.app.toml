@@ -1,0 +1,29 @@
+# Kaizena Flow's Shopify app (D445 step 2, docs/moving-from-shopify.md 4.2 and 17): read only, for moving a shop in.
+#
+# Made once in Shopify's Dev Dashboard under Kaizena Flow's Partner organization, then kept in step with this file
+# (`shopify app deploy` from this folder with the Shopify CLI). Set `client_id` to the app's client id, and set
+# SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET in Vercel (production). Ask Shopify for `read_all_orders` and for
+# protected customer data (names, emails, addresses) on the app's page; once `read_all_orders` is approved, add it to
+# `scopes` below and set SHOPIFY_ALL_ORDERS=1. The scopes must equal `SHOPIFY_SCOPES` in src/lib/shopify.ts
+# (src/lib/shopify.test.ts holds them together).
+
+name = "Kaizena Flow"
+client_id = "b97b6d3c11d01ee0fca8b7685f131239"
+application_url = "https://kaizenaflow.com/api/shopify"
+embedded = false
+
+[access_scopes]
+# Shopify managed installation (the legacy flow refuses the webhooks below): Shopify asks a shop for these scopes; the authorize
+# address names the same ones (src/lib/shopify.ts), and src/lib/shopify.test.ts keeps the two equal.
+scopes = "read_products,read_inventory,read_locations,read_customers,read_orders,read_content,read_online_store_navigation,read_discounts,read_price_rules,read_gift_cards,read_shipping,read_markets,read_themes"
+
+[auth]
+redirect_urls = ["https://kaizenaflow.com/api/shopify/callback"]
+
+[webhooks]
+api_version = "2026-10"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled"]
+compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+uri = "https://kaizenaflow.com/api/shopify/webhooks"

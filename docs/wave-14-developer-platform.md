@@ -265,7 +265,7 @@ sources: [D431, D433]    # internal: the decisions it describes
 - **A changed decision** that a page names as its source makes the page *due a check*. A list for the platform's admins says which, and
   the page shows its check date.
 
-**E3. Search and filters (D443).**
+**E3. Search and filters (D443; built, see D443 in `docs/decisions.md`).**
 - **The index:** `commerce.docs_index` holds one row per article section and per reference item (an operation, a webhook topic, a tool, an
   error code, a scope). It is written by a job after each deploy when the content's hash changed. Each row carries:
   - track, kind, areas, features, plans, language, URL;

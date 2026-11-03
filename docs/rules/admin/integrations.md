@@ -57,6 +57,42 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   then the version's entry at the top of `content/docs/developers/changelog.md` (`## 1.<n> — YYYY-MM-DD`, what changed for callers). The
   contract test fails until all of it is done, and fails a removed path or field within the major version.
 
+## Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)
+
+- **Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)**:
+  Kaizena Flow is an OAuth 2.1 authorization server (RFC 8414 metadata at `/.well-known/oauth-authorization-server`, issuer `siteUrl()`;
+  the owner MCP's protected resource metadata at `/.well-known/oauth-protected-resource` and `…/api/mcp` names it first and Supabase's
+  while Kaizen Life uses it). Clients are `commerce.oauth_clients`, written only by `oauth-clients.ts`: a Client ID Metadata Document is
+  fetched only through `safeFetch()` (HTTPS, 5 seconds, 64 KB, no redirect), checked by `readClientMetadata()` and kept for its cache
+  headers, at most a day; RFC 7591 registration (`/api/oauth/register`) is public only, HTTPS or loopback redirects by `application_type`,
+  ten an hour from an address (`oauth_register`, failing closed); a redirect URI matches exactly but a loopback's port (`redirectMatches()`),
+  and a request whose client or redirect URI does not check out is shown on the page, never sent anywhere. Grants and tokens are
+  `commerce.oauth_grants` and `oauth_tokens`, written only by `oauth.ts`: CSPRNG strings kept only as SHA-256 and found by it; a code lives 60
+  seconds, is used once, with PKCE S256 and its redirect URI; an access token (`kfa_`) lives an hour and is bound to its grant's resource
+  (`OAUTH_RESOURCES`, read only with `oauthAccess(token, resource)`); a refresh token (`kfr_`) is rotated at every use, and a code or refresh
+  token used twice ends its family; RFC 7009 revocation, *Disconnect* (Account → Connected apps and assistants) and an owner's *Cut off*
+  (Settings → Apps and API) end it at once; a blocked client's grants end. The consent screen is `/admin/oauth/authorize` (`/oauth/authorize`
+  sends the request there unchanged), never framed (`oauthRouteHeaders()`); its action reads the request again, offers only stores where the
+  person holds something (one that requires two-step only at `aal2`, which the grant keeps) and makes the scopes with `grantScopes()` (the
+  level's, narrowed by *Choose permissions*, never more than held); every decision is audited (`oauth.approved` per store, `oauth.denied`).
+  A token's power is its grant's scopes ∩ the person's role **now**: the MCP reads the membership with `passMembership()` and caps it with
+  `limit` (`PermissionHolder.limit`, which `can()` and so `memberCan()` and every tool's own check honour); a tool whose scope the grant lacks
+  is a 403 with one `insufficient_scope` challenge (`scopesMissing()`, `toolScope()`), and `tools/list` lists only what the grant and the
+  role allow. Under *Read and propose changes* every tool that is not read-only is kept for a yes (`ApprovalCategory` `change`); kept calls
+  land in the client's conversation (`clientConversation()`, "From Claude"), named on the approval and in the notice, and only for a person
+  who can open the AI manager. A turn an outside assistant asked for (`TurnInput.outside`, Kaizen Life's too) offers only
+  `OUTSIDE_MANAGER_TOOLS` and no custom app (no memories, no referrals), never decides a kept change in words and learns nothing; a client
+  of ours asks only in its own conversation (never the owner's admin one, which only Kaizen Life may go on in), and its outside approvals
+  carry their grant and expire with it. A client's name is shown and passed on only through `safeClientName()`, and names that could pass
+  for Kaizena Flow are refused. A wrong authorization request goes back only to a client Kaizena Flow vouches for (`sendsErrorsBack()`).
+  A store's or the site's budget counts an ask only within the caller's own (`budgetRoom()`); the token endpoint is counted per client.
+  MCP calls are held to `memberCan()`. Its prompt names the assistant (`managerPrompt()`'s `outside`, quoted by `assistantName()`, which
+  cleans it with `safeClientName()`), and the manager's prompt version covers that drawing. Every MCP call, refused ones too, is audited
+  (`integration.mcp_call`, `via: "mcp"` and the client) and budgeted (`takeMcpBudget()`: 120 a minute a grant, 1,200 a store), batches at
+  most ten, bodies at most 100 KB. A new owner tool needs nothing here beyond its permission key; a new resource (the Admin API, unit D) is an
+  entry of `OAUTH_RESOURCES` and of `oauth_grants_resource`, and its door reads tokens with `oauthAccess()`. Never log or audit a token, code
+  or secret.
+
 ## The storefront API (wave 9 unit I, D362, `src/lib/storefront-api.ts`, `src/server/storefront-api.ts`, `src/server/storefront-route.ts`)
 
 - **The storefront API (wave 9 unit I, D362, `src/lib/storefront-api.ts`, `src/server/storefront-api.ts`, `src/server/storefront-route.ts`)**:
@@ -81,7 +117,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…
 
-- **Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`, `src/server/order-history-import.ts`)**: WooCommerce's product export is read by `readWooCommerce()` into the product import's neutral rows, so it is planned and saved only as any product file is (D165); a product the import makes leaves a manual redirect from `oldProductAddress()` through `addRedirects()` in the starter's name read again (`ImportOptions.redirects`), so a new source shop's file is a reader, a format in `FileFormat` and the `data_jobs_format` check, and its old address there. Shopify's order export is the job kind `order_history_import` (the owner's), each order written only by `insertHistoryOrder()` in `order-insert.ts` as a copied order (`C-{name}`, `copied_from` a key of the store and the name), tied to a customer only by an email the store already has; nothing pays, emails, invoices or counts it, so a reader that skips copied orders needs nothing more.
+- **Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`, `src/server/order-history-import.ts`)**: WooCommerce's product export is read by `readWooCommerce()` into the product import's neutral rows, so it is planned and saved only as any product file is (D165); a product the import makes leaves a manual redirect from `oldProductAddress()` through `addRedirects()` in the starter's name read again (`ImportOptions.redirects`), so a new source shop's file is a reader, a format in `FileFormat` and the `data_jobs_format` check, and its old address there. Shopify's order export is the job kind `order_history_import` (the owner's), each order written only by `insertHistoryOrder()` in `order-insert.ts` as a copied order (`C-{name}`, `copied_from` a key of the store and the name), tied to a customer only by an email the store already has; nothing pays, emails, invoices or counts it, so a reader that skips copied orders needs nothing more. Moving from Shopify and the other platforms is planned in `docs/moving-from-*.md` (D445 to D451); a mover's writes go through these same writers, never its own, and the old shop's links are checked by D445 step 1 (`docs/rules/admin/website.md`, Redirects).
+
+## Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)
+
+- **Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)**: built in the plan's steps (section 17 says which). Step 1, the old shop's links, is a rule of Redirects (`docs/rules/admin/website.md`). Step 2 connects Kaizena Flow's own Shopify app (`shopify/shopify.app.toml`, `shopifyEnv()`; off without `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET`) at Settings → Moving in, the owner's alone: read scopes only (`SHOPIFY_SCOPES`, never a `write_`, the file and the code kept equal by `shopify.test.ts`), Shopify's authorization code grant with `expiring=1`, its callback checked for the sealed state (store, account, shop), Shopify's HMAC and an anchored `myshopify.com` name before the code is spent, the tokens encrypted in `commerce.shop_moves` (written only by `shopify-connect.ts`, `never` in `COPY_RULES`, `secret` in the store's file), refreshed under the row's lock (`shopifyAccess()`; a refused refresh or a 401 disconnects), and every call to Shopify built only from a name `isMyshopify()` passed. A later step reads Shopify only through `shopifyGraphql()`. Step 4's copy (`src/server/shopify-copy.ts`) writes no table but `shop_moves.copy`: each feed becomes Shopify's own export file (`src/lib/shopify-copy.ts`) and goes through its import's register, check and apply, never a writer of its own; a new feed is a bulk query, a file its import reads back (tested by reading the file with the import's own reader in `shopify-copy.test.ts`) and a row of `STEPS`. Step 3's report (`src/server/shopify-report.ts`) keeps nothing it reads and shows a figure Shopify did not give as unknown, never as 0; a new figure is a field of one of its query groups and of `shopReport()`, with its case in `shopify-report.test.ts`. Shopify's webhooks (`/api/shopify/webhooks`) answer 401 without its HMAC over the raw body; `app/uninstalled` drops the tokens, `shop/redact` deletes the rows; a new topic is a case in `handleShopifyWebhook()` and in the app's file.
 
 ## Kaizen Life (D95, `src/server/kaizen-life.ts`)
 
@@ -92,11 +132,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   apps asking to sign someone in with Kaizen Store land on
   `/admin/oauth/consent` (owners only). Sign-in shares identity, never
   store data. Kaizen Life's assistant reaches the owner's stores through
-  `/api/mcp` (D96, `src/server/store-mcp.ts`): tokens from the store's
-  OAuth server for `KAIZEN_LIFE_CLIENT_ID` only, every owner tool with a
-  `store` argument, gated tools only kept (`keepForApproval()`) in the
+  `/api/mcp` (D96, `src/server/store-mcp.ts`), which since D439 also takes
+  Kaizena Flow's own tokens (*Kaizena Flow's authorization server*, above):
+  Kaizen Life's are tokens from the store's Supabase OAuth server for
+  `KAIZEN_LIFE_CLIENT_ID` only, every owner tool with a
+  `store` argument, gated tools only kept (`keepForApproval()`, named
+  "Kaizen Life asks: …") in the
   owner's Kaizen Life conversation (`kaizenLifeConversation()`), and
-  `ask_store_assistant` runs a turn there with `fromKaizenLife`. A new owner
+  `ask_store_assistant` runs a turn there with `fromKaizenLife` and `outside`. A new owner
   tool is served there too (manager and platform tools are not). The other way, an owner connects Kaizen Life
   for the assistant under Your account (`src/server/kaizen-life-link.ts`,
   tokens encrypted in `kaizen_life_links`); the assistant then has

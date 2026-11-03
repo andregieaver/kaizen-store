@@ -541,6 +541,14 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Sider som ikke ble funnet",
     keywords: ["side ikke funnet", "404", "brutte lenker", "manglende sider", "døde lenker", "404-rapport"],
   },
+  "store:settings.moving": {
+    title: "Flytt inn",
+    keywords: ["shopify", "flytte", "flytt inn", "koble til shopify", "bytte plattform", "importere butikk"],
+  },
+  "store:redirects.old-shop": {
+    title: "Lenkene til den gamle nettbutikken",
+    keywords: ["gammel butikk", "flytte", "flytte fra shopify", "shopify", "gamle lenker", "nettstedskart", "seo"],
+  },
   "store:navigation": {
     title: "Topptekst og bunntekst",
     keywords: ["topptekst", "bunntekst", "logo", "favikon", "nettstedsikon", "header", "footer"],
@@ -661,6 +669,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "account:account.wordpress": {
     title: "WordPress",
     keywords: ["wordpress", "utvidelse", "programtillegg", "plugin", "kortkode", "bygg inn", "koble til", "woocommerce"],
+  },
+  "account:account.connected": {
+    title: "Tilkoblede apper og assistenter",
+    keywords: ["tilkoblede apper", "ai-assistent", "mcp", "claude", "chatgpt", "oauth", "koble fra", "tilbakekall", "tilgang", "integrasjoner"],
   },
   "account:account.wordpress.connect": {
     title: "Koble til et WordPress-nettsted",
@@ -805,6 +817,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:ai": { title: "KI", keywords: ["ki", "kunstig intelligens", "modell", "leverandør"] },
   "platform:plan-limits": { title: "Grenser", keywords: ["grenser", "kvote", "lagring", "båndbredde", "trafikk", "standardgrenser"] },
   "platform:docs.feedback": { title: "Tilbakemeldinger på dokumentasjonen", keywords: ["dokumentasjon", "veiledning", "hjelp", "tilbakemelding", "artikler"] },
+  "platform:oauth": { title: "AI-assistenter og apper", keywords: ["oauth", "klienter", "mcp", "ai-assistenter", "apper", "bekreft", "blokker", "autorisasjonsserver"] },
   "platform:reports": { title: "Meldinger om ulovlig innhold", keywords: ["dsa", "ulovlig", "melding", "fjerning", "anmeldelse", "misbruk", "forfalskning", "moderering"] },
   "platform:status": { title: "Statusside", keywords: ["status", "hendelse", "nedetid", "oppetid", "driftsavbrudd", "vedlikehold"] },
   "platform:capacity": {

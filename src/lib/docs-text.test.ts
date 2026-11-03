@@ -54,7 +54,7 @@ describe("the docs as plain text (D442)", () => {
     const md = docPageMarkdown(page("owners/start/one", "en"), index);
     expect(md).toContain("[two](https://docs.kaizenaflow.com/owners/start/two#more)");
     expect(md).toContain("[status](https://kaizenaflow.com/status)");
-    expect(docsRobots()).toBe("User-agent: *\nAllow: /\n\nSitemap: https://docs.kaizenaflow.com/sitemap.xml\n");
+    expect(docsRobots()).toBe("User-agent: *\nAllow: /\nDisallow: /search\nDisallow: /no/search\n\nSitemap: https://docs.kaizenaflow.com/sitemap.xml\n");
     expect(docsSitemap(index)).toContain("<loc>https://docs.kaizenaflow.com/no/owners/start/one</loc>");
   });
 

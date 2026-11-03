@@ -295,8 +295,24 @@ export type PlatformToolName = (typeof PLATFORM_TOOLS)[number]["name"];
 export type ManagerToolInput<N extends ManagerToolName> = z.output<Extract<(typeof MANAGER_TOOLS)[number], { name: N }>["input"]>;
 export type PlatformToolInput<N extends PlatformToolName> = z.output<Extract<(typeof PLATFORM_TOOLS)[number], { name: N }>["input"]>;
 
-export const MANAGER_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.fromEntries(MANAGER_TOOLS.map((t) => [t.name, t]));
-export const PLATFORM_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.fromEntries(PLATFORM_TOOLS.map((t) => [t.name, t]));
+// Without a prototype, so a name such as `constructor` finds nothing (D439 review).
+export const MANAGER_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.assign(Object.create(null) as Record<string, OwnerTool>, Object.fromEntries(MANAGER_TOOLS.map((t) => [t.name, t])));
+export const PLATFORM_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.assign(Object.create(null) as Record<string, OwnerTool>, Object.fromEntries(PLATFORM_TOOLS.map((t) => [t.name, t])));
+
+/**
+ * The manager's own tools a turn an outside assistant asked for may use (D439): the ones that only read or guide within the store.
+ * Remembering and recalling (the person's memories reach beyond what a grant gives), their referrals (the account's, beyond the store),
+ * saving skills, follow-ups, goals, plans, Kaizena Flow's support and answering a kept change in words stay the person's own, in the admin.
+ */
+export const OUTSIDE_MANAGER_TOOLS: ReadonlySet<string> = new Set([
+  "find_admin_page",
+  "open_admin_page",
+  "use_skill",
+  "list_follow_ups",
+  "list_goals",
+  "get_autopilot_plan",
+  "list_autopilot_plans",
+]);
 
 /** What the person sees while a tool runs. */
 export const TOOL_WORDS: Record<string, string> = {

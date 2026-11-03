@@ -38,6 +38,7 @@ describe("the tables of redirects and of the 404 report", () => {
     expect(offenders("redirects", ["src/server/redirects.ts"])).toEqual([]);
     expect(offenders("not_found_hits", ["src/server/not-found.ts"])).toEqual([]);
     expect(offenders("not_found_ignored", ["src/server/not-found.ts"])).toEqual([]);
+    expect(offenders("old_shops", ["src/server/old-shop.ts"])).toEqual([]);
   });
 
   it("call `commerce.record_not_found()` from the report's module only", () => {

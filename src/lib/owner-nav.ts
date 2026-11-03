@@ -25,6 +25,7 @@ export const ACCOUNT_ITEMS: OwnerItem[] = [
   { path: "/account/limits", label: "Usage and limits", description: "What each store you own has used this month, against what its plan includes.", owner: true },
   { path: "/account/referrals", label: "Referrals", description: "Your referral link, the stores that opened through it and your credit.", owner: true },
   { path: "/account/themes", label: "Your themes", description: "The looks you shared as themes, their review, and how many stores use your themes." },
+  { path: "/account/connected", label: "Connected apps and assistants", description: "The AI assistants and apps you let work with your stores, and Disconnect." },
   { path: "/account/wordpress", label: "WordPress", description: "The WordPress plugin, and the sites connected to show your products.", owner: true },
 ];
 

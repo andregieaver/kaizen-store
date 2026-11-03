@@ -56,13 +56,16 @@ export type Membership = {
   roleId?: string | null;
   roleName?: string | null;
   permissions?: readonly string[] | null;
+  /** The scopes of an outside app's grant this membership acts through (D439): a cap on the role's keys (`PermissionHolder.limit`). */
+  limit?: readonly string[] | null;
 };
 
 /** The part of a membership the permission rules read. */
-export const holderOf = (member: Pick<Membership, "role" | "kind" | "permissions">): PermissionHolder => ({
+export const holderOf = (member: Pick<Membership, "role" | "kind" | "permissions" | "limit">): PermissionHolder => ({
   role: member.role,
   kind: member.kind,
   permissions: member.permissions,
+  ...(member.limit != null && { limit: member.limit }),
 });
 
 export type StoreSummary = { slug: string; name: string; role: Role; /** The store has Work switched on (D122). */ workOn: boolean };

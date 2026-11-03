@@ -10,6 +10,7 @@
  * device. A customer is named only by the email on the order, which the import ties only to a customer the store already has.
  */
 import { parsePrice } from "./product-input";
+import { unescapeText } from "./csv";
 import { normaliseEmail } from "./email-address";
 
 export const HISTORY_ORDERS_MAX = 20_000;
@@ -105,7 +106,8 @@ export function readShopifyOrders(raw: readonly (readonly string[])[]): { orders
     if (row.every((c) => c.trim() === "")) continue;
     const cells: Record<string, string> = {};
     names.forEach((n, i) => {
-      if (n !== "" && !Object.hasOwn(cells, n)) cells[n] = row[i] ?? "";
+      // A cell a spreadsheet would read as a formula is written with a `'` in front (`csv.ts`); read back, it is the text itself.
+      if (n !== "" && !Object.hasOwn(cells, n)) cells[n] = unescapeText(row[i] ?? "");
     });
     const name = (cells.name ?? "").trim();
     const fail = (problem: HistoryProblem["problem"]) => {

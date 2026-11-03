@@ -142,8 +142,9 @@ describe("the notice form's budget (PSI SEC-10)", () => {
     for (let i = 1; i < visitor; i++) room = await budgetRoom(scope, "report", `visitor-a-${run}`);
     expect(room.visitor).toBe(true);
     expect((await budgetRoom(scope, "report", `visitor-a-${run}`)).visitor).toBe(false);
-    // Others fill the site's ceiling; a new visitor is then within their own and past the site's.
-    for (let i = visitor + 1; i < site; i++) await budgetRoom(scope, "report", `visitor-${i}-${run}`);
+    // That ask past its own ceiling was not counted for the site (D439 review): the site holds the visitor's five. Others fill the site's
+    // ceiling; a new visitor is then within their own and past the site's.
+    for (let i = visitor; i < site; i++) await budgetRoom(scope, "report", `visitor-${i}-${run}`);
     expect(await budgetRoom(scope, "report", `visitor-new-${run}`)).toEqual({ visitor: true, store: false });
   });
 });

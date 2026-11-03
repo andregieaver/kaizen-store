@@ -459,6 +459,7 @@ describe("custom fields in the AI manager (D118)", () => {
     const owner = {
       account: member.account,
       aal: "aal2" as const,
+      via: { kind: "kaizen-life" as const },
       stores: [{ id: member.store.id, slug: member.store.slug, name: member.store.name }],
     };
     const bad = await mcp.callMcpTool(

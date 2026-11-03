@@ -5,10 +5,11 @@
  *
  * With it, routing by host (`docsHostRoutes()`, in `next.config.ts` beside the theme store's and the stores' rules):
  *
- * - on the host, `/` is the docs' front page, `/owners/…`, `/developers/…`, `/reference/…` (unit E4) and `/changelog` its pages, `/no` and
- *   `/no/owners/…` the Norwegian ones, with its own `sitemap.xml`, `robots.txt`, `llms.txt` and `llms-full.txt`; any other address there
- *   goes on to the same address on Kaizena Flow's site (`/pricing`, `/admin`), and the API, Next.js's files and `public` answer as on every
- *   host (the feedback route is `/api/docs/feedback`, which is why no docs page is ever under `/api`);
+ * - on the host, `/` is the docs' front page, `/owners/…`, `/developers/…`, `/reference/…` (unit E4) and `/changelog` its pages, `/search`
+ *   its search (D443), `/no`, `/no/search` and `/no/owners/…` the Norwegian ones, with its own `sitemap.xml`, `robots.txt`, `llms.txt`
+ *   and `llms-full.txt`; any other address there goes on to the same address on Kaizena Flow's site (`/pricing`, `/admin`), and the API,
+ *   Next.js's files and `public` answer as on every host (the feedback and search routes are under `/api/docs/`, which is why no docs page
+ *   is ever under `/api`);
  * - on Kaizena Flow's own host, `/docs/…` and `/no/docs/…` move there for good (308).
  *
  * Every page also answers as plain Markdown at its address plus `.md` (for AI tools and people who want the source): a rewrite on every host
@@ -86,7 +87,7 @@ const TRACKS = "owners|developers|reference";
 const FILES = "sitemap\\.xml|robots\\.txt|llms\\.txt|llms-full\\.txt";
 
 /** Every address the docs' host serves itself (after the leading slash); anything else there is Kaizena Flow's own. */
-const OWN = `(?:${TRACKS})(?:/|$)|changelog(?:\\.md)?$|(?:${FILES})$|no$|no/owners(?:/|$)`;
+const OWN = `(?:${TRACKS})(?:/|$)|changelog(?:\\.md)?$|(?:${FILES})$|search$|no$|no/search$|no/owners(?:/|$)`;
 
 /** A page's Markdown twin, on every host: the route `/docs/md/…` answers it (a page segment cannot end in `.md`). */
 const MARKDOWN: DocsHostRewrite[] = [
@@ -114,7 +115,10 @@ export function docsHostRoutes(host: string | null, platformUrl: string): { redi
     rewrites: [
       { source: "/", has: [onHost], destination: "/docs" },
       { source: `/:path((?:${TRACKS}|changelog|${FILES})(?:/.*|\\.md)?)`, has: [onHost], destination: "/docs/:path" },
+      // The search page (D443), its filters in the query, which a rewrite keeps.
+      { source: "/search", has: [onHost], destination: "/docs/search" },
       { source: "/no", has: [onHost], destination: "/no/docs" },
+      { source: "/no/search", has: [onHost], destination: "/no/docs/search" },
       { source: "/no/:path(owners(?:/.*)?)", has: [onHost], destination: "/no/docs/:path" },
       ...MARKDOWN,
     ],

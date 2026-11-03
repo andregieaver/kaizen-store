@@ -7541,6 +7541,150 @@ export const apiTokens = commerce.table(
 );
 
 /**
+ * The clients of Kaizena Flow's OAuth 2.1 authorization server (wave 14 unit B, D439, `src/server/oauth-clients.ts`, its only writer): an
+ * AI assistant or app that asks a person to connect their stores. `metadata_document`: its `client_id` is the HTTPS address of its Client
+ * ID Metadata Document, fetched through `safeFetch()` and kept until `fresh_until`; `registered`: made by RFC 7591 registration, public,
+ * its id generated; `preregistered` and `app`: made by Kaizena Flow (an app has a secret, kept only as its SHA-256). `verified` says
+ * Kaizena Flow checked who it is; a blocked client is refused everywhere.
+ */
+export const oauthClients = commerce.table(
+  "oauth_clients",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").notNull(),
+    clientId: text("client_id").notNull(),
+    name: text("name").notNull(),
+    logoUrl: text("logo_url"),
+    clientUri: text("client_uri"),
+    redirectUris: text("redirect_uris").array().notNull(),
+    /** RFC 7591's `application_type` (OpenID's): `web` redirects over HTTPS only, `native` also to a loopback address; null: either. */
+    applicationType: text("application_type"),
+    secretHash: text("secret_hash"),
+    verified: boolean("verified").notNull().default(false),
+    /** When its metadata document was fetched, and until when it is kept (`metadataLifetime()`, at most a day). */
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }),
+    freshUntil: timestamp("fresh_until", { withTimezone: true }),
+    createdAt: createdAt(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    blockedAt: timestamp("blocked_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("oauth_clients_client_id_key").on(t.clientId),
+    check("oauth_clients_kind", sql`${t.kind} in ('metadata_document', 'registered', 'preregistered', 'app')`),
+    check("oauth_clients_name", sql`char_length(${t.name}) between 1 and 100`),
+    check("oauth_clients_client_id", sql`char_length(${t.clientId}) between 1 and 2000`),
+    check("oauth_clients_redirect_uris", sql`cardinality(${t.redirectUris}) between 1 and 20`),
+    check("oauth_clients_application_type", sql`${t.applicationType} is null or ${t.applicationType} in ('web', 'native')`),
+    check("oauth_clients_secret", sql`${t.secretHash} is null or ${t.kind} in ('preregistered', 'app')`),
+  ],
+);
+
+/**
+ * What a person let a client do (D439, `src/server/oauth.ts`, its only writer): their stores it may reach, its scopes (one per permission
+ * key, plus `stores:read`), the resource its tokens are for, the access level they chose, and the second step their session stood at when
+ * they approved. One live grant per person, client and resource: approving again replaces its stores and scopes. A call through it can
+ * do only what both its scopes and the person's role in the store allow now; a revoked grant ends every token at once.
+ */
+export const oauthGrants = commerce.table(
+  "oauth_grants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    storeIds: uuid("store_ids").array().notNull(),
+    scopes: text("scopes").array().notNull(),
+    /** The resource its tokens are bound to (`OAUTH_RESOURCES`): `mcp`. */
+    resource: text("resource").notNull(),
+    /** `read`, `propose` (every change waits for a yes in the admin) or `change` (gated changes still wait). */
+    access: text("access").notNull(),
+    aal: text("aal").notNull().default("aal1"),
+    createdAt: createdAt(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("oauth_grants_account_idx").on(t.accountId),
+    index("oauth_grants_client_idx").on(t.clientId),
+    index("oauth_grants_store_ids_idx").using("gin", t.storeIds),
+    uniqueIndex("oauth_grants_live_key").on(t.accountId, t.clientId, t.resource).where(sql`${t.revokedAt} is null`),
+    check("oauth_grants_resource", sql`${t.resource} in ('mcp')`),
+    check("oauth_grants_access", sql`${t.access} in ('read', 'propose', 'change')`),
+    check("oauth_grants_aal", sql`${t.aal} in ('aal1', 'aal2')`),
+    check("oauth_grants_scopes", sql`cardinality(${t.scopes}) between 1 and 30`),
+    check("oauth_grants_stores", sql`cardinality(${t.storeIds}) <= 500`),
+  ],
+);
+
+/**
+ * The codes and tokens of a grant (D439, `src/server/oauth.ts`, its only writer), each kept only as its SHA-256: a code (60 seconds, used
+ * once, with its PKCE challenge and redirect URI), an access token (`kfa_`, one hour) and a refresh token (`kfr_`, rotated at every use,
+ * ending 90 days after it was made). A code and the tokens made from it share a `family`: a code or refresh token used twice revokes the
+ * whole family (theft detection).
+ */
+export const oauthTokens = commerce.table(
+  "oauth_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    grantId: uuid("grant_id")
+      .notNull()
+      .references(() => oauthGrants.id, { onDelete: "cascade" }),
+    family: uuid("family").notNull(),
+    codeChallenge: text("code_challenge"),
+    redirectUri: text("redirect_uri"),
+    /** An access token made by a refresh that asked for less (RFC 6749 6): its own scopes, within its grant's; null: the grant's. */
+    scopes: text("scopes").array(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("oauth_tokens_hash_key").on(t.tokenHash),
+    index("oauth_tokens_grant_idx").on(t.grantId),
+    index("oauth_tokens_family_idx").on(t.family),
+    index("oauth_tokens_expires_idx").on(t.expiresAt),
+    check("oauth_tokens_kind", sql`${t.kind} in ('code', 'access', 'refresh')`),
+    check("oauth_tokens_code", sql`(${t.kind} = 'code') = (${t.codeChallenge} is not null) and (${t.kind} = 'code') = (${t.redirectUri} is not null)`),
+    check("oauth_tokens_scopes", sql`${t.scopes} is null or (${t.kind} = 'access' and cardinality(${t.scopes}) between 1 and 30)`),
+  ],
+);
+
+/**
+ * A store's owner cut a client off from the store for one person (D439, `cutGrantFromStore()`): that person's grant to that client no
+ * longer reaches the store, and approving again does not bring it back (the consent screen does not offer it) until an owner lets it in
+ * again on Settings → Apps and API (`liftStoreCutoff()`). Written only by `src/server/oauth.ts`.
+ */
+export const oauthStoreCutoffs = commerce.table(
+  "oauth_store_cutoffs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    cutBy: uuid("cut_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("oauth_store_cutoffs_key").on(t.storeId, t.accountId, t.clientId),
+    index("oauth_store_cutoffs_account_idx").on(t.accountId, t.clientId),
+    index("oauth_store_cutoffs_client_idx").on(t.clientId),
+    index("oauth_store_cutoffs_cut_by_idx").on(t.cutBy),
+  ],
+);
+
+/**
  * An Admin API POST's answer under the client's `Idempotency-Key` (PSI DATA-03, `src/server/api-idempotency.ts`, its only writer): the
  * same key with the same request gets the same answer again instead of doing it twice; with another request it is refused. `status` is
  * null while the first request runs. Kept 24 hours (`pruneApiIdempotency()`); the answer can hold what the route returned of a customer.
@@ -9915,8 +10059,12 @@ export const assistantConversations = commerce.table(
       .notNull()
       .references(() => accounts.id, { onDelete: "cascade" }),
     title: text("title").notNull().default(""),
-    /** `admin`, the owner in the admin, or `kaizen-life`: Kaizen Life's assistant asking for the owner (D96). */
+    /**
+     * `admin`, the owner in the admin; `kaizen-life`, Kaizen Life's assistant asking for the owner (D96); `mcp`, another AI assistant or
+     * app connected through Kaizena Flow's authorization server (D439), one conversation per client and person (`oauth_client_id`).
+     */
     source: text("source").notNull().default("admin"),
+    oauthClientId: uuid("oauth_client_id").references(() => oauthClients.id, { onDelete: "set null" }),
     /**
      * When the person pressed Stop (PSI AGT-03): a turn running then stops at its next check. A turn whose page was closed or lost its
      * connection is not stopped by that: it finishes and is kept, and shows when the conversation is opened again.
@@ -9930,7 +10078,11 @@ export const assistantConversations = commerce.table(
     uniqueIndex("assistant_conversations_kaizen_life_idx")
       .on(t.storeId, t.accountId)
       .where(sql`${t.source} = 'kaizen-life'`),
-    check("assistant_conversations_source", sql`${t.source} in ('admin', 'kaizen-life')`),
+    uniqueIndex("assistant_conversations_mcp_idx")
+      .on(t.storeId, t.accountId, t.oauthClientId)
+      .where(sql`${t.source} = 'mcp'`),
+    index("assistant_conversations_oauth_client_idx").on(t.oauthClientId),
+    check("assistant_conversations_source", sql`${t.source} in ('admin', 'kaizen-life', 'mcp')`),
     index("assistant_conversations_account_idx").on(t.accountId),
     check("assistant_conversations_title", sql`length(${t.title}) <= 200`),
   ],
@@ -10050,15 +10202,23 @@ export const assistantApprovals = commerce.table(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull().default(sql`(now() + interval '7 days')`),
     /** The autopilot's step that kept this call (D309): its decision settles the step (`settleStepApproval()`). */
     planStepId: uuid("plan_step_id"),
+    /**
+     * The grant of the outside assistant that asked for it (D439): it is approved only while that grant is live, reaches this store and its
+     * client is not blocked, and it expires when the grant ends, the store cuts it off or the client is blocked.
+     */
+    oauthGrantId: uuid("oauth_grant_id"),
   },
   (t) => [
     foreignKey({ name: "assistant_approvals_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
     foreignKey({ name: "assistant_approvals_plan_step_fk", columns: [t.planStepId], foreignColumns: [assistantPlanSteps.id] }).onDelete("set null"),
+    foreignKey({ name: "assistant_approvals_oauth_grant_fk", columns: [t.oauthGrantId], foreignColumns: [oauthGrants.id] }).onDelete("set null"),
+    index("assistant_approvals_oauth_grant_idx").on(t.oauthGrantId),
     index("assistant_approvals_plan_step_idx").on(t.planStepId),
     index("assistant_approvals_conversation_idx").on(t.conversationId, t.createdAt),
     index("assistant_approvals_store_idx").on(t.storeId, t.status),
     index("assistant_approvals_account_idx").on(t.accountId),
-    check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend', 'domain', 'access', 'plan')`),
+    // `change`: a change an outside assistant proposed under *Read and propose changes* (D439), which waits for a yes though ungated.
+    check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend', 'domain', 'access', 'plan', 'change')`),
     check("assistant_approvals_status", sql`${t.status} in ('pending', 'done', 'declined', 'failed', 'expired')`),
     index("assistant_approvals_pending_expiry_idx").on(t.expiresAt).where(sql`${t.status} = 'pending'`),
   ],
@@ -13047,6 +13207,74 @@ export const notFoundIgnored = commerce.table(
     primaryKey({ columns: [t.storeId, t.path] }),
     index("not_found_ignored_created_by_idx").on(t.createdBy),
     check("not_found_ignored_path", sql`length(${t.path}) <= 200 and ${t.path} ~ '^/'`),
+  ],
+);
+
+/**
+ * The old shop a store is moving from (D445 step 1, `docs/moving-from-shopify.md` 8.2): the addresses its sitemap listed when it was last read,
+ * in the normal form of a redirect's source, so the check of where each leads here is worked out again on every view without reading the old
+ * shop again. One row a store, at most 20,000 addresses; written only by `src/server/old-shop.ts`. A shop's public addresses, never a person's.
+ */
+export const oldShops = commerce.table(
+  "old_shops",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    origin: text("origin").notNull(),
+    paths: text("paths").array().notNull(),
+    /** The sitemap files read, and whether the shop listed more addresses or files than are kept. */
+    files: integer("files").notNull(),
+    truncated: boolean("truncated").notNull().default(false),
+    readBy: uuid("read_by").references(() => accounts.id, { onDelete: "set null" }),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("old_shops_read_by_idx").on(t.readBy),
+    check("old_shops_origin", sql`${t.origin} ~ '^https?://[^/?#]+$' and length(${t.origin}) <= 300`),
+    check("old_shops_paths", sql`cardinality(${t.paths}) <= 20000`),
+    check("old_shops_files", sql`${t.files} between 0 and 1000`),
+  ],
+);
+
+/**
+ * A store's move from another platform (D445, `docs/moving-from-shopify.md` 3, 10), one row a store and source; step 2 keeps the connection:
+ * the Shopify shop's own name, what it is called, its address, the scopes it granted, and the app's expiring offline token with its refresh
+ * token (both encrypted with `SETTINGS_ENCRYPTION_KEY`, gone once disconnected). Written only by `src/server/shopify-connect.ts`; the
+ * owner's alone. Never copied, never in the store's file.
+ */
+export const shopMoves = commerce.table(
+  "shop_moves",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    shopDomain: text("shop_domain").notNull(),
+    shopName: text("shop_name").notNull().default(""),
+    primaryDomain: text("primary_domain"),
+    status: text("status").notNull(),
+    scopes: text("scopes").notNull().default(""),
+    accessToken: text("access_token"),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }),
+    refreshToken: text("refresh_token"),
+    refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }),
+    connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
+    connectedAt: timestamp("connected_at", { withTimezone: true }),
+    /** Step 4's copy (`copyStateOf()` in `src/lib/shopify-copy.ts`): each feed's stage, its bulk operation and its import job, and a short lease. */
+    copy: jsonb("copy").notNull().default(sql`'{}'::jsonb`),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.source] }),
+    index("shop_moves_shop_idx").on(t.source, t.shopDomain),
+    index("shop_moves_connected_by_idx").on(t.connectedBy),
+    check("shop_moves_source", sql`${t.source} in ('shopify')`),
+    check("shop_moves_shop", sql`${t.shopDomain} ~ '^[a-z0-9][a-z0-9-]*\\.myshopify\\.com$' and length(${t.shopDomain}) <= 120`),
+    check("shop_moves_status", sql`${t.status} in ('connected', 'disconnected')`),
+    check("shop_moves_token", sql`${t.status} <> 'connected' or ${t.accessToken} is not null`),
+    check("shop_moves_name", sql`length(${t.shopName}) <= 200 and (${t.primaryDomain} is null or length(${t.primaryDomain}) <= 255)`),
+    check("shop_moves_copy", sql`jsonb_typeof(${t.copy}) = 'object'`),
   ],
 );
 
@@ -16417,5 +16645,68 @@ export const docsFeedback = commerce.table(
     check("docs_feedback_path", sql`${t.path} ~ '^[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*){0,4}$'`),
     check("docs_feedback_lang", sql`${t.lang} in ('en', 'nb')`),
     check("docs_feedback_comment", sql`${t.comment} is null or char_length(${t.comment}) between 1 and 500`),
+  ],
+);
+
+/**
+ * The docs' search index (wave 14 unit E3, D443): which rows `commerce.docs_index` holds (SQL only, as `knowledge_chunks`: its vector is a
+ * type of another schema), as the fingerprint of the rows `docsIndexRows()` made and when they were written. One row. The five-minute
+ * dispatcher compares it with the deployment's own and rewrites the index when they differ (`refreshDocsIndex()`).
+ */
+export const docsIndexState = commerce.table(
+  "docs_index_state",
+  {
+    id: smallint("id").primaryKey().default(1),
+    /** sha256 of `docsIndexFingerprint()`. */
+    hash: text("hash").notNull(),
+    rows: integer("rows").notNull(),
+    writtenAt: timestamp("written_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("docs_index_state_one", sql`${t.id} = 1`), check("docs_index_state_rows", sql`${t.rows} >= 0`)],
+);
+
+/**
+ * Searches of the docs that found nothing (D443), for the docs' gap list on Platform → Docs feedback: the words as a search reads them
+ * (`missQuery()`, never what looks like an email address, a long number or a token), their language and how often. Nothing about who
+ * searched; one reader's same search is counted once an hour (a counter keyed by a daily hash of their address, kept two days, as the
+ * budgets' are). Forgotten after 180 days without a miss.
+ */
+export const docsSearchMisses = commerce.table(
+  "docs_search_misses",
+  {
+    query: text("query").notNull(),
+    lang: text("lang").notNull(),
+    misses: integer("misses").notNull().default(1),
+    firstAt: timestamp("first_at", { withTimezone: true }).notNull().defaultNow(),
+    lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.query, t.lang] }),
+    index("docs_search_misses_last_idx").on(t.lastAt),
+    check("docs_search_misses_query", sql`char_length(${t.query}) between 2 and 100`),
+    check("docs_search_misses_lang", sql`${t.lang} in ('en', 'nb')`),
+    check("docs_search_misses_count", sql`${t.misses} >= 1`),
+  ],
+);
+
+/**
+ * How often each docs page was read (D443), for the docs' *Most read* order: a count per page, language and day, nothing about the reader
+ * (one reader's reads of a page count once an hour, as misses do). Sent by the page itself (`DocsReadCount`, not with Global Privacy Control
+ * or Do Not Track); kept 90 days.
+ */
+export const docsReads = commerce.table(
+  "docs_reads",
+  {
+    path: text("path").notNull(),
+    lang: text("lang").notNull(),
+    day: date("day").notNull(),
+    reads: integer("reads").notNull().default(1),
+  },
+  (t) => [
+    primaryKey({ columns: [t.path, t.lang, t.day] }),
+    index("docs_reads_day_idx").on(t.day),
+    check("docs_reads_path", sql`${t.path} ~ '^[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*){0,4}$'`),
+    check("docs_reads_lang", sql`${t.lang} in ('en', 'nb')`),
+    check("docs_reads_count", sql`${t.reads} >= 1`),
   ],
 );

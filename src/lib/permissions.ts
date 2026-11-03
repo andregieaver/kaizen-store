@@ -34,7 +34,19 @@ export type PermissionHolder = {
   kind?: "staff" | "collaborator";
   /** The keys of the custom role the member holds; null or undefined: no custom role, so the default admin set. */
   permissions?: readonly string[] | null;
+  /**
+   * A cap on what the holder may do here, whatever their role holds (D439): the scopes an outside app or assistant was granted, so a call
+   * through it can do only what both the grant and the person's role allow, read again at every call. A `write` key in it includes its
+   * `read`. Null or undefined: no cap (the person in the admin).
+   */
+  limit?: readonly string[] | null;
 };
+
+/** Whether a cap lets a key through: no cap, the key itself, or the `write` of a `read` key. */
+export function withinLimit(limit: readonly string[] | null | undefined, key: PermissionKey): boolean {
+  if (limit == null) return true;
+  return limit.includes(key) || (key.endsWith(":read") && limit.includes(key.replace(/:read$/, ":write")));
+}
 
 /** The keys in canonical order, each `write` with its `read`, only the grantable ones: what a custom role may hold. */
 export function normalisePermissions(keys: readonly string[]): AreaPermission[] {
@@ -49,6 +61,7 @@ export function normalisePermissions(keys: readonly string[]): AreaPermission[] 
 
 /** The keys a holder has: for an owner everything, for an admin the default or the custom role's, without what only owners hold. */
 export function permissionsOf(holder: PermissionHolder): PermissionKey[] {
+  if (holder.limit != null) return permissionsOf({ ...holder, limit: null }).filter((key) => withinLimit(holder.limit, key));
   if (holder.role === "owner") return [...GRANTABLE_PERMISSIONS, ...OWNER_HELD];
   const base: readonly string[] = holder.permissions == null ? ADMIN_DEFAULT : holder.permissions;
   // Write implies read, and what only an owner holds is never granted, whatever a stored role says.
@@ -67,6 +80,7 @@ export function permissionsOf(holder: PermissionHolder): PermissionKey[] {
 
 /** Whether the holder has the key. `write` includes `read`; `owner` is the owner role's alone. */
 export function can(holder: PermissionHolder, key: PermissionKey): boolean {
+  if (!withinLimit(holder.limit, key)) return false;
   if (holder.role === "owner") return true;
   if (key === "owner") return false;
   return permissionsOf(holder).includes(key);

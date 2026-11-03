@@ -13,6 +13,11 @@ describe("counts when the database fails (PSI SEC-10)", () => {
     expect(await signInLocked("someone@example.com")).toBe(true);
   });
 
+  it("refuses registering an OAuth client and fetching a client's metadata document (D439)", async () => {
+    expect(await takeBudget(null, "oauth_register", "v")).toBe(false);
+    expect(await takeBudget(null, "oauth_fetch", "v")).toBe(false);
+  });
+
   it("still lets other endpoints answer", async () => {
     expect(await takeBudget(null, "consent", "v")).toBe(true);
   });

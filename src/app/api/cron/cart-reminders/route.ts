@@ -40,6 +40,7 @@ import { pruneFormSubmissions } from "@/server/forms";
 import { pruneRecommendEvents } from "@/server/recommend-events";
 import { pruneSearchCache } from "@/server/search-cache";
 import { refreshKnowledge } from "@/server/knowledge";
+import { pruneDocsCounts, refreshDocsIndex } from "@/server/docs-search";
 import { refreshMediaEmbeddings } from "@/server/media-library";
 import { PAGES_TAG, pagesTag } from "@/server/pages";
 import { runSchedules } from "@/server/page-schedules";
@@ -52,6 +53,7 @@ import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { payHostCommissions } from "@/server/host-payments";
 import { pruneSearchLog } from "@/server/search";
 import { pruneApiIdempotency } from "@/server/api-idempotency";
+import { pruneOAuthTokens } from "@/server/oauth";
 import { runContentModeration } from "@/server/content-moderation";
 import { sendDuePlanReminders } from "@/server/plan-reminders";
 import { sendDueBookingReminders } from "@/server/shopper-emails";
@@ -91,7 +93,7 @@ const EVERY = 300;
  * soon, and credits held by unpaid orders given back; and the referral program's emails (D131, never throws): the
  * customers whose friends' orders earned them credits are told, once per order; and recommendation events older than 90 days
  * forgotten (D139); and A/B tests' upkeep (D148, never throws): tests past their end stopped, guardrails looked at, old
- * carts' visitors forgotten; and copies of other websites' pages (D150) older than thirty days forgotten with their pictures; and withdrawals and returns (D153, never throws): a reminder to the store, once per return, when a refund is past its legal deadline, and the acknowledgement of a confirmed withdrawal tried again when the first email never got out; and invoices and credit notes (D159, never throws): refunds Stripe left pending asked of Stripe, invoices that waited for the seller's details issued, credit notes that waited for their invoice issued, and the stand-alone email for a document issued later than its payment or refund (no Chromium here: the PDFs are `/api/cron/document-pdfs`); and imports and exports (wave 2, D165, never throws): jobs nobody holds taken up where their cursor is (a dry run, an apply, an export), a few at a time within the time; and the low-stock notices (wave 3, D172, never throws): one email per store to its owners listing the variants that crossed the warning level they set since the last run (the history of stock is pruned daily, `runRetention()`); and the orders' upkeep (wave 3, D173, never throws): draft orders whose pay link ran out expired (their Stripe sessions closed first, an order paid in the last minute left alone, the unpaid order cancelled and its stock given back, its number kept so the sequence has no gap), and, for the open stores whose owner chose it, finished orders archived (up to 200 a store a run); and support (D216, never throws): conversations with the AI that went quiet for the desk's time ended; and notifications (wave 3, D238, never throw): tracked parcels' carriers asked (at most 60 parcels a run, 4 calls at once, 4 s each), their events kept, the out-for-delivery and delivered emails sent where switched on and a verified delivery recorded, and the staff summaries due at their hour sent; and installed themes that follow updates brought to their theme's latest version, a few a run (D245, never throws); and premium themes due to be paid invoiced through Kaizena Flow's billing (D286, never throws); and payments (D288, never throws): the method and risk of captured Stripe payments the reply did not read, and staff told once when a dispute's evidence is due within three days; and pages and articles scheduled to be published (D341, never throws), their drafts published in the name of who scheduled them while they still may; and the catalogue's VAT labels refreshed in the first minutes of a country's day when a rate begins or ends (D379, never throws); and, once a night, the interface text the machine-translated languages lack translated by the platform's AI as drafts to review (D436, at most 300 texts a language).
+ * carts' visitors forgotten; and copies of other websites' pages (D150) older than thirty days forgotten with their pictures; and withdrawals and returns (D153, never throws): a reminder to the store, once per return, when a refund is past its legal deadline, and the acknowledgement of a confirmed withdrawal tried again when the first email never got out; and invoices and credit notes (D159, never throws): refunds Stripe left pending asked of Stripe, invoices that waited for the seller's details issued, credit notes that waited for their invoice issued, and the stand-alone email for a document issued later than its payment or refund (no Chromium here: the PDFs are `/api/cron/document-pdfs`); and imports and exports (wave 2, D165, never throws): jobs nobody holds taken up where their cursor is (a dry run, an apply, an export), a few at a time within the time; and the low-stock notices (wave 3, D172, never throws): one email per store to its owners listing the variants that crossed the warning level they set since the last run (the history of stock is pruned daily, `runRetention()`); and the orders' upkeep (wave 3, D173, never throws): draft orders whose pay link ran out expired (their Stripe sessions closed first, an order paid in the last minute left alone, the unpaid order cancelled and its stock given back, its number kept so the sequence has no gap), and, for the open stores whose owner chose it, finished orders archived (up to 200 a store a run); and support (D216, never throws): conversations with the AI that went quiet for the desk's time ended; and notifications (wave 3, D238, never throw): tracked parcels' carriers asked (at most 60 parcels a run, 4 calls at once, 4 s each), their events kept, the out-for-delivery and delivered emails sent where switched on and a verified delivery recorded, and the staff summaries due at their hour sent; and installed themes that follow updates brought to their theme's latest version, a few a run (D245, never throws); and premium themes due to be paid invoiced through Kaizena Flow's billing (D286, never throws); and payments (D288, never throws): the method and risk of captured Stripe payments the reply did not read, and staff told once when a dispute's evidence is due within three days; and pages and articles scheduled to be published (D341, never throws), their drafts published in the name of who scheduled them while they still may; and the catalogue's VAT labels refreshed in the first minutes of a country's day when a rate begins or ends (D379, never throws); and, once a night, the interface text the machine-translated languages lack translated by the platform's AI as drafts to review (D436, at most 300 texts a language); and the docs' search index rewritten after a deploy that changed the docs or the contracts, with its vectors (D443).
  */
 async function run(request: Request) {
   await connection();
@@ -113,6 +115,8 @@ async function dispatch() {
     searches: () => pruneSearchLog(),
     // Admin API answers kept for an Idempotency-Key (PSI DATA-03), 24 hours.
     apiIdempotency: () => pruneApiIdempotency(),
+    // The authorization server's codes and tokens past their end, and grants ended 90 days ago (D439).
+    oauthTokens: () => pruneOAuthTokens(),
     // An AI reads the notices still waiting and checks new and changed listings (D411 part 2); a person decides every one.
     contentModeration: () => runContentModeration(),
     // AI pictures made before their files were marked get IPTC's digital source type in their XMP (AI Act Art. 50(2)), ten a run.
@@ -120,6 +124,10 @@ async function dispatch() {
     embeddings: () => refreshEmbeddings(),
     cache: () => pruneSearchCache(),
     knowledge: () => refreshKnowledge(),
+    // The docs' search index (D443): rewritten when this deployment's articles or contracts differ from the fingerprint stored, then rows
+    // given vectors by the platform's AI where it has an embedding model; reads older than 90 days and misses unseen for 180 forgotten.
+    docsIndex: () => refreshDocsIndex(),
+    docsCounts: () => pruneDocsCounts(),
     chat: () => pruneChatUsage(),
     media: () => refreshMediaEmbeddings(),
     altTexts: () => refreshAltTexts(),

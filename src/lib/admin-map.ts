@@ -848,6 +848,15 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["See the most asked-for missing addresses", "Redirect a missing address", "Hide an address", "Download the report"],
     keywords: ["404", "not found", "broken links", "missing pages", "dead links", "404 report", "fix broken links", "side ikke funnet"],
   }),
+  store("settings.moving", "/settings/moving", "Moving in", "Store", "For a store moving from Shopify: type any address of the Shopify shop and press Connect Shopify; Shopify asks the owner to let Kaizena Flow read the shop (read only, nothing changes there). Once connected, the page shows the shop's name and how many products, customers and orders it has, checks its old links in one press, and links the file imports for the rest. Disconnect at any time. The owner's only.", {
+    tasks: ["Connect a Shopify shop", "Move from Shopify", "Check the Shopify shop's old links", "Disconnect Shopify"],
+    keywords: ["shopify", "migrate", "move from shopify", "import shop", "switch platform", "flytte", "flytt inn", "koble til shopify"],
+    needs: "owner",
+  }),
+  store("redirects.old-shop", "/redirects/old-shop", "Your old shop's links", "Store", "For a store moving from Shopify or another shop: type the old shop's address and its sitemap is read (never its pages), then the page says how many of its old links lead somewhere here, fixes every one whose product, collection, page or post is here under the same name in one press, and suggests targets for the rest. Its counts stand beside this store's. Needs the right to change the website.", {
+    tasks: ["Check the old shop's links", "Fix the old links in one press", "Compare the old shop with this one", "Check again after an import"],
+    keywords: ["moving", "migrate", "shopify", "old shop", "old links", "sitemap", "seo", "move from shopify", "gammel butikk", "flytte"],
+  }),
   store("navigation", "/settings/navigation", "Header and footer", "Store", "Logos, site icon, which menus the standard header and footer show, and business details.", {
     keywords: ["logo", "favicon"],
   }),
@@ -1012,6 +1021,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["wordpress", "plugin", "shortcode", "embed", "grid", "carousel", "connect", "website", "woocommerce"],
     tasks: ["Download the WordPress plugin", "See the sites connected to your stores", "Disconnect a site"],
   }),
+  account("account.connected", "/account/connected", "Connected apps and assistants", "The AI assistants and apps (Claude, ChatGPT and others) you let work with your stores through Kaizena Flow's own sign-in: each one's stores, its access (read only, read and propose changes, or read and change), when it was last used, and Disconnect, which ends it at once.", {
+    keywords: ["connected apps", "ai assistant", "mcp", "claude", "chatgpt", "oauth", "disconnect", "revoke", "access", "integrations"],
+    tasks: ["See which AI assistants and apps reach your stores", "Disconnect an AI assistant or app"],
+  }),
   account("account.wordpress.connect", "/account/wordpress/connect", "Connect a WordPress site", "Where the plugin sends you to approve a WordPress site: it names the site and what it may read, and you approve or cancel.", {
     needs: "owner",
     keywords: ["approve", "authorize", "connect wordpress"],
@@ -1173,6 +1186,10 @@ const PAGES: readonly AdminPage[] = [
   platform("docs.feedback", "/docs/feedback", "Docs feedback", "Kaizena Flow site", "What readers said under each page of the docs (D442): whether it helped, counted by page with the least helpful first, and the answers newest first by page, by yes or no and with a sentence; a sentence that names someone is removed here, its yes or no kept.", {
     keywords: ["docs", "documentation", "helpful", "feedback", "articles"],
     tasks: ["See which docs pages did not help", "Read what readers wrote", "Remove a sentence that names someone"],
+  }),
+  platform("oauth", "/oauth", "AI assistants and apps", "Platform", "Every client of Kaizena Flow's authorization server (D439): the AI assistants and apps people connected to their stores, with how many people use each, its host, and Verify and Block; blocking ends every connection it has.", {
+    keywords: ["oauth", "clients", "mcp", "ai assistants", "apps", "verify", "block", "authorization server"],
+    tasks: ["Verify an AI assistant or app", "Block an AI assistant or app"],
   }),
   platform("reports", "/reports", "Illegal content notices", "Platform", "Notices people sent about illegal content on stores, each decided with its reason; the sender is told, and the store when something is restricted (DSA).", {
     keywords: ["DSA", "illegal", "notice", "takedown", "report", "abuse", "counterfeit", "moderation"],

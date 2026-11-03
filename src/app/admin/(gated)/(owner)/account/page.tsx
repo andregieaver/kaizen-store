@@ -49,6 +49,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   const lang = adminLangOf(account.adminLocale);
   const words = adminText(lang, "common").language;
   const w = adminText(lang, "bookings").account;
+  const ow = adminText(lang, "oauth");
   const dateLocale = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const query = await searchParams;
   const status = query["kaizen-life"];
@@ -290,6 +291,19 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           </ul>
         </section>
       )}
+
+      {/* AI assistants and apps connected through Kaizena Flow's sign-in (D439): everyone's own, staff too, who have no Account sidebar. */}
+      <section aria-labelledby="connected-heading" className="flex max-w-md flex-col gap-3">
+        <h2 id="connected-heading" className="text-title text-ink">
+          {ow.connected.title}
+        </h2>
+        <p className="text-sm text-muted">{ow.connected.description}</p>
+        <div>
+          <Link href="/admin/account/connected" className={smallButton + " inline-flex items-center"}>
+            {ow.connected.open}
+          </Link>
+        </div>
+      </section>
 
       {/* Deleting one's own account (D377): the page says what goes, or why it cannot yet. */}
       <section aria-labelledby="erase-heading" className="flex max-w-md flex-col gap-3">
