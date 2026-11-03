@@ -225,12 +225,12 @@ async function productOptions(member: Membership, deps: CopyDeps): Promise<Recor
 
 const storageOf = (deps: CopyDeps) => (deps.data?.storage === undefined ? dataStorage() : deps.data.storage);
 
-/** A `later` or `direct` feed's file kept in the imports bucket until it is brought over; its path, or null when storage would not take it. */
+/** A `later` or `direct` feed's file kept in the imports bucket until it is brought over; its path, or null when storage would not take it. The bucket takes only CSV and plain text, so JSON Lines go as `text/plain`. */
 async function keepFile(member: Membership, feed: CopyFeed, text: string, deps: CopyDeps): Promise<string | null> {
   const storage = storageOf(deps);
   if (!storage) return null;
   const path = `${member.store.id}/${randomUUID()}/${FEED_FILES[feed]}`;
-  return (await storage.upload(IMPORTS_BUCKET, path, new TextEncoder().encode(text), feed === "collections" ? "text/csv" : "application/jsonl")) ? path : null;
+  return (await storage.upload(IMPORTS_BUCKET, path, new TextEncoder().encode(text), feed === "collections" ? "text/csv" : "text/plain")) ? path : null;
 }
 
 async function keptFile(path: string, deps: CopyDeps): Promise<string | null> {
