@@ -52,7 +52,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   address in the private `imports` bucket) and `POST /media`, which checks the file from its bytes, shrinks it as the admin's browser does
   (`shrinkPicture()`), counts it against storage and keeps it with `storePicture()`; a product's gallery, categories and tags change only
   through `updateProductTool()`. `inventory.updated` waits for the next whole minute (`queue_integration_event()`), so a variant's moves in
-  that minute are one delivery built as the stock is then.
+  that minute are one delivery built as the stock is then. Orders (C2, `admin-api-orders.ts`): a draft changes only through the editor's own
+  state (`formFromDraft()`, the API's change laid over it, `inputFromForm()`, `saveDraft()` against its version), is sent only by
+  `sendDraft()` and a request declined only by `declineQuote()`; money goes back only through `refundOrder()` with the power `orders:refund`
+  (a store credit's code is never answered); an unpaid order is cancelled only by `cancelUnpaidByStaff()` (its payment pages closed first);
+  a return moves only through the returns page's steps; notes and tags through `addOrderNote()` and `changeOrderTags()`. The orders' topics are
+  queued by triggers where they happen (`order.created` on insert, `order.updated` on `edited_at`, `fulfilment.*` on shipments and
+  `shipment_tracking`, `refund.created` for money or store credit that went through, `return.updated` on a status, `quote.requested` and
+  `draft.sent` on `draft_orders`), copied history never.
 
 - **API contracts (wave 14 unit A, D438, `src/lib/admin-api-routes.ts`, `src/lib/webhook-topics.ts`, `src/lib/mcp-catalogue.ts`, `src/lib/api-contract.ts`)**, for this API, the storefront API, the webhooks and the MCP servers:
   what outside callers rely on is described once, in code, and everything published is generated from it: the Admin API's operations

@@ -47,6 +47,7 @@ export const oauthNb: OauthMessages = {
     write: "Endre {area}",
     powers: {
       "products:publish": "Publisere produkter og endre produkter som er på nettstedet, uten å spørre deg først",
+      "orders:refund": "Refundere bestillinger, uten å spørre deg først",
     },
   },
   areas: {

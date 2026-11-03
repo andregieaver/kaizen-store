@@ -26,7 +26,7 @@ describe("routeOf", () => {
     expect(routeOf("PATCH", ["checkout", "rules", "not-an-id"])).toBeNull();
     expect(routeOf("PATCH", ["checkout", "fields", ID, "x"])).toBeNull();
     expect(routeOf("DELETE", ["checkout", "fields", ID])).toEqual({ name: "checkout.field_delete", scope: "checkout:write", id: ID });
-    expect(routeOf("GET", ["orders", ID, "refunds"])).toBeNull();
+    expect(routeOf("GET", ["orders", ID, "payments"])).toBeNull();
     expect(routeOf("GET", ["products", ID, "a", "b", "c"])).toBeNull();
   });
 });

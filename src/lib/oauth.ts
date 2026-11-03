@@ -21,6 +21,7 @@ export const STORES_READ = "stores:read" as const;
  */
 export const POWER_SCOPES = {
   "products:publish": "products:write",
+  "orders:refund": "orders:write",
 } as const satisfies Record<string, PermissionKey>;
 export type PowerScope = keyof typeof POWER_SCOPES;
 export const isPowerScope = (value: unknown): value is PowerScope => typeof value === "string" && Object.hasOwn(POWER_SCOPES, value);

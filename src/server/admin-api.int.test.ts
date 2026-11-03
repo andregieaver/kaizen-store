@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 import sharp from "sharp";
@@ -18,6 +18,15 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 vi.mock("next/server", () => ({ connection: async () => {}, after: () => {} }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }), headers: async () => new Headers() }));
+// Store credit's gift card codes are kept only as keyed hashes (D300).
+process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
+// Kaizena Flow's Stripe client, faked: nothing here reaches Stripe (a refund over the API is store credit, which asks no provider).
+vi.mock("./stripe", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./stripe")>()),
+  platformStripe: () => ({ checkout: { sessions: { retrieve: async () => null, list: async () => ({ data: [] }), expire: async () => ({}) } }, refunds: { create: async () => null, retrieve: async () => null } }),
+  // Kaizena Flow's test keys are set, so a store in Stripe's test mode takes payments (a draft's pay link can be made).
+  platformModes: () => ["test"],
+}));
 // The private buckets and the public picture bucket, in memory (D440: an upload's file, and the library's pictures).
 const buckets = vi.hoisted(() => ({ storage: null as unknown }));
 vi.mock("./data-job-store", async (importOriginal) => ({ ...(await importOriginal<typeof import("./data-job-store")>()), dataStorage: () => buckets.storage }));
@@ -517,6 +526,149 @@ describe("the catalogue (D440 C1)", () => {
     } finally {
       await db().execute(sql`update commerce.stores set status = 'active' where id = ${store.storeId}::uuid`);
     }
+  });
+});
+
+describe("orders (D440 C2)", () => {
+  let clerk: string;
+  const address = { name: "Kari Nordmann", line1: "Storgata 1", postal_code: "0155", city: "Oslo", country: "NO" };
+
+  beforeAll(async () => {
+    const made = await makeApiToken(store.member, { name: "Clerk", scopes: ["orders:write", "customers:read"] });
+    if (!made.ok) throw new Error(made.problem);
+    clerk = made.token;
+    // Stripe on in test mode, so a draft's pay link can be made (as the drafts' own tests do).
+    await db().execute(sql`update commerce.payment_providers set enabled = true, active_mode = 'test' where store_id = ${store.storeId}::uuid`);
+  });
+
+  it("makes, prices, sends and lists a draft order through the draft editor's own functions", async () => {
+    const made = await call("POST", "drafts", clerk, { email: "kari@example.com", shipping_address: address, lines: [{ sku: SKU, quantity: 2 }], internal_note: "From the ERP" });
+    expect(made.status).toBe(201);
+    const draft = made.body.data;
+    expect(draft).toMatchObject({ status: "open", source: "staff", market: "NO", currency: "NOK", internal_note: "From the ERP", quote: null });
+    expect(draft.lines).toEqual([expect.objectContaining({ sku: SKU, quantity: 2, custom_price: false })]);
+    expect(draft.total_minor).toEqual(expect.any(Number));
+    // Prices by SKU (D437), as the AI manager types them: the line takes it, nothing else changes.
+    const priced = await call("PATCH", `drafts/${draft.id}`, clerk, { version: draft.version, prices: [{ sku: SKU, unit_price_minor: 15_000 }] });
+    expect(priced.status).toBe(200);
+    expect(priced.body.data.lines[0]).toMatchObject({ unit_price_minor: 15_000, custom_price: true });
+    expect((await call("PATCH", `drafts/${draft.id}`, clerk, { version: draft.version, note_to_buyer: "Old" })).status).toBe(409);
+    expect((await call("PATCH", `drafts/${draft.id}`, clerk, { prices: [{ sku: "NO-SUCH", unit_price_minor: 1 }] })).status).toBe(422);
+    const lines = await call("PATCH", `drafts/${draft.id}`, clerk, {
+      lines: [{ id: priced.body.data.lines[0].id, quantity: 3 }],
+      discount: { kind: "percent", percent: 10, label: "Loyal" },
+      shipping: { kind: "free" },
+    });
+    expect(lines.body.data.lines[0]).toMatchObject({ quantity: 3, unit_price_minor: 15_000 });
+    expect(lines.body.data.discount).toMatchObject({ kind: "percent", percent: 10, label: "Loyal" });
+    expect(lines.body.data.shipping).toEqual({ kind: "free", amount_minor: null });
+    expect((await call("GET", `drafts/${draft.id}`, readOnly)).status).toBe(403);
+    expect((await call("GET", "drafts?status=open", clerk)).body.data.map((d: Answer) => d.id)).toContain(draft.id);
+    expect((await call("GET", `drafts/${draft.id}`, clerk)).body.data).toMatchObject({ id: draft.id, blocking: [] });
+
+    const sent = await call("POST", `drafts/${draft.id}/send`, clerk, { create_link: true });
+    expect(sent.status).toBe(200);
+    expect(sent.body.data).toMatchObject({ link: expect.stringContaining("/account/pay/"), emailed: null });
+    expect(sent.body.data.draft.status).toBe("sent");
+    expect((await call("POST", `drafts/${draft.id}/send`, clerk, {})).status).toBe(409);
+    // The order it made waits for payment: cancelled here, its draft follows.
+    const order = sent.body.data.order_id as string;
+    expect((await call("GET", `orders/${order}`, clerk)).body.data.status).toBe("pending_payment");
+    expect((await call("POST", `orders/${order}/cancel`, clerk, { reason: "Changed their mind" })).body.data).toEqual({ id: order, status: "cancelled" });
+    expect((await call("GET", `orders/${order}`, clerk)).body.data.status).toBe("cancelled");
+    expect((await call("POST", `orders/${order}/cancel`, clerk, {})).status).toBe(409);
+    const audit = await db().execute<Row>(sql`
+      select action from commerce.audit_log where store_id = ${store.storeId}::uuid and details ->> 'token' = 'Clerk' and action like 'integration.api_%' order by created_at
+    `);
+    expect(audit.map((a) => a.action)).toEqual(expect.arrayContaining(["integration.api_draft_created", "integration.api_draft_changed", "integration.api_draft_sent", "integration.api_order_cancelled"]));
+  });
+
+  it("declines a shopper's request for a quote with a reply, and lists requests alone", async () => {
+    const made = await call("POST", "drafts", clerk, { email: "asker@example.com", lines: [{ sku: SKU, quantity: 1 }] });
+    await db().execute(sql`update commerce.draft_orders set source = 'quote' where id = ${made.body.data.id}::uuid`);
+    const quotes = await call("GET", "drafts?quotes=true", clerk);
+    expect(quotes.body.data.map((d: Answer) => d.id)).toContain(made.body.data.id);
+    expect(quotes.body.data.every((d: Answer) => d.source === "quote")).toBe(true);
+    expect((await call("POST", `drafts/${made.body.data.id}/decline`, clerk, { reply: "" })).status).toBe(422);
+    const declined = await call("POST", `drafts/${made.body.data.id}/decline`, clerk, { reply: "We do not make that size, sorry." });
+    expect(declined.status).toBe(200);
+    expect(declined.body.data.quote).toBe("declined");
+    expect((await call("POST", `drafts/${made.body.data.id}/decline`, clerk, { reply: "Again" })).status).toBe(409);
+    const staffs = await call("POST", "drafts", clerk, {});
+    expect((await call("POST", `drafts/${staffs.body.data.id}/decline`, clerk, { reply: "No" })).status).toBe(409);
+    // Another store's draft is not found; with the online shop off, drafts answer feature_off.
+    const { createDraft } = await import("./draft-orders");
+    const theirs = await createDraft(other.storeId, { accountId: other.accountId, kind: "staff" });
+    if (!theirs.ok) throw new Error(theirs.problem);
+    expect((await call("GET", `drafts/${theirs.draft.id}`, clerk)).status).toBe(404);
+    expect((await call("PATCH", `drafts/${theirs.draft.id}`, clerk, { internal_note: "Mine now" })).status).toBe(404);
+    await db().execute(sql`update commerce.stores set features = array_remove(features, 'shop') where id = ${store.storeId}::uuid`);
+    try {
+      expect((await call("GET", "drafts", clerk)).body.error.code).toBe("feature_off");
+    } finally {
+      await db().execute(sql`update commerce.stores set features = array(select distinct unnest(features || array['shop']::text[])) where id = ${store.storeId}::uuid`);
+    }
+  });
+
+  it("refunds only with orders:refund, through the admin's own refund, and never answers a store credit's code", async () => {
+    const fx = await import("./invoice-test-fixture");
+    const seller = await fx.makeStore("apirefund", { rates: true });
+    const owner = await fx.ownerOf(seller);
+    const paid = await fx.paidOrder(seller, [[SKU, 2]]);
+    const writer = await makeApiToken(owner, { name: "Writer", scopes: ["orders:write"] });
+    const refunder = await makeApiToken(owner, { name: "Refunds", scopes: ["orders:read", "orders:refund"] });
+    if (!writer.ok || !refunder.ok) throw new Error("no token");
+    const scoped = await call("POST", `orders/${paid.orderId}/refunds`, writer.token, { amount_minor: 1000, to_store_credit: true });
+    expect(scoped.status).toBe(403);
+    expect(scoped.body.error.message).toContain("orders:refund");
+    const refunded = await call("POST", `orders/${paid.orderId}/refunds`, refunder.token, { amount_minor: 1000, reason: "Goodwill", to_store_credit: true });
+    expect(refunded.status).toBe(201);
+    expect(refunded.body.data).toMatchObject({ amount_minor: 1000, store_credit: { amount_minor: 1000 } });
+    expect(JSON.stringify(refunded.body)).not.toMatch(/"code"/);
+    const list = await call("GET", `orders/${paid.orderId}/refunds`, refunder.token);
+    expect(list.body.data).toEqual([expect.objectContaining({ amount_minor: 1000, kind: "store_credit", status: "succeeded", currency: "NOK" })]);
+    expect((await call("POST", `orders/${paid.orderId}/refunds`, refunder.token, { amount_minor: 10_000_000, to_store_credit: true })).status).toBe(422);
+    // A paid order is not cancelled here: it is refunded.
+    expect((await call("POST", `orders/${paid.orderId}/cancel`, writer.token, {})).status).toBe(409);
+    expect((await call("GET", `orders/${paid.orderId}/refunds`, full)).status).toBe(404);
+  });
+
+  it("notes and tags an order, and moves a return through its steps as the returns page does", async () => {
+    const order = await place(store.storeId, [[SKU, 2]]);
+    await pay(store.storeId, order, store.account);
+    const noted = await call("POST", `orders/${order.orderId}/notes`, clerk, { note: "Gift wrap, please" });
+    expect(noted.status).toBe(201);
+    expect(noted.body.data).toMatchObject({ note: "Gift wrap, please", by: "API: Clerk" });
+    expect((await call("GET", `orders/${order.orderId}/notes`, clerk)).body.data.map((n: Answer) => n.note)).toEqual(["Gift wrap, please"]);
+    expect((await call("POST", `orders/${order.orderId}/notes`, clerk, { note: "" })).status).toBe(422);
+    expect((await call("POST", `orders/${order.orderId}/tags`, clerk, { tag: "Priority" })).body.data.tags).toEqual(["Priority"]);
+    expect((await call("GET", `orders/${order.orderId}`, clerk)).body.data.tags).toEqual(["Priority"]);
+    expect((await call("DELETE", `orders/${order.orderId}/tags/priority`, clerk)).body.data.tags).toEqual([]);
+    expect((await call("DELETE", `orders/${order.orderId}/tags/priority`, clerk)).status).toBe(404);
+
+    const [line] = await db().execute<Row>(sql`select id from commerce.order_lines where order_id = ${order.orderId}::uuid order by id limit 1`);
+    const makeReturn = async (n: number) => {
+      const [made] = await db().execute<Row>(sql`
+        insert into commerce.returns (store_id, order_id, kind, number, status) values (${store.storeId}::uuid, ${order.orderId}::uuid, 'return', ${`${order.number}-R${n}`}, 'requested') returning id
+      `);
+      await db().execute(sql`insert into commerce.return_lines (store_id, return_id, order_line_id, quantity) values (${store.storeId}::uuid, ${String(made.id)}::uuid, ${String(line.id)}::uuid, 1)`);
+      return String(made.id);
+    };
+    const first = await makeReturn(1);
+    const listed = await call("GET", "returns?status=requested", clerk);
+    expect(listed.body.data.map((r: Answer) => r.id)).toContain(first);
+    const got = await call("GET", `returns/${first}`, clerk);
+    expect(got.body.data).toMatchObject({ kind: "return", status: "requested", order_id: order.orderId, lines: [expect.objectContaining({ quantity: 1, decision: "accept" })] });
+    expect((await call("POST", `returns/${first}/receive`, clerk, {})).status).toBe(409);
+    expect((await call("POST", `returns/${first}/approve`, clerk, { note: "OK" })).body.data.status).toBe("approved");
+    expect((await call("POST", `returns/${first}/receive`, clerk, {})).body.data.status).toBe("received");
+    const second = await makeReturn(2);
+    expect((await call("POST", `returns/${second}/decline`, clerk, { reason: "" })).status).toBe(422);
+    expect((await call("POST", `returns/${second}/decline`, clerk, { reason: "Used" })).body.data.status).toBe("declined");
+    expect((await call("GET", `returns/${second}`, readOnly)).status).toBe(403);
+    const [theirs] = await db().execute<Row>(sql`select id from commerce.returns where store_id <> ${store.storeId}::uuid limit 1`);
+    if (theirs) expect((await call("GET", `returns/${String(theirs.id)}`, clerk)).status).toBe(404);
+    expect((await call("GET", "returns/00000000-0000-4000-8000-000000000000", clerk)).status).toBe(404);
   });
 });
 

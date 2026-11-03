@@ -44,6 +44,19 @@ beforeAll(async () => {
   const sent = await markSent(store.storeId, order.orderId, { carrier: "posten", trackingNumber: "TOPIC1", trackingUrl: null }, store.accountId, null, { lines: null });
   if (!sent.ok) throw new Error(sent.reason);
   subjects.order = order.orderId;
+  // D440: the parcel (fulfilment.*), a refund of the order (refund.created) and a draft order (quote.requested, draft.sent).
+  subjects.fulfilment = sent.shipment.id;
+  const [refund] = await db().execute<Row>(sql`
+    insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, kind)
+    select p.store_id, p.id, 1000, 'Goodwill', ${`re_topics_${Date.now()}`}, 'succeeded', 'money' from commerce.payments p
+    where p.store_id = ${store.storeId}::uuid and p.order_id = ${order.orderId}::uuid and p.status = 'captured' limit 1
+    returning id
+  `);
+  subjects.refund = String(refund.id);
+  const { createDraft } = await import("./draft-orders");
+  const draft = await createDraft(store.storeId, { accountId: store.accountId, kind: "staff" });
+  if (!draft.ok) throw new Error(draft.problem);
+  subjects.draft = draft.draft.id;
 
   const [customer] = await db().execute<Row>(sql`
     insert into commerce.customers (store_id, email, name) values (${store.storeId}::uuid, ${`topics-${Date.now()}@example.com`}, 'Kari') returning id
@@ -164,7 +177,66 @@ describe("every webhook topic's payload (D438)", () => {
     const shop = await store2(store.slug);
     expect(await setArchived(shop!, subjects.product!, true)).toBe(true);
     expect((await queued("product.archived")).map((r) => r.subject_id)).toEqual([subjects.product]);
-    await setArchived(shop!, subjects.product!, false);
+    // Back on the site as it was (bringing it back makes a draft).
+    await db().execute(sql`update commerce.products set status = 'active' where id = ${subjects.product!}::uuid`);
+    await db().execute(sql`delete from commerce.webhook_endpoints where id = ${String(endpoint.id)}::uuid`);
+  });
+
+  it("queues the orders' topics where they happen (D440 C2)", async () => {
+    const topics = ["order.created", "order.updated", "fulfilment.created", "fulfilment.updated", "refund.created", "return.updated", "quote.requested", "draft.sent"];
+    const [endpoint] = await db().execute<Row>(sql`
+      insert into commerce.webhook_endpoints (store_id, name, url_encrypted, hint, secret_encrypted, topics)
+      values (${store.storeId}::uuid, 'Orders', 'x', 'example.com', 'x', ${`{${topics.join(",")}}`}::text[])
+      returning id
+    `);
+    const queued = async () =>
+      (await db().execute<Row>(sql`select event, subject_id from commerce.integration_deliveries where endpoint_id = ${String(endpoint.id)}::uuid order by created_at, event`)).map(
+        (r) => `${String(r.event)} ${String(r.subject_id)}`,
+      );
+    const order = await place(store.storeId, [[SKU, 1]]);
+    await pay(store.storeId, order, store.account);
+    const sent = await markSent(store.storeId, order.orderId, { carrier: "posten", trackingNumber: "C2-1", trackingUrl: null }, store.accountId, null, { lines: null });
+    if (!sent.ok) throw new Error(sent.reason);
+    // The carrier's tracking of the parcel moves on (D238).
+    await db().execute(sql`
+      insert into commerce.shipment_tracking (store_id, shipment_id, order_id, carrier, phase) values (${store.storeId}::uuid, ${sent.shipment.id}::uuid, ${order.orderId}::uuid, 'posten', 'in_transit')
+    `);
+    const [refund] = await db().execute<Row>(sql`
+      insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, kind)
+      select p.store_id, p.id, 500, 'Goodwill', ${`re_c2_${Date.now()}`}, 'succeeded', 'money' from commerce.payments p
+      where p.store_id = ${store.storeId}::uuid and p.order_id = ${order.orderId}::uuid and p.status = 'captured' limit 1
+      returning id
+    `);
+    // An edit applied (D174) sets the order's edited_at inside its own context.
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`select set_config('kaizen.order_edit', ${order.orderId}, true)`);
+      await tx.execute(sql`update commerce.orders set edited_at = now() where id = ${order.orderId}::uuid`);
+    });
+    await db().execute(sql`update commerce.returns set status = 'approved' where id = ${subjects.return!}::uuid`);
+    const [quote] = await db().execute<Row>(sql`
+      insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, source, email)
+      values (${store.storeId}::uuid, commerce.next_draft_number(${store.storeId}::uuid), 'NO', 'no', 'NOK', 'nb-NO', 'quote', 'asker@example.com')
+      returning id
+    `);
+    // Sent: as `sendDraft()` leaves it, naming its order (the drafts' own tests send one through Stripe's test mode).
+    await db().execute(sql`
+      update commerce.draft_orders set status = 'sent', order_id = ${order.orderId}::uuid, sent_at = now(), expires_at = now() + interval '7 days' where id = ${String(quote.id)}::uuid
+    `);
+    expect(await queued()).toEqual(
+      expect.arrayContaining([
+        `order.created ${order.orderId}`,
+        `order.updated ${order.orderId}`,
+        `fulfilment.created ${sent.shipment.id}`,
+        `fulfilment.updated ${sent.shipment.id}`,
+        `refund.created ${String(refund.id)}`,
+        `return.updated ${subjects.return}`,
+        `quote.requested ${String(quote.id)}`,
+        `draft.sent ${String(quote.id)}`,
+      ]),
+    );
+    expect((await queued()).filter((q) => q.startsWith("order.created")).length).toBe(1);
+    // Ended, so no other test's run of the expiry job finds a link of ours to expire.
+    await db().execute(sql`update commerce.draft_orders set status = 'cancelled' where id = ${String(quote.id)}::uuid`);
     await db().execute(sql`delete from commerce.webhook_endpoints where id = ${String(endpoint.id)}::uuid`);
   });
 

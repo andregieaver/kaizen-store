@@ -53,6 +53,7 @@ export const oauthEn = {
     /** Powers beyond a permission (D440): what the AI manager would ask your yes for. */
     powers: {
       "products:publish": "Publish products and change products that are on the site, without asking you first",
+      "orders:refund": "Refund orders, without asking you first",
     },
   },
   areas: {

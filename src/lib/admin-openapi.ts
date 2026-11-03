@@ -20,7 +20,7 @@ export const API_ERROR_WORDS: Record<ApiErrorCode, string> = {
   not_found: "No such route, or nothing with that id in the token's store (another store's ids are simply not found).",
   method: "The method is not one this path takes.",
   invalid: "Nothing was done: a body, query or cursor that is not as described, or a check of the screen it goes through; the message says what.",
-  gated: "Only the owner does this, in the admin, or a token with the scope that allows it: publishing or changing a product on the site (`products:publish`); a copied order never.",
+  gated: "Only the owner does this, in the admin, or a token with the scope that allows it: publishing or changing a product on the site (`products:publish`); a copied order is never changed.",
   feature_off: "The store has switched off the feature the operation stands behind (Settings, Store features); the message names it.",
   conflict: "Nothing was done: it clashes with how things are now (nothing left to send), or an `Idempotency-Key` is in use or was used for another request.",
   rate_limited: "More calls than the budget allows; `Retry-After` says how many seconds to wait.",
@@ -31,7 +31,7 @@ export const API_ERROR_WORDS: Record<ApiErrorCode, string> = {
 export const SCOPE_WORDS: Record<string, string> = {
   products: "Products, their variants and prices, categories and tags, pictures and price lists.",
   inventory: "Stock locations and levels.",
-  orders: "Orders, parcels, invoices and credit notes.",
+  orders: "Orders, parcels, invoices and credit notes, draft orders and requests for a quote, returns, notes and tags.",
   customers: "Customer accounts and their tags.",
   discounts: "Discount codes.",
   checkout: "Checkout rules and questions.",
@@ -40,6 +40,7 @@ export const SCOPE_WORDS: Record<string, string> = {
 /** Scopes that are not a read or a write of their area (D440): what each lets a token do. */
 export const SCOPE_POWERS: Record<string, string> = {
   "products:publish": "Publish, unpublish and archive products, and change products on the site: what the AI manager asks the owner's yes for.",
+  "orders:refund": "Refund orders through the admin's own refund, to the payment or as store credit: what the AI manager asks the owner's yes for.",
 };
 
 const scopeWords = (scope: string): string =>
@@ -50,6 +51,8 @@ const TAGS = [
   { name: "Categories and tags", description: "Product categories and tags (D50), and a product put in or out of one." },
   { name: "Media", description: "The media library's pictures, sent through a one-time upload address and checked as the library checks them, and a product's gallery." },
   { name: "Price lists", description: "Price lists for customer groups and companies (D321), and their fixed prices." },
+  { name: "Draft orders", description: "Draft orders staff make and shoppers' requests for a quote (D173, D431), sent as a pay link or declined." },
+  { name: "Returns", description: "Withdrawals and voluntary returns (D153): approved, declined and received as the returns page does them." },
   { name: "Inventory", description: "Stock per variant and location, adjusted or counted as the Inventory page does." },
   { name: "Orders", description: "Orders in their own currency, parcels with tracking, and invoices and credit notes as EN 16931 UBL." },
   { name: "Customers", description: "Customer accounts and their tags." },

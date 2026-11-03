@@ -190,7 +190,7 @@ describe("registration (RFC 7591)", () => {
 
 describe("scopes (B3)", () => {
   it("are one per permission key, plus stores:read", () => {
-    expect(OAUTH_SCOPES).toEqual(["stores:read", ...PERMISSION_KEYS, "products:publish"]);
+    expect(OAUTH_SCOPES).toEqual(["stores:read", ...PERMISSION_KEYS, "products:publish", "orders:refund"]);
     expect(READ_SCOPES.every((s) => s.endsWith(":read"))).toBe(true);
   });
 
@@ -216,7 +216,8 @@ describe("scopes (B3)", () => {
     expect(grantScopes("propose", held, ["orders:read"])).toEqual(["stores:read", "orders:read"]);
     // Ticked outside the level or outside what is held: never added.
     expect(grantScopes("read", held, ["orders:write", "owner", "billing:write"])).toEqual(["stores:read", "orders:read"]);
-    expect(grantScopes("change", held, null)).toEqual(["stores:read", "orders:read", "orders:write", "products:read"]);
+    // Read and change also gives the powers (D440) resting on what is held: refunds rest on orders:write.
+    expect(grantScopes("change", held, null)).toEqual(["stores:read", "orders:read", "orders:write", "products:read", "orders:refund"]);
     expect(grantScopes("change", held, [])).toEqual(["stores:read"]);
   });
 

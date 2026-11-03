@@ -332,7 +332,7 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const subscription = await subscriptionData(store.id, store.slug, subjectId);
     return subscription && { subscription };
   }
-  if (event === "return.requested") {
+  if (event === "return.requested" || event === "return.updated") {
     const value = await returnData(store.id, store.slug, subjectId);
     return value && { return: value };
   }
@@ -355,6 +355,18 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
   if (event === "inventory.updated") {
     const inventory = await inventoryData(store.id, store.slug, subjectId);
     return inventory && { inventory };
+  }
+  if (event.startsWith("fulfilment.")) {
+    const fulfilment = await fulfilmentData(store.id, store.slug, subjectId);
+    return fulfilment && { fulfilment };
+  }
+  if (event === "refund.created") {
+    const refund = await refundData(store.id, store.slug, subjectId);
+    return refund && { refund };
+  }
+  if (event === "quote.requested" || event === "draft.sent") {
+    const draft = await draftData(store.id, store.slug, subjectId);
+    return draft && { draft };
   }
   return null;
 }
@@ -519,6 +531,92 @@ async function inventoryData(storeId: string, storeSlug: string, variantId: stri
     locations: row.locations as WebhookSubject<"inventory">["locations"],
     updated_at: new Date(String(row.updated_at)).toISOString(),
     admin_url: `${siteUrl()}/admin/${storeSlug}/inventory`,
+  };
+}
+
+/** A parcel of an order (D440, `fulfilment.*`): its carrier, tracking and lines, and the carrier's tracking when the store follows it (D238). */
+async function fulfilmentData(storeId: string, storeSlug: string, shipmentId: string): Promise<WebhookSubject<"fulfilment"> | null> {
+  const [row] = await db().execute<Row>(sql`
+    select s.id, s.order_id, o.number as order_number, s.carrier, s.tracking_number, s.tracking_url, s.undone_at is not null as undone, s.created_at,
+      t.phase as tracking_phase, t.delivered_at as tracking_delivered_at, t.updated_at as tracking_updated_at,
+      coalesce((select json_agg(json_build_object('order_line_id', l.order_line_id, 'sku', ol.sku, 'title', ol.title, 'quantity', l.quantity) order by ol.title, l.order_line_id)
+        from commerce.shipment_lines l join commerce.order_lines ol on ol.store_id = l.store_id and ol.id = l.order_line_id
+        where l.store_id = s.store_id and l.shipment_id = s.id), '[]'::json) as lines
+    from commerce.shipments s
+    join commerce.orders o on o.store_id = s.store_id and o.id = s.order_id
+    left join commerce.shipment_tracking t on t.store_id = s.store_id and t.shipment_id = s.id
+    where s.store_id = ${storeId}::uuid and s.id = ${shipmentId}::uuid
+  `);
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    order_id: String(row.order_id),
+    order_number: String(row.order_number),
+    carrier: String(row.carrier ?? ""),
+    tracking_number: String(row.tracking_number ?? ""),
+    tracking_url: row.tracking_url ? String(row.tracking_url) : null,
+    undone: Boolean(row.undone),
+    tracking: row.tracking_updated_at
+      ? {
+          phase: String(row.tracking_phase ?? ""),
+          delivered_at: row.tracking_delivered_at ? new Date(String(row.tracking_delivered_at)).toISOString() : null,
+          updated_at: new Date(String(row.tracking_updated_at)).toISOString(),
+        }
+      : null,
+    lines: row.lines as WebhookSubject<"fulfilment">["lines"],
+    created_at: new Date(String(row.created_at)).toISOString(),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/${String(row.order_id)}`,
+  };
+}
+
+/** A refund (D440, `refund.created`): how much went back, in the order's currency, and how; never its reason, which staff wrote. */
+async function refundData(storeId: string, storeSlug: string, refundId: string): Promise<WebhookSubject<"refund"> | null> {
+  const [row] = await db().execute<Row>(sql`
+    select r.id, p.order_id, o.number as order_number, trim(p.currency) as currency, r.amount_minor, r.kind, coalesce(jsonb_typeof(r.restocked) = 'array' and jsonb_array_length(r.restocked) > 0, false) as restocked, r.created_at
+    from commerce.refunds r
+    join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
+    join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
+    where r.store_id = ${storeId}::uuid and r.id = ${refundId}::uuid
+  `);
+  if (!row) return null;
+  const currency = String(row.currency);
+  return {
+    id: String(row.id),
+    order_id: String(row.order_id),
+    order_number: String(row.order_number),
+    currency,
+    amount: amount(Number(row.amount_minor), currency),
+    kind: String(row.kind) === "store_credit" ? "store_credit" : "money",
+    restocked: Boolean(row.restocked),
+    created_at: new Date(String(row.created_at)).toISOString(),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/${String(row.order_id)}`,
+  };
+}
+
+/** A draft order or a shopper's request for a quote (D440, `quote.requested`, `draft.sent`): its lines and prices as saved, and its order once sent. */
+async function draftData(storeId: string, storeSlug: string, draftId: string): Promise<WebhookSubject<"draft"> | null> {
+  const [row] = await db().execute<Row>(sql`
+    select d.id, d.number, d.status, d.source, d.market_code, trim(d.currency) as currency, coalesce(d.email, '') as email, d.order_id, d.expires_at, d.created_at,
+      coalesce((select json_agg(json_build_object('sku', l.sku, 'title', l.title, 'quantity', l.quantity, 'unit_price_minor', l.unit_price_minor, 'requested', l.price_requested)
+        order by l.position, l.id) from commerce.draft_order_lines l where l.store_id = d.store_id and l.draft_id = d.id), '[]'::json) as lines
+    from commerce.draft_orders d where d.store_id = ${storeId}::uuid and d.id = ${draftId}::uuid
+  `);
+  if (!row) return null;
+  const currency = String(row.currency);
+  const lines = row.lines as { sku: string | null; title: string; quantity: number; unit_price_minor: number; requested: boolean }[];
+  return {
+    id: String(row.id),
+    number: String(row.number),
+    status: String(row.status) as WebhookSubject<"draft">["status"],
+    source: String(row.source) === "quote" ? "quote" : "staff",
+    market: String(row.market_code),
+    currency,
+    email: String(row.email),
+    lines: lines.map((l) => ({ sku: l.sku ?? "", title: l.title, quantity: Number(l.quantity), unit_price: l.requested ? null : amount(Number(l.unit_price_minor), currency) })),
+    order_id: row.order_id ? String(row.order_id) : null,
+    expires_at: row.expires_at ? new Date(String(row.expires_at)).toISOString() : null,
+    created_at: new Date(String(row.created_at)).toISOString(),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/drafts/${String(row.id)}`,
   };
 }
 

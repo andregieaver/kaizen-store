@@ -5,6 +5,7 @@ import { apiProduct, byId, currency, id, madeId, marketCode, minor, one, op, pag
 
 export { apiProduct, PRODUCT_STATES };
 import { CATALOGUE_API } from "./admin-api-catalogue";
+import { ORDERS_API } from "./admin-api-orders";
 import { fieldInputSchema, ruleInputSchema, conditionSchema, effectSchema } from "./checkout-rules-schema";
 import { DISCOUNT_KINDS } from "./discounts";
 import { FULFILMENT_STATES } from "./fulfilment";
@@ -670,7 +671,7 @@ const CORE_API = [
   }),
 ] as const;
 
-export const ADMIN_API = [...CORE_API, ...CATALOGUE_API] as const;
+export const ADMIN_API = [...CORE_API, ...CATALOGUE_API, ...ORDERS_API] as const;
 
 export type AdminOperation = (typeof ADMIN_API)[number];
 export type AdminApiName = AdminOperation["name"];

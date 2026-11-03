@@ -9,6 +9,7 @@ import { ADMIN_API_BY_NAME, bodyProblems, ORDER_STATES, type AdminAnswer, type A
 import { DISCOUNT_KINDS } from "@/lib/discounts";
 
 import { answerCatalogue, CATALOGUE_NAMES, type CatalogueRoute } from "./admin-api-catalogue";
+import { answerOrders, ORDERS_NAMES, type OrdersRoute } from "./admin-api-orders";
 import {
   asTool,
   fail,
@@ -176,13 +177,17 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
 }
 
 const isCatalogue = (route: ApiRoute): route is CatalogueRoute => (CATALOGUE_NAMES as readonly string[]).includes(route.name);
+const isOrders = (route: ApiRoute): route is OrdersRoute => (ORDERS_NAMES as readonly string[]).includes(route.name);
+/** The operations of unit A and before, answered here; each slice of wave 14 unit C answers its own (D440). */
+type CoreRoute = Exclude<ApiRoute, CatalogueRoute | OrdersRoute>;
 
 async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request): Promise<ApiAnswer> {
   if (isCatalogue(route)) return answerCatalogue(caller, route, request);
-  return answerCore(caller, route as Exclude<ApiRoute, CatalogueRoute>, request);
+  if (isOrders(route)) return answerOrders(caller, route, request);
+  return answerCore(caller, route as CoreRoute, request);
 }
 
-async function answerCore(caller: ApiCaller, route: Exclude<ApiRoute, CatalogueRoute>, request: Request): Promise<ApiAnswer> {
+async function answerCore(caller: ApiCaller, route: CoreRoute, request: Request): Promise<ApiAnswer> {
   const storeId = caller.member.store.id;
   const params = new URL(request.url).searchParams;
   switch (route.name) {

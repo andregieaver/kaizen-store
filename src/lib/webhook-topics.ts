@@ -143,6 +143,47 @@ export const WEBHOOK_SUBJECTS = {
     admin_url: adminUrl,
   }),
   // Wave 14 unit C (D440) -------------------------------------------------------------------------------------------------------------
+  fulfilment: z.object({
+    id,
+    order_id: id,
+    order_number: z.string(),
+    carrier: z.string(),
+    tracking_number: z.string(),
+    tracking_url: z.string().nullable(),
+    undone: z.boolean().describe("The parcel was undone: it was recorded by mistake, and its units are to send again."),
+    tracking: z
+      .object({ phase: z.string().describe("Where the parcel is, as the carrier says (D238)."), delivered_at: when.nullable(), updated_at: when })
+      .nullable()
+      .describe("The carrier's tracking, when the store follows it."),
+    lines: z.array(z.object({ order_line_id: id, sku: z.string(), title: z.string(), quantity: z.int() })),
+    created_at: when,
+    admin_url: adminUrl,
+  }),
+  refund: z.object({
+    id,
+    order_id: id,
+    order_number: z.string(),
+    currency: z.string(),
+    amount: amount,
+    kind: z.enum(["money", "store_credit"]).describe("money: back to the payment. store_credit: a gift card of the store's (D364)."),
+    restocked: z.boolean(),
+    created_at: when,
+    admin_url: adminUrl,
+  }),
+  draft: z.object({
+    id,
+    number: z.string(),
+    status: z.enum(["open", "sent", "paid", "expired", "cancelled"]),
+    source: z.enum(["staff", "quote"]).describe("staff: made in the admin or over the API. quote: a shopper's request for a quote (D431)."),
+    market: z.string(),
+    currency: z.string(),
+    email: z.string(),
+    lines: z.array(z.object({ sku: z.string(), title: z.string(), quantity: z.int(), unit_price: amount.nullable().describe("null for a requested product priced on request with no price yet.") })),
+    order_id: id.nullable(),
+    expires_at: when.nullable(),
+    created_at: when,
+    admin_url: adminUrl,
+  }),
   inventory: z.object({
     variant_id: id,
     product_id: id,
@@ -177,6 +218,14 @@ const SUBJECT_OF: Record<IntegrationEvent, WebhookSubjectName> = {
   "discount.created": "discount",
   "inventory.updated": "inventory",
   "product.archived": "product",
+  "order.created": "order",
+  "order.updated": "order",
+  "fulfilment.created": "fulfilment",
+  "fulfilment.updated": "fulfilment",
+  "refund.created": "refund",
+  "return.updated": "return",
+  "quote.requested": "draft",
+  "draft.sent": "draft",
 };
 
 /** Who may be sent a topic: the services (Zapier, Make and Slack, D41) and an owner's own endpoints (D354). */

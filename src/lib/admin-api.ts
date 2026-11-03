@@ -14,6 +14,8 @@ export const API_SCOPES = [
   "inventory:write",
   "orders:read",
   "orders:write",
+  // D440: refunds, through `refundOrder()` only.
+  "orders:refund",
   "customers:read",
   "customers:write",
   "discounts:read",

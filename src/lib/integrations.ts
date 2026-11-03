@@ -90,7 +90,15 @@ export type IntegrationEvent =
   | "discount.created"
   // D440 (wave 14 unit C): for an owner's own endpoints only.
   | "inventory.updated"
-  | "product.archived";
+  | "product.archived"
+  | "order.created"
+  | "order.updated"
+  | "fulfilment.created"
+  | "fulfilment.updated"
+  | "refund.created"
+  | "return.updated"
+  | "quote.requested"
+  | "draft.sent";
 
 export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "order.paid", label: "Order paid", hint: "A shopper paid, or a subscription renewed." },
@@ -108,6 +116,14 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "discount.created", label: "Discount code created", hint: "A discount code was made." },
   { id: "inventory.updated", label: "Stock changed", hint: "A variant's stock on hand moved at a location: one event per variant and minute, with its stock as it is then." },
   { id: "product.archived", label: "Product archived", hint: "A product was put away: off the site and out of the admin's lists." },
+  { id: "order.created", label: "Order created", hint: "An order was made, paid or still waiting for payment: at checkout, from a draft or by a subscription." },
+  { id: "order.updated", label: "Order edited", hint: "A change to an order's lines or prices was applied (D174)." },
+  { id: "fulfilment.created", label: "Parcel sent", hint: "A parcel of an order was recorded, with its carrier and tracking." },
+  { id: "fulfilment.updated", label: "Parcel changed", hint: "A parcel's tracking moved on, its tracking number changed, or it was undone." },
+  { id: "refund.created", label: "Refund made", hint: "Money went back to a customer, to the payment or as store credit: the refund itself." },
+  { id: "return.updated", label: "Return changed", hint: "A return moved on: approved, declined, on its way, received, inspected, closed or cancelled." },
+  { id: "quote.requested", label: "Quote requested", hint: "A shopper asked for a quote: a draft order to price and send." },
+  { id: "draft.sent", label: "Draft order sent", hint: "A draft order or quote was sent to the customer with its pay link." },
   { id: "support.waiting", label: "Someone waiting in support", hint: "A customer has waited for a person in the support chat as long as the support settings say: how many wait now, and a link to the inbox. Never who they are or what they wrote." },
 ];
 
@@ -123,6 +139,14 @@ const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
   "discount.created",
   "inventory.updated",
   "product.archived",
+  "order.created",
+  "order.updated",
+  "fulfilment.created",
+  "fulfilment.updated",
+  "refund.created",
+  "return.updated",
+  "quote.requested",
+  "draft.sent",
 ]);
 
 /** The events a service (Zapier, Make, Slack) may be sent. */

@@ -1161,6 +1161,32 @@ export async function cancelOrder(
   return onTerms ? { ok: true, refundId: "", amountMinor: 0, unpaid: true } : { ok: true, refundId: "", amountMinor: order.refundableMinor };
 }
 
+/** Why an order waiting for payment was not cancelled (D440). */
+export type UnpaidCancelRefusal = "not_found" | "copied" | "not_unpaid" | "paid" | "processing";
+
+/**
+ * Cancels an order nobody has paid (D440, the Admin API's *Cancel an unpaid order*): its payment pages are closed first (one found paid or still
+ * processing is refused, as *Reopen* refuses it), then `cancel_unpaid_order()` lets its stock go and its pay link die; a sent draft follows its
+ * order by the database's own trigger. A weekly delivery not yet charged goes through `cancelOrder()`, as on the order page. Recorded in the
+ * order's history as staff's cancellation.
+ */
+export async function cancelUnpaidByStaff(storeId: string, orderId: string, reason: string, accountId: string | null): Promise<{ ok: true } | { ok: false; refused: UnpaidCancelRefusal }> {
+  const order = await getOrderAdmin(storeId, orderId);
+  if (!order) return { ok: false, refused: "not_found" };
+  if (order.copied) return { ok: false, refused: "copied" };
+  if (order.status !== "pending_payment") return { ok: false, refused: "not_unpaid" };
+  if (await isDeliveryOrder(storeId, orderId)) {
+    const cancelled = await cancelOrder(storeId, orderId, reason, accountId);
+    return cancelled.ok ? { ok: true } : { ok: false, refused: "not_unpaid" };
+  }
+  const settled = await settleOrderSessions(storeId, orderId);
+  if (settled === "paid") return { ok: false, refused: "paid" };
+  if (settled === "processing") return { ok: false, refused: "processing" };
+  if (!(await cancelUnpaidOrder(orderId, `cancelled by staff: ${reason}`))) return { ok: false, refused: "not_unpaid" };
+  await event(storeId, orderId, "order.cancelled_by_staff", { reason, refunded: 0 }, "staff");
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Details and notes
 // ---------------------------------------------------------------------------
