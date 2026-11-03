@@ -282,6 +282,7 @@ export const platformToolsNb: PlatformToolsMessages = {
     coverage: "Grensesnitt: {translated} av {total} oversatt{stale}, {reviewed} gjennomgått.",
     outOfDate: ", {n} utdatert",
     notTranslated: "Grensesnitt: ikke oversatt ennå (viser engelsk).",
+    nightly: "Hver natt oversetter KI tekster som er kommet til siden, til alle språk som er oversatt her, opptil {n} per språk, som utkast til gjennomgang.",
     uses: { one: "{n} butikk bruker det.", many: "{n} butikker bruker det." },
     locales: "Lokaliteter, den viktigste først",
     save: "Lagre",

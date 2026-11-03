@@ -212,6 +212,9 @@ describe("the words of wave 3's orders (D173): gift messages, the pay link's pag
     for (const prefix of ["ui:gift.note.", "ui:gift.slip.", "ui:draftPay.", "email:draft.", "email:giftMessage."]) expect(HAND_WRITTEN_ONLY).toContain(prefix);
     expect(isHandWrittenOnly("ui:gift.counter")).toBe(false);
     expect(isHandWrittenOnly("ui:draftPay.withdrawal")).toBe(true);
+    // A quote's words on the same page (D435) are an offer to the buyer too.
+    expect(isHandWrittenOnly("ui:draftPay.quote.pay")).toBe(true);
+    expect(all.some((e) => e.key.startsWith("ui:draftPay.quote."))).toBe(false);
   });
 
   it("never lets an overlay replace the hand-written ones, and may translate the gift box's labels", () => {

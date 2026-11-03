@@ -62,10 +62,18 @@ const order = (over: Record<string, unknown> = {}) =>
     company: null,
     ...over,
   }) as unknown as NonNullable<PayPageFound["order"]>;
-const found = (state: PayPageFound["state"], over: Record<string, unknown> = {}, note: string | null = null): PayPageFound => ({
+const found = (state: PayPageFound["state"], over: Record<string, unknown> = {}, note: string | null = null, source: "staff" | "quote" = "staff"): PayPageFound => ({
   state,
   order: order(over),
-  draft: { number: "D-7", noteToBuyer: note, expiresAt: "2026-10-20T10:30:00.000Z" },
+  draft: { number: "D-7", noteToBuyer: note, expiresAt: "2026-10-20T10:30:00.000Z", source },
+  terms: "link",
+});
+/** A shopper's request for a quote, sent as a quote (D431, D435). */
+const quote = (state: PayPageFound["state"], over: Record<string, unknown> = {}) => found(state, over, null, "quote");
+const lapsed = (source: "staff" | "quote" = "staff", note: string | null = null): PayPageFound => ({
+  state: "expired",
+  order: null,
+  draft: { number: "D-7", noteToBuyer: note, expiresAt: "2026-10-01T00:00:00.000Z", source },
   terms: "link",
 });
 const draw = (page: PayPageFound, extra: { lang?: string; terms?: TermsDisplay | null; withdrawalHref?: string | null; store?: Store } = {}) => {
@@ -223,8 +231,7 @@ describe("the pay link's other states", () => {
   });
 
   it("says an expired, cancelled or replaced link no longer works, with the store's address, and shows nothing of the order", () => {
-    const page: PayPageFound = { state: "expired", order: null, draft: { number: "D-7", noteToBuyer: "secret note", expiresAt: "2026-10-01T00:00:00.000Z" }, terms: "link" };
-    const markup = draw(page);
+    const markup = draw(lapsed("staff", "secret note"));
     const text = words(markup);
     expect(text).toContain("This link no longer works. Ask the store for a new one.");
     expect(text).toContain("Contact the store: hello@demo.test");
@@ -243,8 +250,7 @@ describe("the pay link's other states", () => {
 
   it("leaves out the contact line of a store with no contact address", () => {
     const bare = { ...store, details: { ...store.details, contactEmail: null } } as Store;
-    const page: PayPageFound = { state: "expired", order: null, draft: { number: "D-7", noteToBuyer: null, expiresAt: "2026-10-01T00:00:00.000Z" }, terms: "link" };
-    expect(words(draw(page, { store: bare }))).not.toContain("Contact the store");
+    expect(words(draw(lapsed(), { store: bare }))).not.toContain("Contact the store");
   });
 });
 
@@ -263,9 +269,71 @@ describe("the pay link in the order's language", () => {
   });
 
   it("says an expired link in Norwegian, Swedish and Danish", () => {
-    const page: PayPageFound = { state: "expired", order: null, draft: { number: "D-7", noteToBuyer: null, expiresAt: "2026-10-01T00:00:00.000Z" }, terms: "link" };
+    const page = lapsed();
     expect(words(draw(page, { lang: "nb" }))).toContain("Denne lenken virker ikke lenger. Be butikken om en ny.");
     expect(words(draw(page, { lang: "sv" }))).toContain("Den här länken fungerar inte längre. Be butiken om en ny.");
     expect(words(draw(page, { lang: "da" }))).toContain("Dette link virker ikke længere. Bed butikken om et nyt.");
+  });
+});
+
+describe("a quote's pay link (D435)", () => {
+  it("reads as the quote the shopper asked for, and paying accepts it", () => {
+    const markup = draw(quote("ready"));
+    const text = words(markup);
+    expect(markup).toMatch(/<h1[^>]*>Your quote 1042 from Demo Shop<\/h1>/);
+    expect(text).toContain("This is the quote you asked for. Look it over, and pay when you are ready: paying accepts the quote and places your order.");
+    expect(markup).toContain('aria-label="Your quote"');
+    expect(text).toMatch(/The quote is valid until 20 October 2026(,| at) 11:30/);
+    expect(markup).toMatch(/<button[^>]*>Accept and pay €105\.00<\/button>/);
+    // What it costs and who sells it are the same page as a staff draft's.
+    expect(text).toContain("Seller Demo Shop Ltd");
+    expect(text).toContain("2 × Tea €100.00");
+    expect(text).toContain("Total €105.00");
+    expect(text).toContain("You can withdraw from the purchase within 14 days of receiving the goods");
+    expect(text).toContain("You are sent to Stripe's secure payment page.");
+    // Nothing calls it an order the store made.
+    expect(text).not.toContain("Order 1042");
+    expect(text).not.toContain("The store has made this order for you");
+    expect(text).not.toContain("This link is valid until");
+    expect(markup).not.toContain('aria-label="Your order"');
+    expect(text).not.toMatch(/(^| )Pay €/);
+  });
+
+  it("says a paid quote was accepted, an expired one can no longer be, and a store without payments says so plainly", () => {
+    const paid = draw(quote("paid"));
+    expect(paid).toMatch(/<h1[^>]*>Your quote 1042 from Demo Shop<\/h1>/);
+    expect(words(paid)).toContain("You have accepted this quote and paid. Thank you!");
+    expect(paid).not.toContain("<button");
+    const expired = words(draw(lapsed("quote")));
+    expect(expired).toContain("This quote can no longer be accepted. Ask the store for a new one.");
+    expect(expired).toContain("Contact the store: hello@demo.test");
+    expect(expired).not.toContain("This link no longer works");
+    const off = draw(quote("payments_off"));
+    expect(words(off)).toContain("The store cannot take payments right now.");
+    expect(off).not.toContain("<button");
+  });
+
+  it("keeps a staff draft's words exactly", () => {
+    const text = words(draw(found("ready")));
+    expect(text).toContain("Order 1042");
+    expect(text).toContain("The store has made this order for you. Check it and pay when you are ready.");
+    expect(text).toContain("This link is valid until");
+    expect(text).toContain("Pay €105.00");
+    expect(text).not.toContain("quote");
+    expect(words(draw(found("paid")))).toContain("This order is paid. Thank you!");
+  });
+
+  it.each([
+    ["nb", "Ditt tilbud 1042 fra Demo Shop", "Dette er tilbudet du ba om.", "Godta og betal", "Du har godtatt tilbudet og betalt. Takk!", "Dette tilbudet kan ikke lenger godtas. Be butikken om et nytt."],
+    ["sv", "Din offert 1042 från Demo Shop", "Det här är offerten du bad om.", "Godkänn och betala", "Du har godkänt offerten och betalat. Tack!", "Den här offerten kan inte längre godkännas. Be butiken om en ny."],
+    ["da", "Dit tilbud 1042 fra Demo Shop", "Dette er det tilbud, du bad om.", "Accepter og betal", "Du har accepteret tilbuddet og betalt. Tak!", "Dette tilbud kan ikke længere accepteres. Bed butikken om et nyt."],
+  ])("is said in %s by hand", (lang, heading, intro, button, paid, expired) => {
+    const currency = lang === "nb" ? "NOK" : lang === "sv" ? "SEK" : "DKK";
+    const ready = words(draw(quote("ready", { currency }), { lang }));
+    expect(ready).toContain(heading);
+    expect(ready).toContain(intro);
+    expect(ready).toContain(button);
+    expect(words(draw(quote("paid", { currency }), { lang }))).toContain(paid);
+    expect(words(draw(lapsed("quote"), { lang }))).toContain(expired);
   });
 });

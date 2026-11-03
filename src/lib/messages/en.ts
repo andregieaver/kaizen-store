@@ -518,6 +518,20 @@ export const en = {
     contactStore: (email: string) => `Contact the store: ${email}`,
     paymentsOff: "The store cannot take payments right now. Try again later, or contact the store.",
     startFailed: "The payment could not be started. Try again, or contact the store.",
+    /**
+     * The same page when the draft is a shopper's request for a quote (D435, `draft_orders.source = 'quote'`): what says "order" says "quote", and the button says that
+     * paying accepts it. The number is the order's, as the quote's email names it. Hand-written only, as the rest of the page.
+     */
+    quote: {
+      heading: (number: string, store: string) => `Your quote ${number} from ${store}`,
+      intro: "This is the quote you asked for. Look it over, and pay when you are ready: paying accepts the quote and places your order.",
+      summary: "Your quote",
+      validUntil: (date: string) => `The quote is valid until ${date}.`,
+      pay: (amount: string) => `Accept and pay ${amount}`,
+      paid: "You have accepted this quote and paid. Thank you!",
+      expired: "This quote can no longer be accepted. Ask the store for a new one.",
+      processing: "Payment for this quote is still being processed.",
+    },
   },
   /**
    * Sending in parts (wave 3, run 3, D174): the order's state and its parcels on the shopper's order pages. The state words are plain interface text; `receipt` says

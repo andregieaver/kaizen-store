@@ -217,12 +217,18 @@ async function saveRows(lang: string, rows: { key: string; text: string; origin:
   }
 }
 
-/** Translates some keys with the platform's AI and keeps what passes the checks, as a draft to review. */
+/**
+ * Translates some keys with the platform's AI and keeps what passes the checks, as a draft to review. `who.accountId` is the platform
+ * admin who pressed *Translate*, or null for the nightly run (D436, `src/server/ui-nightly.ts`), audited with no account as the
+ * platform's other jobs are and marked `nightly`. `missingOnly` keeps only keys that still have no text when the answer comes (the
+ * nightly run never translates again what has one); otherwise only a person's texts are kept from the AI.
+ */
 export async function generateChunk(
   connection: AiConnection,
-  who: { accountId: string },
+  who: { accountId: string | null },
   language: { lang: string; name: string },
   keys: string[],
+  options: { missingOnly?: boolean } = {},
 ): Promise<ChunkResult> {
   if (!connection.textModel) return { ok: false, problem: "No text model is set." };
   if (isBuiltIn(language.lang)) return { ok: false, problem: "This language is written by hand." };
@@ -237,9 +243,11 @@ export async function generateChunk(
     try {
       const reply = await completeText(connection, uiMessages(language, batch), { maxTokens: 8000, timeoutMs: 90_000, temperature: 0.2, reasoningEffort: "low" });
       const read = readUiAnswer(parseModelJson(reply.text), batch, language.lang);
-      // A person's edits are never replaced.
+      // A person's edits are never replaced (and, asked for missing texts only, nothing that has one by now).
       const have = await uiRows(language.lang);
-      const rows = [...read.done].filter(([key]) => have.get(key)?.origin !== "staff").map(([key, text]) => ({ key, text, origin: "ai" as const, reviewed: false }));
+      const rows = [...read.done]
+        .filter(([key]) => (options.missingOnly ? !have.has(key) : have.get(key)?.origin !== "staff"))
+        .map(([key, text]) => ({ key, text, origin: "ai" as const, reviewed: false }));
       await saveRows(language.lang, rows);
       saved += rows.length;
       problems.push(...read.problems);
@@ -251,14 +259,20 @@ export async function generateChunk(
   }
   if (saved === 0 && failure) return { ok: false, problem: failure.message };
   if (saved > 0) {
-    await audit(who.accountId, null, "language.ui_generated", { lang: language.lang, saved, model: connection.textModel, source: connection.source });
+    await audit(who.accountId, null, "language.ui_generated", {
+      lang: language.lang,
+      saved,
+      model: connection.textModel,
+      source: connection.source,
+      ...(who.accountId ? {} : { nightly: true }),
+    });
     await reloadUi(language.lang);
   }
   return { ok: true, saved, problems };
 }
 
-/** The platform's AI for translating the interface (Kaizen's own, never a store's). */
-export async function uiConnection(accountId: string): Promise<AiConnection | null> {
+/** The platform's AI for translating the interface (Kaizen's own, never a store's); `accountId` null for the nightly run (D436). */
+export async function uiConnection(accountId: string | null): Promise<AiConnection | null> {
   return aiFor(null, { feature: "ui_translation", accountId });
 }
 

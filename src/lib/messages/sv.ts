@@ -505,6 +505,16 @@ export const sv: Messages = {
     contactStore: (email: string) => `Kontakta butiken: ${email}`,
     paymentsOff: "Butiken kan inte ta emot betalningar just nu. Försök igen senare eller kontakta butiken.",
     startFailed: "Betalningen kunde inte startas. Försök igen eller kontakta butiken.",
+    quote: {
+      heading: (number, store) => `Din offert ${number} från ${store}`,
+      intro: "Det här är offerten du bad om. Titta igenom den och betala när du är redo. När du betalar godkänner du offerten och lägger beställningen.",
+      summary: "Din offert",
+      validUntil: (date) => `Offerten gäller till ${date}.`,
+      pay: (amount) => `Godkänn och betala ${amount}`,
+      paid: "Du har godkänt offerten och betalat. Tack!",
+      expired: "Den här offerten kan inte längre godkännas. Be butiken om en ny.",
+      processing: "Betalningen för den här offerten behandlas fortfarande.",
+    },
   },
   /**
    * Sending in parts (wave 3, run 3, D174): the order's state and its parcels on the shopper's order pages. The state words are plain interface text; `receipt` says
