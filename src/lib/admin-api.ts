@@ -20,6 +20,8 @@ export const API_SCOPES = [
   "customers:write",
   "discounts:read",
   "discounts:write",
+  // D440: gift cards (issue, list, deactivate) mint and void money: a power of their own.
+  "gift_cards:write",
   "checkout:read",
   "checkout:write",
 ] as const;

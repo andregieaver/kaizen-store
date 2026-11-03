@@ -52,7 +52,8 @@ async function handle(method: ApiMethod, request: Request, { params }: RouteCont
   if (once?.kind === "replay") return Response.json(once.answer.body, { status: once.answer.status, headers: { ...HEADERS, "Idempotent-Replayed": "true" } });
   try {
     const answer = await runApiRoute(caller, route, request);
-    if (once?.kind === "run") await once.save(answer);
+    // What is shown once (a gift card's code, a pay link) is never kept for a replay (D440).
+    if (once?.kind === "run") await once.save(answer.replay === undefined ? answer : { status: answer.status, body: answer.replay });
     return Response.json(answer.body, { status: answer.status, headers: HEADERS });
   } catch (thrown) {
     if (thrown instanceof ApiError) {

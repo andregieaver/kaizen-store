@@ -23,7 +23,25 @@ process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 // Kaizena Flow's Stripe client, faked: nothing here reaches Stripe (a refund over the API is store credit, which asks no provider).
 vi.mock("./stripe", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./stripe")>()),
-  platformStripe: () => ({ checkout: { sessions: { retrieve: async () => null, list: async () => ({ data: [] }), expire: async () => ({}) } }, refunds: { create: async () => null, retrieve: async () => null } }),
+  platformStripe: () => ({
+    checkout: { sessions: { retrieve: async () => null, list: async () => ({ data: [] }), expire: async () => ({}) } },
+    refunds: { create: async () => null, retrieve: async () => null },
+    // A subscription on the store's account, as Stripe answers a change (D29): it keeps what it is told.
+    subscriptions: {
+      update: async (id: string, params: Record<string, unknown>) => ({
+        id,
+        status: "active",
+        metadata: {},
+        trial_end: null,
+        ended_at: null,
+        cancel_at: null,
+        cancel_at_period_end: params.cancel_at_period_end === true,
+        pause_collection: params.pause_collection && params.pause_collection !== "" ? params.pause_collection : null,
+        items: { data: [{ current_period_end: Math.floor(Date.now() / 1000) + 20 * 86_400 }] },
+      }),
+      cancel: async (id: string) => ({ id, status: "canceled", metadata: {}, trial_end: null, ended_at: Math.floor(Date.now() / 1000), cancel_at: null, cancel_at_period_end: false, pause_collection: null, items: { data: [] } }),
+    },
+  }),
   // Kaizena Flow's test keys are set, so a store in Stripe's test mode takes payments (a draft's pay link can be made).
   platformModes: () => ["test"],
 }));
@@ -669,6 +687,129 @@ describe("orders (D440 C2)", () => {
     const [theirs] = await db().execute<Row>(sql`select id from commerce.returns where store_id <> ${store.storeId}::uuid limit 1`);
     if (theirs) expect((await call("GET", `returns/${String(theirs.id)}`, clerk)).status).toBe(404);
     expect((await call("GET", "returns/00000000-0000-4000-8000-000000000000", clerk)).status).toBe(404);
+  });
+});
+
+describe("customers and marketing (D440 C3)", () => {
+  let marketer: string;
+
+  beforeAll(async () => {
+    const made = await makeApiToken(store.member, { name: "Marketing", scopes: ["customers:write", "discounts:write", "gift_cards:write", "orders:write"] });
+    if (!made.ok) throw new Error(made.problem);
+    marketer = made.token;
+    await db().execute(sql`update commerce.stores set features = array(select distinct unnest(features || array['gift_cards', 'subscriptions', 'bonus']::text[])) where id = ${store.storeId}::uuid`);
+  });
+
+  it("adds, changes and finds customers by email through the customer page's writers", async () => {
+    const email = `c3-${Date.now()}@example.com`;
+    const made = await call("POST", "customers", marketer, { email, name: "Ola Nordmann", address: { line1: "Storgata 2", postal_code: "0155", city: "Oslo", country: "NO" } });
+    expect(made.status).toBe(201);
+    expect(made.body.data).toMatchObject({ email, name: "Ola Nordmann", email_verified: false });
+    expect((await call("POST", "customers", marketer, { email })).status).toBe(409);
+    expect((await call("POST", "customers", marketer, { email: "not an email" })).status).toBe(422);
+    const found = await call("GET", `customers?email=${encodeURIComponent(email.toUpperCase())}`, marketer);
+    expect(found.body.data.map((c: Answer) => c.id)).toEqual([made.body.data.id]);
+    const changed = await call("PATCH", `customers/${made.body.data.id}`, marketer, { phone: "+47 412 34 567" });
+    expect(changed.body.data).toMatchObject({ phone: "+47 412 34 567", name: "Ola Nordmann", email });
+    expect((await call("PATCH", `customers/${made.body.data.id}`, marketer, { address: { line1: "Only a line", postal_code: "", city: "", country: "NO" } })).status).toBe(422);
+    const [theirs] = await db().execute<Row>(sql`insert into commerce.customers (store_id, email, name) values (${other.storeId}::uuid, ${`their-${Date.now()}@example.com`}, 'X') returning id`);
+    expect((await call("PATCH", `customers/${String(theirs.id)}`, marketer, { name: "Mine" })).status).toBe(404);
+    expect((await call("GET", `customers/${made.body.data.id}/loyalty`, marketer)).body.data).toMatchObject({ customer_id: made.body.data.id, available_minor: 0 });
+    expect((await call("GET", `customers/${made.body.data.id}/store-credit`, marketer)).body.data).toEqual({ customer_id: made.body.data.id, cards: [], balances: [] });
+  });
+
+  it("reads segments with how many they hold, never who", async () => {
+    const [segment] = await db().execute<Row>(sql`
+      insert into commerce.segments (store_id, title, rules) values (${store.storeId}::uuid, ${`Everyone ${Date.now()}`}, '{"match": "all", "conditions": []}') returning id
+    `);
+    const listed = await call("GET", "segments", marketer);
+    expect(listed.body.data.map((s: Answer) => s.id)).toContain(String(segment.id));
+    const one = await call("GET", `segments/${String(segment.id)}`, marketer);
+    expect(one.body.data.people).toEqual(expect.any(Number));
+    expect(JSON.stringify(one.body)).not.toContain("@example.com");
+    expect((await call("GET", "segments/00000000-0000-4000-8000-000000000000", marketer)).status).toBe(404);
+  });
+
+  it("changes a discount code and switches it off through the admin's own form, keeping what it reaches", async () => {
+    const code = `C3${Date.now()}`;
+    const made = await call("POST", "discounts", marketer, { code, kind: "percent", percent: 10 });
+    const id = made.body.data.id as string;
+    const changed = await call("PATCH", `discounts/${id}`, marketer, { percent: 20, usage_limit: 50 });
+    expect(changed.body.data).toMatchObject({ code, percent: 20, usage_limit: 50, active: true, applies_to: "everything" });
+    expect((await call("PATCH", `discounts/${id}`, marketer, { code: "a b" })).status).toBe(422);
+    const off = await call("POST", `discounts/${id}/disable`, marketer, {});
+    expect(off.body.data.active).toBe(false);
+    expect((await call("GET", `discounts/${id}`, full)).body.data).toMatchObject({ id, active: false, percent: 20 });
+    expect((await call("PATCH", `discounts/${id}`, readOnly, { percent: 5 })).status).toBe(403);
+  });
+
+  it("issues a gift card with gift_cards:write, answers its code once and never again, and deactivates it", async () => {
+    const key = { "idempotency-key": `card-${Date.now()}` };
+    const issued = await call("POST", "gift-cards", marketer, { currency: "NOK", amount_minor: 50_000 }, key);
+    expect(issued.status).toBe(201);
+    expect(issued.body.data).toMatchObject({ currency: "NOK", initial_minor: 50_000, balance_minor: 50_000, source: "staff", code: expect.any(String) });
+    const code = issued.body.data.code as string;
+    const replay = await call("POST", "gift-cards", marketer, { currency: "NOK", amount_minor: 50_000 }, key);
+    expect(replay.headers.get("idempotent-replayed")).toBe("true");
+    expect(replay.body.data.code).toBeNull();
+    const [kept] = await db().execute<Row>(sql`select count(*)::int as n from commerce.api_idempotency_keys where body::text like ${`%${code}%`}`);
+    expect(kept.n).toBe(0);
+    const id = issued.body.data.id as string;
+    const listed = await call("GET", "gift-cards?state=active", marketer);
+    expect(listed.body.data.map((c: Answer) => c.id)).toContain(id);
+    expect(JSON.stringify(listed.body)).not.toContain(code);
+    expect((await call("GET", `gift-cards/${id}`, marketer)).body.data).not.toHaveProperty("code");
+    expect((await call("POST", "gift-cards", marketer, { currency: "USD", amount_minor: 100 })).status).toBe(422);
+    expect((await call("POST", `gift-cards/${id}/disable`, marketer, { reason: "Lost" })).body.data.state).toBe("deactivated");
+    expect((await call("POST", `gift-cards/${id}/disable`, marketer, {})).status).toBe(409);
+    expect((await call("GET", "gift-cards", full)).status).toBe(403);
+    await db().execute(sql`update commerce.stores set features = array_remove(features, 'gift_cards') where id = ${store.storeId}::uuid`);
+    try {
+      expect((await call("GET", "gift-cards", marketer)).body.error.code).toBe("feature_off");
+    } finally {
+      await db().execute(sql`update commerce.stores set features = array(select distinct unnest(features || array['gift_cards']::text[])) where id = ${store.storeId}::uuid`);
+    }
+  });
+
+  it("reads, pauses and cancels a subscription as the subscription page does", async () => {
+    const run = Date.now().toString(36);
+    const order = await place(store.storeId, [[SKU, 1]]);
+    const [made] = await db().execute<Row>(sql`
+      insert into commerce.subscriptions (store_id, number, status, market_code, currency, locale, email, interval, interval_count, subtotal_minor, shipping_minor,
+        total_minor, tax_minor, first_order_id, manage_token, current_period_end, provider, provider_reference, provider_account)
+      values (${store.storeId}::uuid, ${`S-${run}`}, 'active', 'NO', 'NOK', 'nb-NO', 'sub@example.com', 'month', 1, 19900, 0, 19900, 3980, ${order.orderId}::uuid,
+        ${`manage-${run}`}, now() + interval '20 days', 'stripe', ${`sub_api_${run}`}, ${store.account})
+      returning id
+    `);
+    const id = String(made.id);
+    const listed = await call("GET", "subscriptions?status=active", marketer);
+    expect(listed.body.data.map((s: Answer) => s.id)).toContain(id);
+    const got = await call("GET", `subscriptions/${id}`, marketer);
+    expect(got.body.data).toMatchObject({ id, status: "active", total_per_renewal_minor: 19900, every: { interval: "month", count: 1 } });
+    expect(JSON.stringify(got.body)).not.toContain(`manage-${run}`);
+    const paused = await call("POST", `subscriptions/${id}/pause`, marketer, { periods: 1 });
+    expect(paused.status).toBe(200);
+    expect(paused.body.data.status).toBe("paused");
+    const cancelled = await call("POST", `subscriptions/${id}/cancel`, marketer, { at: "now" });
+    expect(cancelled.body.data.status).toBe("cancelled");
+    expect((await call("POST", `subscriptions/${id}/cancel`, marketer, {})).status).toBe(409);
+    expect((await call("GET", "subscriptions/00000000-0000-4000-8000-000000000000", marketer)).status).toBe(404);
+  });
+
+  it("reads a customer's store credit from a refund, never its code", async () => {
+    const fx = await import("./invoice-test-fixture");
+    const seller = await fx.makeStore("apicredit", { rates: true });
+    const email = `credit-${Date.now()}@example.com`;
+    const paid = await fx.paidOrder(seller, [[SKU, 1]], { email });
+    const token = await makeApiToken(await fx.ownerOf(seller), { name: "Credit", scopes: ["orders:refund", "customers:write"] });
+    if (!token.ok) throw new Error(token.problem);
+    const refunded = await call("POST", `orders/${paid.orderId}/refunds`, token.token, { amount_minor: 2_000, to_store_credit: true });
+    expect(refunded.status).toBe(201);
+    const customer = await call("POST", "customers", token.token, { email });
+    const credit = await call("GET", `customers/${customer.body.data.id}/store-credit`, token.token);
+    expect(credit.body.data.cards).toEqual([expect.objectContaining({ source: "refund", initial_minor: 2_000, balance_minor: 2_000 })]);
+    expect(credit.body.data.balances).toEqual([{ currency: "NOK", amount_minor: 2_000 }]);
+    expect((await call("GET", `customers/${customer.body.data.id}/loyalty`, token.token)).body.error.code).toBe("feature_off");
   });
 });
 

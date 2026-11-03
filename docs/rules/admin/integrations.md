@@ -59,7 +59,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   a return moves only through the returns page's steps; notes and tags through `addOrderNote()` and `changeOrderTags()`. The orders' topics are
   queued by triggers where they happen (`order.created` on insert, `order.updated` on `edited_at`, `fulfilment.*` on shipments and
   `shipment_tracking`, `refund.created` for money or store credit that went through, `return.updated` on a status, `quote.requested` and
-  `draft.sent` on `draft_orders`), copied history never.
+  `draft.sent` on `draft_orders`), copied history never. Customers and marketing (C3, `admin-api-customers.ts`): a customer changes only through
+  `createCustomer()`/`updateCustomer()` (the form's whole state from `staffFormValues()` with the change laid over it), a discount code only
+  through `saveDiscount()` with its stored form (what it reaches and who may use it stay the admin's), a gift card only through
+  `issueGiftCard()` and `deactivateGiftCard()` with the power `gift_cards:write`, a subscription only through `changeSubscription()` as staff
+  (with the subscriber's email); a segment is answered with how many it holds, never who, and a subscription never with its manage link.
+  Something shown once (a gift card's code, a draft's pay link) is answered once and never kept for a replay: the handler gives
+  `ApiAnswer.replay` without it, and only that is kept under the `Idempotency-Key`. `customer.erased` is queued by `eraseSubject()` in its
+  own transaction with the account's id alone, and its payload is built without reading anything.
 
 - **API contracts (wave 14 unit A, D438, `src/lib/admin-api-routes.ts`, `src/lib/webhook-topics.ts`, `src/lib/mcp-catalogue.ts`, `src/lib/api-contract.ts`)**, for this API, the storefront API, the webhooks and the MCP servers:
   what outside callers rely on is described once, in code, and everything published is generated from it: the Admin API's operations

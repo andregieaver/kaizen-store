@@ -32,7 +32,7 @@ export const SCOPE_WORDS: Record<string, string> = {
   products: "Products, their variants and prices, categories and tags, pictures and price lists.",
   inventory: "Stock locations and levels.",
   orders: "Orders, parcels, invoices and credit notes, draft orders and requests for a quote, returns, notes and tags.",
-  customers: "Customer accounts and their tags.",
+  customers: "Customer accounts and their tags, their store credit and bonus credits, and segments.",
   discounts: "Discount codes.",
   checkout: "Checkout rules and questions.",
 };
@@ -41,6 +41,7 @@ export const SCOPE_WORDS: Record<string, string> = {
 export const SCOPE_POWERS: Record<string, string> = {
   "products:publish": "Publish, unpublish and archive products, and change products on the site: what the AI manager asks the owner's yes for.",
   "orders:refund": "Refund orders through the admin's own refund, to the payment or as store credit: what the AI manager asks the owner's yes for.",
+  "gift_cards:write": "Issue, read and deactivate gift cards: money of the store's. A card's code is answered once, when it is issued.",
 };
 
 const scopeWords = (scope: string): string =>
@@ -53,6 +54,9 @@ const TAGS = [
   { name: "Price lists", description: "Price lists for customer groups and companies (D321), and their fixed prices." },
   { name: "Draft orders", description: "Draft orders staff make and shoppers' requests for a quote (D173, D431), sent as a pay link or declined." },
   { name: "Returns", description: "Withdrawals and voluntary returns (D153): approved, declined and received as the returns page does them." },
+  { name: "Segments", description: "Saved segments of customers and subscribers (D296), with how many each holds." },
+  { name: "Gift cards", description: "Gift cards and store credit (D300, D364): issued, listed and deactivated; a code is never answered after its issue." },
+  { name: "Subscriptions", description: "Customers' subscriptions (D29): read, paused and cancelled as the subscription page does." },
   { name: "Inventory", description: "Stock per variant and location, adjusted or counted as the Inventory page does." },
   { name: "Orders", description: "Orders in their own currency, parcels with tracking, and invoices and credit notes as EN 16931 UBL." },
   { name: "Customers", description: "Customer accounts and their tags." },

@@ -184,6 +184,34 @@ export const WEBHOOK_SUBJECTS = {
     created_at: when,
     admin_url: adminUrl,
   }),
+  erasure: z.object({
+    customer_id: id.describe("The account that was erased. Nothing else about the person is sent, now or later."),
+  }),
+  gift_card: z.object({
+    id,
+    last4: z.string().nullable().describe("The code's last four characters. The code itself is never sent."),
+    currency: z.string(),
+    initial: amount,
+    balance: amount,
+    source: z.enum(["order", "staff", "refund"]).describe("Bought with an order, issued by staff, or store credit from a refund (D364)."),
+    test: z.boolean(),
+    issued_at: when,
+    expires_at: when.nullable(),
+    admin_url: adminUrl,
+  }),
+  review: z.object({
+    id,
+    product_id: id,
+    rating: z.int().describe("1 to 5 stars."),
+    title: z.string(),
+    body: z.string(),
+    author_name: z.string().describe("The name the buyer chose to show."),
+    status: z.string().describe("pending (waiting for the store's check), published or hidden."),
+    verified: z.boolean().describe("Written for an order of the store's."),
+    locale: z.string(),
+    created_at: when,
+    admin_url: adminUrl,
+  }),
   inventory: z.object({
     variant_id: id,
     product_id: id,
@@ -226,6 +254,12 @@ const SUBJECT_OF: Record<IntegrationEvent, WebhookSubjectName> = {
   "return.updated": "return",
   "quote.requested": "draft",
   "draft.sent": "draft",
+  "customer.updated": "customer",
+  "customer.erased": "erasure",
+  "subscription.renewed": "subscription",
+  "subscription.payment_failed": "subscription",
+  "gift_card.issued": "gift_card",
+  "review.created": "review",
 };
 
 /** Who may be sent a topic: the services (Zapier, Make and Slack, D41) and an owner's own endpoints (D354). */

@@ -863,6 +863,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   if (cid) {
     const [row] = await tx.execute<Row>(sql`delete from commerce.customers where store_id = ${sid}::uuid and id = ${cid}::uuid returning avatar_path`);
     if (row) {
+      // The owner's endpoints that ask for it are told the account's id (D440, `customer.erased`), so they can erase what they keep too.
+      await tx.execute(sql`select commerce.queue_integration_event(${sid}::uuid, 'customer.erased', ${cid}::uuid)`);
       counts.accountDeleted = true;
       avatar = row.avatar_path ? String(row.avatar_path) : null;
     }

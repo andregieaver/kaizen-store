@@ -54,6 +54,7 @@ export const oauthEn = {
     powers: {
       "products:publish": "Publish products and change products that are on the site, without asking you first",
       "orders:refund": "Refund orders, without asking you first",
+      "gift_cards:write": "Issue and deactivate gift cards, without asking you first",
     },
   },
   areas: {

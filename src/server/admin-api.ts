@@ -9,6 +9,7 @@ import { ADMIN_API_BY_NAME, bodyProblems, ORDER_STATES, type AdminAnswer, type A
 import { DISCOUNT_KINDS } from "@/lib/discounts";
 
 import { answerCatalogue, CATALOGUE_NAMES, type CatalogueRoute } from "./admin-api-catalogue";
+import { answerCustomers, CUSTOMERS_NAMES, type CustomersRoute } from "./admin-api-customers";
 import { answerOrders, ORDERS_NAMES, type OrdersRoute } from "./admin-api-orders";
 import {
   asTool,
@@ -178,12 +179,14 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
 
 const isCatalogue = (route: ApiRoute): route is CatalogueRoute => (CATALOGUE_NAMES as readonly string[]).includes(route.name);
 const isOrders = (route: ApiRoute): route is OrdersRoute => (ORDERS_NAMES as readonly string[]).includes(route.name);
+const isCustomers = (route: ApiRoute): route is CustomersRoute => (CUSTOMERS_NAMES as readonly string[]).includes(route.name);
 /** The operations of unit A and before, answered here; each slice of wave 14 unit C answers its own (D440). */
-type CoreRoute = Exclude<ApiRoute, CatalogueRoute | OrdersRoute>;
+type CoreRoute = Exclude<ApiRoute, CatalogueRoute | OrdersRoute | CustomersRoute>;
 
 async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request): Promise<ApiAnswer> {
   if (isCatalogue(route)) return answerCatalogue(caller, route, request);
   if (isOrders(route)) return answerOrders(caller, route, request);
+  if (isCustomers(route)) return answerCustomers(caller, route, request);
   return answerCore(caller, route as CoreRoute, request);
 }
 
@@ -362,6 +365,7 @@ async function answerCore(caller: ApiCaller, route: CoreRoute, request: Request)
           from commerce.customers c
           where c.store_id = ${storeId}::uuid and c.copied_from is null
             and ${route.name === "customers.get" ? sql`c.id = ${route.id}::uuid` : sql`${page.where} and ${sinceWhere(params, sql`c.updated_at`)}`}
+            and ${route.name === "customers.list" && params.get("email") ? sql`lower(c.email) = lower(${params.get("email")!.trim()})` : sql`true`}
           order by c.created_at desc, c.id desc
           limit ${route.name === "customers.get" ? 1 : page.limit + 1}
         `,

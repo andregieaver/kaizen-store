@@ -5,6 +5,7 @@ import { apiProduct, byId, currency, id, madeId, marketCode, minor, one, op, pag
 
 export { apiProduct, PRODUCT_STATES };
 import { CATALOGUE_API } from "./admin-api-catalogue";
+import { CUSTOMERS_API } from "./admin-api-customers";
 import { ORDERS_API } from "./admin-api-orders";
 import { fieldInputSchema, ruleInputSchema, conditionSchema, effectSchema } from "./checkout-rules-schema";
 import { DISCOUNT_KINDS } from "./discounts";
@@ -477,7 +478,7 @@ const CORE_API = [
     tag: "Customers",
     summary: "List customers",
     description: "The store's customer accounts, newest first, with their tags.",
-    query: z.object({ ...paging, ...since }),
+    query: z.object({ ...paging, ...since, email: z.string().max(254).optional().describe("Only the customer with this email, in any case (D440: find by email).") }),
     response: page(apiCustomer),
     status: 200,
     errors: ["invalid"],
@@ -671,7 +672,7 @@ const CORE_API = [
   }),
 ] as const;
 
-export const ADMIN_API = [...CORE_API, ...CATALOGUE_API, ...ORDERS_API] as const;
+export const ADMIN_API = [...CORE_API, ...CATALOGUE_API, ...ORDERS_API, ...CUSTOMERS_API] as const;
 
 export type AdminOperation = (typeof ADMIN_API)[number];
 export type AdminApiName = AdminOperation["name"];

@@ -32,7 +32,11 @@ export const fail = (code: ApiErrorCode, message: string): never => {
   throw new ApiError(code, message);
 };
 
-export type ApiAnswer = { status: number; body: unknown };
+/**
+ * An answer, and what a replay of the same request under its `Idempotency-Key` answers (D440): an answer that holds something shown once (a
+ * gift card's code, a pay link) gives `replay` without it, and only `replay` is kept.
+ */
+export type ApiAnswer = { status: number; body: unknown; replay?: unknown };
 
 /** An operation's answer, built as its registry entry says it is. */
 export const ok = <N extends AdminApiName>(_name: N, body: AdminAnswer<N>, status = 200): ApiAnswer => ({ status, body });

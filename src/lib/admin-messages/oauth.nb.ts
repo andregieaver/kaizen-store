@@ -48,6 +48,7 @@ export const oauthNb: OauthMessages = {
     powers: {
       "products:publish": "Publisere produkter og endre produkter som er på nettstedet, uten å spørre deg først",
       "orders:refund": "Refundere bestillinger, uten å spørre deg først",
+      "gift_cards:write": "Utstede og deaktivere gavekort, uten å spørre deg først",
     },
   },
   areas: {

@@ -4495,6 +4495,20 @@
       "when": 1793735691373,
       "tag": "20261103195451_api_orders_topics",
       "breakpoints": true
+    },
+    {
+      "idx": 642,
+      "version": "7",
+      "when": 1793735776678,
+      "tag": "20261103195616_workflow_customer_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 643,
+      "version": "7",
+      "when": 1793735815060,
+      "tag": "20261103195655_api_customers_topics",
+      "breakpoints": true
     }
   ]
 }

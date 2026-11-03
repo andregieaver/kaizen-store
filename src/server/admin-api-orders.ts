@@ -390,9 +390,9 @@ export async function answerOrders(caller: ApiCaller, route: OrdersRoute, reques
         return fail("conflict", words[sent.problem] ?? "The draft cannot be sent now.");
       }
       await record(caller, "draft_sent", { link: input.create_link }, { type: "draft_order", id: route.id });
-      return ok(route.name, {
-        data: { draft: await draftOrFail(storeId, route.id), order_id: sent.orderId, order_number: sent.number, expires_at: sent.expiresAt, link: sent.link, emailed: sent.emailed },
-      });
+      const data = { draft: await draftOrFail(storeId, route.id), order_id: sent.orderId, order_number: sent.number, expires_at: sent.expiresAt, link: sent.link, emailed: sent.emailed };
+      // The pay link is answered this once (only its hash is kept): a replay of the request answers without it.
+      return { ...ok(route.name, { data }), replay: { data: { ...data, link: null } } };
     }
     case "drafts.decline": {
       const { reply } = await readBody(route.name, request);

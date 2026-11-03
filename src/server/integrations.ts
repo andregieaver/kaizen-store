@@ -324,7 +324,9 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const order = await orderData(store.id, store.slug, subjectId);
     return order && { order };
   }
-  if (event === "customer.created") {
+  // An erased customer (D162) is gone: only its id, never read again.
+  if (event === "customer.erased") return { erasure: { customer_id: subjectId } };
+  if (event === "customer.created" || event === "customer.updated") {
     const customer = await customerData(store.id, store.slug, subjectId);
     return customer && { customer };
   }
@@ -363,6 +365,14 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
   if (event === "refund.created") {
     const refund = await refundData(store.id, store.slug, subjectId);
     return refund && { refund };
+  }
+  if (event === "gift_card.issued") {
+    const gift_card = await giftCardData(store.id, store.slug, subjectId);
+    return gift_card && { gift_card };
+  }
+  if (event === "review.created") {
+    const review = await reviewData(store.id, store.slug, subjectId);
+    return review && { review };
   }
   if (event === "quote.requested" || event === "draft.sent") {
     const draft = await draftData(store.id, store.slug, subjectId);
@@ -617,6 +627,51 @@ async function draftData(storeId: string, storeSlug: string, draftId: string): P
     expires_at: row.expires_at ? new Date(String(row.expires_at)).toISOString() : null,
     created_at: new Date(String(row.created_at)).toISOString(),
     admin_url: `${siteUrl()}/admin/${storeSlug}/orders/drafts/${String(row.id)}`,
+  };
+}
+
+/** A gift card or store credit (D440, `gift_card.issued`): what it holds and how it came; never its code, which is kept only as a hash. */
+async function giftCardData(storeId: string, storeSlug: string, cardId: string): Promise<WebhookSubject<"gift_card"> | null> {
+  const [row] = await db().execute<Row>(sql`
+    select g.id, g.last4, trim(g.currency) as currency, g.initial_minor, commerce.gift_card_balance(g.id) as balance, g.source, g.test_mode, g.issued_at, g.expires_at
+    from commerce.gift_cards g where g.store_id = ${storeId}::uuid and g.id = ${cardId}::uuid
+  `);
+  if (!row) return null;
+  const currency = String(row.currency);
+  return {
+    id: String(row.id),
+    last4: row.last4 ? String(row.last4) : null,
+    currency,
+    initial: amount(Number(row.initial_minor), currency),
+    balance: amount(Number(row.balance), currency),
+    source: String(row.source) as WebhookSubject<"gift_card">["source"],
+    test: Boolean(row.test_mode),
+    issued_at: new Date(String(row.issued_at)).toISOString(),
+    expires_at: row.expires_at ? new Date(String(row.expires_at)).toISOString() : null,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/gift-cards/${String(row.id)}`,
+  };
+}
+
+/** A product review a buyer wrote (D440, `review.created`): its stars and words as the buyer gave them to be shown, and whether it is published yet. */
+async function reviewData(storeId: string, storeSlug: string, reviewId: string): Promise<WebhookSubject<"review"> | null> {
+  const [row] = await db().execute<Row>(sql`
+    select r.id, r.product_id, r.rating, coalesce(r.title, '') as title, coalesce(r.body, '') as body, coalesce(r.author_name, '') as author_name,
+      r.status::text as status, r.order_id is not null as verified, coalesce(r.locale, '') as locale, r.created_at
+    from commerce.product_reviews r where r.store_id = ${storeId}::uuid and r.id = ${reviewId}::uuid
+  `);
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    product_id: String(row.product_id),
+    rating: Number(row.rating),
+    title: String(row.title),
+    body: String(row.body),
+    author_name: String(row.author_name),
+    status: String(row.status),
+    verified: Boolean(row.verified),
+    locale: String(row.locale),
+    created_at: new Date(String(row.created_at)).toISOString(),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/reviews`,
   };
 }
 
