@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."shop_moves" ADD COLUMN "copy" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."shop_moves" ADD CONSTRAINT "shop_moves_copy" CHECK (jsonb_typeof("commerce"."shop_moves"."copy") = 'object');

@@ -13261,6 +13261,8 @@ export const shopMoves = commerce.table(
     refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }),
     connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
     connectedAt: timestamp("connected_at", { withTimezone: true }),
+    /** Step 4's copy (`copyStateOf()` in `src/lib/shopify-copy.ts`): each feed's stage, its bulk operation and its import job, and a short lease. */
+    copy: jsonb("copy").notNull().default(sql`'{}'::jsonb`),
     updatedAt: updatedAt(),
   },
   (t) => [
@@ -13272,6 +13274,7 @@ export const shopMoves = commerce.table(
     check("shop_moves_status", sql`${t.status} in ('connected', 'disconnected')`),
     check("shop_moves_token", sql`${t.status} <> 'connected' or ${t.accessToken} is not null`),
     check("shop_moves_name", sql`length(${t.shopName}) <= 200 and (${t.primaryDomain} is null or length(${t.primaryDomain}) <= 255)`),
+    check("shop_moves_copy", sql`jsonb_typeof(${t.copy}) = 'object'`),
   ],
 );
 
