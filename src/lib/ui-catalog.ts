@@ -130,6 +130,10 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   "ui:draftPay.",
   "email:draft.",
   "email:giftMessage.",
+  // Request a quote (D431): the quote and its receipt and decline are offers and replies to a buyer, as a draft's pay link is; the form's sentence on
+  // what the details are used for is a privacy statement. The form's plain labels (`ui:quotes.*`) are interface text and may be translated.
+  "email:quote.",
+  "ui:quotes.privacy",
   // Wave 3, run 3 (D174): the change to an order and its pay page, and what the parcel words say about the right of withdrawal and the rest of an order. The plain
   // fulfilment states and parcel labels (`ui:fulfilment.states.*`, `parcel`, `sentOn`, …) are interface text and may be translated.
   "ui:orderChange.",
