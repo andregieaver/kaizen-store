@@ -7,6 +7,8 @@ import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { hint } from "@/components/admin/data/ui";
 import { CheckOldLinks, ShopifyConnectForm, ShopifyDisconnect } from "@/components/admin/moving/shopify-connect";
 import { ShopCopy, type CopyRow } from "@/components/admin/moving/shop-copy";
+import { ShopMakers } from "@/components/admin/moving/shop-makers";
+import { makersView } from "@/server/shopify-makers";
 import { COPY_FEEDS, copyDone, copyFailed, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
 import { copyView, feedJobPage } from "@/server/shopify-copy";
 import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
@@ -22,7 +24,7 @@ import { checkShopify } from "@/server/shopify-report";
 import { figureText, type ShopReport } from "@/lib/shopify-report";
 import type { MovingMessages } from "@/lib/admin-messages/moving.en";
 
-import { advanceCopyAction, bringItOverAction, checkOldLinksAction, connectShopifyAction, disconnectShopifyAction, startCopyAction } from "./actions";
+import { advanceCopyAction, bringItOverAction, checkOldLinksAction, connectShopifyAction, disconnectShopifyAction, saveVendorMakerAction, startCopyAction } from "./actions";
 
 export const metadata: Metadata = { title: "Moving in" };
 
@@ -100,6 +102,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
               </p>
             )}
             <CopyPanel storeSlug={store.slug} />
+            <MakersPanel storeSlug={store.slug} />
             <CheckOldLinks check={checkOldLinksAction.bind(null, store.slug)} />
             <ShopifyDisconnect disconnect={disconnectShopifyAction.bind(null, store.slug)} />
           </div>
@@ -200,6 +203,25 @@ function dryOf(feed: CopyFeed, job: DataJob | undefined): { ready: number | null
     default:
       return { ready: null, needLook: null };
   }
+}
+
+/** *Who makes your products?* (D445 step 6): once the copy has stopped moving, one question per Shopify vendor whose products still lack a maker. */
+async function MakersPanel({ storeSlug }: { storeSlug: string }) {
+  const member = await requireOwnerRole(storeSlug);
+  const copy = await copyView(member);
+  if (!copy || copyMoving(copy.state)) return null;
+  const view = await makersView(member);
+  if (!view || view.groups.length === 0) return null;
+  return (
+    <ShopMakers
+      rows={view.groups}
+      operators={view.operators}
+      countries={view.countries}
+      euCountries={view.euCountries}
+      save={saveVendorMakerAction.bind(null, storeSlug)}
+      bulkHref={`/admin/${storeSlug}/products/bulk`}
+    />
+  );
 }
 
 /** *Copy my shop* (D445 step 4): where each part of the copy is, from `shop_moves.copy` and the imports' own jobs. */

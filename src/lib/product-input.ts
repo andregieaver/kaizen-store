@@ -113,7 +113,7 @@ const optionalText = (max: number) =>
     .nullable()
     .transform((value) => value || null);
 
-const operatorSchema = z.union([
+export const operatorSchema = z.union([
   z.object({ id: z.uuid() }),
   z.object({
     new: z.object({

@@ -15,6 +15,7 @@ process.env.SHOPIFY_CLIENT_ID = "kaizentestclient0001";
 process.env.SHOPIFY_CLIENT_SECRET = "shpss_test_secret_for_kaizen";
 
 const copy = await import("./shopify-copy");
+const makers = await import("./shopify-makers");
 const { copyDone, copyReady } = await import("@/lib/shopify-copy");
 
 type Row = Record<string, unknown>;
@@ -37,7 +38,7 @@ const lines = (...objects: object[]) => objects.map((o) => JSON.stringify(o)).jo
 
 const files = (): Record<string, string> => ({
   products: lines(
-    { id: "gid://shopify/Product/1", handle: "copied-wool-hat", title: "Wool hat", descriptionHtml: "<p>Warm</p>", tags: ["wool"], status: "ACTIVE", isGiftCard: false, seo: {}, options: [{ name: "Size", position: 1 }] },
+    { id: "gid://shopify/Product/1", handle: "copied-wool-hat", title: "Wool hat", vendor: "Nordic Wool", descriptionHtml: "<p>Warm</p>", tags: ["wool"], status: "ACTIVE", isGiftCard: false, seo: {}, options: [{ name: "Size", position: 1 }] },
     { id: "gid://shopify/ProductVariant/11", sku: "COPY-HAT-S", price: "299.00", compareAtPrice: null, inventoryQuantity: 5, position: 1, selectedOptions: [{ name: "Size", value: "S" }], image: null, inventoryItem: { requiresShipping: true, unitCost: null, measurement: { weight: { value: 200, unit: "GRAMS" } } }, __parentId: "gid://shopify/Product/1" },
   ),
   customers: lines({ id: "gid://shopify/Customer/5", firstName: "Kari", lastName: "Nordmann", tags: [], defaultEmailAddress: { emailAddress: email }, defaultPhoneNumber: null, defaultAddress: { address1: "Gata 1", city: "Oslo", zip: "0150", countryCodeV2: "NO" } }),
@@ -225,6 +226,29 @@ describe("copying a Shopify shop", () => {
     // The look as a theme in the library, not live; Shopify's own font stays the store's.
     const looks = await db().execute<Row>(sql`select title, live from commerce.store_theme_installs where store_id = ${fx.storeId}::uuid and title = 'Dawn · Shopify'`);
     expect(looks.map((l) => l.live)).toEqual([false]);
+  });
+
+  it("asks who makes the copied products once per vendor, and names the maker on them through the bulk editor", async () => {
+    const view = (await makers.makersView(owner, deps))!;
+    expect(view.groups).toEqual([{ vendor: "Nordic Wool", count: 1, toPublish: 1 }]);
+    const nordic = { new: { name: "Nordic Wool", postalAddress: "Gata 1, 0150 Oslo", electronicAddress: "hei@nordicwool.example", country: "NO" } };
+    // Outside the EU: a responsible person in it is asked for, and nothing is saved without one.
+    expect(await makers.saveVendorMaker(owner, { vendor: "Nordic Wool", manufacturer: nordic, responsible: null }, deps)).toEqual({ ok: false, problem: "responsible" });
+    expect(await makers.saveVendorMaker(owner, { vendor: "Someone", manufacturer: nordic }, deps)).toEqual({ ok: false, problem: "gone" });
+    const saved = await makers.saveVendorMaker(owner, { vendor: "Nordic Wool", manufacturer: nordic, responsible: { new: { name: "EU Rep AB", postalAddress: "Gatan 1, Stockholm", electronicAddress: "rep@example.com", country: "SE" } } }, deps);
+    // The product names its maker; it stays a draft because it still has no picture, and says so.
+    expect(saved).toEqual({ ok: true, named: 1, published: 0, notPublished: 1 });
+    const [product] = await db().execute<Row>(sql`
+      select m.name as maker, r.name as responsible from commerce.products p
+        join commerce.economic_operators m on m.id = p.manufacturer_id join commerce.economic_operators r on r.id = p.responsible_person_id
+       where p.store_id = ${fx.storeId}::uuid and p.handle = 'copied-wool-hat'
+    `);
+    expect([product?.maker, product?.responsible]).toEqual(["Nordic Wool", "EU Rep AB"]);
+    const [batch] = await db().execute<Row>(sql`select action from commerce.bulk_edit_batches where store_id = ${fx.storeId}::uuid order by created_at desc limit 1`);
+    expect(batch?.action).toBe("status");
+    expect((await makers.makersView(owner, deps))!.groups).toEqual([]);
+    const { admin } = await membersOf(fx);
+    expect(await makers.makersView(admin, deps)).toBeNull();
   });
 
   it("says when Shopify refuses a feed and goes on with the rest; a tick while another holds the lease changes nothing", async () => {

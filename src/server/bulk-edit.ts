@@ -17,6 +17,7 @@ import {
   normalAvailability,
   planArchive,
   planAvailability,
+  planMaker,
   planGrid,
   planPriceChanges,
   planStatus,
@@ -26,6 +27,7 @@ import {
   selectionProblem,
   undoPlan,
   type Availability,
+  type Maker,
   type BatchCounts,
   type BulkAction,
   type BulkField,
@@ -74,7 +76,8 @@ export type BulkRequest =
   | { action: "terms_add" | "terms_remove"; productIds: string[]; categoryIds: string[]; tagIds: string[] }
   | { action: "price"; productIds: string[]; markets?: string[]; percent?: string; amounts?: Record<string, string> }
   | { action: "stock"; productIds: string[]; change: string }
-  | { action: "sell_in" | "stop_selling_in"; productIds: string[]; markets: string[] };
+  | { action: "sell_in" | "stop_selling_in"; productIds: string[]; markets: string[] }
+  | { action: "manufacturer"; productIds: string[]; manufacturerId: string; responsibleId: string | null };
 
 type Params = Record<string, unknown> & { productIds: string[] };
 
@@ -186,10 +189,22 @@ function parseRequest(store: Store, editor: EditorContext, request: BulkRequest)
       if (wanted.some((code) => !editor.markets.some((m) => m.code === code))) return { ok: false, problem: "Choose countries of this store." };
       return { ok: true, params: { ...base, markets: wanted } };
     }
+    case "manufacturer": {
+      // The store's own economic operators only; the save says when one outside the EU needs a responsible person.
+      const known = new Set(editor.operators.map((o) => o.id));
+      if (!known.has(request.manufacturerId) || (request.responsibleId !== null && !known.has(request.responsibleId))) return { ok: false, problem: "Choose a company of this store." };
+      return { ok: true, params: { ...base, manufacturerId: request.manufacturerId, responsibleId: request.responsibleId } };
+    }
     default:
       return { ok: false, problem: "Choose an action." };
   }
 }
+
+/** A product's makers as the editor holds them: the operators' ids, null where none is chosen. */
+const makerOf = (input: ProductInput): Maker => ({
+  manufacturer: input.manufacturer && "id" in input.manufacturer ? input.manufacturer.id : null,
+  responsible: input.responsiblePerson && "id" in input.responsiblePerson ? input.responsiblePerson.id : null,
+});
 
 /** What an action does to the loaded products now: its changes, the variants left as they are and the failures. */
 function planAction(action: BulkAction, products: readonly LoadedProduct[], parsed: Extract<ReturnType<typeof parseRequest>, { ok: true }>): Planned {
@@ -232,6 +247,13 @@ function planAction(action: BulkAction, products: readonly LoadedProduct[], pars
           products.map((p) => ({ productId: p.id, availability: p.input.availability ?? { off: [], variants: {} } })),
           action === "sell_in" ? "sell" : "stop",
           parsed.params.markets as string[],
+        ),
+      };
+    case "manufacturer":
+      return {
+        plan: planMaker(
+          products.map((p) => ({ productId: p.id, maker: makerOf(p.input) })),
+          { manufacturer: parsed.params.manufacturerId as string, responsible: (parsed.params.responsibleId as string | null) ?? null },
         ),
       };
     default:
@@ -281,7 +303,7 @@ export async function previewBulk(member: Membership, request: BulkRequest): Pro
 // ---------------------------------------------------------------------------
 
 const fieldOfStatus = (a: BulkAction): BulkField =>
-  a === "archive" || a === "unarchive" ? "archived" : a === "terms_add" || a === "terms_remove" ? "terms" : a === "sell_in" || a === "stop_selling_in" ? "availability" : "status";
+  a === "archive" || a === "unarchive" ? "archived" : a === "terms_add" || a === "terms_remove" ? "terms" : a === "sell_in" || a === "stop_selling_in" ? "availability" : a === "manufacturer" ? "maker" : "status";
 
 /** Lays a product's changes over the editor's product. Null when all could be laid; else the reason one could not. */
 function layOver(input: ProductInput, changes: readonly Change[], editor: EditorContext, adjust = false): string | null {
@@ -294,6 +316,12 @@ function layOver(input: ProductInput, changes: readonly Change[], editor: Editor
       const after = c.after as { categories: string[]; tags: string[] };
       input.categories = [...after.categories];
       input.tags = [...after.tags];
+      continue;
+    }
+    if (c.field === "maker") {
+      const after = c.after as Maker;
+      input.manufacturer = after.manufacturer ? { id: after.manufacturer } : null;
+      input.responsiblePerson = after.responsible ? { id: after.responsible } : null;
       continue;
     }
     if (c.field === "availability") {
@@ -534,6 +562,8 @@ function requestOf(batch: BatchRow): BulkRequest {
     case "sell_in":
     case "stop_selling_in":
       return { action: batch.action, productIds, markets: (p.markets ?? []) as string[] };
+    case "manufacturer":
+      return { action: "manufacturer", productIds, manufacturerId: String(p.manufacturerId), responsibleId: typeof p.responsibleId === "string" ? p.responsibleId : null };
     default:
       throw new Error("not a list action");
   }
@@ -807,6 +837,7 @@ export async function undoBatch(member: Membership, batchId: string): Promise<Un
     if (field === "archived") return p.archived;
     if (field === "terms") return { categories: [...p.input.categories].sort(), tags: [...p.input.tags].sort() };
     if (field === "availability") return normalAvailability(p.input.availability);
+    if (field === "maker") return makerOf(p.input);
     const index = p.input.variants.findIndex((v) => v.id === variantId);
     if (index === -1) return undefined;
     const v = p.input.variants[index];

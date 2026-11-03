@@ -32,6 +32,7 @@ const ACTIONS = {
   undo: "Undo",
   sell_in: "Sell in",
   stop_selling_in: "Stop selling in",
+  manufacturer: "Set the manufacturer",
 };
 
 export const ACTION_WORDS: Record<string, string> = ACTIONS;

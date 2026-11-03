@@ -15,6 +15,7 @@ export const productsNb: ProductsMessages = {
       undo: "Angre",
       sell_in: "Selg i",
       stop_selling_in: "Slutt å selge i",
+      manufacturer: "Angi produsent",
     },
     chooseTerm: "Velg minst én kategori eller ett stikkord.",
     writeStock: "Skriv et lagertall som 12, eller en endring som +5 eller -3.",

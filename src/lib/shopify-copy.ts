@@ -45,7 +45,7 @@ export const FEED_KIND: Record<CopyFeed, "import" | "later" | "direct"> = {
 /** Each feed's bulk query (Shopify's rule: no pagination arguments; connections at most two deep). */
 export const BULK_QUERIES: Record<CopyFeed, string> = {
   products: `{ products { edges { node {
-    id handle title descriptionHtml tags status isGiftCard seo { title description }
+    id handle title vendor descriptionHtml tags status isGiftCard seo { title description }
     options { name position }
     variants { edges { node {
       id sku barcode price compareAtPrice inventoryQuantity position
@@ -552,6 +552,19 @@ export function menuInputOf(menu: Obj, locale: string): { name: string; items: {
   return { name: s(menu.title, 80).trim() || s(menu.handle, 80) || "Menu", items };
 }
 
+/** The file the products' vendors are kept in (D445 step 6): one line a product, for *Who makes your products?*. */
+export const VENDORS_FILE = "shopify-vendors.jsonl";
+
+/** A product's vendor as Shopify names it (never its manufacturer: that is the owner's to say), its handle, and whether it was on sale there. */
+export type VendorLine = { vendor: string; handle: string; active: boolean };
+
+/** Each product's vendor, from the products' bulk read; a gift card is no product here and is left out. */
+export function vendorLines(tree: BulkTree): VendorLine[] {
+  return tree.roots
+    .filter((p) => s(p.handle, 255) !== "" && p.isGiftCard !== true)
+    .map((p) => ({ vendor: s(p.vendor, 255).replace(/\s+/g, " ").trim(), handle: s(p.handle, 255), active: s(p.status, 20) === "ACTIVE" }));
+}
+
 /** A feed's file from its bulk operation's text, and how many things it holds. */
 export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: number } {
   const tree = readBulkLines(text);
@@ -607,6 +620,8 @@ export type FeedState = {
   problem?: FeedProblem;
   /** A `later` or `direct` feed's file in the imports bucket, kept until it is brought over. */
   path?: string;
+  /** The products feed only: its vendors' file (`VENDORS_FILE`) in the imports bucket. */
+  vendors?: string;
   /** A `direct` feed's next item, and how many it made and could not make. */
   cursor?: number;
   made?: number;
@@ -659,6 +674,7 @@ export function copyStateOf(raw: unknown): CopyState {
     if (typeof f.count === "number" && Number.isSafeInteger(f.count) && f.count >= 0) state.count = f.count;
     if (PROBLEMS.includes(f.problem as FeedProblem)) state.problem = f.problem as FeedProblem;
     if (typeof f.path === "string" && FILE_PATH.test(f.path)) state.path = f.path;
+    if (typeof f.vendors === "string" && FILE_PATH.test(f.vendors)) state.vendors = f.vendors;
     for (const key of ["cursor", "made", "refused"] as const) {
       const n = count(f[key]);
       if (n !== undefined) state[key] = n;
