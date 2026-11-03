@@ -35,7 +35,7 @@ export type CopyActions = {
  * while anything moves the page asks the server to go on every few seconds. When every part is checked, *Bring it over* saves them in order.
  * Each part's import has its own page (*See what will happen*), where Lisa sees every row; Homer needs none of it.
  */
-export function ShopCopy({ started, moving, ready, done, rows, actions, privateHref }: { started: boolean; moving: boolean; ready: boolean; done: boolean; rows: CopyRow[]; actions: CopyActions; privateHref: string }) {
+export function ShopCopy({ started, moving, ready, done, failed, rows, actions, privateHref }: { started: boolean; moving: boolean; ready: boolean; done: boolean; failed: number; rows: CopyRow[]; actions: CopyActions; privateHref: string }) {
   const w = useAdminText("moving").copy;
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -92,7 +92,7 @@ export function ShopCopy({ started, moving, ready, done, rows, actions, privateH
               {row.count !== null && row.stage !== "empty" && row.stage !== "failed" ? ` · ${countWords(row.count, w.found)}` : ""}
               {row.needLook !== null && row.needLook > 0 ? ` · ${countWords(row.needLook, w.needLook)}` : ""}
             </span>
-            {row.href && (row.stage === "checked" || row.stage === "applying" || row.stage === "done" || row.problem === "import_failed" || row.problem === "import_refused") && (
+            {row.href && (row.stage === "checked" || row.stage === "applying" || row.stage === "done" || row.problem === "import_failed" || row.problem === "import_refused" || row.problem === "needs_fixing") && (
               <Link href={row.href} className="w-fit text-xs underline underline-offset-2">
                 {w.see}
               </Link>
@@ -124,7 +124,7 @@ export function ShopCopy({ started, moving, ready, done, rows, actions, privateH
           </div>
         </div>
       )}
-      {done && <p className="text-sm font-medium">{w.done}</p>}
+      {done && <p className="text-sm font-medium">{failed > 0 ? countWords(failed, w.doneSome) : w.done}</p>}
       {!moving &&
         (asking ? (
           <div className="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label={w.again}>

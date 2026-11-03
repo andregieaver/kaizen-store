@@ -7,7 +7,7 @@ import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { hint } from "@/components/admin/data/ui";
 import { CheckOldLinks, ShopifyConnectForm, ShopifyDisconnect } from "@/components/admin/moving/shopify-connect";
 import { ShopCopy, type CopyRow } from "@/components/admin/moving/shop-copy";
-import { COPY_FEEDS, copyDone, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
+import { COPY_FEEDS, copyDone, copyFailed, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
 import { copyView, feedJobPage } from "@/server/shopify-copy";
 import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
 import type { DataJob } from "@/server/data-job-store";
@@ -231,6 +231,7 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
       moving={copyMoving(view.state)}
       ready={copyReady(view.state)}
       done={copyDone(view.state)}
+      failed={copyFailed(view.state)}
       rows={rows}
       privateHref={`${base}/settings/private`}
       actions={{ start: startCopyAction.bind(null, storeSlug), advance: advanceCopyAction.bind(null, storeSlug), bring: bringItOverAction.bind(null, storeSlug) }}
