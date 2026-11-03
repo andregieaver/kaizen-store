@@ -13,8 +13,8 @@ application_url = "https://kaizenaflow.com/api/shopify"
 embedded = false
 
 [access_scopes]
-# The authorize address names the scopes (src/lib/shopify.ts), so a shop is asked for exactly what this server asks.
-use_legacy_install_flow = true
+# Shopify managed installation (the legacy flow refuses the webhooks below): Shopify asks a shop for these scopes; the authorize
+# address names the same ones (src/lib/shopify.ts), and src/lib/shopify.test.ts keeps the two equal.
 scopes = "read_products,read_inventory,read_locations,read_customers,read_orders,read_content,read_online_store_navigation,read_discounts,read_price_rules,read_gift_cards,read_shipping,read_markets,read_themes"
 
 [auth]
