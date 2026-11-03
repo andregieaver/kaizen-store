@@ -436,9 +436,12 @@ export function DocsSearchPanel({
   );
 }
 
-/** One result: where it is (track, section, or what kind of reference item), its title and heading, its code, its words, its kind. */
+/**
+ * One result: where it is (track, section, or what kind of reference item, even where the item has a section of the reference), its title
+ * and heading, its code, its words, its kind.
+ */
 function DocsHit({ hit, words, names, uiLang }: { hit: DocsSearchHit; words: DocsFinderWords; names: DocsSearchNames; uiLang: DocLang }) {
-  const where = [names.tracks[hit.track], hit.section?.title ?? (hit.item === "section" ? null : words.items[hit.item])].filter(Boolean).join(" › ");
+  const where = [names.tracks[hit.track], hit.item === "section" ? (hit.section?.title ?? null) : words.items[hit.item]].filter(Boolean).join(" › ");
   const heading = hit.headings[hit.headings.length - 1] ?? null;
   return (
     <li>

@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { z } from "zod";
 
-import { DOC_LANGS, DOCS_CHANGELOG_PATH, docPage } from "@/lib/docs-content";
+import { DOC_LANGS, DOCS_CHANGELOG_PATH, docsPageAt } from "@/lib/docs-content";
 import { sameSite } from "@/lib/same-site";
 import { docsIndex } from "@/server/docs";
 import { countDocsRead } from "@/server/docs-search";
@@ -34,7 +34,7 @@ export async function POST(request: Request): Promise<Response> {
     return empty(400);
   }
   const index = docsIndex();
-  const known = read.path === DOCS_CHANGELOG_PATH ? read.lang === "en" && index.changelog !== null : docPage(index, read.path, read.lang) !== null;
+  const known = read.path === DOCS_CHANGELOG_PATH ? read.lang === "en" && index.changelog !== null : docsPageAt(index, read.path, read.lang) !== null;
   if (!known) return empty(204);
   try {
     await countDocsRead(read.path, read.lang, visitor);

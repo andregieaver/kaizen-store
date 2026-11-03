@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { ADMIN_API } from "./admin-api-routes";
 import { API_ERRORS, API_SCOPES } from "./admin-api";
+import { docsApiReference } from "./docs-api-reference";
 import { compileDocs, DOC_AREAS, resolveDocLink, type DocSource } from "./docs-content";
 import { blocksText, clip, docsIndexFingerprint, docsIndexRows, embedText, pageParts, REFERENCE_PAGES, ROW_TEXT_MAX } from "./docs-index";
 import { parseMarkdown } from "./docs-markdown";
@@ -129,7 +130,44 @@ describe("the docs' search index as rows (D443)", () => {
     expect(Math.min(...rows.filter((r) => r.doc.startsWith("ref:")).map((r) => r.reading))).toBeGreaterThan(lastArticle);
   });
 
-  it("leads every reference item to a page and heading the docs have, until the generated reference (E4)", () => {
+  it("leads every reference item to its heading in the generated reference (E4), and indexes the reference's own words once", () => {
+    const { reference } = docsApiReference();
+    const { index: full } = compileDocs(repositorySources(), {}, reference);
+    const all = docsIndexRows(full, items);
+    // Each item at its heading, in the reference's section of the developers' track.
+    expect(all.find((r) => r.key === "ref:operation:products.get")).toMatchObject({
+      url: "reference/admin-api/products#products-get",
+      section: "developers/reference",
+      sectionTitle: "API reference",
+    });
+    expect(all.find((r) => r.key === "ref:topic:order.paid")).toMatchObject({ url: "reference/webhooks/order-paid", section: "developers/reference" });
+    expect(all.find((r) => r.key === "ref:tool:list_products")).toMatchObject({ url: "reference/mcp/products#list-products", section: "developers/reference" });
+    expect(all.find((r) => r.key === "ref:error:not_found")).toMatchObject({ url: "reference/errors#not-found", section: "developers/reference" });
+    expect(all.find((r) => r.key === "ref:scope:orders:write")).toMatchObject({ url: "reference/scopes#orders-write" });
+    for (const r of all.filter((row) => row.doc.startsWith("ref:"))) {
+      const [path, anchor] = r.url.split("#");
+      const page = resolveDocLink(full, path, "en");
+      expect(page && typeof page === "object", r.key).toBe(true);
+      if (anchor && page && typeof page === "object") expect(page.headings.map((h) => h.id), r.key).toContain(anchor);
+    }
+    // The reference's pages are documents of their own where their words are no item's: a page's start and its other parts.
+    const pages = all.filter((r) => r.doc.startsWith("en:reference"));
+    expect(pages.find((r) => r.key === "en:reference/webhooks#signature")).toMatchObject({ kind: "reference", item: "section", track: "developers", section: "developers/reference", checked: null });
+    expect(pages.find((r) => r.key === "en:reference/admin-api/products#")).toMatchObject({ title: "Products", section: "developers/reference", position: 0 });
+    expect(pages.find((r) => r.key === "en:reference/rate-limits#reached")).toBeDefined();
+    // An item's heading, and what is below it, is the item's row alone; a page that is one item has none.
+    expect(pages.some((r) => r.key.startsWith("en:reference/admin-api/products#products-get"))).toBe(false);
+    expect(pages.some((r) => r.key === "en:reference/errors#not-found")).toBe(false);
+    expect(pages.some((r) => r.doc === "en:reference/webhooks/order-paid")).toBe(false);
+    // After the articles and the changelog, before the items, in the reference's own order.
+    const changelog = Math.max(...all.filter((r) => r.doc === "en:changelog").map((r) => r.reading));
+    expect(Math.min(...pages.map((r) => r.reading))).toBeGreaterThan(changelog);
+    expect(Math.max(...pages.map((r) => r.reading))).toBeLessThan(Math.min(...all.filter((r) => r.doc.startsWith("ref:")).map((r) => r.reading)));
+    expect(new Set(all.map((r) => r.key)).size).toBe(all.length);
+    for (const r of all) expect(r.text.length, r.key).toBeLessThanOrEqual(ROW_TEXT_MAX);
+  });
+
+  it("leads every reference item to a page and heading the docs have, without the generated reference", () => {
     for (const [item, url] of Object.entries(REFERENCE_PAGES)) {
       const [path, anchor] = url.split("#");
       const page = resolveDocLink(index, path, "en");

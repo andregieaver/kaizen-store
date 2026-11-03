@@ -14,7 +14,7 @@ import { UCP_TOOLS } from "./ucp-catalogue";
 import { WEBHOOK_TOPICS, type WebhookSubjectName } from "./webhook-topics";
 
 /** The Admin API's resources (`tag`) as the docs' areas. */
-const TAG_AREAS: Record<string, DocArea> = {
+export const TAG_AREAS: Record<string, DocArea> = {
   Products: "products",
   Inventory: "stock",
   Orders: "orders",
@@ -38,7 +38,7 @@ const TAG_AREAS: Record<string, DocArea> = {
 };
 
 /** What a webhook topic is about, as the docs' areas. */
-const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
+export const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   order: "orders",
   customer: "customers",
   subscription: "orders",

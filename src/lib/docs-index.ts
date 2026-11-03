@@ -9,12 +9,14 @@
  * webhook topic, owner MCP tool, shopping agent's tool, error code and Admin API scope. A page in one language, or one reference item, is a
  * document (`doc`): search finds rows and answers documents, each at its best part.
  *
- * Until the generated reference (unit E4) has pages, a reference item leads to the page that documents it (an article whose front matter
- * names it in `operations` or `tools`), else to the part of the developers' overview about its kind (`REFERENCE_PAGES`); a test holds each
- * of those to a page and heading that exist. E4 points them at its own pages, and the rows' fingerprint moves with it.
+ * A reference item leads to its heading in the generated reference (unit E4, `DocsIndex.reference`), whose pages are documents of their
+ * own where their words are no item's; the reference, items and pages, is one section of the developers' track (`developers/reference`).
+ * In an index without the reference, an item leads to the page that documents it (an article whose front matter names it in `operations`
+ * or `tools`), else to the part of the developers' overview about its kind (`REFERENCE_PAGES`); a test holds each of those to a page and
+ * heading that exist.
  */
 
-import { DOC_TRACK_LANGS, DOC_TRACKS, docsOrder, type DocArea, type DocKind, type DocLang, type DocPage, type DocsIndex, type DocTrack } from "./docs-content";
+import { DOC_TRACK_LANGS, DOC_TRACKS, DOCS_REFERENCE_SECTION, docsOrder, type DocArea, type DocKind, type DocLang, type DocPage, type DocRefPage, type DocsIndex, type DocTrack } from "./docs-content";
 import { plainText, type Block } from "./docs-markdown";
 import type { DocsItem } from "./docs-search";
 
@@ -63,7 +65,7 @@ export type DocsIndexRow = {
 /** One item of unit A's contracts, as the index keeps it. */
 export type DocsReferenceItem = { item: Exclude<DocsItem, "section" | "changelog">; id: string; title: string; code: string; text: string; areas: DocArea[] };
 
-/** Where each kind of reference item is explained until the generated reference (E4) has its pages; held to real headings by a test. */
+/** Where each kind of reference item is explained in an index without the generated reference (E4); held to real headings by a test. */
 export const REFERENCE_PAGES: Record<DocsReferenceItem["item"], string> = {
   operation: "developers/overview/introduction#admin-api",
   topic: "developers/overview/introduction#webhooks",
@@ -138,11 +140,59 @@ export function pageParts(blocks: readonly Block[]): Part[] {
   return parts;
 }
 
-/** The page that documents a reference item (its front matter names it), else the overview's part about its kind. */
-function referenceUrl(index: DocsIndex, item: DocsReferenceItem): string {
+/**
+ * Where a reference item leads: its heading in the generated reference (E4), else the page that documents it (an article whose front matter
+ * names it), else the overview's part about its kind.
+ */
+function referenceUrl(index: DocsIndex, item: DocsReferenceItem, generated: ReadonlyMap<string, string>): string {
+  const own = generated.get(`${item.item}:${item.id}`);
+  if (own) return own;
   const names = (page: DocPage) => (item.item === "operation" ? page.operations : item.item === "tool" || item.item === "agent-tool" ? page.tools : []);
   const page = index.pages.find((p) => p.lang === "en" && names(p).includes(item.id));
   return page ? page.path : REFERENCE_PAGES[item.item];
+}
+
+/** Each reference item's place in the generated reference: `operation:products.get` → `reference/admin-api/products#products-get`. */
+export function generatedItemUrls(index: DocsIndex): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const page of index.reference.pages) for (const item of page.items) out.set(`${item.item}:${item.id}`, item.anchor ? `${page.path}#${item.anchor}` : page.path);
+  return out;
+}
+
+/** The group of the reference a page is in (Admin API, Webhooks, MCP, Errors, …): the page under the reference's front page it is, or is below. */
+export function referenceGroupOf(index: DocsIndex, page: DocRefPage): DocRefPage | null {
+  let at: DocRefPage | undefined = page;
+  for (let depth = 0; at && depth < 8; depth++) {
+    const parent: DocRefPage | undefined = index.reference.pages.find((p) => p.path === at?.parent);
+    if (!parent) return null;
+    if (parent.parent === null) return at;
+    at = parent;
+  }
+  return null;
+}
+
+/** The reference as the search's section (`developers/reference`), with its front page's title, while the docs have the reference. */
+function referenceSection(index: DocsIndex): { section: string; title: string } | null {
+  const front = index.reference.pages.find((p) => p.parent === null);
+  return front ? { section: DOCS_REFERENCE_SECTION, title: front.title } : null;
+}
+
+/**
+ * The parts of a generated reference page the index holds as the page's own: its start and every part that is no reference item's (an item
+ * is a row of its own, so its heading and what is below it, down to the next `##`, are left to it). A page that is one item has none.
+ */
+function referenceParts(page: DocRefPage): (Part & { position: number })[] {
+  if (page.items.some((item) => item.anchor === null)) return [];
+  const itemAnchors = new Set(page.items.map((item) => item.anchor));
+  const out: (Part & { position: number })[] = [];
+  let h2: string | null = null;
+  pageParts(page.blocks).forEach((part, position) => {
+    const heading = page.headings.find((h) => h.id === part.anchor);
+    if (heading?.depth === 2) h2 = heading.id;
+    if (part.anchor && (itemAnchors.has(part.anchor) || (heading?.depth === 3 && h2 !== null && itemAnchors.has(h2)))) return;
+    out.push({ ...part, position });
+  });
+  return out;
 }
 
 /** Every row of the index, in the docs' reading order. */
@@ -218,8 +268,45 @@ export function docsIndexRows(index: DocsIndex, items: readonly DocsReferenceIte
     });
     reading += 1;
   }
+  // The generated reference's pages, in its reading order: what is not a reference item of its own. The reference is one section.
+  const reference = referenceSection(index);
+  for (const page of index.reference.pages) {
+    const parts = referenceParts(page);
+    if (parts.length === 0) continue;
+    const doc = `en:${page.path}`;
+    parts.forEach((part, at) => {
+      const words = blocksText(part.blocks);
+      rows.push({
+        key: `${doc}#${part.anchor ?? ""}`,
+        doc,
+        item: "section",
+        track: "developers",
+        kind: "reference",
+        lang: "en",
+        areas: [...page.areas],
+        features: [],
+        plans: [],
+        section: reference?.section ?? null,
+        sectionTitle: reference?.title ?? null,
+        path: page.path,
+        url: part.anchor ? `${page.path}#${part.anchor}` : page.path,
+        title: page.title,
+        headings: part.headings,
+        code: null,
+        summary: clip(page.summary, SUMMARY_MAX),
+        text: cutText(at === 0 && part.position === 0 ? [page.summary, words].filter(Boolean).join("\n") : words),
+        position: at,
+        reading,
+        checked: null,
+      });
+    });
+    reading += 1;
+  }
+  const generated = generatedItemUrls(index);
   for (const item of items) {
     const doc = `ref:${item.item}:${item.id}`;
+    // An item on a page of the generated reference is in its section; one it lacks leads elsewhere and is in none.
+    const inReference = reference !== null && generated.has(`${item.item}:${item.id}`);
     rows.push({
       key: doc,
       doc,
@@ -230,10 +317,10 @@ export function docsIndexRows(index: DocsIndex, items: readonly DocsReferenceIte
       areas: item.areas,
       features: [],
       plans: [],
-      section: null,
-      sectionTitle: null,
+      section: inReference ? (reference?.section ?? null) : null,
+      sectionTitle: inReference ? (reference?.title ?? null) : null,
       path: null,
-      url: referenceUrl(index, item),
+      url: referenceUrl(index, item, generated),
       title: clip(item.title, 300),
       headings: [],
       code: item.code,

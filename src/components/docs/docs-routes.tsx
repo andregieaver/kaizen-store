@@ -7,26 +7,34 @@ import { matchPath } from "@/lib/admin-map";
 import {
   DOC_TRACKS,
   DOCS_CHANGELOG_PATH,
+  DOCS_REFERENCE_SECTION,
   docNeighbours,
   docPage,
+  docRefNeighbours,
+  docRefPage,
+  docRefTrail,
   docSection,
   docsPaths,
   docsTree,
   isDocTrack,
+  isReferencePath,
   trackIn,
   type DocLang,
   type DocPage,
+  type DocRefPage,
   type DocsIndex,
   type DocTrack,
 } from "@/lib/docs-content";
 import { docsMarkdownPath, docsPath, docsUrl } from "@/lib/docs-host";
+import { referenceGroupOf } from "@/lib/docs-index";
+import { docsReferenceItems } from "@/lib/docs-reference";
 import { PLATFORM_LANG_FACTS } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { formatDocDate } from "@/lib/docs-text";
 import { docsIndex } from "@/server/docs";
 
 import { DocsFeedback } from "./docs-feedback";
-import { DocsBreadcrumbs, DocsPager, DocsShell, DocsToc, DocsTopBar, DocsTree, type DocsCrumb, type DocsLanguages, type DocsWords } from "./docs-frame";
+import { DocsBreadcrumbs, DocsPager, DocsShell, DocsToc, DocsTopBar, DocsTree, type DocsCrumb, type DocsLanguages, type DocsTopPlace, type DocsWords } from "./docs-frame";
 import { DocsMarkdown, type DocsMarkdownContext } from "./docs-markdown";
 import { DocsReadCount } from "./docs-read-count";
 import { DocsSectionFilters } from "./docs-section-filters";
@@ -34,22 +42,27 @@ import { DocsSectionFilters } from "./docs-section-filters";
 /**
  * The docs' routes (wave 14 unit E1, D442), drawn the same in each language's route group: `(docs)` at `/docs` and `(docs-nb)` at `/no/docs`
  * (the owners' track only), on the docs' own host at `/` and `/no` (`docsHostRoutes()`). Every address is prerendered from the index
- * (`docsStaticParams()`); one not built is a 404.
+ * (`docsStaticParams()`), the generated reference's (E4) too; one not built is a 404.
  */
 
-/** What an address in the docs is: the front page, a track, a section, a page or the changelog. */
+/** What an address in the docs is: the front page, a track, a section, a page, the changelog or a page of the generated reference. */
 type DocsPlace =
   | { kind: "home" }
   | { kind: "track"; track: DocTrack }
   | { kind: "section"; track: DocTrack; slug: string }
   | { kind: "page"; page: DocPage }
-  | { kind: "changelog" };
+  | { kind: "changelog" }
+  | { kind: "reference"; page: DocRefPage };
 
 function placeOf(index: DocsIndex, lang: DocLang, segments: readonly string[]): DocsPlace | null {
   const path = segments.join("/");
   if (!docsPaths(index, lang).includes(path)) return null;
   if (path === "") return { kind: "home" };
   if (path === DOCS_CHANGELOG_PATH) return { kind: "changelog" };
+  if (isReferencePath(path)) {
+    const page = docRefPage(index, path);
+    return page ? { kind: "reference", page } : null;
+  }
   const [track, section] = segments;
   if (!isDocTrack(track)) return null;
   if (segments.length === 1) return { kind: "track", track };
@@ -111,7 +124,22 @@ export function docsPageMetadata(lang: DocLang, segments: readonly string[]): Me
         alternates: alternates(index, path, lang, true),
         openGraph: { type: "article", title: place.page.title, description: place.page.summary, url: docsUrl(path, lang) },
       };
+    case "reference": {
+      const title = referenceTitle(index, place.page);
+      return {
+        title,
+        description: place.page.summary,
+        alternates: alternates(index, path, lang, true),
+        openGraph: { type: "article", title, description: place.page.summary, url: docsUrl(path, lang) },
+      };
+    }
   }
+}
+
+/** A reference page's title for the browser and the search engines: with its group's where it would read alone (`Products · Admin API`). */
+function referenceTitle(index: DocsIndex, page: DocRefPage): string {
+  const group = referenceGroupOf(index, page);
+  return group && group.path !== page.path ? `${page.title} · ${group.title}` : page.title;
 }
 
 function markdownContext(index: DocsIndex, lang: DocLang, words: DocsWords): DocsMarkdownContext {
@@ -158,7 +186,7 @@ export function DocsHomeRoute({ lang }: { lang: DocLang }) {
   );
 }
 
-/** A track, a section, a page or the changelog. */
+/** A track, a section, a page, the changelog or a page of the generated reference. */
 export function DocsPageRoute({ lang, segments }: { lang: DocLang; segments: readonly string[] }) {
   const index = docsIndex();
   const place = placeOf(index, lang, segments);
@@ -166,7 +194,7 @@ export function DocsPageRoute({ lang, segments }: { lang: DocLang; segments: rea
   const words = platformText(lang).docs;
   const path = segments.join("/");
   const ctx = markdownContext(index, lang, words);
-  const top = (track: DocTrack | "changelog") => <DocsTopBar lang={lang} track={track} words={words} languages={languagesOf(index, path)} />;
+  const top = (track: Exclude<DocsTopPlace, null>) => <DocsTopBar lang={lang} track={track} words={words} languages={languagesOf(index, path)} />;
   const tree = (track: DocTrack) => <DocsTree index={index} track={track} lang={lang} current={path} words={words} />;
   const home: DocsCrumb = { label: words.name, href: docsPath("", lang) };
   const trackCrumb = (track: DocTrack): DocsCrumb => ({ label: words.tracks[track].name, href: docsPath(track, lang) });
@@ -174,6 +202,39 @@ export function DocsPageRoute({ lang, segments }: { lang: DocLang; segments: rea
   switch (place.kind) {
     case "home":
       return <DocsHomeRoute lang={lang} />;
+
+    case "reference": {
+      const page = place.page;
+      const trail = docRefTrail(index, page);
+      const { previous, next } = docRefNeighbours(index, page);
+      // The reference's front page lists it as a section is listed: its pages and items by topic, in the four orders.
+      const listed = page.parent === null;
+      return (
+        <DocsShell words={words} top={top("reference")} tree={tree("developers")} toc={<DocsToc headings={page.headings} words={words} depth={page.toc} />}>
+          <DocsBreadcrumbs
+            trail={[home, trackCrumb("developers"), ...trail.map((p, i): DocsCrumb => ({ label: p.title, href: i === trail.length - 1 ? null : docsPath(p.path) }))]}
+            words={words}
+          />
+          <article className="mt-4" data-docs-page={page.path}>
+            <h1 className={`${HEADING} break-words`}>{page.title}</h1>
+            <p className="mt-3 text-lg text-muted">{page.summary}</p>
+            <div className="mt-8">
+              <DocsMarkdown blocks={page.blocks} ctx={ctx} />
+            </div>
+          </article>
+          {listed && <DocsSectionFilters index={index} section={DOCS_REFERENCE_SECTION} lang="en" words={words} items={docsReferenceItems()} />}
+          <p className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+            {index.reference.version && <span>{fillWords(words.madeFrom, { version: index.reference.version })}</span>}
+            <a href={docsMarkdownPath(page.path)} className="inline-flex min-h-6 items-center underline underline-offset-2 hover:no-underline print:hidden">
+              {words.markdown}
+            </a>
+          </p>
+          <DocsFeedback path={page.path} lang="en" words={words.feedback} />
+          <DocsReadCount path={page.path} lang="en" />
+          <DocsPager previous={previous} next={next} words={words} />
+        </DocsShell>
+      );
+    }
 
     case "changelog": {
       const log = index.changelog;
@@ -226,7 +287,7 @@ export function DocsPageRoute({ lang, segments }: { lang: DocLang; segments: rea
           <h1 className={`mt-4 ${HEADING}`}>{section.title}</h1>
           {section.summary && <p className="mt-3 max-w-2xl text-lg text-muted">{section.summary}</p>}
           <PageList pages={entry.pages} />
-          <DocsSectionFilters index={index} track={place.track} slug={place.slug} lang={lang} words={words} />
+          <DocsSectionFilters index={index} section={`${place.track}/${place.slug}`} lang={lang} words={words} />
         </DocsShell>
       );
     }

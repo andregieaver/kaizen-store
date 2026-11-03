@@ -1,6 +1,6 @@
-import type { DocLang, DocsIndex, DocTrack } from "@/lib/docs-content";
+import type { DocLang, DocsIndex } from "@/lib/docs-content";
 import { docsPath } from "@/lib/docs-host";
-import { docsIndexRows } from "@/lib/docs-index";
+import { docsIndexRows, type DocsReferenceItem } from "@/lib/docs-index";
 import { DOCS_SEARCH_SUB, DOCS_SORTS, docsSearchQueryString, NO_FILTERS, toggleFilter, type DocsFacetName, type DocsFilters, type DocsSort } from "@/lib/docs-search";
 import { browseDocs, facetCounts } from "@/lib/docs-search-rules";
 
@@ -12,26 +12,47 @@ const CHIP = "inline-flex min-h-8 items-center gap-1.5 rounded-full border borde
  * A section's pages filtered and ordered as the search filters and orders (D443): the section's kinds and topics with how many of its pages
  * each holds, and the four orders, each a link to the search page with the section as its filter (so a section stays prerendered, and its
  * filtered list is an address to share). Counted at build from the section's own pages, by the search's own rules (`facetCounts()`).
+ *
+ * The generated reference (E4) is a section too (`developers/reference`): its pages and its reference items (each operation, topic, tool,
+ * code or scope, handed in as `items`), offering only the values that narrow it (every one of them is a reference).
  */
-export function DocsSectionFilters({ index, track, slug, lang, words }: { index: DocsIndex; track: DocTrack; slug: string; lang: DocLang; words: DocsWords }) {
-  const section = `${track}/${slug}`;
+export function DocsSectionFilters({
+  index,
+  section,
+  lang,
+  words,
+  items = [],
+}: {
+  index: DocsIndex;
+  /** `owners/getting-started`, or the generated reference's, `developers/reference`. */
+  section: string;
+  lang: DocLang;
+  words: DocsWords;
+  items?: readonly DocsReferenceItem[];
+}) {
   const filters: DocsFilters = { ...NO_FILTERS, section, lang: [lang] };
-  const docs = browseDocs(docsIndexRows(index, []).filter((row) => row.section === section && row.lang === lang));
+  const docs = browseDocs(docsIndexRows(index, items).filter((row) => row.section === section && row.lang === lang));
   const facets = facetCounts(docs, filters);
+  const narrowOnly = items.length > 0;
   const href = (next: DocsFilters, sort: DocsSort) => `${docsPath(DOCS_SEARCH_SUB, lang)}${docsSearchQueryString({ q: "", filters: next, sort })}`;
   const w = words.finder;
-  const row = (facet: DocsFacetName) =>
-    facets[facet].length > 0 && (
-      <li className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-muted">{w.facets[facet]}</span>
-        {facets[facet].map((f) => (
-          <a key={f.value} href={href(toggleFilter(filters, facet, f.value), "relevance")} className={CHIP}>
-            <span>{facet === "kind" ? w.kinds[f.value as keyof typeof w.kinds] : w.areas[f.value as keyof typeof w.areas]}</span>
-            <span className="text-muted">{f.count}</span>
-          </a>
-        ))}
-      </li>
+  const row = (facet: DocsFacetName) => {
+    // A value every one of the list's documents has narrows nothing.
+    const values = facets[facet].filter((f) => !narrowOnly || f.count !== docs.length);
+    return (
+      values.length > 0 && (
+        <li className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-muted">{w.facets[facet]}</span>
+          {values.map((f) => (
+            <a key={f.value} href={href(toggleFilter(filters, facet, f.value), "relevance")} className={CHIP}>
+              <span>{facet === "kind" ? w.kinds[f.value as keyof typeof w.kinds] : w.areas[f.value as keyof typeof w.areas]}</span>
+              <span className="text-muted">{f.count}</span>
+            </a>
+          ))}
+        </li>
+      )
     );
+  };
   return (
     <nav aria-label={w.sectionBar} className="mt-10 rounded-lg border border-border p-4 text-sm print:hidden">
       <p className="font-medium">{w.sectionBar}</p>

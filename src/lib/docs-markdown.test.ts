@@ -86,6 +86,10 @@ describe("the docs' Markdown: what it reads (D442)", () => {
     expect(plainText(t.head[1])).toBe("What a|b");
     expect(plainText(t.rows[0][1])).toBe("y | z");
     expect(t.rows[1].map(plainText)).toEqual(["short", "", ""]);
+    // An escaped pipe in code is a pipe, as GitHub reads a table (the generated reference escapes every one, E4).
+    const [escaped] = blocks("| Pattern |\n|---|\n| `^(a\\|b)$` |");
+    const cell = (escaped as Extract<Block, { type: "table" }>).rows[0][0];
+    expect(cell).toEqual([{ type: "code", value: "^(a|b)$" }]);
   });
 
   it("reads fenced code with its language, coloured, and keeps what is inside as written", () => {

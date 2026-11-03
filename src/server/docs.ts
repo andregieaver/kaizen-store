@@ -3,9 +3,11 @@ import "server-only";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { compileDocs, DOCS_ROOT, type DocsIndex, type DocSource } from "@/lib/docs-content";
+import { docsApiReference } from "@/lib/docs-api-reference";
+import { compileDocs, DOCS_ROOT, type DocReference, type DocsIndex, type DocSource } from "@/lib/docs-content";
 
 import { log } from "./log";
+import { BUDGETS } from "./request-budget";
 
 /**
  * The docs' index (wave 14 unit E2, D442): every file under `content/docs/` read from disk and compiled by `compileDocs()`. Read when the
@@ -14,7 +16,7 @@ import { log } from "./log";
  * routes (`outputFileTracingIncludes` in `next.config.ts`) for the addresses drawn at run time (a 404, the feedback route's check).
  *
  * A file with a problem is left out and logged; `src/lib/docs-content.test.ts` compiles every file in CI and fails on any problem, so
- * none reaches a deploy.
+ * none reaches a deploy. Beside the articles, the generated reference (unit E4): made from unit A's contracts in code, not from files.
  */
 
 let kept: DocsIndex | null = null;
@@ -46,10 +48,24 @@ export function readDocSources(): DocSource[] {
   return out;
 }
 
-/** The docs as compiled from the repository's files. */
+let reference: DocReference | null = null;
+
+/**
+ * The generated reference (wave 14 unit E4, D442), made from unit A's contracts with the MCP servers' budgets, which no contract publishes.
+ * Made once a server's life: it changes only with the code, and a changed module is a new server while developing.
+ */
+export function docsReference(): DocReference {
+  if (reference) return reference;
+  const made = docsApiReference({ limits: { mcp: BUDGETS.mcp, agent: BUDGETS.agent } });
+  if (made.problems.length > 0) log("warn", "docs.reference_problems", { count: made.problems.length, pages: new Set(made.problems.map((p) => p.path)).size });
+  reference = made.reference;
+  return reference;
+}
+
+/** The docs as compiled from the repository's files, with the generated reference beside the articles. */
 export function docsIndex(): DocsIndex {
   if (kept && process.env.NODE_ENV === "production") return kept;
-  const { index, problems } = compileDocs(readDocSources());
+  const { index, problems } = compileDocs(readDocSources(), {}, docsReference());
   if (problems.length > 0) log("warn", "docs.problems", { count: problems.length, files: new Set(problems.map((p) => p.file)).size });
   kept = index;
   return index;

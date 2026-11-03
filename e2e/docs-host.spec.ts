@@ -70,6 +70,20 @@ test("each page answers as Markdown on the host, with the host's addresses", asy
   expect((await fetchOnHost(page, `/no${PAGE}.md`)).text).toMatch(/^# Lag nettbutikken din/);
 });
 
+test("the generated reference answers at the host's /reference, with its Markdown and links within the host", async ({ page }) => {
+  const response = await page.goto(docs("/reference/admin-api/products"));
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1, name: "Products" })).toBeVisible();
+  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(docs("/reference/admin-api/products"));
+  await expect(page.getByRole("navigation", { name: "Docs" }).getByRole("link", { name: "API reference" })).toHaveAttribute("href", "/reference");
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Admin API" })).toHaveAttribute("href", "/reference/admin-api");
+  await expect(page.getByRole("link", { name: "products:read" }).first()).toHaveAttribute("href", "/reference/scopes#products-read");
+  const md = await fetchOnHost(page, "/reference/admin-api/products.md");
+  expect(md.status).toBe(200);
+  expect(md.text).toContain(`](${docs("/reference/scopes#products-write")})`);
+  expect((await fetchOnHost(page, "/reference.md")).text.startsWith("# API reference")).toBe(true);
+});
+
 test("Kaizena Flow's own /docs moves to the host for good", async ({ page, request }) => {
   const moved = await request.get("/docs", { maxRedirects: 0 });
   expect(moved.status()).toBe(308);

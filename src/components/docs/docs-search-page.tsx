@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 
-import { docSection, isDocTrack, type DocLang } from "@/lib/docs-content";
+import { DOCS_REFERENCE_PATH, DOCS_REFERENCE_SECTION, docRefPage, docSection, isDocTrack, type DocLang } from "@/lib/docs-content";
 import { docsPath, docsUrl } from "@/lib/docs-host";
 import { DOCS_GUIDE_READY, DOCS_SEARCH_SUB, docsSearchQueryString, hasFilters, type DocsSearchAnswer } from "@/lib/docs-search";
 import { readDocsSearchPage } from "@/lib/docs-search-rules";
@@ -60,7 +60,13 @@ export async function DocsSearchRoute({ lang, query }: { lang: DocLang; query: Q
   }
 
   const [track, slug] = asked.filters.section?.split("/") ?? [];
-  const sectionTitle = track && slug && isDocTrack(track) ? (docSection(index, track, slug, lang)?.title ?? docSection(index, track, slug, "en")?.title ?? null) : null;
+  // The generated reference (E4) is one section of the developers' track, named by its front page.
+  const sectionTitle =
+    asked.filters.section === DOCS_REFERENCE_SECTION
+      ? (docRefPage(index, DOCS_REFERENCE_PATH)?.title ?? null)
+      : track && slug && isDocTrack(track)
+        ? (docSection(index, track, slug, lang)?.title ?? docSection(index, track, slug, "en")?.title ?? null)
+        : null;
   const queryString = docsSearchQueryString({ q: asked.q, filters: asked.filters, sort: asked.sort });
   const languages = (["en", "nb"] as const).map((l) => ({ lang: l, href: `${docsPath(DOCS_SEARCH_SUB, l)}${queryString}` }));
 

@@ -324,7 +324,7 @@ function parseTable(lines: Line[], start: number, ctx: Ctx): { block: Block; nex
   };
 }
 
-/** A table row's cells: split on `|` outside code spans; `\|` is a `|` in a cell. */
+/** A table row's cells: split on `|` outside code spans; `\|` is a `|` in a cell, in a code span too (as GitHub reads a table). */
 function splitRow(text: string): string[] {
   let row = text.trim();
   if (row.startsWith("|")) row = row.slice(1);
@@ -335,7 +335,8 @@ function splitRow(text: string): string[] {
   for (let i = 0; i < row.length; i++) {
     const char = row[i];
     if (char === "\\" && row[i + 1] === "|") {
-      cell += "\\|";
+      // In code the backslash is no escape of its own, so it goes here; outside, the inline parser reads `\|` as `|`.
+      cell += code > 0 ? "|" : "\\|";
       i++;
       continue;
     }

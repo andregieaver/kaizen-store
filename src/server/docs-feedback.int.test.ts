@@ -68,6 +68,14 @@ describe("the docs' feedback (D442)", () => {
     expect((await ask({ path: "developers/overview/introduction", lang: "nb", helpful: true })).status).toBe(404);
   });
 
+  it("keeps an answer on a page of the generated reference (E4), in English, the reference's one language", async () => {
+    const reference = await ask({ path: "reference/admin-api/products", lang: "en", helpful: false });
+    expect(reference.status).toBe(201);
+    ids.push(((await reference.json()) as { id: string }).id);
+    expect((await ask({ path: "reference/admin-api/products", lang: "nb", helpful: true })).status).toBe(404);
+    expect((await ask({ path: "reference/admin-api/nowhere", lang: "en", helpful: true })).status).toBe(404);
+  });
+
   it("refuses a sentence too long without cutting it, an answer older than an hour, and anything not the docs' own pages'", async () => {
     const id = await feedback.recordDocsVote({ path: PAGE, lang: "en", helpful: true });
     ids.push(id);

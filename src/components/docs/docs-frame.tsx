@@ -1,5 +1,5 @@
 import { fillWords } from "@/lib/admin-fill";
-import { DOCS_CHANGELOG_PATH, docsReferencePath, docsTree, type DocHeading, type DocLang, type DocPage, type DocsIndex, type DocTrack } from "@/lib/docs-content";
+import { DOCS_CHANGELOG_PATH, docRefChildren, docsReferencePath, docsTree, type DocHeading, type DocLang, type DocsIndex, type DocTrack } from "@/lib/docs-content";
 import { docsPath, docsSiteHref } from "@/lib/docs-host";
 import { DOCS_GUIDE_READY, DOCS_SEARCH_SUB } from "@/lib/docs-search";
 import { PLATFORM_LANG_FACTS } from "@/lib/platform-lang";
@@ -24,12 +24,15 @@ export function docsSearchNames(words: DocsWords): DocsSearchNames {
   };
 }
 
+/** Where a page of the docs is, for the top bar: a track, the generated reference (the developers' too), the changelog, or none. */
+export type DocsTopPlace = DocTrack | "reference" | "changelog" | null;
+
 /** The top bar (D442): the mark, the two tracks, the API reference, the changelog, the status page, the search and the language. */
-export function DocsTopBar({ lang, track, words, languages }: { lang: DocLang; track: DocTrack | "changelog" | null; words: DocsWords; languages: DocsLanguages }) {
+export function DocsTopBar({ lang, track, words, languages }: { lang: DocLang; track: DocsTopPlace; words: DocsWords; languages: DocsLanguages }) {
   const items: { key: string; href: string; label: string; current: boolean }[] = [
     { key: "owners", href: docsPath("owners", lang), label: words.tracks.owners.name, current: track === "owners" },
     { key: "developers", href: docsPath("developers"), label: words.tracks.developers.name, current: track === "developers" },
-    { key: "reference", href: docsPath(docsReferencePath()), label: words.apiReference, current: false },
+    { key: "reference", href: docsPath(docsReferencePath()), label: words.apiReference, current: track === "reference" },
     { key: "changelog", href: docsPath(DOCS_CHANGELOG_PATH), label: words.changelog, current: track === "changelog" },
     { key: "status", href: docsSiteHref("/status"), label: words.status, current: false },
   ];
@@ -55,7 +58,7 @@ export function DocsTopBar({ lang, track, words, languages }: { lang: DocLang; t
           <DocsSearch
             label={words.search}
             lang={lang}
-            track={track === "changelog" ? "developers" : track}
+            track={track === "changelog" || track === "reference" ? "developers" : track}
             words={words.finder}
             names={docsSearchNames(words)}
             searchHref={docsPath(DOCS_SEARCH_SUB, lang)}
@@ -122,6 +125,7 @@ export function DocsTree({ index, track, lang, current, words }: { index: DocsIn
               </li>
             );
           })}
+          {track === "developers" && <DocsReferenceTree index={index} current={current} link={link} words={words} />}
           {track === "developers" && index.changelog && (
             <li>
               <a href={docsPath(DOCS_CHANGELOG_PATH)} className={`${link} font-medium`} aria-current={current === DOCS_CHANGELOG_PATH ? "page" : undefined}>
@@ -135,9 +139,49 @@ export function DocsTree({ index, track, lang, current, words }: { index: DocsIn
   );
 }
 
-/** *On this page*: the page's h2s and h3s, linked to their ids. */
-export function DocsToc({ headings, words }: { headings: readonly DocHeading[]; words: DocsWords }) {
-  const items = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+/**
+ * The generated reference in the developers' tree (E4): its front page, its groups (Admin API, Webhooks, MCP, …), and the pages of the group
+ * being read, so the tree stays short however many resources, topics and areas the contracts hold.
+ */
+function DocsReferenceTree({ index, current, link, words }: { index: DocsIndex; current: string; link: string; words: DocsWords }) {
+  const front = index.reference.pages.find((p) => p.parent === null);
+  if (!front) return null;
+  const within = (path: string) => current === path || current.startsWith(`${path}/`);
+  return (
+    <li>
+      <a href={docsPath(front.path)} className={`${link} font-medium`} aria-current={current === front.path ? "page" : undefined}>
+        {words.apiReference}
+      </a>
+      <ul className="ml-2 border-l border-border pl-2">
+        {docRefChildren(index, front.path).map((group) => {
+          const pages = within(group.path) ? docRefChildren(index, group.path) : [];
+          return (
+            <li key={group.path}>
+              <a href={docsPath(group.path)} className={link} aria-current={current === group.path ? "page" : undefined}>
+                {group.title}
+              </a>
+              {pages.length > 0 && (
+                <ul className="ml-2 border-l border-border pl-2">
+                  {pages.map((page) => (
+                    <li key={page.path}>
+                      <a href={docsPath(page.path)} className={link} aria-current={current === page.path ? "page" : undefined}>
+                        {page.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </li>
+  );
+}
+
+/** *On this page*: the page's h2s and h3s (h2s alone where `depth` is 2, as on a long page of operations), linked to their ids. */
+export function DocsToc({ headings, words, depth = 3 }: { headings: readonly DocHeading[]; words: DocsWords; depth?: 2 | 3 }) {
+  const items = headings.filter((heading) => heading.depth === 2 || (depth === 3 && heading.depth === 3));
   if (items.length === 0) return null;
   return (
     <nav aria-label={words.onThisPage} className="text-sm">
@@ -181,8 +225,11 @@ export function DocsBreadcrumbs({ trail, words }: { trail: readonly DocsCrumb[];
   );
 }
 
-/** The pages before and after this one in the track's reading order. */
-export function DocsPager({ previous, next, words }: { previous: DocPage | null; next: DocPage | null; words: DocsWords }) {
+/** A page the pager leads to: an article or a page of the reference. */
+type DocsPagerPage = { path: string; lang: DocLang; title: string };
+
+/** The pages before and after this one in the track's reading order (the reference's own, on its pages). */
+export function DocsPager({ previous, next, words }: { previous: DocsPagerPage | null; next: DocsPagerPage | null; words: DocsWords }) {
   if (!previous && !next) return null;
   const card = "flex min-h-11 flex-col rounded-lg border border-border p-4 hover:bg-surface";
   return (
@@ -224,7 +271,7 @@ export function DocsShell({
         {words.skip}
       </a>
       {top}
-      <div className={`mx-auto grid max-w-7xl gap-x-10 gap-y-4 px-4 py-6 ${columns}`}>
+      <div className={`mx-auto grid max-w-7xl gap-x-10 gap-y-4 px-4 py-6 ${columns} print:block`}>
         {tree && <div className="md:sticky md:top-4 md:max-h-[calc(100dvh-2rem)] md:self-start md:overflow-y-auto print:hidden">{tree}</div>}
         <main id="docs-main" tabIndex={-1} className="min-w-0 focus:outline-none">
           {children}

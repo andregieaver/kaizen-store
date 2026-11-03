@@ -141,7 +141,7 @@ function BlockView({ block, ctx }: { block: Block; ctx: DocsMarkdownContext }): 
       );
     case "table":
       return (
-        <div tabIndex={0} className="mt-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2">
+        <div tabIndex={0} className="mt-4 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 print:overflow-visible">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border">

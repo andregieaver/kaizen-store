@@ -78,12 +78,14 @@ a power allows (a product on the site, a customer's email, an import that publis
 power. Each route also asks what its screen in the admin asks: the staff permission it needs and the store feature it stands behind. A store
 that is suspended or closed, as in the admin, keeps open only its orders, customers, reports and the owner's own pages such as its webhooks;
 its products, discounts, website and settings are refused, read or changed. The OpenAPI document names both for each operation
-(`x-permission`, `x-feature`).
+(`x-permission`, `x-feature`), and the reference's [Scopes](/docs/reference/scopes) page lists each scope with every
+operation that needs it.
 
 ## Rate limits
 
 Each token may make 120 calls a minute, and a store's tokens together 1,200. A call past either limit is answered `429 rate_limited`
-with a `Retry-After` header: the seconds until the next minute begins. Wait that long and try again.
+with a `Retry-After` header: the seconds until the next minute begins. Wait that long and try again. [Rate limits](/docs/reference/rate-limits)
+has the other APIs' limits too.
 
 ## Lists
 
@@ -122,4 +124,5 @@ Every error answers the same shape:
 | `rate_limited` | 429 | Past the rate limit; see `Retry-After` |
 | `failed` | 500 | Something went wrong on Kaizena Flow's side, and nothing more was done |
 
-Answers are JSON, never cached (`Cache-Control: no-store`).
+Answers are JSON, never cached (`Cache-Control: no-store`). Each operation's page in the [API reference](/docs/reference/admin-api) says
+which of these it can answer, and [Errors](/docs/reference/errors) lists every code with the operations that answer it.
