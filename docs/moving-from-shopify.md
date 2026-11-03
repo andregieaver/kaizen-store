@@ -576,8 +576,30 @@ As built (`src/lib/shopify-copy.ts` pure, `src/server/shopify-copy.ts`):
 - **Copied products show at once** unless the shop is behind a password (private mode, D339): the page says so before *Bring it over*, with
   the link. Turning private mode on by itself is left for move day (step 7), where opening the shop is part of the plan.
 
-Left for part 2 (step 5) and later: countries, shipping and look (4.3), collections, pages, blogs, menus, metafields, discounts; reviews
-(they live in review apps, not in Shopify, spike S6); a catch-up copy on move day.
+### Step 5, part 1: collections, pages, blog posts and menus (built 3 November 2026)
+
+The copy reads four more parts, in the same list and under the same *Bring it over*:
+
+- **Collections** become categories. Their bulk read lists each collection's products and variants, written as a small file of
+  `handle, sku, variant id, categories` (`collectionsFile()`, names joined by ` | `, a `/` or `|` in a name made `-`), applied after the
+  products by the product import in update mode with no redirects: the import adds the categories to products it already has and makes
+  nothing else. A smart collection comes over as the products it holds that day, not its rules. Its description and picture are not
+  brought over.
+- **Pages and blog posts** have no import, so they go to the page writer itself (`savePage()`, and `saveBlog()` for a second Shopify blog;
+  the first becomes the store's main blog). Shopify's HTML is turned into the editor's rich text in code (`htmlToRichText()`,
+  `src/lib/html-rich-text.ts`: paragraphs, headings 2 to 4, bold, italic, underline, links the editor takes, lists, quotes, lines and line
+  breaks; scripts, styles and frames left out; pictures left out and counted), checked by `cleanRichText()`, never kept as HTML. A page
+  the writer asks to confirm is saved as a draft. An address already taken here is left alone and counted. A post's author is kept; its
+  date, pictures and tags are not.
+- **Menus** are read last by one small query (Shopify has no bulk read for them) and written by `saveStoreMenu()`, two levels deep,
+  each link turned into our address where we have the same thing (`menuLinkOf()`), else kept as its address; a menu whose name is taken
+  is left alone.
+- Pages, posts and menus are written in batches of 15, 15 and 5 per tick, so a big blog never holds one request long.
+
+A copy started before this step shows the four new parts as empty; *Start again* reads them.
+
+Left for part 2 (step 5b) and later: countries, shipping and look (4.3), discounts, metafields; reviews (they live in review apps, not
+in Shopify, spike S6); a catch-up copy on move day.
 
 **How steps 1 and 2 reached production.** A new admin page is a new entry in the admin map, and the map is part of the AI manager's
 prompt, so the agents' eval replay (D391) fails until the eval is recorded again on production; a push with a migration waits for every

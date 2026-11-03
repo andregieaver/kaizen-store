@@ -76,7 +76,7 @@ export const movingEn = {
     text: "We copy your products, customers, past orders and redirects into this store. Nothing is saved here until you press Bring it over, and nothing changes on Shopify.",
     start: "Copy my shop",
     starting: "Starting …",
-    feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects" },
+    feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects", collections: "Collections", pages: "Pages", articles: "Blog posts", menus: "Menus" },
     stages: {
       waiting: "Waiting",
       reading: "Reading from Shopify …",

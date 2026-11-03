@@ -73,7 +73,7 @@ export const movingNb: MovingMessages = {
     text: "Vi kopierer produktene, kundene, tidligere ordrer og omdirigeringene til denne butikken. Ingenting lagres her før du trykker Ta det over, og ingenting endres i Shopify.",
     start: "Kopier butikken min",
     starting: "Starter …",
-    feeds: { products: "Produkter", customers: "Kunder", orders: "Tidligere ordrer", redirects: "Omdirigeringer" },
+    feeds: { products: "Produkter", customers: "Kunder", orders: "Tidligere ordrer", redirects: "Omdirigeringer", collections: "Kolleksjoner", pages: "Sider", articles: "Blogginnlegg", menus: "Menyer" },
     stages: {
       waiting: "Venter",
       reading: "Leser fra Shopify …",

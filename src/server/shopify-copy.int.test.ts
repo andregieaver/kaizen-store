@@ -46,6 +46,9 @@ const files = (): Record<string, string> => ({
     { name: "Wool hat - S", sku: "COPY-HAT-S", quantity: 1, originalUnitPriceSet: { shopMoney: { amount: "299.0" } }, __parentId: "gid://shopify/Order/9" },
   ),
   redirects: lines({ id: "gid://shopify/UrlRedirect/3", path: "/pages/old-about", target: "/pages/about" }),
+  collections: lines({ id: "gid://shopify/Collection/1", handle: "hats", title: "Hats" }, { handle: "copied-wool-hat", __parentId: "gid://shopify/Collection/1" }),
+  pages: lines({ id: "gid://shopify/Page/1", handle: "our-story", title: "Our story", body: "<h1>Since 1990</h1><p>We knit <strong>by hand</strong>.</p><img src='x.jpg'>", isPublished: true }),
+  articles: lines({ id: "gid://shopify/Article/1", handle: "winter-is-here", title: "Winter is here", body: "<p>Time for hats.</p>", isPublished: true, author: { name: "Kari" }, blog: { handle: "news", title: "News" } }),
 });
 
 let refuse = new Set<string>();
@@ -58,11 +61,13 @@ const shopify = (async (_input: string | URL | Request, init?: RequestInit) => {
   if (body.query.includes("KaizenCopyShop")) return reply({ shop: { currencyCode: "NOK", taxesIncluded: true } });
   if (body.query.includes("KaizenBulkRun")) {
     const q = body.variables?.query ?? "";
-    const feed = /urlRedirects/.test(q) ? "redirects" : /\{ orders/.test(q) ? "orders" : /\{ customers/.test(q) ? "customers" : "products";
+    const feed = /urlRedirects/.test(q) ? "redirects" : /\{ orders/.test(q) ? "orders" : /\{ customers/.test(q) ? "customers" : /\{ collections/.test(q) ? "collections" : /\{ pages/.test(q) ? "pages" : /\{ articles/.test(q) ? "articles" : "products";
     if (refuse.has(feed)) return reply({ bulkOperationRunQuery: { bulkOperation: null, userErrors: [{ field: null, message: "Access denied for customers field." }] } });
     started.push(feed);
     return reply({ bulkOperationRunQuery: { bulkOperation: { id: `gid://shopify/BulkOperation/${started.length}`, status: "CREATED" }, userErrors: [] } });
   }
+  if (body.query.includes("KaizenMenus"))
+    return reply({ menus: { nodes: [{ handle: "main-menu", title: "Copied main menu", items: [{ title: "Hats", type: "COLLECTION", url: "/collections/hats", items: [] }, { title: "Our story", type: "PAGE", url: "/pages/our-story", items: [] }, { title: "News", type: "BLOG", url: "/blogs/news", items: [] }] }] } });
   if (body.query.includes("KaizenBulkPoll")) {
     const n = Number(String(body.variables?.id).split("/").pop());
     return reply({ node: { status: "COMPLETED", errorCode: null, url: `https://bulk.example/${started[n - 1]}` } });
@@ -103,9 +108,18 @@ describe("copying a Shopify shop", () => {
   it("reads one feed at a time into the imports' dry runs, and saves nothing before Bring it over", async () => {
     expect(await copy.startCopy(owner)).toEqual({ ok: true });
     await settle(owner);
-    expect(started).toEqual(["products", "customers", "orders", "redirects"]);
+    expect(started).toEqual(["products", "collections", "customers", "orders", "pages", "articles", "redirects"]);
     const view = (await copy.copyView(owner))!;
-    expect(Object.fromEntries(Object.entries(view.state.feeds).map(([k, v]) => [k, [v.stage, v.count]]))).toEqual({ products: ["checked", 1], customers: ["checked", 1], orders: ["checked", 1], redirects: ["checked", 1] });
+    expect(Object.fromEntries(Object.entries(view.state.feeds).map(([k, v]) => [k, [v.stage, v.count]]))).toEqual({
+      products: ["checked", 1],
+      collections: ["checked", 1],
+      customers: ["checked", 1],
+      orders: ["checked", 1],
+      pages: ["checked", 1],
+      articles: ["checked", 1],
+      menus: ["checked", 1],
+      redirects: ["checked", 1],
+    });
     expect(copyReady(view.state)).toBe(true);
     expect(view.jobs.products?.inputName).toBe("shopify-products.csv");
     expect(view.jobs.products?.options).toMatchObject({ pricesIncludeVat: true, priceMarket: "NO", redirects: true });
@@ -117,7 +131,7 @@ describe("copying a Shopify shop", () => {
     expect(await copy.bringItOver(owner)).toEqual({ ok: true });
     await settle(owner);
     const view = (await copy.copyView(owner))!;
-    expect(Object.values(view.state.feeds).map((f) => f.stage)).toEqual(["done", "done", "done", "done"]);
+    expect(Object.values(view.state.feeds).map((f) => f.stage)).toEqual(["done", "done", "done", "done", "done", "done", "done", "done"]);
     expect(copyDone(view.state)).toBe(true);
     const [product] = await db().execute<Row>(sql`select handle from commerce.products where store_id = ${fx.storeId}::uuid and handle = 'copied-wool-hat'`);
     expect(product?.handle).toBe("copied-wool-hat");
@@ -129,6 +143,28 @@ describe("copying a Shopify shop", () => {
     expect(redirect?.target).toBe("/pages/about");
     const [productRedirect] = await db().execute<Row>(sql`select 1 as x from commerce.redirects where store_id = ${fx.storeId}::uuid and source = '/products/copied-wool-hat'`);
     expect(productRedirect).toBeDefined();
+    // The collection is a category with its product in it, through the product import.
+    const [category] = await db().execute<Row>(sql`
+      select t.slug, (select count(*)::int from commerce.product_terms pt join commerce.products p on p.id = pt.product_id where pt.term_id = t.id and p.handle = 'copied-wool-hat') as n
+      from commerce.terms t where t.store_id = ${fx.storeId}::uuid and t.kind = 'category' and t.name = 'Hats'
+    `);
+    expect([category?.slug, category?.n]).toEqual(["hats", 1]);
+    // The page and the post through the page editor's writer, their HTML as its rich text; the post in the main blog with its author.
+    const [page] = await db().execute<Row>(sql`select published -> 'rows' as rows, published_at from commerce.pages where store_id = ${fx.storeId}::uuid and type = 'page' and slug = 'our-story'`);
+    expect(page?.published_at).not.toBeNull();
+    const blockDoc = (page!.rows as Row[])[0] as { columns: { blocks: { doc: unknown }[] }[] };
+    expect(blockDoc.columns[0].blocks[0].doc).toEqual({
+      type: "doc",
+      content: [
+        { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Since 1990" }] },
+        { type: "paragraph", content: [{ type: "text", text: "We knit " }, { type: "text", text: "by hand", marks: [{ type: "bold" }] }, { type: "text", text: "." }] },
+      ],
+    });
+    const [post] = await db().execute<Row>(sql`select published ->> 'author' as author, published ->> 'blogId' as blog from commerce.pages where store_id = ${fx.storeId}::uuid and type = 'article' and slug = 'winter-is-here'`);
+    expect([post?.author, post?.blog ?? null]).toEqual(["Kari", null]);
+    // The menu through the menu editor's writer, linked to the category, the page and the blog.
+    const [menu] = await db().execute<Row>(sql`select items from commerce.menus where store_id = ${fx.storeId}::uuid and name = 'Copied main menu'`);
+    expect((menu!.items as Row[]).map((i) => i.link)).toEqual([{ kind: "category", slug: "hats" }, { kind: "page", slug: "our-story" }, { kind: "blog" }]);
   });
 
   it("says when Shopify refuses a feed and goes on with the rest; a tick while another holds the lease changes nothing", async () => {
@@ -144,6 +180,7 @@ describe("copying a Shopify shop", () => {
     const view = (await copy.copyView(owner))!;
     expect([view.state.feeds.customers.stage, view.state.feeds.customers.problem]).toEqual(["failed", "shopify_refused"]);
     expect(view.state.feeds.orders.stage).toBe("checked");
+    // A second copy finds the page, the post and the menu already here and does not make them again.
     expect((await stateRow()).lease).toBeUndefined();
     // Start again: the unapplied products import of this copy is cancelled, so a new one can be opened.
     const before = (await copy.copyView(owner))!.state.feeds.products.job!;
