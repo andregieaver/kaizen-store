@@ -104,8 +104,6 @@ export function PageEditLink({
   };
   return (
     <>
-      {/* Room at the end of the page, so the button never hides the footer. */}
-      <div aria-hidden className="h-16 print:hidden" />
       <div
         lang="en"
         // Staff's tools, not the page's content (the theme switch e2e leaves them out).
