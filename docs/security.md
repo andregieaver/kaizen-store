@@ -223,6 +223,7 @@ a new folder that is not (PSI SEC-01). Pages and server actions are held by the 
 | `/api/resend` | Resend's events and inbound mail | Svix signature (2.8) |
 | `/api/reviews` | visitors reading more reviews and their pictures (D301) | the reviews feature on and the store open; a picture only of a published review, not hidden |
 | `/api/shop` | a shopper back from Google sign-in (D375) | the sign-in's own state |
+| `/api/shopify` | Shopify: the owner back from approving Kaizena Flow's read-only app, its webhooks, and a merchant opening the app (D445) | the callback: the sealed state cookie, Shopify's HMAC over the query, an anchored `myshopify.com` name and the same owner signed in, before the code is spent; webhooks: Shopify's HMAC over the raw body (401 without); the app's own address only redirects to `/admin` |
 | `/api/stock-requests` | a visitor asking to hear when an item is back (D298) | `sameSite()`; a confirmation email before anything is sent |
 | `/api/storefront` | a headless front end (the storefront API, D362) | a storefront token of the store (`asStorefront()`), budget per token (2.9); `v1/openapi.json` is the public contract, no data |
 | `/api/stripe` | Stripe's webhooks | `constructEvent()` signature (2.8) |
