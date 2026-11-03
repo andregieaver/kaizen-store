@@ -38,7 +38,8 @@ every push then deploys only after the three checks, in `release`). A run on `ma
 mid-migration) and never waits for another: each has a concurrency group of its own, so a quick deploy is not
 queued behind the previous push's checks. The next migration run applies everything still pending, so a
 skipped intermediate commit loses nothing. Pushes that only change `*.md` or `docs/**` do not run CI or
-deploy. Supabase's own history table gets a row per file too, where it can be written.
+deploy, except the docs portal's articles under `content/` (D442): they are part of the product, checked by the
+unit tests and built into the deployment. Supabase's own history table gets a row per file too, where it can be written.
 
 ### One-time setup (owner)
 

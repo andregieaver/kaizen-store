@@ -1170,6 +1170,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["status", "incident", "outage", "uptime", "downtime", "maintenance"],
     tasks: ["Post an incident", "Update or resolve an incident", "See the latest checks"],
   }),
+  platform("docs.feedback", "/docs/feedback", "Docs feedback", "Kaizena Flow site", "What readers said under each page of the docs (D442): whether it helped, counted by page with the least helpful first, and the answers newest first by page, by yes or no and with a sentence; a sentence that names someone is removed here, its yes or no kept.", {
+    keywords: ["docs", "documentation", "helpful", "feedback", "articles"],
+    tasks: ["See which docs pages did not help", "Read what readers wrote", "Remove a sentence that names someone"],
+  }),
   platform("reports", "/reports", "Illegal content notices", "Platform", "Notices people sent about illegal content on stores, each decided with its reason; the sender is told, and the store when something is restricted (DSA).", {
     keywords: ["DSA", "illegal", "notice", "takedown", "report", "abuse", "counterfeit", "moderation"],
     tasks: ["Decide a notice of illegal content", "See decided notices"],
