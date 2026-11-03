@@ -156,11 +156,40 @@ export const PRODUCT_HEADER = [
   "Cost per item",
 ] as const;
 
-/** The product file: per product, its first row with the product's fields, a row for each further variant, then a row for each further picture. */
-export function productsFile(tree: BulkTree): { csv: string; products: number; rows: number } {
+/** A SKU's words: lower case, letters and digits joined by hyphens. */
+const skuPart = (text: string): string =>
+  text
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[øæßđłþœ]/g, (c) => ({ ø: "o", æ: "ae", ß: "ss", đ: "d", ł: "l", þ: "th", œ: "oe" })[c] ?? c)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+/**
+ * The product file: per product, its first row with the product's fields, a row for each further variant, then a row for each further picture.
+ * Shopify lets a variant have no SKU, and the import needs one for every variant (it is how a variant is found again): a variant without one
+ * is given its product's handle and its option values (`bag`, `bag-s-red`), kept unique within the file, and counted in `madeSkus`.
+ */
+export function productsFile(tree: BulkTree): { csv: string; products: number; rows: number; madeSkus: number } {
   const col = (name: (typeof PRODUCT_HEADER)[number]) => PRODUCT_HEADER.indexOf(name);
   const rows: Cell[][] = [[...PRODUCT_HEADER]];
   let products = 0;
+  let madeSkus = 0;
+  const taken = new Set<string>();
+  for (const product of tree.roots)
+    for (const kid of kidsOf(tree, product)) {
+      const sku = s(kid.sku, 255).trim().toLowerCase();
+      if (sku !== "") taken.add(sku);
+    }
+  const madeSku = (handle: string, values: readonly string[]): string => {
+    const base = [skuPart(handle), ...values.map(skuPart)].filter(Boolean).join("-").slice(0, 60) || "variant";
+    let sku = base;
+    for (let n = 2; taken.has(sku); n += 1) sku = `${base}-${n}`;
+    taken.add(sku);
+    madeSkus += 1;
+    return sku;
+  };
   for (const product of tree.roots) {
     const handle = s(product.handle, 255);
     if (handle === "") continue;
@@ -201,7 +230,8 @@ export function productsFile(tree: BulkTree): { csv: string; products: number; r
           row[col(`Option${n + 1} Value` as (typeof PRODUCT_HEADER)[number])] = s(value, 255);
         });
         const item = o(variant.inventoryItem);
-        row[col("Variant SKU")] = s(variant.sku, 255);
+        const values = selected.map((so) => s(so.value, 255)).filter((v) => v !== "" && v !== "Default Title");
+        row[col("Variant SKU")] = s(variant.sku, 255).trim() || madeSku(handle, values);
         row[col("Variant Grams")] = gramsOf(o(item.measurement).weight);
         row[col("Variant Inventory Qty")] = typeof variant.inventoryQuantity === "number" && Number.isSafeInteger(variant.inventoryQuantity) ? variant.inventoryQuantity : "";
         row[col("Variant Price")] = amountCell(variant.price);
@@ -220,7 +250,7 @@ export function productsFile(tree: BulkTree): { csv: string; products: number; r
       rows.push(row);
     }
   }
-  return { csv: writeCsv(rows), products, rows: rows.length - 1 };
+  return { csv: writeCsv(rows), products, rows: rows.length - 1, madeSkus };
 }
 
 export const CUSTOMER_HEADER = [
@@ -396,7 +426,7 @@ export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: 
  * `failed` (with a code the page words).
  */
 export type FeedStage = "waiting" | "reading" | "checking" | "checked" | "applying" | "done" | "empty" | "failed";
-export type FeedProblem = "shopify_refused" | "shopify_failed" | "too_large" | "storage" | "import_refused" | "import_failed";
+export type FeedProblem = "shopify_refused" | "shopify_failed" | "too_large" | "storage" | "import_refused" | "import_failed" | "needs_fixing";
 export type FeedState = { stage: FeedStage; operation?: string; job?: string; count?: number; problem?: FeedProblem };
 export type CopyState = { startedAt: string | null; apply: boolean; feeds: Record<CopyFeed, FeedState> };
 
@@ -407,7 +437,7 @@ export const EMPTY_COPY: CopyState = {
 };
 
 const STAGES: readonly FeedStage[] = ["waiting", "reading", "checking", "checked", "applying", "done", "empty", "failed"];
-const PROBLEMS: readonly FeedProblem[] = ["shopify_refused", "shopify_failed", "too_large", "storage", "import_refused", "import_failed"];
+const PROBLEMS: readonly FeedProblem[] = ["shopify_refused", "shopify_failed", "too_large", "storage", "import_refused", "import_failed", "needs_fixing"];
 const GID = /^gid:\/\/shopify\/BulkOperation\/\d+$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -438,6 +468,9 @@ export const copyMoving = (state: CopyState): boolean =>
 /** Whether every feed has been read and checked (or had nothing), so *Bring it over* can be pressed. */
 export const copyReady = (state: CopyState): boolean =>
   state.startedAt !== null && !state.apply && COPY_FEEDS.every((f) => ["checked", "empty", "failed"].includes(state.feeds[f].stage)) && COPY_FEEDS.some((f) => state.feeds[f].stage === "checked");
+
+/** How many feeds could not come over (`failed`), for the page's last line. */
+export const copyFailed = (state: CopyState): number => COPY_FEEDS.filter((f) => state.feeds[f].stage === "failed").length;
 
 /** Whether everything that could come over has. */
 export const copyDone = (state: CopyState): boolean => state.startedAt !== null && COPY_FEEDS.every((f) => SETTLED.includes(state.feeds[f].stage));

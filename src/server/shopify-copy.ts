@@ -94,6 +94,14 @@ const STEPS: Record<CopyFeed, Steps> = {
   },
 };
 
+/** How many things a job's dry run would bring over (every count but the ones with problems or skipped). */
+export function importableOf(job: Pick<DataJob, "counts">): number {
+  const dry = (job.counts.dry ?? {}) as Record<string, unknown>;
+  return Object.entries(dry)
+    .filter(([name]) => !/problem|error|skipped/i.test(name))
+    .reduce((sum, [, n]) => sum + (typeof n === "number" && Number.isFinite(n) ? n : 0), 0);
+}
+
 /** The page's link to a feed's import job. */
 export const feedJobPage = (feed: CopyFeed, storeSlug: string, jobId: string): string => STEPS[feed].page(storeSlug, jobId);
 
@@ -275,7 +283,9 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
     if (apply) {
       const f = state.feeds[apply];
       const started = await STEPS[apply].apply(member, f.job!, data);
-      state.feeds[apply] = started.ok ? { ...f, stage: "applying" } : { ...f, stage: "failed", problem: "import_refused" };
+      // A dry run that found nothing to bring over is refused by its import: the owner fixes it on the import's page (`needs_fixing`).
+      const job = started.ok ? null : await getJob(storeId, f.job!);
+      state.feeds[apply] = started.ok ? { ...f, stage: "applying" } : { ...f, stage: "failed", problem: job && importableOf(job) === 0 ? "needs_fixing" : "import_refused" };
     }
     return state;
   } catch (error) {

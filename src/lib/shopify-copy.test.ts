@@ -65,6 +65,22 @@ describe("the product file", () => {
     ]);
     expect(at(3, "Variant SKU")).toBe("");
   });
+
+  it("gives a variant without a SKU one from its handle and options, unique in the file, as the import needs", () => {
+    const tree = readBulkLines(
+      lines(
+        { id: "gid://shopify/Product/7", handle: "Bag", title: "Bag", status: "ACTIVE", options: [{ name: "Title", position: 1 }] },
+        { id: "gid://shopify/ProductVariant/71", sku: "", price: "10.00", position: 1, selectedOptions: [{ name: "Title", value: "Default Title" }], __parentId: "gid://shopify/Product/7" },
+        { id: "gid://shopify/Product/8", handle: "scarf", title: "Scarf", status: "ACTIVE", options: [{ name: "Colour", position: 1 }] },
+        { id: "gid://shopify/ProductVariant/81", sku: null, price: "10.00", position: 1, selectedOptions: [{ name: "Colour", value: "Rød" }], __parentId: "gid://shopify/Product/8" },
+        { id: "gid://shopify/ProductVariant/82", sku: "bag", price: "10.00", position: 2, selectedOptions: [{ name: "Colour", value: "Blue" }], __parentId: "gid://shopify/Product/8" },
+      ),
+    );
+    const f = productsFile(tree);
+    const parsed = parseCsv(new TextEncoder().encode(f.csv)).rows;
+    const skus = parsed.slice(1).map((r) => r[parsed[0].indexOf("Variant SKU")]);
+    expect([skus, f.madeSkus]).toEqual([["bag-2", "scarf-rod", "bag"], 2]);
+  });
 });
 
 describe("the customer, order and redirect files", () => {

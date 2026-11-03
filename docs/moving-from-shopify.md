@@ -568,6 +568,10 @@ As built (`src/lib/shopify-copy.ts` pure, `src/server/shopify-copy.ts`):
   for a week. A feed Shopify refuses (protected customer data not yet approved, for instance) is said in one sentence with the file import
   beside it, and the rest goes on.
 - **Order**: customers are applied before orders, so a past order is tied to its customer by email.
+- **A variant without a SKU** (Shopify allows it; the import needs one to find a variant again) is given its product's handle and option
+  values (`bag`, `bag-s-red`), unique within the file. Found on the first real copy (3 November 2026): one product of a development store had
+  none, and its whole product was refused. A part whose check finds nothing to bring over says *Nothing here could come over as it is* with
+  its import's page, and the last line says how many parts could not come over instead of *Everything is here*.
 - **The limits are the imports'**: a feed whose file would pass 15 MB is refused with a sentence and the file imports beside it.
 - **Copied products show at once** unless the shop is behind a password (private mode, D339): the page says so before *Bring it over*, with
   the link. Turning private mode on by itself is left for move day (step 7), where opening the shop is part of the plan.
