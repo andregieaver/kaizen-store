@@ -17,6 +17,8 @@ const STORE = "e2e-quotes";
 const RUN = Date.now().toString(36).toUpperCase();
 let storeId = "";
 let draftId = "";
+/** The product of the request's line: priced on request, as a line waiting for its price always is when `requestQuote()` makes it. */
+let requestedProductId = "";
 
 test.beforeAll(async () => {
   const sql = testDb();
@@ -31,10 +33,16 @@ test.beforeAll(async () => {
     await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${STORE}`;
     const [store] = await sql`select id from commerce.stores where slug = ${STORE}`;
     storeId = String(store.id);
-    // A shopper's request, as `requestQuote()` makes one: a line priced on request (no price yet) and the shopper's note.
+    // Each run (and a retry) starts as a new store would: quotes off, and no request left by an earlier run.
+    await sql`delete from commerce.order_settings where store_id = ${storeId}`;
+    await sql`delete from commerce.draft_orders where store_id = ${storeId} and source = 'quote'`;
+    await sql`update commerce.products set price_on_request = false where store_id = ${storeId} and price_on_request`;
+    // A shopper's request, as `requestQuote()` makes one: a line of a product priced on request (no price yet) and the shopper's note.
     const [variant] = await sql`
-      select v.id, v.sku from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
-       where v.store_id = ${storeId} and p.kind = 'goods' and v.delivery = 'physical' order by v.sku limit 1`;
+      select v.id, v.sku, v.product_id from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+       where v.store_id = ${storeId} and p.kind = 'goods' and v.delivery = 'physical' and not p.subscription_only order by v.sku limit 1`;
+    requestedProductId = String(variant.product_id);
+    await sql`update commerce.products set price_on_request = true where id = ${requestedProductId}`;
     const [draft] = await sql`
       insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, source, email, shipping_address, company_name, request_note)
       values (${storeId}, commerce.next_draft_number(${storeId}), 'NO', 'no', 'NOK', 'nb-NO', 'quote', ${`kari-${RUN.toLowerCase()}@example.com`},
@@ -83,11 +91,15 @@ test("a request waits in Orders, Drafts with its chip and filter, shows the note
   // The line priced on request waits for its price; the list price is only a guide, and the quote cannot be sent yet.
   await expect(page.getByText(/^Priced on request: type the price for this customer/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Send quote" })).toBeDisabled();
+  // Its price box is empty, never the 0 it is kept at, so saving anything else leaves it waiting.
+  await expect(page.getByRole("region", { name: "Lines" }).getByRole("textbox", { name: /^Price each/ })).toHaveValue("");
 
   await panel.getByText("Decline the request").click();
   await panel.getByLabel("Your reply to the customer").fill("We cannot deliver ten before March.");
   await panel.getByRole("button", { name: "Decline and send the reply" }).click();
-  await expect(page.getByText(/^Declined\./).first()).toBeVisible();
+  // The page then shows the request as declined, and still says whether the reply went (here only logged: no email is set up).
+  await expect(panel.getByRole("status")).toHaveText(/^Declined\./);
+  await expect(panel.getByText(/^Declined \d/)).toBeVisible();
   await page.reload();
   await expect(page.locator("[data-quote-request]").getByText("We cannot deliver ten before March.")).toBeVisible();
   const sql = testDb();
@@ -104,7 +116,9 @@ test("a product is priced on request from its editor", async ({ page }) => {
   const sql = testDb();
   let productId = "";
   try {
-    const [product] = await sql`select id from commerce.products where store_id = ${storeId} and kind = 'goods' and not subscription_only order by handle limit 1`;
+    const [product] = await sql`
+      select id from commerce.products where store_id = ${storeId} and kind = 'goods' and not subscription_only and id <> ${requestedProductId}
+      order by handle limit 1`;
     productId = String(product.id);
   } finally {
     await sql.end();

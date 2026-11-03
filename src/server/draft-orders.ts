@@ -153,8 +153,10 @@ function lineOf(row: Row): DraftLineView {
     quantity: Number(row.quantity),
     unitPriceMinor: unit,
     listPriceMinor: list,
-    // A product priced on request (D431) is never at its list price: a price on its line is one staff typed.
-    customPrice: (onRequest && !priceRequested) || hasCustomPrice({ kind: row.variant_id ? "goods" : "custom", unitPriceMinor: unit, listPriceMinor: list }),
+    // A product priced on request (D431) is never at its list price: a price on its line is one staff typed. A line still waiting for its
+    // price has none, though it is kept at 0: were its 0 a typed price, the editor would show it in the price box and the next save would
+    // send it as typed, so the line would stop waiting and could go out at 0.
+    customPrice: !priceRequested && (onRequest || hasCustomPrice({ kind: row.variant_id ? "goods" : "custom", unitPriceMinor: unit, listPriceMinor: list })),
     vatCategory: row.vat_category ? String(row.vat_category) : null,
     delivery: row.delivery === "service" ? "service" : "physical",
     priceRequested,

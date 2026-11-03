@@ -35,6 +35,7 @@ const { newPlainStore } = await import("./order-ops-fixture");
 const { staffActor } = await import("./order-actor");
 const { changeLine } = await import("./cart");
 const { storeById } = await import("./shopper-emails");
+const { formFromDraft } = await import("@/lib/draft-editor");
 
 type Row = Record<string, unknown>;
 type TestStore = Awaited<ReturnType<typeof support.newStore>>;
@@ -194,7 +195,16 @@ describe("from the request to the quote sent", () => {
     const refused = await sendDraft(store.storeId, staffActor(store.accountId), draftId, { version: before.draft.version, createLink: true });
     expect(refused).toMatchObject({ ok: false, problem: "problems" });
 
-    const editorLines: { kind: "goods"; variantId: string | null; quantity: number; price?: string }[] = before.draft.lines.map((l) => ({ kind: "goods", variantId: l.variantId, quantity: l.quantity }));
+    // The line waiting for its price has none of its own: the editor's price box starts empty, never at the 0 it is kept at, so a save of
+    // anything else on the draft leaves it waiting.
+    expect(before.draft.lines[1]).toMatchObject({ priceRequested: true, customPrice: false, unitPriceMinor: 0 });
+    expect(formFromDraft(before.draft).lines[1].price).toBe("");
+    const editorLines: { kind: "goods"; variantId: string | null; quantity: number; price?: string }[] = formFromDraft(before.draft).lines.map((l) => ({
+      kind: "goods",
+      variantId: l.variantId,
+      quantity: l.quantity,
+      ...(l.price ? { price: l.price } : {}),
+    }));
     // Saved without a price, the line still waits for one.
     const waiting = await saveDraft(store.storeId, staffActor(store.accountId), draftId, {
       version: before.draft.version,

@@ -78,10 +78,11 @@ export function QuotePanel({ quote, timeZone }: { quote: DraftQuote; timeZone?: 
                 {w.declineButton}
               </button>
             </div>
-            <ActionMessage result={result} />
           </div>
         </details>
       )}
+      {/* Outside the form: once declined, the page shows the declined request in its place, and this still says whether the reply went. */}
+      <ActionMessage result={result} />
     </section>
   );
 }

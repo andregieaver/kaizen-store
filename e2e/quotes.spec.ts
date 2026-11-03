@@ -69,7 +69,8 @@ test("a product priced on request shows no price and no Add to cart, only Reques
 
   const rows = await quotesFor(store.id);
   expect(rows).toHaveLength(1);
-  expect(rows[0]).toMatchObject({ email: "kari@example.com", request_note: "Til kontoret.", quantity: 12, price_requested: true, unit_price_minor: 0 });
+  expect(rows[0]).toMatchObject({ email: "kari@example.com", request_note: "Til kontoret.", quantity: 12, price_requested: true });
+  expect(Number(rows[0].unit_price_minor)).toBe(0);
 });
 
 test("a product priced on request says so on the product list too", async ({ page }) => {
@@ -84,6 +85,7 @@ test("where the store offers quotes to everyone, Request a quote is beside Add t
   await page.goto(`/s/${store.slug}/p/${MUG}`);
   await expect(page.getByRole("button", { name: "Be om tilbud" })).toBeVisible();
   await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
+  await expect(page.getByRole("status").filter({ hasText: "Lagt i handlekurven." }).first()).toBeVisible();
   await page.goto(`/s/${store.slug}/cart`);
   await page.getByRole("button", { name: "Be om tilbud på disse varene" }).click();
   const dialog = page.getByRole("dialog", { name: "Be om tilbud" });
@@ -93,7 +95,7 @@ test("where the store offers quotes to everyone, Request a quote is beside Add t
   const rows = await quotesFor(store.id);
   expect(rows).toHaveLength(1);
   expect(rows[0]).toMatchObject({ email: "ola@example.com", company_name: "Nordmann AS", price_requested: false });
-  expect(rows[0].unit_price_minor).toBeGreaterThan(0);
+  expect(Number(rows[0].unit_price_minor)).toBeGreaterThan(0);
 });
 
 test("a store with quotes off offers none on a product that shows its price", async ({ page }) => {
