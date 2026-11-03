@@ -18,7 +18,9 @@ import { factSheet, planLegalPage, writerMessages, writerSettings } from "@/lib/
  * agents' eval plays exactly these prompts, so a recording is of one version (`agent-eval-replay.int.test.ts`). The AI manager's fixed
  * prompt is drawn beside its prompt (`fixedManagerPrompt()` in `owner-assistant.ts`), so the shopper chat's routes never load it; all
  * of them together are `promptVersions()` in `agent-eval.ts`. The notice reader and listing checker (D411 part 2) and the Dream Factory's
- * brief (D409) are drawn here too: their system prompts and the code that frames what they are sent.
+ * brief (D409) are drawn here too: their system prompts and the code that frames what they are sent. The AI manager's version covers its
+ * drawing for a turn an outside assistant asked for through the owner MCP as well (D439, `fixedManagerPrompt(…, FIXED_OUTSIDE)`), whose
+ * words name that assistant.
  */
 
 export type PromptAgent = "chat" | "manager" | "legal" | "moderation" | "dream";
