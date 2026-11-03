@@ -8,6 +8,7 @@
  * escaped (`csv.ts`) and read unescaped; an amount is a number cell of `amountCell()`; nothing here reads or writes a file or a database.
  */
 import { normaliseMeasureAmount } from "./unit-price";
+import { wordsIn, type PriceWords, type ProductPriceWords } from "./price-words";
 import { parsePrice } from "./product-input";
 import type { ProductInput } from "./product-input";
 import type { StoreAudience } from "./b2b";
@@ -81,6 +82,25 @@ export type TextColumn = (typeof TEXT_COLUMNS)[number];
 export const PRODUCT_STATUSES = ["draft", "active", "archived"] as const;
 export const DELIVERY_WORDS = ["physical", "digital", "service"] as const;
 
+/**
+ * The words around a product's price in the file (D429, D434): the `price_words` cell says whose they are (`store`: the store's words, `none`:
+ * none at all, `own`: its own), and its own are in `price_prefix` and `price_suffix` for the main language and `price_prefix:{locale}`,
+ * `price_suffix:{locale}` for each other, as the text columns are.
+ */
+export const PRICE_WORDS_CELLS = { inherit: "store", none: "none", own: "own" } as const satisfies Record<ProductPriceWords["mode"], string>;
+export const PRICE_WORD_PLACES = ["prefix", "suffix"] as const satisfies readonly (keyof PriceWords)[];
+
+/** The column of a word around the price in a language: `price_prefix`, or `price_prefix:sv-SE` for a language other than the main one. */
+export const priceWordColumn = (place: keyof PriceWords, locale: string, primaryLocale: string): string =>
+  locale === primaryLocale ? `price_${place}` : `price_${place}:${locale}`;
+
+/** The mode a `price_words` cell names, or null for a word that is none of them. */
+export function priceWordsModeOf(cell: string): ProductPriceWords["mode"] | null {
+  const word = cell.trim().toLowerCase();
+  const found = Object.entries(PRICE_WORDS_CELLS).find(([, written]) => written === word);
+  return found ? (found[0] as ProductPriceWords["mode"]) : null;
+}
+
 /** Cells that belong to a variant, as against the product (a row with any of them filled is a variant's row). */
 export const VARIANT_COLUMNS = [
   "variant_id", "sku", "gtin", "active", "delivery", "weight_grams", "hs_code", "origin_country", "cost", "stock", "stock_policy", "backorder_days", "low_stock_threshold", "measure_amount", "measure_unit", "measure_base",
@@ -109,6 +129,10 @@ export function ambiguousFieldNames(ctx: ProductCsvContext, entity: "product" | 
 const fieldHeaders = (defs: FieldDef[], prefix: string, otherLocales: readonly string[]): string[] =>
   defs.flatMap((d) => [`${prefix}:${d.name}`, ...(d.type === "text" || d.type === "textarea" ? otherLocales.map((l) => `${prefix}:${d.name}:${l}`) : [])]);
 
+/** The words-around-the-price columns: the main language's `price_prefix`, `price_suffix`, then each other language's, in the store's order. */
+const priceWordHeaders = (ctx: ProductCsvContext): string[] =>
+  [ctx.primaryLocale, ...ctx.locales.filter((l) => l !== ctx.primaryLocale)].flatMap((l) => PRICE_WORD_PLACES.map((place) => priceWordColumn(place, l, ctx.primaryLocale)));
+
 /** The header row, in the contract's order. */
 export function productColumns(ctx: ProductCsvContext): string[] {
   const others = ctx.locales.filter((l) => l !== ctx.primaryLocale);
@@ -117,6 +141,7 @@ export function productColumns(ctx: ProductCsvContext): string[] {
     ...TEXT_COLUMNS,
     ...others.flatMap((l) => TEXT_COLUMNS.map((c) => `${c}:${l}`)),
     "categories", "tags", "standard_category",
+    "price_on_request", "price_words", ...priceWordHeaders(ctx),
     "option1_name", "option1_value", "option2_name", "option2_value", "option3_name", "option3_value",
     "variant_id", "sku", "gtin", "active", "delivery", "weight_grams", "hs_code", "origin_country", "cost", "stock",
     "stock_policy", "backorder_days", "low_stock_threshold",
@@ -205,7 +230,18 @@ export function productRowsOf(record: StoredProduct, ctx: ProductCsvContext): Ce
     categories: text(termNames(ctx.terms, record.categories, "category")),
     tags: text(termNames(ctx.terms, record.tags, "tag")),
     standard_category: record.standardCategory ? (ctx.standard?.path(record.standardCategory) ?? record.standardCategory) : "",
+    // Price on request (D431) and the words around the price (D429): its own words as a shopper reads them in each language (one with none of
+    // its own takes the main language's), so the cells say what is shown.
+    price_on_request: record.priceOnRequest ? "true" : "false",
+    price_words: PRICE_WORDS_CELLS[(record.priceWords ?? { mode: "inherit" }).mode],
   };
+  const words = record.priceWords?.mode === "own" ? record.priceWords.words : null;
+  if (words) {
+    for (const l of ctx.locales) {
+      const shown = wordsIn(words, l, ctx.primaryLocale);
+      for (const place of PRICE_WORD_PLACES) productCells[priceWordColumn(place, l, ctx.primaryLocale)] = text(shown[place]);
+    }
+  }
   const primary = translation(ctx.primaryLocale);
   productCells.title = text(primary?.title);
   productCells.description = text(primary?.description);
@@ -305,6 +341,9 @@ export type NeutralFile = {
   findings: Finding[];
 };
 
+/** A column of the product's own in a language other than the main one (`title:sv-SE`, `price_prefix:sv-SE`); its one group is the language. */
+export const LANGUAGE_COLUMN = /^(?:title|description|safety_information|seo_title|seo_description|price_prefix|price_suffix):(.+)$/;
+
 /** A Kaizen file's rows (the header first) as a neutral file. Columns it does not know are ignored with a reason, never an error. */
 export function readNeutral(raw: readonly (readonly string[])[], ctx: ProductCsvContext): NeutralFile {
   const header = (raw[0] ?? []).map((h) => h.trim());
@@ -314,7 +353,7 @@ export function readNeutral(raw: readonly (readonly string[])[], ctx: ProductCsv
   const keep: number[] = [];
   header.forEach((name, i) => {
     if (name === "") return;
-    if (known.has(name) || /^(field|variant_field):/.test(name) || /^(title|description|safety_information|seo_title|seo_description):/.test(name) || isPriceColumn(name)) {
+    if (known.has(name) || /^(field|variant_field):/.test(name) || /^(title|description|safety_information|seo_title|seo_description|price_prefix|price_suffix):/.test(name) || isPriceColumn(name)) {
       if (!columns.has(name)) {
         columns.add(name);
         keep.push(i);

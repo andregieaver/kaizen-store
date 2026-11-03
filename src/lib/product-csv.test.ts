@@ -35,6 +35,7 @@ describe("the columns", () => {
       "title:sv-SE", "description:sv-SE", "safety_information:sv-SE", "seo_title:sv-SE", "seo_description:sv-SE",
       "title:en-GB", "description:en-GB", "safety_information:en-GB", "seo_title:en-GB", "seo_description:en-GB",
       "categories", "tags", "standard_category",
+      "price_on_request", "price_words", "price_prefix", "price_suffix", "price_prefix:sv-SE", "price_suffix:sv-SE", "price_prefix:en-GB", "price_suffix:en-GB",
       "option1_name", "option1_value", "option2_name", "option2_value", "option3_name", "option3_value",
       "variant_id", "sku", "gtin", "active", "delivery", "weight_grams", "hs_code", "origin_country", "cost", "stock",
       "stock_policy", "backorder_days", "low_stock_threshold",
@@ -52,6 +53,7 @@ describe("the columns", () => {
     const one = productColumns(context({ locales: ["nb-NO"], fields: [] }));
     expect(one.filter((c) => c.includes(":") && !c.startsWith("price:"))).toEqual([]);
     expect(one.filter((c) => c.startsWith("price:"))).toEqual(["price:NO", "price:SE"]);
+    expect(one.filter((c) => c.startsWith("price_"))).toEqual(["price_on_request", "price_words", "price_prefix", "price_suffix", "price_basis"]);
   });
 
   it("leaves out custom fields that do not fit in a cell, and names two fields share", () => {
@@ -142,6 +144,20 @@ describe("a product as rows", () => {
     expect(cell(1, "variant_field:shade")).toBeNull();
   });
 
+  it("writes price on request and the words around the price on the first row: the store's, none, or its own as each language shows them", () => {
+    expect([cell(0, "price_on_request"), cell(0, "price_words"), cell(0, "price_prefix"), cell(0, "price_suffix:sv-SE")]).toEqual(["false", "store", null, null]);
+    expect(cell(1, "price_on_request")).toBeNull();
+    const own = boot(ctx, { priceOnRequest: true, priceWords: { mode: "own", words: { "nb-NO": { prefix: "Kun", suffix: ",-" }, "sv-SE": { prefix: "", suffix: "/st" } } } });
+    const rowsOf = productRowsOf(own, ctx);
+    const at = (name: string) => rowsOf[0][header.indexOf(name)];
+    expect(["price_on_request", "price_words", "price_prefix", "price_suffix"].map(at)).toEqual(["true", "own", "Kun", ",-"]);
+    // Swedish has its own (no word before the price); English has none of its own, so it shows the main language's.
+    expect(["price_prefix:sv-SE", "price_suffix:sv-SE", "price_prefix:en-GB", "price_suffix:en-GB"].map(at)).toEqual([null, "/st", "Kun", ",-"]);
+    expect(rowsOf[1][header.indexOf("price_prefix")]).toBeNull();
+    const none = productRowsOf(boot(ctx, { priceWords: { mode: "none" } }), ctx)[0];
+    expect([none[header.indexOf("price_words")], none[header.indexOf("price_prefix")]]).toEqual(["none", null]);
+  });
+
   it("writes an archived product as archived, and sorts products by handle", () => {
     const archived = boot(ctx, { archived: true, status: "draft" });
     expect(productRowsOf(archived, ctx)[0][header.indexOf("status")]).toBe("archived");
@@ -230,6 +246,16 @@ describe("a round trip changes nothing", () => {
       expect(plan.dry).toEqual({ toCreate: 0, toUpdate: 0, unchanged: 2, withProblems: 0 });
     });
   }
+
+  it("holds for a product priced on request with words of its own, one language taking the main language's, and for each choice of words", () => {
+    const words = { "nb-NO": { prefix: "Kun", suffix: ",-" }, "sv-SE": { prefix: "", suffix: "/st" } };
+    for (const priceWords of [{ mode: "own" as const, words }, { mode: "none" as const }, { mode: "inherit" as const }]) {
+      const stored = boot(ctx, { priceOnRequest: true, priceWords });
+      const csv = fileOf([stored]);
+      const plan = planImport(readNeutral(parseCsv(csv).rows, ctx), snapshotOf([stored]), env(ctx));
+      expect([priceWords.mode, plan.fileFindings, plan.products.map((p) => [p.outcome, p.findings])]).toEqual([priceWords.mode, [], [["unchanged", []]]]);
+    }
+  });
 
   it("holds for an archived product and a store selling only to businesses", () => {
     const b2b = context({ audience: "businesses" });

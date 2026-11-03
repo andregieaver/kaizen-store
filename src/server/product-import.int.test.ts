@@ -6,7 +6,7 @@ import { closeDb, db } from "@/db/client";
 import { writeCsv, type Cell } from "@/lib/csv";
 
 import type { Membership } from "./auth";
-import { addSwedish, auditOf, depsWith, fakeStorage, importThrough, itemsOf, jobRow, membersOf, runToEnd, uploadImport } from "./data-test-support";
+import { addSwedish, auditOf, depsWith, fakeStorage, importThrough, itemsOf, jobRow, membersOf, rowsOfCsv, runToEnd, uploadImport } from "./data-test-support";
 import type { DataDeps } from "./data-job-store";
 import { makeStore, type Fixture } from "./invoice-test-fixture";
 
@@ -524,5 +524,108 @@ describe("only the member's own store", () => {
     expect(csv.csv).toContain("sku.in_other_product");
     expect(csv.csv).not.toContain("=1+1");
     await jobs.cancelJob(owner, run.jobId, deps);
+  });
+});
+
+/**
+ * Price on request and the words around the price in the product file (D434): exported as the editor holds them, read back to the same product,
+ * a changed cell saved through `saveProduct()` with the editor's checks, a word the editor refuses refused per line, and a part of a bundle priced
+ * from its products' prices never priced on request (D433), while the file's other products go on.
+ */
+describe("price on request and the words around the price (D434)", () => {
+  const LAMP = "demo-bordlampe";
+  const lampRow = async () =>
+    (await db().execute<Row>(sql`select price_on_request, price_words from commerce.products where store_id = ${fx.storeId}::uuid and handle = ${LAMP}`))[0];
+  /** The store's export, cut to the lamp's rows under the header. */
+  const exportedLamp = async () => {
+    const exported = await jobs.requestProductExport(owner, {});
+    if (!exported.ok || exported.mode !== "file") throw new Error("the export was not a file");
+    const [header, ...rows] = rowsOfCsv(exported.csv);
+    return { header, rows: rows.filter((r) => r[header.indexOf("handle")] === LAMP) };
+  };
+  const bytesOf = (header: string[], rows: string[][]) => new TextEncoder().encode(writeCsv([header, ...rows]));
+
+  it("exports then imports the same product, and saves a changed cell as the editor would", async () => {
+    const deps = stubs();
+    const words = { mode: "own", words: { "nb-NO": { prefix: "Kun", suffix: ",-" } } };
+    await db().execute(sql`
+      update commerce.products set price_on_request = true, price_words = ${JSON.stringify(words)}::jsonb where store_id = ${fx.storeId}::uuid and handle = ${LAMP}
+    `);
+    try {
+      const before = await lampRow();
+      const { header, rows } = await exportedLamp();
+      expect(header).toEqual(expect.arrayContaining(["price_on_request", "price_words", "price_prefix", "price_suffix", "price_prefix:sv-SE", "price_suffix:sv-SE"]));
+      const at = (name: string) => rows[0][header.indexOf(name)];
+      // Swedish has no words of its own, so it shows (and the file says) the main language's.
+      expect(["price_on_request", "price_words", "price_prefix", "price_suffix", "price_prefix:sv-SE", "price_suffix:sv-SE"].map(at)).toEqual(["true", "own", "Kun", ",-", "Kun", ",-"]);
+
+      const back = await importThrough(owner, deps.storage as never, bytesOf(header, rows), {}, { deps });
+      expect(back.applied?.counts, JSON.stringify((await itemsOf(back.jobId)).map((i) => [i.ref, i.outcome, i.messages.map((m) => m.code)]))).toMatchObject({
+        unchanged: 1,
+        updated: 0,
+        failed: 0,
+      });
+      expect(await lampRow()).toEqual(before);
+
+      // The price shown again and Swedish words of its own: saved as the editor saves them, and exported as the file said.
+      const edited = rows.map((r, i) => (i > 0 ? r : r.map((cell, j) => ({ price_on_request: "false", "price_suffix:sv-SE": " / st " })[header[j]] ?? cell)));
+      const changed = await importThrough(owner, deps.storage as never, bytesOf(header, edited), {}, { deps });
+      expect(changed.applied?.counts).toMatchObject({ updated: 1, failed: 0 });
+      // Each of the store's languages as the file states it: Swedish its own suffix, the others the words they showed.
+      const saved = await lampRow();
+      expect(saved.price_on_request).toBe(false);
+      const savedWords = (saved.price_words as { mode: string; words: Record<string, { prefix: string; suffix: string }> }).words;
+      expect(saved.price_words).toMatchObject({ mode: "own" });
+      expect(Object.keys(savedWords)).toEqual(expect.arrayContaining(["nb-NO", "sv-SE"]));
+      for (const [locale, shown] of Object.entries(savedWords)) expect([locale, shown]).toEqual([locale, locale === "sv-SE" ? { prefix: "Kun", suffix: "/ st" } : { prefix: "Kun", suffix: ",-" }]);
+      const again = await exportedLamp();
+      expect(["price_on_request", "price_words", "price_prefix:sv-SE", "price_suffix:sv-SE"].map((name) => again.rows[0][again.header.indexOf(name)])).toEqual(["false", "own", "Kun", "/ st"]);
+
+      // Back to the store's words: the product's own are dropped.
+      const store = rows.map((r, i) => (i > 0 ? r : r.map((cell, j) => (header[j] === "price_words" ? "store" : header[j].startsWith("price_prefix") || header[j].startsWith("price_suffix") ? "" : cell))));
+      expect((await importThrough(owner, deps.storage as never, bytesOf(header, store), {}, { deps })).applied?.counts).toMatchObject({ updated: 1, failed: 0 });
+      expect((await lampRow()).price_words).toBeNull();
+    } finally {
+      await db().execute(sql`update commerce.products set price_on_request = false, price_words = null where store_id = ${fx.storeId}::uuid and handle = ${LAMP}`);
+    }
+  });
+
+  it("refuses a word the editor would refuse on its line, and pricing on request a part of a bundle priced from its products' prices", async () => {
+    const deps = stubs();
+    const header = ["handle", "sku", "price_basis", "price_words", "price_prefix", "price_on_request"];
+    const bad = await importThrough(owner, deps.storage as never, file([{ handle: LAMP, sku: "DEMO-LAMP", price_basis: "incl_vat", price_words: "own", price_prefix: "Beste pris" }], header), {}, { deps, apply: false });
+    const item = (await itemsOf(bad.jobId)).find((i) => i.ref === LAMP)!;
+    expect(item.messages.map((m) => [m.code, m.severity, (m as { column?: string }).column])).toEqual([["price_words.invalid", "error", "price_prefix"]]);
+    expect(item.messages[0].text).not.toContain("Beste");
+    await jobs.cancelJob(owner, bad.jobId, deps);
+
+    // The mug is in the demo bundle priced from its products' prices (D433): refused for that product with the editor's sentence; the notebook goes on.
+    const run = await importThrough(
+      owner,
+      deps.storage as never,
+      file(
+        [
+          { handle: "demo-keramikkopp", sku: "DEMO-MUG-WHITE", price_basis: "incl_vat", price_on_request: "true" },
+          { handle: "demo-notatbok", sku: "DEMO-NOTEBOOK-LINED", price_basis: "incl_vat", price_on_request: "true" },
+        ],
+        header,
+      ),
+      {},
+      { deps },
+    );
+    try {
+      expect(run.applied?.counts).toMatchObject({ failed: 1, updated: 1 });
+      const items = await itemsOf(run.jobId);
+      const mug = items.find((i) => i.ref === "demo-keramikkopp")!;
+      expect([mug.outcome, mug.messages.map((m) => m.code)]).toEqual(["failed", ["save.failed"]]);
+      expect(mug.messages[0].text).toContain("This product is in the bundle …, priced from its products' prices, so it cannot be priced on request");
+      const flags = await db().execute<Row>(sql`select handle, price_on_request from commerce.products where store_id = ${fx.storeId}::uuid and handle in ('demo-keramikkopp', 'demo-notatbok') order by handle`);
+      expect(flags.map((f) => [f.handle, f.price_on_request])).toEqual([
+        ["demo-keramikkopp", false],
+        ["demo-notatbok", true],
+      ]);
+    } finally {
+      await db().execute(sql`update commerce.products set price_on_request = false where store_id = ${fx.storeId}::uuid and handle = 'demo-notatbok'`);
+    }
   });
 });
