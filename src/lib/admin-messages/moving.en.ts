@@ -90,6 +90,7 @@ export const movingEn = {
     found: { one: "{n} found", many: "{n} found" },
     needLook: { one: "{n} needs a look", many: "{n} need a look" },
     see: "See what will happen",
+    seeDone: "See what happened",
     problems: {
       shopify_refused: "Shopify didn't let us read these. Bring them over with Shopify's file instead.",
       shopify_failed: "Shopify couldn't finish reading these. Press Start again, or use Shopify's file.",

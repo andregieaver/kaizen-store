@@ -87,6 +87,7 @@ export const movingNb: MovingMessages = {
     found: { one: "{n} funnet", many: "{n} funnet" },
     needLook: { one: "{n} må ses på", many: "{n} må ses på" },
     see: "Se hva som vil skje",
+    seeDone: "Se hva som skjedde",
     problems: {
       shopify_refused: "Shopify lot oss ikke lese disse. Flytt dem med Shopifys fil i stedet.",
       shopify_failed: "Shopify klarte ikke å lese ferdig. Trykk Start på nytt, eller bruk Shopifys fil.",
