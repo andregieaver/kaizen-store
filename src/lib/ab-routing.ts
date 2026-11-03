@@ -1,5 +1,6 @@
 import { withSiteVersions, testToken, type TargetKind } from "./ab-site";
 import { dataCookieName, decodeAssignments, OUTSIDE } from "./experiments";
+import { isDocsHost } from "./docs-host";
 import { isThemesHost } from "./theme-host";
 
 /**
@@ -55,8 +56,8 @@ export function storeOfHost(host: string, domain: string | null, customHosts: Re
     if (primary === bare || hosts.includes(bare)) return slug;
   }
   if (!domain) return null;
-  // The theme store's own host is never a store's, whatever its name (docs/theme-phase-3.md step 3).
-  if (isThemesHost(host)) return null;
+  // The theme store's own host and the docs' are never a store's, whatever their names (docs/theme-phase-3.md step 3, D442).
+  if (isThemesHost(host) || isDocsHost(host)) return null;
   const root = domain.toLowerCase().replace(/:\d+$/, "");
   const match = new RegExp(`^([a-z0-9-]+)\\.${root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`).exec(bare);
   return match && match[1] !== "www" ? match[1] : null;

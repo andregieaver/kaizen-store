@@ -4,10 +4,14 @@ on:
   push:
     branches: [main]
     # Words only: nothing to test or deploy. (docs/parity/*.json and the generated docs/shopify-parity.md are
-    # read by the unit tests, so `pnpm test` before pushing those; a push of them alone is not run here.)
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
+    # read by the unit tests, so `pnpm test` before pushing those; a push of them alone is not run here.) The docs
+    # portal's articles (D442, content/**) are Markdown too, but they are the product: checked by the unit tests and
+    # built into the deployment, so a push of them is run (a later positive pattern takes a path back in).
+    paths:
+      - "**"
+      - "!**/*.md"
+      - "!docs/**"
+      - "content/**"
   pull_request:
   # One-time: record the migrations production already has (docs/ci-migrations.md). Run from main.
   workflow_dispatch:
@@ -165,6 +169,8 @@ jobs:
       NEXT_PUBLIC_STORE_DOMAIN: localhost:3000
       # The theme store on its own host, a name under the store domain (docs/theme-phase-3.md step 3).
       NEXT_PUBLIC_THEMES_HOST: themes.localhost:3000
+      # The docs on their own host (D442), likewise a name under the store domain that must never be taken for a store's.
+      NEXT_PUBLIC_DOCS_HOST: docs.localhost:3000
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -177,7 +183,7 @@ jobs:
         run: node scripts/db-setup.mjs --seed && node e2e/hosts-seed.mjs
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm exec playwright test e2e/store-hosts.spec.ts e2e/inline-edit-hosts.spec.ts e2e/theme-host.spec.ts
+      - run: pnpm exec playwright test e2e/store-hosts.spec.ts e2e/inline-edit-hosts.spec.ts e2e/theme-host.spec.ts e2e/docs-host.spec.ts
         env:
           E2E_CUSTOM_HOSTS: "1"
 

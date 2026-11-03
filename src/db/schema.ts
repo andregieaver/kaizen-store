@@ -16394,3 +16394,28 @@ export const contentScreened = commerce.table(
   },
   (t) => [index("content_screened_store_idx").on(t.storeId)],
 );
+
+/**
+ * *Was this page helpful?* on the docs (wave 14 unit E1, D442, `src/server/docs-feedback.ts`): a page's path (`owners/getting-started/…`)
+ * and language, yes or no, and an optional sentence added within the hour, kept for the platform's admins at
+ * `/admin/platform/docs/feedback`. Never who answered: no address, account, cookie or browser. Written only by `recordDocsVote()` and
+ * `addDocsComment()`; read only by `listDocsFeedback()`.
+ */
+export const docsFeedback = commerce.table(
+  "docs_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    path: text("path").notNull(),
+    lang: text("lang").notNull(),
+    helpful: boolean("helpful").notNull(),
+    comment: text("comment"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("docs_feedback_created_idx").on(t.createdAt),
+    index("docs_feedback_path_idx").on(t.path, t.createdAt),
+    check("docs_feedback_path", sql`${t.path} ~ '^[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*){0,4}$'`),
+    check("docs_feedback_lang", sql`${t.lang} in ('en', 'nb')`),
+    check("docs_feedback_comment", sql`${t.comment} is null or char_length(${t.comment}) between 1 and 500`),
+  ],
+);

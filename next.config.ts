@@ -8,6 +8,7 @@ import { LEGACY_THEME_REDIRECTS } from "./src/lib/theme-admin-paths";
 import { LEGACY_WORK_REDIRECTS } from "./src/lib/work-paths";
 import { storeHostRoutes } from "./src/lib/store-hosts";
 import { themeHostRoutes, themesHost, themesOrigin } from "./src/lib/theme-host";
+import { docsHost, docsHostRoutes } from "./src/lib/docs-host";
 import { readStoreHosts } from "./src/lib/store-hosts-build";
 
 const CHROMIUM_FILES = [
@@ -23,6 +24,9 @@ const DOCUMENT_PDF_FILES = [
   "./node_modules/.pnpm/react@*/node_modules/react/**",
   "./node_modules/.pnpm/scheduler@*/node_modules/scheduler/**",
 ];
+
+// The docs' content (D442): every article, the sections' titles and the list of Norwegian pages still to write.
+const DOCS_FILES = ["./content/docs/**/*"];
 
 /**
  * Vercel's build machine has 8 GB, and the build outgrew it from 27 October 2026: the type check needs a 5 GB heap of its own since
@@ -58,6 +62,11 @@ const nextConfig: NextConfig = {
     // The standard product taxonomy (D327, `src/server/product-taxonomy.ts`) is read from disk, not imported (the type checker would type
     // its 100,000 entries): the product editor, imports, listings, feeds and the AI manager's tools all read it, so every route carries it.
     "/**": ["./src/data/product-taxonomy/*"],
+    // The docs' articles (D442, `src/server/docs.ts`) are Markdown files read from disk when the docs are built: every docs page is
+    // prerendered, but an address not built (a 404, a page asked for before its build) and the routes below read them at run time. The
+    // keys are globs over the route's path with its groups (`/(docs)/docs/…`, `/(docs-nb)/no/docs/…`, `/api/docs/feedback`, the admin's).
+    "/**/docs": DOCS_FILES,
+    "/**/docs/**": DOCS_FILES,
   },
   experimental: {
     // On Vercel, Turbopack without its build cache (its compile held 7.2 GB with it, 5.8 GB without) and one worker for the pages
@@ -76,9 +85,11 @@ export default async function config(phase: string): Promise<NextConfig> {
   // read when building, and built into the deployment's routing and its code together.
   const building = phase === PHASE_PRODUCTION_BUILD || phase === PHASE_DEVELOPMENT_SERVER;
   const hosts = storeDomain() && building ? await readStoreHosts() : storeHosts();
-  const routes = storeHostRoutes(storeDomain(), siteUrl(), hosts, themesHost());
+  const routes = storeHostRoutes(storeDomain(), siteUrl(), hosts, [themesHost(), docsHost()]);
   // The theme store on its own host (docs/theme-phase-3.md step 3): before the stores' rules, which leave its host alone.
   const themes = themeHostRoutes(themesHost(), siteUrl());
+  // The docs on their own host (D442), as the theme store's; their Markdown twins (`….md`) on every host.
+  const docs = docsHostRoutes(docsHost(), siteUrl());
   return {
     ...nextConfig,
     ...(building ? { env: { NEXT_PUBLIC_STORE_HOSTS: JSON.stringify(hosts) } } : {}),
@@ -89,7 +100,7 @@ export default async function config(phase: string): Promise<NextConfig> {
       ...payRouteHeaders({ supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL, vercel: Boolean(process.env.VERCEL) }),
     ],
     // Work moved to the owner's level (D123): its old store-level addresses go to the new ones.
-    redirects: async () => [...LEGACY_WORK_REDIRECTS, ...LEGACY_THEME_REDIRECTS, ...themes.redirects, ...routes.redirects],
-    rewrites: async () => ({ beforeFiles: [...themes.rewrites, ...routes.rewrites], afterFiles: [], fallback: [] }),
+    redirects: async () => [...LEGACY_WORK_REDIRECTS, ...LEGACY_THEME_REDIRECTS, ...themes.redirects, ...docs.redirects, ...routes.redirects],
+    rewrites: async () => ({ beforeFiles: [...themes.rewrites, ...docs.rewrites, ...routes.rewrites], afterFiles: [], fallback: [] }),
   };
 }

@@ -36,17 +36,22 @@ export function storeHostRoutes(
   domain: string | null,
   platformUrl: string,
   customHosts: StoreHosts = {},
-  themesHost: string | null = null,
+  platformHosts: string | null | readonly (string | null)[] = null,
 ): { redirects: HostRedirect[]; rewrites: HostRewrite[] } {
   if (!domain) return { redirects: [], rewrites: [] };
   const [hostname, port] = domain.split(":");
   const host = escape(hostname);
   const scheme = /^localhost$/.test(hostname) ? "http" : "https";
   const origin = (name: string) => `${scheme}://${name}${port ? `:${port}` : ""}`;
-  // The theme store's host may be a name under the store domain (`themes.{domain}`, docs/theme-phase-3.md step 3): it is never a store's.
-  const themesLabel = themesHost?.replace(/:\d+$/, "").endsWith(`.${hostname}`) ? themesHost.replace(/:\d+$/, "").slice(0, -hostname.length - 1) : null;
-  const notThemes = themesLabel && /^[a-z0-9-]+$/.test(themesLabel) ? `(?!${escape(themesLabel)}\\.)` : "";
-  const storeHost: Match = { type: "host", value: `(?<store>${notThemes}[a-z0-9-]+)\\.${host}` };
+  // Kaizena Flow's own hosts besides its site, the theme store's (`themes.{domain}`, docs/theme-phase-3.md step 3) and the docs' (D442), may
+  // be names under the store domain: they are never a store's.
+  const labels = (Array.isArray(platformHosts) ? platformHosts : [platformHosts])
+    .map((name) => name?.replace(/:\d+$/, "") ?? "")
+    .filter((name) => name.endsWith(`.${hostname}`))
+    .map((name) => name.slice(0, -hostname.length - 1))
+    .filter((label) => /^[a-z0-9-]+$/.test(label));
+  const notPlatform = labels.length > 0 ? `(?!(?:${labels.map(escape).join("|")})\\.)` : "";
+  const storeHost: Match = { type: "host", value: `(?<store>${notPlatform}[a-z0-9-]+)\\.${host}` };
   const exactly = (name: string): Match => ({ type: "host", value: escape(name) });
 
   // Stores with a primary domain of their own: every other address of theirs leads there.

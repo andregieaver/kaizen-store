@@ -24,6 +24,8 @@ const CHROME = [
   "theme-preview-root.tsx",
   "see-it-live.tsx",
   ...readdirSync(join(ROOT, "platform-routes")).filter((f) => f.endsWith(".tsx")).map((f) => `platform-routes/${f}`),
+  // The docs portal's frame (D442): its words are the catalogues' `docs`, the articles' are their own files.
+  ...readdirSync(join(ROOT, "docs")).filter((f) => f.endsWith(".tsx")).map((f) => `docs/${f}`),
 ];
 
 /** Words that are the same in every language. */

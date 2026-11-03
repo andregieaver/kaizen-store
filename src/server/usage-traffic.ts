@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { storeOfHost } from "@/lib/ab-routing";
 import { storeDomain } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { docsHost } from "@/lib/docs-host";
 import { themesHost } from "@/lib/theme-host";
 import { slugInPath, type StoreKey, type TrafficTotal } from "@/lib/usage-drain";
 
@@ -31,6 +32,8 @@ async function loadFacts(now: number): Promise<Facts> {
   own.add(site.startsWith("www.") ? site.slice(4) : `www.${site}`);
   const themes = themesHost();
   if (themes) own.add(themes.toLowerCase());
+  const docs = docsHost();
+  if (docs) own.add(docs.toLowerCase());
   const domain = storeDomain();
   if (domain) own.add(domain).add(`www.${domain}`);
   facts = {

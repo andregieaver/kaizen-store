@@ -41,6 +41,9 @@ export const BUDGETS = {
   // visitor (past it, refused). Past the whole site's 30 a notice is still kept, without its emails or its first AI reading, so a few
   // senders cannot keep everyone else's notices out (`sendContentReport()`).
   report: { window: "hour", visitor: 5, store: 30 },
+  // The docs' "Was this page helpful?" (D442): a yes or no and a sentence a page; one reader reads many pages in an hour, a flood of
+  // answers from many is stopped by the whole site's ceiling, counted under no store.
+  docs_feedback: { window: "hour", visitor: 60, store: 3000 },
   // Wrong admin passwords kept in the audit log (PSI SEC-02, SEC-11), which keeps entries 24 months: one visitor trying many addresses
   // writes at most this many an hour, the whole platform ten times more. The tries are still counted per address beyond it.
   sign_in_audit: { window: "hour", visitor: 20, store: 600 },

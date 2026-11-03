@@ -24,6 +24,7 @@ export const WEBSITE_ITEMS: SectionItem[] = [
   item("/footers", "Footer", "Footers built from components; choose the one Kaizena Flow's site shows."),
   item("/fonts", "Fonts", "The self-hosted fonts Kaizena Flow's pages use."),
   item("/site-design", "Design", "The themes installed on Kaizena Flow's own site: add a published theme, switch the site to it and back."),
+  item("/docs/feedback", "Docs feedback", "What readers said under each page of the docs: whether it helped, and the sentence some add."),
 ];
 
 export const PLAN_ITEMS: SectionItem[] = [

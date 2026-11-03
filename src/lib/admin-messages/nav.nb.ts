@@ -321,6 +321,9 @@ export const NAV_NB: Record<string, string> = {
   "The self-hosted fonts Kaizena Flow's pages use.": "Skrifttypene Kaizena Flows sider bruker, lagret hos oss selv.",
   "The themes installed on Kaizena Flow's own site: add a published theme, switch the site to it and back.":
     "Temaene som er installert på Kaizena Flows eget nettsted: legg til et publisert tema, bytt nettstedet til det og tilbake.",
+  "Docs feedback": "Tilbakemeldinger på dokumentasjonen",
+  "What readers said under each page of the docs: whether it helped, and the sentence some add.":
+    "Hva leserne sa under hver side i dokumentasjonen: om den hjalp, og setningen noen legger til.",
   Editor: "Redigering",
   "Kaizena Flow's plans, their prices and fees, synced to Stripe.": "Kaizena Flows abonnementer, prisene og gebyrene deres, synkronisert med Stripe.",
   "Every feature with a tick for each plan that includes it: the comparison stores see.":

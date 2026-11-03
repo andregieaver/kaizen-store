@@ -38,6 +38,7 @@ import {
   type StoreSeo,
 } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
+import { docsHost, docsUrl } from "@/lib/docs-host";
 import { themeStoreAlternates, themeStoreUrl, themesHost, themesOrigin } from "@/lib/theme-host";
 import type { ShippingFacts, StoreFacts } from "@/lib/structured-data";
 import { featureOn, normaliseFeatures } from "@/lib/store-features";
@@ -570,6 +571,8 @@ export async function sitemapIndex(): Promise<string> {
   const stores = storeDomain() ? [] : (await listPublicStores()).filter((store) => store.indexable);
   const entries = [
     `<sitemap><loc>${origin}/sitemap-kaizen.xml</loc></sitemap>`,
+    // The docs (D442) list their own pages: here while they are on this host, in their own host's robots.txt once they have one.
+    ...(docsHost() ? [] : [`<sitemap><loc>${origin}/docs/sitemap.xml</loc></sitemap>`]),
     ...stores.map(
       (store) =>
         `<sitemap><loc>${xml(`${origin}${storeSitemapPath(store.slug)}`)}</loc><lastmod>${store.updatedAt}</lastmod></sitemap>`,
@@ -789,6 +792,8 @@ export async function platformLlms(): Promise<string> {
         heading: "Kaizena Flow",
         links: [
           { title: "Start a store", url: `${origin}/sign-up` },
+          // The docs (D442): how to run a store and how to build on it, each page as Markdown.
+          { title: "Documentation", url: docsUrl("llms.txt"), note: "guides for store owners and the APIs for developers" },
           { title: "Sitemap", url: `${origin}/sitemap.xml` },
         ],
       },

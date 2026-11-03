@@ -279,7 +279,9 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
-  bonus_rewards: "A store's loyalty rewards (D401): their names and costs are the store's words, no person's.",
+  docs_feedback:
+    "Whether a docs page helped (D442): the page's path and language, yes or no, and an optional sentence. Never tied to a reader (no address, account, cookie or browser is kept), so no request could find a person's rows; the form asks readers to leave personal details out, and a platform admin deletes a sentence that names someone anyway.",
+  bonus_rewards:"A store's loyalty rewards (D401): their names and costs are the store's words, no person's.",
   search_cache: "What a search asked the store's AI (D74, D75, D139): a vector, the filters a search was read as or a recommendation's order, keyed by an md5; never tied to a visitor, deleted after 30 days (`pruneSearchCache()`), since the words typed could name someone.",
   workflows: "A store's workflows (D356): the owner's own words (a name, conditions, a staff email's text, a question) and who saved them; no customer.",
   checkout_rules: "A store's checkout rules (D357): the owner's conditions on a basket (countries, amounts, ids of products, terms and groups) and an effect with the owner's words; no customer.",
