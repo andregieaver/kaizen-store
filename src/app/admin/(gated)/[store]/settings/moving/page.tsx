@@ -123,7 +123,8 @@ async function ShopReportView({ storeSlug, words, locale }: { storeSlug: string;
 
 function ShopReportBody({ report, words, locale }: { report: ShopReport; words: MovingMessages; locale: string }) {
   const r = words.report;
-  const f = (v: ShopReport["products"]) => figureText(v, locale);
+  // A figure in words: one or many by the number (an unknown one, a dash, reads as many).
+  const thing = (key: keyof MovingMessages["report"]["things"], v: ShopReport["products"]) => countWords(v?.n ?? 0, r.things[key], { n: figureText(v, locale) });
   let countryNames: Intl.DisplayNames | null = null;
   try {
     countryNames = new Intl.DisplayNames([locale], { type: "region" });
@@ -144,10 +145,10 @@ function ShopReportBody({ report, words, locale }: { report: ShopReport; words: 
         {r.title}
       </h3>
       <ul className="flex flex-col gap-1 text-sm">
-        <li>{fillWords(r.catalogue, { products: f(report.products), collections: f(report.collections), pages: f(report.pages), articles: f(report.articles) })}</li>
-        <li>{fillWords(r.people, { customers: f(report.customers), subscribers: f(report.subscribers) })}</li>
-        <li>{fillWords(r.history, { orders: f(report.orders), giftCards: f(report.giftCardsWithMoney), discounts: f(report.discounts) })}</li>
-        {report.redirects && report.redirects.n > 0 && <li>{fillWords(r.links, { redirects: f(report.redirects) })}</li>}
+        <li>{[thing("products", report.products), thing("collections", report.collections), thing("pages", report.pages), thing("articles", report.articles)].join(" · ")}</li>
+        <li>{[thing("customers", report.customers), thing("subscribers", report.subscribers)].join(" · ")}</li>
+        <li>{[thing("orders", report.orders), thing("giftCards", report.giftCardsWithMoney), thing("discounts", report.discounts)].join(" · ")}</li>
+        {report.redirects && report.redirects.n > 0 && <li>{thing("redirects", report.redirects)}</li>}
       </ul>
       <ul className="flex flex-col gap-1 text-sm">
         <li>{report.taxesIncluded === true ? r.vatIncluded : report.taxesIncluded === false ? r.vatExcluded : r.vatUnknown}</li>
