@@ -537,6 +537,28 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   the business details, a missing one a placeholder, never invented); a new sub-processor is named in both languages' privacy notice and
   data processing agreement.
 
+## The docs portal (wave 14 unit E, D442, `src/lib/docs-content.ts`, `src/lib/docs-host.ts`, `src/server/docs.ts`, `content/docs/`)
+
+- **The docs portal (wave 14 unit E, D442, `src/lib/docs-content.ts`, `src/lib/docs-host.ts`, `src/server/docs.ts`, `content/docs/`)**:
+  an article is a Markdown file `content/docs/{track}/{section}/{slug}.{lang}.md` (the owners' track in `en` and `nb`, the developers' in
+  `en`) with the front matter `compileDocs()` reads, its section titled by `_section.{lang}.md`, written from the rules and the code, never
+  from memory, naming its decisions in `sources:` and shipped in the same commit as the change it describes. Its body is the docs' Markdown
+  (`docs-markdown.ts`): a subset read into a tree that React draws (`DocsMarkdown`), never HTML; a link goes only to `/docs/…` (written as on
+  Kaizena Flow's site, whichever host serves the docs), `#a-heading`, the site's own routes, an admin page as the admin map has it
+  (`/admin/{store}/…`) or `https:`/`http:`/`mailto:`, and a picture only to `public/kaizen/docs/`. `src/lib/docs-content.test.ts` compiles
+  every file and fails on any problem: front matter, `DOC_AREAS`, links and anchors, admin addresses, decisions, pictures, features, an
+  owners' page in English without its Norwegian page unless `content/docs/missing-nb.json` gives the reason, and operations and tools once
+  unit A's registries exist. The files are read from disk by `docsIndex()` alone (traced into the docs' routes, `outputFileTracingIncludes`),
+  never imported. Every address is prerendered in the route groups `(docs)` (`/docs/…`) and `(docs-nb)` (`/no/docs/…`), each a root layout
+  of its own (`DocsRoot`, the platform's theme, no site chrome or scripts), drawn by `src/components/docs/docs-routes.tsx`; the frame's words
+  are `platformText(lang).docs`. Build the docs' addresses with `docsPath()`, `docsUrl()` and `docsSiteHref()` (on `NEXT_PUBLIC_DOCS_HOST`
+  the docs are the host's root and `docsHostRoutes()` routes it as the theme store's host is routed); no docs page is ever under `/api`. Each
+  page also answers as Markdown at its address plus `.md` (the route `/docs/md/…`), and the docs have their own `sitemap.xml`, `llms.txt`,
+  `llms-full.txt` and, on their host, `robots.txt` (`docs-text.ts`). *Was this page helpful?* is `commerce.docs_feedback`, holding nothing
+  about the reader, written only by `src/server/docs-feedback.ts` through `/api/docs/feedback` (`sameSite()`, budget `docs_feedback`, a
+  page the docs have, a sentence only by its answer's id within the hour) and read at `/admin/platform/docs/feedback`. Search (E3), the
+  generated reference (E4) and the guide (E5) build on `DOCS_SEARCH_EVENT`, `docsReferencePath()` and the host's `/reference`.
+
 ## Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made in the browser by `squareIcon()`), linked by `siteIcons()` in every…
 
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made

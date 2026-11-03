@@ -9,5 +9,5 @@ Read the rule of the part you change before changing it; a rule changes in its f
 - [`ai.md`](ai.md): The AI manager, the autopilot and AI that builds (23 rules)
 - [`commerce.md`](commerce.md): Orders, payments, tax, shipping and selling (47 rules)
 - [`marketing.md`](marketing.md): Customers, marketing and analytics (22 rules)
-- [`website.md`](website.md): The website, the builder and themes (72 rules)
+- [`website.md`](website.md): The website, the builder, themes and the docs portal (73 rules)
 - [`integrations.md`](integrations.md): Data in and out, APIs and integrations (10 rules)

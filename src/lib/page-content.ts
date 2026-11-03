@@ -75,6 +75,8 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   "category",
   "cookies",
   "da",
+  // The docs portal (D442): `/docs` on Kaizena Flow's site until the docs have their own host, then moved there.
+  "docs",
   "en",
   "forgot-password",
   "get-domain",

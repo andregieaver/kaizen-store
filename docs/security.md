@@ -204,6 +204,7 @@ a new folder that is not (PSI SEC-01). Pages and server actions are held by the 
 | `/api/consent` | a visitor's cookie choice (D58) | budget `consent` |
 | `/api/cron` | Supabase's scheduler and Vercel Cron | `cronAuthorised()` (the cron secret), each run kept (`trackedRoute()`) |
 | `/api/csp-report` | browsers reporting the Report-Only policy (D389) | budget, counted as log lines only |
+| `/api/docs` | a reader of the docs answering *Was this page helpful?* (D442) | `sameSite()`, budget `docs_feedback`, a known page only; a sentence added only by the answer's id within the hour, cleaned as a shopper's text, nothing about the reader kept |
 | `/api/domains` | a visitor or owner searching domain names (D315) | a limit per store and per visitor's hashed address (`domain-search.ts`) |
 | `/api/feeds` | ad platforms reading product feeds (D302) | the feed's token, compared by hash; budget |
 | `/api/fonts` | browsers loading fonts (D59) | public reads of the platform's own font files, nothing written |

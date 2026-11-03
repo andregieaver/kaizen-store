@@ -12,7 +12,8 @@ phased build plan are in `docs/plan.md`; read it before architectural work.
   production, so run lint, typecheck and the tests before every push.
 - Production is deployed by CI (`docs/ci-migrations.md`): a push without a new migration deploys at once and
   the checks report beside it; one with a migration waits for the checks, applies it, then deploys. Pushes
-  of `*.md` and `docs/**` alone run nothing. Each deploy then waits until `/api/health` reports the commit (D389,
+  of `*.md` and `docs/**` alone run nothing, except the docs portal's articles under `content/` (D442), which are
+  checked and deployed like code. Each deploy then waits until `/api/health` reports the commit (D389,
   `scripts/await-deploy.mjs`), and fails the job when it does not.
 
 ## Stack
@@ -319,6 +320,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Hosts (D71, `src/server/hosts.ts`)
 - Demo products
 - Kaizena Flow's own site in more than one language (D312, `docs/platform-admin-i18n.md`, `src/lib/platform-lang.ts`)
+- The docs portal (wave 14 unit E, D442, `src/lib/docs-content.ts`, `src/lib/docs-host.ts`, `src/server/docs.ts`, `content/docs/`)
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made in the browser by `squareIcon()`), linked by `siteIcons()` in every…
 - Menus (D85, `commerce.menus`, `src/server/menus.ts`, `MenuEditor`)
 - The theme store's pages (D285, `src/lib/theme-store-parts.ts`, `src/components/theme-store-section.tsx`, `src/components/theme-page-parts.tsx`)
