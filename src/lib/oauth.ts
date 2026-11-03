@@ -23,6 +23,8 @@ export const POWER_SCOPES = {
   "products:publish": "products:write",
   "orders:refund": "orders:write",
   "gift_cards:write": "products:write",
+  "content:publish": "website:write",
+  "webhooks:write": "owner",
 } as const satisfies Record<string, PermissionKey>;
 export type PowerScope = keyof typeof POWER_SCOPES;
 export const isPowerScope = (value: unknown): value is PowerScope => typeof value === "string" && Object.hasOwn(POWER_SCOPES, value);

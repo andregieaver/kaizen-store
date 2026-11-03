@@ -4509,6 +4509,13 @@
       "when": 1793735815060,
       "tag": "20261103195655_api_customers_topics",
       "breakpoints": true
+    },
+    {
+      "idx": 644,
+      "version": "7",
+      "when": 1793736532621,
+      "tag": "20261103200852_api_tokens_scopes",
+      "breakpoints": true
     }
   ]
 }

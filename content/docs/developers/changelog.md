@@ -16,6 +16,25 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.4 — 2026-11-03
+
+Content, the store and operations (wave 14 unit C4, D440).
+
+- New scopes: `content:read`, `content:write`, `content:publish` (publishing), `settings:read`, `reports:read` and `webhooks:write`.
+- Pages and blog articles: `GET /pages`, `GET /pages/{id}`, `POST /pages` and `PATCH /pages/{id}` (drafts, through the editor's own
+  save and checks), `POST /pages/{id}/publish` (with `content:publish`; a blocking issue of the checker not acknowledged answers
+  `conflict` naming it), and the same under `/articles`.
+- Content types and entries (D326): `GET /content-types`, `GET` and `POST /content-types/{id}/entries`, `GET` and `PATCH
+  /content-entries/{id}`, `POST /content-entries/{id}/publish`.
+- Menus: `GET /menus` and `GET /menus/{id}`. The store's settings: `GET /settings` (markets, currencies, languages, shipping rates and
+  methods, tax profile, price display).
+- Saved reports (D345): `GET /reports` and `GET /reports/{id}/run`.
+- Webhook endpoints (D354) with `webhooks:write`: `GET`, `POST /webhooks` (the signing secret answered once), `PATCH` and `DELETE
+  /webhooks/{id}`, `GET /webhooks/{id}/deliveries` and `POST /webhooks/{id}/deliveries/{delivery_id}/resend`.
+- The product file of the Data page (D165) as jobs: `POST /jobs/product-exports`, `POST /jobs/product-imports` (a one-time upload
+  address), `POST /jobs/product-imports/{id}/check` (the dry run), `POST /jobs/{id}/apply`, `GET /jobs/{id}` and `GET /jobs/{id}/download`.
+- A token may now hold every scope at once.
+
 ## 1.3 — 2026-11-03
 
 Customers and marketing (wave 14 unit C3, D440).
@@ -65,7 +84,8 @@ The catalogue (wave 14 unit C1, D440).
 - `?updated_after=` on every list, and `updated_at` on orders, customers and discount codes, for incremental sync. A page's cursor now
   keeps its row's time to the microsecond, so rows made in one go are never skipped between pages.
 - Each operation names the staff permission its screen asks for (`x-permission`) and the store feature it stands behind (`x-feature`): a
-  store that is not open answers `forbidden` to a change, and a feature switched off answers the new code `feature_off` (403).
+  store that is not open answers `forbidden` to what its admin refuses there (changes, and reading its products and website), and a
+  feature switched off answers the new code `feature_off` (403).
 - Webhooks: `inventory.updated` (a variant's stock on hand moved; one event per variant and minute, carrying the stock as it is then) and
   `product.archived`.
 

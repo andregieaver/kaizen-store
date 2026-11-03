@@ -9,6 +9,9 @@ import { isPermissionKey } from "./permission-keys";
 const ID = "5c2c8f0e-3a9d-4c7b-9e21-0d6f1a2b3c4d";
 const sample = (path: string) => path.replace("{tag}", "vip").replace(/\{\w+\}/g, ID).split("/").filter(Boolean);
 
+/** Writes that only read: an export starts a job of the store's own file, and changes nothing (D440). */
+const READS_BY_POST: readonly string[] = ["jobs.product_export"];
+
 /** The Admin API's registry (D438): every operation described once and whole, and the router made from it. */
 describe("ADMIN_API", () => {
   it("names each operation once, and each method and path once", () => {
@@ -27,9 +30,9 @@ describe("ADMIN_API", () => {
       // A read needs a read scope (or the write of an area that has none), a change never a read scope (D440: a write, or a power such as
       // `products:publish`); the permission its screen asks for is a read for a read.
       if (o.method === "GET") expect(o.scope.endsWith(":read") || !API_SCOPES.includes(o.scope.replace(/:write$/, ":read") as never), where).toBe(true);
-      else expect(o.scope.endsWith(":read"), where).toBe(false);
+      else expect(o.scope.endsWith(":read"), where).toBe(READS_BY_POST.includes(o.name));
       expect(isPermissionKey(o.permission), where).toBe(true);
-      if (o.method !== "GET") expect(o.permission.endsWith(":read"), where).toBe(false);
+      if (o.method !== "GET") expect(o.permission.endsWith(":read"), where).toBe(READS_BY_POST.includes(o.name));
       if ("feature" in o) expect(errorsOf(o), where).toContain("feature_off");
       expect(o.path, where).toMatch(/^(\/[a-z-]+|\/\{\w+\})+$/);
       // The path's parameters are exactly those its zod reads.

@@ -35,6 +35,9 @@ export const SCOPE_WORDS: Record<string, string> = {
   customers: "Customer accounts and their tags, their store credit and bonus credits, and segments.",
   discounts: "Discount codes.",
   checkout: "Checkout rules and questions.",
+  content: "Pages, blog articles, content entries and menus, as drafts.",
+  settings: "The store's countries, currencies, languages, shipping, tax profile and price display.",
+  reports: "Saved reports, run on the data as it is now.",
 };
 
 /** Scopes that are not a read or a write of their area (D440): what each lets a token do. */
@@ -42,6 +45,8 @@ export const SCOPE_POWERS: Record<string, string> = {
   "products:publish": "Publish, unpublish and archive products, and change products on the site: what the AI manager asks the owner's yes for.",
   "orders:refund": "Refund orders through the admin's own refund, to the payment or as store credit: what the AI manager asks the owner's yes for.",
   "gift_cards:write": "Issue, read and deactivate gift cards: money of the store's. A card's code is answered once, when it is issued.",
+  "content:publish": "Publish pages, blog articles and content entries: what the AI manager asks the owner's yes for.",
+  "webhooks:write": "Add, change and remove the owner's webhook endpoints and read their deliveries: the owner's own, as on the Integrations page.",
 };
 
 const scopeWords = (scope: string): string =>
@@ -57,6 +62,14 @@ const TAGS = [
   { name: "Segments", description: "Saved segments of customers and subscribers (D296), with how many each holds." },
   { name: "Gift cards", description: "Gift cards and store credit (D300, D364): issued, listed and deactivated; a code is never answered after its issue." },
   { name: "Subscriptions", description: "Customers' subscriptions (D29): read, paused and cancelled as the subscription page does." },
+  { name: "Pages", description: "The store's pages (D42): drafts written through the editor's own save; publishing with `content:publish`." },
+  { name: "Blog", description: "The store's blog articles (D57, D341), as pages are." },
+  { name: "Content", description: "Content types and their entries (D326)." },
+  { name: "Menus", description: "The store's menus (D85), read." },
+  { name: "Settings", description: "The store's settings, read." },
+  { name: "Reports", description: "Saved reports (D345), run on the data as it is now." },
+  { name: "Webhook endpoints", description: "The owner's own endpoints (D354) and their deliveries, with `webhooks:write`." },
+  { name: "Bulk jobs", description: "The product file of the Data page (D165): exported, and imported with a dry run first." },
   { name: "Inventory", description: "Stock per variant and location, adjusted or counted as the Inventory page does." },
   { name: "Orders", description: "Orders in their own currency, parcels with tracking, and invoices and credit notes as EN 16931 UBL." },
   { name: "Customers", description: "Customer accounts and their tags." },
@@ -128,7 +141,7 @@ export function adminOpenApi(server: string, contractVersion?: string) {
       title: "Kaizena Flow Admin API",
       version: ADMIN_API_VERSION,
       description: [
-        "A store's own data for the owner's integrations: products, categories, pictures and price lists, stock, orders, customers, discounts and checkout rules. A token (`kf_…`) is made by an owner in Settings, Apps and API for one store, with the scopes it needs, and acts as its maker; every change goes through the admin's own screens and is audited with the token's name.",
+        "A store's own data for the owner's integrations: products, categories, pictures and price lists, stock, orders, drafts and returns, customers, discounts, gift cards and subscriptions, pages and content, settings, reports, webhook endpoints and the product file, and checkout rules. A token (`kf_…`) is made by an owner in Settings, Apps and API for one store, with the scopes it needs, and acts as its maker; every change goes through the admin's own screens and is audited with the token's name.",
         "Money is integer minor units with an ISO 4217 code. Lists are pages of at most 100 under a cursor: give a page's `next` as `?after=` for the next one.",
         `A token may make ${ADMIN_RATE.perToken} calls a minute, and a store's tokens ${ADMIN_RATE.perStore} together; past that the answer is 429 with \`Retry-After\`.`,
         "A POST with an `Idempotency-Key` header is done once: the same key with the same request gets the first answer again for 24 hours (`Idempotent-Replayed: true`).",

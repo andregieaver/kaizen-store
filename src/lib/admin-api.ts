@@ -24,6 +24,15 @@ export const API_SCOPES = [
   "gift_cards:write",
   "checkout:read",
   "checkout:write",
+  // D440 (wave 14 unit C4): pages, articles, content entries and menus; publishing them is a power of its own.
+  "content:read",
+  "content:write",
+  "content:publish",
+  // The store's settings and its saved reports, read.
+  "settings:read",
+  "reports:read",
+  // The owner's own webhook endpoints and their deliveries: an owner's power.
+  "webhooks:write",
 ] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 

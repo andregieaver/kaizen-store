@@ -66,7 +66,12 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (with the subscriber's email); a segment is answered with how many it holds, never who, and a subscription never with its manage link.
   Something shown once (a gift card's code, a draft's pay link) is answered once and never kept for a replay: the handler gives
   `ApiAnswer.replay` without it, and only that is kept under the `Idempotency-Key`. `customer.erased` is queued by `eraseSubject()` in its
-  own transaction with the account's id alone, and its payload is built without reading anything.
+  own transaction with the account's id alone, and its payload is built without reading anything. Content, the store and operations (C4,
+  `admin-api-content.ts`): a page or article is written only through `savePage()` (a draft; publishing with the power `content:publish`, its
+  checker's blocking issues acknowledged by id), an entry only through `saveEntry()`/`publishEntry()`, an endpoint only through the
+  Integrations page's writers with the power `webhooks:write` (its secret answered once, its address never), a saved report run only by
+  `runReport()`, and the product file only through the Data page's own steps with the storage named for each call (`jobDeps()`); order and
+  customer files stay in the admin (owner-only, personal data). Settings are read, never written, over the API.
 
 - **API contracts (wave 14 unit A, D438, `src/lib/admin-api-routes.ts`, `src/lib/webhook-topics.ts`, `src/lib/mcp-catalogue.ts`, `src/lib/api-contract.ts`)**, for this API, the storefront API, the webhooks and the MCP servers:
   what outside callers rely on is described once, in code, and everything published is generated from it: the Admin API's operations

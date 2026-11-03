@@ -190,7 +190,7 @@ describe("registration (RFC 7591)", () => {
 
 describe("scopes (B3)", () => {
   it("are one per permission key, plus stores:read", () => {
-    expect(OAUTH_SCOPES).toEqual(["stores:read", ...PERMISSION_KEYS, "products:publish", "orders:refund", "gift_cards:write"]);
+    expect(OAUTH_SCOPES).toEqual(["stores:read", ...PERMISSION_KEYS, "products:publish", "orders:refund", "gift_cards:write", "content:publish", "webhooks:write"]);
     expect(READ_SCOPES.every((s) => s.endsWith(":read"))).toBe(true);
   });
 

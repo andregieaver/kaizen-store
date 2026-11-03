@@ -7536,7 +7536,8 @@ export const apiTokens = commerce.table(
     index("api_tokens_store_idx").on(t.storeId),
     index("api_tokens_created_by_idx").on(t.createdBy),
     check("api_tokens_name", sql`char_length(${t.name}) between 1 and 80`),
-    check("api_tokens_scopes", sql`cardinality(${t.scopes}) between 1 and 20`),
+    // D440: every scope at once fits (21 since wave 14 unit C4), with room for more.
+    check("api_tokens_scopes", sql`cardinality(${t.scopes}) between 1 and 40`),
   ],
 );
 

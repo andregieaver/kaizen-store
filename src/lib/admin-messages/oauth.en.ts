@@ -55,6 +55,8 @@ export const oauthEn = {
       "products:publish": "Publish products and change products that are on the site, without asking you first",
       "orders:refund": "Refund orders, without asking you first",
       "gift_cards:write": "Issue and deactivate gift cards, without asking you first",
+      "content:publish": "Publish pages, blog articles and content, without asking you first",
+      "webhooks:write": "Add and change the store's webhook endpoints, which receive its events",
     },
   },
   areas: {

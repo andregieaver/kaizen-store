@@ -29,8 +29,8 @@ export type UploadStarted = { ok: true; id: string; url: string; expiresAt: stri
 /** The formats a picture may be, read from its bytes (sharp names AVIF `heif`). */
 const FORMATS = new Set(["jpeg", "png", "webp", "heif"]);
 
-/** Where a signed upload is sent: the address Storage gave, or the one its token makes. */
-function uploadUrl(path: string, started: { token: string; url?: string }): string {
+/** Where a signed upload is sent: the address Storage gave, or the one its token makes (also the product file's, D165). */
+export function uploadUrl(path: string, started: { token: string; url?: string }): string {
   if (started.url) return started.url;
   const base = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/, "");
   return `${base}/storage/v1/object/upload/sign/${IMPORTS_BUCKET}/${path}?token=${encodeURIComponent(started.token)}`;

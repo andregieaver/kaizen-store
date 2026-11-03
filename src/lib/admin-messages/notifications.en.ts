@@ -677,6 +677,12 @@ export const notificationsEn = {
       "gift_cards:write": "Issue, read and deactivate gift cards",
       "checkout:read": "Read checkout rules and questions",
       "checkout:write": "Change checkout rules and questions",
+      "content:read": "Read pages, blog articles, content and menus",
+      "content:write": "Write drafts of pages, blog articles and content",
+      "content:publish": "Publish pages, blog articles and content",
+      "settings:read": "Read the store's settings: countries, currencies, shipping, tax",
+      "reports:read": "Run saved reports",
+      "webhooks:write": "Add, change and remove webhook endpoints, and read their deliveries",
     } as Record<string, string>,
     problems: {
       name: "Give the token a name of 1 to 80 characters.",

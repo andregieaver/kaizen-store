@@ -16,7 +16,7 @@ describe("routeOf", () => {
   });
 
   it("refuses an unknown path, a bad id and the wrong method", () => {
-    expect(routeOf("GET", ["webhooks"])).toBeNull();
+    expect(routeOf("GET", ["nothing-here"])).toBeNull();
     expect(routeOf("GET", ["products", "not-an-id"])).toBeNull();
     expect(routeOf("DELETE", ["products", ID])).toBeNull();
     expect(routeOf("POST", ["orders"])).toBeNull();

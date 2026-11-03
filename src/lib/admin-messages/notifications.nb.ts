@@ -899,6 +899,12 @@ export const notificationsNb: NotificationsMessages = {
       "gift_cards:write": "Utstede, lese og deaktivere gavekort",
       "checkout:read": "Lese kasseregler og spørsmål",
       "checkout:write": "Endre kasseregler og spørsmål",
+      "content:read": "Lese sider, blogginnlegg, innhold og menyer",
+      "content:write": "Skrive utkast av sider, blogginnlegg og innhold",
+      "content:publish": "Publisere sider, blogginnlegg og innhold",
+      "settings:read": "Lese butikkens innstillinger: land, valutaer, frakt, mva",
+      "reports:read": "Kjøre lagrede rapporter",
+      "webhooks:write": "Legge til, endre og fjerne webhook-adresser, og lese leveransene",
     },
     problems: {
       name: "Gi nøkkelen et navn på 1 til 80 tegn.",

@@ -45,6 +45,8 @@ vi.mock("./stripe", async (importOriginal) => ({
   // Kaizena Flow's test keys are set, so a store in Stripe's test mode takes payments (a draft's pay link can be made).
   platformModes: () => ["test"],
 }));
+// An endpoint's host is taken as public (the address guard's DNS lookup is the endpoints' own tests').
+vi.mock("./replicate-fetch", async (importOriginal) => ({ ...(await importOriginal<typeof import("./replicate-fetch")>()), hostProblem: async () => null }));
 // The private buckets and the public picture bucket, in memory (D440: an upload's file, and the library's pictures).
 const buckets = vi.hoisted(() => ({ storage: null as unknown }));
 vi.mock("./data-job-store", async (importOriginal) => ({ ...(await importOriginal<typeof import("./data-job-store")>()), dataStorage: () => buckets.storage }));
@@ -153,7 +155,7 @@ describe("tokens and scopes", () => {
     expect(scoped.body.error.message).toContain("orders:read");
     const [theirs] = await db().execute<Row>(sql`select id from commerce.products where store_id = ${other.storeId}::uuid limit 1`);
     expect((await call("GET", `products/${String(theirs.id)}`, full)).status).toBe(404);
-    expect((await call("GET", "webhooks", full)).status).toBe(404);
+    expect((await call("GET", "nothing-here", full)).status).toBe(404);
   });
 
   it("keeps only the token's hash, and a revoked token is refused at once", async () => {
@@ -810,6 +812,142 @@ describe("customers and marketing (D440 C3)", () => {
     expect(credit.body.data.cards).toEqual([expect.objectContaining({ source: "refund", initial_minor: 2_000, balance_minor: 2_000 })]);
     expect(credit.body.data.balances).toEqual([{ currency: "NOK", amount_minor: 2_000 }]);
     expect((await call("GET", `customers/${customer.body.data.id}/loyalty`, token.token)).body.error.code).toBe("feature_off");
+  });
+});
+
+describe("content, the store and operations (D440 C4)", () => {
+  let editor: string;
+  const run = Date.now().toString(36);
+
+  beforeAll(async () => {
+    const made = await makeApiToken(store.member, {
+      name: "Editor",
+      scopes: ["content:write", "content:publish", "settings:read", "reports:read", "webhooks:write", "products:write"],
+    });
+    if (!made.ok) throw new Error(made.problem);
+    editor = made.token;
+  });
+
+  it("writes drafts of pages and articles through the editor's save, and publishes only with content:publish", async () => {
+    const { newPageContent } = await import("@/lib/page-content");
+    const writer = await makeApiToken(store.member, { name: "Writer", scopes: ["content:write"] });
+    if (!writer.ok) throw new Error(writer.problem);
+    for (const [plural, kind] of [
+      ["pages", "page"],
+      ["articles", "article"],
+    ] as const) {
+      const made = await call("POST", plural, writer.token, { draft: { ...newPageContent(), title: `API ${kind}`, slug: `api-${kind}-${run}`, rows: [] } });
+      expect(made.status, plural).toBe(201);
+      expect(made.body.data).toMatchObject({ title: `API ${kind}`, state: "draft", published_at: null });
+      const id = made.body.data.id as string;
+      const draft = { ...made.body.data.draft, title: `API ${kind}, changed` };
+      expect((await call("PATCH", `${plural}/${id}`, writer.token, { draft })).body.data.title).toBe(`API ${kind}, changed`);
+      expect((await call("PATCH", `${plural}/${id}`, writer.token, { draft: { ...draft, slug: "Not A Slug!" } })).status).toBe(422);
+      expect((await call("GET", `${plural}/${id}`, writer.token)).body.data.draft.title).toBe(`API ${kind}, changed`);
+      expect((await call("GET", plural, writer.token)).body.data.map((p: Answer) => p.id)).toContain(id);
+      const scoped = await call("POST", `${plural}/${id}/publish`, writer.token, {});
+      expect(scoped.status).toBe(403);
+      expect(scoped.body.error.message).toContain("content:publish");
+      const published = await call("POST", `${plural}/${id}/publish`, editor, {});
+      expect(published.status, JSON.stringify(published.body)).toBe(200);
+      expect(published.body.data).toMatchObject({ state: "published", published_at: expect.any(String) });
+    }
+    const audit = await db().execute<Row>(sql`
+      select action from commerce.audit_log where store_id = ${store.storeId}::uuid and details ->> 'token' in ('Writer', 'Editor') and action like 'integration.api_%' order by created_at
+    `);
+    expect(audit.map((a) => a.action)).toEqual(expect.arrayContaining(["integration.api_page_created", "integration.api_page_published", "integration.api_article_draft_saved"]));
+  });
+
+  it("writes and publishes a content entry, checked by its type's fields", async () => {
+    const { saveContentType } = await import("./content-types");
+    const title = { id: "f_apititle001", name: "name", label: "Name", type: "text", access: "public", width: 100 } as const;
+    const type = await saveContentType({ accountId: store.accountId, owner: store.storeId }, { name: "Team", slug: `team-${run}`, fields: [title], titleField: title.id, summaryField: null, pictureField: null, hasPages: false });
+    if (!type.ok || !type.id) throw new Error("no type");
+    expect((await call("GET", "content-types", editor)).body.data.map((t: Answer) => t.id)).toContain(type.id);
+    const locale = (await call("GET", "settings", editor)).body.data.languages[0] as string;
+    const made = await call("POST", `content-types/${type.id}/entries`, editor, { slug: "kari", fields: { values: {}, translations: { [locale]: { [title.id]: "Kari" } } } });
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    expect(made.body.data).toMatchObject({ slug: "kari", state: "draft" });
+    const id = made.body.data.id as string;
+    expect((await call("PATCH", `content-entries/${id}`, editor, { fields: { values: {}, translations: { [locale]: { [title.id]: "Kari N." } } } })).status).toBe(200);
+    expect((await call("GET", `content-types/${type.id}/entries`, editor)).body.data.map((e: Answer) => e.id)).toEqual([id]);
+    expect((await call("POST", `content-entries/${id}/publish`, editor, {})).body.data.state).toBe("published");
+    expect((await call("GET", `content-entries/${id}`, editor)).body.data.state).toBe("published");
+    expect((await call("GET", "content-types/00000000-0000-4000-8000-000000000000/entries", editor)).status).toBe(404);
+  });
+
+  it("reads the store's menus and settings, and runs a saved report", async () => {
+    const [menu] = await db().execute<Row>(sql`insert into commerce.menus (store_id, name, items) values (${store.storeId}::uuid, ${`API ${run}`}, '[]') returning id`);
+    expect((await call("GET", "menus", editor)).body.data.map((m: Answer) => m.id)).toContain(String(menu.id));
+    expect((await call("GET", `menus/${String(menu.id)}`, editor)).body.data).toMatchObject({ name: `API ${run}`, items: [] });
+    const settings = await call("GET", "settings", editor);
+    expect(settings.body.data).toMatchObject({ slug: store.slug, markets: expect.arrayContaining([expect.objectContaining({ code: "NO", currency: "NOK" })]) });
+    expect(settings.body.data.shipping.rates).toEqual(expect.arrayContaining([expect.objectContaining({ market: "FI", currency: "EUR", amount_minor: 590 })]));
+    const { saveReport } = await import("./saved-reports");
+    const { READY_REPORTS } = await import("@/lib/report-catalogue");
+    const saved = await saveReport(store.storeId, store.accountId, { title: `Sales ${run}`, spec: READY_REPORTS.sales_by_variant });
+    if (!saved.ok) throw new Error(saved.reason);
+    const reports = await call("GET", "reports", editor);
+    expect(reports.body.data).toEqual(expect.arrayContaining([expect.objectContaining({ id: saved.id, runs: true })]));
+    const ran = await call("GET", `reports/${saved.id}/run`, editor);
+    expect(ran.status, JSON.stringify(ran.body)).toBe(200);
+    expect(ran.body.data).toMatchObject({ report_id: saved.id, columns: expect.any(Array), rows: expect.any(Array) });
+    expect((await call("GET", "reports/00000000-0000-4000-8000-000000000000/run", editor)).status).toBe(404);
+    expect((await call("GET", "settings", full)).status).toBe(403);
+  });
+
+  it("adds, changes, lists and removes the owner's webhook endpoints, the secret answered once, and sends a delivery again", async () => {
+    const key = { "idempotency-key": `hook-${run}` };
+    const made = await call("POST", "webhooks", editor, { name: "Warehouse", url: "https://hooks.example.com/kaizena", topics: ["order.created", "inventory.updated"] }, key);
+    expect(made.status, JSON.stringify(made.body)).toBe(201);
+    expect(made.body.data.secret).toMatch(/^whsec_/);
+    expect(made.body.data).toMatchObject({ name: "Warehouse", enabled: true, topics: ["order.created", "inventory.updated"] });
+    const replay = await call("POST", "webhooks", editor, { name: "Warehouse", url: "https://hooks.example.com/kaizena", topics: ["order.created", "inventory.updated"] }, key);
+    expect(replay.body.data.secret).toBeNull();
+    const id = made.body.data.id as string;
+    expect((await call("POST", "webhooks", editor, { name: "Bad", url: "http://hooks.example.com/x", topics: ["order.created"] })).status).toBe(422);
+    expect((await call("POST", "webhooks", editor, { name: "Bad", url: "https://hooks.example.com/x", topics: ["nonsense"] })).status).toBe(422);
+    expect((await call("GET", "webhooks", editor)).body.data.map((e: Answer) => e.id)).toContain(id);
+    expect(JSON.stringify((await call("GET", "webhooks", editor)).body)).not.toContain("kaizena");
+    const changed = await call("PATCH", `webhooks/${id}`, editor, { topics: ["refund.created"], enabled: false });
+    expect(changed.body.data).toMatchObject({ topics: ["refund.created"], enabled: false });
+    await db().execute(sql`
+      insert into commerce.integration_deliveries (store_id, provider, event, endpoint_id, status, payload) values (${store.storeId}::uuid, 'webhook', 'refund.created', ${id}::uuid, 'failed', '{}')
+    `);
+    const deliveries = await call("GET", `webhooks/${id}/deliveries`, editor);
+    expect(deliveries.body.data).toEqual([expect.objectContaining({ topic: "refund.created", status: "failed" })]);
+    const delivery = deliveries.body.data[0].id as string;
+    expect((await call("POST", `webhooks/${id}/deliveries/${delivery}/resend`, editor, {})).status).toBe(409);
+    await call("PATCH", `webhooks/${id}`, editor, { enabled: true });
+    expect((await call("POST", `webhooks/${id}/deliveries/${delivery}/resend`, editor, {})).body.data).toEqual({ queued: true });
+    expect((await call("GET", `webhooks/${id}/deliveries?limit=10`, editor)).body.data).toHaveLength(2);
+    expect((await call("DELETE", `webhooks/${id}`, editor)).body.data).toEqual({ id, deleted: true });
+    expect((await call("DELETE", `webhooks/${id}`, editor)).status).toBe(404);
+    expect((await call("GET", "webhooks", full)).status).toBe(403);
+  });
+
+  it("exports and imports the product file as jobs of the Data page", async () => {
+    const exported = await call("POST", "jobs/product-exports", editor, {});
+    expect(exported.status, JSON.stringify(exported.body)).toBe(201);
+    expect(exported.body.data.file?.csv ?? "").toContain(SKU);
+    const csv = (exported.body.data.file.csv as string).split("\n").slice(0, 2).join("\n");
+    const started = await call("POST", "jobs/product-imports", editor, { file_name: "products.csv" });
+    expect(started.status).toBe(201);
+    const upload = started.body.data.upload_id as string;
+    await storage.upload("imports", `${store.storeId}/${upload}/products.csv`, new TextEncoder().encode(csv), "text/csv");
+    const checked = await call("POST", `jobs/product-imports/${upload}/check`, editor, { file_name: "products.csv" });
+    expect(checked.status, JSON.stringify(checked.body)).toBe(201);
+    expect(["checking", "checked"]).toContain(checked.body.data.status);
+    const { runJob } = await import("./data-jobs");
+    await runJob(checked.body.data.id, { storage, schedule: () => undefined, budgetMs: 60_000 });
+    const polled = await call("GET", `jobs/${checked.body.data.id}`, editor);
+    expect(polled.body.data).toMatchObject({ kind: "product_import", status: "checked" });
+    const applied = await call("POST", `jobs/${checked.body.data.id}/apply`, editor, {});
+    expect([200, 409]).toContain(applied.status);
+    const download = await call("GET", `jobs/${checked.body.data.id}/download`, editor);
+    expect(download.body.data.parts).toEqual([]);
+    expect((await call("POST", "jobs/product-imports/00000000-0000-4000-8000-000000000000/check", editor, { file_name: "products.csv" })).status).toBe(422);
+    expect((await call("GET", "jobs/00000000-0000-4000-8000-000000000000", editor)).status).toBe(404);
   });
 });
 
