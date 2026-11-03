@@ -78,10 +78,12 @@ export async function listOrdersTool({ store }: Ctx, input: ListOrdersInput) {
 }
 
 export async function listDraftOrdersTool({ store }: Ctx, input: ListDraftOrdersInput) {
-  const page = await listDrafts(store.id, { status: input.status === "all" ? null : input.status, pageSize: input.limit });
+  const page = await listDrafts(store.id, { status: input.status === "all" ? null : input.status, quotes: input.quotes, pageSize: input.limit });
   return {
     count: page.rows.length,
     open_drafts: page.openCount,
+    // Shoppers' requests for a quote waiting for the store (D431, D437): open and not declined.
+    quote_requests_waiting: page.quotesWaiting,
     drafts: page.rows.map((d) => ({
       number: d.number,
       status: DRAFT_STATUS_LABELS[d.status],
@@ -89,6 +91,8 @@ export async function listDraftOrdersTool({ store }: Ctx, input: ListDraftOrders
       ...(d.email && d.customer ? { email: d.email } : {}),
       total: d.totalMinor === null ? null : money(store, d.totalMinor, d.currency),
       lines: d.lineCount,
+      ...(d.quote === "requested" ? { quote: "A shopper's request for a quote, waiting for the store: price its lines with set_draft_prices, then send_draft_order sends it as a quote (or decline_quote)." } : {}),
+      ...(d.quote === "declined" ? { quote: "A request for a quote the store declined: it is never sent." } : {}),
       ...(d.orderNumber ? { order: d.orderNumber } : {}),
       ...(d.status === "sent" && d.expiresAt ? { link_ends: d.expiresAt } : {}),
       admin: adminLink(store, `/orders/drafts/${d.id}`),
@@ -153,7 +157,7 @@ export async function archiveOrdersTool({ account, store }: Ctx, input: ArchiveO
 // ---------------------------------------------------------------------------------------------------------------------
 
 /** What a draft is, as the store prices it, for the model to repeat: amounts in the draft's own currency and the market's language, the problems in words. */
-function draftAnswer(store: Store, preview: DraftPreview) {
+export function draftAnswer(store: Store, preview: DraftPreview) {
   const { draft, summary, market } = preview;
   const locale = market?.locale ?? localeOf(store);
   const m = (minor: number) => money(store, minor, draft.currency, locale);
@@ -230,7 +234,7 @@ export async function createDraftOrderTool({ account, store }: Ctx, input: Creat
 }
 
 /** A draft by its number (D-12) or id, the store's only. */
-async function findDraft(store: Store, ref: string): Promise<{ id: string; number: string }> {
+export async function findDraft(store: Store, ref: string): Promise<{ id: string; number: string }> {
   const clean = ref.trim();
   const [row] = await db().execute<Row>(sql`
     select id, number from commerce.draft_orders
