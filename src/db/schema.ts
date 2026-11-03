@@ -15085,8 +15085,8 @@ export const feedSettings = commerce.table(
 );
 
 /**
- * The last run of each scheduled job (PSI 2026-10-24, REL-06): one row per cron route and per job of the five-minute dispatcher,
- * written only by `src/server/cron-runs.ts` after each run, so the platform home can say which job is late or failing
+ * The last run of each scheduled job (PSI 2026-10-24, REL-06): one row per cron route and per job of the five-minute dispatcher (and per
+ * once-a-day run a dispatcher job claims, `claimDay()`, D436), written only by `src/server/cron-runs.ts` after each run, so the platform home can say which job is late or failing
  * (`src/lib/cron-health.ts`). A row a run, kept in place: nothing grows. `last_error` is an error's message, never a person's data.
  */
 export const cronJobs = commerce.table(

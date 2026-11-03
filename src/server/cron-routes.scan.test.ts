@@ -23,6 +23,23 @@ describe("cron routes", () => {
     for (const [, job] of source.matchAll(/tracked(?:Route)?\("([^"]+)"/g)) expect(job, `${name}: ${job}`).toMatch(JOB_KEY);
   });
 
+  it("names the once-a-day runs of the dispatcher's jobs as the ledger takes them, each claimed day run under the same name (D436)", () => {
+    const server = join(process.cwd(), "src/server");
+    const sources = readdirSync(server)
+      .filter((file) => file.endsWith(".ts") && !file.includes(".test."))
+      .map((file) => ({ file, text: readFileSync(join(server, file), "utf8") }));
+    const claimed = sources.flatMap(({ file, text }) => [...text.matchAll(/claimDay\("([^"]+)"/g)].map((m) => ({ file, job: m[1], text })));
+    // The nightly interface translations (D436) are one: the dispatcher's `uiTranslations`, kept as `daily.ui-translations`.
+    expect(claimed.map((c) => c.job)).toContain("daily.ui-translations");
+    for (const { file, job, text } of claimed) {
+      expect(job, `${file}: ${job}`).toMatch(JOB_KEY);
+      expect(text, `${file} claims ${job}'s day, so it runs it as tracked("${job}", 86_400, …)`).toContain(`tracked("${job}", 86_400,`);
+    }
+    for (const { file, text } of sources) for (const [, job] of text.matchAll(/tracked\("([^"]+)"/g)) expect(job, `${file}: ${job}`).toMatch(JOB_KEY);
+    const dispatcher = readFileSync(join(DIR, "cart-reminders", "route.ts"), "utf8");
+    expect(dispatcher).toMatch(/uiTranslations: \(\) => runNightlyUiTranslations\(\)/);
+  });
+
   it.each(routes)("%s has a maxDuration and is tracked", (name) => {
     const source = readFileSync(join(DIR, name, "route.ts"), "utf8");
     expect(source, `${name} needs export const maxDuration`).toMatch(/export const maxDuration = \d+;/);

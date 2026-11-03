@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { nativeName, worldLanguages } from "@/lib/languages";
 import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
+import { UI_NIGHT_KEYS_PER_LANGUAGE } from "@/lib/ui-nightly";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listLanguages, storesUsing } from "@/server/languages";
 import { uiCoverage } from "@/server/ui-text";
@@ -41,7 +42,13 @@ export default async function LanguagesPage() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title={w.title}
-        description={<>{w.intro}</>}
+        description={
+          <>
+            <p>{w.intro}</p>
+            {/* D436: what the night does for the translated languages, said once. */}
+            <p className="mt-2">{fillWords(w.nightly, { n: UI_NIGHT_KEYS_PER_LANGUAGE })}</p>
+          </>
+        }
       />
 
       <Card
