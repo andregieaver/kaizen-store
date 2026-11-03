@@ -8,7 +8,7 @@
 # (src/lib/shopify.test.ts holds them together).
 
 name = "Kaizena Flow"
-client_id = "SET-AT-CREATION"
+client_id = "b97b6d3c11d01ee0fca8b7685f131239"
 application_url = "https://kaizenaflow.com/api/shopify"
 embedded = false
 
