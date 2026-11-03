@@ -66,6 +66,9 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   set_languages: "setup",
   set_currencies: "setup",
   set_flat_shipping: "setup",
+  // How prices show and who may request a quote (D437): settings of the shop, as its shipping is.
+  set_price_display: "setup",
+  set_quote_requests: "setup",
   save_shipping_method: "setup",
   // A member of staff's hours (AGT-01): when shoppers can book them.
   set_working_hours: "setup",
@@ -85,6 +88,8 @@ export const TOOL_AREAS: Readonly<Record<string, AutonomyArea>> = {
   // Messages to customers and staff
   mark_order_sent: "messages",
   send_draft_order: "messages",
+  // Declining a request for a quote emails the customer a reply (D437), as declining a return does.
+  decline_quote: "messages",
   cancel_booking: "messages",
   approve_return: "messages",
   decline_return: "messages",

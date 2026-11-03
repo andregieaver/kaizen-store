@@ -92,6 +92,7 @@ const draftRef = z.string().trim().min(1).max(64).describe("The draft order's nu
 
 export const listDraftOrdersInput = z.object({
   status: z.enum([...DRAFT_STATUSES, "all"]).default("all").describe("open (being written), sent (waiting for payment), paid, expired, cancelled or all."),
+  quotes: z.boolean().default(false).describe("Only shoppers' requests for a quote (D431)."),
   limit: z.number().int().min(1).max(50).default(15).describe("How many at most (1–50)."),
 });
 export type ListDraftOrdersInput = z.output<typeof listDraftOrdersInput>;

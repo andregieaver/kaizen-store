@@ -121,6 +121,7 @@ import { DNS_RECORD_TOOLS } from "@/lib/domain-tools";
 import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
 import { marketPriceRulesTool, preflightPriceRuleTool, setMarketPriceRuleTool } from "./market-price-tools";
 import { preflightProducerTool, producerRegistrationsTool, saveProducerRegistrationTool } from "./producer-tools";
+import { declineQuoteTool, preflightDeclineQuote, preflightPriceDisplay, priceDisplayTool, setDraftPricesTool, setPriceDisplayTool, setQuoteRequestsTool } from "./quote-tools";
 import { blogCommentsTool, listBlogsTool, moderateBlogCommentTool, preflightModerateTool, preflightScheduleTool, scheduleArticleTool } from "./blog-tools";
 import { listScheduledChangesTool, preflightSiteScheduleTool, scheduleSiteChangeTool } from "./schedule-tools";
 import { customsDutiesTool } from "./customs-tools";
@@ -250,6 +251,7 @@ import {
 } from "./product-tools";
 import { GATED_WHEN_LIVE } from "@/lib/product-tools";
 import { isPlain, ruleOf } from "@/lib/quantity-rules";
+import { productWordsForTool } from "@/lib/quote-tools";
 import { listCategoriesTool, preflightUpdateCategory, updateCategoryTool } from "./category-tools";
 import { SETUP_TOOLS } from "@/lib/setup-tools";
 import {
@@ -666,7 +668,8 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
   const locale = mainLocale(store);
   const [[head], variants, [extra]] = await Promise.all([
     db().execute<Row>(sql`
-      select p.handle, p.status, p.kind, p.vat_category, p.standard_category, p.standard_attributes, coalesce(tl.title, tf.title, p.handle) as title, coalesce(tl.description, tf.description, '') as description
+      select p.handle, p.status, p.kind, p.vat_category, p.standard_category, p.standard_attributes, p.price_on_request, p.price_words,
+        coalesce(tl.title, tf.title, p.handle) as title, coalesce(tl.description, tf.description, '') as description
       from commerce.products p
       left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
       left join lateral (select title, description from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
@@ -737,6 +740,9 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
     handle: String(head.handle),
     status: String(head.status),
     kind: String(head.kind),
+    // Price on request and the words around its price (D431, D429, D437): as update_product takes them.
+    ...(head.price_on_request ? { price_on_request: "yes: no price is shown anywhere; shoppers can only request a quote, and its prices are only the owner's guide" } : {}),
+    price_words: productWordsForTool(head.price_words),
     vat_category: String(head.vat_category),
     description: String(head.description).slice(0, 1500),
     languages_with_words: extra?.languages ?? [],
@@ -2139,6 +2145,17 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightScreenTool(ctx, name as (typeof SCREEN_CHECKED)[number], input.input as Record<string, unknown>);
   }
+  // A request that is not one, is no longer open, or a reply the page or the claims filter would refuse; words or a country the Prices page would
+  // refuse: refused now, never kept for a yes (D437).
+  if (name === "decline_quote" || name === "set_price_display") {
+    const input = readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    if (name === "decline_quote") {
+      await preflightDeclineQuote(ctx, input.input as OwnerToolInput<"decline_quote">);
+      return;
+    }
+    return preflightPriceDisplay(ctx, input.input as OwnerToolInput<"set_price_display">);
+  }
   // A draft that could not be sent (not open, a problem that blocks it, payments off, a closed store) is refused now, never kept for a yes (D173).
   if (name === "send_draft_order") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -2325,6 +2342,12 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   archive_orders: archiveOrdersTool,
   create_draft_order: createDraftOrderTool,
   send_draft_order: sendDraftOrderTool,
+  // Quotes and price display (D437).
+  set_draft_prices: setDraftPricesTool,
+  decline_quote: declineQuoteTool,
+  price_display: (ctx: OwnerToolContext) => priceDisplayTool(ctx),
+  set_price_display: setPriceDisplayTool,
+  set_quote_requests: setQuoteRequestsTool,
   list_returns: listReturnsTool,
   explain_return: explainReturnTool,
   list_privacy_requests: listPrivacyRequestsTool,
