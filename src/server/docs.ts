@@ -19,21 +19,27 @@ import { log } from "./log";
 
 let kept: DocsIndex | null = null;
 
+/**
+ * The folder the articles are in. A fixed path (the working directory and a literal), and every file below it is joined to it from a
+ * relative part, so the build traces `content/docs/` alone: a path built from a variable folder would make Turbopack trace the whole
+ * repository into the docs' routes.
+ */
+const DOCS_DIR = path.join(process.cwd(), "content/docs");
+
 /** Every file under `content/docs/`, with its path from the repository's root. */
-export function readDocSources(root = process.cwd()): DocSource[] {
-  const base = path.join(root, DOCS_ROOT);
+export function readDocSources(): DocSource[] {
   const out: DocSource[] = [];
-  const walk = (dir: string) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
+  const walk = (rel: string) => {
+    for (const entry of readdirSync(path.join(DOCS_DIR, rel), { withFileTypes: true })) {
+      const child = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) walk(child);
       else if (entry.isFile() && /\.(md|json)$/.test(entry.name)) {
-        out.push({ file: path.relative(root, full).split(path.sep).join("/"), text: readFileSync(full, "utf8") });
+        out.push({ file: `${DOCS_ROOT}/${child}`, text: readFileSync(path.join(DOCS_DIR, child), "utf8") });
       }
     }
   };
   try {
-    walk(base);
+    walk("");
   } catch (error) {
     log("error", "docs.read_failed", {}, error);
   }
