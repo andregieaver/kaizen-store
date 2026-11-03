@@ -150,6 +150,7 @@ export function DocsSearch({
                 homeHref={homeHref}
                 guide={guide}
                 sectionTitle={null}
+                onClose={close}
                 onAsk={(question) => {
                   // The guide (unit E5) listens for the question; the dialog makes way for it.
                   window.dispatchEvent(new CustomEvent(DOCS_ASK_EVENT, { detail: { question } }));

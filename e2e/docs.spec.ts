@@ -286,7 +286,8 @@ test("the Norwegian search is in Norwegian, with the Norwegian pages", async ({ 
   await expect(page.locator("html")).toHaveAttribute("lang", "nb");
   await expect(page.getByRole("heading", { level: 1, name: "Søk i dokumentasjonen" })).toBeVisible();
   const hit = page.locator("a[data-docs-hit]").filter({ hasText: "Legg inn ditt første produkt" });
-  await expect(hit).toHaveAttribute("href", "/no/docs/owners/getting-started/your-first-product");
+  // "mva" is in the words under one of its headings, not in its title, so the result leads to that heading.
+  await expect(hit).toHaveAttribute("href", /^\/no\/docs\/owners\/getting-started\/your-first-product(#[a-z0-9-]+)?$/);
   await expect(hit.locator("mark").first()).toHaveText(/^mva/i);
 });
 

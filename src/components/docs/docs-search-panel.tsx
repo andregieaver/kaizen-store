@@ -64,6 +64,7 @@ export function DocsSearchPanel({
   guide,
   sectionTitle,
   onAsk,
+  onClose,
 }: {
   mode: "dialog" | "page";
   start: DocsPanelStart;
@@ -79,6 +80,8 @@ export function DocsSearchPanel({
   sectionTitle: string | null;
   /** In the dialog: hand the question to the guide and close. */
   onAsk?: (question: string) => void;
+  /** In the dialog: close it. Escape in a search field with words in it only clears them in Chromium, so the field closes the dialog itself. */
+  onClose?: () => void;
 }) {
   const [q, setQ] = useState(start.query.q);
   const [filters, setFilters] = useState(start.query.filters);
@@ -164,6 +167,11 @@ export function DocsSearchPanel({
 
   const hits = () => [...(list.current?.querySelectorAll<HTMLAnchorElement>("a[data-docs-hit]") ?? [])];
   const onFieldKey = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape" && onClose) {
+      event.preventDefault();
+      onClose();
+      return;
+    }
     if (event.key === "ArrowDown") {
       const first = hits()[0];
       if (first) {
