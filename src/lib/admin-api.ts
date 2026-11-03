@@ -1,8 +1,8 @@
 /**
  * The Admin API (wave 9 unit B, D355, `docs/wave-9-platform.md` section 3, B): the pure parts. A token (`kf_` and 32 random bytes) belongs to
- * one store and carries scopes; each route names the one scope it needs (`routeOf()`), and a call without it is a 403 that names it. Lists
- * are pages of at most `PAGE_MAX` under an opaque cursor (`?after=`). Money is minor units with the ISO code. Nothing here reads the
- * database.
+ * one store and carries scopes; each operation names the one scope it needs (`ADMIN_API` in `admin-api-routes.ts`, D438, which `routeOf()`
+ * routes by), and a call without it is a 403 that names it. Lists are pages of at most `PAGE_MAX` under an opaque cursor (`?after=`). Money
+ * is minor units with the ISO code. Nothing here reads the database.
  */
 
 export const API_SCOPES = [
@@ -53,71 +53,6 @@ export const isUuid = (value: string | undefined): value is string => typeof val
 
 export type ApiMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
-export type ApiRoute =
-  | { name: "products.list" | "products.create"; scope: ApiScope }
-  | { name: "products.get" | "products.update"; scope: ApiScope; id: string }
-  | { name: "inventory.locations" | "inventory.levels" | "inventory.adjust" | "inventory.set"; scope: ApiScope }
-  | { name: "orders.list"; scope: ApiScope }
-  | { name: "orders.get" | "orders.fulfil"; scope: ApiScope; id: string }
-  | { name: "invoices.ubl" | "credit_notes.ubl"; scope: ApiScope; id: string }
-  | { name: "customers.list"; scope: ApiScope }
-  | { name: "customers.get" | "customers.tag"; scope: ApiScope; id: string }
-  | { name: "customers.untag"; scope: ApiScope; id: string; tag: string }
-  | { name: "discounts.list" | "discounts.create"; scope: ApiScope }
-  | { name: "checkout.rules" | "checkout.rule_create" | "checkout.fields" | "checkout.field_create"; scope: ApiScope }
-  | { name: "checkout.rule_update" | "checkout.rule_delete" | "checkout.field_update" | "checkout.field_delete"; scope: ApiScope; id: string };
-
-/** The route a method and path (after `/api/admin/v1/`) name, or null for none (a 404). */
-export function routeOf(method: ApiMethod, path: readonly string[]): ApiRoute | null {
-  const [resource, id, sub, extra] = path;
-  if (path.length > 4) return null;
-  if (resource === "products") {
-    if (!id) return method === "GET" ? { name: "products.list", scope: "products:read" } : method === "POST" ? { name: "products.create", scope: "products:write" } : null;
-    if (!isUuid(id) || sub) return null;
-    return method === "GET" ? { name: "products.get", scope: "products:read", id } : method === "PATCH" ? { name: "products.update", scope: "products:write", id } : null;
-  }
-  if (resource === "inventory" && !sub) {
-    if (id === "locations" && method === "GET") return { name: "inventory.locations", scope: "inventory:read" };
-    if (id === "levels" && method === "GET") return { name: "inventory.levels", scope: "inventory:read" };
-    if (id === "adjust" && method === "POST") return { name: "inventory.adjust", scope: "inventory:write" };
-    if (id === "set" && method === "POST") return { name: "inventory.set", scope: "inventory:write" };
-    return null;
-  }
-  if (resource === "orders") {
-    if (!id) return method === "GET" ? { name: "orders.list", scope: "orders:read" } : null;
-    if (!isUuid(id)) return null;
-    if (!sub) return method === "GET" ? { name: "orders.get", scope: "orders:read", id } : null;
-    return sub === "fulfillments" && !extra && method === "POST" ? { name: "orders.fulfil", scope: "orders:write", id } : null;
-  }
-  // An invoice or a credit note as EN 16931 UBL (D403): `/invoices/{id}/ubl`, `/credit-notes/{id}/ubl`.
-  if ((resource === "invoices" || resource === "credit-notes") && id && isUuid(id) && sub === "ubl" && !extra) {
-    return method === "GET" ? { name: resource === "invoices" ? "invoices.ubl" : "credit_notes.ubl", scope: "orders:read", id } : null;
-  }
-  if (resource === "customers") {
-    if (!id) return method === "GET" ? { name: "customers.list", scope: "customers:read" } : null;
-    if (!isUuid(id)) return null;
-    if (!sub) return method === "GET" ? { name: "customers.get", scope: "customers:read", id } : null;
-    if (sub !== "tags") return null;
-    if (!extra) return method === "POST" ? { name: "customers.tag", scope: "customers:write", id } : null;
-    return method === "DELETE" ? { name: "customers.untag", scope: "customers:write", id, tag: decodeURIComponent(extra) } : null;
-  }
-  // Checkout rules and questions (D399): `/checkout/rules`, `/checkout/rules/{id}`, `/checkout/fields`, `/checkout/fields/{id}`.
-  if (resource === "checkout" && (id === "rules" || id === "fields") && !extra) {
-    const one = id === "rules" ? "rule" : "field";
-    if (!sub) {
-      if (method === "GET") return { name: id === "rules" ? "checkout.rules" : "checkout.fields", scope: "checkout:read" };
-      return method === "POST" ? { name: `checkout.${one}_create`, scope: "checkout:write" } : null;
-    }
-    if (!isUuid(sub)) return null;
-    if (method === "PATCH") return { name: `checkout.${one}_update`, scope: "checkout:write", id: sub };
-    return method === "DELETE" ? { name: `checkout.${one}_delete`, scope: "checkout:write", id: sub } : null;
-  }
-  if (resource === "discounts" && !id) {
-    return method === "GET" ? { name: "discounts.list", scope: "discounts:read" } : method === "POST" ? { name: "discounts.create", scope: "discounts:write" } : null;
-  }
-  return null;
-}
-
 /** An error's code, as the answer's `error.code`, with its HTTP status. */
 export const API_ERRORS = {
   unauthorized: 401,
@@ -134,34 +69,3 @@ export type ApiErrorCode = keyof typeof API_ERRORS;
 
 /** Seconds until the next minute begins: what a 429 asks the caller to wait. */
 export const retryAfter = (now: Date = new Date()): number => 60 - now.getUTCSeconds();
-
-/** Every route as the Apps and API page lists it: the method, the path after `/api/admin/v1` and the scope it needs. */
-export const API_ROUTES: { method: ApiMethod; path: string; scope: ApiScope }[] = [
-  { method: "GET", path: "/products", scope: "products:read" },
-  { method: "GET", path: "/products/{id}", scope: "products:read" },
-  { method: "POST", path: "/products", scope: "products:write" },
-  { method: "PATCH", path: "/products/{id}", scope: "products:write" },
-  { method: "GET", path: "/inventory/locations", scope: "inventory:read" },
-  { method: "GET", path: "/inventory/levels", scope: "inventory:read" },
-  { method: "POST", path: "/inventory/adjust", scope: "inventory:write" },
-  { method: "POST", path: "/inventory/set", scope: "inventory:write" },
-  { method: "GET", path: "/orders", scope: "orders:read" },
-  { method: "GET", path: "/orders/{id}", scope: "orders:read" },
-  { method: "GET", path: "/invoices/{id}/ubl", scope: "orders:read" },
-  { method: "GET", path: "/credit-notes/{id}/ubl", scope: "orders:read" },
-  { method: "POST", path: "/orders/{id}/fulfillments", scope: "orders:write" },
-  { method: "GET", path: "/customers", scope: "customers:read" },
-  { method: "GET", path: "/customers/{id}", scope: "customers:read" },
-  { method: "POST", path: "/customers/{id}/tags", scope: "customers:write" },
-  { method: "DELETE", path: "/customers/{id}/tags/{tag}", scope: "customers:write" },
-  { method: "GET", path: "/discounts", scope: "discounts:read" },
-  { method: "POST", path: "/discounts", scope: "discounts:write" },
-  { method: "GET", path: "/checkout/rules", scope: "checkout:read" },
-  { method: "POST", path: "/checkout/rules", scope: "checkout:write" },
-  { method: "PATCH", path: "/checkout/rules/{id}", scope: "checkout:write" },
-  { method: "DELETE", path: "/checkout/rules/{id}", scope: "checkout:write" },
-  { method: "GET", path: "/checkout/fields", scope: "checkout:read" },
-  { method: "POST", path: "/checkout/fields", scope: "checkout:write" },
-  { method: "PATCH", path: "/checkout/fields/{id}", scope: "checkout:write" },
-  { method: "DELETE", path: "/checkout/fields/{id}", scope: "checkout:write" },
-];

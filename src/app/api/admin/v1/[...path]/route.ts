@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 
-import { API_ERRORS, grants, retryAfter, routeOf, type ApiErrorCode, type ApiMethod } from "@/lib/admin-api";
+import { API_ERRORS, grants, retryAfter, type ApiErrorCode, type ApiMethod } from "@/lib/admin-api";
+import { routeOf } from "@/lib/admin-api-routes";
 import { ApiError, runApiRoute } from "@/server/admin-api";
 import { claimIdempotencyKey } from "@/server/api-idempotency";
 import { apiCaller } from "@/server/api-tokens";

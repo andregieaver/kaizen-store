@@ -4,8 +4,10 @@ import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { isUuid, pageSize, type ApiErrorCode, type ApiRoute } from "@/lib/admin-api";
-import { createProductInput, updateProductInput } from "@/lib/product-tools";
+import { isUuid, pageSize, type ApiErrorCode } from "@/lib/admin-api";
+import { ADMIN_API_BY_NAME, bodyProblems, ORDER_STATES, PRODUCT_STATES, type AdminAnswer, type AdminApiName, type AdminBody, type ApiRoute } from "@/lib/admin-api-routes";
+import { DISCOUNT_KINDS } from "@/lib/discounts";
+import { PRODUCT_KINDS } from "@/lib/product-input";
 
 import type { ApiCaller } from "./api-tokens";
 import { audit } from "./auth";
@@ -13,7 +15,8 @@ import { deleteCheckoutField, deleteCheckoutRule, listCheckoutFields, listChecko
 import { saveDiscount } from "./discounts";
 import { documentUbl } from "./einvoices";
 import { adjustStock } from "./inventory";
-import { CARRIERS, getOrderAdmin, markSent, sendRefusalText } from "./order-admin";
+import { log } from "./log";
+import { getOrderAdmin, markSent, sendRefusalText } from "./order-admin";
 import { OwnerToolError } from "./owner-tool-error";
 import { createProductTool, findProduct, updateProductTool } from "./product-tools";
 import { addTag, removeTag } from "./segments";
@@ -26,6 +29,10 @@ import { col, typedRows } from "./typed-rows";
  * `addTag()`/`removeTag()`, `saveDiscount()`), as the token's maker, and every change is audited `integration.api_{what}` with the token's
  * name. A live product is not changed here (publishing and changing what shoppers see are the owner's, in the admin); a copied order is
  * read-only. Lists are pages under a cursor of the last row's time and id.
+ *
+ * The contract (D438): every body is read with its operation's zod in `ADMIN_API` (`readBody()`) before a screen's own checks, and every
+ * answer is built as the operation's `AdminAnswer` and checked against its `response` on the way out; an answer of another shape is logged
+ * (`admin_api.answer_shape`, the paths only) and still sent, so a drift is found without a caller being refused.
  */
 
 export class ApiError extends Error {
@@ -43,7 +50,8 @@ const fail = (code: ApiErrorCode, message: string): never => {
 
 export type ApiAnswer = { status: number; body: unknown };
 
-const ok = (body: unknown, status = 200): ApiAnswer => ({ status, body });
+/** An operation's answer, built as its registry entry says it is. */
+const ok = <N extends AdminApiName>(_name: N, body: AdminAnswer<N>, status = 200): ApiAnswer => ({ status, body });
 
 /** A cursor: the last row's time and id, so the next page starts after it whatever is added meanwhile. */
 export function encodeCursor(at: string, id: string): string {
@@ -70,7 +78,7 @@ function paging(params: URLSearchParams, column: SQL, idColumn: SQL) {
 const record = (caller: ApiCaller, what: string, details: Record<string, unknown>, target?: { type: string; id: string }) =>
   audit(caller.member.account.id, caller.member.store.id, `integration.api_${what}`, { token: caller.token.name, ...details }, target ? { target } : {});
 
-async function body(request: Request): Promise<Record<string, unknown>> {
+async function jsonBody(request: Request): Promise<Record<string, unknown>> {
   const text = await request.text();
   if (text.length > 1_000_000) fail("invalid", "The body is larger than 1 MB.");
   if (!text.trim()) return {};
@@ -80,6 +88,16 @@ async function body(request: Request): Promise<Record<string, unknown>> {
   } catch {
     return fail("invalid", "The body is not JSON.");
   }
+}
+
+/** The body of a write, read with its operation's zod: a 422 in the API's own words before any screen's check runs. */
+async function readBody<N extends AdminApiName>(name: N, request: Request): Promise<AdminBody<N>> {
+  const raw = await jsonBody(request);
+  const op = ADMIN_API_BY_NAME[name] as { body?: z.ZodType };
+  if (!op.body) return fail("failed", `${name} takes no body.`);
+  const parsed = op.body.safeParse(raw);
+  if (!parsed.success) return fail("invalid", bodyProblems(parsed.error.issues).join(" "));
+  return parsed.data as AdminBody<N>;
 }
 
 /** A refusal from the screens' functions, as a 422 with their own words. */
@@ -99,8 +117,8 @@ async function asTool<T>(run: () => Promise<T>): Promise<T> {
 const productRow = z.object({
   id: col.uuid,
   handle: col.text,
-  status: col.text,
-  kind: col.text,
+  status: z.enum(PRODUCT_STATES),
+  kind: z.enum(PRODUCT_KINDS),
   title: col.textOrNull,
   created_at: col.timestamp,
   updated_at: col.timestamp,
@@ -136,7 +154,7 @@ async function readProducts(storeId: string, where: SQL, limit: number) {
   );
 }
 
-const productOut = (row: z.output<typeof productRow>) => ({
+const productOut = (row: z.output<typeof productRow>): AdminAnswer<"products.get">["data"] => ({
   id: row.id,
   handle: row.handle,
   title: row.title ?? "",
@@ -158,9 +176,9 @@ const toolCtx = (caller: ApiCaller) => ({ account: caller.member.account, store:
 // Orders
 // ---------------------------------------------------------------------------
 
-const ORDER_STATUSES = ["pending_payment", "authorized", "paid", "fulfilled", "closed", "cancelled"] as const;
+type ApiOrder = AdminAnswer<"orders.get">["data"];
 
-async function orderOut(storeId: string, id: string) {
+async function orderOut(storeId: string, id: string): Promise<ApiOrder | null> {
   const order = await getOrderAdmin(storeId, id);
   if (!order) return null;
   const toSend = new Map(order.fulfilment.lines.map((line) => [line.lineId, line.toSend]));
@@ -209,44 +227,9 @@ async function orderOut(storeId: string, id: string) {
   };
 }
 
-const fulfilInput = z.object({
-  carrier: z.enum(CARRIERS.map((c) => c.id) as [string, ...string[]]),
-  tracking_number: z.string().trim().max(100).default(""),
-  tracking_url: z.union([z.literal(""), z.url({ protocol: /^https$/ })]).default(""),
-  lines: z.array(z.object({ line_id: z.uuid(), quantity: z.int().min(1).max(100_000) })).max(500).optional(),
-  notify: z.boolean().default(true),
-});
-
 // ---------------------------------------------------------------------------
 // Inventory
 // ---------------------------------------------------------------------------
-
-/** A variant by its id, or by its SKU (a warehouse knows the SKU). */
-const variantRef = { variant_id: z.uuid().optional(), sku: z.string().trim().min(1).max(64).optional() };
-const named = (row: { variant_id?: string; sku?: string }) => Boolean(row.variant_id) !== Boolean(row.sku);
-const NAME_ONE = "Name each row's variant by variant_id or by sku, not both.";
-
-const adjustRows = z.object({
-  reason: z.string().default("correction"),
-  note: z.string().max(200).nullable().default(null),
-  rows: z
-    .array(z.object({ ...variantRef, location_id: z.uuid(), delta: z.int().min(-1_000_000).max(1_000_000) }).refine(named, NAME_ONE))
-    .min(1)
-    .max(250),
-});
-
-const setRows = z.object({
-  reason: z.string().default("count"),
-  note: z.string().max(200).nullable().default(null),
-  rows: z
-    .array(
-      z
-        .object({ ...variantRef, location_id: z.uuid(), on_hand: z.int().min(0).max(10_000_000), compare: z.int().min(-10_000_000).max(10_000_000).optional() })
-        .refine(named, NAME_ONE),
-    )
-    .min(1)
-    .max(250),
-});
 
 /** The rows with every variant named by its id: a SKU the store does not have is refused before anything is written. */
 async function byVariantId<R extends { variant_id?: string; sku?: string }>(storeId: string, rows: R[]): Promise<(R & { variant_id: string })[]> {
@@ -275,7 +258,7 @@ async function levelsNow(storeId: string, rows: { variant_id: string; location_i
   return new Map(found.map((row) => [`${row.variant_id}|${row.location_id}`, row.on_hand]));
 }
 
-const stockAnswer = (result: Awaited<ReturnType<typeof adjustStock>>) =>
+const stockAnswer = (result: Awaited<ReturnType<typeof adjustStock>>): AdminAnswer<"inventory.adjust">["data"] =>
   result.ok
     ? {
         written: result.written,
@@ -291,8 +274,21 @@ const stockAnswer = (result: Awaited<ReturnType<typeof adjustStock>>) =>
 // The routes
 // ---------------------------------------------------------------------------
 
-/** Answers one route for a caller whose token holds its scope. */
+/**
+ * Answers one route for a caller whose token holds its scope, and checks the answer against its operation's `response` (D438): an answer
+ * of another shape is logged with where it differs (never a value) and sent as it is.
+ */
 export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: Request): Promise<ApiAnswer> {
+  const answer = await answerRoute(caller, route, request);
+  const checked = ADMIN_API_BY_NAME[route.name].response.safeParse(answer.body);
+  if (!checked.success) {
+    const at = [...new Set(checked.error.issues.map((i) => i.path.map((p) => (typeof p === "number" ? "#" : String(p))).join(".")))].slice(0, 5);
+    log("error", "admin_api.answer_shape", { storeId: caller.member.store.id, route: route.name, at: at.join(" ") });
+  }
+  return answer;
+}
+
+async function answerRoute(caller: ApiCaller, route: ApiRoute, request: Request): Promise<ApiAnswer> {
   const storeId = caller.member.store.id;
   const params = new URL(request.url).searchParams;
   switch (route.name) {
@@ -301,37 +297,36 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
       const status = params.get("status");
       const statusWhere = status === "draft" || status === "active" || status === "archived" ? sql`p.status = ${status}::commerce.product_status` : sql`true`;
       const rows = await readProducts(storeId, sql`${page.where} and ${statusWhere}`, page.limit + 1);
-      return ok({ data: rows.slice(0, page.limit).map(productOut), next: page.next(rows) });
+      return ok(route.name, { data: rows.slice(0, page.limit).map(productOut), next: page.next(rows) });
     }
     case "products.get":
-      return ok({ data: await productById(caller, route.id) });
+      return ok(route.name, { data: await productById(caller, route.id) });
     case "products.create": {
-      const parsed = createProductInput.safeParse(await body(request));
-      if (!parsed.success) return fail("invalid", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" "));
+      const input = await readBody(route.name, request);
       // Pictures are made or found only in the admin's own library: the API takes none.
-      const made = await asTool(() => createProductTool(toolCtx(caller), { ...parsed.data, pictures: [] }));
+      const made = await asTool(() => createProductTool(toolCtx(caller), { ...input, pictures: [] }));
       const id = (made as { id?: string }).id ?? fail("failed", "The product was saved but could not be read back.");
       await record(caller, "product_created", {}, { type: "product", id });
-      return ok({ data: await productById(caller, id) }, 201);
+      return ok(route.name, { data: await productById(caller, id) }, 201);
     }
     case "products.update": {
       const found = await asTool(() => findProduct(caller.member.store, route.id));
       // Changing what shoppers see is the owner's, in the admin (a gated change for the AI manager too).
       if (found.status === "active") return fail("gated", "A live product is changed in the admin. Over the API, change drafts only.");
-      const raw = await body(request);
+      const raw = await jsonBody(request);
       if (raw.status !== undefined) return fail("gated", "Publishing a product is the owner's, in the admin.");
-      const parsed = updateProductInput.safeParse({ ...raw, product: route.id });
-      if (!parsed.success) return fail("invalid", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" "));
-      await asTool(() => updateProductTool(toolCtx(caller), { ...parsed.data, pictures: undefined, add_pictures: undefined }));
+      const parsed = ADMIN_API_BY_NAME[route.name].body.safeParse(raw);
+      if (!parsed.success) return fail("invalid", bodyProblems(parsed.error.issues).join(" "));
+      await asTool(() => updateProductTool(toolCtx(caller), { ...parsed.data, product: route.id, pictures: undefined, add_pictures: undefined }));
       await record(caller, "product_updated", {}, { type: "product", id: route.id });
-      return ok({ data: await productById(caller, route.id) });
+      return ok(route.name, { data: await productById(caller, route.id) });
     }
     case "inventory.locations": {
       const rows = await typedRows(
         z.object({ id: col.uuid, name: col.text, country: col.textOrNull, active: col.bool, priority: col.int }),
         sql`select id, name, country, active, priority from commerce.inventory_locations where store_id = ${storeId}::uuid order by priority, name, id`,
       );
-      return ok({ data: rows });
+      return ok(route.name, { data: rows });
     }
     case "inventory.levels": {
       const variant = params.get("variant_id");
@@ -352,18 +347,17 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
         `,
       );
       const data = rows.slice(0, page.limit).map((r) => ({ variant_id: r.id, location_id: r.location_id, sku: r.sku, on_hand: r.on_hand, available: r.available, can_buy: r.can_buy, updated_at: r.created_at }));
-      return ok({ data, next: page.next(rows) });
+      return ok(route.name, { data, next: page.next(rows) });
     }
     case "inventory.adjust": {
-      const parsed = adjustRows.safeParse(await body(request));
-      if (!parsed.success) return fail("invalid", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" "));
-      const wanted = await byVariantId(storeId, parsed.data.rows);
+      const input = await readBody(route.name, request);
+      const wanted = await byVariantId(storeId, input.rows);
       const now = await levelsNow(storeId, wanted);
       // Relative: worked out from the level under the row lock; a level that moved since it was read here is read again once.
       const run = (levels: Map<string, number>, rows: typeof wanted) =>
         adjustStock(
           caller.member,
-          { reason: parsed.data.reason, note: parsed.data.note, rows: rows.map((r) => ({ variantId: r.variant_id, locationId: r.location_id, mode: "adjust", value: r.delta, was: levels.get(`${r.variant_id}|${r.location_id}`) ?? 0 })) },
+          { reason: input.reason, note: input.note, rows: rows.map((r) => ({ variantId: r.variant_id, locationId: r.location_id, mode: "adjust", value: r.delta, was: levels.get(`${r.variant_id}|${r.location_id}`) ?? 0 })) },
           "api",
         );
       let result = await run(now, wanted);
@@ -378,32 +372,31 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
         }
       }
       const answer = stockAnswer(result);
-      await record(caller, "stock_adjusted", { rows: parsed.data.rows.length, written: answer.written });
-      return ok({ data: answer });
+      await record(caller, "stock_adjusted", { rows: input.rows.length, written: answer.written });
+      return ok(route.name, { data: answer });
     }
     case "inventory.set": {
-      const parsed = setRows.safeParse(await body(request));
-      if (!parsed.success) return fail("invalid", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" "));
-      const wanted = await byVariantId(storeId, parsed.data.rows);
+      const input = await readBody(route.name, request);
+      const wanted = await byVariantId(storeId, input.rows);
       const now = await levelsNow(storeId, wanted);
       // `compare` is the level the caller counted against: a level that moved since is a conflict, never overwritten.
       const result = await adjustStock(
         caller.member,
         {
-          reason: parsed.data.reason,
-          note: parsed.data.note,
+          reason: input.reason,
+          note: input.note,
           rows: wanted.map((r) => ({ variantId: r.variant_id, locationId: r.location_id, mode: "set", value: r.on_hand, was: r.compare ?? now.get(`${r.variant_id}|${r.location_id}`) ?? 0 })),
         },
         "api",
       );
       const answer = stockAnswer(result);
-      await record(caller, "stock_set", { rows: parsed.data.rows.length, written: answer.written });
-      return ok({ data: answer });
+      await record(caller, "stock_set", { rows: input.rows.length, written: answer.written });
+      return ok(route.name, { data: answer });
     }
     case "orders.list": {
       const page = paging(params, sql`o.placed_at`, sql`o.id`);
       const status = params.get("status");
-      if (status && !(ORDER_STATUSES as readonly string[]).includes(status)) return fail("invalid", `status is one of ${ORDER_STATUSES.join(", ")}.`);
+      if (status && !(ORDER_STATES as readonly string[]).includes(status)) return fail("invalid", `status is one of ${ORDER_STATES.join(", ")}.`);
       const toFulfil = params.get("unfulfilled") === "true";
       const rows = await typedRows(
         z.object({ id: col.uuid, created_at: col.timestamp }),
@@ -417,24 +410,22 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
         `,
       );
       const data = await Promise.all(rows.slice(0, page.limit).map((row) => orderOut(storeId, row.id)));
-      return ok({ data: data.filter(Boolean), next: page.next(rows) });
+      return ok(route.name, { data: data.flatMap((order) => (order ? [order] : [])), next: page.next(rows) });
     }
     case "orders.get":
-      return ok({ data: (await orderOut(storeId, route.id)) ?? fail("not_found", "No such order in this store.") });
+      return ok(route.name, { data: (await orderOut(storeId, route.id)) ?? fail("not_found", "No such order in this store.") });
     case "invoices.ubl":
     case "credit_notes.ubl": {
       const out = await documentUbl(storeId, route.name === "invoices.ubl" ? "invoice" : "credit_note", route.id);
       if (!out) return fail("not_found", "No such document in this store.");
       if (!out.ok) return fail("invalid", `This document cannot be made as EN 16931: ${out.problems.join(", ")}.`);
-      return ok({ data: { file_name: out.fileName, content_type: "application/xml", xml: out.xml } });
+      return ok(route.name, { data: { file_name: out.fileName, content_type: "application/xml", xml: out.xml } });
     }
     case "orders.fulfil": {
       const order = await getOrderAdmin(storeId, route.id);
       if (!order) return fail("not_found", "No such order in this store.");
       if (order.copied) return fail("gated", "This order is history copied from another store, so it is read-only.");
-      const parsed = fulfilInput.safeParse(await body(request));
-      if (!parsed.success) return fail("invalid", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" "));
-      const input = parsed.data;
+      const input = await readBody(route.name, request);
       const sent = await markSent(
         storeId,
         route.id,
@@ -448,7 +439,7 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
       await record(caller, "order_fulfilled", { shipment: sent.shipment.id, units, left: sent.left }, { type: "order", id: route.id });
       // The parcel's email goes as the admin's does, unless the caller says not to.
       if (input.notify) await sendShipped(storeId, route.id, sent.shipment);
-      return ok({ data: await orderOut(storeId, route.id) }, 201);
+      return ok(route.name, { data: (await orderOut(storeId, route.id)) ?? fail("not_found", "No such order in this store.") }, 201);
     }
     case "customers.list":
     case "customers.get": {
@@ -473,9 +464,17 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
           limit ${route.name === "customers.get" ? 1 : page.limit + 1}
         `,
       );
-      const out = (r: (typeof rows)[number]) => ({ id: r.id, email: r.email, name: r.name ?? "", phone: r.phone ?? "", email_verified: r.verified, tags: r.tags, created_at: r.created_at });
-      if (route.name === "customers.get") return ok({ data: rows[0] ? out(rows[0]) : fail("not_found", "No such customer in this store.") });
-      return ok({ data: rows.slice(0, page.limit).map(out), next: page.next(rows) });
+      const out = (r: (typeof rows)[number]): AdminAnswer<"customers.get">["data"] => ({
+        id: r.id,
+        email: r.email,
+        name: r.name ?? "",
+        phone: r.phone ?? "",
+        email_verified: r.verified,
+        tags: r.tags,
+        created_at: r.created_at,
+      });
+      if (route.name === "customers.get") return ok(route.name, { data: rows[0] ? out(rows[0]) : fail("not_found", "No such customer in this store.") });
+      return ok(route.name, { data: rows.slice(0, page.limit).map(out), next: page.next(rows) });
     }
     case "customers.tag":
     case "customers.untag": {
@@ -488,14 +487,13 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
         const removed = await removeTag(storeId, caller.member.account.id, customer.email, route.tag);
         if (!removed) return fail("not_found", "The customer has no such tag.");
         await record(caller, "customer_untagged", {}, { type: "customer", id: route.id });
-        return ok({ data: { removed: true } });
+        return ok(route.name, { data: { removed: true } });
       }
-      const tag = (await body(request)).tag;
-      if (typeof tag !== "string") return fail("invalid", "tag: give the tag's words.");
+      const { tag } = await readBody(route.name, request);
       const added = await addTag(storeId, caller.member.account.id, customer.email, tag);
       if (!added.ok) return fail("invalid", added.problem);
       await record(caller, "customer_tagged", {}, { type: "customer", id: route.id });
-      return ok({ data: { added: true } }, 201);
+      return ok(route.name, { data: { added: true } }, 201);
     }
     case "discounts.list": {
       const page = paging(params, sql`d.created_at`, sql`d.id`);
@@ -503,7 +501,7 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
         z.object({
           id: col.uuid,
           code: col.text,
-          kind: col.text,
+          kind: z.enum(DISCOUNT_KINDS),
           percent: z.number().nullable(),
           amounts: z.record(z.string(), z.number()).nullable(),
           active: col.bool,
@@ -518,46 +516,51 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
           order by d.created_at desc, d.id desc limit ${page.limit + 1}
         `,
       );
-      return ok({ data: rows.slice(0, page.limit).map(({ amounts, ...r }) => ({ ...r, amounts_minor: amounts ?? {} })), next: page.next(rows) });
+      return ok(route.name, { data: rows.slice(0, page.limit).map(({ amounts, ...r }) => ({ ...r, amounts_minor: amounts ?? {} })), next: page.next(rows) });
     }
     case "discounts.create": {
-      const raw = await body(request);
-      // The admin's own form: amounts per market as typed in its currency, the rest as the form sends it.
+      const input = await readBody(route.name, request);
+      // The admin's own form: amounts per market as typed in its currency, the rest as the form sends it; its own checks run after the API's.
       const saved = await saveDiscount(caller.member, null, {
-        code: raw.code,
-        kind: raw.kind,
-        percent: raw.percent,
-        amounts: raw.amounts,
-        minSubtotals: raw.min_subtotals,
-        startsAt: raw.starts_at ?? null,
-        endsAt: raw.ends_at ?? null,
-        usageLimit: raw.usage_limit ?? null,
-        oncePerCustomer: raw.once_per_customer === true,
-        active: raw.active !== false,
+        code: input.code,
+        kind: input.kind,
+        percent: input.percent,
+        amounts: input.amounts,
+        minSubtotals: input.min_subtotals,
+        startsAt: input.starts_at ?? null,
+        endsAt: input.ends_at ?? null,
+        usageLimit: input.usage_limit ?? null,
+        oncePerCustomer: input.once_per_customer === true,
+        active: input.active !== false,
       });
       if (!saved.ok) return fail("invalid", saved.problems.join(" "));
-      await record(caller, "discount_created", {}, saved.id ? { type: "discount", id: saved.id } : undefined);
-      return ok({ data: { id: saved.id } }, 201);
+      if (!saved.id) return fail("failed", "The code was saved but could not be read back.");
+      await record(caller, "discount_created", {}, { type: "discount", id: saved.id });
+      return ok(route.name, { data: { id: saved.id } }, 201);
     }
     // Checkout rules and questions (D399): through the Shipping page's own writers, which audit each change in the token holder's name.
     case "checkout.rules":
-      return ok({ data: (await listCheckoutRules(storeId)).map(({ skips, ...rule }) => ({ ...rule, skipped: skips })) });
+      return ok(route.name, { data: (await listCheckoutRules(storeId)).map(({ skips, ...rule }) => ({ ...rule, skipped: skips })) });
     case "checkout.fields":
-      return ok({ data: await listCheckoutFields(db(), storeId) });
-    case "checkout.rule_create":
-    case "checkout.field_create": {
-      const raw = await body(request);
-      const saved = route.name === "checkout.rule_create" ? await saveCheckoutRule(caller.member, null, raw) : await saveCheckoutField(caller.member, null, raw);
+      return ok(route.name, { data: await listCheckoutFields(db(), storeId) });
+    case "checkout.rule_create": {
+      const input = await readBody(route.name, request);
+      const saved = await saveCheckoutRule(caller.member, null, input);
       if (!saved.ok) return fail("invalid", saved.problems.join(" "));
-      await record(caller, route.name === "checkout.rule_create" ? "checkout_rule_made" : "checkout_field_made", {}, { type: route.name === "checkout.rule_create" ? "checkout_rule" : "checkout_field", id: saved.id });
-      return ok({ data: { id: saved.id } }, 201);
+      await record(caller, "checkout_rule_made", {}, { type: "checkout_rule", id: saved.id });
+      return ok(route.name, { data: { id: saved.id } }, 201);
+    }
+    case "checkout.field_create": {
+      const input = await readBody(route.name, request);
+      const saved = await saveCheckoutField(caller.member, null, input);
+      if (!saved.ok) return fail("invalid", saved.problems.join(" "));
+      await record(caller, "checkout_field_made", {}, { type: "checkout_field", id: saved.id });
+      return ok(route.name, { data: { id: saved.id } }, 201);
     }
     case "checkout.rule_update":
     case "checkout.field_update": {
-      const raw = await body(request);
       const rule = route.name === "checkout.rule_update";
-      const { enabled, ...rest } = raw;
-      if (enabled !== undefined && typeof enabled !== "boolean") return fail("invalid", "`enabled` is true or false.");
+      const { enabled, ...rest } = rule ? await readBody("checkout.rule_update", request) : await readBody("checkout.field_update", request);
       // A body of `enabled` alone switches it; anything else is the whole rule or question as made, its switch kept unless given.
       if (Object.keys(rest).length > 0) {
         const saved = rule ? await saveCheckoutRule(caller.member, route.id, rest) : await saveCheckoutField(caller.member, route.id, rest);
@@ -573,7 +576,7 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
         }
       }
       await record(caller, rule ? "checkout_rule_changed" : "checkout_field_changed", { enabled: enabled ?? null }, { type: rule ? "checkout_rule" : "checkout_field", id: route.id });
-      return ok({ data: { id: route.id } });
+      return ok(route.name, { data: { id: route.id } });
     }
     case "checkout.rule_delete":
     case "checkout.field_delete": {
@@ -583,7 +586,7 @@ export async function runApiRoute(caller: ApiCaller, route: ApiRoute, request: R
       if (rule) await deleteCheckoutRule(caller.member, route.id);
       else await deleteCheckoutField(caller.member, route.id);
       await record(caller, rule ? "checkout_rule_deleted" : "checkout_field_deleted", {}, { type: rule ? "checkout_rule" : "checkout_field", id: route.id });
-      return ok({ data: { id: route.id, deleted: true } });
+      return ok(route.name, { data: { id: route.id, deleted: true } });
     }
   }
 }

@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 
 import { connection } from "next/server";
 
-import { AGENT_TOOLS, UCP_VERSION } from "@/lib/shopping-agents";
+import { UCP_TOOLS } from "@/lib/ucp-catalogue";
+import { UCP_VERSION } from "@/lib/shopping-agents";
 import { takeBudget } from "@/server/request-budget";
 import { AgentToolError, agentStore, runAgentTool } from "@/server/shopping-agents";
 
@@ -50,7 +51,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/ucp/
       case "ping":
         return result(rpc.id, {});
       case "tools/list":
-        return result(rpc.id, { tools: AGENT_TOOLS });
+        return result(rpc.id, { tools: UCP_TOOLS });
       case "tools/call": {
         const name = typeof rpc.params?.name === "string" ? rpc.params.name : "";
         const args = rpc.params?.arguments;

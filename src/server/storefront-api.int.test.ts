@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import type { z } from "zod";
 
 import { closeDb, db } from "@/db/client";
+import { STOREFRONT_ROUTES, type StorefrontRoute } from "@/lib/storefront-api";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -22,6 +24,18 @@ const { fxStore } = await import("./fulfilment-test-fixture");
  */
 
 type Row = Record<string, unknown>;
+
+/**
+ * An answer as its route's contract publishes it (D438): parsed with the route's `response`, and typed by it, so a reader whose type drifts
+ * from the published schema is a type error here as well as a failure.
+ */
+function asPublished<W extends StorefrontRoute["what"]>(what: W, value: z.input<Extract<StorefrontRoute, { what: W }>["response"]>) {
+  const route = STOREFRONT_ROUTES.find((r) => r.what === what)!;
+  const checked = route.response.safeParse(value);
+  if (!checked.success) throw new Error(`${what}'s answer is not its contract: ${checked.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
+  return value;
+}
+
 let store: Awaited<ReturnType<typeof fxStore>>;
 let other: Awaited<ReturnType<typeof fxStore>>;
 let token: string;
@@ -65,22 +79,24 @@ describe("the storefront API (D362)", () => {
 
   it("lists products, a product and the categories as the market shows them, quotes a cart and hands it to checkout", async () => {
     const caller = (await api.storefrontCaller(store.slug, token))!;
-    const list = await api.storefrontProducts(caller, { sort: "newest", limit: 48 });
+    const list = asPublished("products", (await api.storefrontProducts(caller, { sort: "newest", limit: 48 }))!);
     expect(list?.market.slug).toBe("no");
     expect(list!.products.length).toBeGreaterThan(0);
     const tote = list!.products.find((p) => p.handle.includes("tote")) ?? list!.products[0];
     const page = await api.storefrontProduct(caller, tote.handle);
     expect(page).not.toBeNull();
+    asPublished("product", page!);
     expect(await api.storefrontProduct(caller, "no-such-handle")).toBeNull();
-    expect(await api.storefrontCategories(caller)).toHaveProperty("categories");
+    expect(asPublished("categories", await api.storefrontCategories(caller))).toHaveProperty("categories");
 
     const [variant] = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${store.storeId}::uuid and sku = 'DEMO-TOTE'`);
     const lines = [{ variantId: String(variant.id), quantity: 2 }];
-    const quote = await api.storefrontCart(caller, { lines });
+    const quote = asPublished("cart", (await api.storefrontCart(caller, { lines }))!);
     expect(quote?.lines[0]).toMatchObject({ status: "ok", fitted: 2 });
     expect(quote!.subtotal_minor).toBeGreaterThan(0);
     const handed = await api.storefrontCheckout(caller, { lines });
     expect(handed.ok && handed.url).toMatch(/\/cart\/resume\?t=/);
+    if (handed.ok) asPublished("checkout", { url: handed.url, lines: handed.lines });
   });
 
   it("keeps a cart: made with its first lines, changed by the variant's rules and the stock, read with each line's room, by its key only (D398)", async () => {
@@ -97,7 +113,7 @@ describe("the storefront API (D362)", () => {
     // The key itself is never kept: only its hash.
     expect(kept).toMatchObject({ source: "api" });
     expect(String(kept.api_hash)).not.toContain(made.key);
-    const read = (await carts.readApiCart(caller, made.key))!;
+    const read = asPublished("cart_read", (await carts.readApiCart(caller, made.key))!);
     expect(read.cart).toBe(made.key);
     expect(read.lines).toEqual([expect.objectContaining({ variant_id: variantId, quantity: 2, fitted: 2, status: "ok", available: 5 })]);
 

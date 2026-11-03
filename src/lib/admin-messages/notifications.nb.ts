@@ -866,6 +866,7 @@ export const notificationsNb: NotificationsMessages = {
     howTitle: "Bruke API-et",
     how: "Kall {base} med overskriften Authorization: Bearer og nøkkelen. Svarene er JSON; beløp er i minste enhet med valutaen; lister tar limit (høyst 100) og after, next-verdien fra siden før. 120 kall i minuttet per nøkkel; flere får 429 med Retry-After.",
     routesTitle: "Ruter",
+    contract: "Kontrakten (OpenAPI), med alle forespørsler, svar og webhooks",
     scopeWords: {
       "products:read": "Lese produkter",
       "products:write": "Lage produkter og endre utkast",

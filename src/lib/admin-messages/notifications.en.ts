@@ -660,6 +660,7 @@ export const notificationsEn = {
     howTitle: "Using the API",
     how: "Call {base} with the header Authorization: Bearer and the token. Answers are JSON; money is in minor units with the currency; lists take limit (at most 100) and after, the next value of the page before. 120 calls a minute per token; more get 429 with Retry-After.",
     routesTitle: "Routes",
+    contract: "The contract (OpenAPI), with every body, answer and webhook",
     scopeWords: {
       "products:read": "Read products",
       "products:write": "Make products and change drafts",

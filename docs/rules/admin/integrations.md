@@ -20,6 +20,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   redirect) with `signWebhook()`'s headers and `endpointPayload()`'s versioned body (`PAYLOAD_VERSION`; a change to a shape raises it). A new
   topic is an id in `EVENTS` (in `ENDPOINT_ONLY` unless the services get it too), a trigger that calls `queue_integration_event()` where it
   happens, its case in `subjectData()` and its words in the `notifications` catalogues; never send an endpoint's payload a way of its own.
+  Each topic's `data` is typed in `WEBHOOK_TOPICS` (D438, `src/lib/webhook-topics.ts`): a builder returns its `WebhookSubject<…>` and
+  `subjectData()` checks what it built against the topic's schema, logging a drift (`webhooks.payload_shape`, paths only) and never holding a
+  delivery back; within `PAYLOAD_VERSION` 1 a payload only gains fields. A new topic or subject also gets its schema there, its subject made
+  in `webhook-topics.int.test.ts`, and the contract's next version (*API contracts*, under the Admin API).
 
 ## The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)
 
@@ -27,9 +31,31 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `commerce.api_tokens` (owners, Settings → Apps and API; a hash only, shown once), written only by `api-tokens.ts`; a call is
   `/api/admin/v1/{resource}` with a Bearer token read by `apiCaller()` (the maker's membership read again, owners only), routed by
   `routeOf()` with the one scope each route needs (`grants()`), budgeted by `takeBudget()` (`api`), and answered by `runApiRoute()` through the
-  screens' own functions only, each change audited `integration.api_{what}` with the token's name. A new route is a case in `routeOf()` and
-  `API_ROUTES` with its scope, a case in `runApiRoute()` over the screen's function, and a test; a gated effect (publishing, a live product,
-  a refund, an email a person decides) is refused as `gated`, never run.
+  screens' own functions only, each change audited `integration.api_{what}` with the token's name. `routeOf()` and `API_ROUTES` are made
+  from `ADMIN_API` (D438, `src/lib/admin-api-routes.ts`), the one description of every operation. A new route is an entry there (method,
+  path, name, scope, words, the zod of its parameters, query, body and answer, its errors), a case in `answerRoute()` over the screen's
+  function that reads its body with `readBody()` (never a raw body: the API says what is wrong before the screen's own checks) and builds
+  its answer as `AdminAnswer<name>`, and a call in `admin-api.int.test.ts`, which parses every answer with its schema and fails until every
+  operation's was parsed; then the contract's next version (*API contracts*, under the Admin API). A gated effect (publishing, a live product, a refund,
+  an email a person decides) is refused as `gated`, never run.
+
+- **API contracts (wave 14 unit A, D438, `src/lib/admin-api-routes.ts`, `src/lib/webhook-topics.ts`, `src/lib/mcp-catalogue.ts`, `src/lib/api-contract.ts`)**, for this API, the storefront API, the webhooks and the MCP servers:
+  what outside callers rely on is described once, in code, and everything published is generated from it: the Admin API's operations
+  (`ADMIN_API`) and the storefront's routes (`STOREFRONT_ROUTES`) as OpenAPI 3.1 (`adminOpenApi()`, `storefrontOpenApi()`, `jsonSchemaOf()`
+  over `z.toJSONSchema()`), the webhook topics (`WEBHOOK_TOPICS`, `webhookCatalogue()`, also the Admin API document's `webhooks`), the owner
+  MCP's tools (`MCP_TOOLS`, `mcpCatalogue()`) and the shopping agents' (`UCP_TOOLS`, `ucpCatalogue()`). They are served public, cached an
+  hour and with no store's data at `/api/admin/v1/openapi.json`, `/api/storefront/v1/openapi.json`, `/api/webhooks/v1/topics.json`,
+  `/api/mcp/catalogue.json` and `/api/ucp/catalogue.json`; never write a reference page or a list of routes, topics or tools by hand. A tool's
+  title and MCP annotations are worked out beside it (`toolTitle()`, `toolAnnotations()`), never by changing its description or input (that
+  would move the eval's `toolsVersion()`): a new owner tool that only reads but needs a permission not named `:read` goes in
+  `OWNER_KEY_READS`, one that reaches a service or people outside in `OPEN_WORLD` (`mcp-catalogue.test.ts` asks). Within a major version
+  nothing a caller relies on is renamed or removed, and a request is never made to send a new field; answers and payloads may gain fields.
+  **Adding a route, a topic or a tool** is, in order: its entry (`ADMIN_API`, `STOREFRONT_ROUTES`, `WEBHOOK_TOPICS` with its subject's
+  schema, or the tool in `OWNER_TOOLS`) with its zod; its handler or builder typed by it (`AdminAnswer<…>`, `WebhookSubject<…>`) and its
+  test parsing what it answers; then `WRITE_API_CONTRACT=1 pnpm exec vitest run src/lib/api-contract.test.ts`, which records the new hash and
+  surface in `src/data/api-contract.json` and `src/data/api-contract-surface.json` as the next `1.<n>` (the next major when something breaks);
+  then the version's entry at the top of `content/docs/developers/changelog.md` (`## 1.<n> — YYYY-MM-DD`, what changed for callers). The
+  contract test fails until all of it is done, and fails a removed path or field within the major version.
 
 ## The storefront API (wave 9 unit I, D362, `src/lib/storefront-api.ts`, `src/server/storefront-api.ts`, `src/server/storefront-route.ts`)
 
@@ -39,7 +65,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   written only by that module. A new route reads only what a visitor of the token's market sees, never prices or stocks a thing itself, and
   places no order. A cart kept through the API (D398) is a real cart (`carts.source = 'api'`) found only by its key's hash, changed only by
   `src/server/api-carts.ts` through the store's own line checks, read through `quoteCart()`, and handed to checkout by the one-time link that
-  clears its key; a new route is an entry of `STOREFRONT_ROUTES` with its words, which the OpenAPI document (`storefrontOpenApi()`) is made from.
+  clears its key; a new route is an entry of `STOREFRONT_ROUTES` with its words, its query, body and answer as zod and its refusals (D438),
+  which the OpenAPI document (`storefrontOpenApi()`) is made from, its `route.ts` under `src/app/api/storefront/v1/[store]`
+  (`api-routes.scan.test.ts` holds the files and the entries together), its answer parsed with `asPublished()` in
+  `storefront-api.int.test.ts`, and the contract's next version (*API contracts*, under the Admin API).
 
 ## Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)
 

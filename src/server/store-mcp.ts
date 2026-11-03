@@ -6,10 +6,9 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { publicEnv } from "@/lib/env";
+import { MCP_TOOLS, type McpToolInfo } from "@/lib/mcp-catalogue";
 import { toolFeature, toolOffered } from "@/lib/owner-tool-features";
-import { OWNER_TOOLS, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type OwnerTool } from "@/lib/owner-tools";
-import { GATED_WHEN_LIVE } from "@/lib/product-tools";
-import { GATED_WHEN_OPEN } from "@/lib/setup-tools";
+import { OWNER_TOOLS_BY_NAME, readToolInput } from "@/lib/owner-tools";
 import { siteUrl } from "@/lib/site";
 
 import { noticeApproval } from "./assistant-notices";
@@ -89,52 +88,8 @@ export async function callerFromClaims(claims: Record<string, unknown>, clientId
 
 // The tools ------------------------------------------------------------------------------
 
-const STORE_ARG = { type: "string", description: "The store, by its slug from list_stores." };
-
-export type McpToolInfo = { name: string; description: string; inputSchema: Record<string, unknown> };
-
-/** Kaizen Life's view of a store tool: the same, plus the store it is for. */
-function withStore(tool: OwnerTool): McpToolInfo {
-  const { parameters } = toolDefinition(tool);
-  const properties = { store: STORE_ARG, ...((parameters.properties as Record<string, unknown>) ?? {}) };
-  const required = ["store", ...(((parameters.required as string[]) ?? []))];
-  const gate = !tool.gate
-    ? ""
-    : GATED_WHEN_LIVE.has(tool.name)
-      ? " On a product that is on the site it is not done from here: it is kept for the owner to approve in Kaizena Flow's admin."
-      : GATED_WHEN_OPEN.has(tool.name)
-        ? " On a store that is open it is not done from here: it is kept for the owner to approve in Kaizena Flow's admin."
-        : " It is not done from here: it is kept for the owner to approve in Kaizena Flow's admin.";
-  return { name: tool.name, description: `${tool.description}${gate}`, inputSchema: { ...parameters, properties, required } };
-}
-
-export const MCP_TOOLS: McpToolInfo[] = [
-  {
-    name: "list_stores",
-    description: "The stores the owner has in Kaizena Flow: slug, name. Every other tool takes one of these slugs.",
-    inputSchema: { type: "object", properties: {}, additionalProperties: false },
-  },
-  {
-    name: "ask_store_assistant",
-    description:
-      "Asks the store's own assistant, in Kaizena Flow, a question or for something to be done, in words; it answers from the store's data with its tools. Changes it prepares wait for the owner's approval in Kaizena Flow's admin.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        store: STORE_ARG,
-        question: { type: "string", maxLength: 4000 },
-        continue_admin_conversation: {
-          type: "boolean",
-          description:
-            "True to go on in the conversation the owner last had with the store's assistant in Kaizena Flow's admin (within the last 24 hours), so it knows what was said there; otherwise, and when there is none, Kaizen Life's own conversation with it.",
-        },
-      },
-      required: ["store", "question"],
-      additionalProperties: false,
-    },
-  },
-  ...OWNER_TOOLS.map(withStore),
-];
+/** The tools and their catalogue (titles and annotations, D438) are pure: `src/lib/mcp-catalogue.ts`. */
+export { MCP_TOOLS, type McpToolInfo };
 
 /**
  * The tools listed to a caller (D178): a tool behind a store feature only when one of the owner's stores has it on. A call still names its store,

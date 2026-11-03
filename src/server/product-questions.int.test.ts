@@ -173,7 +173,8 @@ describe("a product question (D431)", () => {
     expect(await requestQuote({ ...body, company: "Nordmann AS" }, `pq-quote-${run}-2`)).toEqual({ status: 200, body: { ok: true } });
     // A question part is not a request for a quote.
     expect((await requestQuote({ ...body, block: questionId, company: "Nordmann AS" }, `pq-quote-${run}-3`)).status).toBe(404);
-    const drafts = await db().execute<Row>(sql`select company_name from commerce.draft_orders where store_id = ${store.storeId}::uuid and source = 'quote'`);
-    expect(drafts).toEqual([{ company_name: "Nordmann AS" }]);
+    // A guest's typed company is kept as the request's own (D431), never as the draft's buyer company.
+    const drafts = await db().execute<Row>(sql`select request_company, company_name from commerce.draft_orders where store_id = ${store.storeId}::uuid and source = 'quote'`);
+    expect(drafts).toEqual([{ request_company: "Nordmann AS", company_name: null }]);
   });
 });
