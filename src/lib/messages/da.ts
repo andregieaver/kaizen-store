@@ -505,6 +505,16 @@ export const da: Messages = {
     contactStore: (email: string) => `Kontakt butikken: ${email}`,
     paymentsOff: "Butikken kan ikke modtage betalinger lige nu. Prøv igen senere, eller kontakt butikken.",
     startFailed: "Betalingen kunne ikke startes. Prøv igen, eller kontakt butikken.",
+    quote: {
+      heading: (number, store) => `Dit tilbud ${number} fra ${store}`,
+      intro: "Dette er det tilbud, du bad om. Se det igennem, og betal, når du er klar. Når du betaler, accepterer du tilbuddet og afgiver bestillingen.",
+      summary: "Dit tilbud",
+      validUntil: (date) => `Tilbuddet gælder til ${date}.`,
+      pay: (amount) => `Accepter og betal ${amount}`,
+      paid: "Du har accepteret tilbuddet og betalt. Tak!",
+      expired: "Dette tilbud kan ikke længere accepteres. Bed butikken om et nyt.",
+      processing: "Betalingen for dette tilbud behandles stadig.",
+    },
   },
   /**
    * Sending in parts (wave 3, run 3, D174): the order's state and its parcels on the shopper's order pages. The state words are plain interface text; `receipt` says

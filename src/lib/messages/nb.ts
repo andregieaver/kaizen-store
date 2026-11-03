@@ -507,6 +507,16 @@ export const nb: Messages = {
     contactStore: (email: string) => `Kontakt butikken: ${email}`,
     paymentsOff: "Butikken kan ikke ta imot betaling akkurat nå. Prøv igjen senere, eller kontakt butikken.",
     startFailed: "Betalingen kunne ikke startes. Prøv igjen, eller kontakt butikken.",
+    quote: {
+      heading: (number, store) => `Ditt tilbud ${number} fra ${store}`,
+      intro: "Dette er tilbudet du ba om. Se over det, og betal når du er klar. Når du betaler, godtar du tilbudet og legger inn bestillingen.",
+      summary: "Tilbudet ditt",
+      validUntil: (date) => `Tilbudet gjelder til ${date}.`,
+      pay: (amount) => `Godta og betal ${amount}`,
+      paid: "Du har godtatt tilbudet og betalt. Takk!",
+      expired: "Dette tilbudet kan ikke lenger godtas. Be butikken om et nytt.",
+      processing: "Betalingen for dette tilbudet behandles fortsatt.",
+    },
   },
   /**
    * Sending in parts (wave 3, run 3, D174): the order's state and its parcels on the shopper's order pages. The state words are plain interface text; `receipt` says

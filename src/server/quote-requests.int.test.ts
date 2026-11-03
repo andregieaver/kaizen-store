@@ -35,6 +35,8 @@ const { newPlainStore } = await import("./order-ops-fixture");
 const { staffActor } = await import("./order-actor");
 const { changeLine } = await import("./cart");
 const { storeById } = await import("./shopper-emails");
+const { payPageFor } = await import("./draft-pay");
+const { getStore } = await import("./stores");
 const { formFromDraft } = await import("@/lib/draft-editor");
 
 type Row = Record<string, unknown>;
@@ -240,6 +242,13 @@ describe("from the request to the quote sent", () => {
     const [mail] = await emailsOf(store, "draft.pay_link");
     expect(mail).toMatchObject({ to_address: "kari@example.com", status: "logged" });
     expect(String(mail.subject)).toMatch(/quote|tilbud/i);
+    // The link opens the draft's pay page, which reads as the quote (D435).
+    const [html] = await db().execute<Row>(sql`select html from commerce.email_messages where store_id = ${store.storeId}::uuid and kind = 'draft.pay_link'`);
+    const token = /\/account\/pay\/([A-Za-z0-9_-]{43})/.exec(String(html.html))?.[1];
+    expect(token).toBeTruthy();
+    const full = (await getStore(store.slug))!;
+    const page = await payPageFor({ store: full, market: full.markets.find((m) => m.code === "NO")! }, token!);
+    expect(page).toMatchObject({ state: "ready", draft: { source: "quote" } });
     expect(await quoteRequestsWaiting(store.storeId)).toBe(0);
     // A staff member's later save keeps the typed price (a product priced on request is never at its list price).
     const after = (await getDraft(store.storeId, draftId))!;
