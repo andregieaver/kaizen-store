@@ -23,6 +23,7 @@ import {
   planStatus,
   planStockChanges,
   planAvailability,
+  planMaker,
   planTerms,
   pricePreview,
   selectionProblem,
@@ -354,5 +355,24 @@ describe("where products are sold (D335 A.3)", () => {
       ["p2", { off: [], variants: {} }],
     ]);
     expect(planAvailability(products, "sell", ["FI"]).unchanged).toBe(2);
+  });
+});
+
+describe("the manufacturer of many products", () => {
+  it("changes only the products whose makers differ, recording both before and after", () => {
+    const to = { manufacturer: "m2", responsible: null };
+    const plan = planMaker(
+      [
+        { productId: "a", maker: { manufacturer: null, responsible: null } },
+        { productId: "b", maker: { manufacturer: "m2", responsible: null } },
+        { productId: "c", maker: { manufacturer: "m2", responsible: "r1" } },
+      ],
+      to,
+    );
+    expect(plan.unchanged).toBe(1);
+    expect(plan.changes).toEqual([
+      { productId: "a", variantId: null, field: "maker", before: { manufacturer: null, responsible: null }, after: to },
+      { productId: "c", variantId: null, field: "maker", before: { manufacturer: "m2", responsible: "r1" }, after: to },
+    ]);
   });
 });

@@ -6,24 +6,37 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { IMPORT_MAX_BYTES } from "@/lib/data-limits";
+import { htmlToRichText } from "@/lib/html-rich-text";
 import {
   BULK_QUERIES,
   COPY_FEEDS,
   EMPTY_COPY,
   FEED_FILES,
+  FEED_KIND,
+  MENUS_QUERY,
+  PLAIN_FEEDS,
+  VENDORS_FILE,
+  vendorLines,
   copyReady,
   copyStateOf,
+  directItems,
   fileOfFeed,
+  menuInputOf,
   nextToApply,
   nextToRead,
+  readBulkLines,
   type CopyFeed,
   type CopyState,
+  type DirectItem,
   type FeedProblem,
+  type FeedState,
+  type VendorLine,
 } from "@/lib/shopify-copy";
 
 import type { Membership } from "./auth";
 import { IMPORTS_BUCKET, dataStorage, getJob, type DataDeps, type DataJob } from "./data-job-store";
 import {
+  cancelJob,
   registerCustomerImport,
   registerHistoryImport,
   registerImport,
@@ -37,10 +50,16 @@ import {
   startRedirectApply,
   startRedirectCheck,
 } from "./data-jobs";
+import { blogsNow, saveBlog } from "./blogs";
 import { log } from "./log";
+import { listStoreMenus, saveStoreMenu } from "./menus";
+import { listPages, pagesTag, savePage } from "./pages";
+import { refreshTag } from "./refresh";
+import { storeTag } from "./stores";
 import { memberCan } from "./permissions";
 import { safeFetch } from "./replicate-fetch";
 import { shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
+import { SETTINGS_FEEDS, applySettingsFeed, readSettingsFeed } from "./shopify-settings-copy";
 
 type Row = Record<string, unknown>;
 
@@ -67,7 +86,7 @@ type Steps = {
   page: (store: string, jobId: string) => string;
 };
 
-const STEPS: Record<CopyFeed, Steps> = {
+const STEPS: Partial<Record<CopyFeed, Steps>> & Record<"products" | "collections" | "customers" | "orders" | "redirects", Steps> = {
   products: {
     register: registerImport,
     check: (m, id, deps, options) => startImportCheck(m, id, options, deps),
@@ -86,6 +105,13 @@ const STEPS: Record<CopyFeed, Steps> = {
     apply: startHistoryApply,
     page: (store, id) => `/admin/${store}/orders/history-import/${id}`,
   },
+  collections: {
+    register: registerImport,
+    // Only the categories column: products found by handle, none made.
+    check: (m, id, deps) => startImportCheck(m, id, { mode: "update", unpublishable: "draft", missingVariants: "keep", redirects: false }, deps),
+    apply: startImportApply,
+    page: (store, id) => `/admin/${store}/products/import/${id}`,
+  },
   redirects: {
     register: registerRedirectImport,
     check: (m, id, deps) => startRedirectCheck(m, id, { existing: "skip" }, deps),
@@ -94,8 +120,16 @@ const STEPS: Record<CopyFeed, Steps> = {
   },
 };
 
-/** The page's link to a feed's import job. */
-export const feedJobPage = (feed: CopyFeed, storeSlug: string, jobId: string): string => STEPS[feed].page(storeSlug, jobId);
+/** How many things a job's dry run would bring over (every count but the ones with problems or skipped). */
+export function importableOf(job: Pick<DataJob, "counts">): number {
+  const dry = (job.counts.dry ?? {}) as Record<string, unknown>;
+  return Object.entries(dry)
+    .filter(([name]) => !/problem|error|skipped/i.test(name))
+    .reduce((sum, [, n]) => sum + (typeof n === "number" && Number.isFinite(n) ? n : 0), 0);
+}
+
+/** The page's link to a feed's import job (a `direct` feed has none). */
+export const feedJobPage = (feed: CopyFeed, storeSlug: string, jobId: string): string | null => STEPS[feed as keyof typeof STEPS]?.page(storeSlug, jobId) ?? null;
 
 async function stateOf(storeId: string): Promise<CopyState | null> {
   const [row] = await db().execute<Row>(sql`select copy from commerce.shop_moves where store_id = ${storeId}::uuid and source = 'shopify' and status = 'connected'`);
@@ -125,11 +159,20 @@ async function save(storeId: string, state: CopyState): Promise<void> {
   `);
 }
 
-/** *Copy my shop*: a fresh copy, every feed waiting to be read. The imports' jobs of an earlier copy stay as they are. */
+/**
+ * *Copy my shop* (and *Start again*): a fresh copy, every feed waiting to be read. An earlier copy's imports that were never applied
+ * (uploaded, checking or checked) are cancelled first, since a store has one open import of each kind; an applied one stays as it is.
+ */
 export async function startCopy(member: Membership): Promise<{ ok: boolean }> {
   if (!memberCan(member, OWNER)) return { ok: false };
   const state = await stateOf(member.store.id);
   if (!state) return { ok: false };
+  for (const feed of COPY_FEEDS) {
+    const id = state.feeds[feed].job;
+    if (!id) continue;
+    const job = await getJob(member.store.id, id);
+    if (job && (job.status === "uploaded" || job.status === "checking" || job.status === "checked")) await cancelJob(member, id);
+  }
   await save(member.store.id, { ...EMPTY_COPY, startedAt: new Date().toISOString() });
   log("info", "shopify.copy_started", { storeId: member.store.id });
   return { ok: true };
@@ -185,9 +228,168 @@ async function productOptions(member: Membership, deps: CopyDeps): Promise<Recor
   };
 }
 
-/** A finished read made into its file and handed to its import's dry run. */
-async function hand(member: Membership, feed: CopyFeed, text: string, deps: CopyDeps): Promise<{ job: string; count: number } | { problem: FeedProblem } | { empty: true }> {
+const storageOf = (deps: CopyDeps) => (deps.data?.storage === undefined ? dataStorage() : deps.data.storage);
+
+/** A `later` or `direct` feed's file kept in the imports bucket until it is brought over; its path, or null when storage would not take it. The bucket takes only CSV and plain text, so JSON Lines go as `text/plain`. */
+async function keepFile(member: Membership, feed: CopyFeed, text: string, deps: CopyDeps): Promise<string | null> {
+  const storage = storageOf(deps);
+  if (!storage) return null;
+  const path = `${member.store.id}/${randomUUID()}/${FEED_FILES[feed]}`;
+  return (await storage.upload(IMPORTS_BUCKET, path, new TextEncoder().encode(text), feed === "collections" ? "text/csv" : "text/plain")) ? path : null;
+}
+
+async function keptFile(path: string, deps: CopyDeps): Promise<string | null> {
+  const bytes = await storageOf(deps)?.download(IMPORTS_BUCKET, path);
+  return bytes ? new TextDecoder().decode(bytes) : null;
+}
+
+/** The products' vendors (D445 step 6) kept beside the products' file: its path, or null when there are none or storage would not take it. */
+async function keepVendors(member: Membership, text: string, deps: CopyDeps): Promise<string | null> {
+  const lines = vendorLines(readBulkLines(text));
+  const storage = storageOf(deps);
+  if (lines.length === 0 || !storage) return null;
+  const path = `${member.store.id}/${randomUUID()}/${VENDORS_FILE}`;
+  return (await storage.upload(IMPORTS_BUCKET, path, new TextEncoder().encode(lines.map((l) => JSON.stringify(l)).join("\n")), "text/plain")) ? path : null;
+}
+
+/** The vendors the last copy read, for *Who makes your products?* (owner only); empty when the copy kept none (one started before step 6). */
+export async function copiedVendors(member: Membership, deps: CopyDeps = {}): Promise<VendorLine[]> {
+  if (!memberCan(member, OWNER)) return [];
+  const path = (await stateOf(member.store.id))?.feeds.products.vendors;
+  const text = path ? await keptFile(path, deps) : null;
+  if (!text) return [];
+  return readBulkLines(text).roots.flatMap((r) =>
+    typeof r.handle === "string" && typeof r.vendor === "string" ? [{ vendor: r.vendor, handle: r.handle, active: r.active === true }] : [],
+  );
+}
+
+/** A finished read of a `later` or `direct` feed: its file kept, the feed ready to be brought over (or empty). */
+async function stage(member: Membership, feed: CopyFeed, text: string, deps: CopyDeps): Promise<FeedState> {
   const { csv, count } = fileOfFeed(feed, text);
+  if (count === 0) return { stage: "empty", count: 0 };
+  if (new TextEncoder().encode(csv).length > IMPORT_MAX_BYTES * 4) return { stage: "failed", problem: "too_large" };
+  const path = await keepFile(member, feed, csv, deps);
+  return path ? { stage: "checked", path, count } : { stage: "failed", problem: "storage" };
+}
+
+/** The collections' file handed to the product import once the products are in (`later`): registered and checked; applied when checked. */
+async function registerLater(member: Membership, feed: CopyFeed, f: FeedState, deps: CopyDeps): Promise<FeedState> {
+  const text = f.path ? await keptFile(f.path, deps) : null;
+  if (text === null) return { ...f, stage: "failed", problem: "storage" };
+  const handed = await hand(member, feed, `${text}`, deps, true);
+  return "empty" in handed ? { stage: "empty", count: 0 } : "problem" in handed ? { ...f, stage: "failed", problem: handed.problem } : { ...f, stage: "checking", job: handed.job };
+}
+
+/** How many of a `direct` feed's items one tick writes: each is a page save (or a menu), with its checks. */
+const DIRECT_BATCH: Partial<Record<CopyFeed, number>> = { pages: 15, articles: 15, menus: 5 };
+
+const pageInputOf = (item: DirectItem, extra: Record<string, unknown> = {}) => ({
+  title: item.title,
+  slug: item.handle,
+  thumbnail: null,
+  seo: { title: "", description: "" },
+  searchEngines: true,
+  aiAssistants: true,
+  categories: [],
+  tags: [],
+  rows: [{ id: randomUUID(), type: "row", layout: "1", columns: [{ id: randomUUID(), blocks: [{ id: randomUUID(), type: "richText", doc: htmlToRichText(item.body).doc }] }] }],
+  ...extra,
+});
+
+/** Saves one page or post through the editor's own `savePage()`; one the checker holds back is saved as a draft for the owner to look at. */
+async function savePageOf(member: Membership, item: DirectItem, type: "page" | "article", extra: Record<string, unknown>): Promise<boolean> {
+  const input = pageInputOf(item, extra);
+  const first = await savePage(member.account, member.store.id, null, input, { publish: item.published, type });
+  if (first.ok) return true;
+  if (first.code === "needs_confirmation") return (await savePage(member.account, member.store.id, null, input, { publish: false, type })).ok;
+  log("warn", "shopify.copy_page_refused", { storeId: member.store.id, type, problems: first.problems.length });
+  return false;
+}
+
+/** The blog each Shopify blog's posts go to here: the first one the store's main blog, the others found or made by their handle. */
+async function blogIdsOf(member: Membership, items: readonly DirectItem[]): Promise<Map<string, string | null>> {
+  const ids = new Map<string, string | null>();
+  const handles = [...new Set(items.map((i) => i.blog?.handle ?? "").filter(Boolean))];
+  const blogs = await blogsNow(member.store.id);
+  const locale = member.store.localization.locales[0];
+  handles.forEach((h, n) => {
+    if (n === 0) ids.set(h, null);
+  });
+  for (const h of handles.slice(1)) {
+    const found = blogs.find((b) => b.handle === h);
+    if (found) {
+      ids.set(h, found.main ? null : found.id);
+      continue;
+    }
+    const title = items.find((i) => i.blog?.handle === h)?.blog?.title || h;
+    const made = await saveBlog(member.account, member.store, null, { handle: h, titles: locale ? { [locale]: title } : {}, comments: "off", listingPageId: null });
+    ids.set(h, made.ok ? made.id : null);
+  }
+  return ids;
+}
+
+/** One tick of a `direct` feed: the next items written by their editors' own writers; an item already here (same address or name) is left. */
+async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, deps: CopyDeps): Promise<FeedState> {
+  const text = f.path ? await keptFile(f.path, deps) : null;
+  if (text === null) return { ...f, stage: "failed", problem: "storage" };
+  const tree = readBulkLines(text);
+  if (SETTINGS_FEEDS.includes(feed)) return applySettingsFeed(member, feed, f, tree.roots);
+  const cursor = f.cursor ?? 0;
+  const size = DIRECT_BATCH[feed] ?? 10;
+  let made = f.made ?? 0;
+  let refused = f.refused ?? 0;
+  let total = 0;
+  if (feed === "pages" || feed === "articles") {
+    const type = feed === "pages" ? "page" : "article";
+    const items = directItems(tree);
+    total = items.length;
+    const here = new Set((await listPages(member.store.id, type)).map((p) => p.slug));
+    const blogs = feed === "articles" ? await blogIdsOf(member, items) : new Map<string, string | null>();
+    for (const item of items.slice(cursor, cursor + size)) {
+      if (here.has(item.handle)) {
+        made += 1;
+        continue;
+      }
+      const blogId = item.blog ? blogs.get(item.blog.handle) : null;
+      const extra = type === "article" ? { ...(blogId ? { blogId } : {}), ...(item.author ? { author: item.author } : {}) } : {};
+      if (await savePageOf(member, item, type, extra)) made += 1;
+      else refused += 1;
+    }
+    refreshTag(pagesTag(member.store.id));
+  } else {
+    total = tree.roots.length;
+    const locale = member.store.localization.locales[0] ?? "en";
+    const names = new Set((await listStoreMenus(member.store.id)).map((m) => m.name.toLowerCase()));
+    for (const menu of tree.roots.slice(cursor, cursor + size)) {
+      const input = menuInputOf(menu, locale);
+      if (names.has(input.name.toLowerCase())) {
+        made += 1;
+        continue;
+      }
+      let saved = await saveStoreMenu(member, null, input);
+      // A link to a page, post or product that is not here (yet) is kept as its address, so the menu still comes over.
+      if (!saved.ok)
+        saved = await saveStoreMenu(member, null, {
+          ...input,
+          items: input.items.map((i) =>
+            i.link.kind === "page" ? { ...i, link: { kind: "url", url: `/${i.link.slug}` } } : i.link.kind === "article" ? { ...i, link: { kind: "url", url: `/blog/${i.link.slug}` } } : i.link.kind === "product" ? { ...i, link: { kind: "url", url: `/p/${i.link.handle}` } } : i,
+          ),
+        });
+      if (saved.ok) made += 1;
+      else {
+        refused += 1;
+        log("warn", "shopify.copy_menu_refused", { storeId: member.store.id, problems: saved.problems.length });
+      }
+    }
+    refreshTag(storeTag(member.store.slug));
+  }
+  const next = cursor + size;
+  return next >= total ? { ...f, stage: "done", cursor: total, made, refused } : { ...f, stage: "applying", cursor: next, made, refused };
+}
+
+/** A finished read made into its file and handed to its import's dry run. */
+async function hand(member: Membership, feed: CopyFeed, text: string, deps: CopyDeps, isFile = false): Promise<{ job: string; count: number } | { problem: FeedProblem } | { empty: true }> {
+  const { csv, count } = isFile ? { csv: text, count: Math.max(0, text.split("\n").filter((l) => l.trim() !== "").length - 1) } : fileOfFeed(feed, text);
   if (count === 0) return { empty: true };
   const bytes = new TextEncoder().encode(csv);
   if (bytes.length > IMPORT_MAX_BYTES) return { problem: "too_large" };
@@ -196,13 +398,13 @@ async function hand(member: Membership, feed: CopyFeed, text: string, deps: Copy
   if (!storage) return { problem: "storage" };
   const path = `${member.store.id}/${randomUUID()}/${FEED_FILES[feed]}`;
   if (!(await storage.upload(IMPORTS_BUCKET, path, bytes, "text/csv"))) return { problem: "storage" };
-  const registered = await STEPS[feed].register(member, { path, name: FEED_FILES[feed] }, { ...data, storage });
+  const registered = await STEPS[feed]!.register(member, { path, name: FEED_FILES[feed] }, { ...data, storage });
   if (!registered.ok) {
     log("warn", "shopify.copy_register_refused", { storeId: member.store.id, feed, problems: registered.problems.length });
     return { problem: "import_refused" };
   }
   const options = feed === "products" ? await productOptions(member, deps) : {};
-  const checked = await STEPS[feed].check(member, registered.jobId, { ...data, storage }, options);
+  const checked = await STEPS[feed]!.check(member, registered.jobId, { ...data, storage }, options);
   if (!checked.ok) return { problem: "import_refused" };
   return { job: registered.jobId, count };
 }
@@ -239,8 +441,14 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
           state.feeds[feed] = { stage: "failed", problem: file.tooLarge ? "too_large" : "shopify_failed" };
           continue;
         }
-        const handed = await hand(member, feed, file.text, deps);
-        state.feeds[feed] = "empty" in handed ? { stage: "empty", count: 0 } : "problem" in handed ? { stage: "failed", problem: handed.problem } : { stage: "checking", job: handed.job, count: handed.count };
+        if (FEED_KIND[feed] === "import") {
+          const handed = await hand(member, feed, file.text, deps);
+          state.feeds[feed] = "empty" in handed ? { stage: "empty", count: 0 } : "problem" in handed ? { stage: "failed", problem: handed.problem } : { stage: "checking", job: handed.job, count: handed.count };
+          if (feed === "products" && "job" in handed) {
+            const vendors = await keepVendors(member, file.text, deps);
+            if (vendors) state.feeds.products.vendors = vendors;
+          }
+        } else state.feeds[feed] = await stage(member, feed, file.text, deps);
       } else if (status === "FAILED" || status === "CANCELED" || status === "CANCELING" || status === "EXPIRED") {
         log("warn", "shopify.copy_read_failed", { storeId, feed, status, code: poll.data.node?.errorCode ?? null });
         state.feeds[feed] = { stage: "failed", problem: poll.data.node?.errorCode === "ACCESS_DENIED" ? "shopify_refused" : "shopify_failed" };
@@ -248,7 +456,13 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
     }
     // The next read, one at a time.
     const next = nextToRead(state);
-    if (next) {
+    if (next === "menus") {
+      const answer = await shopifyGraphql<{ menus?: { nodes?: Record<string, unknown>[] } }>(storeId, MENUS_QUERY, {}, deps);
+      state.feeds.menus = answer.ok ? await stage(member, "menus", (answer.data.menus?.nodes ?? []).map((m) => JSON.stringify(m)).join("\n"), deps) : { stage: "failed", problem: "shopify_refused" };
+    } else if (next && PLAIN_FEEDS.includes(next)) {
+      const read = await readSettingsFeed(storeId, next, deps);
+      state.feeds[next] = read.ok ? await stage(member, next, read.text, deps) : { stage: "failed", problem: "shopify_refused" };
+    } else if (next) {
       const run = await shopifyGraphql<BulkRun>(storeId, BULK_RUN, { query: BULK_QUERIES[next] }, deps);
       const id = run.ok ? run.data.bulkOperationRunQuery?.bulkOperation?.id : undefined;
       const errors = run.ok ? (run.data.bulkOperationRunQuery?.userErrors ?? []) : [];
@@ -271,11 +485,20 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
       else if (job.status === "checking" || job.status === "uploaded") state.feeds[feed] = { ...f, stage: "checking" };
     }
     // After *Bring it over*: the next checked feed, once the one before it is done.
+    // A `direct` feed being written goes on.
+    for (const feed of COPY_FEEDS) {
+      const f = state.feeds[feed];
+      if (FEED_KIND[feed] === "direct" && f.stage === "applying") state.feeds[feed] = await applyDirect(member, feed, f, deps);
+    }
     const apply = nextToApply(state);
-    if (apply) {
+    if (apply && FEED_KIND[apply] === "direct") state.feeds[apply] = await applyDirect(member, apply, { ...state.feeds[apply], stage: "applying", cursor: 0, made: 0, refused: 0 }, deps);
+    else if (apply && FEED_KIND[apply] === "later" && !state.feeds[apply].job) state.feeds[apply] = await registerLater(member, apply, state.feeds[apply], deps);
+    else if (apply) {
       const f = state.feeds[apply];
-      const started = await STEPS[apply].apply(member, f.job!, data);
-      state.feeds[apply] = started.ok ? { ...f, stage: "applying" } : { ...f, stage: "failed", problem: "import_refused" };
+      const started = await STEPS[apply]!.apply(member, f.job!, data);
+      // A dry run that found nothing to bring over is refused by its import: the owner fixes it on the import's page (`needs_fixing`).
+      const job = started.ok ? null : await getJob(storeId, f.job!);
+      state.feeds[apply] = started.ok ? { ...f, stage: "applying" } : { ...f, stage: "failed", problem: job && importableOf(job) === 0 ? "needs_fixing" : "import_refused" };
     }
     return state;
   } catch (error) {

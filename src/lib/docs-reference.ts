@@ -6,7 +6,7 @@
 
 import { API_ERRORS, API_SCOPES, type ApiErrorCode } from "./admin-api";
 import { ADMIN_API, errorsOf } from "./admin-api-routes";
-import { API_ERROR_WORDS, SCOPE_WORDS } from "./admin-openapi";
+import { API_ERROR_WORDS, SCOPE_TEXT } from "./admin-openapi";
 import type { DocArea } from "./docs-content";
 import type { DocsReferenceItem } from "./docs-index";
 import { MCP_TOOLS } from "./mcp-catalogue";
@@ -14,17 +14,31 @@ import { UCP_TOOLS } from "./ucp-catalogue";
 import { WEBHOOK_TOPICS, type WebhookSubjectName } from "./webhook-topics";
 
 /** The Admin API's resources (`tag`) as the docs' areas. */
-const TAG_AREAS: Record<string, DocArea> = {
+export const TAG_AREAS: Record<string, DocArea> = {
   Products: "products",
   Inventory: "stock",
   Orders: "orders",
   Customers: "customers",
   Discounts: "marketing",
   Checkout: "settings",
+  "Categories and tags": "products",
+  Media: "products",
+  "Price lists": "products",
+  "Bulk jobs": "products",
+  "Draft orders": "quotes",
+  Returns: "returns",
+  Subscriptions: "orders",
+  Segments: "marketing",
+  "Gift cards": "marketing",
+  Content: "website",
+  Menus: "website",
+  Reports: "analytics",
+  Settings: "settings",
+  "Webhook endpoints": "webhooks",
 };
 
 /** What a webhook topic is about, as the docs' areas. */
-const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
+export const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   order: "orders",
   customer: "customers",
   subscription: "orders",
@@ -34,6 +48,13 @@ const SUBJECT_AREAS: Record<WebhookSubjectName, DocArea> = {
   product: "products",
   stock: "stock",
   discount: "marketing",
+  review: "marketing",
+  gift_card: "marketing",
+  draft: "quotes",
+  fulfilment: "shipping",
+  inventory: "stock",
+  refund: "payments",
+  erasure: "customers",
 };
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
@@ -73,16 +94,13 @@ export function docsReferenceItems(): DocsReferenceItem[] {
     text: API_ERROR_WORDS[code],
     areas: ["errors", "admin-api"] as DocArea[],
   }));
-  const scopes = API_SCOPES.map((scope) => {
-    const [resource, access] = scope.split(":");
-    return {
-      item: "scope" as const,
-      id: scope,
-      title: scope,
-      code: scope,
-      text: `${SCOPE_WORDS[resource] ?? ""} ${access === "write" ? "Read and change; a write scope also reads." : "Read only."}`.trim(),
-      areas: ["authentication", "admin-api"] as DocArea[],
-    };
-  });
+  const scopes = API_SCOPES.map((scope) => ({
+    item: "scope" as const,
+    id: scope,
+    title: scope,
+    code: scope,
+    text: SCOPE_TEXT[scope],
+    areas: ["authentication", "admin-api"] as DocArea[],
+  }));
   return [...operations, ...topics, ...tools, ...agentTools, ...errors, ...scopes];
 }

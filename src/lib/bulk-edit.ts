@@ -13,11 +13,11 @@
 import { BULK_GRID_MAX_PRODUCTS, BULK_MAX_PRODUCTS, BULK_PERCENT_MAX, BULK_PERCENT_MIN, BULK_STOCK_MAX, BULK_UNDO_DAYS } from "./data-limits";
 import { parsePrice } from "./product-input";
 
-export const BULK_ACTIONS = ["status", "archive", "unarchive", "terms_add", "terms_remove", "price", "stock", "grid", "undo", "sell_in", "stop_selling_in"] as const;
+export const BULK_ACTIONS = ["status", "archive", "unarchive", "terms_add", "terms_remove", "price", "stock", "grid", "undo", "sell_in", "stop_selling_in", "manufacturer"] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
 
 /** The fields an item records: `price:{COUNTRY}` too. */
-export type BulkField = "status" | "archived" | "terms" | "stock" | "cost" | "sku" | "availability" | `price:${string}`;
+export type BulkField = "status" | "archived" | "terms" | "stock" | "cost" | "sku" | "availability" | "maker" | `price:${string}`;
 
 /** One cell that changes: the value it has and the value it gets (figures and codes: minor units, a word, a list of ids). */
 export type Change = { productId: string; variantId: string | null; field: BulkField; before: unknown; after: unknown };
@@ -215,6 +215,20 @@ export function planTerms(products: readonly ProductTerms[], op: "add" | "remove
 }
 
 /** Where a product and its variants are not sold (D335 A.1): countries off for the whole product, and per SKU. */
+/** A product's makers for product safety (GPSR Art. 19): its manufacturer and, for one outside the EU, its EU responsible person; ids of the store's economic operators. */
+export type Maker = { manufacturer: string | null; responsible: string | null };
+export type ProductMaker = { productId: string; maker: Maker };
+
+/** Sets the makers of each product (D445 step 6): a product that already has exactly these is unchanged. */
+export function planMaker(products: readonly ProductMaker[], to: Maker): PlanResult {
+  const out: PlanResult = { changes: [], unchanged: 0, failures: [] };
+  for (const p of products) {
+    if (p.maker.manufacturer === to.manufacturer && p.maker.responsible === to.responsible) out.unchanged += 1;
+    else out.changes.push({ productId: p.productId, variantId: null, field: "maker", before: { ...p.maker }, after: { ...to } });
+  }
+  return out;
+}
+
 export type Availability = { off: string[]; variants: Record<string, string[]> };
 export type ProductAvailability = { productId: string; availability: Availability };
 

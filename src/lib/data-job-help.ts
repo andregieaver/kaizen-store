@@ -50,6 +50,7 @@ export const FIX_FOR: Record<FindingCode, string> = {
   "kind.not_importable": "Create appointments, stays and rentals in the product editor, which asks who does them. An existing one can be updated here in its plain columns.",
   "status.unknown": "Use draft, active or archived.",
   "status.draft_because_unpublished": "Nothing to do if a draft is what you want. To publish it, set the status to active in the file or in the editor.",
+  "product.on_site": "Import it in the admin (Products, Import), or with a token that has products:publish; or leave the product out of the file.",
   "product.drafted": "Open the product in the editor and fix what the sentence names (a picture, a manufacturer or a price), then publish it.",
   "value.cleared": "Nothing to do if clearing was meant. If not, fill the cell or remove the column from the file: a column that is not in the file keeps the current value.",
   "media.too_many": "A product has at most 12 pictures here. Remove some from the file.",

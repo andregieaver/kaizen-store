@@ -25,6 +25,8 @@ type Row = Record<string, unknown>;
  */
 
 export const IMPORTS_BUCKET = "imports";
+/** Pictures sent over the Admin API (D440): private, picture types only, up to `UPLOAD_MAX_BYTES` (migration `20261103201100_api_review`). */
+export const API_UPLOADS_BUCKET = "api-uploads";
 export const EXPORTS_BUCKET = "exports";
 
 export type DataJobFile = { path: string; name: string; rows: number; bytes: number; sha256: string };
@@ -314,8 +316,8 @@ export async function putAsset(job: Pick<DataJob, "id" | "storeId">, sourceUrl: 
 export type StorageEntry = { name: string; isFolder: boolean };
 
 export type DataStorage = {
-  /** A signed upload for one new path of the imports bucket. */
-  signedUpload(path: string): Promise<{ token: string } | null>;
+  /** A signed upload for one new path of a bucket (the imports bucket unless named): its token, and the whole address where Storage gives it. */
+  signedUpload(path: string, bucket?: string): Promise<{ token: string; url?: string } | null>;
   upload(bucket: string, path: string, bytes: Uint8Array, contentType: string): Promise<boolean>;
   download(bucket: string, path: string): Promise<Uint8Array | null>;
   remove(bucket: string, paths: string[]): Promise<boolean>;
@@ -336,13 +338,13 @@ export function dataStorage(): DataStorage | null {
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
   const known = (bucket: string) => bucket === IMPORTS_BUCKET || bucket === EXPORTS_BUCKET;
   return {
-    async signedUpload(path) {
-      const { data, error } = await client.storage.from(IMPORTS_BUCKET).createSignedUploadUrl(path);
+    async signedUpload(path, bucket = IMPORTS_BUCKET) {
+      const { data, error } = await client.storage.from(bucket).createSignedUploadUrl(path);
       if (error || !data) {
         log("error", "data_jobs.upload_start_failed", {}, error ?? undefined);
         return null;
       }
-      return { token: data.token };
+      return { token: data.token, url: data.signedUrl };
     },
     async upload(bucket, path, bytes, contentType) {
       if (!known(bucket)) return false;

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import {
@@ -24,6 +25,7 @@ import { log } from "./log";
 import { getOrder, type Address } from "./orders";
 import { safeFetch } from "./replicate-fetch";
 import { encryptionKey } from "./settings";
+import { col, typedRow } from "./typed-rows";
 import { FAILING_DAYS, openEndpoint } from "./webhook-endpoints";
 
 type Row = Record<string, unknown>;
@@ -324,7 +326,9 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const order = await orderData(store.id, store.slug, subjectId);
     return order && { order };
   }
-  if (event === "customer.created") {
+  // An erased customer (D162) is gone: only its id, never read again.
+  if (event === "customer.erased") return { erasure: { customer_id: subjectId } };
+  if (event === "customer.created" || event === "customer.updated") {
     const customer = await customerData(store.id, store.slug, subjectId);
     return customer && { customer };
   }
@@ -332,7 +336,7 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const subscription = await subscriptionData(store.id, store.slug, subjectId);
     return subscription && { subscription };
   }
-  if (event === "return.requested") {
+  if (event === "return.requested" || event === "return.updated") {
     const value = await returnData(store.id, store.slug, subjectId);
     return value && { return: value };
   }
@@ -351,6 +355,30 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
   if (event === "discount.created") {
     const discount = await discountData(store.id, store.slug, subjectId);
     return discount && { discount };
+  }
+  if (event === "inventory.updated") {
+    const inventory = await inventoryData(store.id, store.slug, subjectId);
+    return inventory && { inventory };
+  }
+  if (event.startsWith("fulfilment.")) {
+    const fulfilment = await fulfilmentData(store.id, store.slug, subjectId);
+    return fulfilment && { fulfilment };
+  }
+  if (event === "refund.created") {
+    const refund = await refundData(store.id, store.slug, subjectId);
+    return refund && { refund };
+  }
+  if (event === "gift_card.issued") {
+    const gift_card = await giftCardData(store.id, store.slug, subjectId);
+    return gift_card && { gift_card };
+  }
+  if (event === "review.created") {
+    const review = await reviewData(store.id, store.slug, subjectId);
+    return review && { review };
+  }
+  if (event === "quote.requested" || event === "draft.sent") {
+    const draft = await draftData(store.id, store.slug, subjectId);
+    return draft && { draft };
   }
   return null;
 }
@@ -488,6 +516,202 @@ async function stockData(storeId: string, variantId: string): Promise<WebhookSub
     available: row.available === null ? null : Number(row.available),
     stock_at_crossing: row.stock_at_crossing === null ? null : Number(row.stock_at_crossing),
     crossed_at: row.crossed_at ? new Date(String(row.crossed_at)).toISOString() : null,
+  };
+}
+
+/**
+ * A variant's stock as it is when the event is sent (D440, `inventory.updated`): on hand at each location and in all, and what can be sold
+ * now as the store reads it. The event waits for its minute, so this is the stock after every change in it.
+ */
+async function inventoryData(storeId: string, storeSlug: string, variantId: string): Promise<WebhookSubject<"inventory"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      sku: col.textOrNull,
+      product_id: col.uuid,
+      on_hand: col.minor,
+      available: col.int.nullable(),
+      locations: z.array(z.object({ location_id: col.uuid, on_hand: col.int })),
+      updated_at: col.timestamp,
+    }),
+    sql`
+    select v.id, v.sku, v.product_id,
+      coalesce((select sum(l.on_hand) from commerce.inventory_levels l where l.store_id = v.store_id and l.variant_id = v.id), 0)::bigint as on_hand,
+      (select va.raw_available from commerce.variant_availability va where va.variant_id = v.id) as available,
+      coalesce((select json_agg(json_build_object('location_id', l.location_id, 'on_hand', l.on_hand) order by l.location_id)
+        from commerce.inventory_levels l where l.store_id = v.store_id and l.variant_id = v.id), '[]'::json) as locations,
+      coalesce((select max(l.updated_at) from commerce.inventory_levels l where l.store_id = v.store_id and l.variant_id = v.id), v.created_at) as updated_at
+    from commerce.product_variants v where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid
+  `,
+  );
+  if (!row) return null;
+  return {
+    variant_id: row.id,
+    product_id: row.product_id,
+    sku: row.sku ?? "",
+    on_hand: row.on_hand,
+    available: row.available,
+    locations: row.locations,
+    updated_at: row.updated_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/inventory`,
+  };
+}
+
+/** A parcel of an order (D440, `fulfilment.*`): its carrier, tracking and lines, and the carrier's tracking when the store follows it (D238). */
+async function fulfilmentData(storeId: string, storeSlug: string, shipmentId: string): Promise<WebhookSubject<"fulfilment"> | null> {
+  const [row] = await db().execute<Row>(sql`
+    select s.id, s.order_id, o.number as order_number, s.carrier, s.tracking_number, s.tracking_url, s.undone_at is not null as undone, s.created_at,
+      t.phase as tracking_phase, t.delivered_at as tracking_delivered_at, t.updated_at as tracking_updated_at,
+      coalesce((select json_agg(json_build_object('order_line_id', l.order_line_id, 'sku', ol.sku, 'title', ol.title, 'quantity', l.quantity) order by ol.title, l.order_line_id)
+        from commerce.shipment_lines l join commerce.order_lines ol on ol.store_id = l.store_id and ol.id = l.order_line_id
+        where l.store_id = s.store_id and l.shipment_id = s.id), '[]'::json) as lines
+    from commerce.shipments s
+    join commerce.orders o on o.store_id = s.store_id and o.id = s.order_id
+    left join commerce.shipment_tracking t on t.store_id = s.store_id and t.shipment_id = s.id
+    where s.store_id = ${storeId}::uuid and s.id = ${shipmentId}::uuid
+  `);
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    order_id: String(row.order_id),
+    order_number: String(row.order_number),
+    carrier: String(row.carrier ?? ""),
+    tracking_number: String(row.tracking_number ?? ""),
+    tracking_url: row.tracking_url ? String(row.tracking_url) : null,
+    undone: Boolean(row.undone),
+    tracking: row.tracking_updated_at
+      ? {
+          phase: String(row.tracking_phase ?? ""),
+          delivered_at: row.tracking_delivered_at ? new Date(String(row.tracking_delivered_at)).toISOString() : null,
+          updated_at: new Date(String(row.tracking_updated_at)).toISOString(),
+        }
+      : null,
+    lines: row.lines as WebhookSubject<"fulfilment">["lines"],
+    created_at: new Date(String(row.created_at)).toISOString(),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/${String(row.order_id)}`,
+  };
+}
+
+/** A refund (D440, `refund.created`): how much went back, in the order's currency, and how; never its reason, which staff wrote. */
+async function refundData(storeId: string, storeSlug: string, refundId: string): Promise<WebhookSubject<"refund"> | null> {
+  const row = await typedRow(
+    z.object({ id: col.uuid, order_id: col.uuid, order_number: col.text, currency: col.currency, amount_minor: col.minor, kind: col.text, restocked: col.bool, created_at: col.timestamp }),
+    sql`
+    select r.id, p.order_id, o.number as order_number, trim(p.currency) as currency, r.amount_minor, r.kind, coalesce(jsonb_typeof(r.restocked) = 'array' and jsonb_array_length(r.restocked) > 0, false) as restocked, r.created_at
+    from commerce.refunds r
+    join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
+    join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
+    where r.store_id = ${storeId}::uuid and r.id = ${refundId}::uuid
+  `,
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    order_id: row.order_id,
+    order_number: row.order_number,
+    currency: row.currency,
+    amount: amount(row.amount_minor, row.currency),
+    kind: row.kind === "store_credit" ? "store_credit" : "money",
+    restocked: row.restocked,
+    created_at: row.created_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/${row.order_id}`,
+  };
+}
+
+/** A draft order or a shopper's request for a quote (D440, `quote.requested`, `draft.sent`): its lines and prices as saved, and its order once sent. */
+async function draftData(storeId: string, storeSlug: string, draftId: string): Promise<WebhookSubject<"draft"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      number: col.text,
+      status: col.text,
+      source: col.text,
+      market_code: col.text,
+      currency: col.currency,
+      email: col.text,
+      order_id: col.uuid.nullable(),
+      expires_at: col.timestampOrNull,
+      created_at: col.timestamp,
+      lines: z.array(z.object({ sku: col.textOrNull, title: col.text, quantity: col.int, unit_price_minor: col.minor, requested: col.bool })),
+    }),
+    sql`
+    select d.id, d.number, d.status, d.source, d.market_code, trim(d.currency) as currency, coalesce(d.email, '') as email, d.order_id, d.expires_at, d.created_at,
+      coalesce((select json_agg(json_build_object('sku', l.sku, 'title', l.title, 'quantity', l.quantity, 'unit_price_minor', l.unit_price_minor, 'requested', l.price_requested)
+        order by l.position, l.id) from commerce.draft_order_lines l where l.store_id = d.store_id and l.draft_id = d.id), '[]'::json) as lines
+    from commerce.draft_orders d where d.store_id = ${storeId}::uuid and d.id = ${draftId}::uuid
+  `,
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    number: row.number,
+    status: row.status as WebhookSubject<"draft">["status"],
+    source: row.source === "quote" ? "quote" : "staff",
+    market: row.market_code,
+    currency: row.currency,
+    email: row.email,
+    lines: row.lines.map((l) => ({ sku: l.sku ?? "", title: l.title, quantity: l.quantity, unit_price: l.requested ? null : amount(l.unit_price_minor, row.currency) })),
+    order_id: row.order_id,
+    expires_at: row.expires_at,
+    created_at: row.created_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/orders/drafts/${row.id}`,
+  };
+}
+
+/** A gift card or store credit (D440, `gift_card.issued`): what it holds and how it came; never its code, which is kept only as a hash. */
+async function giftCardData(storeId: string, storeSlug: string, cardId: string): Promise<WebhookSubject<"gift_card"> | null> {
+  const row = await typedRow(
+    z.object({
+      id: col.uuid,
+      last4: col.textOrNull,
+      currency: col.currency,
+      initial_minor: col.minor,
+      balance: col.minor,
+      source: col.text,
+      test_mode: col.bool,
+      issued_at: col.timestamp,
+      expires_at: col.timestampOrNull,
+    }),
+    sql`
+      select g.id, g.last4, trim(g.currency) as currency, g.initial_minor, commerce.gift_card_balance(g.id) as balance, g.source, g.test_mode, g.issued_at, g.expires_at
+      from commerce.gift_cards g where g.store_id = ${storeId}::uuid and g.id = ${cardId}::uuid
+    `,
+  );
+  if (!row) return null;
+  return {
+    id: row.id,
+    last4: row.last4 || null,
+    currency: row.currency,
+    initial: amount(row.initial_minor, row.currency),
+    balance: amount(row.balance, row.currency),
+    source: row.source as WebhookSubject<"gift_card">["source"],
+    test: row.test_mode,
+    issued_at: row.issued_at,
+    expires_at: row.expires_at,
+    admin_url: `${siteUrl()}/admin/${storeSlug}/gift-cards/${row.id}`,
+  };
+}
+
+/** A product review a buyer wrote (D440, `review.created`): its stars and words as the buyer gave them to be shown, and whether it is published yet. */
+async function reviewData(storeId: string, storeSlug: string, reviewId: string): Promise<WebhookSubject<"review"> | null> {
+  const [row] = await db().execute<Row>(sql`
+    select r.id, r.product_id, r.rating, coalesce(r.title, '') as title, coalesce(r.body, '') as body, coalesce(r.author_name, '') as author_name,
+      r.status::text as status, r.order_id is not null as verified, coalesce(r.locale, '') as locale, r.created_at
+    from commerce.product_reviews r where r.store_id = ${storeId}::uuid and r.id = ${reviewId}::uuid
+  `);
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    product_id: String(row.product_id),
+    rating: Number(row.rating),
+    title: String(row.title),
+    body: String(row.body),
+    author_name: String(row.author_name),
+    status: String(row.status),
+    verified: Boolean(row.verified),
+    locale: String(row.locale),
+    created_at: new Date(String(row.created_at)).toISOString(),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/reviews`,
   };
 }
 

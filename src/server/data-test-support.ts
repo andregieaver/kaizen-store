@@ -24,6 +24,8 @@ export type FakeStorage = DataStorage & {
 };
 
 /** The imports and exports buckets in memory. A signed address is a plain string that names what it was made for. */
+const IMPORTS_TYPES = ["text/csv", "text/plain", "application/vnd.ms-excel"];
+
 export function fakeStorage(): FakeStorage {
   const files = new Map<string, Uint8Array>();
   const state: FakeStorage = {
@@ -31,11 +33,13 @@ export function fakeStorage(): FakeStorage {
     removed: [],
     signed: [],
     down: false,
-    async signedUpload(path) {
-      return state.down ? null : { token: `token-${path.length}` };
+    async signedUpload(path, bucket = "imports") {
+      return state.down ? null : { token: `token-${path.length}`, url: `https://storage.test/upload/${bucket}/${path}?token=token-${path.length}` };
     },
-    async upload(bucket, path, bytes) {
+    async upload(bucket, path, bytes, contentType) {
       if (state.down) return false;
+      // As Supabase's `imports` bucket does (migration 20261005112449_data_buckets): any other type is refused.
+      if (bucket === "imports" && contentType !== undefined && !IMPORTS_TYPES.includes(contentType)) return false;
       files.set(`${bucket}/${path}`, bytes);
       return true;
     },

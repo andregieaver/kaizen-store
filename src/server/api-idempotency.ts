@@ -12,7 +12,7 @@ import { col, typedRow } from "./typed-rows";
 /**
  * `Idempotency-Key` on the Admin API's POSTs (PSI DATA-03), as payment APIs do it: a client that repeats a create after a lost answer
  * gets the first answer again instead of a second product or fulfilment. The key is the client's, per token; the same key with another
- * route or body is refused, and while the first request runs a second one is told to try again. Answers are kept 24 hours
+ * method, path (another order's refund, D440 review) or body is refused, and while the first request runs a second one is told to try again. Answers are kept 24 hours
  * (`pruneApiIdempotency()`); a failure Kaizena Flow could not answer is not kept, so a retry runs again.
  */
 
@@ -27,16 +27,16 @@ export type Idempotency =
   | { kind: "replay"; answer: IdempotentAnswer }
   | { kind: "refused"; code: "invalid" | "conflict"; message: string };
 
-/** The route and the body as one hash: what a key stands for. */
-export const requestHash = (route: string, body: string): string => createHash("sha256").update(`${route}\n${body}`).digest("hex");
+/** The request (its method and whole path, such as `POST /orders/{id}/refunds` with the id) and the body as one hash: what a key stands for. */
+export const requestHash = (target: string, body: string): string => createHash("sha256").update(`${target}\n${body}`).digest("hex");
 
 /**
  * What to do with a POST that carries a key: run it (and keep its answer), give the kept answer, or refuse. A request without a key is
  * never asked here.
  */
-export async function claimIdempotencyKey(tokenId: string, key: string, route: string, body: string): Promise<Idempotency> {
+export async function claimIdempotencyKey(tokenId: string, key: string, target: string, body: string): Promise<Idempotency> {
   if (!KEY.test(key)) return { kind: "refused", code: "invalid", message: "Idempotency-Key is 1 to 255 printable characters." };
-  const hash = requestHash(route, body);
+  const hash = requestHash(target, body);
   const claimed = await db().execute(sql`
     insert into commerce.api_idempotency_keys (token_id, key, request_hash) values (${tokenId}::uuid, ${key}, ${hash})
     on conflict do nothing returning key

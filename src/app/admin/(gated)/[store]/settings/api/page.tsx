@@ -4,7 +4,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { MakeApiToken, RevokeApiToken } from "@/components/admin/api-tokens";
 import { buttonClass, Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
-import { API_SCOPES } from "@/lib/admin-api";
+import { API_POWERS, API_SCOPES, isApiPower } from "@/lib/admin-api";
 import { API_ROUTES } from "@/lib/admin-api-routes";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -114,7 +114,7 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
         )}
         <Card title={w.make} description={w.makeHint}>
           <p className="mb-4 text-sm text-muted">{w.actsAs}</p>
-          <MakeApiToken scopes={[...API_SCOPES]} make={makeApiTokenAction.bind(null, store.slug)} />
+          <MakeApiToken scopes={API_SCOPES.filter((scope) => !isApiPower(scope))} powers={[...API_POWERS]} make={makeApiTokenAction.bind(null, store.slug)} />
         </Card>
         <Card title={w.inUse}>
           {tokens.length === 0 ? (

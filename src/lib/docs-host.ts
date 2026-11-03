@@ -86,8 +86,11 @@ const TRACKS = "owners|developers|reference";
 /** The host's own files. */
 const FILES = "sitemap\\.xml|robots\\.txt|llms\\.txt|llms-full\\.txt";
 
-/** Every address the docs' host serves itself (after the leading slash); anything else there is Kaizena Flow's own. */
-const OWN = `(?:${TRACKS})(?:/|$)|changelog(?:\\.md)?$|(?:${FILES})$|search$|no$|no/search$|no/owners(?:/|$)`;
+/**
+ * Every address the docs' host serves itself (after the leading slash); anything else there is Kaizena Flow's own. `reference.md` is the
+ * generated reference's front page as Markdown (E4).
+ */
+const OWN = `(?:${TRACKS})(?:/|\\.md$|$)|changelog(?:\\.md)?$|(?:${FILES})$|search$|no$|no/search$|no/owners(?:/|$)`;
 
 /** A page's Markdown twin, on every host: the route `/docs/md/…` answers it (a page segment cannot end in `.md`). */
 const MARKDOWN: DocsHostRewrite[] = [

@@ -9,6 +9,7 @@ import { readOldShop } from "@/server/old-shop";
 import { checkPermission } from "@/server/permissions";
 import { disconnectShopify, shopifyConnection, startShopifyConnect, type StartProblem } from "@/server/shopify-connect";
 import { advanceCopy, bringItOver, startCopy } from "@/server/shopify-copy";
+import { saveVendorMaker, type MakerSaved } from "@/server/shopify-makers";
 import { copyMoving } from "@/lib/shopify-copy";
 
 /**
@@ -71,6 +72,15 @@ export async function bringItOverAction(storeSlug: string): Promise<{ ok: boolea
   if (!member) return { ok: false };
   const result = await bringItOver(member);
   if (result.ok) await advanceCopy(member);
+  refresh();
+  return result;
+}
+
+/** *Who makes your products?* (D445 step 6): the owner's answer for one Shopify vendor, saved on its products by the bulk editor. */
+export async function saveVendorMakerAction(storeSlug: string, input: unknown): Promise<MakerSaved> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false, problem: "failed" };
+  const result = await saveVendorMaker(member, input);
   refresh();
   return result;
 }

@@ -27,6 +27,7 @@ const READERS: Record<string, string> = {
   "src/server/store-translate.ts": "the areas' names and information to translate (D110)",
   "src/server/tax-reports-fixture.ts": "a test fixture",
   "src/server/checkout-rules.ts": "the ids of local areas a checkout rule may name (D357), never a price",
+  "src/server/admin-api-content.ts": "the Admin API's store settings (D440) show the flat rates as the admin's editor does, never what a cart is charged",
 };
 
 const TABLES = /commerce\.(shipping_rates|shipping_method_rates|local_delivery_areas)\b/;

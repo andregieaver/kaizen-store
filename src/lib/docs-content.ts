@@ -8,7 +8,7 @@
  * - `{track}/{section}/{slug}.{lang}.md`: an article, with front matter (`docs-front-matter.ts`) and a body in the docs' Markdown
  *   (`docs-markdown.ts`). The owners' track is in English and Norwegian (`en`, `nb`), the developers' in English alone;
  * - `{track}/{section}/_section.{lang}.md`: a section's title (`title`), its order in the track (`order`) and a line about it (`summary`);
- * - `developers/changelog.md`: the developers' changelog (unit A writes it; E4 draws it from the contracts), shown at `/docs/changelog`;
+ * - `developers/changelog.md`: the developers' changelog (unit A writes it; the generated reference, E4, links it), shown at `/docs/changelog`;
  * - `missing-nb.json`: the owners' pages in English still without their Norwegian page, each with the reason, so a missing one is a decision
  *   and not an oversight.
  *
@@ -91,11 +91,17 @@ export type DocArea = (typeof DOC_AREAS)[number];
 /** Where the front page, the tracks and the changelog are, beside the articles (`DocPage.path`). */
 export const DOCS_CHANGELOG_PATH = "changelog";
 
+/** Where the generated reference (unit E4) is: `/docs/reference/…` (`/reference/…` on the docs' host, `docsHostRoutes()`). */
+export const DOCS_REFERENCE_PATH = "reference";
+
+/** Where the top bar's *API reference* leads: the generated reference's front page. */
+export const docsReferencePath = (): string => DOCS_REFERENCE_PATH;
+
 /**
- * Where the top bar's *API reference* leads: the developers' track until the generated reference (unit E4) has its own pages under
- * `reference` (`/reference/…` on the docs' host, already theirs in `docsHostRoutes()`).
+ * The generated reference as one section of the developers' track for the search (E3's `section` filter, `commerce.docs_index.section`):
+ * its pages and its items are listed, filtered and ordered as a written section's are.
  */
-export const docsReferencePath = (): string => "developers";
+export const DOCS_REFERENCE_SECTION = "developers/reference";
 
 export type { DocHeading };
 
@@ -131,12 +137,50 @@ export type DocSection = { track: DocTrack; slug: string; lang: DocLang; title: 
 
 export type DocChangelog = { title: string | null; blocks: Block[]; headings: DocHeading[]; markdown: string; file: string };
 
+/** What a reference item is (the docs' search's items of unit A's contracts). */
+export type DocRefItemKind = "operation" | "topic" | "tool" | "agent-tool" | "error" | "scope";
+
+/** A reference item on a generated page: the item, and the heading it is under (null: the page is the item). */
+export type DocRefItem = { item: DocRefItemKind; id: string; anchor: string | null };
+
+/**
+ * A page of the generated reference (wave 14 unit E4, D442): made when the docs are built from unit A's contracts (`docsApiReference()`),
+ * never written by hand, in English, under the developers' track at `reference/…`. Its body is Markdown in the docs' subset, read as an
+ * article's is, so it is drawn, answered as Markdown and indexed the same way.
+ */
+export type DocRefPage = {
+  /** `reference`, `reference/admin-api`, `reference/admin-api/products`. */
+  path: string;
+  lang: "en";
+  /** The page it is listed under: `reference/admin-api` for a resource, `reference` for a group, null for the reference's front page. */
+  parent: string | null;
+  title: string;
+  summary: string;
+  areas: DocArea[];
+  /** The files it is made from, in the repository. */
+  sources: string[];
+  blocks: Block[];
+  headings: DocHeading[];
+  markdown: string;
+  /** The reference items it holds, each at its heading: what the docs' search leads to. */
+  items: DocRefItem[];
+  /** The headings *On this page* lists: h2s alone on a long page of operations, h2s and h3s otherwise. */
+  toc: 2 | 3;
+};
+
+/** The generated reference: its pages in reading order and the version of the contract they were made from. */
+export type DocReference = { version: string | null; pages: DocRefPage[] };
+
+export const NO_REFERENCE: DocReference = { version: null, pages: [] };
+
 export type DocsIndex = {
   pages: DocPage[];
   sections: DocSection[];
   changelog: DocChangelog | null;
   /** `missing-nb.json`: an owners' page's path to why it has no Norwegian page yet. */
   missingNb: Record<string, string>;
+  /** The generated reference (E4), made beside the articles (`src/server/docs.ts`); none in an index of articles alone. */
+  reference: DocReference;
 };
 
 export type DocProblem = { file: string; line?: number; message: string };
@@ -183,8 +227,15 @@ export function isDocDate(value: string): boolean {
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
 }
 
-/** Compiles every file into the index, with every problem found; the index holds only what compiled. */
-export function compileDocs(sources: readonly DocSource[], context: DocsCheckContext = {}): { index: DocsIndex; problems: DocProblem[] } {
+/**
+ * Compiles every file into the index, with every problem found; the index holds only what compiled. The generated reference, when given, is
+ * kept beside the articles, so a link to it is checked as any other.
+ */
+export function compileDocs(
+  sources: readonly DocSource[],
+  context: DocsCheckContext = {},
+  reference: DocReference = NO_REFERENCE,
+): { index: DocsIndex; problems: DocProblem[] } {
   const problems: DocProblem[] = [];
   const pages: DocPage[] = [];
   const sections: DocSection[] = [];
@@ -241,7 +292,7 @@ export function compileDocs(sources: readonly DocSource[], context: DocsCheckCon
 
   // Links between pages and to headings.
   const log = changelog ? stripLinks(changelog) : null;
-  const index: DocsIndex = { pages, sections, changelog: log, missingNb };
+  const index: DocsIndex = { pages, sections, changelog: log, missingNb, reference };
   for (const { page, href, line } of links) checkLink(index, page, href, context, (message) => problems.push({ file: page.file, line, message }));
   for (const { href, line } of changelog?.links ?? []) checkLink(index, null, href, context, (message) => problems.push({ file: `${DOCS_ROOT}/developers/changelog.md`, line, message }));
 
@@ -261,7 +312,7 @@ export function compileDocs(sources: readonly DocSource[], context: DocsCheckCon
     if (!pages.some((p) => p.path === page.path && p.lang === "en")) problems.push({ file: page.file, message: "A page in Norwegian without its English page." });
   }
 
-  return { index: { pages, sections: sortSections(sections), changelog: log, missingNb }, problems };
+  return { index: { pages, sections: sortSections(sections), changelog: log, missingNb, reference }, problems };
 }
 
 type Report = (message: string, line?: number) => void;
@@ -444,12 +495,13 @@ function checkLink(index: DocsIndex, page: DocPage | null, href: DocHref, contex
 }
 
 /**
- * What a docs link (`/docs/{path}`) leads to, from a page in `lang`: the page in that language where it has one, else in English; a track,
- * a section, the front page or the changelog as itself; null when nothing is there.
+ * What a docs link (`/docs/{path}`) leads to, from a page in `lang`: the page in that language where it has one, else in English; a page of
+ * the generated reference; a track, a section, the front page or the changelog as itself; null when nothing is there.
  */
-export function resolveDocLink(index: DocsIndex, path: string, lang: DocLang): DocPage | "home" | "track" | "section" | "changelog" | null {
+export function resolveDocLink(index: DocsIndex, path: string, lang: DocLang): DocPage | DocRefPage | "home" | "track" | "section" | "changelog" | null {
   if (path === "") return "home";
   if (path === DOCS_CHANGELOG_PATH) return index.changelog ? "changelog" : null;
+  if (isReferencePath(path)) return docRefPage(index, path);
   const parts = path.split("/");
   if (parts.length === 1) return isTrack(parts[0]) ? "track" : null;
   if (parts.length === 2) return index.sections.some((s) => s.track === parts[0] && s.slug === parts[1]) ? "section" : null;
@@ -525,7 +577,10 @@ export function docSection(index: DocsIndex, track: DocTrack, slug: string, lang
   return index.sections.find((s) => s.track === track && s.slug === slug && s.lang === lang) ?? null;
 }
 
-/** Every address the docs build in a language: the front page, the tracks, the sections, the pages and the changelog (`""` is the front page). */
+/**
+ * Every address the docs build in a language: the front page, the tracks, the sections, the pages, the changelog and, in English, the
+ * generated reference (`""` is the front page).
+ */
 export function docsPaths(index: DocsIndex, lang: DocLang): string[] {
   const tracks = DOC_TRACKS.filter((track) => DOC_TRACK_LANGS[track].includes(lang));
   return [
@@ -533,7 +588,50 @@ export function docsPaths(index: DocsIndex, lang: DocLang): string[] {
     ...tracks,
     ...tracks.flatMap((track) => docsTree(index, track, lang).flatMap(({ section, pages }) => [`${track}/${section.slug}`, ...pages.map((p) => p.path)])),
     ...(lang === "en" && index.changelog ? [DOCS_CHANGELOG_PATH] : []),
+    ...(lang === "en" ? index.reference.pages.map((p) => p.path) : []),
   ];
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The generated reference (E4)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Whether a docs address is the generated reference's. */
+export const isReferencePath = (path: string): boolean => path === DOCS_REFERENCE_PATH || path.startsWith(`${DOCS_REFERENCE_PATH}/`);
+
+/** A page of the generated reference by its address. */
+export function docRefPage(index: DocsIndex, path: string): DocRefPage | null {
+  return index.reference.pages.find((p) => p.path === path) ?? null;
+}
+
+/** A page by its address in a language, written or generated: what the feedback, the read count and the page's Markdown answer for. */
+export function docsPageAt(index: DocsIndex, path: string, lang: DocLang): DocPage | DocRefPage | null {
+  return docPage(index, path, lang) ?? (lang === "en" ? docRefPage(index, path) : null);
+}
+
+/** The pages listed under one (the reference's groups under its front page, a group's pages under the group), in reading order. */
+export function docRefChildren(index: DocsIndex, parent: string): DocRefPage[] {
+  return index.reference.pages.filter((p) => p.parent === parent);
+}
+
+/** The reference's pages before and after one, in its reading order. */
+export function docRefNeighbours(index: DocsIndex, page: DocRefPage): { previous: DocRefPage | null; next: DocRefPage | null } {
+  const order = index.reference.pages;
+  const at = order.findIndex((p) => p.path === page.path);
+  return { previous: at > 0 ? order[at - 1] : null, next: at >= 0 && at < order.length - 1 ? order[at + 1] : null };
+}
+
+/** The pages from the reference's front page down to one: its trail, the page itself last. */
+export function docRefTrail(index: DocsIndex, page: DocRefPage): DocRefPage[] {
+  const trail: DocRefPage[] = [page];
+  let parent = page.parent;
+  while (parent !== null) {
+    const above = docRefPage(index, parent);
+    if (!above || trail.includes(above)) break;
+    trail.unshift(above);
+    parent = above.parent;
+  }
+  return trail;
 }
 
 /** Whether a track is written in a language. */

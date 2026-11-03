@@ -9,6 +9,7 @@ import { isExport, isImport, type JobKind } from "@/lib/data-job";
 import { parseOrderNumbers } from "@/lib/order-csv";
 import type { PermissionKey } from "@/lib/permissions";
 
+import { pruneApiUploads } from "./api-uploads";
 import { audit, type Membership } from "./auth";
 import { countCustomers, customerExportReader, parseCustomerExportOptions, type CustomerExportOptions } from "./customer-export";
 import { notifyReady } from "./data-job-emails";
@@ -565,6 +566,8 @@ export async function pruneDataJobs(deps: DataDeps = {}): Promise<{ filesRemoved
       if (expire) out.expired += 1;
     }
     if (storage) out.orphansRemoved = await sweepOrphanExports(storage);
+    // Pictures sent over the Admin API (D440) wait in the imports bucket too: a day after their address ends, they go.
+    if (storage) out.filesRemoved += await pruneApiUploads(storage);
     const items = await db().execute<Row>(sql`
       with old as (select store_id, id from commerce.data_jobs where finished_at < now() - make_interval(days => ${JOB_ITEMS_KEEP_DAYS}))
       delete from commerce.data_job_items i using old where i.store_id = old.store_id and i.job_id = old.id returning 1 as x

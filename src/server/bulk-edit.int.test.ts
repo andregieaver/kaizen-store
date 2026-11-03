@@ -173,6 +173,23 @@ describe("a list action", () => {
     const [foreign] = await db().execute<Row>(sql`insert into commerce.terms (store_id, content_type, kind, name, slug) values (${rival.storeId}::uuid, 'product', 'category', 'Foreign', 'foreign') returning id`);
     expect(await bulk.previewBulk(owner, { action: "terms_add", productIds: ids(some), categoryIds: [String(foreign.id)], tagIds: [] })).toMatchObject({ ok: false });
   });
+
+  it("sets the manufacturer of many products, refuses another store's company, and its undo puts each one's own back", async () => {
+    const operator = async (storeId: string, name: string, country: string) =>
+      String((await db().execute<Row>(sql`insert into commerce.economic_operators (store_id, name, postal_address, electronic_address, country) values (${storeId}::uuid, ${name}, 'Gata 1, 0150 Oslo', 'hei@example.com', ${country}) returning id`))[0].id);
+    const nordic = await operator(fx.storeId, "Nordic Wool", "SE");
+    const foreign = await operator(rival.storeId, "Elsewhere", "SE");
+    const some = products.slice(20, 25);
+    const makerOf = async (id: string) => (await db().execute<Row>(sql`select manufacturer_id from commerce.products where id = ${id}::uuid`))[0].manufacturer_id;
+    const before = await Promise.all(some.map((p) => makerOf(p.id)));
+    expect(await bulk.previewBulk(owner, { action: "manufacturer", productIds: ids(some), manufacturerId: foreign, responsibleId: null })).toMatchObject({ ok: false });
+    const run = await bulk.startBulk(owner, { action: "manufacturer", productIds: ids(some), manufacturerId: nordic, responsibleId: null });
+    expect(run).toMatchObject({ ok: true, done: true });
+    expect(await Promise.all(some.map((p) => makerOf(p.id)))).toEqual(some.map(() => nordic));
+    const undone = await bulk.undoBatch(owner, (run as { batchId: string }).batchId);
+    expect(undone).toMatchObject({ ok: true, restored: 5, conflicts: 0 });
+    expect(await Promise.all(some.map((p) => makerOf(p.id)))).toEqual(before);
+  });
 });
 
 describe("limits, stores and rights", () => {

@@ -210,6 +210,11 @@ yes for. Price lists' prices (D321). Updated-since filters (`?updated_after=`) o
   an app directory).
 - **Installing** is unit B's flow with the app's client: the owner chooses the store, sees the scopes, and approves. Each installation has
   its own tokens, usable on the Admin API (`Authorization: Bearer kfa_…`) and on the MCP server. A changed scope list asks the owner again.
+- **Powers (D440 review).** The Admin API's powers (`products:publish`, `orders:send`, `orders:refund`, `customers:email`,
+  `discounts:publish`, `gift_cards:write`, `content:publish`, `webhooks:write`) are no OAuth scope yet and no level grants one. Before
+  `kfa_` tokens work on the Admin API, each power a grant holds is checked against the person's current permission at every call (as the
+  route checks the operation's own permission), and the consent screen says what each one does without asking, in words that claim only
+  that.
 - **Uninstalling** revokes the installation's tokens at once, sends `app.uninstalled`, and stops the app's webhooks.
 - **Controls:** a budget per installation, the app named in every audit entry, and the store's *Apps* screen listing what is installed
   with *Remove*.
@@ -286,13 +291,16 @@ sources: [D431, D433]    # internal: the decisions it describes
   - no result offers the AI guide with the question already filled in, and is counted for the docs' gap list.
 - **Lists of a section** (and the API reference's lists) use the same filters and sorts.
 
-**E4. The generated reference (D442).** From unit A's contracts:
+**E4. The generated reference (D442; built, see D442 in `docs/decisions.md`).** From unit A's contracts:
 - **Admin and storefront APIs:** one page per resource with every operation's method, path, scope, parameters, body and answer (schemas
   rendered as tables), errors, and an example request in curl, JavaScript and Python.
 - **Webhooks:** one page per topic with its payload and an example, plus signature checks in JavaScript, Python and PHP.
 - **MCP:** the tool catalogue by area with each tool's gate, permission and inputs.
 - **Scopes, errors and rate limits** as their own pages.
 - **The changelog** from `content/docs/developers/changelog.md`.
+- **As built:** every page is made at build from the registries (`docsApiReference()`, `src/lib/docs-api-reference.ts`), at
+  `/docs/reference/…` (`/reference/…` on the docs' host); an MCP area is the area of the permission a tool needs; the search's reference
+  items lead to their headings there, and the reference is one section of the developers' track (`developers/reference`).
 
 **E5. The docs guide (D444).**
 - **What it is:** a second chat agent for the docs host (`ChatSite` kind `docs`, its own `commerce.chat_agents` row and screen at

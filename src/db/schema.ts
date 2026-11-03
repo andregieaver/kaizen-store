@@ -7536,7 +7536,43 @@ export const apiTokens = commerce.table(
     index("api_tokens_store_idx").on(t.storeId),
     index("api_tokens_created_by_idx").on(t.createdBy),
     check("api_tokens_name", sql`char_length(${t.name}) between 1 and 80`),
-    check("api_tokens_scopes", sql`cardinality(${t.scopes}) between 1 and 20`),
+    // D440: every scope at once fits (21 since wave 14 unit C4), with room for more.
+    check("api_tokens_scopes", sql`cardinality(${t.scopes}) between 1 and 40`),
+  ],
+);
+
+/**
+ * A picture an Admin API caller is sending (wave 14 unit C1, D440, `src/server/api-uploads.ts`, its only writer): `POST /media/uploads` makes
+ * the row and a one-time address in the private `imports` bucket; `POST /media` checks the file there, keeps it in the media library and
+ * marks the row used. Never a file name or anything a person wrote; rows and their files go a day after they end (`pruneApiUploads()`).
+ */
+export const apiUploads = commerce.table(
+  "api_uploads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    tokenId: uuid("token_id")
+      .notNull()
+      .references(() => apiTokens.id, { onDelete: "cascade" }),
+    /** Where the file is sent, in the `imports` bucket: `{store}/api-uploads/{id}`. */
+    path: text("path").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** When `POST /media` took it (claimed; cleared again when keeping the file failed). */
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    /** The library item it became. */
+    mediaId: uuid("media_id").references(() => media.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("api_uploads_store_id_key").on(t.storeId, t.id),
+    index("api_uploads_store_idx").on(t.storeId),
+    index("api_uploads_token_idx").on(t.tokenId),
+    index("api_uploads_media_idx").on(t.mediaId),
+    index("api_uploads_expires_idx").on(t.expiresAt),
+    check("api_uploads_size", sql`${t.sizeBytes} between 1 and 20971520`),
+    check("api_uploads_type", sql`${t.contentType} in ('image/jpeg', 'image/png', 'image/webp', 'image/avif')`),
   ],
 );
 
@@ -7768,12 +7804,22 @@ export const integrationDeliveries = commerce.table(
     lastError: text("last_error"),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /**
+     * When the person it was about was erased (D162, D440 review): its payload is gone, a pending one is not sent, and it is never sent
+     * again (`resendDelivery()`).
+     */
+    erasedAt: timestamp("erased_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
     index("integration_deliveries_due_idx").on(t.nextAttemptAt).where(sql`${t.status} = 'pending'`),
     index("integration_deliveries_store_idx").on(t.storeId, t.provider, t.createdAt),
     index("integration_deliveries_endpoint_idx").on(t.endpointId, t.createdAt),
+    // The deliveries not built yet, which `queue_integration_event()` looks for before queuing one more (one per endpoint, subject and
+    // event; `inventory.updated` per minute) inside the transaction that moved the stock.
+    index("integration_deliveries_unbuilt_idx")
+      .on(t.endpointId, t.subjectId, t.event)
+      .where(sql`${t.status} = 'pending' and ${t.payload} is null`),
     check("integration_deliveries_endpoint", sql`(${t.provider} = 'webhook') = (${t.endpointId} is not null)`),
     check("integration_deliveries_status", sql`${t.status} in ('pending', 'delivered', 'failed')`),
   ],
@@ -13030,7 +13076,7 @@ export const bulkEditBatches = commerce.table(
       .where(sql`${t.undoOf} is not null`),
     check(
       "bulk_edit_batches_action",
-      sql`${t.action} in ('status', 'archive', 'unarchive', 'terms_add', 'terms_remove', 'price', 'stock', 'grid', 'undo', 'sell_in', 'stop_selling_in')`,
+      sql`${t.action} in ('status', 'archive', 'unarchive', 'terms_add', 'terms_remove', 'price', 'stock', 'grid', 'undo', 'sell_in', 'stop_selling_in', 'manufacturer')`,
     ),
     check("bulk_edit_batches_undo", sql`(${t.action} = 'undo') = (${t.undoOf} is not null)`),
     check("bulk_edit_batches_json", sql`jsonb_typeof(${t.params}) = 'object' and jsonb_typeof(${t.counts}) = 'object'`),
@@ -13073,7 +13119,7 @@ export const bulkEditItems = commerce.table(
     check("bulk_edit_items_outcome", sql`${t.outcome} in ('changed', 'unchanged', 'failed', 'undone')`),
     check(
       "bulk_edit_items_field",
-      sql`${t.field} in ('status', 'archived', 'terms', 'stock', 'cost', 'sku', 'availability') or ${t.field} ~ '^price:[A-Z]{2}$'`,
+      sql`${t.field} in ('status', 'archived', 'terms', 'stock', 'cost', 'sku', 'availability', 'maker') or ${t.field} ~ '^price:[A-Z]{2}$'`,
     ),
     check("bulk_edit_items_failed_reason", sql`${t.outcome} <> 'failed' or length(trim(coalesce(${t.reason}, ''))) > 0`),
     check("bulk_edit_items_reason", sql`${t.reason} is null or length(${t.reason}) <= 500`),

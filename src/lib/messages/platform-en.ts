@@ -444,6 +444,7 @@ export const platformEn = {
     previous: "Previous",
     next: "Next",
     checked: "Last checked {date}",
+    madeFrom: "Made from the API contract, version {version}",
     inAdmin: "In the admin:",
     language: "Language",
     markdown: "This page as Markdown",

@@ -68,6 +68,12 @@ export type ImportOptions = {
    * `/product/{slug}`) to its page here. On unless the member turns it off; a redirect already there is kept.
    */
   redirects: boolean;
+  /**
+   * Only drafts (D440): a product the import would publish, archive, bring back from the archive, or change while it is on the site is
+   * refused (`product.on_site`), in the check and again in the apply, which plans each product afresh. An Admin API token without
+   * `products:publish` checks an import so; a job's options are fixed once it is checked (`data_jobs_rules()`).
+   */
+  draftsOnly: boolean;
 };
 
 /** The address a product had in the shop its file came from (D384), or null for Kaizena Flow's own file. */
@@ -83,6 +89,7 @@ export const DEFAULT_IMPORT_OPTIONS: ImportOptions = {
   pricesIncludeVat: null,
   priceMarket: null,
   redirects: true,
+  draftsOnly: false,
 };
 
 /** The member's options from what a form or a job's `options` column holds; anything unknown is the default. */
@@ -96,6 +103,7 @@ export function parseImportOptions(raw: unknown): ImportOptions {
     pricesIncludeVat: typeof o.pricesIncludeVat === "boolean" ? o.pricesIncludeVat : null,
     priceMarket: typeof o.priceMarket === "string" && /^[A-Za-z]{2}$/.test(o.priceMarket) ? o.priceMarket.toUpperCase() : null,
     redirects: o.redirects !== false,
+    draftsOnly: o.draftsOnly === true,
   };
 }
 
@@ -144,6 +152,8 @@ export type ProductPlan = {
   input: ProductInput | null;
   /** The product was archived: set it archived again after the save (the editor's save makes it a draft). */
   archiveAfter: boolean;
+  /** Whether writing it publishes it, archives it, brings it back from the archive or changes it while it is on the site (D440). */
+  onShop: boolean;
   fields?: FieldChanges;
   /** By the variant's SKU. */
   variantFields?: Record<string, FieldChanges>;
@@ -669,6 +679,7 @@ export function planProduct(draft: ProductDraft, file: NeutralFile, env: PlanEnv
     isNew,
     input,
     archiveAfter: false,
+    onShop: false,
     pendingTerms: [...c.pending.values()],
     pictures: c.pictures,
     findings: c.findings,
@@ -954,9 +965,15 @@ export function planProduct(draft: ProductDraft, file: NeutralFile, env: PlanEnv
       err(c, "product.drafted", { reason: safeReason(publishProblems[0]) }, "warning");
     }
   }
+  // What shoppers see (D440): a product put on the site, archived or brought back, or one on the site changed.
+  const onShop = (stored !== null && stored.status === "active" && !stored.archived) || input.status === "active" || wantsArchived !== (stored?.archived ?? false);
+  if (onShop && options.draftsOnly) {
+    err(c, "product.on_site");
+    return result("skipped", null, { pendingTerms: [], pictures: [], onShop });
+  }
   // A saved product that was archived is made a draft by the editor's save, and archived again after it.
   const outcome: ProductPlan["outcome"] = drafted ? "drafted" : isNew ? "created" : "updated";
-  return result(outcome, input, { archiveAfter: wantsArchived, fields, variantFields });
+  return result(outcome, input, { archiveAfter: wantsArchived, fields, variantFields, onShop });
 }
 
 /** Puts the ids of terms an apply created into a plan's input (`ids` by `pendingKey()`), in the order they were named. */
@@ -991,6 +1008,7 @@ export function dryRunCounts(plans: readonly ProductPlan[], fileFindings: readon
     toUpdate: plans.filter((p) => !p.isNew && (p.outcome === "updated" || p.outcome === "drafted")).length,
     unchanged: plans.filter((p) => p.outcome === "unchanged").length,
     withProblems: plans.filter((p) => p.findings.some((f) => f.severity === "error")).length + fileFindings.filter((f) => f.finding.severity === "error" && f.rows.length > 0).length,
+    onShop: plans.filter((p) => p.onShop).length,
   };
 }
 

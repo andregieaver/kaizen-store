@@ -7,7 +7,9 @@ import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { hint } from "@/components/admin/data/ui";
 import { CheckOldLinks, ShopifyConnectForm, ShopifyDisconnect } from "@/components/admin/moving/shopify-connect";
 import { ShopCopy, type CopyRow } from "@/components/admin/moving/shop-copy";
-import { COPY_FEEDS, copyDone, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
+import { ShopMakers } from "@/components/admin/moving/shop-makers";
+import { makersView } from "@/server/shopify-makers";
+import { COPY_FEEDS, copyDone, copyFailed, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
 import { copyView, feedJobPage } from "@/server/shopify-copy";
 import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
 import type { DataJob } from "@/server/data-job-store";
@@ -22,7 +24,7 @@ import { checkShopify } from "@/server/shopify-report";
 import { figureText, type ShopReport } from "@/lib/shopify-report";
 import type { MovingMessages } from "@/lib/admin-messages/moving.en";
 
-import { advanceCopyAction, bringItOverAction, checkOldLinksAction, connectShopifyAction, disconnectShopifyAction, startCopyAction } from "./actions";
+import { advanceCopyAction, bringItOverAction, checkOldLinksAction, connectShopifyAction, disconnectShopifyAction, saveVendorMakerAction, startCopyAction } from "./actions";
 
 export const metadata: Metadata = { title: "Moving in" };
 
@@ -100,6 +102,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
               </p>
             )}
             <CopyPanel storeSlug={store.slug} />
+            <MakersPanel storeSlug={store.slug} />
             <CheckOldLinks check={checkOldLinksAction.bind(null, store.slug)} />
             <ShopifyDisconnect disconnect={disconnectShopifyAction.bind(null, store.slug)} />
           </div>
@@ -180,6 +183,7 @@ function ShopReportBody({ report, words, locale }: { report: ShopReport; words: 
 function dryOf(feed: CopyFeed, job: DataJob | undefined): { ready: number | null; needLook: number | null } {
   if (!job || !job.counts.dry) return { ready: null, needLook: null };
   switch (feed) {
+    case "collections":
     case "products": {
       const d = dryCountsOf(job);
       return { ready: d.toCreate + d.toUpdate + d.unchanged, needLook: d.withProblems };
@@ -196,7 +200,28 @@ function dryOf(feed: CopyFeed, job: DataJob | undefined): { ready: number | null
       const d = redirectDryCountsOf(job);
       return { ready: d.toCreate + d.toReplace + d.unchanged, needLook: d.withErrors };
     }
+    default:
+      return { ready: null, needLook: null };
   }
+}
+
+/** *Who makes your products?* (D445 step 6): once the copy has stopped moving, one question per Shopify vendor whose products still lack a maker. */
+async function MakersPanel({ storeSlug }: { storeSlug: string }) {
+  const member = await requireOwnerRole(storeSlug);
+  const copy = await copyView(member);
+  if (!copy || copyMoving(copy.state)) return null;
+  const view = await makersView(member);
+  if (!view || view.groups.length === 0) return null;
+  return (
+    <ShopMakers
+      rows={view.groups}
+      operators={view.operators}
+      countries={view.countries}
+      euCountries={view.euCountries}
+      save={saveVendorMakerAction.bind(null, storeSlug)}
+      bulkHref={`/admin/${storeSlug}/products/bulk`}
+    />
+  );
 }
 
 /** *Copy my shop* (D445 step 4): where each part of the copy is, from `shop_moves.copy` and the imports' own jobs. */
@@ -210,6 +235,14 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
     customers: `${base}/customers/import`,
     orders: `${base}/orders/history-import`,
     redirects: `${base}/redirects/import`,
+    collections: `${base}/products/import`,
+    pages: `${base}/pages`,
+    articles: `${base}/articles`,
+    menus: `${base}/menus`,
+    countries: `${base}/settings/countries`,
+    shipping: `${base}/settings/shipping`,
+    discounts: `${base}/discounts`,
+    look: `${base}/settings/design/themes`,
   };
   const rows: CopyRow[] = COPY_FEEDS.map((feed) => {
     const f = view.state.feeds[feed];
@@ -222,7 +255,8 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
       href: f.job ? feedJobPage(feed, storeSlug, f.job) : null,
       fileHref: files[feed],
       ready: dry.ready,
-      needLook: dry.needLook,
+      // A page, post or menu that could not be written is counted by the copy itself (it has no import page).
+      needLook: f.refused ?? dry.needLook,
     };
   });
   return (
@@ -231,6 +265,7 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
       moving={copyMoving(view.state)}
       ready={copyReady(view.state)}
       done={copyDone(view.state)}
+      failed={copyFailed(view.state)}
       rows={rows}
       privateHref={`${base}/settings/private`}
       actions={{ start: startCopyAction.bind(null, storeSlug), advance: advanceCopyAction.bind(null, storeSlug), bring: bringItOverAction.bind(null, storeSlug) }}

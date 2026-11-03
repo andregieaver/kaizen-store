@@ -149,15 +149,30 @@ describe("search by words (D443)", () => {
     expect(hit?.snippet.some((p) => p.hit && /^setup$/i.test(p.text))).toBe(true);
   });
 
-  it("finds a reference item by its name, with its code, after the article that explains it", async () => {
+  it("finds a reference item by its name, with its code, at its heading in the generated reference (E4)", async () => {
     const op = await ask("products.get");
     expect(op.results[0]).toMatchObject({ doc: "ref:operation:products.get", item: "operation", kind: "reference", code: "products.get · GET /api/admin/v1/products/{id}" });
-    expect(op.results[0].href).toBe("/docs/developers/overview/introduction#admin-api");
+    expect(op.results[0].href).toBe("/docs/reference/admin-api/products#products-get");
+    expect(op.results[0].section).toEqual({ path: "developers/reference", title: "API reference" });
     const errors = await ask("rate_limited");
     expect(docsOf(errors)).toContain("ref:error:rate_limited");
+    expect(errors.results.find((r) => r.doc === "ref:error:rate_limited")?.href).toBe("/docs/reference/errors#rate-limited");
+    // The written guide and the generated page both answer "scopes".
     const scopes = await ask("scopes");
-    expect(scopes.results[0].doc).toBe("en:developers/overview/authentication");
-    expect(scopes.results[0].href).toBe("/docs/developers/overview/authentication#scopes");
+    expect(docsOf(scopes).slice(0, 3)).toEqual(expect.arrayContaining(["en:developers/overview/authentication", "en:reference/scopes"]));
+    expect(scopes.results.find((r) => r.doc === "en:developers/overview/authentication")?.href).toBe("/docs/developers/overview/authentication#scopes");
+    // The reference's own words that are no item's, such as how to check a webhook's signature.
+    const signature = await ask("check the signature");
+    expect(signature.results.find((r) => r.doc === "en:reference/webhooks")?.href).toMatch(/^\/docs\/reference\/webhooks#signature/);
+  });
+
+  it("lists the generated reference as one section of the developers' track (E4)", async () => {
+    const listed = await ask("", { filters: { ...NO_FILTERS, section: "developers/reference" } });
+    expect(listed.match).toBe("browse");
+    expect(listed.results[0]).toMatchObject({ doc: "en:reference", href: "/docs/reference", kind: "reference" });
+    expect(listed.results.every((r) => r.kind === "reference" && r.track === "developers")).toBe(true);
+    const webhooks = await ask("", { filters: { ...NO_FILTERS, section: "developers/reference", area: ["webhooks"] } });
+    expect(docsOf(webhooks)).toContain("ref:topic:order.paid");
   });
 
   it("finds a title through a typo, and words being typed by their start", async () => {
@@ -325,8 +340,14 @@ describe("the routes (D443)", () => {
     await post({ path: "developers/overview/nowhere", lang: "en" }, headersFrom({ origin: "http://localhost:3000" }));
     await post({ path: "developers/overview/authentication", lang: "nb" }, headersFrom({ origin: "http://localhost:3000" }));
     expect((await post({ path: "developers/overview/authentication", lang: "en" }, headersFrom({ origin: "https://elsewhere.example" }))).status).toBe(403);
+    // A page of the generated reference (E4) is counted as an article is; not in Norwegian, which it is not written in.
+    await post({ path: "reference/webhooks/order-paid", lang: "en" }, headersFrom({ origin: "http://localhost:3000" }));
+    await post({ path: "reference/webhooks/order-paid", lang: "nb" }, headersFrom({ origin: "http://localhost:3000" }));
     const rows = await db().execute<Row>(sql`select path, lang, reads from commerce.docs_reads order by path`);
-    expect(rows).toEqual([{ path: "developers/overview/authentication", lang: "en", reads: 2 }]);
+    expect(rows).toEqual([
+      { path: "developers/overview/authentication", lang: "en", reads: 2 },
+      { path: "reference/webhooks/order-paid", lang: "en", reads: 1 },
+    ]);
   });
 
   it("forgets reads after 90 days and misses unseen for 180", async () => {

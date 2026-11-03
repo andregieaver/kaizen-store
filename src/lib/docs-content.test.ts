@@ -4,6 +4,7 @@ import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { matchPath } from "./admin-map";
+import { docsApiReference } from "./docs-api-reference";
 import {
   compileDocs,
   docLinkLang,
@@ -80,7 +81,8 @@ describe("the repository's docs (D442)", () => {
       operation: await operationCheck(),
       // The MCP tool catalogue (unit A, D438) is checked the same way once it ships: `tool: (name) => …`.
     };
-    const { index, problems } = compileDocs(repositorySources(), context);
+    // With the generated reference (E4) beside the articles, so a link to one of its pages and headings is checked too.
+    const { index, problems } = compileDocs(repositorySources(), context, docsApiReference().reference);
     expect(problems.map((p) => `${p.file}${p.line ? `:${p.line}` : ""} ${p.message}`)).toEqual([]);
     // The first pages, which the browser tests read.
     expect(docsPaths(index, "en")).toEqual(expect.arrayContaining([

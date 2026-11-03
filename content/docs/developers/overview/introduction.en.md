@@ -25,7 +25,8 @@ sources: [D355, D362, D354, D96, D353, D363, D169]
 | WordPress plugin | Installed in WordPress | Showing an owner's products on a WordPress site | Available |
 
 Every address is on Kaizena Flow's own site (`https://kaizenaflow.com`). Money is always whole minor units (cents, øre) with the
-currency's ISO 4217 code beside it.
+currency's ISO 4217 code beside it. Every operation, route, webhook topic and MCP tool is in the [API reference](/docs/reference), made
+from the same contracts the APIs check their calls against.
 
 ## Admin API
 

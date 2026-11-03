@@ -5,7 +5,14 @@ import { readShopifyOrders } from "./order-history";
 import { detectFormat } from "./product-csv-shopify";
 import { readRedirectFile } from "./redirect-csv";
 import {
+  COPY_FEEDS,
+  vendorLines,
   EMPTY_COPY,
+  collectionsFile,
+  directItems,
+  menuInputOf,
+  menuLinkOf,
+  slugOf,
   copyDone,
   copyMoving,
   copyReady,
@@ -64,6 +71,22 @@ describe("the product file", () => {
       ["https://cdn.shopify.com/c.jpg", "3"],
     ]);
     expect(at(3, "Variant SKU")).toBe("");
+  });
+
+  it("gives a variant without a SKU one from its handle and options, unique in the file, as the import needs", () => {
+    const tree = readBulkLines(
+      lines(
+        { id: "gid://shopify/Product/7", handle: "Bag", title: "Bag", status: "ACTIVE", options: [{ name: "Title", position: 1 }] },
+        { id: "gid://shopify/ProductVariant/71", sku: "", price: "10.00", position: 1, selectedOptions: [{ name: "Title", value: "Default Title" }], __parentId: "gid://shopify/Product/7" },
+        { id: "gid://shopify/Product/8", handle: "scarf", title: "Scarf", status: "ACTIVE", options: [{ name: "Colour", position: 1 }] },
+        { id: "gid://shopify/ProductVariant/81", sku: null, price: "10.00", position: 1, selectedOptions: [{ name: "Colour", value: "Rød" }], __parentId: "gid://shopify/Product/8" },
+        { id: "gid://shopify/ProductVariant/82", sku: "bag", price: "10.00", position: 2, selectedOptions: [{ name: "Colour", value: "Blue" }], __parentId: "gid://shopify/Product/8" },
+      ),
+    );
+    const f = productsFile(tree);
+    const parsed = parseCsv(new TextEncoder().encode(f.csv)).rows;
+    const skus = parsed.slice(1).map((r) => r[parsed[0].indexOf("Variant SKU")]);
+    expect([skus, f.madeSkus]).toEqual([["bag-2", "scarf-rod", "bag"], 2]);
   });
 });
 
@@ -135,11 +158,14 @@ describe("the copy's state", () => {
   const at = (feeds: Partial<Record<keyof CopyState["feeds"], CopyState["feeds"]["products"]>>, apply = false): CopyState => ({ startedAt: "2026-11-03T18:00:00.000Z", apply, feeds: { ...EMPTY_COPY.feeds, ...feeds } });
 
   it("reads back only what it wrote: an unknown stage or a foreign id is dropped", () => {
-    expect(copyStateOf({ startedAt: "2026-11-03T18:00:00.000Z", apply: true, lease: "x", feeds: { products: { stage: "reading", operation: "gid://shopify/BulkOperation/1", job: "nope" }, orders: { stage: "boom" } } })).toEqual({
+    expect(copyStateOf({ startedAt: "2026-11-03T18:00:00.000Z", apply: false, lease: "x", feeds: { products: { stage: "reading", operation: "gid://shopify/BulkOperation/1", job: "nope", path: "../x" }, orders: { stage: "boom" } } })).toEqual({
       startedAt: "2026-11-03T18:00:00.000Z",
-      apply: true,
+      apply: false,
       feeds: { ...EMPTY_COPY.feeds, products: { stage: "reading", operation: "gid://shopify/BulkOperation/1" } },
     });
+    // A copy brought over before a part was added does not read it on its own: Start again brings it.
+    const old = copyStateOf({ startedAt: "2026-11-03T18:00:00.000Z", apply: true, feeds: { products: { stage: "done" }, customers: { stage: "done" }, orders: { stage: "done" }, redirects: { stage: "done" } } });
+    expect([old.feeds.pages.stage, old.feeds.collections.stage, nextToRead(old)]).toEqual(["empty", "empty", null]);
     expect(copyStateOf("garbage")).toEqual(EMPTY_COPY);
   });
 
@@ -147,18 +173,118 @@ describe("the copy's state", () => {
     expect(nextToRead(EMPTY_COPY)).toBeNull();
     expect(nextToRead(at({}))).toBe("products");
     expect(nextToRead(at({ products: { stage: "reading" } }))).toBeNull();
-    expect(nextToRead(at({ products: { stage: "checked" } }))).toBe("customers");
+    expect(nextToRead(at({ products: { stage: "checked" } }))).toBe("collections");
+    const allButMenus = at(Object.fromEntries(["products", "collections", "customers", "orders", "pages", "articles", "redirects"].map((f) => [f, { stage: "checked" as const }])));
+    expect(nextToRead(allButMenus)).toBe("menus");
   });
 
   it("is ready when every feed is checked or had nothing, and applies in order, customers before orders", () => {
-    const checked = at({ products: { stage: "checked" }, customers: { stage: "checked" }, orders: { stage: "checked" }, redirects: { stage: "empty" } });
+    const checked = at({ products: { stage: "checked" }, collections: { stage: "checked" }, customers: { stage: "checked" }, orders: { stage: "checked" }, pages: { stage: "empty" }, articles: { stage: "empty" }, menus: { stage: "empty" }, redirects: { stage: "empty" }, countries: { stage: "empty" }, shipping: { stage: "empty" }, discounts: { stage: "empty" }, look: { stage: "empty" } });
     expect([copyReady(checked), copyMoving(checked), copyDone(checked)]).toEqual([true, false, false]);
     expect(nextToApply(checked)).toBeNull();
     const applying = { ...checked, apply: true };
     expect([copyReady(applying), nextToApply(applying), copyMoving(applying)]).toEqual([false, "products", true]);
-    expect(nextToApply(at({ products: { stage: "applying" }, customers: { stage: "checked" } }, true))).toBeNull();
-    expect(nextToApply(at({ products: { stage: "done" }, customers: { stage: "failed" }, orders: { stage: "checked" } }, true))).toBe("orders");
-    expect(copyDone(at({ products: { stage: "done" }, customers: { stage: "done" }, orders: { stage: "failed" }, redirects: { stage: "empty" } }, true))).toBe(true);
-    expect(copyReady(at({ products: { stage: "empty" }, customers: { stage: "empty" }, orders: { stage: "empty" }, redirects: { stage: "empty" } }))).toBe(false);
+    expect(nextToApply(at({ countries: { stage: "done" }, shipping: { stage: "empty" }, products: { stage: "applying" }, customers: { stage: "checked" } }, true))).toBeNull();
+    // The countries come first: a price, a rate and a code are per country.
+    expect(nextToApply(at({ countries: { stage: "checked" }, products: { stage: "checked" } }, true))).toBe("countries");
+    expect(nextToApply(at({ countries: { stage: "empty" }, shipping: { stage: "done" }, products: { stage: "done" }, collections: { stage: "empty" }, customers: { stage: "failed" }, orders: { stage: "checked" } }, true))).toBe("orders");
+    const settled = (stage: "done" | "empty") => Object.fromEntries(COPY_FEEDS.map((f) => [f, { stage }]));
+    expect(copyDone(at({ ...settled("done"), orders: { stage: "failed" } }, true))).toBe(true);
+    expect(copyReady(at(settled("empty")))).toBe(false);
+  });
+});
+
+describe("collections, pages, blog posts and menus", () => {
+  it("writes the collections as categories in Kaizena Flow's own product file, a product in each of its collections", () => {
+    const tree = readBulkLines(
+      lines(
+        { id: "gid://shopify/Collection/1", handle: "hats", title: "Hats / Caps" },
+        { handle: "wool-hat", __parentId: "gid://shopify/Collection/1" },
+        { id: "gid://shopify/Collection/2", handle: "sale", title: "Sale" },
+        { handle: "wool-hat", __parentId: "gid://shopify/Collection/2" },
+        { handle: "scarf", __parentId: "gid://shopify/Collection/2" },
+        { id: "gid://shopify/Collection/3", handle: "empty", title: "Empty" },
+      ),
+    );
+    const f = collectionsFile(tree);
+    expect(parseCsv(new TextEncoder().encode(f.csv)).rows).toEqual([
+      ["handle", "sku", "variant_id", "categories"],
+      ["wool-hat", "", "", "Hats - Caps | Sale"],
+      ["scarf", "", "", "Sale"],
+    ]);
+    expect(detectFormat(["handle", "sku", "variant_id", "categories"])).toBe("kaizen");
+    expect(f.collections).toBe(3);
+    expect(collectionsFile(readBulkLines(lines({ id: "gid://shopify/Collection/3", handle: "empty", title: "Empty" }))).collections).toBe(0);
+  });
+
+  it("reads pages and posts with an address here, their blog and author", () => {
+    const items = directItems(
+      readBulkLines(
+        lines(
+          { id: "gid://shopify/Page/1", handle: "Om-Oss", title: "Om oss", body: "<p>Hei</p>", isPublished: true },
+          { id: "gid://shopify/Article/2", handle: "vår-nyhet", title: "", body: "", isPublished: false, author: { name: "Kari" }, blog: { handle: "news", title: "Nyheter" } },
+        ),
+      ),
+    );
+    expect(items).toEqual([
+      { handle: "om-oss", title: "Om oss", body: "<p>Hei</p>", published: true, blog: null, author: "" },
+      { handle: "var-nyhet", title: "vår-nyhet", body: "", published: false, blog: { handle: "news", title: "Nyheter" }, author: "Kari" },
+    ]);
+    expect(slugOf("---")).toBe("page");
+  });
+
+  it("links a menu item to the same thing here, and keeps three levels", () => {
+    expect([
+      menuLinkOf("FRONTPAGE", "/"),
+      menuLinkOf("COLLECTION", "/collections/hats"),
+      menuLinkOf("COLLECTION", "/collections/all"),
+      menuLinkOf("PRODUCT", "https://myshop.com/products/Wool-Hat"),
+      menuLinkOf("PAGE", "/pages/about-us"),
+      menuLinkOf("BLOG", "/blogs/news"),
+      menuLinkOf("ARTICLE", "/blogs/news/spring"),
+      menuLinkOf("HTTP", "https://instagram.com/myshop"),
+      menuLinkOf("SEARCH", "/search"),
+    ]).toEqual([
+      { kind: "home" },
+      { kind: "category", slug: "hats" },
+      { kind: "products" },
+      { kind: "product", handle: "wool-hat" },
+      { kind: "page", slug: "about-us" },
+      { kind: "blog" },
+      { kind: "article", slug: "spring" },
+      { kind: "url", url: "https://instagram.com/myshop" },
+      { kind: "url", url: "/search" },
+    ]);
+    const menu = menuInputOf(
+      { handle: "main-menu", title: "Main menu", items: [{ title: "Shop", type: "CATALOG", url: "/collections/all", items: [{ title: "Hats", type: "COLLECTION", url: "/collections/hats", items: [{ title: "Wool", type: "PRODUCT", url: "/products/wool-hat", items: [{ title: "Too deep", type: "HTTP", url: "/x" }] }] }] }, { title: "", type: "PAGE", url: "/pages/x" }] },
+      "nb-NO",
+    );
+    expect(menu).toEqual({
+      name: "Main menu",
+      items: [
+        { label: { "nb-NO": "Shop" }, link: { kind: "products" }, depth: 0 },
+        { label: { "nb-NO": "Hats" }, link: { kind: "category", slug: "hats" }, depth: 1 },
+        { label: { "nb-NO": "Wool" }, link: { kind: "product", handle: "wool-hat" }, depth: 2 },
+      ],
+    });
+  });
+});
+
+describe("the products' vendors", () => {
+  it("keeps each product's vendor, handle and whether it was on sale, gift cards left out", () => {
+    const tree = readBulkLines(
+      [
+        { id: "gid://shopify/Product/1", handle: "hat", vendor: " Nordic  Wool ", status: "ACTIVE", isGiftCard: false },
+        { id: "gid://shopify/Product/2", handle: "scarf", vendor: null, status: "DRAFT", isGiftCard: false },
+        { id: "gid://shopify/Product/3", handle: "card", vendor: "Shop", status: "ACTIVE", isGiftCard: true },
+        { sku: "x", __parentId: "gid://shopify/Product/1" },
+      ]
+        .map((o) => JSON.stringify(o))
+        .join("\n"),
+    );
+    expect(vendorLines(tree)).toEqual([
+      { vendor: "Nordic Wool", handle: "hat", active: true },
+      { vendor: "", handle: "scarf", active: false },
+    ]);
   });
 });

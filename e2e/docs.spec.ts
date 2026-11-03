@@ -21,7 +21,7 @@ test("the front page offers the two tracks, in their own frame without the site'
   const top = page.getByRole("navigation", { name: "Docs" });
   await expect(top.getByRole("link", { name: "Store owners" })).toHaveAttribute("href", "/docs/owners");
   await expect(top.getByRole("link", { name: "Developers" })).toHaveAttribute("href", "/docs/developers");
-  await expect(top.getByRole("link", { name: "API reference" })).toHaveAttribute("href", "/docs/developers");
+  await expect(top.getByRole("link", { name: "API reference" })).toHaveAttribute("href", "/docs/reference");
   await expect(top.getByRole("link", { name: "Changelog" })).toHaveAttribute("href", "/docs/changelog");
   await expect(top.getByRole("link", { name: "Status" })).toHaveAttribute("href", "/status");
   // The search box opens the search (D443); before the page's script it is a link to the search page.
@@ -321,6 +321,140 @@ test.describe("without JavaScript", () => {
   });
 });
 
+// ---------------------------------------------------------------------------------------------------------------------
+// The generated reference (E4): made from unit A's contracts when the docs are built, a docs page like the written ones
+// ---------------------------------------------------------------------------------------------------------------------
+
+const RESOURCE = "/docs/reference/admin-api/products";
+
+test("the reference's front page lists every part, under the top bar's API reference, with the changelog", async ({ page }) => {
+  const response = await page.goto("/docs/reference");
+  expect(response?.status()).toBe(200);
+  await expect(page).toHaveTitle("API reference · Kaizena Flow Docs");
+  await expect(page.getByRole("navigation", { name: "Docs" }).getByRole("link", { name: "API reference" })).toHaveAttribute("aria-current", "true");
+  const main = page.getByRole("main");
+  for (const [name, href] of [
+    ["Admin API", "/docs/reference/admin-api"],
+    ["Storefront API", "/docs/reference/storefront-api"],
+    ["Webhooks", "/docs/reference/webhooks"],
+    ["MCP", "/docs/reference/mcp"],
+    ["Scopes", "/docs/reference/scopes"],
+    ["Errors", "/docs/reference/errors"],
+    ["Rate limits", "/docs/reference/rate-limits"],
+    ["Changelog", "/docs/changelog"],
+  ]) {
+    await expect(main.getByRole("link", { name, exact: true }).first()).toHaveAttribute("href", href);
+  }
+  // In the developers' tree, and listed as a section is: by topic, in the four orders.
+  const tree = page.getByRole("navigation", { name: "Developers: pages" });
+  await expect(tree.getByRole("link", { name: "API reference" })).toHaveAttribute("aria-current", "page");
+  await expect(tree.getByRole("link", { name: "Webhooks" })).toHaveAttribute("href", "/docs/reference/webhooks");
+  const bar = page.getByRole("navigation", { name: "Filter and sort these pages" });
+  await expect(bar.getByRole("link", { name: /^Webhooks\s*\d+$/ })).toHaveAttribute("href", "/docs/search?area=webhooks&lang=en&section=developers%2Freference");
+});
+
+test("a resource's page lists its operations first, then each with its address, scope, schemas, errors and examples", async ({ page }) => {
+  const response = await page.goto(RESOURCE);
+  expect(response?.status()).toBe(200);
+  await expect(page).toHaveTitle("Products · Admin API · Kaizena Flow Docs");
+  await expect(page.getByRole("heading", { level: 1, name: "Products" })).toBeVisible();
+  const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(crumbs.getByRole("link", { name: "Developers" })).toHaveAttribute("href", "/docs/developers");
+  await expect(crumbs.getByRole("link", { name: "API reference" })).toHaveAttribute("href", "/docs/reference");
+  await expect(crumbs.getByRole("link", { name: "Admin API" })).toHaveAttribute("href", "/docs/reference/admin-api");
+  await expect(page.getByRole("navigation", { name: "Developers: pages" }).getByRole("link", { name: "Products" })).toHaveAttribute("aria-current", "page");
+
+  // The list first: each operation a link to its part of the page.
+  const list = page.getByRole("main").locator("table").first();
+  await expect(list.getByRole("columnheader")).toHaveText(["Operation", "Method and path", "Scope"]);
+  await expect(list.getByRole("link", { name: "Create a draft product" })).toHaveAttribute("href", "#products-create");
+  await expect(list.getByRole("link", { name: "products:write" }).first()).toHaveAttribute("href", "/docs/reference/scopes#products-write");
+  await expect(page.getByRole("navigation", { name: "On this page" }).getByRole("link", { name: "Create a draft product" })).toHaveAttribute("href", "#products-create");
+
+  // One operation: its address, scope, body as a table, answer, errors and its request in curl, JavaScript and Python.
+  await page.getByRole("link", { name: "Create a draft product" }).first().click();
+  await expect(page).toHaveURL(new RegExp(`${RESOURCE}#products-create$`));
+  await expect(page.locator("h2#products-create")).toHaveText("Create a draft product");
+  await expect(page.getByText("POST https://kaizenaflow.com/api/admin/v1/products", { exact: true })).toBeVisible();
+  await expect(page.locator("h3#products-create-body")).toHaveText("Body");
+  const body = page.locator("h3#products-create-body ~ div table").first();
+  await expect(body.getByRole("row", { name: /title string, 1 to 200 characters yes/ })).toBeVisible();
+  await expect(page.locator("h3#products-create-errors")).toBeVisible();
+  await expect(page.getByRole("link", { name: "conflict" }).first()).toHaveAttribute("href", "/docs/reference/errors#conflict");
+  await expect(page.locator("h3#products-create-example")).toHaveText("Example request");
+  const code = (lang: string) => page.locator(`h3#products-create-example ~ pre[data-lang="${lang}"]`).first();
+  await expect(code("shell")).toContainText(`curl -X POST 'https://kaizenaflow.com/api/admin/v1/products'`);
+  await expect(code("shell")).toContainText(`-H "Authorization: Bearer $KAIZENA_TOKEN"`);
+  await expect(code("shell")).toContainText(`-d '{"title":"Linen shirt"}'`);
+  await expect(code("javascript")).toContainText(`await fetch("https://kaizenaflow.com/api/admin/v1/products", {`);
+  await expect(code("python")).toContainText("urllib.request.Request(");
+  await expect(page.getByText("Made from the API contract, version")).toBeVisible();
+  await expect(page.getByRole("link", { name: "This page as Markdown" })).toHaveAttribute("href", `${RESOURCE}.md`);
+  // The pager goes on through the reference.
+  await expect(page.getByRole("navigation", { name: "Previous and next page" }).getByRole("link", { name: /Next\s*Inventory/ })).toHaveAttribute("href", "/docs/reference/admin-api/inventory");
+});
+
+test("each page of the reference answers as Markdown, and is in the sitemap, llms.txt and llms-full.txt", async ({ request }) => {
+  const md = await request.get(`${RESOURCE}.md`);
+  expect(md.status()).toBe(200);
+  expect(md.headers()["content-type"]).toContain("text/markdown");
+  const text = await md.text();
+  expect(text.startsWith("# Products\n\n> ")).toBe(true);
+  expect(text).toContain("## Create a draft product {#products-create}");
+  expect(text).toContain("](http://localhost:3000/docs/reference/scopes#products-write)");
+  expect(text).toContain("```python\nimport json");
+  expect((await request.get("/docs/reference.md")).status()).toBe(200);
+  expect(await (await request.get("/docs/llms.txt")).text()).toContain(`- [Products](http://localhost:3000${RESOURCE}.md): `);
+  expect(await (await request.get("/docs/llms-full.txt")).text()).toContain("## order.paid");
+  expect(await (await request.get("/docs/sitemap.xml")).text()).toContain(`<loc>http://localhost:3000${RESOURCE}</loc>`);
+  // English only, as the developers' track.
+  expect((await request.get(`/no${RESOURCE}`)).status()).toBe(404);
+});
+
+test("a webhook topic's page has its payload and an example; the webhooks' page the signature checks", async ({ page }) => {
+  const response = await page.goto("/docs/reference/webhooks/order-paid");
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1, name: "order.paid" })).toBeVisible();
+  await expect(page.locator("h2#payload")).toHaveText("Payload");
+  await expect(page.getByRole("row", { name: /data\.order\.total number/ })).toBeVisible();
+  const example = page.locator('pre[data-lang="json"]').first();
+  await expect(example).toContainText('"topic": "order.paid"');
+  await expect(example).toContainText('"status": "paid"');
+  await page.getByRole("link", { name: "check the signature" }).click();
+  await expect(page).toHaveURL(/\/docs\/reference\/webhooks#signature$/);
+  for (const [id, lang, words] of [
+    ["signature-javascript", "javascript", "export function verifyKaizenaWebhook(body, timestamp, signatures, secret)"],
+    ["signature-python", "python", "def verify_kaizena_webhook(body: bytes"],
+    ["signature-php", "php", "function verify_kaizena_webhook(string $body"],
+  ]) {
+    await expect(page.locator(`h3#${id}`)).toBeVisible();
+    await expect(page.locator(`h3#${id} ~ pre[data-lang="${lang}"]`).first()).toContainText(words);
+  }
+});
+
+test("the MCP catalogue is listed by area, each tool with its gate, permission and inputs", async ({ page }) => {
+  const response = await page.goto("/docs/reference/mcp");
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1, name: "MCP" })).toBeVisible();
+  const areas = page.getByRole("main").locator("table").first();
+  await expect(areas.getByRole("columnheader")).toHaveText(["Area", "Tools", "Read-only", "With a gate"]);
+  await areas.getByRole("link", { name: "Products", exact: true }).click();
+  await expect(page).toHaveURL(/\/docs\/reference\/mcp\/products$/);
+  const tools = page.getByRole("main").locator("table").first();
+  await expect(tools.getByRole("columnheader")).toHaveText(["Tool", "What it does", "Gate", "Permission"]);
+  await expect(tools.getByRole("row", { name: /update_product Update product public products:write/ })).toBeVisible();
+  await expect(page.locator("h2#update-product")).toHaveText("Update product");
+  await expect(page.locator("h3#update-product-inputs")).toHaveText("Inputs");
+  await expect(page.locator("h3#update-product-inputs ~ div table").first().getByRole("row", { name: /store string yes/ })).toBeVisible();
+});
+
+test("a search finds an operation and leads to its heading in the reference", async ({ page }) => {
+  await page.goto("/docs/search?q=products.get");
+  const hit = page.locator("a[data-docs-hit]").first();
+  await expect(hit).toHaveAttribute("href", "/docs/reference/admin-api/products#products-get");
+  await expect(hit).toContainText("Admin API operation");
+});
+
 for (const scheme of ["light", "dark"] as const) {
   test(`has no serious or critical accessibility findings, ${scheme}`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
@@ -336,5 +470,17 @@ for (const scheme of ["light", "dark"] as const) {
     await page.getByRole("dialog", { name: "Search the docs" }).getByRole("searchbox").fill("store");
     await expect(page.locator("dialog a[data-docs-hit]").first()).toBeVisible();
     expect(describeFindings(await violationsOn(page)), `the dialog (${scheme})`).toEqual([]);
+  });
+
+  // The generated reference (E4): its front page, a resource, the webhooks' page, a topic, the MCP catalogue and an area, the errors. Long
+  // pages of tables, so axe takes longer over them than over an article.
+  test(`the generated reference has no serious or critical accessibility findings, ${scheme}`, async ({ page }) => {
+    test.slow();
+    await page.emulateMedia({ colorScheme: scheme });
+    const paths = ["/docs/reference", RESOURCE, "/docs/reference/webhooks", "/docs/reference/webhooks/order-paid", "/docs/reference/mcp", "/docs/reference/mcp/products", "/docs/reference/errors"];
+    for (const path of paths) {
+      await page.goto(path);
+      expect(describeFindings(await violationsOn(page)), `${path} (${scheme})`).toEqual([]);
+    }
   });
 }

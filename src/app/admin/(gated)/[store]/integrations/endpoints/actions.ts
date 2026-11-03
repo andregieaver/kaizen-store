@@ -98,5 +98,5 @@ export async function resendDeliveryAction(storeSlug: string, deliveryId: string
   const w = wordsOf(owner);
   const outcome = await resendDelivery(owner, deliveryId);
   if (outcome === "queued") refresh();
-  return outcome === "queued" ? { ok: true, message: w.resent } : { ok: false, message: outcome === "off" ? w.resendOff : w.gone };
+  return outcome === "queued" ? { ok: true, message: w.resent } : { ok: false, message: outcome === "off" ? w.resendOff : outcome === "erased" ? w.resendErased : w.gone };
 }

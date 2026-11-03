@@ -5,7 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { docPage } from "@/lib/docs-content";
+import { docsPageAt } from "@/lib/docs-content";
 import { docsUrl } from "@/lib/docs-host";
 import { DOCS_SEARCH_SUB, docsSearchQueryString, NO_FILTERS } from "@/lib/docs-search";
 import { requirePlatformAdmin } from "@/server/auth";
@@ -36,7 +36,7 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
   const withComment = query.sentence === "1";
   const [tally, rows, misses] = await Promise.all([tallyDocsFeedback(), listDocsFeedback({ path, helpful, withComment }), listDocsMisses()]);
   const index = docsIndex();
-  const title = (p: string) => docPage(index, p, "en")?.title ?? p;
+  const title = (p: string) => docsPageAt(index, p, "en")?.title ?? p;
   const total = tally.reduce((sum, t) => sum + t.yes + t.no, 0);
 
   return (

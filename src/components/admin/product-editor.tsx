@@ -53,7 +53,6 @@ import {
   type Delivery,
   type AppointmentInput,
   type SeasonInput,
-  type OperatorChoice,
   type ProductInput,
   type VariantInput,
 } from "@/lib/product-input";
@@ -79,6 +78,7 @@ import { SoldByMeasureField, ContentFields, type ContentContext } from "@/compon
 import { BundleSection, NEW_BUNDLE } from "@/components/admin/bundle-section";
 import { PriceBreaksSection } from "@/components/admin/price-breaks-section";
 import { VatCategoryField } from "@/components/admin/vat-category-field";
+import { OperatorPicker } from "@/components/admin/operator-picker";
 import { useAdminLang, useAdminText } from "@/components/admin/admin-text";
 import { MakePictureButton, PictureMakerProvider, type PictureMaker } from "@/components/admin/picture-maker";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
@@ -3523,87 +3523,6 @@ function SafetySection({
         />
       </div>
     </section>
-  );
-}
-
-function OperatorPicker({
-  legend,
-  note,
-  choice,
-  operators,
-  countries,
-  onChange,
-}: {
-  legend: string;
-  note?: string;
-  choice: OperatorChoice;
-  operators: Operator[];
-  countries: CountryOption[];
-  onChange: (choice: OperatorChoice) => void;
-}) {
-  const w = useAdminText("product").safety;
-  const value = choice === null ? "" : "id" in choice ? choice.id : "new";
-  const blank = { name: "", postalAddress: "", electronicAddress: "", country: "" };
-  const fresh = choice && "new" in choice ? choice.new : null;
-  const setNew = (change: Partial<typeof blank>) => onChange({ new: { ...(fresh ?? blank), ...change } });
-
-  return (
-    <fieldset className="flex flex-col gap-3">
-      <legend className="mb-1 text-sm font-medium">{legend}</legend>
-      {note && <p className="text-xs text-muted">{note}</p>}
-      <select
-        value={value}
-        onChange={(e) =>
-          onChange(e.target.value === "" ? null : e.target.value === "new" ? { new: blank } : { id: e.target.value })
-        }
-        aria-label={legend}
-        className={input}
-      >
-        <option value="">{w.none}</option>
-        {operators.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.name} ({o.country})
-          </option>
-        ))}
-        <option value="new">{w.addCompany}</option>
-      </select>
-      {fresh && (
-        <div className="flex flex-col gap-3 rounded-md border border-line p-3">
-          <label className={label}>
-            {w.companyName}
-            <input value={fresh.name} onChange={(e) => setNew({ name: e.target.value })} className={input} />
-          </label>
-          <label className={label}>
-            {w.postalAddress}
-            <textarea
-              value={fresh.postalAddress}
-              onChange={(e) => setNew({ postalAddress: e.target.value })}
-              rows={2}
-              className={`${input} py-2`}
-            />
-          </label>
-          <label className={label}>
-            {w.electronic}
-            <input
-              value={fresh.electronicAddress}
-              onChange={(e) => setNew({ electronicAddress: e.target.value })}
-              className={input}
-            />
-          </label>
-          <label className={label}>
-            {w.country}
-            <select value={fresh.country} onChange={(e) => setNew({ country: e.target.value })} className={input}>
-              <option value="">{w.choose}</option>
-              {countries.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-    </fieldset>
   );
 }
 

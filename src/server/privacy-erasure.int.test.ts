@@ -564,3 +564,49 @@ describe("the customer and order files an owner made (wave 2, D165, `storage:exp
     expect(storage.files.has(`exports/${mine.storeId}/o-new/part-1.csv`)).toBe(false);
   });
 });
+
+describe("what the owner's endpoints were sent about the person (D440 review)", () => {
+  it("loses its payload in the erasure's transaction, waits no more, is never sent again, and only `customer.erased` goes out", async () => {
+    const subject = await buildSubject(store, "hooks", { sentinel: "HOOK-9" });
+    const [endpoint] = await db().execute<Row>(sql`
+      insert into commerce.webhook_endpoints (store_id, name, url_encrypted, hint, secret_encrypted, topics)
+      values (${store.storeId}::uuid, 'Hooks', 'x', 'example.com', 'x', '{customer.updated,order.paid,customer.erased}'::text[]) returning id
+    `);
+    const deliver = async (event: string, subjectId: string, status: string, payload: unknown) => {
+      const [row] = await db().execute<Row>(sql`
+        insert into commerce.integration_deliveries (store_id, provider, event, subject_id, endpoint_id, status, payload)
+        values (${store.storeId}::uuid, 'webhook', ${event}, ${subjectId}::uuid, ${String(endpoint.id)}::uuid, ${status}, ${payload === null ? null : JSON.stringify(payload)}::jsonb)
+        returning id
+      `);
+      return String(row.id);
+    };
+    const sent = await deliver("customer.updated", subject.customerId!, "delivered", { data: { customer: { email: subject.email } } });
+    const failed = await deliver("order.paid", subject.ids.signedInOrder.orderId, "failed", { data: { order: { email: subject.email } } });
+    const waiting = await deliver("order.paid", subject.ids.guestOrder.orderId, "pending", null);
+    const [stranger] = await db().execute<Row>(sql`select id from commerce.orders where store_id = ${store.storeId}::uuid and id <> all(${`{${subject.ids.orders.join(",")}}`}::uuid[]) limit 1`);
+    const theirs = stranger ? await deliver("order.paid", String(stranger.id), "delivered", { data: { order: { email: "someone@example.com" } } }) : null;
+
+    const erased = await eraseSubject(store.storeId, { customerId: subject.customerId }, { channel: "staff", accountId: store.ownerId });
+    expect(erased).toMatchObject({ ok: true, outcome: "erased" });
+    const rows = await db().execute<Row>(sql`
+      select id, event, status, payload, erased_at, last_error from commerce.integration_deliveries where endpoint_id = ${String(endpoint.id)}::uuid
+    `);
+    const byId = new Map(rows.map((r) => [String(r.id), r]));
+    for (const id of [sent, failed, waiting]) {
+      expect(byId.get(id)!.payload, id).toBeNull();
+      expect(byId.get(id)!.erased_at, id).not.toBeNull();
+    }
+    expect(byId.get(sent)!.status).toBe("delivered");
+    // The one that waited is not sent, and not tried again.
+    expect(byId.get(waiting)).toMatchObject({ status: "failed", last_error: "Not sent: the person it was about was erased." });
+    expect(JSON.stringify(rows)).not.toContain(subject.email);
+    // Another person's delivery is left as it was; the erasure's own topic is queued after, carrying ids only.
+    if (theirs) expect(byId.get(theirs)).toMatchObject({ status: "delivered", erased_at: null });
+    expect(rows.filter((r) => r.event === "customer.erased")).toEqual([expect.objectContaining({ status: "pending", erased_at: null, payload: null })]);
+    // Never sent again, by the owner or a token.
+    const { resendDelivery } = await import("./webhook-endpoints");
+    expect(await resendDelivery(await fx.ownerOf(store), sent)).toBe("erased");
+    expect(await resendDelivery(await fx.ownerOf(store), failed)).toBe("erased");
+    await db().execute(sql`delete from commerce.webhook_endpoints where id = ${String(endpoint.id)}::uuid`);
+  }, 120_000);
+});

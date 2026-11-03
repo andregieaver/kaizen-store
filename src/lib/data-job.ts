@@ -218,6 +218,10 @@ export const FINDINGS = {
     sentence: (p) => `${prod(p)} is an appointment, stay or rental, which needs its staff or rooms: create it in the editor. An existing one can be updated here in its plain columns.`,
   },
   "status.unknown": { severity: "error", sentence: (p) => `The status of ${prod(p)} is not draft, active or archived.` },
+  "product.on_site": {
+    severity: "error",
+    sentence: (p) => `${prod(p)} would be published, archived, brought back or changed on the site, which this import may not do. It was left as it is.`,
+  },
   "status.draft_because_unpublished": { severity: "warning", sentence: (p) => `${prod(p)} was not published in the file, so it is saved as a draft.` },
   "product.drafted": {
     severity: "warning",
@@ -481,7 +485,8 @@ export function summariseCounts(items: readonly ItemSummary[]): JobCounts {
 }
 
 /** What a finished dry run tells the member before they apply: what would be created, updated, left alone, and what has problems. */
-export type DryRunCounts = { toCreate: number; toUpdate: number; unchanged: number; withProblems: number };
+/** `onShop`: products the apply would publish, archive, bring back or change on the site (D440), which an import of drafts only refuses. */
+export type DryRunCounts = { toCreate: number; toUpdate: number; unchanged: number; withProblems: number; onShop: number };
 
 /** The step an apply continues from: the product index in the plan (items are written in the plan's order, one per product). */
 export type ImportCursor = { next: number };

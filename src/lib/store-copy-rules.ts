@@ -395,6 +395,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   site_stagings: never("A set of changes made ready together (D358) names the store's own pages, menus and themes; a copy starts with none."),
   site_staging_pages: never("The pages of a set of changes made ready together (D358); a copy starts with none."),
   api_tokens: never("Admin API tokens are secrets and act as one person of the original (D355)."),
+  api_uploads: never("A picture an Admin API caller was sending to the original (D440)."),
   oauth_store_cutoffs: never("An owner of the original cut an app off from it for one person (D439): the copy has no connection to cut."),
   webhook_endpoints: never("An owner's endpoint addresses and signing secrets are secrets (D354)."),
   store_members: never("Only the person copying owns the new store."),

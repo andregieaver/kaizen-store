@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -22,6 +22,7 @@ vi.mock("./log", () => ({ log: (_level: string, event: string, fields: Record<st
 
 const integrations = await import("./integrations");
 const { markSent } = await import("./order-admin");
+const { setArchived } = await import("./products");
 const { newStore, pay, place, variantId } = await import("./inventory-test-support");
 
 /**
@@ -43,6 +44,19 @@ beforeAll(async () => {
   const sent = await markSent(store.storeId, order.orderId, { carrier: "posten", trackingNumber: "TOPIC1", trackingUrl: null }, store.accountId, null, { lines: null });
   if (!sent.ok) throw new Error(sent.reason);
   subjects.order = order.orderId;
+  // D440: the parcel (fulfilment.*), a refund of the order (refund.created) and a draft order (quote.requested, draft.sent).
+  subjects.fulfilment = sent.shipment.id;
+  const [refund] = await db().execute<Row>(sql`
+    insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, kind)
+    select p.store_id, p.id, 1000, 'Goodwill', ${`re_topics_${Date.now()}`}, 'succeeded', 'money' from commerce.payments p
+    where p.store_id = ${store.storeId}::uuid and p.order_id = ${order.orderId}::uuid and p.status = 'captured' limit 1
+    returning id
+  `);
+  subjects.refund = String(refund.id);
+  const { createDraft } = await import("./draft-orders");
+  const draft = await createDraft(store.storeId, { accountId: store.accountId, kind: "staff" });
+  if (!draft.ok) throw new Error(draft.problem);
+  subjects.draft = draft.draft.id;
 
   const [customer] = await db().execute<Row>(sql`
     insert into commerce.customers (store_id, email, name) values (${store.storeId}::uuid, ${`topics-${Date.now()}@example.com`}, 'Kari') returning id
@@ -96,6 +110,25 @@ beforeAll(async () => {
 
   // Support waiting is about no one: only how many wait now.
   subjects.support = null;
+
+  // D440: a variant's stock (inventory.updated) is about the variant.
+  subjects.inventory = variant;
+  // An erased customer is only an id (the account is gone); a gift card issued by hand; a buyer's review of the order's product.
+  subjects.erasure = "00000000-0000-4000-8000-0000000000ee";
+  const { issueGiftCard } = await import("./gift-cards-admin");
+  const { getStore } = await import("./stores");
+  const issued = await issueGiftCard((await getStore(store.slug))!, store.accountId, {
+    currency: "NOK",
+    amountMinor: 25_000,
+    recipientEmail: null,
+    recipientName: null,
+    message: null,
+    lang: "nb-NO",
+    note: "Topics",
+  });
+  if (!issued.ok) throw new Error(issued.problem);
+  subjects.gift_card = issued.cardId;
+  subjects.review = await buyerReview(order.orderId);
 }, 180_000);
 
 afterAll(async () => {
@@ -103,6 +136,22 @@ afterAll(async () => {
 });
 
 const storeRef = () => ({ id: store.storeId, slug: store.slug, name: "Topics" });
+
+/** A buyer's review of an order's first line, as the review form writes it (D301). */
+async function buyerReview(orderId: string): Promise<string> {
+  return db().transaction(async (tx) => {
+    // The review form writes as its author (the table's own rule).
+    await tx.execute(sql`select set_config('kaizen.review_writer', 'author', true)`);
+    const [made] = await tx.execute<Row>(sql`
+    insert into commerce.product_reviews (store_id, product_id, variant_id, source, order_id, order_line_id, buyer_key, author_name, rating, title, body, locale)
+    select ol.store_id, v.product_id, ol.variant_id, 'buyer', ol.order_id, ol.id, ${`c:${randomUUID()}`}, 'Kari', 5, 'Lovely', 'Holds the heat.', 'nb-NO'
+    from commerce.order_lines ol join commerce.product_variants v on v.id = ol.variant_id
+    where ol.order_id = ${orderId}::uuid order by ol.id limit 1
+    returning id
+  `);
+    return String(made.id);
+  });
+}
 
 describe("every webhook topic's payload (D438)", () => {
   it("is built in its topic's shape, under the envelope an endpoint gets", async () => {
@@ -136,6 +185,133 @@ describe("every webhook topic's payload (D438)", () => {
     const checked = WEBHOOK_TEST_DATA.safeParse(sample?.data);
     if (!checked.success) throw new Error(checked.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
     expect(checked.data.order.number).toBe("1001");
+  });
+
+  it("queues the catalogue's topics where they happen: a variant's stock once a minute, an archived product (D440)", async () => {
+    const [endpoint] = await db().execute<Row>(sql`
+      insert into commerce.webhook_endpoints (store_id, name, url_encrypted, hint, secret_encrypted, topics)
+      values (${store.storeId}::uuid, 'Stock', 'x', 'example.com', 'x', array['inventory.updated', 'product.archived'])
+      returning id
+    `);
+    const queued = async (event: string) =>
+      db().execute<Row>(sql`
+        select subject_id, next_attempt_at > now() as later, next_attempt_at = date_trunc('minute', next_attempt_at) as on_the_minute
+        from commerce.integration_deliveries where endpoint_id = ${String(endpoint.id)}::uuid and event = ${event}
+      `);
+    const variant = subjects.inventory!;
+    await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 1 where store_id = ${store.storeId}::uuid and variant_id = ${variant}::uuid`);
+    await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 2 where store_id = ${store.storeId}::uuid and variant_id = ${variant}::uuid`);
+    // Two moves within the minute: one delivery, waiting for the next whole minute, built then with the stock as it is.
+    expect(await queued("inventory.updated")).toEqual([{ subject_id: variant, later: true, on_the_minute: true }]);
+    const data = (await integrations.subjectData(storeRef(), "inventory.updated", variant))!.inventory as { on_hand: number; locations: { on_hand: number }[] };
+    expect(data.on_hand).toBe(data.locations.reduce((sum, l) => sum + l.on_hand, 0));
+    const store2 = (await import("./stores")).getStore;
+    const shop = await store2(store.slug);
+    expect(await setArchived(shop!, subjects.product!, true)).toBe(true);
+    expect((await queued("product.archived")).map((r) => r.subject_id)).toEqual([subjects.product]);
+    // Back on the site as it was (bringing it back makes a draft).
+    await db().execute(sql`update commerce.products set status = 'active' where id = ${subjects.product!}::uuid`);
+    await db().execute(sql`delete from commerce.webhook_endpoints where id = ${String(endpoint.id)}::uuid`);
+  });
+
+  it("queues the orders' topics where they happen (D440 C2)", async () => {
+    const topics = ["order.created", "order.updated", "fulfilment.created", "fulfilment.updated", "refund.created", "return.updated", "quote.requested", "draft.sent"];
+    const [endpoint] = await db().execute<Row>(sql`
+      insert into commerce.webhook_endpoints (store_id, name, url_encrypted, hint, secret_encrypted, topics)
+      values (${store.storeId}::uuid, 'Orders', 'x', 'example.com', 'x', ${`{${topics.join(",")}}`}::text[])
+      returning id
+    `);
+    const queued = async () =>
+      (await db().execute<Row>(sql`select event, subject_id from commerce.integration_deliveries where endpoint_id = ${String(endpoint.id)}::uuid order by created_at, event`)).map(
+        (r) => `${String(r.event)} ${String(r.subject_id)}`,
+      );
+    const order = await place(store.storeId, [[SKU, 1]]);
+    await pay(store.storeId, order, store.account);
+    const sent = await markSent(store.storeId, order.orderId, { carrier: "posten", trackingNumber: "C2-1", trackingUrl: null }, store.accountId, null, { lines: null });
+    if (!sent.ok) throw new Error(sent.reason);
+    // The carrier's tracking of the parcel moves on (D238).
+    await db().execute(sql`
+      insert into commerce.shipment_tracking (store_id, shipment_id, order_id, carrier, phase) values (${store.storeId}::uuid, ${sent.shipment.id}::uuid, ${order.orderId}::uuid, 'posten', 'in_transit')
+    `);
+    const [refund] = await db().execute<Row>(sql`
+      insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, kind)
+      select p.store_id, p.id, 500, 'Goodwill', ${`re_c2_${Date.now()}`}, 'succeeded', 'money' from commerce.payments p
+      where p.store_id = ${store.storeId}::uuid and p.order_id = ${order.orderId}::uuid and p.status = 'captured' limit 1
+      returning id
+    `);
+    // An edit applied (D174) sets the order's edited_at inside its own context.
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`select set_config('kaizen.order_edit', ${order.orderId}, true)`);
+      await tx.execute(sql`update commerce.orders set edited_at = now() where id = ${order.orderId}::uuid`);
+    });
+    await db().execute(sql`update commerce.returns set status = 'approved' where id = ${subjects.return!}::uuid`);
+    const [quote] = await db().execute<Row>(sql`
+      insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, source, email)
+      values (${store.storeId}::uuid, commerce.next_draft_number(${store.storeId}::uuid), 'NO', 'no', 'NOK', 'nb-NO', 'quote', 'asker@example.com')
+      returning id
+    `);
+    // Sent: as `sendDraft()` leaves it, naming its order (the drafts' own tests send one through Stripe's test mode).
+    await db().execute(sql`
+      update commerce.draft_orders set status = 'sent', order_id = ${order.orderId}::uuid, sent_at = now(), expires_at = now() + interval '7 days' where id = ${String(quote.id)}::uuid
+    `);
+    expect(await queued()).toEqual(
+      expect.arrayContaining([
+        `order.created ${order.orderId}`,
+        `order.updated ${order.orderId}`,
+        `fulfilment.created ${sent.shipment.id}`,
+        `fulfilment.updated ${sent.shipment.id}`,
+        `refund.created ${String(refund.id)}`,
+        `return.updated ${subjects.return}`,
+        `quote.requested ${String(quote.id)}`,
+        `draft.sent ${String(quote.id)}`,
+      ]),
+    );
+    expect((await queued()).filter((q) => q.startsWith("order.created")).length).toBe(1);
+    // Ended, so no other test's run of the expiry job finds a link of ours to expire.
+    await db().execute(sql`update commerce.draft_orders set status = 'cancelled' where id = ${String(quote.id)}::uuid`);
+    await db().execute(sql`delete from commerce.webhook_endpoints where id = ${String(endpoint.id)}::uuid`);
+  });
+
+  it("queues the customers' topics where they happen, and never a gift card's code (D440 C3)", async () => {
+    const topics = ["customer.updated", "customer.erased", "subscription.renewed", "subscription.payment_failed", "gift_card.issued", "review.created"];
+    const [endpoint] = await db().execute<Row>(sql`
+      insert into commerce.webhook_endpoints (store_id, name, url_encrypted, hint, secret_encrypted, topics)
+      values (${store.storeId}::uuid, 'People', 'x', 'example.com', 'x', ${`{${topics.join(",")}}`}::text[])
+      returning id
+    `);
+    const queued = async () =>
+      (await db().execute<Row>(sql`select event, subject_id from commerce.integration_deliveries where endpoint_id = ${String(endpoint.id)}::uuid order by created_at, event`)).map(
+        (r) => `${String(r.event)} ${String(r.subject_id)}`,
+      );
+    await db().execute(sql`update commerce.customers set name = 'Kari Nordmann' where id = ${subjects.customer!}::uuid`);
+    // A renewal paid (not the subscription's first order), then one that could not be charged.
+    const renewal = await place(store.storeId, [[SKU, 1]]);
+    await db().execute(sql`update commerce.orders set subscription_id = ${subjects.subscription!}::uuid where id = ${renewal.orderId}::uuid`);
+    await pay(store.storeId, renewal, store.account);
+    await db().execute(sql`update commerce.subscriptions set status = 'past_due' where id = ${subjects.subscription!}::uuid`);
+    const { issueGiftCard } = await import("./gift-cards-admin");
+    const { getStore } = await import("./stores");
+    const card = await issueGiftCard((await getStore(store.slug))!, store.accountId, { currency: "NOK", amountMinor: 10_000, recipientEmail: null, recipientName: null, message: null, lang: "nb-NO", note: "C3" });
+    if (!card.ok) throw new Error(card.problem);
+    const review = await buyerReview(renewal.orderId);
+    // An erasure queues the account's id in its own transaction (D162): here as `eraseSubject()` queues it.
+    await db().execute(sql`select commerce.queue_integration_event(${store.storeId}::uuid, 'customer.erased', ${subjects.erasure!}::uuid)`);
+    expect(await queued()).toEqual(
+      expect.arrayContaining([
+        `customer.updated ${subjects.customer}`,
+        `subscription.renewed ${subjects.subscription}`,
+        `subscription.payment_failed ${subjects.subscription}`,
+        `gift_card.issued ${card.cardId}`,
+        `review.created ${review}`,
+        `customer.erased ${subjects.erasure}`,
+      ]),
+    );
+    const payload = await integrations.endpointPayload(storeRef(), { id: "00000000-0000-4000-8000-000000000004", event: "gift_card.issued", subjectId: card.cardId, createdAt: new Date().toISOString() });
+    expect(JSON.stringify(payload)).not.toContain(card.code.replace(/-/g, ""));
+    expect(JSON.stringify(payload)).not.toContain(card.code);
+    expect((await integrations.subjectData(storeRef(), "customer.erased", subjects.erasure!))).toEqual({ erasure: { customer_id: subjects.erasure } });
+    await db().execute(sql`update commerce.subscriptions set status = 'active' where id = ${subjects.subscription!}::uuid`);
+    await db().execute(sql`delete from commerce.webhook_endpoints where id = ${String(endpoint.id)}::uuid`);
   });
 
   it("logs a payload that is not its topic's shape, by where it differs and never a value", async () => {

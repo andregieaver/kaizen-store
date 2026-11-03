@@ -13,14 +13,39 @@ import { writeCsv, type Cell } from "./csv";
 // The feeds and their bulk queries
 // ---------------------------------------------------------------------------
 
-/** What is copied, in the order it is copied: customers before orders, so an order is tied to its customer by email. */
-export const COPY_FEEDS = ["products", "customers", "orders", "redirects"] as const;
+/**
+ * What is copied, in the order it is brought over: the countries first (prices, shipping and codes are per country), collections after
+ * products (they are the products' categories), customers before orders (an order is tied to its customer by email), discount codes after
+ * the products and categories they name, menus after what they link to, redirects and the look last.
+ */
+export const COPY_FEEDS = ["countries", "shipping", "products", "collections", "customers", "orders", "discounts", "pages", "articles", "menus", "redirects", "look"] as const;
 export type CopyFeed = (typeof COPY_FEEDS)[number];
+
+/**
+ * How a feed is brought over: `import` feeds become a file their import checks at once (D165, D366, D384, D168); `later` (collections)
+ * is a file the product import checks once the products are in, since a store has one open product import; `direct` feeds (pages, blog
+ * posts, menus, and step 5b's countries, shipping, discount codes and look) are written one by one by their editor's own writer (`savePage()`,
+ * `saveStoreMenu()`, `setMarkets()`, `saveShippingSettings()`, `saveDiscount()`, the look's `design_look`), since no file import exists for them.
+ */
+export const FEED_KIND: Record<CopyFeed, "import" | "later" | "direct"> = {
+  countries: "direct",
+  shipping: "direct",
+  discounts: "direct",
+  look: "direct",
+  products: "import",
+  collections: "later",
+  customers: "import",
+  orders: "import",
+  pages: "direct",
+  articles: "direct",
+  menus: "direct",
+  redirects: "import",
+};
 
 /** Each feed's bulk query (Shopify's rule: no pagination arguments; connections at most two deep). */
 export const BULK_QUERIES: Record<CopyFeed, string> = {
   products: `{ products { edges { node {
-    id handle title descriptionHtml tags status isGiftCard seo { title description }
+    id handle title vendor descriptionHtml tags status isGiftCard seo { title description }
     options { name position }
     variants { edges { node {
       id sku barcode price compareAtPrice inventoryQuantity position
@@ -48,7 +73,19 @@ export const BULK_QUERIES: Record<CopyFeed, string> = {
     lineItems { edges { node { name sku quantity originalUnitPriceSet { shopMoney { amount } } } } }
   } } } }`,
   redirects: `{ urlRedirects { edges { node { id path target } } } }`,
+  collections: `{ collections { edges { node { id handle title products { edges { node { handle } } } } } } }`,
+  pages: `{ pages { edges { node { id handle title body isPublished } } } }`,
+  articles: `{ articles { edges { node { id handle title body isPublished author { name } blog { handle title } } } } }`,
+  // These are few and small, and read by ordinary queries (`MENUS_QUERY`, `src/lib/shopify-settings.ts`); never sent.
+  menus: "",
+  countries: "",
+  shipping: "",
+  discounts: "",
+  look: "",
 };
+
+/** The shop's menus, three levels deep (the most a menu here has). */
+export const MENUS_QUERY = `query KaizenMenus { menus(first: 25) { nodes { handle title items { title type url items { title type url items { title type url } } } } } }`;
 
 /** The file each feed becomes: its name in the imports bucket (the import's own pattern: letters, digits, `.`, `_`, `-`). */
 export const FEED_FILES: Record<CopyFeed, string> = {
@@ -56,6 +93,14 @@ export const FEED_FILES: Record<CopyFeed, string> = {
   customers: "shopify-customers.csv",
   orders: "shopify-orders.csv",
   redirects: "shopify-redirects.csv",
+  collections: "shopify-collections.csv",
+  pages: "shopify-pages.jsonl",
+  articles: "shopify-articles.jsonl",
+  menus: "shopify-menus.jsonl",
+  countries: "shopify-countries.jsonl",
+  shipping: "shopify-shipping.jsonl",
+  discounts: "shopify-discounts.jsonl",
+  look: "shopify-look.jsonl",
 };
 
 // ---------------------------------------------------------------------------
@@ -156,11 +201,40 @@ export const PRODUCT_HEADER = [
   "Cost per item",
 ] as const;
 
-/** The product file: per product, its first row with the product's fields, a row for each further variant, then a row for each further picture. */
-export function productsFile(tree: BulkTree): { csv: string; products: number; rows: number } {
+/** A SKU's words: lower case, letters and digits joined by hyphens. */
+const skuPart = (text: string): string =>
+  text
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[øæßđłþœ]/g, (c) => ({ ø: "o", æ: "ae", ß: "ss", đ: "d", ł: "l", þ: "th", œ: "oe" })[c] ?? c)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+/**
+ * The product file: per product, its first row with the product's fields, a row for each further variant, then a row for each further picture.
+ * Shopify lets a variant have no SKU, and the import needs one for every variant (it is how a variant is found again): a variant without one
+ * is given its product's handle and its option values (`bag`, `bag-s-red`), kept unique within the file, and counted in `madeSkus`.
+ */
+export function productsFile(tree: BulkTree): { csv: string; products: number; rows: number; madeSkus: number } {
   const col = (name: (typeof PRODUCT_HEADER)[number]) => PRODUCT_HEADER.indexOf(name);
   const rows: Cell[][] = [[...PRODUCT_HEADER]];
   let products = 0;
+  let madeSkus = 0;
+  const taken = new Set<string>();
+  for (const product of tree.roots)
+    for (const kid of kidsOf(tree, product)) {
+      const sku = s(kid.sku, 255).trim().toLowerCase();
+      if (sku !== "") taken.add(sku);
+    }
+  const madeSku = (handle: string, values: readonly string[]): string => {
+    const base = [skuPart(handle), ...values.map(skuPart)].filter(Boolean).join("-").slice(0, 60) || "variant";
+    let sku = base;
+    for (let n = 2; taken.has(sku); n += 1) sku = `${base}-${n}`;
+    taken.add(sku);
+    madeSkus += 1;
+    return sku;
+  };
   for (const product of tree.roots) {
     const handle = s(product.handle, 255);
     if (handle === "") continue;
@@ -201,7 +275,8 @@ export function productsFile(tree: BulkTree): { csv: string; products: number; r
           row[col(`Option${n + 1} Value` as (typeof PRODUCT_HEADER)[number])] = s(value, 255);
         });
         const item = o(variant.inventoryItem);
-        row[col("Variant SKU")] = s(variant.sku, 255);
+        const values = selected.map((so) => s(so.value, 255)).filter((v) => v !== "" && v !== "Default Title");
+        row[col("Variant SKU")] = s(variant.sku, 255).trim() || madeSku(handle, values);
         row[col("Variant Grams")] = gramsOf(o(item.measurement).weight);
         row[col("Variant Inventory Qty")] = typeof variant.inventoryQuantity === "number" && Number.isSafeInteger(variant.inventoryQuantity) ? variant.inventoryQuantity : "";
         row[col("Variant Price")] = amountCell(variant.price);
@@ -220,7 +295,7 @@ export function productsFile(tree: BulkTree): { csv: string; products: number; r
       rows.push(row);
     }
   }
-  return { csv: writeCsv(rows), products, rows: rows.length - 1 };
+  return { csv: writeCsv(rows), products, rows: rows.length - 1, madeSkus };
 }
 
 export const CUSTOMER_HEADER = [
@@ -363,6 +438,133 @@ export function redirectsFile(tree: BulkTree): { csv: string; redirects: number 
   return { csv: writeCsv(rows), redirects: rows.length - 1 };
 }
 
+/** A category's name from a collection's title: the product import reads `/` as a level and `|` between categories, so neither is in a name. */
+export const categoryName = (title: string): string => title.replace(/[/|]+/g, "-").replace(/\s+/g, " ").trim().slice(0, 80);
+
+/**
+ * The collections as Kaizena Flow's own product file (`handle`, `sku`, `variant_id`, `categories`), only the categories column filled: the
+ * product import finds each product by its handle, creates each category by its name and puts the product in it (D165); nothing else of
+ * the product is touched. A product in several collections is in each of their categories. A rule-filled (smart) collection comes over as
+ * the products it holds now.
+ */
+export function collectionsFile(tree: BulkTree): { csv: string; collections: number } {
+  const byProduct = new Map<string, string[]>();
+  let collections = 0;
+  for (const c of tree.roots) {
+    const name = categoryName(s(c.title, 255));
+    if (name === "") continue;
+    collections += 1;
+    for (const p of kidsOf(tree, c)) {
+      const handle = s(p.handle, 255);
+      if (handle === "") continue;
+      const list = byProduct.get(handle) ?? [];
+      if (!list.includes(name) && list.length < 50) list.push(name);
+      byProduct.set(handle, list);
+    }
+  }
+  const rows: Cell[][] = [["handle", "sku", "variant_id", "categories"]];
+  for (const [handle, names] of byProduct) rows.push([handle, "", "", names.join(" | ")]);
+  return { csv: writeCsv(rows), collections: byProduct.size === 0 ? 0 : collections };
+}
+
+/** A page's or post's address here from its Shopify handle: lower-case words with hyphens, at most 80 characters. */
+export function slugOf(handle: string): string {
+  return (
+    handle
+      .normalize("NFKD")
+      .replace(/\p{M}/gu, "")
+      .toLowerCase()
+      .replace(/[øæßđłþœ]/g, (c) => ({ ø: "o", æ: "ae", ß: "ss", đ: "d", ł: "l", þ: "th", œ: "oe" })[c] ?? c)
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80)
+      .replace(/-+$/, "") || "page"
+  );
+}
+
+/** A Shopify page or blog post as the page editor's input: its title, its address, its body as one text block. */
+export type DirectItem = { handle: string; title: string; body: string; published: boolean; blog: { handle: string; title: string } | null; author: string };
+
+export function directItems(tree: BulkTree): DirectItem[] {
+  return tree.roots
+    .map((r) => ({
+      handle: slugOf(s(r.handle, 255)),
+      title: s(r.title, 200).trim() || s(r.handle, 200),
+      body: s(r.body, 400_000),
+      published: r.isPublished === true,
+      blog: r.blog && typeof r.blog === "object" ? { handle: slugOf(s(o(r.blog).handle, 60)).slice(0, 60), title: s(o(r.blog).title, 80).trim() } : null,
+      author: s(o(r.author).name, 100).trim(),
+    }))
+    .filter((i) => i.title !== "");
+}
+
+/** What a menu item links to here, from Shopify's type and address; a custom address when ours has no counterpart. */
+export function menuLinkOf(type: string, url: string): Record<string, string> {
+  let path = "/";
+  let absolute: string | null = null;
+  try {
+    const u = new URL(url, "https://shop.invalid");
+    path = u.pathname.replace(/\/+$/, "") || "/";
+    if (u.hostname !== "shop.invalid" && (u.protocol === "https:" || u.protocol === "http:")) absolute = u.toString();
+  } catch {
+    path = "/";
+  }
+  const parts = path.split("/").filter(Boolean);
+  const last = parts[parts.length - 1] ?? "";
+  switch (type) {
+    case "FRONTPAGE":
+      return { kind: "home" };
+    case "CATALOG":
+    case "COLLECTIONS":
+      return { kind: "products" };
+    case "COLLECTION":
+      return last === "" || last === "all" || last === "collections" ? { kind: "products" } : { kind: "category", slug: slugOf(last) };
+    case "PRODUCT":
+      return last ? { kind: "product", handle: last.toLowerCase() } : { kind: "products" };
+    case "PAGE":
+      return last ? { kind: "page", slug: slugOf(last) } : { kind: "home" };
+    case "BLOG":
+      return { kind: "blog" };
+    case "ARTICLE":
+      return last ? { kind: "article", slug: slugOf(last) } : { kind: "blog" };
+    case "CUSTOMER":
+      return { kind: "account" };
+    default:
+      return absolute && type === "HTTP" ? { kind: "url", url: absolute } : { kind: "url", url: path };
+  }
+}
+
+/** A Shopify menu as the menu editor's input: its items with their depth (at most three levels), each label in the store's main language. */
+export function menuInputOf(menu: Obj, locale: string): { name: string; items: { label: Record<string, string>; link: Record<string, string>; depth: number }[] } {
+  const items: { label: Record<string, string>; link: Record<string, string>; depth: number }[] = [];
+  const walk = (list: unknown, depth: number) => {
+    if (!Array.isArray(list) || depth > 2) return;
+    for (const raw of list) {
+      if (items.length >= 100) return;
+      const item = o(raw);
+      const title = s(item.title, 60).trim();
+      if (title === "") continue;
+      items.push({ label: { [locale]: title }, link: menuLinkOf(s(item.type, 40), s(item.url, 2000)), depth });
+      walk(item.items, depth + 1);
+    }
+  };
+  walk(menu.items, 0);
+  return { name: s(menu.title, 80).trim() || s(menu.handle, 80) || "Menu", items };
+}
+
+/** The file the products' vendors are kept in (D445 step 6): one line a product, for *Who makes your products?*. */
+export const VENDORS_FILE = "shopify-vendors.jsonl";
+
+/** A product's vendor as Shopify names it (never its manufacturer: that is the owner's to say), its handle, and whether it was on sale there. */
+export type VendorLine = { vendor: string; handle: string; active: boolean };
+
+/** Each product's vendor, from the products' bulk read; a gift card is no product here and is left out. */
+export function vendorLines(tree: BulkTree): VendorLine[] {
+  return tree.roots
+    .filter((p) => s(p.handle, 255) !== "" && p.isGiftCard !== true)
+    .map((p) => ({ vendor: s(p.vendor, 255).replace(/\s+/g, " ").trim(), handle: s(p.handle, 255), active: s(p.status, 20) === "ACTIVE" }));
+}
+
 /** A feed's file from its bulk operation's text, and how many things it holds. */
 export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: number } {
   const tree = readBulkLines(text);
@@ -383,6 +585,19 @@ export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: 
       const f = redirectsFile(tree);
       return { csv: f.csv, count: f.redirects };
     }
+    case "collections": {
+      const f = collectionsFile(tree);
+      return { csv: f.csv, count: f.collections };
+    }
+    case "pages":
+    case "articles":
+      return { csv: text, count: directItems(tree).length };
+    case "menus":
+    case "countries":
+    case "shipping":
+    case "discounts":
+    case "look":
+      return { csv: text, count: tree.roots.length };
   }
 }
 
@@ -396,20 +611,49 @@ export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: 
  * `failed` (with a code the page words).
  */
 export type FeedStage = "waiting" | "reading" | "checking" | "checked" | "applying" | "done" | "empty" | "failed";
-export type FeedProblem = "shopify_refused" | "shopify_failed" | "too_large" | "storage" | "import_refused" | "import_failed";
-export type FeedState = { stage: FeedStage; operation?: string; job?: string; count?: number; problem?: FeedProblem };
+export type FeedProblem = "shopify_refused" | "shopify_failed" | "too_large" | "storage" | "import_refused" | "import_failed" | "needs_fixing";
+export type FeedState = {
+  stage: FeedStage;
+  operation?: string;
+  job?: string;
+  count?: number;
+  problem?: FeedProblem;
+  /** A `later` or `direct` feed's file in the imports bucket, kept until it is brought over. */
+  path?: string;
+  /** The products feed only: its vendors' file (`VENDORS_FILE`) in the imports bucket. */
+  vendors?: string;
+  /** A `direct` feed's next item, and how many it made and could not make. */
+  cursor?: number;
+  made?: number;
+  refused?: number;
+};
 export type CopyState = { startedAt: string | null; apply: boolean; feeds: Record<CopyFeed, FeedState> };
 
 export const EMPTY_COPY: CopyState = {
   startedAt: null,
   apply: false,
-  feeds: { products: { stage: "waiting" }, customers: { stage: "waiting" }, orders: { stage: "waiting" }, redirects: { stage: "waiting" } },
+  feeds: {
+    countries: { stage: "waiting" },
+    shipping: { stage: "waiting" },
+    discounts: { stage: "waiting" },
+    look: { stage: "waiting" },
+    products: { stage: "waiting" },
+    collections: { stage: "waiting" },
+    customers: { stage: "waiting" },
+    orders: { stage: "waiting" },
+    pages: { stage: "waiting" },
+    articles: { stage: "waiting" },
+    menus: { stage: "waiting" },
+    redirects: { stage: "waiting" },
+  },
 };
 
 const STAGES: readonly FeedStage[] = ["waiting", "reading", "checking", "checked", "applying", "done", "empty", "failed"];
-const PROBLEMS: readonly FeedProblem[] = ["shopify_refused", "shopify_failed", "too_large", "storage", "import_refused", "import_failed"];
+const PROBLEMS: readonly FeedProblem[] = ["shopify_refused", "shopify_failed", "too_large", "storage", "import_refused", "import_failed", "needs_fixing"];
 const GID = /^gid:\/\/shopify\/BulkOperation\/\d+$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const FILE_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/shopify-[a-z]+\.(csv|jsonl)$/i;
+const count = (v: unknown): number | undefined => (typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : undefined);
 
 /** The kept state read back, every field checked (an unknown shape is a fresh start, never trusted). */
 export function copyStateOf(raw: unknown): CopyState {
@@ -418,12 +662,23 @@ export function copyStateOf(raw: unknown): CopyState {
   const out: CopyState = { startedAt: typeof r.startedAt === "string" && !Number.isNaN(Date.parse(r.startedAt)) ? r.startedAt : null, apply: r.apply === true, feeds: { ...EMPTY_COPY.feeds } };
   for (const feed of COPY_FEEDS) {
     const f = o(feeds[feed]);
+    // A part this copy was started without (one added since) is not part of it: Start again brings it.
+    if (!(feed in feeds) && out.startedAt !== null && out.apply) {
+      out.feeds[feed] = { stage: "empty" };
+      continue;
+    }
     const stage = STAGES.includes(f.stage as FeedStage) ? (f.stage as FeedStage) : "waiting";
     const state: FeedState = { stage };
     if (typeof f.operation === "string" && GID.test(f.operation)) state.operation = f.operation;
     if (typeof f.job === "string" && UUID.test(f.job)) state.job = f.job;
     if (typeof f.count === "number" && Number.isSafeInteger(f.count) && f.count >= 0) state.count = f.count;
     if (PROBLEMS.includes(f.problem as FeedProblem)) state.problem = f.problem as FeedProblem;
+    if (typeof f.path === "string" && FILE_PATH.test(f.path)) state.path = f.path;
+    if (typeof f.vendors === "string" && FILE_PATH.test(f.vendors)) state.vendors = f.vendors;
+    for (const key of ["cursor", "made", "refused"] as const) {
+      const n = count(f[key]);
+      if (n !== undefined) state[key] = n;
+    }
     out.feeds[feed] = state;
   }
   return out;
@@ -438,6 +693,9 @@ export const copyMoving = (state: CopyState): boolean =>
 /** Whether every feed has been read and checked (or had nothing), so *Bring it over* can be pressed. */
 export const copyReady = (state: CopyState): boolean =>
   state.startedAt !== null && !state.apply && COPY_FEEDS.every((f) => ["checked", "empty", "failed"].includes(state.feeds[f].stage)) && COPY_FEEDS.some((f) => state.feeds[f].stage === "checked");
+
+/** How many feeds could not come over (`failed`), for the page's last line. */
+export const copyFailed = (state: CopyState): number => COPY_FEEDS.filter((f) => state.feeds[f].stage === "failed").length;
 
 /** Whether everything that could come over has. */
 export const copyDone = (state: CopyState): boolean => state.startedAt !== null && COPY_FEEDS.every((f) => SETTLED.includes(state.feeds[f].stage));
@@ -454,8 +712,14 @@ export function nextToApply(state: CopyState): CopyFeed | null {
   return null;
 }
 
-/** The feed to read next: one bulk operation at a time per shop, in the order of `COPY_FEEDS`. */
+/** The order feeds are READ in: the bulk reads first, then the few read by their own small queries (`PLAIN_FEEDS`). */
+export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus", "countries", "shipping", "discounts", "look"];
+
+/** The feeds read by an ordinary query, in one tick, rather than a bulk operation. */
+export const PLAIN_FEEDS: readonly CopyFeed[] = ["menus", "countries", "shipping", "discounts", "look"];
+
+/** The feed to read next: one bulk operation at a time per shop, in `READ_ORDER`. */
 export function nextToRead(state: CopyState): CopyFeed | null {
   if (state.startedAt === null || COPY_FEEDS.some((f) => state.feeds[f].stage === "reading")) return null;
-  return COPY_FEEDS.find((f) => state.feeds[f].stage === "waiting") ?? null;
+  return READ_ORDER.find((f) => state.feeds[f].stage === "waiting") ?? null;
 }

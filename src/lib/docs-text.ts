@@ -4,7 +4,7 @@
  * full, as an AI tool or a crawler reads the text away from the page.
  */
 
-import { DOC_TRACKS, docLinkLang, docsPaths, docsTree, trackIn, type DocChangelog, type DocLang, type DocPage, type DocsIndex } from "./docs-content";
+import { DOC_TRACKS, docLinkLang, docsPaths, docsTree, trackIn, type DocChangelog, type DocLang, type DocPage, type DocRefPage, type DocsIndex } from "./docs-content";
 import { docsOrigin, docsUrl } from "./docs-host";
 import { PLATFORM_LANG_FACTS } from "./platform-lang";
 import { renderLlms } from "./seo";
@@ -53,6 +53,13 @@ export function docPageMarkdown(page: DocPage, index: DocsIndex): string {
   return `# ${page.title}\n\n> ${page.summary}\n\n${absoluteLinks(page.markdown, index, page.lang, url)}\n\n---\n\n${url} · ${page.checked}\n`;
 }
 
+/** A page of the generated reference as plain Markdown: its title, its summary as a quote, its body with full links, and what it is made from. */
+export function docRefPageMarkdown(page: DocRefPage, index: DocsIndex): string {
+  const url = docsUrl(page.path);
+  const made = index.reference.version ? `made from the API contract ${index.reference.version}` : "made from the API contract";
+  return `# ${page.title}\n\n> ${page.summary}\n\n${absoluteLinks(page.markdown, index, "en", url)}\n\n---\n\n${url} · ${made}\n`;
+}
+
 /** The changelog as plain Markdown. */
 export function changelogMarkdown(changelog: DocChangelog, index: DocsIndex, title: string): string {
   const url = docsUrl("changelog");
@@ -61,8 +68,18 @@ export function changelogMarkdown(changelog: DocChangelog, index: DocsIndex, tit
 
 type TrackNames = Record<(typeof DOC_TRACKS)[number], string>;
 
-/** `llms.txt` (llmstxt.org): the docs' pages by track and section, each with its Markdown address and summary. */
-export function docsLlms(index: DocsIndex, words: { title: string; description: string; tracks: TrackNames; changelog: string }): string {
+/** The reference's groups for `llms.txt`: each group (Admin API, Webhooks, …) with its own page first, then its pages. */
+function referenceSections(index: DocsIndex, heading: string) {
+  const front = index.reference.pages.find((p) => p.parent === null);
+  if (!front) return [];
+  const entry = (page: DocRefPage) => ({ title: page.title, url: `${docsUrl(page.path)}.md`, note: page.summary });
+  return index.reference.pages
+    .filter((p) => p.parent === front.path)
+    .map((group) => ({ heading: `${heading}: ${group.title}`, links: [entry(group), ...index.reference.pages.filter((p) => p.parent === group.path).map(entry)] }));
+}
+
+/** `llms.txt` (llmstxt.org): the docs' pages by track and section, each with its Markdown address and summary, then the reference's. */
+export function docsLlms(index: DocsIndex, words: { title: string; description: string; tracks: TrackNames; changelog: string; reference?: string }): string {
   const sections = DOC_TRACKS.flatMap((track) =>
     docsTree(index, track, "en").map(({ section, pages }) => ({
       heading: `${words.tracks[track]}: ${section.title}`,
@@ -75,6 +92,7 @@ export function docsLlms(index: DocsIndex, words: { title: string; description: 
     summary: words.description,
     sections: [
       ...sections,
+      ...referenceSections(index, words.reference ?? "API reference"),
       ...(index.changelog ? [{ heading: words.changelog, links: [{ title: words.changelog, url: `${docsUrl("changelog")}.md` }] }] : []),
       ...(norwegian.length > 0
         ? [{ heading: PLATFORM_LANG_FACTS.nb.name, links: norwegian.map((page) => ({ title: page.title, url: `${docsUrl(page.path, "nb")}.md`, note: page.summary })) }]
@@ -84,11 +102,27 @@ export function docsLlms(index: DocsIndex, words: { title: string; description: 
   });
 }
 
-/** `llms-full.txt`: every page as plain Markdown, English first, then Norwegian, each with its address. */
+/** A page's Markdown one level down, for `llms-full.txt`: its title a `##`, each heading one deeper (`#####` at most), code left as it is. */
+function nested(markdown: string): string {
+  let fenced = false;
+  return markdown
+    .replace(/^# /, "## ")
+    .split("\n")
+    .map((line, i) => {
+      if (/^ {0,3}(`{3,}|~{3,})/.test(line)) fenced = !fenced;
+      return i > 0 && !fenced && /^#{2,4} /.test(line) ? `#${line}` : line;
+    })
+    .join("\n")
+    .trim();
+}
+
+/** `llms-full.txt`: every page as plain Markdown, English first (the generated reference after the articles), then Norwegian, each with its address. */
 export function docsLlmsFull(index: DocsIndex, words: { title: string; description: string; changelog: string }): string {
-  const pages = (["en", "nb"] as const).flatMap((lang) => DOC_TRACKS.filter((track) => trackIn(track, lang)).flatMap((track) => docsTree(index, track, lang).flatMap((e) => e.pages)));
-  const parts = [`# ${words.title}\n\n> ${words.description}`, ...pages.map((page) => docPageMarkdown(page, index).replace(/^# /, "## ").replace(/\n(#{2,5}) /g, "\n#$1 ").trim())];
-  if (index.changelog) parts.push(changelogMarkdown(index.changelog, index, words.changelog).replace(/^# /, "## ").replace(/\n(#{2,5}) /g, "\n#$1 ").trim());
+  const pages = (lang: DocLang) => DOC_TRACKS.filter((track) => trackIn(track, lang)).flatMap((track) => docsTree(index, track, lang).flatMap((e) => e.pages));
+  const parts = [`# ${words.title}\n\n> ${words.description}`, ...pages("en").map((page) => nested(docPageMarkdown(page, index)))];
+  if (index.changelog) parts.push(nested(changelogMarkdown(index.changelog, index, words.changelog)));
+  parts.push(...index.reference.pages.map((page) => nested(docRefPageMarkdown(page, index))));
+  parts.push(...pages("nb").map((page) => nested(docPageMarkdown(page, index))));
   return `${parts.join("\n\n")}\n`;
 }
 

@@ -10,13 +10,13 @@ const TOKEN = `kf_${"A".repeat(43)}`;
 describe("routeOf", () => {
   it("names every route on the page, with the scope it lists", () => {
     for (const route of API_ROUTES) {
-      const path = route.path.replace("{id}", ID).replace("{tag}", "vip").split("/").filter(Boolean);
+      const path = route.path.replace("{tag}", "vip").replace(/\{\w+\}/g, ID).split("/").filter(Boolean);
       expect(routeOf(route.method, path)?.scope, `${route.method} ${route.path}`).toBe(route.scope);
     }
   });
 
   it("refuses an unknown path, a bad id and the wrong method", () => {
-    expect(routeOf("GET", ["webhooks"])).toBeNull();
+    expect(routeOf("GET", ["nothing-here"])).toBeNull();
     expect(routeOf("GET", ["products", "not-an-id"])).toBeNull();
     expect(routeOf("DELETE", ["products", ID])).toBeNull();
     expect(routeOf("POST", ["orders"])).toBeNull();
@@ -26,7 +26,7 @@ describe("routeOf", () => {
     expect(routeOf("PATCH", ["checkout", "rules", "not-an-id"])).toBeNull();
     expect(routeOf("PATCH", ["checkout", "fields", ID, "x"])).toBeNull();
     expect(routeOf("DELETE", ["checkout", "fields", ID])).toEqual({ name: "checkout.field_delete", scope: "checkout:write", id: ID });
-    expect(routeOf("GET", ["orders", ID, "refunds"])).toBeNull();
+    expect(routeOf("GET", ["orders", ID, "payments"])).toBeNull();
     expect(routeOf("GET", ["products", ID, "a", "b", "c"])).toBeNull();
   });
 });

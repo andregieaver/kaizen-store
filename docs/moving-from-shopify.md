@@ -568,12 +568,87 @@ As built (`src/lib/shopify-copy.ts` pure, `src/server/shopify-copy.ts`):
   for a week. A feed Shopify refuses (protected customer data not yet approved, for instance) is said in one sentence with the file import
   beside it, and the rest goes on.
 - **Order**: customers are applied before orders, so a past order is tied to its customer by email.
+- **A variant without a SKU** (Shopify allows it; the import needs one to find a variant again) is given its product's handle and option
+  values (`bag`, `bag-s-red`), unique within the file. Found on the first real copy (3 November 2026): one product of a development store had
+  none, and its whole product was refused. A part whose check finds nothing to bring over says *Nothing here could come over as it is* with
+  its import's page, and the last line says how many parts could not come over instead of *Everything is here*.
 - **The limits are the imports'**: a feed whose file would pass 15 MB is refused with a sentence and the file imports beside it.
 - **Copied products show at once** unless the shop is behind a password (private mode, D339): the page says so before *Bring it over*, with
   the link. Turning private mode on by itself is left for move day (step 7), where opening the shop is part of the plan.
 
-Left for part 2 (step 5) and later: countries, shipping and look (4.3), collections, pages, blogs, menus, metafields, discounts; reviews
-(they live in review apps, not in Shopify, spike S6); a catch-up copy on move day.
+### Step 5, part 1: collections, pages, blog posts and menus (built 3 November 2026)
+
+The copy reads four more parts, in the same list and under the same *Bring it over*:
+
+- **Collections** become categories. Their bulk read lists each collection's products and variants, written as a small file of
+  `handle, sku, variant id, categories` (`collectionsFile()`, names joined by ` | `, a `/` or `|` in a name made `-`), applied after the
+  products by the product import in update mode with no redirects: the import adds the categories to products it already has and makes
+  nothing else. A smart collection comes over as the products it holds that day, not its rules. Its description and picture are not
+  brought over.
+- **Pages and blog posts** have no import, so they go to the page writer itself (`savePage()`, and `saveBlog()` for a second Shopify blog;
+  the first becomes the store's main blog). Shopify's HTML is turned into the editor's rich text in code (`htmlToRichText()`,
+  `src/lib/html-rich-text.ts`: paragraphs, headings 2 to 4, bold, italic, underline, links the editor takes, lists, quotes, lines and line
+  breaks; scripts, styles and frames left out; pictures left out and counted), checked by `cleanRichText()`, never kept as HTML. A page
+  the writer asks to confirm is saved as a draft. An address already taken here is left alone and counted. A post's author is kept; its
+  date, pictures and tags are not.
+- **Menus** are read last by one small query (Shopify has no bulk read for them) and written by `saveStoreMenu()`, two levels deep,
+  each link turned into our address where we have the same thing (`menuLinkOf()`), else kept as its address; a menu whose name is taken
+  is left alone.
+- Pages, posts and menus are written in batches of 15, 15 and 5 per tick, so a big blog never holds one request long.
+
+A copy started before this step shows the four new parts as empty; *Start again* reads them.
+
+### Step 5, part 2: countries, shipping, discount codes and the look (built 3 November 2026)
+
+Four more parts, each read by one ordinary query (none has a bulk read; `src/lib/shopify-settings.ts`) and written after *Bring it
+over* only by the writer that owns it here (`src/server/shopify-settings-copy.ts`). The order is now countries, shipping, products,
+collections, customers, past orders, discount codes, pages, posts, menus, redirects, look.
+
+- **Countries**: every country of every Shopify market, added through `setMarkets()` beside the ones the store sells to. A country is
+  only added, never taken away. With *Several countries* off, none is added and the rest are counted for the owner. A new country gets
+  its own currency here, not the market's in Shopify.
+- **Shipping**: the general profile's rates as one flat rate per country (`shippingOf()`): the cheapest active rate without a condition,
+  and free above the lowest *at least this much* of a free rate. A rate by weight or by a carrier's own price, and rest of world, are left
+  out. Written by `saveShippingSettings()` only for a country the store sells to in the same currency and with no rate of its own; a
+  country whose own rate differs keeps it and is counted (*needs a look*, with the shipping page).
+- **Discount codes**: basic codes (a whole percentage, a fixed amount on the order, free shipping), for everything, for products by
+  handle or for collections by their category here, with their minimum, dates, use limit and combinations, written by `saveDiscount()`
+  **switched off** until the move. Left out and counted: buy X get Y and app discounts, codes for some customers only, an amount on each
+  item, variants, a part percentage, a free shipping cap, expired codes, and a code naming a product or category that is not here. A code
+  already here is left alone. Up to 20 pages of 25 codes.
+- **The look**: the live theme's `config/settings_data.json` (its first colour scheme's button, background and text, else the older
+  settings' names; its heading and body fonts) given to the AI manager's own `design_look`, which makes every text readable and adds
+  *{theme} · Shopify* to the theme library, **not live**. A font Google Fonts does not have (Shopify's own library) stays the store's.
+  The logo is not brought yet.
+- A part with no Shopify file to use instead links to its own screen here (*Set it up here*), and one done with things left out links
+  there too (*Look at it*).
+- Found by the test: a code on categories alone sent `saveDiscount()` an empty product list, which its check read as `in ()`; it now
+  looks products up only when there are some, and the copy sends no list, as the editor does. One code the writer cannot take is counted
+  and never holds up the rest.
+
+The queries for shipping, codes and the look were written from Shopify's reference and are first met on a real shop when the owner
+presses *Start again*; one Shopify refuses says so on its own line and the rest goes on.
+
+### Step 6: *Who makes your products?* (built 3 November 2026)
+
+On Moving in, once the copy has stopped moving: one row per Shopify vendor whose copied products here still have no manufacturer
+(`makerGroups()`, `src/lib/shopify-makers.ts`), most products first, products without a vendor in a row of their own.
+
+- **Where the vendors come from**: the products' bulk read now asks for `vendor`, and the vendors are kept beside the products' file
+  (`shopify-vendors.jsonl` in the imports bucket, `copy.feeds.products.vendors`), so the screen reads no Shopify and works after a
+  disconnect. A copy started before step 6 kept none: *Start again* reads them.
+- **The question**: *Is Nordic Wool the maker?* **Yes** opens Nordic Wool as a new company with its name filled in (or the store's company
+  of that name); **No, someone else** opens one of the store's companies or a blank one. The product editor's own company picker
+  (`OperatorPicker`, now `src/components/admin/operator-picker.tsx`). A maker outside the EU (the database's `in_eu`) asks for the EU
+  responsible person too, and nothing is saved without one. The vendor is never taken as the maker without the owner's press.
+- **Saving** (`saveVendorMaker()`, `src/server/shopify-makers.ts`): the company is kept as the editor keeps one (`chooseOperator()`), then
+  the bulk editor's new action *Set the manufacturer* (`manufacturer`, field `maker`, migration `20261103220311_bulk_makers` widening the
+  two checks) names it on every product of that vendor still without one, 500 at a time, with the bulk editor's seven-day undo
+  (*Undo* links to the bulk page). Then the ones that were on sale in Shopify are put on sale by its *Set status* action, whose save
+  refuses one still missing something (a picture), and the page says how many.
+
+Left for later: the logo and favicon, metafields, gift cards and the email list (step 8); reviews (they live in review apps, not in
+Shopify, spike S6); a catch-up copy on move day.
 
 **How steps 1 and 2 reached production.** A new admin page is a new entry in the admin map, and the map is part of the AI manager's
 prompt, so the agents' eval replay (D391) fails until the eval is recorded again on production; a push with a migration waits for every
