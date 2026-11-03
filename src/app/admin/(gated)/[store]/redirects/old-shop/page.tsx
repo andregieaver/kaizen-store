@@ -82,7 +82,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
 
       {unsure.length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold">{o.rest}</h2>
+          <h2 className="text-title text-ink">{o.rest}</h2>
           <p className={hint}>{o.restHelp}</p>
           <OldShopTable rows={shown} redirect={actions.redirect} canWrite={canWrite} />
           {unsure.length > shown.length && <p className={hint}>{countWords(unsure.length - shown.length, o.more, { n: n(unsure.length - shown.length) })}</p>}
@@ -90,7 +90,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
       )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-base font-semibold">{o.counts.title}</h2>
+        <h2 className="text-title text-ink">{o.counts.title}</h2>
         <div className={tableShell}>
           <table className="w-full text-sm">
             <caption className="sr-only">{o.counts.caption}</caption>
