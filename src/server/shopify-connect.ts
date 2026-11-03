@@ -308,26 +308,6 @@ export async function shopifyConnection(member: Membership): Promise<ShopifyConn
   };
 }
 
-export type ShopCounts = { products: number | null; customers: number | null; orders: number | null; currency: string | null };
-
-const COUNTS_QUERY = `query KaizenCounts { shop { currencyCode } productsCount { count } customersCount { count } ordersCount { count } }`;
-type CountsAnswer = { shop?: { currencyCode?: string }; productsCount?: { count?: number }; customersCount?: { count?: number }; ordersCount?: { count?: number } };
-
-/** What the connected shop holds, counted by Shopify, for the page's first look; null when Shopify cannot be asked now. */
-export async function shopifyCounts(member: Membership, deps: ShopifyDeps = {}): Promise<ShopCounts | null> {
-  if (!memberCan(member, OWNER)) return null;
-  const answer = await shopifyGraphql<CountsAnswer>(member.store.id, COUNTS_QUERY, {}, deps);
-  if (!answer.ok) return null;
-  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
-  const d = answer.data;
-  return {
-    products: n(d.productsCount?.count),
-    customers: n(d.customersCount?.count),
-    orders: n(d.ordersCount?.count),
-    currency: typeof d.shop?.currencyCode === "string" && /^[A-Z]{3}$/.test(d.shop.currencyCode) ? d.shop.currencyCode : null,
-  };
-}
-
 /**
  * *Disconnect* (owner only): the app's grant revoked at Shopify where it still answers (`DELETE /admin/api_permissions/current.json`,
  * best effort), and the tokens dropped here whatever Shopify said. Audited.

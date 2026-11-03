@@ -141,10 +141,41 @@ describe("Shopify's return", () => {
 });
 
 describe("using the connection", () => {
-  it("calls Shopify with the token, and counts what the shop holds", async () => {
+  it("calls Shopify's API with the token, at the version the app is built for", async () => {
     calls.length = 0;
-    expect(await shopify.shopifyCounts(f.owner, { fetch: fakeFetch })).toEqual({ products: 312, customers: 2180, orders: 940, currency: "NOK" });
-    expect(calls.at(-1)?.token).toBe("shpca_access_1");
+    const answer = await shopify.shopifyGraphql<Row>(f.fx.storeId, "query KaizenCounts { productsCount { count } }", {}, { fetch: fakeFetch });
+    expect(answer).toEqual({ ok: true, data: { shop: { currencyCode: "NOK" }, productsCount: { count: 312 }, customersCount: { count: 2180 }, ordersCount: { count: 940 } } });
+    expect([calls.at(-1)?.url, calls.at(-1)?.token]).toEqual([`https://${SHOP}/admin/api/2026-10/graphql.json`, "shpca_access_1"]);
+  });
+
+  it("checks the shop (step 3): counts and settings from small read queries; a group Shopify refuses is unknown, never 0", async () => {
+    const answers: Record<string, unknown> = {
+      KaizenCheckShop: { shop: { name: "Kaizen Test", currencyCode: "NOK", taxesIncluded: false, billingAddress: { countryCodeV2: "NO" } } },
+      KaizenCheckCatalogue: { productsCount: { count: 312, precision: "EXACT" }, collectionsCount: { count: 41, precision: "EXACT" }, variants: { nodes: [{ price: "10.00", compareAtPrice: "20.00" }] } },
+      KaizenCheckContent: { pagesCount: { count: 18, precision: "EXACT" }, blogs: { nodes: [] }, urlRedirectsCount: { count: 0, precision: "EXACT" } },
+      KaizenCheckOrders: { ordersCount: { count: 940, precision: "EXACT" } },
+      KaizenCheckMoney: { giftCardsCount: { count: 0, precision: "EXACT" }, discountNodesCount: { count: 6, precision: "EXACT" } },
+      KaizenCheckMarkets: { markets: { nodes: [{ regions: { nodes: [{ code: "NO" }, { code: "SE" }] }, currencySettings: { baseCurrency: { currencyCode: "SEK" } } }] } },
+    };
+    const queries: string[] = [];
+    const checkFetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const query = String(JSON.parse(String(init?.body)).query);
+      const name = /query (\w+)/.exec(query)?.[1] ?? "";
+      queries.push(name);
+      if (!(name in answers)) return new Response("busy", { status: 503 });
+      return new Response(JSON.stringify({ data: answers[name] }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+    const { checkShopify } = await import("./shopify-report");
+    expect(await checkShopify(f.reader, { fetch: checkFetch })).toBeNull();
+    const check = await checkShopify(f.owner, { fetch: checkFetch });
+    if (!check?.ok) throw new Error("no report");
+    const r = check.report;
+    expect([r.name, r.taxesIncluded, r.countries, r.currencies]).toEqual(["Kaizen Test", false, ["NO", "SE"], ["SEK"]]);
+    expect([r.products?.n, r.collections?.n, r.pages?.n, r.articles?.n, r.orders?.n, r.discounts?.n]).toEqual([312, 41, 18, 0, 940, 6]);
+    expect([r.customers, r.subscribers]).toEqual([null, null]);
+    expect(r.goodToKnow).toEqual(["prices_without_vat", "compare_at", "customers_hidden"]);
+    expect(queries.sort()).toEqual(["KaizenCheckCatalogue", "KaizenCheckContent", "KaizenCheckCustomers", "KaizenCheckMarkets", "KaizenCheckMoney", "KaizenCheckOrders", "KaizenCheckShop"]);
+    expect((await row())!.status).toBe("connected");
   });
 
   it("refreshes an expiring token a minute early and keeps the new pair; a refused refresh disconnects", async () => {

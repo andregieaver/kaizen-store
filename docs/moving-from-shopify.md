@@ -529,6 +529,27 @@ your old links** (step 1, read from the shop's own domain), the file imports for
   of the app's data use before Copy can read them). Until `read_all_orders` is approved, Shopify counts and gives the last 60 days of
   orders.
 
+**Step 3, Check (3 November 2026).** Once connected, Settings → *Moving in* shows **Here's your shop**: Shopify's own counts
+(products, collections, pages, blog posts; customers and how many get the shop's emails; past orders, gift cards with money left,
+discounts; the redirects made in Shopify), what the shop's settings already answer (*Prices include VAT ✓* from `taxesIncluded`, the
+countries and currencies of its markets), and at most three things good to know (prices without VAT, compare-at prices, gift card codes,
+orders beyond 60 days, customers Shopify held back), each worded once. Homer is asked nothing.
+
+As built, differences from the plan (3 and 12, step 3):
+
+- **No bulk read and nothing kept.** The report needs counts, not rows, so it is seven small read queries
+  (`src/server/shopify-report.ts`: the shop, the catalogue, content, customers, orders, money, markets), asked again on each view and
+  kept nowhere; `shopReport()` in `src/lib/shopify-report.ts` turns them into the report. The bulk operations and the private bucket move
+  to step 4, Copy, which is what needs every row.
+- **One group refused spoils only itself.** Each group is its own query, so a field Shopify refuses (a scope held back, protected
+  customer data not yet approved) leaves its figures unknown (a dash), never 0, and the good-to-know says why.
+- **The subscribers** are counted by Shopify's customer segment query (`email_subscription_status = 'SUBSCRIBED'`, its `totalCount`):
+  `customersCount` filters only by dates and ids (read 3 November 2026 at
+  <https://shopify.dev/docs/api/admin-graphql/latest/queries/customersCount>).
+- **Counts are exact or marked**: Shopify caps a count unless `limit: null` is asked, which every query here asks; a count Shopify still
+  gives as a lower bound shows as *10,000+*.
+- **Compare-at prices** are judged from a sample of 250 variants, enough to know whether to say it.
+
 **How steps 1 and 2 reached production.** A new admin page is a new entry in the admin map, and the map is part of the AI manager's
 prompt, so the agents' eval replay (D391) fails until the eval is recorded again on production; a push with a migration waits for every
 check, so step 1's first push (CI #929) neither applied its migration nor deployed. The tables and the server went first, without the

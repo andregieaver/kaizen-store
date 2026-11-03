@@ -12,7 +12,10 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { momentText } from "@/lib/data-admin";
 import { requireOwnerRole } from "@/server/permissions";
-import { shopifyConnection, shopifyCounts, shopifyOffered } from "@/server/shopify-connect";
+import { shopifyConnection, shopifyOffered } from "@/server/shopify-connect";
+import { checkShopify } from "@/server/shopify-report";
+import { figureText, type ShopReport } from "@/lib/shopify-report";
+import type { MovingMessages } from "@/lib/admin-messages/moving.en";
 
 import { checkOldLinksAction, connectShopifyAction, disconnectShopifyAction } from "./actions";
 
@@ -50,7 +53,6 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const outcome = OUTCOMES.find((o) => o === asked) ?? null;
   const offered = shopifyOffered();
   const connection = offered ? await shopifyConnection(member) : null;
-  const counts = connection ? await shopifyCounts(member) : null;
   const base = `/admin/${store.slug}`;
   const files = [
     { href: `${base}/products/import`, label: w.files.products },
@@ -69,7 +71,6 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       ))}
     </ol>
   );
-  const n = (v: number | null) => (v === null ? "–" : v.toLocaleString(locale));
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["moving"])}>
@@ -85,12 +86,9 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       ) : connection ? (
         <Card title={fillWords(w.connected.title, { name: connection.name || connection.shop })} description={fillWords(w.connected.shop, { shop: connection.shop, when: momentText(connection.connectedAt, store.timeZone, locale) })}>
           <div className="flex flex-col gap-4">
-            {counts && (
-              <div>
-                <p className="text-sm">{fillWords(w.connected.counts, { products: n(counts.products), customers: n(counts.customers), orders: n(counts.orders) })}</p>
-                <p className={hint}>{w.connected.countsAtLeast}</p>
-              </div>
-            )}
+            <Suspense fallback={<DataSkeleton />}>
+              <ShopReportView storeSlug={store.slug} words={w} locale={locale} />
+            </Suspense>
             {connection.missing.length > 0 && (
               <p role="alert" className="text-sm">
                 {countWords(connection.missing.length, w.connected.missing, { n: connection.missing.length })}
@@ -112,3 +110,66 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
     </AdminTextScope>
   );
 }
+
+/** *Here's your shop* (D445 step 3): what Shopify counts and what its settings already answer, then at most three things good to know. */
+async function ShopReportView({ storeSlug, words, locale }: { storeSlug: string; words: MovingMessages; locale: string }) {
+  const member = await requireOwnerRole(storeSlug);
+  const check = await checkShopify(member);
+  const r = words.report;
+  if (!check) return null;
+  if (!check.ok) return <p className="text-sm">{check.problem === "disconnected" ? r.disconnected : r.failed}</p>;
+  return <ShopReportBody report={check.report} words={words} locale={locale} />;
+}
+
+function ShopReportBody({ report, words, locale }: { report: ShopReport; words: MovingMessages; locale: string }) {
+  const r = words.report;
+  const f = (v: ShopReport["products"]) => figureText(v, locale);
+  let countryNames: Intl.DisplayNames | null = null;
+  try {
+    countryNames = new Intl.DisplayNames([locale], { type: "region" });
+  } catch {
+    countryNames = null;
+  }
+  const countries = report.countries.map((c) => countryNames?.of(c) ?? c);
+  const list = (items: string[]) => {
+    try {
+      return new Intl.ListFormat(locale, { type: "conjunction" }).format(items);
+    } catch {
+      return items.join(", ");
+    }
+  };
+  return (
+    <section aria-labelledby="shop-report" className="flex flex-col gap-3">
+      <h3 id="shop-report" className="text-base font-medium">
+        {r.title}
+      </h3>
+      <ul className="flex flex-col gap-1 text-sm">
+        <li>{fillWords(r.catalogue, { products: f(report.products), collections: f(report.collections), pages: f(report.pages), articles: f(report.articles) })}</li>
+        <li>{fillWords(r.people, { customers: f(report.customers), subscribers: f(report.subscribers) })}</li>
+        <li>{fillWords(r.history, { orders: f(report.orders), giftCards: f(report.giftCardsWithMoney), discounts: f(report.discounts) })}</li>
+        {report.redirects && report.redirects.n > 0 && <li>{fillWords(r.links, { redirects: f(report.redirects) })}</li>}
+      </ul>
+      <ul className="flex flex-col gap-1 text-sm">
+        <li>{report.taxesIncluded === true ? r.vatIncluded : report.taxesIncluded === false ? r.vatExcluded : r.vatUnknown}</li>
+        {countries.length > 0 && report.currency && (
+          <li>
+            {fillWords(r.sellsIn, { countries: list(countries), currency: report.currency })}
+            {report.currencies.length > 0 ? `, ${fillWords(r.alsoIn, { currencies: list(report.currencies) })}` : ""}
+          </li>
+        )}
+      </ul>
+      {report.goodToKnow.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <h4 className="text-sm font-medium">{r.goodToKnow}</h4>
+          <ul className="list-disc pl-5 text-sm">
+            {report.goodToKnow.map((item) => (
+              <li key={item}>{r.items[item]}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className={hint}>{r.counted}</p>
+    </section>
+  );
+}
+
