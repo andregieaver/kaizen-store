@@ -341,7 +341,9 @@ export function productItem(storeSlug: string, marketSlug: string, product: Grid
     excerpt: product.excerpt || summarize(product.description, EXCERPT_MAX),
     // The card's picture and, beside it, the large one by its own width (D336); the tile's own size stays the grid's.
     image: product.image ? { url: product.image.url, alt: product.image.alt, ...(product.image.large ? { large: product.image.large, largeWidth: product.image.width } : {}) } : null,
-    price: { view: product.price, from: product.priceVaries },
+    // Price on request (D431): the words in place of a price no shopper sees.
+    price: product.priceOnRequest ? null : { view: product.price, from: product.priceVaries },
+    ...(product.priceOnRequest ? { priceOnRequest: true } : {}),
     audience: product.audience,
     ...(product.preorderUntil ? { preorderUntil: product.preorderUntil } : {}),
   };

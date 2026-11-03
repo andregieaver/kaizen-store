@@ -181,6 +181,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Store features (D178, `docs/store-features.md`, `src/lib/store-features.ts`, `src/server/store-features.ts`, `/admin/{store}/settings/features`)
 - Inventory (wave 3, D172, `docs/wave-3-inventory.md`)
 - Orders: list, tags, archive, drafts, gift (wave 3, D173, `docs/wave-3-orders.md`)
+- Request a quote and price on request (D431, `src/lib/quotes.ts`, `src/server/quote-requests.ts`, `src/lib/product-question.ts`, `src/server/product-questions.ts`)
 - Fulfilment and order editing (wave 3, D174, `docs/wave-3-fulfilment.md`)
 - Shipping methods, pickup and local delivery (wave 3, D237, `docs/wave-3-shipping-methods.md`)
 - Customer notifications, tracking and staff alerts (wave 3, D238, `docs/wave-3-notifications.md`)

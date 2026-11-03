@@ -856,7 +856,8 @@ export async function storeLlms(slug: string): Promise<string | null> {
             links: products.map((product) => {
               const text = byHandle.get(product.handle);
               const description = text ? summarize(productText(text, market.locale).description, 200) : "";
-              const price = `${product.priceVaries ? "from " : ""}${money(product.price.amountMinor, product.price.currency)}`;
+              // Price on request (D431): said so, never the price.
+              const price = product.priceOnRequest ? "price on request" : `${product.priceVaries ? "from " : ""}${money(product.price.amountMinor, product.price.currency)}`;
               return {
                 title: product.title,
                 url: `${home(market.code)}/p/${product.handle}`,

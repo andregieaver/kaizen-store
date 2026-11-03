@@ -71,6 +71,10 @@ describe("what is left out", () => {
       "no_price",
     ]);
   });
+
+  it("leaves out a product priced on request (D431): a feed's item needs the price it never shows", () => {
+    expect(feedProblems({ kind: "goods", subscriptionOnly: false, audience: "all", hasPicture: true, hasPrice: true, priceOnRequest: true })).toEqual(["price_on_request"]);
+  });
 });
 
 describe("Google Merchant Center", () => {

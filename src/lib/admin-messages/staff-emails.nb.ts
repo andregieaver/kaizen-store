@@ -77,6 +77,14 @@ export const staffEmailsNb: StaffEmailsMessages = {
       text: "{what} {number} for bestilling {order}.",
       button: "Åpne returen",
     },
+    quoteRequested: {
+      subject: "Tilbud etterspurt: {number}",
+      preview: "{store} har fått en ny forespørsel om tilbud, {number}.",
+      heading: "Noen har bedt om et tilbud",
+      text: "Forespørsel {number} ligger under Ordreutkast. Sett prisene og trykk Send tilbud, eller avslå den med et kort svar.",
+      priceNeeded: "Linjer med pris på forespørsel: {n}. Sett prisene før du sender.",
+      button: "Åpne forespørselen",
+    },
     summary: {
       periodDay: "i går ({to})",
       periodWeek: "uken {from} til {to}",
@@ -304,5 +312,5 @@ export const staffEmailsNb: StaffEmailsMessages = {
     after: "Bruk og grenser viser alle jobbene og når de sist kjørte. Det sendes én e-post hver gang en jobb begynner å feile; den neste kommer først når den har kjørt bra igjen og feilet på nytt.",
     button: "Åpne bruk og grenser",
   },
-  push: { newOrderTitle: "Ny ordre {number}", newOrderBody: "{total} · {store}" },
+  push: { newOrderTitle: "Ny ordre {number}", newOrderBody: "{total} · {store}", quoteTitle: "Tilbud etterspurt {number}", quoteBody: "{store}" },
 };

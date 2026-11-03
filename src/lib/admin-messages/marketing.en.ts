@@ -370,7 +370,7 @@ export const marketingEn = {
     leftOutTitle: "Not in the feeds",
     leftOutNone: "Every product with a price in {market} is in the feeds.",
     leftOutIntro: "These products are left out in {market}:",
-    problems: { not_goods: "not goods or a download", subscription_only: "sold only by subscription", business_only: "for businesses only", no_picture: "no picture", no_price: "no price" },
+    problems: { not_goods: "not goods or a download", subscription_only: "sold only by subscription", business_only: "for businesses only", no_picture: "no picture", no_price: "no price", price_on_request: "price on request" },
     counts: "{items} items from {products} products in {market}.",
     noKey: "Secrets cannot be saved right now. Try again later.",
     readOnly: "Ask someone who can change marketing to turn feeds on.",

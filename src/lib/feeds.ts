@@ -59,7 +59,7 @@ export type FeedItem = {
 };
 
 /** Why a product is not in a feed: each is named on the admin's page. */
-export const FEED_PROBLEMS = ["not_goods", "subscription_only", "business_only", "no_picture", "no_price"] as const;
+export const FEED_PROBLEMS = ["not_goods", "subscription_only", "business_only", "no_picture", "no_price", "price_on_request"] as const;
 export type FeedProblem = (typeof FEED_PROBLEMS)[number];
 
 export type FeedCandidate = {
@@ -68,6 +68,8 @@ export type FeedCandidate = {
   audience: string;
   hasPicture: boolean;
   hasPrice: boolean;
+  /** Priced on request (D431): a feed's item needs a price, which this product never shows, so it is left out. */
+  priceOnRequest?: boolean;
 };
 
 /** Every reason a product cannot be advertised in a catalogue feed; empty when it can. */
@@ -78,6 +80,7 @@ export function feedProblems(product: FeedCandidate): FeedProblem[] {
   if (product.audience === "business") problems.push("business_only");
   if (!product.hasPicture) problems.push("no_picture");
   if (!product.hasPrice) problems.push("no_price");
+  if (product.priceOnRequest) problems.push("price_on_request");
   return problems;
 }
 

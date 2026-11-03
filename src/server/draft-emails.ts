@@ -17,11 +17,11 @@ type Row = Record<string, unknown>;
  * The pay-link email of a draft order (wave 3, run 2, D173, `docs/wave-3-orders.md` 2.1): kind `draft.pay_link`, to the ONE address staff typed (or took from the customer), in the order's language: the lines, the total,
  * the store's note (quoted, plain text, never HTML), the date the link is valid to and the button. The words are hand-written (nb, sv, da, en) and need legal review (`emailText().draft`). The token is in the
  * link only; the email is kept in `email_messages` like every shopper email, so the message holds the link (the store's own record of what it sent). One per token: a new token (*Send again*) is a new email.
- * Never throws into the caller: a failed email is `failed` and staff may send again.
+ * Never throws into the caller: a failed email is `failed` and staff may send again. A shopper's request for a quote (D431) is worded as their quote.
  */
 export async function sendDraftLink(storeId: string, draftId: string, token: string, options: { again?: boolean } = {}): Promise<SendOutcome> {
   const [draft] = await db().execute<Row>(sql`
-    select number, status, order_id, email, locale, market_slug, market_code, currency, note_to_buyer, expires_at, pay_token_hash from commerce.draft_orders
+    select number, status, order_id, email, locale, market_slug, market_code, currency, note_to_buyer, expires_at, pay_token_hash, source from commerce.draft_orders
     where store_id = ${storeId}::uuid and id = ${draftId}::uuid
   `);
   if (!draft || draft.status !== "sent" || !draft.order_id || !draft.email) return "failed";
@@ -30,7 +30,12 @@ export async function sendDraftLink(storeId: string, draftId: string, token: str
   const ctx = await emailContext(storeId, String(draft.market_code).trim(), String(draft.locale), String(draft.currency).trim());
   if (!ctx) return "failed";
   const { store, market, text, m } = ctx;
-  const words = text.draft;
+  // A shopper's request for a quote (D431) is answered as a quote: its own subject, heading, words and button around the same link.
+  const quote = draft.source === "quote" ? text.quote : null;
+  const words = {
+    ...text.draft,
+    ...(quote ? { heading: quote.sentHeading, intro: quote.sentIntro, button: quote.sentButton, subject: quote.sentSubject } : {}),
+  };
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale, market.priceStyle);
   const url = `${marketUrl(store.slug, String(draft.market_slug), `/account/pay/${token}`)}`;
   const until = new Date(String(draft.expires_at)).toLocaleDateString(market.locale, { dateStyle: "long" });

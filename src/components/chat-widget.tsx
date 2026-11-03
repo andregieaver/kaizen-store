@@ -79,6 +79,8 @@ export type ChatLabels = {
   vatExcluded: string;
   fromPrice: string;
   priorPrice: string;
+  /** In place of the price of a product priced on request (D431). */
+  priceOnRequest?: string;
   /** The words of a unit price (D160), so a card shows the price per kg, litre or metre worked out in code from the price it shows. */
   unit: UnitLabels;
 };
@@ -1066,34 +1068,41 @@ export function ProductCard({ product, locale, labels, onOpen }: { product: Chat
             ))}
           </span>
         )}
-        <span className="font-semibold">
-          {product.from && <span className="font-normal">{labels.fromPrice} </span>}
-          <VatAmount
-            amountMinor={price.amountMinor}
-            currency={price.currency}
-            locale={locale}
-            vat={price.vat}
-            labels={labels}
-            decimals={price.decimals}
-            words={price.words}
-          />
-        </span>
-        {price.referenceMinor !== null && (
-          <span className="text-xs text-muted">
-            {labels.priorPrice}:{" "}
-            <VatAmount amountMinor={price.referenceMinor} currency={price.currency} locale={locale} vat={price.vat} labels={labels} label={false} decimals={price.decimals} />
-          </span>
+        {price === null ? (
+          // Price on request (D431): the words, never a price.
+          <span className="font-semibold">{labels.priceOnRequest}</span>
+        ) : (
+          <>
+            <span className="font-semibold">
+              {product.from && <span className="font-normal">{labels.fromPrice} </span>}
+              <VatAmount
+                amountMinor={price.amountMinor}
+                currency={price.currency}
+                locale={locale}
+                vat={price.vat}
+                labels={labels}
+                decimals={price.decimals}
+                words={price.words}
+              />
+            </span>
+            {price.referenceMinor !== null && (
+              <span className="text-xs text-muted">
+                {labels.priorPrice}:{" "}
+                <VatAmount amountMinor={price.referenceMinor} currency={price.currency} locale={locale} vat={price.vat} labels={labels} label={false} decimals={price.decimals} />
+              </span>
+            )}
+            <UnitLine
+              amountMinor={price.amountMinor}
+              currency={price.currency}
+              locale={locale}
+              vat={price.vat}
+              measure={price.measure}
+              labels={labels.unit}
+              inline
+              decimals={price.decimals}
+            />
+          </>
         )}
-        <UnitLine
-          amountMinor={price.amountMinor}
-          currency={price.currency}
-          locale={locale}
-          vat={price.vat}
-          measure={price.measure}
-          labels={labels.unit}
-          inline
-          decimals={price.decimals}
-        />
       </span>
     </Link>
   );

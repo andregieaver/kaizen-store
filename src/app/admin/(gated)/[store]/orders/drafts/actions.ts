@@ -14,6 +14,7 @@ import { countWords, fillWords } from "@/lib/drafts-words";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission, mayFindDraftCustomers } from "@/server/permissions";
 import { staffActor } from "@/server/order-actor";
+import { declineQuote } from "@/server/quote-requests";
 import {
   createDraft,
   deleteDraft,
@@ -53,7 +54,7 @@ export type SaveDraftResponse =
       marketNote: string | null;
       market: { slug: string; currency: string; locale: string; name: string } | null;
       /** The lines as saved, in order: the title and SKU the server wrote and the list price as typed text, so the editor shows the prices of the market it was just saved in. */
-      lines: { title: string; sku: string; listPrice: string | null }[];
+      lines: { title: string; sku: string; listPrice: string | null; onRequest: boolean }[];
     }
   | { ok: false; kind: "conflict" | "invalid" | "not_open" | "market" | "gone" | "denied"; message: string; fields?: DraftFieldProblem[] };
 
@@ -98,7 +99,12 @@ export async function saveDraftAction(storeSlug: string, draftId: string, input:
     blocking: (preview?.blocking.length ?? 1) > 0,
     marketNote: notes.length > 0 ? notes.join(" ") : null,
     market: preview?.market ? { slug: preview.market.slug, currency: preview.market.currency, locale: preview.market.locale, name: preview.market.name } : null,
-    lines: saved.draft.lines.map((line) => ({ title: line.title, sku: line.sku, listPrice: line.listPriceMinor === null ? null : formatPriceInput(line.listPriceMinor, saved.draft.currency) })),
+    lines: saved.draft.lines.map((line) => ({
+      title: line.title,
+      sku: line.sku,
+      listPrice: line.listPriceMinor === null ? null : formatPriceInput(line.listPriceMinor, saved.draft.currency),
+      onRequest: line.onRequest,
+    })),
   };
 }
 
@@ -186,6 +192,24 @@ export async function reopenDraftAction(storeSlug: string, draftId: string): Pro
   }
   refresh();
   return { ok: true, message: w.reopened };
+}
+
+/**
+ * Declines a shopper's request for a quote (D431) with a short reply, emailed to them: only an open request not declined yet. The draft stays,
+ * marked declined, and is never sent; the daily clean-up removes it 30 days later. `orders:write`.
+ */
+export async function declineQuoteAction(storeSlug: string, draftId: string, reply: string): Promise<DraftActionResponse> {
+  const member = await checkPermission(storeSlug, "orders:write");
+  if (!member) return { ok: false, message: await noAccess() };
+  const all = draftWords(member);
+  const w = all.actions.decline;
+  const done = await declineQuote(member.store.id, staffActor(member.account.id), draftId, String(reply ?? "").slice(0, 5000));
+  if (!done.ok) {
+    if (done.problem === "reply") return { ok: false, message: w.reply[done.reply] };
+    return { ok: false, message: done.problem === "not_found" ? all.actions.gone : w[done.problem] };
+  }
+  refresh();
+  return { ok: done.emailed !== "failed", message: done.emailed === "sent" || done.emailed === "duplicate" ? w.doneEmailed : done.emailed === "logged" ? w.doneLogged : w.doneFailed };
 }
 
 /** Deletes a draft that is not sent, then goes to the list. */

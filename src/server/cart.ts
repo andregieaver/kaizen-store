@@ -222,7 +222,8 @@ export async function getCart(
       -- worked out only by commerce.line_price().
       coalesce(bp.amount_minor, cp.amount_minor) as amount_minor, bp.list_id as price_list_id, bp.break_from,
       -- Only in a country and currency the store offers now (D178: Several countries and currencies).
-      (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
+      -- Never a product priced on request (D431): it is asked a quote of, not bought from a cart.
+      (p.status = 'active' and v.active and not p.price_on_request and ${bookable} and ${offeredTo(customerId)} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
       -- Under a producer responsibility scheme with no valid registration in this country today (D342), as placeOrder() reads it.
       commerce.line_unregistered(cl.store_id, c.market_code, v.id) as unregistered,
       va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, va.preorder_until::text as preorder_until, qr.min_quantity, qr.max_quantity, qr.quantity_step
@@ -545,6 +546,8 @@ export async function sellableQuantity(
     join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     join commerce.products p
       on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
+      -- A product priced on request (D431) is never put in a cart: its page offers Request a quote.
+      and not p.price_on_request
     -- Sold in this market (a price there, the product and variant not switched off in it, D335).
     join commerce.current_prices pr
       on pr.variant_id = v.id and pr.market_code = ${market.code}

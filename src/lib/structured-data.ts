@@ -192,6 +192,8 @@ export type ProductFacts = {
   properties?: { name: string; value: string }[];
   /** The standard taxonomy's category (D327), its full path in the page's language: the product's `category`. */
   standard?: { path: string } | null;
+  /** Price on request (D431): its offers say no price (nor the shipping, whose free limit would hint at it). */
+  priceOnRequest?: boolean;
   variants: {
     id: string;
     sku: string;
@@ -244,6 +246,16 @@ export function productJsonLd({
     const digital = variant.delivery === "digital" || variant.delivery === "service";
     const free =
       shipping !== null && shipping.freeOverMinor !== null && variant.price.amountMinor >= shipping.freeOverMinor;
+    if (product.priceOnRequest) {
+      return {
+        "@type": "Offer",
+        url,
+        availability: SCHEMA_AVAILABILITY[digital ? "in_stock" : availability(variant.id)],
+        itemCondition: `${SCHEMA}/NewCondition`,
+        seller,
+        hasMerchantReturnPolicy: digital ? noReturns(market.code) : returns,
+      };
+    }
     return {
       "@type": "Offer",
       url,

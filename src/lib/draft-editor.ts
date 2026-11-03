@@ -22,6 +22,8 @@ export type EditorLine = {
   vatCategory: string;
   /** The market's list price as shown when the line was added or last saved, as typed text; null for a custom item. Shown as the placeholder. */
   listPrice: string | null;
+  /** The product is priced on request (D431): with no price typed it waits for one, its list price only a guide. */
+  onRequest?: boolean;
 };
 
 export type EditorDiscount = { kind: "percent" | "amount"; value: string; label: string };
@@ -70,6 +72,8 @@ export type DraftLike = {
     listPriceMinor: number | null;
     customPrice: boolean;
     vatCategory: string | null;
+    /** Priced on request (D431). */
+    onRequest?: boolean;
   }[];
 };
 
@@ -110,6 +114,7 @@ export function formFromDraft(draft: DraftLike): EditorState {
       price: line.kind === "custom" || line.customPrice ? formatPriceInput(line.unitPriceMinor, draft.currency) : "",
       vatCategory: line.vatCategory ?? "",
       listPrice: line.listPriceMinor === null ? null : formatPriceInput(line.listPriceMinor, draft.currency),
+      ...(line.onRequest ? { onRequest: true } : {}),
     })),
   };
 }

@@ -29,6 +29,7 @@ import { publicForm } from "@/lib/forms";
 import { PartBackground, blockBox, columnBox, rowBox, rowFrame, rowGrid, rowInnerClass, rowInnerStyle } from "@/components/page-parts";
 import { ColumnDividers, RowWidthHandles } from "./row-resize";
 import { useAdminText } from "./admin-text";
+import { QuestionPartFields, QuotePlacementField } from "./product-question-fields";
 import type { BuilderMessages } from "@/lib/admin-messages/builder.en";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { MenuGlide } from "@/components/menu-glide";
@@ -5790,6 +5791,9 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
           onChange={(patch) => onChange(productLoopPatch(block, patch))}
         />
       )}
+      {/* Request a quote (D431): beside or instead of Add to cart; the product question's own settings. */}
+      {block.part === "buy" && <QuotePlacementField block={block} onChange={onChange} />}
+      {block.part === "question" && <QuestionPartFields block={block} onChange={onChange} />}
       {block.part === "related" && (
         <>
           <NumberField
@@ -5920,6 +5924,16 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
         return <FieldsStandIn value={block} entities={["product"]} mode={block.part === "field" ? "field" : "group"} />;
       case "loop":
         return <LoopStandIn value={productLoopConfig(block)} entities={["product"]} />;
+      case "question":
+        // The product question (D431): its heading, a field or two and its button.
+        return (
+          <span className="flex flex-col gap-2">
+            {block.showHeading !== false && <span className="font-medium">{block.heading || shop.question}</span>}
+            <span className="h-9 rounded-md border border-border" />
+            <span className="h-16 rounded-md border border-border" />
+            <span className="w-fit button-primary rounded-button px-4 py-2 text-sm">{block.buttonLabel || shop.questionButton}</span>
+          </span>
+        );
       case "related": {
         const columns = block.columns ?? 4;
         return (

@@ -29,6 +29,8 @@ export function DraftsListView({
   slug,
   rows,
   status,
+  quotes = false,
+  quotesWaiting = 0,
   nextCursor,
   hasCursor,
   openCount,
@@ -41,6 +43,10 @@ export function DraftsListView({
   slug: string;
   rows: DraftListRow[];
   status: DraftStatus | null;
+  /** Only shoppers' requests for a quote (D431). */
+  quotes?: boolean;
+  /** Requests for a quote waiting for a price. */
+  quotesWaiting?: number;
   nextCursor: string | null;
   hasCursor: boolean;
   openCount: number;
@@ -56,9 +62,10 @@ export function DraftsListView({
   const labels = words.status;
   const base = `/admin/${slug}/orders/drafts`;
   const when = (iso: string) => new Date(iso).toLocaleString(dateLocale, { dateStyle: "medium", timeStyle: "short", timeZone });
-  const href = (change: { status?: DraftStatus | null; after?: string | null }) => {
+  const href = (change: { status?: DraftStatus | null; quotes?: boolean; after?: string | null }) => {
     const q = new URLSearchParams();
-    const next = { status, after: null as string | null, ...change };
+    const next = { status, quotes, after: null as string | null, ...change };
+    if (next.quotes) q.set("quotes", "1");
     if (next.status) q.set("status", next.status);
     if (next.after) q.set("after", next.after);
     const text = q.toString();
@@ -68,11 +75,16 @@ export function DraftsListView({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav aria-label={w.statusNav} className="flex flex-wrap gap-1 border-b border-line pb-2 text-sm">
-          <Link href={href({ status: null })} aria-current={status === null ? "page" : undefined} className="rounded-pill px-3 py-1.5 text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink">
+          <Link href={href({ status: null, quotes: false })} aria-current={status === null && !quotes ? "page" : undefined} className="rounded-pill px-3 py-1.5 text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink">
             {w.all}
           </Link>
+          {/* Requests for a quote (D431): the open ones, waiting for a price. */}
+          <Link href={href({ status: "open", quotes: true })} aria-current={quotes ? "page" : undefined} className="rounded-pill px-3 py-1.5 text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink">
+            {w.quotes}
+            {quotesWaiting > 0 && <span className="ml-1 tabular-nums">({quotesWaiting})</span>}
+          </Link>
           {DRAFT_STATUSES.map((s) => (
-            <Link key={s} href={href({ status: s })} aria-current={status === s ? "page" : undefined} className="rounded-pill px-3 py-1.5 text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink">
+            <Link key={s} href={href({ status: s, quotes: false })} aria-current={status === s && !quotes ? "page" : undefined} className="rounded-pill px-3 py-1.5 text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink">
               {labels[s]}
             </Link>
           ))}
@@ -84,11 +96,12 @@ export function DraftsListView({
         )}
       </div>
       <p className={hint}>{fillWords(w.openCount, { count: openCount, max: DRAFTS_OPEN_MAX })}</p>
+      {quotesWaiting > 0 && !quotes && <p className="text-sm">{countWords(quotesWaiting, w.quotesWaiting)}</p>}
 
       {rows.length === 0 ? (
         <div className="flex flex-col items-start gap-3 rounded-panel bg-sunken p-8 text-sm">
-          <p>{status ? fillWords(w.noneOfStatus, { status: labels[status].toLowerCase() }) : w.none}</p>
-          {status ? (
+          <p>{quotes ? w.noQuotes : status ? fillWords(w.noneOfStatus, { status: labels[status].toLowerCase() }) : w.none}</p>
+          {status || quotes ? (
             <Link href={base} className={secondary}>
               {w.showAll}
             </Link>
@@ -128,9 +141,15 @@ export function DraftsListView({
                   <RowDate>
                     <time dateTime={row.createdAt}>{when(row.createdAt)}</time>
                   </RowDate>
-                  <Chip signal={DRAFT_SIGNAL[row.status]} dot>
-                    {labels[row.status]}
-                  </Chip>
+                  {row.quote ? (
+                    <Chip signal={row.quote === "requested" ? "warning" : "neutral"} dot>
+                      {row.quote === "requested" ? w.quoteRequested : w.quoteDeclined}
+                    </Chip>
+                  ) : (
+                    <Chip signal={DRAFT_SIGNAL[row.status]} dot>
+                      {labels[row.status]}
+                    </Chip>
+                  )}
                   <RowAmount>{row.totalMinor === null ? <span className="text-muted">–</span> : formatMoney(row.totalMinor, row.currency, locale)}</RowAmount>
                 </ListRow>
               );

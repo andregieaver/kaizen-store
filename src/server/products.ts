@@ -260,6 +260,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
     subscriptionOnly: false,
     audience: "all",
     soldByMeasure: false,
+    priceOnRequest: false,
     vatCategory: "standard",
     kind: "goods",
     hostId: null,
@@ -390,7 +391,7 @@ export async function getProductForEdit(
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
            delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id, sold_by_measure, shipping_profile_id,
-           standard_category, standard_attributes, price_words
+           standard_category, standard_attributes, price_words, price_on_request
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
@@ -612,6 +613,7 @@ export async function getProductForEdit(
     subscriptionOnly: Boolean(product.subscription_only),
     audience: parseProductAudience(product.audience),
     soldByMeasure: Boolean(product.sold_by_measure),
+    priceOnRequest: Boolean(product.price_on_request),
     vatCategory: category,
     kind,
     hostId: product.host_id ? String(product.host_id) : null,
@@ -1152,6 +1154,7 @@ async function upsertProduct(
         subscription_only = ${input.subscriptionOnly}, audience = ${input.audience},
         vat_category = ${input.vatCategory}, kind = ${input.kind}, host_id = ${hostOf(storeId, input)},
         product_layout_id = ${input.layoutId}::uuid, sold_by_measure = ${input.soldByMeasure && input.kind === "goods"}, updated_at = now(),
+        price_on_request = ${input.priceOnRequest && input.kind === "goods"},
         bundle_pricing = ${bundlePricing(input)}, bundle_percent_off = ${bundlePercent(input)},
         shipping_profile_id = ${input.shippingProfileId === undefined ? sql`shipping_profile_id` : sql`(select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid)`},
         standard_category = ${input.standardCategory === undefined ? sql`standard_category` : sql`${input.standardCategory}`},
@@ -1167,7 +1170,7 @@ async function upsertProduct(
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
       delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id,
-      sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off, standard_category, standard_attributes, price_words
+      sold_by_measure, shipping_profile_id, bundle_pricing, bundle_percent_off, standard_category, standard_attributes, price_words, price_on_request
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
@@ -1175,7 +1178,7 @@ async function upsertProduct(
       ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}, (select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid),
       ${bundlePricing(input)}, ${bundlePercent(input)}, ${input.standardCategory ?? null},
       ${JSON.stringify(input.standardCategory ? (input.standardAttributes ?? {}) : {})}::jsonb,
-      ${priceWordsValue(input.priceWords ?? INHERIT_WORDS)}
+      ${priceWordsValue(input.priceWords ?? INHERIT_WORDS)}, ${input.priceOnRequest && input.kind === "goods"}
     )
     returning id
   `);

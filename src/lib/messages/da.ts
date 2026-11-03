@@ -3,6 +3,7 @@ import { daBrowser } from "./da-browser";
 import { daReturns } from "./da-returns";
 import { daExchange, daReturnLabel } from "./da-exchange";
 import { daReviews } from "./da-reviews";
+import { daQuotes } from "./da-quotes";
 import type { Messages } from "./en";
 
 export const da: Messages = {
@@ -13,6 +14,8 @@ export const da: Messages = {
   returnLabel: daReturnLabel,
   // Product reviews (D301): hand-written (`da-reviews.ts`).
   reviews: daReviews,
+  // Request a quote and the product question (D431): hand-written (`da-quotes.ts`).
+  quotes: daQuotes,
   deliveries: {
     title: "Abonnementsboks",
     intro: "Hold en liste over det, du vil have i boksen. Vi leverer den på din leveringsdag: ændr den indtil fristen, så trækker vi dit kort, når leveringen er på vej.",

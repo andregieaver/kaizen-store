@@ -80,6 +80,15 @@ export const staffEmailsEn = {
       text: "{what} {number} for order {order}.",
       button: "Open the return",
     },
+    /** A shopper asked for a quote (D431): the draft's number and lines, never who asked. */
+    quoteRequested: {
+      subject: "Quote requested: {number}",
+      preview: "{store} has a new request for a quote, {number}.",
+      heading: "A quote was requested",
+      text: "Request {number} is in Draft orders. Set the prices and press Send quote, or decline it with a short reply.",
+      priceNeeded: "Lines priced on request: {n}. Set their prices before you send.",
+      button: "Open the request",
+    },
     summary: {
       periodDay: "yesterday ({to})",
       periodWeek: "the week {from} to {to}",
@@ -311,7 +320,7 @@ export const staffEmailsEn = {
     button: "Open usage and limits",
   },
   /** A push notification of a new order (D361): its number and total only. */
-  push: { newOrderTitle: "New order {number}", newOrderBody: "{total} · {store}" },
+  push: { newOrderTitle: "New order {number}", newOrderBody: "{total} · {store}", quoteTitle: "Quote requested {number}", quoteBody: "{store}" },
 };
 
 export type StaffEmailsMessages = Widen<typeof staffEmailsEn>;

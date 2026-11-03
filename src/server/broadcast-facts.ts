@@ -27,8 +27,10 @@ export function emailMarket(store: Pick<EmailStore, "markets" | "localization">,
 }
 
 /** A product's price lines as the store shows it in the market: the amount (with "From" where variants differ) and the small print. */
-export function priceLines(product: Pick<GridProduct, "price" | "priceVaries">, market: Market): { price: string; small: string[] } {
+export function priceLines(product: Pick<GridProduct, "price" | "priceVaries"> & { priceOnRequest?: boolean }, market: Market): { price: string; small: string[] } {
   const m = t(market.lang);
+  // Price on request (D431): the words, never the price.
+  if (product.priceOnRequest) return { price: m.quotes.priceOnRequest, small: [] };
   const shown = wordpressPrice(product.price, product.priceVaries, market.locale, m);
   return {
     price: shown.from_label ? `${shown.from_label} ${shown.text}` : shown.text,

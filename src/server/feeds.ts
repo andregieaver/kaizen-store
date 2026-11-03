@@ -45,6 +45,7 @@ export async function storeFeed(store: Store, market: Market): Promise<StoreFeed
       audience: product.audience,
       hasPicture: product.images.length > 0 || product.variants.some((v) => v.image),
       hasPrice: product.variants.length > 0,
+      priceOnRequest: product.priceOnRequest,
     });
     if (problems.length > 0) {
       leftOut.push({ productId: product.id, handle: product.handle, title: product.title, problems });

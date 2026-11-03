@@ -23,6 +23,8 @@ export type GridItem = {
   image: { url: string; alt: string; width?: number; height?: number; large?: string; largeWidth?: number } | null;
   /** Products only: the cheapest price in the market, and whether others cost more. */
   price: { view: PriceView; from: boolean } | null;
+  /** Products only (D431): priced on request, so the tile says so in place of a price. */
+  priceOnRequest?: boolean;
   /** Products only (B2B): who it is for, when the store sells to both. */
   audience?: ProductAudience;
   /** Products only (D396): the earliest release date of its variants on pre-order, shown under the price. */

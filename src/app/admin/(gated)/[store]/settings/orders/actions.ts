@@ -12,11 +12,12 @@ import { AUTO_ARCHIVE_MAX_DAYS, AUTO_ARCHIVE_MIN_DAYS } from "@/lib/order-limits
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { isCaptureSetting } from "@/lib/capture";
+import { isQuoteMode } from "@/lib/quotes";
 import { saveOrderSettings, SETTINGS_PROBLEMS, type OrderSettingsInput } from "@/server/order-settings";
 
 /**
- * Saves the store's order settings (wave 3, D173, `docs/wave-3-orders.md` 2.3): gift messages, automatic archiving, how long a draft's pay link is valid and who may record
- * a payment taken outside Kaizen. `settings:write` changes them; the last is the owner's alone (`saveOrderSettings()` refuses it from anyone else, and the form does not send
+ * Saves the store's order settings (wave 3, D173, `docs/wave-3-orders.md` 2.3): gift messages, automatic archiving, how long a draft's pay link is valid, who may record
+ * a payment taken outside Kaizen and who may request a quote (D431). `settings:write` changes them; the last is the owner's alone (`saveOrderSettings()` refuses it from anyone else, and the form does not send
  * it from them). The server checks every value again and writes the audit entry.
  */
 export async function saveOrderSettingsAction(storeSlug: string, _previous: FormState, form: FormData): Promise<FormState> {
@@ -48,6 +49,13 @@ export async function saveOrderSettingsAction(storeSlug: string, _previous: Form
     const capture = form.get("capture");
     if (!isCaptureSetting(capture)) return { status: "error", messages: [said(SETTINGS_PROBLEMS.capture)] };
     input.capture = capture;
+  }
+
+  // Request a quote (D431): off, for everyone or for business customers only.
+  const quotes = form.get("quoteRequests");
+  if (quotes !== null) {
+    if (!isQuoteMode(quotes)) return { status: "error", messages: [said(SETTINGS_PROBLEMS.quotes)] };
+    input.quoteRequests = quotes;
   }
 
   const saved = await saveOrderSettings(member, input);

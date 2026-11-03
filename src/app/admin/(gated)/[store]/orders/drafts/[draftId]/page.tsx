@@ -15,6 +15,7 @@ import { mayFindDraftCustomers, memberCan, requirePermission } from "@/server/pe
 import { listVatCategories } from "@/server/vat-categories";
 
 import {
+  declineQuoteAction,
   deleteDraftAction,
   draftCustomerDetailsAction,
   recordPaidOutsideAction,
@@ -80,7 +81,9 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
   const base = `/admin/${store.slug}/orders/drafts`;
   return (
     <AdminTextScope texts={adminTexts(lang, ["drafts"])}>
-      <PageHeader back={{ href: base, label: words.pages.listTitle }} title={fillWords(words.pages.draftTitle, { number: draft.number })} meta={[words.status[draft.status]]} />
+      <PageHeader back={{ href: base, label: words.pages.listTitle }} title={fillWords(words.pages.draftTitle, { number: draft.number })}
+        meta={[draft.source === "quote" && draft.status === "open" ? (draft.quoteDeclinedAt ? words.list.quoteDeclined : words.list.quoteRequested) : words.status[draft.status]]}
+      />
       <DraftScreen
         editable={draft.status === "open" && canWrite}
         editor={{
@@ -97,6 +100,12 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
           mayRecordOutside,
           mayFindCustomers: mayFindDraftCustomers(member),
           companyFields: featureOn(store, "business"),
+          // A shopper's request for a quote (D431): their note, and declining it with a reply.
+          quote:
+            draft.source === "quote"
+              ? { note: draft.requestNote, declinedAt: draft.quoteDeclinedAt, reply: draft.quoteReply, decline: declineQuoteAction.bind(null, store.slug, draftId) }
+              : null,
+          timeZone: store.timeZone,
           actions: {
             save: saveDraftAction.bind(null, store.slug, draftId),
             searchVariants: searchDraftVariantsAction.bind(null, store.slug),

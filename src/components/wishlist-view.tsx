@@ -25,6 +25,8 @@ export type WishlistItemView = {
   subscriptionOnly: boolean;
   /** An appointment (D65): its time is chosen on its page. */
   booking: boolean;
+  /** Priced on request (D431): no price, and a quote is asked for on its page. */
+  priceOnRequest?: boolean;
   variants: { id: string; label: string; price: string; available: boolean }[];
   /** "Fra 129,00 kr", shown until a variant is chosen. */
   fromPrice: string;
@@ -57,6 +59,8 @@ type Labels = {
   needsVariant: string;
   subscription: string;
   booking: string;
+  /** A product priced on request (D431). */
+  quote?: string;
   capped: string;
   quantity: string;
   soldOut: string;
@@ -425,7 +429,7 @@ function Item({
   const variant = item.variants.find((v) => v.id === variantId);
   const soldOut = variant ? !variant.available : false;
   // Chosen on the product page: how often to subscribe, or when to come.
-  const pageOnly = item.subscriptionOnly || item.booking;
+  const pageOnly = item.subscriptionOnly || item.booking || item.priceOnRequest === true;
   const note =
     outcome === "needs_variant"
       ? labels.needsVariant
@@ -515,7 +519,7 @@ function Item({
         )}
         {(note || soldOut || pageOnly) && (
           <p className="text-sm text-muted">
-            {note ?? (item.booking ? labels.booking : item.subscriptionOnly ? labels.subscription : labels.soldOut)}
+            {note ?? (item.priceOnRequest ? labels.quote : item.booking ? labels.booking : item.subscriptionOnly ? labels.subscription : labels.soldOut)}
           </p>
         )}
         {!pageOnly && (

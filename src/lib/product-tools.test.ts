@@ -73,6 +73,7 @@ function base(): ProductInput {
     subscriptionOnly: false,
     audience: "all",
     soldByMeasure: false,
+    priceOnRequest: false,
     vatCategory: "standard",
     kind: "goods",
     hostId: null,

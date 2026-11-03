@@ -157,6 +157,8 @@ function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer, 
   parts.push(...attributesClause(attributes));
   if (filters.minPrice !== null || filters.maxPrice !== null) {
     const digits = minorUnitDigits(market.currency);
+    // A product priced on request (D431) has no price a shopper may filter by.
+    parts.push(sql`not p.price_on_request`);
     parts.push(sql`exists (
       select 1 from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${market.code}
@@ -181,18 +183,19 @@ export async function listingProducts(
   filters: ListingFilters,
   viewer: Viewer,
 ): Promise<GridProduct[]> {
-  const lowest = sql`(select min(${shownPrice(market.code, viewer.buyer === "business")})
+  // A product priced on request (D431) sorts after the priced ones either way, its hidden price telling nothing.
+  const lowest = sql`(case when p.price_on_request then null else (select min(${shownPrice(market.code, viewer.buyer === "business")})
     from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
-    where v.product_id = p.id and v.active and cp.market_code = ${market.code})`;
+    where v.product_id = p.id and v.active and cp.market_code = ${market.code}) end)`;
   const title = sql`(select lower(title) from commerce.product_translations tr
     where tr.product_id = p.id order by tr.locale = ${market.locale} desc, tr.locale limit 1)`;
   const order =
     filters.sort === "newest"
       ? sql`p.created_at desc, p.handle`
       : filters.sort === "priceLow"
-        ? sql`${lowest}, p.handle`
+        ? sql`${lowest} nulls last, p.handle`
         : filters.sort === "priceHigh"
-          ? sql`${lowest} desc, p.handle`
+          ? sql`${lowest} desc nulls last, p.handle`
           : filters.sort === "title"
             ? sql`${title}, p.handle`
             : scope.ids
@@ -275,10 +278,11 @@ export async function listingFacets(
   const business = viewer.buyer === "business";
   const products = await readDb().execute<Row>(sql`
     select p.id, p.kind,
+      -- A product priced on request (D431) adds nothing to the price range a shopper is offered.
       (select min(${shownPrice(market.code, business)}) from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
-        where v.product_id = p.id and v.active and cp.market_code = ${market.code}) as low,
+        where v.product_id = p.id and v.active and cp.market_code = ${market.code} and not p.price_on_request) as low,
       (select max(${shownPrice(market.code, business)}) from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
-        where v.product_id = p.id and v.active and cp.market_code = ${market.code}) as high
+        where v.product_id = p.id and v.active and cp.market_code = ${market.code} and not p.price_on_request) as high
     from commerce.products p
     where ${scopeClause(storeId, market.code, scope, viewer)}
     limit ${FACET_LIMIT}
@@ -417,8 +421,9 @@ export async function listingFacets(
   const attributeFacets = attributeRows.length === 0 ? [] : await attributeFacetsOf(attributeRows, market.locale);
 
   // Prices are kept in the country's own currency and shown in the one chosen (D109).
-  const lows = products.map((row) => shown(market, Number(row.low))).filter(Number.isFinite);
-  const highs = products.map((row) => shown(market, Number(row.high))).filter(Number.isFinite);
+  // A product with no price to show (one priced on request, D431) has none here, never a 0.
+  const lows = products.filter((row) => row.low !== null).map((row) => shown(market, Number(row.low))).filter(Number.isFinite);
+  const highs = products.filter((row) => row.high !== null).map((row) => shown(market, Number(row.high))).filter(Number.isFinite);
   const unit = 10 ** minorUnitDigits(market.currency);
   const price =
     lows.length > 0 && highs.length > 0

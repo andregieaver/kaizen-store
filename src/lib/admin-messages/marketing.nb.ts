@@ -365,7 +365,7 @@ export const marketingNb: MarketingMessages = {
     leftOutTitle: "Ikke i feedene",
     leftOutNone: "Alle produkter med pris i {market} er med i feedene.",
     leftOutIntro: "Disse produktene er utelatt i {market}:",
-    problems: { not_goods: "ikke en vare eller nedlasting", subscription_only: "selges bare som abonnement", business_only: "bare for bedrifter", no_picture: "mangler bilde", no_price: "mangler pris" },
+    problems: { not_goods: "ikke en vare eller nedlasting", subscription_only: "selges bare som abonnement", business_only: "bare for bedrifter", no_picture: "mangler bilde", no_price: "mangler pris", price_on_request: "pris på forespørsel" },
     counts: "{items} artikler fra {products} produkter i {market}.",
     noKey: "Hemmeligheter kan ikke lagres akkurat nå. Prøv igjen senere.",
     readOnly: "Be noen som kan endre markedsføring om å slå på feedene.",

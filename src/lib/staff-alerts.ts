@@ -126,6 +126,8 @@ export const ALERT_KEYS = {
   /** A dispute opened, and its deadline near (D288): once each per recipient. */
   disputeOpened: (disputeId: string, r: AlertRecipient) => `staff-dispute:${disputeId}:${recipientKey(r)}`,
   disputeDue: (disputeId: string, r: AlertRecipient) => `staff-dispute-due:${disputeId}:${recipientKey(r)}`,
+  /** A shopper asked for a quote (D431): once per request and recipient. */
+  quoteRequested: (draftId: string, r: AlertRecipient) => `staff-quote:${draftId}:${recipientKey(r)}`,
 } as const;
 
 // ---------------------------------------------------------------------------

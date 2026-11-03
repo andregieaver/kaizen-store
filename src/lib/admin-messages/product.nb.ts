@@ -133,6 +133,9 @@ export const productNb: ProductMessages = {
     uploadFailed: "{name} kunne ikke lastes opp. Prøv igjen.",
   },
   variants: {
+    priceOnRequest: "Pris på forespørsel",
+    priceOnRequestHint:
+      "Kundene ser «Pris på forespørsel» i stedet for en pris, og trykker Be om tilbud i stedet for Legg i handlekurv. Prisene under beholdes som en rettesnor når du priser et tilbud; de vises aldri.",
     price: "Pris",
     priceAndStock: "Pris og lager",
     delivered: "Hvordan leveres det?",

@@ -938,6 +938,7 @@ export const PRODUCT_PARTS = {
   fields: "Custom fields",
   field: "Custom field",
   loop: "Field loop",
+  question: "Product question",
 } as const;
 export type ProductPart = keyof typeof PRODUCT_PARTS;
 export const RELATED_MAX = 12;
@@ -1029,7 +1030,22 @@ export type ProductBlock = PartBase & {
   optionsFrom?: number;
   /** Buy: how the shopper chooses how many (D430): − and + buttons, the number box alone, or none; the store's (`stores.quantity_picker`) unless set. */
   quantity?: QuantityPicker;
+  /** Buy: where the store offers quotes (D431), Request a quote beside Add to cart or instead of it; beside unless set. */
+  quote?: "beside" | "instead";
+  /** Product question (D431): a question to the store's inbox (unless set), or a request for a quote of the product. */
+  questionKind?: "question" | "quote";
+  /** Product question: the words under its heading, its button's and what the shopper reads once sent; empty uses the shopper's language's. */
+  intro?: string;
+  buttonLabel?: string;
+  successMessage?: string;
+  /** Product question: whether each field is asked and needed (`hidden`, `optional`, `required`); the email address always is. */
+  questionFields?: { name?: ProductFieldNeed; phone?: ProductFieldNeed; company?: ProductFieldNeed; message?: ProductFieldNeed };
+  /** Product question: addresses a copy of each question is emailed to (never shown on the site), at most 5. */
+  recipients?: string[];
 };
+
+/** Whether a product question's field is asked, and needed (D431). */
+export type ProductFieldNeed = "hidden" | "optional" | "required";
 
 /**
  * The parts of a site's header and footer (D80), each a component a header
@@ -3065,6 +3081,24 @@ const productBlock = z.object({
   loop: loopSettings.optional(),
   optionsFrom: z.number().int().min(2, "Lists per option start at 2 variants or more.").max(2048, "Lists per option start at 2,048 variants at most.").optional(),
   quantity: z.enum(QUANTITY_PICKERS as [QuantityPicker, ...QuantityPicker[]], "Choose how shoppers pick a quantity.").optional(),
+  quote: z.enum(["beside", "instead"]).optional(),
+  questionKind: z.enum(["question", "quote"]).optional(),
+  intro: z.string().trim().max(500, "Keep the words over the form under 500 characters.").optional(),
+  buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep a button's text under ${BUTTON_LABEL_MAX} characters.`).optional(),
+  successMessage: z.string().trim().max(500, "Keep the thank-you message under 500 characters.").optional(),
+  questionFields: z
+    .object({
+      name: z.enum(["hidden", "optional", "required"]).optional(),
+      phone: z.enum(["hidden", "optional", "required"]).optional(),
+      company: z.enum(["hidden", "optional", "required"]).optional(),
+      message: z.enum(["hidden", "optional", "required"]).optional(),
+    })
+    .optional(),
+  recipients: z
+    .array(z.email("A copy goes to an address that is not an email address.").trim().toLowerCase().max(254))
+    .max(5, "A copy goes to at most 5 addresses.")
+    .refine((list) => new Set(list).size === list.length, "A copy goes to the same address twice.")
+    .optional(),
   ...partBase,
 });
 

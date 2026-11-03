@@ -55,20 +55,26 @@ async function Wishlist({ store, market, query }: { store: Store; market: Market
         quantity: row.quantity,
         subscriptionOnly: product.subscriptionOnly,
         booking: product.kind !== "goods",
-        // The product's price with the owner's words around it (D429); each variant's below is the amount alone.
-        fromPrice: `${product.variants.length > 1 ? `${m.fromPrice} ` : ""}${withWords(
-          formatMoney(
-            Math.min(...product.variants.map((v) => shownAmount(v.price.amountMinor, v.price.vat, buyer))),
-            product.variants[0]?.price.currency ?? market.currency,
-            market.locale,
-            market.priceStyle,
-          ),
-          product.variants[0]?.price.words,
-        )}`,
+        // Price on request (D431): the words in place of every price, and a quote asked for on its page.
+        ...(product.priceOnRequest ? { priceOnRequest: true } : {}),
+        // Otherwise the product's price with the owner's words around it (D429); each variant's below is the amount alone.
+        fromPrice: product.priceOnRequest
+          ? m.quotes.priceOnRequest
+          : `${product.variants.length > 1 ? `${m.fromPrice} ` : ""}${withWords(
+              formatMoney(
+                Math.min(...product.variants.map((v) => shownAmount(v.price.amountMinor, v.price.vat, buyer))),
+                product.variants[0]?.price.currency ?? market.currency,
+                market.locale,
+                market.priceStyle,
+              ),
+              product.variants[0]?.price.words,
+            )}`,
         variants: product.variants.map((v) => ({
           id: v.id,
           label: optionLabel(m, v.options) || product.title,
-          price: formatMoney(shownAmount(v.price.amountMinor, v.price.vat, buyer), v.price.currency, market.locale, market.priceStyle),
+          price: product.priceOnRequest
+            ? m.quotes.priceOnRequest
+            : formatMoney(shownAmount(v.price.amountMinor, v.price.vat, buyer), v.price.currency, market.locale, market.priceStyle),
           available: v.delivery !== "physical" || canOffer(stock.get(v.id)),
         })),
       },
@@ -120,6 +126,7 @@ async function Wishlist({ store, market, query }: { store: Store; market: Market
           needsVariant: w.needsVariant,
           subscription: w.subscription,
           booking: w.booking,
+          quote: m.quotes.wishlist,
           capped: w.capped,
           quantity: m.quantity,
           soldOut: m.soldOut,

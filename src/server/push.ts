@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import webpush from "web-push";
 
 import { db } from "@/db/client";
-import { adminLangOf, ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminLangOf, ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { vapidEnv } from "@/lib/env";
 import { formatMoney } from "@/lib/money";
@@ -105,6 +105,65 @@ const realSender: Sender = (subscription, payload, options) => webpush.sendNotif
  * many were sent; a device gone is removed, one whose person no longer may is removed. Never throws.
  */
 export async function sendOrderPush(storeId: string, orderId: string, send: Sender = realSender): Promise<number> {
+  return pushToStore(
+    storeId,
+    async () => {
+      const [order] = await db().execute<Row>(sql`
+        select number, total_minor, currency from commerce.orders
+        where store_id = ${storeId}::uuid and id = ${orderId}::uuid and copied_from is null and status in ('paid', 'fulfilled')
+      `);
+      if (!order) return null;
+      return (sub: Row, lang: AdminLang) => {
+        const words = adminText(lang, "staffEmails").push;
+        return newOrderPush(
+          {
+            number: String(order.number),
+            total: formatMoney(Number(order.total_minor), String(order.currency), ADMIN_LANG_FACTS[lang].locale),
+            store: String(sub.name),
+            url: `${siteUrl()}/admin/${String(sub.slug)}/orders/${orderId}`,
+          },
+          { title: words.newOrderTitle, body: words.newOrderBody },
+        );
+      };
+    },
+    `o${orderId.replaceAll("-", "").slice(0, 30)}`,
+    send,
+  );
+}
+
+/**
+ * A shopper's request for a quote (D431) to every device of the store whose person reads its orders: the request's number and the store, and
+ * the draft's page. As `sendOrderPush()`: never throws, removes devices gone.
+ */
+export async function sendQuotePush(storeId: string, draftId: string, send: Sender = realSender): Promise<number> {
+  return pushToStore(
+    storeId,
+    async () => {
+      const [draft] = await db().execute<Row>(sql`
+        select number from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid and source = 'quote'
+      `);
+      if (!draft) return null;
+      return (sub: Row, lang: AdminLang) => {
+        const words = adminText(lang, "staffEmails").push;
+        const payload = newOrderPush(
+          { number: String(draft.number), total: "", store: String(sub.name), url: `${siteUrl()}/admin/${String(sub.slug)}/orders/drafts/${draftId}` },
+          { title: words.quoteTitle, body: words.quoteBody },
+        );
+        return { ...payload, tag: `quote-${String(draft.number)}` };
+      };
+    },
+    `q${draftId.replaceAll("-", "").slice(0, 30)}`,
+    send,
+  );
+}
+
+/** One notification to each device of the store whose person still reads its orders, in each person's language; `subject` is read once (null: nothing to say). */
+async function pushToStore(
+  storeId: string,
+  subject: () => Promise<((sub: Row, lang: AdminLang) => { title: string; body: string; url: string; tag: string }) | null>,
+  topic: string,
+  send: Sender,
+): Promise<number> {
   const keys = (() => {
     try {
       return vapidEnv();
@@ -123,11 +182,8 @@ export async function sendOrderPush(storeId: string, orderId: string, send: Send
       where p.store_id = ${storeId}::uuid
     `);
     if (subscriptions.length === 0) return 0;
-    const [order] = await db().execute<Row>(sql`
-      select number, total_minor, currency from commerce.orders
-      where store_id = ${storeId}::uuid and id = ${orderId}::uuid and copied_from is null and status in ('paid', 'fulfilled')
-    `);
-    if (!order) return 0;
+    const payloadFor = await subject();
+    if (!payloadFor) return 0;
     const allowed = new Map<string, boolean>();
     for (const sub of subscriptions) {
       const accountId = String(sub.account_id);
@@ -140,21 +196,12 @@ export async function sendOrderPush(storeId: string, orderId: string, send: Send
         continue;
       }
       const lang = adminLangOf(sub.admin_locale as string | null);
-      const words = adminText(lang, "staffEmails").push;
-      const payload = newOrderPush(
-        {
-          number: String(order.number),
-          total: formatMoney(Number(order.total_minor), String(order.currency), ADMIN_LANG_FACTS[lang].locale),
-          store: String(sub.name),
-          url: `${siteUrl()}/admin/${String(sub.slug)}/orders/${orderId}`,
-        },
-        { title: words.newOrderTitle, body: words.newOrderBody },
-      );
+      const payload = payloadFor(sub, lang);
       try {
         await send(
           { endpoint: String(sub.endpoint), keys: { p256dh: String(sub.p256dh), auth: String(sub.auth) } },
           JSON.stringify(payload),
-          { vapidDetails: keys, TTL: TTL_SECONDS, timeout: 5000, urgency: "normal", topic: `o${orderId.replaceAll("-", "").slice(0, 30)}` },
+          { vapidDetails: keys, TTL: TTL_SECONDS, timeout: 5000, urgency: "normal", topic },
         );
         await db().execute(sql`update commerce.push_subscriptions set failures = 0, last_sent_at = now() where id = ${sub.id}::uuid`);
         sent++;

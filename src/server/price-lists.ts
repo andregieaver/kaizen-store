@@ -582,6 +582,8 @@ export async function buyerCatalogue(storeId: string, customerId: string, market
     left join lateral commerce.buyer_price(p.store_id, ${customerId}::uuid, v.id, ${marketCode}, cp.amount_minor) bp on true
     left join lateral commerce.quantity_rule(p.store_id, ${customerId}::uuid, v.id) qr on true
     where p.store_id = ${storeId}::uuid and p.status = 'active' and p.kind in ('goods', 'bundle') and not p.subscription_only
+      -- A product priced on request (D431) is asked a quote of on its page, never listed with a price here.
+      and not p.price_on_request
       and ${offeredTo(customerId)}
       and exists (select 1 from mine where commerce.price_list_covers(${storeId}::uuid, mine.id, p.id))
     order by lower(coalesce(tl.title, p.handle)), v.sku

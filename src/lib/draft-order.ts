@@ -175,6 +175,8 @@ export const DRAFT_PROBLEMS = {
   store_closed: "This store is not open, so a draft cannot be sent.",
   too_many_open_drafts: "The store has 500 open drafts. Delete or send one first.",
   price_changed: "A price changed when the market was changed: check the lines.",
+  price_requested: "A line is priced on request: type its price before you send.",
+  quote_declined: "This request for a quote was declined, so it cannot be sent.",
 } as const;
 export type DraftProblemCode = keyof typeof DRAFT_PROBLEMS;
 

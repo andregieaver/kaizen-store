@@ -71,6 +71,11 @@ import { featureOn, type FeatureSource } from "@/lib/store-features";
 import { themeLayersOf } from "@/lib/section-styles";
 
 import { ProductRating, ProductReviews } from "./product-reviews";
+import { ProductQuestion } from "./product-question";
+import { QuoteRequest } from "./quote-request";
+import { questionForm, questionKindOf, quoteFieldsOf } from "@/lib/product-question";
+import { quoteFor } from "@/lib/quotes";
+import { quotePrefill, quotesOfferedHere } from "@/server/quote-requests";
 
 /**
  * The parts of a product's page (D79), each drawn where a product layout
@@ -163,6 +168,8 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
         </div>
       );
     case "price":
+      // Price on request (D431): the words, never the price.
+      if (product.priceOnRequest) return <p className={block.large !== false ? "text-2xl font-semibold" : "font-semibold"}>{m.quotes.priceOnRequest}</p>;
       return (
         <Price
           price={headlinePrice(product)}
@@ -232,6 +239,16 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           </section>
         );
       }
+      // Price on request (D431): no price and no cart, only Request a quote, whatever the store's quote setting.
+      if (product.priceOnRequest) {
+        return (
+          <section aria-label={product.title} className={forBusiness}>
+            <Suspense fallback={null}>
+              <QuoteBuy store={store} product={product} market={market} m={m} only />
+            </Suspense>
+          </section>
+        );
+      }
       // A product of one variant has nothing to choose: no Variants heading or box, only its stock, price and Add to cart, in a
       // region named for the product (named for its button, a screen reader would say "Add to cart" twice).
       if (product.variants.length === 1) {
@@ -239,7 +256,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           <section aria-label={product.title} className={forBusiness}>
             <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
               <MemberNotice store={store} m={m} />
-              <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} />
+              <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} quote={block.quote} />
             </Suspense>
           </section>
         );
@@ -251,10 +268,35 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           </h2>
           <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
             <MemberNotice store={store} m={m} />
-            <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} />
+            <VariantsWithStock store={store} product={product} market={market} m={m} optionsFrom={block.optionsFrom} quantity={block.quantity} quote={block.quote} />
           </Suspense>
         </section>
       );
+    case "question": {
+      // The product question (D431): a question to the store's inbox, or a request for a quote of this product.
+      const kind = questionKindOf(block);
+      const words = m.quotes;
+      const title = block.showHeading === false ? null : block.heading || (kind === "quote" ? words.heading : words.question.heading);
+      if (kind === "quote") {
+        return (
+          <Suspense fallback={null}>
+            <QuoteQuestion block={block} store={store} product={product} market={market} m={m} heading={title} />
+          </Suspense>
+        );
+      }
+      const form = questionForm(block, { company: words.company, message: words.question.message, button: words.question.button, sent: words.question.sent });
+      return (
+        <section aria-labelledby={title ? headingId : undefined} aria-label={title ? undefined : words.question.heading} className="flex flex-col gap-3">
+          {title && (
+            <h2 id={headingId} className="font-medium">
+              {title}
+            </h2>
+          )}
+          {block.intro && <p className="text-sm text-muted">{block.intro}</p>}
+          <ProductQuestion form={form} storeId={store.id} market={market.slug} productId={product.id} initialVariant={product.variants[0]?.id ?? null} lang={market.lang} />
+        </section>
+      );
+    }
     case "description":
       if (!product.description && product.bundleItems.length === 0) return null;
       return (
@@ -473,9 +515,65 @@ export function productPartShows(
       );
     case "loop":
       return loopShows(product.fields, productLoopConfig(block));
+    case "question":
+      // A request for a quote only of goods a draft can sell (D431); a question of anything.
+      return questionKindOf(block) === "question" || quotable(product);
     default:
       return true;
   }
+}
+
+/** Whether a quote can be asked for the product (D431): goods sent by post and bought once, never a bundle, as a draft sells them (D173). */
+const quotable = (product: ProductDetail): boolean =>
+  product.kind === "goods" && product.bundleItems.length === 0 && !product.subscriptionOnly && product.plans.length === 0 && product.variants.some((v) => v.delivery === "physical");
+
+/** The variants a quote can be asked of: those sent by post, named as the buy part names them. */
+const quoteVariants = (product: ProductDetail, m: Messages) =>
+  product.variants.filter((v) => v.delivery === "physical").map((v) => ({ id: v.id, label: optionLabel(m, v.options) || product.title }));
+
+/**
+ * Request a quote in the buy part (D431), read per request: a product priced on request's only way (`only`), or the store's offer to this
+ * shopper beside or instead of Add to cart. The form starts with a signed-in customer's own details (D365).
+ */
+async function QuoteBuy({ store, product, market, m, only = false, primary = only }: { store: Store; product: ProductDetail; market: Market; m: Messages; only?: boolean; primary?: boolean }) {
+  await connection();
+  if (!quotable(product)) return only ? <p className="text-sm">{m.unavailable}</p> : null;
+  const variants = quoteVariants(product, m);
+  const prefill = await quotePrefill(store.id);
+  return (
+    <div className="flex flex-col gap-2">
+      {only && <p className="text-sm text-muted">{m.quotes.intro}</p>}
+      <QuoteRequest
+        store={store.slug}
+        market={market.slug}
+        source={{ kind: "product", productId: product.id, variants, initial: variants[0].id }}
+        prefill={prefill}
+        labels={m.quotes}
+        primary={primary}
+      />
+    </div>
+  );
+}
+
+/** The question part set to a quote (D431): the form in place, with the part's own fields and words, where this shopper may ask. */
+async function QuoteQuestion({ block, store, product, market, m, heading }: { block: ProductBlock; store: Store; product: ProductDetail; market: Market; m: Messages; heading: string | null }) {
+  await connection();
+  if (!quotable(product) || !(product.priceOnRequest || (await quotesOfferedHere(store)))) return null;
+  const variants = quoteVariants(product, m);
+  const prefill = await quotePrefill(store.id);
+  return (
+    <QuoteRequest
+      store={store.slug}
+      market={market.slug}
+      source={{ kind: "product", productId: product.id, variants, initial: variants[0].id }}
+      prefill={prefill}
+      fields={quoteFieldsOf(block)}
+      labels={m.quotes}
+      display="inline"
+      block={block.id}
+      texts={{ heading, intro: block.intro, sent: block.successMessage, button: block.buttonLabel }}
+    />
+  );
 }
 
 /** A gift card's amounts and *Send it to someone* (D300), with the store's day for the earliest send, read per request. */
@@ -833,6 +931,7 @@ async function VariantsWithStock({
   m,
   optionsFrom,
   quantity,
+  quote,
 }: {
   store: Store;
   product: ProductDetail;
@@ -842,6 +941,8 @@ async function VariantsWithStock({
   optionsFrom?: number;
   /** The buy part's own quantity chooser (D430, `ProductBlock.quantity`); absent follows the store's (`stores.quantity_picker`). */
   quantity?: QuantityPicker;
+  /** Where the store offers this shopper a quote (D431): beside Add to cart, or instead of it (the buy part's `quote`). */
+  quote?: ProductBlock["quote"];
 }) {
   // Only sold as a subscription, and subscriptions are in the country's own currency (D109).
   if (product.needsNativeCurrency) {
@@ -861,6 +962,9 @@ async function VariantsWithStock({
   if ((await blockedSchemes(store.id, product.id, market.code)).length > 0) {
     return <p className="text-sm">{m.producer.notSoldHere}</p>;
   }
+  // Request a quote (D431): where the store offers it to this shopper, beside Add to cart, or in its place (the buy part's choice).
+  const quoteWay = quotable(product) ? quoteFor(product, await quotesOfferedHere(store), quote) : null;
+  if (quoteWay === "instead") return <QuoteBuy store={store} product={product} market={market} m={m} primary />;
   // Stock, policy and the days a backorder states are read for this request, never cached (D172).
   // A signed-in buyer's price lists (D321) and the product's price breaks (D323): goods bought once only, never with purchase options, as the
   // cart prices them (`LIST_PRICED`).
@@ -1053,6 +1157,8 @@ async function VariantsWithStock({
               : undefined
           }
         />
+      {/* Request a quote beside Add to cart (D431): it follows the variant chosen above. */}
+      {quoteWay === "beside" && <QuoteBuy store={store} product={product} market={market} m={m} />}
       <ProductBar
         store={store.slug}
         market={market.slug}

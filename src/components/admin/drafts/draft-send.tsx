@@ -85,12 +85,15 @@ export function LinkNotice({ link, onClose }: { link: string; onClose: () => voi
  * order, takes its number and holds the stock until the link ends; the customer gets an email with the link. A link to share is the same without the email. Disabled, with the reason written, while the draft cannot be sent.
  */
 export function SendBox({
+  quote = false,
   defaultDays,
   blockedReason,
   ensureSaved,
   send,
   onResult,
 }: {
+  /** A shopper's request for a quote (D431): worded as sending the quote. */
+  quote?: boolean;
   defaultDays: number;
   /** Why the draft cannot be sent now, in words, or null. */
   blockedReason: string | null;
@@ -119,9 +122,9 @@ export function SendBox({
   return (
     <section aria-labelledby={`${id}-h`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
       <h2 id={`${id}-h`} className="text-title text-ink">
-        {w.title}
+        {quote ? w.quoteTitle : w.title}
       </h2>
-      <p className={hint}>{w.hint}</p>
+      <p className={hint}>{quote ? w.quoteHint : w.hint}</p>
       <label className="flex flex-col gap-1 font-medium">
         {w.days} <span className="font-normal text-muted">{fillWords(w.daysRange, { min: DRAFT_VALID_DAYS_MIN, max: DRAFT_VALID_DAYS_MAX })}</span>
         <input type="number" inputMode="numeric" min={DRAFT_VALID_DAYS_MIN} max={DRAFT_VALID_DAYS_MAX} value={days} onChange={(e) => setDays(e.target.value)} className={`${field} w-28`} />
@@ -129,7 +132,7 @@ export function SendBox({
       {blockedReason && <p className="text-muted">{blockedReason}</p>}
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled={working || !valid || blockedReason !== null} onClick={() => run(false)} className={primary}>
-          {working ? w.working : w.send}
+          {working ? w.working : quote ? w.quoteSend : w.send}
         </button>
         <button type="button" disabled={working || !valid || blockedReason !== null} onClick={() => run(true)} className={secondary}>
           {w.share}

@@ -3,6 +3,7 @@ import { svBrowser } from "./sv-browser";
 import { svReturns } from "./sv-returns";
 import { svExchange, svReturnLabel } from "./sv-exchange";
 import { svReviews } from "./sv-reviews";
+import { svQuotes } from "./sv-quotes";
 import type { Messages } from "./en";
 
 export const sv: Messages = {
@@ -13,6 +14,8 @@ export const sv: Messages = {
   returnLabel: svReturnLabel,
   // Product reviews (D301): hand-written (`sv-reviews.ts`).
   reviews: svReviews,
+  // Request a quote and the product question (D431): hand-written (`sv-quotes.ts`).
+  quotes: svQuotes,
   deliveries: {
     title: "Prenumerationsbox",
     intro: "Håll en lista över det du vill ha i boxen. Vi levererar den på din leveransdag: ändra den fram till stopptiden, så drar vi ditt kort när leveransen är på väg.",

@@ -42,7 +42,23 @@ type State = { kind: "idle" | "sending" } | { kind: "done"; text: string } | { k
  * and the time taken tell robots apart. In the builder's canvas
  * (`preview`) it only shows.
  */
-export function SiteForm({ form, store, lang, preview = false }: { form: PublicForm; store: string | null; lang?: string; preview?: boolean }) {
+export function SiteForm({
+  form,
+  store,
+  lang,
+  preview = false,
+  endpoint = "/api/forms",
+  extra,
+}: {
+  form: PublicForm;
+  store: string | null;
+  lang?: string;
+  preview?: boolean;
+  /** Where it sends: a page's form `/api/forms`; the product question (D431) its own route. */
+  endpoint?: string;
+  /** More of the request, read when it is sent (the product question's product and chosen variant). */
+  extra?: () => Record<string, unknown>;
+}) {
   const pageLang = usePageLanguage();
   const m = t(lang ?? pageLang);
   const [values, setValues] = useState<Values>({});
@@ -92,10 +108,11 @@ export function SiteForm({ form, store, lang, preview = false }: { form: PublicF
     setState({ kind: "sending" });
     setNotice(null);
     try {
-      const response = await fetch("/api/forms", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...extra?.(),
           store,
           block: form.id,
           values,

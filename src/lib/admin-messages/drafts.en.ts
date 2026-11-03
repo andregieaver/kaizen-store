@@ -36,6 +36,8 @@ export const draftsEn = {
     store_closed: "This store is not open, so a draft cannot be sent.",
     too_many_open_drafts: "The store has 500 open drafts. Delete or send one first.",
     price_changed: "A price changed when the market was changed: check the lines.",
+    price_requested: "A line is priced on request: type its price before you send.",
+    quote_declined: "This request for a quote was declined, so it cannot be sent.",
   },
   cash: {
     warning:
@@ -58,6 +60,11 @@ export const draftsEn = {
     loadingDraft: "Loading the draft…",
   },
   list: {
+    quotes: "Quote requests",
+    quotesWaiting: { one: "{n} request for a quote waits for a price.", many: "{n} requests for a quote wait for a price." },
+    noQuotes: "No requests for a quote. Shoppers ask for one where the store offers quotes (Settings, Orders) and on products priced on request.",
+    quoteRequested: "Quote requested",
+    quoteDeclined: "Declined",
     statusNav: "Draft status",
     all: "All",
     newDraft: "New draft order",
@@ -87,6 +94,19 @@ export const draftsEn = {
     start: "Start the draft",
   },
   editor: {
+    quote: {
+      title: "Quote requested",
+      intro: "A shopper asked for this quote on the site. Check the lines, type a price for each line priced on request, and press Send quote: they get an email with a link to accept it by paying.",
+      note: "Their note",
+      noNote: "They wrote no note.",
+      decline: "Decline the request",
+      declineHint: "The customer is emailed your reply, and the request is never sent. It is deleted 30 days later.",
+      reply: "Your reply to the customer",
+      replyPlaceholder: "For example: we cannot deliver this many before March.",
+      declineButton: "Decline and send the reply",
+      declined: "Declined {when}. Your reply:",
+    },
+    onRequestPrice: "Priced on request: type the price for this customer. The list price {price} is only your guide.",
     address: {
       name: "Name",
       line1: "Address",
@@ -200,6 +220,9 @@ export const draftsEn = {
     done: "I have copied it",
   },
   send: {
+    quoteTitle: "Send the quote",
+    quoteHint: "The customer gets an email with their quote and a link to accept it by paying on Stripe's page. Sending makes the order and takes its number, and holds the stock until the link ends.",
+    quoteSend: "Send quote",
     notSaved: "The draft has problems that stop it being saved. Fix them first.",
     title: "Send it",
     hint: "The customer gets an email with a link to a page that shows this order and a button to pay on Stripe's page. Sending makes the order and takes its number, and holds the stock until the link ends. A sent draft cannot be edited: reopen it first, which cancels this order and makes a new one when you send again.",
@@ -290,6 +313,19 @@ export const draftsEn = {
     hint: "Prices include VAT. Campaigns, discount codes, bonus credits and VAT-number checks do not apply to a draft: the price and the discount are the ones you set.",
   },
   actions: {
+    decline: {
+      reply: {
+        required: "Write a short reply: the customer reads it.",
+        too_long: "The reply is too long: keep it under 1,000 characters.",
+        too_many_lines: "The reply has too many lines.",
+      },
+      not_quote: "This draft is not a request for a quote.",
+      not_open: "This request was already sent or ended.",
+      declined: "This request was already declined.",
+      doneEmailed: "Declined. The customer was emailed your reply.",
+      doneLogged: "Declined. Email is not set up, so the reply was only logged.",
+      doneFailed: "Declined, but the email to the customer failed. Reply to them yourself.",
+    },
     noAccess: "You do not have access to do this.",
     gone: "This draft no longer exists.",
     changed: "This draft was changed by someone else. Reload the page to see their changes.",

@@ -126,7 +126,8 @@ export async function productPageOf(store: Store, marketRef: string | null, hand
   const market = offeredMarketIn(store, marketRef);
   if (!market || store.status !== "active" || !/^[a-z0-9][a-z0-9-]{0,98}$/i.test(handle)) return null;
   const detail = await getProduct(store.id, market, handle);
-  if (!detail) return null;
+  // A product priced on request (D431) has no price to give and no cart: asked for on the store's own page only.
+  if (!detail || detail.priceOnRequest) return null;
   const origin = storeSiteUrl(store.slug);
   const stock = await getVariantStock(store.id, detail.variants.map((v) => v.id));
   const words = t(market.lang);
@@ -218,6 +219,8 @@ export async function quoteCart(store: Store, marketRef: string | null, lines: C
       cp.amount_minor, cp.prior_30d_minor, v.min_quantity, v.max_quantity, v.quantity_step
     from commerce.product_variants v
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active' and ${OFFERED}
+      -- Never a product priced on request (D431): its price is not given out, and it is not sold from a cart.
+      and not p.price_on_request
     join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${market.locale}
     left join lateral (select title from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true

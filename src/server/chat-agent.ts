@@ -251,22 +251,35 @@ function offersOn(site: Extract<ChatSite, { kind: "store" }>, notices: CampaignN
   return { card: cardNotices(mine).map((n) => noticeText(n, m, money, { card: true })), told: mine.filter((n) => gifts || n.kind !== "gift").map(say) };
 }
 
-function card(site: Extract<ChatSite, { kind: "store" }>, product: Pick<GridProduct, "handle" | "title" | "image" | "price">, from: boolean, offers: string[] = []): ChatProduct {
+/** What the model is told of a price: the store's own sentence, or that it is given on request (D431), never the hidden price. */
+const PRICE_ON_REQUEST = "Price on request: the price is not shown. The visitor can press Request a quote on the product's page, and the store emails a quote.";
+const priceFor = (product: { priceOnRequest: boolean }, price: PriceView, locale: string, lang: string, from: boolean): string =>
+  product.priceOnRequest ? PRICE_ON_REQUEST : priceText(price, locale, lang, from);
+
+function card(
+  site: Extract<ChatSite, { kind: "store" }>,
+  product: Pick<GridProduct, "handle" | "title" | "image" | "price" | "priceOnRequest">,
+  from: boolean,
+  offers: string[] = [],
+): ChatProduct {
   return {
     handle: product.handle,
     title: product.title,
     href: marketPath(site.store.slug, site.market.slug, `/p/${product.handle}`),
     image: product.image,
-    price: {
-      amountMinor: product.price.amountMinor,
-      currency: product.price.currency,
-      referenceMinor: product.price.referenceMinor,
-      vat: product.price.vat,
-      measure: product.price.measure,
-      // The market's decimals and the owner's words around the price (D429), drawn by the widget as the store's own cards draw them.
-      ...(product.price.decimals && { decimals: product.price.decimals }),
-      ...(product.price.words && { words: product.price.words }),
-    },
+    // Price on request (D431): no price reaches the visitor's browser.
+    price: product.priceOnRequest
+      ? null
+      : {
+          amountMinor: product.price.amountMinor,
+          currency: product.price.currency,
+          referenceMinor: product.price.referenceMinor,
+          vat: product.price.vat,
+          measure: product.price.measure,
+          // The market's decimals and the owner's words around the price (D429), drawn by the widget as the store's own cards draw them.
+          ...(product.price.decimals && { decimals: product.price.decimals }),
+          ...(product.price.words && { words: product.price.words }),
+        },
     from,
     ...(offers.length > 0 && { offers }),
   };
@@ -293,7 +306,7 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
         result: json({
           products: found.products.map((p) => {
             const told = offers.get(p.id)?.told ?? [];
-            return { handle: p.handle, title: p.title, price: priceText(p.price, market.locale, market.lang, p.priceVaries), ...(told.length > 0 && { offers: told }) };
+            return { handle: p.handle, title: p.title, price: priceFor(p, p.price, market.locale, market.lang, p.priceVaries), ...(told.length > 0 && { offers: told }) };
           }),
           ...(found.products.length === 0 ? { note: "Nothing found. Try other words, or say so." } : {}),
         }),
@@ -318,7 +331,7 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
             return {
               handle: product.handle,
               title: product.title,
-              price: priceText(product.price, market.locale, market.lang, product.priceVaries),
+              price: priceFor(product, product.price, market.locale, market.lang, product.priceVaries),
               relation: kind === "upsell" ? "a step up from what they are looking at" : kind === "complement" ? "an accessory or add-on that goes with it" : kind === "cross_sell" ? "a related product" : "similar to what they have shown interest in",
               ...(note ? { why: note } : {}),
               ...(told.length > 0 && { offers: told }),
@@ -342,7 +355,7 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
           description: product.description.slice(0, 1500),
           variants: product.variants.map((v) => ({
             options: v.options,
-            price: priceText(v.price, market.locale, market.lang, false),
+            price: priceFor(product, v.price, market.locale, market.lang, false),
             // Stock, policy and days are the store's own read (D172): the answer says "on backorder" only when this says so, and the days as given.
             ...stockFacts(v.delivery === "physical" ? stock.get(v.id) : UNLIMITED),
           })),
@@ -353,7 +366,14 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
           ...(product.hostName ? { host: product.hostName } : {}),
         }),
         products: cheapest
-          ? [card(site, { handle: product.handle, title: product.title, image: product.images[0] ?? null, price: cheapest.price }, product.variants.length > 1, offers.card)]
+          ? [
+              card(
+                site,
+                { handle: product.handle, title: product.title, image: product.images[0] ?? null, price: cheapest.price, priceOnRequest: product.priceOnRequest },
+                product.variants.length > 1,
+                offers.card,
+              ),
+            ]
           : [],
       };
     }

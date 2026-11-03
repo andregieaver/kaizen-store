@@ -98,6 +98,7 @@ function chatLabels(lang: string, locale: string, profile: ChatWidgetProfile, de
     vatExcluded: m.vatExcluded,
     fromPrice: m.fromPrice,
     priorPrice: m.priorPrice,
+    priceOnRequest: m.quotes.priceOnRequest,
     unit: unitLabelsOf(m),
   };
 }

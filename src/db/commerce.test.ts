@@ -7312,5 +7312,84 @@ describe("how a store shows prices and quantities (D429, D430)", () => {
     expect(await one("select price_words from commerce.products where store_id = $1", [copy])).toEqual({
       price_words: { mode: "own", words: { "nb-NO": { prefix: "", suffix: "/stk" } } },
     });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Request a quote and price on request (D431)
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe("request a quote and price on request (D431)", () => {
+  const quoteDraft = async (storeId: string, extra: { source?: string; note?: string | null; declined?: boolean; reply?: string | null; status?: string } = {}) => {
+    counter += 1;
+    return one<{ id: string }>(
+      `insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, email, source, request_note, quote_declined_at, quote_reply, status)
+       values ($1, $2, 'NO', 'no', 'NOK', 'nb-NO', 'kari@example.com', $3, $4, case when $5 then now() end, $6, $7) returning id`,
+      [storeId, `D-${9000 + counter}`, extra.source ?? "quote", extra.note ?? null, extra.declined ?? false, extra.reply ?? null, extra.status ?? "open"],
+    );
+  };
+
+  it("prices on request only goods, and defaults to showing the price", async () => {
+    const { productId } = await createProduct();
+    expect((await one<{ price_on_request: boolean }>("select price_on_request from commerce.products where id = $1", [productId])).price_on_request).toBe(false);
+    await db.query("update commerce.products set price_on_request = true where id = $1", [productId]);
+    await expect(db.query("update commerce.products set kind = 'appointment' where id = $1", [productId])).rejects.toThrow(/products_price_on_request_goods/);
+  });
+
+  it("keeps the store's quote setting to off, everyone or business, off by default", async () => {
+    const s = await createStore(`quote-settings-${++counter}`, ["NO"]);
+    await db.query("insert into commerce.order_settings (store_id) values ($1)", [s]);
+    expect((await one<{ quote_requests: string }>("select quote_requests from commerce.order_settings where store_id = $1", [s])).quote_requests).toBe("off");
+    for (const mode of ["everyone", "business", "off"]) await db.query("update commerce.order_settings set quote_requests = $2 where store_id = $1", [s, mode]);
+    await expect(db.query("update commerce.order_settings set quote_requests = 'some' where store_id = $1", [s])).rejects.toThrow(/order_settings_quote_requests/);
+  });
+
+  it("holds a shopper's note and a declined reply on a quote request only, the reply only once declined, and a declined request stays open", async () => {
+    const { id } = await quoteDraft(store, { note: "Ten, please." });
+    await expect(quoteDraft(store, { source: "staff", note: "From staff" })).rejects.toThrow(/draft_orders_quote/);
+    await expect(quoteDraft(store, { source: "staff", declined: true })).rejects.toThrow(/draft_orders_quote/);
+    await expect(quoteDraft(store, { source: "shopper" })).rejects.toThrow(/draft_orders_source/);
+    await expect(db.query("update commerce.draft_orders set quote_reply = 'No.' where id = $1", [id])).rejects.toThrow(/draft_orders_quote/);
+    await db.query("update commerce.draft_orders set quote_declined_at = now(), quote_reply = 'Not this time.' where id = $1", [id]);
+    await expect(db.query("update commerce.draft_orders set quote_reply = $2 where id = $1", [id, "x".repeat(1001)])).rejects.toThrow(/draft_orders_quote/);
+    await expect(quoteDraft(store, { note: "x".repeat(2001) })).rejects.toThrow(/draft_orders_quote/);
+    // A draft staff made is a draft as before.
+    await expect(quoteDraft(store, { source: "staff" })).resolves.toBeDefined();
+  });
+
+  it("keeps a line waiting for its price at 0 and of a catalogue variant only", async () => {
+    const { id } = await quoteDraft(store);
+    const { variantId } = await createProduct();
+    const line = (unit: number, variant: string | null) =>
+      db.query(
+        `insert into commerce.draft_order_lines (store_id, draft_id, position, variant_id, title, sku, quantity, unit_price_minor, list_price_minor, vat_category, delivery, price_requested)
+         values ($1, $2, 0, $3, 'Item', 'SKU', 1, $4, $5, $6, $7, true)`,
+        [store, id, variant, unit, variant ? 5000 : null, variant ? null : "standard", variant ? "physical" : "service"],
+      );
+    await expect(line(4900, variantId)).rejects.toThrow(/draft_order_lines_price_requested/);
+    await expect(line(0, null)).rejects.toThrow(/draft_order_lines_price_requested/);
+    await line(0, variantId);
+  });
+
+  it("counts a quote request among a visitor's form sends", async () => {
+    await db.query(
+      "insert into commerce.form_submissions (store_id, block_id, kind, visitor, status, path, locale) values ($1, 'quote', 'quote', $2, 'sent', '/s/test-store/no/p/x', 'nb')",
+      [store, "a".repeat(64)],
+    );
+    await expect(
+      db.query("insert into commerce.form_submissions (store_id, block_id, kind, visitor, status, path, locale) values ($1, 'quote', 'order', $2, 'sent', '/', 'nb')", [store, "a".repeat(64)]),
+    ).rejects.toThrow(/form_submissions_kind/);
+  });
+
+  it("carries price on request to a store made from a template and to a duplicate", async () => {
+    const template = await createStore(`quote-template-${++counter}`, ["NO"]);
+    const { productId } = await createProduct({ storeId: template });
+    await db.query("update commerce.products set price_on_request = true, status = 'active' where id = $1", [productId]);
+    const owner = await createAccount(`quote-owner-${counter}@example.com`);
+    const { id: cloned } = await one<{ id: string }>("select commerce.clone_store($1, $2, 'Copy', $3) as id", [template, `quote-clone-${counter}`, owner]);
+    const { id: duplicated } = await one<{ id: string }>("select commerce.duplicate_store($1, $2, 'Copy', $3) as id", [template, `quote-dup-${counter}`, owner]);
+    for (const copy of [cloned, duplicated]) {
+      const { rows } = await db.query<{ price_on_request: boolean }>("select price_on_request from commerce.products where store_id = $1", [copy]);
+      expect(rows.length, copy).toBeGreaterThan(0);
+      expect(rows.every((r) => r.price_on_request)).toBe(true);
+    }
   });
 });

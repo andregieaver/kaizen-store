@@ -80,6 +80,10 @@ export type DraftLineView = {
   customPrice: boolean;
   vatCategory: string | null;
   delivery: "physical" | "service";
+  /** A quote request's line of a product priced on request (D431) with no price typed yet: blocks a send until staff type one. */
+  priceRequested: boolean;
+  /** The product is priced on request now: its list price is staff's guide only, so a price on the line is always one staff typed. */
+  onRequest: boolean;
 };
 
 export type DraftView = {
@@ -116,6 +120,13 @@ export type DraftView = {
   createdAt: string;
   updatedAt: string;
   lines: DraftLineView[];
+  /** Who made it (D431): staff, or a shopper's request for a quote (`src/server/quote-requests.ts`). */
+  source: "staff" | "quote";
+  /** A quote request's note as the shopper wrote it. */
+  requestNote: string | null;
+  /** A declined request: when, and the reply emailed to the shopper. */
+  quoteDeclinedAt: string | null;
+  quoteReply: string | null;
 };
 
 const ADDRESS_KEYS = ["name", "line1", "line2", "postalCode", "city", "country"] as const;
@@ -130,6 +141,8 @@ const addressJson = (address: DraftAddress): Record<string, string> =>
 function lineOf(row: Row): DraftLineView {
   const list = row.list_price_minor === null || row.list_price_minor === undefined ? null : Number(row.list_price_minor);
   const unit = Number(row.unit_price_minor);
+  const priceRequested = Boolean(row.price_requested);
+  const onRequest = Boolean(row.on_request);
   return {
     id: String(row.id),
     position: Number(row.position),
@@ -140,9 +153,12 @@ function lineOf(row: Row): DraftLineView {
     quantity: Number(row.quantity),
     unitPriceMinor: unit,
     listPriceMinor: list,
-    customPrice: hasCustomPrice({ kind: row.variant_id ? "goods" : "custom", unitPriceMinor: unit, listPriceMinor: list }),
+    // A product priced on request (D431) is never at its list price: a price on its line is one staff typed.
+    customPrice: (onRequest && !priceRequested) || hasCustomPrice({ kind: row.variant_id ? "goods" : "custom", unitPriceMinor: unit, listPriceMinor: list }),
     vatCategory: row.vat_category ? String(row.vat_category) : null,
     delivery: row.delivery === "service" ? "service" : "physical",
+    priceRequested,
+    onRequest,
   };
 }
 
@@ -185,10 +201,16 @@ function viewOf(row: Row, lines: Row[]): DraftView {
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at)).toISOString(),
     lines: lines.map(lineOf),
+    source: row.source === "quote" ? "quote" : "staff",
+    requestNote: row.request_note ? String(row.request_note) : null,
+    quoteDeclinedAt: row.quote_declined_at ? new Date(String(row.quote_declined_at)).toISOString() : null,
+    quoteReply: row.quote_reply ? String(row.quote_reply) : null,
   };
 }
 
-const LINE_COLUMNS = sql`id, position, variant_id, title, sku, quantity, unit_price_minor, list_price_minor, vat_category, delivery`;
+const LINE_COLUMNS = sql`id, position, variant_id, title, sku, quantity, unit_price_minor, list_price_minor, vat_category, delivery, price_requested,
+  (select p.price_on_request from commerce.product_variants v join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+    where v.store_id = commerce.draft_order_lines.store_id and v.id = commerce.draft_order_lines.variant_id) as on_request`;
 
 /** One of the store's drafts with its lines; null for an id that is not this store's. */
 export async function getDraft(storeId: string, draftId: string, runner: Runner = db(), { lock = false }: { lock?: boolean } = {}): Promise<DraftView | null> {
@@ -218,9 +240,17 @@ export type DraftListRow = {
   createdAt: string;
   updatedAt: string;
   lineCount: number;
+  /** A shopper's request for a quote (D431): waiting for staff (open), declined, or null for a draft staff made (or a request already sent). */
+  quote: "requested" | "declined" | null;
 };
 
-export type DraftListPage = { rows: DraftListRow[]; nextCursor: string | null; openCount: number };
+export type DraftListPage = {
+  rows: DraftListRow[];
+  nextCursor: string | null;
+  openCount: number;
+  /** Requests for a quote waiting for staff: open and not declined (D431). */
+  quotesWaiting: number;
+};
 
 const encodeDraftCursor = (createdAt: string, id: string) => Buffer.from(JSON.stringify([createdAt, id])).toString("base64url");
 function decodeDraftCursor(cursor: string | null | undefined): { createdAt: string; id: string } | null {
@@ -234,25 +264,34 @@ function decodeDraftCursor(cursor: string | null | undefined): { createdAt: stri
   }
 }
 
-/** The store's drafts, newest first, 50 a page (keyset), optionally of one status. */
-export async function listDrafts(storeId: string, options: { status?: DraftStatus | null; after?: string | null; pageSize?: number } = {}): Promise<DraftListPage> {
+/** The store's drafts, newest first, 50 a page (keyset), optionally of one status, or only shoppers' requests for a quote (D431). */
+export async function listDrafts(
+  storeId: string,
+  options: { status?: DraftStatus | null; quotes?: boolean; after?: string | null; pageSize?: number } = {},
+): Promise<DraftListPage> {
   const pageSize = options.pageSize ?? 50;
   const cursor = decodeDraftCursor(options.after);
   const rows = await db().execute<Row>(sql`
     select d.id, d.number, d.status, d.email, d.currency, d.order_id, d.expires_at, d.created_at, d.created_at::text as created_key, d.updated_at,
-      (select name from commerce.customers c where c.store_id = d.store_id and c.id = d.customer_id) as customer_name,
+      d.source, d.quote_declined_at is not null as declined,
+      coalesce((select name from commerce.customers c where c.store_id = d.store_id and c.id = d.customer_id),
+        case when d.source = 'quote' then nullif(trim(coalesce(d.shipping_address->>'name', d.company_name, '')), '') end) as customer_name,
       (select count(*)::int from commerce.draft_order_lines l where l.store_id = d.store_id and l.draft_id = d.id) as line_count,
       o.number as order_number, o.total_minor as order_total
     from commerce.draft_orders d
     left join commerce.orders o on o.store_id = d.store_id and o.id = d.order_id
     where d.store_id = ${storeId}::uuid
       ${options.status ? sql`and d.status = ${options.status}` : sql``}
+      ${options.quotes ? sql`and d.source = 'quote'` : sql``}
       ${cursor ? sql`and (d.created_at, d.id) < (${cursor.createdAt}::timestamptz, ${cursor.id}::uuid)` : sql``}
     order by d.created_at desc, d.id desc
     limit ${pageSize + 1}
   `);
   const page = rows.slice(0, pageSize);
-  const [open] = await db().execute<Row>(sql`select count(*)::int as n from commerce.draft_orders where store_id = ${storeId}::uuid and status = 'open'`);
+  const [open] = await db().execute<Row>(sql`
+    select count(*)::int as n, (count(*) filter (where source = 'quote' and quote_declined_at is null))::int as quotes
+    from commerce.draft_orders where store_id = ${storeId}::uuid and status = 'open'
+  `);
   const items: DraftListRow[] = [];
   for (const row of page) {
     let total: number | null = row.order_total === null || row.order_total === undefined ? null : Number(row.order_total);
@@ -275,10 +314,16 @@ export async function listDrafts(storeId: string, options: { status?: DraftStatu
       createdAt: new Date(String(row.created_at)).toISOString(),
       updatedAt: new Date(String(row.updated_at)).toISOString(),
       lineCount: Number(row.line_count),
+      quote: row.source === "quote" && row.status === "open" ? (row.declined ? "declined" : "requested") : null,
     });
   }
   const last = page[page.length - 1];
-  return { rows: items, nextCursor: rows.length > pageSize && last ? encodeDraftCursor(String(last.created_key), String(last.id)) : null, openCount: Number(open?.n ?? 0) };
+  return {
+    rows: items,
+    nextCursor: rows.length > pageSize && last ? encodeDraftCursor(String(last.created_key), String(last.id)) : null,
+    openCount: Number(open?.n ?? 0),
+    quotesWaiting: Number(open?.quotes ?? 0),
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -326,6 +371,8 @@ type VariantFacts = {
   policy: "continue" | "deny";
   backorderDays: number | null;
   inStock: number;
+  /** Priced on request (D431): a line of it is at the price staff typed, else waits for one. */
+  priceOnRequest: boolean;
 };
 
 async function variantFacts(runner: Runner, storeId: string, market: Market, variantIds: readonly string[]): Promise<Map<string, VariantFacts>> {
@@ -333,7 +380,7 @@ async function variantFacts(runner: Runner, storeId: string, market: Market, var
   if (variantIds.length === 0) return out;
   const rows = await runner.execute<Row>(sql`
     select v.id, v.sku, v.options, v.delivery, v.active, v.cost_minor, v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
-      p.id as product_id, p.status, p.kind, p.host_id, p.subscription_only, p.withdrawal_exclusion, coalesce(v.tax_code, p.tax_code) as tax_code,
+      p.id as product_id, p.status, p.kind, p.host_id, p.subscription_only, p.withdrawal_exclusion, coalesce(v.tax_code, p.tax_code) as tax_code, p.price_on_request,
       commerce.vat_rate(${market.code}, p.vat_category) as vat_rate, cp.amount_minor,
       coalesce(tl.title, tf.title, p.handle) as title, coalesce(va.in_stock, 0) as in_stock
     from commerce.product_variants v
@@ -365,6 +412,7 @@ async function variantFacts(runner: Runner, storeId: string, market: Market, var
       policy: row.stock_policy === "continue" ? "continue" : "deny",
       backorderDays: row.backorder_days === null || row.backorder_days === undefined ? null : Number(row.backorder_days),
       inStock: Number(row.in_stock ?? 0),
+      priceOnRequest: Boolean(row.price_on_request),
     });
   }
   return out;
@@ -434,6 +482,8 @@ export async function computeDraft(runner: Runner, storeId: string, draftId: str
   if (!store) return null;
   const market = await marketOf(store, draft.marketSlug);
   const problems: DraftProblem[] = [];
+  // A request for a quote staff declined (D431) is never sent.
+  if (draft.quoteDeclinedAt) problems.push(problemOf("quote_declined"));
   const empty = (): DraftComputation => ({ draft, store, market, pricing: null, summary: null, problems, stale: [], variants: new Map(), ships: false });
   if (!market) {
     problems.push(problemOf("market_gone"));
@@ -446,8 +496,10 @@ export async function computeDraft(runner: Runner, storeId: string, draftId: str
     if (line.kind === "goods") {
       const facts = variants.get(line.variantId!);
       if (!facts || !facts.sellable) problems.push(problemOf("variant_unavailable", line.id));
-      // At its list price and the list price has moved: the line needs a save to take it.
-      if (facts?.listMinor != null && !line.customPrice && facts.listMinor !== line.unitPriceMinor) stale.push(line.id);
+      // Priced on request (D431) and no price typed yet: staff type one before it can be sent.
+      if (line.priceRequested) problems.push(problemOf("price_requested", line.id));
+      // At its list price and the list price has moved: the line needs a save to take it (never a line priced on request, whose list price is a guide).
+      else if (facts?.listMinor != null && !line.customPrice && !facts.priceOnRequest && facts.listMinor !== line.unitPriceMinor) stale.push(line.id);
       pricedLines.push({ key: line.id, kind: "goods", unitPriceMinor: line.unitPriceMinor, quantity: line.quantity, rate: facts?.rate ?? 0, physical: true });
     } else {
       const [vat] = await runner.execute<Row>(sql`select commerce.vat_rate(${market.code}, ${line.vatCategory}) as rate`);
@@ -669,7 +721,20 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
   const categories = new Set(
     (await db().execute<Row>(sql`select code from commerce.vat_categories`)).map((r) => String(r.code)),
   );
-  const rows: { id: string | null; kind: "goods" | "custom"; variantId: string | null; title: string; sku: string; quantity: number; unit: number; list: number | null; category: string | null; delivery: "physical" | "service" }[] = [];
+  const rows: {
+    id: string | null;
+    kind: "goods" | "custom";
+    variantId: string | null;
+    title: string;
+    sku: string;
+    quantity: number;
+    unit: number;
+    list: number | null;
+    category: string | null;
+    delivery: "physical" | "service";
+    /** Priced on request (D431) and no price typed: 0 until staff type one. */
+    priceRequested: boolean;
+  }[] = [];
   input.lines.forEach((line, i) => {
     const at = `lines.${i}`;
     const typed = line.price && line.price.trim() !== "" ? parsePrice(line.price, market.currency) : null;
@@ -680,7 +745,21 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
         problem(`${at}.variantId`, "This product is not for sale in this market.");
         return;
       }
-      rows.push({ id: line.id ?? null, kind: "goods", variantId: f.variantId, title: f.title, sku: f.sku, quantity: line.quantity, unit: typed ?? f.listMinor, list: f.listMinor, category: null, delivery: "physical" });
+      // A product priced on request (D431) is never charged its list price (staff's guide only): no price typed, it waits for one.
+      const requested = f.priceOnRequest && typed === null;
+      rows.push({
+        id: line.id ?? null,
+        kind: "goods",
+        variantId: f.variantId,
+        title: f.title,
+        sku: f.sku,
+        quantity: line.quantity,
+        unit: requested ? 0 : (typed ?? f.listMinor),
+        list: f.listMinor,
+        category: null,
+        delivery: "physical",
+        priceRequested: requested,
+      });
     } else {
       if (!line.vatCategory || !categories.has(line.vatCategory)) problem(`${at}.vatCategory`, "Choose a VAT category.");
       if (typed === null) problem(`${at}.price`, "A custom item needs a price.");
@@ -695,6 +774,7 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
         list: null,
         category: line.vatCategory ?? null,
         delivery: "service",
+        priceRequested: false,
       });
     }
   });
@@ -709,7 +789,8 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
     let marketChange: Extract<SaveDraftResult, { ok: true }>["marketChange"] = null;
     if (String(locked.market_slug) !== market.slug) {
       const before = await tx.execute<Row>(sql`select ${LINE_COLUMNS} from commerce.draft_order_lines where store_id = ${storeId}::uuid and draft_id = ${draftId}::uuid`);
-      const prior = before.map(lineOf);
+      // A line still waiting for its price (D431) has none to follow or keep.
+      const prior = before.map(lineOf).filter((line) => !line.priceRequested);
       const listPrices: Record<string, number | null> = {};
       const nowFacts = await variantFacts(tx, storeId, market, prior.flatMap((l) => (l.variantId ? [l.variantId] : [])));
       for (const line of prior) if (line.variantId) listPrices[line.id] = nowFacts.get(line.variantId)?.listMinor ?? null;
@@ -733,8 +814,8 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
     await tx.execute(sql`delete from commerce.draft_order_lines where store_id = ${storeId}::uuid and draft_id = ${draftId}::uuid`);
     for (const [position, line] of rows.entries()) {
       await tx.execute(sql`
-        insert into commerce.draft_order_lines (store_id, draft_id, position, variant_id, title, sku, quantity, unit_price_minor, list_price_minor, vat_category, delivery)
-        values (${storeId}::uuid, ${draftId}::uuid, ${position}, ${line.variantId}::uuid, ${line.title}, ${line.sku}, ${line.quantity}, ${line.unit}, ${line.list}, ${line.category}, ${line.delivery})
+        insert into commerce.draft_order_lines (store_id, draft_id, position, variant_id, title, sku, quantity, unit_price_minor, list_price_minor, vat_category, delivery, price_requested)
+        values (${storeId}::uuid, ${draftId}::uuid, ${position}, ${line.variantId}::uuid, ${line.title}, ${line.sku}, ${line.quantity}, ${line.unit}, ${line.list}, ${line.category}, ${line.delivery}, ${line.priceRequested})
       `);
     }
     return { ok: true, draft: (await getDraft(storeId, draftId, tx))!, marketChange };
@@ -1283,6 +1364,8 @@ export async function pruneDraftOrders(now: Date = new Date()): Promise<number> 
     delete from commerce.draft_orders
     where (status = 'open' and edited_at < ${cutoffs.open.toISOString()}::timestamptz)
        or (status in ('paid', 'expired', 'cancelled') and coalesce(paid_at, updated_at) < ${cutoffs.done.toISOString()}::timestamptz)
+       -- A request for a quote staff declined (D431) ended when it was declined.
+       or (status = 'open' and quote_declined_at < ${cutoffs.done.toISOString()}::timestamptz)
     returning id
   `);
   return gone.length;

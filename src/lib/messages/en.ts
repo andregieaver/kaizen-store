@@ -7,6 +7,7 @@ import { enBrowser } from "./en-browser";
 import { enReturns } from "./en-returns";
 import { enExchange, enReturnLabel } from "./en-exchange";
 import { enReviews } from "./en-reviews";
+import { enQuotes } from "./en-quotes";
 
 export const en = {
   ...enBrowser,
@@ -16,6 +17,8 @@ export const en = {
   returnLabel: enReturnLabel,
   // Product reviews (D301): hand-written (`en-reviews.ts`).
   reviews: enReviews,
+  // Request a quote and the product question (D431): hand-written (`en-quotes.ts`).
+  quotes: enQuotes,
   deliveries: {
     title: "Subscription box",
     intro: "Keep a list of what you want in your box. We deliver it on your delivery day: change it until the cutoff, and we charge your card when the delivery is on its way.",

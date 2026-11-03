@@ -762,7 +762,8 @@ async function loadCarts(s: PrivacySubject): Promise<{ carts: CartRow[]; abandon
     // Draft orders staff made for the customer account (D173): matched by the account only, never by an address staff typed (D162).
     s.customerId
       ? db().execute<Row>(sql`
-          select id, number, status, trim(currency) as currency, created_at, email, phone, shipping_address, billing_address, company_name, organisation_number, note_to_buyer, internal_note
+          select id, number, status, trim(currency) as currency, created_at, email, phone, shipping_address, billing_address, company_name, organisation_number, note_to_buyer, internal_note,
+            source, request_note, quote_reply
           from commerce.draft_orders where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid order by created_at, id
         `)
       : Promise.resolve([] as Row[]),
@@ -805,6 +806,9 @@ async function loadCarts(s: PrivacySubject): Promise<{ carts: CartRow[]; abandon
       organisationNumber: str(d.organisation_number),
       noteToBuyer: str(d.note_to_buyer),
       internalNote: str(d.internal_note),
+      source: strs(d.source),
+      requestNote: str(d.request_note),
+      quoteReply: str(d.quote_reply),
       lines: draftLines
         .filter((l) => strs(l.draft_id) === strs(d.id))
         .map((l) => ({ sku: str(l.sku), title: strs(l.title), quantity: num(l.quantity), unitPriceMinor: num(l.unit_price_minor) })),

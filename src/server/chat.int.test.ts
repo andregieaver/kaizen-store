@@ -213,7 +213,7 @@ describe("the agent", () => {
     expect(reply.actions).toEqual([{ type: "navigate", href: `/s/${slug}/p/demo-bordlampe`, label: expect.any(String) }]);
     expect(reply.products.map((p) => p.handle)).toContain("demo-bordlampe");
     const lamp = reply.products.find((p) => p.handle === "demo-bordlampe")!;
-    expect(lamp.price.currency).toBe("NOK");
+    expect(lamp.price?.currency).toBe("NOK");
 
     // The model was given the rules, the tools, and the tools' results with the store's own prices.
     expect(String((sent[0].messages as Row[])[0].content)).toContain("Only help with Chat test");

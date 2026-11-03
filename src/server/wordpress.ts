@@ -255,7 +255,10 @@ export async function viewOf(store: Store, view: ViewQuery): Promise<WpView | nu
   if (store.status !== "active" || !viewIsComplete(view)) return { ...base, open: store.status === "active", products: [] };
   const scope = await gridScope(store.id, { categories: view.categories, tags: view.tags });
   if (!scope) return { ...base, open: true, products: [] };
-  const products = await listGridProducts(store.id, market, { ...scope, sort: view.sort, limit: view.limit, ...(view.source === "products" && { ids: view.ids }) });
+  // A product priced on request (D431) is left out: the plugin draws a price and a cart button, and this product has neither.
+  const products = (await listGridProducts(store.id, market, { ...scope, sort: view.sort, limit: view.limit, ...(view.source === "products" && { ids: view.ids }) })).filter(
+    (p) => !p.priceOnRequest,
+  );
   const words = t(market.lang);
   const carts = await cardCarts(store, market, products.map((p) => p.id));
   return {

@@ -29,6 +29,7 @@ export type ChatProduct = {
   title: string;
   href: string;
   image: { url: string; alt: string } | null;
+  /** Null for a product priced on request (D431): the card says so, and no price reaches the visitor. */
   price: {
     amountMinor: number;
     currency: string;
@@ -40,7 +41,7 @@ export type ChatProduct = {
     decimals?: PriceDecimals;
     /** The owner's words before and after the price (D429), in the shopper's language; absent for none. */
     words?: PriceWords;
-  };
+  } | null;
   from: boolean;
   /** The store's campaigns on the product (D115), in the shopper's words, for a badge on the card. */
   offers?: string[];

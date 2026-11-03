@@ -30,6 +30,8 @@ export const draftsNb: DraftsMessages = {
     store_closed: "Denne butikken er ikke åpen, så et utkast kan ikke sendes.",
     too_many_open_drafts: "Butikken har 500 åpne utkast. Slett eller send ett først.",
     price_changed: "En pris endret seg da markedet ble endret: sjekk linjene.",
+    price_requested: "En linje har pris på forespørsel: skriv inn prisen før du sender.",
+    quote_declined: "Denne forespørselen om tilbud er avslått, så den kan ikke sendes.",
   },
   cash: {
     warning:
@@ -52,6 +54,11 @@ export const draftsNb: DraftsMessages = {
     loadingDraft: "Henter utkastet…",
   },
   list: {
+    quotes: "Tilbudsforespørsler",
+    quotesWaiting: { one: "{n} forespørsel om tilbud venter på pris.", many: "{n} forespørsler om tilbud venter på pris." },
+    noQuotes: "Ingen forespørsler om tilbud. Kunder ber om tilbud der butikken tilbyr det (Innstillinger, Bestillinger) og på produkter med pris på forespørsel.",
+    quoteRequested: "Tilbud ønsket",
+    quoteDeclined: "Avslått",
     statusNav: "Status for utkast",
     all: "Alle",
     newDraft: "Nytt utkast til bestilling",
@@ -82,6 +89,19 @@ export const draftsNb: DraftsMessages = {
     start: "Start utkastet",
   },
   editor: {
+    quote: {
+      title: "Tilbud ønsket",
+      intro: "En kunde ba om dette tilbudet på nettsiden. Sjekk linjene, skriv inn en pris for hver linje med pris på forespørsel, og trykk Send tilbud: kunden får en e-post med en lenke for å godta det ved å betale.",
+      note: "Meldingen deres",
+      noNote: "De skrev ingen melding.",
+      decline: "Avslå forespørselen",
+      declineHint: "Kunden får svaret ditt på e-post, og forespørselen sendes aldri. Den slettes 30 dager senere.",
+      reply: "Svaret ditt til kunden",
+      replyPlaceholder: "For eksempel: vi kan ikke levere så mange før i mars.",
+      declineButton: "Avslå og send svaret",
+      declined: "Avslått {when}. Svaret ditt:",
+    },
+    onRequestPrice: "Pris på forespørsel: skriv inn prisen for denne kunden. Listeprisen {price} er bare en rettesnor.",
     address: {
       name: "Navn",
       line1: "Adresse",
@@ -197,6 +217,9 @@ export const draftsNb: DraftsMessages = {
     done: "Jeg har kopiert den",
   },
   send: {
+    quoteTitle: "Send tilbudet",
+    quoteHint: "Kunden får en e-post med tilbudet og en lenke for å godta det ved å betale på Stripes side. Når du sender, lages bestillingen og får nummeret sitt, og lageret holdes av til lenken utløper.",
+    quoteSend: "Send tilbud",
     notSaved: "Utkastet har feil som hindrer at det lagres. Rett dem først.",
     title: "Send det",
     hint: "Kunden får en e-post med en lenke til en side som viser denne bestillingen og en knapp for å betale på Stripes side. Når du sender, lages bestillingen og får sitt nummer, og varene holdes av til lenken utløper. Et sendt utkast kan ikke redigeres: åpne det igjen først, som kansellerer denne bestillingen og lager en ny når du sender på nytt.",
@@ -287,6 +310,19 @@ export const draftsNb: DraftsMessages = {
     hint: "Prisene er inkl. mva. Kampanjer, rabattkoder, bonuspoeng og kontroll av mva-nummer gjelder ikke for et utkast: prisen og rabatten er de du har satt.",
   },
   actions: {
+    decline: {
+      reply: {
+        required: "Skriv et kort svar: kunden leser det.",
+        too_long: "Svaret er for langt: hold det under 1000 tegn.",
+        too_many_lines: "Svaret har for mange linjer.",
+      },
+      not_quote: "Dette utkastet er ikke en forespørsel om tilbud.",
+      not_open: "Denne forespørselen er allerede sendt eller avsluttet.",
+      declined: "Denne forespørselen er allerede avslått.",
+      doneEmailed: "Avslått. Kunden fikk svaret ditt på e-post.",
+      doneLogged: "Avslått. E-post er ikke satt opp, så svaret ble bare loggført.",
+      doneFailed: "Avslått, men e-posten til kunden feilet. Svar dem selv.",
+    },
     noAccess: "Du har ikke tilgang til å gjøre dette.",
     gone: "Dette utkastet finnes ikke lenger.",
     changed: "Dette utkastet ble endret av noen andre. Last inn siden på nytt for å se endringene deres.",

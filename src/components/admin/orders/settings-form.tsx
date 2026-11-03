@@ -5,6 +5,7 @@ import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import { AUTO_ARCHIVE_MAX_DAYS, AUTO_ARCHIVE_MIN_DAYS, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, GIFT_MESSAGE_MAX, GIFT_NAME_MAX } from "@/lib/order-limits";
 import { CAPTURE_SETTINGS, DEFAULT_HOLD_DAYS } from "@/lib/capture";
+import { QUOTE_MODES } from "@/lib/quotes";
 import type { OrderSettings } from "@/server/order-settings";
 
 const input = "min-h-10 w-28 rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
@@ -75,6 +76,25 @@ export function OrderSettingsForm({
             <input name="draftValidDays" type="number" inputMode="numeric" min={DRAFT_VALID_DAYS_MIN} max={DRAFT_VALID_DAYS_MAX} defaultValue={settings.draftValidDays} required className={input} />
           </label>
           <p className={hint}>{w.draftHint}</p>
+        </section>
+
+        <section aria-labelledby="quotes" className={card}>
+          <h2 id="quotes" className="text-title text-ink">
+            {w.quotesTitle}
+          </h2>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="sr-only">{w.quotesLegend}</legend>
+            {QUOTE_MODES.map((value) => (
+              <label key={value} className="flex items-start gap-2 text-sm">
+                <input type="radio" name="quoteRequests" value={value} defaultChecked={settings.quoteRequests === value} className="mt-0.5 size-4" />
+                <span>
+                  <span className="text-body-strong">{w.quotes[value].label}</span>
+                  <span className="block text-muted">{w.quotes[value].hint}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <p className={hint}>{w.quotesHint}</p>
         </section>
 
         <section aria-labelledby="outside" className={card}>

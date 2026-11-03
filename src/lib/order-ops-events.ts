@@ -52,6 +52,7 @@ export const ORDER_AUDIT_ACTIONS = {
   draftReopened: "order.draft_reopened",
   draftDeleted: "order.draft_deleted",
   draftPaidOutside: "order.draft_paid_outside",
+  quoteDeclined: "order.quote_declined",
   refundedOutside: "order.refunded_outside",
   settingsChanged: "order.settings_changed",
 } as const;

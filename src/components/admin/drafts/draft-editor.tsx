@@ -26,6 +26,7 @@ import { fillWords } from "@/lib/drafts-words";
 
 import { DraftSummaryPanel } from "./draft-summary";
 import { ActionMessage, PaidOutsideBox, SendBox } from "./draft-send";
+import { QuotePanel, type DraftQuote } from "./quote-panel";
 
 export type DraftEditorActions = {
   save: (input: unknown) => Promise<SaveDraftResponse>;
@@ -53,6 +54,9 @@ export type DraftEditorProps = {
   mayFindCustomers: boolean;
   /** Sell to businesses is on (D178): only then are the company's fields offered (a company the draft already has stays on it). */
   companyFields?: boolean;
+  /** A shopper's request for a quote (D431): its note, and declining it; null for a draft staff made. */
+  quote?: DraftQuote | null;
+  timeZone?: string;
   actions: DraftEditorActions;
   /** The screen shows a link once; the editor hands it up when a send made one. */
   onResult: (result: DraftActionResponse) => void;
@@ -98,7 +102,25 @@ const card = "flex flex-col gap-3 rounded-lg border border-line bg-card p-4";
  * and beside it the summary the SERVER works out from what it saved. The draft saves itself a moment after a change (an open draft holds no stock and takes no number, so saving is harmless) and on *Save draft*; a save carries the
  * version the editor loaded, so a second person's change is refused instead of overwritten. Everything is checked again by the server. Sending and recording a payment outside Kaizen are at the bottom.
  */
-export function DraftEditor({ number, initial, version: initialVersion, currency: initialCurrency, locale: initialLocale, initialSummary, initialProblems, marketOptions, categories, defaultDays, mayRecordOutside, mayFindCustomers, companyFields = true, actions, onResult }: DraftEditorProps) {
+export function DraftEditor({
+  number,
+  initial,
+  version: initialVersion,
+  currency: initialCurrency,
+  locale: initialLocale,
+  initialSummary,
+  initialProblems,
+  marketOptions,
+  categories,
+  defaultDays,
+  mayRecordOutside,
+  mayFindCustomers,
+  companyFields = true,
+  quote = null,
+  timeZone,
+  actions,
+  onResult,
+}: DraftEditorProps) {
   const w = useAdminText("drafts").editor;
   const lang = useAdminLang();
   const initialForm = useMemo(() => formFromDraft(initial), [initial]);
@@ -181,7 +203,12 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
     // The server wrote each line's title and SKU and read its list price in the market it was saved in: take them over, line by line, when the lines are still the same.
     setForm((prev) =>
       prev.lines.length === answer.lines.length
-        ? { ...prev, lines: prev.lines.map((line, i) => (line.kind === "goods" ? { ...line, title: answer.lines[i].title, sku: answer.lines[i].sku, listPrice: answer.lines[i].listPrice } : line)) }
+        ? {
+            ...prev,
+            lines: prev.lines.map((line, i) =>
+              line.kind === "goods" ? { ...line, title: answer.lines[i].title, sku: answer.lines[i].sku, listPrice: answer.lines[i].listPrice, onRequest: answer.lines[i].onRequest || undefined } : line,
+            ),
+          }
         : prev,
     );
     setSavedFp(print);
@@ -307,6 +334,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
             {w.saveDraft}
           </button>
         </div>
+        {quote && <QuotePanel quote={quote} timeZone={timeZone} />}
         {message && (
           <p role="alert" className="rounded-panel bg-sunken p-3 text-sm text-danger-text">
             {message}
@@ -497,7 +525,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
                   </div>
                   {line.kind === "goods" ? (
                     <p id={`price-hint-${line.key}`} className={hint}>
-                      {fillWords(line.price.trim() === "" ? w.listPrice : w.customPrice, { price: line.listPrice ?? "" })}
+                      {fillWords(line.price.trim() === "" ? (line.onRequest ? w.onRequestPrice : w.listPrice) : w.customPrice, { price: line.listPrice ?? "" })}
                     </p>
                   ) : (
                     <label className="flex max-w-xs flex-col gap-1 text-sm font-medium">
@@ -706,6 +734,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
         </section>
 
         <SendBox
+          quote={quote !== null}
           defaultDays={defaultDays}
           blockedReason={blockedReason}
           ensureSaved={saveNow}

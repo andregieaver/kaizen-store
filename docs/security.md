@@ -216,6 +216,8 @@ a new folder that is not (PSI SEC-01). Pages and server actions are held by the 
 | `/api/mollie` | Mollie's webhook | the payment re-fetched from Mollie, never the body believed (2.8) |
 | `/api/platform` | the admin's live-site editing (edit pass, page CSS) | a signed-in account and its assurance (`getAccount()`, `getAssurance()`) |
 | `/api/private` | a visitor unlocking a private store (D339) | `sameSite()`, budget `unlock` failing closed |
+| `/api/product-question` | a visitor asking about a product (D431) | `sameSite()`, the visitor's own key and the part's day (D93's limits); the copy's addresses read from the published layout, never the browser |
+| `/api/quotes` | a visitor asking for a quote (D431) | `sameSite()`, the visitor's own key, a store's day; the cart's lines read from the cart itself |
 | `/api/recommendations` | a visitor's browser (D139) | `sameSite()`, a request budget, a private store's lock |
 | `/api/resend` | Resend's events and inbound mail | Svix signature (2.8) |
 | `/api/reviews` | visitors reading more reviews and their pictures (D301) | the reviews feature on and the store open; a picture only of a published review, not hidden |

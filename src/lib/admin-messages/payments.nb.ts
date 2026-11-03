@@ -195,6 +195,18 @@ export const paymentsNb: PaymentsMessages = {
     captureHint:
       "Et reservert beløp er ikke belastet ennå: bestillingen viser «Beløpet er reservert, skal belastes», den er ikke et salg i tallene dine, og ingen faktura utstedes før du belaster. Et beløp er reservert i opptil {days} dager; du får en e-post dagen før reservasjonen utløper, og en bestilling som ikke er belastet innen da, kanselleres og varene frigjøres. Du kan belaste mindre enn det som er reservert (resten frigjøres og krediteres) eller oppheve reservasjonen. Abonnementer, bookinger, depositum, vertenes oppføringer og nedlastinger belastes alltid i kassen, det samme gjør utkast til bestillinger, endringer av bestillinger, bytter og abonnementsbokser. En endring her gjelder bestillinger som legges inn fra nå av.",
     save: "Lagre",
+    quotesTitle: "Be om tilbud",
+    quotesLegend: "Hvem som kan be om tilbud",
+    quotes: {
+      off: { label: "Av", hint: "Bare produkter med pris på forespørsel tilbyr tilbud." },
+      everyone: { label: "For alle", hint: "Produktsidene og handlekurven tilbyr Be om tilbud." },
+      business: {
+        label: "Bare for bedriftskunder",
+        hint: "Tilbys kunder som handler for en bedrift: bedriftskontoer, kundegrupper og kunder som har valgt Bedrift.",
+      },
+    },
+    quotesHint:
+      "En forespørsel blir et utkast til bestilling merket Tilbud ønsket, og du får en e-post. Sett prisene i utkastet og trykk Send tilbud: kunden får en lenke for å godta det ved å betale. Merk et produkt Pris på forespørsel i produktet for å skjule prisen og bare tilby tilbud. Hvor knappen står på produktsiden, velger du i produktoppsettets Kjøp-del.",
     readOnly: "Du kan lese disse innstillingene, men ikke endre dem.",
   },
   actions: {
@@ -235,5 +247,6 @@ export const paymentsNb: PaymentsMessages = {
     markPaidOwner: "Bare eieren kan endre om ansatte kan registrere betalinger tatt utenfor Kaizena Flow.",
     captureOwner: "Bare eieren kan endre når kundens kort belastes.",
     capture: "Velg når kortet belastes: når bestillingen legges inn, når den sendes, eller når du belaster det.",
+    quotes: "Velg hvem som kan be om tilbud: ingen, alle eller bare bedriftskunder.",
   },
 };

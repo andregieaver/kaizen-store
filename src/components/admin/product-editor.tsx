@@ -1167,6 +1167,22 @@ function VariantsSection({
         {allDigital ? w.variants.price : w.variants.priceAndStock}
       </h2>
 
+      {/* Price on request (D431): goods bought once only; the prices below stay, as staff's guide on a quote. */}
+      {product.kind === "goods" && product.plans.length === 0 && !product.subscriptionOnly && (
+        <label className="mb-4 flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={product.priceOnRequest}
+            onChange={(e) => update((p) => ({ ...p, priceOnRequest: e.target.checked }))}
+            className="mt-0.5 size-4"
+          />
+          <span>
+            <span className="block font-medium">{w.variants.priceOnRequest}</span>
+            <span className="text-muted">{w.variants.priceOnRequestHint}</span>
+          </span>
+        </label>
+      )}
+
       <fieldset className="mb-4 flex flex-col gap-2 text-sm" hidden={service}>
         <legend className="mb-1 font-medium">{w.variants.delivered}</legend>
         <div className="flex flex-wrap gap-2">
@@ -2841,6 +2857,7 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
         plans: booked || giftCard || bundle ? [] : p.plans,
         subscriptionOnly: booked || giftCard || bundle ? false : p.subscriptionOnly,
         soldByMeasure: kind === "goods" ? p.soldByMeasure : false,
+        priceOnRequest: kind === "goods" ? p.priceOnRequest : false,
         bundle: bundle ? (p.bundle ?? NEW_BUNDLE) : null,
       };
     });

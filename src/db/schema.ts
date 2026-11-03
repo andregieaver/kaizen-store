@@ -82,6 +82,7 @@ import {
   VIEW_TITLE_MAX,
 } from "../lib/order-limits";
 import { GRANTABLE_PERMISSIONS } from "../lib/permission-keys";
+import { QUOTE_NOTE_MAX, QUOTE_REPLY_MAX } from "../lib/quotes";
 import { COUNTS_FROM, PERIOD_UNITS, RETENTION_BASES, RETENTION_KINDS } from "../lib/retention";
 import { RETURN_REASONS } from "../lib/withdrawal";
 import { EDITABLE_NOTIFICATIONS, NOTIFICATION_IDS, REQUIRED_NOTIFICATIONS } from "../lib/notifications";
@@ -2405,6 +2406,12 @@ export const products = commerce.table(
      */
     priceWords: jsonb("price_words"),
     /**
+     * Price on request (D431): shoppers never see its price (the product page, cards, search, the chat, structured data and feeds leave it
+     * out) and cannot put it in a cart; its buy part offers *Request a quote* instead, whatever the store's quote setting. Goods only. The
+     * price it keeps per market is the staff's guide on a quote, never shown to a shopper.
+     */
+    priceOnRequest: boolean("price_on_request").notNull().default(false),
+    /**
      * When the product first became active (wave 2, D168): set by a trigger and never cleared. A handle that changes leaves a redirect only for a
      * product that was ever live (`OLD.status <> 'draft'` or this set). No backfill: a product active or archived today counts as ever live.
      */
@@ -2447,6 +2454,7 @@ export const products = commerce.table(
     check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
     check("products_download_days_positive", sql`${t.downloadDays} > 0`),
     check("products_sold_by_measure_goods", sql`not ${t.soldByMeasure} or ${t.kind} = 'goods'`),
+    check("products_price_on_request_goods", sql`not ${t.priceOnRequest} or ${t.kind} = 'goods'`),
     foreignKey({
       name: "products_shipping_profile_fk",
       columns: [t.storeId, t.shippingProfileId],
@@ -9886,7 +9894,7 @@ export const formSubmissions = commerce.table(
     index("form_submissions_block_idx").on(t.storeId, t.blockId, t.createdAt),
     index("form_submissions_visitor_idx").on(t.visitor, t.createdAt),
     index("form_submissions_created_idx").on(t.createdAt),
-    check("form_submissions_kind", sql`${t.kind} in ('message', 'subscription')`),
+    check("form_submissions_kind", sql`${t.kind} in ('message', 'subscription', 'quote')`),
     check("form_submissions_status", sql`${t.status} in ('pending', 'sent', 'logged', 'failed', 'expired')`),
     check("form_submissions_token", sql`${t.tokenHash} is null or ${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
     check("form_submissions_path", sql`left(${t.path}, 1) = '/' and length(${t.path}) <= 500`),
@@ -13156,6 +13164,11 @@ export const orderSettings = commerce.table(
     stockRouting: text("stock_routing").notNull().default("rank"),
     /** The next draft's number (`D-{n}`); a counter that promises no gaps, never an order number (D141). */
     nextDraftNumber: bigint("next_draft_number", { mode: "number" }).notNull().default(1),
+    /**
+     * Request a quote (D431): `off`, `everyone` or `business` (a buyer for a business: the store sells only to businesses, the shopper chose
+     * business (D63), or a signed-in customer of a company account or customer group, D108). A product priced on request offers it whatever this says.
+     */
+    quoteRequests: text("quote_requests").notNull().default("off"),
     updatedAt: updatedAt(),
   },
   (t) => [
@@ -13167,6 +13180,7 @@ export const orderSettings = commerce.table(
     check("order_settings_stock_routing", sql`${t.stockRouting} in ('rank', 'nearest')`),
     check("order_settings_next_draft", sql`${t.nextDraftNumber} >= 1`),
     check("order_settings_capture", sql`${t.capture} in (${sqlList(CAPTURE_SETTINGS)})`),
+    check("order_settings_quote_requests", sql`${t.quoteRequests} in ('off', 'everyone', 'business')`),
   ],
 );
 
@@ -13232,6 +13246,13 @@ export const draftOrders = commerce.table(
     updatedAt: updatedAt(),
     /** The inactivity clock of an open draft: the last edit by a person. */
     editedAt: timestamp("edited_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Who made it (D431): `staff`, or `quote` (a shopper's request for a quote, made by `src/server/quote-requests.ts`). */
+    source: text("source").notNull().default("staff"),
+    /** A quote request's note as the shopper wrote it (cleaned like any shopper text); shown to staff only. */
+    requestNote: text("request_note"),
+    /** A quote request staff declined (D431): when, and the short reply emailed to the shopper. A declined request is never sent. */
+    quoteDeclinedAt: timestamp("quote_declined_at", { withTimezone: true }),
+    quoteReply: text("quote_reply"),
   },
   (t) => [
     unique("draft_orders_store_id_key").on(t.storeId, t.id),
@@ -13271,6 +13292,17 @@ export const draftOrders = commerce.table(
     ),
     check("draft_orders_valid_days", sql`${t.validDays} is null or ${t.validDays} between ${lit(DRAFT_VALID_DAYS_MIN)} and ${lit(DRAFT_VALID_DAYS_MAX)}`),
     check("draft_orders_pay_sends", sql`${t.paySendsToday} >= 0`),
+    check("draft_orders_source", sql`${t.source} in ('staff', 'quote')`),
+    check(
+      "draft_orders_quote",
+      sql`(${t.source} = 'quote' or (${t.requestNote} is null and ${t.quoteDeclinedAt} is null))
+        and (${t.quoteReply} is null or ${t.quoteDeclinedAt} is not null)
+        and (${t.quoteDeclinedAt} is null or ${t.status} = 'open')
+        and char_length(${t.requestNote}) <= ${lit(QUOTE_NOTE_MAX)} and char_length(${t.quoteReply}) <= ${lit(QUOTE_REPLY_MAX)}`,
+    ),
+    index("draft_orders_quote_idx")
+      .on(t.storeId, t.createdAt.desc())
+      .where(sql`${t.source} = 'quote'`),
     /**
      * Where the order, the times and the paid moment may be set by status: an open draft has none (a reopen clears them); a sent one names its
      * order and the times; a paid one also when; an expired or cancelled one is a sent one that ended unpaid. The pay token may stay on a
@@ -13308,6 +13340,11 @@ export const draftOrderLines = commerce.table(
     vatCategory: text("vat_category").references(() => vatCategories.code),
     /** `physical` for a variant of goods, `service` for a custom item. */
     delivery: text("delivery").notNull().default("physical"),
+    /**
+     * A quote request's line of a product priced on request (D431): no price yet (`unit_price_minor` 0, the list price kept as the staff's
+     * guide); the draft is not sent until staff type one, which clears it.
+     */
+    priceRequested: boolean("price_requested").notNull().default(false),
   },
   (t) => [
     foreignKey({
@@ -13324,6 +13361,7 @@ export const draftOrderLines = commerce.table(
     check("draft_order_lines_quantity", sql`${t.quantity} between 1 and ${lit(DRAFT_QUANTITY_MAX)}`),
     check("draft_order_lines_prices", sql`${t.unitPriceMinor} >= 0 and (${t.listPriceMinor} is null or ${t.listPriceMinor} >= 0)`),
     check("draft_order_lines_delivery", sql`${t.delivery} in ('physical', 'service')`),
+    check("draft_order_lines_price_requested", sql`not ${t.priceRequested} or (${t.variantId} is not null and ${t.unitPriceMinor} = 0)`),
     /** A custom item has no variant, a category, is a service and has no list price; a catalogue line has a variant, a list price and no category. */
     check(
       "draft_order_lines_kind",

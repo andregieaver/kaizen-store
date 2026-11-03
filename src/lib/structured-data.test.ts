@@ -122,6 +122,19 @@ describe("productJsonLd", () => {
     expect(trail).toMatchObject({ "@type": "BreadcrumbList" });
   });
 
+  it("offers a product priced on request without a price or a shipping price (D431)", () => {
+    const [node] = build({ ...product([variant("a", {}), variant("c", {}, 99900)]), priceOnRequest: true });
+    const offers = node.offers as Record<string, unknown>[];
+    expect(offers).toHaveLength(2);
+    for (const offer of offers) {
+      expect(offer).toMatchObject({ "@type": "Offer", availability: expect.stringMatching(/^https:\/\/schema\.org\//), seller: { "@id": "https://x.test/s/kopp#store" } });
+      expect(offer).not.toHaveProperty("price");
+      expect(offer).not.toHaveProperty("priceCurrency");
+      expect(offer).not.toHaveProperty("shippingDetails");
+    }
+    expect(JSON.stringify(node)).not.toContain("999.00");
+  });
+
   it("groups colour and size variants, and lists other options as offers of one product", () => {
     const [group] = build(product([variant("a", { Farge: "Hvit" }), variant("b", { Farge: "Svart" })]));
     expect(group).toMatchObject({ "@type": "ProductGroup", variesBy: ["https://schema.org/color"] });

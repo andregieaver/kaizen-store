@@ -313,7 +313,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   order_tags: never("The original's staff working notes on its orders (D173): a copy's order history starts clean; its copied orders can be tagged afresh."),
   order_discount_codes: never("The codes the original's orders used (D299 E2): a copied order keeps their words in `discount_code`."),
   order_views: never("A saved view of the order list names the original's tags, markets and filters (D173); a copy starts with the built-in views."),
-  order_settings: never("A copy starts with the defaults (D173): gift messages off, no automatic archiving, links valid 7 days, staff may not record payments; the row is made when first read, so clone_store() and duplicate_store() need no patch."),
+  order_settings: never("A copy starts with the defaults (D173): gift messages off, no automatic archiving, links valid 7 days, staff may not record payments, Request a quote off (D431); the row is made when first read, so clone_store() and duplicate_store() need no patch."),
   draft_orders: never("A draft order is a working document with a customer's contact data, and a sent one holds stock (D173); never copied."),
   draft_order_lines: never("The lines of a draft order (D173); a draft is never copied."),
   invoices: never("Invoices are accounting documents of the original."),

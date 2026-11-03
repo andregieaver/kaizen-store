@@ -111,7 +111,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("order_events", "shopper", via("order", "order_id"), ["data.reason", "data.note", "data.priced", "data.address"], "orders", "keep", "Events hold types, ids and dates, except the free text staff typed (data.reason of a cancellation or refund, data.note of a note) and the two postal codes of an order.delivery_mismatch event (data.priced, the one a delivery was priced for, and data.address, the address's; D237). The free text is exported as the event's; the two postal codes are copies of the order's delivery.postalCode and shipping address, exported with the order. All four are removed when the order is anonymised, which the append-only rule allows for those keys only (the postal codes of that event only).", {}),
   entry("order_downloads", "shopper", via("order", "order_id"), ["token"], "orders", "keep", "No personal field; erasure ends the link (its expiry) because it opens a purchase without a sign-in."),
   entry("order_tags", "shopper", via("order", "order_id"), ["label"], "orders", "keep", "A tag is text staff typed on an order (it can hold a name): exported inside the order's section and kept with the order, then deleted by the daily clean-up once the order is anonymised (the SQL anonymising function deletes nothing). " + KEEP_ORDER),
-  entry("draft_orders", "shopper", via("customer", "customer_id"), ["customer_id", "email", "phone", "shipping_address", "billing_address", "company_name", "organisation_number", "note_to_buyer", "internal_note"], "carts", "delete", "A draft is a basket staff made for a buyer, not yet an order: it holds the contact data staff typed. The drafts of a customer account are deleted with it (never matched by an address staff typed, only by the account); any other draft goes 90 days after its last edit (open) or 30 days after it ended, by the daily clean-up. The order a draft made is an order.", { also: ["addresses"] }),
+  entry("draft_orders", "shopper", via("customer", "customer_id"), ["customer_id", "email", "phone", "shipping_address", "billing_address", "company_name", "organisation_number", "note_to_buyer", "internal_note", "request_note", "quote_reply"], "carts", "delete", "A draft is a basket staff made for a buyer, not yet an order: it holds the contact data staff typed, or, for a request for a quote (D431), the name, email, phone, company and note the shopper typed and staff's reply when they declined it. The drafts of a customer account are deleted with it (never matched by an address staff typed, only by the account); any other draft goes 90 days after its last edit (open), 30 days after it ended or a request was declined, by the daily clean-up. The order a draft made is an order.", { also: ["addresses"] }),
   entry("draft_order_lines", "shopper", via("cart", "draft_id"), ["draft_id"], "carts", "delete", "The lines of a draft order; no personal field of their own, deleted with the draft."),
   entry("inventory_reservations", "shopper", via("cart", "cart_id", "order_id"), ["cart_id", "order_id"], null, "keep", "Stock held for a cart or order; no personal field."),
   entry("host_commissions", "host", via("order", "order_id", "host_id"), ["order_id"], null, "none", OWN),
@@ -442,6 +442,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   // To the shopper
   "order.confirmation": "shopper",
   "draft.pay_link": "shopper",
+  /** A request for a quote (D431): its receipt to the address the shopper typed, and the store's reply when it declines. */
+  "quote.received": "shopper",
+  "quote.declined": "shopper",
   "order.changed": "shopper",
   "subscription.renewed": "shopper",
   "invoice.issued": "shopper",
@@ -565,6 +568,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "notification.test": "staff",
   "staff.new_order": "staff",
   "staff.return_requested": "staff",
+  /** A shopper asked for a quote (D431): the draft's number and lines, never who asked. */
+  "staff.quote_requested": "staff",
   /** A dispute opened, and its deadline near (D288): the order's number, the amount and Stripe's reason, never who the customer is. */
   "staff.dispute": "staff",
   "staff.dispute_due": "staff",

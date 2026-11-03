@@ -76,7 +76,12 @@ export function ProductCard({
           </Link>
         )}
       </h2>
-      <Price price={product.price} locale={market.locale} m={m} from={product.priceVaries} />
+      {/* Price on request (D431): the words in place of a price no shopper sees. */}
+      {product.priceOnRequest ? (
+        <p className="text-sm font-medium">{m.quotes.priceOnRequest}</p>
+      ) : (
+        <Price price={product.price} locale={market.locale} m={m} from={product.priceVaries} />
+      )}
       {product.preorderUntil && (
         <p className="text-sm text-muted" data-preorder>
           {m.preorder.page(releaseDate(product.preorderUntil, market.locale))}

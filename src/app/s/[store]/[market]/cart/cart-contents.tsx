@@ -7,6 +7,9 @@ import { BackorderLine } from "@/components/backorder-note";
 import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { CartQuantity } from "@/components/cart-quantity";
+import { QuoteRequest } from "@/components/quote-request";
+import { quotableLine } from "@/lib/quotes";
+import { quotePrefill, quotesOfferedHere } from "@/server/quote-requests";
 import { ExpressArea } from "@/components/express-area";
 import { KlarnaMessage } from "@/components/klarna-message";
 import { stripeLocale } from "@/lib/checkout";
@@ -189,7 +192,17 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     questions,
     express,
     klarna: klarna ? { ...klarna, currency: market.currency, country: market.code, locale: stripeLocale(market.lang) } : null,
+    quote: await cartQuote(store, cart),
   };
+}
+
+/**
+ * Request a quote for the cart (D431): where the store offers quotes to this shopper, and every line is goods sent by post and bought once (a
+ * draft sells only those, D173). The server reads the lines from the cart itself; these are only what the form lists.
+ */
+async function cartQuote(store: Store, cart: Awaited<ReturnType<typeof getCart>>) {
+  if (cart.lines.length === 0 || !cart.lines.every(quotableLine) || !(await quotesOfferedHere(store))) return null;
+  return { lines: cart.lines.map((line) => ({ title: line.title, quantity: line.quantity })), prefill: await quotePrefill(store.id) };
 }
 
 type Draw = { store: Store; market: Market; m: Messages; view: Filled };
@@ -940,6 +953,8 @@ function checkoutAction({ store, market, m, view }: Draw) {
       {!view.mustSignInFirst && view.express && (
         <ExpressArea store={store.slug} market={market.slug} labels={view.express.labels} terms={view.express.terms} look={view.express.look} />
       )}
+      {/* Request a quote for these items (D431), under the ways to pay. */}
+      {view.quote && <QuoteRequest store={store.slug} market={market.slug} source={{ kind: "cart", lines: view.quote.lines }} prefill={view.quote.prefill} labels={m.quotes} />}
       {summary.refusal ? (
         // A checkout rule refuses the basket (D357): the owner's own words, in the cart's language.
         <p className="text-sm" role="alert" data-checkout-rule>

@@ -52,6 +52,8 @@ export type ProductSummary = {
    * cache's day past the date; the card says the date with it, and the product page reads the stock per request.
    */
   preorderUntil: string | null;
+  /** Price on request (D431): a card says so in place of the price, which no shopper sees. */
+  priceOnRequest: boolean;
 };
 
 export type EconomicOperator = {
@@ -138,6 +140,11 @@ export type ProductDetail = {
   standard: { id: string; path: string; google: number | null; english: Record<string, string[]> } | null;
   /** Producer responsibility (D342): the registration numbers the owner chose to show in this market for the product's schemes, valid today. */
   producerNumbers: ShownRegistration[];
+  /**
+   * Price on request (D431): its prices are never shown to a shopper (the price part says so, the buy part offers only Request a quote, the
+   * structured data has no price) and it is never put in a cart. The variants' prices stay here for the server only.
+   */
+  priceOnRequest: boolean;
 };
 
 type Row = Record<string, unknown>;
@@ -198,7 +205,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       case when p.subscription_only then (
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
-      p.audience, p.price_words,
+      p.audience, p.price_words, p.price_on_request,
       ${STORE_AUDIENCE} as store_audience,
       commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate
     from commerce.products p
@@ -249,6 +256,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
       audience: productAudience(row),
       preorderUntil: row.preorder_until ? str(row.preorder_until) : null,
+      priceOnRequest: Boolean(row.price_on_request),
     };
   });
 }
@@ -263,7 +271,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
 
   const [product] = await readDb().execute<Row>(sql`
     select
-      p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes,
+      p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes, p.price_on_request,
       p.audience, p.price_words, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
       -- The country's own description over its language's (D338), else the language's. A country whose language the product is not
@@ -403,6 +411,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     bundleItems,
     standard: await standardOf(product.standard_category, product.standard_attributes, locale),
     producerNumbers,
+    priceOnRequest: Boolean(product.price_on_request),
   };
 }
 
@@ -531,7 +540,7 @@ export async function listGridProducts(
       case when p.subscription_only then (
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
-      p.audience, p.price_words,
+      p.audience, p.price_words, p.price_on_request,
       ${STORE_AUDIENCE} as store_audience,
       commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate
     from commerce.products p
@@ -587,6 +596,7 @@ export async function listGridProducts(
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
       audience: productAudience(row),
       preorderUntil: row.preorder_until ? str(row.preorder_until) : null,
+      priceOnRequest: Boolean(row.price_on_request),
     };
   });
 }

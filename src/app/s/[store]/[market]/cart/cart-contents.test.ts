@@ -67,6 +67,12 @@ vi.mock("@/components/checkout-button", () => ({
   },
 }));
 vi.mock("@/components/discount-code-form", () => ({ DiscountCodeForm: () => null }));
+// Request a quote (D431): whether the store offers this shopper one; the form itself is a client component with its own check.
+const quoteState = vi.hoisted(() => ({ offered: false }));
+vi.mock("@/server/quote-requests", () => ({
+  quotesOfferedHere: async () => quoteState.offered,
+  quotePrefill: async () => ({ name: "", email: "", phone: "", company: "" }),
+}));
 
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -166,6 +172,7 @@ beforeEach(() => {
   cartState.backorder = null;
   giftState.enabled = false;
   giftState.gift = { isGift: false, to: null, from: null, message: null };
+  quoteState.offered = false;
   cartSummary.mockResolvedValue(summary());
   readCartBonus.mockResolvedValue(bonus());
 });
@@ -532,5 +539,13 @@ describe("the cart of a demo store (D175)", () => {
   it("keeps the ordinary words for a store whose payments are off", async () => {
     cartSummary.mockResolvedValue(summary({ checkout: { vatRate: 0.25, paymentsOn: false, starter: false, shipping: null } }));
     expect(words(renderToString(await CartCheckout({ store, market, m })))).toContain(m.checkoutUnavailable);
+  });
+});
+
+describe("request a quote for the cart (D431)", () => {
+  it("is offered under the ways to pay only where the store offers this shopper quotes", async () => {
+    expect(words(renderToString(await CartCheckout({ store, market, m })))).not.toContain(m.quotes.requestCart);
+    quoteState.offered = true;
+    expect(words(renderToString(await CartCheckout({ store, market, m })))).toContain(m.quotes.requestCart);
   });
 });

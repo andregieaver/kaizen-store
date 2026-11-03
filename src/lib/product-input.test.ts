@@ -389,4 +389,11 @@ describe("content for the unit price (D160)", () => {
     expect(productProblems(input, context).join(" ")).toMatch(/Only goods can be sold by measure/);
     expect(productProblems(productInput.parse(raw({}, { soldByMeasure: true })), context).join(" ")).not.toMatch(/sold by measure/);
   });
+
+  it("prices on request only goods bought once (D431)", () => {
+    expect(productInput.parse(raw({})).priceOnRequest).toBe(false);
+    const stay = productInput.parse(raw({ delivery: "service" }, { kind: "stay", priceOnRequest: true }));
+    expect(productProblems(stay, context).join(" ")).toMatch(/Only goods can be priced on request/);
+    expect(productProblems(productInput.parse(raw({}, { priceOnRequest: true })), context).join(" ")).not.toMatch(/priced on request/);
+  });
 });

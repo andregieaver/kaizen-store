@@ -282,6 +282,10 @@ export type DraftExportRow = {
   organisationNumber: string | null;
   noteToBuyer: string | null;
   internalNote: string | null;
+  /** A request for a quote the person made on the site (D431): what they wrote, and the store's reply when it declined. Absent on older rows. */
+  source?: string;
+  requestNote?: string | null;
+  quoteReply?: string | null;
   lines: { sku: string | null; title: string; quantity: number; unitPriceMinor: number }[];
 };
 export type AbandonedRow = { capturedAt: Ts; remindersSent: number; clickedAt: Ts; recoveredAt: Ts; optedOutAt: Ts };
@@ -815,6 +819,7 @@ export function shapeExport(input: ExportInput): ExportFile {
         company: d.companyName || d.organisationNumber ? { name: text(d.companyName), organisationNumber: text(d.organisationNumber) } : null,
         noteToBuyer: text(d.noteToBuyer),
         internalNote: text(d.internalNote),
+        ...(d.source === "quote" ? { quoteRequest: { note: text(d.requestNote ?? null), declineReply: text(d.quoteReply ?? null) } } : {}),
         lines: d.lines.map((l) => ({ sku: text(l.sku), title: l.title, quantity: int(l.quantity), unitPrice: money(l.unitPriceMinor, d.currency) })),
       })),
     },

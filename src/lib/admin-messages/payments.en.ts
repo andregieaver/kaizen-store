@@ -199,6 +199,18 @@ export const paymentsEn = {
     },
     captureHint:
       "A held card is not charged yet: the order shows “Card held, to capture”, it is not a sale in your figures and no invoice is issued until you capture. A card is held for up to {days} days; you are emailed a day before the hold ends, and an order not captured by then is cancelled and its stock released. You can capture less than was held (the rest is released and credited) or cancel the hold. Subscriptions, bookings, deposits, hosts' listings and downloads are always charged at checkout, as are draft orders, order changes, exchanges and subscription boxes. Changing this applies to orders placed from now on.",
+    quotesTitle: "Request a quote",
+    quotesLegend: "Who may request a quote",
+    quotes: {
+      off: { label: "Off", hint: "Only products priced on request offer a quote." },
+      everyone: { label: "For everyone", hint: "Product pages and the cart offer Request a quote." },
+      business: {
+        label: "For business customers only",
+        hint: "Offered to shoppers buying for a business: company accounts, customer groups, and shoppers who chose Business.",
+      },
+    },
+    quotesHint:
+      "A request becomes a draft order marked Quote requested, and you are emailed. Set the prices in the draft and press Send quote: the customer gets a link to accept it by paying. Mark a product Price on request in its editor to hide its price and offer only a quote. Where the button goes on the product page is chosen on the product layout's Buy part.",
     save: "Save",
     readOnly: "You can read these settings but not change them.",
   },
@@ -241,6 +253,7 @@ export const paymentsEn = {
     markPaidOwner: "Only the owner can change whether staff may record payments taken outside Kaizena Flow.",
     captureOwner: "Only the owner can change when the customer's card is charged.",
     capture: "Choose when the card is charged: when the order is placed, when it is sent, or when you capture it.",
+    quotes: "Choose who may request a quote: nobody, everyone, or business customers only.",
   },
 };
 

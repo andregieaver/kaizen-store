@@ -469,6 +469,11 @@ export const productInput = z.object({
   audience: z.enum(PRODUCT_AUDIENCES).default("all"),
   /** Unit price (D160): every active goods variant needs its content. Goods only (`products_sold_by_measure_goods`). */
   soldByMeasure: z.boolean().default(false),
+  /**
+   * Price on request (D431): its price is never shown to shoppers and it cannot be put in a cart; its page offers Request a quote instead.
+   * Goods only (`products_price_on_request_goods`), bought once.
+   */
+  priceOnRequest: z.boolean().default(false),
   /** Which VAT rate it takes (D65). */
   vatCategory: z.string().regex(VAT_CATEGORY_CODE, "Choose a VAT category.").default("standard"),
   /** Goods, or an appointment booked for a time (D65), with how it is booked. */
@@ -597,6 +602,11 @@ export function productProblems(input: ProductInput, context: PublishContext): s
   }
   if (input.soldByMeasure && input.kind !== "goods") {
     problems.push("Only goods can be sold by measure: take the tick away for appointments, stays and rentals.");
+  }
+  // Price on request (D431): goods bought once, as a quote is a draft order of goods (D173).
+  if (input.priceOnRequest && input.kind !== "goods") problems.push("Only goods can be priced on request: take the tick away.");
+  if (input.priceOnRequest && (input.plans.length > 0 || input.subscriptionOnly)) {
+    problems.push("A product priced on request cannot have purchase options: a quote is for goods bought once.");
   }
 
   // Backorder and the low-stock level (wave 3, D172): the same rules the database holds (`product_variants` checks).

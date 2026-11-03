@@ -45,6 +45,7 @@ const row = (over: Partial<DraftListRow> = {}): DraftListRow => ({
   createdAt: "2026-10-05T10:30:00.000Z",
   updatedAt: "2026-10-05T10:30:00.000Z",
   lineCount: 2,
+  quote: null,
   ...over,
 });
 
@@ -82,6 +83,18 @@ describe("the drafts list", () => {
     const html = list({ status: "sent" });
     for (const s of ["open", "sent", "paid", "expired", "cancelled"]) expect(html).toContain(`href="/admin/shop/orders/drafts?status=${s}"`);
     expect(html).toMatch(/aria-current="page"[^>]*>Sent/);
+  });
+
+  it("marks a shopper's request for a quote, filters to them and counts those waiting (D431)", () => {
+    const html = list({ rows: [row({ quote: "requested" }), row({ id: "22222222-2222-4222-8222-222222222222", number: "D-13", quote: "declined" })], quotesWaiting: 1 });
+    const text = check(html);
+    expect(text).toContain("Quote requested");
+    expect(text).toContain("Declined");
+    expect(text).toContain("1 request for a quote waits for a price.");
+    expect(html).toContain('href="/admin/shop/orders/drafts?quotes=1&amp;status=open"');
+    const filtered = list({ quotes: true, status: "open", rows: [] });
+    expect(filtered).toMatch(/aria-current="page"[^>]*>Quote requests/);
+    expect(check(filtered)).toContain("No requests for a quote.");
   });
 
   it("offers a new draft only to someone who may change orders", () => {

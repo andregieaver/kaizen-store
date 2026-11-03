@@ -504,6 +504,8 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   answers it only with the AI first, through `runSupportTurn(..., { email: true })` (no tool that needs a signed-in customer or a
   button, `NOT_BY_EMAIL`), and its answers go back by `sendReplyEmails()` as a reply in the thread, each marked as the AI's (`aiLabel`, `aiNote`, D334).
   Contact forms (D382, `src/server/support-forms.ts`): a store's email form's message is a conversation of source `form` through `formToInbox()` while the desk is on and its `form_messages` is not `email` (the recipients emailed too unless it is `inbox`); it is people only (the database starts it in the queue, never lets it go to the AI and skips its summary), so no model ever reads its words: a new AI helper on a conversation (tone, brief, partner, translation, a manager tool) leaves `source = 'form'` out. Its answers go back as a conversation by email's do, and a customer with its address is shown, never tied (`addressCustomer`).
+  A product question (D431, a product layout's question part, `src/server/product-questions.ts`) takes the same path with the product's
+  title, chosen variant and address as its first answer; its fields and copy addresses come from the published layout only.
 
 ## Prices are shown with `<Price>`, which adds the VAT label and shows the 30-day reference only for a genuine reduction
 
@@ -518,6 +520,9 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   catalogue's reads (`styledPrice()`, as `words`) and drawn by `VatAmount` around the amount, inside the automatic labels;
   a new place that shows a product's price shows them (`withWords()` for plain text), and a cart line, a total, the
   30-day reference, an invoice or a feed never does. The chat's model is told the amount, never the words.
+  A product priced on request (D431, `products.price_on_request`) shows no `<Price>` at all: the words *Price on request*
+  (`m.quotes.priceOnRequest`) on its page, cards, tiles, the chat's cards and the wishlist, no price in its structured data, feeds or
+  outside readers, never a cart line, and *Request a quote* as its buy part (`docs/rules/admin/commerce.md`, Request a quote).
 
 ## Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`, a themed select-only combobox with pictures), never a native…
 

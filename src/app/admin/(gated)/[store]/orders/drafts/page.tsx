@@ -41,8 +41,10 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const query = await searchParams;
   const rawStatus = Array.isArray(query.status) ? query.status[0] : query.status;
   const status = isDraftStatus(rawStatus) ? rawStatus : null;
+  // Shoppers' requests for a quote only (D431).
+  const quotes = (Array.isArray(query.quotes) ? query.quotes[0] : query.quotes) === "1";
   const rawAfter = Array.isArray(query.after) ? query.after[0] : query.after;
-  const page = await listDrafts(store.id, { status, after: rawAfter ?? null });
+  const page = await listDrafts(store.id, { status, quotes, after: rawAfter ?? null });
   const lang = adminLangOf(member.account.adminLocale);
   const locale = store.markets[0]?.locale ?? "en";
   return (
@@ -50,6 +52,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       slug={store.slug}
       rows={page.rows}
       status={status}
+      quotes={quotes}
+      quotesWaiting={page.quotesWaiting}
       nextCursor={page.nextCursor}
       hasCursor={Boolean(rawAfter)}
       openCount={page.openCount}

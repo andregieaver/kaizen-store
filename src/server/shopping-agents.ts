@@ -131,7 +131,8 @@ async function handlesOf(store: Store, ids: { kind: "product" | "variant" | "eit
 
 async function products(store: Store, market: Market, handles: string[]) {
   const details = (await Promise.all(handles.map((handle) => getProduct(store.id, market, handle)))).filter((d): d is ProductDetail => d !== null);
-  return Promise.all(details.filter((d) => d.variants.length > 0).map((detail) => ucpProduct(store, market, detail)));
+  // A product priced on request (D431) is left out: an agent is given prices and carts, and this product has neither.
+  return Promise.all(details.filter((d) => d.variants.length > 0 && !d.priceOnRequest).map((detail) => ucpProduct(store, market, detail)));
 }
 
 /** Runs one tool for an agent; a refusal is an `AgentToolError` with plain words. */

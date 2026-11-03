@@ -134,6 +134,9 @@ export const productEn = {
     uploadFailed: "{name} could not be uploaded. Try again.",
   },
   variants: {
+    priceOnRequest: "Price on request",
+    priceOnRequestHint:
+      "Shoppers see “Price on request” instead of a price and press Request a quote instead of Add to cart. The prices below are kept as your guide when you price a quote; they are never shown.",
     price: "Price",
     priceAndStock: "Price and stock",
     delivered: "How is it delivered?",

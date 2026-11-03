@@ -590,6 +590,64 @@ export async function sendReturnRequestedAlert(storeId: string, returnId: string
   return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
 }
 
+/** What a request for a quote's staff email shows (D431): the draft's number and lines, never who asked. */
+export type QuoteRequestFacts = { number: string; lines: { title: string; quantity: number }[]; priceNeeded: number };
+
+/** The quote-requested email: the request's number, its lines and how many need a price, and the link to the draft. */
+export function quoteRequestedEmail(store: EmailStore, draftId: string, f: QuoteRequestFacts, lang: AdminLang = "en"): RenderedEmail {
+  const all = wordsOf(lang);
+  const w = all.quoteRequested;
+  return renderEmail({
+    subject: fillWords(w.subject, { number: f.number }),
+    preview: fillWords(w.preview, { store: store.name, number: f.number }),
+    lang: ADMIN_LANG_FACTS[lang].tag,
+    footer: emailFooter(store, footerText(lang)),
+    blocks: [
+      { type: "heading", text: w.heading },
+      { type: "paragraph", text: fillWords(w.text, { number: f.number }) },
+      ...lineRows(f.lines, all),
+      ...(f.priceNeeded > 0 ? [{ type: "paragraph" as const, text: fillWords(w.priceNeeded, { n: f.priceNeeded }) }] : []),
+      { type: "button", text: w.button, url: adminUrl(store.slug, `/orders/drafts/${draftId}`) },
+    ],
+  });
+}
+
+async function quoteRequestFacts(storeId: string, draftId: string): Promise<QuoteRequestFacts | null> {
+  const [draft] = await db().execute<Row>(sql`
+    select number from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid and source = 'quote'
+  `);
+  if (!draft) return null;
+  const lines = await db().execute<Row>(sql`
+    select title, quantity, price_requested from commerce.draft_order_lines where store_id = ${storeId}::uuid and draft_id = ${draftId}::uuid order by position, id
+  `);
+  return {
+    number: String(draft.number),
+    lines: lines.map((l) => ({ title: String(l.title), quantity: Number(l.quantity) })),
+    priceNeeded: lines.filter((l) => Boolean(l.price_requested)).length,
+  };
+}
+
+/**
+ * A shopper's request for a quote (D431) to the staff who get new orders (`new_order`'s recipients: a request is the start of one), once per
+ * request and recipient. Null when the draft is not a request.
+ */
+export async function sendQuoteRequestedAlert(storeId: string, draftId: string, send: typeof sendEmail = sendEmail): Promise<{ ok: boolean; sent: number } | null> {
+  const [facts, store, targets] = await Promise.all([quoteRequestFacts(storeId, draftId), storeById(storeId), alertRecipients(storeId, "new_order")]);
+  if (!facts || !store) return null;
+  if (targets.length === 0) return { ok: true, sent: 0 };
+  const result = await sendToAll(
+    storeId,
+    store.name,
+    "staff.quote_requested",
+    targets,
+    (lang) => quoteRequestedEmail(store, draftId, facts, lang),
+    (r) => ALERT_KEYS.quoteRequested(draftId, r),
+    null,
+    send,
+  );
+  return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
+}
+
 export type DisputeFacts = {
   orderNumber: string;
   orderId: string;

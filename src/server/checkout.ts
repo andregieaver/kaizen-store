@@ -245,6 +245,8 @@ function orderLineRows(
           where bc.store_id = v.store_id and bc.bundle_variant_id = v.id
         ) end as bundle_components,
         (p.status = 'active' and v.active and ${bookable} and ${offeredTo(customerId)}
+          -- Never a product priced on request (D431), whatever a cart holds.
+          and not p.price_on_request
           -- A bundle whose component changed since it was added (archived, another VAT category, D322) cannot be bought.
           and (p.kind <> 'bundle' or coalesce((select va.can_buy from commerce.variant_availability va where va.store_id = v.store_id and va.variant_id = v.id), false))) as sellable,
         -- Under a producer responsibility scheme with no valid registration in this country today (D342), as the cart reads it.
