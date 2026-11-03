@@ -50,6 +50,15 @@ describe("next.config headers (wave 1, 1e)", async () => {
     expect(headersFor("/s/x/no/checkout")["Content-Security-Policy"]).toContain("frame-ancestors 'none'");
   });
 
+  it("lets nobody frame the consent screens, Kaizena Flow included, and sends no referrer elsewhere from them (D439)", () => {
+    for (const path of ["/admin/oauth/authorize", "/admin/oauth/consent", "/oauth/authorize"]) {
+      expect(headersFor(path)["Content-Security-Policy"], path).toBe("frame-ancestors 'none'");
+      expect(headersFor(path)["X-Frame-Options"], path).toBe("DENY");
+      expect(headersFor(path)["Referrer-Policy"], path).toBe("same-origin");
+    }
+    expect(headersFor("/admin/account")["Content-Security-Policy"]).toMatch(/^frame-ancestors 'self'/);
+  });
+
   it("keeps the other keys of the configuration", async () => {
     expect(resolved.cacheComponents).toBe(true);
     expect(resolved.poweredByHeader).toBe(false);

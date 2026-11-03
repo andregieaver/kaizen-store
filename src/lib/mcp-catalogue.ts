@@ -1,3 +1,4 @@
+import { STORES_READ, type OAuthScope } from "./oauth";
 import { OWNER_TOOLS, toolDefinition, type GateCategory, type OwnerTool } from "./owner-tools";
 import { TOOL_FEATURES } from "./owner-tool-features";
 import { TOOL_PERMISSIONS } from "./owner-tool-permissions";
@@ -79,6 +80,16 @@ export function toolTitle(name: string): string {
 
 export const toolPermission = (name: string): string | null => (Object.hasOwn(TOOL_PERMISSIONS, name) ? TOOL_PERMISSIONS[name as keyof typeof TOOL_PERMISSIONS] : null);
 
+/**
+ * The scope a call of an owner MCP tool needs from an OAuth grant (D439, B3): `stores:read` to list the stores, the owner's key to ask the
+ * store's assistant (it is the owner's, as `/assistant` is), and each owner tool's own permission key. Null for a name that is no tool.
+ */
+export function toolScope(name: string): OAuthScope | null {
+  if (name === "list_stores") return STORES_READ;
+  if (name === "ask_store_assistant") return "owner";
+  return Object.hasOwn(TOOL_PERMISSIONS, name) ? TOOL_PERMISSIONS[name as keyof typeof TOOL_PERMISSIONS] : null;
+}
+
 /** Whether a tool only reads: no gate, and the permission it needs is a reading one. */
 export function isReadOnly(tool: Pick<OwnerTool, "name" | "gate">): boolean {
   if (tool.gate) return false;
@@ -120,7 +131,7 @@ export const MCP_TOOLS: McpToolInfo[] = [
   {
     name: "list_stores",
     title: "List stores",
-    description: "The stores the owner has in Kaizena Flow: slug, name. Every other tool takes one of these slugs.",
+    description: "The stores this connection reaches in Kaizena Flow: slug, name. Every other tool takes one of these slugs.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
@@ -137,7 +148,7 @@ export const MCP_TOOLS: McpToolInfo[] = [
         continue_admin_conversation: {
           type: "boolean",
           description:
-            "True to go on in the conversation the owner last had with the store's assistant in Kaizena Flow's admin (within the last 24 hours), so it knows what was said there; otherwise, and when there is none, Kaizen Life's own conversation with it.",
+            "Kaizen Life only: true to go on in the conversation the owner last had with the store's assistant in Kaizena Flow's admin (within the last 24 hours), so it knows what was said there. Any other assistant, and Kaizen Life otherwise, always asks in its own conversation with it.",
         },
       },
       required: ["store", "question"],
@@ -154,7 +165,7 @@ export function mcpCatalogue() {
   return {
     server: { endpoint: "/api/mcp", transport: "streamable-http", protocol_version: "2025-06-18" },
     description:
-      "The tools of a store owner's MCP server. Every tool but list_stores takes the store it is for. A tool with a gate changes nothing from here: the change is kept for the owner to approve in Kaizena Flow's admin. A tool stands behind a store feature when it names one, and needs the permission it names in that store.",
+      "The tools of a store owner's MCP server. Every tool but list_stores takes the store it is for. A tool with a gate changes nothing from here: the change is kept for the owner to approve in Kaizena Flow's admin. A tool stands behind a store feature when it names one, and needs the permission it names in that store. With an OAuth token from Kaizena Flow (D439), a call also needs that permission as a scope of the token's grant (list_stores needs stores:read), and the person's own role decides at every call.",
     tools: MCP_TOOLS.map((t) => {
       const own = byName.get(t.name);
       const feature = own && Object.hasOwn(TOOL_FEATURES, own.name) ? TOOL_FEATURES[own.name as keyof typeof TOOL_FEATURES] : undefined;
@@ -165,6 +176,8 @@ export function mcpCatalogue() {
         inputSchema: t.inputSchema,
         gate: own?.gate ?? null,
         permission: own ? toolPermission(own.name) : t.name === "ask_store_assistant" ? "owner" : null,
+        // The scope an OAuth grant needs to call it (D439).
+        scope: toolScope(t.name),
         feature: feature === undefined ? null : typeof feature === "string" ? [feature] : [...feature],
         annotations: t.annotations,
       };

@@ -109,6 +109,8 @@ import { blogEn, type BlogMessages } from "./admin-messages/blog.en";
 import { blogNb } from "./admin-messages/blog.nb";
 import { schedulesEn, type SchedulesMessages } from "./admin-messages/schedules.en";
 import { schedulesNb } from "./admin-messages/schedules.nb";
+import { oauthEn, type OauthMessages } from "./admin-messages/oauth.en";
+import { oauthNb } from "./admin-messages/oauth.nb";
 
 /**
  * The admin's words by area and language (D312, `docs/platform-admin-i18n.md` 3.3): one pair of catalogues per area in
@@ -171,6 +173,7 @@ export type AdminAreaMessages = {
   signIn: SignInMessages;
   blog: BlogMessages;
   schedules: SchedulesMessages;
+  oauth: OauthMessages;
 };
 
 export type AdminArea = keyof AdminAreaMessages;
@@ -231,6 +234,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   signIn: { en: signInEn, nb: signInNb },
   blog: { en: blogEn, nb: blogNb },
   schedules: { en: schedulesEn, nb: schedulesNb },
+  oauth: { en: oauthEn, nb: oauthNb },
 };
 
 /** An area's words in `lang`, on the server; a client part reads its area's slice through `useAdminText()`. */

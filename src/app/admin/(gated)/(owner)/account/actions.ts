@@ -15,6 +15,7 @@ import { isColorChoice } from "@/lib/color-mode";
 import { audit, requireAccount, saveAdminLang, saveAdminScheme, saveColorMode } from "@/server/auth";
 import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
+import { endAccountGrants } from "@/server/oauth";
 import { LINK_COOKIE, linkStart, unlinkLife } from "@/server/kaizen-life-link";
 import { regenerateRecoveryCodes, removeSecondStep, type EnrolFinish, type StepResult } from "@/server/two-step";
 
@@ -45,6 +46,8 @@ export async function setPasswordAction(_state: FormState, formData: FormData): 
     return { status: "error", messages: [message] };
   }
   await audit(account.id, null, "account.password_set");
+  // A new password asks again what apps and AI assistants may do: every connection ends (D439 review).
+  await endAccountGrants(account.id, "password");
   return {
     status: "ok",
     messages: ["Password saved. Next time, sign in with your email and this password."],

@@ -670,6 +670,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "WordPress",
     keywords: ["wordpress", "utvidelse", "programtillegg", "plugin", "kortkode", "bygg inn", "koble til", "woocommerce"],
   },
+  "account:account.connected": {
+    title: "Tilkoblede apper og assistenter",
+    keywords: ["tilkoblede apper", "ai-assistent", "mcp", "claude", "chatgpt", "oauth", "koble fra", "tilbakekall", "tilgang", "integrasjoner"],
+  },
   "account:account.wordpress.connect": {
     title: "Koble til et WordPress-nettsted",
     keywords: ["koble til wordpress", "godkjenn", "autoriser", "wordpress"],
@@ -813,6 +817,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:ai": { title: "KI", keywords: ["ki", "kunstig intelligens", "modell", "leverandør"] },
   "platform:plan-limits": { title: "Grenser", keywords: ["grenser", "kvote", "lagring", "båndbredde", "trafikk", "standardgrenser"] },
   "platform:docs.feedback": { title: "Tilbakemeldinger på dokumentasjonen", keywords: ["dokumentasjon", "veiledning", "hjelp", "tilbakemelding", "artikler"] },
+  "platform:oauth": { title: "AI-assistenter og apper", keywords: ["oauth", "klienter", "mcp", "ai-assistenter", "apper", "bekreft", "blokker", "autorisasjonsserver"] },
   "platform:reports": { title: "Meldinger om ulovlig innhold", keywords: ["dsa", "ulovlig", "melding", "fjerning", "anmeldelse", "misbruk", "forfalskning", "moderering"] },
   "platform:status": { title: "Statusside", keywords: ["status", "hendelse", "nedetid", "oppetid", "driftsavbrudd", "vedlikehold"] },
   "platform:capacity": {

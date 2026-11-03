@@ -57,6 +57,41 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   then the version's entry at the top of `content/docs/developers/changelog.md` (`## 1.<n> — YYYY-MM-DD`, what changed for callers). The
   contract test fails until all of it is done, and fails a removed path or field within the major version.
 
+## Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)
+
+- **Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)**:
+  Kaizena Flow is an OAuth 2.1 authorization server (RFC 8414 metadata at `/.well-known/oauth-authorization-server`, issuer `siteUrl()`;
+  the owner MCP's protected resource metadata at `/.well-known/oauth-protected-resource` and `…/api/mcp` names it first and Supabase's
+  while Kaizen Life uses it). Clients are `commerce.oauth_clients`, written only by `oauth-clients.ts`: a Client ID Metadata Document is
+  fetched only through `safeFetch()` (HTTPS, 5 seconds, 64 KB, no redirect), checked by `readClientMetadata()` and kept for its cache
+  headers, at most a day; RFC 7591 registration (`/api/oauth/register`) is public only, HTTPS or loopback redirects by `application_type`,
+  ten an hour from an address (`oauth_register`, failing closed); a redirect URI matches exactly but a loopback's port (`redirectMatches()`),
+  and a request whose client or redirect URI does not check out is shown on the page, never sent anywhere. Grants and tokens are
+  `commerce.oauth_grants` and `oauth_tokens`, written only by `oauth.ts`: CSPRNG strings kept only as SHA-256 and found by it; a code lives 60
+  seconds, is used once, with PKCE S256 and its redirect URI; an access token (`kfa_`) lives an hour and is bound to its grant's resource
+  (`OAUTH_RESOURCES`, read only with `oauthAccess(token, resource)`); a refresh token (`kfr_`) is rotated at every use, and a code or refresh
+  token used twice ends its family; RFC 7009 revocation, *Disconnect* (Account → Connected apps and assistants) and an owner's *Cut off*
+  (Settings → Apps and API) end it at once; a blocked client's grants end. The consent screen is `/admin/oauth/authorize` (`/oauth/authorize`
+  sends the request there unchanged), never framed (`oauthRouteHeaders()`); its action reads the request again, offers only stores where the
+  person holds something (one that requires two-step only at `aal2`, which the grant keeps) and makes the scopes with `grantScopes()` (the
+  level's, narrowed by *Choose permissions*, never more than held); every decision is audited (`oauth.approved` per store, `oauth.denied`).
+  A token's power is its grant's scopes ∩ the person's role **now**: the MCP reads the membership with `passMembership()` and caps it with
+  `limit` (`PermissionHolder.limit`, which `can()` and so `memberCan()` and every tool's own check honour); a tool whose scope the grant lacks
+  is a 403 with one `insufficient_scope` challenge (`scopesMissing()`, `toolScope()`), and `tools/list` lists only what the grant and the
+  role allow. Under *Read and propose changes* every tool that is not read-only is kept for a yes (`ApprovalCategory` `change`); kept calls
+  land in the client's conversation (`clientConversation()`, "From Claude"), named on the approval and in the notice, and only for a person
+  who can open the AI manager. A turn an outside assistant asked for (`TurnInput.outside`, Kaizen Life's too) offers only
+  `OUTSIDE_MANAGER_TOOLS` and no custom app (no memories, no referrals), never decides a kept change in words and learns nothing; a client
+  of ours asks only in its own conversation (never the owner's admin one, which only Kaizen Life may go on in), and its outside approvals
+  carry their grant and expire with it. A client's name is shown and passed on only through `safeClientName()`, and names that could pass
+  for Kaizena Flow are refused. A wrong authorization request goes back only to a client Kaizena Flow vouches for (`sendsErrorsBack()`).
+  A store's or the site's budget counts an ask only within the caller's own (`budgetRoom()`); the token endpoint is counted per client.
+  MCP calls are held to `memberCan()`. Every MCP call, refused ones too, is audited
+  (`integration.mcp_call`, `via: "mcp"` and the client) and budgeted (`takeMcpBudget()`: 120 a minute a grant, 1,200 a store), batches at
+  most ten, bodies at most 100 KB. A new owner tool needs nothing here beyond its permission key; a new resource (the Admin API, unit D) is an
+  entry of `OAUTH_RESOURCES` and of `oauth_grants_resource`, and its door reads tokens with `oauthAccess()`. Never log or audit a token, code
+  or secret.
+
 ## The storefront API (wave 9 unit I, D362, `src/lib/storefront-api.ts`, `src/server/storefront-api.ts`, `src/server/storefront-route.ts`)
 
 - **The storefront API (wave 9 unit I, D362, `src/lib/storefront-api.ts`, `src/server/storefront-api.ts`, `src/server/storefront-route.ts`)**:
@@ -96,11 +131,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   apps asking to sign someone in with Kaizen Store land on
   `/admin/oauth/consent` (owners only). Sign-in shares identity, never
   store data. Kaizen Life's assistant reaches the owner's stores through
-  `/api/mcp` (D96, `src/server/store-mcp.ts`): tokens from the store's
-  OAuth server for `KAIZEN_LIFE_CLIENT_ID` only, every owner tool with a
-  `store` argument, gated tools only kept (`keepForApproval()`) in the
+  `/api/mcp` (D96, `src/server/store-mcp.ts`), which since D439 also takes
+  Kaizena Flow's own tokens (*Kaizena Flow's authorization server*, above):
+  Kaizen Life's are tokens from the store's Supabase OAuth server for
+  `KAIZEN_LIFE_CLIENT_ID` only, every owner tool with a
+  `store` argument, gated tools only kept (`keepForApproval()`, named
+  "Kaizen Life asks: …") in the
   owner's Kaizen Life conversation (`kaizenLifeConversation()`), and
-  `ask_store_assistant` runs a turn there with `fromKaizenLife`. A new owner
+  `ask_store_assistant` runs a turn there with `fromKaizenLife` and `outside`. A new owner
   tool is served there too (manager and platform tools are not). The other way, an owner connects Kaizen Life
   for the assistant under Your account (`src/server/kaizen-life-link.ts`,
   tokens encrypted in `kaizen_life_links`); the assistant then has

@@ -177,6 +177,9 @@ const PREFIXES: Record<string, AuditArea> = {
   "store.": "settings",
   "ai.": "settings",
   "integration.": "settings",
+  // Kaizena Flow's authorization server (D439): a person connecting an AI assistant or app to a store, a store cutting one off. A person's
+  // own entries (denied, disconnected, a reused refresh token) pass the `account` area themselves.
+  "oauth.": "settings",
   "localization.": "settings",
   "cookies.": "settings",
   "google.": "settings",

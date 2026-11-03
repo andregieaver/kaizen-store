@@ -121,6 +121,21 @@ export function adminFrameHeaders(themesOrigin: string | null): HeaderEntry[] {
   return [{ key: "Content-Security-Policy", value: `frame-ancestors 'self'${themesOrigin ? ` ${themesOrigin}` : ""}` }];
 }
 
+/**
+ * The consent screens (D439, D95), where a person lets an app in: never framed by anyone, Kaizena Flow included, so no page can lay a
+ * button over Allow (clickjacking), and no referrer leaves for another site (their address holds a request's state; `no-referrer` would
+ * make a server action's `Origin` null and the form refused). Sent after the site-wide
+ * entries, so this `frame-ancestors` wins on these paths.
+ */
+export function oauthRouteHeaders(): { source: string; headers: HeaderEntry[] }[] {
+  const headers: HeaderEntry[] = [
+    { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+    { key: "X-Frame-Options", value: "DENY" },
+    { key: "Referrer-Policy", value: "same-origin" },
+  ];
+  return ["/oauth/:path*", "/admin/oauth/:path*"].map((source) => ({ source, headers }));
+}
+
 /** Where browsers send what the site-wide Report-Only policy would have blocked (D389), counted by the route as log lines. */
 export const CSP_REPORT_PATH = "/api/csp-report";
 

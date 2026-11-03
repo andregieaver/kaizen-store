@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { capacityEn } from "@/lib/admin-messages/capacity.en";
 import { formatLimit, formatUsage } from "@/lib/usage-format";
+import { safeClientName } from "@/lib/oauth";
 import { ADMIN_PAGES, findPages, pageHref, pageOffered, pageParams, type SiteFlags } from "@/lib/admin-map";
 import { groupUsage, summarizeUsage, withOwner } from "@/lib/ai-usage";
 import { ASSISTANT_SKILLS } from "@/lib/assistant-skills";
@@ -108,7 +109,17 @@ export type ManagerContext = {
   scheduled?: boolean;
   /** A step of a plan the autopilot runs (D309): its tools, the owner's levels, and what it was told to tell. */
   autopilot?: import("./owner-assistant").AutopilotTurn;
+  /** A turn an outside assistant asked for through the owner MCP (D96, D439): see `OutsideAsker`. */
+  outside?: OutsideAsker;
 };
+
+/**
+ * An outside assistant asking the store's AI manager through the owner MCP (D96, D439): Kaizen Life's, or one connected through Kaizena
+ * Flow's authorization server (`via: "oauth"`, with its grant). `client` names it on what is kept for a yes and in the notice, as
+ * `safeClientName()` leaves it; `propose` is a grant's *Read and propose changes*, under which every change to the store waits for a yes;
+ * `grantId` is kept on what it asks for, which ends with the grant. Its words never decide a kept change: only the person, in the admin.
+ */
+export type OutsideAsker = { client: string; propose: boolean } & ({ via: "kaizen-life" } | { via: "oauth"; grantId: string });
 
 const fail = (message: string): never => {
   throw new OwnerToolError(message);
@@ -208,6 +219,8 @@ async function decideApprovalTool(ctx: ManagerContext, { approval, approve }: Ma
   const turn = ctx.turn;
   if (!turn) return fail("Answers are given with the buttons here.");
   if (ctx.scheduled) return fail("They are not here: a change waits for their own answer.");
+  // An outside assistant's words are not the person's yes (D439): a kept change is answered in Kaizena Flow's admin only.
+  if (ctx.outside) return fail(`A change waits for the person's own answer in Kaizena Flow's admin; ${safeClientName(ctx.outside.client)} cannot give it.`);
   const [row] = await db().execute<Row>(sql`
     select summary, status, created_at from commerce.assistant_approvals
     where id = ${approval}::uuid and conversation_id = ${turn.conversationId}::uuid and account_id = ${ctx.account.id}::uuid

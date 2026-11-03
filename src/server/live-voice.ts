@@ -54,14 +54,14 @@ async function pickConversation(p: Principal, requested: string | null): Promise
   if (requested && /^[0-9a-f-]{36}$/i.test(requested)) {
     const [row] = await db().execute<Row>(sql`
       select id from commerce.assistant_conversations
-      where id = ${requested}::uuid and ${scope} and account_id = ${p.account.id}::uuid and source is distinct from 'kaizen-life'
+      where id = ${requested}::uuid and ${scope} and account_id = ${p.account.id}::uuid and source = 'admin'
     `);
     id = row ? String(row.id) : null;
   }
   if (!id) {
     const [row] = await db().execute<Row>(sql`
       select id from commerce.assistant_conversations
-      where ${scope} and account_id = ${p.account.id}::uuid and source is distinct from 'kaizen-life'
+      where ${scope} and account_id = ${p.account.id}::uuid and source = 'admin'
         and updated_at > now() - make_interval(secs => ${CONTINUE_MS / 1000})
       order by updated_at desc limit 1
     `);

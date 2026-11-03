@@ -13,6 +13,7 @@ import { attemptState, lockedText, normaliseTotp, TWO_STEP_LIMIT } from "@/lib/t
 import { auditAccount, auditChange } from "./audit";
 import { readSession, type Account, type Membership } from "./auth";
 import { log } from "./log";
+import { endAccountGrants } from "./oauth";
 import { memberCan, NO_ACCESS } from "./permissions";
 import { refreshTag } from "./refresh";
 import { claimRecoveryCode, makeRecoveryCodes, recoveryAvailable, recoveryCodesLeft, revokeRecoveryCodes } from "./recovery-codes";
@@ -339,6 +340,8 @@ export async function removeSecondStep(account: Account): Promise<StepResult> {
   }
   await db().execute(sql`update commerce.accounts set two_step_since = null where id = ${account.id}::uuid`);
   await revokeRecoveryCodes(account.id);
+  // What they let apps and AI assistants do is asked again (D439 review).
+  await endAccountGrants(account.id, "two_step");
   await auditAccount(account.id, "account.two_step_removed");
   await sendSecurityEmail(account.id, "two_step_removed");
   return { ok: true };
@@ -359,6 +362,8 @@ export async function resetTwoStep(actor: Account, targetAccountId: string): Pro
   await db().execute(sql`update commerce.accounts set two_step_since = null, two_step_reenrol_at = now() where id = ${targetAccountId}::uuid`);
   const removed = await removeAllFactors(targetAccountId, admin.admin);
   await revokeRecoveryCodes(targetAccountId);
+  // A lost second step may be a taken account: every app and AI assistant it connected is disconnected (D439 review).
+  await endAccountGrants(targetAccountId, "two_step");
   await auditAccount(targetAccountId, "account.two_step_reset", { by: actor.email, factorsRemoved: removed.removed, ...(removed.ok ? {} : { removalFailed: true }) }, { actorId: actor.id, label: String(target.name || target.email) });
   await sendSecurityEmail(targetAccountId, "two_step_reset", { by: actor.email });
   if (!removed.ok) return { ok: false, problem: "Some of the factors could not be removed. Try again." };

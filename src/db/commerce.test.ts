@@ -7509,3 +7509,128 @@ describe("a product priced on request in bundles (D433)", () => {
     }
   });
 });
+
+// Kaizena Flow's authorization server (wave 14 unit B, D439): its tables hold their rules whatever the code does.
+describe("the authorization server's clients, grants and tokens (D439)", () => {
+  async function client(clientId: string, kind = "registered", secret: string | null = null): Promise<string> {
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.oauth_clients (kind, client_id, name, redirect_uris, secret_hash) values ($1, $2, 'An app', array['https://app.example/cb'], $3) returning id",
+      [kind, clientId, secret],
+    );
+    return id;
+  }
+
+  it("keeps a secret only for an app or a client Kaizena Flow made, and one client per id", async () => {
+    await expect(client("oauth-secret-1", "registered", "abc")).rejects.toThrow(/oauth_clients_secret/);
+    await expect(client("oauth-secret-2", "metadata_document", "abc")).rejects.toThrow(/oauth_clients_secret/);
+    expect(await client("oauth-secret-3", "app", "abc")).toBeTruthy();
+    await expect(client("oauth-secret-3")).rejects.toThrow(/oauth_clients_client_id_key|duplicate/);
+    await expect(client("oauth-kind", "anything")).rejects.toThrow(/oauth_clients_kind/);
+    await expect(db.query("insert into commerce.oauth_clients (kind, client_id, name, redirect_uris) values ('registered', 'oauth-none', 'x', '{}')")).rejects.toThrow(/oauth_clients_redirect_uris/);
+  });
+
+  it("keeps one live grant per person, client and resource, with a level, a resource and scopes it knows", async () => {
+    const account = await createAccount("oauth-grant@example.com");
+    const clientId = await client("oauth-grant-client");
+    const grant = (access = "read", resource = "mcp") =>
+      db.query(
+        "insert into commerce.oauth_grants (account_id, client_id, store_ids, scopes, resource, access) values ($1, $2, array[$3::uuid], array['stores:read'], $4, $5) returning id",
+        [account, clientId, store, resource, access],
+      );
+    const { rows } = await grant();
+    await expect(grant()).rejects.toThrow(/oauth_grants_live_key|duplicate/);
+    await db.query("update commerce.oauth_grants set revoked_at = now() where id = $1", [(rows[0] as { id: string }).id]);
+    expect((await grant("change")).rows).toHaveLength(1);
+    await db.query("update commerce.oauth_grants set revoked_at = now() where account_id = $1", [account]);
+    await expect(grant("everything")).rejects.toThrow(/oauth_grants_access/);
+    await expect(grant("read", "admin")).rejects.toThrow(/oauth_grants_resource/);
+  });
+
+  it("gives a code its PKCE challenge and redirect URI and no other token either, and ends a grant's tokens with it", async () => {
+    const account = await createAccount("oauth-token@example.com");
+    const clientId = await client("oauth-token-client");
+    const { id: grantId } = await one<{ id: string }>(
+      "insert into commerce.oauth_grants (account_id, client_id, store_ids, scopes, resource, access) values ($1, $2, array[$3::uuid], array['stores:read'], 'mcp', 'read') returning id",
+      [account, clientId, store],
+    );
+    const token = (kind: string, hash: string, challenge: string | null, redirect: string | null) =>
+      db.query(
+        "insert into commerce.oauth_tokens (kind, token_hash, grant_id, family, code_challenge, redirect_uri, expires_at) values ($1, $2, $3, gen_random_uuid(), $4, $5, now() + interval '1 minute')",
+        [kind, hash, grantId, challenge, redirect],
+      );
+    await expect(token("code", "h1", null, "https://app.example/cb")).rejects.toThrow(/oauth_tokens_code/);
+    await expect(token("access", "h2", "c", null)).rejects.toThrow(/oauth_tokens_code/);
+    await token("code", "h3", "c", "https://app.example/cb");
+    await token("access", "h4", null, null);
+    await expect(token("access", "h4", null, null)).rejects.toThrow(/oauth_tokens_hash_key|duplicate/);
+    await expect(token("bearer", "h5", null, null)).rejects.toThrow(/oauth_tokens_kind/);
+    await db.query("delete from commerce.oauth_grants where id = $1", [grantId]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.oauth_tokens where grant_id = $1", [grantId])).n).toBe(0);
+  });
+
+  it("keeps one conversation per store, person and client for an outside assistant, and approvals of a proposed change", async () => {
+    const account = await createAccount("oauth-conversation@example.com");
+    const clientId = await client("oauth-conversation-client");
+    const conversation = () =>
+      db.query("insert into commerce.assistant_conversations (store_id, account_id, title, source, oauth_client_id) values ($1, $2, 'From An app', 'mcp', $3) returning id", [store, account, clientId]);
+    const { rows } = await conversation();
+    await expect(conversation()).rejects.toThrow(/assistant_conversations_mcp_idx|duplicate/);
+    await expect(db.query("insert into commerce.assistant_conversations (store_id, account_id, source) values ($1, $2, 'elsewhere')", [store, account])).rejects.toThrow(/assistant_conversations_source/);
+    await db.query(
+      "insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category) values ($1, $2, $3, 'create_product', '{}', 'An app asks: Make a draft.', 'change')",
+      [store, (rows[0] as { id: string }).id, account],
+    );
+    await expect(
+      db.query("insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category) values ($1, $2, $3, 'x', '{}', 'x', 'anything')", [store, (rows[0] as { id: string }).id, account]),
+    ).rejects.toThrow(/assistant_approvals_category/);
+  });
+
+  it("is closed to the Data API: row-level security on, no policy", async () => {
+    const { rows } = await db.query<{ relname: string; on: boolean; policies: number }>(
+      `select c.relname, c.relrowsecurity as on, (select count(*)::int from pg_policies p where p.schemaname = 'commerce' and p.tablename = c.relname) as policies
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'commerce' and c.relname like 'oauth_%' and c.relkind = 'r' order by 1`,
+    );
+    expect(rows).toEqual([
+      { relname: "oauth_clients", on: true, policies: 0 },
+      { relname: "oauth_grants", on: true, policies: 0 },
+      { relname: "oauth_store_cutoffs", on: true, policies: 0 },
+      { relname: "oauth_tokens", on: true, policies: 0 },
+    ]);
+  });
+
+  it("gives only an access token scopes of its own, keeps one cut-off per store, person and client, and ties an approval to its grant (D439 review)", async () => {
+    const account = await createAccount("oauth-review@example.com");
+    const clientId = await client("oauth-review-client");
+    const { id: grantId } = await one<{ id: string }>(
+      "insert into commerce.oauth_grants (account_id, client_id, store_ids, scopes, resource, access) values ($1, $2, array[$3::uuid], array['stores:read'], 'mcp', 'read') returning id",
+      [account, clientId, store],
+    );
+    const token = (kind: string, hash: string, scopes: string[] | null) =>
+      db.query("insert into commerce.oauth_tokens (kind, token_hash, grant_id, family, scopes, expires_at) values ($1, $2, $3, gen_random_uuid(), $4, now() + interval '1 hour')", [
+        kind,
+        hash,
+        grantId,
+        scopes,
+      ]);
+    await token("access", "r1", ["stores:read"]);
+    await expect(token("refresh", "r2", ["stores:read"])).rejects.toThrow(/oauth_tokens_scopes/);
+    await expect(token("access", "r3", [])).rejects.toThrow(/oauth_tokens_scopes/);
+    const cut = () => db.query("insert into commerce.oauth_store_cutoffs (store_id, account_id, client_id) values ($1, $2, $3)", [store, account, clientId]);
+    await cut();
+    await expect(cut()).rejects.toThrow(/oauth_store_cutoffs_key|duplicate/);
+    const { id: conversation } = await one<{ id: string }>(
+      "insert into commerce.assistant_conversations (store_id, account_id, source, oauth_client_id) values ($1, $2, 'mcp', $3) returning id",
+      [store, account, clientId],
+    );
+    const { id: approval } = await one<{ id: string }>(
+      "insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category, oauth_grant_id) values ($1, $2, $3, 'x', '{}', 'x', 'change', $4) returning id",
+      [store, conversation, account, grantId],
+    );
+    // A grant deleted (90 days after it ended) leaves its approvals, untied; a client deleted takes its cut-offs.
+    await db.query("delete from commerce.oauth_grants where id = $1", [grantId]);
+    expect((await one<{ g: string | null }>("select oauth_grant_id as g from commerce.assistant_approvals where id = $1", [approval])).g).toBeNull();
+    await db.query("delete from commerce.assistant_conversations where id = $1", [conversation]);
+    await db.query("delete from commerce.oauth_clients where id = $1", [clientId]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.oauth_store_cutoffs where client_id = $1", [clientId])).n).toBe(0);
+  });
+});

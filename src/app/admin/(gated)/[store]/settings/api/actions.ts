@@ -12,6 +12,7 @@ import { STOREFRONT_TOKENS_MAX } from "@/lib/storefront-api";
 import { makeStorefrontToken, revokeStorefrontToken } from "@/server/storefront-api";
 import { APPS_MAX, isAppGate } from "@/lib/custom-apps";
 import { addCustomApp, relistCustomApp, removeCustomApp, switchAppTool } from "@/server/custom-apps";
+import { cutGrantFromStore, liftStoreCutoff } from "@/server/oauth";
 
 /** Tokens act as their maker and reach the store's data, so only an owner makes or revokes one (D355). */
 export type TokenAnswer = { ok: true; token?: string } | { ok: false; message: string };
@@ -88,4 +89,20 @@ export async function removeCustomAppAction(storeSlug: string, id: string): Prom
   if (!(await removeCustomApp(owner, id))) return { ok: false, message: adminText(adminLangOf(owner.account.adminLocale), "notifications").customApps.problems.unknown };
   refresh();
   return { ok: true };
+}
+
+/** The owner cuts an AI assistant's or app's grant off from this store, whoever made it (D439): the store leaves its reach at once. */
+export async function cutGrantAction(storeSlug: string, grantId: string): Promise<void> {
+  const owner = await checkOwnerRole(storeSlug);
+  if (!owner) return;
+  await cutGrantFromStore(owner, grantId);
+  refresh();
+}
+
+/** The owner lets an app they cut off in again for that person (D439 review): connecting it again can then reach this store. */
+export async function liftCutoffAction(storeSlug: string, cutoffId: string): Promise<void> {
+  const owner = await checkOwnerRole(storeSlug);
+  if (!owner) return;
+  await liftStoreCutoff(owner, cutoffId);
+  refresh();
 }

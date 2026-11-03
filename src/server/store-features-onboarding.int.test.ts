@@ -317,7 +317,7 @@ describe("the AI manager's feature tools (D178 step 6)", () => {
 
   it("is served to Kaizen Life as an owner tool, in a website too", async () => {
     await db().execute(sql`update commerce.stores set features = '{}' where id = ${store.id}::uuid`);
-    const tools = (await mcpToolsFor({ account: store.account, stores: [{ id: store.id, slug: store.slug, name: "x" }], aal: "aal2" })).map((t) => t.name);
+    const tools = (await mcpToolsFor({ account: store.account, stores: [{ id: store.id, slug: store.slug, name: "x" }], aal: "aal2", via: { kind: "kaizen-life" } })).map((t) => t.name);
     expect(tools).toEqual(expect.arrayContaining(["list_features", "set_feature"]));
     await db().execute(sql`update commerce.stores set features = '{shop}' where id = ${store.id}::uuid`);
   });
