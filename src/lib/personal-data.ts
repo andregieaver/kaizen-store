@@ -279,6 +279,10 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
 /** Tables the detectors matched (by a column name such as `name`, `note` or `content`, or a foreign key) that hold no person's data, and why. */
 export const NOT_PERSONAL: Record<string, string> = {
+  docs_index:
+    "The docs' search index (D443): the parts of Kaizena Flow's own articles and the items of its API contracts, written from the repository; no person's data.",
+  docs_search_misses:
+    "Searches of the docs that found nothing (D443), counted for the gap list: the words as a search reads them (never kept when they look like an email address, a long number or a token), the language and a count. Never tied to a reader (a reader's same search is counted once an hour by a counter keyed by the budgets' daily hash, gone after two days), so no request could find a person's rows; forgotten after 180 days without a miss, and a platform admin takes off the list any that names someone.",
   docs_feedback:
     "Whether a docs page helped (D442): the page's path and language, yes or no, and an optional sentence. Never tied to a reader (no address, account, cookie or browser is kept), so no request could find a person's rows; the form asks readers to leave personal details out, and a platform admin deletes a sentence that names someone anyway.",
   bonus_rewards:"A store's loyalty rewards (D401): their names and costs are the store's words, no person's.",

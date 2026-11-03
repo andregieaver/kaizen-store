@@ -1,10 +1,12 @@
 import { fillWords } from "@/lib/admin-fill";
 import { DOCS_CHANGELOG_PATH, docsReferencePath, docsTree, type DocHeading, type DocLang, type DocPage, type DocsIndex, type DocTrack } from "@/lib/docs-content";
 import { docsPath, docsSiteHref } from "@/lib/docs-host";
+import { DOCS_GUIDE_READY, DOCS_SEARCH_SUB } from "@/lib/docs-search";
 import { PLATFORM_LANG_FACTS } from "@/lib/platform-lang";
 import type { PlatformMessages } from "@/lib/platform-text";
 
-import { DocsSearchButton } from "./docs-search";
+import { DocsSearch } from "./docs-search";
+import type { DocsSearchNames } from "./docs-search-panel";
 import { DocsTreeToggle } from "./docs-tree-toggle";
 
 export type DocsWords = PlatformMessages["docs"];
@@ -13,6 +15,14 @@ const NAV_LINK = "flex min-h-10 items-center rounded-full px-3 hover:bg-surface 
 
 /** A page's address in the other languages it is written in, for the language switch: none for a page in one language. */
 export type DocsLanguages = { lang: DocLang; href: string }[];
+
+/** The names the search shows its tracks and languages by (D443). */
+export function docsSearchNames(words: DocsWords): DocsSearchNames {
+  return {
+    tracks: { owners: words.tracks.owners.name, developers: words.tracks.developers.name },
+    langs: { en: PLATFORM_LANG_FACTS.en.name, nb: PLATFORM_LANG_FACTS.nb.name },
+  };
+}
 
 /** The top bar (D442): the mark, the two tracks, the API reference, the changelog, the status page, the search and the language. */
 export function DocsTopBar({ lang, track, words, languages }: { lang: DocLang; track: DocTrack | "changelog" | null; words: DocsWords; languages: DocsLanguages }) {
@@ -42,7 +52,16 @@ export function DocsTopBar({ lang, track, words, languages }: { lang: DocLang; t
           </ul>
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <DocsSearchButton label={words.search} soon={words.searchSoon} />
+          <DocsSearch
+            label={words.search}
+            lang={lang}
+            track={track === "changelog" ? "developers" : track}
+            words={words.finder}
+            names={docsSearchNames(words)}
+            searchHref={docsPath(DOCS_SEARCH_SUB, lang)}
+            homeHref={docsPath("", lang)}
+            guide={DOCS_GUIDE_READY}
+          />
           {languages.length > 1 && <DocsLanguageSwitch lang={lang} languages={languages} label={words.language} />}
         </div>
       </div>

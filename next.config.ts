@@ -67,6 +67,8 @@ const nextConfig: NextConfig = {
     // keys are globs over the route's path with its groups (`/(docs)/docs/…`, `/(docs-nb)/no/docs/…`, `/api/docs/feedback`, the admin's).
     "/**/docs": DOCS_FILES,
     "/**/docs/**": DOCS_FILES,
+    // The five-minute dispatcher writes the docs' search index from the same files after a deploy that changed them (D443).
+    "/api/cron/cart-reminders": DOCS_FILES,
   },
   experimental: {
     // On Vercel, Turbopack without its build cache (its compile held 7.2 GB with it, 5.8 GB without) and one worker for the pages

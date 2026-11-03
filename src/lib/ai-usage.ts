@@ -33,6 +33,7 @@ export const AI_FEATURES = {
   recommendations: "Recommendations",
   embeddings: "Catalogue vectors",
   knowledge: "Chat knowledge",
+  docs_search: "Docs search",
   media: "Media library",
   page_studio: "Page studio",
   page_pictures: "Pictures made in the page builder",

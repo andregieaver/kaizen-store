@@ -7,11 +7,13 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { docPage } from "@/lib/docs-content";
 import { docsUrl } from "@/lib/docs-host";
+import { DOCS_SEARCH_SUB, docsSearchQueryString, NO_FILTERS } from "@/lib/docs-search";
 import { requirePlatformAdmin } from "@/server/auth";
 import { docsIndex } from "@/server/docs";
 import { listDocsFeedback, tallyDocsFeedback } from "@/server/docs-feedback";
+import { listDocsMisses } from "@/server/docs-search";
 
-import { removeDocsCommentAction } from "./actions";
+import { removeDocsCommentAction, removeDocsMissAction } from "./actions";
 
 export const metadata: Metadata = { title: "Docs feedback" };
 
@@ -22,6 +24,7 @@ const control = "min-h-10 rounded-lg border border-edge bg-card px-3 text-sm";
 /**
  * What readers of the docs said (D442): each page's yes and no counted (the pages with the most no first), then the answers newest first,
  * filtered by page, by yes or no and by having a sentence (the filters in the address). A sentence that names someone is taken away here.
+ * Then the docs' gap list (D443): the searches that found nothing in the docs, the most often first, each to try again or take off the list.
  */
 export default async function DocsFeedbackPage({ searchParams }: PageProps<"/admin/platform/docs/feedback">) {
   await connection();
@@ -31,7 +34,7 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
   const path = typeof query.page === "string" && PATH.test(query.page) ? query.page : null;
   const helpful = query.helpful === "yes" ? true : query.helpful === "no" ? false : null;
   const withComment = query.sentence === "1";
-  const [tally, rows] = await Promise.all([tallyDocsFeedback(), listDocsFeedback({ path, helpful, withComment })]);
+  const [tally, rows, misses] = await Promise.all([tallyDocsFeedback(), listDocsFeedback({ path, helpful, withComment }), listDocsMisses()]);
   const index = docsIndex();
   const title = (p: string) => docPage(index, p, "en")?.title ?? p;
   const total = tally.reduce((sum, t) => sum + t.yes + t.no, 0);
@@ -71,6 +74,56 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </Card>
+      <Card title={w.misses} description={w.missesHint}>
+        {misses.length === 0 ? (
+          <p className="text-sm text-muted">{w.missesNone}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-caption">
+              <thead className="text-muted">
+                <tr>
+                  <th scope="col" className="py-2 pr-4">{w.query}</th>
+                  <th scope="col" className="py-2 pr-4">{w.language}</th>
+                  <th scope="col" className="py-2 pr-4 text-right">{w.times}</th>
+                  <th scope="col" className="py-2 pr-4">{w.first}</th>
+                  <th scope="col" className="py-2 pr-4">{w.latest}</th>
+                  <th scope="col" className="py-2 pr-4">
+                    <span className="sr-only">{w.removeMiss}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {misses.map((miss) => (
+                  <tr key={`${miss.lang}:${miss.query}`} className="border-t border-line align-top">
+                    <td className="py-2 pr-4">
+                      {/* What a reader typed: shown as text, never as HTML. */}
+                      <a
+                        href={docsUrl(`${DOCS_SEARCH_SUB}${docsSearchQueryString({ q: miss.query, filters: { ...NO_FILTERS, lang: [miss.lang] }, sort: "relevance" })}`, miss.lang)}
+                        className="underline-offset-2 hover:underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={w.tryIt}
+                      >
+                        {miss.query}
+                      </a>
+                    </td>
+                    <td className="py-2 pr-4">{miss.lang === "nb" ? w.norwegian : w.english}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">{miss.misses}</td>
+                    <td className="py-2 pr-4 tabular-nums">{when(miss.firstAt)}</td>
+                    <td className="py-2 pr-4 tabular-nums">{when(miss.lastAt)}</td>
+                    <td className="py-2 pr-4">
+                      <ActionForm action={removeDocsMissAction.bind(null, miss.query, miss.lang)} className="flex items-center gap-2" successMessage={w.missRemoved}>
+                        <SubmitButton variant="secondary">{w.removeMiss}</SubmitButton>
+                      </ActionForm>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-2 text-caption text-muted">{w.removeMissHint}</p>
           </div>
         )}
       </Card>
