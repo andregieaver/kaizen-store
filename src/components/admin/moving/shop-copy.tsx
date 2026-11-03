@@ -94,7 +94,7 @@ export function ShopCopy({ started, moving, ready, done, failed, rows, actions, 
             </span>
             {row.href && (row.stage === "checked" || row.stage === "applying" || row.stage === "done" || row.problem === "import_failed" || row.problem === "import_refused" || row.problem === "needs_fixing") && (
               <Link href={row.href} className="w-fit text-xs underline underline-offset-2">
-                {w.see}
+                {row.stage === "done" ? w.seeDone : w.see}
               </Link>
             )}
             {row.problem && (
