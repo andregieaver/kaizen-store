@@ -1021,6 +1021,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["wordpress", "plugin", "shortcode", "embed", "grid", "carousel", "connect", "website", "woocommerce"],
     tasks: ["Download the WordPress plugin", "See the sites connected to your stores", "Disconnect a site"],
   }),
+  account("account.connected", "/account/connected", "Connected apps and assistants", "The AI assistants and apps (Claude, ChatGPT and others) you let work with your stores through Kaizena Flow's own sign-in: each one's stores, its access (read only, read and propose changes, or read and change), when it was last used, and Disconnect, which ends it at once.", {
+    keywords: ["connected apps", "ai assistant", "mcp", "claude", "chatgpt", "oauth", "disconnect", "revoke", "access", "integrations"],
+    tasks: ["See which AI assistants and apps reach your stores", "Disconnect an AI assistant or app"],
+  }),
   account("account.wordpress.connect", "/account/wordpress/connect", "Connect a WordPress site", "Where the plugin sends you to approve a WordPress site: it names the site and what it may read, and you approve or cancel.", {
     needs: "owner",
     keywords: ["approve", "authorize", "connect wordpress"],
@@ -1182,6 +1186,10 @@ const PAGES: readonly AdminPage[] = [
   platform("docs.feedback", "/docs/feedback", "Docs feedback", "Kaizena Flow site", "What readers said under each page of the docs (D442): whether it helped, counted by page with the least helpful first, and the answers newest first by page, by yes or no and with a sentence; a sentence that names someone is removed here, its yes or no kept.", {
     keywords: ["docs", "documentation", "helpful", "feedback", "articles"],
     tasks: ["See which docs pages did not help", "Read what readers wrote", "Remove a sentence that names someone"],
+  }),
+  platform("oauth", "/oauth", "AI assistants and apps", "Platform", "Every client of Kaizena Flow's authorization server (D439): the AI assistants and apps people connected to their stores, with how many people use each, its host, and Verify and Block; blocking ends every connection it has.", {
+    keywords: ["oauth", "clients", "mcp", "ai assistants", "apps", "verify", "block", "authorization server"],
+    tasks: ["Verify an AI assistant or app", "Block an AI assistant or app"],
   }),
   platform("reports", "/reports", "Illegal content notices", "Platform", "Notices people sent about illegal content on stores, each decided with its reason; the sender is told, and the store when something is restricted (DSA).", {
     keywords: ["DSA", "illegal", "notice", "takedown", "report", "abuse", "counterfeit", "moderation"],

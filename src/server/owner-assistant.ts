@@ -12,8 +12,10 @@ import { skillsText } from "@/lib/assistant-skills";
 import { toolKey } from "@/lib/owner-tool-permissions";
 import { areaOfPath } from "@/lib/permissions";
 import { LOAD_TOOLS, chooseTools, loadToolsDefinition, readLoadTools, toolArea, type ToolArea } from "@/lib/tool-budget";
-import { MANAGER_TOOLS, MANAGER_TOOLS_BY_NAME, PLATFORM_TOOLS_BY_NAME } from "@/lib/manager-tools";
-import { approvalSummary, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type GateCategory } from "@/lib/owner-tools";
+import { MANAGER_TOOLS, MANAGER_TOOLS_BY_NAME, OUTSIDE_MANAGER_TOOLS, PLATFORM_TOOLS_BY_NAME } from "@/lib/manager-tools";
+import { isReadOnly } from "@/lib/mcp-catalogue";
+import { GRANT_ENDED_NOTE, safeClientName } from "@/lib/oauth";
+import { approvalSummary, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type ApprovalCategory, type OwnerTool } from "@/lib/owner-tools";
 
 import { savedSkillsText } from "./assistant-saved-skills";
 import { noticeApproval } from "./assistant-notices";
@@ -23,7 +25,7 @@ import type { Account, Membership, Role } from "./auth";
 import { actingAs, currentActor } from "./actor";
 import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
 import { log } from "./log";
-import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
+import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext, type OutsideAsker } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
 import { broadcastApprovalSummary } from "./marketing-tools";
 import { replyApprovalSummary } from "./support-manager-tools";
@@ -108,11 +110,13 @@ export type Principal = {
   /** The member's kind and role keys (wave 1, 1f), so the tools and pages offered are the ones their role may use; a `Membership` carries them. */
   kind?: "staff" | "collaborator";
   permissions?: readonly string[] | null;
+  /** An outside app's grant it acts through (D439): a cap on the role's keys. */
+  limit?: readonly string[] | null;
 };
 
 /** What the tools and the offered pages are held to: the principal's own role, or none given (an owner's run, as before roles). */
-export const holderOfPrincipal = (p: Pick<Principal, "role" | "kind" | "permissions">): PermissionHolder | undefined =>
-  p.role ? { role: p.role, kind: p.kind, permissions: p.permissions } : undefined;
+export const holderOfPrincipal = (p: Pick<Principal, "role" | "kind" | "permissions" | "limit">): PermissionHolder | undefined =>
+  p.role ? { role: p.role, kind: p.kind, permissions: p.permissions, ...(p.limit != null && { limit: p.limit }) } : undefined;
 
 /** The conversations of the principal's area: the store's, or the platform's. */
 const inScope = (p: Principal, column = sql`store_id`) => (p.store ? sql`${column} = ${p.store.id}::uuid` : sql`${column} is null`);
@@ -149,7 +153,7 @@ export type Approval = {
   id: string;
   tool: string;
   summary: string;
-  category: GateCategory;
+  category: ApprovalCategory;
   status: "pending" | "done" | "declined" | "failed" | "expired";
   outcome: string | null;
   createdAt: string;
@@ -198,7 +202,7 @@ const toApproval = (row: Row): Approval => {
     id: String(row.id),
     tool: String(row.tool),
     summary: String(row.summary),
-    category: row.category as GateCategory,
+    category: row.category as ApprovalCategory,
     status: row.status as Approval["status"],
     outcome: result?.done ?? result?.error ?? null,
     createdAt: new Date(String(row.created_at)).toISOString(),
@@ -261,6 +265,26 @@ export async function kaizenLifeConversation({ store, account }: Membership): Pr
     returning id
   `);
   return String(row.id);
+}
+
+/**
+ * The person's conversation with another AI assistant or app connected through Kaizena Flow's authorization server (D439): one per store,
+ * person and client, titled with the client's name ("From Claude"), where its questions and the changes it asks for wait for their yes.
+ */
+export async function clientConversation({ store, account }: Membership, client: { id: string; name: string }): Promise<string> {
+  const [row] = await db().execute<Row>(sql`
+    insert into commerce.assistant_conversations (store_id, account_id, title, source, oauth_client_id)
+    values (${store.id}::uuid, ${account.id}::uuid, ${`From ${client.name}`.slice(0, 200)}, 'mcp', ${client.id}::uuid)
+    on conflict (store_id, account_id, oauth_client_id) where source = 'mcp' do update set updated_at = now(), title = excluded.title
+    returning id
+  `);
+  return String(row.id);
+}
+
+/** Whether a conversation is one a client of the authorization server asks in (`clientConversation()`), not the person's own. */
+async function isClientConversation(id: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`select source = 'mcp' and oauth_client_id is not null as own from commerce.assistant_conversations where id = ${id}::uuid`);
+  return Boolean(row?.own);
 }
 
 // The prompt ------------------------------------------------------------------------
@@ -456,6 +480,12 @@ export type TurnInput = {
   /** Kaizen Life's assistant is asking (D96): answer without asking it back. */
   fromKaizenLife?: boolean;
   /**
+   * An outside assistant is asking through the owner MCP (D96, D439): Kaizen Life's or one connected through Kaizena Flow's authorization
+   * server. It is named on what is kept for a yes and in the notice, only the store's tools and the manager's reading ones are offered, an
+   * answer in words never decides a kept change, and under *Read and propose changes* every change to the store waits for a yes.
+   */
+  outside?: OutsideAsker;
+  /**
    * A follow-up the person asked for, given back at its time (`src/server/follow-up-runner.ts`): nobody is there, so no change is
    * decided in words and no further follow-up is set; it counts towards the day's turns like their own message.
    */
@@ -520,6 +550,12 @@ export async function runTurn(input: TurnInput): Promise<void> {
 
   let conversationId = input.conversationId;
   if (conversationId && !(await getConversation(p, conversationId))) conversationId = null;
+  // A client of the authorization server asks only in its own conversation (D439 review): never in the person's admin one, whose history
+  // and words are theirs, nor in a new one.
+  const viaGrant = input.outside?.via === "oauth";
+  if (viaGrant && (!conversationId || !(await isClientConversation(conversationId)))) {
+    return emit({ type: "error", message: "An outside assistant asks in its own conversation only." });
+  }
   if (!conversationId) {
     const title = text.replace(/\s+/g, " ").slice(0, 80);
     const [row] = await db().execute<Row>(sql`
@@ -537,11 +573,12 @@ export async function runTurn(input: TurnInput): Promise<void> {
         where conversation_id = ${conversationId}::uuid order by created_at desc, id desc limit ${HISTORY}
       ) recent order by created_at, id
     `),
-    memoriesFor(account.id, store?.id ?? null, text, connection).catch((error) => {
+    // A client of the authorization server is given none of the person's memories: they reach beyond what its grant gives (D439 review).
+    (viaGrant ? Promise.resolve([] as Memory[]) : memoriesFor(account.id, store?.id ?? null, text, connection)).catch((error) => {
       log("error", "ai_manager.memories_failed", {}, error);
       return [] as Memory[];
     }),
-    !input.fromKaizenLife && lifeLinkOn() ? lifeLink(account.id).then((link) => link !== null) : Promise.resolve(false),
+    !input.fromKaizenLife && !input.outside && lifeLinkOn() ? lifeLink(account.id).then((link) => link !== null) : Promise.resolve(false),
     db().execute<Row>(sql`
       select id, summary from commerce.assistant_approvals
       where conversation_id = ${conversationId}::uuid and account_id = ${account.id}::uuid and status = 'pending'
@@ -550,7 +587,9 @@ export async function runTurn(input: TurnInput): Promise<void> {
     // The skills the person saved here, and those an owner shared with the store (D350).
     savedSkillsText({ accountId: account.id, storeId: store?.id ?? null }),
   ]);
-  if (!input.live?.reuseSaved) await addMessage(p, conversationId, "user", text);
+  // A client's question is kept marked as its own (D439 review), so if the person later writes in this conversation the AI manager never
+  // reads it as theirs.
+  if (!input.live?.reuseSaved) await addMessage(p, conversationId, "user", viaGrant && input.outside ? `[From ${safeClientName(input.outside.client)}] ${text}` : text);
 
   const ctx: ManagerContext = {
     account,
@@ -562,6 +601,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
     invalidate: input.invalidate,
     scheduled: input.scheduled || Boolean(input.autopilot),
     autopilot: input.autopilot,
+    outside: input.outside,
     turn: {
       conversationId,
       said: text,
@@ -580,13 +620,14 @@ export async function runTurn(input: TurnInput): Promise<void> {
   const allowed = autopilot ? new Set<string>([...autopilot.tools, ...TASK_EXTRA_TOOLS]) : null;
   // At most `TOOLS_PER_TURN` a round (D333): the providers refuse more; what is held back is one `load_tools` call away.
   const offered = offeredTools({ store, holder });
-  // The owner's own apps' tools (D363): only for owners, never in an autopilot step, never more than `APP_TOOLS_OFFERED`.
-  const appTools: OfferedAppTool[] = store && !allowed && (!holder || can(holder, "owner")) ? await appToolsFor(store.id).catch(() => []) : [];
+  // The owner's own apps' tools (D363): only for owners, never in an autopilot step or for an outside assistant, never more than `APP_TOOLS_OFFERED`.
+  const appTools: OfferedAppTool[] = store && !allowed && !input.outside && (!holder || can(holder, "owner")) ? await appToolsFor(store.id).catch(() => []) : [];
   const appDefinitions = appTools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters }));
   const wanted: ToolArea[] = [];
   const used = [...new Set(history.flatMap((row) => ((row.tools as ToolTrail[] | null) ?? []).map((t) => t.name)))];
   const pageArea = store && input.path?.startsWith(`/admin/${store.slug}`) ? (areaOfPath(input.path.slice(`/admin/${store.slug}`.length)) as ToolArea | null) : null;
-  const managerTools = [...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
+  // An outside assistant's turn gets the manager's reading and guiding tools only (D439): it writes no memory, skill, goal or plan.
+  const managerTools = [...MANAGER_TOOLS.filter((t) => !input.outside || OUTSIDE_MANAGER_TOOLS.has(t.name)).map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
   const toolsNow = (): ToolDefinition[] => {
     if (allowed) return [...offered, ...MANAGER_TOOLS].filter((t) => allowed.has(t.name)).map(toolDefinition);
     const choice = chooseTools(
@@ -668,7 +709,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
     ? { id: "live", role: "assistant" as const, content: answered, tools: trail, feedback: null, createdAt: new Date().toISOString() }
     : await addMessage(p, conversationId, "assistant", answered, trail);
   emit({ type: "done", message: saved });
-  if (input.later && !input.fromKaizenLife && reply.trim()) {
+  if (input.later && !input.fromKaizenLife && !input.outside && reply.trim()) {
     input.later(() =>
       learnFromTurn({ accountId: account.id, storeId: store?.id ?? null, connection, said: text, answered }).catch((error) =>
         log("error", "ai_manager.learning_failed", {}, error),
@@ -742,15 +783,22 @@ async function callTool(
   } catch {
     return { error: "The arguments were not valid JSON." };
   }
-  const manager = MANAGER_TOOLS_BY_NAME[name];
-  const tool = (ctx.store ? OWNER_TOOLS_BY_NAME[name] : PLATFORM_TOOLS_BY_NAME[name]) ?? manager;
+  // Looked up only among the maps' own names, never on a prototype (D439 review).
+  const own = (map: Record<string, OwnerTool>) => (Object.hasOwn(map, name) ? map[name] : undefined);
+  const manager = own(MANAGER_TOOLS_BY_NAME);
+  const tool = own(ctx.store ? OWNER_TOOLS_BY_NAME : PLATFORM_TOOLS_BY_NAME) ?? manager;
   if (!tool) return { error: `There is no tool called ${name}.` };
   // An autopilot step uses its own tools only, whatever the model asks for (D309).
   if (ctx.autopilot && !ctx.autopilot.tools.includes(name) && !(TASK_EXTRA_TOOLS as readonly string[]).includes(name)) {
     return { error: `This step may not use ${name}.` };
   }
+  // An outside assistant's turn uses the store's tools and the manager's reading ones only, whatever the model asks for (D439).
+  if (ctx.outside && manager && !OUTSIDE_MANAGER_TOOLS.has(name)) return { error: `${name} is the person's own, in Kaizena Flow's admin: it is not used for ${safeClientName(ctx.outside.client)}.` };
   // A catalogue tool changes a draft at once and waits for a yes only while its product is on the site, a menu only while it is shown (D308, `gateNeeded()`).
-  if (tool.gate && (manager || (ctx.store ? await gateNeeded(ctx.store, name, args) : await platformGateNeeded(name, args)))) {
+  const gated = Boolean(tool.gate) && (manager || (ctx.store ? await gateNeeded(ctx.store, name, args) : await platformGateNeeded(name, args)));
+  // Under *Read and propose changes* an outside assistant's change to the store waits for a yes even where no gate asks for one (D439).
+  const proposed = !gated && !manager && Boolean(ctx.store) && ctx.outside?.propose === true && !isReadOnly(tool);
+  if (gated || proposed) {
     const input = readToolInput(tool, args);
     if (!input.ok) return { error: `The arguments could not be read: ${input.problem}` };
     // What could not be done, or must be reworded (claims), is refused now, never kept for a yes.
@@ -772,7 +820,7 @@ async function callTool(
       }
     }
     // In an autopilot step, the owner's level and budgets decide whether it runs now or waits for their yes (D309).
-    if (ctx.autopilot && !manager) {
+    if (ctx.autopilot && !manager && tool.gate) {
       const decision = await autopilotDecision(ctx, ctx.autopilot.settings, name, tool.gate, input.input as Record<string, unknown>);
       if (decision.run) {
         try {
@@ -790,14 +838,16 @@ async function callTool(
         }
       }
     }
-    const approval = await keepForApproval(ctx, conversationId, name, tool.gate, input.input as Record<string, unknown>, ctx.autopilot?.stepId);
-    // Nobody is in a scheduled or autopilot turn: the yes waits, and the person hears of it in the admin (D350).
-    if (ctx.scheduled) await noticeApproval(approval, conversationId, ctx.account.id, ctx.store?.id ?? null);
+    const approval = await keepForApproval(ctx, conversationId, name, gated && tool.gate ? tool.gate : "change", input.input as Record<string, unknown>, ctx.autopilot?.stepId);
+    // Nobody is in a scheduled or autopilot turn, nor in one an outside assistant asked for: the yes waits, and the person hears of it in the admin (D350).
+    if (ctx.scheduled || ctx.outside) await noticeApproval(approval, conversationId, ctx.account.id, ctx.store?.id ?? null);
     emit({ type: "approval", approval });
     return {
       queued_for_approval: true,
       what: approval.summary,
-      note: "Not done yet: they approve or decline it with the button under your answer. Tell them it is waiting.",
+      note: ctx.outside
+        ? "Not done yet: the person approves or declines it in Kaizena Flow's admin. Say it is waiting there."
+        : "Not done yet: they approve or decline it with the button under your answer. Tell them it is waiting.",
     };
   }
   try {
@@ -814,14 +864,14 @@ async function callTool(
   }
 }
 
-type ApprovalContext = { account: Account; store: Store | null; invalidate: (tag: string) => void };
+type ApprovalContext = { account: Account; store: Store | null; invalidate: (tag: string) => void; outside?: OutsideAsker };
 
 /** A gated call kept for the person's yes, described in words made from its arguments and the site's data. */
 export async function keepForApproval(
   ctx: ApprovalContext,
   conversationId: string,
   tool: string,
-  category: GateCategory,
+  category: ApprovalCategory,
   args: Record<string, unknown>,
   /** The autopilot's step that keeps it (D309): its decision settles the step. */
   planStepId?: string,
@@ -965,10 +1015,15 @@ export async function keepForApproval(
       args = details.args;
     }
   }
+  // The outside assistant that asked is named on the approval, so the person knows whose request they answer (D439).
+  // Its name as `safeClientName()` leaves it, whoever built the context (D439 review).
+  if (ctx.outside) summary = `${safeClientName(ctx.outside.client)} asks: ${summary}`;
+  // Through a grant, the grant is kept with it: it is approved only while the grant still reaches the store (`decideApproval()`).
+  const grantId = ctx.outside?.via === "oauth" ? ctx.outside.grantId : null;
   const [row] = await db().execute<Row>(sql`
-    insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category, plan_step_id)
+    insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category, plan_step_id, oauth_grant_id)
     values (${store ? sql`${store.id}::uuid` : sql`null`}, ${conversationId}::uuid, ${ctx.account.id}::uuid, ${tool}, ${JSON.stringify(args)}::jsonb, ${summary}, ${category},
-      ${planStepId ?? null}::uuid)
+      ${planStepId ?? null}::uuid, ${grantId}::uuid)
     returning *
   `);
   return toApproval(row);
@@ -988,13 +1043,30 @@ export async function decideApproval(
   { note = true }: { note?: boolean } = {},
 ): Promise<Approval | null> {
   if (!/^[0-9a-f-]{36}$/i.test(approvalId)) return null;
+  // What an outside assistant asked for through a grant is run only while that grant is live, still reaches this store and its client is
+  // not blocked (D439 review); past that it expires, as one past its week does.
+  const grantEnded = sql`(oauth_grant_id is not null and not exists (
+    select 1 from commerce.oauth_grants g join commerce.oauth_clients c on c.id = g.client_id
+    where g.id = oauth_grant_id and g.revoked_at is null and c.blocked_at is null and store_id = any(g.store_ids)
+  ))`;
   // A yes counts only before the call's end (PSI AGT-03): one asked for more than seven days ago is never run.
   const [claimed] = await db().execute<Row>(sql`
     update commerce.assistant_approvals set status = ${approve ? "done" : "declined"}, decided_at = now()
     where id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid and status = 'pending'
-      and (expires_at > now() or ${!approve})
+      and ((expires_at > now() and not ${grantEnded}) or ${!approve})
     returning *
   `);
+  if (!claimed && approve) {
+    const [ended] = await db().execute<Row>(sql`
+      update commerce.assistant_approvals set status = 'expired', decided_at = now(), result = ${JSON.stringify({ error: GRANT_ENDED_NOTE })}::jsonb
+      where id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid and status = 'pending' and ${grantEnded}
+      returning *
+    `);
+    if (ended) {
+      if (note) await addMessage(p, String(ended.conversation_id), "assistant", `${GRANT_ENDED_NOTE} ${ended.summary}`);
+      return toApproval(ended);
+    }
+  }
   if (!claimed) {
     const [ended] = await expireAssistantApprovals(sql`id = ${approvalId}::uuid and ${inScope(p)} and account_id = ${p.account.id}::uuid`);
     if (ended && note) await addMessage(p, String(ended.conversation_id), "assistant", `${EXPIRED_NOTE}: ${ended.summary}`);

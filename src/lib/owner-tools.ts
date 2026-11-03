@@ -79,6 +79,9 @@ import { workflowInputSchema } from "./workflows";
 
 export type GateCategory = "send" | "public" | "spend" | "domain" | "access" | "plan";
 
+/** What a kept call waits for a yes as: its tool's gate, or `change`, a change an outside assistant proposed under *Read and propose changes* (D439). */
+export type ApprovalCategory = GateCategory | "change";
+
 export type OwnerTool<I extends z.ZodType = z.ZodType, N extends string = string> = {
   name: N;
   description: string;
@@ -2059,7 +2062,8 @@ export const OWNER_TOOLS = [
 export type OwnerToolName = (typeof OWNER_TOOLS)[number]["name"];
 export type OwnerToolInput<N extends OwnerToolName> = z.output<Extract<(typeof OWNER_TOOLS)[number], { name: N }>["input"]>;
 
-export const OWNER_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.fromEntries(OWNER_TOOLS.map((t) => [t.name, t]));
+// Without a prototype, so a name such as `constructor` or `toString` finds nothing (D439 review).
+export const OWNER_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.assign(Object.create(null) as Record<string, OwnerTool>, Object.fromEntries(OWNER_TOOLS.map((t) => [t.name, t])));
 
 /** A tool as the model is offered it: an OpenAI-compatible function. */
 export function toolDefinition(t: OwnerTool): { name: string; description: string; parameters: Record<string, unknown> } {
@@ -2077,13 +2081,14 @@ export function readToolInput(t: OwnerTool, raw: unknown): { ok: true; input: un
 }
 
 /** What a gate's category means to the owner. */
-export const GATE_WORDS: Record<GateCategory, string> = {
+export const GATE_WORDS: Record<ApprovalCategory, string> = {
   send: "Sends something in the store's name",
   public: "Changes what the site shows",
   spend: "Costs money",
   domain: "Changes your domain: where it points, its email or its renewal",
   access: "Changes who works in the store and what they may do",
   plan: "Starts work in your name",
+  change: "Changes the store: an assistant you connected proposed it",
 };
 
 /**

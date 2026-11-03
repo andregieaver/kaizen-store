@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { MakeApiToken, RevokeApiToken } from "@/components/admin/api-tokens";
-import { Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
+import { buttonClass, Card, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { API_SCOPES } from "@/lib/admin-api";
 import { API_ROUTES } from "@/lib/admin-api-routes";
@@ -10,10 +10,13 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { siteUrl } from "@/lib/site";
 import { listApiTokens } from "@/server/api-tokens";
+import { grantsReachingStore, storeCutoffs } from "@/server/oauth";
 import { requireOwnerRole } from "@/server/permissions";
 
 import {
   addCustomAppAction,
+  cutGrantAction,
+  liftCutoffAction,
   makeApiTokenAction,
   makeStorefrontTokenAction,
   relistCustomAppAction,
@@ -36,7 +39,14 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "notifications").apiTokens;
-  const [tokens, storefrontTokens, apps] = await Promise.all([listApiTokens(store.id), listStorefrontTokens(store.id), listCustomApps(store.id)]);
+  const [tokens, storefrontTokens, apps, grants, cutoffs] = await Promise.all([
+    listApiTokens(store.id),
+    listStorefrontTokens(store.id),
+    listCustomApps(store.id),
+    grantsReachingStore(store.id),
+    storeCutoffs(store.id),
+  ]);
+  const ow = adminText(lang, "oauth");
   const aw = adminText(lang, "notifications").customApps;
   const sw = adminText(lang, "notifications").storefrontTokens;
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
@@ -46,6 +56,62 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
     <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<>{w.description}</>} />
+        {/* AI assistants and apps connected through Kaizena Flow's authorization server (D439): every grant that reaches the store. */}
+        <Card title={ow.store.title} description={ow.store.description}>
+          {grants.length === 0 ? (
+            <p className="text-sm text-muted">{ow.store.none}</p>
+          ) : (
+            <List label={ow.store.title}>
+              {grants.map((grant) => (
+                <ListRow key={grant.id}>
+                  <RowLead
+                    title={grant.client.name}
+                    sub={
+                      <>
+                        {grant.client.host} · {grant.client.verified ? ow.consent.verified : ow.consent.notVerified} ·{" "}
+                        {fillWords(ow.store.by, { person: grant.person.name ?? grant.person.email })} · {ow.consent.levels[grant.access]} ·{" "}
+                        {grant.lastUsedAt ? fillWords(ow.connected.lastUsed, { when: when(grant.lastUsedAt) }) : ow.connected.neverUsed}
+                      </>
+                    }
+                  />
+                  <RowActions>
+                    <form action={cutGrantAction.bind(null, store.slug, grant.id)}>
+                      <button type="submit" className={buttonClass("danger", "dense")}>
+                        {ow.store.cut}
+                      </button>
+                    </form>
+                  </RowActions>
+                </ListRow>
+              ))}
+            </List>
+          )}
+        </Card>
+        {/* What an owner cut off stays cut off, whoever connects it again, until an owner lets it in again (D439 review). */}
+        {cutoffs.length > 0 && (
+          <Card title={ow.store.cutTitle} description={ow.store.cutDescription}>
+            <List label={ow.store.cutTitle}>
+              {cutoffs.map((cut) => (
+                <ListRow key={cut.id}>
+                  <RowLead
+                    title={cut.client.name}
+                    sub={
+                      <>
+                        {cut.client.host} · {fillWords(ow.store.cutFor, { person: cut.person.name ?? cut.person.email, when: when(cut.createdAt) })}
+                      </>
+                    }
+                  />
+                  <RowActions>
+                    <form action={liftCutoffAction.bind(null, store.slug, cut.id)}>
+                      <button type="submit" className={buttonClass("secondary", "dense")}>
+                        {ow.store.letIn}
+                      </button>
+                    </form>
+                  </RowActions>
+                </ListRow>
+              ))}
+            </List>
+          </Card>
+        )}
         <Card title={w.make} description={w.makeHint}>
           <p className="mb-4 text-sm text-muted">{w.actsAs}</p>
           <MakeApiToken scopes={[...API_SCOPES]} make={makeApiTokenAction.bind(null, store.slug)} />

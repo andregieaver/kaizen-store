@@ -222,6 +222,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Notices of illegal content (D411, `docs/dsa.md`, `src/lib/content-reports.ts`, `src/server/content-reports.ts`, `src/server/content-moderation.ts`)
 - The status page (wave 9 unit G, D360, `src/lib/status.ts`, `src/server/status.ts`)
 - The installable admin and push (wave 9 unit H, D361, `src/lib/admin-sw.ts`, `src/lib/push.ts`, `src/server/push.ts`)
+- Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)
 - The storefront API (wave 9 unit I, D362, `src/lib/storefront-api.ts`, `src/server/storefront-api.ts`, `src/server/storefront-route.ts`)
 - A custom app's tools (wave 9 unit J, D363, `src/lib/custom-apps.ts`, `src/server/custom-apps.ts`)
 - Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)

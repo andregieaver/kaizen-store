@@ -84,7 +84,7 @@ describe("the store's MCP server for Kaizen Life (D96)", () => {
 
   it("keeps changes for the owner's approval in the store's admin, never making them", async () => {
     const answer = await mcp.callMcpTool(caller!, "archive_product", { store: slug, product: handle }, () => {});
-    expect(JSON.parse(answer.content[0].text)).toMatchObject({ kept_for_approval: true, what: `Take the product "${handle}" off the site.` });
+    expect(JSON.parse(answer.content[0].text)).toMatchObject({ kept_for_approval: true, what: `Kaizen Life asks: Take the product "${handle}" off the site.` });
     const [product] = await db().execute<Row>(sql`select p.status from commerce.products p join commerce.stores s on s.id = p.store_id where s.slug = ${slug} and p.handle = ${handle}`);
     expect(product.status).toBe("active");
     const [conversation] = await db().execute<Row>(sql`
