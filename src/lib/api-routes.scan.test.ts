@@ -45,7 +45,7 @@ describe("the Admin API's route files (D438)", () => {
     const methods = files.find((f) => f.path === "/{}")!.methods;
     for (const o of ADMIN_API) {
       expect(methods, `${o.method} ${o.path}`).toContain(o.method);
-      const sample = o.path.replace(/\{id\}/g, "5c2c8f0e-3a9d-4c7b-9e21-0d6f1a2b3c4d").replace("{tag}", "vip").split("/").filter(Boolean);
+      const sample = o.path.replace("{tag}", "vip").replace(/\{\w+\}/g, "5c2c8f0e-3a9d-4c7b-9e21-0d6f1a2b3c4d").split("/").filter(Boolean);
       expect(routeOf(o.method, sample)?.name, `${o.method} ${o.path}`).toBe(o.name);
     }
     // The catch-all routes only what the registry names: a method it exports that no operation uses would answer only 404s.
@@ -54,7 +54,7 @@ describe("the Admin API's route files (D438)", () => {
 
   it("route by the registry alone", () => {
     const text = readFileSync(path.join(base, "[...path]/route.ts"), "utf8");
-    expect(text).toContain('import { routeOf } from "@/lib/admin-api-routes"');
+    expect(text).toMatch(/import \{[^}]*\brouteOf\b[^}]*\} from "@\/lib\/admin-api-routes"/);
   });
 });
 

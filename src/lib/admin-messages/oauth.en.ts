@@ -50,6 +50,10 @@ export const oauthEn = {
     owner: "What only an owner may do: the plan, payments, domains, the team, and the AI manager, which reads every area of the store",
     read: "See {area}",
     write: "Change {area}",
+    /** Powers beyond a permission (D440): what the AI manager would ask your yes for. */
+    powers: {
+      "products:publish": "Publish products and change products that are on the site, without asking you first",
+    },
   },
   areas: {
     orders: "Orders",

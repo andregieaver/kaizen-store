@@ -16,6 +16,26 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.1 — 2026-11-03
+
+The catalogue (wave 14 unit C1, D440).
+
+- Categories and tags: list, get, create, change and delete them, and put a product in or take it out (`/categories`, `/tags`,
+  `/categories/{id}/products`).
+- Pictures: `POST /media/uploads` gives a one-time address to `PUT` a JPEG, PNG, WebP or AVIF to; `POST /media` checks the file as the
+  media library checks an upload and keeps it there; `GET /media` lists the library. A product's gallery: `GET`, `POST` and `PATCH
+  /products/{id}/media`, and `DELETE /products/{id}/media/{media_id}`.
+- A new scope, `products:publish`: publish, unpublish, archive and bring back a product (`POST /products/{id}/publish`, `/unpublish`,
+  `/archive`, `/unarchive`), and change a product that is on the site (its fields, categories, tags and pictures). With `products:write`
+  alone those still answer `gated`, as before.
+- Price lists (D321): `GET /price-lists`, and `GET` and `POST /price-lists/{id}/prices` with fixed prices in minor units.
+- `?updated_after=` on every list, and `updated_at` on orders, customers and discount codes, for incremental sync. A page's cursor now
+  keeps its row's time to the microsecond, so rows made in one go are never skipped between pages.
+- Each operation names the staff permission its screen asks for (`x-permission`) and the store feature it stands behind (`x-feature`): a
+  store that is not open answers `forbidden` to a change, and a feature switched off answers the new code `feature_off` (403).
+- Webhooks: `inventory.updated` (a variant's stock on hand moved; one event per variant and minute, carrying the stock as it is then) and
+  `product.archived`.
+
 ## 1.0 — 2026-11-03
 
 Contracts published.

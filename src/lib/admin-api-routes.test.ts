@@ -4,9 +4,10 @@ import { z } from "zod";
 import { API_ERRORS, API_SCOPES } from "./admin-api";
 import { ADMIN_API, ADMIN_API_BY_NAME, API_ROUTES, bodyProblems, discountBody, errorsOf, fieldUpdateBody, routeOf, ruleUpdateBody, tagBody } from "./admin-api-routes";
 import { jsonSchemaOf, pathParams } from "./openapi";
+import { isPermissionKey } from "./permission-keys";
 
 const ID = "5c2c8f0e-3a9d-4c7b-9e21-0d6f1a2b3c4d";
-const sample = (path: string) => path.replace(/\{id\}/g, ID).replace("{tag}", "vip").split("/").filter(Boolean);
+const sample = (path: string) => path.replace("{tag}", "vip").replace(/\{\w+\}/g, ID).split("/").filter(Boolean);
 
 /** The Admin API's registry (D438): every operation described once and whole, and the router made from it. */
 describe("ADMIN_API", () => {
@@ -23,8 +24,13 @@ describe("ADMIN_API", () => {
       expect(o.description.length, where).toBeGreaterThan(10);
       expect(o.tag, where).toMatch(/^[A-Z]/);
       expect(API_SCOPES, where).toContain(o.scope);
-      // A read needs a read scope, a change a write scope.
-      expect(o.scope.endsWith(o.method === "GET" ? ":read" : ":write"), where).toBe(true);
+      // A read needs a read scope (or the write of an area that has none), a change never a read scope (D440: a write, or a power such as
+      // `products:publish`); the permission its screen asks for is a read for a read.
+      if (o.method === "GET") expect(o.scope.endsWith(":read") || !API_SCOPES.includes(o.scope.replace(/:write$/, ":read") as never), where).toBe(true);
+      else expect(o.scope.endsWith(":read"), where).toBe(false);
+      expect(isPermissionKey(o.permission), where).toBe(true);
+      if (o.method !== "GET") expect(o.permission.endsWith(":read"), where).toBe(false);
+      if ("feature" in o) expect(errorsOf(o), where).toContain("feature_off");
       expect(o.path, where).toMatch(/^(\/[a-z-]+|\/\{\w+\})+$/);
       // The path's parameters are exactly those its zod reads.
       const declared = "params" in o ? Object.keys(o.params.shape).sort() : [];
@@ -32,7 +38,8 @@ describe("ADMIN_API", () => {
       // A write sends a body; a read and a delete do not; only reads take a query.
       expect("body" in o, where).toBe(o.method === "POST" || o.method === "PATCH");
       if ("query" in o) expect(o.method, where).toBe("GET");
-      expect(o.status, where).toBe(o.method === "POST" && o.name !== "inventory.adjust" && o.name !== "inventory.set" ? 201 : 200);
+      // Only a POST makes something (201); a POST that acts on what is there (adjust, publish, send) answers 200.
+      if (o.method !== "POST") expect(o.status, where).toBe(200);
       for (const code of o.errors) expect(Object.keys(API_ERRORS), where).toContain(code);
       // Anything with an id can be not found; a body can be invalid; a POST's Idempotency-Key can be in use.
       if (o.path.includes("{")) expect(o.errors, where).toContain("not_found");

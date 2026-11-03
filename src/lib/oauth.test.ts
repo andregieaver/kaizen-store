@@ -190,7 +190,7 @@ describe("registration (RFC 7591)", () => {
 
 describe("scopes (B3)", () => {
   it("are one per permission key, plus stores:read", () => {
-    expect(OAUTH_SCOPES).toEqual(["stores:read", ...PERMISSION_KEYS]);
+    expect(OAUTH_SCOPES).toEqual(["stores:read", ...PERMISSION_KEYS, "products:publish"]);
     expect(READ_SCOPES.every((s) => s.endsWith(":read"))).toBe(true);
   });
 
@@ -204,6 +204,11 @@ describe("scopes (B3)", () => {
     expect(levelScopes("read", staff)).toEqual(["stores:read", "orders:read", "products:read"]);
     expect(levelScopes("propose", staff)).toEqual(["stores:read", "orders:read", "orders:write", "products:read"]);
     expect(levelScopes("change", [...GRANTABLE_PERMISSIONS, ...OWNER_HELD])).toEqual(OAUTH_SCOPES);
+    // A power (D440) only under Read and change, and only on the permission it rests on; it is never a key of the cap.
+    expect(levelScopes("propose", ["products:read", "products:write"])).not.toContain("products:publish");
+    expect(levelScopes("change", ["products:read", "products:write"])).toContain("products:publish");
+    expect(levelScopes("change", ["products:read", "orders:write"])).not.toContain("products:publish");
+    expect(scopeKeys(["products:write", "products:publish"])).toEqual(["products:read", "products:write"]);
   });
 
   it("narrow a level to what Lisa ticks, never widen it", () => {

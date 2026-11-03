@@ -142,6 +142,17 @@ export const WEBHOOK_SUBJECTS = {
     waiting: z.int().describe("How many support conversations wait for a person now. Never who or what they wrote."),
     admin_url: adminUrl,
   }),
+  // Wave 14 unit C (D440) -------------------------------------------------------------------------------------------------------------
+  inventory: z.object({
+    variant_id: id,
+    product_id: id,
+    sku: z.string(),
+    on_hand: z.int().describe("Units on hand across the store's locations."),
+    available: z.number().nullable().describe("What can be sold now: on hand less what open orders hold; null for a variant whose stock is not counted."),
+    locations: z.array(z.object({ location_id: id, on_hand: z.int() })).describe("Units on hand at each location that has the variant."),
+    updated_at: when.describe("When its stock last moved."),
+    admin_url: adminUrl,
+  }),
 } as const;
 
 export type WebhookSubjectName = keyof typeof WEBHOOK_SUBJECTS;
@@ -164,6 +175,8 @@ const SUBJECT_OF: Record<IntegrationEvent, WebhookSubjectName> = {
   "product.updated": "product",
   "stock.low": "stock",
   "discount.created": "discount",
+  "inventory.updated": "inventory",
+  "product.archived": "product",
 };
 
 /** Who may be sent a topic: the services (Zapier, Make and Slack, D41) and an owner's own endpoints (D354). */

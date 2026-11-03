@@ -1,69 +1,31 @@
 import { z } from "zod";
 
-import { PAGE_DEFAULT, PAGE_MAX, type ApiErrorCode, type ApiMethod, type ApiScope } from "./admin-api";
+import { type ApiErrorCode, type ApiMethod, type ApiScope } from "./admin-api";
+import { apiProduct, byId, currency, id, madeId, marketCode, minor, one, op, page, paging, PRODUCT_STATES, since, when } from "./admin-api-shapes";
+
+export { apiProduct, PRODUCT_STATES };
+import { CATALOGUE_API } from "./admin-api-catalogue";
 import { fieldInputSchema, ruleInputSchema, conditionSchema, effectSchema } from "./checkout-rules-schema";
 import { DISCOUNT_KINDS } from "./discounts";
 import { FULFILMENT_STATES } from "./fulfilment";
 import { ADJUST_REASONS } from "./inventory";
-import { DELIVERIES, PRODUCT_KINDS } from "./product-input";
+import { DELIVERIES } from "./product-input";
 import { createProductInput, updateProductInput } from "./product-tools";
 
 /**
  * The Admin API's registry (wave 14 unit A, D438, `docs/wave-14-developer-platform.md` A1): every operation once, with its method, path,
- * name, scope, words, and the zod of its path parameters, query, body and answer, and the errors it can answer. `routeOf()` routes by it,
- * the Apps and API page lists it (`API_ROUTES`), `adminOpenApi()` publishes it, and the integration tests parse every answer they get with
- * its `response`. A new operation is an entry here first; its handler in `runApiRoute()` builds its answer as `AdminAnswer<name>`. Pure: no
- * database, nothing of the server.
+ * name, scope, the staff permission and store feature its screen asks for (D440), words, and the zod of its path parameters, query, body and
+ * answer, and the errors it can answer. `routeOf()` routes by it, the Apps and API page lists it (`API_ROUTES`), `adminOpenApi()` publishes
+ * it, and the integration tests parse every answer they get with its `response`. A new operation is an entry here (or in its slice's file,
+ * `admin-api-catalogue.ts` and the others of wave 14 unit C) first; its handler builds its answer as `AdminAnswer<name>`. Pure: no database,
+ * nothing of the server.
  */
 
 // ---------------------------------------------------------------------------
 // Shapes the answers share
 // ---------------------------------------------------------------------------
 
-/** An id as the API gives and takes it: 32 hex digits in the 8-4-4-4-12 form. */
-const id = z.guid();
-const when = z.iso.datetime({ offset: true });
-const currency = z.string().regex(/^[A-Z]{3}$/).describe("An ISO 4217 code, such as NOK or EUR.");
-const minor = z.int().describe("An amount in minor units of the currency (øre, cents), VAT included where the store's prices are.");
-const marketCode = z.string().describe("A market, by its code (the country's ISO 3166-1 code, such as NO).");
-
-/** The cursor of the next page, or null on the last. */
-const next = z.string().nullable().describe("The cursor of the next page, given as `?after=`; null on the last page.");
-const one = <T extends z.ZodType>(item: T) => z.object({ data: item });
-const page = <T extends z.ZodType>(item: T) => z.object({ data: z.array(item), next });
-
-/** The query every list takes. */
-const paging = {
-  limit: z.int().min(1).max(PAGE_MAX).optional().describe(`Rows a page holds, at most ${PAGE_MAX}; ${PAGE_DEFAULT} when left out. A larger number gives ${PAGE_MAX}.`),
-  after: z.string().max(200).optional().describe("The `next` cursor of the page before; the first page when left out."),
-};
-
-const byId = z.object({ id: id.describe("The thing's id in this store.") });
-
 // Products -------------------------------------------------------------------
-
-export const PRODUCT_STATES = ["draft", "active", "archived"] as const;
-
-export const apiProduct = z.object({
-  id,
-  handle: z.string().describe("Its web address after /p/."),
-  title: z.string().describe("Its title in the store's main language."),
-  status: z.enum(PRODUCT_STATES).describe("draft: off the site. active: on the site, for sale. archived: put away."),
-  kind: z.enum(PRODUCT_KINDS),
-  created_at: when,
-  updated_at: when,
-  variants: z.array(
-    z.object({
-      id,
-      sku: z.string().nullable(),
-      active: z.boolean(),
-      options: z.record(z.string(), z.string()).nullable().describe("The variant's value of each option, such as { \"Size\": \"M\" }."),
-      prices: z
-        .array(z.object({ market: marketCode, currency, amount_minor: minor }))
-        .describe("The price kept for each market, in the market's own currency, VAT included."),
-    }),
-  ),
-});
 
 // Stock ----------------------------------------------------------------------
 
@@ -203,6 +165,7 @@ export const apiOrder = z.object({
     }),
   ),
   tags: z.array(z.string()).describe("Staff's tags on the order."),
+  updated_at: when.describe("When it last changed: placed, paid, sent, refunded, edited or noted (its timeline's latest entry)."),
 });
 
 export const fulfilBody = z.object({
@@ -233,6 +196,7 @@ export const apiCustomer = z.object({
   email_verified: z.boolean(),
   tags: z.array(z.string()),
   created_at: when,
+  updated_at: when,
 });
 
 export const tagBody = z.object({
@@ -252,6 +216,7 @@ export const apiDiscount = z.object({
   ends_at: when.nullable(),
   usage_limit: z.number().nullable(),
   created_at: when,
+  updated_at: when,
 });
 
 /** A code as the admin's form makes it, in the API's words (snake case); the form's own checks run after these. */
@@ -298,51 +263,25 @@ const enabledOnly = z.strictObject({ enabled: z.boolean().describe("Switches it 
 export const ruleUpdateBody = z.union([enabledOnly, ruleInputSchema.extend({ enabled: z.boolean().optional() })]);
 export const fieldUpdateBody = z.union([enabledOnly, fieldInputSchema.extend({ enabled: z.boolean().optional() })]);
 
-const madeId = one(z.object({ id }));
-
 // ---------------------------------------------------------------------------
 // The registry
 // ---------------------------------------------------------------------------
 
-/** What an operation is, before its zod is known. */
-type Shape = {
-  name: string;
-  method: ApiMethod;
-  /** After `/api/admin/v1`, each `{name}` a path parameter. */
-  path: string;
-  scope: ApiScope;
-  /** A line, for lists and the reference's headings. */
-  summary: string;
-  /** What it does and answers, in plain words. */
-  description: string;
-  /** The resource it belongs to, the reference's section. */
-  tag: string;
-  params?: z.ZodObject;
-  query?: z.ZodObject;
-  body?: z.ZodType;
-  response: z.ZodType;
-  /** The status of a success: 201 for what is made. */
-  status: 200 | 201;
-  /** What it can answer besides success; every operation also answers `unauthorized`, `forbidden`, `rate_limited` and `failed`. */
-  errors: readonly ApiErrorCode[];
-};
-
-const op = <const S extends Shape>(shape: S): S => shape;
-
 /** Every operation also answers these: no token, a scope the token lacks, the budget spent, and an error of ours. */
 export const COMMON_ERRORS = ["unauthorized", "forbidden", "rate_limited", "failed"] as const satisfies readonly ApiErrorCode[];
 
-export const ADMIN_API = [
+const CORE_API = [
   // Products
   op({
     name: "products.list",
     method: "GET",
     path: "/products",
     scope: "products:read",
+    permission: "products:read",
     tag: "Products",
     summary: "List products",
     description: "The store's products, newest first, each with its variants and every market's price in the market's own currency.",
-    query: z.object({ ...paging, status: z.enum(PRODUCT_STATES).optional().describe("Only products in this state; any other value lists every state.") }),
+    query: z.object({ ...paging, ...since, status: z.enum(PRODUCT_STATES).optional().describe("Only products in this state; any other value lists every state.") }),
     response: page(apiProduct),
     status: 200,
     errors: ["invalid"],
@@ -352,6 +291,7 @@ export const ADMIN_API = [
     method: "GET",
     path: "/products/{id}",
     scope: "products:read",
+    permission: "products:read",
     tag: "Products",
     summary: "Get a product",
     description: "One product with its variants and prices.",
@@ -365,6 +305,7 @@ export const ADMIN_API = [
     method: "POST",
     path: "/products",
     scope: "products:write",
+    permission: "products:write",
     tag: "Products",
     summary: "Create a draft product",
     description:
@@ -379,6 +320,7 @@ export const ADMIN_API = [
     method: "PATCH",
     path: "/products/{id}",
     scope: "products:write",
+    permission: "products:write",
     tag: "Products",
     summary: "Change a draft product",
     description:
@@ -395,6 +337,7 @@ export const ADMIN_API = [
     method: "GET",
     path: "/inventory/locations",
     scope: "inventory:read",
+    permission: "products:read",
     tag: "Inventory",
     summary: "List stock locations",
     description: "The store's stock locations, in the order stock is taken from them.",
@@ -407,10 +350,11 @@ export const ADMIN_API = [
     method: "GET",
     path: "/inventory/levels",
     scope: "inventory:read",
+    permission: "products:read",
     tag: "Inventory",
     summary: "List stock levels",
     description: "Stock per variant and location, the most recently changed first, with what can be sold now.",
-    query: z.object({ ...paging, variant_id: z.guid().optional().describe("Only this variant."), location_id: z.guid().optional().describe("Only this location.") }),
+    query: z.object({ ...paging, ...since, variant_id: z.guid().optional().describe("Only this variant."), location_id: z.guid().optional().describe("Only this location.") }),
     response: page(apiLevel),
     status: 200,
     errors: ["invalid"],
@@ -420,6 +364,7 @@ export const ADMIN_API = [
     method: "POST",
     path: "/inventory/adjust",
     scope: "inventory:write",
+    permission: "products:write",
     tag: "Inventory",
     summary: "Adjust stock",
     description:
@@ -434,6 +379,7 @@ export const ADMIN_API = [
     method: "POST",
     path: "/inventory/set",
     scope: "inventory:write",
+    permission: "products:write",
     tag: "Inventory",
     summary: "Set stock to a count",
     description: "Sets levels to what was counted. A level that moved since the count (`compare`) is a conflict and is never overwritten.",
@@ -448,11 +394,13 @@ export const ADMIN_API = [
     method: "GET",
     path: "/orders",
     scope: "orders:read",
+    permission: "orders:read",
     tag: "Orders",
     summary: "List orders",
     description: "The store's orders, newest first, in each order's own currency. History copied from another store is left out.",
     query: z.object({
       ...paging,
+      ...since,
       status: z.enum(ORDER_STATES).optional().describe("Only orders in this state."),
       unfulfilled: z.enum(["true", "false"]).optional().describe("true: only paid orders with something still to send."),
     }),
@@ -465,6 +413,7 @@ export const ADMIN_API = [
     method: "GET",
     path: "/orders/{id}",
     scope: "orders:read",
+    permission: "orders:read",
     tag: "Orders",
     summary: "Get an order",
     description: "One order with its lines, what is left to send, its parcels and tags.",
@@ -478,6 +427,7 @@ export const ADMIN_API = [
     method: "POST",
     path: "/orders/{id}/fulfillments",
     scope: "orders:write",
+    permission: "orders:write",
     tag: "Orders",
     summary: "Send a parcel",
     description:
@@ -493,6 +443,7 @@ export const ADMIN_API = [
     method: "GET",
     path: "/invoices/{id}/ubl",
     scope: "orders:read",
+    permission: "orders:read",
     tag: "Orders",
     summary: "Get an invoice as UBL",
     description: "An invoice as an EN 16931 electronic invoice (UBL 2.1), for accounting systems.",
@@ -506,6 +457,7 @@ export const ADMIN_API = [
     method: "GET",
     path: "/credit-notes/{id}/ubl",
     scope: "orders:read",
+    permission: "orders:read",
     tag: "Orders",
     summary: "Get a credit note as UBL",
     description: "A credit note as an EN 16931 electronic document (UBL 2.1).",
@@ -520,10 +472,11 @@ export const ADMIN_API = [
     method: "GET",
     path: "/customers",
     scope: "customers:read",
+    permission: "customers:read",
     tag: "Customers",
     summary: "List customers",
     description: "The store's customer accounts, newest first, with their tags.",
-    query: z.object(paging),
+    query: z.object({ ...paging, ...since }),
     response: page(apiCustomer),
     status: 200,
     errors: ["invalid"],
@@ -533,6 +486,7 @@ export const ADMIN_API = [
     method: "GET",
     path: "/customers/{id}",
     scope: "customers:read",
+    permission: "customers:read",
     tag: "Customers",
     summary: "Get a customer",
     description: "One customer account with its tags.",
@@ -546,6 +500,7 @@ export const ADMIN_API = [
     method: "POST",
     path: "/customers/{id}/tags",
     scope: "customers:write",
+    permission: "customers:write",
     tag: "Customers",
     summary: "Tag a customer",
     description: "Adds a tag to the customer, as the customer's page does. Segments and discounts can then use it.",
@@ -560,6 +515,7 @@ export const ADMIN_API = [
     method: "DELETE",
     path: "/customers/{id}/tags/{tag}",
     scope: "customers:write",
+    permission: "customers:write",
     tag: "Customers",
     summary: "Remove a customer's tag",
     description: "Takes a tag off the customer; the tag is named as it is written, in any case.",
@@ -574,10 +530,11 @@ export const ADMIN_API = [
     method: "GET",
     path: "/discounts",
     scope: "discounts:read",
+    permission: "marketing:read",
     tag: "Discounts",
     summary: "List discount codes",
     description: "The store's discount codes, newest first.",
-    query: z.object(paging),
+    query: z.object({ ...paging, ...since }),
     response: page(apiDiscount),
     status: 200,
     errors: ["invalid"],
@@ -587,6 +544,7 @@ export const ADMIN_API = [
     method: "POST",
     path: "/discounts",
     scope: "discounts:write",
+    permission: "marketing:write",
     tag: "Discounts",
     summary: "Create a discount code",
     description: "Makes a discount code through the admin's own form and its checks: a percent, a fixed amount per market, or free shipping.",
@@ -601,9 +559,11 @@ export const ADMIN_API = [
     method: "GET",
     path: "/checkout/rules",
     scope: "checkout:read",
+    permission: "settings:read",
     tag: "Checkout",
     summary: "List checkout rules",
     description: "The store's checkout rules in the order they run, each with its conditions, its effect and why it was skipped, if it was.",
+    query: z.object(since),
     response: z.object({ data: z.array(apiCheckoutRule) }),
     status: 200,
     errors: [],
@@ -613,6 +573,7 @@ export const ADMIN_API = [
     method: "POST",
     path: "/checkout/rules",
     scope: "checkout:write",
+    permission: "settings:write",
     tag: "Checkout",
     summary: "Create a checkout rule",
     description: "Makes a rule through the Shipping page's own writer, switched off; `enabled` on an update switches it on. An option or method the store does not have is refused.",
@@ -626,6 +587,7 @@ export const ADMIN_API = [
     method: "PATCH",
     path: "/checkout/rules/{id}",
     scope: "checkout:write",
+    permission: "settings:write",
     tag: "Checkout",
     summary: "Change or switch a checkout rule",
     description: "`{ enabled }` alone switches the rule; anything else is the whole rule as it should be, its switch kept unless `enabled` is given too.",
@@ -640,6 +602,7 @@ export const ADMIN_API = [
     method: "DELETE",
     path: "/checkout/rules/{id}",
     scope: "checkout:write",
+    permission: "settings:write",
     tag: "Checkout",
     summary: "Delete a checkout rule",
     description: "Deletes the rule.",
@@ -653,9 +616,11 @@ export const ADMIN_API = [
     method: "GET",
     path: "/checkout/fields",
     scope: "checkout:read",
+    permission: "settings:read",
     tag: "Checkout",
     summary: "List checkout questions",
     description: "The questions the checkout asks, in order, with their words per language.",
+    query: z.object(since),
     response: z.object({ data: z.array(apiCheckoutField) }),
     status: 200,
     errors: [],
@@ -665,6 +630,7 @@ export const ADMIN_API = [
     method: "POST",
     path: "/checkout/fields",
     scope: "checkout:write",
+    permission: "settings:write",
     tag: "Checkout",
     summary: "Create a checkout question",
     description: "Adds a question the checkout asks: a text or a checkbox, with its words.",
@@ -678,6 +644,7 @@ export const ADMIN_API = [
     method: "PATCH",
     path: "/checkout/fields/{id}",
     scope: "checkout:write",
+    permission: "settings:write",
     tag: "Checkout",
     summary: "Change or switch a checkout question",
     description: "`{ enabled }` alone switches the question; anything else is the whole question as it should be.",
@@ -692,6 +659,7 @@ export const ADMIN_API = [
     method: "DELETE",
     path: "/checkout/fields/{id}",
     scope: "checkout:write",
+    permission: "settings:write",
     tag: "Checkout",
     summary: "Delete a checkout question",
     description: "Deletes the question; answers already given stay on their orders.",
@@ -701,6 +669,8 @@ export const ADMIN_API = [
     errors: ["not_found"],
   }),
 ] as const;
+
+export const ADMIN_API = [...CORE_API, ...CATALOGUE_API] as const;
 
 export type AdminOperation = (typeof ADMIN_API)[number];
 export type AdminApiName = AdminOperation["name"];
@@ -778,4 +748,6 @@ export function bodyProblems(issues: readonly z.core.$ZodIssue[], at: PropertyKe
 }
 
 /** The errors an operation can answer, the common ones first. */
-export const errorsOf = (o: AdminOperation): ApiErrorCode[] => [...new Set<ApiErrorCode>([...COMMON_ERRORS, ...o.errors])];
+export const errorsOf = (o: AdminOperation): ApiErrorCode[] => [
+  ...new Set<ApiErrorCode>([...COMMON_ERRORS, ...o.errors, ...("feature" in o ? (["feature_off"] as const) : [])]),
+];

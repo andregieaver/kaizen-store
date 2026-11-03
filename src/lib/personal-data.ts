@@ -300,6 +300,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   status_incident_updates: "Updates to incidents on the status page (D360): a platform admin's words; staff only by id.",
   site_staging_pages: "Which pages a set of changes made ready together holds (D358): ids only.",
   workflow_runs: "Each run of a workflow (D356): the event, the id of what it was about, whether its conditions held and each action's outcome; no name, address or words of a customer, kept 90 days.",
+  api_uploads: "A picture an Admin API caller sends (D440): where it waits in the private imports bucket, its type and size, the token and the library item it became; no name or words.",
   api_tokens: "Admin API tokens (D355): a name the owner gives, the scopes, the token's hash and first characters, who made it and when it was last used; no customer.",
   oauth_clients: "The clients of Kaizena Flow's authorization server (D439): an AI assistant's or app's name, addresses and logo as it published or registered them, whether Kaizena Flow verified or blocked it, and when it was seen; no person.",
   webhook_endpoints: "An owner's own endpoints (D354): a name the owner gives, the address and secret encrypted, the topics and whether it works; no customer (the deliveries' payloads are `integration_deliveries`').",

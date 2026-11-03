@@ -87,7 +87,10 @@ export type IntegrationEvent =
   | "product.created"
   | "product.updated"
   | "stock.low"
-  | "discount.created";
+  | "discount.created"
+  // D440 (wave 14 unit C): for an owner's own endpoints only.
+  | "inventory.updated"
+  | "product.archived";
 
 export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "order.paid", label: "Order paid", hint: "A shopper paid, or a subscription renewed." },
@@ -103,6 +106,8 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "product.updated", label: "Product changed", hint: "A product was saved." },
   { id: "stock.low", label: "Stock low", hint: "A variant's stock fell to its low-stock level." },
   { id: "discount.created", label: "Discount code created", hint: "A discount code was made." },
+  { id: "inventory.updated", label: "Stock changed", hint: "A variant's stock on hand moved at a location: one event per variant and minute, with its stock as it is then." },
+  { id: "product.archived", label: "Product archived", hint: "A product was put away: off the site and out of the admin's lists." },
   { id: "support.waiting", label: "Someone waiting in support", hint: "A customer has waited for a person in the support chat as long as the support settings say: how many wait now, and a link to the inbox. Never who they are or what they wrote." },
 ];
 
@@ -116,6 +121,8 @@ const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
   "product.updated",
   "stock.low",
   "discount.created",
+  "inventory.updated",
+  "product.archived",
 ]);
 
 /** The events a service (Zapier, Make, Slack) may be sent. */

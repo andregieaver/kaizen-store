@@ -21,7 +21,7 @@ const PRICES_TABLE: Record<string, string> = {
 const KEPT_PRICES: Record<string, string> = {
   "src/server/products.ts": "the product editor and the Products list show and keep every price, also where the product is switched off",
   "src/server/owner-tools.ts": "`get_product` tells the AI manager every price, beside where the product is not sold",
-  "src/server/admin-api.ts": "the Admin API's products (D355) carry every price the admin keeps, as the product editor shows them",
+  "src/server/admin-api-kit.ts": "the Admin API's products (D355, D440) carry every price the admin keeps, as the product editor shows them",
   "src/server/live-drills.ts": "the AI manager's pilot (consolidation 5) checks the price a draft product was given, as the product editor keeps it",
   "src/server/dream-factory.ts": "the Dream Factory (D409) checks every product has a price in every country it sells to, as the product editor keeps them",
   "src/server/dream-showcase.ts": "the Dream Factory's page (D419) shows the owner each product the run made with its price in the first market, as the product editor keeps it",

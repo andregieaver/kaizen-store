@@ -10,7 +10,7 @@ const TOKEN = `kf_${"A".repeat(43)}`;
 describe("routeOf", () => {
   it("names every route on the page, with the scope it lists", () => {
     for (const route of API_ROUTES) {
-      const path = route.path.replace("{id}", ID).replace("{tag}", "vip").split("/").filter(Boolean);
+      const path = route.path.replace("{tag}", "vip").replace(/\{\w+\}/g, ID).split("/").filter(Boolean);
       expect(routeOf(route.method, path)?.scope, `${route.method} ${route.path}`).toBe(route.scope);
     }
   });

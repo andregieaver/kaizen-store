@@ -352,6 +352,10 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
     const discount = await discountData(store.id, store.slug, subjectId);
     return discount && { discount };
   }
+  if (event === "inventory.updated") {
+    const inventory = await inventoryData(store.id, store.slug, subjectId);
+    return inventory && { inventory };
+  }
   return null;
 }
 
@@ -488,6 +492,33 @@ async function stockData(storeId: string, variantId: string): Promise<WebhookSub
     available: row.available === null ? null : Number(row.available),
     stock_at_crossing: row.stock_at_crossing === null ? null : Number(row.stock_at_crossing),
     crossed_at: row.crossed_at ? new Date(String(row.crossed_at)).toISOString() : null,
+  };
+}
+
+/**
+ * A variant's stock as it is when the event is sent (D440, `inventory.updated`): on hand at each location and in all, and what can be sold
+ * now as the store reads it. The event waits for its minute, so this is the stock after every change in it.
+ */
+async function inventoryData(storeId: string, storeSlug: string, variantId: string): Promise<WebhookSubject<"inventory"> | null> {
+  const [row] = await db().execute<Row>(sql`
+    select v.id, v.sku, v.product_id,
+      coalesce((select sum(l.on_hand) from commerce.inventory_levels l where l.store_id = v.store_id and l.variant_id = v.id), 0)::bigint as on_hand,
+      (select va.raw_available from commerce.variant_availability va where va.variant_id = v.id) as available,
+      coalesce((select json_agg(json_build_object('location_id', l.location_id, 'on_hand', l.on_hand) order by l.location_id)
+        from commerce.inventory_levels l where l.store_id = v.store_id and l.variant_id = v.id), '[]'::json) as locations,
+      coalesce((select max(l.updated_at) from commerce.inventory_levels l where l.store_id = v.store_id and l.variant_id = v.id), v.created_at) as updated_at
+    from commerce.product_variants v where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid
+  `);
+  if (!row) return null;
+  return {
+    variant_id: String(row.id),
+    product_id: String(row.product_id),
+    sku: String(row.sku ?? ""),
+    on_hand: Number(row.on_hand),
+    available: row.available === null ? null : Number(row.available),
+    locations: row.locations as WebhookSubject<"inventory">["locations"],
+    updated_at: new Date(String(row.updated_at)).toISOString(),
+    admin_url: `${siteUrl()}/admin/${storeSlug}/inventory`,
   };
 }
 

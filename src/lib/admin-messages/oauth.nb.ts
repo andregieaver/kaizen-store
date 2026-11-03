@@ -45,6 +45,9 @@ export const oauthNb: OauthMessages = {
     owner: "Det bare en eier kan gjøre: abonnementet, betalinger, domener, teamet, og AI-assistenten, som leser alle deler av butikken",
     read: "Se {area}",
     write: "Endre {area}",
+    powers: {
+      "products:publish": "Publisere produkter og endre produkter som er på nettstedet, uten å spørre deg først",
+    },
   },
   areas: {
     orders: "Ordre",

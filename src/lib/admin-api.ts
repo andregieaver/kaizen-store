@@ -8,6 +8,8 @@
 export const API_SCOPES = [
   "products:read",
   "products:write",
+  // Wave 14 unit C (D440): what `update_product` asks the owner's yes for (publishing, a product on the site, archiving).
+  "products:publish",
   "inventory:read",
   "inventory:write",
   "orders:read",
@@ -23,7 +25,10 @@ export type ApiScope = (typeof API_SCOPES)[number];
 
 export const isApiScope = (value: string): value is ApiScope => (API_SCOPES as readonly string[]).includes(value);
 
-/** Scopes a write implies reading too: a token that may change products may read them. */
+/**
+ * Scopes a write implies reading too: a token that may change products may read them. A scope that is neither (`products:publish`, D440)
+ * grants only itself.
+ */
 export function grants(scopes: readonly string[], needed: ApiScope): boolean {
   if (scopes.includes(needed)) return true;
   return needed.endsWith(":read") && scopes.includes(needed.replace(/:read$/, ":write"));
@@ -61,6 +66,8 @@ export const API_ERRORS = {
   method: 405,
   invalid: 422,
   gated: 403,
+  /** The store has switched off the feature the operation stands behind (D178, D440). */
+  feature_off: 403,
   conflict: 409,
   rate_limited: 429,
   failed: 500,

@@ -1,4 +1,7 @@
+import { randomUUID } from "node:crypto";
+
 import { sql } from "drizzle-orm";
+import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
@@ -15,12 +18,26 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 vi.mock("next/server", () => ({ connection: async () => {}, after: () => {} }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }), headers: async () => new Headers() }));
+// The private buckets and the public picture bucket, in memory (D440: an upload's file, and the library's pictures).
+const buckets = vi.hoisted(() => ({ storage: null as unknown }));
+vi.mock("./data-job-store", async (importOriginal) => ({ ...(await importOriginal<typeof import("./data-job-store")>()), dataStorage: () => buckets.storage }));
+vi.mock("./media", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./media")>()),
+  uploadProductImage: async (storeId: string) => {
+    const name = `${storeId}/${randomUUID()}`;
+    return { ok: true, url: `https://cdn.test/${name}.webp`, thumbnailUrl: `https://cdn.test/${name}-480.webp`, stored: { bucket: "product-media", path: `${name}.webp`, thumbnailPath: `${name}-480.webp` } };
+  },
+}));
 
 const route = await import("@/app/api/admin/v1/[...path]/route");
 const { makeApiToken, revokeApiToken } = await import("./api-tokens");
 const { CARRIERS } = await import("./order-admin");
 const { BUDGETS } = await import("./request-budget");
 const { newStore, place, pay, variantId, mainLocation, movementsOf } = await import("./inventory-test-support");
+const { fakeStorage } = await import("./data-test-support");
+const { savePriceList } = await import("./price-lists");
+const storage = fakeStorage();
+buckets.storage = storage;
 
 /**
  * The Admin API (wave 9 unit B, D355): a token reaches its own store only and its scopes only; reads carry money as minor units in each
@@ -305,6 +322,201 @@ describe("bodies read with the registry's zod (D438)", () => {
     expect(switched.body.error.message).toMatch(/^enabled: /);
     expect((await call("PATCH", `checkout/rules/${rule.body.data.id}`, made.token, { enabled: true })).status).toBe(200);
     expect((await call("DELETE", `checkout/rules/${rule.body.data.id}`, made.token)).status).toBe(200);
+  });
+});
+
+describe("the catalogue (D440 C1)", () => {
+  let writer: string;
+  let publisher: string;
+  let draftId: string;
+
+  beforeAll(async () => {
+    const w = await makeApiToken(store.member, { name: "Catalogue", scopes: ["products:write"] });
+    const p = await makeApiToken(store.member, { name: "Publisher", scopes: ["products:write", "products:publish"] });
+    if (!w.ok || !p.ok) throw new Error("no token");
+    writer = w.token;
+    publisher = p.token;
+    const made = await call("POST", "products", writer, { title: "Catalogue mug", prices: { NO: "149", FI: "14,90" }, stock: 2, variants: [{ sku: `CAT-${Date.now()}` }] });
+    draftId = made.body.data.id;
+  });
+
+  it("makes, reads, changes and deletes categories and tags, and puts a draft in and out of them", async () => {
+    const category = await call("POST", "categories", writer, { name: `Mugs ${Date.now()}` });
+    expect(category.status).toBe(201);
+    const id = category.body.data.id as string;
+    expect(category.body.data).toMatchObject({ kind: "category", parent_id: null, products: 0, filled_by_rules: false });
+    const child = await call("POST", "categories", writer, { name: `Big mugs ${Date.now()}`, parent_id: id });
+    expect(child.body.data.parent_id).toBe(id);
+    expect((await call("POST", "categories", writer, { name: "" })).status).toBe(422);
+    const listed = await call("GET", "categories?limit=100", readOnly);
+    expect(listed.body.data.map((t: Answer) => t.id)).toEqual(expect.arrayContaining([id, child.body.data.id]));
+    expect((await call("GET", `categories/${id}`, readOnly)).body.data.id).toBe(id);
+    const renamed = await call("PATCH", `categories/${id}`, writer, { name: "Mugs and cups" });
+    expect(renamed.body.data).toMatchObject({ name: "Mugs and cups", slug: category.body.data.slug });
+    const placed = await call("POST", `categories/${id}/products`, writer, { product_id: draftId });
+    expect(placed.status).toBe(201);
+    expect(placed.body.data).toEqual({ term_id: id, product_id: draftId, placed: true });
+    expect((await call("GET", `categories/${id}`, readOnly)).body.data.products).toBe(1);
+    expect((await call("DELETE", `categories/${id}/products/${draftId}`, writer)).body.data.placed).toBe(false);
+    expect((await call("GET", `categories/${id}`, readOnly)).body.data.products).toBe(0);
+    expect((await call("DELETE", `categories/${child.body.data.id}`, writer)).body.data).toEqual({ id: child.body.data.id, deleted: true });
+    expect((await call("GET", `categories/${child.body.data.id}`, readOnly)).status).toBe(404);
+
+    const tag = await call("POST", "tags", writer, { name: `Gift ${Date.now()}` });
+    expect(tag.status).toBe(201);
+    const tagId = tag.body.data.id as string;
+    expect((await call("GET", "tags", readOnly)).body.data.map((t: Answer) => t.id)).toContain(tagId);
+    expect((await call("GET", `tags/${tagId}`, readOnly)).body.data.kind).toBe("tag");
+    expect((await call("PATCH", `tags/${tagId}`, writer, { slug: `gift-${Date.now()}` })).status).toBe(200);
+    expect((await call("POST", `tags/${tagId}/products`, writer, { product_id: draftId })).status).toBe(201);
+    expect((await call("DELETE", `tags/${tagId}/products/${draftId}`, writer)).status).toBe(200);
+    expect((await call("DELETE", `tags/${tagId}`, writer)).status).toBe(200);
+    // A category of the tags, or of another store, is not found.
+    expect((await call("GET", `tags/${id}`, readOnly)).status).toBe(404);
+    const [theirs] = await db().execute<Row>(sql`
+      insert into commerce.terms (store_id, content_type, kind, name, slug) values (${other.storeId}::uuid, 'product', 'category', 'Theirs', ${`theirs-${Date.now()}`}) returning id
+    `);
+    expect((await call("GET", `categories/${String(theirs.id)}`, readOnly)).status).toBe(404);
+    expect((await call("POST", `categories/${String(theirs.id)}/products`, writer, { product_id: draftId })).status).toBe(404);
+    expect((await call("DELETE", `categories/${id}`, writer)).status).toBe(200);
+    // Every change in the token's name.
+    const audit = await db().execute<Row>(sql`
+      select action from commerce.audit_log where store_id = ${store.storeId}::uuid and details ->> 'token' = 'Catalogue' and action like 'integration.api_%' order by created_at
+    `);
+    expect(audit.map((a) => a.action)).toEqual(expect.arrayContaining(["integration.api_category_created", "integration.api_product_placed", "integration.api_product_unplaced", "integration.api_tag_deleted"]));
+  });
+
+  it("takes a picture through a one-time upload, checks it as the library does, and puts it in a product's gallery", async () => {
+    const png = await sharp({ create: { width: 64, height: 48, channels: 3, background: "#c33" } }).png().toBuffer();
+    expect((await call("POST", "media/uploads", writer, { content_type: "image/gif", size_bytes: 10 })).status).toBe(422);
+    const started = await call("POST", "media/uploads", writer, { content_type: "image/png", size_bytes: png.byteLength });
+    expect(started.status).toBe(201);
+    expect(started.body.data.upload_url).toContain("api-uploads");
+    const uploadId = started.body.data.upload_id as string;
+    // Nothing sent yet: refused, and the upload can still be used.
+    expect((await call("POST", "media", writer, { upload_id: uploadId })).status).toBe(422);
+    await storage.upload("imports", `${store.storeId}/api-uploads/${uploadId}`, new TextEncoder().encode("not a picture"), "image/png");
+    expect((await call("POST", "media", writer, { upload_id: uploadId })).body.error.message).toContain("JPEG, PNG, WebP or AVIF");
+    await storage.upload("imports", `${store.storeId}/api-uploads/${uploadId}`, new Uint8Array(png), "image/png");
+    // Another token's upload is not this one's.
+    expect((await call("POST", "media", publisher, { upload_id: uploadId })).status).toBe(404);
+    const kept = await call("POST", "media", writer, { upload_id: uploadId, file_name: "red.png", alt: "A red square" });
+    expect(kept.status).toBe(201);
+    expect(kept.body.data).toMatchObject({ kind: "image", content_type: "image/webp", width: 64, height: 48, alt: "A red square", file_name: "red.webp" });
+    expect((await call("POST", "media", writer, { upload_id: uploadId })).status).toBe(409);
+    expect(storage.files.has(`imports/${store.storeId}/api-uploads/${uploadId}`)).toBe(false);
+    const mediaId = kept.body.data.id as string;
+    expect((await call("GET", "media?kind=image", readOnly)).body.data.map((m: Answer) => m.id)).toContain(mediaId);
+
+    const before = (await call("GET", `products/${draftId}/media`, readOnly)).body.data as Answer[];
+    const added = await call("POST", `products/${draftId}/media`, writer, { media_id: mediaId });
+    expect(added.status).toBe(201);
+    expect(added.body.data.at(-1)).toMatchObject({ media_id: mediaId, kind: "image", alt: "A red square" });
+    expect((await call("POST", `products/${draftId}/media`, writer, { media_id: mediaId })).status).toBe(409);
+    const second = await call("POST", "media/uploads", writer, { content_type: "image/png", size_bytes: png.byteLength });
+    await storage.upload("imports", `${store.storeId}/api-uploads/${second.body.data.upload_id}`, new Uint8Array(png), "image/png");
+    const other2 = (await call("POST", "media", writer, { upload_id: second.body.data.upload_id })).body.data.id as string;
+    await call("POST", `products/${draftId}/media`, writer, { media_id: other2 });
+    const ids = (await call("GET", `products/${draftId}/media`, readOnly)).body.data.filter((m: Answer) => m.kind === "image").map((m: Answer) => m.media_id);
+    const reordered = await call("PATCH", `products/${draftId}/media`, writer, { media_ids: [...ids].reverse() });
+    expect(reordered.status).toBe(200);
+    expect(reordered.body.data.filter((m: Answer) => m.kind === "image").map((m: Answer) => m.media_id)).toEqual([...ids].reverse());
+    expect((await call("PATCH", `products/${draftId}/media`, writer, { media_ids: [mediaId] })).status).toBe(ids.length === 1 ? 200 : 422);
+    const removed = await call("DELETE", `products/${draftId}/media/${mediaId}`, writer);
+    expect(removed.body.data.map((m: Answer) => m.media_id)).not.toContain(mediaId);
+    expect(removed.body.data.length).toBe(before.length + 1);
+    expect((await call("DELETE", `products/${draftId}/media/${mediaId}`, writer)).status).toBe(404);
+  });
+
+  it("changes a product on the site, and publishes or archives one, only with products:publish", async () => {
+    const [live] = await db().execute<Row>(sql`select id from commerce.products where store_id = ${store.storeId}::uuid and status = 'active' order by created_at limit 1`);
+    const liveId = String(live.id);
+    const tag = await call("POST", "tags", writer, { name: `Live ${Date.now()}` });
+    const refused = await call("POST", `tags/${tag.body.data.id}/products`, writer, { product_id: liveId });
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.code).toBe("gated");
+    expect((await call("POST", `tags/${tag.body.data.id}/products`, publisher, { product_id: liveId })).status).toBe(201);
+    expect((await call("PATCH", `products/${liveId}`, writer, { excerpt: "Changed from outside" })).body.error.code).toBe("gated");
+    expect((await call("PATCH", `products/${liveId}`, publisher, { excerpt: "Changed from outside" })).status).toBe(200);
+    expect((await call("PATCH", `products/${liveId}`, publisher, { status: "draft" })).body.error.code).toBe("gated");
+
+    // Publishing is its own scope: products:write alone is refused before anything runs.
+    const scoped = await call("POST", `products/${draftId}/publish`, writer, {});
+    expect(scoped.status).toBe(403);
+    expect(scoped.body.error.message).toContain("products:publish");
+    const published = await call("POST", `products/${draftId}/publish`, publisher, {});
+    expect(published.status).toBe(200);
+    expect(published.body.data.status).toBe("active");
+    expect((await call("POST", `products/${draftId}/unpublish`, publisher)).body.data.status).toBe("draft");
+    expect((await call("POST", `products/${draftId}/archive`, publisher, {})).body.data.status).toBe("archived");
+    expect((await call("POST", `products/${draftId}/archive`, publisher, {})).status).toBe(409);
+    expect((await call("POST", `products/${draftId}/publish`, publisher, {})).status).toBe(422);
+    expect((await call("POST", `products/${draftId}/unarchive`, publisher, {})).body.data.status).toBe("draft");
+    expect((await call("POST", `products/${draftId}/unarchive`, publisher, {})).status).toBe(409);
+    const audit = await db().execute<Row>(sql`
+      select action from commerce.audit_log where store_id = ${store.storeId}::uuid and details ->> 'token' = 'Publisher' and action like 'integration.api_product_%' order by created_at
+    `);
+    expect(audit.map((a) => a.action)).toEqual(
+      expect.arrayContaining(["integration.api_product_published", "integration.api_product_unpublished", "integration.api_product_archived", "integration.api_product_unarchived"]),
+    );
+  });
+
+  it("sets a price list's fixed prices in minor units through its page's writer", async () => {
+    const list = await savePriceList(store.member, null, { name: `Wholesale ${Date.now()}`, percent: null, active: true });
+    if (!list.ok || !list.id) throw new Error("no list");
+    expect((await call("GET", "price-lists", readOnly)).body.data.map((l: Answer) => l.id)).toContain(list.id);
+    const set = await call("POST", `price-lists/${list.id}/prices`, writer, { rows: [{ sku: SKU, currency: "NOK", amount_minor: 12_900 }, { sku: SKU, currency: "EUR", amount_minor: 1_190 }] });
+    expect(set.body.data).toEqual({ set: 2, removed: 0 });
+    const prices = await call("GET", `price-lists/${list.id}/prices?limit=1`, readOnly);
+    expect(prices.body.data).toHaveLength(1);
+    const rest = await call("GET", `price-lists/${list.id}/prices?after=${prices.body.next}`, readOnly);
+    expect([...prices.body.data, ...rest.body.data].map((p: Answer) => `${p.currency} ${p.amount_minor}`).sort()).toEqual(["EUR 1190", "NOK 12900"]);
+    expect((await call("POST", `price-lists/${list.id}/prices`, writer, { rows: [{ sku: SKU, currency: "USD", amount_minor: 100 }] })).status).toBe(422);
+    expect((await call("POST", `price-lists/${list.id}/prices`, writer, { rows: [{ sku: SKU, currency: "EUR", amount_minor: null }] })).body.data).toEqual({ set: 0, removed: 1 });
+    const theirs = await savePriceList(other.member, null, { name: "Theirs", percent: 10, active: true });
+    expect((await call("GET", `price-lists/${theirs.ok && theirs.id}/prices`, readOnly)).status).toBe(404);
+    // Behind the online shop (D178): switched off, the price lists answer feature_off.
+    await db().execute(sql`update commerce.stores set features = array_remove(features, 'shop') where id = ${store.storeId}::uuid`);
+    try {
+      const off = await call("GET", "price-lists", readOnly);
+      expect(off.status).toBe(403);
+      expect(off.body.error.code).toBe("feature_off");
+    } finally {
+      await db().execute(sql`update commerce.stores set features = array(select distinct unnest(features || array['shop']::text[])) where id = ${store.storeId}::uuid`);
+    }
+  });
+
+  it("lists what changed after a time, and refuses one that is not a time", async () => {
+    const later = new Date(Date.now() + 60_000).toISOString();
+    const checkout = await makeApiToken(store.member, { name: "Checkout reader", scopes: ["checkout:read"] });
+    if (!checkout.ok) throw new Error(checkout.problem);
+    const lists: [string, string][] = [
+      ...["products", "orders", "customers", "discounts", "inventory/levels", "categories", "tags", "media", "price-lists"].map((l) => [l, full] as [string, string]),
+      ["checkout/rules", checkout.token],
+      ["checkout/fields", checkout.token],
+    ];
+    for (const [list, token] of lists) {
+      const answer = await call("GET", `${list}?updated_after=${encodeURIComponent(later)}`, token);
+      expect(answer.status, list).toBe(200);
+      expect(answer.body.data, list).toEqual([]);
+    }
+    const earlier = new Date(Date.now() - 24 * 3_600_000).toISOString();
+    expect((await call("GET", `products?updated_after=${encodeURIComponent(earlier)}`, full)).body.data.length).toBeGreaterThan(0);
+    expect((await call("GET", "products?updated_after=yesterday", full)).status).toBe(422);
+    const orders = await call("GET", "orders?limit=1", full);
+    expect(orders.body.data[0].updated_at).toEqual(expect.any(String));
+  });
+
+  it("refuses a change in a store that is not open, naming the permission, and lets it read what happened", async () => {
+    await db().execute(sql`update commerce.stores set status = 'suspended' where id = ${store.storeId}::uuid`);
+    try {
+      const refused = await call("POST", "categories", writer, { name: "While closed" });
+      expect(refused.status).toBe(403);
+      expect(refused.body.error.message).toContain("products:write");
+      expect((await call("GET", "orders?limit=1", full)).status).toBe(200);
+    } finally {
+      await db().execute(sql`update commerce.stores set status = 'active' where id = ${store.storeId}::uuid`);
+    }
   });
 });
 

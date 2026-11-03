@@ -7541,6 +7541,41 @@ export const apiTokens = commerce.table(
 );
 
 /**
+ * A picture an Admin API caller is sending (wave 14 unit C1, D440, `src/server/api-uploads.ts`, its only writer): `POST /media/uploads` makes
+ * the row and a one-time address in the private `imports` bucket; `POST /media` checks the file there, keeps it in the media library and
+ * marks the row used. Never a file name or anything a person wrote; rows and their files go a day after they end (`pruneApiUploads()`).
+ */
+export const apiUploads = commerce.table(
+  "api_uploads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    tokenId: uuid("token_id")
+      .notNull()
+      .references(() => apiTokens.id, { onDelete: "cascade" }),
+    /** Where the file is sent, in the `imports` bucket: `{store}/api-uploads/{id}`. */
+    path: text("path").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** When `POST /media` took it (claimed; cleared again when keeping the file failed). */
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    /** The library item it became. */
+    mediaId: uuid("media_id").references(() => media.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("api_uploads_store_id_key").on(t.storeId, t.id),
+    index("api_uploads_store_idx").on(t.storeId),
+    index("api_uploads_token_idx").on(t.tokenId),
+    index("api_uploads_media_idx").on(t.mediaId),
+    index("api_uploads_expires_idx").on(t.expiresAt),
+    check("api_uploads_size", sql`${t.sizeBytes} between 1 and 20971520`),
+    check("api_uploads_type", sql`${t.contentType} in ('image/jpeg', 'image/png', 'image/webp', 'image/avif')`),
+  ],
+);
+
+/**
  * The clients of Kaizena Flow's OAuth 2.1 authorization server (wave 14 unit B, D439, `src/server/oauth-clients.ts`, its only writer): an
  * AI assistant or app that asks a person to connect their stores. `metadata_document`: its `client_id` is the HTTPS address of its Client
  * ID Metadata Document, fetched through `safeFetch()` and kept until `fresh_until`; `registered`: made by RFC 7591 registration, public,

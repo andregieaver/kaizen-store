@@ -37,7 +37,22 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   function that reads its body with `readBody()` (never a raw body: the API says what is wrong before the screen's own checks) and builds
   its answer as `AdminAnswer<name>`, and a call in `admin-api.int.test.ts`, which parses every answer with its schema and fails until every
   operation's was parsed; then the contract's next version (*API contracts*, under the Admin API). A gated effect (publishing, a live product, a refund,
-  an email a person decides) is refused as `gated`, never run.
+  an email a person decides) is refused as `gated`, never run, unless the token holds the power scope for it (D440: `products:publish`),
+  which is checked in the handler (`holds()`) on top of the route's own scope.
+  **Its breadth (wave 14 unit C, D440, `docs/wave-14-developer-platform.md` C1 to C4):** each slice's entries live in their own file
+  (`src/lib/admin-api-catalogue.ts`, …) spread into `ADMIN_API`, written with `admin-api-shapes.ts`, and their handlers in the server file of
+  the same name over `admin-api-kit.ts` (`ok()`, `fail()`, `readBody()`, `paging()` with `cursorAt()` and `sinceWhere()`, `record()`). Every
+  entry names the staff `permission` (D158) its screen asks and, where it has one, the store `feature` (D178): the route refuses a missing
+  permission as `forbidden` (`memberCan()`, so a store that is not open allows no change) and a feature off as `feature_off`, before the
+  handler runs. Every list takes `?updated_after=` over the row's own change time (an order's is `ORDER_UPDATED`, its timeline's latest
+  entry) and pages under a cursor exact to the microsecond. A scope that is no read or write of an area is a power (`POWER_SCOPES` in
+  `src/lib/oauth.ts`, resting on a permission, offered on the consent screen only under *Read and change*, never a key of a role), added
+  together to `API_SCOPES`, the token screen's words, the consent screen's words and the OpenAPI document (`SCOPE_POWERS`). Pictures come
+  only through `POST /media/uploads` (a row of `commerce.api_uploads`, written only by `src/server/api-uploads.ts`, and a one-time signed
+  address in the private `imports` bucket) and `POST /media`, which checks the file from its bytes, shrinks it as the admin's browser does
+  (`shrinkPicture()`), counts it against storage and keeps it with `storePicture()`; a product's gallery, categories and tags change only
+  through `updateProductTool()`. `inventory.updated` waits for the next whole minute (`queue_integration_event()`), so a variant's moves in
+  that minute are one delivery built as the stock is then.
 
 - **API contracts (wave 14 unit A, D438, `src/lib/admin-api-routes.ts`, `src/lib/webhook-topics.ts`, `src/lib/mcp-catalogue.ts`, `src/lib/api-contract.ts`)**, for this API, the storefront API, the webhooks and the MCP servers:
   what outside callers rely on is described once, in code, and everything published is generated from it: the Admin API's operations

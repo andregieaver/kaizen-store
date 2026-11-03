@@ -34,7 +34,7 @@ export function fakeStorage(): FakeStorage {
     signed: [],
     down: false,
     async signedUpload(path) {
-      return state.down ? null : { token: `token-${path.length}` };
+      return state.down ? null : { token: `token-${path.length}`, url: `https://storage.test/upload/imports/${path}?token=token-${path.length}` };
     },
     async upload(bucket, path, bytes, contentType) {
       if (state.down) return false;

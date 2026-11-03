@@ -314,8 +314,8 @@ export async function putAsset(job: Pick<DataJob, "id" | "storeId">, sourceUrl: 
 export type StorageEntry = { name: string; isFolder: boolean };
 
 export type DataStorage = {
-  /** A signed upload for one new path of the imports bucket. */
-  signedUpload(path: string): Promise<{ token: string } | null>;
+  /** A signed upload for one new path of the imports bucket: its token, and the whole address where Storage gives it (the Admin API's, D440). */
+  signedUpload(path: string): Promise<{ token: string; url?: string } | null>;
   upload(bucket: string, path: string, bytes: Uint8Array, contentType: string): Promise<boolean>;
   download(bucket: string, path: string): Promise<Uint8Array | null>;
   remove(bucket: string, paths: string[]): Promise<boolean>;
@@ -342,7 +342,7 @@ export function dataStorage(): DataStorage | null {
         log("error", "data_jobs.upload_start_failed", {}, error ?? undefined);
         return null;
       }
-      return { token: data.token };
+      return { token: data.token, url: data.signedUrl };
     },
     async upload(bucket, path, bytes, contentType) {
       if (!known(bucket)) return false;
