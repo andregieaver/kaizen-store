@@ -38,7 +38,11 @@ const keep = async (args: Record<string, unknown>, extra: Record<string, unknown
   (await runManagerTool((await ctxFor(store.account, extra)) as never, "follow_up", args)) as { id: string; done: string };
 
 const rowOf = async (id: string) => (await db().execute<Row>(sql`select * from commerce.assistant_follow_ups where id = ${id}::uuid`))[0];
-const makeDue = (id: string) => db().execute(sql`update commerce.assistant_follow_ups set due_at = now() - interval '1 minute', claimed_until = null where id = ${id}::uuid`);
+// The runner takes every due follow-up in the database; one another test file left waiting is put off, so only this test's own is due.
+const makeDue = async (id: string) => {
+  await db().execute(sql`update commerce.assistant_follow_ups set due_at = now() + interval '1 day' where status = 'waiting' and due_at <= now() and id <> ${id}::uuid`);
+  await db().execute(sql`update commerce.assistant_follow_ups set due_at = now() - interval '1 minute', claimed_until = null where id = ${id}::uuid`);
+};
 
 /** A turn that answers, or fails as `runTurn()` reports a failure, and remembers what it was given. */
 const turns: TurnInput[] = [];
