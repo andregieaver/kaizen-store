@@ -105,6 +105,12 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   archive_orders: "shop",
   create_draft_order: "shop",
   send_draft_order: "shop",
+  // Quotes and how prices show (D437): the shop's own.
+  set_draft_prices: "shop",
+  decline_quote: "shop",
+  price_display: "shop",
+  set_price_display: "shop",
+  set_quote_requests: "shop",
   archive_product: "shop",
   create_product: "shop",
   update_product: "shop",

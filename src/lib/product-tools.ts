@@ -21,6 +21,7 @@ import {
 import type { ProductFacts, WriteKind } from "./product-writing";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX } from "./seo";
 import type { StandardAttributes } from "./product-taxonomy";
+import { productPriceWordsArgs, productWordsFromArgs } from "./quote-tools";
 import { slugify } from "./slug";
 import { TERM_NAME_MAX } from "./taxonomy";
 import { UNITS } from "./unit-price";
@@ -246,6 +247,11 @@ export const updateProductInput = z.object({
   responsible_person: operatorArgs.optional(),
   bundle: bundleArgs.optional().describe("A bundle's components and pricing as they should be (they replace the ones there); only for a bundle."),
   not_sold_in: notSoldIn.optional().describe("Countries the whole product is not sold in, as they should be (they replace the list there); its prices there are kept."),
+  price_on_request: z
+    .boolean()
+    .optional()
+    .describe("Goods only. true: no price is shown anywhere and shoppers can only request a quote (its prices stay as the owner's guide); false: its price is shown and it is sold again."),
+  price_words: productPriceWordsArgs.optional().describe("The words before and after this product's price (From, /pc): the store's, none, or its own by language."),
   ...standardArgs,
 });
 export type UpdateProductInput = z.output<typeof updateProductInput>;
@@ -543,6 +549,8 @@ const FIELD_WORDS: Record<string, string> = {
   bundle: "what is in the bundle and its pricing",
   standard: "the standard category and its attributes",
   not_sold_in: "the countries it is not sold in",
+  price_on_request: "whether it is priced on request",
+  price_words: "the words around its price",
 };
 
 /**
@@ -672,6 +680,21 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
     changed.push(`${sku}: where it is sold`);
   }
 
+  // Price on request and the words around the price (D431, D429, D437): goods only for the first; the words checked as the editor checks them.
+  let priceOnRequest = stored.priceOnRequest;
+  if (change.price_on_request !== undefined) {
+    if (change.price_on_request && stored.kind !== "goods") problems.push("Only goods can be priced on request.");
+    priceOnRequest = change.price_on_request;
+    mark("price_on_request");
+  }
+  let priceWords = stored.priceWords;
+  if (change.price_words !== undefined) {
+    const words = productWordsFromArgs(change.price_words, store.locales);
+    if (words.ok) priceWords = words.words;
+    else problems.push(...words.problems);
+    mark("price_words");
+  }
+
   if (problems.length > 0) return { ok: false, problems };
   if (changed.length === 0) return { ok: false, problems: ["Nothing to change: give the fields that should change."] };
   return {
@@ -679,6 +702,8 @@ export function mergeProduct(stored: ProductInput, change: UpdateProductInput, s
     changed,
     input: {
       ...stored,
+      priceOnRequest,
+      priceWords,
       handle,
       translations,
       options,
@@ -836,6 +861,12 @@ export function productApprovalSummary(
     for (const key of ["description", "seo_title", "seo_description", "excerpt", "translations", "options", "pictures", "add_pictures", "vat_category", "manufacturer", "responsible_person", "not_sold_in"]) {
       if (input[key] !== undefined) parts.push(FIELD_WORDS[key]);
     }
+    if (input.price_on_request === true) parts.push("price on request: no price shown anywhere, shoppers can only request a quote");
+    if (input.price_on_request === false) parts.push("its price shown again, sold as before");
+    const words = input.price_words as { follow?: string; words?: { language: string; before?: string; after?: string }[] } | undefined;
+    if (words?.follow === "store") parts.push("the store's words around its price");
+    if (words?.follow === "none") parts.push("no words around its price");
+    if (words?.follow === "own") parts.push(`its own words around its price: ${(words.words ?? []).map((w) => `${w.language} "${cut(String(w.before ?? ""))}" … "${cut(String(w.after ?? ""))}"`).join(", ")}`);
     if (typeof input.handle === "string") parts.push(`the web address to /p/${input.handle} (the old one is redirected)`);
     if (input.standard_category === null) parts.push("no standard category");
     else if (typeof input.standard_category === "string") parts.push(`the standard category to ${cut(input.standard_category)}`);

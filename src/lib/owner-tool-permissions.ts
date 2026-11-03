@@ -90,6 +90,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   parcel_tracking: "orders:read",
   // Draft orders (D173) are the Orders section's: read like the Orders page, written with the right to change orders.
   list_draft_orders: "orders:read",
+  price_display: "settings:read",
   list_returns: "orders:read",
   explain_return: "orders:read",
   // The privacy log shows no person (counts and dates), and its page needs `customers:read`: so does the tool (D162).
@@ -248,6 +249,10 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   archive_orders: "orders:write",
   create_draft_order: "orders:write",
   send_draft_order: "orders:write",
+  set_draft_prices: "orders:write",
+  decline_quote: "orders:write",
+  set_price_display: "settings:write",
+  set_quote_requests: "settings:write",
   mark_order_sent: "orders:write",
   cancel_booking: "bookings:write",
   archive_product: "products:write",

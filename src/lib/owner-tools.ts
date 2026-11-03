@@ -32,6 +32,7 @@ import { compareOptionsInput, listResearchNotesInput, readWebPageInput, saveRese
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
 import { categoryApprovalSummary, listCategoriesInput, updateCategoryInput } from "./category-tools";
 import { createProductInput, productApprovalSummary, setPricesInput, setProductStatusInput, updateProductInput, writeProductTextsInput } from "./product-tools";
+import { declineQuoteInput, priceDisplayInput, quoteToolSummary, setDraftPricesInput, setPriceDisplayInput, setQuoteRequestsInput } from "./quote-tools";
 import {
   saveShippingMethodInput,
   setCountriesInput,
@@ -323,7 +324,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "list_draft_orders",
-    "The store's draft orders (D173): orders staff write for a customer and send as a pay link. Each has its number, status (open, sent and waiting for payment, paid, expired, cancelled), the customer's email, the total as the store prices it, its order number once sent and when the link ends. `status` narrows them. Read-only. A draft is made with create_draft_order and sent with send_draft_order (the owner's yes first); taking money outside Kaizena Flow and deleting a draft are done on the draft's page.",
+    "The store's draft orders (D173): orders staff write for a customer and send as a pay link, and shoppers' requests for a quote (D431), which arrive as drafts marked `quote`. Each has its number, status (open, sent and waiting for payment, paid, expired, cancelled), the customer's email, the total as the store prices it, its order number once sent and when the link ends; the answer counts the requests for a quote waiting for the store. `status` narrows them, `quotes` keeps only requests. Read-only. A draft is made with create_draft_order, its prices typed with set_draft_prices, and sent with send_draft_order (the owner's yes first; a request goes out as a quote); a request is declined with decline_quote. The shopper's note is read on the draft's page, never here; taking money outside Kaizena Flow and deleting a draft are done on the draft's page.",
     listDraftOrdersInput,
   ),
   tool(
@@ -1282,6 +1283,35 @@ export const OWNER_TOOLS = [
     sendDraftOrderInput,
     "send",
   ),
+  // Quotes and price display (D437, `src/lib/quote-tools.ts`, `src/server/quote-tools.ts`).
+  tool(
+    "set_draft_prices",
+    "Types the price for one of an open draft's lines (by SKU), most often a shopper's request for a quote waiting for its prices: a product priced on request arrives without one, and the draft cannot be sent until it has one. The price is for one, VAT included, in the draft's currency, as the owner gave it; \"\" takes the typed price away again. Only the lines given change, saved as the draft's page saves them, and nothing is sent. The answer is the draft as the store prices it now (totals worked out by the store, never by you) and what still stops it being sent. Never make up a price: ask the owner.",
+    setDraftPricesInput,
+  ),
+  tool(
+    "decline_quote",
+    "Declines a shopper's request for a quote (a draft marked `quote` in list_draft_orders) with a short reply the customer is emailed in the store's name, in the owner's words and the customer's language: why there is no quote, and what they could do instead. The request is then never sent and goes 30 days later. Needs the owner's approval.",
+    declineQuoteInput,
+    "send",
+  ),
+  tool(
+    "price_display",
+    "How the shop shows prices and quantities (D429, D430), as on Settings, Prices and quantity: decimals on whole amounts (always, or hide_whole: 499 kr while 499,50 kr keeps them; never a rounding) for the store and each country of its own, the words before and after a product's price by language (From, /pc), and how product pages offer a quantity (buttons: − and +; box: the number; hidden); and who may request a quote (D431, Settings, Orders: off, everyone, business) with how many requests wait. Read-only. Change them with set_price_display and set_quote_requests (the owner's yes first); a product's own words and price on request are update_product's.",
+    priceDisplayInput,
+  ),
+  tool(
+    "set_price_display",
+    "Changes how the shop shows prices and quantities: decimals on whole amounts for the store or a country, the store's words before and after a product's price in a language, and the quantity chooser on product pages. Only what is given changes. Words are short and plain: no percentage, no claims such as best price or only today (they are checked and refused with the reason). Never make words up: use the owner's. Needs the owner's approval: every price shoppers see follows.",
+    setPriceDisplayInput,
+    "public",
+  ),
+  tool(
+    "set_quote_requests",
+    "Chooses who may request a quote on products that show their price (D431): off, everyone (beside Add to cart and in the cart), or business buyers only. A product priced on request always offers it. Requests arrive as drafts marked `quote` (list_draft_orders). Needs the owner's approval.",
+    setQuoteRequestsInput,
+    "public",
+  ),
   tool(
     "cancel_booking",
     "Cancels a confirmed booking, freeing its time, and tells the customer by email if asked. Paying back is done from the order. Needs the owner's approval.",
@@ -2063,6 +2093,10 @@ export const GATE_WORDS: Record<GateCategory, string> = {
 export function approvalSummary(name: string, input: Record<string, unknown>): string {
   const text = (key: string) => String(input[key] ?? "");
   switch (name) {
+    case "set_price_display":
+    case "set_quote_requests":
+    case "decline_quote":
+      return quoteToolSummary(name, input) ?? name;
     case "send_broadcast":
       return input.at ? `Send the broadcast "${text("broadcast")}" at ${text("at")} (the store's time) to the people on the list who asked for your emails.` : `Send the broadcast "${text("broadcast")}" now to the people on the list who asked for your emails.`;
     case "issue_work_invoice":
