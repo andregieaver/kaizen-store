@@ -38,7 +38,7 @@ import { MEDIA_KINDS, mediaFileOk, type MediaItemKind, type VideoSource } from "
 import { INHERIT_WORDS, parseProductPriceWords, productWordsColumn, type WordsByLocale } from "@/lib/price-words";
 import { cleanWords, priceWordSentence, wordsProblems } from "@/lib/price-words-check";
 
-import { bundleForEdit, componentProblems, saveBundleComponents } from "./bundles";
+import { bundleForEdit, componentProblems, computedBundlesHolding, onRequestInBundlesProblem, saveBundleComponents } from "./bundles";
 import { profileChoices } from "./shipping-admin";
 import { aiFor } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
@@ -885,6 +885,12 @@ export async function saveProduct(
     if (!room.ok) problems.push(limitRefusal("products", room.limit));
   }
   problems.push(...(await componentProblems(db(), store.id, input, context.primaryLocale)));
+  // Never priced on request while in a bundle priced from its products' prices (D433): that bundle's price is this product's list price. The
+  // database refuses the same at commit (`products_bundle_on_request`); this names the bundles.
+  if (productId && input.kind === "goods" && input.priceOnRequest) {
+    const bundles = await computedBundlesHolding(db(), store.id, productId, context.primaryLocale);
+    if (bundles.length > 0) problems.push(onRequestInBundlesProblem(bundles));
+  }
   if (problems.length > 0) return { ok: false, problems };
   // Only the store's own product categories and tags; one deleted meanwhile is left out.
   const termScope = { storeId: store.id, contentType: "product" } as const;
@@ -1717,6 +1723,13 @@ function saveProblem(error: unknown, input: ProductInput): string {
   if (text.includes("bundle_components.goods")) return "Only goods sent by post can go in a bundle. Nothing was changed.";
   if (text.includes("bundle_components.max")) return "A bundle has at most 20 components. Nothing was changed.";
   if (text.includes("bundle_components.bundle")) return "Only a bundle has components. Nothing was changed.";
+  // A product priced on request and a bundle priced from its products' prices (D433); the bundles' handles are in the detail.
+  if (text.includes("bundle_components.price_on_request")) {
+    return "A product priced on request cannot go in a bundle priced from its products' prices: give the bundle a price of its own, or untick Price on request on that product. Nothing was changed.";
+  }
+  if (text.includes("products.price_on_request_bundle")) {
+    return `This product is in a bundle priced from its products' prices${detail ? ` (${detail})` : ""}, so it cannot be priced on request: give that bundle a price of its own first. Nothing was changed.`;
+  }
   if (text.includes("variants.too_many")) return `A product can have at most ${MAX_VARIANTS} variants for sale. Use fewer option values, or switch some off. Nothing was changed.`;
   if (text.includes("products_store_handle_key")) {
     return `Another product already uses the web address "${input.handle}". Choose another.`;

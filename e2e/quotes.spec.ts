@@ -23,8 +23,14 @@ async function arrange(name: string, change: (sql: ReturnType<typeof testDb>, st
   return store;
 }
 
-const productOnRequest = (sql: ReturnType<typeof testDb>, storeId: string, handle = MUG) =>
-  sql`update commerce.products set price_on_request = true where store_id = ${storeId} and handle = ${handle}`;
+/**
+ * Prices a product on request. The demo bundle is priced from the mug and the tote, and a product priced on request is never a part of such a
+ * bundle (D433): it is given a price of its own first, as its owner would.
+ */
+const productOnRequest = async (sql: ReturnType<typeof testDb>, storeId: string, handle = MUG) => {
+  await sql`update commerce.products set bundle_pricing = 'fixed', bundle_percent_off = null where store_id = ${storeId} and kind = 'bundle' and bundle_pricing = 'computed'`;
+  return sql`update commerce.products set price_on_request = true where store_id = ${storeId} and handle = ${handle}`;
+};
 
 const quotesFor = async (storeId: string) => {
   const sql = testDb();

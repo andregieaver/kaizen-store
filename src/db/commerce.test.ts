@@ -7400,3 +7400,104 @@ describe("request a quote and price on request (D431)", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A product priced on request in bundles (D433)
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe("a product priced on request in bundles (D433)", () => {
+  /** A store with two goods A and B, priced, and two bundles: one priced from its products, one with a price of its own. */
+  async function setup() {
+    const storeId = await createStore(`on-request-bundles-${(counter += 1)}`, ["NO"]);
+    const a = await createProduct({ storeId });
+    const b = await createProduct({ storeId });
+    await db.query("select commerce.set_price($1, 'NO', 10000)", [a.variantId]);
+    await db.query("select commerce.set_price($1, 'NO', 5000)", [b.variantId]);
+    const computed = await createProduct({ storeId });
+    await db.query("update commerce.products set kind = 'bundle', bundle_pricing = 'computed', bundle_percent_off = 10 where id = $1", [computed.productId]);
+    const fixed = await createProduct({ storeId });
+    await db.query("update commerce.products set kind = 'bundle', bundle_pricing = 'fixed', bundle_percent_off = null where id = $1", [fixed.productId]);
+    await db.query("select commerce.set_price($1, 'NO', 12000)", [fixed.variantId]);
+    const put = (bundle: { variantId: string }, part: { variantId: string }, quantity = 1) =>
+      db.query("insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity) values ($1, $2, $3, $4)", [
+        storeId,
+        bundle.variantId,
+        part.variantId,
+        quantity,
+      ]);
+    return { storeId, a, b, computed, fixed, put };
+  }
+  const onRequest = (productId: string) => db.query("update commerce.products set price_on_request = true where id = $1", [productId]);
+  const priceOf = async (variantId: string) =>
+    (await db.query<{ amount_minor: string }>("select amount_minor::text from commerce.prices where variant_id = $1 and market_code = 'NO' and valid_to is null", [variantId])).rows[0]
+      ?.amount_minor;
+  const pricingOf = async (productId: string) => (await one<{ bundle_pricing: string }>("select bundle_pricing from commerce.products where id = $1", [productId])).bundle_pricing;
+
+  it("lets it into a bundle with a price of its own, never into one priced from its products", async () => {
+    const { a, computed, fixed, put } = await setup();
+    await onRequest(a.productId);
+    await expect(put(computed, a, 2)).rejects.toThrow(/bundle_components.price_on_request/);
+    await put(fixed, a, 2);
+    expect(await priceOf(fixed.variantId)).toBe("12000");
+    // A bundle with such a part cannot start taking its price from its products.
+    await expect(db.query("update commerce.products set bundle_pricing = 'computed', bundle_percent_off = 10 where id = $1", [fixed.productId])).rejects.toThrow(
+      /bundle_components.price_on_request/,
+    );
+    expect(await pricingOf(fixed.productId)).toBe("fixed");
+    expect(await priceOf(fixed.variantId)).toBe("12000");
+  });
+
+  it("refuses pricing a product on request while it is in a bundle priced from its products, naming the bundle", async () => {
+    const { a, b, computed, put } = await setup();
+    await put(computed, a, 1);
+    await put(computed, b, 1);
+    expect(await priceOf(computed.variantId)).toBe("13500");
+    const refused = await onRequest(b.productId).then(
+      () => null,
+      (error: { message: string; detail?: string }) => error,
+    );
+    expect(refused).toMatchObject({ message: expect.stringMatching(/products.price_on_request_bundle/), detail: computed.handle });
+    expect((await one<{ price_on_request: boolean }>("select price_on_request from commerce.products where id = $1", [b.productId])).price_on_request).toBe(false);
+    // Taken out of the bundle, it can be priced on request; a bundle given a price of its own lets its parts be.
+    await db.query("delete from commerce.bundle_components where component_variant_id = $1", [b.variantId]);
+    await onRequest(b.productId);
+    await db.query("update commerce.products set bundle_pricing = 'fixed', bundle_percent_off = null where id = $1", [computed.productId]);
+    await onRequest(a.productId);
+    // A save that leaves the bundle priced from its products without that part passes: it is judged at commit, on what it leaves.
+    const c = await createProduct({ storeId: computed.storeId });
+    await db.transaction(async (tx) => {
+      await tx.query("update commerce.products set bundle_pricing = 'computed', bundle_percent_off = 10 where id = $1", [computed.productId]);
+      await tx.query("delete from commerce.bundle_components where bundle_variant_id = $1", [computed.variantId]);
+      await tx.query("insert into commerce.bundle_components (store_id, bundle_variant_id, component_variant_id, quantity) values ($1, $2, $3, 2)", [
+        computed.storeId,
+        computed.variantId,
+        c.variantId,
+      ]);
+    });
+    expect(await pricingOf(computed.productId)).toBe("computed");
+  });
+
+  it("is copied with its bundles by a store made from a template and by a duplicate", async () => {
+    const { storeId, a, b, computed, fixed, put } = await setup();
+    await put(fixed, a, 2);
+    await put(computed, b, 2);
+    await onRequest(a.productId);
+    const owner = await createAccount(`on-request-owner-${counter}@example.com`);
+    const { id: cloned } = await one<{ id: string }>("select commerce.clone_store($1, $2, 'Copy', $3) as id", [storeId, `on-request-clone-${counter}`, owner]);
+    const { id: duplicated } = await one<{ id: string }>("select commerce.duplicate_store($1, $2, 'Copy', $3) as id", [storeId, `on-request-dup-${counter}`, owner]);
+    for (const copy of [cloned, duplicated]) {
+      const { rows } = await db.query<{ pricing: string; part_on_request: boolean }>(
+        `select bp.bundle_pricing as pricing, cp.price_on_request as part_on_request
+         from commerce.bundle_components bc
+         join commerce.product_variants bv on bv.id = bc.bundle_variant_id join commerce.products bp on bp.id = bv.product_id
+         join commerce.product_variants cv on cv.id = bc.component_variant_id join commerce.products cp on cp.id = cv.product_id
+         where bc.store_id = $1 order by 1`,
+        [copy],
+      );
+      expect(rows, copy).toEqual([
+        { pricing: "computed", part_on_request: false },
+        { pricing: "fixed", part_on_request: true },
+      ]);
+    }
+  });
+});

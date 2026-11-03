@@ -27,6 +27,8 @@ export type ComponentFacts = {
   vatCategory: string;
   status: string;
   active: boolean;
+  /** Its product is priced on request (D431): a part of a bundle with a price of its own only (D433). */
+  priceOnRequest: boolean;
   inStock: number;
   prices: Record<string, number>;
 };
@@ -37,7 +39,7 @@ export async function componentFacts(reader: Runner, storeId: string, variantIds
   if (variantIds.length === 0) return out;
   const ids = sql.join([...new Set(variantIds)].map((id) => sql`${id}::uuid`), sql`, `);
   const rows = await reader.execute<Row>(sql`
-    select v.id, v.product_id, v.sku, v.options, v.delivery::text as delivery, v.active, p.kind, p.vat_category, p.status::text as status,
+    select v.id, v.product_id, v.sku, v.options, v.delivery::text as delivery, v.active, p.kind, p.vat_category, p.status::text as status, p.price_on_request,
            coalesce(tl.title, tf.title, p.handle) as title, coalesce(va.in_stock, 0)::int as in_stock,
            coalesce((select jsonb_object_agg(pr.market_code, pr.amount_minor) from commerce.prices pr where pr.variant_id = v.id and pr.valid_to is null), '{}'::jsonb) as prices
     from commerce.product_variants v
@@ -60,6 +62,7 @@ export async function componentFacts(reader: Runner, storeId: string, variantIds
       vatCategory: String(row.vat_category),
       status: String(row.status),
       active: Boolean(row.active),
+      priceOnRequest: Boolean(row.price_on_request),
       inStock: Number(row.in_stock),
       prices: Object.fromEntries(Object.entries((row.prices ?? {}) as Record<string, number | string>).map(([code, amount]) => [code, Number(amount)])),
     });
@@ -108,7 +111,8 @@ export async function bundleForEdit(reader: Runner, storeId: string, productId: 
 
 /**
  * Sentences for the components a save would keep that the database would refuse (D322): not the store's, not goods sent by post, archived,
- * or of another VAT category than the bundle. Empty when all can go in.
+ * or of another VAT category than the bundle; and, in a bundle priced from its products' prices, a product priced on request (D433), whose
+ * list price that bundle would sell it at. Empty when all can go in.
  */
 export async function componentProblems(reader: Runner, storeId: string, input: ProductInput, locale: string): Promise<string[]> {
   const components = input.bundle?.components ?? [];
@@ -125,9 +129,42 @@ export async function componentProblems(reader: Runner, storeId: string, input: 
       problems.push(`${fact.title} is archived: take it out of the bundle, or bring it back first.`);
     } else if (fact.vatCategory !== input.vatCategory) {
       problems.push(`${fact.title} takes another VAT category than the bundle: a bundle and its components take one.`);
+    } else if (fact.priceOnRequest && input.bundle?.pricing === "computed") {
+      problems.push(
+        `${fact.title} is priced on request, so the bundle cannot take its price from it: give the bundle a price of its own, or untick Price on request on ${fact.title} to show its price.`,
+      );
     }
   }
   return problems;
+}
+
+/**
+ * The bundles priced from their products' prices that hold a variant of the product (D433), by their titles in the store's main language (the
+ * handle where there is none), in order: a product in one of them cannot be priced on request.
+ */
+export async function computedBundlesHolding(reader: Runner, storeId: string, productId: string, locale: string): Promise<string[]> {
+  const rows = await reader.execute<Row>(sql`
+    select distinct coalesce(tl.title, tf.title, bp.handle) as title
+    from commerce.product_variants cv
+    join commerce.bundle_components bc on bc.store_id = cv.store_id and bc.component_variant_id = cv.id
+    join commerce.product_variants bv on bv.store_id = bc.store_id and bv.id = bc.bundle_variant_id
+    join commerce.products bp on bp.store_id = bv.store_id and bp.id = bv.product_id
+    left join commerce.product_translations tl on tl.product_id = bp.id and tl.locale = ${locale}
+    left join lateral (select title from commerce.product_translations where product_id = bp.id order by locale limit 1) tf on true
+    where cv.store_id = ${storeId}::uuid and cv.product_id = ${productId}::uuid and bp.bundle_pricing = 'computed'
+    order by 1
+  `);
+  return rows.map((row) => String(row.title));
+}
+
+/** Names as a list in a sentence: "A", "A" and "B", "A", "B" and "C". */
+const listed = (names: readonly string[]): string =>
+  names.length <= 1 ? names.map((n) => `"${n}"`).join("") : `${names.slice(0, -1).map((n) => `"${n}"`).join(", ")} and "${names[names.length - 1]}"`;
+
+/** Why a product in bundles priced from their products' prices cannot be priced on request (D433), naming them and saying what to do. */
+export function onRequestInBundlesProblem(bundles: readonly string[]): string {
+  const one = bundles.length === 1;
+  return `This product is in the ${one ? "bundle" : "bundles"} ${listed(bundles)}, priced from ${one ? "its" : "their"} products' prices, so it cannot be priced on request: give ${one ? "that bundle a price of its own" : "those bundles a price of their own"} first, or leave Price on request unticked.`;
 }
 
 /** Writes a bundle's components for its one variant (D322): the list as given, in its order; the database checks them and sets a computed price at commit. */

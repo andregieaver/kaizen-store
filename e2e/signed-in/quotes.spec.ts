@@ -116,9 +116,13 @@ test("a product is priced on request from its editor", async ({ page }) => {
   const sql = testDb();
   let productId = "";
   try {
+    // Not a part of a bundle priced from its products' prices (the demo bundle's mug and tote), which is never priced on request (D433).
     const [product] = await sql`
-      select id from commerce.products where store_id = ${storeId} and kind = 'goods' and not subscription_only and id <> ${requestedProductId}
-      order by handle limit 1`;
+      select p.id from commerce.products p where p.store_id = ${storeId} and p.kind = 'goods' and not p.subscription_only and p.id <> ${requestedProductId}
+        and not exists (
+          select 1 from commerce.product_variants v join commerce.bundle_components bc on bc.store_id = v.store_id and bc.component_variant_id = v.id
+           where v.store_id = p.store_id and v.product_id = p.id)
+      order by p.handle limit 1`;
     productId = String(product.id);
   } finally {
     await sql.end();
