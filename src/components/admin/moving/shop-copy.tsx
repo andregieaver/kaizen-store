@@ -10,6 +10,9 @@ import type { CopyFeed, FeedProblem, FeedStage } from "@/lib/shopify-copy";
 
 import { useAdminText } from "../admin-text";
 
+/** The parts with no Shopify file to use instead: their own screen here is the way. */
+const SET_HERE: readonly CopyFeed[] = ["countries", "shipping", "discounts", "look", "pages", "articles", "menus"];
+
 export type CopyRow = {
   feed: CopyFeed;
   stage: FeedStage;
@@ -97,11 +100,16 @@ export function ShopCopy({ started, moving, ready, done, failed, rows, actions, 
                 {row.stage === "done" ? w.seeDone : w.see}
               </Link>
             )}
+            {!row.href && !row.problem && row.stage === "done" && row.needLook !== null && row.needLook > 0 && (
+              <Link href={row.fileHref} className="w-fit text-xs underline underline-offset-2">
+                {w.lookHere}
+              </Link>
+            )}
             {row.problem && (
               <span className={hint}>
                 {w.problems[row.problem]}{" "}
                 <Link href={row.fileHref} className="underline underline-offset-2">
-                  {w.files}
+                  {SET_HERE.includes(row.feed) ? w.setHere : w.files}
                 </Link>
               </span>
             )}

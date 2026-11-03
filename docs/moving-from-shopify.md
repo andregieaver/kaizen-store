@@ -598,8 +598,39 @@ The copy reads four more parts, in the same list and under the same *Bring it ov
 
 A copy started before this step shows the four new parts as empty; *Start again* reads them.
 
-Left for part 2 (step 5b) and later: countries, shipping and look (4.3), discounts, metafields; reviews (they live in review apps, not
-in Shopify, spike S6); a catch-up copy on move day.
+### Step 5, part 2: countries, shipping, discount codes and the look (built 3 November 2026)
+
+Four more parts, each read by one ordinary query (none has a bulk read; `src/lib/shopify-settings.ts`) and written after *Bring it
+over* only by the writer that owns it here (`src/server/shopify-settings-copy.ts`). The order is now countries, shipping, products,
+collections, customers, past orders, discount codes, pages, posts, menus, redirects, look.
+
+- **Countries**: every country of every Shopify market, added through `setMarkets()` beside the ones the store sells to. A country is
+  only added, never taken away. With *Several countries* off, none is added and the rest are counted for the owner. A new country gets
+  its own currency here, not the market's in Shopify.
+- **Shipping**: the general profile's rates as one flat rate per country (`shippingOf()`): the cheapest active rate without a condition,
+  and free above the lowest *at least this much* of a free rate. A rate by weight or by a carrier's own price, and rest of world, are left
+  out. Written by `saveShippingSettings()` only for a country the store sells to in the same currency and with no rate of its own; a
+  country whose own rate differs keeps it and is counted (*needs a look*, with the shipping page).
+- **Discount codes**: basic codes (a whole percentage, a fixed amount on the order, free shipping), for everything, for products by
+  handle or for collections by their category here, with their minimum, dates, use limit and combinations, written by `saveDiscount()`
+  **switched off** until the move. Left out and counted: buy X get Y and app discounts, codes for some customers only, an amount on each
+  item, variants, a part percentage, a free shipping cap, expired codes, and a code naming a product or category that is not here. A code
+  already here is left alone. Up to 20 pages of 25 codes.
+- **The look**: the live theme's `config/settings_data.json` (its first colour scheme's button, background and text, else the older
+  settings' names; its heading and body fonts) given to the AI manager's own `design_look`, which makes every text readable and adds
+  *{theme} · Shopify* to the theme library, **not live**. A font Google Fonts does not have (Shopify's own library) stays the store's.
+  The logo is not brought yet.
+- A part with no Shopify file to use instead links to its own screen here (*Set it up here*), and one done with things left out links
+  there too (*Look at it*).
+- Found by the test: a code on categories alone sent `saveDiscount()` an empty product list, which its check read as `in ()`; it now
+  looks products up only when there are some, and the copy sends no list, as the editor does. One code the writer cannot take is counted
+  and never holds up the rest.
+
+The queries for shipping, codes and the look were written from Shopify's reference and are first met on a real shop when the owner
+presses *Start again*; one Shopify refuses says so on its own line and the rest goes on.
+
+Left for later: the logo and favicon, metafields, gift cards and the email list (step 8); reviews (they live in review apps, not in
+Shopify, spike S6); a catch-up copy on move day.
 
 **How steps 1 and 2 reached production.** A new admin page is a new entry in the admin map, and the map is part of the AI manager's
 prompt, so the agents' eval replay (D391) fails until the eval is recorded again on production; a push with a migration waits for every

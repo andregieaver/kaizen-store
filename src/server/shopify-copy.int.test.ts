@@ -68,6 +68,35 @@ const shopify = (async (_input: string | URL | Request, init?: RequestInit) => {
   }
   if (body.query.includes("KaizenMenus"))
     return reply({ menus: { nodes: [{ handle: "main-menu", title: "Copied main menu", items: [{ title: "Hats", type: "COLLECTION", url: "/collections/hats", items: [] }, { title: "Our story", type: "PAGE", url: "/pages/our-story", items: [] }, { title: "News", type: "BLOG", url: "/blogs/news", items: [] }] }] } });
+  if (body.query.includes("KaizenCopyMarkets"))
+    return reply({ markets: { nodes: [{ name: "Norway", regions: { nodes: [{ code: "NO" }] }, currencySettings: { baseCurrency: { currencyCode: "NOK" } } }, { name: "Sweden", regions: { nodes: [{ code: "SE" }] }, currencySettings: { baseCurrency: { currencyCode: "SEK" } } }] } });
+  if (body.query.includes("KaizenCopyShipping")) {
+    const rate = (amount: string, currencyCode: string, conditions: unknown[] = []) => ({ active: true, rateProvider: { price: { amount, currencyCode } }, methodConditions: conditions });
+    const zone = (code: string, ...methods: unknown[]) => ({ zone: { countries: [{ code: { countryCode: code, restOfWorld: false } }] }, methodDefinitions: { nodes: methods } });
+    const free = { field: "TOTAL_PRICE", operator: "GREATER_THAN_OR_EQUAL_TO", conditionCriteria: { amount: "1000.0", currencyCode: "NOK" } };
+    return reply({ deliveryProfiles: { nodes: [{ default: true, profileLocationGroups: [{ locationGroupZones: { nodes: [zone("NO", rate("79.0", "NOK"), rate("0.0", "NOK", [free])), zone("SE", rate("59.0", "SEK"))] } }] }] } });
+  }
+  if (body.query.includes("KaizenCopyDiscounts")) {
+    const code = (c: string, gets: unknown, extra: Record<string, unknown> = {}) => ({
+      codeDiscount: { __typename: "DiscountCodeBasic", title: c, status: "ACTIVE", startsAt: "2026-01-01T00:00:00Z", endsAt: null, usageLimit: null, appliesOncePerCustomer: false, codes: { nodes: [{ code: c }] }, combinesWith: {}, context: { __typename: "DiscountBuyerSelectionAll" }, minimumRequirement: null, customerGets: gets, ...extra },
+    });
+    // Two pages: the copy follows Shopify's cursor.
+    if (!body.variables?.after)
+      return reply({ codeDiscountNodes: { pageInfo: { hasNextPage: true, endCursor: "c1" }, nodes: [code("COPY10", { value: { __typename: "DiscountPercentage", percentage: 0.1 }, items: { __typename: "AllDiscountItems" } })] } });
+    return reply({
+      codeDiscountNodes: {
+        pageInfo: { hasNextPage: false, endCursor: null },
+        nodes: [
+          code("COPYHATS", { value: { __typename: "DiscountAmount", amount: { amount: "50.0", currencyCode: "NOK" }, appliesOnEachItem: false }, items: { __typename: "DiscountCollections", collections: { nodes: [{ title: "Hats" }] } } }, { minimumRequirement: { __typename: "DiscountMinimumSubtotal", greaterThanOrEqualToSubtotal: { amount: "300.0", currencyCode: "NOK" } } }),
+          { codeDiscount: { __typename: "DiscountCodeBxgy", codes: { nodes: [{ code: "COPYBXGY" }] } } },
+        ],
+      },
+    });
+  }
+  if (body.query.includes("KaizenCopyLook")) {
+    const settings = `/* made by Shopify */ ${JSON.stringify({ current: { type_header_font: "helvetica_n7", color_schemes: { "scheme-1": { settings: { background: "#FFFFFF", text: "#121212", button: "#1F6F5C" } } } } })}`;
+    return reply({ themes: { nodes: [{ name: "Dawn", files: { nodes: [{ body: { content: settings } }] } }] } });
+  }
   if (body.query.includes("KaizenBulkPoll")) {
     const n = Number(String(body.variables?.id).split("/").pop());
     return reply({ node: { status: "COMPLETED", errorCode: null, url: `https://bulk.example/${started[n - 1]}` } });
@@ -98,6 +127,10 @@ beforeAll(async () => {
     insert into commerce.shop_moves (store_id, source, shop_domain, shop_name, status, scopes, access_token, connected_by, connected_at)
     values (${fx.storeId}::uuid, 'shopify', ${SHOP}, 'Kaizen Copy', 'connected', 'read_products', ${encryptSecret("shpca_copy", key)}, ${owner.account.id}::uuid, now())
   `);
+  // Shipping as Shopify has it: the store starts with no rate of its own, and sells to Norway only.
+  await db().execute(sql`delete from commerce.shipping_rates where store_id = ${fx.storeId}::uuid`);
+  await db().execute(sql`update commerce.markets set active = (code = 'NO') where store_id = ${fx.storeId}::uuid`);
+  ({ owner } = await membersOf(fx));
 });
 
 afterAll(async () => {
@@ -111,6 +144,10 @@ describe("copying a Shopify shop", () => {
     expect(started).toEqual(["products", "collections", "customers", "orders", "pages", "articles", "redirects"]);
     const view = (await copy.copyView(owner))!;
     expect(Object.fromEntries(Object.entries(view.state.feeds).map(([k, v]) => [k, [v.stage, v.count]]))).toEqual({
+      countries: ["checked", 2],
+      shipping: ["checked", 2],
+      discounts: ["checked", 3],
+      look: ["checked", 1],
       products: ["checked", 1],
       collections: ["checked", 1],
       customers: ["checked", 1],
@@ -125,13 +162,15 @@ describe("copying a Shopify shop", () => {
     expect(view.jobs.products?.options).toMatchObject({ pricesIncludeVat: true, priceMarket: "NO", redirects: true });
     const [{ n }] = await db().execute<Row>(sql`select count(*)::int as n from commerce.products where store_id = ${fx.storeId}::uuid and handle = 'copied-wool-hat'`);
     expect(n).toBe(0);
+    const [{ codes }] = await db().execute<Row>(sql`select count(*)::int as codes from commerce.discount_codes where store_id = ${fx.storeId}::uuid`);
+    expect(codes).toBe(0);
   });
 
   it("brings everything over in order, through the imports, the order tied to its customer by email", async () => {
     expect(await copy.bringItOver(owner)).toEqual({ ok: true });
     await settle(owner);
     const view = (await copy.copyView(owner))!;
-    expect(Object.values(view.state.feeds).map((f) => f.stage)).toEqual(["done", "done", "done", "done", "done", "done", "done", "done"]);
+    expect(Object.values(view.state.feeds).map((f) => f.stage)).toEqual(Array(12).fill("done"));
     expect(copyDone(view.state)).toBe(true);
     const [product] = await db().execute<Row>(sql`select handle from commerce.products where store_id = ${fx.storeId}::uuid and handle = 'copied-wool-hat'`);
     expect(product?.handle).toBe("copied-wool-hat");
@@ -165,6 +204,27 @@ describe("copying a Shopify shop", () => {
     // The menu through the menu editor's writer, linked to the category, the page and the blog.
     const [menu] = await db().execute<Row>(sql`select items from commerce.menus where store_id = ${fx.storeId}::uuid and name = 'Copied main menu'`);
     expect((menu!.items as Row[]).map((i) => i.link)).toEqual([{ kind: "category", slug: "hats" }, { kind: "page", slug: "our-story" }, { kind: "blog" }]);
+    // Sweden added beside Norway, by the countries' own writer.
+    const markets = await db().execute<Row>(sql`select code from commerce.markets where store_id = ${fx.storeId}::uuid and active order by code`);
+    expect(markets.map((m) => m.code)).toEqual(["NO", "SE"]);
+    expect([view.state.feeds.countries.made, view.state.feeds.countries.refused]).toEqual([2, 0]);
+    // A flat rate per country, free above Shopify's threshold, each in its own currency.
+    const rates = await db().execute<Row>(sql`select market_code, currency, amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${fx.storeId}::uuid order by market_code`);
+    expect(rates.map((r) => [r.market_code, r.currency, Number(r.amount_minor), r.free_over_minor === null ? null : Number(r.free_over_minor)])).toEqual([
+      ["NO", "NOK", 7900, 100000],
+      ["SE", "SEK", 5900, null],
+    ]);
+    // The codes switched off until the move; the one on a collection on its category; buy X get Y stays behind, counted.
+    const codes = await db().execute<Row>(sql`select code, kind, percent, amounts, min_subtotals, term_ids, active from commerce.discount_codes where store_id = ${fx.storeId}::uuid order by code`);
+    expect(codes.map((c) => [c.code, c.kind, c.active])).toEqual([
+      ["COPY10", "percent", false],
+      ["COPYHATS", "fixed", false],
+    ]);
+    expect([codes[0].percent, codes[1].amounts, codes[1].min_subtotals, (codes[1].term_ids as string[]).length]).toEqual([10, { NO: 5000 }, { NO: 30000 }, 1]);
+    expect([view.state.feeds.discounts.made, view.state.feeds.discounts.refused]).toEqual([2, 1]);
+    // The look as a theme in the library, not live; Shopify's own font stays the store's.
+    const looks = await db().execute<Row>(sql`select title, live from commerce.store_theme_installs where store_id = ${fx.storeId}::uuid and title = 'Dawn · Shopify'`);
+    expect(looks.map((l) => l.live)).toEqual([false]);
   });
 
   it("says when Shopify refuses a feed and goes on with the rest; a tick while another holds the lease changes nothing", async () => {

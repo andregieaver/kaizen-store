@@ -5,6 +5,7 @@ import { readShopifyOrders } from "./order-history";
 import { detectFormat } from "./product-csv-shopify";
 import { readRedirectFile } from "./redirect-csv";
 import {
+  COPY_FEEDS,
   EMPTY_COPY,
   collectionsFile,
   directItems,
@@ -177,14 +178,16 @@ describe("the copy's state", () => {
   });
 
   it("is ready when every feed is checked or had nothing, and applies in order, customers before orders", () => {
-    const checked = at({ products: { stage: "checked" }, collections: { stage: "checked" }, customers: { stage: "checked" }, orders: { stage: "checked" }, pages: { stage: "empty" }, articles: { stage: "empty" }, menus: { stage: "empty" }, redirects: { stage: "empty" } });
+    const checked = at({ products: { stage: "checked" }, collections: { stage: "checked" }, customers: { stage: "checked" }, orders: { stage: "checked" }, pages: { stage: "empty" }, articles: { stage: "empty" }, menus: { stage: "empty" }, redirects: { stage: "empty" }, countries: { stage: "empty" }, shipping: { stage: "empty" }, discounts: { stage: "empty" }, look: { stage: "empty" } });
     expect([copyReady(checked), copyMoving(checked), copyDone(checked)]).toEqual([true, false, false]);
     expect(nextToApply(checked)).toBeNull();
     const applying = { ...checked, apply: true };
     expect([copyReady(applying), nextToApply(applying), copyMoving(applying)]).toEqual([false, "products", true]);
-    expect(nextToApply(at({ products: { stage: "applying" }, customers: { stage: "checked" } }, true))).toBeNull();
-    expect(nextToApply(at({ products: { stage: "done" }, collections: { stage: "empty" }, customers: { stage: "failed" }, orders: { stage: "checked" } }, true))).toBe("orders");
-    const settled = (stage: "done" | "empty") => Object.fromEntries(["products", "collections", "customers", "orders", "pages", "articles", "menus", "redirects"].map((f) => [f, { stage }]));
+    expect(nextToApply(at({ countries: { stage: "done" }, shipping: { stage: "empty" }, products: { stage: "applying" }, customers: { stage: "checked" } }, true))).toBeNull();
+    // The countries come first: a price, a rate and a code are per country.
+    expect(nextToApply(at({ countries: { stage: "checked" }, products: { stage: "checked" } }, true))).toBe("countries");
+    expect(nextToApply(at({ countries: { stage: "empty" }, shipping: { stage: "done" }, products: { stage: "done" }, collections: { stage: "empty" }, customers: { stage: "failed" }, orders: { stage: "checked" } }, true))).toBe("orders");
+    const settled = (stage: "done" | "empty") => Object.fromEntries(COPY_FEEDS.map((f) => [f, { stage }]));
     expect(copyDone(at({ ...settled("done"), orders: { stage: "failed" } }, true))).toBe(true);
     expect(copyReady(at(settled("empty")))).toBe(false);
   });
