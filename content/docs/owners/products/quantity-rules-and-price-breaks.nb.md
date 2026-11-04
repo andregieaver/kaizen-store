@@ -1,6 +1,6 @@
 ---
 title: Antallsregler og pris etter antall
-summary: Selg en variant fra et minste antall, opp til et høyeste antall eller i pakker, gi lavere stykkpris fra et visst antall, og velg hvordan kundene velger antall.
+summary: Selg en variant fra et minste antall, opp til et høyeste antall eller i multipler, gi lavere stykkpris fra et visst antall, og velg hvordan kundene velger antall.
 track: owners
 section: products
 kind: how-to
@@ -13,7 +13,7 @@ checked: 2026-11-04
 sources: [D323, D430, D321]
 ---
 
-## Selg i pakker, eller fra et minste antall
+## Selg i multipler, eller fra et minste antall
 
 Åpne produktet og gå til **Pris og lager**. Under raden til varianten åpner du **Hvor mange om gangen for …**:
 

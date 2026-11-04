@@ -70,8 +70,9 @@ Codes in no zone are *Rest of country*. A code belongs to the zone with the most
 a code falls in and which methods have a rate there.
 
 At checkout, shoppers in a country with zones give their postal code before they pay, and the cart shows *From* a price until they do.
-If the delivery address turns out to have another postal code than the one priced, the order is marked *Postal code differs from the
-address* in the Orders list. The charge is never changed.
+If the delivery address turns out to have another postal code than the one priced, the order says so, so you can check the delivery
+before sending; the charge is never changed. In the Orders list, **Fulfilment** in the filters finds these orders with *Postal code
+differs from the address*.
 
 ## Profiles: own rates for some products
 

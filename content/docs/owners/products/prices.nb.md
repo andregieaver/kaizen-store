@@ -21,7 +21,7 @@ sources: [D335, D429, D431, D63]
 - **Prisene er inkludert mva.** Det du skriver inn, er det kundene betaler. Merverdiavgiften i prisen regnes ut fra produktets
   mva-kategori og landet; se [Mva.](/docs/owners/markets-and-tax/vat).
 - **Hvert land har sin egen pris, i sin egen valuta.** Ingenting regnes om når du skriver den inn.
-- **Et land uten pris selger ikke produktet.** Det vises ikke for kundene der.
+- **Et land uten pris selger ikke produktet.** Produktet vises ikke for kundene der.
 
 Har produktet størrelser og farger, har hver variant sin egen pris: se [Varianter og valg](/docs/owners/products/variants-and-options).
 
@@ -36,7 +36,7 @@ aldri.
 
 - **Mange produkter på en gang:** kryss dem av under [Produkter](/admin/{store}/products) og trykk **Endre pris**, med en prosent eller
   et beløp. **Se over** viser de første nye prisene før noe endres. Som standard endres bare prisene i hovedlandet ditt.
-- **Et tilbud uten å endre prisen**, for eksempel 20 % på en kategori i en helg eller en kode: se
+- **Et tilbud uten å endre prisen**, for eksempel 20 % avslag på en kategori en helg, eller en rabattkode: se
   [Rabattkoder og kampanjer](/docs/owners/marketing/discount-codes-and-campaigns).
 - **En lavere pris når kunden kjøper flere:** se [Antallsregler og pris etter antall](/docs/owners/products/quantity-rules-and-price-breaks).
 
@@ -106,8 +106,8 @@ hånd**, eller **Regnes ut fra** et annet land:
 - **Mva.**: **Behold prisen uten mva. lik** eller **Behold prisen med mva. lik**, for land med ulike mva-satser.
 - **Rund av til** og **Prisslutt (valgfritt)**, for eksempel 9 eller 0,90: prisene slutter slik, rundet opp.
 
-Trykk **Vis fem priser** for å se hva fem produkter ville kostet, og så **Lagre**. Når en pris i grunnlandet endres, følger prisene
-regelen har laget, etter. Mellom to valutaer trenger begge en valutakurs under Språk og valutaer.
+Trykk **Vis fem priser** for å se hva fem produkter ville kostet, og så **Lagre**. Når en pris i grunnlandet endres, endres også
+prisene regelen har laget. Mellom to valutaer trenger begge en valutakurs under Språk og valutaer.
 
 I produktredigeringen står det *Etter landets prisregel* under en pris regelen har regnet ut. En pris du skriver inn der selv, er din:
 regelen lar den være. **Skriv inn for hånd igjen** avslutter regelen og beholder prisene den har laget. Se

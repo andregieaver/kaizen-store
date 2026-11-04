@@ -80,7 +80,7 @@ A bundle is never a campaign's free product, and it cannot go in a subscription 
 ## Bundles and price on request
 
 A product with **Price on request** can only be in a bundle with **A price of its own**. A bundle priced from its products would show and
-charge the price you keep for quotes, so:
+charge the price you keep as your guide for quotes, so:
 
 - while **The products' prices less a percentage** is chosen, the bundle's list marks such a product, and the bundle is not saved until
   you give it a price of its own or show that product's price;

@@ -150,8 +150,8 @@ store's clock. Tick **Briefing** for each person, and press **Save**.
 
 It holds:
 
-- paid orders, net sales and refunds without VAT, and **Profit before fixed costs, excl. VAT**, each beside the period before. Profit is
-  marked *estimated* where it rests on estimates, and left out while too few sales have a cost price;
+- paid orders and net sales without VAT, each beside the period before, refunds, and **Profit before fixed costs, excl. VAT**. Profit
+  is marked *estimated* where it rests on estimates, and left out while too few sales have a cost price;
 - returns requested and open, orders to send, variants at or below their stock level and conversations waiting in support;
 - what the analytics found, what the store checkup found, and your targets;
 - a note written by AI from those facts, when your store has an AI text model. It states no figure: check before you act.

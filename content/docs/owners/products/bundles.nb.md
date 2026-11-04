@@ -79,7 +79,7 @@ En pakke er aldri gratisproduktet i en kampanje, og den kan ikke være i en abon
 ## Pakker og pris på forespørsel
 
 Et produkt med **Pris på forespørsel** kan bare være i en pakke med **En egen pris**. En pakke som er priset etter produktene, ville vist
-og tatt betalt med prisen du holder av til tilbud, så:
+og tatt betalt med prisen du bruker som rettesnor for tilbud, så:
 
 - mens **Produktenes priser minus en prosent** er valgt, merker pakkens liste et slikt produkt, og pakken lagres ikke før du gir den en
   egen pris eller viser prisen på det produktet;

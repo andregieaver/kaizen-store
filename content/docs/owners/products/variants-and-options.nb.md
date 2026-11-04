@@ -54,7 +54,7 @@ Under hver rad er det tre linjer du kan åpne:
 
 - **Lagerregler for …**: fortsett å selge når varen er utsolgt, og et varsel når lageret er lavt. Se
   [Lager og lagersteder](/docs/owners/stock/stock-and-locations) og [Forhåndsbestilling og restordre](/docs/owners/stock/pre-orders-and-backorders).
-- **Hvor mange om gangen for …**: et minste antall, et høyeste antall og pakker. Se
+- **Hvor mange om gangen for …**: et minste antall, et høyeste antall og salg i multipler. Se
   [Antallsregler og pris etter antall](/docs/owners/products/quantity-rules-and-price-breaks).
 - **Strekkode, kostpris, vekt, innhold og toll for …**: **Strekkode (GTIN/EAN)**, **Kostpris per enhet** (ekskl. mva.),
   **Vekt i gram**, **Tolltariffnummer (HS-kode)**, **Opprinnelsesland**, og innholdet for en pris per kg eller liter.
