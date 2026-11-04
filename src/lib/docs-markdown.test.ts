@@ -68,6 +68,28 @@ describe("the docs' Markdown: what it reads (D442)", () => {
     expect(inline("line one\\\nline two")).toEqual([{ type: "text", value: "line one" }, { type: "break" }, { type: "text", value: "line two" }]);
   });
 
+  it("reads emphasis, links and code that run over a line's end, as one paragraph (a soft break is a space)", () => {
+    expect(inline("Press **Save the\ntax settings** now")).toEqual([
+      { type: "text", value: "Press " },
+      { type: "strong", children: [{ type: "text", value: "Save the tax settings" }] },
+      { type: "text", value: " now" },
+    ]);
+    expect(inline("See [the plans\npage](/docs/owners/getting-started/choose-a-plan).")).toEqual([
+      { type: "text", value: "See " },
+      { type: "link", href: { kind: "doc", path: "owners/getting-started/choose-a-plan", anchor: null }, children: [{ type: "text", value: "the plans page" }] },
+      { type: "text", value: "." },
+    ]);
+    expect(inline("a **strong\\\nbroken** b")).toEqual([
+      { type: "text", value: "a " },
+      { type: "strong", children: [{ type: "text", value: "strong" }, { type: "break" }, { type: "text", value: "broken" }] },
+      { type: "text", value: " b" },
+    ]);
+    // A link or a problem names the line it is on, not the paragraph's first.
+    const doc = parseMarkdown("One line\nand [a link](/docs/x) on the second\nand <b>html</b> on the third", 10);
+    expect(doc.links.map((l) => l.line)).toEqual([11]);
+    expect(doc.problems.map((p) => p.line)).toEqual([12]);
+  });
+
   it("reads lists, nested and ordered, and a blank line between items", () => {
     const [list] = blocks("1. First\n2. Second\n   - inner a\n   - inner b\n\n3. Third\n   continued");
     expect(list).toMatchObject({ type: "list", ordered: true, start: 1 });
