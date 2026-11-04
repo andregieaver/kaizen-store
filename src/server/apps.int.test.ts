@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -10,6 +12,10 @@ vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typ
 const SITE = "https://flow.example";
 process.env.SITE_URL = SITE;
 process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
+// An app's events address is a made-up host, and its deliveries go to a server on this machine: the address guard lets tests do both only
+// with this switch (ignored on Vercel). The services' own sends (Zapier, Make, Slack) of other tests' stores never leave this machine.
+process.env.REPLICATE_ALLOW_PRIVATE = "1";
+vi.stubGlobal("fetch", async () => new Response("ok", { status: 200 }));
 
 const { closeDb, db } = await import("@/db/client");
 const { pkceChallenge } = await import("@/lib/oauth-pkce");
@@ -19,6 +25,10 @@ const oauth = await import("./oauth");
 const { registerClient } = await import("./oauth-clients");
 const { installable, installStores, readAuthorization } = await import("./oauth-authorize");
 const apps = await import("./developer-apps");
+const endpoints = await import("./webhook-endpoints");
+const integrations = await import("./integrations");
+const { encryptSecret } = await import("@/lib/secret-box");
+const { verifyWebhook, SIGNATURE_HEADER, TIMESTAMP_HEADER, TOPIC_HEADER } = await import("@/lib/webhook-signature");
 const { POST: tokenRoute } = await import("@/app/api/oauth/token/route");
 const adminRoute = await import("@/app/api/admin/v1/[...path]/route");
 const { POST: mcpRoute } = await import("@/app/api/mcp/route");
@@ -230,5 +240,125 @@ describe("an app for many stores (D441)", () => {
     expect(await oauth.removeInstallation(await membershipOf(store.slug, store.account), second.grantId)).toBe(true);
     expect((await api("GET", "products", fresh)).status).toBe(401);
     expect((await auditRows(store.id, "oauth.app_removed")).length).toBeGreaterThan(0);
+  });
+});
+
+describe("an app's events (D441 D2)", () => {
+  const received: { topic: string; body: string; signature: string; timestamp: string }[] = [];
+  const receiver = http.createServer((request, response) => {
+    let body = "";
+    request.on("data", (chunk) => (body += chunk));
+    request.on("end", () => {
+      received.push({ topic: String(request.headers[TOPIC_HEADER.toLowerCase()]), body, signature: String(request.headers[SIGNATURE_HEADER.toLowerCase()]), timestamp: String(request.headers[TIMESTAMP_HEADER.toLowerCase()]) });
+      response.writeHead(200).end("ok");
+    });
+  });
+  let localUrl = "";
+  beforeAll(async () => {
+    await new Promise<void>((resolve) => receiver.listen(0, "127.0.0.1", resolve));
+    localUrl = `http://127.0.0.1:${(receiver.address() as AddressInfo).port}/events`;
+  });
+  afterAll(() => receiver.close());
+
+  /** An app with an events address and the topics it wants. */
+  async function eventsApp(scopes: string[], topics: string[]) {
+    const read = readAppForm(
+      formOf({ name: `Apps test ${randomBytes(3).toString("hex")}`, redirect_uris: REDIRECT, scopes, distribution: "unlisted", webhook_url: "https://hooks.app.example/events", webhook_topics: topics }),
+    );
+    if (!read.ok) throw new Error(JSON.stringify(read.problems));
+    const made = await apps.createApp(developer, read.app);
+    if (!made.ok) throw new Error(JSON.stringify(made.problems));
+    return { id: made.id, clientId: made.shown.clientId, secret: made.shown.secret!, webhookSecret: made.shown.webhookSecret!, read: read.app };
+  }
+  const endpointOf = async (grantId: string) =>
+    (await db().execute<Row>(sql`select id, topics, enabled, disabled_reason, created_by from commerce.webhook_endpoints where app_grant_id = ${grantId}::uuid`))[0];
+  const deliveries = async (endpointId: string) =>
+    db().execute<Row>(sql`
+      select event, status, last_error, subject_id, next_attempt_at > now() + interval '47 hours' as later
+      from commerce.integration_deliveries where endpoint_id = ${endpointId}::uuid order by created_at, event
+    `);
+
+  it("gives each installation an endpoint of its own with the topics its scopes read, never the owner's to see", async () => {
+    const app = await eventsApp(["products:read"], ["order.paid", "product.updated", "customer.updated"]);
+    const { grantId } = await install(app, store.account, store.id);
+    const endpoint = await endpointOf(grantId);
+    expect(endpoint).toBeDefined();
+    // order.paid and customer.updated need orders:read and customers:read, which it does not hold; customer.erased always goes.
+    expect([...(endpoint.topics as string[])].sort()).toEqual(["customer.erased", "product.updated"]);
+    expect(endpoint.created_by).toBe(store.account.id);
+    expect((await endpoints.listEndpoints(store.id)).map((e) => e.id)).not.toContain(endpoint.id);
+    const owner = await membershipOf(store.slug, store.account);
+    expect(await endpoints.removeEndpoint(owner, String(endpoint.id))).toBe(false);
+    expect(await endpoints.switchEndpoint(owner, String(endpoint.id), false)).toBe(false);
+    expect((await endpointOf(grantId)).enabled).toBe(true);
+
+    // The app's topics change: every installation's endpoint follows at once.
+    const changed = await apps.updateApp(developer, app.id, { ...app.read, webhookUrl: null, webhookTopics: ["product.created", "order.paid"] });
+    expect(changed.ok).toBe(true);
+    expect([...((await endpointOf(grantId)).topics as string[])].sort()).toEqual(["customer.erased", "product.created"]);
+  });
+
+  it("keeps an installation's scopes until an owner gives it what its app asks for now, and only what its installer may give", async () => {
+    const app = await eventsApp(["products:read"], ["order.paid", "product.updated"]);
+    const { grantId } = await install(app, store.account, store.id);
+    expect((await oauth.installationAsks(store)).has(grantId)).toBe(false);
+    const grown = await apps.updateApp(developer, app.id, { ...app.read, scopes: [...app.read.scopes, "orders:read"], webhookUrl: null });
+    expect(grown.ok).toBe(true);
+    expect((await oauth.installationAsks(store)).get(grantId)).toEqual({ more: ["orders:read"], installerCan: true });
+    // Not yet: the installation still holds only what it was given.
+    expect([...((await endpointOf(grantId)).topics as string[])].sort()).toEqual(["customer.erased", "product.updated"]);
+    const staff = await makeAccount("Staff approver");
+    await addMember(store.id, staff.id, "admin");
+    expect(await oauth.approveInstallationScopes(await membershipOf(store.slug, staff, "admin"), grantId)).toEqual({ ok: false, reason: "gone" });
+    expect(await oauth.approveInstallationScopes(await membershipOf(store.slug, store.account), grantId)).toEqual({ ok: true, added: ["orders:read"] });
+    expect((await oauth.installationAsks(store)).has(grantId)).toBe(false);
+    expect([...((await endpointOf(grantId)).topics as string[])].sort()).toEqual(["customer.erased", "order.paid", "product.updated"]);
+    expect((await auditRows(store.id, "oauth.app_scopes_approved")).length).toBeGreaterThan(0);
+  });
+
+  it("sends app.uninstalled at once and store.erase_requested 48 hours later to a removed app, nothing else, and neither once it is installed again", async () => {
+    const app = await eventsApp(["products:read"], ["product.updated"]);
+    const { grantId } = await install(app, store.account, store.id);
+    const endpoint = await endpointOf(grantId);
+    // The deliveries go to the server on this machine instead of the app's made-up host.
+    await db().execute(sql`
+      update commerce.webhook_endpoints set url_encrypted = ${encryptSecret(localUrl, Buffer.from(process.env.SETTINGS_ENCRYPTION_KEY!, "base64"))}
+      where id = ${String(endpoint.id)}::uuid
+    `);
+    expect(await oauth.removeInstallation(await membershipOf(store.slug, store.account), grantId)).toBe(true);
+    expect(await endpointOf(grantId)).toMatchObject({ enabled: false, disabled_reason: "uninstalled" });
+    expect((await deliveries(String(endpoint.id))).map((d) => [d.event, d.status, d.later])).toEqual([
+      ["app.uninstalled", "pending", false],
+      ["store.erase_requested", "pending", true],
+    ]);
+    // A product saved now is not sent to it: its endpoint is off.
+    await db().execute(sql`select commerce.queue_integration_event(${store.id}::uuid, 'product.updated', gen_random_uuid())`);
+    expect((await deliveries(String(endpoint.id))).length).toBe(2);
+
+    received.length = 0;
+    await integrations.deliverDue(500);
+    const sent = received.filter((r) => r.topic === "app.uninstalled");
+    expect(sent).toHaveLength(1);
+    expect(verifyWebhook({ secret: app.webhookSecret, signature: sent[0].signature, timestamp: sent[0].timestamp, body: sent[0].body })).toBe(true);
+    const body = JSON.parse(sent[0].body) as { topic: string; data: { installation: { id: string; client_id: string; removed_at: string } } };
+    expect(body.topic).toBe("app.uninstalled");
+    expect(body.data.installation).toMatchObject({ id: grantId, client_id: app.clientId });
+    expect(received.some((r) => r.topic === "store.erase_requested")).toBe(false);
+
+    // Installed again within the 48 hours: the store's data is not to be erased after all.
+    const again = await install(app, store.account, store.id);
+    expect((await deliveries(String(endpoint.id))).find((d) => d.event === "store.erase_requested")).toMatchObject({ status: "failed", last_error: "Installed again" });
+    expect(await endpointOf(again.grantId)).toMatchObject({ enabled: true, disabled_reason: null });
+  });
+
+  it("ends the installations of a person who leaves the store, and tells the app", async () => {
+    const app = await eventsApp(["products:read"], ["product.updated"]);
+    const leaver = await makeAccount("Leaver");
+    await addMember(store.id, leaver.id, "owner");
+    const { grantId } = await install(app, leaver, store.id);
+    const endpoint = await endpointOf(grantId);
+    await db().execute(sql`delete from commerce.store_members where store_id = ${store.id}::uuid and account_id = ${leaver.id}::uuid`);
+    expect((await db().execute<Row>(sql`select revoked_at is not null as ended from commerce.oauth_grants where id = ${grantId}::uuid`))[0].ended).toBe(true);
+    expect((await deliveries(String(endpoint.id))).map((d) => d.event)).toEqual(["app.uninstalled", "store.erase_requested"]);
   });
 });

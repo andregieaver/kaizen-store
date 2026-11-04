@@ -8,7 +8,7 @@ import { API_POWERS, isApiPower } from "./admin-api";
 import { EVENTS, type IntegrationEvent } from "./integrations";
 import { clientNameProblem, normaliseScopes, OAUTH_SCOPES, redirectUriProblem, safeClientName, scopeHeld, STORES_READ, URI_MAX, type OAuthScope } from "./oauth";
 import type { PermissionKey } from "./permission-keys";
-import { topicOf } from "./webhook-topics";
+import { SUBJECT_READ_AREA, topicOf } from "./webhook-topics";
 
 /** The developer terms an account accepts to make apps (`/docs/developers/apps/developer-terms`): a draft until legal review (the spec's section 5). */
 export const DEVELOPER_TERMS_VERSION = "2026-11-04";
@@ -94,30 +94,10 @@ export function appMayCall(grantScopes: readonly string[], operation: { scope: s
 // Events (D2)
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/** The area a topic's subject is read in: an installation is sent a topic only while its scopes read that area. */
-const SUBJECT_AREA: Record<string, string> = {
-  order: "orders",
-  subscription: "orders",
-  return: "orders",
-  withdrawal: "orders",
-  fulfilment: "orders",
-  refund: "orders",
-  draft: "orders",
-  customer: "customers",
-  erasure: "customers",
-  product: "products",
-  stock: "products",
-  inventory: "products",
-  support: "support",
-  discount: "marketing",
-  gift_card: "marketing",
-  review: "marketing",
-};
-
 /** The scope a topic needs (`orders:read`, …), or null for one no app may be sent. */
 export function topicScope(topic: string): OAuthScope | null {
   const subject = topicOf(topic)?.subject;
-  const area = subject ? SUBJECT_AREA[subject] : undefined;
+  const area = subject ? SUBJECT_READ_AREA[subject] : undefined;
   return area ? (`${area}:read` as OAuthScope) : null;
 }
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { DISCOUNT_KINDS } from "./discounts";
-import { EVENTS, isServiceEvent, type IntegrationEvent } from "./integrations";
+import { APP_EVENTS, EVENTS, isServiceEvent, type AppEvent, type IntegrationEvent } from "./integrations";
 import { DELIVERIES, PRODUCT_KINDS } from "./product-input";
 import { VAT_KINDS } from "./vat-treatment";
 import { ID_HEADER, PAYLOAD_VERSION, SIGNATURE_HEADER, TIMESTAMP_HEADER, TOLERANCE_SECONDS, TOPIC_HEADER } from "./webhook-signature";
@@ -222,6 +222,12 @@ export const WEBHOOK_SUBJECTS = {
     updated_at: when.describe("When its stock last moved."),
     admin_url: adminUrl,
   }),
+  // An app's installation on the store (D441 D2): what app.uninstalled and store.erase_requested are about.
+  installation: z.object({
+    id: id.describe("The installation's id, as the app was given it when it was installed (the grant)."),
+    client_id: z.string().describe("The app's client ID."),
+    removed_at: when.describe("When the app was removed from the store."),
+  }),
 } as const;
 
 export type WebhookSubjectName = keyof typeof WEBHOOK_SUBJECTS;
@@ -229,7 +235,7 @@ export type WebhookSubjectName = keyof typeof WEBHOOK_SUBJECTS;
 export type WebhookSubject<S extends WebhookSubjectName> = z.input<(typeof WEBHOOK_SUBJECTS)[S]>;
 
 /** The subject each topic is about. */
-const SUBJECT_OF: Record<IntegrationEvent, WebhookSubjectName> = {
+const SUBJECT_OF: Record<IntegrationEvent | AppEvent, WebhookSubjectName> = {
   "order.paid": "order",
   "order.sent": "order",
   "order.cancelled": "order",
@@ -260,13 +266,41 @@ const SUBJECT_OF: Record<IntegrationEvent, WebhookSubjectName> = {
   "subscription.payment_failed": "subscription",
   "gift_card.issued": "gift_card",
   "review.created": "review",
+  "app.uninstalled": "installation",
+  "store.erase_requested": "installation",
 };
 
-/** Who may be sent a topic: the services (Zapier, Make and Slack, D41) and an owner's own endpoints (D354). */
-export type WebhookReceiver = "services" | "endpoints";
+/**
+ * The area a subject is read in (D441): an app's installation is sent a topic only while its scopes read that area (`orders:read`, …).
+ * A subject not here is never an app's to choose.
+ */
+export const SUBJECT_READ_AREA: Partial<Record<WebhookSubjectName, string>> = {
+  order: "orders",
+  subscription: "orders",
+  return: "orders",
+  withdrawal: "orders",
+  fulfilment: "orders",
+  refund: "orders",
+  draft: "orders",
+  customer: "customers",
+  erasure: "customers",
+  product: "products",
+  stock: "products",
+  inventory: "products",
+  support: "support",
+  discount: "marketing",
+  gift_card: "marketing",
+  review: "marketing",
+};
+
+/**
+ * Who may be sent a topic: the services (Zapier, Make and Slack, D41), an owner's own endpoints (D354), and apps installed on the store
+ * (D441: a topic an app chose whose area its installation reads, and the two that are an app's own).
+ */
+export type WebhookReceiver = "services" | "endpoints" | "apps";
 
 export type WebhookTopic = {
-  id: IntegrationEvent;
+  id: IntegrationEvent | AppEvent;
   title: string;
   description: string;
   receivers: WebhookReceiver[];
@@ -277,14 +311,24 @@ export type WebhookTopic = {
 
 const dataOf = (subject: WebhookSubjectName) => z.object({ [subject]: WEBHOOK_SUBJECTS[subject] });
 
-export const WEBHOOK_TOPICS: WebhookTopic[] = EVENTS.map((event) => ({
-  id: event.id,
-  title: event.label,
-  description: event.hint,
-  receivers: isServiceEvent(event.id) ? ["services", "endpoints"] : ["endpoints"],
-  subject: SUBJECT_OF[event.id],
-  data: dataOf(SUBJECT_OF[event.id]),
-}));
+export const WEBHOOK_TOPICS: WebhookTopic[] = [
+  ...EVENTS.map((event): WebhookTopic => ({
+    id: event.id,
+    title: event.label,
+    description: event.hint,
+    receivers: [...(isServiceEvent(event.id) ? (["services"] as const) : []), "endpoints", ...(SUBJECT_READ_AREA[SUBJECT_OF[event.id]] ? (["apps"] as const) : [])],
+    subject: SUBJECT_OF[event.id],
+    data: dataOf(SUBJECT_OF[event.id]),
+  })),
+  ...APP_EVENTS.map((event): WebhookTopic => ({
+    id: event.id,
+    title: event.label,
+    description: event.hint,
+    receivers: ["apps"],
+    subject: SUBJECT_OF[event.id],
+    data: dataOf(SUBJECT_OF[event.id]),
+  })),
+];
 
 export const topicOf = (id: string): WebhookTopic | undefined => WEBHOOK_TOPICS.find((t) => t.id === id);
 
@@ -330,7 +374,7 @@ export const SIGNATURE_STEPS = [
 export function webhookCatalogue() {
   return {
     version: PAYLOAD_VERSION,
-    description: `Events a store sends to its owner's own HTTPS endpoints and, for the topics marked services, to Zapier, Make and Slack. Each delivery is a POST of JSON, signed, and tried again when it is not taken: after ${WEBHOOK_RETRY_SECONDS.map(spoken).join(", ")}.`,
+    description: `Events a store sends to its owner's own HTTPS endpoints, to the apps installed on it (the topics marked apps: those an app chose whose area its installation reads, and app.uninstalled and store.erase_requested, which every installed app is sent) and, for the topics marked services, to Zapier, Make and Slack. Each delivery is a POST of JSON, signed, and tried again when it is not taken: after ${WEBHOOK_RETRY_SECONDS.map(spoken).join(", ")}.`,
     retry_seconds: [...WEBHOOK_RETRY_SECONDS],
     timeout_seconds: WEBHOOK_TIMEOUT_SECONDS,
     headers: WEBHOOK_HEADERS.map((h) => ({ ...h })),
