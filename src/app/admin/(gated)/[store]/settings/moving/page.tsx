@@ -217,7 +217,8 @@ async function MakersPanel({ storeSlug }: { storeSlug: string }) {
       rows={view.groups}
       operators={view.operators}
       countries={view.countries}
-      euCountries={view.euCountries}
+      safety={view.safety}
+      destinations={view.destinations}
       save={saveVendorMakerAction.bind(null, storeSlug)}
       bulkHref={`/admin/${storeSlug}/products/bulk`}
     />

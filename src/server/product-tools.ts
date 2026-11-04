@@ -41,6 +41,7 @@ import { slugify } from "@/lib/slug";
 import type { Term } from "@/lib/taxonomy";
 
 import { aiFor, AiError, type AiConnection } from "./ai";
+import { productSafety } from "./product-safety";
 import type { Account } from "./auth";
 import { catalogTag } from "./catalog";
 import { libraryFilesByUrl } from "./media-library";
@@ -172,12 +173,6 @@ async function pictures(ctx: Ctx, given: readonly PictureArgs[], title: string, 
   return media;
 }
 
-/** The EU's member states, for the safety contacts a live product needs (`productProblems()`). */
-async function euCountries(): Promise<Set<string>> {
-  const rows = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
-  return new Set(rows.map((r) => String(r.code)));
-}
-
 /** What the editor would say of the product, as a draft or as it would be published. */
 async function problemsOf(input: ProductInput, editor: EditorContext, status: "draft" | "active"): Promise<string[]> {
   return productProblems(
@@ -187,7 +182,7 @@ async function problemsOf(input: ProductInput, editor: EditorContext, status: "d
       mainCurrency: editor.mainCurrency,
       primaryLocale: editor.primaryLocale,
       operatorCountries: Object.fromEntries(editor.operators.map((o) => [o.id, o.country])),
-      euCountries: await euCountries(),
+      safety: await productSafety(),
     },
   );
 }

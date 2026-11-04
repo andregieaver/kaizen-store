@@ -323,6 +323,49 @@ export const countries = commerce.table(
 );
 
 /**
+ * Membership of the EU and of the EEA (D452, `docs/product-safety-eea.md`), for any country a company may be established in, sold to or not
+ * (Iceland and Liechtenstein are here though no store sells there). Two separate classifications: neither is ever worked out from the
+ * other. Reference data, set by migration; `countries.in_eu` (VAT, tax reports) is kept equal to `eu` for the countries sold to.
+ */
+export const countryMemberships = commerce.table(
+  "country_memberships",
+  {
+    code: char("code", { length: 2 }).primaryKey(),
+    eu: boolean("eu").notNull(),
+    eea: boolean("eea").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [check("country_memberships_code_upper", sql`${t.code} ~ '^[A-Z]{2}$'`)],
+);
+
+/**
+ * What the General Product Safety Regulation asks, per destination country, of a product whose manufacturer is established elsewhere
+ * (D452, `docs/product-safety-eea.md`): `eu` an EU-established responsible person, `eea` an EEA-established one, `none` none. With its
+ * legal standing there (`status`), the act or decision it rests on, its source and the day it was last checked. Reference data, set by
+ * migration; `src/lib/product-safety.ts` and `commerce.responsible_person_areas()` read it.
+ */
+export const productSafetyRules = commerce.table(
+  "product_safety_rules",
+  {
+    destination: char("destination", { length: 2 }).primaryKey(),
+    responsiblePerson: text("responsible_person").notNull(),
+    status: text("status").notNull(),
+    legalBasis: text("legal_basis").notNull(),
+    source: text("source").notNull(),
+    reviewedOn: date("reviewed_on").notNull(),
+    note: text("note").notNull().default(""),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("product_safety_rules_destination_upper", sql`${t.destination} ~ '^[A-Z]{2}$'`),
+    check("product_safety_rules_responsible_person", sql`${t.responsiblePerson} in ('eu', 'eea', 'none')`),
+    check("product_safety_rules_status", sql`${t.status} in ('in_force', 'not_incorporated', 'incorporated_not_in_force')`),
+    // A rule that is not law there asks for nothing.
+    check("product_safety_rules_status_none", sql`${t.status} = 'in_force' or ${t.responsiblePerson} = 'none'`),
+  ],
+);
+
+/**
  * A kind of sale that has its own VAT rate in some countries (D65, D157): `standard`, `exempt` and `accommodation` are
  * built in, the reduced-rate categories (food, books, ...) are rows platform admins add and switch off, owners only
  * choose one for a product (`products.vat_category`). Never deleted, a built-in one is never renamed or switched off

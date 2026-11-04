@@ -9,6 +9,7 @@ import type { PublishContext } from "@/lib/product-input";
 import { categoryFromCell, categoryPath, isCategory } from "@/lib/product-taxonomy";
 
 import { getFieldData, getVariantFieldData, listFieldGroups } from "./custom-fields";
+import { productSafety } from "./product-safety";
 import { pgTextArray } from "./pg-arrays";
 import { getEditorContext, getProductForEdit, type EditorContext } from "./products";
 import { getStore, type Store } from "./stores";
@@ -62,13 +63,12 @@ async function standardCsv(): Promise<NonNullable<ProductCsvContext["standard"]>
 
 /** The editor's checks of a finished product, for the plan: the same data `saveProduct()` reads. */
 export async function publishContextFor(editor: EditorContext): Promise<PublishContext> {
-  const eu = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
   return {
     markets: editor.markets.map((m) => ({ code: m.code, currency: m.currency })),
     mainCurrency: editor.mainCurrency,
     primaryLocale: editor.primaryLocale,
     operatorCountries: Object.fromEntries(editor.operators.map((o) => [o.id, o.country])),
-    euCountries: new Set(eu.map((r) => String(r.code))),
+    safety: await productSafety(),
   };
 }
 

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { BULK_MAX_PRODUCTS } from "@/lib/data-limits";
 import { isoCountries } from "@/lib/iso-countries";
 import { operatorSchema } from "@/lib/product-input";
+import { missingResponsible, responsibleAreas, safetyData, type ProductSafetyData } from "@/lib/product-safety";
 import { chunks, makerGroups, type MakerGroup } from "@/lib/shopify-makers";
 
 import type { Membership } from "./auth";
@@ -14,8 +15,8 @@ import { log } from "./log";
 import { memberCan } from "./permissions";
 import { pgTextArray } from "./pg-arrays";
 import { chooseOperator, type Operator } from "./products";
+import { productSafety } from "./product-safety";
 import { copiedVendors, type CopyDeps } from "./shopify-copy";
-import { listCountries } from "./stores";
 import { col, typedRows } from "./typed-rows";
 
 /**
@@ -49,24 +50,28 @@ export type MakersView = {
   groups: { vendor: string; count: number; toPublish: number }[];
   operators: Operator[];
   countries: { code: string; name: string }[];
-  euCountries: string[];
+  /** The EU and EEA classifications and the destinations' rules (D452), and the countries the store sells to. */
+  safety: ProductSafetyData;
+  destinations: string[];
 };
 
 /** The screen (owner only): each vendor with products still to name a maker for, the store's companies, and the countries to choose from. */
 export async function makersView(member: Membership, deps: CopyDeps = {}): Promise<MakersView | null> {
   if (!memberCan(member, OWNER)) return null;
   const groups = await groupsOf(member, deps);
-  if (groups.length === 0) return { groups: [], operators: [], countries: [], euCountries: [] };
-  const [operators, countries] = await Promise.all([
+  const destinations = member.store.markets.map((m) => m.code);
+  if (groups.length === 0) return { groups: [], operators: [], countries: [], safety: { eu: [], eea: [], rules: {} }, destinations };
+  const [operators, safety] = await Promise.all([
     typedRows(OPERATOR, sql`select id, name, postal_address, electronic_address, country from commerce.economic_operators where store_id = ${member.store.id}::uuid order by name`),
-    listCountries(),
+    productSafety(),
   ]);
   return {
     groups: groups.map((g) => ({ vendor: g.vendor, count: g.productIds.length, toPublish: g.publishIds.length })),
     operators: operators.map((o) => ({ id: o.id, name: o.name, postalAddress: o.postal_address, electronicAddress: o.electronic_address, country: o.country })),
-    // A maker may be anywhere in the world (the product editor's own list); the EU's from the database.
+    // A maker may be anywhere in the world (the product editor's own list).
     countries: isoCountries(),
-    euCountries: countries.filter((c) => c.inEu).map((c) => c.code),
+    safety: safetyData(safety),
+    destinations,
   };
 }
 
@@ -98,7 +103,8 @@ async function changedOf(member: Membership, batchId: string): Promise<number> {
 
 /**
  * The owner's answer for one vendor: the company named (an existing one, or added), the products of that vendor still without a maker get it,
- * and the ones Shopify had on sale are published where nothing else is missing. A manufacturer outside the EU needs a responsible person in it.
+ * and the ones Shopify had on sale are published where nothing else is missing. A responsible person is asked for where the store's
+ * destinations' rules ask for one (D452: an EU one for the EU, never an EEA one in its place).
  */
 export async function saveVendorMaker(member: Membership, raw: unknown, deps: CopyDeps = {}): Promise<MakerSaved> {
   if (!memberCan(member, OWNER)) return { ok: false, problem: "failed" };
@@ -107,15 +113,15 @@ export async function saveVendorMaker(member: Membership, raw: unknown, deps: Co
   const { vendor, manufacturer, responsible } = parsed.data;
   const group = (await groupsOf(member, deps)).find((g) => g.vendor === vendor);
   if (!group) return { ok: false, problem: "gone" };
-  const countries = await listCountries();
-  const eu = new Set(countries.filter((c) => c.inEu).map((c) => c.code));
+  const safety = await productSafety();
+  const destinations = member.store.markets.map((m) => m.code);
   const operators = await typedRows(OPERATOR, sql`select id, name, postal_address, electronic_address, country from commerce.economic_operators where store_id = ${member.store.id}::uuid`);
   const countryOf = (choice: z.infer<typeof operatorSchema>): string | null =>
     choice === null ? null : "id" in choice ? (operators.find((o) => o.id === choice.id)?.country ?? null) : choice.new.country;
   const makerCountry = countryOf(manufacturer);
   if (makerCountry === null) return { ok: false, problem: "invalid" };
-  const needsResponsible = !eu.has(makerCountry);
-  if (needsResponsible && !eu.has(countryOf(responsible) ?? "")) return { ok: false, problem: "responsible" };
+  const needsResponsible = responsibleAreas(makerCountry, destinations, safety).length > 0;
+  if (needsResponsible && missingResponsible(makerCountry, countryOf(responsible), destinations, safety).length > 0) return { ok: false, problem: "responsible" };
 
   let manufacturerId: string | null;
   let responsibleId: string | null;

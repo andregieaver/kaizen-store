@@ -27,6 +27,7 @@ import {
   type MeasureInput,
   type OperatorChoice,
   type ProductInput,
+  RESPONSIBLE_SENTENCES,
 } from "@/lib/product-input";
 import type { PlanInterval } from "@/lib/subscriptions";
 import type { Term } from "@/lib/taxonomy";
@@ -39,6 +40,7 @@ import { INHERIT_WORDS, parseProductPriceWords, productWordsColumn, type WordsBy
 import { cleanWords, priceWordSentence, wordsProblems } from "@/lib/price-words-check";
 
 import { bundleForEdit, componentProblems, computedBundlesHolding, onRequestInBundlesProblem, saveBundleComponents } from "./bundles";
+import { productSafety } from "./product-safety";
 import { profileChoices } from "./shipping-admin";
 import { aiFor } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
@@ -837,13 +839,12 @@ export async function saveProduct(
   }
   const subscriptionsOn = featureOn(store, "subscriptions");
   const input = asKind(subscriptionsOn ? given : { ...given, subscriptionOnly: Boolean(stored?.subscription_only) });
-  const euRows = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
   const problems = productProblems(input, {
     markets: context.markets,
     mainCurrency: context.mainCurrency,
     primaryLocale: context.primaryLocale,
     operatorCountries: Object.fromEntries(context.operators.map((o) => [o.id, o.country])),
-    euCountries: new Set(euRows.map((r) => String(r.code))),
+    safety: await productSafety(),
   });
   // A gallery's videos and 3D models play only the store's own files, or a YouTube or Vimeo address (D325); one the product already had
   // stays (a store made from a template keeps the template's files until its copy job moves them).
@@ -1743,9 +1744,8 @@ function saveProblem(error: unknown, input: ProductInput): string {
     return "Another product already uses one of these SKUs. SKUs must be unique in the store.";
   }
   if (text.includes("without a picture")) return "Add at least one picture before publishing the product.";
-  if (text.includes("responsible person")) {
-    return "The manufacturer is outside the EU, so add a responsible person established in the EU.";
-  }
+  if (text.includes("EEA responsible person")) return RESPONSIBLE_SENTENCES.eea;
+  if (text.includes("responsible person")) return RESPONSIBLE_SENTENCES.eu;
   if (text.includes("without a manufacturer")) return "Add the manufacturer before publishing the product.";
   if (text.includes("without an active variant")) return "Switch on at least one variant before publishing the product.";
   if (text.includes("without a title")) return "Give the product a title.";
