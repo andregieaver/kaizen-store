@@ -4628,6 +4628,13 @@
       "when": 1793818279897,
       "tag": "20261104185119_woocommerce_seo_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 661,
+      "version": "7",
+      "when": 1793833660511,
+      "tag": "20261104230740_tripletex",
+      "breakpoints": true
     }
   ]
 }

@@ -110,6 +110,23 @@ export function googleEnv(
 }
 
 /**
+ * Kaizena Flow's consumer token from Tripletex for one environment (D453): what Tripletex gives an approved integration, used with
+ * an owner's employee token to open a session. Null when not set: then only a company's own API token connects.
+ */
+export function tripletexConsumerToken(
+  mode: "test" | "live",
+  source: Record<string, string | undefined> = {
+    TRIPLETEX_CONSUMER_TOKEN: process.env.TRIPLETEX_CONSUMER_TOKEN,
+    TRIPLETEX_TEST_CONSUMER_TOKEN: process.env.TRIPLETEX_TEST_CONSUMER_TOKEN,
+  },
+): string | null {
+  const value = (mode === "live" ? source.TRIPLETEX_CONSUMER_TOKEN : source.TRIPLETEX_TEST_CONSUMER_TOKEN)?.trim();
+  if (!value) return null;
+  if (!/^[A-Za-z0-9._~+/=-]{16,2000}$/.test(value)) throw new Error("TRIPLETEX_CONSUMER_TOKEN must be the consumer token Tripletex gave Kaizena Flow.");
+  return value;
+}
+
+/**
  * Kaizena Flow's own Shopify app for moving a shop in (D445 step 2, `docs/moving-from-shopify.md` 4.2, `shopify/shopify.app.toml`): its
  * client id and secret from Shopify's Dev Dashboard, with `{SITE_URL}/api/shopify/callback` as its redirect address. `SHOPIFY_ALL_ORDERS=1`
  * once Shopify has approved `read_all_orders` for the app. Null without both: *Connect Shopify* is not offered and the files stay the way in.

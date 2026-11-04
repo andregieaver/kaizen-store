@@ -7364,6 +7364,118 @@ export const storeIntegrations = commerce.table(
 );
 
 /**
+ * A store's connection to its Tripletex company (D453, `docs/tripletex.md`, written only by `src/server/tripletex.ts`): the
+ * one token its owner pasted, encrypted (`tripletexToken()` is the only reader), which company it opened, and where the
+ * store's documents are booked (`settings`, `tripletexSettingsSchema`, account and VAT code numbers, no secrets). `setup`
+ * until the owner presses Start, which sets `sync_from`: nothing issued before it is sent. `auth_failed` when Tripletex stops
+ * taking the token; everything waits until a new one is pasted. One company belongs to one store at a time.
+ */
+export const tripletexConnections = commerce.table(
+  "tripletex_connections",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    /** `test` or `live`: read from the token, never typed; the address is fixed in code by it. */
+    mode: text("mode").notNull(),
+    /** `api_token` (the company's own, `tlxr_…`) or `employee_token` (made for Kaizena Flow, used with its consumer token). */
+    tokenKind: text("token_kind").notNull(),
+    tokenEncrypted: text("token_encrypted").notNull(),
+    tokenHint: text("token_hint").notNull(),
+    companyId: bigint("company_id", { mode: "number" }).notNull(),
+    companyName: text("company_name").notNull(),
+    companyOrgNumber: text("company_org_number"),
+    /** `setup`, `on`, `paused` or `auth_failed`. */
+    state: text("state").notNull().default("setup"),
+    /** The first issue date sent; set by Start, never earlier unless the owner chose it. */
+    syncFrom: date("sync_from", { mode: "string" }),
+    settings: jsonb("settings").notNull().default({}),
+    lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
+    /** A `TripletexFailure` key (`http_401`, `timeout`, …), never Tripletex's own words. */
+    lastErrorKey: text("last_error_key"),
+    lastErrorAt: timestamp("last_error_at", { withTimezone: true }),
+    failuresInARow: integer("failures_in_a_row").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    unique("tripletex_connections_company_key").on(t.mode, t.companyId),
+    index("tripletex_connections_updated_by_idx").on(t.updatedBy),
+    check("tripletex_connections_mode", sql`${t.mode} in ('test', 'live')`),
+    check("tripletex_connections_token_kind", sql`${t.tokenKind} in ('api_token', 'employee_token')`),
+    check("tripletex_connections_state", sql`${t.state} in ('setup', 'on', 'paused', 'auth_failed')`),
+    check("tripletex_connections_started", sql`${t.state} = 'setup' or ${t.syncFrom} is not null`),
+    check("tripletex_connections_settings", sql`jsonb_typeof(${t.settings}) = 'object'`),
+    check("tripletex_connections_texts", sql`length(${t.tokenHint}) <= 40 and length(${t.companyName}) between 1 and 255 and length(coalesce(${t.lastErrorKey}, '')) <= 40`),
+    check("tripletex_connections_failures", sql`${t.failuresInARow} >= 0`),
+  ],
+);
+
+/**
+ * What was sent to which Tripletex company, one row per object (D453, like `stripe_sync`): a customer card or a document's
+ * voucher, its Tripletex id once booked, and where its sending stands. The sync's outbox and its proof against booking twice:
+ * a row is claimed before a call (`claimed_until`), every retry first looks its voucher up by `external_key`, and a booked row
+ * keeps its id for good. Kept when a store disconnects, so connecting the same company again never books anything twice.
+ * Ids, states and amounts only: no person's data, no token, and Tripletex's own words only as a clipped validation message.
+ */
+export const tripletexSync = commerce.table(
+  "tripletex_sync",
+  {
+    storeId: storeId().references(() => stores.id),
+    mode: text("mode").notNull(),
+    companyId: bigint("company_id", { mode: "number" }).notNull(),
+    /** `customer`, `work_invoice`, `work_credit_note`, `shop_invoice` or `shop_credit_note`. */
+    kind: text("kind").notNull(),
+    /** The document's id, or a customer's key (`customerKey()`: a Work client's id, `org:{number}` or `shop`). */
+    localId: text("local_id").notNull(),
+    theirId: bigint("their_id", { mode: "number" }),
+    /** What people read in Tripletex: a voucher's number (`2026/145`) or a customer's. */
+    theirRef: text("their_ref"),
+    theirVersion: integer("their_version"),
+    /** The `externalVoucherNumber` sent (a voucher only). */
+    externalKey: text("external_key"),
+    /** 1, or more for a deliberate posting again after the voucher was deleted in Tripletex. */
+    posting: integer("posting").notNull().default(1),
+    /** A hash of the customer card last sent, so a card is sent again only when something on it changed. */
+    contentHash: text("content_hash"),
+    sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }),
+    amountMinor: bigint("amount_minor", { mode: "number" }),
+    currency: char("currency", { length: 3 }),
+    /** The VAT Tripletex worked out less the VAT on the document, when they differ. */
+    varianceMinor: bigint("variance_minor", { mode: "number" }),
+    /** `pending`, `sending`, `synced`, `failed` (tried again by itself), `blocked` (waits for a person), `drifted` or `skipped`. */
+    state: text("state").notNull().default("pending"),
+    /** A `BlockCode` or a `TripletexFailure` key. */
+    errorKey: text("error_key"),
+    errorDetail: text("error_detail"),
+    requestId: text("request_id"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    syncedAt: timestamp("synced_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.mode, t.companyId, t.kind, t.localId] }),
+    uniqueIndex("tripletex_sync_external_key").on(t.storeId, t.mode, t.companyId, t.externalKey).where(sql`${t.externalKey} is not null`),
+    index("tripletex_sync_due_idx").on(t.storeId, t.state, t.nextAttemptAt).where(sql`${t.state} in ('pending', 'failed')`),
+    index("tripletex_sync_their_idx").on(t.storeId, t.kind, t.theirId),
+    check("tripletex_sync_mode", sql`${t.mode} in ('test', 'live')`),
+    check("tripletex_sync_kind", sql`${t.kind} in ('customer', 'work_invoice', 'work_credit_note', 'shop_invoice', 'shop_credit_note')`),
+    check("tripletex_sync_state", sql`${t.state} in ('pending', 'sending', 'synced', 'failed', 'blocked', 'drifted', 'skipped')`),
+    check("tripletex_sync_synced", sql`${t.state} <> 'synced' or ${t.theirId} is not null`),
+    check("tripletex_sync_voucher_key", sql`${t.kind} = 'customer' or ${t.state} not in ('sending', 'synced') or ${t.externalKey} is not null`),
+    check("tripletex_sync_attempts", sql`${t.attempts} >= 0 and ${t.posting} >= 1`),
+    check(
+      "tripletex_sync_texts",
+      sql`length(${t.localId}) between 1 and 80 and length(coalesce(${t.externalKey}, '')) <= 70 and length(coalesce(${t.errorKey}, '')) <= 40 and length(coalesce(${t.errorDetail}, '')) <= 400 and length(coalesce(${t.theirRef}, '')) <= 60 and length(coalesce(${t.requestId}, '')) <= 100`,
+    ),
+  ],
+);
+
+/**
  * A workflow (D356, `src/server/workflows.ts`, its only writer with the runner): a trigger (an event of the store or a schedule), conditions on
  * the event's fields and up to ten actions, as JSON checked by `workflowInputSchema` and `workflowProblems()`. Saved off; `version` rises
  * with each save and it may be switched on only once `tested_version` equals it.

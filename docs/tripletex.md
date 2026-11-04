@@ -1,13 +1,11 @@
-# Tripletex: keeping a Norwegian store's books in step with Kaizen (design proposal)
+# Tripletex: keeping a Norwegian store's books in step with Kaizena Flow (D453)
 
-Adding **Tripletex** (Norwegian accounting, API v2) as an integration, so a store
-owner such as **Human Web** (a Norwegian consultancy invoicing through Work) has
-Tripletex's ledger follow the store. This is a design document for the people who
-build it. It contains no application code and changes no other file.
+Adding **Tripletex** (Norwegian accounting, API v2) as an integration, so a store's Tripletex ledger follows the store: Work's
+invoices and credit notes (Human Web, a consultancy invoicing through Work, asked first) and the shop's.
 
-Status: proposal, written 2026-09-29. Nothing is built. `src/lib/integrations.ts`
-already lists Tripletex as "coming soon", and `docs/work.md` 4.5 point 8 promised
-"a Tripletex integration later".
+Status: proposed 2026-09-29 (Work only); **re-planned and started 2026-11-04 as D453**. Section "Plan as of 4 November 2026"
+below is the current plan and says what is built; sections 0 to 10 are the original research and design, still right except
+where that section says otherwise.
 
 Reading guide. Evidence is marked so nobody builds on a guess:
 
@@ -21,6 +19,80 @@ Reading guide. Evidence is marked so nobody builds on a guess:
   accountant. Anything marked [U] is a risk until then.
 
 Sources are listed in Appendix B.
+
+## Plan as of 4 November 2026 (D453)
+
+### What changed since the proposal
+
+* **Shop invoices and credit notes exist** (D159, `commerce.invoices`, `commerce.credit_notes`), frozen as snapshots with a
+  stored PDF each. They are booked by the same engine as Work's, so the integration's card ("orders, customers and payments
+  straight into your accounting") is true for an ordinary shop, not only for Work. The PDF gate (section 4.6) no longer holds for
+  shop documents; Work still has no server PDF, so its vouchers go without one until W5.
+* **Stripe payouts and fees are read** (D290), so booking payouts later (L2.3) needs no new Stripe work.
+* **Work lives at the owner's level** (`/admin/account/work/s/{store}`), as section 6.2 expected.
+* **The five-minute job runs its jobs side by side** (`runJobs()` in `src/server/cron-runs.ts`): Tripletex is a `tripletex` entry,
+  not "step 16".
+* **Tripletex 2.75.14** lets an account require a department, a project or a free dimension on every posting; the setup never
+  picks such an account. **2.75.16** added `PUT /customer/{id}/:anonymize` for GDPR. The API is still without OAuth (2.75.22).
+* **Not a row of `store_integrations`** (section 5.1 is dropped): that table is the webhook providers' (its address is NOT NULL).
+  The Integrations list reads Tripletex's own connection.
+
+### Scope of the first version
+
+Every issued Work invoice and credit note and every shop invoice and credit note, in **NOK**, as one ledger voucher each
+(section 3.1, option V). Customers: a Work client is its own customer (consumers: name and country only); a shop order from a
+business with a Norwegian organisation number is that business; **every other shop order goes on one customer per store,
+"Online shop customers"**, so no shopper's name or address reaches the books. A gift card sold is booked to a debt account
+(default 2900), not income. Postings: one per line (a Work line's VAT, worked out of its net, comes back exactly when Tripletex
+works it out of the gross: `tripletex-map.test.ts` checks every net to 20 000.00 at 25, 15 and 12 %), and one per VAT bucket for a
+shop credit note (its VAT was worked out of each bucket's gross). Waiting visibly for a person: other currencies, IOSS, any VAT
+kind without a place, a closed period. Not yet: payments read back (TP6), Work PDFs (TP9), webhooks, daily summaries.
+
+### Setting up, for Homer
+
+1. **Integrations → Tripletex → Connect.** A short guide with pictures: in Tripletex, *My profile → More → API access → New
+   token*, application **Kaizena Flow** (or, until Tripletex approves Kaizena Flow, *Company → API tokens*), all accounting
+   rights; copy; paste here. One field, one button.
+2. **We read the token** (`readPastedToken()`): `tlxr_` is the company's own API token, anything else an employee token for
+   Kaizena Flow; `test-` is Tripletex's test environment. The owner never chooses either. We open a session, read the company
+   (`whoAmI`) and show "Connected to Human Web AS (912 345 678)", warning if the organisation number is not the store's.
+3. **We choose where everything is booked** (`planSetup()`): Norway's standard accounts and codes where the company has them and
+   they fit, else the nearest account that takes the code. Only what cannot be chosen is asked, one plain question each.
+4. **"Ready. From today your invoices go to Tripletex." [Start].** Start sets `sync_from` to today: nothing older is sent unless
+   the owner picks an earlier day under Customise (with a count of what that would send).
+5. **Afterwards** the card says "23 sent this week · all fine"; a problem is a sentence with one button (`failureWords()`,
+   `BLOCK_WORDS`), and an email at most once a day while something waits.
+
+**Customise** (Lisa): every bucket's account and VAT code, the receivable account, the voucher type, the language of the texts,
+the start day, "send the client's email", "attach PDFs", Pause, Disconnect, and a summary for the accountant.
+
+**Later, no paste at all:** once live with customers, list Kaizena Flow in Tripletex's integration marketplace. The owner presses
+*Activate* in Tripletex, which posts the employee token and company id to our landing page.
+
+### Built
+
+| Part | Files | State |
+|---|---|---|
+| Token, external number, amounts | `src/lib/tripletex.ts` | built, tested |
+| Settings and buckets | `src/lib/tripletex-settings.ts` | built, tested |
+| Setup from the company's chart | `src/lib/tripletex-setup.ts` | built, tested |
+| Documents to vouchers, customer cards | `src/lib/tripletex-map.ts` | built, tested |
+| Failures and their words | `src/lib/tripletex-errors.ts` | built, tested |
+| Tables | `commerce.tripletex_connections`, `commerce.tripletex_sync` (`20261104230740_tripletex.sql`), `src/db/tripletex.test.ts` | built, tested |
+| HTTP client | `src/server/tripletex-client.ts`, `tripletex-client.int.test.ts` | built, tested against the fake |
+| Tripletex in memory | `src/server/tripletex-test-support.ts` | built |
+| Consumer token | `tripletexConsumerToken()` in `src/lib/env.ts`, `.env.example` | built |
+| Connect (one paste, environment found, company checked, setup planned), Start, Pause, settings check and save, Disconnect, counts | `src/server/tripletex.ts`, `tripletex.int.test.ts` | built, tested against the fake |
+| The Tripletex page: connect, the plan, Start, Customise, Disconnect | `src/app/admin/(gated)/[store]/integrations/tripletex/` | next |
+| Sync engine and its job | `src/server/tripletex-sync.ts`, a `tripletex` entry in the dispatcher | next |
+| Status on Work, invoices, the checkup, alerts, AI manager tools | as section 6 | after |
+
+### Still to find out in Tripletex's sandbox (Appendix A, plus)
+
+* Whether Tripletex accepts `%3E` for `>` in paths (`/token/session/%3EwhoAmI`): the client sends what `URL` encodes.
+* Whether a test environment API token carries the `test-` prefix like other test tokens (else the owner is asked once).
+* Whether an account with an empty `legalVatTypes` takes any code (the setup treats it as open; a refusal is caught).
+* The rest of Appendix A, items 3 to 15.
 
 ## 0. Summary
 

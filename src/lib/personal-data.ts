@@ -432,6 +432,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   store_theme_installs: "The themes installed in a store (D241): a title, the theme and version, a look (theme settings, layout page ids, CSS) and the staff account that installed it.",
   design_preset_uses: "Which theme a store applied and the look it replaced (D176): a theme, page ids and CSS, and the staff account that did it.",
   shipping_carriers: "The store's own agreement and details with a carrier.",
+  tripletex_connections: "A store's connection to its Tripletex company (D453): the company's name and organisation number, an encrypted token, the store's account and VAT code choices and the staff account that changed them; never a shopper's data.",
+  tripletex_sync: "What was sent to Tripletex (D453): ids, states, amounts and error codes of documents and customer cards; never a name, an address or a token.",
   shipping_settings: "The store's own shipping setup (D237): a default weight.",
   shipping_profiles: "The store's own shipping setup (D237): a profile's name.",
   shipping_zones: "The store's own shipping setup (D237): a zone's name and the postal codes and prefixes it covers, which are the store's areas, not a person's address.",

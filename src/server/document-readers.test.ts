@@ -59,6 +59,8 @@ describe("who reads invoices and credit notes", () => {
         "src/server/order-export.ts",
         // An order change (D174): the original invoice's number for the editor's summary (`kind = 'order'`), nothing else of it.
         "src/server/order-edits.ts",
+        // Tripletex's setup (D453): which VAT kinds the store's invoices of the last year used, and whether it has any; nothing of a buyer.
+        "src/server/tripletex.ts",
       ].sort(),
     );
   });
