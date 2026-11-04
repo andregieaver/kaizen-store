@@ -355,6 +355,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   support_agents: "Who answers on a support desk (D216): a staff account, its status, its limit and the name customers see; staff data, not a shopper's.",
   cookie_notes: "A cookie's description.",
   countries: "Reference data.",
+  country_memberships: "Reference data (D452): each country's membership of the EU and of the EEA.",
   customer_tiers: "A customer group's name and percentage, and the owner's note about the group.",
   company_locations: "A company's location (D321 C.2): its name and the business's billing and shipping addresses; the company's data, kept with it.",
   price_lists: "A store's price list (D321): its name, a percentage and whether it is on.",
@@ -436,6 +437,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   store_themes: "A saved design theme's name.",
   terms: "A category or tag's name.",
   ui_translations: "Interface text in a language.",
+  product_safety_rules: "Reference data (D452): what the GPSR asks per destination country, with its legal basis, source and a note.",
   vat_rates: "A country's VAT rate and a note about its source.",
   duty_rates: "The platform's duty rates per country and HS heading (D343), each with its source address and a note about it: reference data, no person.",
 };

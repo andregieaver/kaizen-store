@@ -124,8 +124,11 @@ export const movingEn = {
     someoneElse: "No, someone else",
     choose: "Choose the maker",
     maker: "The maker",
-    responsible: "Responsible person in the EU",
-    responsibleNote: "The maker is outside the EU, so EU law asks for a company in the EU that answers for these products.",
+    responsible: { eu: "Responsible person in the EU", eea: "Responsible person in the EEA" },
+    responsibleNote: {
+      eu: "The maker is outside the EU and you sell in the EU, so EU law asks for a company in the EU that answers for these products. One in Norway, Iceland or Liechtenstein is not enough.",
+      eea: "The maker is outside the EEA, so the law where you sell asks for a company in the EEA that answers for these products.",
+    },
     save: { one: "Save for {n} product", many: "Save for {n} products" },
     saving: "Saving …",
     cancel: "Cancel",
@@ -136,7 +139,7 @@ export const movingEn = {
     undo: "Undo",
     problems: {
       invalid: "Fill in the company's name, address, email or web address, and country.",
-      responsible: "Add a responsible person in the EU.",
+      responsible: { eu: "Add a responsible person in the EU.", eea: "Add a responsible person in the EEA." },
       gone: "These products already name their maker. Reload the page.",
       failed: "That didn't work. Try again.",
     },

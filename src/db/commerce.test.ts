@@ -913,6 +913,81 @@ describe("product safety publishing check", () => {
     await expect(activate(productId)).rejects.toThrow(/needs an EU responsible person/);
   });
 
+  // D452: EU and EEA membership are two classifications, and what a destination asks is configured per destination.
+  const operator = async (storeId: string, country: string) =>
+    (await one<{ id: string }>(
+      `insert into commerce.economic_operators (store_id, name, postal_address, electronic_address, country)
+       values ($1, 'Rep ' || $2, 'Street 1', 'rep@example.com', $2) returning id`,
+      [storeId, country],
+    )).id;
+  const withResponsible = (productId: string, responsibleId: string | null) =>
+    db.query("update commerce.products set status = 'active', responsible_person_id = $2 where id = $1", [productId, responsibleId]);
+  const sellingIn = async (markets: string[]) => createStore(`gpsr-${markets.join("-").toLowerCase()}-${counter++}`, markets);
+
+  it("keeps EU and EEA membership apart: the EEA EFTA states are in the EEA and not in the EU", async () => {
+    const { rows } = await db.query<{ code: string; eu: boolean; eea: boolean }>(
+      "select code, eu, eea from commerce.country_memberships where code in ('NO', 'IS', 'LI', 'SE') order by code",
+    );
+    expect(rows).toEqual([
+      { code: "IS", eu: false, eea: true },
+      { code: "LI", eu: false, eea: true },
+      { code: "NO", eu: false, eea: true },
+      { code: "SE", eu: true, eea: true },
+    ]);
+    // The countries sold to say the same as the classification (VAT reads `in_eu`).
+    const { rows: differ } = await db.query("select c.code from commerce.countries c left join commerce.country_memberships m on m.code = c.code where m.code is null or m.eu <> c.in_eu");
+    expect(differ).toEqual([]);
+  });
+
+  for (const maker of ["NO", "IS", "LI"]) {
+    it(`asks an EU responsible person of a ${maker} manufacturer selling into the EU, and EEA establishment is not enough`, async () => {
+      const storeId = await sellingIn(["SE"]);
+      const { productId } = await createProduct({ storeId, manufacturerCountry: maker });
+      await expect(activate(productId)).rejects.toThrow(/needs an EU responsible person/);
+      await expect(withResponsible(productId, await operator(storeId, "NO"))).rejects.toThrow(/needs an EU responsible person/);
+      await expect(withResponsible(productId, await operator(storeId, "IS"))).rejects.toThrow(/needs an EU responsible person/);
+      await withResponsible(productId, await operator(storeId, "SE"));
+    });
+
+    it(`asks nothing of a ${maker} manufacturer selling only into Norway while the GPSR is not part of the EEA Agreement`, async () => {
+      const storeId = await sellingIn(["NO"]);
+      const { productId } = await createProduct({ storeId, manufacturerCountry: maker });
+      await activate(productId);
+    });
+
+    it(`asks an EU responsible person of a ${maker} manufacturer selling into Norway and the EU`, async () => {
+      const storeId = await sellingIn(["NO", "DK"]);
+      const { productId } = await createProduct({ storeId, manufacturerCountry: maker });
+      await expect(withResponsible(productId, await operator(storeId, "NO"))).rejects.toThrow(/needs an EU responsible person/);
+      await withResponsible(productId, await operator(storeId, "DK"));
+    });
+  }
+
+  it("follows the configured rule once the GPSR is incorporated for Norway: an EEA manufacturer needs none there, another an EEA responsible person", async () => {
+    await db.query("update commerce.product_safety_rules set responsible_person = 'eea', status = 'in_force' where destination = 'NO'");
+    try {
+      const storeId = await sellingIn(["NO"]);
+      for (const maker of ["NO", "IS", "LI", "SE"]) {
+        const { productId } = await createProduct({ storeId, manufacturerCountry: maker });
+        await activate(productId);
+      }
+      const { productId } = await createProduct({ storeId, manufacturerCountry: "CN" });
+      await expect(activate(productId)).rejects.toThrow(/needs an EEA responsible person/);
+      await withResponsible(productId, await operator(storeId, "LI"));
+      // Into the EU as well, an EEA responsible person is still not enough.
+      const both = await sellingIn(["NO", "SE"]);
+      const { productId: second } = await createProduct({ storeId: both, manufacturerCountry: "IS" });
+      await expect(withResponsible(second, await operator(both, "NO"))).rejects.toThrow(/needs an EU responsible person/);
+      await withResponsible(second, await operator(both, "SE"));
+    } finally {
+      await db.query("update commerce.product_safety_rules set responsible_person = 'none', status = 'not_incorporated' where destination = 'NO'");
+    }
+  });
+
+  it("keeps a rule that is not law from asking for anything", async () => {
+    await expect(db.query("update commerce.product_safety_rules set responsible_person = 'eea' where destination = 'IS'")).rejects.toThrow(/product_safety_rules_status_none/);
+  });
+
   it("refuses to activate a product without a picture", async () => {
     const { productId } = await createProduct();
     await db.query("delete from commerce.product_media where product_id = $1", [productId]);

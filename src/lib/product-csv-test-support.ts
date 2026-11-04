@@ -105,7 +105,7 @@ export const publishContext = (ctx: ProductCsvContext): PublishContext => ({
   mainCurrency: ctx.mainCurrency,
   primaryLocale: ctx.primaryLocale,
   operatorCountries: { [OPERATOR]: "DE" },
-  euCountries: new Set(["DE", "SE", "NO"]),
+  safety: { eu: new Set(["DE", "SE"]), eea: new Set(["DE", "SE", "NO"]), rules: new Map([["DE", "eu"], ["SE", "eu"], ["NO", "none"]]) },
 });
 
 /** A product with two options, three variants, three languages, two markets, four pictures, a category and tags. */

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { missingResponsible, type EstablishedArea, type ProductSafety } from "./product-safety";
 import { DEFAULT_CANCEL_HOURS, DEFAULT_DEPOSIT_PERCENT, PAYMENT_MODES } from "./pay-later";
 import { PRODUCT_AUDIENCES } from "./b2b";
 import { RENTAL_PERIODS } from "./booking-ranges";
@@ -561,8 +562,14 @@ export type PublishContext = {
   primaryLocale: string;
   /** Country codes of existing operators, by id. */
   operatorCountries: Record<string, string>;
-  /** Codes of EU member states. */
-  euCountries: ReadonlySet<string>;
+  /** The EU and EEA classifications and each destination's rule (D452): what a manufacturer established elsewhere needs, per market sold in. */
+  safety: ProductSafety;
+};
+
+/** What the product check says for each area a responsible person is missing in (D452); the database's publish check words the same. */
+export const RESPONSIBLE_SENTENCES: Record<EstablishedArea, string> = {
+  eu: "The manufacturer is outside the EU, so add a responsible person established in the EU.",
+  eea: "The manufacturer is outside the EEA, so add a responsible person established in the EEA.",
 };
 
 /**
@@ -733,13 +740,10 @@ export function productProblems(input: ProductInput, context: PublishContext): s
   const makerCountry = country(input.manufacturer);
   if (!makerCountry) {
     problems.push("Add the manufacturer: EU product-safety rules require it on the listing.");
-  } else if (!context.euCountries.has(makerCountry)) {
-    const repCountry = country(input.responsiblePerson);
-    if (!repCountry || !context.euCountries.has(repCountry)) {
-      problems.push(
-        "The manufacturer is outside the EU, so add a responsible person established in the EU.",
-      );
-    }
+  } else {
+    // By the countries the store sells to and each one's configured rule: EEA establishment never stands in for EU establishment.
+    const missing = missingResponsible(makerCountry, country(input.responsiblePerson), context.markets.map((m) => m.code), context.safety);
+    for (const area of missing) problems.push(RESPONSIBLE_SENTENCES[area]);
   }
   return problems;
 }

@@ -4530,6 +4530,20 @@
       "when": 1793743391976,
       "tag": "20261103220311_bulk_makers",
       "breakpoints": true
+    },
+    {
+      "idx": 647,
+      "version": "7",
+      "when": 1793748029965,
+      "tag": "20261103232029_product_safety_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 648,
+      "version": "7",
+      "when": 1793748065311,
+      "tag": "20261103232105_product_safety_rules",
+      "breakpoints": true
     }
   ]
 }
