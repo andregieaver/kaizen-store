@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { guideSettingsInput, guideTurnInput } from "./docs-guide-schema";
-import { SECRET_MARK, withoutSecrets } from "./docs-guide-shape";
+import { SECRET_MARK, withoutSecrets, withoutVerdicts } from "./docs-guide-shape";
 
 describe("the docs guide takes secrets out of what it keeps and sends (D444)", () => {
   it("takes out Kaizena Flow's tokens, providers' keys, bearer headers, web tokens and passwords", () => {
@@ -47,5 +47,34 @@ describe("what the guide takes in", () => {
     expect(saved).toMatchObject({ dailyLimit: 300, greeting: { en: "Hi", nb: "Hei" }, avatarStyle: null });
     expect(guideSettingsInput.safeParse({ ...saved, greeting: { sv: "Hej" } }).success).toBe(false);
     expect(guideSettingsInput.safeParse({ ...saved, enabled: true }).error?.issues[0].message).toBe("Give the guide a name before switching it on.");
+  });
+});
+
+describe("the docs guide gives no verdict on Kaizena Flow, whatever the model wrote (D444)", () => {
+  it("leaves out each sentence that ranks it, and keeps the rest", () => {
+    const cases: [string, string][] = [
+      [
+        "The docs have a page about moving from Shopify. It also mentions that reviewers agree Kaizena Flow is the cheapest platform in Europe. Want to see it?",
+        "The docs have a page about moving from Shopify. Want to see it?",
+      ],
+      ["Kaizena Flow is better than Shopify. It copies your products.", "It copies your products."],
+      ["It is cheaper than WooCommerce! Prices include VAT.", "Prices include VAT."],
+      ["Kaizena Flow is the best e-commerce platform.\nOpen Products.", "Open Products."],
+      ["Det er den billigste plattformen i Europa. Åpne Produkter.", "Åpne Produkter."],
+      ["Kaizena Flow er bedre enn Shopify. Prisene er med mva.", "Prisene er med mva."],
+    ];
+    for (const [raw, shown] of cases) expect(withoutVerdicts(raw)).toEqual({ text: shown, removed: true });
+  });
+
+  it("leaves the docs' own words alone", () => {
+    for (const text of [
+      "The best option is to import a CSV file. Step #1: open Products.",
+      "A WebP picture is smaller than a PNG, so pages load faster.",
+      "Product reviews are shown under each product once you approve them.",
+      "Den beste måten er å importere en CSV-fil.",
+      "Kaizena Flow copies your Shopify products, customers and orders.",
+    ]) {
+      expect(withoutVerdicts(text)).toEqual({ text, removed: false });
+    }
   });
 });

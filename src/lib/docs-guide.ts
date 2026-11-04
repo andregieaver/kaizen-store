@@ -7,7 +7,7 @@
  */
 
 import { DOC_AREAS, DOC_KINDS, DOC_TRACKS } from "./docs-content";
-import { GUIDE_ANSWER_MAX, GUIDE_LANGS, withoutSecrets, type GuideLang } from "./docs-guide-shape";
+import { GUIDE_ANSWER_MAX, GUIDE_LANGS, withoutSecrets, withoutVerdicts, type GuideLang } from "./docs-guide-shape";
 import { UNTRUSTED_TEXT } from "./prompt-safety";
 
 /** A tool as the model is offered it (the shape of `ToolDefinition` in `src/server/ai.ts`). */
@@ -174,6 +174,7 @@ export function cleanGuideReply(raw: string, fallback: string, ownHosts: readonl
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  const cleaned = withoutSecrets(plain).text.slice(0, GUIDE_ANSWER_MAX).trim();
+  // No secret is repeated, and no verdict on Kaizena Flow is given, whatever the model wrote (D444).
+  const cleaned = withoutVerdicts(withoutSecrets(plain).text).text.slice(0, GUIDE_ANSWER_MAX).trim();
   return cleaned || fallback;
 }

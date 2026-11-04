@@ -32,7 +32,8 @@ does not use WooCommerce.
 ## Install the plugin
 
 1. In Kaizena Flow's admin, open [Account, WordPress](/admin/account/wordpress) and download the plugin. The file is
-   `https://kaizenaflow.com/downloads/kaizen-store-wordpress.zip`.
+   `https://kaizenaflow.com/downloads/kaizen-store-wordpress.zip`. Every version, the earlier ones too, is on
+   [WordPress plugin](/docs/developers/wordpress#download-the-plugin).
 2. In WordPress, go to **Plugins**, **Add New Plugin**, **Upload Plugin**, choose the zip and activate it.
 
 Activating it makes a page called *Product* that holds `[kaizen_product]`: the page your site's products open on.

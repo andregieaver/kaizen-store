@@ -6,10 +6,10 @@ import vm from "node:vm";
 
 import { describe, expect, it } from "vitest";
 
-import { buildPluginZip, PLUGIN_DIR, PLUGIN_ZIP, pluginFiles } from "../../scripts/wordpress-plugin-zip.mjs";
+import { buildPluginZip, PLUGIN_DIR, PLUGIN_ZIP, pluginFiles, readZipEntry, releaseZip, RELEASES_DIR } from "../../scripts/wordpress-plugin-zip.mjs";
 
 import { MAX_ORDER_QUANTITY } from "./quantity-rules";
-import { WORDPRESS_PLUGIN_FILE, WORDPRESS_PLUGIN_VERSION } from "./wordpress-plugin";
+import { WORDPRESS_PLUGIN_FILE, WORDPRESS_PLUGIN_RELEASES, WORDPRESS_PLUGIN_VERSION, wordpressReleaseFile } from "./wordpress-plugin";
 
 const read = (file: string) => readFile(path.join(PLUGIN_DIR, file), "utf8");
 const API_ROUTES = path.join(import.meta.dirname, "..", "app", "api", "wordpress", "v1");
@@ -20,6 +20,35 @@ describe("the WordPress plugin (D169)", () => {
     const built: Buffer = await buildPluginZip();
     const kept = await readFile(PLUGIN_ZIP);
     expect(kept.equals(built)).toBe(true);
+  });
+
+  it("keeps every version released as a file of its own, newest first, the newest the plugin as it is (run the build script)", async () => {
+    expect(WORDPRESS_PLUGIN_RELEASES[0].version).toBe(WORDPRESS_PLUGIN_VERSION);
+    const versions = WORDPRESS_PLUGIN_RELEASES.map((r) => r.version);
+    expect(new Set(versions).size).toBe(versions.length);
+    // Newest first, by version number and by day.
+    const order = (v: string) => v.split(".").map(Number).reduce((sum, part) => sum * 1000 + part, 0);
+    for (let i = 1; i < WORDPRESS_PLUGIN_RELEASES.length; i++) {
+      expect(order(versions[i - 1]), versions[i]).toBeGreaterThan(order(versions[i]));
+      expect(WORDPRESS_PLUGIN_RELEASES[i - 1].released >= WORDPRESS_PLUGIN_RELEASES[i].released, versions[i]).toBe(true);
+    }
+    for (const { version } of WORDPRESS_PLUGIN_RELEASES) {
+      expect(path.join(import.meta.dirname, "..", "..", "public", wordpressReleaseFile(version))).toBe(releaseZip(version));
+      // Each file is the version it says it is: its main file's header.
+      const main = readZipEntry(await readFile(releaseZip(version)), "kaizen-store/kaizen-store.php");
+      expect(main?.toString("utf8"), version).toMatch(new RegExp(`\\* Version:\\s+${version.replace(/\./g, "\\.")}\\s`));
+    }
+    // Nothing in the folder that the list does not name.
+    expect((await readdir(RELEASES_DIR)).sort()).toEqual(versions.map((v) => path.basename(releaseZip(v))).sort());
+    // The newest version's own file is the same bytes as the zip the admin page links.
+    expect((await readFile(releaseZip(WORDPRESS_PLUGIN_VERSION))).equals(await readFile(PLUGIN_ZIP))).toBe(true);
+  });
+
+  it("offers every version on the docs' WordPress page, newest first", async () => {
+    const page = await readFile(path.join(import.meta.dirname, "..", "..", "content", "docs", "developers", "wordpress", "_section.en.md"), "utf8");
+    const linked = [...page.matchAll(/\]\((\/downloads\/wordpress\/[^)]+)\)/g)].map((m) => m[1]);
+    expect(linked).toEqual(WORDPRESS_PLUGIN_RELEASES.map((r) => wordpressReleaseFile(r.version)));
+    expect(page).toContain(`**${WORDPRESS_PLUGIN_VERSION}** (newest)`);
   });
 
   it("is offered from the file the admin page links to", () => {

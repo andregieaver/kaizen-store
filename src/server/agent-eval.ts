@@ -16,7 +16,7 @@ import {
   type RecordedReply,
 } from "@/lib/agent-eval";
 import { storeTools } from "@/lib/chat";
-import { guideTools } from "@/lib/docs-guide";
+import { cleanGuideReply, guideTools } from "@/lib/docs-guide";
 import { MODERATION_OPTIONS } from "@/lib/content-moderation";
 import { BRIEF_OPTIONS } from "@/lib/dream-factory";
 import type { ChatTurn } from "@/lib/legal-writer";
@@ -27,6 +27,7 @@ import { LOAD_TOOLS, chooseTools, loadToolsDefinition, readLoadTools, toolArea, 
 
 import { AiError, chatWithTools, completeText, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import type { Account } from "./auth";
+import { ownHosts } from "./docs-guide";
 import { log } from "./log";
 import { fixedManagerPrompt, managerPromptVersion } from "./owner-assistant";
 import {
@@ -165,7 +166,8 @@ async function runCase(model: EvalModel, testCase: AgentEvalCase): Promise<Agent
     const last = step === STEPS - 1;
     const reply = await model.step(messages, last ? [] : toolsNow());
     if (reply.toolCalls.length === 0) {
-      run.answer = reply.content ?? "";
+      // The guide's answer is scored as its reader sees it: cleaned in code, with no secret and no verdict on Kaizena Flow (D444).
+      run.answer = testCase.agent === "guide" ? cleanGuideReply(reply.content ?? "", "", ownHosts()) : (reply.content ?? "");
       return run;
     }
     messages.push({ role: "assistant", content: reply.content, tool_calls: reply.toolCalls.map((c) => ({ id: c.id, type: "function", function: { name: c.name, arguments: c.arguments } })) });
