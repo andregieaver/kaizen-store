@@ -1,7 +1,5 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
-
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
@@ -183,36 +181,8 @@ export async function saveChatAgent(account: Account, storeId: string | null, ra
 
 // Limits ------------------------------------------------------------------------
 
-/** A visitor's messages per ten minutes. */
-export const VISITOR_LIMIT = 30;
-
-/** A visitor as the limits know them: a hash of their address, changing daily, so it names no one. */
-export function visitorKey(address: string): string {
-  const day = new Date().toISOString().slice(0, 10);
-  return createHash("sha256").update(`${address}|${day}|kaizen-chat`).digest("hex").slice(0, 32);
-}
-
-/** Counts a visitor's message, unless they or the site are past their limit: `busy` (the visitor) or `closed` (the site, for today). */
-export async function takeChatTurn(storeId: string | null, visitor: string, dailyLimit: number): Promise<"ok" | "busy" | "closed"> {
-  const count = async (bucket: string, window: ReturnType<typeof sql>) => {
-    const [row] = await db().execute<Row>(sql`
-      insert into commerce.chat_usage (store_id, bucket, "window", count)
-      values (${storeId}::uuid, ${bucket}, ${window}, 1)
-      on conflict (store_id, bucket, "window") do update set count = commerce.chat_usage.count + 1
-      returning count
-    `);
-    return Number(row.count);
-  };
-  if ((await count(`v:${visitor}`, sql`date_bin('10 minutes', now(), '2000-01-01')`)) > VISITOR_LIMIT) return "busy";
-  if ((await count("day", sql`date_trunc('day', now())`)) > dailyLimit) return "closed";
-  return "ok";
-}
-
-/** Forgets counts older than two days (the five-minute cron). */
-export async function pruneChatUsage(): Promise<number> {
-  const rows = await db().execute<Row>(sql`delete from commerce.chat_usage where "window" < now() - interval '2 days' returning 1`);
-  return rows.length;
-}
+// A visitor's and a site's limits (D81) are `chat-turns.ts`'s, kept there so the docs guide's route (D444) counts its turns without this module.
+export { VISITOR_LIMIT, pruneChatUsage, takeChatTurn, visitorKey } from "./chat-turns";
 
 // The conversation ----------------------------------------------------------------
 

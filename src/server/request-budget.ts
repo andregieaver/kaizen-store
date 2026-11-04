@@ -53,6 +53,9 @@ export const BUDGETS = {
   docs_read: { window: "hour", visitor: 600, store: 60000 },
   // A search of the docs that found nothing, for their gap list (D443): one reader's same search counts once an hour anyway.
   docs_miss: { window: "hour", visitor: 60, store: 3000 },
+  // The docs guide (D444): each message asks the platform's AI, so a reader sends a few a minute at most (beside the chat's own 30 per ten
+  // minutes and the guide's daily limit, `takeChatTurn()`); the whole site's ceiling stops a flood from many. A failed count refuses.
+  docs_guide: { window: "minute", visitor: 10, store: 600 },
   // Wrong admin passwords kept in the audit log (PSI SEC-02, SEC-11), which keeps entries 24 months: one visitor trying many addresses
   // writes at most this many an hour, the whole platform ten times more. The tries are still counted per address beyond it.
   sign_in_audit: { window: "hour", visitor: 20, store: 600 },
@@ -76,10 +79,10 @@ export type BudgetEndpoint = keyof typeof BUDGETS;
 
 /**
  * Endpoints a failed count refuses rather than allows (PSI SEC-10): guessing a password must not get easier while the database struggles,
- * nor the notice form become a way to send mail from Kaizena Flow's address, nor the docs' search a way to spend the platform's AI unmetered
- * (D443: each search may embed its words).
+ * nor the notice form become a way to send mail from Kaizena Flow's address, nor the docs' search or guide a way to spend the platform's AI
+ * unmetered (D443: each search may embed its words; D444: each message to the guide asks its text model).
  */
-export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search"]);
+export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search", "docs_guide"]);
 
 /** The bucket names of an endpoint, for the store and a visitor. */
 export function budgetBuckets(endpoint: BudgetEndpoint, visitor: string): { store: string; visitor: string } {

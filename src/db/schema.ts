@@ -16765,7 +16765,13 @@ export const docsSearchMisses = commerce.table(
   {
     query: text("query").notNull(),
     lang: text("lang").notNull(),
+    /** Searches that found nothing. */
     misses: integer("misses").notNull().default(1),
+    /**
+     * Questions the docs guide (D444) said the docs do not cover, under the topic it gave (`missQuery()` as a search's words): beside the
+     * searches, so the gap list reads both. A row the guide made alone has no search miss (0).
+     */
+    guideMisses: integer("guide_misses").notNull().default(0),
     firstAt: timestamp("first_at", { withTimezone: true }).notNull().defaultNow(),
     lastAt: timestamp("last_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -16774,7 +16780,8 @@ export const docsSearchMisses = commerce.table(
     index("docs_search_misses_last_idx").on(t.lastAt),
     check("docs_search_misses_query", sql`char_length(${t.query}) between 2 and 100`),
     check("docs_search_misses_lang", sql`${t.lang} in ('en', 'nb')`),
-    check("docs_search_misses_count", sql`${t.misses} >= 1`),
+    // Widened for the guide (D444): a row counts at least one search or one question, never neither.
+    check("docs_search_misses_count", sql`${t.misses} >= 0 and ${t.guideMisses} >= 0 and ${t.misses} + ${t.guideMisses} >= 1`),
   ],
 );
 
@@ -16797,5 +16804,106 @@ export const docsReads = commerce.table(
     check("docs_reads_path", sql`${t.path} ~ '^[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*){0,4}$'`),
     check("docs_reads_lang", sql`${t.lang} in ('en', 'nb')`),
     check("docs_reads_count", sql`${t.reads} >= 1`),
+  ],
+);
+
+/**
+ * The docs guide's settings (wave 14 unit E5, D444): the AI chat agent on the docs, Kaizena Flow's own, which answers readers from the docs
+ * alone. One row of its own: `chat_agents` keeps one row per site (Kaizena Flow's is the one without a store, `UNIQUE NULLS NOT DISTINCT`),
+ * and its writers upsert on that key, so the guide is not a second row there. Edited at `/admin/platform/docs/guide`: whether it answers,
+ * its name, picture, greeting per language and daily limit, and under Customise its occupation, the picture's frame and the platform's own
+ * guidance. No row is off.
+ */
+export const docsGuide = commerce.table(
+  "docs_guide",
+  {
+    id: smallint("id").primaryKey().default(1),
+    enabled: boolean("enabled").notNull().default(false),
+    name: text("name").notNull().default(""),
+    occupation: text("occupation").notNull().default(""),
+    /** Its picture: `{ url, width, height }`, or null. */
+    avatar: jsonb("avatar"),
+    /** How its picture is framed (`AvatarStyle`, `src/lib/chat-avatar.ts`); null is the standard look. */
+    avatarStyle: jsonb("avatar_style"),
+    /** Its first words by the docs' language (`en`, `nb`); empty uses the built-in greeting. */
+    greeting: jsonb("greeting").notNull().default({}),
+    /** The platform's own guidance on tone and what to point out, under the fixed rules. */
+    instructions: text("instructions").notNull().default(""),
+    /** At most this many readers' messages a day, to keep the AI's cost in hand. */
+    dailyLimit: integer("daily_limit").notNull().default(500),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    check("docs_guide_one", sql`${t.id} = 1`),
+    index("docs_guide_updated_by_idx").on(t.updatedBy),
+    check("docs_guide_name", sql`length(${t.name}) <= 60`),
+    check("docs_guide_occupation", sql`length(${t.occupation}) <= 80`),
+    check("docs_guide_instructions", sql`length(${t.instructions}) <= 2000`),
+    check("docs_guide_daily_limit", sql`${t.dailyLimit} between 1 and 100000`),
+  ],
+);
+
+/**
+ * A conversation with the docs guide (D444): a reader of the docs, never signed in for it, known only by their tab's token (kept as a hash).
+ * Kept as the platform chat's conversations are (D216): it ends when nobody has written for Kaizena Flow's desk's time, its transcript (the
+ * messages, the token and the page) goes after the desk's period (a day while the desk has support off; `support_transcripts`), and the
+ * anonymised record after `support_records`. Written only by `src/server/docs-guide-store.ts`.
+ */
+export const docsGuideConversations = commerce.table(
+  "docs_guide_conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** sha-256 hex of the reader's tab token; null once anonymised. */
+    tokenHash: text("token_hash"),
+    /** The docs' language it started in (`en`, `nb`). */
+    lang: text("lang").notNull(),
+    /** The docs page it started on (`owners/getting-started/create-your-store`), or null for the front page. */
+    pagePath: text("page_path"),
+    messageSeq: integer("message_seq").notNull().default(0),
+    /** Answers in which the guide said the docs do not cover the question and offered support (a count, kept after anonymising). */
+    unanswered: integer("unanswered").notNull().default(0),
+    createdAt: createdAt(),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    /** The transcript was deleted and the token and page cleared; only the dates and counts stay. */
+    anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("docs_guide_conversations_token_key").on(t.tokenHash),
+    index("docs_guide_conversations_open_idx")
+      .on(t.lastMessageAt)
+      .where(sql`${t.endedAt} is null`),
+    index("docs_guide_conversations_ended_idx")
+      .on(t.endedAt)
+      .where(sql`${t.anonymisedAt} is null`),
+    check("docs_guide_conversations_lang", sql`${t.lang} in ('en', 'nb')`),
+    check("docs_guide_conversations_token", sql`${t.tokenHash} is not null or ${t.anonymisedAt} is not null`),
+    check("docs_guide_conversations_page", sql`${t.pagePath} is null or char_length(${t.pagePath}) between 1 and 300`),
+    check("docs_guide_conversations_counts", sql`${t.messageSeq} >= 0 and ${t.unanswered} >= 0`),
+  ],
+);
+
+/** A message in a conversation with the docs guide (D444): the reader's (secrets taken out first) or the guide's, numbered without gaps. */
+export const docsGuideMessages = commerce.table(
+  "docs_guide_messages",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => docsGuideConversations.id, { onDelete: "cascade" }),
+    seq: integer("seq").notNull(),
+    /** `reader` or `ai`. */
+    author: text("author").notNull(),
+    body: text("body").notNull(),
+    /** The guide's: the pages it used, a page it opened, the support it offered and its prompt version (D391). */
+    data: jsonb("data"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("docs_guide_messages_seq_key").on(t.conversationId, t.seq),
+    check("docs_guide_messages_author", sql`${t.author} in ('reader', 'ai')`),
+    check("docs_guide_messages_body", sql`char_length(${t.body}) between 1 and 4000`),
+    check("docs_guide_messages_seq", sql`${t.seq} >= 1`),
   ],
 );

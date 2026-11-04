@@ -436,6 +436,27 @@ export async function countDocsMiss(raw: string, lang: DocLang, visitor: string)
   );
 }
 
+/**
+ * Counts a question the docs guide (D444) said the docs do not cover, for the gap list beside the searches: under the topic the guide gave,
+ * read as a search's words are (`missQuery()`: never what looks like an email address, a long number or a token), in the conversation's
+ * language; one reader's same topic within the hour counts once. Whether it was counted.
+ */
+export async function countGuideMiss(topic: string, lang: DocLang, visitor: string): Promise<boolean> {
+  const query = missQuery(topic);
+  if (!query) return false;
+  return onceAnHour(
+    "docs_guide_miss",
+    visitor,
+    `${lang}|${query}`,
+    sql`
+      insert into commerce.docs_search_misses (query, lang, misses, guide_misses, first_at, last_at)
+      select ${query}, ${lang}, 0, 1, now(), now() from seen where seen.count = 1
+      on conflict (query, lang) do update set guide_misses = commerce.docs_search_misses.guide_misses + 1, last_at = now()
+      returning 1
+    `,
+  );
+}
+
 /** Counts a read of a docs page (once an hour for one reader). Whether it was counted. */
 export async function countDocsRead(path: string, lang: DocLang, visitor: string): Promise<boolean> {
   return onceAnHour(
@@ -451,20 +472,23 @@ export async function countDocsRead(path: string, lang: DocLang, visitor: string
   );
 }
 
-export type DocsMiss = { query: string; lang: DocLang; misses: number; firstAt: string; lastAt: string };
+export type DocsMiss = { query: string; lang: DocLang; misses: number; guideMisses: number; firstAt: string; lastAt: string };
 
-/** The searches that found nothing in the last 90 days, the most often first: the docs' gap list, for the platform's admins. */
+/**
+ * The searches that found nothing and the questions the guide could not answer (D444) in the last 90 days, the most often first: the docs'
+ * gap list, for the platform's admins.
+ */
 export async function listDocsMisses(limit = 100): Promise<DocsMiss[]> {
   const rows = await typedRows(
-    z.object({ query: col.text, lang: z.enum(DOC_LANGS), misses: col.int, first_at: col.timestamp, last_at: col.timestamp }),
+    z.object({ query: col.text, lang: z.enum(DOC_LANGS), misses: col.int, guide_misses: col.int, first_at: col.timestamp, last_at: col.timestamp }),
     sql`
-      select query, lang, misses, first_at, last_at from commerce.docs_search_misses
+      select query, lang, misses, guide_misses, first_at, last_at from commerce.docs_search_misses
       where last_at > now() - interval '90 days'
-      order by misses desc, last_at desc, query
+      order by misses + guide_misses desc, last_at desc, query
       limit ${Math.min(Math.max(limit, 1), 500)}
     `,
   );
-  return rows.map((r) => ({ query: r.query, lang: r.lang, misses: r.misses, firstAt: r.first_at, lastAt: r.last_at }));
+  return rows.map((r) => ({ query: r.query, lang: r.lang, misses: r.misses, guideMisses: r.guide_misses, firstAt: r.first_at, lastAt: r.last_at }));
 }
 
 /** Takes a search off the gap list (it is answered now, or it names someone). Audited with its language and count, never its words. */
