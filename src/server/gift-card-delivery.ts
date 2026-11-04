@@ -93,6 +93,8 @@ function cardEmail(
     message: string | null;
     /** The order's number when the card is a refund as store credit (D364). */
     refundOf?: string | null;
+    /** The last characters of the Shopify card this one replaces (D445 step 8). */
+    movedFrom?: string | null;
   },
 ) {
   const m = t(card.lang);
@@ -102,6 +104,7 @@ function cardEmail(
   const blocks: EmailBlock[] = [
     { type: "heading", text: m.giftCardEmail.heading(card.amount, store.name) },
     ...(card.refundOf ? ([{ type: "paragraph", text: m.giftCardEmail.refundText(card.refundOf) }] satisfies EmailBlock[]) : []),
+    ...(card.movedFrom ? ([{ type: "paragraph", text: m.giftCardEmail.movedText(store.name, card.movedFrom) }] satisfies EmailBlock[]) : []),
     ...(card.from || card.message
       ? ([{ type: "paragraph", text: [card.from ? m.giftCardEmail.from(card.from) : null, card.message].filter(Boolean).join("\n") }] satisfies EmailBlock[])
       : []),
@@ -126,7 +129,7 @@ function cardEmail(
  */
 export async function sendIssuedCard(
   storeId: string,
-  card: { id: string; code: string; amountMinor: number; currency: string; to: string; lang: string; expiresAt: string | null; message: string | null },
+  card: { id: string; code: string; amountMinor: number; currency: string; to: string; lang: string; expiresAt: string | null; message: string | null; movedFrom?: string | null },
   /** A new code for a delivered card (D381) is an email of its own. */
   idempotencyKey = `gift-card:${card.id}:staff`,
 ): Promise<SendOutcome> {
@@ -144,6 +147,7 @@ export async function sendIssuedCard(
     timeZone: String(zone?.tz ?? "UTC"),
     from: null,
     message: card.message,
+    movedFrom: card.movedFrom ?? null,
   });
   return sendEmail({
     storeId,

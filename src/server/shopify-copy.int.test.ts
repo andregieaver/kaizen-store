@@ -42,7 +42,7 @@ const files = (): Record<string, string> => ({
     { id: "gid://shopify/Product/1", handle: "copied-wool-hat", title: "Wool hat", vendor: "Nordic Wool", descriptionHtml: "<p>Warm</p>", tags: ["wool"], status: "ACTIVE", isGiftCard: false, seo: {}, options: [{ name: "Size", position: 1 }] },
     { id: "gid://shopify/ProductVariant/11", sku: "COPY-HAT-S", price: "299.00", compareAtPrice: null, inventoryQuantity: 5, position: 1, selectedOptions: [{ name: "Size", value: "S" }], image: null, inventoryItem: { requiresShipping: true, unitCost: null, measurement: { weight: { value: 200, unit: "GRAMS" } } }, __parentId: "gid://shopify/Product/1" },
   ),
-  customers: lines({ id: "gid://shopify/Customer/5", firstName: "Kari", lastName: "Nordmann", tags: [], defaultEmailAddress: { emailAddress: email }, defaultPhoneNumber: null, defaultAddress: { address1: "Gata 1", city: "Oslo", zip: "0150", countryCodeV2: "NO" } }),
+  customers: lines({ id: "gid://shopify/Customer/5", firstName: "Kari", lastName: "Nordmann", tags: [], defaultEmailAddress: { emailAddress: email, marketingState: "SUBSCRIBED", marketingOptInLevel: "CONFIRMED_OPT_IN", marketingUpdatedAt: "2025-03-02T10:00:00Z" }, defaultPhoneNumber: null, defaultAddress: { address1: "Gata 1", city: "Oslo", zip: "0150", countryCodeV2: "NO" } }),
   orders: lines(
     { id: "gid://shopify/Order/9", name: "#1001", email, createdAt: "2026-10-01T10:00:00Z", cancelledAt: null, currencyCode: "NOK", displayFinancialStatus: "PAID", displayFulfillmentStatus: "FULFILLED", discountCodes: [], subtotalPriceSet: { shopMoney: { amount: "299.0" } }, totalShippingPriceSet: { shopMoney: { amount: "0.0" } }, totalTaxSet: { shopMoney: { amount: "59.8" } }, totalDiscountsSet: { shopMoney: { amount: "0.0" } }, totalPriceSet: { shopMoney: { amount: "299.0" } }, billingAddress: null, shippingAddress: null },
     { name: "Wool hat - S", sku: "COPY-HAT-S", quantity: 1, originalUnitPriceSet: { shopMoney: { amount: "299.0" } }, __parentId: "gid://shopify/Order/9" },
@@ -61,6 +61,8 @@ const files = (): Record<string, string> => ({
 let refuse = new Set<string>();
 /** Whether Shopify has a new order when the daily look asks (the 14 days after, D445 step 7c). */
 let newOrders = true;
+/** The first gift card's balance on Shopify: lowered when its old code is spent there after the move. */
+let giftOneOnShopify = "400.00";
 /** The order Shopify made since the last read: #1002 on move day, #1003 on the first daily look. */
 let newOrder = { name: "#1002", id: 10 };
 const started: string[] = [];
@@ -106,6 +108,11 @@ const shopify = (async (_input: string | URL | Request, init?: RequestInit) => {
       },
     });
   }
+  // Two gift cards with money left: one with its holder's email, one without (D445 step 8).
+  const card = (n: number, amount: string, holder: string | null) => ({ id: `gid://shopify/GiftCard/${n}`, lastCharacters: n === 1 ? "ab12" : "cd34", enabled: true, expiresOn: "2030-01-31", balance: { amount, currencyCode: "NOK" }, customer: holder ? { defaultEmailAddress: { emailAddress: holder } } : null });
+  if (body.query.includes("KaizenCopyGiftCards")) return reply({ giftCards: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [card(1, "400.00", email), card(2, "150.00", null)] } });
+  if (body.query.includes("KaizenCopyGiftCard(")) return reply({ node: card(2, "150.00", null) });
+  if (body.query.includes("KaizenCopyGiftBalances")) return reply({ giftCards: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: "gid://shopify/GiftCard/1", balance: { amount: giftOneOnShopify, currencyCode: "NOK" } }] } });
   if (body.query.includes("KaizenCopyLook")) {
     const settings = `/* made by Shopify */ ${JSON.stringify({ current: { type_header_font: "helvetica_n7", color_schemes: { "scheme-1": { settings: { background: "#FFFFFF", text: "#121212", button: "#1F6F5C" } } } } })}`;
     return reply({ themes: { nodes: [{ name: "Dawn", files: { nodes: [{ body: { content: settings } }] } }] } });
@@ -161,6 +168,8 @@ describe("copying a Shopify shop", () => {
       shipping: ["checked", 2],
       discounts: ["checked", 3],
       look: ["checked", 1],
+      subscribers: ["checked", 1],
+      gift_cards: ["checked", 2],
       products: ["checked", 1],
       collections: ["checked", 1],
       customers: ["checked", 1],
@@ -183,7 +192,16 @@ describe("copying a Shopify shop", () => {
     expect(await copy.bringItOver(owner)).toEqual({ ok: true });
     await settle(owner);
     const view = (await copy.copyView(owner))!;
-    expect(Object.values(view.state.feeds).map((f) => f.stage)).toEqual(Array(12).fill("done"));
+    expect(Object.values(view.state.feeds).map((f) => f.stage)).toEqual(Array(14).fill("done"));
+    // Kari's consent as Shopify recorded it: subscribed, confirmed, with Shopify's record as the words and in the history (Decision 1).
+    const [sub] = await db().execute<Row>(sql`select source, status, confirmed_at, consented_at, consent_text from commerce.marketing_subscribers where store_id = ${fx.storeId}::uuid and email = ${email}`);
+    expect([sub?.source, sub?.status, sub?.confirmed_at !== null, new Date(String(sub?.consented_at)).toISOString()]).toEqual(["shopify", "subscribed", true, "2025-03-02T10:00:00.000Z"]);
+    expect(String(sub?.consent_text)).toMatch(/as Shopify recorded it: SUBSCRIBED, CONFIRMED_OPT_IN/);
+    const [event] = await db().execute<Row>(sql`select e.kind, e.source from commerce.marketing_consent_events e join commerce.marketing_subscribers s on s.id = e.subscriber_id where s.store_id = ${fx.storeId}::uuid and s.email = ${email}`);
+    expect([event?.kind, event?.source]).toEqual(["subscribed", "shopify"]);
+    // No gift card before move day.
+    const [{ cards }] = await db().execute<Row>(sql`select count(*)::int as cards from commerce.gift_cards where store_id = ${fx.storeId}::uuid`);
+    expect(cards).toBe(0);
     expect(copyDone(view.state)).toBe(true);
     const [product] = await db().execute<Row>(sql`select handle from commerce.products where store_id = ${fx.storeId}::uuid and handle = 'copied-wool-hat'`);
     expect(product?.handle).toBe("copied-wool-hat");
@@ -305,6 +323,17 @@ describe("copying a Shopify shop", () => {
     // The old shop's links could not be read here: said, and the move went on.
     expect(after.steps.links).toEqual({ stage: "failed", problem: "links_unread" });
     expect(after.steps.open).toEqual({ stage: "done" });
+    // Gift cards (Decision 2): Kari's made here with the same balance and expiry and emailed its new code; the one with no email waits.
+    expect(after.steps.gift_cards).toMatchObject({ stage: "done", done: 1, failed: 1, left: [{ id: "gid://shopify/GiftCard/2", last4: "CD34", amount: "150", currency: "NOK" }] });
+    const [kari] = await db().execute<Row>(sql`select id, moved_from, currency, commerce.gift_card_balance(id) as balance, expires_at, customer_id, sent_at from commerce.gift_cards where store_id = ${fx.storeId}::uuid and moved_from = 'gid://shopify/GiftCard/1'`);
+    expect([kari?.currency, Number(kari?.balance), new Date(String(kari?.expires_at)).toISOString().slice(0, 10), kari?.customer_id !== null, kari?.sent_at !== null]).toEqual(["NOK", 40000, "2030-01-31", true, true]);
+    const [mail] = await db().execute<Row>(sql`select to_address, text from commerce.email_messages where store_id = ${fx.storeId}::uuid and idempotency_key = ${`gift-card:${kari!.id}:moved`}`);
+    expect([mail?.to_address, /AB12/.test(String(mail?.text))]).toEqual([email, true]);
+    // The owner issues the one without an email when its holder comes: its code shown once, the list then empty.
+    const issued = await move.issueLeftCard(owner, "gid://shopify/GiftCard/2", moveDeps);
+    expect(issued).toMatchObject({ ok: true, amountMinor: 15000, currency: "NOK" });
+    expect(await move.issueLeftCard(owner, "gid://shopify/GiftCard/2", moveDeps)).toMatchObject({ ok: false, problem: "made" });
+    expect((await move.moveStatus(owner))!.steps.gift_cards).toMatchObject({ done: 2, failed: 0, left: [] });
     const [store] = await db().execute<Row>(sql`select private_mode from commerce.stores where id = ${fx.storeId}::uuid`);
     expect(store?.private_mode).toBe(false);
     // The vendors are still known after the catch-up found no new product.
@@ -332,11 +361,15 @@ describe("copying a Shopify shop", () => {
     };
     await back({ finishedAt: new Date(Date.now() - 25 * 3_600_000).toISOString() });
     newOrder = { name: "#1003", id: 11 };
+    giftOneOnShopify = "300.00";
     started.length = 0;
     await look();
     // Only customers and orders, only since the move.
     expect(started).toEqual(["customers-new", "orders-new"]);
-    expect(await move.watchView(owner, watchDeps)).toMatchObject({ day: 2, found: 1, canClose: false });
+    expect(await move.watchView(owner, watchDeps)).toMatchObject({ day: 2, found: 1, canClose: false, cardsLowered: 1, cardsMoved: true });
+    // Kari's old gift card code was used on Shopify for 100 kr after the move: taken off her card here, with the reason in its ledger.
+    const [lowered] = await db().execute<Row>(sql`select commerce.gift_card_balance(id) as balance, moved_balance_minor from commerce.gift_cards where store_id = ${fx.storeId}::uuid and moved_from = 'gid://shopify/GiftCard/1'`);
+    expect([Number(lowered?.balance), Number(lowered?.moved_balance_minor)]).toEqual([30000, 30000]);
     const [late] = await db().execute<Row>(sql`select number from commerce.orders where store_id = ${fx.storeId}::uuid and number = 'C-1003'`);
     expect(late?.number).toBe("C-1003");
     // A day later nothing new: everything is green, so Shopify can close before day 14.

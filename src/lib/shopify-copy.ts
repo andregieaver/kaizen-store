@@ -18,7 +18,7 @@ import { writeCsv, type Cell } from "./csv";
  * products (they are the products' categories), customers before orders (an order is tied to its customer by email), discount codes after
  * the products and categories they name, menus after what they link to, redirects and the look last.
  */
-export const COPY_FEEDS = ["countries", "shipping", "products", "collections", "customers", "orders", "discounts", "pages", "articles", "menus", "redirects", "look"] as const;
+export const COPY_FEEDS = ["countries", "shipping", "products", "collections", "customers", "subscribers", "orders", "gift_cards", "discounts", "pages", "articles", "menus", "redirects", "look"] as const;
 export type CopyFeed = (typeof COPY_FEEDS)[number];
 
 /**
@@ -30,6 +30,10 @@ export type CopyFeed = (typeof COPY_FEEDS)[number];
 export const FEED_KIND: Record<CopyFeed, "import" | "later" | "direct"> = {
   countries: "direct",
   shipping: "direct",
+  // From the customers' own read (their consent as Shopify records it, D445 step 8): written by the subscriber list's writer.
+  subscribers: "direct",
+  // Read now, issued on move day (step 8): until then nobody could spend one balance in both shops.
+  gift_cards: "direct",
   discounts: "direct",
   look: "direct",
   products: "import",
@@ -57,7 +61,7 @@ export const BULK_QUERIES: Record<CopyFeed, string> = {
   } } } }`,
   customers: `{ customers { edges { node {
     id firstName lastName tags
-    defaultEmailAddress { emailAddress }
+    defaultEmailAddress { emailAddress marketingState marketingOptInLevel marketingUpdatedAt }
     defaultPhoneNumber { phoneNumber }
     defaultAddress { company address1 address2 city zip countryCodeV2 phone }
   } } } }`,
@@ -80,6 +84,8 @@ export const BULK_QUERIES: Record<CopyFeed, string> = {
   menus: "",
   countries: "",
   shipping: "",
+  subscribers: "",
+  gift_cards: "",
   discounts: "",
   look: "",
 };
@@ -113,6 +119,8 @@ export const FEED_FILES: Record<CopyFeed, string> = {
   articles: "shopify-articles.jsonl",
   menus: "shopify-menus.jsonl",
   countries: "shopify-countries.jsonl",
+  subscribers: "shopify-subscribers.jsonl",
+  gift_cards: "shopify-giftcards.jsonl",
   shipping: "shopify-shipping.jsonl",
   discounts: "shopify-discounts.jsonl",
   look: "shopify-look.jsonl",
@@ -580,6 +588,30 @@ export function vendorLines(tree: BulkTree): VendorLine[] {
     .map((p) => ({ vendor: s(p.vendor, 255).replace(/\s+/g, " ").trim(), handle: s(p.handle, 255), active: s(p.status, 20) === "ACTIVE" }));
 }
 
+/**
+ * A customer's email consent as Shopify records it (D445 step 8, `docs/moving-from-shopify.md` 6.2): kept as Shopify gave it, the evidence the
+ * subscriber list is built from; read from the customers' bulk read.
+ */
+export type ConsentLine = { email: string; name: string; state: string; level: string; updatedAt: string | null };
+
+export function consentLines(tree: BulkTree): ConsentLine[] {
+  return tree.roots.flatMap((c) => {
+    const address = o(c.defaultEmailAddress);
+    const email = s(address.emailAddress, 320).trim().toLowerCase();
+    if (!email.includes("@")) return [];
+    const at = s(address.marketingUpdatedAt, 40);
+    return [
+      {
+        email,
+        name: [s(c.firstName, 100), s(c.lastName, 100)].filter(Boolean).join(" ").trim().slice(0, 200),
+        state: s(address.marketingState, 40),
+        level: s(address.marketingOptInLevel, 40),
+        updatedAt: at && !Number.isNaN(Date.parse(at)) ? new Date(at).toISOString() : null,
+      },
+    ];
+  });
+}
+
 /** A feed's file from its bulk operation's text, and how many things it holds. */
 export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: number } {
   const tree = readBulkLines(text);
@@ -610,6 +642,8 @@ export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: 
     case "menus":
     case "countries":
     case "shipping":
+    case "subscribers":
+    case "gift_cards":
     case "discounts":
     case "look":
       return { csv: text, count: tree.roots.length };
@@ -651,6 +685,8 @@ export const EMPTY_COPY: CopyState = {
   feeds: {
     countries: { stage: "waiting" },
     shipping: { stage: "waiting" },
+    subscribers: { stage: "waiting" },
+    gift_cards: { stage: "waiting" },
     discounts: { stage: "waiting" },
     look: { stage: "waiting" },
     products: { stage: "waiting" },
@@ -730,10 +766,10 @@ export function nextToApply(state: CopyState): CopyFeed | null {
 }
 
 /** The order feeds are READ in: the bulk reads first, then the few read by their own small queries (`PLAIN_FEEDS`). */
-export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus", "countries", "shipping", "discounts", "look"];
+export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus", "countries", "shipping", "discounts", "look", "gift_cards"];
 
 /** The feeds read by an ordinary query, in one tick, rather than a bulk operation. */
-export const PLAIN_FEEDS: readonly CopyFeed[] = ["menus", "countries", "shipping", "discounts", "look"];
+export const PLAIN_FEEDS: readonly CopyFeed[] = ["menus", "countries", "shipping", "discounts", "look", "gift_cards"];
 
 /** The feed to read next: one bulk operation at a time per shop, in `READ_ORDER`. */
 export function nextToRead(state: CopyState): CopyFeed | null {

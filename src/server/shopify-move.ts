@@ -6,6 +6,7 @@ import { z } from "zod";
 import { copyDone, copyFailed, copyStateOf } from "@/lib/shopify-copy";
 import {
   EMPTY_MOVE,
+  LEFT_CARDS_MAX,
   WATCH_DAYS,
   closeReady,
   moveDue,
@@ -30,6 +31,7 @@ import { getSetupProgress } from "./setup";
 import { shopifyConnection } from "./shopify-connect";
 import { advanceCopy, startCatchUp, type CopyDeps } from "./shopify-copy";
 import { makersView } from "./shopify-makers";
+import { issueLeftGiftCard, lowerSpentOnShopify, moveGiftCards, readShopifyGiftCards } from "./shopify-gift-cards";
 import { addressView, type AddressDeps } from "./shopify-address";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { db } from "@/db/client";
@@ -184,6 +186,14 @@ export async function advanceMove(member: Membership, deps: MoveDeps = {}): Prom
         const fixed = await fixOldShop(member);
         state.steps.links = fixed.ok ? { stage: "done", done: fixed.written, failed: fixed.refused } : { stage: "failed", problem: "not_allowed" };
       }
+    } else if (step === "gift_cards") {
+      // Read again now, just before they are made: a balance spent on Shopify since the copy is not given twice.
+      const lines = await readShopifyGiftCards(storeId, deps);
+      if (lines === null) state.steps.gift_cards = { stage: "failed", problem: "shopify" };
+      else {
+        const moved = await moveGiftCards(member, lines);
+        state.steps.gift_cards = { stage: "done", done: moved.issued, failed: moved.left.length, ...(moved.left.length > 0 ? { left: moved.left.slice(0, LEFT_CARDS_MAX).map(({ id, last4, amount, currency, expiresOn }) => ({ id, last4, amount, currency, expiresOn })) } : {}) };
+      }
     } else if (step === "open") {
       if (!member.store.setupCompletedAt) state.steps.open = { stage: "failed", problem: "setup" };
       else {
@@ -285,7 +295,12 @@ export async function advanceWatch(member: Membership, deps: MoveDeps = {}): Pro
       const after = await advanceCopy(member, deps);
       if (after && copyDone(after)) {
         const found = after.feeds.orders.stage === "done" ? (after.feeds.orders.count ?? 0) : 0;
-        state.watch = { ...state.watch, running: false, checkedAt: now.toISOString(), found: state.watch.found + found, lastFound: found };
+        // A moved gift card's old code spent on Shopify since: taken off its card here.
+        const lowered = await lowerSpentOnShopify(member, deps).catch((error: unknown) => {
+          log("error", "shopify.gift_cards_lower_failed", { storeId }, error);
+          return 0;
+        });
+        state.watch = { ...state.watch, running: false, checkedAt: now.toISOString(), found: state.watch.found + found, lastFound: found, cardsLowered: state.watch.cardsLowered + lowered };
         log("info", "shopify.watch_checked", { storeId, found });
       }
     } else if (watchDue(state, now)) {
@@ -313,6 +328,10 @@ export type WatchView = {
   linksSure: number;
   /** Orders that came in on Shopify after the move, copied here by the daily look; null before the first look. */
   found: number | null;
+  /** Moved gift cards whose old code was used on Shopify since, lowered here to match. */
+  cardsLowered: number;
+  /** Gift cards came over: the owner switches them off on Shopify too. */
+  cardsMoved: boolean;
   canClose: boolean;
 };
 
@@ -330,6 +349,8 @@ export async function watchView(member: Membership, deps: MoveDeps & AddressDeps
     ...facts,
     linksSure: links?.sure ?? 0,
     found: row.move.watch.checkedAt ? row.move.watch.found : null,
+    cardsLowered: row.move.watch.cardsLowered,
+    cardsMoved: (row.move.steps.gift_cards.done ?? 0) > 0,
     canClose: closeReady(row.move, facts, now),
   };
 }
@@ -342,4 +363,19 @@ export async function shopifyClosed(member: Membership, deps: MoveDeps = {}): Pr
   await saveMove(member.store.id, { ...row.move, watch: { ...row.move.watch, running: false, closedAt: (deps.now ?? (() => new Date()))().toISOString() } });
   log("info", "shopify.closed_said", { storeId: member.store.id });
   return { ok: true };
+}
+
+/** *Issue it* on a gift card that had no email (owner only): made now, its code shown once; it leaves the list. */
+export async function issueLeftCard(member: Membership, shopifyId: string, deps: MoveDeps = {}): Promise<Awaited<ReturnType<typeof issueLeftGiftCard>>> {
+  if (!memberCan(member, OWNER)) return { ok: false, problem: "gone" };
+  const result = await issueLeftGiftCard(member, shopifyId, deps);
+  if (result.ok || result.problem === "made" || result.problem === "gone") {
+    const row = await rowOf(member.store.id);
+    if (row) {
+      const step = row.move.steps.gift_cards;
+      const left = (step.left ?? []).filter((c) => c.id !== shopifyId);
+      await saveMove(member.store.id, { ...row.move, steps: { ...row.move.steps, gift_cards: { ...step, left, failed: left.length, done: (step.done ?? 0) + (result.ok ? 1 : 0) } } });
+    }
+  }
+  return result;
 }

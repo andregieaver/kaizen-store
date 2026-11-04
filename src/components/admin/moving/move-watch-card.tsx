@@ -71,6 +71,7 @@ export async function MoveWatchCard({ member, lang, close, level = 2 }: { member
             </>
           )}
         </li>
+        {view.cardsLowered > 0 && <li className={tick}>{countWords(view.cardsLowered, w.cardsLowered)}</li>}
       </ul>
       {view.canClose ? (
         <div className="mt-4 flex flex-col gap-2">
@@ -82,6 +83,7 @@ export async function MoveWatchCard({ member, lang, close, level = 2 }: { member
                 {w.close.how}
               </a>
             </li>
+            {view.cardsMoved && <li>{w.close.giftCards}</li>}
             <li>
               {w.close.plan}{" "}
               <a href={SHOPIFY_HELP.close} target="_blank" rel="noreferrer" className="underline underline-offset-2">

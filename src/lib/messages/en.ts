@@ -962,6 +962,7 @@ export const en = {
     welcomeText: (store: string) => `Here is your code for ${store}. Type it in the cart when you check out. It works once.`,
     welcomeShop: "Go to the shop",
     emailReason: (store: string) => `You get this email because you asked for news and offers from ${store}.`,
+    movedReason: (store: string) => `${store} has moved to a new shop. You keep getting our emails as before, and you can unsubscribe at any time.`,
   },
   // legal: needs review. Back in stock (D298, 6.4 and 6.5): the confirmation email, its page and the email when stock is back.
   stockNotice: {
@@ -1580,6 +1581,7 @@ export const en = {
     copyText: (amount: string, to: string) => `We have emailed the gift card of ${amount} to ${to}. The code is only in their email.`,
     refundSubject: (store: string) => `Your refund from ${store} as store credit`,
     refundText: (number: string) => `This is your refund for order ${number}, as store credit. Spend it like a gift card.`,
+    movedText: (store: string, last4: string) => `${store} has moved to a new shop. This is the new code for your gift card ending ${last4}, with the same balance. The old code no longer works in the new shop.`,
   },
 };
 

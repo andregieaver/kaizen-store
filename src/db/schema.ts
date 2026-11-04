@@ -11409,10 +11409,15 @@ export const giftCards = commerce.table(
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
     deactivatedBy: uuid("deactivated_by").references(() => accounts.id),
+    /** The Shopify gift card this one replaces on a move (D445 step 8): its id there; one card here for each. */
+    movedFrom: text("moved_from"),
+    /** That card's balance on Shopify when last read (minor units): a drop after the move is taken off this card. */
+    movedBalanceMinor: bigint("moved_balance_minor", { mode: "number" }),
     createdAt: createdAt(),
   },
   (t) => [
     unique("gift_cards_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("gift_cards_moved_key").on(t.storeId, t.movedFrom).where(sql`${t.movedFrom} is not null`),
     uniqueIndex("gift_cards_code_key").on(t.storeId, t.codeHash).where(sql`${t.codeHash} is not null`),
     uniqueIndex("gift_cards_order_line_key").on(t.storeId, t.orderLineId, t.unitIndex).where(sql`${t.orderLineId} is not null`),
     uniqueIndex("gift_cards_refund_key").on(t.storeId, t.refundId).where(sql`${t.refundId} is not null`),

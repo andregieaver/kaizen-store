@@ -196,6 +196,30 @@ describe("a send", () => {
   });
 });
 
+describe("a subscriber moved from Shopify (D445 step 8)", () => {
+  it("is told in their first broadcast that the shop moved, and only in the first", async () => {
+    const moved = `moved-${randomBytes(4).toString("hex")}@example.com`;
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.marketing_subscribers (store_id, email, locale, market_code, status, source, consent_text, consented_at, token)
+      values (${storeId}::uuid, ${moved}, 'nb-NO', 'NO', 'subscribed', 'shopify', 'Agreed on Shopify', now(), ${randomBytes(32).toString("base64url")})
+      returning id
+    `);
+    const textOf = async (id: string, subscriberId: string) =>
+      String((await db().execute<Row>(sql`select text from commerce.email_messages where idempotency_key = ${`broadcast:${id}:${subscriberId}`}`))[0]?.text ?? "");
+    const first = await draft("First after the move");
+    await bc.startBroadcast(storeId, owner, first);
+    await bc.runBroadcasts({ only: first, pace: 0 });
+    expect(await textOf(first, String(row.id))).toMatch(/har flyttet til en ny nettbutikk/);
+    // Someone who joined here is never told so.
+    const [kari] = await db().execute<Row>(sql`select id from commerce.marketing_subscribers where store_id = ${storeId}::uuid and email = ${people.kari}`);
+    expect(await textOf(first, String(kari.id))).not.toMatch(/har flyttet/);
+    const second = await draft("Second after the move");
+    await bc.startBroadcast(storeId, owner, second);
+    await bc.runBroadcasts({ only: second, pace: 0 });
+    expect(await textOf(second, String(row.id))).not.toMatch(/har flyttet/);
+  });
+});
+
 describe("a schedule", () => {
   it("starts when its time comes, and goes back to a draft with the reason when it cannot", async () => {
     const id = await draft("Later");

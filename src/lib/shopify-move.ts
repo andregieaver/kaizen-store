@@ -6,13 +6,15 @@
  * 1. `catch_up`: what Shopify made since the copy began (new products, customers, past orders), read and brought over without asking,
  *    through the same imports as the copy.
  * 2. `links`: the old shop's links read again and every one with a sure counterpart here redirected (D445 step 1).
- * 3. `open`: the shop opened to everyone (private mode off), as it is on Shopify.
+ * 3. `gift_cards` (step 8): every Shopify gift card with money left, read again now, made here and its new code emailed to its holder; one
+ *    without an email waits for the owner (`left`).
+ * 4. `open`: the shop opened to everyone (private mode off), as it is on Shopify.
  *
  * Switching the address is part 2 (step 7b). No step sends an email: nothing the copy writes emails anyone, and the store's own emails
  * follow its own orders, as they always do.
  */
 
-export const MOVE_STEPS = ["catch_up", "links", "open"] as const;
+export const MOVE_STEPS = ["catch_up", "links", "gift_cards", "open"] as const;
 export type MoveStep = (typeof MOVE_STEPS)[number];
 export type StepStage = "waiting" | "running" | "done" | "failed";
 /** Why a step could not finish, in a code the page words. */
@@ -20,6 +22,22 @@ export const STEP_PROBLEMS = ["shopify", "links_unread", "not_allowed", "trial_e
 export type StepProblem = (typeof STEP_PROBLEMS)[number];
 
 export type MoveStatus = "none" | "scheduled" | "moving" | "moved";
+
+/** A Shopify gift card that had no email to send its new code to (step 8): what the owner sees to recognise it, and its id there. */
+export type LeftCard = { id: string; last4: string; amount: string; currency: string; expiresOn: string | null };
+/** At most this many are kept in the move's state; more are said as a number. */
+export const LEFT_CARDS_MAX = 200;
+
+function leftOf(raw: unknown): LeftCard[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  return raw.slice(0, LEFT_CARDS_MAX).flatMap((r) => {
+    const c = o(r);
+    const ok =
+      typeof c.id === "string" && /^gid:\/\/shopify\/GiftCard\/\d+$/.test(c.id) && typeof c.last4 === "string" && /^[A-Z0-9]{0,4}$/.test(c.last4) &&
+      typeof c.amount === "string" && /^\d{1,12}(\.\d{1,2})?$/.test(c.amount) && typeof c.currency === "string" && /^[A-Z]{3}$/.test(c.currency);
+    return ok ? [{ id: c.id as string, last4: c.last4 as string, amount: c.amount as string, currency: c.currency as string, expiresOn: typeof c.expiresOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(c.expiresOn) ? c.expiresOn : null }] : [];
+  });
+}
 
 export type MoveState = {
   status: MoveStatus;
@@ -33,7 +51,7 @@ export type MoveState = {
   missed: string | null;
   /** The 14 days after (D445 step 7c): the daily look for orders still arriving on Shopify, and when the owner said Shopify is closed. */
   watch: Watch;
-  steps: Record<MoveStep, { stage: StepStage; problem?: StepProblem; done?: number; failed?: number }>;
+  steps: Record<MoveStep, { stage: StepStage; problem?: StepProblem; done?: number; failed?: number; left?: LeftCard[] }>;
 };
 
 export const EMPTY_MOVE: MoveState = {
@@ -43,8 +61,8 @@ export const EMPTY_MOVE: MoveState = {
   startedAt: null,
   finishedAt: null,
   missed: null,
-  watch: { checkedAt: null, running: false, found: 0, lastFound: 0, closedAt: null },
-  steps: { catch_up: { stage: "waiting" }, links: { stage: "waiting" }, open: { stage: "waiting" } },
+  watch: { checkedAt: null, running: false, found: 0, lastFound: 0, closedAt: null, cardsLowered: 0 },
+  steps: { catch_up: { stage: "waiting" }, links: { stage: "waiting" }, gift_cards: { stage: "waiting" }, open: { stage: "waiting" } },
 };
 
 const o = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -55,11 +73,11 @@ const STATUSES: readonly MoveStatus[] = ["none", "scheduled", "moving", "moved"]
 const count = (v: unknown): number | undefined => (typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : undefined);
 
 /** The 14 days after a move: when Shopify was last looked at, whether a look is running, how many orders it found, and when Shopify was closed. */
-export type Watch = { checkedAt: string | null; running: boolean; found: number; lastFound: number; closedAt: string | null };
+export type Watch = { checkedAt: string | null; running: boolean; found: number; lastFound: number; closedAt: string | null; cardsLowered: number };
 
 function watchOf(raw: unknown): Watch {
   const w = o(raw);
-  return { checkedAt: instant(w.checkedAt), running: w.running === true, found: count(w.found) ?? 0, lastFound: count(w.lastFound) ?? 0, closedAt: instant(w.closedAt) };
+  return { checkedAt: instant(w.checkedAt), running: w.running === true, found: count(w.found) ?? 0, lastFound: count(w.lastFound) ?? 0, closedAt: instant(w.closedAt), cardsLowered: count(w.cardsLowered) ?? 0 };
 }
 
 /** The kept state read back, every field checked (an unknown shape is no move at all). */
@@ -84,6 +102,8 @@ export function moveStateOf(raw: unknown): MoveState {
     const failed = count(s.failed);
     if (done !== undefined) state.done = done;
     if (failed !== undefined) state.failed = failed;
+    const left = leftOf(s.left);
+    if (left) state.left = left;
     out.steps[step] = state;
   }
   if (out.status === "scheduled" && (out.at === null || out.by === null)) out.status = "none";

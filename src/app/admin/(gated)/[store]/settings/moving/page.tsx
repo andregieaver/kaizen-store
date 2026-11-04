@@ -34,6 +34,7 @@ import {
   advanceMoveAction,
   bringItOverAction,
   cancelMoveAction,
+  issueLeftCardAction,
   checkAddressAction,
   checkOldLinksAction,
   connectShopifyAction,
@@ -266,13 +267,14 @@ async function MovePanel({ storeSlug, locale }: { storeSlug: string; locale: str
         links: `${base}/redirects/old-shop`,
         waiting: "#shop-makers",
         address: "#shop-address",
-        steps: { catch_up: `${base}/products/import`, links: `${base}/redirects/old-shop`, open: `${base}/settings/private` },
+        steps: { catch_up: `${base}/products/import`, links: `${base}/redirects/old-shop`, gift_cards: `${base}/gift-cards`, open: `${base}/settings/private` },
       }}
       actions={{
         start: startMoveAction.bind(null, storeSlug),
         schedule: scheduleMoveAction.bind(null, storeSlug),
         cancel: cancelMoveAction.bind(null, storeSlug),
         advance: advanceMoveAction.bind(null, storeSlug),
+        issue: issueLeftCardAction.bind(null, storeSlug),
       }}
     />
   );
@@ -319,6 +321,8 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
     shipping: `${base}/settings/shipping`,
     discounts: `${base}/discounts`,
     look: `${base}/settings/design/themes`,
+    subscribers: `${base}/subscribers`,
+    gift_cards: `${base}/gift-cards`,
   };
   const rows: CopyRow[] = COPY_FEEDS.map((feed) => {
     const f = view.state.feeds[feed];

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { pgUuidArray } from "./pg-arrays";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -193,8 +194,10 @@ function emailFor(
   marketCode: string | null,
   token: string | null,
   facts: EmailFacts,
+  moved = false,
 ): Rendered | null {
   return marketingEmail({
+    moved,
     store,
     content: broadcast.content,
     facts,
@@ -514,6 +517,19 @@ async function sendBatch(
     if (!facts.has(key)) facts.set(key, factsForEmail(store, broadcast.content, r.locale, r.marketCode));
     return facts.get(key)!;
   };
+  // Subscribers moved from Shopify (D445 step 8) who never got a broadcast here: their first one says the shop moved.
+  const ids = batch.map((r) => r.subscriberId);
+  const movedFirst = new Set(
+    ids.length === 0
+      ? []
+      : (
+          await db().execute<Row>(sql`
+            select s.id from commerce.marketing_subscribers s
+             where s.id = any(${pgUuidArray(ids)}::uuid[]) and s.source = 'shopify'
+               and not exists (select 1 from commerce.broadcast_recipients r where r.subscriber_id = s.id and r.status = 'sent')
+          `)
+        ).map((row) => String(row.id)),
+  );
   for (const r of batch) {
     if (r.status !== "subscribed") {
       await markRecipient(r, "skipped", null, "unsubscribed");
@@ -524,7 +540,7 @@ async function sendBatch(
     if (!broadcasts.has(r.broadcastId)) broadcasts.set(r.broadcastId, await getBroadcast(r.storeId, r.broadcastId));
     const store = stores.get(r.storeId);
     const broadcast = broadcasts.get(r.broadcastId);
-    const email = store && broadcast ? emailFor(store, broadcast, r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r)) : null;
+    const email = store && broadcast ? emailFor(store, broadcast, r.locale, r.marketCode, r.token, await factsOf(store, broadcast, r), movedFirst.has(r.subscriberId)) : null;
     if (!store || !email) {
       await markRecipient(r, "failed", null);
       result.failed += 1;
