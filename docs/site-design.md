@@ -288,6 +288,11 @@ Every page is checked at phone width in the builder. The owner's habits:
 | Page | Address | Made | State |
 |---|---|---|---|
 | Move from Shopify | `/move-your-store/move-from-shopify` | 4 November 2026, for Homer: three steps, what comes with you, no stress, the free move, six questions, the main action. Claims from `docs/moving-from-shopify.md` 17 | draft, for the owner to publish |
+| Move from WooCommerce | `/move-your-store/move-from-woocommerce` | 4 November 2026, the Shopify page's twin, plus *Keep WordPress, or move everything* (two cards) and what comes *straight from WooCommerce* beside what *our free WordPress plugin* adds. Claims from `docs/moving-from-woocommerce.md` 17 | draft, for the owner to publish |
+
+A page for another platform (`move-from-{platform}`) is the same eight-part shape: the hero, the three steps, what is particular to that
+platform (as WordPress's choice), what comes with you, no stress, the free move, its questions, the main action ending on *Compare us to
+{platform}* (`/kaizen-vs-{platform}`). Its claims come only from that platform's `docs/moving-from-*.md` and what it says is built.
 
 ## 10. Found while reading the site (4 November 2026)
 
