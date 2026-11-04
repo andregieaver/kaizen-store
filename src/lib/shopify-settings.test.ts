@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { storeDiscountInput } from "./discounts";
-import { amountOf, countriesOf, discountInputOf, discountOf, fontFamilyOf, hexOf, lookFromAnswer, lookOf, shippingOf, type DiscountLine } from "./shopify-settings";
+import { amountOf, giftCardOf, countriesOf, discountInputOf, discountOf, fontFamilyOf, hexOf, lookFromAnswer, lookOf, shippingOf, type DiscountLine } from "./shopify-settings";
 
 const ALL = { __typename: "DiscountBuyerSelectionAll" };
 const basic = (over: Record<string, unknown> = {}) => ({
@@ -124,5 +124,18 @@ describe("Shopify's settings for the copy", () => {
     expect(lookOf("Broken", "{")).toBeNull();
     expect(lookFromAnswer({ themes: { nodes: [{ name: "Dawn", files: { nodes: [{ body: { content: dawn } }] } }] } })?.accent).toBe("#1f6f5c");
     expect([fontFamilyOf("helvetica_n4"), fontFamilyOf("dm_sans_i4"), fontFamilyOf("x"), hexOf("rgba(0,0,0,0.5)"), hexOf("linear-gradient(red, blue)")]).toEqual(["Helvetica", "Dm Sans", null, null, null]);
+  });
+});
+
+describe("Shopify's gift cards", () => {
+  const node = (over: Record<string, unknown> = {}) => ({ id: "gid://shopify/GiftCard/7", lastCharacters: "ab12", enabled: true, expiresOn: "2027-01-31", balance: { amount: "40.00", currencyCode: "EUR" }, customer: { defaultEmailAddress: { emailAddress: "Kari@Example.com" } }, ...over });
+  it("reads a card with money left: its last characters, balance, expiry and holder", () => {
+    expect(giftCardOf(node(), "2026-11-04")).toEqual({ id: "gid://shopify/GiftCard/7", last4: "AB12", amount: "40", currency: "EUR", expiresOn: "2027-01-31", email: "kari@example.com" });
+    expect(giftCardOf(node({ customer: null, expiresOn: null }), "2026-11-04")).toMatchObject({ email: null, expiresOn: null });
+  });
+  it("leaves out one that is empty, switched off, expired or not a gift card", () => {
+    for (const over of [{ balance: { amount: "0.00", currencyCode: "EUR" } }, { enabled: false }, { expiresOn: "2026-11-03" }, { id: "gid://shopify/Order/1" }, { balance: { amount: "x", currencyCode: "EUR" } }]) {
+      expect(giftCardOf(node(over), "2026-11-04")).toBeNull();
+    }
   });
 });

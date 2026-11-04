@@ -6,7 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 
 import { hint, primary, secondary } from "@/components/admin/data/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { MOVE_STEPS, type MoveState, type MoveStep, type ReadyCheck } from "@/lib/shopify-move";
+import { MOVE_STEPS, type LeftCard, type MoveState, type MoveStep, type ReadyCheck } from "@/lib/shopify-move";
 import type { MoveProblem } from "@/server/shopify-move";
 
 import { useAdminText } from "../admin-text";
@@ -16,6 +16,8 @@ export type MoveActions = {
   schedule: (local: string) => Promise<{ ok: boolean; problem?: MoveProblem }>;
   cancel: () => Promise<{ ok: boolean }>;
   advance: () => Promise<{ moving: boolean }>;
+  /** *Issue it* on a Shopify gift card that had no email (step 8): its new code, shown once. */
+  issue: (shopifyId: string) => Promise<{ ok: true; code: string } | { ok: false; problem: "gone" | "made" | "no_codes" }>;
 };
 
 /**
@@ -94,7 +96,9 @@ export function ShopMove({
                 ? countWords(s.done ?? 0, w.caughtUp)
                 : s.stage === "done" && step === "links" && (s.done ?? 0) > 0
                   ? countWords(s.done ?? 0, w.linked)
-                  : null;
+                  : s.stage === "done" && step === "gift_cards" && (s.done ?? 0) > 0
+                    ? countWords(s.done ?? 0, w.cardsMoved)
+                    : null;
             return (
               <li key={step} className="flex flex-col gap-0.5">
                 <span>
@@ -113,6 +117,7 @@ export function ShopMove({
             );
           })}
         </ul>
+        {(state.steps.gift_cards.left ?? []).length > 0 && <LeftCards cards={state.steps.gift_cards.left ?? []} issue={actions.issue} />}
         {state.status === "moved" && (
           <div className="flex flex-col gap-2">
             <p className="text-sm">{w.movedText}</p>
@@ -199,5 +204,52 @@ export function ShopMove({
         </p>
       )}
     </section>
+  );
+}
+
+/** The Shopify gift cards that had no email (D445 step 8): each recognisable by its last characters, issued here when its holder comes. */
+function LeftCards({ cards, issue }: { cards: LeftCard[]; issue: MoveActions["issue"] }) {
+  const w = useAdminText("moving").move.left;
+  return (
+    <div className="flex flex-col gap-2">
+      <h4 className="text-sm font-medium">{w.title}</h4>
+      <p className={hint}>{w.text}</p>
+      <ul className="flex flex-col gap-2 text-sm">
+        {cards.map((card) => (
+          <LeftCardRow key={card.id} card={card} issue={issue} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function LeftCardRow({ card, issue }: { card: LeftCard; issue: MoveActions["issue"] }) {
+  const w = useAdminText("moving").move.left;
+  const [pending, start] = useTransition();
+  const [said, setSaid] = useState<string | null>(null);
+  return (
+    <li className="flex flex-wrap items-center gap-2">
+      <span>{fillWords(w.card, { last4: card.last4, amount: `${card.amount} ${card.currency}` })}</span>
+      {said === null && (
+        <button
+          type="button"
+          disabled={pending}
+          className={secondary}
+          onClick={() =>
+            start(async () => {
+              const result = await issue(card.id);
+              setSaid(result.ok ? fillWords(w.issued, { code: result.code }) : w.problems[result.problem]);
+            })
+          }
+        >
+          {pending ? w.issuing : w.issue}
+        </button>
+      )}
+      {said && (
+        <span role="status" className="font-medium">
+          {said}
+        </span>
+      )}
+    </li>
   );
 }

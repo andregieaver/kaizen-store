@@ -10,7 +10,7 @@ describe("move day", () => {
       status: "moving",
       by,
       startedAt: "2026-11-04T08:00:00.000Z",
-      steps: { catch_up: { stage: "done", done: 3 }, links: { stage: "waiting" }, open: { stage: "failed", problem: "setup" } },
+      steps: { catch_up: { stage: "done", done: 3 }, links: { stage: "waiting" }, gift_cards: { stage: "waiting" }, open: { stage: "failed", problem: "setup" } },
     });
     expect(moveStateOf({ status: "scheduled", by }).status).toBe("none");
     expect(moveStateOf({ status: "nope", by: "x" })).toEqual(EMPTY_MOVE);
@@ -18,7 +18,7 @@ describe("move day", () => {
   });
 
   it("runs its steps in order, a failed one settled, and is due only at its time", () => {
-    const at = (catchUp: "waiting" | "running" | "done" | "failed", links: "waiting" | "done" | "failed", open: "waiting" | "done") => ({ ...EMPTY_MOVE, steps: { catch_up: { stage: catchUp }, links: { stage: links }, open: { stage: open } } });
+    const at = (catchUp: "waiting" | "running" | "done" | "failed", links: "waiting" | "done" | "failed", open: "waiting" | "done") => ({ ...EMPTY_MOVE, steps: { catch_up: { stage: catchUp }, links: { stage: links }, gift_cards: { stage: links === "waiting" ? ("waiting" as const) : ("done" as const) }, open: { stage: open } } });
     expect(nextMoveStep(at("waiting", "waiting", "waiting"))).toBe("catch_up");
     expect(nextMoveStep(at("running", "waiting", "waiting"))).toBe("catch_up");
     expect(nextMoveStep(at("failed", "waiting", "waiting"))).toBe("links");
@@ -80,5 +80,15 @@ describe("the 14 days after", () => {
     expect(closeReady(moved(), { addressDone: false, linksMissing: 3 }, at("2026-11-17T10:00:00Z"))).toBe(true);
     expect(closeReady(moved({ closedAt: "2026-11-10T10:00:00.000Z" }), green, at("2026-11-17T10:00:00Z"))).toBe(false);
     expect([watchShown(moved()), watchShown(moved({ closedAt: "2026-11-10T10:00:00.000Z" })), watchShown(EMPTY_MOVE)]).toEqual([true, false, false]);
+  });
+});
+
+describe("gift cards left for the owner", () => {
+  it("keeps only cards it can name, at most 200", () => {
+    const good = { id: "gid://shopify/GiftCard/7", last4: "AB12", amount: "40", currency: "EUR", expiresOn: "2027-01-31" };
+    const read = moveStateOf({ status: "moved", steps: { gift_cards: { stage: "done", done: 2, failed: 3, left: [good, { ...good, id: "x" }, { ...good, amount: "-1" }, { ...good, expiresOn: "soon" }] } } });
+    expect(read.steps.gift_cards).toEqual({ stage: "done", done: 2, failed: 3, left: [good, { ...good, expiresOn: null }] });
+    const many = moveStateOf({ status: "moved", steps: { gift_cards: { stage: "done", left: Array.from({ length: 250 }, () => good) } } });
+    expect(many.steps.gift_cards.left).toHaveLength(200);
   });
 });

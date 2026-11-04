@@ -15,6 +15,7 @@ import {
   MENUS_QUERY,
   PLAIN_FEEDS,
   CATCH_UP_FEEDS,
+  consentLines,
   catchUpQuery,
   VENDORS_FILE,
   vendorLines,
@@ -188,7 +189,7 @@ export async function startCatchUp(member: Membership, since: string, only: read
   if (!memberCan(member, OWNER)) return { ok: false };
   const state = await stateOf(member.store.id);
   if (!state) return { ok: false };
-  const feeds = Object.fromEntries(COPY_FEEDS.map((f) => [f, CATCH_UP_FEEDS.includes(f) && only.includes(f) ? { stage: "waiting" } : { stage: "empty", count: 0 }])) as CopyState["feeds"];
+  const feeds = Object.fromEntries(COPY_FEEDS.map((f) => [f, (CATCH_UP_FEEDS.includes(f) && only.includes(f)) || (f === "subscribers" && only.includes("customers")) ? { stage: "waiting" } : { stage: "empty", count: 0 }])) as CopyState["feeds"];
   const vendors = state.feeds.products.vendors;
   if (vendors) feeds.products = { ...feeds.products, vendors };
   await save(member.store.id, { startedAt: new Date().toISOString(), apply: true, since, feeds });
@@ -467,6 +468,11 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
         if (FEED_KIND[feed] === "import") {
           const handed = await hand(member, feed, file.text, deps);
           state.feeds[feed] = "empty" in handed ? { stage: "empty", count: 0 } : "problem" in handed ? { stage: "failed", problem: handed.problem } : { stage: "checking", job: handed.job, count: handed.count };
+          // The customers' email consent, as Shopify records it, becomes the subscribers' part (step 8): only a subscription with its date.
+          if (feed === "customers") {
+            const subscribed = consentLines(readBulkLines(file.text)).filter((l) => l.state === "SUBSCRIBED" && l.updatedAt !== null);
+            state.feeds.subscribers = subscribed.length > 0 ? await stage(member, "subscribers", subscribed.map((l) => JSON.stringify(l)).join("\n"), deps) : { stage: "empty", count: 0 };
+          }
           if (feed === "products" && "job" in handed) {
             const vendors = await keepVendors(member, file.text, deps, state.since ? (before.products.vendors ?? null) : null);
             if (vendors) state.feeds.products.vendors = vendors;
@@ -522,6 +528,10 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
       // A dry run that found nothing to bring over is refused by its import: the owner fixes it on the import's page (`needs_fixing`).
       const job = started.ok ? null : await getJob(storeId, f.job!);
       state.feeds[apply] = started.ok ? { ...f, stage: "applying" } : { ...f, stage: "failed", problem: job && importableOf(job) === 0 ? "needs_fixing" : "import_refused" };
+    }
+    // No customers read, no subscribers from them.
+    if (state.feeds.subscribers.stage === "waiting" && (state.feeds.customers.stage === "empty" || state.feeds.customers.stage === "failed")) {
+      state.feeds.subscribers = { stage: "empty", count: 0 };
     }
     // The products' vendors stay known whatever became of a later read of the products (a catch-up that found none).
     if (!state.feeds.products.vendors && before.products.vendors) state.feeds.products = { ...state.feeds.products, vendors: before.products.vendors };

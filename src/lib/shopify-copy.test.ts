@@ -6,6 +6,7 @@ import { detectFormat } from "./product-csv-shopify";
 import { readRedirectFile } from "./redirect-csv";
 import {
   COPY_FEEDS,
+  consentLines,
   catchUpQuery,
   vendorLines,
   EMPTY_COPY,
@@ -180,7 +181,7 @@ describe("the copy's state", () => {
   });
 
   it("is ready when every feed is checked or had nothing, and applies in order, customers before orders", () => {
-    const checked = at({ products: { stage: "checked" }, collections: { stage: "checked" }, customers: { stage: "checked" }, orders: { stage: "checked" }, pages: { stage: "empty" }, articles: { stage: "empty" }, menus: { stage: "empty" }, redirects: { stage: "empty" }, countries: { stage: "empty" }, shipping: { stage: "empty" }, discounts: { stage: "empty" }, look: { stage: "empty" } });
+    const checked = at({ products: { stage: "checked" }, collections: { stage: "checked" }, customers: { stage: "checked" }, orders: { stage: "checked" }, pages: { stage: "empty" }, articles: { stage: "empty" }, menus: { stage: "empty" }, redirects: { stage: "empty" }, countries: { stage: "empty" }, shipping: { stage: "empty" }, discounts: { stage: "empty" }, look: { stage: "empty" }, subscribers: { stage: "empty" }, gift_cards: { stage: "empty" } });
     expect([copyReady(checked), copyMoving(checked), copyDone(checked)]).toEqual([true, false, false]);
     expect(nextToApply(checked)).toBeNull();
     const applying = { ...checked, apply: true };
@@ -188,7 +189,7 @@ describe("the copy's state", () => {
     expect(nextToApply(at({ countries: { stage: "done" }, shipping: { stage: "empty" }, products: { stage: "applying" }, customers: { stage: "checked" } }, true))).toBeNull();
     // The countries come first: a price, a rate and a code are per country.
     expect(nextToApply(at({ countries: { stage: "checked" }, products: { stage: "checked" } }, true))).toBe("countries");
-    expect(nextToApply(at({ countries: { stage: "empty" }, shipping: { stage: "done" }, products: { stage: "done" }, collections: { stage: "empty" }, customers: { stage: "failed" }, orders: { stage: "checked" } }, true))).toBe("orders");
+    expect(nextToApply(at({ countries: { stage: "empty" }, shipping: { stage: "done" }, products: { stage: "done" }, collections: { stage: "empty" }, customers: { stage: "failed" }, subscribers: { stage: "empty" }, orders: { stage: "checked" } }, true))).toBe("orders");
     const settled = (stage: "done" | "empty") => Object.fromEntries(COPY_FEEDS.map((f) => [f, { stage }]));
     expect(copyDone(at({ ...settled("done"), orders: { stage: "failed" } }, true))).toBe(true);
     expect(copyReady(at(settled("empty")))).toBe(false);
@@ -299,5 +300,23 @@ describe("move day's catch-up", () => {
     expect(catchUpQuery("pages", since)).not.toMatch(/created_at/);
     expect(catchUpQuery("orders", null)).not.toMatch(/created_at/);
     expect(catchUpQuery("orders", `2026-11-03T18:00:00Z" OR "x`)).not.toMatch(/created_at/);
+  });
+});
+
+describe("the customers' email consent", () => {
+  it("keeps each customer's consent as Shopify records it, the address in lower case, and leaves out one without an address", () => {
+    const tree = readBulkLines(
+      [
+        { id: "gid://shopify/Customer/1", firstName: "Kari", lastName: "Nordmann", defaultEmailAddress: { emailAddress: "Kari@Example.com", marketingState: "SUBSCRIBED", marketingOptInLevel: "CONFIRMED_OPT_IN", marketingUpdatedAt: "2025-03-02T10:00:00Z" } },
+        { id: "gid://shopify/Customer/2", firstName: "Ola", defaultEmailAddress: { emailAddress: "ola@example.com", marketingState: "UNSUBSCRIBED", marketingOptInLevel: "SINGLE_OPT_IN", marketingUpdatedAt: null } },
+        { id: "gid://shopify/Customer/3", defaultEmailAddress: null },
+      ]
+        .map((o) => JSON.stringify(o))
+        .join("\n"),
+    );
+    expect(consentLines(tree)).toEqual([
+      { email: "kari@example.com", name: "Kari Nordmann", state: "SUBSCRIBED", level: "CONFIRMED_OPT_IN", updatedAt: "2025-03-02T10:00:00.000Z" },
+      { email: "ola@example.com", name: "Ola", state: "UNSUBSCRIBED", level: "SINGLE_OPT_IN", updatedAt: null },
+    ]);
   });
 });

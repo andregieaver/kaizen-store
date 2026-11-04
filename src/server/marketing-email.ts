@@ -43,6 +43,8 @@ export function marketingEmail(input: {
   link?: (key: string, target: string, marketSlug: string) => string;
   /** The products and campaigns the content names, as code read them for this subscriber (D352, `factsForEmail()`); none, left out. */
   facts?: EmailFacts;
+  /** The subscriber came from the store's Shopify shop and gets their first email here (D445 step 8): the reason says the shop moved. */
+  moved?: boolean;
 }): MarketingEmail | null {
   const { store, token } = input;
   const main = store.localization.locales[0];
@@ -59,7 +61,7 @@ export function marketingEmail(input: {
       facts: input.facts,
       locale: language,
       footer: emailFooter(store, emailText(lang)),
-      unsubscribe: { text: m.news.emailReason(store.name), linkText: m.news.unsubscribe, url: `${base}/unsubscribe/${token ?? "test"}` },
+      unsubscribe: { text: input.moved ? m.news.movedReason(store.name) : m.news.emailReason(store.name), linkText: m.news.unsubscribe, url: `${base}/unsubscribe/${token ?? "test"}` },
       resolve: resolverFor(store, marketSlug),
       link: (key, target) => (input.link ? input.link(key, target, marketSlug) : target),
     }),

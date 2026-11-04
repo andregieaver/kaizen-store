@@ -11,7 +11,7 @@ import type { CopyFeed, FeedProblem, FeedStage } from "@/lib/shopify-copy";
 import { useAdminText } from "../admin-text";
 
 /** The parts with no Shopify file to use instead: their own screen here is the way. */
-const SET_HERE: readonly CopyFeed[] = ["countries", "shipping", "discounts", "look", "pages", "articles", "menus"];
+const SET_HERE: readonly CopyFeed[] = ["countries", "shipping", "discounts", "look", "pages", "articles", "menus", "subscribers", "gift_cards"];
 
 export type CopyRow = {
   feed: CopyFeed;
@@ -91,7 +91,8 @@ export function ShopCopy({ started, moving, ready, done, failed, rows, actions, 
         {rows.map((row) => (
           <li key={row.feed} className="flex flex-col gap-0.5">
             <span>
-              <span className="font-medium">{w.feeds[row.feed]}</span>: {w.stages[row.stage]}
+              {/* Gift cards are made on move day (D445 step 8): read now, nothing of them is here before. */}
+              <span className="font-medium">{w.feeds[row.feed]}</span>: {row.feed === "gift_cards" && (row.stage === "done" || row.stage === "checked") ? w.onMoveDay : w.stages[row.stage]}
               {row.count !== null && row.stage !== "empty" && row.stage !== "failed" ? ` · ${countWords(row.count, w.found)}` : ""}
               {row.needLook !== null && row.needLook > 0 ? ` · ${countWords(row.needLook, w.needLook)}` : ""}
             </span>

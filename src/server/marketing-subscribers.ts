@@ -424,3 +424,32 @@ export async function pruneSubscribers(): Promise<number> {
   `);
   return rows.length;
 }
+
+/**
+ * Subscribers moved from a Shopify shop (D445 step 8, `docs/moving-from-shopify.md` 6.2, the owner's Decision 1): only those Shopify records as
+ * `SUBSCRIBED` with a date (`movedSubscriber()`), each with Shopify's record kept as its consent words (the consent history keeps it with the
+ * event, source `shopify`), confirmed only when Shopify says the opt-in was confirmed. An address already on the list is left exactly as it is,
+ * so nobody who left it here is ever added back. Nothing is emailed. Not staff's to type: only the move calls it.
+ */
+export async function addMovedSubscribers(
+  storeId: string,
+  locale: string,
+  subscribers: readonly { email: string; name: string; consentedAt: string; confirmed: boolean; consentText: string }[],
+): Promise<{ added: number; already: number }> {
+  let added = 0;
+  let already = 0;
+  for (const sub of subscribers) {
+    const email = normal(sub.email);
+    if (!email || !email.includes("@") || Number.isNaN(Date.parse(sub.consentedAt))) continue;
+    const rows = await db().execute<Row>(sql`
+      insert into commerce.marketing_subscribers (store_id, email, name, locale, market_code, status, source, consent_text, consented_at, confirmed_at, token)
+      values (${storeId}::uuid, ${email}, ${sub.name.slice(0, 200)}, ${locale.slice(0, 20)}, null, 'subscribed', 'shopify', ${sub.consentText.slice(0, 1000)},
+        ${sub.consentedAt}::timestamptz, ${sub.confirmed ? sub.consentedAt : null}::timestamptz, ${newToken()})
+      on conflict (store_id, lower(email)) do nothing
+      returning id
+    `);
+    if (rows.length > 0) added += 1;
+    else already += 1;
+  }
+  return { added, already };
+}
