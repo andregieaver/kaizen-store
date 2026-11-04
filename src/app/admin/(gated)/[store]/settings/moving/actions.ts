@@ -13,7 +13,7 @@ import { saveVendorMaker, type MakerSaved } from "@/server/shopify-makers";
 import { advanceMove, cancelMove, issueLeftCard, scheduleMove, shopifyClosed, startMove, type MoveProblem } from "@/server/shopify-move";
 import { checkAddress, startAddress } from "@/server/shopify-address";
 import { undoCopy, type UndoResult } from "@/server/shopify-undo";
-import { copyMoving } from "@/lib/shopify-copy";
+import { copyMoving, ordersSinceFor } from "@/lib/shopify-copy";
 
 /**
  * Settings → Moving in (D445 step 2): connect the Shopify shop (the state cookie set here, then Shopify's own page), disconnect it, and the
@@ -52,10 +52,13 @@ export async function checkOldLinksAction(storeSlug: string): Promise<{ ok: fals
 }
 
 /** *Copy my shop*: a fresh copy, every feed waiting to be read (D445 step 4). */
-export async function startCopyAction(storeSlug: string): Promise<{ ok: boolean }> {
+export async function startCopyAction(storeSlug: string, options: unknown = null): Promise<{ ok: boolean }> {
   const member = await checkPermission(storeSlug, "owner");
   if (!member) return { ok: false };
-  const result = await startCopy(member);
+  // *What to bring* (step 9): checked by `copyOptionsOf()`; the years become a date here, on the server's clock.
+  const o = options && typeof options === "object" ? (options as { skip?: unknown; ordersYears?: unknown }) : {};
+  const years = typeof o.ordersYears === "number" ? o.ordersYears : null;
+  const result = await startCopy(member, { skip: o.skip, ordersSince: ordersSinceFor(years, new Date()) });
   if (result.ok) await advanceCopy(member);
   refresh();
   return result;

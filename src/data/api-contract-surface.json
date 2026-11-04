@@ -1,5 +1,5 @@
 {
- "version": "1.5",
+ "version": "1.6",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2568,6 +2568,8 @@
   "mcp setup_progress <- store (required)",
   "mcp shipping_overview",
   "mcp shipping_overview <- store (required)",
+  "mcp shopify_move",
+  "mcp shopify_move <- store (required)",
   "mcp speed_report",
   "mcp speed_report <- store (required)",
   "mcp start_dns_move_here",

@@ -676,8 +676,29 @@ export type FeedState = {
   made?: number;
   refused?: number;
 };
+/**
+ * *What to bring* (D445 step 9, Lisa's): parts left out of the copy, and past orders only from a date (an ISO instant), else all of them.
+ */
+export type CopyOptions = { skip: CopyFeed[]; ordersSince: string | null };
+
+/** The options as the owner chose them, checked: a part that is not one is dropped, a date that is not one is all orders. */
+export function copyOptionsOf(raw: unknown): CopyOptions {
+  const r = o(raw);
+  const skip = Array.isArray(r.skip) ? [...new Set(r.skip.filter((f): f is CopyFeed => typeof f === "string" && (COPY_FEEDS as readonly string[]).includes(f)))] : [];
+  return { skip, ordersSince: typeof r.ordersSince === "string" && ISO_INSTANT.test(r.ordersSince) ? r.ordersSince : null };
+}
+
+/** The first moment of past orders brought for "the last `years` years", from `now`; null for all of them. */
+export function ordersSinceFor(years: number | null, now: Date): string | null {
+  if (years === null || !Number.isInteger(years) || years < 1 || years > 20) return null;
+  const at = new Date(now.getTime());
+  at.setUTCFullYear(at.getUTCFullYear() - years);
+  at.setUTCHours(0, 0, 0, 0);
+  return at.toISOString();
+}
+
 /** `since`: a move-day catch-up (D445 step 7) reading only what Shopify made from then on, brought over without asking. */
-export type CopyState = { startedAt: string | null; apply: boolean; since?: string; feeds: Record<CopyFeed, FeedState> };
+export type CopyState = { startedAt: string | null; apply: boolean; since?: string; options?: CopyOptions; feeds: Record<CopyFeed, FeedState> };
 
 export const EMPTY_COPY: CopyState = {
   startedAt: null,
@@ -713,6 +734,7 @@ export function copyStateOf(raw: unknown): CopyState {
   const feeds = o(r.feeds);
   const out: CopyState = { startedAt: typeof r.startedAt === "string" && !Number.isNaN(Date.parse(r.startedAt)) ? r.startedAt : null, apply: r.apply === true, feeds: { ...EMPTY_COPY.feeds } };
   if (typeof r.since === "string" && ISO_INSTANT.test(r.since)) out.since = r.since;
+  if (r.options && typeof r.options === "object") out.options = copyOptionsOf(r.options);
   for (const feed of COPY_FEEDS) {
     const f = o(feeds[feed]);
     // A part this copy was started without (one added since) is not part of it: Start again brings it.

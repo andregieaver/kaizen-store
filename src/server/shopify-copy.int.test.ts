@@ -456,6 +456,19 @@ describe("copying a Shopify shop", () => {
     expect((await copy.copyView(owner))!.state.feeds.products.stage).toBe("checked");
   });
 
+  it("brings only what the owner chose: parts left out are nothing to copy, and past orders only from a date (step 9)", async () => {
+    started.length = 0;
+    expect(await copy.startCopy(owner, { skip: ["pages", "articles", "customers"], ordersSince: "2024-11-04T00:00:00.000Z" })).toEqual({ ok: true });
+    await settle(owner);
+    const state = (await copy.copyView(owner))!.state;
+    expect(started).not.toContain("pages");
+    expect(started).not.toContain("customers");
+    // Past orders asked for from the date only.
+    expect(started).toContain("orders-new");
+    expect([state.feeds.pages.stage, state.feeds.articles.stage, state.feeds.customers.stage, state.feeds.subscribers.stage]).toEqual(["empty", "empty", "empty", "empty"]);
+    expect(state.options).toEqual({ skip: ["pages", "articles", "customers"], ordersSince: "2024-11-04T00:00:00.000Z" });
+  });
+
   it("is the owner's alone", async () => {
     const { admin } = await membersOf(fx);
     expect(await copy.startCopy(admin)).toEqual({ ok: false });

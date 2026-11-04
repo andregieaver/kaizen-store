@@ -340,6 +340,7 @@ export const TOOL_WORDS: Record<string, string> = {
   reply_to_support: "Preparing the reply",
   end_support_conversation: "Ending the conversation",
   gift_card_overview: "Looking at gift cards",
+  shopify_move: "Looking at the move from Shopify",
   issue_gift_card: "Preparing the gift card",
   reviews_overview: "Looking at reviews",
   list_broadcasts: "Looking at broadcasts",

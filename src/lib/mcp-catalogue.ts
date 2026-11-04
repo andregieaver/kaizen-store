@@ -34,6 +34,7 @@ export const OWNER_KEY_READS: ReadonlySet<string> = new Set([
   "start_dns_move_here",
   "list_staff",
   "billing_overview",
+  "shopify_move",
 ]);
 
 /** Gates whose change cannot simply be taken back: money, a domain, who works in the store. */

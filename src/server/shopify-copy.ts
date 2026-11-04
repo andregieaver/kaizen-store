@@ -18,6 +18,7 @@ import {
   PLAIN_FEEDS,
   CATCH_UP_FEEDS,
   consentLines,
+  copyOptionsOf,
   catchUpQuery,
   VENDORS_FILE,
   vendorLines,
@@ -200,7 +201,7 @@ async function save(storeId: string, state: CopyState): Promise<void> {
  * *Copy my shop* (and *Start again*): a fresh copy, every feed waiting to be read. An earlier copy's imports that were never applied
  * (uploaded, checking or checked) are cancelled first, since a store has one open import of each kind; an applied one stays as it is.
  */
-export async function startCopy(member: Membership): Promise<{ ok: boolean }> {
+export async function startCopy(member: Membership, chosen: unknown = null): Promise<{ ok: boolean }> {
   if (!memberCan(member, OWNER)) return { ok: false };
   const state = await stateOf(member.store.id);
   if (!state) return { ok: false };
@@ -210,8 +211,15 @@ export async function startCopy(member: Membership): Promise<{ ok: boolean }> {
     const job = await getJob(member.store.id, id);
     if (job && (job.status === "uploaded" || job.status === "checking" || job.status === "checked")) await cancelJob(member, id);
   }
-  await save(member.store.id, { ...EMPTY_COPY, startedAt: new Date().toISOString() });
-  log("info", "shopify.copy_started", { storeId: member.store.id });
+  // *What to bring* (step 9): a part left out is nothing to copy; past orders from the date chosen.
+  const options = copyOptionsOf(chosen);
+  const feeds = { ...EMPTY_COPY.feeds };
+  for (const feed of options.skip) feeds[feed] = { stage: "empty", count: 0 };
+  // No customers, no subscribers from them; no products, no categories from their collections.
+  if (options.skip.includes("customers")) feeds.subscribers = { stage: "empty", count: 0 };
+  if (options.skip.includes("products")) feeds.collections = { stage: "empty", count: 0 };
+  await save(member.store.id, { ...EMPTY_COPY, startedAt: new Date().toISOString(), ...(options.skip.length > 0 || options.ordersSince ? { options } : {}), feeds });
+  log("info", "shopify.copy_started", { storeId: member.store.id, skipped: options.skip.length, ordersSince: options.ordersSince !== null });
   return { ok: true };
 }
 
@@ -485,7 +493,7 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
   const storeId = member.store.id;
   const leased = await lease(storeId);
   if (!leased) return stateOf(storeId);
-  const state: CopyState = { startedAt: leased.startedAt, apply: leased.apply, ...(leased.since ? { since: leased.since } : {}), feeds: { ...leased.feeds } };
+  const state: CopyState = { startedAt: leased.startedAt, apply: leased.apply, ...(leased.since ? { since: leased.since } : {}), ...(leased.options ? { options: leased.options } : {}), feeds: { ...leased.feeds } };
   const before = leased.feeds;
   try {
     if (state.startedAt === null) return state;
@@ -535,7 +543,7 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
       const read = await readSettingsFeed(storeId, next, deps);
       state.feeds[next] = read.ok ? await stage(member, next, read.text, deps) : { stage: "failed", problem: "shopify_refused" };
     } else if (next) {
-      const run = await shopifyGraphql<BulkRun>(storeId, BULK_RUN, { query: catchUpQuery(next, state.since ?? null) }, deps);
+      const run = await shopifyGraphql<BulkRun>(storeId, BULK_RUN, { query: catchUpQuery(next, state.since ?? (next === "orders" ? (state.options?.ordersSince ?? null) : null)) }, deps);
       const id = run.ok ? run.data.bulkOperationRunQuery?.bulkOperation?.id : undefined;
       const errors = run.ok ? (run.data.bulkOperationRunQuery?.userErrors ?? []) : [];
       if (id) state.feeds[next] = { stage: "reading", operation: id };

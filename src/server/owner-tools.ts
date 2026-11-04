@@ -1,5 +1,6 @@
 import "server-only";
 
+import { shopifyMoveTool } from "./shopify-move-tool";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
@@ -2479,6 +2480,7 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   reply_to_support: replyToSupportTool,
   end_support_conversation: endSupportConversationTool,
   gift_card_overview: giftCardOverviewTool,
+  shopify_move: shopifyMoveTool,
   reviews_overview: reviewsOverviewTool,
   issue_gift_card: issueGiftCardTool,
   list_broadcasts: listBroadcastsTool,

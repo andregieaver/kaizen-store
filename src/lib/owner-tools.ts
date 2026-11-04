@@ -1693,6 +1693,11 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "shopify_move",
+    "Where the store's move from Shopify stands (D445): whether a Shopify shop is connected, each part of the copy (products, collections, customers, subscribers, past orders, gift cards, discount codes, pages, posts, menus, redirects, countries, shipping, look) with its stage, how many were found and how many need a look, products still without a maker, Ready to move? (payments and the copy hold it back; old links and makers are only said), the move's steps, whether the shop's own address leads here and where its DNS is kept, the 14 days after (old links leading nowhere, orders that still came in on Shopify, whether Shopify can close now) and whether the copy can be undone. States and counts only, never words from Shopify. Read-only: the owner presses Copy my shop, Bring it over, Move my shop and Undo this copy on Moving in (open_admin_page, settings.moving), and everything on Shopify, themselves.",
+    z.object({}),
+  ),
+  tool(
     "gift_card_overview",
     "The store's gift cards in figures: how many are active, not sent yet, spent, expired and deactivated, and what customers hold on live cards now, per currency, never added across currencies. A card sold is money the store owes until it is spent: not a sale. Never a code, a card's number or who has one. Read-only.",
     z.object({}),
