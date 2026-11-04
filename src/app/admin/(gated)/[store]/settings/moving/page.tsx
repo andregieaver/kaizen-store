@@ -131,7 +131,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             <AddressPanel storeSlug={store.slug} />
             <MoveWatchCard member={member} lang={lang} level={3} close={shopifyClosedAction.bind(null, store.slug)} />
             <CheckOldLinks check={checkOldLinksAction.bind(null, store.slug)} />
-            <UndoPanel storeSlug={store.slug} />
+            <DetailsPanel storeSlug={store.slug} words={w} />
             <ShopifyDisconnect disconnect={disconnectShopifyAction.bind(null, store.slug)} />
           </div>
         </Card>
@@ -231,6 +231,74 @@ function dryOf(feed: CopyFeed, job: DataJob | undefined): { ready: number | null
     default:
       return { ready: null, needLook: null };
   }
+}
+
+/**
+ * *Details* (D445 step 9, Lisa's, one step away): each part of the copy row by row on its import's own page, every old link and where it
+ * leads, Shopify's own files for a part brought by hand, and *Undo this copy*.
+ */
+async function DetailsPanel({ storeSlug, words }: { storeSlug: string; words: MovingMessages }) {
+  const member = await requireOwnerRole(storeSlug);
+  const view = await copyView(member);
+  const d = words.details;
+  const base = `/admin/${storeSlug}`;
+  const parts = view
+    ? COPY_FEEDS.flatMap((feed) => {
+        const job = view.state.feeds[feed].job;
+        const href = job ? feedJobPage(feed, storeSlug, job) : null;
+        return href ? [{ feed, href }] : [];
+      })
+    : [];
+  return (
+    <details className="text-sm">
+      <summary className="w-fit cursor-pointer underline underline-offset-2">{d.title}</summary>
+      <div className="mt-3 flex flex-col gap-3">
+        {parts.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <h4 className="font-medium">{d.rows}</h4>
+            <ul className="flex flex-wrap gap-x-4 gap-y-1">
+              {parts.map((p) => (
+                <li key={p.feed}>
+                  <Link href={p.href} className="underline underline-offset-2">
+                    {words.copy.feeds[p.feed]}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <Link href={`${base}/redirects/old-shop`} className="w-fit underline underline-offset-2">
+          {d.links}
+        </Link>
+        <div className="flex flex-col gap-1">
+          <h4 className="font-medium">{d.files}</h4>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1">
+            <li>
+              <Link href={`${base}/products/import`} className="underline underline-offset-2">
+                {words.files.products}
+              </Link>
+            </li>
+            <li>
+              <Link href={`${base}/customers/import`} className="underline underline-offset-2">
+                {words.files.customers}
+              </Link>
+            </li>
+            <li>
+              <Link href={`${base}/orders/history-import`} className="underline underline-offset-2">
+                {words.files.orders}
+              </Link>
+            </li>
+            <li>
+              <Link href={`${base}/redirects/import`} className="underline underline-offset-2">
+                {d.redirectsFile}
+              </Link>
+            </li>
+          </ul>
+        </div>
+        <UndoPanel storeSlug={storeSlug} />
+      </div>
+    </details>
+  );
 }
 
 /** *Undo this copy* (D445 step 9): Lisa's, with what it would take back; gone after the first real order. */

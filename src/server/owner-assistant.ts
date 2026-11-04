@@ -27,8 +27,9 @@ import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link
 import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext, type OutsideAsker } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
-import { broadcastApprovalSummary } from "./marketing-tools";
-import { replyApprovalSummary } from "./support-manager-tools";
+import { broadcastApprovalSummary, segmentApprovalSummary } from "./marketing-tools";
+import { replyApprovalSummary, supportApprovalSummary } from "./support-manager-tools";
+import { withInputWords } from "@/lib/approval-summaries";
 import { changePlanSummary } from "./billing-tools";
 import { orderChangeApprovalDetails, type OrderChangeInput } from "./order-change-tools";
 import { proposeApprovalSummary, type ProposeInput } from "./exchange-tools";
@@ -906,10 +907,17 @@ export async function keepForApproval(
   planStepId?: string,
 ): Promise<Approval> {
   let summary = approvalSummary(tool, args);
-  // An app's tool (D363) is described by the app, the tool and what it is given, as the app's own words cannot be checked.
+  // An app's tool (D363) is described by the app, the tool and what it is given, as the app's own words cannot be checked; what it is
+  // given in plain words, never as JSON (D439, 4 November 2026).
   if (ctx.store && isAppToolName(tool)) {
     const offered = (await appToolsFor(ctx.store.id)).find((t) => t.name === tool);
-    if (offered) summary = `Ask ${offered.app} to run ${offered.tool} with ${JSON.stringify(args).slice(0, 300)}.`;
+    if (offered) summary = withInputWords(`Ask ${offered.app} to run ${offered.tool}`, args);
+  }
+  // A segment's rules are described with the store's own money and customer groups (D439).
+  if (ctx.store && tool === "save_segment") summary = (await segmentApprovalSummary(ctx.store, args)) ?? summary;
+  // A support note or ending names the conversation by its title (D439).
+  if (ctx.store && (tool === "add_support_note" || tool === "end_support_conversation")) {
+    summary = (await supportApprovalSummary({ account: ctx.account, store: ctx.store }, tool, args)) ?? summary;
   }
   const store = ctx.store;
   if (store && tool === "cancel_booking") {

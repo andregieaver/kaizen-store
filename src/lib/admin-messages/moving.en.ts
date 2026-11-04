@@ -78,6 +78,13 @@ export const movingEn = {
     starting: "Starting …",
     feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects", collections: "Collections", pages: "Pages", articles: "Blog posts", menus: "Menus", countries: "Countries", shipping: "Shipping", discounts: "Discount codes", look: "Look", subscribers: "Email subscribers", gift_cards: "Gift cards" },
     onMoveDay: "New codes on move day",
+    choose: {
+      title: "Choose what to bring",
+      text: "Everything is brought unless you leave something out here.",
+      orders: "Past orders",
+      allOrders: "All of them",
+      years: { one: "The last year", many: "The last {n} years" },
+    },
     stages: {
       waiting: "Waiting",
       reading: "Reading from Shopify …",
@@ -256,6 +263,13 @@ export const movingEn = {
       done: "Done, I've closed it",
       saving: "Saving …",
     },
+  },
+  details: {
+    title: "Details",
+    rows: "Each part, row by row",
+    links: "Every old link and where it leads",
+    files: "Bring a part over with Shopify's own file instead",
+    redirectsFile: "Import redirects",
   },
   undo: {
     button: "Undo this copy",

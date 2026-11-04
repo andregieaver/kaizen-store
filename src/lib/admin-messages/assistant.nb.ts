@@ -316,6 +316,7 @@ export const assistantNb: AssistantMessages = {
     reply_to_support: "Forbereder svaret",
     end_support_conversation: "Avslutter samtalen",
     gift_card_overview: "Ser på gavekort",
+    shopify_move: "Ser på flyttingen fra Shopify",
     reviews_overview: "Ser på omtaler",
     store_overview: "Ser på butikken",
     sales_summary: "Summerer salget",

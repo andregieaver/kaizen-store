@@ -16,6 +16,14 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.6 — 2026-11-04
+
+An addition to the owner MCP server (D445).
+
+- A new read-only tool, `shopify_move`: where the store's move from Shopify stands (the connection, each part of the copy with its stage
+  and counts, *Ready to move?*, the move's steps, the shop's own address and where its DNS is kept, the 14 days after and whether the copy
+  can be undone). The owner's: a token or member without the owner's role is refused. It changes nothing.
+
 ## 1.5 — 2026-11-04
 
 Corrections: what the contract said is now what happens.

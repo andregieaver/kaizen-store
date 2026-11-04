@@ -75,6 +75,13 @@ export const movingNb: MovingMessages = {
     starting: "Starter …",
     feeds: { products: "Produkter", customers: "Kunder", orders: "Tidligere ordrer", redirects: "Omdirigeringer", collections: "Kolleksjoner", pages: "Sider", articles: "Blogginnlegg", menus: "Menyer", countries: "Land", shipping: "Frakt", discounts: "Rabattkoder", look: "Utseende", subscribers: "E-postabonnenter", gift_cards: "Gavekort" },
     onMoveDay: "Nye koder på flyttedagen",
+    choose: {
+      title: "Velg hva som skal tas over",
+      text: "Alt tas over, med mindre du utelater noe her.",
+      orders: "Tidligere ordrer",
+      allOrders: "Alle",
+      years: { one: "Det siste året", many: "De siste {n} årene" },
+    },
     stages: {
       waiting: "Venter",
       reading: "Leser fra Shopify …",
@@ -253,6 +260,13 @@ export const movingNb: MovingMessages = {
       done: "Ferdig, jeg har stengt den",
       saving: "Lagrer …",
     },
+  },
+  details: {
+    title: "Detaljer",
+    rows: "Hver del, rad for rad",
+    links: "Alle gamle lenker og hvor de fører",
+    files: "Ta en del over med Shopifys egen fil i stedet",
+    redirectsFile: "Importer omdirigeringer",
   },
   undo: {
     button: "Angre denne kopien",

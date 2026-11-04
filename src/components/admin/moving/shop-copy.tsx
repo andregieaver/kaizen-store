@@ -28,7 +28,8 @@ export type CopyRow = {
 };
 
 export type CopyActions = {
-  start: () => Promise<{ ok: boolean }>;
+  /** *What to bring* (step 9): parts left out, and past orders of the last so many years (null: all). */
+  start: (options?: { skip: CopyFeed[]; ordersYears: number | null }) => Promise<{ ok: boolean }>;
   advance: () => Promise<{ moving: boolean }>;
   bring: () => Promise<{ ok: boolean }>;
 };
@@ -43,6 +44,9 @@ export function ShopCopy({ started, moving, ready, done, failed, rows, actions, 
   const router = useRouter();
   const [pending, start] = useTransition();
   const [asking, setAsking] = useState(false);
+  const [skip, setSkip] = useState<CopyFeed[]>([]);
+  const [years, setYears] = useState<number | null>(null);
+  const startChosen = () => actions.start({ skip, ordersYears: years });
 
   useEffect(() => {
     if (!moving) return;
@@ -74,8 +78,9 @@ export function ShopCopy({ started, moving, ready, done, failed, rows, actions, 
           {w.title}
         </h3>
         <p className="text-sm">{w.text}</p>
+        <WhatToBring skip={skip} setSkip={setSkip} years={years} setYears={setYears} />
         <div>
-          <button type="button" disabled={pending} className={primary} onClick={() => press(actions.start)}>
+          <button type="button" disabled={pending} className={primary} onClick={() => press(startChosen)}>
             {pending ? w.starting : w.start}
           </button>
         </div>
@@ -138,7 +143,8 @@ export function ShopCopy({ started, moving, ready, done, failed, rows, actions, 
         (asking ? (
           <div className="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label={w.again}>
             <span>{w.againAsk}</span>
-            <button type="button" disabled={pending} className={secondary} onClick={() => press(actions.start)}>
+            <WhatToBring skip={skip} setSkip={setSkip} years={years} setYears={setYears} />
+            <button type="button" disabled={pending} className={secondary} onClick={() => press(startChosen)}>
               {w.again}
             </button>
             <button type="button" onClick={() => setAsking(false)} className="underline underline-offset-2">
@@ -151,5 +157,44 @@ export function ShopCopy({ started, moving, ready, done, failed, rows, actions, 
           </button>
         ))}
     </section>
+  );
+}
+
+/** The parts a copy may leave out, in the order the page lists them. */
+const CHOOSABLE: readonly CopyFeed[] = ["products", "collections", "customers", "subscribers", "orders", "gift_cards", "discounts", "pages", "articles", "menus", "redirects", "countries", "shipping", "look"];
+const YEARS: readonly (number | null)[] = [null, 5, 2, 1];
+
+/**
+ * *What to bring* (D445 step 9): Lisa's, folded away; everything is brought unless she says otherwise. A part left out is nothing to copy,
+ * and past orders can be only the last few years.
+ */
+function WhatToBring({ skip, setSkip, years, setYears }: { skip: CopyFeed[]; setSkip: (s: CopyFeed[]) => void; years: number | null; setYears: (y: number | null) => void }) {
+  const w = useAdminText("moving").copy;
+  return (
+    <details className="text-sm">
+      <summary className="w-fit cursor-pointer underline underline-offset-2">{w.choose.title}</summary>
+      <div className="mt-2 flex flex-col gap-2">
+        <p className={hint}>{w.choose.text}</p>
+        <fieldset className="grid grid-cols-2 gap-1 sm:grid-cols-3">
+          <legend className="sr-only">{w.choose.title}</legend>
+          {CHOOSABLE.map((feed) => (
+            <label key={feed} className="flex items-center gap-2">
+              <input type="checkbox" checked={!skip.includes(feed)} onChange={(e) => setSkip(e.target.checked ? skip.filter((f) => f !== feed) : [...skip, feed])} />
+              {w.feeds[feed]}
+            </label>
+          ))}
+        </fieldset>
+        <label className="flex flex-col gap-1 font-medium">
+          {w.choose.orders}
+          <select value={years ?? ""} onChange={(e) => setYears(e.target.value === "" ? null : Number(e.target.value))} className="min-h-10 w-fit rounded-md border border-line bg-card px-3 text-sm font-normal">
+            {YEARS.map((y) => (
+              <option key={y ?? "all"} value={y ?? ""}>
+                {y === null ? w.choose.allOrders : countWords(y, w.choose.years)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </details>
   );
 }

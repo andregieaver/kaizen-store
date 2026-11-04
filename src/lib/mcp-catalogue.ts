@@ -4,6 +4,7 @@ import { TOOL_FEATURES } from "./owner-tool-features";
 import { TOOL_PERMISSIONS } from "./owner-tool-permissions";
 import { GATED_WHEN_LIVE } from "./product-tools";
 import { GATED_WHEN_OPEN } from "./setup-tools";
+import { toolTitle } from "./tool-title";
 
 /**
  * The MCP catalogues (wave 14 unit A, D438, `docs/wave-14-developer-platform.md` A4): the owner MCP's tools (`/api/mcp`, D96) and the
@@ -33,6 +34,7 @@ export const OWNER_KEY_READS: ReadonlySet<string> = new Set([
   "start_dns_move_here",
   "list_staff",
   "billing_overview",
+  "shopify_move",
 ]);
 
 /** Gates whose change cannot simply be taken back: money, a domain, who works in the store. */
@@ -63,20 +65,7 @@ export const OPEN_WORLD: ReadonlySet<string> = new Set([
 ]);
 const OPEN_WORLD_GATES: ReadonlySet<GateCategory> = new Set(["send", "domain"]);
 
-/** Words a title writes in capitals. */
-const CAPITALS: Record<string, string> = { ai: "AI", dns: "DNS", oss: "OSS", vat: "VAT", seo: "SEO", sku: "SKU", ucp: "UCP" };
-const TITLES: Record<string, string> = {
-  verify_domain_for: "Verify a domain for a service",
-  start_dns_move_here: "Look at moving DNS here",
-  ask_store_assistant: "Ask the store's assistant",
-};
-
-/** A tool's short title: its name in words, such as `list_products` → List products. */
-export function toolTitle(name: string): string {
-  if (TITLES[name]) return TITLES[name];
-  const words = name.split("_").map((w) => CAPITALS[w] ?? w);
-  return [words[0].charAt(0).toUpperCase() + words[0].slice(1), ...words.slice(1)].join(" ");
-}
+export { toolTitle };
 
 export const toolPermission = (name: string): string | null => (Object.hasOwn(TOOL_PERMISSIONS, name) ? TOOL_PERMISSIONS[name as keyof typeof TOOL_PERMISSIONS] : null);
 

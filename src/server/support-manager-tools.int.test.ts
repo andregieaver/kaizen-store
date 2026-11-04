@@ -11,7 +11,7 @@ const { getStore } = await import("./stores");
 const ownerTools = await import("./owner-tools");
 const support = await import("./support");
 const { systemDesk } = await import("./support-desk");
-const { replyApprovalSummary } = await import("./support-manager-tools");
+const { replyApprovalSummary, supportApprovalSummary } = await import("./support-manager-tools");
 
 type Row = Record<string, unknown>;
 
@@ -77,6 +77,11 @@ describe("the support tools", () => {
 
   it("writes a note only staff see, and replies in the person's name after taking the conversation over", async () => {
     const id = await conversation("Kan jeg bytte størrelse?");
+    // Kept for a yes (an outside assistant's proposal, D439), the card names the conversation and says the note in full.
+    expect(await supportApprovalSummary(await ctx(), "add_support_note", { conversation: id, note: "Size M is in stock." })).toBe(
+      `Write a note in the support conversation ${id}, for the store's staff only: "Size M is in stock."`,
+    );
+    expect(await supportApprovalSummary(await ctx(), "end_support_conversation", { conversation: "3f6c2b9e-5d1a-4f0e-9a7b-2c8d4e6f1a3b" })).toBeNull();
     expect(await run("add_support_note", { conversation: id, note: "Size M is in stock." })).toMatchObject({ done: expect.stringContaining("only staff") });
     const c = await ctx();
     await ownerTools.preflightOwnerTool(c, "reply_to_support", { conversation: id, message: "Ja, det går fint." });
