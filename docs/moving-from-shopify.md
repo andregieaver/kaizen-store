@@ -694,6 +694,24 @@ On Moving in, once the shop has moved (`src/lib/shopify-address.ts` pure, `src/s
 - A move with a chosen time says, with it, to lower the address's TTL the day before.
 - The provider sentences name today's menus of each provider: check them against the provider when one changes its screens.
 
+### Step 7c: the 14 days after (built 4 November 2026)
+
+From the move until the owner says Shopify is closed (the rules in `src/lib/shopify-move.ts`, `advanceWatch()` and `watchView()` in
+`src/server/shopify-move.ts`, `MoveWatchCard`):
+
+- **The card**, on the store's home and on Moving in, the owner's alone: *Day n of 14*, then one line each, a ✓ or a link to fix it: the
+  address (*still leads to Shopify: Point it here*), old links that lead nowhere (*Fix them*, the old shop's page with its one press),
+  and orders that still came in on Shopify (*n orders came in on Shopify after the move and were copied here: See them*). *All good ✓*
+  when there is nothing.
+- **The daily look**: once a day for 14 days the five-minute job (`runDueMoves()`, a moved shop only when due or running) runs a catch-up
+  of only customers and orders made on Shopify since the last look (`startCatchUp(..., ["customers", "orders"])`), through the same
+  imports, one step each run. A look that could not start is tried again the next day. Stops when Shopify is disconnected.
+- **You can close Shopify now** (`closeReady()`): on day 14, or sooner when the address leads here, no old link leads nowhere, and the
+  latest look found nothing new. The owner's own steps there, each with Shopify's help page (uninstall the apps first, then Settings →
+  Plan → deactivate), and a note to export from Shopify first for a copy. *Done, I've closed it* ends the card. We never press anything
+  on Shopify.
+- The plan's *We keep a full copy for 90 days* is not built: the copy's files are the imports', kept as they keep them.
+
 Left for later: the logo and favicon, metafields, gift cards and the email list (step 8); reviews (they live in review apps, not in
 Shopify, spike S6); a catch-up copy on move day.
 

@@ -183,11 +183,12 @@ export async function startCopy(member: Membership): Promise<{ ok: boolean }> {
  * Move day's catch-up (D445 step 7a): a copy of only what Shopify made since `since` (new products, customers and past orders, through the
  * same imports), brought over without asking, since the owner pressed *Move my shop*. The earlier copy's vendors are carried over.
  */
-export async function startCatchUp(member: Membership, since: string): Promise<{ ok: boolean }> {
+/** `only`: the feeds read; the daily look of the 14 days after (step 7c) asks only for customers and orders. */
+export async function startCatchUp(member: Membership, since: string, only: readonly CopyFeed[] = CATCH_UP_FEEDS): Promise<{ ok: boolean }> {
   if (!memberCan(member, OWNER)) return { ok: false };
   const state = await stateOf(member.store.id);
   if (!state) return { ok: false };
-  const feeds = Object.fromEntries(COPY_FEEDS.map((f) => [f, CATCH_UP_FEEDS.includes(f) ? { stage: "waiting" } : { stage: "empty", count: 0 }])) as CopyState["feeds"];
+  const feeds = Object.fromEntries(COPY_FEEDS.map((f) => [f, CATCH_UP_FEEDS.includes(f) && only.includes(f) ? { stage: "waiting" } : { stage: "empty", count: 0 }])) as CopyState["feeds"];
   const vendors = state.feeds.products.vendors;
   if (vendors) feeds.products = { ...feeds.products, vendors };
   await save(member.store.id, { startedAt: new Date().toISOString(), apply: true, since, feeds });

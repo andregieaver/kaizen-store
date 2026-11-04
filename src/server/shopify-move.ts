@@ -4,7 +4,21 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { copyDone, copyFailed, copyStateOf } from "@/lib/shopify-copy";
-import { EMPTY_MOVE, moveDue, moveStateOf, nextMoveStep, readiness, scheduleProblem, type MoveState, type ReadyCheck } from "@/lib/shopify-move";
+import {
+  EMPTY_MOVE,
+  WATCH_DAYS,
+  closeReady,
+  moveDue,
+  moveStateOf,
+  nextMoveStep,
+  readiness,
+  scheduleProblem,
+  watchDay,
+  watchDue,
+  watchShown,
+  type MoveState,
+  type ReadyCheck,
+} from "@/lib/shopify-move";
 import { toInstant } from "@/lib/tracking-phases";
 
 import { passMembership, type Membership } from "./auth";
@@ -16,6 +30,7 @@ import { getSetupProgress } from "./setup";
 import { shopifyConnection } from "./shopify-connect";
 import { advanceCopy, startCatchUp, type CopyDeps } from "./shopify-copy";
 import { makersView } from "./shopify-makers";
+import { addressView, type AddressDeps } from "./shopify-address";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { db } from "@/db/client";
 
@@ -200,7 +215,7 @@ export async function runDueMoves(deps: MoveDeps = {}): Promise<{ started: numbe
     z.object({ store_id: col.uuid, slug: col.text, move: z.unknown() }),
     sql`
       select m.store_id, s.slug, m.move from commerce.shop_moves m join commerce.stores s on s.id = m.store_id
-       where m.source = 'shopify' and m.status = 'connected' and m.move->>'status' in ('scheduled', 'moving')
+       where m.source = 'shopify' and m.status = 'connected' and m.move->>'status' in ('scheduled', 'moving', 'moved')
        limit 20
     `,
   );
@@ -209,6 +224,8 @@ export async function runDueMoves(deps: MoveDeps = {}): Promise<{ started: numbe
     try {
       let state = moveStateOf(row.move);
       if (state.status === "scheduled" && !moveDue(state, now)) continue;
+      // A moved shop: only its daily look at Shopify (step 7c), when due or running.
+      if (state.status === "moved" && !(state.watch.running || watchDue(state, now))) continue;
       const member = state.by ? await passMembership(row.slug, state.by) : null;
       if (!member || !memberCan(member, OWNER)) {
         await saveMove(row.store_id, EMPTY_MOVE);
@@ -227,6 +244,11 @@ export async function runDueMoves(deps: MoveDeps = {}): Promise<{ started: numbe
         totals.started += 1;
       }
       const until = Date.now() + 60_000;
+      if (state.status === "moved") {
+        // One step each run: its imports run in the same job (`runDataJobs()`), and Shopify's read is asked about again next time.
+        await advanceWatch(member, deps);
+        continue;
+      }
       while (Date.now() < until) {
         const after = await advanceMove(member, deps);
         if (!after || after.status !== "moving" || after.steps.catch_up.stage === "running") break;
@@ -237,4 +259,87 @@ export async function runDueMoves(deps: MoveDeps = {}): Promise<{ started: numbe
     }
   }
   return totals;
+}
+
+// ---------------------------------------------------------------------------
+// The 14 days after (D445 step 7c, `docs/moving-from-shopify.md` 4.8)
+// ---------------------------------------------------------------------------
+
+/** What the daily look reads from Shopify: new customers first, so an order is tied to its customer by email. */
+const WATCH_FEEDS = ["customers", "orders"] as const;
+
+/**
+ * One step of the daily look at Shopify (the five-minute job): when due, a catch-up of the customers and orders made there since the last
+ * look; while it runs, moved on; when done, how many orders it brought, said on the card. Under the move's lease. Safe to repeat.
+ */
+export async function advanceWatch(member: Membership, deps: MoveDeps = {}): Promise<MoveState | null> {
+  if (!memberCan(member, OWNER)) return null;
+  const storeId = member.store.id;
+  const leased = await lease(storeId);
+  if (!leased) return (await rowOf(storeId))?.move ?? null;
+  const state: MoveState = { ...leased, watch: { ...leased.watch } };
+  const now = (deps.now ?? (() => new Date()))();
+  try {
+    if (!watchShown(state)) return state;
+    if (state.watch.running) {
+      const after = await advanceCopy(member, deps);
+      if (after && copyDone(after)) {
+        const found = after.feeds.orders.stage === "done" ? (after.feeds.orders.count ?? 0) : 0;
+        state.watch = { ...state.watch, running: false, checkedAt: now.toISOString(), found: state.watch.found + found, lastFound: found };
+        log("info", "shopify.watch_checked", { storeId, found });
+      }
+    } else if (watchDue(state, now)) {
+      const since = state.watch.checkedAt ?? state.finishedAt ?? now.toISOString();
+      const started = await startCatchUp(member, since, WATCH_FEEDS);
+      // A look that could not start is tried again tomorrow, not every five minutes.
+      state.watch = started.ok ? { ...state.watch, running: true } : { ...state.watch, checkedAt: now.toISOString(), lastFound: 0 };
+    }
+    return state;
+  } catch (error) {
+    log("error", "shopify.watch_failed", { storeId }, error);
+    return state;
+  } finally {
+    await saveMove(storeId, state);
+  }
+}
+
+export type WatchView = {
+  day: number;
+  days: number;
+  /** The address leads here; null when the Shopify shop had none of its own. */
+  addressDone: boolean | null;
+  /** Old addresses leading nowhere, and how many of them have a sure counterpart (one press fixes those). */
+  linksMissing: number;
+  linksSure: number;
+  /** Orders that came in on Shopify after the move, copied here by the daily look; null before the first look. */
+  found: number | null;
+  canClose: boolean;
+};
+
+/** The card of the 14 days after (owner only): null when there is no moved shop, or the owner said Shopify is closed. */
+export async function watchView(member: Membership, deps: MoveDeps & AddressDeps = {}): Promise<WatchView | null> {
+  if (!memberCan(member, OWNER)) return null;
+  const row = await rowOf(member.store.id);
+  if (!row || !watchShown(row.move)) return null;
+  const now = (deps.now ?? (() => new Date()))();
+  const [address, links] = await Promise.all([addressView(member, deps), oldShopCheck(member)]);
+  const facts = { addressDone: address && address.primary ? address.done : null, linksMissing: links?.needing.length ?? 0 };
+  return {
+    day: Math.min(watchDay(row.move, now) ?? 1, WATCH_DAYS),
+    days: WATCH_DAYS,
+    ...facts,
+    linksSure: links?.sure ?? 0,
+    found: row.move.watch.checkedAt ? row.move.watch.found : null,
+    canClose: closeReady(row.move, facts, now),
+  };
+}
+
+/** *Done, I've closed it*: the owner says Shopify is closed; the card goes. */
+export async function shopifyClosed(member: Membership, deps: MoveDeps = {}): Promise<{ ok: boolean }> {
+  if (!memberCan(member, OWNER)) return { ok: false };
+  const row = await rowOf(member.store.id);
+  if (!row || row.move.status !== "moved") return { ok: false };
+  await saveMove(member.store.id, { ...row.move, watch: { ...row.move.watch, running: false, closedAt: (deps.now ?? (() => new Date()))().toISOString() } });
+  log("info", "shopify.closed_said", { storeId: member.store.id });
+  return { ok: true };
 }
