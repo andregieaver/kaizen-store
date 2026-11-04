@@ -3,7 +3,7 @@
 The owner (3 November 2026) asked for a "moving from" plan per platform, like `docs/moving-from-shopify.md` (D445), "so simple and easy to
 follow that Homer Simpson could do it without breaking a sweat". This is WooCommerce's.
 
-**Steps 1 to 2b are built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
+**Steps 1 to 3 are built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
 refers to it by section ("Shopify 8.2"):
 
 | Part of the engine | Where in the Shopify plan |
@@ -522,7 +522,31 @@ readable. Checkout keeps taking only our own code format.
 - *Undo this copy* now also removes subscribers moved from WooCommerce. It removed only Shopify's before: MailPoet's from step 2a would
   have stayed.
 
-**Not in steps 1 and 1b:**
-- The mover plugin and what it reads (step 2).
-- Pages, posts, menus (step 3); keep WordPress (step 4); move day (step 5).
+### Step 3: WordPress's pages, posts and menus (4 November 2026)
+
+For an owner who moves the whole site (*Move everything*, 4.5; the question itself is step 4's). They are the copy's `pages`, `articles`
+and `menus` parts for a WooCommerce shop once our plugin reads (`WOO_MOVER_FEEDS`), and *What to bring* can leave any of them out.
+- **The plugin (1.3.3)** has two more read-only routes:
+  - `content` (`type` page or post, drafts, pending, private and scheduled ones too): each one's address, title, author, whether it is
+    published, and its HTML. Every shortcode is taken out on the site (`strip_shortcodes()`, and by its brackets when no plugin
+    registers it any more) and named, never run: a shortcode is another plugin's code. Blocks are rendered (`do_blocks()`), classic
+    content given its paragraphs (`wpautop()`). WooCommerce's own pages (shop, cart, checkout, my account) stay: the new shop has its own.
+  - `menus`: every menu, three levels deep, each item as what it is (the front page, the shop, a page, a post, a product, a category, an
+    address) and where it leads, in the shape the Shopify copy's menus are read in (`menuInputOf()`), so links point at the new shop's
+    own page, post, product and category.
+- **Pages and posts** are written by the page editor's own writer (`savePage()`), a draft as a draft, posts in the main blog with their
+  author, as Shopify's are (`directItems()`).
+- **Their pictures now come over too**, for Shopify's pages as well (`splitPictures()`, `src/lib/html-pictures.ts`):
+  - A page's HTML is split at its pictures: the words become text blocks, and each picture an image block where it stood.
+  - Each picture (the largest of a responsive one's sizes, at most 20 a page) is fetched into the store's library by the product import's
+    own `pictureToLibrary()` (through `safeFetch()`, a 1,600 px WebP and a 480 px copy).
+  - A picture that cannot be fetched is left. A tick stops after 40 seconds and the next goes on.
+- **The shortcodes** a site's pages used are named in the log by their tags.
+- Tests:
+  - `html-pictures.test.ts`, and `woocommerce-mover.test.ts` (the two readers).
+  - `woocommerce-mover.int.test.ts`: a page with a picture, one that cannot be fetched and a draft, a post, and a menu of every kind of
+    link, brought over and undone.
+
+**Not yet built:**
+- Keep WordPress (step 4); move day (step 5), which also makes the gift cards.
 - Categories with their parents, and a check report (*Here's your shop*) for WooCommerce.

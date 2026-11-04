@@ -135,7 +135,7 @@ class Kaizen_Store_Mover {
 	// ---------------------------------------------------------------------------------------------------------------------------------
 
 	public static function routes() {
-		foreach ( array( 'plugins', 'redirects', 'seo', 'seo_terms', 'subscribers', 'gift_cards' ) as $route ) {
+		foreach ( array( 'plugins', 'redirects', 'seo', 'seo_terms', 'subscribers', 'gift_cards', 'content', 'menus' ) as $route ) {
 			register_rest_route(
 				self::NAMESPACE,
 				'/' . $route,
@@ -571,6 +571,131 @@ class Kaizen_Store_Mover {
 				'more'     => count( $all ) > $offset + self::PAGE_SIZE,
 			)
 		);
+	}
+
+	/**
+	 * Pages or posts (`type` page or post), a page at a time: their address, title, state, author, and their content as HTML with every
+	 * shortcode taken out (named, never run: a shortcode is another plugin's code) and blocks rendered. Drafts and private ones too.
+	 *
+	 * @param WP_REST_Request $request The request.
+	 */
+	public static function read_content( $request ) {
+		$type  = 'post' === $request->get_param( 'type' ) ? 'post' : 'page';
+		$posts = get_posts(
+			array(
+				'post_type'      => $type,
+				'post_status'    => array( 'publish', 'draft', 'pending', 'private', 'future' ),
+				'posts_per_page' => self::PAGE_SIZE + 1,
+				'offset'         => self::offset( $request ),
+				'orderby'        => 'ID',
+				'order'          => 'ASC',
+				'suppress_filters' => true,
+			)
+		);
+		$skip = array_filter( array( (int) get_option( 'woocommerce_shop_page_id' ), (int) get_option( 'woocommerce_cart_page_id' ), (int) get_option( 'woocommerce_checkout_page_id' ), (int) get_option( 'woocommerce_myaccount_page_id' ) ) );
+		$out  = array();
+		foreach ( array_slice( $posts, 0, self::PAGE_SIZE ) as $post ) {
+			// The shop's own pages (shop, cart, checkout, my account) are the new shop's own.
+			if ( in_array( (int) $post->ID, $skip, true ) ) {
+				continue;
+			}
+			$raw = (string) $post->post_content;
+			preg_match_all( '/\[([a-zA-Z][a-zA-Z0-9_-]*)[^\]]*\]/', $raw, $found );
+			$text = strip_shortcodes( $raw );
+			// Shortcodes no plugin registers any more are taken out by their brackets too.
+			$text = preg_replace( '/\[\/?[a-zA-Z][a-zA-Z0-9_-]*[^\]]*\]/', '', $text );
+			$html = has_blocks( $text ) ? do_blocks( $text ) : wpautop( $text );
+			$author = get_the_author_meta( 'display_name', (int) $post->post_author );
+			$out[]  = array(
+				'id'         => (int) $post->ID,
+				'slug'       => $post->post_name ? $post->post_name : sanitize_title( $post->post_title ),
+				'title'      => wp_strip_all_tags( get_the_title( $post ) ),
+				'html'       => $html,
+				'published'  => 'publish' === $post->post_status,
+				'author'     => wp_strip_all_tags( (string) $author ),
+				'shortcodes' => array_values( array_unique( array_map( 'strtolower', $found[1] ) ) ),
+			);
+		}
+		return rest_ensure_response(
+			array(
+				'items' => $out,
+				'more'  => count( $posts ) > self::PAGE_SIZE,
+			)
+		);
+	}
+
+	/**
+	 * The site's menus, three levels deep: each item's words, what it is (the front page, the shop, a page, a post, a product, a category or
+	 * an address) and where it leads, as the new shop names its own addresses.
+	 */
+	public static function read_menus() {
+		$shop  = (int) get_option( 'woocommerce_shop_page_id' );
+		$front = (int) get_option( 'page_on_front' );
+		$home  = untrailingslashit( home_url() );
+		$out   = array();
+		foreach ( wp_get_nav_menus() as $menu ) {
+			$items = wp_get_nav_menu_items( $menu->term_id );
+			$nodes = array();
+			foreach ( (array) $items as $item ) {
+				$object = (string) $item->object;
+				$id     = (int) $item->object_id;
+				$type   = 'HTTP';
+				$url    = (string) $item->url;
+				if ( 'page' === $object && $id === $shop ) {
+					$type = 'CATALOG';
+				} elseif ( ( 'page' === $object && $id === $front ) || untrailingslashit( $url ) === $home ) {
+					$type = 'FRONTPAGE';
+				} elseif ( 'page' === $object ) {
+					$type = 'PAGE';
+					$url  = '/pages/' . get_post_field( 'post_name', $id );
+				} elseif ( 'post' === $object ) {
+					$type = 'ARTICLE';
+					$url  = '/blogs/news/' . get_post_field( 'post_name', $id );
+				} elseif ( 'product' === $object ) {
+					$type = 'PRODUCT';
+					$url  = '/products/' . get_post_field( 'post_name', $id );
+				} elseif ( 'product_cat' === $object ) {
+					$term = get_term( $id, 'product_cat' );
+					$type = 'COLLECTION';
+					$url  = '/collections/' . ( $term && ! is_wp_error( $term ) ? sanitize_title( $term->name ) : '' );
+				} elseif ( 0 === strpos( $url, $home . '/' ) ) {
+					$url = substr( $url, strlen( $home ) );
+				}
+				$nodes[ (int) $item->ID ] = array(
+					'parent' => (int) $item->menu_item_parent,
+					'node'   => array( 'title' => wp_strip_all_tags( (string) $item->title ), 'type' => $type, 'url' => $url, 'items' => array() ),
+				);
+			}
+			// Each item under its parent, in the menu's own order, three levels deep (as many as a menu here holds).
+			$tree = array();
+			foreach ( $nodes as $id => $entry ) {
+				if ( ! $entry['parent'] || ! isset( $nodes[ $entry['parent'] ] ) ) {
+					$tree[] = self::with_children( $id, $nodes, 0 );
+				}
+			}
+			$out[] = array( 'handle' => $menu->slug, 'title' => $menu->name, 'items' => $tree );
+		}
+		return rest_ensure_response( array( 'menus' => $out ) );
+	}
+
+	/**
+	 * An item with its children, and theirs, to three levels.
+	 *
+	 * @param int   $id    The item.
+	 * @param array $nodes Every item with its parent and node.
+	 * @param int   $depth How deep this item is.
+	 * @return array
+	 */
+	private static function with_children( $id, $nodes, $depth ) {
+		$node = $nodes[ $id ]['node'];
+		if ( $depth < 2 ) {
+			foreach ( $nodes as $child => $entry ) {
+				if ( $entry['parent'] === $id ) {
+					$node['items'][] = self::with_children( $child, $nodes, $depth + 1 );
+				}
+			}
+		}
+		return $node;
 	}
 
 	/**

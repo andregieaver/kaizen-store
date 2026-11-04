@@ -438,27 +438,43 @@ const pictureName = (url: string): string => {
   }
 };
 
-/** Fetches, shrinks (a 1,600 px WebP and a 480 px copy) and keeps one picture in the library. */
-async function fetchOne(job: DataJob, url: string, deps: DataDeps): Promise<{ ok: true; url: string; thumbnailUrl: string } | { ok: false; reason: string }> {
+/**
+ * Fetches a picture from another website (only through `safeFetch()`), shrinks it (a 1,600 px WebP and a 480 px copy) and keeps it in the
+ * store's library, with its size. Used by the product import and by a moved shop's pages (D446 step 3).
+ */
+export async function pictureToLibrary(
+  owner: { storeId: string; accountId: string },
+  url: string,
+  deps: Pick<DataDeps, "fetchPicture" | "storePicture"> = {},
+): Promise<{ ok: true; url: string; thumbnailUrl: string; width: number; height: number } | { ok: false; reason: string }> {
   const got = await (deps.fetchPicture ?? defaultFetchPicture)(url);
   if (!got.ok) return { ok: false, reason: got.problem };
   let image: Buffer;
   let thumb: Buffer;
+  let size: { width: number; height: number };
   try {
     const source = sharp(got.bytes, { failOn: "none", animated: false }).rotate();
     image = await source.clone().resize({ width: IMPORT_PICTURE_WIDTH, withoutEnlargement: true }).webp({ quality: 82 }).toBuffer();
     thumb = await source.clone().resize({ width: IMPORT_THUMBNAIL_WIDTH, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+    const meta = await sharp(image).metadata();
+    size = { width: meta.width ?? 0, height: meta.height ?? 0 };
   } catch {
     return { ok: false, reason: "That address is not a picture that can be used." };
   }
   const name = pictureName(url);
   const stored = await (deps.storePicture ?? storeLibraryPicture)(
-    { storeId: job.storeId, accountId: job.requestedBy },
+    owner,
     new File([new Uint8Array(image)], name, { type: "image/webp" }),
     new File([new Uint8Array(thumb)], name, { type: "image/webp" }),
     { fileName: name },
   );
-  return stored.ok ? { ok: true, url: stored.url, thumbnailUrl: stored.thumbnailUrl } : { ok: false, reason: stored.problem };
+  return stored.ok ? { ok: true, url: stored.url, thumbnailUrl: stored.thumbnailUrl, ...size } : { ok: false, reason: stored.problem };
+}
+
+/** Fetches, shrinks and keeps one picture of a product import's in the library. */
+async function fetchOne(job: DataJob, url: string, deps: DataDeps): Promise<{ ok: true; url: string; thumbnailUrl: string } | { ok: false; reason: string }> {
+  const got = await pictureToLibrary({ storeId: job.storeId, accountId: job.requestedBy }, url, deps);
+  return got.ok ? { ok: true, url: got.url, thumbnailUrl: got.thumbnailUrl } : got;
 }
 
 /** Pictures a product names that the store does not have: each fetched once per job (a resumed job reads the answer back), `null` for one that failed. */
