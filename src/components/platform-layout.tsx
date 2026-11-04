@@ -65,7 +65,7 @@ export function MenuLinks({
     };
   };
   const nodes = menuTree(items, (item) => resolved.get(item) !== null).map(toNode);
-  return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={words(lang).m.opensInNewTab} justify={justify} hover={hover} />;
+  return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={words(lang).m.opensInNewTab} subLinksLabel={words(lang).m.subLinksUnder} justify={justify} hover={hover} />;
 }
 
 /** The logo, or Kaizen's name without one; `height` is one set in a header or footer layout (D80). */

@@ -639,6 +639,7 @@ export const da: Messages = {
   mainMenu: "Hovedmenu",
   footerMenu: "Sidefodsmenu",
   opensInNewTab: "(åbner i en ny fane)",
+  subLinksUnder: "Links under",
   shortcuts: "Genveje",
   chooseVariantLabel: "Vælg variant",
   /** A value of an option that makes no variant that can be bought with the others chosen (D320). */
