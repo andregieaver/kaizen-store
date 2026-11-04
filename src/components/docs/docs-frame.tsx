@@ -5,6 +5,7 @@ import { DOCS_GUIDE_READY, DOCS_SEARCH_SUB } from "@/lib/docs-search";
 import { PLATFORM_LANG_FACTS } from "@/lib/platform-lang";
 import type { PlatformMessages } from "@/lib/platform-text";
 
+import { DocsGuide } from "./docs-guide";
 import { DocsSearch } from "./docs-search";
 import type { DocsSearchNames } from "./docs-search-panel";
 import { DocsTreeToggle } from "./docs-tree-toggle";
@@ -27,7 +28,7 @@ export function docsSearchNames(words: DocsWords): DocsSearchNames {
 /** Where a page of the docs is, for the top bar: a track, the generated reference (the developers' too), the changelog, or none. */
 export type DocsTopPlace = DocTrack | "reference" | "changelog" | null;
 
-/** The top bar (D442): the mark, the two tracks, the API reference, the changelog, the status page, the search and the language. */
+/** The top bar (D442): the mark, the two tracks, the API reference, the changelog, the status page, the search, the AI guide (D444) and the language. */
 export function DocsTopBar({ lang, track, words, languages }: { lang: DocLang; track: DocsTopPlace; words: DocsWords; languages: DocsLanguages }) {
   const items: { key: string; href: string; label: string; current: boolean }[] = [
     { key: "owners", href: docsPath("owners", lang), label: words.tracks.owners.name, current: track === "owners" },
@@ -65,6 +66,15 @@ export function DocsTopBar({ lang, track, words, languages }: { lang: DocLang; t
             homeHref={docsPath("", lang)}
             guide={DOCS_GUIDE_READY}
           />
+          {DOCS_GUIDE_READY && (
+            <DocsGuide
+              lang={lang}
+              homeHref={docsPath("", lang)}
+              searchHref={docsPath(DOCS_SEARCH_SUB, lang)}
+              supportHref={docsSiteHref("/admin/account/kaizen-support")}
+              words={words.guide}
+            />
+          )}
           {languages.length > 1 && <DocsLanguageSwitch lang={lang} languages={languages} label={words.language} />}
         </div>
       </div>

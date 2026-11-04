@@ -65,6 +65,8 @@ export const assistantEn = {
     recent: "Recent pages",
     close: "Close the AI manager",
     loading: "Loading …",
+    failed: "The AI manager did not load.",
+    openPage: "Open it on its own page",
     title: "AI manager (⌘K / Ctrl+K)",
     talkTitle: "Talk to the AI manager (voice mode)",
     talk: "Talk to the AI manager",

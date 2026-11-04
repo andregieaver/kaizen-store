@@ -162,3 +162,20 @@ test("the search answers on the host: its page at /search, its dialog's results 
   await expect(dialog.getByRole("link", { name: /Follow the setup steps/ })).toHaveAttribute("href", "/owners/getting-started/create-your-store#follow-the-setup-steps");
   await expect(dialog.getByRole("link", { name: "Open this search as a page" })).toHaveAttribute("href", "/search?q=setup+steps&track=owners&lang=en");
 });
+
+test("the AI guide answers on the host through the API every host serves, and leads to Kaizena Flow's support in full (D444)", async ({ page, baseURL }) => {
+  await page.goto(docs(PAGE), { waitUntil: "networkidle" });
+  // The guide is off in a fresh database: the route's own profile says so, on the host, and a message from the host's page (same site)
+  // is refused only for that.
+  const answers = await page.evaluate(async () => {
+    const profile = await fetch("/api/docs/guide?lang=en");
+    const sent = await fetch("/api/docs/guide", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: "Hi", lang: "en" }) });
+    return { profile: profile.status, on: ((await profile.json()) as { on: boolean }).on, sent: sent.status };
+  });
+  expect(answers).toEqual({ profile: 200, on: false, sent: 404 });
+  await page.getByRole("button", { name: "Ask the AI guide" }).click();
+  const guide = page.getByRole("dialog", { name: "AI guide" });
+  await expect(guide.getByText("The AI guide is not answering just now.", { exact: false })).toBeVisible();
+  await expect(guide.getByRole("link", { name: "Search the docs" })).toHaveAttribute("href", "/search");
+  await expect(guide.getByRole("link", { name: "Contact Kaizena Flow support in the admin" })).toHaveAttribute("href", `${baseURL}/admin/account/kaizen-support`);
+});

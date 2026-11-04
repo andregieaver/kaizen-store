@@ -44,6 +44,9 @@ const FIRST_SCRIPTS_BUDGETS: Record<string, number> = {
   "/status": 880_000,
   "/admin/sign-in": 750_000,
   "/admin/forgot-password": 750_000,
+  // A docs page (D442, D336): its frame's few parts, the search's dialog and the AI guide's button; the guide's panel loads only when
+  // opened (D444, `e2e/docs.spec.ts`). 606 KB on 4 November 2026.
+  "/docs/owners/getting-started/create-your-store": 640_000,
 };
 
 for (const [path, max] of Object.entries(FIRST_SCRIPTS_BUDGETS)) {

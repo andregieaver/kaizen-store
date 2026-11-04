@@ -7784,4 +7784,42 @@ describe("the docs' search (D443)", () => {
       expect(row.relrowsecurity, table).toBe(true);
     }
   });
+
+  it("keeps the docs guide's one row of settings, its conversations by a token's hash and its messages numbered, with RLS on (D444)", async () => {
+    await db.query("insert into commerce.docs_guide (enabled, name) values (true, 'Guide')");
+    await expect(db.query("insert into commerce.docs_guide (id, name) values (2, 'Another')")).rejects.toThrow(/docs_guide_one/);
+    await expect(db.query("update commerce.docs_guide set daily_limit = 0")).rejects.toThrow(/docs_guide_daily_limit/);
+    await expect(db.query(`update commerce.docs_guide set name = '${"x".repeat(61)}'`)).rejects.toThrow(/docs_guide_name/);
+    // Kaizena Flow's chat agent keeps its own row: the guide is not a second row without a store there.
+    await db.query("insert into commerce.chat_agents (store_id, enabled, name) values (null, true, 'Site') on conflict (store_id) do update set name = excluded.name");
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.chat_agents where store_id is null")).n).toBe(1);
+
+    const c = await one<{ id: string }>("insert into commerce.docs_guide_conversations (token_hash, lang, page_path) values ('h1', 'en', 'owners/a/b') returning id");
+    await expect(db.query("insert into commerce.docs_guide_conversations (token_hash, lang) values ('h1', 'en')")).rejects.toThrow(/docs_guide_conversations_token_key/);
+    await expect(db.query("insert into commerce.docs_guide_conversations (token_hash, lang) values ('h2', 'sv')")).rejects.toThrow(/docs_guide_conversations_lang/);
+    await expect(db.query("insert into commerce.docs_guide_conversations (lang) values ('en')")).rejects.toThrow(/docs_guide_conversations_token/);
+    await db.query("insert into commerce.docs_guide_conversations (lang, anonymised_at) values ('nb', now())");
+    await db.query("insert into commerce.docs_guide_messages (conversation_id, seq, author, body) values ($1, 1, 'reader', 'How do I add a product?')", [c.id]);
+    await expect(db.query("insert into commerce.docs_guide_messages (conversation_id, seq, author, body) values ($1, 1, 'ai', 'Again')", [c.id])).rejects.toThrow(/docs_guide_messages_seq_key/);
+    await expect(db.query("insert into commerce.docs_guide_messages (conversation_id, seq, author, body) values ($1, 2, 'agent', 'A person')", [c.id])).rejects.toThrow(/docs_guide_messages_author/);
+    await expect(db.query("insert into commerce.docs_guide_messages (conversation_id, seq, author, body) values ($1, 2, 'ai', '')", [c.id])).rejects.toThrow(/docs_guide_messages_body/);
+    // A conversation's messages go with it.
+    await db.query("delete from commerce.docs_guide_conversations where id = $1", [c.id]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.docs_guide_messages")).n).toBe(0);
+
+    // The gap list counts the guide's questions beside the searches: a row may be the guide's alone, never neither's.
+    await db.query("insert into commerce.docs_search_misses (query, lang, misses, guide_misses) values ('vipps for b2b', 'en', 0, 1)");
+    await expect(db.query("insert into commerce.docs_search_misses (query, lang, misses, guide_misses) values ('nothing at all', 'en', 0, 0)")).rejects.toThrow(/docs_search_misses_count/);
+    await expect(db.query("insert into commerce.docs_search_misses (query, lang, misses, guide_misses) values ('below zero', 'en', 2, -1)")).rejects.toThrow(/docs_search_misses_count/);
+    // A search's miss as the code before the guide writes it (the default counts one search, none of the guide's).
+    await db.query("insert into commerce.docs_search_misses (query, lang) values ('older writer', 'en')");
+    expect(await one("select misses, guide_misses from commerce.docs_search_misses where query = 'older writer'")).toEqual({ misses: 1, guide_misses: 0 });
+
+    for (const table of ["docs_guide", "docs_guide_conversations", "docs_guide_messages"]) {
+      const row = await one<{ relrowsecurity: boolean }>("select relrowsecurity from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname = 'commerce' and c.relname = $1", [table]);
+      expect(row.relrowsecurity, table).toBe(true);
+    }
+    await db.query("delete from commerce.docs_guide_conversations");
+    await db.query("delete from commerce.docs_guide");
+  });
 });

@@ -403,6 +403,25 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   before any model call. Conversations are kept by the site (D216, below):
   the tab holds only its conversation's reference and a copy
   (`kaizen_chat` v2), and sends only the new message.
+- The docs guide (D444, `src/lib/docs-guide.ts`, `src/lib/docs-guide-tools.ts`,
+  `src/server/docs-guide.ts`, `DocsGuide`) is a second chat agent, on the docs
+  alone: settings of its own (`commerce.docs_guide`, `/admin/platform/docs/guide`;
+  never a second `chat_agents` row, whose key the site chat's writers upsert on),
+  tools over the docs' search, its pages, the generated reference and unit A's
+  contracts only (a new tool reads the docs or a contract, never a store), the
+  admin's pages only for a signed-in person through `adminTarget()` (the admin
+  map, no page of one record, the store chosen in code), and `offer_support` as
+  its hand-over. Its prompt (`guideSystemPrompt()`) carries `UNTRUSTED_TEXT` and
+  is versioned (`guidePromptVersion()`); a change to it or to `guideTools()`
+  needs a new eval recording. A reader's message loses every token, key and
+  password (`withoutSecrets()`) before it is kept or sent; the answer passes
+  `cleanGuideReply()` and is drawn as text, its links drawn from the pages its
+  tools read. `/api/docs/guide` is same-site, budgeted (`docs_guide`, failing
+  closed) and counted by `takeChatTurn()` under `guide:` before any model call.
+  Its conversations (`docs-guide-store.ts`) are kept by the platform chat's
+  periods (Kaizena Flow's desk, `support_transcripts`, `support_records`). The
+  panel is loaded only when opened: nothing of it goes in a docs page's first
+  scripts.
 
 ## Support (D216, `docs/support.md`, built in steps; §11 says what each step found)
 

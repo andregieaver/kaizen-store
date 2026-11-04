@@ -25,19 +25,21 @@ async function firstScripts(page: Page, address: string): Promise<number> {
 const MEASURE = process.env.E2E_MEASURE === "1";
 
 /**
- * Each screen's budget, by its address under the store (`{page}` is one of the store's pages). Measured on the build of 31 October 2026
- * from the HTML the server sends: home 3.02 MB, products 3.02, a new product 3.71, orders 3.02, pages 3.59 (4.71 before the page lists
- * stopped importing the builder), a page in the builder 4.70, settings 3.00. About 4 % of room. The 3.0 MB every screen shares is the
- * admin's layout and what it imports, not yet broken down.
+ * Each screen's budget, by its address under the store (`{page}` is one of the store's pages). Measured on the build of 4 November 2026
+ * from the HTML the server sends: home 2.37 MB, products 2.36, a new product 3.27, orders 2.37, pages 3.16, a page in the builder 4.39,
+ * settings 2.34. About 4 % of room. On 31 October they were 3.02, 3.02, 3.71, 3.02, 3.59 (4.71 before the page lists stopped importing
+ * the builder), 4.70 and 3.00; by 4 November each had grown about 0.1 MB, and the docs guide's entry in the admin map took the builder
+ * over (4,901,307 bytes, D444). The AI manager's chat, and the admin map it names the page from, is now fetched when its panel is first
+ * opened, not with every screen (`ai-manager-launcher.tsx`): 0.51 to 0.76 MB off each.
  */
 const BUDGETS: Record<string, number> = {
-  "": 3_150_000,
-  "/products": 3_150_000,
-  "/products/new": 3_870_000,
-  "/orders": 3_150_000,
-  "/pages": 3_740_000,
-  "/pages/{page}": 4_900_000,
-  "/settings": 3_130_000,
+  "": 2_470_000,
+  "/products": 2_460_000,
+  "/products/new": 3_400_000,
+  "/orders": 2_470_000,
+  "/pages": 3_300_000,
+  "/pages/{page}": 4_570_000,
+  "/settings": 2_440_000,
 };
 
 for (const [path, max] of Object.entries(BUDGETS)) {

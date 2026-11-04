@@ -326,6 +326,9 @@ export const NAV_NB: Record<string, string> = {
   "Docs feedback": "Tilbakemeldinger på dokumentasjonen",
   "What readers said under each page of the docs: whether it helped, and the sentence some add.":
     "Hva leserne sa under hver side i dokumentasjonen: om den hjalp, og setningen noen legger til.",
+  "Docs guide": "Dokumentasjonsveileder",
+  "The AI guide that answers readers in the docs from the docs alone: on or off, its name, picture, greeting and daily limit.":
+    "KI-veilederen som svarer lesere i dokumentasjonen bare ut fra dokumentasjonen: av eller på, navn, bilde, hilsen og daglig grense.",
   Editor: "Redigering",
   "Kaizena Flow's plans, their prices and fees, synced to Stripe.": "Kaizena Flows abonnementer, prisene og gebyrene deres, synkronisert med Stripe.",
   "Every feature with a tick for each plan that includes it: the comparison stores see.":

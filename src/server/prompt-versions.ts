@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 
 import { systemPrompt } from "@/lib/chat";
 import { SCREENING_SYSTEM, screeningPrompt, TRIAGE_SYSTEM, triagePrompt, type Listing } from "@/lib/content-moderation";
+import { guideSystemPrompt } from "@/lib/docs-guide";
 import { briefPrompt } from "@/lib/dream-factory";
 import { assembleLegalFacts } from "@/lib/legal-facts";
 import { jurisdictionsFor } from "@/lib/legal-sources";
@@ -18,12 +19,12 @@ import { factSheet, planLegalPage, writerMessages, writerSettings } from "@/lib/
  * agents' eval plays exactly these prompts, so a recording is of one version (`agent-eval-replay.int.test.ts`). The AI manager's fixed
  * prompt is drawn beside its prompt (`fixedManagerPrompt()` in `owner-assistant.ts`), so the shopper chat's routes never load it; all
  * of them together are `promptVersions()` in `agent-eval.ts`. The notice reader and listing checker (D411 part 2) and the Dream Factory's
- * brief (D409) are drawn here too: their system prompts and the code that frames what they are sent. The AI manager's version covers its
+ * brief (D409) are drawn here too: their system prompts and the code that frames what they are sent, and the docs guide's (D444). The AI manager's version covers its
  * drawing for a turn an outside assistant asked for through the owner MCP as well (D439, `fixedManagerPrompt(…, FIXED_OUTSIDE)`), whose
  * words name that assistant.
  */
 
-export type PromptAgent = "chat" | "manager" | "legal" | "moderation" | "dream";
+export type PromptAgent = "chat" | "manager" | "legal" | "moderation" | "dream" | "guide";
 export type PromptVersions = Record<PromptAgent, string>;
 
 /** A version: the first twelve hex digits of the text's SHA-256. */
@@ -44,6 +45,11 @@ export function fixedChatPrompt(): string {
     path: null,
     today: PROMPT_DAY.toISOString().slice(0, 10),
   });
+}
+
+/** The docs guide's prompt (D444) for a reader of the English docs' front page who is not signed in, with no name and no guidance. */
+export function fixedGuidePrompt(): string {
+  return guideSystemPrompt({ agentName: "", occupation: "", lang: "en", instructions: "", page: null, signedIn: false, today: PROMPT_DAY.toISOString().slice(0, 10) });
 }
 
 /** The legal page writer's messages (D311) for a returns policy of a store in Norway, its passages the given text. */
@@ -80,6 +86,9 @@ const once = (key: string, draw: () => string) => {
 
 /** The shopper chat's prompt version. */
 export const chatPromptVersion = (): string => once("chat", fixedChatPrompt);
+
+/** The docs guide's prompt version (D444), kept with each of its answers. */
+export const guidePromptVersion = (): string => once("guide", fixedGuidePrompt);
 
 /** The legal page writer's: its instructions (system turns) alone, the passages being the case's. */
 export const legalPromptVersion = (): string =>

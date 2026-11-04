@@ -107,19 +107,28 @@ the first-scripts budgets above do not yet cover for signed-in routes. Kaizena F
 72 ms, CLS 0.001, TTFB 113 ms. The next step is a first-scripts budget for the product editor and the page builder, and this table read
 again once a month of loads is in.
 
-**First scripts, signed in (31 October 2026).** `e2e/signed-in/admin-scripts.spec.ts` holds seven screens to budgets, counted from the
-HTML the server sends (what a page has loaded by the time it is looked at grows with what it does after, and moved by 1.7 MB between two
-runs). Raw, before compression:
+**First scripts, signed in (31 October 2026, again 4 November).** `e2e/signed-in/admin-scripts.spec.ts` holds seven screens to budgets,
+counted from the HTML the server sends (what a page has loaded by the time it is looked at grows with what it does after, and moved by
+1.7 MB between two runs). Raw, before compression:
 
-| Screen | First scripts | Budget |
-|---|---:|---:|
-| The store's home | 3.02 MB | 3.15 MB |
-| Products | 3.02 MB | 3.15 MB |
-| A new product (the editor) | 3.71 MB | 3.87 MB |
-| Orders | 3.02 MB | 3.15 MB |
-| Pages (the list) | 3.59 MB | 3.74 MB |
-| A page in the builder | 4.70 MB | 4.90 MB |
-| Settings | 3.00 MB | 3.13 MB |
+| Screen | 31 October | 4 November, before | 4 November, after | Budget |
+|---|---:|---:|---:|---:|
+| The store's home | 3.02 MB | 3.12 MB | 2.37 MB | 2.47 MB |
+| Products | 3.02 MB | 3.12 MB | 2.36 MB | 2.46 MB |
+| A new product (the editor) | 3.71 MB | 3.83 MB | 3.27 MB | 3.40 MB |
+| Orders | 3.02 MB | 3.12 MB | 2.37 MB | 2.47 MB |
+| Pages (the list) | 3.59 MB | 3.71 MB | 3.16 MB | 3.30 MB |
+| A page in the builder | 4.70 MB | 4.90 MB | 4.39 MB | 4.57 MB |
+| Settings | 3.00 MB | 3.10 MB | 2.34 MB | 2.44 MB |
+
+In four days every screen grew about 0.1 MB, the builder 0.2, and the docs guide's entry in the admin map (D444) took the builder 1,307
+bytes over its budget of 4.90 MB. The build's chunks showed why an entry in the map weighs on every screen: the AI manager's launcher, in
+every admin layout, imported its chat statically, and the chat imports the admin map (to name the page a person is on in its first
+suggestion) and the Norwegian page names, 0.48 MB in one chunk. The chat is drawn only after the launcher is pressed, so it is now
+fetched then (`loadChat()` in `ai-manager-launcher.tsx`, beside the start call; a failed fetch offers the AI manager's own page, and the
+next opening tries again; `e2e/signed-in/ai-manager-panel.spec.ts` holds that the screen asks for its scripts only on opening and that
+the panel draws the chat). Each screen dropped 0.51 to 0.76 MB, and the budgets were set again with about 4 % of room, so growth is
+caught where it starts.
 
 Measuring found the page lists loading the whole builder (4.71 MB, the builder's own figure): a route loads every client component its
 server modules import, drawn or not, and the lists and the editor shared one `views.tsx`. The editors now live in `editor-views.tsx` (a

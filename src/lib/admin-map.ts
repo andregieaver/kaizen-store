@@ -1187,6 +1187,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["docs", "documentation", "helpful", "feedback", "articles"],
     tasks: ["See which docs pages did not help", "Read what readers wrote", "Remove a sentence that names someone"],
   }),
+  platform("docs.guide", "/docs/guide", "Docs guide", "Kaizena Flow site", "The AI guide on the docs (D444), which answers readers from the docs alone: whether it answers, its name, picture, greeting in English and Norwegian and daily limit, and under Customise its occupation, picture frame and guidance.", {
+    keywords: ["docs", "documentation", "guide", "ai", "chat", "assistant", "developers"],
+    tasks: ["Switch the docs guide on or off", "Name the guide and choose its picture and greeting", "Set how many messages a day it answers"],
+  }),
   platform("oauth", "/oauth", "AI assistants and apps", "Platform", "Every client of Kaizena Flow's authorization server (D439): the AI assistants and apps people connected to their stores, with how many people use each, its host, and Verify and Block; blocking ends every connection it has.", {
     keywords: ["oauth", "clients", "mcp", "ai assistants", "apps", "verify", "block", "authorization server"],
     tasks: ["Verify an AI assistant or app", "Block an AI assistant or app"],

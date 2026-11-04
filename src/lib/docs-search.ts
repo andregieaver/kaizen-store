@@ -19,11 +19,11 @@ export const DOCS_SEARCH_EVENT = "kaizen:docs-search";
 
 /**
  * The hand-over to the docs' AI guide (unit E5, D444) from a search that found nothing: said on `window` with `{ question }` as its detail.
- * Until the guide exists nothing listens, so the offer is not shown (`DOCS_GUIDE_READY`); E5 sets it, listens for the event in the dialog,
- * and reads `?ask=` on the docs' front page for the search page without JavaScript (`docsAskSub()`).
+ * The guide's button in the top bar (`DocsGuide`) listens for it, and reads `?ask=` on the docs' front page for the search page's offer
+ * (`docsAskSub()`); either way the question is filled in, never sent for the reader. `DOCS_GUIDE_READY` shows the offer: the guide exists.
  */
 export const DOCS_ASK_EVENT = "kaizen:docs-ask";
-export const DOCS_GUIDE_READY = false;
+export const DOCS_GUIDE_READY = true;
 
 /** The docs' front page with a question for the guide, as a sub-path for `docsPath()`: `?ask=…`. */
 export const docsAskSub = (question: string): string => `?ask=${encodeURIComponent(question)}`;
