@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { filterVariants, setForShown, skuFromPattern, skuPatternProblem, skuWord, visibleRange, type GridVariant } from "./variant-grid";
+import { filterVariants, setForShown, skuFromPattern, skuPatternProblem, skuWord, visibleRange, type GridVariant, editorOptions } from "./variant-grid";
 
 const variant = (colour: string, size: string, extra: Partial<GridVariant> = {}): GridVariant => ({
   options: { Farge: colour, Størrelse: size },
@@ -78,5 +78,26 @@ describe("the rows on screen", () => {
     expect(visibleRange(heights, 9000, 9500, 0)).toEqual({ start: 100, end: 100, before: 5000, after: 0 });
     expect(visibleRange(heights, -800, -100, 0)).toEqual({ start: 0, end: 0, before: 0, after: 5000 });
     expect(visibleRange([], 0, 500, 100)).toEqual({ start: 0, end: 0, before: 0, after: 0 });
+  });
+});
+
+describe("the options the editor opens with (findings, behaviour 7)", () => {
+  const options = [
+    { name: "Size", values: ["S", "M"] },
+    { name: "Colour", values: ["Red"] },
+  ];
+  it("leaves out a value whose variants are all switched off, keeping the order", () => {
+    const variants = [
+      { options: { Size: "S", Colour: "Red" }, active: true },
+      { options: { Size: "M", Colour: "Red" }, active: false },
+    ];
+    expect(editorOptions(options, variants)).toEqual([
+      { name: "Size", values: ["S"] },
+      { name: "Colour", values: ["Red"] },
+    ]);
+  });
+  it("keeps every value while one of its variants is sold, and all of them when none is", () => {
+    expect(editorOptions(options, [{ options: { Size: "M", Colour: "Red" }, active: true }, { options: { Size: "S", Colour: "Red" }, active: true }])).toEqual(options);
+    expect(editorOptions(options, [{ options: { Size: "M", Colour: "Red" }, active: false }])).toEqual(options);
   });
 });

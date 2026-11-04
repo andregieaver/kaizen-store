@@ -198,8 +198,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   // Bonus credits on an order (D130) are in the order's own currency; null for an order with none and for copied history.
   const bonusCurrency = order.currency;
   const bonus = order.copied ? null : order.bonus;
-  const when = (iso: string) =>
-    new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
+  // Times in the store's own time zone, as its dispute and terms pages write them (Oslo only for a store that has none).
+  const zone = store.timeZone || "Europe/Oslo";
+  const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: zone });
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
   // A card held to be charged when the order is sent (D289): it is sent (or handed over) as a paid one is, and the first parcel captures it.
   const sendable = paid || held?.mode === "when_sent";
@@ -780,7 +781,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {/* What the shopper was shown about the terms when they ordered (wave 1, 1e): the record, and each text as it was. */}
           <Suspense fallback={null}>
-            <OrderTermsCard store={store} orderId={orderId} zone="Europe/Oslo" locale={adminLocale} words={words.terms} />
+            <OrderTermsCard store={store} orderId={orderId} zone={zone} locale={adminLocale} words={words.terms} />
           </Suspense>
 
           <StaffFieldsSection store={store} entity="order" id={orderId} save={saveOrderFieldsAction.bind(null, store.slug, orderId)} />

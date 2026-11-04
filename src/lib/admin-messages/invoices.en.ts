@@ -167,6 +167,19 @@ export const invoicesEn = {
     xml: "E-invoice (XML)",
     sendAgain: "Send to the customer again",
   },
+  /** When a document cannot be written as an e-invoice (D403): why, in words, where the link opened. */
+  einvoice: {
+    title: "This e-invoice cannot be made",
+    intro: "The document is fine as a PDF, but the e-invoice format needs more:",
+    back: "Back",
+    problems: {
+      seller_country: "The store's country is missing from its business details.",
+      buyer_country: "The buyer's address on the document has no country.",
+      seller_vat_number: "The document charges VAT, but the store's VAT number is missing from its tax profile.",
+      totals: "The document's totals do not add up to its lines, so the format would refuse it.",
+      currency: "The document's currency cannot be written in the format.",
+    },
+  },
   forms: {
     checked: "Checked.",
     checkAgain: "Check again",

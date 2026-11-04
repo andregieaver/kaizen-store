@@ -41,6 +41,7 @@ export function PayoutsView({ base, currency, locale, report: r, words = finance
   const w = words.payouts;
   const main = safeMoney(currency, locale);
   const own = (row: PayoutRow) => (minor: number) => formatMoney(minor, row.currency, locale);
+  const unread = (row: PayoutRow) => row.reconciliation.state === "not_read" || row.reconciliation.state === "manual";
   const columns: Column<PayoutRow>[] = [
     {
       key: "payout",
@@ -53,7 +54,9 @@ export function PayoutsView({ base, currency, locale, report: r, words = finance
     },
     { key: "status", label: w.statusColumn, cell: (p) => `${w.status[p.status]}${p.testMode ? w.testSuffix : ""}` },
     { key: "amount", label: w.amount, align: "right", cell: (p) => own(p)(p.amountMinor) },
-    { key: "fees", label: w.fees, align: "right", cell: (p) => (p.reconciliation.state === "not_read" || p.reconciliation.state === "manual" ? NO_FIGURE : own(p)(p.reconciliation.feesMinor)) },
+    // Stripe's own fees and Kaizena Flow's apart: a payout's lines hold both in one fee.
+    { key: "fees", label: w.fees, align: "right", cell: (p) => (unread(p) ? NO_FIGURE : own(p)(p.reconciliation.providerFeesMinor)) },
+    { key: "platformFees", label: w.platformFees, align: "right", cell: (p) => (unread(p) ? NO_FIGURE : own(p)(p.reconciliation.platformFeesMinor)) },
     { key: "settles", label: w.settles, cell: (p) => settlesWords(p, words) },
     { key: "state", label: w.reconciliation, cell: (p) => <StateChip row={p} money={own(p)} w={w} /> },
   ];
@@ -75,7 +78,8 @@ export function PayoutsView({ base, currency, locale, report: r, words = finance
                 <th scope="row" className="px-3 py-2 text-left">{fillWords(w.paid, { n: formatCount(r.totals.paid) })}</th>
                 <td />
                 <td className="px-3 py-2 text-right tabular-nums">{main(r.totals.paidMinor)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{main(r.totals.feesMinor)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{main(r.totals.providerFeesMinor)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{main(r.totals.platformFeesMinor)}</td>
                 <td colSpan={2} />
               </tr>
             ) : null

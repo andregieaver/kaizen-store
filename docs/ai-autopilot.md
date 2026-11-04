@@ -369,6 +369,10 @@ only (the platform's by platform admins):
   reason (`aiBudgetProblem()`) while it has a limit of its own.
 - `autonomyDecision(settings, tool, args, facts)` (pure, with the facts read first: current prices, a discount's depth) is the one rule,
   used by the tool steps and inside the task turns: `run` (with `tell` true when the owner is to hear of it) or `ask` with the reason.
+- *Do it and tell me* tells (5 November 2026, the docs writers' finding 8): each change made at it is kept as code's summary, in the step's
+  result (`told`) or with the event's facts (`facts.told`, an event's turn), listed on the Autopilot page under its step or event, and counted in the
+  daily digest and the weekly report (`told`, a count only, reason enough to send; the page says what each was), which also go to whoever an
+  event ran for though no plan of theirs ran.
 
 ### 7.5 Decisions and reports (B3)
 

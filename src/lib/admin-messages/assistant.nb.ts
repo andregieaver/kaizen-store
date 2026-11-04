@@ -214,6 +214,7 @@ export const assistantNb: AssistantMessages = {
       result: "Resultat",
       problem: "Problem",
       answeredWith: "Du svarte: {answer}",
+      told: "Gjort, og du ba om å få vite om det:",
     },
     goals: {
       empty: "Ingen mål ennå. Fortell KI-assistenten hva du vil oppnå: den tar vare på målet og måler det med butikkens egne tall.",
@@ -264,6 +265,7 @@ export const assistantNb: AssistantMessages = {
     },
     events: {
       title: "Det autopiloten har reagert på",
+      told: "Gjort, og du ba om å få vite om det:",
       kinds: { support_waiting: "En kunde ventet på et menneske", test_ended: "En A/B-test ble avsluttet", alert: "Et analysevarsel" },
       statuses: { pending: "Venter", running: "Jobber", done: "Ferdig", skipped: "Hoppet over", failed: "Mislyktes" },
     },

@@ -7,7 +7,7 @@ vi.mock("next/server", () => ({ connection: async () => {}, after: () => {} }));
 
 const { closeDb, db } = await import("@/db/client");
 const { makeStore, membershipOf } = await import("./trust-fixtures");
-const { runEvents } = await import("./autopilot-events");
+const { latestEvents, runEvents } = await import("./autopilot-events");
 const { saveAutonomy } = await import("./autopilot-settings");
 const { makePlanTool } = await import("./autopilot-tools");
 const ownerTools = await import("./owner-tools");
@@ -171,5 +171,22 @@ describe("reacting to events", () => {
     expect(turns[0].autopilot?.tools).toEqual(["list_experiments", "explain_results", "apply_winner", "get_brand"]);
     expect(turns[0].message).toContain(`"Bigger photos" (id ${String(test.id)})`);
     expect(await eventsOf(other.id)).toHaveLength(0);
+  });
+
+  it("keeps what it changed at Do it and tell me with the event, for the page and the digest (D309 7.4)", async () => {
+    await db().execute(sql`delete from commerce.support_conversations where store_id = ${store.id}::uuid`).catch(() => undefined);
+    await settings({ reacts: true, waitMinutes: 15 });
+    const waiting = await waitingConversation(25);
+    const tellingTurn = async (input: TurnInput) => {
+      input.autopilot?.told.push("Add a note to the conversation, for the store's staff only.");
+      input.emit({ type: "done", message: { id: "m", role: "assistant", content: "Noted it.", tools: [], feedback: null, createdAt: "" } });
+    };
+    await runEvents({ turn: tellingTurn, connection: null, alerts: async () => [] });
+    const row = (await eventsOf()).find((r) => r.ref === waiting);
+    expect(row).toMatchObject({ status: "done", facts: { kind: "support_waiting", told: ["Add a note to the conversation, for the store's staff only."] } });
+    const shown = (await latestEvents(store.id)).find((e) => e.id === row?.id);
+    expect(shown?.told).toEqual(["Add a note to the conversation, for the store's staff only."]);
+    // An event that told of nothing keeps no list, and reads as none.
+    expect((await latestEvents(store.id)).filter((e) => e.id !== row?.id).every((e) => e.told.length === 0)).toBe(true);
   });
 });

@@ -9,7 +9,18 @@ import type { Alert } from "./analytics-alerts";
  */
 
 export const ASK_AI_MANAGER_EVENT = "kaizen:ask-ai-manager";
-export type AskDetail = { message: string };
+/**
+ * `send` false: the words wait in the message box for the person to read and send (the briefing's email link, D416). Left out, they are sent
+ * as the person's message (the button beside an alert, a press on the page, D348).
+ */
+export type AskDetail = { message: string; send?: boolean };
+
+/** What the AI manager is handed for an ask: its words, counted per press, and whether they are sent or wait in the box. Null for no words. */
+export function askFrom(detail: Partial<AskDetail> | undefined, previous?: { n: number }): { text: string; n: number; send: boolean } | null {
+  const message = detail?.message;
+  if (typeof message !== "string" || !message.trim()) return null;
+  return { text: message, n: (previous?.n ?? 0) + 1, send: detail?.send !== false };
+}
 
 /** The first message for an alert, in the words given (the page's language). */
 export function askAboutAlert(alert: Pick<Alert, "text" | "evidence">, words: AnalyticsMessages["alerts"]): string {

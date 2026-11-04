@@ -26,7 +26,7 @@ perioden, har en rad:
 
 - **Kommer**: dagen den kommer inn på kontoen din.
 - **Status**: *Venter*, *På vei*, *Betalt*, *Mislyktes* eller *Kansellert*.
-- **Beløp** og **Stripes gebyrer**.
+- **Beløp**, **Stripes gebyrer** og **Kaizena Flows gebyr**, hver for seg.
 - **Gjør opp**: hva den inneholder, som betalinger, refusjoner og tvister.
 - **Avstemming**: om den stemmer med ordrene dine.
 
@@ -74,7 +74,8 @@ avhenger av abonnementet ditt. **Abonnement og faktura** viser det som **Kaizena
 Hva Kaizena Flow har tatt, ser du som **Plattformgebyrer** under Økonomi, og som **Kaizena Flows gebyr** på kortet **Fortjeneste** på en
 bestilling.
 
-- På en utbetaling er **Gebyr** på en postering og utbetalingens **Stripes gebyrer** med Kaizena Flows gebyr i tillegg til Stripes.
+- På en utbetaling er **Gebyr** på en postering med Kaizena Flows gebyr i tillegg til Stripes; utbetalingens **Stripes gebyrer** og
+  **Kaizena Flows gebyr** viser dem hver for seg.
 - Når du belaster mindre enn det som er reservert på et kort, tas Kaizena Flows gebyr av det du belaster.
 - En betaling du registrerer som tatt utenfor Kaizena Flow, for eksempel en bankoverføring eller kontanter, har ikke noe gebyr: Kaizena
   Flow har ikke rørt pengene.

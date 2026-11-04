@@ -257,6 +257,10 @@ export const staffEmailsNb: StaffEmailsMessages = {
     done: { one: "{n} steg ble gjort:", many: "{n} steg ble gjort:" },
     noneDone: "Ingen steg ble ferdige i dag.",
     waiting: { one: "Én ting venter på ditt ja eller et svar.", many: "{n} ting venter på ditt ja eller et svar." },
+    told: {
+      one: "Den gjorde én endring du ba om å få vite om (Gjør det og si fra). Autopilot-siden viser hva den var.",
+      many: "Den gjorde {n} endringer du ba om å få vite om (Gjør det og si fra). Autopilot-siden viser hva hver var.",
+    },
     button: "Åpne autopiloten",
     weeklySubject: "Uken din med autopiloten{where}",
     weeklyPreview: "Tallene, målene dine og det som kommer.",

@@ -21,6 +21,11 @@ export const reportFactsSchema = z.object({
   stepsDone: z.array(z.string()).max(STEPS_LISTED),
   stepsDoneCount: z.number().int().min(0),
   waiting: z.number().int().min(0),
+  /**
+   * The changes the autopilot made at *Do it and tell me* in the period (plans' steps and events, D309 7.4): a count only; the Autopilot page
+   * lists what each was. Left out when there were none.
+   */
+  told: z.number().int().min(0).optional(),
   /** Weekly: net sales of the last 7 store days and the 7 before, written in the main currency; null when not measured. */
   sales: z.object({ now: z.string().nullable(), before: z.string().nullable() }).optional(),
   orders: z.object({ now: z.number().int().nullable(), before: z.number().int().nullable() }).optional(),
@@ -47,9 +52,12 @@ export const reportFactsSchema = z.object({
 });
 export type ReportFacts = z.infer<typeof reportFactsSchema>;
 
-/** Whether a digest has anything to say: a step finished, something waiting, or a legal page the AI wrote. */
-export const digestWorthSending = (facts: Pick<ReportFacts, "stepsDoneCount" | "waiting" | "legal">) =>
-  facts.stepsDoneCount > 0 || facts.waiting > 0 || (facts.legal ? facts.legal.published + facts.legal.drafted + facts.legal.failed > 0 : false);
+/** Whether a digest has anything to say: a step finished, something waiting, a change made at *Do it and tell me*, or a legal page the AI wrote. */
+export const digestWorthSending = (facts: Pick<ReportFacts, "stepsDoneCount" | "waiting" | "told" | "legal">) =>
+  facts.stepsDoneCount > 0 ||
+  facts.waiting > 0 ||
+  (facts.told ?? 0) > 0 ||
+  (facts.legal ? facts.legal.published + facts.legal.drafted + facts.legal.failed > 0 : false);
 
 /**
  * A model's few sentences for the weekly report, kept only when they say no figure of their own (no digit), make no claim the filter finds and
@@ -81,6 +89,7 @@ export function autopilotEmail(
         ]
       : [{ type: "paragraph", text: w.noneDone }];
   const waiting: EmailBlock[] = facts.waiting > 0 ? [{ type: "paragraph", text: countWords(facts.waiting, w.waiting, { n: facts.waiting }) }] : [];
+  const told: EmailBlock[] = facts.told ? [{ type: "paragraph", text: countWords(facts.told, w.told) }] : [];
   const legal: EmailBlock[] = facts.legal ? [{ type: "paragraph", text: fillWords(w.legal, facts.legal) }] : [];
   const button: EmailBlock = { type: "button", text: w.button, url };
   if (facts.kind === "daily") {
@@ -88,7 +97,7 @@ export function autopilotEmail(
       ...base,
       subject: fillWords(w.digestSubject, { where }),
       preview: fillWords(w.digestPreview, { done: facts.stepsDoneCount, waiting: facts.waiting }),
-      blocks: [{ type: "heading", text: w.digestHeading }, ...steps, ...waiting, ...legal, button],
+      blocks: [{ type: "heading", text: w.digestHeading }, ...steps, ...told, ...waiting, ...legal, button],
     };
   }
   if (facts.kind === "monthly") {
@@ -135,6 +144,7 @@ export function autopilotEmail(
             { type: "lines" as const, rows: facts.goals.map((g) => ({ label: g.title, value: fillWords(w.goalLine, { met: g.met, all: g.all }) })) },
           ]
         : []),
+      ...told,
       ...waiting,
       ...legal,
       ...(note ? [{ type: "paragraph" as const, text: `${w.note}: ${note}` }] : []),

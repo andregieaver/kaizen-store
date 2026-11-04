@@ -26,7 +26,7 @@ arrives in the period has a row:
 
 - **Arrives**: the day it reaches your bank.
 - **Status**: *Pending*, *On its way*, *Paid*, *Failed* or *Cancelled*.
-- **Amount** and **Stripe's fees**.
+- **Amount**, **Stripe's fees** and **Kaizena Flow's fee**, each on its own.
 - **Settles**: what is in it, such as payments, refunds and disputes.
 - **Reconciliation**: whether it adds up to your orders.
 
@@ -72,7 +72,8 @@ depends on your plan. **Billing** shows it as **Kaizena Flow's fee**, and each p
 
 You see what Kaizena Flow took as **Platform fees** on Finance, and as **Kaizena Flow's fee** on an order's **Profit** card.
 
-- On a payout, the **Fee** of a line and the payout's **Stripe's fees** include Kaizena Flow's fee as well as Stripe's.
+- On a payout, the **Fee** of a line includes Kaizena Flow's fee as well as Stripe's; the payout's **Stripe's fees** and **Kaizena Flow's fee**
+  show them apart.
 - When you capture less than a held card holds, Kaizena Flow's fee is taken on what you capture.
 - A payment you record as taken outside Kaizena Flow, such as a bank transfer or cash, has no fee: Kaizena Flow did not touch the money.
 - On a Mollie payment, Kaizena Flow's fee is not given back when you refund it.

@@ -28,8 +28,15 @@ describe("what a balance transaction is (D290)", () => {
 describe("whether a payout adds up (D290)", () => {
   it("adds up when its lines' net is the payout and every payment is tied to an order", () => {
     const r = reconcilePayout(paid, [charge(10_000, 450), charge(10_000, 450), { kind: "refund", amountMinor: -250, feeMinor: 0, netMinor: -250, orderId: "o2" }, own]);
-    expect(r).toEqual({ state: "reconciles", linesNetMinor: 18_850, differenceMinor: 0, untiedMinor: 0, untiedCount: 0, feesMinor: 900 });
+    expect(r).toEqual({ state: "reconciles", linesNetMinor: 18_850, differenceMinor: 0, untiedMinor: 0, untiedCount: 0, feesMinor: 900, platformFeesMinor: 0, providerFeesMinor: 900 });
     expect(payoutFlagged(r.state)).toBe(false);
+  });
+
+  it("shows Kaizena Flow's fee apart from Stripe's, never more than a line's own fee", () => {
+    const withPlatform = (fee: number, platform: number): PayoutLineFacts => ({ ...charge(10_000, fee), platformFeeMinor: platform });
+    const r = reconcilePayout(paid, [withPlatform(450, 150), withPlatform(450, 150), own]);
+    expect(r).toMatchObject({ feesMinor: 900, platformFeesMinor: 300, providerFeesMinor: 600 });
+    expect(reconcilePayout(paid, [withPlatform(100, 250), own])).toMatchObject({ feesMinor: 100, platformFeesMinor: 100, providerFeesMinor: 0 });
   });
 
   it("says by how much it does not add up", () => {

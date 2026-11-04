@@ -59,8 +59,11 @@ export function feeParts(details: readonly { type: string; amount: number }[] | 
   return { providerFeeMinor, applicationFeeMinor };
 }
 
-/** One line of a payout as kept: Stripe's gross, fee and net, and what of Kaizena Flow's it is tied to. */
-export type PayoutLineFacts = { kind: PayoutLineKind; amountMinor: number; feeMinor: number; netMinor: number; orderId: string | null };
+/**
+ * One line of a payout as kept: Stripe's gross, fee and net, and what of Kaizena Flow's it is tied to. `platformFeeMinor` is the part of the
+ * fee that is Kaizena Flow's application fee, read from the payment the line is tied to (a charge only); 0 when there is none or it is not known.
+ */
+export type PayoutLineFacts = { kind: PayoutLineKind; amountMinor: number; feeMinor: number; netMinor: number; orderId: string | null; platformFeeMinor?: number };
 
 /** A payout's facts as the reconciliation reads them. */
 export type PayoutFacts = { amountMinor: number; status: PayoutStatus; automatic: boolean; linesRead: boolean; linesComplete: boolean };
@@ -78,6 +81,9 @@ export type Reconciliation = {
   untiedCount: number;
   /** Σ fee of the lines (Stripe's and the application fee), positive. */
   feesMinor: number;
+  /** Of that, Kaizena Flow's application fee, and Stripe's own (its fee and its tax on it): the two the page and the export show apart. */
+  platformFeesMinor: number;
+  providerFeesMinor: number;
 };
 
 /** What a line of these kinds is: money for an order, so a line of one that is not tied to an order is money Kaizena Flow cannot explain. */
@@ -91,10 +97,12 @@ export function reconcilePayout(payout: PayoutFacts, lines: readonly PayoutLineF
   const own = lines.filter((l) => l.kind !== "payout");
   const linesNetMinor = own.reduce((s, l) => s + l.netMinor, 0);
   const feesMinor = own.reduce((s, l) => s + l.feeMinor, 0);
+  // Never more than the line's own fee: a line's fee holds the application fee it carries.
+  const platformFeesMinor = own.reduce((s, l) => s + Math.min(Math.max(l.platformFeeMinor ?? 0, 0), Math.max(l.feeMinor, 0)), 0);
   const untied = own.filter((l) => ORDER_KINDS.includes(l.kind) && l.orderId === null);
   const untiedMinor = untied.reduce((s, l) => s + l.netMinor, 0);
   const differenceMinor = payout.amountMinor - linesNetMinor;
-  const base = { linesNetMinor, differenceMinor, untiedMinor, untiedCount: untied.length, feesMinor };
+  const base = { linesNetMinor, differenceMinor, untiedMinor, untiedCount: untied.length, feesMinor, platformFeesMinor, providerFeesMinor: feesMinor - platformFeesMinor };
   if (!payout.automatic) return { ...base, state: "manual", differenceMinor: 0 };
   if (!payout.linesRead) return { ...base, state: "not_read", differenceMinor: 0 };
   if (!payout.linesComplete) return { ...base, state: "incomplete", differenceMinor: 0 };
@@ -154,7 +162,7 @@ export type PayoutRow = {
 export type PayoutReport = {
   payouts: PayoutRow[];
   /** Live payouts that are paid, in the main currency; test payouts and other statuses are listed, never summed. */
-  totals: { paidMinor: number; feesMinor: number; paid: number };
+  totals: { paidMinor: number; feesMinor: number; providerFeesMinor: number; platformFeesMinor: number; paid: number };
   /** Paid live payouts left out of the totals for want of a rate, and their currencies. */
   unconverted: number;
   missingCurrencies: string[];
@@ -179,20 +187,23 @@ export function payoutReportOf(inputs: readonly PayoutInput[], toMain: (currency
       reconciliation: reconcilePayout({ amountMinor: p.amountMinor, status: p.status, automatic: p.automatic, linesRead, linesComplete }, lines),
     };
   });
-  const totals = { paidMinor: 0, feesMinor: 0, paid: 0 };
+  const totals = { paidMinor: 0, feesMinor: 0, providerFeesMinor: 0, platformFeesMinor: 0, paid: 0 };
   const missing = new Set<string>();
   let unconverted = 0;
   for (const p of payouts) {
     if (p.testMode || p.status !== "paid") continue;
     const amount = toMain(p.currency, p.amountMinor);
     const fees = toMain(p.currency, p.reconciliation.feesMinor);
-    if (amount === null || fees === null) {
+    const platform = toMain(p.currency, p.reconciliation.platformFeesMinor);
+    if (amount === null || fees === null || platform === null) {
       unconverted += 1;
       missing.add(p.currency);
       continue;
     }
     totals.paidMinor += amount;
     totals.feesMinor += fees;
+    totals.platformFeesMinor += platform;
+    totals.providerFeesMinor += fees - platform;
     totals.paid += 1;
   }
   return {

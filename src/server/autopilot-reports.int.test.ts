@@ -40,12 +40,16 @@ beforeAll(async () => {
     ],
   });
   await db().execute(sql`update commerce.assistant_plans set status = 'running' where id = ${plan.id}::uuid`);
-  await db().execute(sql`update commerce.assistant_plan_steps set status = 'done' where plan_id = ${plan.id}::uuid and key = 's1'`);
+  await db().execute(sql`
+    update commerce.assistant_plan_steps set status = 'done', result = '{"done": "Listed the products.", "told": ["Listed the products."]}'::jsonb
+    where plan_id = ${plan.id}::uuid and key = 's1'
+  `);
   await db().execute(sql`update commerce.assistant_plan_steps set status = 'asking', question = '{"text": "Go on?", "options": []}' where plan_id = ${plan.id}::uuid and key = 's2'`);
 });
 
 afterAll(async () => {
   await db().execute(sql`delete from commerce.autopilot_reports where store_id = ${store.id}::uuid`);
+  await db().execute(sql`delete from commerce.autopilot_events where store_id = ${store.id}::uuid`);
   await db().execute(sql`delete from commerce.assistant_plans where store_id = ${store.id}::uuid`);
   await closeDb();
 });
@@ -69,6 +73,7 @@ describe("the digest and the weekly report", () => {
     const digest = mine.find((e) => e.kind === "autopilot.digest")!;
     expect(digest.email.text).toContain("Look at the products");
     expect(digest.email.text).toContain("One thing waits for your yes or an answer.");
+    expect(digest.email.text).toContain("It made one change you asked to be told of (Do it and tell me).");
     expect(digest.email.text).toContain(`/admin/${store.slug}/assistant/autopilot`);
 
     await sendAutopilotReports({ now, send, connection: null });
@@ -100,5 +105,20 @@ describe("the digest and the weekly report", () => {
     expect(emails.some((e) => e.to === member.account.email)).toBe(false);
     const [rows] = await db().execute<Row>(sql`select count(*)::int as n from commerce.autopilot_reports where account_id = ${helper.id}::uuid`);
     expect(rows.n).toBe(0);
+  });
+
+  it("go to whoever the autopilot reacted to an event for and told of a change, though no plan of theirs ran (D309 7.4)", async () => {
+    const helper = await makeAccount("autopilot-report-told");
+    await addMember(store.id, helper.id, "admin");
+    await db().execute(sql`
+      insert into commerce.autopilot_events (store_id, kind, ref, facts, status, account_id, finished_at)
+      values (${store.id}::uuid, 'support_waiting', 'told-ref', ${JSON.stringify({ kind: "support_waiting", conversation: "c", waitedMinutes: 30, handoffReason: null, told: ["A", "B"] })}::jsonb,
+        'done', ${helper.id}::uuid, now())
+    `);
+    const later = new Date((await wednesdayEvening()).getTime() + 2 * 86_400_000);
+    await sendAutopilotReports({ now: later, send, connection: null });
+    const digest = emails.find((e) => e.to === helper.email && e.kind === "autopilot.digest");
+    expect(digest?.email.text).toContain("It made 2 changes you asked to be told of");
+    expect(digest?.email.text).toContain("No step was finished today.");
   });
 });

@@ -143,3 +143,19 @@ export function visibleRange(heights: readonly number[], top: number, bottom: nu
   const drawn = heights.slice(start, end).reduce((sum, h) => sum + h, 0);
   return { start, end, before, after: total - before - drawn };
 }
+
+/**
+ * The options the product editor opens with: those of the variants that are sold, in the order the product's options give. A value taken out
+ * in the editor leaves its variants switched off (kept for orders and price history, and in the product file as they are), and must not come
+ * back with them unticked on the next load (docs/audits/docs-writing-findings.md, behaviour 7). A product with no variant sold keeps them all.
+ */
+export function editorOptions(
+  options: readonly { name: string; values: readonly string[] }[],
+  variants: readonly { options: Record<string, string>; active: boolean }[],
+): { name: string; values: string[] }[] {
+  const sold = variants.filter((v) => v.active);
+  if (sold.length === 0) return options.map((o) => ({ name: o.name, values: [...o.values] }));
+  return options
+    .map((o) => ({ name: o.name, values: o.values.filter((value) => sold.some((v) => v.options[o.name] === value)) }))
+    .filter((o) => o.values.length > 0);
+}

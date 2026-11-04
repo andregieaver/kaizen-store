@@ -16,6 +16,21 @@ export const PROFILE_ID = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0";
 export type EinvoiceProblem = "seller_country" | "buyer_country" | "seller_vat_number" | "totals" | "currency";
 export type Einvoice = { ok: true; xml: string; fileName: string } | { ok: false; problems: EinvoiceProblem[] };
 
+/**
+ * The page a staff member sees when a document cannot be an e-invoice (D403): why, each reason in the words given (their admin's language),
+ * and a way back, instead of the reasons as JSON. Everything in it is escaped.
+ */
+export function einvoiceRefusedPage(
+  problems: readonly EinvoiceProblem[],
+  words: { title: string; intro: string; back: string; problems: Record<EinvoiceProblem, string> },
+  back: string,
+  lang: string,
+): string {
+  const esc = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  const items = problems.map((p) => `<li>${esc(words.problems[p] ?? p)}</li>`).join("");
+  return `<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${esc(words.title)}</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:3rem auto;padding:0 1rem;color:#1a1a1a}@media (prefers-color-scheme:dark){body{background:#111;color:#eee}a{color:#9cf}}</style></head><body><h1>${esc(words.title)}</h1><p>${esc(words.intro)}</p><ul>${items}</ul><p><a href="${esc(back)}">${esc(words.back)}</a></p></body></html>`;
+}
+
 const NS = [
   'xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"',
   'xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"',

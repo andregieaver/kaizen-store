@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { vatIncluded } from "./checkout";
 import { creditNoteSnapshot } from "./credit-allocation";
-import { amount, creditNoteUbl, invoiceUbl, unitPrice, vatCategory, xmlText } from "./einvoice";
+import { invoicesEn } from "./admin-messages/invoices.en";
+import { invoicesNb } from "./admin-messages/invoices.nb";
+import { amount, creditNoteUbl, einvoiceRefusedPage, invoiceUbl, unitPrice, vatCategory, xmlText } from "./einvoice";
 import { buildInvoiceSnapshot, type InvoiceFacts, type InvoiceLineFacts, type InvoiceOrderFacts } from "./invoice-snapshot";
 
 /** Invoices as EN 16931 UBL (D403): from the frozen snapshot only, totals that add up as the rules ask, or the reason it cannot be one. */
@@ -147,6 +149,20 @@ describe("an invoice as UBL", () => {
     expect(invoiceUbl({ ...snap, buyer: { ...snap.buyer, address: { ...snap.buyer.address, country: null } } })).toEqual({ ok: false, problems: ["buyer_country"] });
     expect(invoiceUbl({ ...snap, seller: { ...snap.seller, vatNumber: null }, treatment: { ...snap.treatment, sellerVatNumber: null } })).toEqual({ ok: false, problems: ["seller_vat_number"] });
     expect(invoiceUbl({ ...snap, totals: { ...snap.totals, grossMinor: snap.totals.grossMinor + 1 } })).toEqual({ ok: false, problems: ["totals"] });
+  });
+});
+
+describe("a document that cannot be an e-invoice", () => {
+  it("says why in the staff member's words, with a way back, every word escaped", () => {
+    const en = einvoiceRefusedPage(["seller_vat_number", "buyer_country"], invoicesEn.einvoice, "/admin/demo/orders/1?x=<b>", "en");
+    expect(en).toContain("<h1>This e-invoice cannot be made</h1>");
+    expect(en).toContain("<li>The document charges VAT, but the store&#39;s VAT number is missing from its tax profile.</li>");
+    expect(en).toContain("<li>The buyer&#39;s address on the document has no country.</li>");
+    expect(en).toContain('<a href="/admin/demo/orders/1?x=&lt;b&gt;">Back</a>');
+    expect(en).not.toContain("problems");
+    const nb = einvoiceRefusedPage(["totals"], invoicesNb.einvoice, "/admin/demo/invoices", "nb");
+    expect(nb).toContain('lang="nb"');
+    expect(nb).toContain("Summene på dokumentet stemmer ikke med linjene");
   });
 });
 

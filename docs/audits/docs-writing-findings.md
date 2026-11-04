@@ -16,19 +16,31 @@ signature checks, two Admin API descriptions (contract 1.5) and the docs' Markdo
    sells in one country serves it (it answered 404), and a batch over ten is refused whole.*
 3. **The WordPress plugin refuses a cart line over 20 units**, though a quantity rule may allow 9,999 (D323). *Fixed 4 November in plugin
    1.2.1: a line takes up to 9,999.*
-4. **The order page writes times in Oslo time** whatever the store's time zone (`"Europe/Oslo"` in `orders/[orderId]/page.tsx`).
-5. **A refused e-invoice shows staff a raw JSON error** (`einvoiceResponse()`, `src/server/einvoices.ts`).
+4. **The order page writes times in Oslo time** whatever the store's time zone (`"Europe/Oslo"` in `orders/[orderId]/page.tsx`). *Fixed
+   5 November: the order page and its payment terms card write the store's own time zone. About 35 other store screens and components
+   (customers, companies, wishlists, subscriptions, campaigns, experiments, cart reminders, the email log, domains and more) still write
+   Oslo's; many are components without the store, so it is a change of its own.*
+5. **A refused e-invoice shows staff a raw JSON error** (`einvoiceResponse()`, `src/server/einvoices.ts`). *Fixed 5 November: a short
+   page in the staff member's admin language says why, each reason in words, with a link back.*
 6. **Bundles have no quantity-rule fields** in the product editor (`BundleSection` replaces the variants section), though D323 E.1 gives
    bundles quantity rules.
 7. **An option value removed in the editor may come back** after a reload, its variants unticked: the editor rebuilds options from every
-   variant, switched-off ones included. Read from the code, not tried.
-8. **The autopilot's *Do it and tell me*** keeps what it did (`told`) but nothing shows or sends it, so it behaves as *Just do it*.
+   variant, switched-off ones included. Read from the code, not tried. *Confirmed by a test and fixed 5 November: the editor opens with the
+   options of the variants sold (`editorOptions()`); the switched-off variant stays, unticked, so typing the value again brings it back
+   rather than a new one; the product file still carries it as stored. Seen on the way: a value's place follows the variants' SKUs (S after
+   M), not the order typed.*
+8. **The autopilot's *Do it and tell me*** keeps what it did (`told`) but nothing shows or sends it, so it behaves as *Just do it*. *Fixed
+   5 November: the Autopilot page lists each change under its step or event (an event's are now kept), and the daily digest and weekly
+   report say how many there were, reason enough to send.*
 9. **"Ask the AI manager" from an alert sends the alert's words at once**, where D416 and `AskOnArrival` say they wait in the box unsent.
+   *Fixed 5 November: from the briefing's email they wait in the box; the button beside an alert still sends them (D348).*
 10. **The product editor cannot take a picture from the media library**; an AI-edited picture must be downloaded and uploaded again.
-11. **Payouts' "Stripe's fees" column also holds Kaizena Flow's fee** (`feesMinor`, `src/lib/payouts.ts`).
+11. **Payouts' "Stripe's fees" column also holds Kaizena Flow's fee** (`feesMinor`, `src/lib/payouts.ts`). *Fixed 5 November: Kaizena
+    Flow's fee has a column of its own on the page, in the totals and in the export (`kaizena_flow_fee`), read from each charge's payment.*
 12. **A store with no country is billed with Norwegian VAT** (`store.details.country ?? "NO"`): safe for a Norwegian seller, worth knowing.
 13. **Cancelling a plan makes a store that began with a trial private** when the plan ends, as at the trial's end. Confirm it is meant.
-14. **The deliveries list of a webhook endpoint defaults to 25** where the contract says 50.
+14. **The deliveries list of a webhook endpoint defaults to 25** where the contract says 50. *Fixed 5 November: the Admin API's default is
+    the contract's 50.*
 15. **Two storefront API mismatches**: `POST /carts` takes an empty body though the document marks it required, and a missing cart is
     `not_found` on the line routes but `no_such_cart` on `GET /carts/{cart}` and checkout.
 

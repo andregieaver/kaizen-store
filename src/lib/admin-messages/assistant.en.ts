@@ -220,6 +220,8 @@ export const assistantEn = {
       result: "Result",
       problem: "Problem",
       answeredWith: "You answered: {answer}",
+      /** Above the changes a step made at *Do it and tell me* (D309 7.4). */
+      told: "Done, as you asked to be told:",
     },
     goals: {
       empty: "No goals yet. Tell the AI manager what you want to achieve: it keeps the goal and measures it from your store's own figures.",
@@ -270,6 +272,7 @@ export const assistantEn = {
     },
     events: {
       title: "What the autopilot reacted to",
+      told: "Done, as you asked to be told:",
       kinds: { support_waiting: "A customer waited for a person", test_ended: "An A/B test ended", alert: "An analytics alert" },
       statuses: { pending: "Waiting", running: "Working", done: "Done", skipped: "Skipped", failed: "Failed" },
     },

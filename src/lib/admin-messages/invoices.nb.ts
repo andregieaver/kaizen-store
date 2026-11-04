@@ -158,6 +158,18 @@ export const invoicesNb: InvoicesMessages = {
     xml: "E-faktura (XML)",
     sendAgain: "Send til kunden på nytt",
   },
+  einvoice: {
+    title: "Denne e-fakturaen kan ikke lages",
+    intro: "Dokumentet er i orden som PDF, men formatet for e-faktura trenger mer:",
+    back: "Tilbake",
+    problems: {
+      seller_country: "Butikkens land mangler i bedriftsopplysningene.",
+      buyer_country: "Kjøperens adresse på dokumentet har ikke noe land.",
+      seller_vat_number: "Dokumentet har mva., men butikkens mva-nummer mangler i skatteprofilen.",
+      totals: "Summene på dokumentet stemmer ikke med linjene, så formatet ville avvist det.",
+      currency: "Valutaen på dokumentet kan ikke skrives i formatet.",
+    },
+  },
   forms: {
     checked: "Sjekket.",
     checkAgain: "Sjekk igjen",

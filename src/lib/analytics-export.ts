@@ -103,7 +103,7 @@ const REGISTRY: AnalyticsTable[] = [
     view: "payouts-view.tsx",
     shape: "table",
     caption: "Payouts with what each settles and whether it adds up",
-    columns: [text("payout"), date("arrival", "arrives_on"), text("status"), amount("amount"), amount("fees", "stripe_fees"), int("payments"), int("refunds"), text("state", "reconciliation"), amount("difference"), amount("untied", "not_tied_to_an_order"), text("mode")],
+    columns: [text("payout"), date("arrival", "arrives_on"), text("status"), amount("amount"), amount("fees", "stripe_fees"), amount("platformFees", "kaizena_flow_fee"), int("payments"), int("refunds"), text("state", "reconciliation"), amount("difference"), amount("untied", "not_tied_to_an_order"), text("mode")],
     money: true,
     rowCurrency: true,
   },

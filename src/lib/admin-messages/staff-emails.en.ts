@@ -261,6 +261,10 @@ export const staffEmailsEn = {
     done: { one: "{n} step was done:", many: "{n} steps were done:" },
     noneDone: "No step was finished today.",
     waiting: { one: "One thing waits for your yes or an answer.", many: "{n} things wait for your yes or an answer." },
+    told: {
+      one: "It made one change you asked to be told of (Do it and tell me). The Autopilot page says what it was.",
+      many: "It made {n} changes you asked to be told of (Do it and tell me). The Autopilot page says what each was.",
+    },
     button: "Open the Autopilot",
     weeklySubject: "Your week with the autopilot{where}",
     weeklyPreview: "The figures, your goals and what comes next.",

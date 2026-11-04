@@ -42,6 +42,21 @@ describe("the Payouts page (D290)", () => {
     expect(html).toContain('href="/admin/s/analytics/payouts/p1"');
   });
 
+  it("shows Kaizena Flow's fee in a column of its own, out of Stripe's fees, in each row and the totals", () => {
+    const lines = [
+      { kind: "charge" as const, amountMinor: 10_000, feeMinor: 450, netMinor: 9_550, orderId: "o1", platformFeeMinor: 200 },
+      { kind: "charge" as const, amountMinor: 10_000, feeMinor: 450, netMinor: 9_550, orderId: "o2", platformFeeMinor: 200 },
+      { kind: "refund" as const, amountMinor: -250, feeMinor: 0, netMinor: -250, orderId: "o1" },
+    ];
+    const report = payoutReportOf([input({ lines })], toMain);
+    expect(report.totals).toMatchObject({ feesMinor: 900, providerFeesMinor: 500, platformFeesMinor: 400 });
+    const t = text(renderToString(h(PayoutsView, { base: "/admin/s", currency: "NOK", locale: "nb-NO", report })));
+    expect(t).toContain("Kaizena Flow's fee");
+    expect(t).toContain("5,00");
+    expect(t).toContain("4,00");
+    expect(t).not.toContain("9,00");
+  });
+
   it("flags one that does not add up, with the difference, and one with money not tied to an order", () => {
     const off = input({ id: "p2", amountMinor: 20_000 });
     const untied = input({ id: "p3", lines: [{ kind: "charge", amountMinor: 19_300, feeMinor: 450, netMinor: 18_850, orderId: null }] });
@@ -56,7 +71,7 @@ describe("the Payouts page (D290)", () => {
     const test = input({ id: "t", testMode: true });
     const sek = input({ id: "s", currency: "SEK" });
     const report = payoutReportOf([euro, test, sek], toMain);
-    expect(report.totals).toEqual({ paidMinor: 21_850, feesMinor: 1_150, paid: 1 });
+    expect(report.totals).toEqual({ paidMinor: 21_850, feesMinor: 1_150, providerFeesMinor: 1_150, platformFeesMinor: 0, paid: 1 });
     expect(report).toMatchObject({ unconverted: 1, missingCurrencies: ["SEK"], testPayouts: 1 });
     const t = text(renderToString(h(PayoutsView, { base: "/admin/s", currency: "NOK", locale: "nb-NO", report })));
     expect(t).toContain("€");

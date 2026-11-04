@@ -107,6 +107,17 @@ describe("Plans", () => {
     expect(out).toMatch(/name="version" value="2"/);
   });
 
+  it("shows what a step changed at Do it and tell me: a task's changes under its answer, a tool step's one change once (D309 7.4)", () => {
+    const task = step("s1", "done", { result: { done: "Wrote two descriptions.", told: ["Change the description of Mug.", "Change the description of Bowl."] } });
+    const tool = step("s2", "done", { result: { done: "Order 1042 is marked as sent.", told: ["Order 1042 is marked as sent."] } });
+    const out = page({ ...empty, plans: [{ plan, steps: [task, tool] }] }, "plans");
+    expect(out).toContain("Wrote two descriptions.");
+    expect(out).toContain("Change the description of Mug.");
+    expect(out).toContain("Change the description of Bowl.");
+    expect(out.match(/Done, as you asked to be told:/g)).toHaveLength(2);
+    expect(out.match(/Order 1042 is marked as sent\./g)).toHaveLength(1);
+  });
+
   it("offers a way to ask for a plan when there is none", () => {
     expect(page(empty, "plans")).toContain("Ask the AI manager for a plan");
   });
@@ -147,7 +158,7 @@ describe("Goals and settings", () => {
 });
 
 describe("What the autopilot reacted to (D331)", () => {
-  const event = { id: "e1", kind: "support_waiting" as const, status: "done", outcome: "Left a note about a late parcel.", at: "2026-10-26T08:00:00Z" };
+  const event = { id: "e1", kind: "support_waiting" as const, status: "done", outcome: "Left a note about a late parcel.", at: "2026-10-26T08:00:00Z", told: [] };
 
   it("lists the store's events under the decisions, and says nothing when there are none", () => {
     expect(page({ ...empty, events: [event] })).toContain("What the autopilot reacted to");
@@ -155,6 +166,14 @@ describe("What the autopilot reacted to (D331)", () => {
     expect(page({ ...empty, events: [event] })).toContain("Left a note about a late parcel.");
     expect(page(empty)).not.toContain("What the autopilot reacted to");
     expect(page({ ...empty, events: [event] }, "decisions", "nb")).toContain("En kunde ventet på et menneske");
+    expect(page({ ...empty, events: [event] })).not.toContain("as you asked to be told");
+  });
+
+  it("lists what an event changed at Do it and tell me (D309 7.4)", () => {
+    const told = { ...event, told: ["Add a note to the conversation, for the store's staff only."] };
+    expect(page({ ...empty, events: [told] })).toContain("Done, as you asked to be told:");
+    expect(page({ ...empty, events: [told] })).toContain("Add a note to the conversation, for the store's staff only.");
+    expect(page({ ...empty, events: [told] }, "decisions", "nb")).toContain("Gjort, og du ba om å få vite om det:");
   });
 
   it("offers the switch on a store's settings, never on the platform's", () => {
