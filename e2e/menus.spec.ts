@@ -83,16 +83,26 @@ test("a menu's links under a link open below it in the header, and show nested i
 test.describe("on a phone", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("the slide-out menu shows the links under a link beneath it", async ({ page }) => {
+  test("the slide-out menu folds the links under a link away, and its arrow opens them beneath it", async ({ page }) => {
     const slug = await storeWithMenus();
     await page.goto(`/s/${slug}`);
     const drawer = page.getByRole("dialog", { name: "Meny" });
     // A tap before the page has come alive does nothing, so tap again as a shopper would.
     await expect(async () => {
       await page.getByRole("banner").getByRole("button", { name: "Åpne menyen" }).click();
-      await expect(drawer.getByRole("link", { name: "Skrivesaker" })).toBeVisible({ timeout: 1000 });
+      await expect(drawer.getByRole("link", { name: "Utvalg" })).toBeVisible({ timeout: 1000 });
     }).toPass();
+    // Closed at first: the link is there, the links under it are not.
+    await expect(drawer.getByRole("link", { name: "Skrivesaker" })).toBeHidden();
+    await drawer.locator("summary", { hasText: "Lenker under Utvalg" }).click();
+    await expect(drawer.getByRole("link", { name: "Skrivesaker" })).toBeVisible();
+    // Each level opens on its own, and the menu stays open: only a link closes it.
+    await expect(drawer.getByRole("link", { name: "Koppen" })).toBeHidden();
+    await drawer.locator("summary", { hasText: "Lenker under Skrivesaker" }).click();
     await expect(drawer.getByRole("link", { name: "Koppen" })).toBeVisible();
+    // The arrow closes them again.
+    await drawer.locator("summary", { hasText: "Lenker under Utvalg" }).click();
+    await expect(drawer.getByRole("link", { name: "Skrivesaker" })).toBeHidden();
   });
 });
 
