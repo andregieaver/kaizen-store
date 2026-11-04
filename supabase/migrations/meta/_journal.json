@@ -4572,6 +4572,20 @@
       "when": 1793788577616,
       "tag": "20261104103617_shopify_moved_money_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 653,
+      "version": "7",
+      "when": 1793793607198,
+      "tag": "20261104120007_shop_move_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 654,
+      "version": "7",
+      "when": 1793793881763,
+      "tag": "20261104120441_delete_copied_orders",
+      "breakpoints": true
     }
   ]
 }

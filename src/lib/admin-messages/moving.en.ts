@@ -257,6 +257,17 @@ export const movingEn = {
       saving: "Saving …",
     },
   },
+  undo: {
+    button: "Undo this copy",
+    ask: { one: "This takes back the {n} thing the copy made here: copied orders, pages, menus, codes, redirects, subscribers and customers are removed, products archived, gift cards switched off. What you made yourself stays, and nobody is emailed. Undo it?", many: "This takes back the {n} things the copy made here: copied orders, pages, menus, codes, redirects, subscribers and customers are removed, products archived, gift cards switched off. What you made yourself stays, and nobody is emailed. Undo it?" },
+    confirm: "Undo it",
+    undoing: "Undoing …",
+    cancel: "Cancel",
+    done: { one: "Undone: {n} thing taken back.", many: "Undone: {n} things taken back." },
+    kept: { one: "{n} could not go, because something else uses it.", many: "{n} could not go, because something else uses them." },
+    gone: "Undo is no longer offered: your shop has had its first real order.",
+    failed: "That didn't work. Try again.",
+  },
   files: {
     products: "Import products",
     customers: "Import customers",

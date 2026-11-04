@@ -13,6 +13,8 @@ import { ShopMove } from "@/components/admin/moving/shop-move";
 import { moveStatus, moveView } from "@/server/shopify-move";
 import { ShopAddress } from "@/components/admin/moving/shop-address";
 import { addressView } from "@/server/shopify-address";
+import { ShopUndo } from "@/components/admin/moving/shop-undo";
+import { undoView } from "@/server/shopify-undo";
 import { MoveWatchCard } from "@/components/admin/moving/move-watch-card";
 import { COPY_FEEDS, copyDone, copyFailed, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
 import { copyView, feedJobPage } from "@/server/shopify-copy";
@@ -43,6 +45,7 @@ import {
   shopifyClosedAction,
   scheduleMoveAction,
   startAddressAction,
+  undoCopyAction,
   startCopyAction,
   startMoveAction,
 } from "./actions";
@@ -128,6 +131,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             <AddressPanel storeSlug={store.slug} />
             <MoveWatchCard member={member} lang={lang} level={3} close={shopifyClosedAction.bind(null, store.slug)} />
             <CheckOldLinks check={checkOldLinksAction.bind(null, store.slug)} />
+            <UndoPanel storeSlug={store.slug} />
             <ShopifyDisconnect disconnect={disconnectShopifyAction.bind(null, store.slug)} />
           </div>
         </Card>
@@ -227,6 +231,15 @@ function dryOf(feed: CopyFeed, job: DataJob | undefined): { ready: number | null
     default:
       return { ready: null, needLook: null };
   }
+}
+
+/** *Undo this copy* (D445 step 9): Lisa's, with what it would take back; gone after the first real order. */
+async function UndoPanel({ storeSlug }: { storeSlug: string }) {
+  const member = await requireOwnerRole(storeSlug);
+  const view = await undoView(member);
+  if (!view) return null;
+  const total = Object.values(view.counts).reduce((n, c) => n + c, 0);
+  return <ShopUndo total={total} allowed={view.allowed} undo={undoCopyAction.bind(null, storeSlug)} />;
 }
 
 /** Move day, the address (D445 step 7b): once the shop has moved, its Shopify address pointed here. */

@@ -12,6 +12,7 @@ import { advanceCopy, bringItOver, startCopy } from "@/server/shopify-copy";
 import { saveVendorMaker, type MakerSaved } from "@/server/shopify-makers";
 import { advanceMove, cancelMove, issueLeftCard, scheduleMove, shopifyClosed, startMove, type MoveProblem } from "@/server/shopify-move";
 import { checkAddress, startAddress } from "@/server/shopify-address";
+import { undoCopy, type UndoResult } from "@/server/shopify-undo";
 import { copyMoving } from "@/lib/shopify-copy";
 
 /**
@@ -152,4 +153,13 @@ export async function issueLeftCardAction(storeSlug: string, shopifyId: string):
   if (!member) return { ok: false, problem: "gone" };
   const result = await issueLeftCard(member, typeof shopifyId === "string" ? shopifyId.slice(0, 100) : "");
   return result.ok ? { ok: true, code: result.code } : result;
+}
+
+/** *Undo this copy* (D445 step 9): what the copy made, taken back; only before the first real order. */
+export async function undoCopyAction(storeSlug: string): Promise<UndoResult> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false, problem: "forbidden" };
+  const result = await undoCopy(member);
+  refresh();
+  return result;
 }

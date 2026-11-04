@@ -233,6 +233,25 @@ describe("sequential order numbering", () => {
     await db.query("delete from commerce.orders where id = $1", [copied.id]);
   });
 
+  it("deletes a copied order with its lines and history through delete_copied_order(), and never a real one (D445 step 9)", async () => {
+    const id = await numberedStore();
+    const real = await place(id, await take(id));
+    await db.query("begin");
+    await db.query("select set_config('commerce.copying', 'on', true)");
+    const copied = await one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor, billing_address, shipping_address, copied_from)
+       values ($1, 'C-88', 'DE', 'EUR', 'de-DE', 'a@example.com', 'paid', 1000, 0, 0, 0, 1000, '{}', '{}', gen_random_uuid()) returning id`,
+      [id],
+    );
+    await db.query("commit");
+    // History stays append-only for anyone else, a copied order's too.
+    const events = await one<{ n: number }>("select count(*)::int as n from commerce.order_events where order_id = $1", [real.id]);
+    if (events.n > 0) await expect(db.query("delete from commerce.order_events where order_id = $1", [real.id])).rejects.toThrow(/append-only/);
+    expect((await one<{ ok: boolean }>("select commerce.delete_copied_order($1, $2) as ok", [id, real.id])).ok).toBe(false);
+    expect((await one<{ ok: boolean }>("select commerce.delete_copied_order($1, $2) as ok", [id, copied.id])).ok).toBe(true);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.orders where id in ($1, $2)", [real.id, copied.id])).n).toBe(1);
+  });
+
   it("never renumbers or deletes an order", async () => {
     const id = await numberedStore();
     const order = await place(id, await take(id));

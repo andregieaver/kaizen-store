@@ -435,9 +435,10 @@ export async function addMovedSubscribers(
   storeId: string,
   locale: string,
   subscribers: readonly { email: string; name: string; consentedAt: string; confirmed: boolean; consentText: string }[],
-): Promise<{ added: number; already: number }> {
+): Promise<{ added: number; already: number; ids: string[] }> {
   let added = 0;
   let already = 0;
+  const ids: string[] = [];
   for (const sub of subscribers) {
     const email = normal(sub.email);
     if (!email || !email.includes("@") || Number.isNaN(Date.parse(sub.consentedAt))) continue;
@@ -448,8 +449,10 @@ export async function addMovedSubscribers(
       on conflict (store_id, lower(email)) do nothing
       returning id
     `);
-    if (rows.length > 0) added += 1;
-    else already += 1;
+    if (rows.length > 0) {
+      added += 1;
+      ids.push(String(rows[0].id));
+    } else already += 1;
   }
-  return { added, already };
+  return { added, already, ids };
 }
