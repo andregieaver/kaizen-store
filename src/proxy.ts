@@ -21,7 +21,8 @@ import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
  *    country move there for good (308); a store that sells in several moves a short address back to the long one. The second matcher entry is
  *    `STORE_MATCHER` of `src/lib/store-address.ts` written out as a literal (a matcher cannot use a constant; a test holds the two together): every
  *    page, so the decision (`addressDecision()`) sees each request for a store's page. It reads the store's facts from the database at most once per
- *    store and instance every few seconds (`storeRequestAnswer()`), never per request.
+ *    store and instance every few seconds (`storeRequestAnswer()`), never per request. The store's own files it lets through (`STORE_FILES`: the UCP
+ *    profile at `/.well-known/ucp` and `agents.md`) are no page: `storePathOf()` leaves them to their routes.
  * 2. Addresses with no country (wave 2, D168, `docs/wave-2-redirects.md` 2.1.3, 5.3) of a store that sells in several: an old shop's
  *    `/collections/shoes` is looked up as a manual redirect source and sent, permanently (308), to its target in the store's main market; an address
  *    live in its own country (from when it sold in one) goes there; anything else is left to the routes (the 404 it was) and counted for the 404 report.

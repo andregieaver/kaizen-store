@@ -26,7 +26,7 @@ site and go into a cart there. The shopper pays at the store: *Checkout* takes t
 | In WordPress | An administrator: every page of the plugin needs the `manage_options` capability |
 | In Kaizena Flow | An account that is an owner or staff member of the store, with the store's online shop on |
 
-The plugin is version 1.2.0. It is installed by upload, not from wordpress.org. It offers shortcodes, not blocks for the block editor, and it
+The plugin is version 1.2.1. It is installed by upload, not from wordpress.org. It offers shortcodes, not blocks for the block editor, and it
 does not use WooCommerce.
 
 ## Install the plugin
@@ -131,8 +131,8 @@ it. The product page's quantity field starts at the minimum, moves by the step a
 stepper moves by the same step, and the cart shows the rule's words. Kaizena Flow fits each line to the rule and the stock when it prices the
 cart and when it hands it to checkout, so the shopper lands on the same quantities.
 
-> [!NOTE]
-> The site's own cart route takes at most 30 lines of 1 to 20 units each. A line of more than 20 units is refused there.
+The site's own cart route takes at most 30 lines, each of 1 to 9,999 units, the most a quantity rule allows. Version 1.2.0 refused a line
+of more than 20 there, so update to 1.2.1 if you sell in larger amounts.
 
 ## Prices
 

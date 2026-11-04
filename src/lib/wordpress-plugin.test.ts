@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildPluginZip, PLUGIN_DIR, PLUGIN_ZIP, pluginFiles } from "../../scripts/wordpress-plugin-zip.mjs";
 
+import { MAX_ORDER_QUANTITY } from "./quantity-rules";
 import { WORDPRESS_PLUGIN_FILE, WORDPRESS_PLUGIN_VERSION } from "./wordpress-plugin";
 
 const read = (file: string) => readFile(path.join(PLUGIN_DIR, file), "utf8");
@@ -98,7 +99,10 @@ describe("the WordPress plugin (D169)", () => {
     expect(shortcode).not.toMatch(/add_action\( 'wp_enqueue_scripts', array\( __CLASS__, 'register_assets' \) \)/);
     const rest = await read("includes/class-kaizen-store-rest.php");
     // The cart route validates variants, quantities and the store before Kaizen is asked, and counts calls per address.
-    for (const word of ["stores_in_use()", "Kaizen_Store_Views::UUID", "$quantity > 20", "count( $lines ) > 30", "allowed( 'quote'", "allowed( 'checkout'"]) expect(rest, word).toContain(word);
+    for (const word of ["stores_in_use()", "Kaizen_Store_Views::UUID", "$quantity > self::MAX_QUANTITY", "count( $lines ) > 30", "allowed( 'quote'", "allowed( 'checkout'"]) expect(rest, word).toContain(word);
+    // A line may hold as many as the store allows (D323: a quantity rule may reach 9,999); the store fits it to the rule and the stock.
+    expect(rest).toContain(`const MAX_QUANTITY = ${MAX_ORDER_QUANTITY};`);
+    expect(rest).not.toMatch(/\$quantity > \d/);
   });
 
   it("speaks the cart's words: what the script reads from Kaizena Flow's answers exists in them", async () => {

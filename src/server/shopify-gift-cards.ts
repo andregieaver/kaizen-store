@@ -17,6 +17,7 @@ import { log } from "./log";
 import { memberCan } from "./permissions";
 import { shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
 import { col, typedRow, typedRows } from "./typed-rows";
+import { recordMoveItems } from "./shopify-undo";
 import { db } from "@/db/client";
 
 /**
@@ -79,6 +80,7 @@ async function issueOne(member: Membership, line: GiftCardLine): Promise<{ cardI
     await tx.execute(sql`select commerce.gift_card_mark_sent(${storeId}::uuid, ${id}::uuid)`);
     return id;
   });
+  await recordMoveItems(storeId, "gift_card", [cardId]);
   await audit(member.account.id, storeId, "gift_card.moved", { card: cardId, amount_minor: amountMinor, currency: line.currency, test }, { target: { type: "gift_card", id: cardId } });
   return { cardId, code: code.code, amountMinor };
 }

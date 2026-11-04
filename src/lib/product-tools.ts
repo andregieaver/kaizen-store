@@ -821,8 +821,11 @@ export function productApprovalSummary(
   markets: ToolStore["markets"],
   /** The variants' prices as they are now, by SKU and market (the editor's view), so each price reads before → after (PSI UX-05). */
   current: readonly { sku: string; prices: Record<string, string> }[] = [],
+  /** The product's status when the server knows it: a draft's change is kept for a yes only when an outside assistant proposes it (D439). */
+  status: "active" | "draft" | "archived" = "active",
 ): string {
   const named = `"${cut(title, 100)}"`;
+  const which = status === "active" ? "live" : status;
   /** What a market's price is now for the variants a change names (every variant without a SKU): one price, several, or none. */
   const now = (sku: string | undefined, code: string): string | null | "several" | { some: string } => {
     const variants = current.filter((v) => !sku || v.sku === sku);
@@ -853,7 +856,7 @@ export function productApprovalSummary(
   }
   if (name === "set_prices") {
     const changes = (input.changes as { sku?: string; prices?: unknown }[]) ?? [];
-    return `Change the prices of the live product ${named}: ${changes.map((c) => `${c.sku ?? "every variant"} ${priceWords(c.prices, c.sku)}`).join("; ")}.`;
+    return `Change the prices of the ${which} product ${named}: ${changes.map((c) => `${c.sku ?? "every variant"} ${priceWords(c.prices, c.sku)}`).join("; ")}.`;
   }
   if (name === "update_product") {
     const parts: string[] = [];
@@ -881,7 +884,7 @@ export function productApprovalSummary(
       const bits = [v.prices && Object.keys(v.prices as object).length > 0 ? priceWords(v.prices, v.sku) : "", v.active === false ? "switched off" : ""].filter(Boolean);
       parts.push(`${v.sku}${bits.length ? `: ${bits.join(", ")}` : ""}`);
     }
-    return `Change the live product ${named}: ${parts.join("; ") || "no change"}.`;
+    return `Change the ${which} product ${named}: ${parts.join("; ") || "no change"}.`;
   }
   return `Run ${name} on ${named}.`;
 }

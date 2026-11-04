@@ -43,6 +43,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   end_support_conversation: "support:write",
   // Gift cards (D300 F4): the Gift cards page is the Products section's.
   gift_card_overview: "products:read",
+  shopify_move: "owner",
   // Issuing one is the Gift cards page's, with the right to change products (D300 F4).
   issue_gift_card: "products:write",
   reviews_overview: "products:read",

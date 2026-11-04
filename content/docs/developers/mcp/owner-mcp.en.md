@@ -297,7 +297,10 @@ The arguments are checked first, so a change that could not be made is refused a
 }
 ```
 
-`what` is what the approval says, after the client's name: *{name} asks: …*. The person approves or declines it in the store's
+`what` is what the approval says, after the client's name: *{name} asks: …*. It says what the change does, in words made from the
+call's arguments: what it changes and the values it gives. For `add_order_note`, for example: *{name} asks: Add a note to order 1042,
+for the store's staff only: "Customer asked for gift wrap."*. Texts are put on one line and cut to a length. A tool with no words of
+its own is named by its title, with its arguments in plain words. The person approves or declines it in the store's
 [AI manager](/admin/{store}/assistant), in a conversation of the client's own, called *From* and the client's name. They also get a
 notice under [AI manager notices](/admin/account/notices).
 

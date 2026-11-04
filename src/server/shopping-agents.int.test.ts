@@ -16,7 +16,10 @@ const { newStore, place, pay, variantId } = await import("./inventory-test-suppo
 const { runReport } = await import("./report-query");
 const { getStore } = await import("./stores");
 const { blankSpec } = await import("@/lib/report-catalogue");
-const { variantGid } = await import("@/lib/shopping-agents");
+const { agentEndpoint, agentProfileUrl, variantGid } = await import("@/lib/shopping-agents");
+const { storeOfHost } = await import("@/lib/ab-routing");
+const { storeDomain, storeFileUrl, storeHosts } = await import("@/lib/paths");
+const { forgetStoreFacts, storeRequestAnswer } = await import("./redirect-resolve");
 
 type Row = Record<string, unknown>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,6 +84,70 @@ describe("the store's switch", () => {
     await db().execute(sql`update commerce.stores set private_mode = false, seo = jsonb_set(coalesce(seo, '{}'::jsonb), '{aiAssistants}', 'false') where id = ${store.storeId}::uuid`);
     expect((await call({ jsonrpc: "2.0", id: 1, method: "tools/list" })).status).toBe(404);
     await db().execute(sql`update commerce.stores set seo = jsonb_set(seo, '{aiAssistants}', 'true') where id = ${store.storeId}::uuid`);
+  });
+});
+
+describe("where the profile is", () => {
+  /** The store an address names and its route's path there, as the host routing reads it: `/s/{store}/…` on Kaizena Flow's host, `/…` on a store's own. */
+  const named = (address: URL) => {
+    const hostStore = storeOfHost(address.host, storeDomain(), storeHosts());
+    if (hostStore) return { slug: hostStore, path: address.pathname, hostStore };
+    const [, slug, path] = /^\/s\/([^/]+)(\/.*)$/.exec(address.pathname) ?? [];
+    return { slug, path, hostStore: null };
+  };
+
+  it("is served at the address the store advertises, whether it sells in several countries or in one", async () => {
+    const advertised = agentProfileUrl(store.slug);
+    const address = new URL(advertised);
+    const { slug, path, hostStore } = named(address);
+    expect({ slug, path }).toEqual({ slug: store.slug, path: "/.well-known/ucp" });
+    const md = await (await agentsRoute.GET(new Request("https://x/"), { params: Promise.resolve({ store: store.slug }) } as never)).text();
+    expect(md).toContain(`- UCP profile: ${advertised}\n`);
+    expect(md).toContain(`- The store in plain text: ${storeFileUrl(store.slug, "/llms.txt")}\n`);
+
+    const served = async () => {
+      // The proxy leaves the address to its route: a page's address would be served from the store's country (D181) or counted as missing.
+      forgetStoreFacts(store.slug);
+      expect(await storeRequestAnswer(address.pathname, "", hostStore, true, address.host)).toBeNull();
+      const response = await profileRoute.GET(new Request(address), { params: Promise.resolve({ store: slug }) } as never);
+      expect(response.status).toBe(200);
+      expect(((await response.json()) as Answer).ucp.services["dev.ucp.shopping"][0].endpoint).toBe(agentEndpoint(store.slug));
+    };
+    await served();
+    // Norway alone: its addresses have no country (D181).
+    await db().execute(sql`update commerce.markets set active = false where store_id = ${store.storeId}::uuid and code = 'FI'`);
+    try {
+      await served();
+    } finally {
+      await db().execute(sql`update commerce.markets set active = true where store_id = ${store.storeId}::uuid and code = 'FI'`);
+      forgetStoreFacts(store.slug);
+    }
+  });
+});
+
+describe("the endpoint's limits", () => {
+  const ping = (id: number) => ({ jsonrpc: "2.0", id, method: "ping" });
+  const ids = (count: number) => Array.from({ length: count }, (_, i) => i + 1);
+
+  it("answers a batch of up to ten calls, and refuses a larger or an empty one whole, as the owner MCP does", async () => {
+    const ten = await call(ids(10).map(ping));
+    expect(ten.status).toBe(200);
+    expect(ten.body.map((answer: Answer) => answer.id)).toEqual(ids(10));
+    for (const batch of [ids(11).map(ping), []]) {
+      const refused = await call(batch);
+      expect(refused.status, `a batch of ${batch.length}`).toBe(400);
+      expect(refused.body).toEqual({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "A batch holds 1 to 10 calls." } });
+    }
+  });
+
+  it("counts a body's bytes, not its characters", async () => {
+    // 20,000 euro signs are 20,000 characters but 60,000 bytes: over the 50,000 a body may hold.
+    const heavy = await call({ ...ping(1), params: { note: "€".repeat(20_000) } });
+    expect(heavy.status).toBe(413);
+    expect(heavy.body).toEqual({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Too large." } });
+    expect((await call({ ...ping(1), params: { note: "e".repeat(20_000) } })).status).toBe(200);
+    // A body said to be larger is refused before it is read.
+    expect((await call(ping(1), { "content-length": "50001" })).status).toBe(413);
   });
 });
 

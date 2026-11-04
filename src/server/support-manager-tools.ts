@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { addDays, todayIn } from "@/lib/analytics-period";
+import { supportSummary } from "@/lib/approval-summaries";
 import { findClaims } from "@/lib/claims";
 import type { PermissionHolder } from "@/lib/permissions";
 import { transcriptOf, type TranscriptLine } from "@/lib/support-summary";
@@ -242,6 +243,16 @@ export async function replyApprovalSummary(ctx: AnswerCtx, { conversation, messa
   const about = c.summary?.title ? ` "${c.summary.title}"` : "";
   const takes = c.handler === "human" ? "" : " (you take the conversation over first, as in the inbox)";
   return `Reply in the support conversation${about} in your name${takes}: "${message}"`;
+}
+
+/** What the person says yes to for a note or an ending an outside assistant proposed (D439): the conversation by its title. Null when not found. */
+export async function supportApprovalSummary(ctx: AnswerCtx, tool: string, args: Record<string, unknown>): Promise<string | null> {
+  try {
+    const c = await conversationOf(ctx, String(args.conversation ?? ""));
+    return supportSummary(tool, args, c.summary?.title ?? null);
+  } catch {
+    return null;
+  }
 }
 
 /** `reply_to_support`: the answer in the person's name, taking the conversation over first when the AI or the queue has it. */

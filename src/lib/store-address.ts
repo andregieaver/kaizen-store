@@ -142,15 +142,27 @@ const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** First parts that are never a store's page on its own host: the platform's files and routes (the matcher keeps most of them away). */
 const NOT_STORE_PAGES: readonly string[] = ["_next", "api", "admin", "demo", "kaizen", "favicon.ico"];
 
-/** The store and the parts of a request for a store's page: `/s/{store}/…` anywhere, `/…` on a store's own host (`hostStore`). Else null. */
+/**
+ * The store's own files at the root of its pages, beside its markets (`src/app/s/[store]/`), that the proxy's matcher lets through: its UCP
+ * profile at `/.well-known/ucp` (D353) and its `agents.md`. Never a page, so never moved into a market or counted as missing; the others
+ * (`llms.txt`, `robots.txt`, `store-sitemap.xml`, `og.png`, `favicon.ico`) have an extension the matcher leaves alone. A test holds the
+ * list to the folder.
+ */
+export const STORE_FILES: readonly string[] = [".well-known", "agents.md"];
+
+/**
+ * The store and the parts of a request for a store's page: `/s/{store}/…` anywhere, `/…` on a store's own host (`hostStore`). Else null, as
+ * for one of the store's own files (`STORE_FILES`), which its route answers at that address.
+ */
 export function storePathOf(pathname: string, hostStore: string | null): StorePathRequest | null {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] === "s") {
     if (parts.length < 2 || !SLUG.test(parts[1])) return null;
+    if (parts.length > 2 && STORE_FILES.includes(parts[2])) return null;
     return { store: parts[1], hostBased: false, parts: parts.slice(2) };
   }
   if (!hostStore) return null;
-  if (parts.length > 0 && NOT_STORE_PAGES.includes(parts[0].toLowerCase())) return null;
+  if (parts.length > 0 && (NOT_STORE_PAGES.includes(parts[0].toLowerCase()) || STORE_FILES.includes(parts[0]))) return null;
   return { store: hostStore, hostBased: true, parts };
 }
 

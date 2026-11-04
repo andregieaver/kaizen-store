@@ -7,6 +7,8 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { IMPORT_MAX_BYTES } from "@/lib/data-limits";
 import { htmlToRichText } from "@/lib/html-rich-text";
+import { parseCsv } from "@/lib/csv";
+import { normaliseEmail } from "@/lib/email-address";
 import {
   COPY_FEEDS,
   EMPTY_COPY,
@@ -16,6 +18,7 @@ import {
   PLAIN_FEEDS,
   CATCH_UP_FEEDS,
   consentLines,
+  copyOptionsOf,
   catchUpQuery,
   VENDORS_FILE,
   vendorLines,
@@ -61,6 +64,8 @@ import { storeTag } from "./stores";
 import { memberCan } from "./permissions";
 import { safeFetch } from "./replicate-fetch";
 import { shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
+import { customerMark, recordMoveItems } from "./shopify-undo";
+import { pgTextArray } from "./pg-arrays";
 import { SETTINGS_FEEDS, applySettingsFeed, readSettingsFeed } from "./shopify-settings-copy";
 
 type Row = Record<string, unknown>;
@@ -122,6 +127,37 @@ const STEPS: Partial<Record<CopyFeed, Steps>> & Record<"products" | "collections
   },
 };
 
+/** One column of an import's own file, its distinct values (an import being applied keeps its file in the imports bucket). */
+async function columnOf(member: Membership, jobId: string, data: DataDeps, column: string): Promise<string[]> {
+  const job = await getJob(member.store.id, jobId);
+  const storage = data.storage === undefined ? dataStorage() : data.storage;
+  const bytes = job?.inputPath && storage ? await storage.download(IMPORTS_BUCKET, job.inputPath) : null;
+  if (!bytes) return [];
+  const rows = parseCsv(bytes).rows;
+  const at = rows[0]?.indexOf(column) ?? -1;
+  return at < 0 ? [] : [...new Set(rows.slice(1).map((r) => (r[at] ?? "").trim()).filter(Boolean))];
+}
+
+/** The products of a products file that are not the store's yet, by handle: written down for *Undo this copy* (step 9). */
+async function markNewProducts(member: Membership, jobId: string, data: DataDeps): Promise<void> {
+  const handles = (await columnOf(member, jobId, data, "Handle")).map((h) => h.toLowerCase());
+  if (handles.length === 0) return;
+  const known = new Set(
+    (await db().execute<Row>(sql`select handle from commerce.products where store_id = ${member.store.id}::uuid and handle = any(${pgTextArray(handles)}::text[])`)).map((r) => String(r.handle)),
+  );
+  await recordMoveItems(member.store.id, "product", handles.filter((h) => !known.has(h)));
+}
+
+/** The addresses of a customers file that are not the store's customers yet, as marks (never the address). */
+async function markNewCustomers(member: Membership, jobId: string, data: DataDeps): Promise<void> {
+  const emails = (await columnOf(member, jobId, data, "Email")).map(normaliseEmail).filter((e) => e.includes("@"));
+  if (emails.length === 0) return;
+  const known = new Set(
+    (await db().execute<Row>(sql`select lower(email) as email from commerce.customers where store_id = ${member.store.id}::uuid and lower(email) = any(${pgTextArray(emails)}::text[])`)).map((r) => String(r.email)),
+  );
+  await recordMoveItems(member.store.id, "customer", emails.filter((e) => !known.has(e)).map(customerMark));
+}
+
 /** How many things a job's dry run would bring over (every count but the ones with problems or skipped). */
 export function importableOf(job: Pick<DataJob, "counts">): number {
   const dry = (job.counts.dry ?? {}) as Record<string, unknown>;
@@ -165,7 +201,7 @@ async function save(storeId: string, state: CopyState): Promise<void> {
  * *Copy my shop* (and *Start again*): a fresh copy, every feed waiting to be read. An earlier copy's imports that were never applied
  * (uploaded, checking or checked) are cancelled first, since a store has one open import of each kind; an applied one stays as it is.
  */
-export async function startCopy(member: Membership): Promise<{ ok: boolean }> {
+export async function startCopy(member: Membership, chosen: unknown = null): Promise<{ ok: boolean }> {
   if (!memberCan(member, OWNER)) return { ok: false };
   const state = await stateOf(member.store.id);
   if (!state) return { ok: false };
@@ -175,8 +211,15 @@ export async function startCopy(member: Membership): Promise<{ ok: boolean }> {
     const job = await getJob(member.store.id, id);
     if (job && (job.status === "uploaded" || job.status === "checking" || job.status === "checked")) await cancelJob(member, id);
   }
-  await save(member.store.id, { ...EMPTY_COPY, startedAt: new Date().toISOString() });
-  log("info", "shopify.copy_started", { storeId: member.store.id });
+  // *What to bring* (step 9): a part left out is nothing to copy; past orders from the date chosen.
+  const options = copyOptionsOf(chosen);
+  const feeds = { ...EMPTY_COPY.feeds };
+  for (const feed of options.skip) feeds[feed] = { stage: "empty", count: 0 };
+  // No customers, no subscribers from them; no products, no categories from their collections.
+  if (options.skip.includes("customers")) feeds.subscribers = { stage: "empty", count: 0 };
+  if (options.skip.includes("products")) feeds.collections = { stage: "empty", count: 0 };
+  await save(member.store.id, { ...EMPTY_COPY, startedAt: new Date().toISOString(), ...(options.skip.length > 0 || options.ordersSince ? { options } : {}), feeds });
+  log("info", "shopify.copy_started", { storeId: member.store.id, skipped: options.skip.length, ordersSince: options.ordersSince !== null });
   return { ok: true };
 }
 
@@ -323,8 +366,13 @@ const pageInputOf = (item: DirectItem, extra: Record<string, unknown> = {}) => (
 async function savePageOf(member: Membership, item: DirectItem, type: "page" | "article", extra: Record<string, unknown>): Promise<boolean> {
   const input = pageInputOf(item, extra);
   const first = await savePage(member.account, member.store.id, null, input, { publish: item.published, type });
-  if (first.ok) return true;
-  if (first.code === "needs_confirmation") return (await savePage(member.account, member.store.id, null, input, { publish: false, type })).ok;
+  const kept = async (result: Awaited<ReturnType<typeof savePage>>) => {
+    // Written down for *Undo this copy* (step 9).
+    if (result.ok && "id" in result && typeof result.id === "string") await recordMoveItems(member.store.id, "page", [result.id]);
+    return result.ok;
+  };
+  if (first.ok) return kept(first);
+  if (first.code === "needs_confirmation") return kept(await savePage(member.account, member.store.id, null, input, { publish: false, type }));
   log("warn", "shopify.copy_page_refused", { storeId: member.store.id, type, problems: first.problems.length });
   return false;
 }
@@ -398,7 +446,10 @@ async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, dep
             i.link.kind === "page" ? { ...i, link: { kind: "url", url: `/${i.link.slug}` } } : i.link.kind === "article" ? { ...i, link: { kind: "url", url: `/blog/${i.link.slug}` } } : i.link.kind === "product" ? { ...i, link: { kind: "url", url: `/p/${i.link.handle}` } } : i,
           ),
         });
-      if (saved.ok) made += 1;
+      if (saved.ok) {
+        made += 1;
+        await recordMoveItems(member.store.id, "menu", [saved.id]);
+      }
       else {
         refused += 1;
         log("warn", "shopify.copy_menu_refused", { storeId: member.store.id, problems: saved.problems.length });
@@ -442,7 +493,7 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
   const storeId = member.store.id;
   const leased = await lease(storeId);
   if (!leased) return stateOf(storeId);
-  const state: CopyState = { startedAt: leased.startedAt, apply: leased.apply, ...(leased.since ? { since: leased.since } : {}), feeds: { ...leased.feeds } };
+  const state: CopyState = { startedAt: leased.startedAt, apply: leased.apply, ...(leased.since ? { since: leased.since } : {}), ...(leased.options ? { options: leased.options } : {}), feeds: { ...leased.feeds } };
   const before = leased.feeds;
   try {
     if (state.startedAt === null) return state;
@@ -492,7 +543,7 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
       const read = await readSettingsFeed(storeId, next, deps);
       state.feeds[next] = read.ok ? await stage(member, next, read.text, deps) : { stage: "failed", problem: "shopify_refused" };
     } else if (next) {
-      const run = await shopifyGraphql<BulkRun>(storeId, BULK_RUN, { query: catchUpQuery(next, state.since ?? null) }, deps);
+      const run = await shopifyGraphql<BulkRun>(storeId, BULK_RUN, { query: catchUpQuery(next, state.since ?? (next === "orders" ? (state.options?.ordersSince ?? null) : null)) }, deps);
       const id = run.ok ? run.data.bulkOperationRunQuery?.bulkOperation?.id : undefined;
       const errors = run.ok ? (run.data.bulkOperationRunQuery?.userErrors ?? []) : [];
       if (id) state.feeds[next] = { stage: "reading", operation: id };
@@ -508,7 +559,11 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
       const job = await getJob(storeId, f.job);
       // The owner may also have checked again or applied on the import's own page: the job says where it is.
       if (!job || job.status === "failed" || job.status === "cancelled" || job.status === "expired") state.feeds[feed] = { ...f, stage: "failed", problem: "import_failed" };
-      else if (job.status === "done") state.feeds[feed] = { ...f, stage: "done" };
+      else if (job.status === "done") {
+        state.feeds[feed] = { ...f, stage: "done" };
+        // The import's created rows are named by its own items: written down for *Undo this copy* (step 9).
+        await recordMoveItems(storeId, "job", [job.id]);
+      }
       else if (job.status === "queued" || job.status === "running") state.feeds[feed] = { ...f, stage: "applying" };
       else if (job.status === "checked") state.feeds[feed] = { ...f, stage: "checked" };
       else if (job.status === "checking" || job.status === "uploaded") state.feeds[feed] = { ...f, stage: "checking" };
@@ -524,6 +579,9 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
     else if (apply && FEED_KIND[apply] === "later" && !state.feeds[apply].job) state.feeds[apply] = await registerLater(member, apply, state.feeds[apply], deps);
     else if (apply) {
       const f = state.feeds[apply];
+      // The customers this apply will make (addresses not here yet), written down first, as marks, for *Undo this copy* (step 9).
+      if (apply === "customers") await markNewCustomers(member, f.job!, data);
+      if (apply === "products") await markNewProducts(member, f.job!, data);
       const started = await STEPS[apply]!.apply(member, f.job!, data);
       // A dry run that found nothing to bring over is refused by its import: the owner fixes it on the import's page (`needs_fixing`).
       const job = started.ok ? null : await getJob(storeId, f.job!);

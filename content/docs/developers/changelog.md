@@ -16,6 +16,14 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.6 — 2026-11-04
+
+An addition to the owner MCP server (D445).
+
+- A new read-only tool, `shopify_move`: where the store's move from Shopify stands (the connection, each part of the copy with its stage
+  and counts, *Ready to move?*, the move's steps, the shop's own address and where its DNS is kept, the 14 days after and whether the copy
+  can be undone). The owner's: a token or member without the owner's role is refused. It changes nothing.
+
 ## 1.5 — 2026-11-04
 
 Corrections: what the contract said is now what happens.
@@ -30,6 +38,14 @@ Corrections: what the contract said is now what happens.
   added with `POST /products/{id}/media`, a product is published with `POST /products/{id}/publish`, and a product on the site is changed
   with `PATCH` only by a token that holds the power (without it, `gated`). Their descriptions still said both were the owner's, in the
   admin.
+- The shopping agents' MCP server (`/api/ucp/{store}/mcp`) refuses a batch of more than 10 calls, or an empty one, as the owner MCP
+  server does: `400` with the JSON-RPC error `-32600`, *A batch holds 1 to 10 calls.* Until now it answered the first 10 calls and
+  dropped the rest without a word. Its limit on a body is 50,000 bytes. It counted characters, so a body of `€` signs could be three
+  times as large.
+- A store's `agents.md`, its `llms.txt` and its Product feeds page give its UCP profile's address where it is served. For a store under
+  Kaizena Flow's address that is `https://kaizenaflow.com/s/{store}/.well-known/ucp`: they gave `https://kaizenaflow.com/.well-known/ucp`,
+  which serves nothing. A store that sells in one country now serves its profile and its `agents.md` at their addresses: both answered
+  with the store's 404 page.
 
 ## 1.4 — 2026-11-03
 

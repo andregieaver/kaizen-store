@@ -15,6 +15,12 @@ class Kaizen_Store_Rest {
 
 	const NAMESPACE_ = 'kaizen/v1';
 
+	/**
+	 * The most units of one variant a line may ask for: the store's own limit (D323), as a quantity rule may allow up to 9,999. The store
+	 * fits each line to its variant's rule and stock when it prices the cart and hands it over, so this only keeps nonsense out.
+	 */
+	const MAX_QUANTITY = 9999;
+
 	public static function init() {
 		add_action( 'rest_api_init', array( __CLASS__, 'routes' ) );
 	}
@@ -34,7 +40,7 @@ class Kaizen_Store_Rest {
 	}
 
 	/**
-	 * The lines of a request, or an error: each a variant (a UUID) and a quantity from 1 to 20, at most 30 lines.
+	 * The lines of a request, or an error: each a variant (a UUID) and a quantity from 1 to 9,999, at most 30 lines.
 	 *
 	 * @param array $body Request body.
 	 * @return array|WP_Error { store, market, lines }
@@ -55,7 +61,7 @@ class Kaizen_Store_Rest {
 		foreach ( $lines as $line ) {
 			$variant  = is_array( $line ) && isset( $line['variant_id'] ) && is_string( $line['variant_id'] ) ? strtolower( $line['variant_id'] ) : '';
 			$quantity = is_array( $line ) && isset( $line['quantity'] ) && is_numeric( $line['quantity'] ) ? (int) $line['quantity'] : 0;
-			if ( ! preg_match( Kaizen_Store_Views::UUID, $variant ) || $quantity < 1 || $quantity > 20 || isset( $seen[ $variant ] ) ) {
+			if ( ! preg_match( Kaizen_Store_Views::UUID, $variant ) || $quantity < 1 || $quantity > self::MAX_QUANTITY || isset( $seen[ $variant ] ) ) {
 				return $bad;
 			}
 			$seen[ $variant ] = true;

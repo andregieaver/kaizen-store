@@ -4,7 +4,6 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
-import { siteUrl } from "@/lib/site";
 import {
   askedCountry,
   cartLines,
@@ -56,10 +55,6 @@ export async function agentStore(slug: string): Promise<Store | null> {
   const store = await getStore(slug);
   return store && agentProblem(store) === null ? store : null;
 }
-
-/** The endpoint's address and the profile's, for the store. */
-export const agentEndpoint = (slug: string) => `${siteUrl()}/api/ucp/${slug}/mcp`;
-export const agentProfileUrl = (slug: string) => `${storeSiteUrl(slug)}/.well-known/ucp`;
 
 export class AgentToolError extends Error {}
 const fail = (message: string): never => {

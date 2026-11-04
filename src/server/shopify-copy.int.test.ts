@@ -5,8 +5,8 @@ import { closeDb, db } from "@/db/client";
 import { encryptSecret, parseKey } from "@/lib/secret-box";
 
 import type { Membership } from "./auth";
-import { depsWith, fakeStorage, membersOf, runToEnd } from "./data-test-support";
-import { makeStore, type Fixture } from "./invoice-test-fixture";
+import { depsWith, fakeStorage, membersOf, runToEnd, seedProducts } from "./data-test-support";
+import { makeStore, paidOrder, type Fixture } from "./invoice-test-fixture";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -17,6 +17,7 @@ process.env.SHOPIFY_CLIENT_SECRET = "shpss_test_secret_for_kaizen";
 const copy = await import("./shopify-copy");
 const makers = await import("./shopify-makers");
 const move = await import("./shopify-move");
+const undo = await import("./shopify-undo");
 const { copyDone, copyReady } = await import("@/lib/shopify-copy");
 
 type Row = Record<string, unknown>;
@@ -395,6 +396,41 @@ describe("copying a Shopify shop", () => {
     expect(await move.moveView(admin, deps)).toBeNull();
   });
 
+  it("undoes the copy: exactly what it made is taken back, nothing the owner made, and nobody is emailed; never after a real order", async () => {
+    ({ owner } = await membersOf(fx));
+    // Something the owner made himself, which stays.
+    const [own] = await db().execute<Row>(sql`insert into commerce.menus (store_id, name, items) values (${fx.storeId}::uuid, 'The owner''s own menu', '[]'::jsonb) returning id`);
+    const view = (await undo.undoView(owner))!;
+    expect(view.allowed).toBe(true);
+    expect(view.counts).toMatchObject({ products: 1, orders: 3, customers: 1, subscriber: 1, gift_card: 2, theme: 1, market: 1, discount: 2, menu: 1 });
+    const mailsBefore = (await db().execute<Row>(sql`select count(*)::int as n from commerce.email_messages where store_id = ${fx.storeId}::uuid`))[0].n;
+    const result = await undo.undoCopy(owner);
+    expect(result).toMatchObject({ ok: true, kept: 0 });
+    const one = async (q: ReturnType<typeof sql>) => (await db().execute<Row>(q))[0] as Row;
+    expect((await one(sql`select status from commerce.products where store_id = ${fx.storeId}::uuid and handle = 'copied-wool-hat'`)).status).toBe("archived");
+    expect((await one(sql`select count(*)::int as n from commerce.orders where store_id = ${fx.storeId}::uuid and copied_from is not null`)).n).toBe(0);
+    expect((await one(sql`select count(*)::int as n from commerce.customers where store_id = ${fx.storeId}::uuid and lower(email) = ${email}`)).n).toBe(0);
+    expect((await one(sql`select count(*)::int as n from commerce.marketing_subscribers where store_id = ${fx.storeId}::uuid and source = 'shopify'`)).n).toBe(0);
+    expect((await one(sql`select count(*)::int as n from commerce.gift_cards where store_id = ${fx.storeId}::uuid and moved_from is not null and status = 'active'`)).n).toBe(0);
+    expect((await one(sql`select count(*)::int as n from commerce.discount_codes where store_id = ${fx.storeId}::uuid and code like 'COPY%'`)).n).toBe(0);
+    expect((await one(sql`select count(*)::int as n from commerce.pages where store_id = ${fx.storeId}::uuid and slug in ('our-story', 'winter-is-here')`)).n).toBe(0);
+    expect((await db().execute<Row>(sql`select code from commerce.markets where store_id = ${fx.storeId}::uuid and active order by code`)).map((m) => m.code)).toEqual(["NO"]);
+    // What the owner made stays; the copy and the move start over; nobody was emailed.
+    expect((await one(sql`select count(*)::int as n from commerce.menus where id = ${String(own.id)}::uuid`)).n).toBe(1);
+    expect((await one(sql`select copy->>'startedAt' as started, move->>'status' as status from commerce.shop_moves where store_id = ${fx.storeId}::uuid`))).toMatchObject({ started: null, status: "none" });
+    expect((await one(sql`select count(*)::int as n from commerce.email_messages where store_id = ${fx.storeId}::uuid`)).n).toBe(mailsBefore);
+    expect(await undo.undoView(owner)).toMatchObject({ allowed: false, reason: "nothing" });
+    // After a real order, never.
+    await undo.recordMoveItems(fx.storeId, "menu", [String(own.id)]);
+    const [sku] = (await seedProducts(fx, 1, { prefix: "REAL" }))[0].skus;
+    await paidOrder(fx, [[sku, 1]]);
+    expect(await undo.undoView(owner)).toMatchObject({ allowed: false, reason: "real_orders" });
+    expect(await undo.undoCopy(owner)).toEqual({ ok: false, problem: "real_orders" });
+    expect((await one(sql`select count(*)::int as n from commerce.menus where id = ${String(own.id)}::uuid`)).n).toBe(1);
+    const { admin } = await membersOf(fx);
+    expect(await undo.undoView(admin)).toBeNull();
+  });
+
   it("says when Shopify refuses a feed and goes on with the rest; a tick while another holds the lease changes nothing", async () => {
     refuse = new Set(["customers"]);
     started.length = 0;
@@ -418,6 +454,19 @@ describe("copying a Shopify shop", () => {
     expect(status).toBe("cancelled");
     await settle(owner);
     expect((await copy.copyView(owner))!.state.feeds.products.stage).toBe("checked");
+  });
+
+  it("brings only what the owner chose: parts left out are nothing to copy, and past orders only from a date (step 9)", async () => {
+    started.length = 0;
+    expect(await copy.startCopy(owner, { skip: ["pages", "articles", "customers"], ordersSince: "2024-11-04T00:00:00.000Z" })).toEqual({ ok: true });
+    await settle(owner);
+    const state = (await copy.copyView(owner))!.state;
+    expect(started).not.toContain("pages");
+    expect(started).not.toContain("customers");
+    // Past orders asked for from the date only.
+    expect(started).toContain("orders-new");
+    expect([state.feeds.pages.stage, state.feeds.articles.stage, state.feeds.customers.stage, state.feeds.subscribers.stage]).toEqual(["empty", "empty", "empty", "empty"]);
+    expect(state.options).toEqual({ skip: ["pages", "articles", "customers"], ordersSince: "2024-11-04T00:00:00.000Z" });
   });
 
   it("is the owner's alone", async () => {

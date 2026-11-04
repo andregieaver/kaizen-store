@@ -6,6 +6,8 @@ import { detectFormat } from "./product-csv-shopify";
 import { readRedirectFile } from "./redirect-csv";
 import {
   COPY_FEEDS,
+  copyOptionsOf,
+  ordersSinceFor,
   consentLines,
   catchUpQuery,
   vendorLines,
@@ -318,5 +320,18 @@ describe("the customers' email consent", () => {
       { email: "kari@example.com", name: "Kari Nordmann", state: "SUBSCRIBED", level: "CONFIRMED_OPT_IN", updatedAt: "2025-03-02T10:00:00.000Z" },
       { email: "ola@example.com", name: "Ola", state: "UNSUBSCRIBED", level: "SINGLE_OPT_IN", updatedAt: null },
     ]);
+  });
+});
+
+describe("what to bring", () => {
+  it("keeps only parts that are parts, and a date that is one", () => {
+    expect(copyOptionsOf({ skip: ["pages", "nope", "pages", 3], ordersSince: "2024-11-04T00:00:00.000Z" })).toEqual({ skip: ["pages"], ordersSince: "2024-11-04T00:00:00.000Z" });
+    expect(copyOptionsOf({ ordersSince: "two years" })).toEqual({ skip: [], ordersSince: null });
+    expect(copyOptionsOf(null)).toEqual({ skip: [], ordersSince: null });
+  });
+
+  it("makes the last so many years a date from the start of that day, all orders by default", () => {
+    const now = new Date("2026-11-04T15:30:00Z");
+    expect([ordersSinceFor(2, now), ordersSinceFor(1, now), ordersSinceFor(null, now), ordersSinceFor(0, now)]).toEqual(["2024-11-04T00:00:00.000Z", "2025-11-04T00:00:00.000Z", null, null]);
   });
 });

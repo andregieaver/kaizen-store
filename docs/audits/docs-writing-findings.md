@@ -8,11 +8,14 @@ signature checks, two Admin API descriptions (contract 1.5) and the docs' Markdo
 ## Behaviour
 
 1. **An AI assistant's kept change shows only "Run {tool}."** `approvalSummary()` (`src/lib/owner-tools.ts`) falls back to the tool's name,
-   so the owner approves *Run add_order_note.* without the order or the note. (Suggested as its own task.)
+   so the owner approves *Run add_order_note.* without the order or the note. *Fixed 4 November: every tool that can be kept has words
+   with its subject and values, the rest its title and its input in plain words.*
 2. **The shopping agents' profile address can be dead.** For a store without its own domain, `agentProfileUrl()` gives
    `https://kaizenaflow.com/.well-known/ucp`, which is not served; the profile is at `/s/{store}/.well-known/ucp`. The agents' MCP also
-   answers only the first ten calls of a batch, silently. (Suggested as its own task.)
-3. **The WordPress plugin refuses a cart line over 20 units**, though a quantity rule may allow 9,999 (D323). (Suggested as its own task.)
+   answers only the first ten calls of a batch, silently. *Fixed 4 November: the address is where the profile is served, a store that
+   sells in one country serves it (it answered 404), and a batch over ten is refused whole.*
+3. **The WordPress plugin refuses a cart line over 20 units**, though a quantity rule may allow 9,999 (D323). *Fixed 4 November in plugin
+   1.2.1: a line takes up to 9,999.*
 4. **The order page writes times in Oslo time** whatever the store's time zone (`"Europe/Oslo"` in `orders/[orderId]/page.tsx`).
 5. **A refused e-invoice shows staff a raw JSON error** (`einvoiceResponse()`, `src/server/einvoices.ts`).
 6. **Bundles have no quantity-rule fields** in the product editor (`BundleSection` replaces the variants section), though D323 E.1 gives

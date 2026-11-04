@@ -1,5 +1,5 @@
-import { ucpProfile } from "@/lib/shopping-agents";
-import { agentEndpoint, agentStore } from "@/server/shopping-agents";
+import { agentEndpoint, ucpProfile } from "@/lib/shopping-agents";
+import { agentStore } from "@/server/shopping-agents";
 
 /**
  * The store's UCP business profile (D353): the shopping service over MCP at its endpoint, with catalog search, lookup and cart. At

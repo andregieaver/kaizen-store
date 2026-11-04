@@ -9,11 +9,12 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { FEED_CHANNELS, feedFileName, isAgentChannel } from "@/lib/feeds";
+import { agentEndpoint, agentProfileUrl } from "@/lib/shopping-agents";
 import { siteUrl } from "@/lib/site";
 import { feedSettingsOf } from "@/server/feed-settings";
 import { storeFeed } from "@/server/feeds";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { agentEndpoint, agentProblem, agentProfileUrl } from "@/server/shopping-agents";
+import { agentProblem } from "@/server/shopping-agents";
 
 import { chatgptFeedAction, feedsOffAction, feedsOnAction, feedsRenewAction, shoppingAgentsAction } from "./actions";
 

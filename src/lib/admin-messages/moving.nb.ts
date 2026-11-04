@@ -75,6 +75,13 @@ export const movingNb: MovingMessages = {
     starting: "Starter …",
     feeds: { products: "Produkter", customers: "Kunder", orders: "Tidligere ordrer", redirects: "Omdirigeringer", collections: "Kolleksjoner", pages: "Sider", articles: "Blogginnlegg", menus: "Menyer", countries: "Land", shipping: "Frakt", discounts: "Rabattkoder", look: "Utseende", subscribers: "E-postabonnenter", gift_cards: "Gavekort" },
     onMoveDay: "Nye koder på flyttedagen",
+    choose: {
+      title: "Velg hva som skal tas over",
+      text: "Alt tas over, med mindre du utelater noe her.",
+      orders: "Tidligere ordrer",
+      allOrders: "Alle",
+      years: { one: "Det siste året", many: "De siste {n} årene" },
+    },
     stages: {
       waiting: "Venter",
       reading: "Leser fra Shopify …",
@@ -253,6 +260,24 @@ export const movingNb: MovingMessages = {
       done: "Ferdig, jeg har stengt den",
       saving: "Lagrer …",
     },
+  },
+  details: {
+    title: "Detaljer",
+    rows: "Hver del, rad for rad",
+    links: "Alle gamle lenker og hvor de fører",
+    files: "Ta en del over med Shopifys egen fil i stedet",
+    redirectsFile: "Importer omdirigeringer",
+  },
+  undo: {
+    button: "Angre denne kopien",
+    ask: { one: "Dette tar tilbake {n} ting kopien laget her: kopierte ordrer, sider, menyer, koder, omdirigeringer, abonnenter og kunder fjernes, produkter arkiveres, gavekort slås av. Det du har laget selv, blir værende, og ingen får e-post. Angre?", many: "Dette tar tilbake de {n} tingene kopien laget her: kopierte ordrer, sider, menyer, koder, omdirigeringer, abonnenter og kunder fjernes, produkter arkiveres, gavekort slås av. Det du har laget selv, blir værende, og ingen får e-post. Angre?" },
+    confirm: "Angre",
+    undoing: "Angrer …",
+    cancel: "Avbryt",
+    done: { one: "Angret: {n} ting tatt tilbake.", many: "Angret: {n} ting tatt tilbake." },
+    kept: { one: "{n} kunne ikke fjernes, fordi noe annet bruker den.", many: "{n} kunne ikke fjernes, fordi noe annet bruker dem." },
+    gone: "Angre tilbys ikke lenger: butikken har fått sin første ekte ordre.",
+    failed: "Det gikk ikke. Prøv igjen.",
   },
   files: {
     products: "Importer produkter",

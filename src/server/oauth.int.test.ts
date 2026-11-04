@@ -443,7 +443,13 @@ describe("changes from an outside assistant (B6)", () => {
     const t = await tokens(DOC_URL, DOC_REDIRECT, store.account, [store.id], "propose", ALL);
     const caller = (await mcp.mcpCaller(t.access_token))!;
     const answer = await mcp.callMcpTool(caller, "create_product", { store: store.slug, title: "Proposed tea" }, () => {});
-    expect(JSON.parse(answer.content[0].text)).toMatchObject({ kept_for_approval: true, what: expect.stringMatching(/^Eval Assistant asks: /) });
+    expect(JSON.parse(answer.content[0].text)).toMatchObject({ kept_for_approval: true, what: 'Eval Assistant asks: Make the product "Proposed tea" as a draft, not on the site.' });
+    // The card says what the change does, with its subject and values, never only the tool's name (4 November 2026).
+    const note = await mcp.callMcpTool(caller, "add_order_note", { store: store.slug, order: "1042", note: "Customer asked for gift wrap." }, () => {});
+    expect(JSON.parse(note.content[0].text)).toMatchObject({
+      kept_for_approval: true,
+      what: 'Eval Assistant asks: Add a note to order 1042, for the store\'s staff only: "Customer asked for gift wrap."',
+    });
     const [made] = await db().execute<Row>(sql`select count(*)::int as n from commerce.product_translations t join commerce.products p on p.id = t.product_id where p.store_id = ${store.id}::uuid and t.title = 'Proposed tea'`);
     expect(made.n).toBe(0);
     const [conversation] = await db().execute<Row>(sql`
