@@ -1,0 +1,4 @@
+ALTER TABLE "commerce"."marketing_subscribers" DROP CONSTRAINT "marketing_subscribers_source";--> statement-breakpoint
+ALTER TABLE "commerce"."shop_moves" ADD COLUMN "mover_secret" text;--> statement-breakpoint
+ALTER TABLE "commerce"."marketing_subscribers" ADD CONSTRAINT "marketing_subscribers_source" CHECK ("commerce"."marketing_subscribers"."source" in ('form', 'checkout', 'account', 'shopify', 'woocommerce'));--> statement-breakpoint
+ALTER TABLE "commerce"."shop_moves" ADD CONSTRAINT "shop_moves_mover" CHECK ("commerce"."shop_moves"."mover_secret" is null or ("commerce"."shop_moves"."source" = 'woocommerce' and "commerce"."shop_moves"."status" = 'connected'));

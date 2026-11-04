@@ -183,7 +183,7 @@ export const marketingEn = {
     notConfirmed: "not confirmed by email",
     older: "Older",
     statuses: { pending: "Waiting for their link", subscribed: "Subscribed", unsubscribed: "Unsubscribed" },
-    sources: { form: "A form on the site", checkout: "Checkout", account: "My account", shopify: "Moved from Shopify, with Shopify's record of their consent" },
+    sources: { form: "A form on the site", checkout: "Checkout", account: "My account", shopify: "Moved from Shopify, with Shopify's record of their consent", woocommerce: "Moved from WooCommerce, with MailPoet's record of their consent" },
     leftBy: {
       link: "The email's link",
       one_click: "Their mail app's unsubscribe button",

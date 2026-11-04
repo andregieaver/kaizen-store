@@ -17,6 +17,7 @@ delete_option( 'kaizen_store_floating_cart' );
 delete_option( 'kaizen_store_product_page' );
 delete_option( 'kaizen_store_flush_rules' );
 delete_option( 'kaizen_store_version' );
+delete_option( 'kaizen_store_mover_secret' );
 
 global $wpdb;
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery

@@ -517,7 +517,7 @@ async function sendBatch(
     if (!facts.has(key)) facts.set(key, factsForEmail(store, broadcast.content, r.locale, r.marketCode));
     return facts.get(key)!;
   };
-  // Subscribers moved from Shopify (D445 step 8) who never got a broadcast here: their first one says the shop moved.
+  // Subscribers moved from Shopify or WooCommerce (D445 step 8, D446 step 2) who never got a broadcast here: their first one says the shop moved.
   const ids = batch.map((r) => r.subscriberId);
   const movedFirst = new Set(
     ids.length === 0
@@ -525,7 +525,7 @@ async function sendBatch(
       : (
           await db().execute<Row>(sql`
             select s.id from commerce.marketing_subscribers s
-             where s.id = any(${pgUuidArray(ids)}::uuid[]) and s.source = 'shopify'
+             where s.id = any(${pgUuidArray(ids)}::uuid[]) and s.source in ('shopify', 'woocommerce')
                and not exists (select 1 from commerce.broadcast_recipients r where r.subscriber_id = s.id and r.status = 'sent')
           `)
         ).map((row) => String(row.id)),

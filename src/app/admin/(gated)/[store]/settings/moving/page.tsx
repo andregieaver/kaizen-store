@@ -18,8 +18,11 @@ import { undoView } from "@/server/shopify-undo";
 import { MoveWatchCard } from "@/components/admin/moving/move-watch-card";
 import { COPY_FEEDS, copyDone, copyFailed, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
 import { copySource, copyView, feedJobPage } from "@/server/shopify-copy";
-import { wooConnection, wooOffered } from "@/server/woocommerce-connect";
-import { WOO_COPY_FEEDS } from "@/lib/woocommerce-copy";
+import { hasMover, moverStatus, wooConnection, wooOffered } from "@/server/woocommerce-connect";
+import { KNOWN_PLUGINS } from "@/lib/woocommerce-mover";
+import { WORDPRESS_PLUGIN_FILE } from "@/lib/wordpress-plugin";
+import { WooMover } from "@/components/admin/moving/woo-mover";
+import { WOO_COPY_FEEDS, WOO_MOVER_FEEDS } from "@/lib/woocommerce-copy";
 import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
 import type { DataJob } from "@/server/data-job-store";
 import { Card, PageHeader } from "@/components/admin/ui";
@@ -42,8 +45,10 @@ import {
   checkAddressAction,
   checkOldLinksAction,
   connectShopifyAction,
+  connectMoverAction,
   connectWooAction,
   disconnectShopifyAction,
+  disconnectMoverAction,
   disconnectWooAction,
   saveVendorMakerAction,
   shopifyClosedAction,
@@ -119,6 +124,11 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           {w.outcome[outcome]}
         </p>
       )}
+      {woo && query.mover === "connected" && (
+        <p role="status" className="rounded-card bg-positive-soft p-3 text-sm">
+          {w.woo.mover.outcome}
+        </p>
+      )}
       {wooOutcome && (
         <p role="status" className={`rounded-card p-3 text-sm ${wooOutcome === "connected" ? "bg-positive-soft" : "bg-sunken"}`}>
           {w.woo.outcome[wooOutcome]}
@@ -128,6 +138,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
         <Card title={fillWords(w.connected.title, { name: woo.name || woo.site })} description={fillWords(w.woo.shop, { site: woo.site, when: momentText(woo.connectedAt, store.timeZone, locale) })}>
           <div className="flex flex-col gap-4">
             <p className="text-sm">{w.woo.later}</p>
+            <MoverPanel storeSlug={store.slug} />
             <CopyPanel storeSlug={store.slug} />
             <details className="text-sm">
               <summary className="w-fit cursor-pointer underline underline-offset-2">{w.details.title}</summary>
@@ -334,6 +345,21 @@ async function DetailsPanel({ storeSlug, words }: { storeSlug: string; words: Mo
   );
 }
 
+/** *Read more of your shop* (D446 step 2): our WordPress plugin, connected or not, and the plugins it found. */
+async function MoverPanel({ storeSlug }: { storeSlug: string }) {
+  const member = await requireOwnerRole(storeSlug);
+  const status = await moverStatus(member);
+  if (!status) return null;
+  return (
+    <WooMover
+      status={status}
+      download={WORDPRESS_PLUGIN_FILE}
+      known={KNOWN_PLUGINS}
+      actions={{ connect: connectMoverAction.bind(null, storeSlug), stop: disconnectMoverAction.bind(null, storeSlug) }}
+    />
+  );
+}
+
 /** *Undo this copy* (D445 step 9): Lisa's, with what it would take back; gone after the first real order. */
 async function UndoPanel({ storeSlug }: { storeSlug: string }) {
   const member = await requireOwnerRole(storeSlug);
@@ -435,12 +461,14 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
     shipping: `${base}/settings/shipping`,
     discounts: `${base}/discounts`,
     reviews: `${base}/reviews/import`,
+    seo: `${base}/fields`,
     look: `${base}/settings/design/themes`,
     subscribers: `${base}/subscribers`,
     gift_cards: `${base}/gift-cards`,
   };
   // A WooCommerce copy lists the parts it brings (D446 step 1); the others are later steps'.
-  const feeds = source === "woocommerce" ? COPY_FEEDS.filter((f) => (WOO_COPY_FEEDS as readonly CopyFeed[]).includes(f)) : COPY_FEEDS.filter((f) => f !== "reviews");
+  const wooParts: readonly CopyFeed[] = [...WOO_COPY_FEEDS, ...(source === "woocommerce" && (await hasMover(member.store.id)) ? WOO_MOVER_FEEDS : [])];
+  const feeds = source === "woocommerce" ? COPY_FEEDS.filter((f) => wooParts.includes(f)) : COPY_FEEDS.filter((f) => f !== "reviews");
   const rows: CopyRow[] = feeds.map((feed) => {
     const f = view.state.feeds[feed];
     const dry = dryOf(feed, view.jobs[feed]);

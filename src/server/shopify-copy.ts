@@ -9,6 +9,7 @@ import { IMPORT_MAX_BYTES } from "@/lib/data-limits";
 import { htmlToRichText } from "@/lib/html-rich-text";
 import {
   WOO_COPY_FEEDS,
+  WOO_MOVER_FEEDS,
   WOO_PAGE_SIZE,
   WOO_ROUTES,
   collectionLines,
@@ -34,6 +35,7 @@ import {
   MENUS_QUERY,
   PLAIN_FEEDS,
   CATCH_UP_FEEDS,
+  categoryName,
   consentLines,
   copyOptionsOf,
   catchUpQuery,
@@ -86,7 +88,11 @@ import { shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
 import { customerMark, recordMoveItems } from "./shopify-undo";
 import { pgTextArray } from "./pg-arrays";
 import { SETTINGS_FEEDS, applySettingsFeed, readSettingsFeed } from "./shopify-settings-copy";
-import { wooGet, wooSetting } from "./woocommerce-connect";
+import { hasMover, moverGet, wooGet, wooSetting } from "./woocommerce-connect";
+import { MOVER_PAGE_SIZE, SEO_FIELDS, SEO_FIELD_GROUP, redirectLinesOf, seoOf, subscriberLinesOf, termSeoOf } from "@/lib/woocommerce-mover";
+import { newFieldId, type FieldDef } from "@/lib/custom-fields";
+import { listFieldGroups, productFacts, saveFieldData, saveFieldGroup, saveTermFields } from "./custom-fields";
+import { listTerms, updateTerm } from "./taxonomy";
 import { importReviews } from "./review-import";
 
 type Row = Record<string, unknown>;
@@ -257,9 +263,16 @@ export async function startCopy(member: Membership, chosen: unknown = null): Pro
   const feeds = { ...EMPTY_COPY.feeds };
   for (const feed of options.skip) feeds[feed] = { stage: "empty", count: 0 };
   // WooCommerce's copy brings its products, categories, customers, past orders and coupons (D446 step 1); its other parts are later steps'.
-  if (source === "woocommerce") for (const feed of COPY_FEEDS) if (!(WOO_COPY_FEEDS as readonly CopyFeed[]).includes(feed)) feeds[feed] = { stage: "empty", count: 0 };
+  if (source === "woocommerce") {
+    // The plugin, once connected (step 2), brings the redirects and MailPoet's list too.
+    const parts: readonly CopyFeed[] = [...WOO_COPY_FEEDS, ...((await hasMover(member.store.id)) ? WOO_MOVER_FEEDS : [])];
+    for (const feed of COPY_FEEDS) if (!parts.includes(feed)) feeds[feed] = { stage: "empty", count: 0 };
+  }
   // Shopify keeps no reviews of its own (an app does): nothing to read.
-  if (source === "shopify") feeds.reviews = { stage: "empty", count: 0 };
+  if (source === "shopify") {
+    feeds.reviews = { stage: "empty", count: 0 };
+    feeds.seo = { stage: "empty", count: 0 };
+  }
   // No customers, no subscribers from them; no products, no categories from their collections.
   if (options.skip.includes("customers")) feeds.subscribers = { stage: "empty", count: 0 };
   if (options.skip.includes("products")) feeds.collections = { stage: "empty", count: 0 };
@@ -486,12 +499,13 @@ async function applyReviews(member: Membership, f: FeedState, roots: readonly Re
 }
 
 /** One tick of a `direct` feed: the next items written by their editors' own writers; an item already here (same address or name) is left. */
-async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, deps: CopyDeps): Promise<FeedState> {
+async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, deps: CopyDeps, source: MoveSource = "shopify"): Promise<FeedState> {
   const text = f.path ? await keptFile(f.path, deps) : null;
   if (text === null) return { ...f, stage: "failed", problem: "storage" };
   const tree = readBulkLines(text);
-  if (SETTINGS_FEEDS.includes(feed)) return applySettingsFeed(member, feed, f, tree.roots);
+  if (SETTINGS_FEEDS.includes(feed)) return applySettingsFeed(member, feed, f, tree.roots, source);
   if (feed === "reviews") return applyReviews(member, f, tree.roots);
+  if (feed === "seo") return applySeo(member, f, tree.roots);
   const cursor = f.cursor ?? 0;
   const size = DIRECT_BATCH[feed] ?? 10;
   let made = f.made ?? 0;
@@ -583,7 +597,8 @@ async function finishRead(member: Membership, feed: CopyFeed, text: string, stat
   const handed = await hand(member, feed, text, deps, source);
   state.feeds[feed] = "empty" in handed ? { stage: "empty", count: 0 } : "problem" in handed ? { stage: "failed", problem: handed.problem } : { stage: "checking", job: handed.job, count: handed.count };
   // The customers' email consent, as Shopify records it, becomes the subscribers' part (step 8): only a subscription with its date.
-  if (feed === "customers") {
+  // (WooCommerce records none: its list is MailPoet's, read by the plugin.)
+  if (feed === "customers" && source === "shopify") {
     const subscribed = consentLines(readBulkLines(text)).filter((l) => l.state === "SUBSCRIBED" && l.updatedAt !== null);
     state.feeds.subscribers = subscribed.length > 0 ? await stage(member, "subscribers", subscribed.map((l) => JSON.stringify(l)).join("\n"), deps, source) : { stage: "empty", count: 0 };
   }
@@ -621,9 +636,9 @@ async function readShopify(member: Membership, state: CopyState, before: CopySta
   }
   // The next read, one at a time.
   const next = nextToRead(state);
-  if (next === "reviews") {
-    // A copy started before reviews were a part (or a Shopify one): Shopify has none to read.
-    state.feeds.reviews = { stage: "empty", count: 0 };
+  if (next === "reviews" || next === "subscribers" || next === "seo") {
+    // Shopify has no reviews of its own, and its subscribers come with its customers (`finishRead()`): nothing to read here.
+    state.feeds[next] = { stage: "empty", count: 0 };
   } else if (next === "menus") {
     const answer = await shopifyGraphql<{ menus?: { nodes?: Record<string, unknown>[] } }>(storeId, MENUS_QUERY, {}, deps);
     state.feeds.menus = answer.ok ? await stage(member, "menus", (answer.data.menus?.nodes ?? []).map((m) => JSON.stringify(m)).join("\n"), deps) : { stage: "failed", problem: "shopify_refused" };
@@ -679,6 +694,10 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
     state.feeds.discounts = await readWooCoupons(member, deps);
     return;
   }
+  if (feed === "redirects" || feed === "subscribers") {
+    await readMoverFeed(member, feed, state, before, deps);
+    return;
+  }
   if (feed !== "products" && feed !== "customers" && feed !== "orders" && feed !== "reviews") {
     state.feeds[feed] = { stage: "empty", count: 0 };
     return;
@@ -722,6 +741,21 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
       const made = productLines(got.items, variations, unit);
       lines = made.lines;
       skipped += made.skipped.length;
+      // The SEO plugin's own words for these products, when our plugin reads (step 2).
+      const ids = got.items.map((p) => Number((p as Record<string, unknown>)?.id)).filter((id) => Number.isSafeInteger(id) && id > 0);
+      const seo = ids.length > 0 ? await moverGet(storeId, "seo", { ids: includeOf(ids) }, deps) : null;
+      if (seo?.ok) {
+        const words = seoOf(seo.data);
+        for (const line of lines) {
+          const id = typeof line.id === "string" && line.__parentId === undefined ? Number(line.id.replace("woo-product-", "")) : NaN;
+          const found = words.get(id);
+          // The words shoppers saw become the product's SEO title and description; every field, as written, is kept for the `seo` part.
+          if (found) {
+            line.seo = { title: found.title, description: found.description };
+            if (Object.keys(found.fields).length > 0) line.seoFields = found.fields;
+          }
+        }
+      }
     } else if (feed === "customers") lines = customerLines(got.items);
     else if (feed === "reviews") {
       const made = reviewLines(got.items, await wooNames(storeId, "wc/v3/products", reviewProductIds(got.items), "slug", deps));
@@ -757,7 +791,144 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
   if (feed === "products" && state.feeds.products.stage !== "failed") {
     const categories = collectionLines(text);
     state.feeds.collections = categories.length > 0 ? await stage(member, "collections", categories.map((l) => JSON.stringify(l)).join("\n"), deps, "woocommerce") : { stage: "empty", count: 0 };
+    // Every Yoast and Rank Math field of the products and the categories, when our plugin reads (step 2a).
+    if (state.feeds.seo.stage === "waiting") state.feeds.seo = await readSeoPart(member, text, deps);
   }
+}
+
+/**
+ * The `seo` part (D446 step 2a): each product's fields from its own line, and every product category's from the plugin's `seo_terms`, as
+ * lines kept until they are brought over (`applySeo()`). A category whose fields could not be read is left; the products' still come.
+ */
+async function readSeoPart(member: Membership, productText: string, deps: CopyDeps): Promise<FeedState> {
+  const lines: Record<string, unknown>[] = [];
+  for (const raw of productText.split("\n")) {
+    if (!raw.includes('"seoFields"')) continue;
+    try {
+      const p = JSON.parse(raw) as Record<string, unknown>;
+      if (p.__parentId === undefined && typeof p.handle === "string" && p.seoFields) lines.push({ kind: "product", handle: p.handle, fields: p.seoFields });
+    } catch {
+      continue;
+    }
+  }
+  for (let page = 1; page <= MOVER_PAGES; page += 1) {
+    const got = await moverGet(member.store.id, "seo_terms", { page }, deps);
+    if (!got.ok) break;
+    const read = termSeoOf(got.data);
+    for (const t of read.terms) lines.push({ kind: "category", name: categoryName(t.name), title: t.title, description: t.description, fields: t.fields });
+    if (!read.more) break;
+  }
+  return lines.length > 0 ? stage(member, "seo", lines.map((l) => JSON.stringify(l)).join("\n"), deps, "woocommerce") : { stage: "empty", count: 0 };
+}
+
+/** How many products' or categories' fields one tick writes. */
+const SEO_BATCH = 100;
+
+/** The store's group *SEO from Yoast / Rank Math* (made once, private), its fields by name; null when it cannot be made. */
+async function seoFieldGroup(member: Membership): Promise<Map<string, FieldDef> | null> {
+  const byName = (fields: FieldDef[]) => new Map(fields.map((f) => [f.name, f]));
+  const found = (await listFieldGroups(member.store.id)).find((g) => g.slug === SEO_FIELD_GROUP.slug);
+  if (found) return byName(found.fields);
+  const fields = SEO_FIELDS.map((f) => ({ id: newFieldId(), name: f.name, label: f.label, type: f.long ? "textarea" : "text", access: "private" as const, width: 100 }));
+  const saved = await saveFieldGroup(member, { id: null, name: SEO_FIELD_GROUP.name, slug: SEO_FIELD_GROUP.slug, entities: ["product", "term"], fields, position: "side" });
+  if (!saved.ok || !saved.id) {
+    log("warn", "woocommerce.seo_group_refused", { storeId: member.store.id, problems: saved.ok ? 0 : saved.problems.length });
+    return null;
+  }
+  // Written down for *Undo this copy* (step 9).
+  await recordMoveItems(member.store.id, "field_group", [saved.id]);
+  return byName(fields as FieldDef[]);
+}
+
+/**
+ * One tick of the `seo` part: the group made once; then each product's fields written by the custom fields' writer (`saveFieldData()`),
+ * and each category's own SEO title and description by the taxonomy's writer (`updateTerm()`, nothing else of it changed) and its fields by
+ * `saveTermFields()`. A product or category not here (not brought over) is counted.
+ */
+async function applySeo(member: Membership, f: FeedState, roots: readonly Record<string, unknown>[]): Promise<FeedState> {
+  const group = await seoFieldGroup(member);
+  if (!group) return { ...f, stage: "failed", problem: "import_refused" };
+  const storeId = member.store.id;
+  const main = member.store.localization.locales[0] ?? "en";
+  const locales = member.store.localization.locales;
+  const changesOf = (fields: unknown) => {
+    const own: Record<string, string> = {};
+    for (const [name, value] of Object.entries(fields && typeof fields === "object" ? (fields as Record<string, unknown>) : {})) {
+      const def = group.get(name);
+      if (def && typeof value === "string" && value !== "") own[def.id] = value;
+    }
+    return { values: {}, translations: { [main]: own } };
+  };
+  const cursor = f.cursor ?? 0;
+  let made = f.made ?? 0;
+  let refused = f.refused ?? 0;
+  const part = roots.slice(cursor, cursor + SEO_BATCH);
+  const handles = part.filter((r) => r.kind === "product").map((r) => String(r.handle).toLowerCase());
+  const products = new Map(
+    handles.length === 0
+      ? []
+      : (await db().execute<Row>(sql`select id, handle from commerce.products where store_id = ${storeId}::uuid and handle = any(${pgTextArray(handles)}::text[])`)).map((r) => [String(r.handle), String(r.id)] as const),
+  );
+  const scope = { storeId, contentType: "product" as const };
+  const terms = part.some((r) => r.kind === "category") ? (await listTerms(scope)).filter((t) => t.kind === "category") : [];
+  for (const r of part) {
+    if (r.kind === "product") {
+      const id = products.get(String(r.handle).toLowerCase());
+      const facts = id ? await productFacts(db(), storeId, id) : null;
+      const problems = id && facts ? await saveFieldData(db(), storeId, "product", id, changesOf(r.fields), { facts, locales, main, requireAll: false }) : ["not here"];
+      if (problems.length === 0) made += 1;
+      else refused += 1;
+      continue;
+    }
+    const term = terms.find((t) => t.name.toLowerCase() === String(r.name).toLowerCase());
+    if (!term) {
+      refused += 1;
+      continue;
+    }
+    let ok = true;
+    const words = { title: String(r.title ?? "").slice(0, 255), description: String(r.description ?? "").slice(0, 1000) };
+    // The category's own words, only where it has none of its own yet in the store's main language.
+    if ((words.title || words.description) && !(term.seo?.[main]?.title || term.seo?.[main]?.description)) {
+      const updated = await updateTerm(member.account, scope, term.id, { name: term.name, slug: term.slug, parentId: term.parentId, seo: { ...(term.seo ?? {}), [main]: words } });
+      ok = updated.ok;
+    }
+    const fields = await saveTermFields(member, term.id, changesOf(r.fields));
+    if (ok && fields.ok) made += 1;
+    else refused += 1;
+  }
+  const next = cursor + SEO_BATCH;
+  return next >= roots.length ? { ...f, stage: "done", cursor: roots.length, made, refused } : { ...f, stage: "applying", cursor: next, made, refused };
+}
+
+/** The most pages of a plugin's part one tick reads (500 rows a page). */
+const MOVER_PAGES = 40;
+
+/**
+ * A part our WordPress plugin reads (D446 step 2): the redirect plugins' redirects (into the redirect import) or MailPoet's subscribed
+ * subscribers (into the email list's own writer), every page in one tick. Without the plugin, nothing.
+ */
+async function readMoverFeed(member: Membership, feed: "redirects" | "subscribers", state: CopyState, before: CopyState["feeds"], deps: CopyDeps): Promise<void> {
+  const lines: Record<string, unknown>[] = [];
+  let skipped = 0;
+  for (let page = 1; page <= MOVER_PAGES; page += 1) {
+    const got = await moverGet(member.store.id, feed, { page }, deps);
+    if (!got.ok) {
+      if (got.problem === "none") {
+        state.feeds[feed] = { stage: "empty", count: 0 };
+        return;
+      }
+      log("warn", "woocommerce.mover_read_failed", { storeId: member.store.id, feed, page, problem: got.problem });
+      state.feeds[feed] = { stage: "failed", problem: got.problem === "refused" ? "shopify_refused" : "shopify_failed" };
+      return;
+    }
+    const read = feed === "redirects" ? redirectLinesOf(got.data) : { ...subscriberLinesOf(got.data), skipped: 0 };
+    lines.push(...read.lines);
+    skipped += read.skipped;
+    if (!read.more || read.lines.length + read.skipped < MOVER_PAGE_SIZE / 2) break;
+  }
+  // A pattern (a redirect by regular expression) stays: the import takes exact addresses.
+  if (skipped > 0) log("info", "woocommerce.copy_skipped", { storeId: member.store.id, feed, skipped });
+  await finishRead(member, feed, lines.map((l) => JSON.stringify(l)).join("\n"), state, before, deps, "woocommerce");
 }
 
 /** The ids a coupon names, read as the products' addresses and the categories' names (100 at a time). */
@@ -834,10 +1005,10 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
     // A `direct` feed being written goes on.
     for (const feed of COPY_FEEDS) {
       const f = state.feeds[feed];
-      if (FEED_KIND[feed] === "direct" && f.stage === "applying") state.feeds[feed] = await applyDirect(member, feed, f, deps);
+      if (FEED_KIND[feed] === "direct" && f.stage === "applying") state.feeds[feed] = await applyDirect(member, feed, f, deps, source);
     }
     const apply = nextToApply(state);
-    if (apply && FEED_KIND[apply] === "direct") state.feeds[apply] = await applyDirect(member, apply, { ...state.feeds[apply], stage: "applying", cursor: 0, made: 0, refused: 0 }, deps);
+    if (apply && FEED_KIND[apply] === "direct") state.feeds[apply] = await applyDirect(member, apply, { ...state.feeds[apply], stage: "applying", cursor: 0, made: 0, refused: 0 }, deps, source);
     else if (apply && FEED_KIND[apply] === "later" && !state.feeds[apply].job) state.feeds[apply] = await registerLater(member, apply, state.feeds[apply], deps, source);
     else if (apply) {
       const f = state.feeds[apply];
@@ -849,8 +1020,8 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
       const job = started.ok ? null : await getJob(storeId, f.job!);
       state.feeds[apply] = started.ok ? { ...f, stage: "applying" } : { ...f, stage: "failed", problem: job && importableOf(job) === 0 ? "needs_fixing" : "import_refused" };
     }
-    // No customers read, no subscribers from them.
-    if (state.feeds.subscribers.stage === "waiting" && (state.feeds.customers.stage === "empty" || state.feeds.customers.stage === "failed")) {
+    // No customers read, no subscribers from them (Shopify's list is its customers'; WooCommerce's is MailPoet's, read of its own).
+    if (source === "shopify" && state.feeds.subscribers.stage === "waiting" && (state.feeds.customers.stage === "empty" || state.feeds.customers.stage === "failed")) {
       state.feeds.subscribers = { stage: "empty", count: 0 };
     }
     // The products' vendors stay known whatever became of a later read of the products (a catch-up that found none).
