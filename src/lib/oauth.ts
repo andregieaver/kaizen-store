@@ -86,10 +86,11 @@ export const missingScopes = (granted: readonly string[], needed: readonly OAuth
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 /**
- * The protected resources tokens are issued for, each by its path on the site: the owner MCP now; the Admin API joins when apps come
- * (unit D), as one more entry. A token is bound to one (its audience) and refused at any other.
+ * The protected resources tokens are issued for, each by its path on the site: the owner MCP, and the Admin API for apps (unit D, D441). A
+ * token is bound to one (its audience) and refused at any other, but for an app's installation, whose tokens the MCP takes too
+ * (`oauthAccess()`): the spec's *usable on the Admin API and on the MCP server*.
  */
-export const OAUTH_RESOURCES = { mcp: "/api/mcp" } as const;
+export const OAUTH_RESOURCES = { mcp: "/api/mcp", admin: "/api/admin/v1" } as const;
 export type OAuthResource = keyof typeof OAUTH_RESOURCES;
 
 /** A resource's canonical address (RFC 8707, RFC 9728): the site's origin and the resource's path, no trailing slash. */
@@ -119,6 +120,8 @@ export const OAUTH_PATHS = {
 
 /** The docs page that tells how to connect an AI assistant (unit E writes it). */
 export const MCP_DOCS_PATH = "/docs/developers/mcp";
+/** The docs page that tells how to build an app (D441). */
+export const APPS_DOCS_PATH = "/docs/developers/apps";
 
 /** The authorization server's metadata (RFC 8414), its issuer the site's origin. */
 export function authorizationServerMetadata(issuer: string) {
@@ -154,6 +157,21 @@ export function protectedResourceMetadata(site: string, supabaseIssuer: string |
     bearer_methods_supported: ["header"],
     resource_name: "Kaizena Flow",
     resource_documentation: `${site}${MCP_DOCS_PATH}`,
+  };
+}
+
+/**
+ * The Admin API's protected resource metadata (RFC 9728, D441): our issuer alone (only an app's installation reaches it by OAuth; an
+ * owner's `kf_` tokens need none), the scopes an app may hold, and the docs page.
+ */
+export function adminProtectedResourceMetadata(site: string, scopes: readonly string[]) {
+  return {
+    resource: resourceUrl(site, "admin"),
+    authorization_servers: [site],
+    scopes_supported: [...scopes],
+    bearer_methods_supported: ["header"],
+    resource_name: "Kaizena Flow Admin API",
+    resource_documentation: `${site}${APPS_DOCS_PATH}`,
   };
 }
 

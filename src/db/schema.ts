@@ -7676,8 +7676,13 @@ export const oauthGrants = commerce.table(
       .references(() => oauthClients.id, { onDelete: "cascade" }),
     storeIds: uuid("store_ids").array().notNull(),
     scopes: text("scopes").array().notNull(),
-    /** The resource its tokens are bound to (`OAUTH_RESOURCES`): `mcp`. */
+    /** The resource its tokens are bound to (`OAUTH_RESOURCES`): `mcp`, or `admin` for an app's installation (D441). */
     resource: text("resource").notNull(),
+    /**
+     * An app's installation (D441): the one store it is installed on, which `store_ids` holds alone; null for every other grant. One live
+     * installation per app and store (`oauth_grants_app_store_key`).
+     */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
     /** `read`, `propose` (every change waits for a yes in the admin) or `change` (gated changes still wait). */
     access: text("access").notNull(),
     aal: text("aal").notNull().default("aal1"),
@@ -7689,8 +7694,11 @@ export const oauthGrants = commerce.table(
     index("oauth_grants_account_idx").on(t.accountId),
     index("oauth_grants_client_idx").on(t.clientId),
     index("oauth_grants_store_ids_idx").using("gin", t.storeIds),
-    uniqueIndex("oauth_grants_live_key").on(t.accountId, t.clientId, t.resource).where(sql`${t.revokedAt} is null`),
-    check("oauth_grants_resource", sql`${t.resource} in ('mcp')`),
+    uniqueIndex("oauth_grants_live_key").on(t.accountId, t.clientId, t.resource).where(sql`${t.revokedAt} is null and ${t.resource} = 'mcp'`),
+    uniqueIndex("oauth_grants_app_store_key").on(t.clientId, t.storeId).where(sql`${t.revokedAt} is null and ${t.resource} = 'admin'`),
+    index("oauth_grants_store_idx").on(t.storeId),
+    check("oauth_grants_resource", sql`${t.resource} in ('mcp', 'admin')`),
+    check("oauth_grants_installation", sql`(${t.resource} = 'admin') = (${t.storeId} is not null) and (${t.storeId} is null or ${t.storeIds} = array[${t.storeId}])`),
     check("oauth_grants_access", sql`${t.access} in ('read', 'propose', 'change')`),
     check("oauth_grants_aal", sql`${t.aal} in ('aal1', 'aal2')`),
     check("oauth_grants_scopes", sql`cardinality(${t.scopes}) between 1 and 30`),
@@ -7764,6 +7772,83 @@ export const oauthStoreCutoffs = commerce.table(
 );
 
 /**
+ * An account that builds apps (wave 14 unit D, D441, `src/server/developer-apps.ts`, its only writer): it turned on developer mode and
+ * accepted the developer terms of this version (`DEVELOPER_TERMS_VERSION`). Erasing the account takes the row with it.
+ */
+export const developers = commerce.table("developers", {
+  accountId: uuid("account_id")
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  termsVersion: text("terms_version").notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * An app for many stores (D441, `src/server/developer-apps.ts`, its only writer): what a developer tells stores about it, beside its OAuth
+ * client (`oauth_clients`, `kind = 'app'`, whose name, logo, redirect URIs and secret it uses). `scopes` are what it asks for: unit B's
+ * scopes and the Admin API's powers. Its events go to `webhook_url` (encrypted; `webhook_hint` shows its host), signed with its own
+ * secret (encrypted, shown once), for `webhook_topics` (D2). `distribution`: `private` (the developer's own stores), `unlisted` (anyone
+ * with the install link) or `listed` (in the directory once Kaizena Flow's review approves it: `listing`).
+ */
+export const apps = commerce.table(
+  "apps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => oauthClients.id, { onDelete: "cascade" }),
+    /** The developer who made it; null once their account is gone (the app is then blocked). */
+    developerId: uuid("developer_id").references(() => accounts.id, { onDelete: "set null" }),
+    description: text("description").notNull().default(""),
+    homepageUrl: text("homepage_url"),
+    privacyUrl: text("privacy_url"),
+    supportEmail: text("support_email"),
+    scopes: text("scopes").array().notNull(),
+    webhookUrlEncrypted: text("webhook_url_encrypted"),
+    webhookHint: text("webhook_hint"),
+    webhookSecretEncrypted: text("webhook_secret_encrypted"),
+    webhookTopics: text("webhook_topics").array().notNull().default(sql`'{}'::text[]`),
+    distribution: text("distribution").notNull().default("private"),
+    /** Kaizena Flow's review of a listed app: `requested`, `approved` or `declined`, with its note; null until listing is asked for. */
+    listing: text("listing"),
+    listingNote: text("listing_note"),
+    listingAt: timestamp("listing_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("apps_client_key").on(t.clientId),
+    index("apps_developer_idx").on(t.developerId),
+    check("apps_description", sql`char_length(${t.description}) <= 500`),
+    check("apps_scopes", sql`cardinality(${t.scopes}) between 1 and 40`),
+    check("apps_topics", sql`cardinality(${t.webhookTopics}) <= 40`),
+    check("apps_distribution", sql`${t.distribution} in ('private', 'unlisted', 'listed')`),
+    check("apps_listing", sql`${t.listing} is null or ${t.listing} in ('requested', 'approved', 'declined')`),
+    check("apps_webhook", sql`(${t.webhookUrlEncrypted} is null) = (${t.webhookHint} is null)`),
+  ],
+);
+
+/** An app's Admin API POST under its `Idempotency-Key` (D441): as `api_idempotency_keys`, kept per installation (`src/server/api-idempotency.ts`). */
+export const apiAppIdempotencyKeys = commerce.table(
+  "api_app_idempotency_keys",
+  {
+    grantId: uuid("grant_id")
+      .notNull()
+      .references(() => oauthGrants.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    status: integer("status"),
+    body: jsonb("body"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.grantId, t.key] }),
+    index("api_app_idempotency_keys_created_idx").on(t.createdAt),
+    check("api_app_idempotency_keys_key", sql`char_length(${t.key}) between 1 and 255`),
+  ],
+);
+
+/**
  * An Admin API POST's answer under the client's `Idempotency-Key` (PSI DATA-03, `src/server/api-idempotency.ts`, its only writer): the
  * same key with the same request gets the same answer again instead of doing it twice; with another request it is refused. `status` is
  * null while the first request runs. Kept 24 hours (`pruneApiIdempotency()`); the answer can hold what the route returned of a customer.
@@ -7808,6 +7893,8 @@ export const webhookEndpoints = commerce.table(
     /** When its deliveries began failing without a success since; null while they arrive. */
     failingSince: timestamp("failing_since", { withTimezone: true }),
     disabledReason: text("disabled_reason"),
+    /** An app's installation this endpoint is (D441): its address, secret and topics are the app's, never the owner's to change. */
+    appGrantId: uuid("app_grant_id").references(() => oauthGrants.id, { onDelete: "cascade" }),
     createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -7818,7 +7905,8 @@ export const webhookEndpoints = commerce.table(
     index("webhook_endpoints_created_by_idx").on(t.createdBy),
     check("webhook_endpoints_name", sql`char_length(${t.name}) between 1 and 80`),
     check("webhook_endpoints_topics", sql`cardinality(${t.topics}) between 1 and 40`),
-    check("webhook_endpoints_reason", sql`${t.disabledReason} is null or ${t.disabledReason} in ('failing', 'owner')`),
+    check("webhook_endpoints_reason", sql`${t.disabledReason} is null or ${t.disabledReason} in ('failing', 'owner', 'uninstalled')`),
+    uniqueIndex("webhook_endpoints_app_grant_key").on(t.appGrantId),
   ],
 );
 

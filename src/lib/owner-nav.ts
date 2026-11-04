@@ -26,6 +26,7 @@ export const ACCOUNT_ITEMS: OwnerItem[] = [
   { path: "/account/referrals", label: "Referrals", description: "Your referral link, the stores that opened through it and your credit.", owner: true },
   { path: "/account/themes", label: "Your themes", description: "The looks you shared as themes, their review, and how many stores use your themes." },
   { path: "/account/connected", label: "Connected apps and assistants", description: "The AI assistants and apps you let work with your stores, and Disconnect." },
+  { path: "/account/developer", label: "Developer", description: "Developer mode and your apps for many stores: make one, its secrets, and how many stores installed it." },
   { path: "/account/wordpress", label: "WordPress", description: "The WordPress plugin, and the sites connected to show your products.", owner: true },
 ];
 

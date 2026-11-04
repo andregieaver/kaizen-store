@@ -34,28 +34,31 @@ export const requestHash = (target: string, body: string): string => createHash(
  * What to do with a POST that carries a key: run it (and keep its answer), give the kept answer, or refuse. A request without a key is
  * never asked here.
  */
-export async function claimIdempotencyKey(tokenId: string, key: string, target: string, body: string): Promise<Idempotency> {
+export async function claimIdempotencyKey(tokenId: string, key: string, target: string, body: string, caller: "token" | "app" = "token"): Promise<Idempotency> {
   if (!KEY.test(key)) return { kind: "refused", code: "invalid", message: "Idempotency-Key is 1 to 255 printable characters." };
   const hash = requestHash(target, body);
+  // An owner's token keeps its keys in `api_idempotency_keys`; an app's installation (D441), by its grant, in `api_app_idempotency_keys`.
+  const table = caller === "app" ? sql`commerce.api_app_idempotency_keys` : sql`commerce.api_idempotency_keys`;
+  const owner = caller === "app" ? sql`grant_id` : sql`token_id`;
   const claimed = await db().execute(sql`
-    insert into commerce.api_idempotency_keys (token_id, key, request_hash) values (${tokenId}::uuid, ${key}, ${hash})
+    insert into ${table} (${owner}, key, request_hash) values (${tokenId}::uuid, ${key}, ${hash})
     on conflict do nothing returning key
   `);
   if (claimed.length > 0) {
-    const where = sql`token_id = ${tokenId}::uuid and key = ${key}`;
+    const where = sql`${owner} = ${tokenId}::uuid and key = ${key}`;
     return {
       kind: "run",
       save: async (answer) => {
-        await db().execute(sql`update commerce.api_idempotency_keys set status = ${answer.status}, body = ${JSON.stringify(answer.body ?? null)}::jsonb where ${where}`);
+        await db().execute(sql`update ${table} set status = ${answer.status}, body = ${JSON.stringify(answer.body ?? null)}::jsonb where ${where}`);
       },
       forget: async () => {
-        await db().execute(sql`delete from commerce.api_idempotency_keys where ${where} and status is null`);
+        await db().execute(sql`delete from ${table} where ${where} and status is null`);
       },
     };
   }
   const kept = await typedRow(
     z.object({ request_hash: col.text, status: col.int.nullable(), body: z.unknown() }),
-    sql`select request_hash, status, body from commerce.api_idempotency_keys where token_id = ${tokenId}::uuid and key = ${key}`,
+    sql`select request_hash, status, body from ${table} where ${owner} = ${tokenId}::uuid and key = ${key}`,
   );
   // Pruned between the insert and the read: rare enough to ask the client to send it again.
   if (!kept) return { kind: "refused", code: "conflict", message: "This Idempotency-Key is being used by another request. Try again." };
@@ -71,5 +74,8 @@ export async function pruneApiIdempotency(now: Date = new Date()): Promise<numbe
   const gone = await db().execute(sql`
     delete from commerce.api_idempotency_keys where created_at < ${now.toISOString()}::timestamptz - make_interval(hours => ${IDEMPOTENCY_HOURS}) returning key
   `);
-  return gone.length;
+  const goneApps = await db().execute(sql`
+    delete from commerce.api_app_idempotency_keys where created_at < ${now.toISOString()}::timestamptz - make_interval(hours => ${IDEMPOTENCY_HOURS}) returning key
+  `);
+  return gone.length + goneApps.length;
 }

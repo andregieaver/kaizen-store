@@ -4586,6 +4586,13 @@
       "when": 1793793881763,
       "tag": "20261104120441_delete_copied_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 655,
+      "version": "7",
+      "when": 1793801596779,
+      "tag": "20261104141316_apps",
+      "breakpoints": true
     }
   ]
 }

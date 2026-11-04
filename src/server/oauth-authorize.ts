@@ -9,9 +9,11 @@ import {
   readClientParams,
   redirectMatches,
   redirectWith,
+  resourceUrl,
   STATE_MAX,
   type AuthorizeRequest,
 } from "@/lib/oauth";
+import { missingPermissions } from "@/lib/apps";
 import { permissionsOf, type PermissionKey } from "@/lib/permissions";
 import { siteUrl } from "@/lib/site";
 
@@ -71,6 +73,14 @@ export async function readAuthorization(query: Query, fetcher: MetadataFetch = s
     const state = typeof query.state === "string" && query.state.length <= STATE_MAX ? query.state : null;
     return { kind: "redirect", to: redirectWith(params.redirectUri, { error: read.refusal.redirect, error_description: read.refusal.description, state, iss: siteUrl() }) };
   }
+  // An app is installed on the Admin API (D441), and only an app is: anything else's request for it, or an app's for the MCP, is refused.
+  const isApp = found.client.kind === "app";
+  if (isApp !== (read.request.resource === "admin")) {
+    const description = isApp ? `An app asks for resource=${resourceUrl(siteUrl(), "admin")}.` : `resource must be ${resourceUrl(siteUrl(), "mcp")}.`;
+    if (!sendsErrorsBack(found.client)) return { kind: "show", reason: "request", description, origin: new URL(params.redirectUri).origin };
+    const state = typeof query.state === "string" && query.state.length <= STATE_MAX ? query.state : null;
+    return { kind: "redirect", to: redirectWith(params.redirectUri, { error: "invalid_target", error_description: description, state, iss: siteUrl() }) };
+  }
   return { kind: "ok", client: found.client, request: read.request };
 }
 
@@ -128,3 +138,39 @@ export async function consentStores(account: Account, aal: "aal1" | "aal2", clie
 
 /** Every key a person holds across some stores: what a level's scopes are drawn from. */
 export const heldAcross = (stores: readonly ConsentStore[]): PermissionKey[] => [...new Set(stores.flatMap((s) => s.held))];
+
+/** A store offered for an app's installation (D441): what the consent screen says of each, and whether it can be chosen. */
+export type InstallStore = ConsentStore & {
+  /** What the app asks for that the person's role there cannot give. */
+  missing: PermissionKey[];
+  /** A private app goes only on its developer's own stores. */
+  notDevelopers: boolean;
+};
+
+/** Whether a store can be chosen for an app: not held at the second step, the person may give all the app asks for, and, for a private app, it is the developer's. */
+export const installable = (store: InstallStore): boolean => !store.needsTwoStep && store.missing.length === 0 && !store.notDevelopers;
+
+/**
+ * The stores a person may install an app on (D441): those they work in where their role holds anything, each saying what the app asks
+ * for that their role there cannot give, and, for a private app, whether it is one of the developer's own stores.
+ */
+export async function installStores(account: Account, aal: "aal1" | "aal2", app: { scopes: readonly string[]; distribution: string; developerId: string | null }): Promise<InstallStore[]> {
+  const stores = await consentStores(account, aal);
+  let developers: Set<string> | null = null;
+  if (app.distribution === "private") {
+    const rows = app.developerId
+      ? await typedRows(
+          z.object({ store_id: col.uuid }),
+          sql`select store_id from commerce.store_members where account_id = ${app.developerId}::uuid and disabled_at is null and (expires_at is null or expires_at > now())`,
+        )
+      : [];
+    developers = new Set(rows.map((r) => r.store_id));
+  }
+  return stores.map((store) => ({
+    ...store,
+    cutOff: false,
+    missing: missingPermissions(app.scopes, store.held),
+    notDevelopers: developers !== null && !developers.has(store.id),
+  }));
+}
+

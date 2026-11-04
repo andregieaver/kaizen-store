@@ -256,6 +256,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   field_values: "orders",
   vat_checks: "bookkeeping",
   api_idempotency_keys: "security",
+  api_app_idempotency_keys: "security",
   webhook_events: "orders",
   integration_deliveries: "integrations",
   privacy_requests: "privacy_rights",

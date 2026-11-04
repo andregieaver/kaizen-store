@@ -221,6 +221,52 @@ yes for. Price lists' prices (D321). Updated-since filters (`?updated_after=`) o
 - **Legal:** the developer terms, the data processing terms an app accepts for the customer data it receives, and the review checklist are
   written by hand and need legal review before any app is listed.
 
+**D in detail (4 November 2026), built in three slices.**
+
+*D1, apps and installing them.*
+- **Developer mode.** `commerce.developers` (an account, the terms version it accepted, when). Account → Developer (`/admin/account/developer`, as
+  built) offers *Become a developer* with the developer terms (`/docs/developers/apps/developer-terms`, a draft for legal review, its version in `DEVELOPER_TERMS_VERSION`); after
+  it, the account's apps (at most 25). An account that is erased takes its developer row with it; its apps are blocked, never handed on.
+- **An app** is `commerce.apps` beside its `oauth_clients` row (`kind = 'app'`, a secret kept as its SHA-256, shown once, *Renew*):
+  name, logo, description (500 characters), homepage, privacy policy and support address (HTTPS, and an email), redirect URIs (B2's rules,
+  HTTPS only), the scopes it asks for (unit B's, plus the Admin API's powers, `APP_POWERS`: all of `API_POWERS` but `webhooks:write`,
+  whose operations are the owner's alone; an app is sent its own events in D2), and its events address and topics (D2 sends
+  them). `distribution` is `private` (only stores the developer works in), `unlisted` (anyone with the install link) or `listed` (asked for
+  in D1, granted by Kaizena Flow's review in D3).
+- **Installing** is B4's flow with the app's client and the resource `https://kaizenaflow.com/api/admin/v1`. The consent screen shows the
+  app, its host, its verified mark, what it asks for in words (each scope, then the powers: *Without asking you each time, it may also …*),
+  and **one store** to install it on: a store is offered only where the person holds every permission the app asks for (a power rests on
+  the permission its operations need, `POWER_PERMISSION`, which asking for the power asks for too), and, for a private app, only the
+  developer's own. No level choice: an app gets what it asked for.
+  Approving makes the installation: a grant with `resource = 'admin'`, `store_id` that store, its scopes the app's, `access = 'change'`
+  (gated tools still wait for a yes). One live installation per app and store (`oauth_grants_app_store_key`); installing again replaces
+  it. The token endpoint takes the app's `client_secret_basic` (B5); codes, rotation and theft detection are B's.
+- **Its tokens** (`kfa_`) work on the Admin API and the owner MCP. On the Admin API (`apiCaller()`): the grant's store, the person's
+  membership read now, and each operation allowed only when the grant holds the operation's permission (`scopeHeld()`), the power when the
+  operation's scope is one, and the person may do it now (`memberCan()`), as a `kf_` token's maker must. Budget `api` per installation;
+  idempotency keys in `api_app_idempotency_keys`; every change audited with the app named (`via: "app"`). On the MCP: B6, the installation
+  as a grant for its one store.
+- **Screens.** Store → Settings → Apps and API lists the installed apps (name, who installed it, when, last used, its scopes) with
+  *Remove* (an owner): the grant ends at once with every token (`oauth.app_removed`). Account → Connected apps and assistants lists them
+  too. An app's page shows its installations count, never the stores.
+
+*D2, events and uninstalling.*
+- An installation gets an endpoint of its own (`webhook_endpoints.app_grant_id`), its address and secret the app's (encrypted), its topics
+  the app's that the installation may read (a topic's subject → the permission it needs to read). It is not the owner's to change, and
+  is not counted in their ten. Changing the app's address, secret or topics changes every installation's endpoint at once.
+- `customer.erased` always goes to an installed app, whatever its topics. Uninstalling (*Remove*, the person leaving, the app blocked)
+  ends the grant, switches the endpoint off (`disabled_reason = 'uninstalled'`) and queues `app.uninstalled` at once and
+  `store.erase_requested` 48 hours later, both sent to that endpoint though it is off; nothing else is.
+- **Scopes asked again.** When the app's scopes grow, an installation keeps its own until the store approves the new list: the Apps
+  screen says *Asks for more* and *Review* runs the consent again.
+
+*D3, listing and the docs.*
+- *Request listing* puts a listed app in Kaizena Flow's review queue (`/admin/platform/apps`: approve with a note, or decline with the
+  reason, both emailed). The directory (`/apps`) shows approved apps only once the legal texts are approved (`APP_DIRECTORY_OPEN`, off).
+- The data processing terms an app accepts and the review checklist are drafts for legal review, as the developer terms are.
+- Docs: *Build an app* and the quickstart *A first app* (developers' track), the Admin API's OpenAPI document gains the OAuth security
+  scheme, the webhook catalogue the app events (contract 1.6, changelog), and the owners' *Apps* page.
+
 ### Unit E: the docs portal (D442 to D444)
 
 **E1. The host and the frame (D442).**

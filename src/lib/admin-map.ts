@@ -1025,6 +1025,16 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["connected apps", "ai assistant", "mcp", "claude", "chatgpt", "oauth", "disconnect", "revoke", "access", "integrations"],
     tasks: ["See which AI assistants and apps reach your stores", "Disconnect an AI assistant or app"],
   }),
+  account("account.developer", "/account/developer", "Developer", "Developer mode, turned on by accepting the developer terms, and your apps for many stores: each one's distribution (private, unlisted or listed after review), how many stores it is installed on, and New app.", {
+    keywords: ["developer", "app", "apps", "oauth", "client id", "client secret", "admin api", "build an app", "integration", "partner"],
+    tasks: ["Turn on developer mode", "Make an app for many stores", "See how many stores installed your app"],
+  }),
+  account("account.developer.new", "/account/developer/new", "New app", "The form for a new app: its name, what it does, its redirect URIs, what it needs (scopes and powers), who can install it and the events it wants; its client ID and secrets are shown once when it is made.", {
+    keywords: ["new app", "create app", "register app", "client secret"],
+  }),
+  account("account.developer.app", "/account/developer/[app]", "An app", "One of your apps: its client ID, Renew for the client secret and the events secret (each shown once), how a store installs it, and its form.", {
+    keywords: ["app settings", "renew secret", "redirect uri", "scopes", "events address"],
+  }),
   account("account.wordpress.connect", "/account/wordpress/connect", "Connect a WordPress site", "Where the plugin sends you to approve a WordPress site: it names the site and what it may read, and you approve or cancel.", {
     needs: "owner",
     keywords: ["approve", "authorize", "connect wordpress"],
