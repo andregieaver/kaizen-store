@@ -39,7 +39,7 @@ describe("the docs guide's rules (D444)", () => {
     const prompt = guideSystemPrompt(ctx);
     expect(prompt).toContain(UNTRUSTED_TEXT);
     expect(prompt).toContain("Answer only from what your tools return in this conversation");
-    expect(prompt).toContain("Call search_docs with the question before you answer it");
+    expect(prompt).toContain("call search_docs with the question before you answer it");
     expect(prompt).toContain("call offer_support");
     expect(prompt).toContain("no web addresses");
     expect(prompt).toContain("You are an AI assistant, and the reader is told so.");
