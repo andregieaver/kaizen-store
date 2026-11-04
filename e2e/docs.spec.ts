@@ -494,7 +494,8 @@ test("the reference's front page lists every part, under the top bar's API refer
   // In the developers' tree, and listed as a section is: by topic, in the four orders.
   const tree = page.getByRole("navigation", { name: "Developers: pages" });
   await expect(tree.getByRole("link", { name: "API reference" })).toHaveAttribute("aria-current", "page");
-  await expect(tree.getByRole("link", { name: "Webhooks" })).toHaveAttribute("href", "/docs/reference/webhooks");
+  // The written Webhooks section is in the tree too: the reference's group is the one at its own address.
+  await expect(tree.locator('a[href="/docs/reference/webhooks"]')).toHaveText("Webhooks");
   const bar = page.getByRole("navigation", { name: "Filter and sort these pages" });
   await expect(bar.getByRole("link", { name: /^Webhooks\s*\d+$/ })).toHaveAttribute("href", "/docs/search?area=webhooks&lang=en&section=developers%2Freference");
 });
@@ -508,7 +509,7 @@ test("a resource's page lists its operations first, then each with its address, 
   await expect(crumbs.getByRole("link", { name: "Developers" })).toHaveAttribute("href", "/docs/developers");
   await expect(crumbs.getByRole("link", { name: "API reference" })).toHaveAttribute("href", "/docs/reference");
   await expect(crumbs.getByRole("link", { name: "Admin API" })).toHaveAttribute("href", "/docs/reference/admin-api");
-  await expect(page.getByRole("navigation", { name: "Developers: pages" }).getByRole("link", { name: "Products" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "Developers: pages" }).getByRole("link", { name: "Products", exact: true })).toHaveAttribute("aria-current", "page");
 
   // The list first: each operation a link to its part of the page.
   const list = page.getByRole("main").locator("table").first();

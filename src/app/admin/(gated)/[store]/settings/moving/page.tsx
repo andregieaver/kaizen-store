@@ -9,6 +9,10 @@ import { CheckOldLinks, ShopifyConnectForm, ShopifyDisconnect } from "@/componen
 import { ShopCopy, type CopyRow } from "@/components/admin/moving/shop-copy";
 import { ShopMakers } from "@/components/admin/moving/shop-makers";
 import { makersView } from "@/server/shopify-makers";
+import { ShopMove } from "@/components/admin/moving/shop-move";
+import { moveStatus, moveView } from "@/server/shopify-move";
+import { ShopAddress } from "@/components/admin/moving/shop-address";
+import { addressView } from "@/server/shopify-address";
 import { COPY_FEEDS, copyDone, copyFailed, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
 import { copyView, feedJobPage } from "@/server/shopify-copy";
 import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
@@ -24,7 +28,21 @@ import { checkShopify } from "@/server/shopify-report";
 import { figureText, type ShopReport } from "@/lib/shopify-report";
 import type { MovingMessages } from "@/lib/admin-messages/moving.en";
 
-import { advanceCopyAction, bringItOverAction, checkOldLinksAction, connectShopifyAction, disconnectShopifyAction, saveVendorMakerAction, startCopyAction } from "./actions";
+import {
+  advanceCopyAction,
+  advanceMoveAction,
+  bringItOverAction,
+  cancelMoveAction,
+  checkAddressAction,
+  checkOldLinksAction,
+  connectShopifyAction,
+  disconnectShopifyAction,
+  saveVendorMakerAction,
+  scheduleMoveAction,
+  startAddressAction,
+  startCopyAction,
+  startMoveAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Moving in" };
 
@@ -103,6 +121,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             )}
             <CopyPanel storeSlug={store.slug} />
             <MakersPanel storeSlug={store.slug} />
+            <MovePanel storeSlug={store.slug} locale={locale} />
+            <AddressPanel storeSlug={store.slug} />
             <CheckOldLinks check={checkOldLinksAction.bind(null, store.slug)} />
             <ShopifyDisconnect disconnect={disconnectShopifyAction.bind(null, store.slug)} />
           </div>
@@ -205,6 +225,56 @@ function dryOf(feed: CopyFeed, job: DataJob | undefined): { ready: number | null
   }
 }
 
+/** Move day, the address (D445 step 7b): once the shop has moved, its Shopify address pointed here. */
+async function AddressPanel({ storeSlug }: { storeSlug: string }) {
+  const member = await requireOwnerRole(storeSlug);
+  const move = await moveStatus(member);
+  if (move?.status !== "moved") return null;
+  const view = await addressView(member);
+  if (!view) return null;
+  const base = `/admin/${storeSlug}/settings/domains`;
+  return (
+    <ShopAddress
+      view={view}
+      actions={{ start: startAddressAction.bind(null, storeSlug), check: checkAddressAction.bind(null, storeSlug) }}
+      hrefs={{ domains: base, moveIn: `${base}/move-in` }}
+    />
+  );
+}
+
+/** Move day (D445 step 7a): once the copy is brought over, *Ready to move?*; while and after it moves, its steps. */
+async function MovePanel({ storeSlug, locale }: { storeSlug: string; locale: string }) {
+  const member = await requireOwnerRole(storeSlug);
+  const [view, copy] = await Promise.all([moveView(member), copyView(member)]);
+  if (!view || !copy) return null;
+  // Before the copy is brought over there is nothing to move yet.
+  if (view.state.status === "none" && !view.state.missed && !(copy.state.apply && copyDone(copy.state))) return null;
+  const base = `/admin/${storeSlug}`;
+  return (
+    <ShopMove
+      state={view.state}
+      checks={view.checks}
+      canMove={view.canMove}
+      locale={locale}
+      timeZone={view.timeZone}
+      hrefs={{
+        payments: `${base}/settings/payments`,
+        copy: "#shop-copy",
+        links: `${base}/redirects/old-shop`,
+        waiting: "#shop-makers",
+        address: "#shop-address",
+        steps: { catch_up: `${base}/products/import`, links: `${base}/redirects/old-shop`, open: `${base}/settings/private` },
+      }}
+      actions={{
+        start: startMoveAction.bind(null, storeSlug),
+        schedule: scheduleMoveAction.bind(null, storeSlug),
+        cancel: cancelMoveAction.bind(null, storeSlug),
+        advance: advanceMoveAction.bind(null, storeSlug),
+      }}
+    />
+  );
+}
+
 /** *Who makes your products?* (D445 step 6): once the copy has stopped moving, one question per Shopify vendor whose products still lack a maker. */
 async function MakersPanel({ storeSlug }: { storeSlug: string }) {
   const member = await requireOwnerRole(storeSlug);
@@ -228,8 +298,10 @@ async function MakersPanel({ storeSlug }: { storeSlug: string }) {
 /** *Copy my shop* (D445 step 4): where each part of the copy is, from `shop_moves.copy` and the imports' own jobs. */
 async function CopyPanel({ storeSlug }: { storeSlug: string }) {
   const member = await requireOwnerRole(storeSlug);
-  const view = await copyView(member);
+  const [view, move] = await Promise.all([copyView(member), moveStatus(member)]);
   if (!view) return null;
+  // While the shop moves, the copy is the move's catch-up: the move shows it, and nothing here may start it again.
+  if (move && (move.status === "moving" || move.status === "moved")) return null;
   const base = `/admin/${storeSlug}`;
   const files: Record<CopyFeed, string> = {
     products: `${base}/products/import`,

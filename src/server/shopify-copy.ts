@@ -8,13 +8,14 @@ import { db } from "@/db/client";
 import { IMPORT_MAX_BYTES } from "@/lib/data-limits";
 import { htmlToRichText } from "@/lib/html-rich-text";
 import {
-  BULK_QUERIES,
   COPY_FEEDS,
   EMPTY_COPY,
   FEED_FILES,
   FEED_KIND,
   MENUS_QUERY,
   PLAIN_FEEDS,
+  CATCH_UP_FEEDS,
+  catchUpQuery,
   VENDORS_FILE,
   vendorLines,
   copyReady,
@@ -178,6 +179,22 @@ export async function startCopy(member: Membership): Promise<{ ok: boolean }> {
   return { ok: true };
 }
 
+/**
+ * Move day's catch-up (D445 step 7a): a copy of only what Shopify made since `since` (new products, customers and past orders, through the
+ * same imports), brought over without asking, since the owner pressed *Move my shop*. The earlier copy's vendors are carried over.
+ */
+export async function startCatchUp(member: Membership, since: string): Promise<{ ok: boolean }> {
+  if (!memberCan(member, OWNER)) return { ok: false };
+  const state = await stateOf(member.store.id);
+  if (!state) return { ok: false };
+  const feeds = Object.fromEntries(COPY_FEEDS.map((f) => [f, CATCH_UP_FEEDS.includes(f) ? { stage: "waiting" } : { stage: "empty", count: 0 }])) as CopyState["feeds"];
+  const vendors = state.feeds.products.vendors;
+  if (vendors) feeds.products = { ...feeds.products, vendors };
+  await save(member.store.id, { startedAt: new Date().toISOString(), apply: true, since, feeds });
+  log("info", "shopify.catch_up_started", { storeId: member.store.id });
+  return { ok: true };
+}
+
 /** *Bring it over*: the checked feeds applied in order. Only once every feed is checked (or had nothing). */
 export async function bringItOver(member: Membership): Promise<{ ok: boolean }> {
   if (!memberCan(member, OWNER)) return { ok: false };
@@ -244,8 +261,12 @@ async function keptFile(path: string, deps: CopyDeps): Promise<string | null> {
 }
 
 /** The products' vendors (D445 step 6) kept beside the products' file: its path, or null when there are none or storage would not take it. */
-async function keepVendors(member: Membership, text: string, deps: CopyDeps): Promise<string | null> {
-  const lines = vendorLines(readBulkLines(text));
+async function keepVendors(member: Membership, text: string, deps: CopyDeps, before: string | null = null): Promise<string | null> {
+  // A catch-up reads only the new products: the earlier copy's vendors are kept beside them.
+  const earlier = before ? await keptFile(before, deps) : null;
+  const read = vendorLines(readBulkLines(text));
+  const fresh = new Set(read.map((l) => l.handle));
+  const lines = [...(earlier ? vendorLines(readBulkLines(earlier)).filter((l) => !fresh.has(l.handle)) : []), ...read];
   const storage = storageOf(deps);
   if (lines.length === 0 || !storage) return null;
   const path = `${member.store.id}/${randomUUID()}/${VENDORS_FILE}`;
@@ -419,7 +440,8 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
   const storeId = member.store.id;
   const leased = await lease(storeId);
   if (!leased) return stateOf(storeId);
-  const state: CopyState = { startedAt: leased.startedAt, apply: leased.apply, feeds: { ...leased.feeds } };
+  const state: CopyState = { startedAt: leased.startedAt, apply: leased.apply, ...(leased.since ? { since: leased.since } : {}), feeds: { ...leased.feeds } };
+  const before = leased.feeds;
   try {
     if (state.startedAt === null) return state;
     const data = deps.data ?? {};
@@ -445,7 +467,7 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
           const handed = await hand(member, feed, file.text, deps);
           state.feeds[feed] = "empty" in handed ? { stage: "empty", count: 0 } : "problem" in handed ? { stage: "failed", problem: handed.problem } : { stage: "checking", job: handed.job, count: handed.count };
           if (feed === "products" && "job" in handed) {
-            const vendors = await keepVendors(member, file.text, deps);
+            const vendors = await keepVendors(member, file.text, deps, state.since ? (before.products.vendors ?? null) : null);
             if (vendors) state.feeds.products.vendors = vendors;
           }
         } else state.feeds[feed] = await stage(member, feed, file.text, deps);
@@ -463,7 +485,7 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
       const read = await readSettingsFeed(storeId, next, deps);
       state.feeds[next] = read.ok ? await stage(member, next, read.text, deps) : { stage: "failed", problem: "shopify_refused" };
     } else if (next) {
-      const run = await shopifyGraphql<BulkRun>(storeId, BULK_RUN, { query: BULK_QUERIES[next] }, deps);
+      const run = await shopifyGraphql<BulkRun>(storeId, BULK_RUN, { query: catchUpQuery(next, state.since ?? null) }, deps);
       const id = run.ok ? run.data.bulkOperationRunQuery?.bulkOperation?.id : undefined;
       const errors = run.ok ? (run.data.bulkOperationRunQuery?.userErrors ?? []) : [];
       if (id) state.feeds[next] = { stage: "reading", operation: id };
@@ -500,6 +522,8 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
       const job = started.ok ? null : await getJob(storeId, f.job!);
       state.feeds[apply] = started.ok ? { ...f, stage: "applying" } : { ...f, stage: "failed", problem: job && importableOf(job) === 0 ? "needs_fixing" : "import_refused" };
     }
+    // The products' vendors stay known whatever became of a later read of the products (a catch-up that found none).
+    if (!state.feeds.products.vendors && before.products.vendors) state.feeds.products = { ...state.feeds.products, vendors: before.products.vendors };
     return state;
   } catch (error) {
     log("error", "shopify.copy_step_failed", { storeId }, error);

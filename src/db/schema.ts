@@ -13352,6 +13352,8 @@ export const shopMoves = commerce.table(
     connectedAt: timestamp("connected_at", { withTimezone: true }),
     /** Step 4's copy (`copyStateOf()` in `src/lib/shopify-copy.ts`): each feed's stage, its bulk operation and its import job, and a short lease. */
     copy: jsonb("copy").notNull().default(sql`'{}'::jsonb`),
+    /** Step 7's move day (`moveStateOf()` in `src/lib/shopify-move.ts`): when it runs, who asked, each of its steps, and a short lease. */
+    move: jsonb("move").notNull().default(sql`'{}'::jsonb`),
     updatedAt: updatedAt(),
   },
   (t) => [

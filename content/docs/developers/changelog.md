@@ -18,8 +18,14 @@ Every change to a published contract gets a version here, newest first: the Admi
 
 ## 1.5 — 2026-11-04
 
-Words only: nothing a call does changed.
+Corrections: what the contract said is now what happens.
 
+- A delivery sent again by hand (`POST /webhooks/{id}/deliveries/{delivery_id}/resend`, or *Send again* in the admin) now carries its
+  body's `id` in `Kaizena-Webhook-Id`, as the contract always said. Until now the header carried a new id on a resend while the body kept
+  the old one, so a receiver that did the work once per header could do it twice. Retries were never affected.
+- The signature checks in the reference (JavaScript, Python and PHP) refuse every delivery when the secret is empty, as when its
+  variable is not set: before, a delivery signed with an empty key passed the PHP check. The Python check compares bytes, so a header
+  with other characters is refused instead of raising an error. If you copied a check, add the same guard.
 - `POST /products` and `PATCH /products/{id}` now say what a token with the power `products:publish` may do since 1.1: pictures are
   added with `POST /products/{id}/media`, a product is published with `POST /products/{id}/publish`, and a product on the site is changed
   with `PATCH` only by a token that holds the power (without it, `gated`). Their descriptions still said both were the owner's, in the

@@ -22,6 +22,7 @@ import { expireApprovals } from "@/server/company-approvals";
 import { archiveFinishedOrders } from "@/server/order-archive";
 import { expireOrderEdits } from "@/server/order-edits";
 import { runDataJobs } from "@/server/data-jobs";
+import { runDueMoves } from "@/server/shopify-move";
 import { refreshEmbeddings } from "@/server/embeddings";
 import { runExperimentJobs } from "@/server/experiment-jobs";
 import { runFollowUps } from "@/server/follow-up-runner";
@@ -143,6 +144,8 @@ async function dispatch() {
     replications: () => pruneReplications(),
     returns: () => runReturnJobs(),
     invoices: () => invoiceJobs(),
+    // A Shopify move due now starts, a running one goes on (D445 step 7a); before the imports it hands work to.
+    shopMoves: () => runDueMoves(),
     dataJobs: () => runDataJobs(),
     lowStock: () => sendLowStockNotices(),
     draftExpiry: () => expireDrafts(),

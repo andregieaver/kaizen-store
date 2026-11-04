@@ -56,7 +56,7 @@ A delivery is a `POST` with `Content-Type: application/json`, `User-Agent: Kaize
 
 | Header | What it holds |
 |---|---|
-| `Kaizena-Webhook-Id` | The delivery's id |
+| `Kaizena-Webhook-Id` | The delivery's id, the same as the body's `id`, also when it is [sent again](#resend) by hand |
 | `Kaizena-Webhook-Timestamp` | When it was signed, in whole seconds since 1970 (UTC) |
 | `Kaizena-Webhook-Topic` | The topic, as the body's `topic` |
 | `Kaizena-Webhook-Signature` | `v1=` and the HMAC-SHA256, in lowercase hex, of `{timestamp}.{body}` with the endpoint's secret |
@@ -85,7 +85,7 @@ Every topic's body has the same envelope:
 
 | Field | What it is |
 |---|---|
-| `id` | The delivery's id. It stays the same on every retry and when the delivery is [sent again](#resend): do the work once per `id`. |
+| `id` | The delivery's id. It stays the same on every retry and when the delivery is [sent again](#resend) by hand: do the work once per `id`. |
 | `topic` | The topic, or `test` for a [test delivery](#test) |
 | `version` | The payload's version, now 1. A change to a payload's shape raises it. |
 | `store` | The store's `slug` and `name` |
@@ -139,7 +139,8 @@ retry goes later while newer ones go on. When order matters, compare the times i
 subject's state now through the Admin API.
 
 The same event can arrive more than once. A try whose answer does not reach Kaizena Flow within 10 seconds is tried again, even if your
-receiver did the work, and an owner can send any delivery that has ended again. Do the work once per body `id`.
+receiver did the work, and an owner can send any delivery that has ended again. Do the work once per `id` (the body's, which the
+`Kaizena-Webhook-Id` header carries too).
 
 Several changes can arrive as one delivery. While a delivery about a subject waits for its first try, another change of the same subject
 for the same topic adds no delivery: the one that goes shows the subject as it is when it is sent. A `product.updated` while the
@@ -164,8 +165,8 @@ The endpoint's log in the admin, *Recently sent*, shows its latest 25 deliveries
 again*. Through the Admin API, it is `POST /webhooks/{id}/deliveries/{delivery_id}/resend`.
 
 Sending again queues a new delivery with the same body, so the body's `id` is the one you saw before. It goes within a minute, with
-retries of its own. Its `Kaizena-Webhook-Id` header is the new delivery's own id: do the work once per body `id`, not per header. A
-delivery that ended before it was ever sent has no body yet, so it is built afresh, with a new `id`.
+retries of its own, and its `Kaizena-Webhook-Id` header carries that same `id`, so a receiver that did the work once does not do it
+again. A delivery that ended before it was ever sent has no body yet, so it is built afresh, with a new `id`.
 
 Sending again is refused for a delivery still waiting (`409 conflict` through the API), for an endpoint that is switched off (switch it on
 first; `409 conflict`) and for a delivery about a person who was [erased](#erased). Deliveries are kept for 30 days.

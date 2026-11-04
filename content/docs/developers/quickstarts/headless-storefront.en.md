@@ -18,7 +18,7 @@ site draws everything. Kaizena Flow answers what one market of the store shows a
 payment on the store's own checkout.
 
 You need a store that is open, has the online shop switched on and is not in private mode. The storefront API answers nothing for any
-other store, nor for a store template or a demo store.
+other store, nor for a demo store or starting content.
 
 ## Make a storefront token
 
@@ -58,8 +58,9 @@ curl "https://kaizenaflow.com/api/storefront/v1/your-store/categories" \
 ```
 
 Categories come as a tree in reading order: each category by name, followed by its own, with its `depth` (0 at the top). Tags come by
-name. A call without a token, or with a token of another store,
-is answered `401 unauthorized`. The answer never says which of the two it was.
+name.
+
+A call without a token, or with a token of another store, is answered `401 unauthorized`. The answer never says which of the two it was.
 
 ## List products
 
@@ -115,11 +116,11 @@ What to do with each product:
 - `cart` says whether the product can go in a cart from your site. When `cartable` is false, `reason` says why (`booking`, `subscription`,
   `business_only` or `service`): such a product needs a time, a plan or a business buyer, chosen on the store's own page, so link to `url`.
 - `cart.variant_id` is set when the product has one variant, so a card can add it at once. With more variants it is null: open the
-  product page and let the shopper choose.
-- `labels` holds the store's own words in the market's language, such as `addToCart`. A `{n}` in one stands for a number you fill in.
+  product page and let the shopper choose. `cart.sold_out` is true when none of its shipped variants is in stock now.
+- `labels` holds the storefront's own words in the market's language, such as `addToCart`. A `{n}` in one stands for a number you fill in.
 
-A call answers at most 48 products, and there is no cursor for more. A product whose price is given on request is not listed: it has no
-price to show and no cart.
+A call answers at most 48 products, and there is no cursor for more. A product whose price is given on request is not listed, and
+`GET /products/{handle}` answers `404` for it: it has no price to show and no cart.
 
 ## Read one product
 

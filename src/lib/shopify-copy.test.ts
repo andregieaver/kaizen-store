@@ -6,6 +6,7 @@ import { detectFormat } from "./product-csv-shopify";
 import { readRedirectFile } from "./redirect-csv";
 import {
   COPY_FEEDS,
+  catchUpQuery,
   vendorLines,
   EMPTY_COPY,
   collectionsFile,
@@ -286,5 +287,17 @@ describe("the products' vendors", () => {
       { vendor: "Nordic Wool", handle: "hat", active: true },
       { vendor: "", handle: "scarf", active: false },
     ]);
+  });
+});
+
+describe("move day's catch-up", () => {
+  it("reads only what was made since the copy began, for products, customers and past orders, and never lets other text into the search", () => {
+    const since = "2026-11-03T18:00:00.000Z";
+    expect(catchUpQuery("orders", since)).toMatch(/^\{ orders\(query: "created_at:>='2026-11-03T18:00:00.000Z'"\) \{ edges/);
+    expect(catchUpQuery("products", since)).toMatch(/^\{ products\(query: "created_at:>=/);
+    expect(catchUpQuery("customers", since)).toMatch(/^\{ customers\(query: /);
+    expect(catchUpQuery("pages", since)).not.toMatch(/created_at/);
+    expect(catchUpQuery("orders", null)).not.toMatch(/created_at/);
+    expect(catchUpQuery("orders", `2026-11-03T18:00:00Z" OR "x`)).not.toMatch(/created_at/);
   });
 });

@@ -10,6 +10,8 @@ import { checkPermission } from "@/server/permissions";
 import { disconnectShopify, shopifyConnection, startShopifyConnect, type StartProblem } from "@/server/shopify-connect";
 import { advanceCopy, bringItOver, startCopy } from "@/server/shopify-copy";
 import { saveVendorMaker, type MakerSaved } from "@/server/shopify-makers";
+import { advanceMove, cancelMove, scheduleMove, startMove, type MoveProblem } from "@/server/shopify-move";
+import { checkAddress, startAddress } from "@/server/shopify-address";
 import { copyMoving } from "@/lib/shopify-copy";
 
 /**
@@ -83,4 +85,54 @@ export async function saveVendorMakerAction(storeSlug: string, input: unknown): 
   const result = await saveVendorMaker(member, input);
   refresh();
   return result;
+}
+
+/** Move day (D445 step 7a): *Move my shop* now. */
+export async function startMoveAction(storeSlug: string): Promise<{ ok: boolean; problem?: MoveProblem }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false, problem: "gone" };
+  const result = await startMove(member);
+  refresh();
+  return result;
+}
+
+/** *Choose a time*: a wall-clock time in the store's own time zone. */
+export async function scheduleMoveAction(storeSlug: string, local: string): Promise<{ ok: boolean; problem?: MoveProblem }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false, problem: "gone" };
+  const result = await scheduleMove(member, typeof local === "string" ? local : "");
+  refresh();
+  return result;
+}
+
+export async function cancelMoveAction(storeSlug: string): Promise<{ ok: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false };
+  const result = await cancelMove(member);
+  refresh();
+  return result;
+}
+
+/** One step of a running move, asked by the open page; says whether it still moves. */
+export async function advanceMoveAction(storeSlug: string): Promise<{ moving: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { moving: false };
+  const state = await advanceMove(member);
+  return { moving: state?.status === "moving" };
+}
+
+/** Move day, the address (D445 step 7b): *Point it here*. */
+export async function startAddressAction(storeSlug: string): Promise<{ ok: boolean; problems?: string[] }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false };
+  const result = await startAddress(member);
+  refresh();
+  return result;
+}
+
+/** The page's check every 30 seconds while an address waits for its records. */
+export async function checkAddressAction(storeSlug: string): Promise<{ done: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { done: false };
+  return checkAddress(member);
 }

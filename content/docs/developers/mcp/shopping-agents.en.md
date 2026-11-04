@@ -142,7 +142,8 @@ A call of `create_cart`:
 ```
 
 Each line names a variant, and a quantity from 1 to 99. The lines are checked as adding them in the store would check them: a variant on
-sale with a price in that country, goods only, and stock for the quantity. A quantity above the stock is cut to it. A line that cannot be
+sale with a price in that country, of a product that can go in a cart there, and stock for the quantity. A quantity above the stock is
+cut to it. A line that cannot be
 bought is left out, with a warning in `messages` (code `unavailable`). When nothing can be bought, the tool refuses.
 
 | Field of the answer | What it is |
@@ -179,7 +180,8 @@ JSON-RPC error `-32002`. A larger body is answered `413`.
 ## Who is calling
 
 The server does not ask an agent who it is: it reads no token, key or signature, and needs none. It counts each caller by a hash of its
-address and the day, so the address itself is never kept. Answers are sent with `Cache-Control: no-store` and `X-Robots-Tag: noindex`.
+address and the day, so the address itself is never kept. The endpoint's answers are sent with `Cache-Control: no-store` and
+`X-Robots-Tag: noindex`.
 
 In a store's analytics, a visit from `chatgpt.com`, `chat.openai.com`, `perplexity.ai`, `copilot.microsoft.com` or `gemini.google.com`,
 or with a `utm_source` naming one of them, counts in the *AI agents* channel. An order from an agent's cart counts there whatever visit

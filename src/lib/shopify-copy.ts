@@ -84,6 +84,21 @@ export const BULK_QUERIES: Record<CopyFeed, string> = {
   look: "",
 };
 
+/** The feeds a move-day catch-up reads again (D445 step 7): only what was made in Shopify since the copy began. */
+export const CATCH_UP_FEEDS: readonly CopyFeed[] = ["products", "customers", "orders"];
+
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+
+/**
+ * A feed's bulk query limited to what was made at or after `since` (an ISO instant, checked here so nothing else reaches Shopify's search
+ * syntax), for the catch-up; the plain query for any other feed, or when `since` is not an instant.
+ */
+export function catchUpQuery(feed: CopyFeed, since: string | null): string {
+  const query = BULK_QUERIES[feed];
+  if (!since || !ISO_INSTANT.test(since) || !CATCH_UP_FEEDS.includes(feed)) return query;
+  return query.replace(new RegExp(`^\\{ ${feed} \\{`), `{ ${feed}(query: "created_at:>='${since}'") {`);
+}
+
 /** The shop's menus, three levels deep (the most a menu here has). */
 export const MENUS_QUERY = `query KaizenMenus { menus(first: 25) { nodes { handle title items { title type url items { title type url items { title type url } } } } } }`;
 
@@ -627,7 +642,8 @@ export type FeedState = {
   made?: number;
   refused?: number;
 };
-export type CopyState = { startedAt: string | null; apply: boolean; feeds: Record<CopyFeed, FeedState> };
+/** `since`: a move-day catch-up (D445 step 7) reading only what Shopify made from then on, brought over without asking. */
+export type CopyState = { startedAt: string | null; apply: boolean; since?: string; feeds: Record<CopyFeed, FeedState> };
 
 export const EMPTY_COPY: CopyState = {
   startedAt: null,
@@ -660,6 +676,7 @@ export function copyStateOf(raw: unknown): CopyState {
   const r = o(raw);
   const feeds = o(r.feeds);
   const out: CopyState = { startedAt: typeof r.startedAt === "string" && !Number.isNaN(Date.parse(r.startedAt)) ? r.startedAt : null, apply: r.apply === true, feeds: { ...EMPTY_COPY.feeds } };
+  if (typeof r.since === "string" && ISO_INSTANT.test(r.since)) out.since = r.since;
   for (const feed of COPY_FEEDS) {
     const f = o(feeds[feed]);
     // A part this copy was started without (one added since) is not part of it: Start again brings it.

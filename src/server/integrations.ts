@@ -902,7 +902,10 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
   if (endpoint) {
     const opened = delivery.encryptedSecret ? openEndpoint(delivery.encryptedUrl, delivery.encryptedSecret) : null;
     if (!opened) return fail("Kaizena Flow could not read the address");
-    outcome = await postSigned(opened.url, opened.secret, delivery.id, delivery.event, payload);
+    // The event's own id, which the body carries too: the same when a delivery is sent again (a resend is a new row with the old payload),
+    // so a receiver that does the work once per Kaizena-Webhook-Id never does it twice (D354, D438).
+    const eventId = typeof payload.id === "string" ? payload.id : delivery.id;
+    outcome = await postSigned(opened.url, opened.secret, eventId, delivery.event, payload);
   } else {
     let url: string;
     try {

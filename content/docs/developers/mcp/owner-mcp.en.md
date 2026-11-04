@@ -297,7 +297,7 @@ The arguments are checked first, so a change that could not be made is refused a
 }
 ```
 
-`what` is the change in words, after the client's name: *{name} asks: …*. The person approves or declines it in the store's
+`what` is what the approval says, after the client's name: *{name} asks: …*. The person approves or declines it in the store's
 [AI manager](/admin/{store}/assistant), in a conversation of the client's own, called *From* and the client's name. They also get a
 notice under [AI manager notices](/admin/account/notices).
 

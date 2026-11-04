@@ -648,6 +648,52 @@ On Moving in, once the copy has stopped moving: one row per Shopify vendor whose
   (*Undo* links to the bulk page). Then the ones that were on sale in Shopify are put on sale by its *Set status* action, whose save
   refuses one still missing something (a picture), and the page says how many.
 
+### Step 7a: *Ready to move?* and the move (built 4 November 2026)
+
+On Moving in, once the copy has been brought over (`src/lib/shopify-move.ts` pure, `src/server/shopify-move.ts`, the state in
+`shop_moves.move`, migration `20261104083148_shop_moves_move`):
+
+- **Ready to move?** Four lines. *Payments work* (the live account takes cards and payments are on) and *Your shop is copied* (brought
+  over, every part settled) hold the move back. *Old links lead somewhere* and *Nothing waiting for you* (products still without a maker)
+  are said with their link, and the owner may move anyway.
+- **Move my shop**, or **Choose a time** (a wall-clock time in the store's time zone, five minutes to 30 days ahead; *Cancel* takes it
+  back). The five-minute job (`runDueMoves()`, `shopMoves` in the dispatcher) starts a due move as the owner who chose it
+  (`passMembership()`, checked again each time). A move that is not ready at its time does not start, and the page says so.
+- **The steps**, each through the writer that owns it, each safe to repeat, moved on by the open page and by the job under a 90-second
+  lease:
+  1. *Copying what's new on Shopify*: a catch-up copy (`startCatchUp()`) reads only what Shopify made since the copy began
+     (`created_at:>=` on products, customers and past orders, `catchUpQuery()`), through the same imports, brought over without asking.
+     The earlier copy's vendors are carried over.
+  2. *Pointing your old links here*: the old shop's links, read if they never were, and `fixOldShop()` for every one with a sure
+     counterpart.
+  3. *Opening your shop*: private mode off through `setPrivateMode()`. A store not yet set up, or whose trial ended, says so.
+- A step that cannot finish says why with its own screen, and the move goes on. When all have settled: *Your shop has moved*, and the
+  address (7b) is what comes next.
+- **Emails.** No step sends one. Nothing the copy or the catch-up writes emails anyone: imported customers are never subscribed, copied
+  orders are never confirmed. The store's own emails follow its own orders from the moment it opens, as for any store. So there is no
+  switch to turn on, and the plan's *Turning on emails* line is not shown.
+- The look: Shopify's newer themes (Horizon) name their colours differently, so those names are read too. A theme whose look still
+  can't be read logs the names of its settings (never their values) as `shopify.copy_look_unread`, so it can be added.
+
+### Step 7b: the address (built 4 November 2026)
+
+On Moving in, once the shop has moved (`src/lib/shopify-address.ts` pure, `src/server/shopify-address.ts`, `ShopAddress`):
+
+- **Which addresses**: the Shopify shop's primary domain and the other of its bare and `www.` names (`addressesToMove()`); a shop with only
+  a `myshopify.com` address has nothing to point, and the page offers an address of its own instead.
+- **Point it here** adds them through the domains page's own writers: `connectOwnedDomain()` at once where the domain is registered here
+  or its DNS is kept here (D315), else `addStoreDomain()`, waiting for the TXT proof and the pointing records (`dnsRecords()`). Safe to
+  press again. Shopify's own primary becomes the store's address once it works (`setPrimaryDomain()`).
+- **Where the DNS is kept** is read from the nameservers (`dnsHostOf()`): ours, Shopify's, Cloudflare, GoDaddy, Namecheap, Domeneshop,
+  one.com, Squarespace, or anywhere else. Homer reads one sentence for his provider, written for its own screens (Shopify's: *Settings →
+  Domains → {domain} → Domain settings → Edit DNS settings*), then the records with a **Copy** button each, and that a record for the
+  same name pointing to Shopify is changed, not doubled. Where the provider takes our Domain Connect template, one press does it.
+- **The check**: the open page asks every 30 seconds (`checkAddress()`, the domains page's `checkStoreDomain()`), says *Leads here ✓*
+  per name by itself, and whether a name still answers from Shopify (`23.227.38.0/24` or `shops.myshopify.com`, `leadsToShopify()`).
+- *Or let us look after your domain* links to moving its DNS here (D315).
+- A move with a chosen time says, with it, to lower the address's TTL the day before.
+- The provider sentences name today's menus of each provider: check them against the provider when one changes its screens.
+
 Left for later: the logo and favicon, metafields, gift cards and the email list (step 8); reviews (they live in review apps, not in
 Shopify, spike S6); a catch-up copy on move day.
 

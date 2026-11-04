@@ -148,8 +148,8 @@ The plugin never works out a price or a label of its own.
 | A product page's product | 2 minutes | The `kaizen_store_product_cache_seconds` filter |
 | A cart's prices | 15 seconds | Not changeable |
 
-So a changed price or a new product shows within ten minutes. **Clear saved product lists** on the *Connection* page, or saving a view,
-shows current products at once. A filter returning 0 asks Kaizena Flow every time:
+So a changed price or a new product shows in a list within ten minutes. **Clear saved product lists** on the *Connection* page, or saving a
+view, shows current lists at once. A filter returning 0 asks Kaizena Flow every time:
 
 ```php
 add_filter( 'kaizen_store_cache_seconds', function () {
@@ -169,9 +169,10 @@ note that only administrators see on the page. The *Connection* page lists each 
 ## Limits
 
 - A connection may make 1,500 calls to Kaizena Flow an hour, and hand 60 carts to checkout an hour.
-- Visitors reach Kaizena Flow only through your site's cart routes, `/wp-json/kaizen/v1/cart/quote` and `/wp-json/kaizen/v1/cart/checkout`.
-  They take only stores a saved view uses, at most 30 lines with each variant once, and each visitor's address may ask 90 prices and 12
-  checkouts a minute.
+- The shopper's browser asks your site, never Kaizena Flow, for a cart's prices and its checkout: the REST routes `kaizen/v1/cart/quote`
+  and `kaizen/v1/cart/checkout` (under `/wp-json/` on most sites). Your site asks Kaizena Flow with the connection's token, which the browser
+  never sees. The routes take only stores a saved view uses, at most 30 lines with each variant once, and each visitor's address may ask 90
+  prices and 12 checkouts a minute.
 
 ## Removing the plugin
 
