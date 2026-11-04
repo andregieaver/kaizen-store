@@ -303,3 +303,21 @@ export function menusOf(answer: unknown): Obj[] {
     .filter((m) => s(m.title, 80) !== "")
     .slice(0, 25);
 }
+
+/**
+ * Every card's balance there (step 5's 14 days after, the `all` reading: spent and switched-off cards too), by the id it was moved under
+ * (`woo:{plugin}:{id}`), in the shop's currency.
+ */
+export function giftCardBalancesOf(answer: unknown): { balances: Map<string, { amount: string; currency: string }>; more: boolean } {
+  const a = o(answer);
+  const currency = s(a.currency, 3).toUpperCase();
+  const balances = new Map<string, { amount: string; currency: string }>();
+  if (!/^[A-Z]{3}$/.test(currency)) return { balances, more: false };
+  for (const c of list(a.cards)) {
+    const source = s(c.source, 40);
+    const id = Number(c.id);
+    const amount = s(c.balance, 20);
+    if (/^[a-z0-9-]+$/.test(source) && Number.isSafeInteger(id) && id > 0 && /^\d+(\.\d{1,2})?$/.test(amount)) balances.set(`woo:${source}:${id}`, { amount, currency });
+  }
+  return { balances, more: a.more === true };
+}

@@ -386,6 +386,24 @@ export const movingNb: MovingMessages = {
       stillShopify: "svarer fortsatt fra det gamle nettstedet",
       replace: "Der en post for samme navn peker til den gamle verten din, endre den i stedet for å legge til en ny.",
     },
+    /** De 14 dagene etter, sagt om en WooCommerce-butikk (D446): flettet over de egne ordene; `close` har sine egne steg. */
+    watch: {
+      address: { no: "Adressen din leder ikke hit ennå" },
+      waiting: "Vi ser i WooCommerce én gang om dagen etter ordrer som fortsatt kommer dit, og kopierer dem hit.",
+      none: "Ingen nye ordrer i WooCommerce ✓",
+      some: { one: "{n} ordre kom inn i WooCommerce etter flyttingen og ble kopiert hit", many: "{n} ordrer kom inn i WooCommerce etter flyttingen og ble kopiert hit" },
+      cardsLowered: { one: "{n} gavekorts gamle kode ble brukt i WooCommerce: saldoen her ble senket tilsvarende", many: "{n} gavekorts gamle koder ble brukt i WooCommerce: saldoene her ble senket tilsvarende" },
+      close: {
+        title: "Du kan stenge WooCommerce nå",
+        text: "Alt er her og virker. Steng den selv: vi endrer aldri noe på nettstedet ditt utenom det du trykker der.",
+        moved: "Åpne Kaizena Flow → Flytt til Kaizena Flow i WordPress og sjekk at Send kundene til den nye butikken er på.",
+        giftCards: "Slå av gavekortene i gavekortutvidelsen også, så de gamle kodene ikke kan brukes der.",
+        deactivate: "Deaktiver så WooCommerce: Utvidelser → WooCommerce → Deaktiver. Sidene og bloggen din blir som de er.",
+        backup: "Ta vare på en kopi av det gamle nettstedet først: Verktøy → Eksporter i WordPress, eller vertens sikkerhetskopi.",
+        hosting: "Si så opp WordPress-vertskapet når du er klar: adressen din leder hit nå, så ingen ser det gamle nettstedet.",
+        how: "Slik gjør du",
+      },
+    },
     disconnectAsk: "Koble fra WooCommerce-butikken din? Ingenting slettes her eller på nettstedet ditt. For å fjerne nøkkelen vår fra nettstedet også, åpne WooCommerce → Innstillinger → Avansert → REST API der.",
   },
   off: {

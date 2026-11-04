@@ -606,6 +606,19 @@ time* and the five-minute job are unchanged; the steps are:
 - **Tests:** `woocommerce-copy.int.test.ts` moves a shop whose owner keeps WordPress: the catch-up asks for what changed, links are left,
   the shop opens, and only `shop.{domain}` is to be pointed here.
 
-**Not yet built:**
-- The 14 days after's card for WooCommerce (closing WooCommerce), and lowering a moved card by what was spent on the old shop.
+### The 14 days after, for WooCommerce (4 November 2026)
+
+- **The card** (`MoveWatchCard`, on the store's home and on Moving in) says it of WooCommerce (`woo.watch`, merged over the shared words),
+  with WooCommerce's own closing steps by the owner's choice:
+  - *Only the shop*: check that *Send shoppers to the new shop* is on, switch the gift cards off in their plugin, then deactivate
+    WooCommerce (Plugins → WooCommerce → Deactivate). The pages and blog stay.
+  - *Everything*: keep a copy of the old site (Tools → Export, or the host's backup), switch the gift cards off, then cancel the hosting:
+    the address leads here.
+- **Gift cards spent on the old shop:** each daily look reads every card's balance again through the plugin (1.3.6, `gift_cards` with
+  `all`, so a spent or switched-off card is read too, never taken for spent). What was spent there since the last look is taken off its
+  card here, never below zero, with the reason in its ledger (`lowerSpentOnWoo()`; Shopify's `lowerSpentOnShopify()` shares its
+  `lowerFrom()`). A card the plugin did not answer for is left.
+- Before this, a moved WooCommerce shop's card on the home page would have shown Shopify's words and steps.
+
+**Built, every step of the plan.** What remains is trying it on a real WordPress site with WooCommerce and the plugins named here.
 - Categories with their parents, and a check report (*Here's your shop*) for WooCommerce.
