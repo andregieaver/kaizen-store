@@ -275,6 +275,14 @@ yes for. Price lists' prices (D321). Updated-since filters (`?updated_after=`) o
 - The data processing terms an app accepts and the review checklist are drafts for legal review, as the developer terms are.
 - Docs: *Build an app* and the quickstart *A first app* (developers' track), the Admin API's OpenAPI document gains the OAuth security
   scheme, the webhook catalogue the app events (contract 1.6, changelog), and the owners' *Apps* page.
+- **As built (4 November 2026).** A listed app asks for review when it is saved as *Listed* (again after a decline). Platform → App
+  listings (`/admin/platform/apps`, `listingRequests()`, `decideListing()`) approves with an optional note or declines with the reason;
+  the developer is emailed in their admin's language (`platform.app_listing_decided`) and the app's page shows it. The directory's read
+  (`directoryApps()`) answers nothing while `APP_DIRECTORY_OPEN` is off; its page is built when the legal texts are approved, because a
+  route at `/apps` would hide a page of Kaizena Flow's own site at that address while it showed nothing. The data processing terms and the
+  review checklist are drafts beside the developer terms. The app events were contract 1.7 (with D2); the OAuth security scheme
+  (`appOAuth`, each operation with the permission and power an app's token needs) is contract 1.8. *A first app* is a Node script; the
+  owners' page is *Apps from other companies* (English and Norwegian).
 
 ### Unit E: the docs portal (D442 to D444)
 

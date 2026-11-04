@@ -16,6 +16,14 @@ Every change to a published contract gets a version here, newest first: the Admi
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
 
+## 1.8 — 2026-11-04
+
+The Admin API's document names how an app calls it (D441).
+
+- A second security scheme, `appOAuth`: OAuth 2.1's authorization code flow with PKCE, its authorization and token addresses, and every
+  scope and power an app may ask for. Each operation lists it beside `adminToken`, with what an app's token needs for it: the operation's
+  permission and, where the operation needs one, its power. The webhook endpoints' operations, which only the owner may use, list no app.
+
 ## 1.7 — 2026-11-04
 
 Apps for many stores (D441): what an installed app is sent.

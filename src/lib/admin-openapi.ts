@@ -1,5 +1,9 @@
-import { API_ERRORS, API_SCOPES, PAGE_DEFAULT, PAGE_MAX, type ApiErrorCode, type ApiScope } from "./admin-api";
+import { oauthEn } from "./admin-messages/oauth.en";
+import { API_ERRORS, API_SCOPES, isApiPower, PAGE_DEFAULT, PAGE_MAX, type ApiErrorCode, type ApiScope } from "./admin-api";
 import { ADMIN_API, errorsOf, type AdminOperation } from "./admin-api-routes";
+import { APP_SCOPES } from "./apps";
+import { OAUTH_PATHS } from "./oauth";
+import { scopeLabel } from "./oauth-words";
 import { errorEnvelope, jsonSchemaOf, OPENAPI_DIALECT, parametersOf, pathParams, type JsonSchema } from "./openapi";
 import { webhookOpenApi } from "./webhook-topics";
 
@@ -66,6 +70,13 @@ export const SCOPE_TEXT: Record<ApiScope, string> = {
 
 const scopeWords = (scope: ApiScope): string => SCOPE_TEXT[scope];
 
+/**
+ * What an app's token (D441) needs for an operation: the operation's own permission and, when its scope is a power, the power. None for an
+ * operation only the owner may do (an app never may).
+ */
+export const appScopesOf = (o: Pick<AdminOperation, "scope" | "permission">): string[] | null =>
+  o.permission === "owner" ? null : [o.permission, ...(isApiPower(o.scope) ? [o.scope] : [])];
+
 const TAGS = [
   { name: "Products", description: "Products as the admin keeps them. Drafts are written with `products:write`; what shoppers see (publishing, a product on the site, archiving) only with `products:publish`." },
   { name: "Categories and tags", description: "Product categories and tags (D50), and a product put in or out of one." },
@@ -126,7 +137,7 @@ function operation(o: AdminOperation): JsonSchema {
     summary: o.summary,
     description: `${o.description} Needs the scope \`${o.scope}\`${o.scope.endsWith(":read") ? ` (or \`${o.scope.replace(/:read$/, ":write")}\`)` : ""}, and the token's owner the permission \`${o.permission}\`${"feature" in o ? `; the store's feature \`${o.feature}\` on` : ""}.`,
     tags: [o.tag],
-    security: [{ adminToken: [o.scope] }],
+    security: [{ adminToken: [o.scope] }, ...(appScopesOf(o) ? [{ appOAuth: appScopesOf(o)! }] : [])],
     "x-required-scope": o.scope,
     "x-permission": o.permission,
     ...("feature" in o && { "x-feature": o.feature }),
@@ -164,7 +175,7 @@ export function adminOpenApi(server: string, contractVersion?: string) {
       ...(contractVersion && { "x-contract-version": contractVersion }),
     },
     servers: [{ url: server }],
-    security: [{ adminToken: [] }],
+    security: [{ adminToken: [] }, { appOAuth: [] }],
     tags: TAGS,
     "x-scopes": API_SCOPES.map((scope) => ({ scope, description: scopeWords(scope) })),
     "x-rate-limit": { window: "minute", per_token: ADMIN_RATE.perToken, per_store: ADMIN_RATE.perStore },
@@ -175,6 +186,19 @@ export function adminOpenApi(server: string, contractVersion?: string) {
           scheme: "bearer",
           bearerFormat: "kf_",
           description: "A token made in Settings, Apps and API: `kf_` and 43 characters. Each operation names the scope it needs; a write scope reads too.",
+        },
+        appOAuth: {
+          type: "oauth2",
+          description:
+            "An app's installation on one store (D441): the authorization code flow with PKCE (S256) and `resource` set to this API's address, the app's client ID and secret sent to the token endpoint by HTTP Basic. Its token (`kfa_…`) does an operation only with the operation's permission and, where the operation needs a power, the power; never beyond the role of the person who installed it, and never what only the owner may do.",
+          flows: {
+            authorizationCode: {
+              authorizationUrl: `${new URL(server).origin}${OAUTH_PATHS.authorize}`,
+              tokenUrl: `${new URL(server).origin}${OAUTH_PATHS.token}`,
+              refreshUrl: `${new URL(server).origin}${OAUTH_PATHS.token}`,
+              scopes: Object.fromEntries(APP_SCOPES.map((scope) => [scope, isApiPower(scope) ? SCOPE_TEXT[scope as ApiScope] : scopeLabel(oauthEn, scope)])),
+            },
+          },
         },
       },
       parameters: {

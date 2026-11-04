@@ -3,7 +3,7 @@
 The owner (3 November 2026) asked for a "moving from" plan per platform, like `docs/moving-from-shopify.md` (D445), "so simple and easy to
 follow that Homer Simpson could do it without breaking a sweat". This is WooCommerce's.
 
-**Steps 1 and 1b are built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
+**Steps 1, 1b and 2a are built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
 refers to it by section ("Shopify 8.2"):
 
 | Part of the engine | Where in the Shopify plan |
@@ -342,7 +342,8 @@ D445's steps 1 (the address check and reconciliation) and 7 (move day) are share
 
 **The owner's answers (4 November 2026):**
 - Decision 1: **one plugin**. The mover is a part of the existing WordPress plugin (D169).
-- Decision 2: open; asked when the email list is built (step 2).
+- Decision 2: **read their export** (answered 4 November 2026): a Mailchimp or Klaviyo export counts only with a subscribed status and its
+  date.
 - Decision 3: **order history only**. Guest buyers never become customers.
 - Decision 4: **pause buying** (catalogue mode) for the switch.
 - Decision 5: **a zip from us**, not a WordPress.org listing. Connect links to the zip and to *Plugins → Add New → Upload Plugin* on the
@@ -450,6 +451,41 @@ address).
   and a spam review over and undoes them.
 
 Migration version: `20261104170733_woocommerce_reviews` (`shop_move_items` takes the kind `review`).
+
+### Step 2a: our plugin reads what WooCommerce's key cannot (4 November 2026)
+
+Decision 2 answered (4 November 2026): **read their export**. A Mailchimp or Klaviyo export is read as evidence only when it carries a
+subscribed status and its date (step 2b).
+
+- **The mover is our WordPress plugin** (Decision 1), 1.3.0: `includes/class-kaizen-store-mover.php`, installed from our zip (Decision 5).
+- **Connecting it** is `wc-auth`'s shape:
+  - *Connect the plugin* on the WooCommerce card opens the plugin's page *Move to Kaizena Flow* on the owner's site, with a note sealed
+    here (`sealMoverState()`: the store, the owner, the site, 60 minutes).
+  - The owner presses Allow there. The plugin makes a secret (32 random bytes, hex) and posts it with the note, server to server, only to
+    the Kaizena Flow address it is set up with (`Kaizen_Store_Settings::api_url()`), never to one from the link.
+  - `/api/woocommerce/mover` (`finishMoverConnect()`) checks the note, the owner again (`passMembership()`) and the site. It tries the
+    secret with one signed call before keeping it encrypted in `shop_moves.mover_secret`, then sends the owner back.
+- **Every call is signed:** HMAC-SHA256 over `{time}\n{method}\n{route}\n{query}`, the query sorted and RFC 3986 encoded
+  (`moverSignature()`; PHP `verify()`, held equal by `woocommerce-mover.test.ts`, which runs the plugin's PHP). The plugin refuses a call
+  more than five minutes off. The routes (`/wp-json/kaizena-mover/v1/…`) are `GET` and only read:
+  - `plugins`: each active plugin's folder and name. The page lists them with what becomes of the ones we know (`KNOWN_PLUGINS`).
+  - `redirects`: Redirection's, Rank Math's and Yoast SEO Premium's, 500 a page. Patterns stay; exact ones go to the redirect import.
+  - `seo`: Yoast's or Rank Math's own title and description of up to 100 products. One with a variable (`%%title%%`) is left. They come
+    with the products into the product import's SEO columns.
+  - `subscribers`: MailPoet's *subscribed* only, with when they subscribed and whether MailPoet recorded a confirmation. *Unconfirmed* is
+    not subscribed.
+- **The copy** gains `redirects` and `subscribers` for a WooCommerce shop once the plugin reads (`WOO_MOVER_FEEDS`). The subscribers go
+  through the email list's own writer as Shopify's do, with `source` `woocommerce` and MailPoet's record as the words kept with the consent
+  (`movedConsentText(…, "woocommerce")`). Their first broadcast says the shop moved, as Shopify's do.
+- *Stop the plugin reading* forgets the secret here; the plugin's *Stop Kaizena Flow reading* forgets it there; uninstalling the plugin
+  deletes it; *Disconnect* forgets it with the key.
+- Tests: `woocommerce-mover.test.ts` (the signature both ways, the note, each answer's reader) and `woocommerce-mover.int.test.ts` (connect
+  through the real route against a stand-in that checks every signature, then redirects, subscribers and SEO words brought over).
+
+Migration version: `20261104173022_woocommerce_mover` (`shop_moves.mover_secret`, and `woocommerce` a subscriber's source).
+
+**Not yet:**
+- Step 2b: gift cards from the gift card plugins (spike W6), and a Mailchimp or Klaviyo export (Decision 2).
 
 **Not in steps 1 and 1b:**
 - The mover plugin and what it reads (step 2).

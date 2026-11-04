@@ -9,7 +9,7 @@ export type SubscriberStatus = (typeof SUBSCRIBER_STATUSES)[number];
 
 /** Where a person joined: a page's newsletter form (the block's id), checkout (the order's id) or My account. */
 /** `shopify`: moved from a Shopify shop with Shopify's own consent record as the evidence (D445 step 8, never typed by staff). */
-export const SUBSCRIBE_SOURCES = ["form", "checkout", "account", "shopify"] as const;
+export const SUBSCRIBE_SOURCES = ["form", "checkout", "account", "shopify", "woocommerce"] as const;
 export type SubscribeSource = (typeof SUBSCRIBE_SOURCES)[number];
 
 /** How a person left: the email's link or the mail app's one-click button, My account, staff for them, or their provider's complaint or hard bounce. */
@@ -56,6 +56,7 @@ export const SOURCE_WORDS: Record<SubscribeSource, string> = {
   checkout: "Checkout",
   account: "My account",
   shopify: "Moved from Shopify, with Shopify's record of their consent",
+  woocommerce: "Moved from WooCommerce, with MailPoet's record of their consent",
 };
 
 export const UNSUBSCRIBE_WORDS: Record<UnsubscribeSource, string> = {

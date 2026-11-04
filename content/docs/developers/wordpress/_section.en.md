@@ -11,7 +11,8 @@ the zip and activate it. Install the newest version. The earlier ones are kept f
 
 | Version | Released | What changed | Download |
 |---|---|---|---|
-| **1.2.1** (newest) | 4 November 2026 | A cart line holds more than 20 units, up to what the product's quantity rule allows. The quantity field starts at the variant's own minimum. | [kaizen-store-wordpress-1.2.1.zip](/downloads/wordpress/kaizen-store-wordpress-1.2.1.zip) |
+| **1.3.0** (newest) | 4 November 2026 | *Move to Kaizena Flow*: when you move a WooCommerce shop, Kaizena Flow can read, after you allow it, your plugins, redirects, products' SEO texts and MailPoet's subscribers. It only reads, and every call is signed. | [kaizen-store-wordpress-1.3.0.zip](/downloads/wordpress/kaizen-store-wordpress-1.3.0.zip) |
+| 1.2.1 | 4 November 2026 | A cart line holds more than 20 units, up to what the product's quantity rule allows. The quantity field starts at the variant's own minimum. | [kaizen-store-wordpress-1.2.1.zip](/downloads/wordpress/kaizen-store-wordpress-1.2.1.zip) |
 | 1.2.0 | 26 October 2026 | Products sold so many at a time: the quantity field and the cart's steps follow the store's rule, and the cart says it. | [kaizen-store-wordpress-1.2.0.zip](/downloads/wordpress/kaizen-store-wordpress-1.2.0.zip) |
 | 1.1.0 | 5 October 2026 | A product page on your site, *Add to cart*, a slide-out cart and checkout in the store, `[kaizen_cart_button]`. | [kaizen-store-wordpress-1.1.0.zip](/downloads/wordpress/kaizen-store-wordpress-1.1.0.zip) |
 | 1.0.0 | 5 October 2026 | The first release: the connection, saved views, and grid and carousel shortcodes. | [kaizen-store-wordpress-1.0.0.zip](/downloads/wordpress/kaizen-store-wordpress-1.0.0.zip) |

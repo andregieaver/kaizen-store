@@ -105,7 +105,7 @@ export function CheckOldLinks({ check }: { check: () => Promise<{ ok: false }> }
 }
 
 /** *Disconnect*, behind a question (`ask`: the question's own words, WooCommerce's). */
-export function ShopifyDisconnect({ disconnect, ask }: { disconnect: () => Promise<{ ok: boolean }>; ask?: string }) {
+export function ShopifyDisconnect({ disconnect, ask, label }: { disconnect: () => Promise<{ ok: boolean }>; ask?: string; label?: string }) {
   const w = useAdminText("moving").connected;
   const router = useRouter();
   const [asking, setAsking] = useState(false);
@@ -113,11 +113,11 @@ export function ShopifyDisconnect({ disconnect, ask }: { disconnect: () => Promi
   if (!asking)
     return (
       <button type="button" onClick={() => setAsking(true)} className="text-sm underline underline-offset-2">
-        {w.disconnect}
+        {label ?? w.disconnect}
       </button>
     );
   return (
-    <div className="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label={w.disconnect}>
+    <div className="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label={label ?? w.disconnect}>
       <span>{ask ?? w.disconnectAsk}</span>
       <button
         type="button"
@@ -131,7 +131,7 @@ export function ShopifyDisconnect({ disconnect, ask }: { disconnect: () => Promi
           })
         }
       >
-        {w.disconnect}
+        {label ?? w.disconnect}
       </button>
       <button type="button" onClick={() => setAsking(false)} className="underline underline-offset-2">
         {w.cancel}

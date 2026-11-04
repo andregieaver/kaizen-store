@@ -125,6 +125,18 @@ export const oauthEn = {
   },
   /** Developer mode and the apps an account makes (D441), at Account → Developer. */
   developer: {
+    /** An app's listing (D441 D3): its state on the app's page, and the email the developer gets when it is decided. */
+    listing: {
+      requested: "Waiting for Kaizena Flow's review to be listed.",
+      approved: "Approved for the directory. It shows there once the directory opens.",
+      declined: "Not listed: {note}",
+      approvedSubject: "{app} is approved for the app directory",
+      declinedSubject: "{app} was not listed",
+      approvedText: "Kaizena Flow's review approved your app for the directory. It shows there once the directory opens.",
+      declinedText: "Kaizena Flow's review did not list your app. Mend what the reason says and save the app as Listed to ask again.",
+      noteLabel: "Note",
+      reasonLabel: "Reason",
+    },
     title: "Developer",
     description: "Make apps that many stores can install. An app works in the store it is installed on as the person who installed it, never beyond their role, through the Admin API and the MCP server.",
     becomeTitle: "Make apps for many stores",
@@ -143,7 +155,6 @@ export const oauthEn = {
       unlisted: "Unlisted: any store you send to it",
       listed: "Listed in the app directory, after Kaizena Flow's review",
     },
-    listing: { requested: "Waiting for Kaizena Flow's review", approved: "Approved for the directory", declined: "Not approved: {note}" },
     form: {
       name: "Name",
       description: "What it does",
@@ -189,6 +200,26 @@ export const oauthEn = {
       docs: "Build an app",
     },
     saved: "Saved.",
+  },
+  /** Kaizena Flow's review of apps that ask to be listed (D441 D3), at Platform → App listings. */
+  platformApps: {
+    title: "App listings",
+    description: "Apps that ask to be listed in the app directory. Approve one you have checked against the review checklist, or decline it with the reason; the developer is emailed either way. The directory stays closed until the legal texts are approved.",
+    waiting: "Waiting for review",
+    none: "No app is waiting.",
+    decided: "Decided",
+    noDescription: "No description.",
+    by: "By {person} · made {when}",
+    noDeveloper: "a developer whose account is gone",
+    noPrivacy: "no privacy policy",
+    asks: "Asks to:",
+    events: "Events to {hint} ({topics} topics)",
+    note: "Note (optional)",
+    reason: "Reason",
+    approve: "Approve",
+    decline: "Decline",
+    approved: "Approved",
+    declined: "Declined",
   },
   platform: {
     title: "AI assistants and apps",

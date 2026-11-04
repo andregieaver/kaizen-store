@@ -178,7 +178,7 @@ export const marketingNb: MarketingMessages = {
     notConfirmed: "ikke bekreftet på e-post",
     older: "Eldre",
     statuses: { pending: "Venter på lenken sin", subscribed: "Abonnerer", unsubscribed: "Meldt av" },
-    sources: { form: "Et skjema på nettstedet", checkout: "Kassen", account: "Min konto", shopify: "Flyttet fra Shopify, med Shopifys registrering av samtykket" },
+    sources: { form: "Et skjema på nettstedet", checkout: "Kassen", account: "Min konto", shopify: "Flyttet fra Shopify, med Shopifys registrering av samtykket", woocommerce: "Flyttet fra WooCommerce, med MailPoets registrering av samtykket" },
     leftBy: {
       link: "Lenken i e-posten",
       one_click: "Avmeldingsknappen i e-postprogrammet",

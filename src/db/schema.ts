@@ -13448,10 +13448,16 @@ export const shopMoves = commerce.table(
     copy: jsonb("copy").notNull().default(sql`'{}'::jsonb`),
     /** Step 7's move day (`moveStateOf()` in `src/lib/shopify-move.ts`): when it runs, who asked, each of its steps, and a short lease. */
     move: jsonb("move").notNull().default(sql`'{}'::jsonb`),
+    /**
+     * A WooCommerce shop's mover (D446 step 2): the secret our WordPress plugin made when the owner allowed it, encrypted; every read of the
+     * plugin's routes is signed with it. Null until allowed, and for a Shopify shop.
+     */
+    moverSecret: text("mover_secret"),
     updatedAt: updatedAt(),
   },
   (t) => [
     primaryKey({ columns: [t.storeId, t.source] }),
+    check("shop_moves_mover", sql`${t.moverSecret} is null or (${t.source} = 'woocommerce' and ${t.status} = 'connected')`),
     index("shop_moves_shop_idx").on(t.source, t.shopDomain),
     index("shop_moves_connected_by_idx").on(t.connectedBy),
     check("shop_moves_source", sql`${t.source} in ('shopify', 'woocommerce')`),

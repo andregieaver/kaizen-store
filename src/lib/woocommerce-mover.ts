@@ -1,0 +1,200 @@
+/**
+ * The mover (D446 step 2, `docs/moving-from-woocommerce.md` 3): our WordPress plugin's read-only routes on the owner's site, for what
+ * WooCommerce's own key cannot reach: which plugins the shop runs, the redirects of the redirect plugins, the SEO plugins' titles and
+ * descriptions, and MailPoet's subscribers. Pure: the signature each call carries, the sealed note of *Connect the plugin*, and the readers
+ * of the plugin's answers (never trusted beyond the fields read here). Nothing here fetches.
+ *
+ * The signature: HMAC-SHA256 with the secret the plugin made when the owner allowed it, over `{time}\n{method}\n{route}\n{query}`, the
+ * route as WordPress names it (`/kaizena-mover/v1/seo`) and the query's pairs sorted by name, each part percent-encoded as RFC 3986 says
+ * (PHP's `rawurlencode()`). The plugin (`class-kaizen-store-mover.php`) refuses a call more than five minutes from its own clock.
+ */
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+import type { ConsentLine } from "./shopify-copy";
+
+export const MOVER_NAMESPACE = "kaizena-mover/v1";
+export const MOVER_ROUTES = ["plugins", "redirects", "seo", "subscribers"] as const;
+export type MoverRoute = (typeof MOVER_ROUTES)[number];
+/** How far apart Kaizena Flow's clock and the site's may be, in seconds. */
+export const MOVER_SKEW_SECONDS = 300;
+/** How many rows a page of the plugin's answers holds. */
+export const MOVER_PAGE_SIZE = 500;
+
+/** RFC 3986 percent-encoding, as PHP's `rawurlencode()`. */
+const raw = (text: string): string => encodeURIComponent(text).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+
+/** The query as both sides sign it: pairs sorted by name (then value), each part encoded, joined by `&`. */
+export function canonicalQuery(query: Record<string, string | number>): string {
+  return Object.entries(query)
+    .map(([k, v]) => [k, String(v)] as const)
+    .sort(([a, x], [b, y]) => (a < b ? -1 : a > b ? 1 : x < y ? -1 : x > y ? 1 : 0))
+    .map(([k, v]) => `${raw(k)}=${raw(v)}`)
+    .join("&");
+}
+
+/** A call's signature (hex). */
+export function moverSignature(secret: string, time: number, method: string, route: string, query: Record<string, string | number>): string {
+  return createHmac("sha256", secret).update(`${time}\n${method.toUpperCase()}\n${route}\n${canonicalQuery(query)}`).digest("hex");
+}
+
+/** The headers a call to the plugin carries. */
+export function moverHeaders(secret: string, time: number, route: string, query: Record<string, string | number>): Record<string, string> {
+  return { "X-Kaizena-Mover-Time": String(time), "X-Kaizena-Mover-Signature": moverSignature(secret, time, "GET", route, query) };
+}
+
+/** A secret as the plugin makes it: 64 hex characters (32 random bytes). */
+export const isMoverSecret = (value: unknown): value is string => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+
+// ---------------------------------------------------------------------------
+// The sealed note of *Connect the plugin*
+// ---------------------------------------------------------------------------
+
+export const MOVER_STATE_MINUTES = 60;
+export type MoverState = { nonce: string; store: string; account: string; site: string; expires: number };
+
+const NONCE = /^[A-Za-z0-9_-]{20,64}$/;
+const SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SITE = /^[a-z0-9.-]{3,253}(\/[a-z0-9._~-]{1,80})?$/;
+
+const sign = (secret: Buffer, body: string): string => createHmac("sha256", secret).update(`mover:${body}`).digest("base64url");
+const sameText = (a: string, b: string): boolean => {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+};
+
+/** The note the plugin's page carries and posts back with the secret: who asked, for which store and site, until when. Signed, not secret. */
+export function sealMoverState(key: Buffer, value: Omit<MoverState, "expires">, now = Date.now()): string {
+  const body = Buffer.from(JSON.stringify({ ...value, expires: now + MOVER_STATE_MINUTES * 60_000 })).toString("base64url");
+  return `${body}.${sign(key, body)}`;
+}
+
+export function openMoverState(key: Buffer, sealed: unknown, now = Date.now()): MoverState | null {
+  if (typeof sealed !== "string" || sealed.length > 1500) return null;
+  const [body, given, ...rest] = sealed.split(".");
+  if (!body || !given || rest.length > 0 || !sameText(sign(key, body), given)) return null;
+  let value: Partial<MoverState>;
+  try {
+    value = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as Partial<MoverState>;
+  } catch {
+    return null;
+  }
+  const { nonce, store, account, site, expires } = value;
+  if (typeof nonce !== "string" || !NONCE.test(nonce) || typeof store !== "string" || !SLUG.test(store)) return null;
+  if (typeof account !== "string" || !UUID.test(account) || typeof site !== "string" || !SITE.test(site)) return null;
+  if (typeof expires !== "number" || expires <= now || expires - now > MOVER_STATE_MINUTES * 60_000) return null;
+  return { nonce, store, account, site, expires };
+}
+
+// ---------------------------------------------------------------------------
+// The plugin's answers
+// ---------------------------------------------------------------------------
+
+type Obj = Record<string, unknown>;
+const o = (v: unknown): Obj => (v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : {});
+const list = (v: unknown): Obj[] => (Array.isArray(v) ? v.map(o) : []);
+const s = (v: unknown, max = 500): string => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max) : "");
+
+/** A plugin the shop runs: its folder's name (`woocommerce`, `mailpoet`) and the name it gives itself. */
+export type ShopPlugin = { slug: string; name: string };
+
+export function pluginsOf(answer: unknown): ShopPlugin[] {
+  return list(o(answer).plugins)
+    .map((p) => ({ slug: s(p.slug, 100).toLowerCase(), name: s(p.name, 120) }))
+    .filter((p) => /^[a-z0-9][a-z0-9_.-]*$/.test(p.slug))
+    .slice(0, 300);
+}
+
+/**
+ * The plugins Kaizena Flow knows by name, and what becomes of each (D446 6.1): read by the mover, or listed with what to use here instead.
+ * Never a guess: a plugin not listed here is shown by its own name only.
+ */
+export const KNOWN_PLUGINS: Record<string, "read" | "here" | "none"> = {
+  mailpoet: "read",
+  redirection: "read",
+  "wordpress-seo": "read",
+  "wordpress-seo-premium": "read",
+  "seo-by-rank-math": "read",
+  "seo-by-rank-math-pro": "read",
+  "woocommerce-subscriptions": "here",
+  "woocommerce-gift-cards": "here",
+  "pw-woocommerce-gift-cards": "here",
+  "yith-woocommerce-gift-cards": "here",
+  "woocommerce-product-bundles": "here",
+  "woocommerce-bookings": "here",
+  "mailchimp-for-woocommerce": "none",
+  "klaviyo": "none",
+  "yith-woocommerce-wishlist": "none",
+  "elementor": "none",
+};
+
+/** A redirect from one of the redirect plugins (Redirection, Yoast SEO Premium, Rank Math): an address on the site to where it leads. */
+export type MoverRedirect = { from: string; to: string };
+
+/**
+ * A page of redirects as the redirect import's lines (`redirectsFile()`): a path on the site (with its query when it has one) to a path or a
+ * whole address. A pattern (a regular expression) is left: the import takes exact addresses only.
+ */
+export function redirectLinesOf(answer: unknown): { lines: { id: string; path: string; target: string }[]; skipped: number; more: boolean } {
+  const a = o(answer);
+  const lines: { id: string; path: string; target: string }[] = [];
+  let skipped = 0;
+  list(a.redirects).forEach((r, n) => {
+    const from = s(r.from, 500);
+    const to = s(r.to, 2000);
+    if (r.regex === true || !from.startsWith("/") || to === "" || from === to) {
+      skipped += 1;
+      return;
+    }
+    lines.push({ id: `woo-redirect-${s(r.source, 20)}-${n}`, path: from, target: to });
+  });
+  return { lines, skipped, more: a.more === true };
+}
+
+/** A product's own SEO title and description from the SEO plugin (one with a variable, `%%title%%`, is left: it is not the words). */
+export type MoverSeo = { title: string; description: string };
+
+export function seoOf(answer: unknown): Map<number, MoverSeo> {
+  const out = new Map<number, MoverSeo>();
+  const words = (v: unknown, max: number) => {
+    const text = s(v, max * 2);
+    return /%%|%[a-z_]+%/i.test(text) ? "" : text.slice(0, max);
+  };
+  for (const r of list(o(answer).seo)) {
+    const id = Number(r.id);
+    if (!Number.isSafeInteger(id) || id <= 0) continue;
+    const seo = { title: words(r.title, 255), description: words(r.description, 1000) };
+    if (seo.title || seo.description) out.set(id, seo);
+  }
+  return out;
+}
+
+/**
+ * MailPoet's subscribers as the email list's lines (`ConsentLine`, the same as Shopify's): only `subscribed`, with the day it happened
+ * (MailPoet's `last_subscribed_at`, else when the subscriber was made); confirmed when MailPoet recorded a confirmation (double opt-in).
+ * MailPoet's *unconfirmed* is not subscribed (D446 6.2), and is never sent.
+ */
+export function subscriberLinesOf(answer: unknown): { lines: ConsentLine[]; more: boolean } {
+  const a = o(answer);
+  const at = (v: unknown): string | null => {
+    const text = s(v, 40);
+    if (!/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$/.test(text)) return null;
+    const d = new Date(`${text.replace(" ", "T")}Z`);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  };
+  const lines: ConsentLine[] = [];
+  for (const r of list(a.subscribers)) {
+    const email = s(r.email, 320).toLowerCase();
+    if (s(r.status, 20) !== "subscribed" || !email.includes("@")) continue;
+    const when = at(r.subscribed_at) ?? at(r.created_at);
+    lines.push({
+      email,
+      name: [s(r.first_name, 100), s(r.last_name, 100)].filter(Boolean).join(" ").slice(0, 200),
+      state: "SUBSCRIBED",
+      level: at(r.confirmed_at) ? "CONFIRMED_OPT_IN" : "SINGLE_OPT_IN",
+      updatedAt: when,
+    });
+  }
+  return { lines, more: a.more === true };
+}

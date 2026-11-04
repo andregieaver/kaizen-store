@@ -14,7 +14,7 @@ import { advanceMove, cancelMove, issueLeftCard, scheduleMove, shopifyClosed, st
 import { checkAddress, startAddress } from "@/server/shopify-address";
 import { undoCopy, type UndoResult } from "@/server/shopify-undo";
 import { copyMoving, ordersSinceFor } from "@/lib/shopify-copy";
-import { disconnectWoo, startWooConnect, type WooStartProblem } from "@/server/woocommerce-connect";
+import { disconnectMover, disconnectWoo, startMoverConnect, startWooConnect, type WooStartProblem } from "@/server/woocommerce-connect";
 
 /**
  * Settings → Moving in (D445 step 2): connect the Shopify shop (the state cookie set here, then Shopify's own page), disconnect it, and the
@@ -40,6 +40,23 @@ export async function connectWooAction(storeSlug: string, address: string): Prom
   const start = await startWooConnect(member, typeof address === "string" ? address.slice(0, 300) : "");
   if (!start.ok) return start;
   redirect(start.url);
+}
+
+/** *Connect the plugin* (D446 step 2): the plugin's own page on the owner's site, with a sealed note. */
+export async function connectMoverAction(storeSlug: string): Promise<{ ok: false; problem: "off" | "forbidden" | "disconnected" }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false, problem: "forbidden" };
+  const start = await startMoverConnect(member);
+  if (!start.ok) return start;
+  redirect(start.url);
+}
+
+export async function disconnectMoverAction(storeSlug: string): Promise<{ ok: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false };
+  const result = await disconnectMover(member);
+  refresh();
+  return result;
 }
 
 export async function disconnectWooAction(storeSlug: string): Promise<{ ok: boolean }> {

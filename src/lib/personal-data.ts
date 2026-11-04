@@ -568,6 +568,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.content_report_flood": "staff",
   "platform.content_report_urgent": "staff",
   "platform.content_report_restricted": "staff",
+  // An app's listing decided by Kaizena Flow's review (D441 D3), to its developer.
+  "platform.app_listing_decided": "staff",
   "platform.access_approved": "staff",
   "platform.access_declined": "staff",
   "platform.access_confirm": "staff",

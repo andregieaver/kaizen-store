@@ -15,6 +15,13 @@ export const DEVELOPER_TERMS_VERSION = "2026-11-04";
 
 /** Most apps one developer makes. */
 export const APPS_MAX = 25;
+/**
+ * Whether the app directory shows approved listed apps (D441 D3): off until the developer terms, the data processing terms and the review
+ * checklist have had their legal review. Approving a listing before then is kept, and shown once it is on.
+ */
+export const APP_DIRECTORY_OPEN = false;
+/** The longest note or reason Kaizena Flow's review gives with its decision. */
+export const LISTING_NOTE_MAX = 1000;
 /** Most redirect URIs an app has. */
 export const APP_REDIRECTS_MAX = 10;
 /** The longest description. */

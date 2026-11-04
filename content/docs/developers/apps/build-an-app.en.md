@@ -18,8 +18,9 @@ An app is software of yours that many stores install. Each store's install gives
 both the app's scopes and the role of the person who installed it allow at the time of the call.
 
 > [!NOTE]
-> Apps are new. Private and unlisted apps work today, with their events. Listing an app in a directory waits for Kaizena Flow's review
-> and the developer terms' legal review.
+> Apps are new. Private and unlisted apps work today, with their events. A listed app can be reviewed now; the directory opens once the
+> [developer terms](/docs/developers/apps/developer-terms), the [data processing terms](/docs/developers/apps/data-processing-terms) and
+> the review checklist have had their legal review.
 
 ## Turn on developer mode
 
@@ -37,7 +38,8 @@ Press **New app** and give:
 - **What it may do without asking each time**: the powers, such as `products:publish` or `orders:refund`, under their own fold. The
   install screen names each one.
 - **Who can install it**: *Private* (only stores you work in), *Unlisted* (any store you send to it) or *Listed* (asks for Kaizena
-  Flow's review).
+  Flow's review against the [review checklist](/docs/developers/apps/review-checklist); you are emailed the decision, and it shows on the
+  app's page).
 - **Events**, under their own fold: the `https://` address they are sent to, and the topics you want.
 
 Press **Make the app**. The page shows the **client ID** (`kfapp_…`), the **client secret** (`kfas_…`) and the **events secret**

@@ -380,6 +380,8 @@ export const NAV_NB: Record<string, string> = {
   "Illegal content notices": "Meldinger om ulovlig innhold",
   "AI assistants and apps": "AI-assistenter og apper",
   "The AI assistants and apps people connected through Kaizena Flow's sign-in, to verify or block.": "AI-assistentene og appene folk har koblet til gjennom Kaizena Flows innlogging, til å bekrefte eller blokkere.",
+  "App listings": "Appoppføringer",
+  "Apps that ask to be listed in the app directory, to approve or decline.": "Apper som ber om å bli oppført i appkatalogen, til å godkjenne eller avslå.",
   "Connected apps and assistants": "Tilkoblede apper og assistenter",
   "The AI assistants and apps you let work with your stores, and Disconnect.": "AI-assistentene og appene du har latt jobbe med butikkene dine, og Koble fra.",
   Developer: "Utvikler",
