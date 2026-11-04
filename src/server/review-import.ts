@@ -107,17 +107,20 @@ export async function importReviews(
 
     await tx.execute(sql`select set_config('kaizen.review_writer', 'import', true)`);
     const status = options.publish ? "published" : "pending";
+    const ids: string[] = [];
     for (let i = 0; i < keep.length; i += BATCH) {
-      await tx.execute(sql`
+      const made = await tx.execute<Row>(sql`
         insert into commerce.product_reviews (store_id, product_id, source, imported_from, written_on, author_name, rating, title, body, locale, status, created_at)
         select ${storeId}::uuid, r.product_id, 'import', r.imported_from, r.written_on, r.author_name, r.rating, r.title, r.body, ${facts.locale}, ${status},
           r.written_on::timestamptz
         from jsonb_to_recordset(${JSON.stringify(keep.slice(i, i + BATCH))}::jsonb)
           as r(product_id uuid, author_name text, rating smallint, title text, body text, imported_from text, written_on date)
+        returning id
       `);
+      ids.push(...made.map((r) => String(r.id)));
     }
     await audit(accountId, storeId, "review.imported", { imported: keep.length, duplicates, refused: refused.length, published: options.publish });
-    return result;
+    return { ...result, ids };
   });
 }
 

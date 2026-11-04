@@ -6,7 +6,9 @@
  * categories, the orders the history keeps, and its coupons as the discount lines step 5b writes. Read 3 November 2026 at
  * <https://woocommerce.github.io/woocommerce-rest-api-docs/> (v3: products, variations, customers, orders, coupons). Nothing here fetches.
  */
-import { categoryName } from "./shopify-copy";
+import { htmlToText } from "./product-csv-shopify";
+import { REVIEW_BODY_MAX, REVIEW_NAME_MAX } from "./review-status";
+import { categoryName, type ReviewLine } from "./shopify-copy";
 import type { DiscountLeftOut, DiscountLine } from "./shopify-settings";
 
 type Obj = Record<string, unknown>;
@@ -37,11 +39,12 @@ export const WOO_ROUTES = {
   customers: "wc/v3/customers",
   orders: "wc/v3/orders",
   discounts: "wc/v3/coupons",
+  reviews: "wc/v3/products/reviews",
 } as const;
 export type WooFeed = keyof typeof WOO_ROUTES;
 
 /** The parts a WooCommerce copy brings in step 1 (categories come with the products); the others are later steps' (D446 12). */
-export const WOO_COPY_FEEDS = ["products", "collections", "customers", "orders", "discounts"] as const;
+export const WOO_COPY_FEEDS = ["products", "collections", "customers", "orders", "discounts", "reviews"] as const;
 
 /** How many of a feed a page holds: WooCommerce's most is 100; smaller pages are kinder to a shared host (D446 8). */
 export const WOO_PAGE_SIZE = 50;
@@ -52,6 +55,8 @@ export function wooQuery(feed: WooFeed, page: number, options: { ordersSince?: s
   if (feed === "products") return { ...base, status: "any" };
   if (feed === "orders") return { ...base, status: "any", ...(options.ordersSince ? { after: options.ordersSince } : {}) };
   if (feed === "customers") return { ...base, role: "customer" };
+  // Every review but spam and the bin: the approved ones were shown, the held ones were waiting (`reviewLines()` keeps which).
+  if (feed === "reviews") return { ...base, status: "all" };
   return base;
 }
 
@@ -361,3 +366,55 @@ export function couponRefs(page: unknown): { products: number[]; categories: num
 
 /** A list of ids as WooCommerce's `include` takes it (`11,12,13`): a query value, not a CSV. */
 export const includeOf = (ids: readonly number[]): string => ids.filter((id) => Number.isSafeInteger(id) && id > 0).join(",");
+
+// ---------------------------------------------------------------------------
+// Reviews (step 1b)
+// ---------------------------------------------------------------------------
+
+/** A review WooCommerce has that does not come over: spam or in the bin, no stars, a product not read, or no name. Counted, said once. */
+export type WooReviewSkipped = "status" | "rating" | "product" | "author";
+
+/**
+ * One page of product reviews as lines for the review import (`reviewsFile()`): the product by its handle (`handles`, WooCommerce's ids read
+ * beside the page), the stars, the reviewer's name, the words as plain text (WooCommerce keeps them as HTML) and the day it was written.
+ * `approved` were shown on the shop and come over published; `hold` were waiting and come over waiting. WooCommerce's *verified owner* is not
+ * carried: a review here is a verified purchase only when it is a buyer's of an order line in this store (D301).
+ */
+export function reviewLines(page: unknown, handles: ReadonlyMap<number, string>): { lines: ReviewLine[]; skipped: WooReviewSkipped[] } {
+  const lines: ReviewLine[] = [];
+  const skipped: WooReviewSkipped[] = [];
+  for (const r of list(page)) {
+    const status = s(r.status, 20);
+    if (status !== "approved" && status !== "hold") {
+      skipped.push("status");
+      continue;
+    }
+    const rating = num(r.rating);
+    if (rating === null || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+      skipped.push("rating");
+      continue;
+    }
+    const handle = handles.get(Number(r.product_id));
+    if (!handle) {
+      skipped.push("product");
+      continue;
+    }
+    const author = [...s(r.reviewer, 400).replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim()].slice(0, REVIEW_NAME_MAX).join("").trim();
+    if (author === "") {
+      skipped.push("author");
+      continue;
+    }
+    const date = (gmt(r.date_created_gmt) ?? "").slice(0, 10);
+    lines.push({ handle, rating, author, body: [...htmlToText(s(r.review, 60_000))].slice(0, REVIEW_BODY_MAX).join("").trim(), date, approved: status === "approved" });
+  }
+  return { lines, skipped };
+}
+
+/** The products a page of reviews is about, to read their handles beside it. */
+export const reviewProductIds = (page: unknown): number[] => [
+  ...new Set(
+    list(page)
+      .map((r) => Number(r.product_id))
+      .filter((id) => Number.isSafeInteger(id) && id > 0),
+  ),
+];

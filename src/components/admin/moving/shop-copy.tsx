@@ -186,7 +186,7 @@ export function ShopCopy({
 }
 
 /** The parts a copy may leave out, in the order the page lists them. */
-const CHOOSABLE: readonly CopyFeed[] = ["products", "collections", "customers", "subscribers", "orders", "gift_cards", "discounts", "pages", "articles", "menus", "redirects", "countries", "shipping", "look"];
+const CHOOSABLE: readonly CopyFeed[] = ["products", "collections", "customers", "subscribers", "orders", "gift_cards", "discounts", "reviews", "pages", "articles", "menus", "redirects", "countries", "shipping", "look"];
 const YEARS: readonly (number | null)[] = [null, 5, 2, 1];
 
 /**

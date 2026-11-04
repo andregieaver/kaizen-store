@@ -18,7 +18,7 @@ import { writeCsv, type Cell } from "./csv";
  * products (they are the products' categories), customers before orders (an order is tied to its customer by email), discount codes after
  * the products and categories they name, menus after what they link to, redirects and the look last.
  */
-export const COPY_FEEDS = ["countries", "shipping", "products", "collections", "customers", "subscribers", "orders", "gift_cards", "discounts", "pages", "articles", "menus", "redirects", "look"] as const;
+export const COPY_FEEDS = ["countries", "shipping", "products", "collections", "customers", "subscribers", "orders", "gift_cards", "discounts", "reviews", "pages", "articles", "menus", "redirects", "look"] as const;
 export type CopyFeed = (typeof COPY_FEEDS)[number];
 
 /**
@@ -35,6 +35,8 @@ export const FEED_KIND: Record<CopyFeed, "import" | "later" | "direct"> = {
   // Read now, issued on move day (step 8): until then nobody could spend one balance in both shops.
   gift_cards: "direct",
   discounts: "direct",
+  // WooCommerce's product reviews (D446 step 1b), through the review import's own writer (`importReviews()`); Shopify keeps none of its own.
+  reviews: "direct",
   look: "direct",
   products: "import",
   collections: "later",
@@ -87,6 +89,7 @@ export const BULK_QUERIES: Record<CopyFeed, string> = {
   subscribers: "",
   gift_cards: "",
   discounts: "",
+  reviews: "",
   look: "",
 };
 
@@ -123,6 +126,7 @@ export const FEED_FILES: Record<CopyFeed, string> = {
   gift_cards: "shopify-giftcards.jsonl",
   shipping: "shopify-shipping.jsonl",
   discounts: "shopify-discounts.jsonl",
+  reviews: "shopify-reviews.jsonl",
   look: "shopify-look.jsonl",
 };
 
@@ -450,6 +454,19 @@ export function ordersFile(tree: BulkTree): { csv: string; orders: number } {
   return { csv: writeCsv(rows), orders };
 }
 
+/** A moved review as its line (WooCommerce's, D446 step 1b): the product by its handle, its words as plain text, and whether it was shown there. */
+export type ReviewLine = { handle: string; rating: number; author: string; body: string; date: string; approved: boolean };
+
+/**
+ * The review import's own file (`REVIEW_COLUMNS` of `review-import.ts`) of the lines given, each from `source`: `importReviews()` reads it as a
+ * file the owner uploaded, row by row.
+ */
+export function reviewsFile(lines: readonly ReviewLine[], source: string): string {
+  const rows: Cell[][] = [["product_handle", "rating", "title", "body", "author", "date", "source"]];
+  for (const l of lines) rows.push([l.handle, l.rating, "", l.body, l.author, l.date, source]);
+  return writeCsv(rows);
+}
+
 /** Shopify's redirect file: `Redirect from`, `Redirect to`. */
 export function redirectsFile(tree: BulkTree): { csv: string; redirects: number } {
   const rows: Cell[][] = [["Redirect from", "Redirect to"]];
@@ -645,6 +662,7 @@ export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: 
     case "subscribers":
     case "gift_cards":
     case "discounts":
+    case "reviews":
     case "look":
       return { csv: text, count: tree.roots.length };
   }
@@ -660,7 +678,7 @@ export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: 
  * `failed` (with a code the page words).
  */
 export type FeedStage = "waiting" | "reading" | "checking" | "checked" | "applying" | "done" | "empty" | "failed";
-export type FeedProblem = "shopify_refused" | "shopify_failed" | "too_large" | "storage" | "import_refused" | "import_failed" | "needs_fixing";
+export type FeedProblem = "shopify_refused" | "shopify_failed" | "too_large" | "storage" | "import_refused" | "import_failed" | "needs_fixing" | "feature_off";
 export type FeedState = {
   stage: FeedStage;
   operation?: string;
@@ -709,6 +727,7 @@ export const EMPTY_COPY: CopyState = {
     subscribers: { stage: "waiting" },
     gift_cards: { stage: "waiting" },
     discounts: { stage: "waiting" },
+    reviews: { stage: "waiting" },
     look: { stage: "waiting" },
     products: { stage: "waiting" },
     collections: { stage: "waiting" },
@@ -722,7 +741,7 @@ export const EMPTY_COPY: CopyState = {
 };
 
 const STAGES: readonly FeedStage[] = ["waiting", "reading", "checking", "checked", "applying", "done", "empty", "failed"];
-const PROBLEMS: readonly FeedProblem[] = ["shopify_refused", "shopify_failed", "too_large", "storage", "import_refused", "import_failed", "needs_fixing"];
+const PROBLEMS: readonly FeedProblem[] = ["shopify_refused", "shopify_failed", "too_large", "storage", "import_refused", "import_failed", "needs_fixing", "feature_off"];
 const GID = /^gid:\/\/shopify\/BulkOperation\/\d+$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const FILE_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(shopify|woocommerce)-[a-z]+(\.part)?\.(csv|jsonl)$/i;
@@ -788,7 +807,7 @@ export function nextToApply(state: CopyState): CopyFeed | null {
 }
 
 /** The order feeds are READ in: the bulk reads first, then the few read by their own small queries (`PLAIN_FEEDS`). */
-export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus", "countries", "shipping", "discounts", "look", "gift_cards"];
+export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus", "countries", "shipping", "discounts", "reviews", "look", "gift_cards"];
 
 /** The feeds read by an ordinary query, in one tick, rather than a bulk operation. */
 export const PLAIN_FEEDS: readonly CopyFeed[] = ["menus", "countries", "shipping", "discounts", "look", "gift_cards"];

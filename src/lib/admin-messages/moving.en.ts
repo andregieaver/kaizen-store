@@ -77,7 +77,7 @@ export const movingEn = {
     text: "We copy your products, customers, past orders, pages, menus, countries, shipping, discount codes and look into this store. Nothing is saved here until you press Bring it over, and nothing changes on Shopify.",
     start: "Copy my shop",
     starting: "Starting …",
-    feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects", collections: "Collections", pages: "Pages", articles: "Blog posts", menus: "Menus", countries: "Countries", shipping: "Shipping", discounts: "Discount codes", look: "Look", subscribers: "Email subscribers", gift_cards: "Gift cards" },
+    feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects", collections: "Collections", pages: "Pages", articles: "Blog posts", menus: "Menus", countries: "Countries", shipping: "Shipping", discounts: "Discount codes", reviews: "Reviews", look: "Look", subscribers: "Email subscribers", gift_cards: "Gift cards" },
     onMoveDay: "New codes on move day",
     choose: {
       title: "Choose what to bring",
@@ -108,6 +108,7 @@ export const movingEn = {
       import_refused: "An import of this kind is already open, or nothing in it can be imported. Open it, finish or cancel it, then press Start again.",
       import_failed: "The import stopped. Open it to see why.",
       needs_fixing: "Nothing here could come over as it is. Open it to see what needs fixing, then press Start again.",
+      feature_off: "This part is switched off in your store. Switch it on in Features, then press Start again.",
     },
     /** The same problems, said of a WooCommerce shop (D446). */
     problemsWoo: {
@@ -118,6 +119,7 @@ export const movingEn = {
       import_refused: "An import of this kind is already open, or nothing in it can be imported. Open it, finish or cancel it, then press Start again.",
       import_failed: "The import stopped. Open it to see why.",
       needs_fixing: "Nothing here could come over as it is. Open it to see what needs fixing, then press Start again.",
+      feature_off: "This part is switched off in your store. Switch it on in Features, then press Start again.",
     },
     bring: "Bring it over",
     bringing: "Starting …",
@@ -325,7 +327,7 @@ export const movingEn = {
       failed: "Connecting didn't work. Press Connect WooCommerce again.",
     },
     shop: "WooCommerce shop at {site}, connected {when}.",
-    later: "Your products, categories, customers, past orders and coupons come over now. Pages, blog posts, menus, redirects, reviews, gift cards and your email list come in a later step.",
+    later: "Your products, categories, customers, past orders, coupons and reviews come over now. Pages, blog posts, menus, redirects, gift cards and your email list come in a later step.",
     disconnectAsk: "Disconnect your WooCommerce shop? Nothing is deleted here or on your site. To remove our key from your site too, open WooCommerce → Settings → Advanced → REST API there.",
   },
   off: {

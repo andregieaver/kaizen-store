@@ -168,6 +168,8 @@ describe("copying a Shopify shop", () => {
       countries: ["checked", 2],
       shipping: ["checked", 2],
       discounts: ["checked", 3],
+      // Shopify keeps no reviews of its own (WooCommerce's come in D446 step 1b).
+      reviews: ["empty", 0],
       look: ["checked", 1],
       subscribers: ["checked", 1],
       gift_cards: ["checked", 2],
@@ -193,7 +195,7 @@ describe("copying a Shopify shop", () => {
     expect(await copy.bringItOver(owner)).toEqual({ ok: true });
     await settle(owner);
     const view = (await copy.copyView(owner))!;
-    expect(Object.values(view.state.feeds).map((f) => f.stage)).toEqual(Array(14).fill("done"));
+    expect(Object.entries(view.state.feeds).map(([feed, f]) => [feed, f.stage])).toEqual(Object.keys(view.state.feeds).map((feed) => [feed, feed === "reviews" ? "empty" : "done"]));
     // Kari's consent as Shopify recorded it: subscribed, confirmed, with Shopify's record as the words and in the history (Decision 1).
     const [sub] = await db().execute<Row>(sql`select source, status, confirmed_at, consented_at, consent_text from commerce.marketing_subscribers where store_id = ${fx.storeId}::uuid and email = ${email}`);
     expect([sub?.source, sub?.status, sub?.confirmed_at !== null, new Date(String(sub?.consented_at)).toISOString()]).toEqual(["shopify", "subscribed", true, "2025-03-02T10:00:00.000Z"]);

@@ -114,6 +114,8 @@ export type ImportOutcome =
       duplicates: number;
       refusedCount: number;
       refused: { line: number; problem: RowProblem }[];
+      /** The reviews written (never when only checked), for a move's *Undo this copy* (D446 step 1b). */
+      ids?: string[];
     };
 
 /** What the import page's form shows after a press, and its action as the form calls it. */

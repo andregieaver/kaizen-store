@@ -74,7 +74,7 @@ export const movingNb: MovingMessages = {
     text: "Vi kopierer produktene, kundene, tidligere ordrer, sidene, menyene, landene, frakten, rabattkodene og utseendet til denne butikken. Ingenting lagres her før du trykker Ta det over, og ingenting endres i Shopify.",
     start: "Kopier butikken min",
     starting: "Starter …",
-    feeds: { products: "Produkter", customers: "Kunder", orders: "Tidligere ordrer", redirects: "Omdirigeringer", collections: "Kolleksjoner", pages: "Sider", articles: "Blogginnlegg", menus: "Menyer", countries: "Land", shipping: "Frakt", discounts: "Rabattkoder", look: "Utseende", subscribers: "E-postabonnenter", gift_cards: "Gavekort" },
+    feeds: { products: "Produkter", customers: "Kunder", orders: "Tidligere ordrer", redirects: "Omdirigeringer", collections: "Kolleksjoner", pages: "Sider", articles: "Blogginnlegg", menus: "Menyer", countries: "Land", shipping: "Frakt", discounts: "Rabattkoder", reviews: "Anmeldelser", look: "Utseende", subscribers: "E-postabonnenter", gift_cards: "Gavekort" },
     onMoveDay: "Nye koder på flyttedagen",
     choose: {
       title: "Velg hva som skal tas over",
@@ -105,6 +105,7 @@ export const movingNb: MovingMessages = {
       import_refused: "En import av denne typen er allerede åpen, eller ingenting i den kan importeres. Åpne den, fullfør eller avbryt den, og trykk Start på nytt.",
       import_failed: "Importen stoppet. Åpne den for å se hvorfor.",
       needs_fixing: "Ingenting her kunne flyttes slik det er. Åpne den for å se hva som må rettes, og trykk Start på nytt.",
+      feature_off: "Denne delen er slått av i butikken din. Slå den på under Funksjoner, og trykk Start på nytt.",
     },
     /** De samme problemene, sagt om en WooCommerce-butikk (D446). */
     problemsWoo: {
@@ -115,6 +116,7 @@ export const movingNb: MovingMessages = {
       import_refused: "En import av denne typen er allerede åpen, eller ingenting i den kan importeres. Åpne den, fullfør eller avbryt den, og trykk Start på nytt.",
       import_failed: "Importen stoppet. Åpne den for å se hvorfor.",
       needs_fixing: "Ingenting her kunne flyttes slik det er. Åpne den for å se hva som må rettes, og trykk Start på nytt.",
+      feature_off: "Denne delen er slått av i butikken din. Slå den på under Funksjoner, og trykk Start på nytt.",
     },
     bring: "Ta det over",
     bringing: "Starter …",
@@ -322,7 +324,7 @@ export const movingNb: MovingMessages = {
       failed: "Tilkoblingen virket ikke. Trykk Koble til WooCommerce igjen.",
     },
     shop: "WooCommerce-butikk på {site}, koblet til {when}.",
-    later: "Produktene, kategoriene, kundene, tidligere ordrer og kupongene dine flyttes nå. Sider, blogginnlegg, menyer, videresendinger, anmeldelser, gavekort og e-postlisten din kommer i et senere steg.",
+    later: "Produktene, kategoriene, kundene, tidligere ordrer, kupongene og anmeldelsene dine flyttes nå. Sider, blogginnlegg, menyer, videresendinger, gavekort og e-postlisten din kommer i et senere steg.",
     disconnectAsk: "Koble fra WooCommerce-butikken din? Ingenting slettes her eller på nettstedet ditt. For å fjerne nøkkelen vår fra nettstedet også, åpne WooCommerce → Innstillinger → Avansert → REST API der.",
   },
   off: {
