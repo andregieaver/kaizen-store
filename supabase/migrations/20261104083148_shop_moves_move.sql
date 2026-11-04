@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."shop_moves" ADD COLUMN "move" jsonb DEFAULT '{}'::jsonb NOT NULL;

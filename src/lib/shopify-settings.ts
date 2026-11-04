@@ -317,16 +317,35 @@ export function lookOf(themeName: string, content: string): LookLine | null {
   const current = typeof raw === "string" ? o(o(data.presets)[raw]) : o(raw);
   const schemes = o(current.color_schemes);
   const first = o(o(schemes["scheme-1"] ?? Object.values(schemes)[0]).settings);
-  const accent = firstHex(first, ["button"]) ?? firstHex(current, ["colors_accent_1", "color_accent", "colors_accent", "color_button", "color_primary", "colors_solid_button_labels"]);
+  // Dawn and its kin name the button's colour `button`; Horizon (Shopify's default since 2025) `primary_button_background` and `primary`.
+  const accent = firstHex(first, ["button", "primary_button_background", "primary"]) ?? firstHex(current, ["colors_accent_1", "color_accent", "colors_accent", "color_button", "color_primary", "colors_solid_button_labels"]);
   if (!accent) return null;
   return {
     name: s(themeName, 50).trim() || "Shopify",
     accent,
     background: firstHex(first, ["background"]) ?? firstHex(current, ["colors_background_1", "color_body_bg", "color_background", "colors_background"]),
-    text: firstHex(first, ["text"]) ?? firstHex(current, ["colors_text", "color_body_text", "color_text", "colors_body_text"]),
-    headingFont: fontFamilyOf(current.type_header_font ?? current.type_heading_font ?? current.heading_font),
-    bodyFont: fontFamilyOf(current.type_body_font ?? current.body_font),
+    text: firstHex(first, ["text", "foreground"]) ?? firstHex(current, ["colors_text", "color_body_text", "color_text", "colors_body_text"]),
+    headingFont: fontFamilyOf(current.type_header_font ?? current.type_heading_font ?? current.heading_font ?? current.type_font_heading),
+    bodyFont: fontFamilyOf(current.type_body_font ?? current.body_font ?? current.type_font_body),
   };
+}
+
+/** The names (never the values) of a theme's settings and its first colour scheme's, for the log when its look could not be read. */
+export function lookKeysOf(data: unknown): { theme: string; settings: string[]; scheme: string[] } | null {
+  const theme = nodes(o(data).themes)[0];
+  if (!theme) return null;
+  let parsed: Obj;
+  try {
+    parsed = o(JSON.parse(s(o(nodes(theme.files)[0]?.body).content, 2_000_000).replace(/^\s*\/\*[\s\S]*?\*\/\s*/, "")));
+  } catch {
+    return { theme: s(theme.name, 50), settings: [], scheme: [] };
+  }
+  const raw = parsed.current;
+  const current = typeof raw === "string" ? o(o(parsed.presets)[raw]) : o(raw);
+  const schemes = o(current.color_schemes);
+  const first = o(o(schemes["scheme-1"] ?? Object.values(schemes)[0]).settings);
+  const names = (x: Obj) => Object.keys(x).filter((k) => /^[a-z0-9_-]{1,60}$/i.test(k)).slice(0, 80);
+  return { theme: s(theme.name, 50), settings: names(current), scheme: names(first) };
 }
 
 /** The look's line from the theme query's answer, or null. */

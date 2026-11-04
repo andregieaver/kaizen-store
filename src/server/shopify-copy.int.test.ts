@@ -16,6 +16,7 @@ process.env.SHOPIFY_CLIENT_SECRET = "shpss_test_secret_for_kaizen";
 
 const copy = await import("./shopify-copy");
 const makers = await import("./shopify-makers");
+const move = await import("./shopify-move");
 const { copyDone, copyReady } = await import("@/lib/shopify-copy");
 
 type Row = Record<string, unknown>;
@@ -49,6 +50,11 @@ const files = (): Record<string, string> => ({
   redirects: lines({ id: "gid://shopify/UrlRedirect/3", path: "/pages/old-about", target: "/pages/about" }),
   collections: lines({ id: "gid://shopify/Collection/1", handle: "hats", title: "Hats" }, { handle: "copied-wool-hat", __parentId: "gid://shopify/Collection/1" }),
   pages: lines({ id: "gid://shopify/Page/1", handle: "our-story", title: "Our story", body: "<h1>Since 1990</h1><p>We knit <strong>by hand</strong>.</p><img src='x.jpg'>", isPublished: true }),
+  // Made in Shopify after the copy began: one new order, nothing else new.
+  "orders-new": lines(
+    { id: "gid://shopify/Order/10", name: "#1002", email, createdAt: "2026-11-04T07:00:00Z", cancelledAt: null, currencyCode: "NOK", displayFinancialStatus: "PAID", displayFulfillmentStatus: "UNFULFILLED", discountCodes: [], subtotalPriceSet: { shopMoney: { amount: "299.0" } }, totalShippingPriceSet: { shopMoney: { amount: "0.0" } }, totalTaxSet: { shopMoney: { amount: "59.8" } }, totalDiscountsSet: { shopMoney: { amount: "0.0" } }, totalPriceSet: { shopMoney: { amount: "299.0" } }, billingAddress: null, shippingAddress: null },
+    { name: "Wool hat - S", sku: "COPY-HAT-S", quantity: 1, originalUnitPriceSet: { shopMoney: { amount: "299.0" } }, __parentId: "gid://shopify/Order/10" },
+  ),
   articles: lines({ id: "gid://shopify/Article/1", handle: "winter-is-here", title: "Winter is here", body: "<p>Time for hats.</p>", isPublished: true, author: { name: "Kari" }, blog: { handle: "news", title: "News" } }),
 });
 
@@ -62,8 +68,10 @@ const shopify = (async (_input: string | URL | Request, init?: RequestInit) => {
   if (body.query.includes("KaizenCopyShop")) return reply({ shop: { currencyCode: "NOK", taxesIncluded: true } });
   if (body.query.includes("KaizenBulkRun")) {
     const q = body.variables?.query ?? "";
-    const feed = /urlRedirects/.test(q) ? "redirects" : /\{ orders/.test(q) ? "orders" : /\{ customers/.test(q) ? "customers" : /\{ collections/.test(q) ? "collections" : /\{ pages/.test(q) ? "pages" : /\{ articles/.test(q) ? "articles" : "products";
-    if (refuse.has(feed)) return reply({ bulkOperationRunQuery: { bulkOperation: null, userErrors: [{ field: null, message: "Access denied for customers field." }] } });
+    const base = /urlRedirects/.test(q) ? "redirects" : /\{ orders/.test(q) ? "orders" : /\{ customers/.test(q) ? "customers" : /\{ collections/.test(q) ? "collections" : /\{ pages/.test(q) ? "pages" : /\{ articles/.test(q) ? "articles" : "products";
+    // Move day's catch-up asks only for what was made since the copy began.
+    const feed = /created_at:>=/.test(q) ? `${base}-new` : base;
+    if (refuse.has(base)) return reply({ bulkOperationRunQuery: { bulkOperation: null, userErrors: [{ field: null, message: "Access denied for customers field." }] } });
     started.push(feed);
     return reply({ bulkOperationRunQuery: { bulkOperation: { id: `gid://shopify/BulkOperation/${started.length}`, status: "CREATED" }, userErrors: [] } });
   }
@@ -251,6 +259,66 @@ describe("copying a Shopify shop", () => {
     expect((await makers.makersView(owner, deps))!.groups).toEqual([]);
     const { admin } = await membersOf(fx);
     expect(await makers.makersView(admin, deps)).toBeNull();
+  });
+
+  it("moves the shop: what is new on Shopify comes over, the old links are tried, and the shop opens; a time can be chosen and taken back", async () => {
+    ({ owner } = await membersOf(fx));
+    await db().execute(sql`update commerce.stores set private_mode = true, setup_completed_at = now() where id = ${fx.storeId}::uuid`);
+    ({ owner } = await membersOf(fx));
+    const moveDeps = { ...deps, readOld: async () => ({ ok: false }) };
+    const view = (await move.moveView(owner, moveDeps))!;
+    expect(view.checks.map((c) => [c.key, c.ok])).toEqual([
+      ["payments", true],
+      ["copy", true],
+      ["links", false],
+      ["waiting", true],
+    ]);
+    expect(view.canMove).toBe(true);
+    // A time: too soon is refused; an hour ahead in the store's own time zone is kept, and can be taken back.
+    const local = (ms: number) => new Intl.DateTimeFormat("sv-SE", { timeZone: owner.store.timeZone, dateStyle: "short", timeStyle: "short" }).format(new Date(Date.now() + ms)).replace(" ", "T");
+    expect(await move.scheduleMove(owner, local(60_000))).toEqual({ ok: false, problem: "past" });
+    const scheduled = await move.scheduleMove(owner, local(3_600_000));
+    expect(scheduled.ok).toBe(true);
+    expect((await move.moveStatus(owner))?.status).toBe("scheduled");
+    expect(await move.cancelMove(owner)).toEqual({ ok: true });
+    expect((await move.moveStatus(owner))?.status).toBe("none");
+
+    started.length = 0;
+    expect(await move.startMove(owner, moveDeps)).toEqual({ ok: true });
+    for (let i = 0; i < 20; i += 1) {
+      const state = (await db().execute<Row>(sql`select copy from commerce.shop_moves where store_id = ${fx.storeId}::uuid`))[0].copy as { feeds: Record<string, { job?: string; stage: string }> };
+      for (const f of Object.values(state.feeds)) if (f.job && (f.stage === "checking" || f.stage === "applying")) await runToEnd(f.job, data);
+      const after = await move.advanceMove(owner, moveDeps);
+      if (after?.status === "moved") break;
+    }
+    const after = (await move.moveStatus(owner))!;
+    expect(after.status).toBe("moved");
+    // Only the new things were asked for.
+    expect(started).toEqual(["products-new", "customers-new", "orders-new"]);
+    expect(after.steps.catch_up).toEqual({ stage: "done", done: 1, failed: 0 });
+    const [order] = await db().execute<Row>(sql`select number from commerce.orders where store_id = ${fx.storeId}::uuid and number = 'C-1002'`);
+    expect(order?.number).toBe("C-1002");
+    // The old shop's links could not be read here: said, and the move went on.
+    expect(after.steps.links).toEqual({ stage: "failed", problem: "links_unread" });
+    expect(after.steps.open).toEqual({ stage: "done" });
+    const [store] = await db().execute<Row>(sql`select private_mode from commerce.stores where id = ${fx.storeId}::uuid`);
+    expect(store?.private_mode).toBe(false);
+    // The vendors are still known after the catch-up found no new product.
+    expect((await copy.copiedVendors(owner, deps)).map((v) => v.handle)).toEqual(["copied-wool-hat"]);
+    expect(await move.startMove(owner, moveDeps)).toEqual({ ok: false, problem: "busy" });
+  });
+
+  it("starts a move at its time from the five-minute job, as the owner who chose it, and never for someone else", async () => {
+    const at = new Date(Date.now() - 60_000).toISOString();
+    const { admin } = await membersOf(fx);
+    await db().execute(sql`update commerce.shop_moves set move = ${JSON.stringify({ status: "scheduled", at, by: admin.account.id })}::jsonb where store_id = ${fx.storeId}::uuid`);
+    expect(await move.runDueMoves({ ...deps, readOld: async () => ({ ok: false }) })).toEqual({ started: 0, moved: 0 });
+    expect((await move.moveStatus(owner))?.status).toBe("none");
+    await db().execute(sql`update commerce.shop_moves set move = ${JSON.stringify({ status: "scheduled", at, by: owner.account.id })}::jsonb where store_id = ${fx.storeId}::uuid`);
+    const ran = await move.runDueMoves({ ...deps, readOld: async () => ({ ok: false }) });
+    expect(ran.started).toBe(1);
+    expect(["moving", "moved"]).toContain((await move.moveStatus(owner))?.status);
+    expect(await move.moveView(admin, deps)).toBeNull();
   });
 
   it("says when Shopify refuses a feed and goes on with the rest; a tick while another holds the lease changes nothing", async () => {

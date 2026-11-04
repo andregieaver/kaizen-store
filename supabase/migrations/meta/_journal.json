@@ -4551,6 +4551,13 @@
       "when": 1793755671942,
       "tag": "20261104012751_docs_guide",
       "breakpoints": true
+    },
+    {
+      "idx": 650,
+      "version": "7",
+      "when": 1793781108345,
+      "tag": "20261104083148_shop_moves_move",
+      "breakpoints": true
     }
   ]
 }

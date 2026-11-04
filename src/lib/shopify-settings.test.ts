@@ -117,6 +117,9 @@ describe("Shopify's settings for the copy", () => {
     expect(lookOf("Dawn", dawn)).toEqual({ name: "Dawn", accent: "#1f6f5c", background: "#ffffff", text: "#121212", headingFont: "Playfair Display", bodyFont: "Assistant" });
     const older = JSON.stringify({ current: "Default", presets: { Default: { colors_accent_1: "rgb(200, 16, 46)", colors_background_1: "#fff", colors_text: "#333333" } } });
     expect(lookOf("Old", older)).toEqual({ name: "Old", accent: "#c8102e", background: "#ffffff", text: "#333333", headingFont: null, bodyFont: null });
+    // Horizon's names.
+    const horizon = JSON.stringify({ current: { type_font_heading: "inter_n7", color_schemes: { "scheme-1": { settings: { background: "#ffffff", foreground: "#000000", primary_button_background: "#E4572E" } } } } });
+    expect(lookOf("Horizon", horizon)).toEqual({ name: "Horizon", accent: "#e4572e", background: "#ffffff", text: "#000000", headingFont: "Inter", bodyFont: null });
     expect(lookOf("None", JSON.stringify({ current: {} }))).toBeNull();
     expect(lookOf("Broken", "{")).toBeNull();
     expect(lookFromAnswer({ themes: { nodes: [{ name: "Dawn", files: { nodes: [{ body: { content: dawn } }] } }] } })?.accent).toBe("#1f6f5c");

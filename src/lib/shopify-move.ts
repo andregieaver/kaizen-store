@@ -1,0 +1,132 @@
+/**
+ * Move day, part 1 (D445 step 7a, `docs/moving-from-shopify.md` 4.6), pure: whether the shop is ready to move, and the move itself as a few
+ * steps that each run to the end and are safe to repeat. The owner presses *Move my shop*, or chooses a time and the five-minute job starts
+ * it; the open page and that job move it on. Nothing here reads or writes.
+ *
+ * 1. `catch_up`: what Shopify made since the copy began (new products, customers, past orders), read and brought over without asking,
+ *    through the same imports as the copy.
+ * 2. `links`: the old shop's links read again and every one with a sure counterpart here redirected (D445 step 1).
+ * 3. `open`: the shop opened to everyone (private mode off), as it is on Shopify.
+ *
+ * Switching the address is part 2 (step 7b). No step sends an email: nothing the copy writes emails anyone, and the store's own emails
+ * follow its own orders, as they always do.
+ */
+
+export const MOVE_STEPS = ["catch_up", "links", "open"] as const;
+export type MoveStep = (typeof MOVE_STEPS)[number];
+export type StepStage = "waiting" | "running" | "done" | "failed";
+/** Why a step could not finish, in a code the page words. */
+export const STEP_PROBLEMS = ["shopify", "links_unread", "not_allowed", "trial_ended", "setup"] as const;
+export type StepProblem = (typeof STEP_PROBLEMS)[number];
+
+export type MoveStatus = "none" | "scheduled" | "moving" | "moved";
+
+export type MoveState = {
+  status: MoveStatus;
+  /** When a scheduled move starts (an ISO instant). */
+  at: string | null;
+  /** The account that pressed (or scheduled) it: the move runs as that owner. */
+  by: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  /** A scheduled move that did not start because the shop was not ready at its time: the time, said on the page. */
+  missed: string | null;
+  steps: Record<MoveStep, { stage: StepStage; problem?: StepProblem; done?: number; failed?: number }>;
+};
+
+export const EMPTY_MOVE: MoveState = {
+  status: "none",
+  at: null,
+  by: null,
+  startedAt: null,
+  finishedAt: null,
+  missed: null,
+  steps: { catch_up: { stage: "waiting" }, links: { stage: "waiting" }, open: { stage: "waiting" } },
+};
+
+const o = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+const instant = (v: unknown): string | null => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : null);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const STAGES: readonly StepStage[] = ["waiting", "running", "done", "failed"];
+const STATUSES: readonly MoveStatus[] = ["none", "scheduled", "moving", "moved"];
+const count = (v: unknown): number | undefined => (typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : undefined);
+
+/** The kept state read back, every field checked (an unknown shape is no move at all). */
+export function moveStateOf(raw: unknown): MoveState {
+  const r = o(raw);
+  const steps = o(r.steps);
+  const out: MoveState = {
+    status: STATUSES.includes(r.status as MoveStatus) ? (r.status as MoveStatus) : "none",
+    at: instant(r.at),
+    by: typeof r.by === "string" && UUID.test(r.by) ? r.by : null,
+    startedAt: instant(r.startedAt),
+    finishedAt: instant(r.finishedAt),
+    missed: instant(r.missed),
+    steps: { ...EMPTY_MOVE.steps },
+  };
+  for (const step of MOVE_STEPS) {
+    const s = o(steps[step]);
+    const state: MoveState["steps"][MoveStep] = { stage: STAGES.includes(s.stage as StepStage) ? (s.stage as StepStage) : "waiting" };
+    if (STEP_PROBLEMS.includes(s.problem as StepProblem)) state.problem = s.problem as StepProblem;
+    const done = count(s.done);
+    const failed = count(s.failed);
+    if (done !== undefined) state.done = done;
+    if (failed !== undefined) state.failed = failed;
+    out.steps[step] = state;
+  }
+  if (out.status === "scheduled" && (out.at === null || out.by === null)) out.status = "none";
+  return out;
+}
+
+/** The step to run now: the first one not settled, in order. Null when all are. */
+export function nextMoveStep(state: MoveState): MoveStep | null {
+  return MOVE_STEPS.find((s) => state.steps[s].stage === "waiting" || state.steps[s].stage === "running") ?? null;
+}
+
+/** Whether a scheduled move is due at `now`. */
+export const moveDue = (state: MoveState, now: Date): boolean => state.status === "scheduled" && state.at !== null && Date.parse(state.at) <= now.getTime();
+
+// ---------------------------------------------------------------------------
+// Ready to move?
+// ---------------------------------------------------------------------------
+
+/** One line of *Ready to move?*: whether it is so, whether the move waits for it, and figures for its sentence. */
+export type ReadyCheck = { key: "payments" | "copy" | "links" | "waiting"; ok: boolean; blocks: boolean; n?: number; of?: number };
+
+export type ReadyFacts = {
+  /** Shoppers can pay: card payments on and the live account able to take them. */
+  payments: boolean;
+  /** The copy was brought over and every part of it settled. */
+  copyDone: boolean;
+  /** Parts of the copy that could not come over. */
+  copyFailed: number;
+  /** The old shop's links: how many were read and how many lead somewhere; null when they were never read. */
+  links: { total: number; working: number } | null;
+  /** Products here still to name a maker for (*Who makes your products?*). */
+  makersLeft: number;
+};
+
+/**
+ * *Ready to move?*: payments and a finished copy hold the move back (a shop that cannot take money, or is half copied, must not open in
+ * Shopify's place); old links that lead nowhere and products without a maker are said, and the owner may move anyway.
+ */
+export function readiness(f: ReadyFacts): { checks: ReadyCheck[]; canMove: boolean } {
+  const checks: ReadyCheck[] = [
+    { key: "payments", ok: f.payments, blocks: true },
+    { key: "copy", ok: f.copyDone, blocks: true, n: f.copyFailed },
+    { key: "links", ok: f.links !== null && f.links.working === f.links.total, blocks: false, n: f.links?.working ?? 0, of: f.links?.total ?? 0 },
+    { key: "waiting", ok: f.makersLeft === 0, blocks: false, n: f.makersLeft },
+  ];
+  return { checks, canMove: checks.every((c) => c.ok || !c.blocks) };
+}
+
+/** The earliest a move may be scheduled (a few minutes ahead, so the five-minute job meets it), and the latest (30 days). */
+export const SCHEDULE_MIN_MS = 5 * 60_000;
+export const SCHEDULE_MAX_MS = 30 * 24 * 3_600_000;
+export const scheduleProblem = (at: string | null, now: Date): "invalid" | "past" | "far" | null => {
+  if (!at) return "invalid";
+  const t = Date.parse(at) - now.getTime();
+  if (Number.isNaN(t)) return "invalid";
+  if (t < SCHEDULE_MIN_MS) return "past";
+  return t > SCHEDULE_MAX_MS ? "far" : null;
+};

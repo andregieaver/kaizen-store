@@ -18,6 +18,7 @@ import {
   discountInputOf,
   discountOf,
   lookFromAnswer,
+  lookKeysOf,
   shippingOf,
   type CountryLine,
   type DiscountLine,
@@ -69,6 +70,11 @@ export async function readSettingsFeed(storeId: string, feed: CopyFeed, deps: Sh
     const answer = await shopifyGraphql(storeId, LOOK_QUERY, {}, deps);
     if (!answer.ok) return { ok: false };
     const look = lookFromAnswer(answer.data);
+    // Which names the theme uses, so a theme we cannot read yet can be: names only, never a colour or a value.
+    if (!look) {
+      const keys = lookKeysOf(answer.data);
+      log("info", "shopify.copy_look_unread", { storeId, theme: keys?.theme ?? null, settings: keys?.settings.join(",") ?? null, scheme: keys?.scheme.join(",") ?? null });
+    }
     return lines(look ? [look] : []);
   }
   if (feed === "discounts") {
