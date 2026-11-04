@@ -55,9 +55,10 @@ up to 100 documents. Your pages are read again within five minutes of being publ
 
 ## What shoppers are told
 
-The chat says it is an *AI assistant*. Under the message box, shoppers read that answers are written by AI and may contain mistakes,
-and not to share personal details in the chat, followed by how long the conversation is kept. With the AI first and your team behind
-it (below), it says: *You're chatting with* the assistant's name*, an AI assistant. You can ask for a person at any time.*
+While the AI answers, the chat says it is an *AI assistant*. Under the message box, shoppers read that answers are written by AI and
+may contain mistakes, and not to share personal details in the chat, followed by how long the conversation is kept. With the AI first
+and your team behind it (below), it gives the assistant's name, says it is an AI assistant, and adds *You can ask for a person at any
+time.*
 
 When your support desk lets the AI read the tone of customers' messages, or summarise conversations for your team, the notice says
 that too, before the customer writes. **Support settings** tells you which of the two are on, and that customers are told.

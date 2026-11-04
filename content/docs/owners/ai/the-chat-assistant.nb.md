@@ -55,9 +55,10 @@ kunnskapsbase har plass til 100 dokumenter. Sidene dine leses på nytt innen fem
 
 ## Hva kundene får vite
 
-Chatten sier at den er en *AI-assistent*. Under meldingsfeltet leser kundene at svarene lages av KI og kan inneholde feil, og at de
-ikke skal dele personopplysninger i chatten, og deretter hvor lenge samtalen tas vare på. Med KI-en først og teamet ditt bak (se
-under) står det: *Du chatter med* assistentens navn*, en AI-assistent. Du kan når som helst be om å snakke med en person.*
+Mens KI-en svarer, sier chatten at den er en *AI-assistent*. Under meldingsfeltet leser kundene at svarene lages av KI og kan
+inneholde feil, og at de ikke skal dele personopplysninger i chatten, og deretter hvor lenge samtalen tas vare på. Med KI-en først og
+teamet ditt bak (se under) nevner den assistentens navn, sier at den er en AI-assistent, og legger til *Du kan når som helst be om å
+snakke med en person.*
 
 Når kundestøtten lar KI-en lese tonen i kundenes meldinger, eller lage sammendrag av samtaler til teamet ditt, sier meldingen det
 også, før kunden skriver. **Innstillinger for kundestøtte** viser hvilke av de to som er på, og at kundene får vite det.

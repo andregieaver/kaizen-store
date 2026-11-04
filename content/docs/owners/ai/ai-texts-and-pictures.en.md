@@ -18,15 +18,15 @@ saved it yourself. A filter keeps out claims a shop may not make.
 
 ## Write a product's texts
 
-Open a product. Beside each language's texts, the *Write with AI* panel offers:
+Open a product. Beside each language's texts, the **Write with AI** panel offers:
 
-- in your main language, *Write a description* (once the product has a title), *Improve the description* (once it has one) and
-  *Write search texts* (the title and description in search results);
-- in each other language, *Translate from* your main language, and *Write search texts*.
+- in your main language, **Write a description** (once the product has a title), **Improve the description** (once it has one) and
+  **Write search texts** (the title and description in search results);
+- in each other language, **Translate from** your main language, and **Write search texts**.
 
 1. Press the one you want. The suggestion shows in the panel, marked *Written by AI*.
 2. Read it, check every fact against the product, and change what you like.
-3. Press *Use this* to copy it into the product's fields, or *Discard*.
+3. Press **Use this** to copy it into the product's fields, or **Discard**.
 4. Press **Save** on the product as usual. Nothing is saved before that, and shoppers see it only once the product is published.
 
 The AI is given only the product's own words: its title, description, search texts, categories, tags and options. It never gets
@@ -42,7 +42,7 @@ Before you can use a suggestion, the filter marks phrases a shop may not make wi
 - amounts of money, and stock levels;
 - words you told the AI manager your brand never uses.
 
-*Use this* stays greyed out until you take them out or write your own. The filter reads Norwegian, Swedish, Danish, English and German.
+**Use this** stays greyed out until you take them out or write your own. The filter reads Norwegian, Swedish, Danish, English and German.
 It lists, and you decide: a colour called "grønn" is marked too.
 
 > [!IMPORTANT]
@@ -50,32 +50,32 @@ It lists, and you decide: a colour called "grønn" is marked too.
 
 ## Make a picture with AI
 
-*Make with AI* is offered in three places, once your store's AI has a picture model:
+**Make with AI** is offered in three places, once your store's AI has a picture model:
 
-- in the page builder, on picture fields (*Make again with AI* where the field has a picture already); a logo field does not offer it;
+- in the page builder, on picture fields (**Make again with AI** where the field has a picture already); a logo field does not offer it;
 - in the [media library](/admin/{store}/media) (Website, Media);
 - under a product's pictures, where the description starts from the product's title.
 
-1. Under *What should it show?*, say what is in it and how it is framed.
-2. Choose the *Shape*: *Wide*, *Tall* or *Square*.
-3. Leave *In the site's look* on to match your theme's photography, colours and mood.
-4. Press *Make the picture*. It takes up to a minute. Then *Use this picture*, or *Make another*.
+1. Under **What should it show?**, say what is in it and how it is framed.
+2. Choose the **Shape**: *Wide*, *Tall* or *Square*.
+3. Leave **In the site's look** on to match your theme's photography, colours and mood.
+4. Press **Make the picture**. It takes up to a minute. Then **Use this picture**, or **Make another**.
 
 Every picture made is kept in the media library, whether you use it or not. Words, letters and logos are never drawn in it. Its alt
 text is taken from your description when the claims filter finds nothing in it; otherwise it is left for the alt texts to fill in.
 
 ## Edit a picture with AI
 
-In the media library, open a picture and choose under *Edit with AI*:
+In the media library, open a picture and choose under **Edit with AI**:
 
 - *Remove the background*;
 - *New background*, and say what it should be;
 - *Change something*, and say what should change.
 
-Press *Edit the picture*. The edit is a new picture in the library; the one you started from stays as it is. In the page builder, a
-picture field with a picture offers *Remove background* in the same way.
+Press **Edit the picture**. The edit is a new picture in the library; the one you started from stays as it is. In the page builder, a
+picture field with a picture offers **Remove background** in the same way.
 
-Editing needs a *Model that edits pictures* in your store's [AI settings](/admin/{store}/settings/ai); without one, the picture model
+Editing needs a **Model that edits pictures** in your store's [AI settings](/admin/{store}/settings/ai); without one, the picture model
 edits where it can. The picture itself is sent to that provider with what to change.
 
 ### Who made a picture
@@ -92,9 +92,9 @@ Once your store has more than one language, [Translate the store](/admin/{store}
 pages and articles, categories and tags, and more, into another of its languages in one go. Only words go to the AI, never prices or
 stock.
 
-1. Choose the language under *Into*, and what to translate, then press *Find texts*.
-2. Press *Translate into* the language.
-3. Read each text, untick what is not right, and press the button that saves them (*Save 12 in English*, for example).
+1. Choose the language under **Into**, and what to translate, then press **Find texts**.
+2. Press **Translate into** the language.
+3. Read each text, untick what is not right, and press the button that saves them (**Save 12 in English**, for example).
 
 Nothing is written before you save. Pages are saved as drafts, so you publish them yourself; products, menus and custom fields are
 live once saved. Legal texts, such as terms, privacy

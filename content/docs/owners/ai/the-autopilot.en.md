@@ -45,8 +45,7 @@ Then it runs one step at a time, in your name and with what your role may do. Ea
 fails is tried again; after three tries it becomes a question with the choices *Try again*, *Skip this step* and *Stop the plan*.
 
 The Plans tab shows each plan with its steps, what each did and how many are done. **Pause** and **Resume** a plan, or **Stop** it
-for good; what it already did stays. A plan pauses by itself if the person it runs for no longer works in the
-store.
+for good; what it already did stays. A plan pauses by itself if the person it runs for no longer works in the store.
 
 ## Decisions: what waits for you
 
