@@ -11,6 +11,7 @@ import { disconnectShopify, shopifyConnection, startShopifyConnect, type StartPr
 import { advanceCopy, bringItOver, startCopy } from "@/server/shopify-copy";
 import { saveVendorMaker, type MakerSaved } from "@/server/shopify-makers";
 import { advanceMove, cancelMove, scheduleMove, startMove, type MoveProblem } from "@/server/shopify-move";
+import { checkAddress, startAddress } from "@/server/shopify-address";
 import { copyMoving } from "@/lib/shopify-copy";
 
 /**
@@ -118,4 +119,20 @@ export async function advanceMoveAction(storeSlug: string): Promise<{ moving: bo
   if (!member) return { moving: false };
   const state = await advanceMove(member);
   return { moving: state?.status === "moving" };
+}
+
+/** Move day, the address (D445 step 7b): *Point it here*. */
+export async function startAddressAction(storeSlug: string): Promise<{ ok: boolean; problems?: string[] }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false };
+  const result = await startAddress(member);
+  refresh();
+  return result;
+}
+
+/** The page's check every 30 seconds while an address waits for its records. */
+export async function checkAddressAction(storeSlug: string): Promise<{ done: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { done: false };
+  return checkAddress(member);
 }
