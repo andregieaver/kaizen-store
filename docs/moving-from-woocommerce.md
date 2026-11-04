@@ -340,6 +340,15 @@ D445's steps 1 (the address check and reconciliation) and 7 (move day) are share
 5. **WordPress.org listing**: list the plugin there (one-press install from his own admin, needs WordPress.org's review), or a zip from
    us (two steps more for Homer). Recommended: WordPress.org.
 
+**The owner's answers (4 November 2026):**
+- Decision 1: **one plugin**. The mover is a part of the existing WordPress plugin (D169).
+- Decision 2: open; asked when the email list is built (step 2).
+- Decision 3: **order history only**. Guest buyers never become customers.
+- Decision 4: **pause buying** (catalogue mode) for the switch.
+- Decision 5: **a zip from us**, not a WordPress.org listing. Connect links to the zip and to *Plugins → Add New → Upload Plugin* on the
+  owner's own site, with the steps written out; spike W1 is no longer needed. Until the mover is built (step 2), step 1's plain path
+  (WooCommerce's own read-only key) works without any plugin.
+
 ## 14. Spikes before code
 
 | # | Question | How |

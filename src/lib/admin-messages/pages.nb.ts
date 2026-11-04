@@ -674,6 +674,12 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Tilkoblede apper og assistenter",
     keywords: ["tilkoblede apper", "ai-assistent", "mcp", "claude", "chatgpt", "oauth", "koble fra", "tilbakekall", "tilgang", "integrasjoner"],
   },
+  "account:account.developer": {
+    title: "Utvikler",
+    keywords: ["utvikler", "app", "apper", "oauth", "klient-id", "klienthemmelighet", "admin-api", "lag en app", "integrasjon", "partner"],
+  },
+  "account:account.developer.new": { title: "Ny app", keywords: ["ny app", "lag app", "registrer app", "klienthemmelighet"] },
+  "account:account.developer.app": { title: "En app", keywords: ["appinnstillinger", "forny hemmelighet", "omdirigerings-uri", "tilganger", "hendelsesadresse"] },
   "account:account.wordpress.connect": {
     title: "Koble til et WordPress-nettsted",
     keywords: ["koble til wordpress", "godkjenn", "autoriser", "wordpress"],

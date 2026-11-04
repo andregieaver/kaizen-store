@@ -21,6 +21,7 @@ import {
   makeStorefrontTokenAction,
   relistCustomAppAction,
   removeCustomAppAction,
+  removeInstallationAction,
   revokeApiTokenAction,
   revokeStorefrontTokenAction,
   switchAppToolAction,
@@ -39,13 +40,16 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "notifications").apiTokens;
-  const [tokens, storefrontTokens, apps, grants, cutoffs] = await Promise.all([
+  const [tokens, storefrontTokens, apps, reaching, cutoffs] = await Promise.all([
     listApiTokens(store.id),
     listStorefrontTokens(store.id),
     listCustomApps(store.id),
     grantsReachingStore(store.id),
     storeCutoffs(store.id),
   ]);
+  // Apps for many stores installed here (D441) are listed apart from the AI assistants and apps connected over MCP (D439).
+  const installed = reaching.filter((grant) => grant.resource === "admin");
+  const grants = reaching.filter((grant) => grant.resource === "mcp");
   const ow = adminText(lang, "oauth");
   const aw = adminText(lang, "notifications").customApps;
   const sw = adminText(lang, "notifications").storefrontTokens;
@@ -56,6 +60,34 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
     <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<>{w.description}</>} />
+        {/* Apps for many stores installed on this store (D441): each works as the person who installed it; Remove ends it at once. */}
+        {installed.length > 0 && (
+          <Card title={ow.store.apps.title} description={ow.store.apps.description}>
+            <List label={ow.store.apps.title}>
+              {installed.map((grant) => (
+                <ListRow key={grant.id}>
+                  <RowLead
+                    title={grant.client.name}
+                    sub={
+                      <>
+                        {grant.client.host} · {grant.client.verified ? ow.consent.verified : ow.consent.notVerified} ·{" "}
+                        {fillWords(ow.store.apps.by, { person: grant.person.name ?? grant.person.email, when: when(grant.createdAt) })} ·{" "}
+                        {grant.lastUsedAt ? fillWords(ow.connected.lastUsed, { when: when(grant.lastUsedAt) }) : ow.connected.neverUsed}
+                      </>
+                    }
+                  />
+                  <RowActions>
+                    <form action={removeInstallationAction.bind(null, store.slug, grant.id)}>
+                      <button type="submit" className={buttonClass("danger", "dense")}>
+                        {ow.store.apps.remove}
+                      </button>
+                    </form>
+                  </RowActions>
+                </ListRow>
+              ))}
+            </List>
+          </Card>
+        )}
         {/* AI assistants and apps connected through Kaizena Flow's authorization server (D439): every grant that reaches the store. */}
         <Card title={ow.store.title} description={ow.store.description}>
           {grants.length === 0 ? (

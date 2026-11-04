@@ -14,6 +14,7 @@ import { getAccount, getAssurance, heldDestination } from "@/server/auth";
 import { authorizeQuery, connectable, consentStores, heldAcross, readAuthorization } from "@/server/oauth-authorize";
 
 import { decideAuthorizationAction } from "./actions";
+import { AppInstall } from "./app-install";
 import { scopeLabel } from "@/lib/oauth-words";
 
 /** The tab's title stays fixed (in English): a title read from the request would stream the page's metadata, `noindex` with it, out of `<head>`. */
@@ -69,8 +70,21 @@ async function Authorize({ searchParams }: { searchParams: PageProps<"/admin/oau
     redirect((held ? heldDestination(held.assurance, back) : null) ?? `/admin/sign-in?next=${encodeURIComponent(back)}`);
   }
   const session = await getAssurance();
-  // The scopes the client asked for are not offered as such: the person's level and role decide what is given (RFC 6749 3.3).
   const { client, request } = found;
+  // An app for many stores is installed on one store with what it asked for (D441).
+  if (client.kind === "app") {
+    return (
+      <AppInstall
+        lang={lang}
+        account={account}
+        aal={session?.session.level ?? "aal1"}
+        client={client}
+        request={request}
+        hidden={Object.fromEntries(new URLSearchParams(authorizeQuery(query)).entries())}
+      />
+    );
+  }
+  // The scopes the client asked for are not offered as such: the person's level and role decide what is given (RFC 6749 3.3).
   const stores = await consentStores(account, session?.session.level ?? "aal1", client.id);
   // The host the person is shown: the metadata document's, else where the code would go, never a site a registration only claims; and,
   // when the code goes to another host than the document's, that host too (D439 review).

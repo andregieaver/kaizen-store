@@ -251,10 +251,23 @@ describe("the owner MCP's tools and their scopes", () => {
 });
 
 describe("resources and discovery (B1)", () => {
-  it("binds tokens to the MCP's canonical address and nothing else", () => {
+  it("binds tokens to the MCP's or the Admin API's canonical address (D441) and nothing else", () => {
     expect(resourceOf(`${SITE}/api/mcp`, SITE)).toBe("mcp");
     expect(resourceOf(`${SITE}/api/mcp/`, SITE)).toBe("mcp");
-    for (const other of [`${SITE}/api/admin/v1`, `${SITE}/api/mcp?x=1`, "https://evil.example/api/mcp", `${SITE}/api/mcpx`, `http://kaizenaflow.com/api/mcp`, "", null]) {
+    expect(resourceOf(`${SITE}/api/admin/v1`, SITE)).toBe("admin");
+    expect(resourceOf(`${SITE}/api/admin/v1/`, SITE)).toBe("admin");
+    for (const other of [
+      `${SITE}/api/admin`,
+      `${SITE}/api/admin/v2`,
+      `${SITE}/api/admin/v1/products`,
+      `${SITE}/api/mcp?x=1`,
+      "https://evil.example/api/mcp",
+      "https://evil.example/api/admin/v1",
+      `${SITE}/api/mcpx`,
+      `http://kaizenaflow.com/api/mcp`,
+      "",
+      null,
+    ]) {
       expect(resourceOf(other, SITE), String(other)).toBeNull();
     }
     expect(resourceMetadataUrl(SITE)).toBe(`${SITE}/.well-known/oauth-protected-resource/api/mcp`);
@@ -324,7 +337,9 @@ describe("the authorization request (B4)", () => {
     expect(read({ ...base, state: undefined })).toMatchObject({ ok: false, refusal: { redirect: "invalid_request" } });
     expect(read({ ...base, state: "s".repeat(1001) })).toMatchObject({ ok: false, refusal: { redirect: "invalid_request" } });
     expect(read({ ...base, resource: undefined })).toMatchObject({ ok: false, refusal: { redirect: "invalid_target" } });
-    expect(read({ ...base, resource: `${SITE}/api/admin/v1` })).toMatchObject({ ok: false, refusal: { redirect: "invalid_target" } });
+    expect(read({ ...base, resource: `${SITE}/api/admin/v2` })).toMatchObject({ ok: false, refusal: { redirect: "invalid_target" } });
+    // The Admin API is a resource too (D441); only an app's client may ask for it, which is checked once the client is known.
+    expect(read({ ...base, resource: `${SITE}/api/admin/v1` })).toMatchObject({ ok: true, request: { resource: "admin" } });
     expect(read({ ...base, response_type: "token" })).toMatchObject({ ok: false, refusal: { redirect: "unsupported_response_type" } });
     expect(read({ ...base, state: ["a", "b"] })).toMatchObject({ ok: false, refusal: { redirect: "invalid_request" } });
   });

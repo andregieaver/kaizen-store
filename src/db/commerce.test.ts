@@ -7637,7 +7637,47 @@ describe("the authorization server's clients, grants and tokens (D439)", () => {
     expect((await grant("change")).rows).toHaveLength(1);
     await db.query("update commerce.oauth_grants set revoked_at = now() where account_id = $1", [account]);
     await expect(grant("everything")).rejects.toThrow(/oauth_grants_access/);
-    await expect(grant("read", "admin")).rejects.toThrow(/oauth_grants_resource/);
+    await expect(grant("read", "storefront")).rejects.toThrow(/oauth_grants_resource/);
+    // An app's installation (D441): resource admin, its one store named, and one live per app and store.
+    await expect(grant("change", "admin")).rejects.toThrow(/oauth_grants_installation/);
+    const install = (storeIds: string[]) =>
+      db.query(
+        "insert into commerce.oauth_grants (account_id, client_id, store_ids, store_id, scopes, resource, access) values ($1, $2, $3::uuid[], $4, array['stores:read'], 'admin', 'change') returning id",
+        [account, clientId, storeIds, store],
+      );
+    await expect(install([store, store])).rejects.toThrow(/oauth_grants_installation/);
+    await install([store]);
+    await expect(install([store])).rejects.toThrow(/oauth_grants_app_store_key|duplicate/);
+    await expect(
+      db.query("insert into commerce.oauth_grants (account_id, client_id, store_ids, store_id, scopes, resource, access) values ($1, $2, array[$3::uuid], $3, array['stores:read'], 'mcp', 'read')", [
+        account,
+        clientId,
+        store,
+      ]),
+    ).rejects.toThrow(/oauth_grants_installation/);
+  });
+
+  it("keeps one app per client with a known distribution, its events address with its hint, and goes with its developer's row, not its apps (D441)", async () => {
+    const developer = await createAccount("apps-developer@example.com");
+    await db.query("insert into commerce.developers (account_id, terms_version) values ($1, '2026-11-04')", [developer]);
+    await expect(db.query("insert into commerce.developers (account_id, terms_version) values ($1, '2026-11-04')", [developer])).rejects.toThrow(/developers_pkey|duplicate/);
+    const clientId = await client("kfapp_schema_test_app_0001", "app", "hash");
+    const app = (fields: Record<string, unknown> = {}) => {
+      const row: Record<string, unknown> = { client_id: clientId, developer_id: developer, scopes: ["stores:read", "products:read"], distribution: "private", ...fields };
+      const keys = Object.keys(row);
+      return db.query(`insert into commerce.apps (${keys.join(", ")}) values (${keys.map((_, i) => `$${i + 1}`).join(", ")}) returning id`, Object.values(row));
+    };
+    await expect(app({ distribution: "everyone" })).rejects.toThrow(/apps_distribution/);
+    await expect(app({ listing: "maybe" })).rejects.toThrow(/apps_listing/);
+    await expect(app({ webhook_url_encrypted: "sealed" })).rejects.toThrow(/apps_webhook/);
+    await expect(app({ description: "x".repeat(501) })).rejects.toThrow(/apps_description/);
+    await expect(app({ scopes: [] })).rejects.toThrow(/apps_scopes/);
+    const { rows } = await app({ webhook_url_encrypted: "sealed", webhook_hint: "app.example", listing: "requested", distribution: "listed" });
+    await expect(app()).rejects.toThrow(/apps_client_key|duplicate/);
+    // An erased account takes its developer row; its apps stay, without a developer (blocked, never handed on).
+    await db.query("delete from commerce.accounts where id = $1", [developer]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.developers where account_id = $1", [developer])).n).toBe(0);
+    expect((await one<{ developer_id: string | null }>("select developer_id from commerce.apps where id = $1", [(rows[0] as { id: string }).id])).developer_id).toBeNull();
   });
 
   it("gives a code its PKCE challenge and redirect URI and no other token either, and ends a grant's tokens with it", async () => {

@@ -1,7 +1,10 @@
 import { connection } from "next/server";
 
-import { API_ERRORS, grants, retryAfter, type ApiErrorCode, type ApiMethod } from "@/lib/admin-api";
+import { API_ERRORS, grants, isApiPower, retryAfter, type ApiErrorCode, type ApiMethod } from "@/lib/admin-api";
+import { appMayCall } from "@/lib/apps";
 import { ADMIN_API_BY_NAME, routeOf } from "@/lib/admin-api-routes";
+import { bearerChallenge, resourceMetadataUrl } from "@/lib/oauth";
+import { siteUrl } from "@/lib/site";
 import { featureOn, FEATURES_BY_ID, type FeatureId } from "@/lib/store-features";
 import { ApiError, runApiRoute } from "@/server/admin-api";
 import { claimIdempotencyKey } from "@/server/api-idempotency";
@@ -29,14 +32,23 @@ const error = (code: ApiErrorCode, message: string, headers: Record<string, stri
 async function handle(method: ApiMethod, request: Request, { params }: RouteContext<"/api/admin/v1/[...path]">): Promise<Response> {
   await connection();
   const caller = await apiCaller(request.headers.get("authorization"));
-  if (!caller) return error("unauthorized", "Give a valid token as Authorization: Bearer kf_….", { "WWW-Authenticate": "Bearer" });
+  if (!caller) {
+    return error("unauthorized", "Give a valid token as Authorization: Bearer kf_… (an owner's token) or kfa_… (an app's).", {
+      "WWW-Authenticate": bearerChallenge(resourceMetadataUrl(siteUrl(), "admin"), /^Bearer\s+kfa_/i.test(request.headers.get("authorization") ?? "")),
+    });
+  }
   const path = (await params).path;
   const route = routeOf(method, path);
   if (!route) return error("not_found", "No such route.");
   if (!grants(caller.token.scopes, route.scope)) return error("forbidden", `This token does not have the scope ${route.scope}.`);
   const operation = ADMIN_API_BY_NAME[route.name];
+  // An app's installation (D441): the grant must hold the operation's own permission, and its power when it is one.
+  if (caller.app && !appMayCall(caller.app.scopes, operation)) {
+    return error("forbidden", `This app's installation does not hold ${operation.permission}${isApiPower(operation.scope) ? ` and ${operation.scope}` : ""}: the store must install it again with them.`);
+  }
   if (!memberCan(caller.member, operation.permission)) {
-    return error("forbidden", `The token's owner may not do this in the store now: it needs the permission ${operation.permission}${caller.member.store.status !== "active" ? ", and the store is not open" : ""}.`);
+    const who = caller.app ? "The person who installed this app" : "The token's owner";
+    return error("forbidden", `${who} may not do this in the store now: it needs the permission ${operation.permission}${caller.member.store.status !== "active" ? ", and the store is not open" : ""}.`);
   }
   const feature: FeatureId | undefined = "feature" in operation ? operation.feature : undefined;
   if (feature && !featureOn(caller.member.store, feature)) {
@@ -49,7 +61,7 @@ async function handle(method: ApiMethod, request: Request, { params }: RouteCont
   // A POST with an Idempotency-Key (PSI DATA-03): done once, its answer kept for the same request, which is its method, its whole path
   // (the order it refunds, D440 review) and its body.
   const key = method === "POST" ? request.headers.get("idempotency-key") : null;
-  const once = key === null ? null : await claimIdempotencyKey(caller.token.id, key, `${method} /${path.join("/")}`, await request.clone().text());
+  const once = key === null ? null : await claimIdempotencyKey(caller.token.id, key, `${method} /${path.join("/")}`, await request.clone().text(), caller.app ? "app" : "token");
   if (once?.kind === "refused") return error(once.code, once.message);
   if (once?.kind === "replay") return Response.json(once.answer.body, { status: once.answer.status, headers: { ...HEADERS, "Idempotent-Replayed": "true" } });
   try {

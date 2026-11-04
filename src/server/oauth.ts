@@ -20,6 +20,8 @@ import {
   type OAuthResource,
   type OAuthScope,
 } from "@/lib/oauth";
+import { isApiPower } from "@/lib/admin-api";
+import { normaliseAppScopes } from "@/lib/apps";
 import { pkceMatches } from "@/lib/oauth-pkce";
 import { siteUrl } from "@/lib/site";
 
@@ -112,6 +114,42 @@ export async function approveAuthorization(input: Approval): Promise<{ code: str
       target: { type: "oauth_grant", id: grantId },
     });
   }
+  return { code, grantId };
+}
+
+/**
+ * A person installs an app on one store (D441): the app's live installation there, whoever made it, ends with every token, and a new one is
+ * made as this person's, with the app's scopes (given whole: the consent screen offers only stores where the person may give them all),
+ * `access = 'change'` (gated tools still wait for a yes) and a code for the request. The store's log says so (`oauth.app_installed`).
+ */
+export async function approveInstallation(input: Omit<Approval, "storeIds" | "scopes" | "access"> & { storeId: string; scopes: readonly string[] }): Promise<{ code: string; grantId: string }> {
+  const scopes = normaliseAppScopes(input.scopes);
+  if (input.client.kind !== "app" || input.request.resource !== "admin") throw new Error("Only an app is installed.");
+  const code = newSecret(CODE_PREFIX);
+  const grantId = await db().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('oauth_installations'), hashtext(${`${input.client.id}:${input.storeId}`}))`);
+    const ended = await tx.execute<{ id: string }>(sql`
+      update commerce.oauth_grants set revoked_at = now()
+      where client_id = ${input.client.id}::uuid and store_id = ${input.storeId}::uuid and resource = 'admin' and revoked_at is null
+      returning id
+    `);
+    for (const old of ended) {
+      await tx.execute(sql`update commerce.oauth_tokens set revoked_at = coalesce(revoked_at, now()) where grant_id = ${old.id}::uuid`);
+      await expireGrantApprovals(tx, sql`oauth_grant_id = ${old.id}::uuid`);
+    }
+    const [made] = await tx.execute<{ id: string }>(sql`
+      insert into commerce.oauth_grants (account_id, client_id, store_ids, store_id, scopes, resource, access, aal)
+      values (${input.account.id}::uuid, ${input.client.id}::uuid, array[${input.storeId}::uuid], ${input.storeId}::uuid, ${textArray(scopes)}, 'admin', 'change', ${input.aal})
+      returning id
+    `);
+    await tx.execute(sql`
+      insert into commerce.oauth_tokens (kind, token_hash, grant_id, family, code_challenge, redirect_uri, expires_at)
+      values ('code', ${tokenHash(code)}, ${made.id}::uuid, ${randomUUID()}::uuid, ${input.request.codeChallenge}, ${input.request.redirectUri},
+        now() + make_interval(secs => ${CODE_SECONDS}))
+    `);
+    return String(made.id);
+  });
+  await audit(input.account.id, input.storeId, "oauth.app_installed", { app: input.client.name, client_id: input.client.clientId, scopes }, { target: { type: "oauth_grant", id: grantId } });
   return { code, grantId };
 }
 
@@ -443,7 +481,9 @@ export async function endAccountGrants(accountId: string, why: "password" | "two
 export type OAuthAccess = {
   grantId: string;
   accountId: string;
-  client: { id: string; clientId: string; name: string; verified: boolean };
+  client: { id: string; clientId: string; name: string; verified: boolean; kind: "metadata_document" | "registered" | "preregistered" | "app" };
+  /** The grant's own resource: `admin` for an app's installation (D441), whose `storeIds` is its one store. */
+  resource: "mcp" | "admin";
   storeIds: string[];
   scopes: string[];
   access: AccessLevel;
@@ -452,6 +492,8 @@ export type OAuthAccess = {
 
 const accessRow = z.object({
   grant_id: col.uuid,
+  resource: z.enum(["mcp", "admin"]),
+  kind: z.enum(["metadata_document", "registered", "preregistered", "app"]),
   account_id: col.uuid,
   client_row: col.uuid,
   client_id: col.text,
@@ -474,7 +516,7 @@ export async function oauthAccess(token: string, resource: OAuthResource): Promi
   const row = await typedRow(
     accessRow,
     sql`
-      select g.id as grant_id, g.account_id, c.id as client_row, c.client_id, c.name, c.verified,
+      select g.id as grant_id, g.resource, c.kind, g.account_id, c.id as client_row, c.client_id, c.name, c.verified,
         array(select s from unnest(g.store_ids) s where not exists (
           select 1 from commerce.oauth_store_cutoffs x where x.store_id = s and x.account_id = g.account_id and x.client_id = g.client_id
         )) as store_ids,
@@ -484,7 +526,9 @@ export async function oauthAccess(token: string, resource: OAuthResource): Promi
       join commerce.oauth_grants g on g.id = t.grant_id
       join commerce.oauth_clients c on c.id = g.client_id
       where t.token_hash = ${tokenHash(token)} and t.kind = 'access' and t.revoked_at is null and t.expires_at > now()
-        and g.revoked_at is null and g.resource = ${resource} and c.blocked_at is null
+        and g.revoked_at is null and c.blocked_at is null
+        -- Bound to its resource; an app's installation is taken by the MCP too (D441).
+        and (g.resource = ${resource} or (${resource} = 'mcp' and g.resource = 'admin' and c.kind = 'app'))
     `,
   );
   if (!row) return null;
@@ -496,11 +540,13 @@ export async function oauthAccess(token: string, resource: OAuthResource): Promi
   return {
     grantId: row.grant_id,
     accountId: row.account_id,
-    client: { id: row.client_row, clientId: row.client_id, name: safeClientName(row.name), verified: row.verified },
+    client: { id: row.client_row, clientId: row.client_id, name: safeClientName(row.name), verified: row.verified, kind: row.kind },
+    resource: row.resource,
     // A store an owner cut off is never reached, whatever the grant says (D439 review).
     storeIds: row.store_ids,
     // A token a narrowed refresh made holds its own scopes, never more than its grant's now.
-    scopes: row.scopes.filter((scope) => isOAuthScope(scope) && (!row.token_scopes || row.token_scopes.includes(scope))),
+    // An app's installation also holds the Admin API's powers it was given (D441).
+    scopes: row.scopes.filter((scope) => (isOAuthScope(scope) || (row.resource === "admin" && isApiPower(scope))) && (!row.token_scopes || row.token_scopes.includes(scope))),
     access: row.access,
     aal: row.aal,
   };
@@ -510,6 +556,8 @@ export async function oauthAccess(token: string, resource: OAuthResource): Promi
 
 export type GrantView = {
   id: string;
+  /** `admin`: an app's installation on one store (D441); `mcp`: an AI assistant's connection. */
+  resource: "mcp" | "admin";
   client: { id: string; name: string; host: string; verified: boolean; logoUrl: string | null };
   stores: { id: string; slug: string; name: string }[];
   scopes: string[];
@@ -521,6 +569,7 @@ export type GrantView = {
 
 const grantRow = z.object({
   id: col.uuid,
+  resource: z.enum(["mcp", "admin"]),
   client_row: col.uuid,
   client_name: col.text,
   client_id: col.text,
@@ -542,7 +591,7 @@ async function grantViews(where: SQL): Promise<GrantView[]> {
   const rows = await typedRows(
     grantRow,
     sql`
-      select g.id, c.id as client_row, c.name as client_name, c.client_id, c.client_uri, c.redirect_uris, c.verified, c.logo_url,
+      select g.id, g.resource, c.id as client_row, c.name as client_name, c.client_id, c.client_uri, c.redirect_uris, c.verified, c.logo_url,
         coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'slug', s.slug, 'name', s.name) order by s.name)
           from commerce.stores s where s.id = any(g.store_ids)), '[]'::jsonb) as stores,
         g.scopes, g.access, g.created_at, g.last_used_at, g.account_id, a.name as person_name, a.email
@@ -555,6 +604,7 @@ async function grantViews(where: SQL): Promise<GrantView[]> {
   );
   return rows.map((row) => ({
     id: row.id,
+    resource: row.resource,
     client: {
       id: row.client_row,
       name: safeClientName(row.client_name),
@@ -598,7 +648,7 @@ export async function cutGrantFromStore(member: Membership, grantId: string): Pr
   const left = await db().transaction(async (tx) => {
     const [row] = await tx.execute<{ n: number }>(sql`
       update commerce.oauth_grants set store_ids = array_remove(store_ids, ${member.store.id}::uuid)
-      where id = ${grantId}::uuid and revoked_at is null and ${member.store.id}::uuid = any(store_ids)
+      where id = ${grantId}::uuid and revoked_at is null and resource = 'mcp' and ${member.store.id}::uuid = any(store_ids)
       returning cardinality(store_ids) as n
     `);
     if (!row) return null;
@@ -613,6 +663,18 @@ export async function cutGrantFromStore(member: Membership, grantId: string): Pr
   if (left === null) return false;
   if (left === 0) await endGrant(grantId);
   await audit(member.account.id, member.store.id, "oauth.store_cut", { client: grant.client.name, made_by: grant.person.id }, { target: { type: "oauth_grant", id: grantId } });
+  return true;
+}
+
+/**
+ * An owner removes an app from their store (D441): its installation there ends at once with every token, whoever installed it, and the
+ * store's log says so (`oauth.app_removed`). Installing it again is a new consent. Owners only.
+ */
+export async function removeInstallation(member: Membership, grantId: string): Promise<boolean> {
+  if (!memberCan(member, "owner") || !z.uuid().safeParse(grantId).success) return false;
+  const [grant] = await grantViews(sql`g.id = ${grantId}::uuid and g.resource = 'admin' and g.store_id = ${member.store.id}::uuid`);
+  if (!grant || !(await endGrant(grantId, sql`resource = 'admin' and store_id = ${member.store.id}::uuid`))) return false;
+  await audit(member.account.id, member.store.id, "oauth.app_removed", { app: grant.client.name, installed_by: grant.person.id }, { target: { type: "oauth_grant", id: grantId } });
   return true;
 }
 
