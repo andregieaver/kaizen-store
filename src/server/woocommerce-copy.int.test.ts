@@ -219,7 +219,9 @@ describe("moving from WooCommerce, step 1", () => {
   it("reads products with their variations, customers, orders and coupons into the imports' dry runs, and saves nothing yet", async () => {
     expect(await copy.copySource(owner)).toBe("woocommerce");
     seen.length = 0;
-    expect(await copy.startCopy(owner)).toEqual({ ok: true });
+    // The owner's one question is asked first (D446 4.5): no copy starts without it.
+    expect(await copy.startCopy(owner)).toEqual({ ok: false });
+    expect(await copy.startCopy(owner, { wordpress: "keep" })).toEqual({ ok: true });
     await settle(owner);
     const view = (await copy.copyView(owner))!;
     const stages = Object.fromEntries(Object.entries(view.state.feeds).map(([k, v]) => [k, [v.stage, v.count]]));

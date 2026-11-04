@@ -66,6 +66,7 @@ export function WooMover({
       ) : (
         <>
           <p className="text-sm">{w.connected}</p>
+          <p className={hint}>{w.moveDay}</p>
           {status.plugins === null ? (
             <p className={hint}>{w.unknown}</p>
           ) : (

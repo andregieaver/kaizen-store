@@ -181,7 +181,8 @@ describe("moving from WooCommerce, step 2: our plugin reads what WooCommerce's k
     expect((await connect.finishMoverConnect({ note, secret: "e".repeat(64), site: "https://mover.example" }, { open })).status).toBe(400);
     expect(await connect.hasMover(fx.storeId)).toBe(false);
     const done = await connect.finishMoverConnect({ note, secret: MOVER, site: "https://mover.example" }, { open });
-    expect(done).toEqual({ status: 200, back: expect.stringMatching(new RegExp(`/admin/${fx.slug}/settings/moving\\?mover=connected$`)) });
+    // With the new shop's own address, for the plugin's *Send shoppers to the new shop* (step 4).
+    expect(done).toEqual({ status: 200, back: expect.stringMatching(new RegExp(`/admin/${fx.slug}/settings/moving\\?mover=connected$`)), shop: expect.stringMatching(/^https?:\/\//) });
     const [row] = await db().execute<Row>(sql`select mover_secret from commerce.shop_moves where store_id = ${fx.storeId}::uuid and source = 'woocommerce'`);
     expect(String(row.mover_secret)).not.toContain(MOVER);
     expect(await connect.moverStatus(owner, { open })).toEqual({ connected: true, plugins: [{ slug: "woocommerce", name: "WooCommerce" }, { slug: "mailpoet", name: "MailPoet" }, { slug: "redirection", name: "Redirection" }] });
@@ -189,7 +190,12 @@ describe("moving from WooCommerce, step 2: our plugin reads what WooCommerce's k
 
   it("brings the redirects, MailPoet's subscribed list and the products' SEO words through their own writers", async () => {
     refused = 0;
-    expect(await copy.startCopy(owner)).toEqual({ ok: true });
+    // Only the shop: WordPress keeps its pages, posts and menus, and none of them is read.
+    expect(await copy.startCopy(owner, { wordpress: "keep" })).toEqual({ ok: true });
+    const shopOnly = (await copy.copyView(owner))!.state;
+    expect([shopOnly.feeds.pages.stage, shopOnly.feeds.articles.stage, shopOnly.feeds.menus.stage, shopOnly.options?.wordpress]).toEqual(["empty", "empty", "empty", "keep"]);
+    // Everything: they come too.
+    expect(await copy.startCopy(owner, { wordpress: "move" })).toEqual({ ok: true });
     await settle(owner);
     const view = (await copy.copyView(owner))!;
     expect([view.state.feeds.redirects.stage, view.state.feeds.redirects.count, view.state.feeds.subscribers.stage, view.state.feeds.subscribers.count]).toEqual(["checked", 1, "checked", 1]);
