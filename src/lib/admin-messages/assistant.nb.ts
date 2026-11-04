@@ -60,6 +60,8 @@ export const assistantNb: AssistantMessages = {
     recent: "Sist åpnet",
     close: "Lukk KI-assistenten",
     loading: "Laster …",
+    failed: "KI-assistenten ble ikke lastet.",
+    openPage: "Åpne den på sin egen side",
     title: "KI-assistent (⌘K / Ctrl+K)",
     talkTitle: "Snakk med KI-assistenten (talemodus)",
     talk: "Snakk med KI-assistenten",

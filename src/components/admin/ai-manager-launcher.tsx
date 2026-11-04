@@ -9,7 +9,8 @@ import { focusAiComposer } from "@/lib/ai-composer";
 import { pageName, parseRecent, rememberPage } from "@/lib/recent-pages";
 import type { ConversationSummary } from "@/server/owner-assistant";
 
-import { AiManagerChat, MicIcon, type Abilities, type AiManagerActions } from "./ai-manager";
+import type { Abilities, AiManagerActions, AiManagerChat } from "./ai-manager";
+import { MicIcon } from "./mic-icon";
 import { unlockVoiceAudio } from "./voice-mode";
 import { useAdminText } from "./admin-text";
 import { ASK_AI_MANAGER_EVENT, type AskDetail } from "@/lib/alert-ask";
@@ -17,6 +18,26 @@ import { ASK_AI_MANAGER_EVENT, type AskDetail } from "@/lib/alert-ask";
 import { NoticeBadge, NoticeList, useNoticeCount } from "./ai-notices";
 
 export type AiManagerStart = () => Promise<{ abilities: Abilities; conversations: ConversationSummary[] }>;
+
+type ChatComponent = typeof AiManagerChat;
+
+/**
+ * The chat itself (`ai-manager.tsx`, with the admin map it names the page from), fetched when the panel is first opened, beside the
+ * start call rather than after it. The launcher is on every admin screen and the chat is drawn only after a click, so no screen loads it
+ * first: 0.51 to 0.76 MB of each screen's first scripts (`e2e/signed-in/admin-scripts.spec.ts`, D444). A failed fetch is forgotten, so
+ * the next opening tries again; meanwhile the panel offers the AI manager's own page, a whole page load.
+ */
+let chatModule: Promise<ChatComponent> | null = null;
+function loadChat(): Promise<ChatComponent> {
+  chatModule ??= import("./ai-manager").then(
+    (module) => module.AiManagerChat,
+    (error: unknown) => {
+      chatModule = null;
+      throw error;
+    },
+  );
+  return chatModule;
+}
 
 function Spark({ className }: { className?: string }) {
   return (
@@ -53,6 +74,8 @@ export function AiManagerLauncher({
   const w = useAdminText("assistant");
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState<Awaited<ReturnType<AiManagerStart>> | null>(null);
+  const [Chat, setChat] = useState<ChatComponent | null>(null);
+  const [chatFailed, setChatFailed] = useState(false);
   /** Counts the microphone's clicks: each asks the panel to start voice mode. */
   const [talk, setTalk] = useState(0);
   /** An alert handed over (D348): its first message, counted per press so the same one can be asked again. */
@@ -86,6 +109,13 @@ export function AiManagerLauncher({
       const value = next ?? !openRef.current;
       openRef.current = value;
       setOpen(value);
+      if (value) {
+        setChatFailed(false);
+        loadChat().then(
+          (chat) => setChat(() => chat),
+          () => setChatFailed(true),
+        );
+      }
       if (value && !startedRef.current) {
         startedRef.current = true;
         start()
@@ -134,10 +164,10 @@ export function AiManagerLauncher({
     };
   }, [toggle, onItsPage]);
 
-  // Focus the message box when the panel opens.
+  // Focus the message box when the panel opens (once the chat is there).
   useEffect(() => {
-    if (open && ready) inputRef.current?.focus();
-  }, [open, ready]);
+    if (open && ready && Chat) inputRef.current?.focus();
+  }, [open, ready, Chat]);
 
   const closeOnPhones = () => {
     if (window.matchMedia("(max-width: 639px)").matches) toggle(false);
@@ -196,8 +226,8 @@ export function AiManagerLauncher({
         )}
         <div className={showNotices ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
         <RecentPages storageKey={recentKey} current={pathname} label={w.launcher.recent} onOpen={closeOnPhones} />
-        {ready ? (
-          <AiManagerChat
+        {ready && Chat ? (
+          <Chat
             area={area}
             base={base}
             siteName={siteName}
@@ -212,6 +242,14 @@ export function AiManagerLauncher({
             startVoice={talk}
             ask={ask}
           />
+        ) : chatFailed ? (
+          <p className="p-4 text-sm" role="alert">
+            {w.launcher.failed}{" "}
+            {/* A whole page load, not the router's: the chat may be missing because a newer version is live, and this loads its scripts. */}
+            <a href={base} className="underline">
+              {w.launcher.openPage}
+            </a>
+          </p>
         ) : (
           <p className="p-4 text-sm text-muted" role="status">
             {w.launcher.loading}
