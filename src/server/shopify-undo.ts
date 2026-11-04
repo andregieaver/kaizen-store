@@ -176,7 +176,7 @@ export async function undoCopy(member: Membership): Promise<UndoResult> {
   await db().execute(sql`delete from commerce.shop_move_items where store_id = ${storeId}::uuid`);
   await db().execute(sql`
     update commerce.shop_moves set copy = ${JSON.stringify(EMPTY_COPY)}::jsonb, move = ${JSON.stringify(EMPTY_MOVE)}::jsonb, updated_at = now()
-     where store_id = ${storeId}::uuid and source = 'shopify'
+     where store_id = ${storeId}::uuid and status = 'connected'
   `);
   await audit(member.account.id, storeId, "integration.shopify_copy_undone", { removed, kept });
   log("info", "shopify.copy_undone", { storeId, removed, kept });

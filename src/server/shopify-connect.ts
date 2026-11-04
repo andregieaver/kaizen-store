@@ -96,7 +96,7 @@ export async function findShopifyShop(raw: string, deps: ShopifyDeps = {}): Prom
 // Connecting
 // ---------------------------------------------------------------------------
 
-export type StartProblem = FindProblem | "off" | "forbidden";
+export type StartProblem = FindProblem | "off" | "forbidden" | "other_shop";
 export type ShopifyStart = { ok: true; url: string; cookie: string } | { ok: false; problem: StartProblem };
 
 /** The press (owner only): the shop found, a fresh nonce sealed with the store, the account and the shop for the cookie, and Shopify's page. */
@@ -104,6 +104,9 @@ export async function startShopifyConnect(member: Membership, raw: string, deps:
   if (!memberCan(member, OWNER)) return { ok: false, problem: "forbidden" };
   const c = client();
   if (!c) return { ok: false, problem: "off" };
+  // A store moves from one shop at a time (D446): a connected WooCommerce shop is disconnected first.
+  const [other] = await db().execute<Row>(sql`select 1 from commerce.shop_moves where store_id = ${member.store.id}::uuid and source <> ${SOURCE} and status = 'connected'`);
+  if (other) return { ok: false, problem: "other_shop" };
   const found = await findShopifyShop(raw, deps);
   if (!found.ok) return found;
   const value = { state: random(), store: member.store.slug, account: member.account.id, shop: found.shop };

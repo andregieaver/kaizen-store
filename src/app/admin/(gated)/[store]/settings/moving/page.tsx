@@ -17,7 +17,9 @@ import { ShopUndo } from "@/components/admin/moving/shop-undo";
 import { undoView } from "@/server/shopify-undo";
 import { MoveWatchCard } from "@/components/admin/moving/move-watch-card";
 import { COPY_FEEDS, copyDone, copyFailed, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
-import { copyView, feedJobPage } from "@/server/shopify-copy";
+import { copySource, copyView, feedJobPage } from "@/server/shopify-copy";
+import { wooConnection, wooOffered } from "@/server/woocommerce-connect";
+import { WOO_COPY_FEEDS } from "@/lib/woocommerce-copy";
 import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
 import type { DataJob } from "@/server/data-job-store";
 import { Card, PageHeader } from "@/components/admin/ui";
@@ -40,7 +42,9 @@ import {
   checkAddressAction,
   checkOldLinksAction,
   connectShopifyAction,
+  connectWooAction,
   disconnectShopifyAction,
+  disconnectWooAction,
   saveVendorMakerAction,
   shopifyClosedAction,
   scheduleMoveAction,
@@ -80,10 +84,15 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "moving");
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const asked = (await searchParams).shopify;
+  const query = await searchParams;
+  const asked = query.shopify;
   const outcome = OUTCOMES.find((o) => o === asked) ?? null;
   const offered = shopifyOffered();
   const connection = offered ? await shopifyConnection(member) : null;
+  // WooCommerce (D446 step 1): its own key, approved on the owner's own site; WooCommerce sends him back with `success`.
+  const wooOn = wooOffered();
+  const woo = wooOn && !connection ? await wooConnection(member) : null;
+  const wooOutcome = query.woocommerce === "back" ? (woo ? "connected" : query.success === "0" ? "declined" : "failed") : null;
   const base = `/admin/${store.slug}`;
   const files = [
     { href: `${base}/products/import`, label: w.files.products },
@@ -110,7 +119,26 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           {w.outcome[outcome]}
         </p>
       )}
-      {!offered ? (
+      {wooOutcome && (
+        <p role="status" className={`rounded-card p-3 text-sm ${wooOutcome === "connected" ? "bg-positive-soft" : "bg-sunken"}`}>
+          {w.woo.outcome[wooOutcome]}
+        </p>
+      )}
+      {woo ? (
+        <Card title={fillWords(w.connected.title, { name: woo.name || woo.site })} description={fillWords(w.woo.shop, { site: woo.site, when: momentText(woo.connectedAt, store.timeZone, locale) })}>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm">{w.woo.later}</p>
+            <CopyPanel storeSlug={store.slug} />
+            <details className="text-sm">
+              <summary className="w-fit cursor-pointer underline underline-offset-2">{w.details.title}</summary>
+              <div className="mt-3">
+                <UndoPanel storeSlug={store.slug} />
+              </div>
+            </details>
+            <ShopifyDisconnect disconnect={disconnectWooAction.bind(null, store.slug)} ask={w.woo.disconnectAsk} />
+          </div>
+        </Card>
+      ) : !offered ? (
         <Card title={w.off.title} description={w.off.text}>
           {fileList}
         </Card>
@@ -138,6 +166,11 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       ) : (
         <Card title={w.connect.title}>
           <ShopifyConnectForm connect={connectShopifyAction.bind(null, store.slug)} />
+        </Card>
+      )}
+      {wooOn && !woo && !connection && (
+        <Card title={w.woo.connect.title}>
+          <ShopifyConnectForm kind="woocommerce" connect={connectWooAction.bind(null, store.slug)} />
         </Card>
       )}
     </AdminTextScope>
@@ -384,7 +417,7 @@ async function MakersPanel({ storeSlug }: { storeSlug: string }) {
 /** *Copy my shop* (D445 step 4): where each part of the copy is, from `shop_moves.copy` and the imports' own jobs. */
 async function CopyPanel({ storeSlug }: { storeSlug: string }) {
   const member = await requireOwnerRole(storeSlug);
-  const [view, move] = await Promise.all([copyView(member), moveStatus(member)]);
+  const [view, move, source] = await Promise.all([copyView(member), moveStatus(member), copySource(member)]);
   if (!view) return null;
   // While the shop moves, the copy is the move's catch-up: the move shows it, and nothing here may start it again.
   if (move && (move.status === "moving" || move.status === "moved")) return null;
@@ -405,7 +438,9 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
     subscribers: `${base}/subscribers`,
     gift_cards: `${base}/gift-cards`,
   };
-  const rows: CopyRow[] = COPY_FEEDS.map((feed) => {
+  // A WooCommerce copy lists the parts it brings (D446 step 1); the others are later steps'.
+  const feeds = source === "woocommerce" ? COPY_FEEDS.filter((f) => (WOO_COPY_FEEDS as readonly CopyFeed[]).includes(f)) : COPY_FEEDS;
+  const rows: CopyRow[] = feeds.map((feed) => {
     const f = view.state.feeds[feed];
     const dry = dryOf(feed, view.jobs[feed]);
     return {
@@ -422,6 +457,8 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
   });
   return (
     <ShopCopy
+      source={source ?? "shopify"}
+      parts={feeds}
       started={view.state.startedAt !== null}
       moving={copyMoving(view.state)}
       ready={copyReady(view.state)}

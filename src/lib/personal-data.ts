@@ -380,7 +380,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   not_found_ignored: "An address staff hid from the 404 report (D168) and the staff account that did it; never a person's data (the address passed the same filter as the report's).",
   old_shops: "The public addresses of the shop a store moved from (D445) and the staff account that read them; never a person's data.",
   shop_move_items: "What a move from Shopify made (D445 step 9): kinds and ids, a customer only as the md5 of their address; never an address or a name.",
-  shop_moves: "A store's connection to the Shopify shop it moves from (D445): the shop's name and address, encrypted tokens and the account that connected it; never a shopper's data.",
+  shop_moves: "A store's connection to the Shopify or WooCommerce shop it moves from (D445, D446): the shop's name and address, encrypted tokens or key and the account that connected it; never a shopper's data.",
   data_jobs: "An import or export (D165): its kind, options, counts and the staff account that ran it. The customer and order files it points to are the `storage:exports` entry; the job itself holds no shopper's data.",
   data_job_items: "A product of an import or a finding about the file (D165): a handle, a SKU, row numbers and a plain sentence that never quotes a cell.",
   data_job_assets: "A picture address an import fetched and the library address it became (D165): product pictures only.",

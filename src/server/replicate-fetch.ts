@@ -55,6 +55,11 @@ export type FetchOptions = {
   signal?: AbortSignal;
   /** A POST with a body and headers of its own (D354: a signed event to an owner's endpoint); a GET otherwise. */
   post?: { body: string; headers: Record<string, string> };
+  /**
+   * Headers of its own, such as a key (D446: a WooCommerce shop's read key): sent only to the first address's origin, never after a
+   * redirect to another one.
+   */
+  headers?: Record<string, string>;
 };
 
 /** One request, to one checked address, without following redirects. */
@@ -71,6 +76,7 @@ function once(url: URL, address: string, family: number, options: FetchOptions):
           "Accept-Encoding": "identity",
           "Accept-Language": options.acceptLanguage ?? "en;q=0.9",
           ...(options.referer ? { Referer: options.referer } : {}),
+          ...(options.headers ?? {}),
           ...(options.post ? { ...options.post.headers, "Content-Length": String(Buffer.byteLength(options.post.body)) } : {}),
         },
         // The connection goes to the address that was checked, whatever the name would answer now.
@@ -119,6 +125,7 @@ function once(url: URL, address: string, family: number, options: FetchOptions):
 /** A file or page from the web, with the checks above; never throws, says in words why it could not. */
 export async function safeFetch(raw: string, options: FetchOptions): Promise<Fetched> {
   let current = raw;
+  let origin: string | null = null;
   for (let hop = 0; hop <= (options.maxRedirects ?? 5); hop++) {
     const parsed = parseReplicaUrl(current, { allowPrivate: allowPrivate() });
     if (!parsed.ok) return { ok: false, problem: parsed.problem };
@@ -141,7 +148,9 @@ export async function safeFetch(raw: string, options: FetchOptions): Promise<Fet
     }
     let result: Awaited<ReturnType<typeof once>>;
     try {
-      result = await once(url, address, family, options);
+      origin ??= url.origin;
+      // A header of its own (a key) goes only to the origin it was meant for.
+      result = await once(url, address, family, options.headers && url.origin !== origin ? { ...options, headers: undefined } : options);
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       return { ok: false, problem: message === "timeout" ? "The site took too long to answer." : "The site could not be reached." };

@@ -4600,6 +4600,13 @@
       "when": 1793806047697,
       "tag": "20261104152727_app_events",
       "breakpoints": true
+    },
+    {
+      "idx": 657,
+      "version": "7",
+      "when": 1793808694052,
+      "tag": "20261104161134_woocommerce_moves",
+      "breakpoints": true
     }
   ]
 }

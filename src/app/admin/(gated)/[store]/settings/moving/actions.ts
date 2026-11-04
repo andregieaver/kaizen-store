@@ -14,6 +14,7 @@ import { advanceMove, cancelMove, issueLeftCard, scheduleMove, shopifyClosed, st
 import { checkAddress, startAddress } from "@/server/shopify-address";
 import { undoCopy, type UndoResult } from "@/server/shopify-undo";
 import { copyMoving, ordersSinceFor } from "@/lib/shopify-copy";
+import { disconnectWoo, startWooConnect, type WooStartProblem } from "@/server/woocommerce-connect";
 
 /**
  * Settings → Moving in (D445 step 2): connect the Shopify shop (the state cookie set here, then Shopify's own page), disconnect it, and the
@@ -30,6 +31,23 @@ export async function connectShopifyAction(storeSlug: string, address: string): 
   if (!start.ok) return start;
   (await cookies()).set(SHOPIFY_STATE_COOKIE, start.cookie, { httpOnly: true, secure: true, sameSite: "lax", path: SHOPIFY_STATE_PATH, maxAge: SHOPIFY_STATE_MINUTES * 60 });
   redirect(start.url);
+}
+
+/** *Connect WooCommerce* (D446 step 1): the site found, then WooCommerce's own *authorize* page on it. */
+export async function connectWooAction(storeSlug: string, address: string): Promise<{ ok: false; problem: WooStartProblem }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false, problem: "forbidden" };
+  const start = await startWooConnect(member, typeof address === "string" ? address.slice(0, 300) : "");
+  if (!start.ok) return start;
+  redirect(start.url);
+}
+
+export async function disconnectWooAction(storeSlug: string): Promise<{ ok: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false };
+  const result = await disconnectWoo(member);
+  refresh();
+  return result;
 }
 
 export async function disconnectShopifyAction(storeSlug: string): Promise<{ ok: boolean }> {

@@ -39,8 +39,33 @@ export type CopyActions = {
  * while anything moves the page asks the server to go on every few seconds. When every part is checked, *Bring it over* saves them in order.
  * Each part's import has its own page (*See what will happen*), where Lisa sees every row; Homer needs none of it.
  */
-export function ShopCopy({ started, moving, ready, done, failed, rows, actions, privateHref }: { started: boolean; moving: boolean; ready: boolean; done: boolean; failed: number; rows: CopyRow[]; actions: CopyActions; privateHref: string }) {
+export function ShopCopy({
+  started,
+  moving,
+  ready,
+  done,
+  failed,
+  rows,
+  actions,
+  privateHref,
+  source = "shopify",
+  parts,
+}: {
+  started: boolean;
+  moving: boolean;
+  ready: boolean;
+  done: boolean;
+  failed: number;
+  rows: CopyRow[];
+  actions: CopyActions;
+  privateHref: string;
+  /** The platform the shop is on: the problems are said of it (D446). */
+  source?: "shopify" | "woocommerce";
+  /** The parts this copy brings, for *What to bring* (all by default). */
+  parts?: readonly CopyFeed[];
+}) {
   const w = useAdminText("moving").copy;
+  const problems = source === "woocommerce" ? w.problemsWoo : w.problems;
   const router = useRouter();
   const [pending, start] = useTransition();
   const [asking, setAsking] = useState(false);
@@ -78,7 +103,7 @@ export function ShopCopy({ started, moving, ready, done, failed, rows, actions, 
           {w.title}
         </h3>
         <p className="text-sm">{w.text}</p>
-        <WhatToBring skip={skip} setSkip={setSkip} years={years} setYears={setYears} />
+        <WhatToBring skip={skip} setSkip={setSkip} years={years} setYears={setYears} parts={parts} />
         <div>
           <button type="button" disabled={pending} className={primary} onClick={() => press(startChosen)}>
             {pending ? w.starting : w.start}
@@ -113,9 +138,9 @@ export function ShopCopy({ started, moving, ready, done, failed, rows, actions, 
             )}
             {row.problem && (
               <span className={hint}>
-                {w.problems[row.problem]}{" "}
+                {problems[row.problem]}{" "}
                 <Link href={row.fileHref} className="underline underline-offset-2">
-                  {SET_HERE.includes(row.feed) ? w.setHere : w.files}
+                  {SET_HERE.includes(row.feed) ? w.setHere : source === "woocommerce" ? w.filesWoo : w.files}
                 </Link>
               </span>
             )}
@@ -143,7 +168,7 @@ export function ShopCopy({ started, moving, ready, done, failed, rows, actions, 
         (asking ? (
           <div className="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label={w.again}>
             <span>{w.againAsk}</span>
-            <WhatToBring skip={skip} setSkip={setSkip} years={years} setYears={setYears} />
+            <WhatToBring skip={skip} setSkip={setSkip} years={years} setYears={setYears} parts={parts} />
             <button type="button" disabled={pending} className={secondary} onClick={() => press(startChosen)}>
               {w.again}
             </button>
@@ -168,7 +193,19 @@ const YEARS: readonly (number | null)[] = [null, 5, 2, 1];
  * *What to bring* (D445 step 9): Lisa's, folded away; everything is brought unless she says otherwise. A part left out is nothing to copy,
  * and past orders can be only the last few years.
  */
-function WhatToBring({ skip, setSkip, years, setYears }: { skip: CopyFeed[]; setSkip: (s: CopyFeed[]) => void; years: number | null; setYears: (y: number | null) => void }) {
+function WhatToBring({
+  skip,
+  setSkip,
+  years,
+  setYears,
+  parts,
+}: {
+  skip: CopyFeed[];
+  setSkip: (s: CopyFeed[]) => void;
+  years: number | null;
+  setYears: (y: number | null) => void;
+  parts?: readonly CopyFeed[];
+}) {
   const w = useAdminText("moving").copy;
   return (
     <details className="text-sm">
@@ -177,7 +214,7 @@ function WhatToBring({ skip, setSkip, years, setYears }: { skip: CopyFeed[]; set
         <p className={hint}>{w.choose.text}</p>
         <fieldset className="grid grid-cols-2 gap-1 sm:grid-cols-3">
           <legend className="sr-only">{w.choose.title}</legend>
-          {CHOOSABLE.map((feed) => (
+          {CHOOSABLE.filter((feed) => !parts || parts.includes(feed)).map((feed) => (
             <label key={feed} className="flex items-center gap-2">
               <input type="checkbox" checked={!skip.includes(feed)} onChange={(e) => setSkip(e.target.checked ? skip.filter((f) => f !== feed) : [...skip, feed])} />
               {w.feeds[feed]}
