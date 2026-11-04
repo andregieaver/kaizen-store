@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EMPTY_MOVE, moveDue, moveStateOf, nextMoveStep, readiness, scheduleProblem } from "./shopify-move";
+import { EMPTY_MOVE, closeReady, moveDue, moveStateOf, nextMoveStep, readiness, scheduleProblem, watchDay, watchDue, watchShown } from "./shopify-move";
 
 describe("move day", () => {
   it("reads back only what it wrote, and a scheduled move without its time or owner is none", () => {
@@ -50,5 +50,35 @@ describe("move day", () => {
       scheduleProblem("2026-11-04T08:10:00.000Z", now),
       scheduleProblem("2026-12-05T08:10:00.000Z", now),
     ]).toEqual(["invalid", "past", null, "far"]);
+  });
+});
+
+describe("the 14 days after", () => {
+  const moved = (over: Partial<typeof EMPTY_MOVE.watch> = {}) => ({ ...EMPTY_MOVE, status: "moved" as const, finishedAt: "2026-11-04T10:00:00.000Z", watch: { ...EMPTY_MOVE.watch, ...over } });
+  const at = (iso: string) => new Date(iso);
+
+  it("counts the days from the move, and looks at Shopify once a day for 14 of them", () => {
+    expect(watchDay(EMPTY_MOVE, at("2026-11-04T12:00:00Z"))).toBeNull();
+    expect([watchDay(moved(), at("2026-11-04T12:00:00Z")), watchDay(moved(), at("2026-11-05T10:00:00Z")), watchDay(moved(), at("2026-11-17T10:00:00Z"))]).toEqual([1, 2, 14]);
+    expect(watchDue(moved(), at("2026-11-05T09:59:00Z"))).toBe(false);
+    expect(watchDue(moved(), at("2026-11-05T10:00:00Z"))).toBe(true);
+    expect(watchDue(moved({ checkedAt: "2026-11-06T10:00:00.000Z" }), at("2026-11-06T20:00:00Z"))).toBe(false);
+    expect(watchDue(moved({ running: true }), at("2026-11-08T10:00:00Z"))).toBe(false);
+    expect(watchDue(moved({ checkedAt: "2026-11-17T10:00:00.000Z" }), at("2026-11-18T10:00:00Z"))).toBe(false);
+    expect(watchDue(moved({ closedAt: "2026-11-06T10:00:00.000Z" }), at("2026-11-08T10:00:00Z"))).toBe(false);
+  });
+
+  it("says Shopify can close on day 14, or sooner once everything is green after a quiet look", () => {
+    const green = { addressDone: true, linksMissing: 0 };
+    expect(closeReady(moved(), green, at("2026-11-05T12:00:00Z"))).toBe(false);
+    expect(closeReady(moved({ checkedAt: "2026-11-05T10:00:00.000Z", lastFound: 0 }), green, at("2026-11-05T12:00:00Z"))).toBe(true);
+    // An order on an earlier day does not hold it back once the latest look is quiet.
+    expect(closeReady(moved({ checkedAt: "2026-11-06T10:00:00.000Z", found: 2, lastFound: 0 }), green, at("2026-11-06T12:00:00Z"))).toBe(true);
+    expect(closeReady(moved({ checkedAt: "2026-11-06T10:00:00.000Z", found: 2, lastFound: 2 }), green, at("2026-11-06T12:00:00Z"))).toBe(false);
+    expect(closeReady(moved({ checkedAt: "2026-11-05T10:00:00.000Z" }), { addressDone: false, linksMissing: 0 }, at("2026-11-05T12:00:00Z"))).toBe(false);
+    expect(closeReady(moved({ checkedAt: "2026-11-05T10:00:00.000Z" }), { addressDone: null, linksMissing: 3 }, at("2026-11-05T12:00:00Z"))).toBe(false);
+    expect(closeReady(moved(), { addressDone: false, linksMissing: 3 }, at("2026-11-17T10:00:00Z"))).toBe(true);
+    expect(closeReady(moved({ closedAt: "2026-11-10T10:00:00.000Z" }), green, at("2026-11-17T10:00:00Z"))).toBe(false);
+    expect([watchShown(moved()), watchShown(moved({ closedAt: "2026-11-10T10:00:00.000Z" })), watchShown(EMPTY_MOVE)]).toEqual([true, false, false]);
   });
 });

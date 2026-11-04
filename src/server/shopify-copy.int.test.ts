@@ -52,13 +52,17 @@ const files = (): Record<string, string> => ({
   pages: lines({ id: "gid://shopify/Page/1", handle: "our-story", title: "Our story", body: "<h1>Since 1990</h1><p>We knit <strong>by hand</strong>.</p><img src='x.jpg'>", isPublished: true }),
   // Made in Shopify after the copy began: one new order, nothing else new.
   "orders-new": lines(
-    { id: "gid://shopify/Order/10", name: "#1002", email, createdAt: "2026-11-04T07:00:00Z", cancelledAt: null, currencyCode: "NOK", displayFinancialStatus: "PAID", displayFulfillmentStatus: "UNFULFILLED", discountCodes: [], subtotalPriceSet: { shopMoney: { amount: "299.0" } }, totalShippingPriceSet: { shopMoney: { amount: "0.0" } }, totalTaxSet: { shopMoney: { amount: "59.8" } }, totalDiscountsSet: { shopMoney: { amount: "0.0" } }, totalPriceSet: { shopMoney: { amount: "299.0" } }, billingAddress: null, shippingAddress: null },
-    { name: "Wool hat - S", sku: "COPY-HAT-S", quantity: 1, originalUnitPriceSet: { shopMoney: { amount: "299.0" } }, __parentId: "gid://shopify/Order/10" },
+    { id: `gid://shopify/Order/${newOrder.id}`, name: newOrder.name, email, createdAt: "2026-11-04T07:00:00Z", cancelledAt: null, currencyCode: "NOK", displayFinancialStatus: "PAID", displayFulfillmentStatus: "UNFULFILLED", discountCodes: [], subtotalPriceSet: { shopMoney: { amount: "299.0" } }, totalShippingPriceSet: { shopMoney: { amount: "0.0" } }, totalTaxSet: { shopMoney: { amount: "59.8" } }, totalDiscountsSet: { shopMoney: { amount: "0.0" } }, totalPriceSet: { shopMoney: { amount: "299.0" } }, billingAddress: null, shippingAddress: null },
+    { name: "Wool hat - S", sku: "COPY-HAT-S", quantity: 1, originalUnitPriceSet: { shopMoney: { amount: "299.0" } }, __parentId: `gid://shopify/Order/${newOrder.id}` },
   ),
   articles: lines({ id: "gid://shopify/Article/1", handle: "winter-is-here", title: "Winter is here", body: "<p>Time for hats.</p>", isPublished: true, author: { name: "Kari" }, blog: { handle: "news", title: "News" } }),
 });
 
 let refuse = new Set<string>();
+/** Whether Shopify has a new order when the daily look asks (the 14 days after, D445 step 7c). */
+let newOrders = true;
+/** The order Shopify made since the last read: #1002 on move day, #1003 on the first daily look. */
+let newOrder = { name: "#1002", id: 10 };
 const started: string[] = [];
 
 /** Shopify: a bulk read per query (its feed told by the query's first connection), finished at the first poll; the shop's currency and VAT. */
@@ -113,7 +117,7 @@ const shopify = (async (_input: string | URL | Request, init?: RequestInit) => {
   return new Response("not found", { status: 404 });
 }) as typeof fetch;
 
-const deps = { fetch: shopify, data, download: async (url: string) => ({ ok: true as const, text: files()[url.split("/").pop()!] ?? "" }) };
+const deps = { fetch: shopify, data, download: async (url: string) => ({ ok: true as const, text: (url.endsWith("/orders-new") && !newOrders ? "" : files()[url.split("/").pop()!]) ?? "" }) };
 
 /** Ticks until nothing moves on its own, running every import job the ticks started (as the five-minute job would). */
 async function settle(member: Membership, max = 20): Promise<void> {
@@ -306,6 +310,43 @@ describe("copying a Shopify shop", () => {
     // The vendors are still known after the catch-up found no new product.
     expect((await copy.copiedVendors(owner, deps)).map((v) => v.handle)).toEqual(["copied-wool-hat"]);
     expect(await move.startMove(owner, moveDeps)).toEqual({ ok: false, problem: "busy" });
+  });
+
+  it("looks at Shopify once a day for 14 days after, copies what still arrives there, and says when Shopify can close", async () => {
+    const watchDeps = { ...deps, readOld: async () => ({ ok: false }) };
+    const card = (await move.watchView(owner, watchDeps))!;
+    expect(card).toMatchObject({ day: 1, days: 14, addressDone: null, linksMissing: 0, found: null, canClose: false });
+    // A day later, the five-minute job looks: one order came in on Shopify after the move.
+    const moveRow = async () => (await db().execute<Row>(sql`select move from commerce.shop_moves where store_id = ${fx.storeId}::uuid`))[0].move as Record<string, unknown>;
+    const back = async (patch: Record<string, unknown>) => {
+      const m = await moveRow();
+      await db().execute(sql`update commerce.shop_moves set move = ${JSON.stringify({ ...m, ...patch, watch: { ...(m.watch as object), ...((patch.watch as object) ?? {}) } })}::jsonb where store_id = ${fx.storeId}::uuid`);
+    };
+    const look = async () => {
+      for (let i = 0; i < 20; i += 1) {
+        await move.runDueMoves(watchDeps);
+        const state = (await db().execute<Row>(sql`select copy from commerce.shop_moves where store_id = ${fx.storeId}::uuid`))[0].copy as { feeds: Record<string, { job?: string; stage: string }> };
+        for (const f of Object.values(state.feeds)) if (f.job && (f.stage === "checking" || f.stage === "applying")) await runToEnd(f.job, data);
+        if (!((await moveRow()).watch as { running: boolean }).running) return;
+      }
+    };
+    await back({ finishedAt: new Date(Date.now() - 25 * 3_600_000).toISOString() });
+    newOrder = { name: "#1003", id: 11 };
+    started.length = 0;
+    await look();
+    // Only customers and orders, only since the move.
+    expect(started).toEqual(["customers-new", "orders-new"]);
+    expect(await move.watchView(owner, watchDeps)).toMatchObject({ day: 2, found: 1, canClose: false });
+    const [late] = await db().execute<Row>(sql`select number from commerce.orders where store_id = ${fx.storeId}::uuid and number = 'C-1003'`);
+    expect(late?.number).toBe("C-1003");
+    // A day later nothing new: everything is green, so Shopify can close before day 14.
+    newOrders = false;
+    await back({ watch: { checkedAt: new Date(Date.now() - 25 * 3_600_000).toISOString() } });
+    await look();
+    expect(await move.watchView(owner, watchDeps)).toMatchObject({ found: 1, canClose: true });
+    expect(await move.shopifyClosed(owner)).toEqual({ ok: true });
+    expect(await move.watchView(owner, watchDeps)).toBeNull();
+    newOrders = true;
   });
 
   it("starts a move at its time from the five-minute job, as the owner who chose it, and never for someone else", async () => {

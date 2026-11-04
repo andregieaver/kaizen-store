@@ -31,6 +31,8 @@ export type MoveState = {
   finishedAt: string | null;
   /** A scheduled move that did not start because the shop was not ready at its time: the time, said on the page. */
   missed: string | null;
+  /** The 14 days after (D445 step 7c): the daily look for orders still arriving on Shopify, and when the owner said Shopify is closed. */
+  watch: Watch;
   steps: Record<MoveStep, { stage: StepStage; problem?: StepProblem; done?: number; failed?: number }>;
 };
 
@@ -41,6 +43,7 @@ export const EMPTY_MOVE: MoveState = {
   startedAt: null,
   finishedAt: null,
   missed: null,
+  watch: { checkedAt: null, running: false, found: 0, lastFound: 0, closedAt: null },
   steps: { catch_up: { stage: "waiting" }, links: { stage: "waiting" }, open: { stage: "waiting" } },
 };
 
@@ -50,6 +53,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STAGES: readonly StepStage[] = ["waiting", "running", "done", "failed"];
 const STATUSES: readonly MoveStatus[] = ["none", "scheduled", "moving", "moved"];
 const count = (v: unknown): number | undefined => (typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : undefined);
+
+/** The 14 days after a move: when Shopify was last looked at, whether a look is running, how many orders it found, and when Shopify was closed. */
+export type Watch = { checkedAt: string | null; running: boolean; found: number; lastFound: number; closedAt: string | null };
+
+function watchOf(raw: unknown): Watch {
+  const w = o(raw);
+  return { checkedAt: instant(w.checkedAt), running: w.running === true, found: count(w.found) ?? 0, lastFound: count(w.lastFound) ?? 0, closedAt: instant(w.closedAt) };
+}
 
 /** The kept state read back, every field checked (an unknown shape is no move at all). */
 export function moveStateOf(raw: unknown): MoveState {
@@ -62,6 +73,7 @@ export function moveStateOf(raw: unknown): MoveState {
     startedAt: instant(r.startedAt),
     finishedAt: instant(r.finishedAt),
     missed: instant(r.missed),
+    watch: watchOf(r.watch),
     steps: { ...EMPTY_MOVE.steps },
   };
   for (const step of MOVE_STEPS) {
@@ -130,3 +142,42 @@ export const scheduleProblem = (at: string | null, now: Date): "invalid" | "past
   if (t < SCHEDULE_MIN_MS) return "past";
   return t > SCHEDULE_MAX_MS ? "far" : null;
 };
+
+// ---------------------------------------------------------------------------
+// The 14 days after (D445 step 7c, `docs/moving-from-shopify.md` 4.8)
+// ---------------------------------------------------------------------------
+
+export const WATCH_DAYS = 14;
+const DAY_MS = 24 * 3_600_000;
+
+/** The day of the watch a moved shop is on (1 on the day it moved), or null before it moved. */
+export function watchDay(state: MoveState, now: Date): number | null {
+  if (state.status !== "moved" || !state.finishedAt) return null;
+  return Math.max(1, Math.floor((now.getTime() - Date.parse(state.finishedAt)) / DAY_MS) + 1);
+}
+
+/** Whether Shopify is due its daily look: within the 14 days, not closed, none running, and a day since the move or the last look. */
+export function watchDue(state: MoveState, now: Date): boolean {
+  const day = watchDay(state, now);
+  if (day === null || day > WATCH_DAYS || state.watch.closedAt || state.watch.running) return false;
+  const last = Date.parse(state.watch.checkedAt ?? state.finishedAt!);
+  return now.getTime() - last >= DAY_MS;
+}
+
+/** What the card weighs: whether the address leads here (null: the shop had none of its own), old links leading nowhere, orders found. */
+export type WatchFacts = { addressDone: boolean | null; linksMissing: number };
+
+/**
+ * *You can close Shopify now*: on day 14, or before it when every check is green after at least one daily look found nothing new on
+ * Shopify (an order on an earlier day does not hold it back once a later look is quiet). Never once the owner said it is closed.
+ */
+export function closeReady(state: MoveState, facts: WatchFacts, now: Date): boolean {
+  const day = watchDay(state, now);
+  if (day === null || state.watch.closedAt) return false;
+  if (day >= WATCH_DAYS) return true;
+  const green = facts.addressDone !== false && facts.linksMissing === 0;
+  return green && state.watch.checkedAt !== null && state.watch.lastFound === 0;
+}
+
+/** Whether the card shows at all: from the move until the owner says Shopify is closed. */
+export const watchShown = (state: MoveState): boolean => state.status === "moved" && state.watch.closedAt === null;

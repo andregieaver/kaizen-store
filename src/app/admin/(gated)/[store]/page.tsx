@@ -26,6 +26,8 @@ import { latestDreamRun } from "@/server/dream-factory";
 import { platformModes } from "@/server/stripe";
 
 import { removeDemoContentAction } from "./demo-actions";
+import { shopifyClosedAction } from "./settings/moving/actions";
+import { MoveWatchCard } from "@/components/admin/moving/move-watch-card";
 import { dismissBriefingAction, turnOnBriefingAction } from "./settings/notifications/staff/actions";
 
 type Props = PageProps<"/admin/[store]">;
@@ -118,6 +120,12 @@ export default async function AdminOverview({ params, searchParams }: Props) {
       {/* A website keeps Orders out of the menu, but reachable while an order can still be withdrawn from or returned (D178 step 5). */}
       <AfterSaleNote store={store} />
       {store.setupCompletedAt && <Attention items={attention} empty={selling ? h.nothingShop : h.nothing} words={words.attention} />}
+      {/* The 14 days after a move from Shopify (D445 step 7c): the owner's card, read after the page is shown. */}
+      {store.setupCompletedAt && owner && (
+        <Suspense fallback={null}>
+          <MoveWatchCard member={current} lang={lang} close={shopifyClosedAction.bind(null, store.slug)} />
+        </Suspense>
+      )}
       {/* Staff alerts that gave up after their tries (D238): the owner's to look at, read after the page is shown. */}
       {store.setupCompletedAt && selling && memberCan(current, "owner") && (
         <Suspense fallback={null}>
