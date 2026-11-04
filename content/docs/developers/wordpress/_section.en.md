@@ -11,7 +11,8 @@ the zip and activate it. Install the newest version. The earlier ones are kept f
 
 | Version | Released | What changed | Download |
 |---|---|---|---|
-| **1.3.4** (newest) | 4 November 2026 | *Move to Kaizena Flow* has two switches for move day when you keep WordPress: *Pause buying*, and *Send shoppers to the new shop*. | [kaizen-store-wordpress-1.3.4.zip](/downloads/wordpress/kaizen-store-wordpress-1.3.4.zip) |
+| **1.3.5** (newest) | 4 November 2026 | *Move to Kaizena Flow* makes views of your new shop's categories and all its products, each with its shortcode, when you keep WordPress. | [kaizen-store-wordpress-1.3.5.zip](/downloads/wordpress/kaizen-store-wordpress-1.3.5.zip) |
+| 1.3.4 | 4 November 2026 | *Move to Kaizena Flow* has two switches for move day when you keep WordPress: *Pause buying*, and *Send shoppers to the new shop*. | [kaizen-store-wordpress-1.3.4.zip](/downloads/wordpress/kaizen-store-wordpress-1.3.4.zip) |
 | 1.3.3 | 4 November 2026 | *Move to Kaizena Flow* reads your pages, posts and menus, so a whole site can move; shortcodes are taken out and named, never run. | [kaizen-store-wordpress-1.3.3.zip](/downloads/wordpress/kaizen-store-wordpress-1.3.3.zip) |
 | 1.3.2 | 4 November 2026 | *Move to Kaizena Flow* reads the gift card plugins' cards with money left: balance, expiry and holder, never a card's code. | [kaizen-store-wordpress-1.3.2.zip](/downloads/wordpress/kaizen-store-wordpress-1.3.2.zip) |
 | 1.3.1 | 4 November 2026 | *Move to Kaizena Flow* reads every Yoast SEO and Rank Math field of products and categories, and titles written with the plugin's variables as the plugin shows them. | [kaizen-store-wordpress-1.3.1.zip](/downloads/wordpress/kaizen-store-wordpress-1.3.1.zip) |

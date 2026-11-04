@@ -9,6 +9,7 @@ import { fillWords } from "@/lib/admin-fill";
 import type { AddressView } from "@/server/shopify-address";
 
 import { useAdminText } from "../admin-text";
+import { overWords, useMovingSource } from "./moving-source";
 
 export type AddressActions = {
   start: () => Promise<{ ok: boolean; problems?: string[] }>;
@@ -21,7 +22,9 @@ export type AddressActions = {
  * the page checks every 30 seconds and says *Leads here* by itself.
  */
 export function ShopAddress({ view, actions, hrefs }: { view: AddressView; actions: AddressActions; hrefs: { domains: string; moveIn: string } }) {
-  const w = useAdminText("moving").address;
+  const all = useAdminText("moving");
+  const source = useMovingSource();
+  const w = source === "woocommerce" ? overWords(all.address, all.woo.address) : all.address;
   const router = useRouter();
   const [pending, start] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
@@ -134,7 +137,9 @@ export function ShopAddress({ view, actions, hrefs }: { view: AddressView; actio
 
 /** The records still to make, each value with its own Copy button; one already in place is marked done. */
 function Records({ hosts }: { hosts: AddressView["hosts"] }) {
-  const w = useAdminText("moving").address;
+  const all = useAdminText("moving");
+  const source = useMovingSource();
+  const w = source === "woocommerce" ? overWords(all.address, all.woo.address) : all.address;
   const rows = hosts.flatMap((h) => h.records.map((r) => ({ ...r, key: `${h.hostname}|${r.type}|${r.name}|${r.value}` })));
   if (rows.length === 0) return null;
   return (
@@ -170,7 +175,9 @@ function Records({ hosts }: { hosts: AddressView["hosts"] }) {
 }
 
 function CopyValue({ value }: { value: string }) {
-  const w = useAdminText("moving").address;
+  const all = useAdminText("moving");
+  const source = useMovingSource();
+  const w = source === "woocommerce" ? overWords(all.address, all.woo.address) : all.address;
   const [done, setDone] = useState(false);
   return (
     <button

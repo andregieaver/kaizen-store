@@ -288,6 +288,40 @@ describe("moving from WooCommerce, step 1", () => {
     expect(view.state.feeds.reviews).toMatchObject({ stage: "done", made: 2, refused: 0 });
   });
 
+  it("moves the shop (step 5): what changed on WooCommerce since the copy comes over, WordPress keeps its links, and the shop opens", async () => {
+    const move = await import("./shopify-move");
+    await db().execute(sql`update commerce.stores set private_mode = true, setup_completed_at = now() where id = ${fx.storeId}::uuid`);
+    ({ owner } = await membersOf(fx));
+    const view = (await move.moveView(owner, deps))!;
+    expect(view.canMove).toBe(true);
+    seen.length = 0;
+    expect(await move.startMove(owner, deps)).toEqual({ ok: true });
+    let after = null;
+    for (let i = 0; i < 20; i += 1) {
+      const state = (await db().execute<Row>(sql`select copy from commerce.shop_moves where store_id = ${fx.storeId}::uuid and source = 'woocommerce'`))[0].copy as { feeds: Record<string, { job?: string; stage: string }> };
+      for (const f of Object.values(state.feeds)) if (f.job && (f.stage === "checking" || f.stage === "applying")) await runToEnd(f.job, data);
+      after = await move.advanceMove(owner, deps);
+      if (after?.status === "moved") break;
+    }
+    expect(after?.status).toBe("moved");
+    // The catch-up asked WooCommerce for what changed since the copy began, not only what is new.
+    expect(seen.some((c) => c.path.startsWith("wc/v3/orders?") && c.path.includes("modified_after="))).toBe(true);
+    expect(seen.some((c) => c.path.startsWith("wc/v3/products?") && c.path.includes("modified_after="))).toBe(true);
+    expect(after?.steps.catch_up.stage).toBe("done");
+    // Only the shop moved: WordPress keeps its address and its links (the plugin's switch sends shoppers on).
+    expect(after?.steps.links).toEqual({ stage: "done", done: 0, failed: 0 });
+    // No plugin, no gift cards to read: none made, nothing failed.
+    expect(after?.steps.gift_cards).toMatchObject({ stage: "done", done: 0, failed: 0 });
+    expect(after?.steps.open).toEqual({ stage: "done" });
+    const [{ open }] = await db().execute<Row>(sql`select not private_mode as open from commerce.stores where id = ${fx.storeId}::uuid`);
+    expect(open).toBe(true);
+    // The address: only shop.{domain} moves here, as the owner keeps WordPress (step 4b).
+    const address = await import("./shopify-address");
+    const at = await address.addressView(owner, { configured: false, dns: { ns: async () => [], points: async () => ({ a: [], cname: null }) } });
+    expect(at?.primary).toBe("shop.woo.example");
+    expect(at?.hosts.map((h) => h.hostname)).toEqual(["shop.woo.example"]);
+  });
+
   it("takes the copy back with Undo this copy, and forgets the key on Disconnect", async () => {
     const before = await undo.undoView(owner);
     expect(before?.allowed).toBe(true);

@@ -306,7 +306,7 @@ async function moverCall(site: WooSite, root: RestRoot, secret: string, route: M
  * checked (signed here, not over), the owner still the store's owner, the shop still connected at the same site, and the secret tried once
  * with a signed call before it is kept, encrypted.
  */
-export async function finishMoverConnect(body: unknown, deps: WooDeps = {}): Promise<{ status: number; back?: string; shop?: string }> {
+export async function finishMoverConnect(body: unknown, deps: WooDeps = {}): Promise<{ status: number; back?: string; shop?: string; store?: string; market?: string }> {
   const key_ = key();
   const b = body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
   const state = key_ ? openMoverState(key_, b.note, deps.now) : null;
@@ -334,7 +334,8 @@ export async function finishMoverConnect(body: unknown, deps: WooDeps = {}): Pro
   return {
     status: 200,
     back: `${siteUrl()}/admin/${member.store.slug}/settings/moving?mover=connected`,
-    ...(market ? { shop: marketUrl(member.store.slug, market.slug) } : {}),
+    // And the store's and market's names, for the plugin's views of the new shop's products (step 4b).
+    ...(market ? { shop: marketUrl(member.store.slug, market.slug), store: member.store.slug, market: market.slug } : {}),
   };
 }
 

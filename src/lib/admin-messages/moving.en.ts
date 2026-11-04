@@ -370,6 +370,25 @@ export const movingEn = {
       move: { label: "Everything", text: "Your shop, and your site's pages, blog posts and menus. After the move you can switch WordPress off." },
       keep: { label: "Only the shop", text: "Your products, customers and orders move. WordPress keeps your pages and blog, and shows your products from the new shop." },
     },
+    /** Move day and the address said of a WooCommerce shop (D446 step 5): merged over the move's and the address's own words. */
+    move: {
+      text: "When you press Move, we copy what changed on WooCommerce since your copy (new orders, and orders edited by hand), give gift cards their new codes, and open your shop. In WordPress, press Pause buying first. Nothing else changes on your site.",
+      problems: { gone: "Connect WooCommerce again first." },
+      steps: { catch_up: "Copying what changed on WooCommerce" },
+      stepProblems: { shopify: "WooCommerce couldn't be read. Anything new there can still come over with files." },
+      left: {
+        text: "These gift cards had no email to send a new code to. When someone brings one, press Issue it and give them the code shown.",
+        problems: { gone: "This card has no money left on WooCommerce." },
+      },
+      movedText: "Your shop is open here. Next, your web address: point it here, then in WordPress press Send shoppers to the new shop.",
+    },
+    address: {
+      none: "Your WordPress site's address couldn't be read, so there is nothing to point. Your shop is already reachable here, and you can get an address of its own.",
+      text: "Point {domain} here and shoppers who type it reach your new shop.",
+      status: { not_added: "Not pointed here yet" },
+      stillShopify: "still answers from your old site",
+      replace: "Where a record for the same name points to your old host, change it instead of adding another.",
+    },
     disconnectAsk: "Disconnect your WooCommerce shop? Nothing is deleted here or on your site. To remove our key from your site too, open WooCommerce → Settings → Advanced → REST API there.",
   },
   off: {

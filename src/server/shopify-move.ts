@@ -29,9 +29,12 @@ import { memberCan } from "./permissions";
 import { setPrivateMode } from "./private-mode";
 import { getSetupProgress } from "./setup";
 import { shopifyConnection } from "./shopify-connect";
+import { moverGet, wooConnection } from "./woocommerce-connect";
+import { giftCardLinesOf } from "@/lib/woocommerce-mover";
+import type { GiftCardLine } from "@/lib/shopify-settings";
 import { advanceCopy, startCatchUp, type CopyDeps } from "./shopify-copy";
 import { makersView } from "./shopify-makers";
-import { issueLeftGiftCard, lowerSpentOnShopify, moveGiftCards, readShopifyGiftCards } from "./shopify-gift-cards";
+import { issueLeftGiftCard, issueReadGiftCard, lowerSpentOnShopify, moveGiftCards, readShopifyGiftCards } from "./shopify-gift-cards";
 import { addressView, type AddressDeps } from "./shopify-address";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { db } from "@/db/client";
@@ -52,17 +55,18 @@ export type MoveDeps = CopyDeps & {
   readOld?: (member: Membership, address: string) => Promise<{ ok: boolean }>;
 };
 
-const MOVE_ROW = z.object({ move: z.unknown(), copy: z.unknown() });
+const MOVE_ROW = z.object({ move: z.unknown(), copy: z.unknown(), source: z.string() });
 
-async function rowOf(storeId: string): Promise<{ move: MoveState; copy: ReturnType<typeof copyStateOf> } | null> {
-  const row = await typedRow(MOVE_ROW, sql`select move, copy from commerce.shop_moves where store_id = ${storeId}::uuid and source = 'shopify' and status = 'connected'`);
-  return row ? { move: moveStateOf(row.move), copy: copyStateOf(row.copy) } : null;
+/** The connected shop's move, of whichever platform (one at a time, D446). */
+async function rowOf(storeId: string): Promise<{ move: MoveState; copy: ReturnType<typeof copyStateOf>; source: "shopify" | "woocommerce" } | null> {
+  const row = await typedRow(MOVE_ROW, sql`select move, copy, source from commerce.shop_moves where store_id = ${storeId}::uuid and status = 'connected' order by connected_at desc nulls last limit 1`);
+  return row ? { move: moveStateOf(row.move), copy: copyStateOf(row.copy), source: row.source === "woocommerce" ? "woocommerce" : "shopify" } : null;
 }
 
 async function saveMove(storeId: string, state: MoveState): Promise<void> {
   await db().execute(sql`
     update commerce.shop_moves set move = ${JSON.stringify(state)}::jsonb, updated_at = now()
-     where store_id = ${storeId}::uuid and source = 'shopify'
+     where store_id = ${storeId}::uuid and status = 'connected'
   `);
 }
 
@@ -73,12 +77,29 @@ async function lease(storeId: string): Promise<MoveState | null> {
     sql`
       update commerce.shop_moves
          set move = jsonb_set(move, '{lease}', to_jsonb((now() + make_interval(secs => ${LEASE_SECONDS}))::text))
-       where store_id = ${storeId}::uuid and source = 'shopify' and status = 'connected'
+       where store_id = ${storeId}::uuid and status = 'connected'
          and (move->>'lease' is null or (move->>'lease')::timestamptz < now())
       returning move
     `,
   );
   return row ? moveStateOf(row.move) : null;
+}
+
+/**
+ * A WooCommerce shop's gift cards with money left now (D446 step 5), read again through our plugin just before they are made; none without
+ * the plugin (its cards could not be read). Null when the plugin would not answer.
+ */
+async function readWooGiftCards(storeId: string, deps: MoveDeps): Promise<GiftCardLine[] | null> {
+  const today = (deps.now ?? (() => new Date()))().toISOString().slice(0, 10);
+  const lines: GiftCardLine[] = [];
+  for (let page = 1; page <= 40; page += 1) {
+    const got = await moverGet(storeId, "gift_cards", { page }, deps);
+    if (!got.ok) return got.problem === "none" ? lines : page === 1 ? null : lines;
+    const read = giftCardLinesOf(got.data, today);
+    lines.push(...read.lines);
+    if (!read.more) break;
+  }
+  return lines;
 }
 
 /** The move as it stands (owner only), without *Ready to move?*'s checks: for the copy's own panel. */
@@ -172,11 +193,15 @@ export async function advanceMove(member: Membership, deps: MoveDeps = {}): Prom
           state.steps.catch_up = { stage: "done", done: brought, failed: copyFailed(after) };
         }
       }
+    } else if (step === "links" && (await rowOf(storeId))?.source === "woocommerce" && (await rowOf(storeId))?.copy.options?.wordpress === "keep") {
+      // WordPress keeps its address and its pages (D446 4.6): its old shop links lead on through the plugin's own switch, not here.
+      state.steps.links = { stage: "done", done: 0, failed: 0 };
     } else if (step === "links") {
       let read = await oldShopCheck(member);
       if (!read) {
         const connection = await shopifyConnection(member);
-        const address = connection ? (connection.primaryDomain ?? connection.shop) : null;
+        const woo = connection ? null : await wooConnection(member);
+        const address = connection ? (connection.primaryDomain ?? connection.shop) : woo ? woo.site : null;
         const reader = deps.readOld ?? ((m: Membership, a: string) => readOldShop(m, a));
         if (address) await reader(member, address).catch(() => ({ ok: false }));
         read = await oldShopCheck(member);
@@ -187,8 +212,8 @@ export async function advanceMove(member: Membership, deps: MoveDeps = {}): Prom
         state.steps.links = fixed.ok ? { stage: "done", done: fixed.written, failed: fixed.refused } : { stage: "failed", problem: "not_allowed" };
       }
     } else if (step === "gift_cards") {
-      // Read again now, just before they are made: a balance spent on Shopify since the copy is not given twice.
-      const lines = await readShopifyGiftCards(storeId, deps);
+      // Read again now, just before they are made: a balance spent on the old shop since the copy is not given twice.
+      const lines = (await rowOf(storeId))?.source === "woocommerce" ? await readWooGiftCards(storeId, deps) : await readShopifyGiftCards(storeId, deps);
       if (lines === null) state.steps.gift_cards = { stage: "failed", problem: "shopify" };
       else {
         const moved = await moveGiftCards(member, lines);
@@ -225,7 +250,7 @@ export async function runDueMoves(deps: MoveDeps = {}): Promise<{ started: numbe
     z.object({ store_id: col.uuid, slug: col.text, move: z.unknown() }),
     sql`
       select m.store_id, s.slug, m.move from commerce.shop_moves m join commerce.stores s on s.id = m.store_id
-       where m.source = 'shopify' and m.status = 'connected' and m.move->>'status' in ('scheduled', 'moving', 'moved')
+       where m.status = 'connected' and m.move->>'status' in ('scheduled', 'moving', 'moved')
        limit 20
     `,
   );
@@ -368,7 +393,12 @@ export async function shopifyClosed(member: Membership, deps: MoveDeps = {}): Pr
 /** *Issue it* on a gift card that had no email (owner only): made now, its code shown once; it leaves the list. */
 export async function issueLeftCard(member: Membership, shopifyId: string, deps: MoveDeps = {}): Promise<Awaited<ReturnType<typeof issueLeftGiftCard>>> {
   if (!memberCan(member, OWNER)) return { ok: false, problem: "gone" };
-  const result = await issueLeftGiftCard(member, shopifyId, deps);
+  // A WooCommerce card (D446 step 5) is read again through our plugin; a Shopify one from Shopify.
+  let result: Awaited<ReturnType<typeof issueLeftGiftCard>>;
+  if (shopifyId.startsWith("woo:")) {
+    const line = (await readWooGiftCards(member.store.id, deps))?.find((l) => l.id === shopifyId) ?? null;
+    result = line ? await issueReadGiftCard(member, line) : { ok: false, problem: "gone" };
+  } else result = await issueLeftGiftCard(member, shopifyId, deps);
   if (result.ok || result.problem === "made" || result.problem === "gone") {
     const row = await rowOf(member.store.id);
     if (row) {

@@ -19,6 +19,6 @@ export async function POST(request: NextRequest) {
   }
   const result = await finishMoverConnect(body);
   return result.back
-    ? NextResponse.json({ back: result.back, ...(result.shop ? { shop: result.shop } : {}) }, { status: result.status, headers: { "Cache-Control": "no-store" } })
+    ? NextResponse.json({ back: result.back, ...(result.shop ? { shop: result.shop, store: result.store, market: result.market } : {}) }, { status: result.status, headers: { "Cache-Control": "no-store" } })
     : new NextResponse(null, { status: result.status, headers: { "Cache-Control": "no-store" } });
 }

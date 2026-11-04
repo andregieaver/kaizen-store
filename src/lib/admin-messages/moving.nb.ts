@@ -367,6 +367,25 @@ export const movingNb: MovingMessages = {
       move: { label: "Alt", text: "Butikken din, og nettstedets sider, blogginnlegg og menyer. Etter flyttingen kan du slå av WordPress." },
       keep: { label: "Bare butikken", text: "Produktene, kundene og ordrene dine flytter. WordPress beholder sidene og bloggen din, og viser produktene dine fra den nye butikken." },
     },
+    /** Flyttedagen og adressen sagt om en WooCommerce-butikk (D446 steg 5): flettet over flyttingens og adressens egne ord. */
+    move: {
+      text: "Når du trykker Flytt, kopierer vi det som er endret i WooCommerce siden kopien (nye ordrer, og ordrer endret for hånd), gir gavekortene nye koder og åpner butikken din. Trykk Pause kjøp i WordPress først. Ellers endres ingenting på nettstedet ditt.",
+      problems: { gone: "Koble til WooCommerce igjen først." },
+      steps: { catch_up: "Kopierer det som er endret i WooCommerce" },
+      stepProblems: { shopify: "WooCommerce kunne ikke leses. Det som er nytt der kan fortsatt flyttes med filer." },
+      left: {
+        text: "Disse gavekortene hadde ingen e-post å sende ny kode til. Når noen kommer med et, trykk Utsted det og gi dem koden som vises.",
+        problems: { gone: "Dette kortet har ingen penger igjen i WooCommerce." },
+      },
+      movedText: "Butikken din er åpen her. Neste: nettadressen din. Pek den hit, og trykk Send kundene til den nye butikken i WordPress.",
+    },
+    address: {
+      none: "Adressen til WordPress-nettstedet ditt kunne ikke leses, så det er ingenting å peke. Butikken din kan allerede nås her, og du kan få en egen adresse.",
+      text: "Pek {domain} hit, så kommer kunder som skriver den til den nye butikken din.",
+      status: { not_added: "Ikke pekt hit ennå" },
+      stillShopify: "svarer fortsatt fra det gamle nettstedet",
+      replace: "Der en post for samme navn peker til den gamle verten din, endre den i stedet for å legge til en ny.",
+    },
     disconnectAsk: "Koble fra WooCommerce-butikken din? Ingenting slettes her eller på nettstedet ditt. For å fjerne nøkkelen vår fra nettstedet også, åpne WooCommerce → Innstillinger → Avansert → REST API der.",
   },
   off: {

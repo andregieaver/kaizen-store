@@ -132,6 +132,18 @@ export async function issueLeftGiftCard(member: Membership, shopifyId: string, d
   return { ok: true, code: formatGiftCode(card.code), amountMinor: card.amountMinor, currency: line.currency };
 }
 
+/**
+ * *Issue it* for a card that had no email, already read again by the caller (a WooCommerce card through our plugin, D446 step 5): made here,
+ * its code returned to be shown once (never kept). Refused when it was made here already.
+ */
+export async function issueReadGiftCard(member: Membership, line: GiftCardLine): Promise<{ ok: true; code: string; amountMinor: number; currency: string } | { ok: false; problem: "gone" | "made" | "no_codes" }> {
+  if (!memberCan(member, OWNER)) return { ok: false, problem: "gone" };
+  const card = await issueOne(member, line);
+  if (!card) return { ok: false, problem: "no_codes" };
+  if (card.code === null) return { ok: false, problem: "made" };
+  return { ok: true, code: formatGiftCode(card.code), amountMinor: card.amountMinor, currency: line.currency };
+}
+
 const BALANCES_QUERY = `query KaizenCopyGiftBalances($after: String) { giftCards(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { id balance { amount currencyCode } } } }`;
 
 /**

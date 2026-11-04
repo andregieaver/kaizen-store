@@ -22,6 +22,8 @@ class Kaizen_Store_Mover {
 	/** The owner's two switches for the move (D446 step 4): buying paused, and shoppers sent to the new shop. */
 	const PAUSED    = 'kaizen_store_mover_paused';
 	const MOVED     = 'kaizen_store_mover_moved';
+	/** The new store's and market's names, for views of its products (step 4b). */
+	const STORE     = 'kaizen_store_mover_store';
 	const NAMESPACE = 'kaizena-mover/v1';
 	const SKEW      = 300;
 	const PAGE_SIZE = 500;
@@ -33,6 +35,7 @@ class Kaizen_Store_Mover {
 			add_action( 'admin_post_kaizen_store_mover_allow', array( __CLASS__, 'allow' ) );
 			add_action( 'admin_post_kaizen_store_mover_stop', array( __CLASS__, 'stop' ) );
 			add_action( 'admin_post_kaizen_store_mover_switch', array( __CLASS__, 'switch_mode' ) );
+			add_action( 'admin_post_kaizen_store_mover_views', array( __CLASS__, 'make_views' ) );
 		}
 		// The shop while it moves: only what the owner switched on here.
 		if ( '1' === get_option( self::PAUSED ) || '1' === get_option( self::MOVED ) ) {
@@ -73,6 +76,58 @@ class Kaizen_Store_Mover {
 			wp_redirect( $target, 301 ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- the new shop is another site.
 			exit;
 		}
+	}
+
+	/**
+	 * *Show the new shop's products on your pages* (step 4b): one saved view (D169) of each of the new shop's categories and one of all its
+	 * products, each with its shortcode, made through the site's own connection to Kaizena Flow. A view of the same name already here is left.
+	 */
+	public static function make_views() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to do that.', 'kaizen-store' ), 403 );
+		}
+		check_admin_referer( 'kaizen_store_mover_views' );
+		$target = get_option( self::STORE, array() );
+		$back   = array( 'page' => self::PAGE );
+		if ( ! is_array( $target ) || empty( $target['store'] ) || ! Kaizen_Store_Settings::is_connected() ) {
+			wp_safe_redirect( add_query_arg( array_merge( $back, array( 'kaizen_notice' => 'connect' ) ), admin_url( 'admin.php' ) ) );
+			exit;
+		}
+		$terms = Kaizen_Store_Api::terms( $target['store'] );
+		if ( is_wp_error( $terms ) || ! is_array( $terms ) ) {
+			wp_safe_redirect( add_query_arg( array_merge( $back, array( 'kaizen_notice' => 'views_failed' ) ), admin_url( 'admin.php' ) ) );
+			exit;
+		}
+		$wanted = array( array( __( 'All products', 'kaizen-store' ), array() ) );
+		foreach ( isset( $terms['categories'] ) && is_array( $terms['categories'] ) ? $terms['categories'] : array() as $category ) {
+			if ( isset( $category['id'], $category['name'] ) ) {
+				$wanted[] = array( (string) $category['name'], array( (string) $category['id'] ) );
+			}
+		}
+		$made = 0;
+		foreach ( array_slice( $wanted, 0, 60 ) as $entry ) {
+			list( $title, $ids ) = $entry;
+			$existing = get_posts( array( 'post_type' => Kaizen_Store_Views::POST_TYPE, 'title' => $title, 'post_status' => 'any', 'fields' => 'ids', 'posts_per_page' => 1 ) );
+			if ( ! empty( $existing ) ) {
+				continue;
+			}
+			$id = wp_insert_post( array( 'post_type' => Kaizen_Store_Views::POST_TYPE, 'post_title' => $title, 'post_status' => 'publish' ), true );
+			if ( is_wp_error( $id ) ) {
+				continue;
+			}
+			Kaizen_Store_Views::save(
+				$id,
+				array(
+					'store'      => $target['store'],
+					'market'     => $target['market'],
+					'source'     => empty( $ids ) ? 'all' : 'category',
+					'categories' => $ids,
+				)
+			);
+			++$made;
+		}
+		wp_safe_redirect( add_query_arg( array_merge( $back, array( 'kaizen_notice' => 'views', 'kaizen_made' => $made ) ), admin_url( 'admin.php' ) ) );
+		exit;
 	}
 
 	/**
@@ -167,6 +222,21 @@ class Kaizen_Store_Mover {
 			/* translators: %s: the new shop's address. */
 			echo '<p>' . esc_html( sprintf( __( 'Your new shop: %s', 'kaizen-store' ), $shop ) ) . '</p>';
 			self::switch_form( 'paused', $paused, $paused ? __( 'Buying is paused: shoppers see that you are moving.', 'kaizen-store' ) : __( 'Pause buying for the few minutes of the move, so no order is placed here while it moves.', 'kaizen-store' ), $paused ? __( 'Let shoppers buy again', 'kaizen-store' ) : __( 'Pause buying', 'kaizen-store' ) );
+			// Step 4b: the new shop's products on WordPress's own pages.
+			echo '<h2>' . esc_html__( 'Your products on your pages', 'kaizen-store' ) . '</h2>';
+			if ( 'connect' === $notice ) {
+				echo '<div class="notice notice-warning"><p>' . esc_html__( 'Connect this site to Kaizena Flow first (Kaizena Flow → Connection), then press again.', 'kaizen-store' ) . '</p></div>';
+			} elseif ( 'views_failed' === $notice ) {
+				echo '<div class="notice notice-error"><p>' . esc_html__( 'Kaizena Flow could not be reached. Try again in a moment.', 'kaizen-store' ) . '</p></div>';
+			} elseif ( 'views' === $notice ) {
+				echo '<div class="notice notice-success"><p>' . esc_html__( 'Your views are ready under Kaizena Flow → Views. Paste a view\'s shortcode where your old shop\'s products were.', 'kaizen-store' ) . '</p></div>';
+			}
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin-bottom:12px">';
+			wp_nonce_field( 'kaizen_store_mover_views' );
+			echo '<input type="hidden" name="action" value="kaizen_store_mover_views" />';
+			echo '<p>' . esc_html__( 'Make a view of each of your new shop\'s categories and one of all its products, each with a shortcode to paste where your old shop\'s products were.', 'kaizen-store' ) . '</p>';
+			submit_button( __( 'Show the new shop\'s products on your pages', 'kaizen-store' ), 'secondary', 'submit', false );
+			echo '</form>';
 			self::switch_form( 'moved', $moved, $moved ? __( 'Shoppers are sent to the new shop: your products, categories, shop, cart and checkout lead there. Your other pages stay here.', 'kaizen-store' ) : __( 'Once your shop has moved, send shoppers to it: each product and category leads to its page in the new shop, and the shop, cart and checkout to its front. Your other pages stay here.', 'kaizen-store' ), $moved ? __( 'Keep shoppers here again', 'kaizen-store' ) : __( 'Send shoppers to the new shop', 'kaizen-store' ) );
 		}
 		echo '</div>';
@@ -207,6 +277,11 @@ class Kaizen_Store_Mover {
 		$shop = isset( $body['shop'] ) ? esc_url_raw( (string) $body['shop'] ) : '';
 		if ( 0 === strpos( $shop, 'https://' ) ) {
 			update_option( self::SHOP, $shop, false );
+		}
+		$store  = isset( $body['store'] ) ? (string) $body['store'] : '';
+		$market = isset( $body['market'] ) ? (string) $body['market'] : '';
+		if ( preg_match( '/^[a-z0-9-]{3,40}$/', $store ) && preg_match( '/^[a-z0-9-]{2,40}$/', $market ) ) {
+			update_option( self::STORE, array( 'store' => $store, 'market' => $market ), false );
 		}
 		$back = isset( $body['back'] ) ? (string) $body['back'] : '';
 		// Only back to Kaizena Flow itself.
