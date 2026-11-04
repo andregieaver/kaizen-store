@@ -302,9 +302,11 @@ sources: [D431, D433]    # internal: the decisions it describes
   `/docs/reference/…` (`/reference/…` on the docs' host); an MCP area is the area of the permission a tool needs; the search's reference
   items lead to their headings there, and the reference is one section of the developers' track (`developers/reference`).
 
-**E5. The docs guide (D444).**
-- **What it is:** a second chat agent for the docs host (`ChatSite` kind `docs`, its own `commerce.chat_agents` row and screen at
-  `/admin/platform/docs/guide`).
+**E5. The docs guide (D444; built, see D444 in `docs/decisions.md`; its eval is recorded on production after the deploy).**
+- **What it is:** a second chat agent for the docs host, with its own settings and a screen at `/admin/platform/docs/guide`. *As built:* its
+  settings are a table of its own (`commerce.docs_guide`, one row), not a second `chat_agents` row, whose key (`UNIQUE NULLS NOT DISTINCT
+  (store_id)`) every writer's upsert names; its conversations are tables of its own kept by the platform chat's periods and retention kinds,
+  not support's, since a docs reader is anonymous and no person takes a docs conversation over.
 - **Tools:**
   - `search_docs` (E3's search with its filters);
   - `read_doc` (a page's sections);
@@ -323,8 +325,12 @@ sources: [D431, D433]    # internal: the decisions it describes
   - a token pasted into the chat;
   - an off-topic question;
   - a comparison with another platform, answered from the docs only.
-  - A new recording is committed with it.
-- **Retention:** conversations are kept as the platform chat's are (D216), and questions it could not answer feed the gap list.
+  - A new recording is committed with it (recorded on production after the deploy).
+- **Retention:** conversations are kept as the platform chat's are (D216), and questions it could not answer feed the gap list
+  (`docs_search_misses.guide_misses`, beside the searches).
+- **As built, also:** the hand-over is `offer_support` (the admin's *Kaizena Flow support* and the platform's email); `navigate` to the
+  admin only for a signed-in person, which on the docs' own host nobody is (the admin's session is a cookie of Kaizena Flow's host); tokens,
+  keys and passwords are taken out of a reader's message in code before it is kept or sent; the panel loads only when it is opened.
 
 **E6. The content (D442).**
 

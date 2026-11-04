@@ -22,6 +22,7 @@ const DELEGATES: Record<string, string> = {
   "src/server/alt-texts.ts": "src/lib/alt-text.ts",
   "src/server/chat-agent.ts": "src/lib/chat.ts",
   "src/server/content-moderation.ts": "src/lib/content-moderation.ts",
+  "src/server/docs-guide.ts": "src/lib/docs-guide.ts",
   "src/server/dream-factory.ts": "src/lib/dream-factory.ts",
   "src/server/recommend.ts": "src/lib/recommendations.ts",
   "src/server/replicate-ai.ts": "src/lib/replicate-prompts.ts",

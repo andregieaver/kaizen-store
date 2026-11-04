@@ -16,6 +16,7 @@ import {
   type RecordedReply,
 } from "@/lib/agent-eval";
 import { storeTools } from "@/lib/chat";
+import { guideTools } from "@/lib/docs-guide";
 import { MODERATION_OPTIONS } from "@/lib/content-moderation";
 import { BRIEF_OPTIONS } from "@/lib/dream-factory";
 import type { ChatTurn } from "@/lib/legal-writer";
@@ -33,8 +34,10 @@ import {
   dreamPromptVersion,
   fixedBriefMessages,
   fixedChatPrompt,
+  fixedGuidePrompt,
   fixedLegalMessages,
   fixedModerationMessages,
+  guidePromptVersion,
   legalPromptVersion,
   moderationPromptVersion,
   promptHash,
@@ -52,15 +55,23 @@ import { col, typedRow, typedRows } from "./typed-rows";
 
 /** Each agent's prompt version (D391): what every eval run and recording is of. */
 export function promptVersions(): PromptVersions {
-  return { chat: chatPromptVersion(), manager: managerPromptVersion(), legal: legalPromptVersion(), moderation: moderationPromptVersion(), dream: dreamPromptVersion() };
+  return {
+    chat: chatPromptVersion(),
+    manager: managerPromptVersion(),
+    legal: legalPromptVersion(),
+    moderation: moderationPromptVersion(),
+    dream: dreamPromptVersion(),
+    guide: guidePromptVersion(),
+  };
 }
 
 /**
- * The tools' version (PSI AGT-14): a hash of every tool the agents may be offered (the AI manager's, its own and the shop chat's), each
- * name, description and parameters, so a recording made before a tool's words changed is not replayed as if the model had read them.
+ * The tools' version (PSI AGT-14): a hash of every tool the agents may be offered (the AI manager's, its own, the shop chat's and the docs
+ * guide's), each name, description and parameters, so a recording made before a tool's words changed is not replayed as if the model had
+ * read them.
  */
 export function toolsVersion(): string {
-  const all: ToolDefinition[] = [...OWNER_TOOLS, ...MANAGER_TOOLS].map(toolDefinition).concat(storeTools(true));
+  const all: ToolDefinition[] = [...OWNER_TOOLS, ...MANAGER_TOOLS].map(toolDefinition).concat(storeTools(true), guideTools());
   return promptHash(JSON.stringify(all.map((t) => [t.name, t.description, t.parameters]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))));
 }
 
@@ -142,10 +153,11 @@ async function runCase(model: EvalModel, testCase: AgentEvalCase): Promise<Agent
   }
   if (testCase.agent === "dream") return { answer: await model.write(fixedBriefMessages(testCase.says), BRIEF_OPTIONS), calls: [] };
   const wanted: ToolArea[] = [];
-  const chatTools = storeTools(true);
-  const toolsNow = () => (testCase.agent === "manager" ? managerTools(testCase, wanted) : chatTools);
+  const ownTools = testCase.agent === "guide" ? guideTools() : storeTools(true);
+  const toolsNow = () => (testCase.agent === "manager" ? managerTools(testCase, wanted) : ownTools);
+  const prompt = testCase.agent === "manager" ? fixedManagerPrompt() : testCase.agent === "guide" ? fixedGuidePrompt() : fixedChatPrompt();
   const messages: ToolChatMessage[] = [
-    { role: "system", content: testCase.agent === "manager" ? fixedManagerPrompt() : fixedChatPrompt() },
+    { role: "system", content: prompt },
     { role: "user", content: testCase.says },
   ];
   const run: AgentRun = { answer: "", calls: [] };
