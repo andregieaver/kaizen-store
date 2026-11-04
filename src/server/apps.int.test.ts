@@ -362,3 +362,40 @@ describe("an app's events (D441 D2)", () => {
     expect((await deliveries(String(endpoint.id))).map((d) => d.event)).toEqual(["app.uninstalled", "store.erase_requested"]);
   });
 });
+
+describe("an app's listing (D441 D3)", () => {
+  const emailsTo = async (to: string) =>
+    (await db().execute<Row>(sql`select subject, text from commerce.email_messages where to_address = ${to} and kind = 'platform.app_listing_decided' order by created_at`)).map(
+      (r) => ({ subject: String(r.subject), text: String(r.text) }),
+    );
+
+  it("queues a listed app for Kaizena Flow's review, which approves or declines it with a reason the developer is emailed", async () => {
+    const admin = await makeAccount("Platform reviewer", { platformAdmin: true });
+    const app = await makeApp(["products:read"], "listed");
+    expect((await apps.listingRequests(store.account, "requested")).length).toBe(0);
+    const queue = await apps.listingRequests(admin, "requested");
+    expect(queue.find((a) => a.id === app.id)).toMatchObject({ listing: "requested", developer: { email: developer.email } });
+
+    expect(await apps.decideListing(store.account, app.id, "approved", "")).toEqual({ ok: false, problem: "No such app." });
+    expect((await apps.decideListing(admin, app.id, "declined", "  ")).ok).toBe(false);
+    expect(await apps.decideListing(admin, app.id, "declined", "Add a privacy policy on your own domain.")).toEqual({ ok: true });
+    expect(await apps.decideListing(admin, app.id, "approved", "")).toEqual({ ok: false, problem: "That app is not waiting for review." });
+    const declined = await apps.ownApp(developer.id, app.id);
+    expect(declined).toMatchObject({ listing: "declined", listingNote: "Add a privacy policy on your own domain." });
+    const [mail] = await emailsTo(developer.email);
+    expect(mail.subject).toContain("was not listed");
+    expect(mail.text).toContain("Add a privacy policy on your own domain.");
+
+    // Saving it as listed again asks for review again; this time it is approved, and the directory still shows nothing while it is closed.
+    const form = readAppForm(formOf({ name: declined!.name, redirect_uris: REDIRECT, scopes: ["products:read"], distribution: "listed" }));
+    if (!form.ok) throw new Error(JSON.stringify(form.problems));
+    const again = await apps.updateApp(developer, app.id, form.app);
+    expect(again.ok).toBe(true);
+    expect((await apps.ownApp(developer.id, app.id))?.listing).toBe("requested");
+    expect(await apps.decideListing(admin, app.id, "approved", "")).toEqual({ ok: true });
+    expect((await emailsTo(developer.email)).at(-1)?.subject).toContain("is approved for the app directory");
+    expect((await apps.listingRequests(admin, "decided")).find((a) => a.id === app.id)?.listing).toBe("approved");
+    expect(await apps.directoryApps()).toEqual([]);
+    expect((await auditRows(null, "platform.app_listing_approved")).length).toBeGreaterThan(0);
+  });
+});

@@ -1205,6 +1205,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["oauth", "clients", "mcp", "ai assistants", "apps", "verify", "block", "authorization server"],
     tasks: ["Verify an AI assistant or app", "Block an AI assistant or app"],
   }),
+  platform("apps", "/apps", "App listings", "Platform", "Apps for many stores that ask to be listed in the app directory (D441): each with what it does, its developer, its addresses and what it asks for, approved with a note or declined with the reason, which the developer is emailed.", {
+    keywords: ["apps", "app directory", "listing", "review", "approve app", "decline app", "developers"],
+    tasks: ["Review an app's listing", "Approve or decline an app for the directory"],
+  }),
   platform("reports", "/reports", "Illegal content notices", "Platform", "Notices people sent about illegal content on stores, each decided with its reason; the sender is told, and the store when something is restricted (DSA).", {
     keywords: ["DSA", "illegal", "notice", "takedown", "report", "abuse", "counterfeit", "moderation"],
     tasks: ["Decide a notice of illegal content", "See decided notices"],

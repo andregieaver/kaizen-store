@@ -824,6 +824,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:plan-limits": { title: "Grenser", keywords: ["grenser", "kvote", "lagring", "båndbredde", "trafikk", "standardgrenser"] },
   "platform:docs.feedback": { title: "Tilbakemeldinger på dokumentasjonen", keywords: ["dokumentasjon", "veiledning", "hjelp", "tilbakemelding", "artikler"] },
   "platform:docs.guide": { title: "Dokumentasjonsveileder", keywords: ["dokumentasjon", "veileder", "ki", "chat", "assistent", "utviklere"] },
+  "platform:apps": { title: "Appoppføringer", keywords: ["apper", "appkatalog", "oppføring", "gjennomgang", "godkjenn app", "avslå app", "utviklere"] },
   "platform:oauth": { title: "AI-assistenter og apper", keywords: ["oauth", "klienter", "mcp", "ai-assistenter", "apper", "bekreft", "blokker", "autorisasjonsserver"] },
   "platform:reports": { title: "Meldinger om ulovlig innhold", keywords: ["dsa", "ulovlig", "melding", "fjerning", "anmeldelse", "misbruk", "forfalskning", "moderering"] },
   "platform:status": { title: "Statusside", keywords: ["status", "hendelse", "nedetid", "oppetid", "driftsavbrudd", "vedlikehold"] },

@@ -6,14 +6,20 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { APPS_MAX, DEVELOPER_TERMS_VERSION, isAppScope, normaliseAppScopes, type AppDistribution, type AppInput, type AppScope } from "@/lib/apps";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { APP_DIRECTORY_OPEN, APPS_MAX, DEVELOPER_TERMS_VERSION, isAppScope, LISTING_NOTE_MAX, normaliseAppScopes, type AppDistribution, type AppInput, type AppScope } from "@/lib/apps";
+import { renderEmail } from "@/lib/email-layout";
 import { isEvent, type IntegrationEvent } from "@/lib/integrations";
 import { safeClientName } from "@/lib/oauth";
+import { siteUrl } from "@/lib/site";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { checkEndpointUrl } from "@/lib/webhook-signature";
 
 import { syncAppEndpoints } from "./app-endpoints";
 import { audit, type Account } from "./auth";
+import { sendEmail } from "./email";
 import { secretHash } from "./oauth-clients";
 import { hostProblem } from "./replicate-fetch";
 import { encryptionKey } from "./settings";
@@ -274,4 +280,88 @@ export async function appWebhook(appId: string): Promise<{ url: string; secret: 
   const key = encryptionKey();
   if (!row?.url || !row.secret || !key) return null;
   return { url: decryptSecret(row.url, key), secret: decryptSecret(row.secret, key), topics: row.topics.filter(isEvent) };
+}
+
+// Listing (D3) --------------------------------------------------------------------------------------------------------------------
+
+export type ListingRequest = AppView & { developer: { email: string; name: string | null } | null };
+
+const listingRow = appRow.extend({ developer_email: col.textOrNull, developer_name: col.textOrNull });
+
+/**
+ * Kaizena Flow's review queue (D441 D3): listed apps asking to be listed, oldest first, or those decided, newest first, each with its
+ * developer. Platform admins only.
+ */
+export async function listingRequests(admin: Account, which: "requested" | "decided" = "requested"): Promise<ListingRequest[]> {
+  if (!admin.platformAdmin) return [];
+  const rows = await typedRows(
+    listingRow,
+    sql`
+      select x.*, d.email as developer_email, d.name as developer_name
+      from (${APP_SELECT}) x
+      left join commerce.accounts d on d.id = x.developer_id
+      where ${which === "requested" ? sql`x.listing = 'requested' and x.distribution = 'listed'` : sql`x.listing in ('approved', 'declined')`}
+      order by ${which === "requested" ? sql`x.created_at` : sql`x.created_at desc`}
+      limit 200
+    `,
+  );
+  return rows.map((row) => ({ ...viewOf(row), developer: row.developer_email ? { email: row.developer_email, name: row.developer_name } : null }));
+}
+
+export type ListingDecision = { ok: true } | { ok: false; problem: string };
+
+/**
+ * Kaizena Flow's review decides a listing (D441 D3): approved, with a note if any, or declined with the reason, which the developer reads.
+ * Either is emailed to the developer in their admin's language and kept on the app's page. Only an app that asks for it; platform admins
+ * only. Audited as `platform.app_listing_approved` or `platform.app_listing_declined`, without the note's words.
+ */
+export async function decideListing(admin: Account, appId: string, decision: "approved" | "declined", note: string): Promise<ListingDecision> {
+  if (!admin.platformAdmin || !z.uuid().safeParse(appId).success) return { ok: false, problem: "No such app." };
+  const said = note.trim();
+  if (said.length > LISTING_NOTE_MAX) return { ok: false, problem: `At most ${LISTING_NOTE_MAX} characters.` };
+  if (decision === "declined" && said.length === 0) return { ok: false, problem: "Say why, so the developer can mend it." };
+  const row = await typedRow(
+    z.object({ id: col.uuid, name: col.text, client_id: col.text, email: col.textOrNull, admin_locale: col.textOrNull }),
+    sql`
+      update commerce.apps a set listing = ${decision}, listing_note = ${said || null}, listing_at = now(), updated_at = now()
+      from commerce.oauth_clients c
+      where a.id = ${appId}::uuid and c.id = a.client_id and a.listing = 'requested'
+      returning a.id, c.name, c.client_id,
+        (select d.email from commerce.accounts d where d.id = a.developer_id) as email,
+        (select d.admin_locale from commerce.accounts d where d.id = a.developer_id) as admin_locale
+    `,
+  );
+  if (!row) return { ok: false, problem: "That app is not waiting for review." };
+  await audit(admin.id, null, decision === "approved" ? "platform.app_listing_approved" : "platform.app_listing_declined", { app: row.name, client_id: row.client_id }, {
+    target: { type: "app", id: row.id },
+  });
+  if (row.email) {
+    const lang = adminLangOf(row.admin_locale);
+    const w = adminText(lang, "oauth").developer.listing;
+    const subject = fillWords(decision === "approved" ? w.approvedSubject : w.declinedSubject, { app: safeClientName(row.name) });
+    const message = renderEmail({
+      subject,
+      preview: subject,
+      lang: lang === "nb" ? "nb" : "en",
+      footer: ["Kaizena Flow · kaizenaflow.com"],
+      blocks: [
+        { type: "heading", text: subject },
+        { type: "paragraph", text: decision === "approved" ? w.approvedText : w.declinedText },
+        ...(said ? [{ type: "paragraph" as const, text: `${decision === "approved" ? w.noteLabel : w.reasonLabel}: ${said}` }] : []),
+        { type: "paragraph", text: `${siteUrl()}/admin/account/developer/${row.id}` },
+      ],
+    });
+    await sendEmail({ storeId: null, kind: "platform.app_listing_decided", to: row.email, email: message, fromName: "Kaizena Flow", idempotencyKey: `app-listing:${row.id}:${Date.now()}` });
+  }
+  return { ok: true };
+}
+
+/** The apps the directory shows (D441 D3): listed, approved and not blocked, by name; none while the directory is off. */
+export async function directoryApps(): Promise<AppView[]> {
+  if (!APP_DIRECTORY_OPEN) return [];
+  const rows = await typedRows(
+    appRow,
+    sql`${APP_SELECT} where a.distribution = 'listed' and a.listing = 'approved' and c.blocked_at is null order by c.name limit 500`,
+  );
+  return rows.map(viewOf);
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { API_ERRORS, API_SCOPES } from "./admin-api";
+import { API_ERRORS, API_SCOPES, isApiPower } from "./admin-api";
 import { ADMIN_API, errorsOf } from "./admin-api-routes";
 import { ADMIN_RATE, adminOpenApi } from "./admin-openapi";
 import { canonicalJson, jsonSchemaOf, parametersOf, pathParams, type JsonSchema } from "./openapi";
@@ -209,7 +209,11 @@ describe("the Admin API's OpenAPI document (D438)", () => {
       const op = paths[o.path]?.[o.method.toLowerCase()];
       expect(op?.operationId, `${o.method} ${o.path}`).toBe(o.name);
       expect(op["x-required-scope"]).toBe(o.scope);
-      expect(op.security).toEqual([{ adminToken: [o.scope] }]);
+      // An owner's token with the operation's scope, or an app's (D441) with its permission and, for a power, the power; the owner's own
+      // operations (the webhook endpoints) take no app.
+      expect(op.security).toEqual(
+        o.permission === "owner" ? [{ adminToken: [o.scope] }] : [{ adminToken: [o.scope] }, { appOAuth: [o.permission, ...(isApiPower(o.scope) ? [o.scope] : [])] }],
+      );
       expect(Boolean(op.requestBody)).toBe("body" in o);
       const statuses = Object.keys(op.responses as Node);
       expect(statuses).toContain(String(o.status));

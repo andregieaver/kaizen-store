@@ -63,6 +63,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/ai/usage", "AI usage", "What every store, owner and Kaizena Flow itself used of the AI."),
   item("/status", "Status page", "The public status page: each part's checks every five minutes, incidents to post and update, and their subscribers."),
   item("/oauth", "AI assistants and apps", "The AI assistants and apps people connected through Kaizena Flow's sign-in, to verify or block."),
+  item("/apps", "App listings", "Apps that ask to be listed in the app directory, to approve or decline."),
   item("/reports", "Illegal content notices", "Notices people sent about illegal content on stores, each decided with its reason (DSA)."),
   item("/capacity", "Usage and limits", "What every store used this month against its limits: storage, products, staff, visits, emails and AI."),
   item("/domains", "Domains", "Domains stores buy through Kaizena Flow: prices per currency, which stores may buy, registrations and purchases that need a look."),
