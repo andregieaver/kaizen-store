@@ -4614,6 +4614,13 @@
       "when": 1793812053348,
       "tag": "20261104170733_woocommerce_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 659,
+      "version": "7",
+      "when": 1793813422273,
+      "tag": "20261104173022_woocommerce_mover",
+      "breakpoints": true
     }
   ]
 }

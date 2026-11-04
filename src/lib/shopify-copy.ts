@@ -807,7 +807,7 @@ export function nextToApply(state: CopyState): CopyFeed | null {
 }
 
 /** The order feeds are READ in: the bulk reads first, then the few read by their own small queries (`PLAIN_FEEDS`). */
-export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus", "countries", "shipping", "discounts", "reviews", "look", "gift_cards"];
+export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus", "countries", "shipping", "discounts", "reviews", "look", "gift_cards", "subscribers"];
 
 /** The feeds read by an ordinary query, in one tick, rather than a bulk operation. */
 export const PLAIN_FEEDS: readonly CopyFeed[] = ["menus", "countries", "shipping", "discounts", "look", "gift_cards"];

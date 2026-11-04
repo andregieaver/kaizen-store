@@ -9,6 +9,7 @@ import { IMPORT_MAX_BYTES } from "@/lib/data-limits";
 import { htmlToRichText } from "@/lib/html-rich-text";
 import {
   WOO_COPY_FEEDS,
+  WOO_MOVER_FEEDS,
   WOO_PAGE_SIZE,
   WOO_ROUTES,
   collectionLines,
@@ -86,7 +87,8 @@ import { shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
 import { customerMark, recordMoveItems } from "./shopify-undo";
 import { pgTextArray } from "./pg-arrays";
 import { SETTINGS_FEEDS, applySettingsFeed, readSettingsFeed } from "./shopify-settings-copy";
-import { wooGet, wooSetting } from "./woocommerce-connect";
+import { hasMover, moverGet, wooGet, wooSetting } from "./woocommerce-connect";
+import { MOVER_PAGE_SIZE, redirectLinesOf, seoOf, subscriberLinesOf } from "@/lib/woocommerce-mover";
 import { importReviews } from "./review-import";
 
 type Row = Record<string, unknown>;
@@ -257,7 +259,11 @@ export async function startCopy(member: Membership, chosen: unknown = null): Pro
   const feeds = { ...EMPTY_COPY.feeds };
   for (const feed of options.skip) feeds[feed] = { stage: "empty", count: 0 };
   // WooCommerce's copy brings its products, categories, customers, past orders and coupons (D446 step 1); its other parts are later steps'.
-  if (source === "woocommerce") for (const feed of COPY_FEEDS) if (!(WOO_COPY_FEEDS as readonly CopyFeed[]).includes(feed)) feeds[feed] = { stage: "empty", count: 0 };
+  if (source === "woocommerce") {
+    // The plugin, once connected (step 2), brings the redirects and MailPoet's list too.
+    const parts: readonly CopyFeed[] = [...WOO_COPY_FEEDS, ...((await hasMover(member.store.id)) ? WOO_MOVER_FEEDS : [])];
+    for (const feed of COPY_FEEDS) if (!parts.includes(feed)) feeds[feed] = { stage: "empty", count: 0 };
+  }
   // Shopify keeps no reviews of its own (an app does): nothing to read.
   if (source === "shopify") feeds.reviews = { stage: "empty", count: 0 };
   // No customers, no subscribers from them; no products, no categories from their collections.
@@ -486,11 +492,11 @@ async function applyReviews(member: Membership, f: FeedState, roots: readonly Re
 }
 
 /** One tick of a `direct` feed: the next items written by their editors' own writers; an item already here (same address or name) is left. */
-async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, deps: CopyDeps): Promise<FeedState> {
+async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, deps: CopyDeps, source: MoveSource = "shopify"): Promise<FeedState> {
   const text = f.path ? await keptFile(f.path, deps) : null;
   if (text === null) return { ...f, stage: "failed", problem: "storage" };
   const tree = readBulkLines(text);
-  if (SETTINGS_FEEDS.includes(feed)) return applySettingsFeed(member, feed, f, tree.roots);
+  if (SETTINGS_FEEDS.includes(feed)) return applySettingsFeed(member, feed, f, tree.roots, source);
   if (feed === "reviews") return applyReviews(member, f, tree.roots);
   const cursor = f.cursor ?? 0;
   const size = DIRECT_BATCH[feed] ?? 10;
@@ -583,7 +589,8 @@ async function finishRead(member: Membership, feed: CopyFeed, text: string, stat
   const handed = await hand(member, feed, text, deps, source);
   state.feeds[feed] = "empty" in handed ? { stage: "empty", count: 0 } : "problem" in handed ? { stage: "failed", problem: handed.problem } : { stage: "checking", job: handed.job, count: handed.count };
   // The customers' email consent, as Shopify records it, becomes the subscribers' part (step 8): only a subscription with its date.
-  if (feed === "customers") {
+  // (WooCommerce records none: its list is MailPoet's, read by the plugin.)
+  if (feed === "customers" && source === "shopify") {
     const subscribed = consentLines(readBulkLines(text)).filter((l) => l.state === "SUBSCRIBED" && l.updatedAt !== null);
     state.feeds.subscribers = subscribed.length > 0 ? await stage(member, "subscribers", subscribed.map((l) => JSON.stringify(l)).join("\n"), deps, source) : { stage: "empty", count: 0 };
   }
@@ -621,9 +628,9 @@ async function readShopify(member: Membership, state: CopyState, before: CopySta
   }
   // The next read, one at a time.
   const next = nextToRead(state);
-  if (next === "reviews") {
-    // A copy started before reviews were a part (or a Shopify one): Shopify has none to read.
-    state.feeds.reviews = { stage: "empty", count: 0 };
+  if (next === "reviews" || next === "subscribers") {
+    // Shopify has no reviews of its own, and its subscribers come with its customers (`finishRead()`): nothing to read here.
+    state.feeds[next] = { stage: "empty", count: 0 };
   } else if (next === "menus") {
     const answer = await shopifyGraphql<{ menus?: { nodes?: Record<string, unknown>[] } }>(storeId, MENUS_QUERY, {}, deps);
     state.feeds.menus = answer.ok ? await stage(member, "menus", (answer.data.menus?.nodes ?? []).map((m) => JSON.stringify(m)).join("\n"), deps) : { stage: "failed", problem: "shopify_refused" };
@@ -679,6 +686,10 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
     state.feeds.discounts = await readWooCoupons(member, deps);
     return;
   }
+  if (feed === "redirects" || feed === "subscribers") {
+    await readMoverFeed(member, feed, state, before, deps);
+    return;
+  }
   if (feed !== "products" && feed !== "customers" && feed !== "orders" && feed !== "reviews") {
     state.feeds[feed] = { stage: "empty", count: 0 };
     return;
@@ -722,6 +733,17 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
       const made = productLines(got.items, variations, unit);
       lines = made.lines;
       skipped += made.skipped.length;
+      // The SEO plugin's own words for these products, when our plugin reads (step 2).
+      const ids = got.items.map((p) => Number((p as Record<string, unknown>)?.id)).filter((id) => Number.isSafeInteger(id) && id > 0);
+      const seo = ids.length > 0 ? await moverGet(storeId, "seo", { ids: includeOf(ids) }, deps) : null;
+      if (seo?.ok) {
+        const words = seoOf(seo.data);
+        for (const line of lines) {
+          const id = typeof line.id === "string" && line.__parentId === undefined ? Number(line.id.replace("woo-product-", "")) : NaN;
+          const found = words.get(id);
+          if (found) line.seo = found;
+        }
+      }
     } else if (feed === "customers") lines = customerLines(got.items);
     else if (feed === "reviews") {
       const made = reviewLines(got.items, await wooNames(storeId, "wc/v3/products", reviewProductIds(got.items), "slug", deps));
@@ -758,6 +780,37 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
     const categories = collectionLines(text);
     state.feeds.collections = categories.length > 0 ? await stage(member, "collections", categories.map((l) => JSON.stringify(l)).join("\n"), deps, "woocommerce") : { stage: "empty", count: 0 };
   }
+}
+
+/** The most pages of a plugin's part one tick reads (500 rows a page). */
+const MOVER_PAGES = 40;
+
+/**
+ * A part our WordPress plugin reads (D446 step 2): the redirect plugins' redirects (into the redirect import) or MailPoet's subscribed
+ * subscribers (into the email list's own writer), every page in one tick. Without the plugin, nothing.
+ */
+async function readMoverFeed(member: Membership, feed: "redirects" | "subscribers", state: CopyState, before: CopyState["feeds"], deps: CopyDeps): Promise<void> {
+  const lines: Record<string, unknown>[] = [];
+  let skipped = 0;
+  for (let page = 1; page <= MOVER_PAGES; page += 1) {
+    const got = await moverGet(member.store.id, feed, { page }, deps);
+    if (!got.ok) {
+      if (got.problem === "none") {
+        state.feeds[feed] = { stage: "empty", count: 0 };
+        return;
+      }
+      log("warn", "woocommerce.mover_read_failed", { storeId: member.store.id, feed, page, problem: got.problem });
+      state.feeds[feed] = { stage: "failed", problem: got.problem === "refused" ? "shopify_refused" : "shopify_failed" };
+      return;
+    }
+    const read = feed === "redirects" ? redirectLinesOf(got.data) : { ...subscriberLinesOf(got.data), skipped: 0 };
+    lines.push(...read.lines);
+    skipped += read.skipped;
+    if (!read.more || read.lines.length + read.skipped < MOVER_PAGE_SIZE / 2) break;
+  }
+  // A pattern (a redirect by regular expression) stays: the import takes exact addresses.
+  if (skipped > 0) log("info", "woocommerce.copy_skipped", { storeId: member.store.id, feed, skipped });
+  await finishRead(member, feed, lines.map((l) => JSON.stringify(l)).join("\n"), state, before, deps, "woocommerce");
 }
 
 /** The ids a coupon names, read as the products' addresses and the categories' names (100 at a time). */
@@ -834,10 +887,10 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
     // A `direct` feed being written goes on.
     for (const feed of COPY_FEEDS) {
       const f = state.feeds[feed];
-      if (FEED_KIND[feed] === "direct" && f.stage === "applying") state.feeds[feed] = await applyDirect(member, feed, f, deps);
+      if (FEED_KIND[feed] === "direct" && f.stage === "applying") state.feeds[feed] = await applyDirect(member, feed, f, deps, source);
     }
     const apply = nextToApply(state);
-    if (apply && FEED_KIND[apply] === "direct") state.feeds[apply] = await applyDirect(member, apply, { ...state.feeds[apply], stage: "applying", cursor: 0, made: 0, refused: 0 }, deps);
+    if (apply && FEED_KIND[apply] === "direct") state.feeds[apply] = await applyDirect(member, apply, { ...state.feeds[apply], stage: "applying", cursor: 0, made: 0, refused: 0 }, deps, source);
     else if (apply && FEED_KIND[apply] === "later" && !state.feeds[apply].job) state.feeds[apply] = await registerLater(member, apply, state.feeds[apply], deps, source);
     else if (apply) {
       const f = state.feeds[apply];
@@ -849,8 +902,8 @@ export async function advanceCopy(member: Membership, deps: CopyDeps = {}): Prom
       const job = started.ok ? null : await getJob(storeId, f.job!);
       state.feeds[apply] = started.ok ? { ...f, stage: "applying" } : { ...f, stage: "failed", problem: job && importableOf(job) === 0 ? "needs_fixing" : "import_refused" };
     }
-    // No customers read, no subscribers from them.
-    if (state.feeds.subscribers.stage === "waiting" && (state.feeds.customers.stage === "empty" || state.feeds.customers.stage === "failed")) {
+    // No customers read, no subscribers from them (Shopify's list is its customers'; WooCommerce's is MailPoet's, read of its own).
+    if (source === "shopify" && state.feeds.subscribers.stage === "waiting" && (state.feeds.customers.stage === "empty" || state.feeds.customers.stage === "failed")) {
       state.feeds.subscribers = { stage: "empty", count: 0 };
     }
     // The products' vendors stay known whatever became of a later read of the products (a catch-up that found none).

@@ -37,6 +37,7 @@ import { refreshTag } from "./refresh";
 import { getShippingSettings, saveShippingSettings } from "./settings";
 import { setMarkets } from "./setup";
 import { shopifyConnection, shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
+import { wooConnection } from "./woocommerce-connect";
 import { currentStore, storeTag } from "./stores";
 import { listInstalls } from "./theme-installs";
 import { addMovedSubscribers } from "./marketing-subscribers";
@@ -119,7 +120,7 @@ const DISCOUNT_BATCH = 10;
  * and the look are a few lines, done in one tick; codes go ten at a time. `made` counts what is here after (an equal one already here
  * included), `refused` what stays behind for the owner to look at.
  */
-export async function applySettingsFeed(member: Membership, feed: CopyFeed, f: FeedState, roots: readonly Record<string, unknown>[]): Promise<FeedState> {
+export async function applySettingsFeed(member: Membership, feed: CopyFeed, f: FeedState, roots: readonly Record<string, unknown>[], platform: "shopify" | "woocommerce" = "shopify"): Promise<FeedState> {
   let made = f.made ?? 0;
   let refused = f.refused ?? 0;
   const done = (cursor: number): FeedState => ({ ...f, stage: cursor >= roots.length ? "done" : "applying", cursor: Math.min(cursor, roots.length), made, refused });
@@ -228,12 +229,12 @@ export async function applySettingsFeed(member: Membership, feed: CopyFeed, f: F
 
   if (feed === "subscribers") {
     const cursor = f.cursor ?? 0;
-    const shop = (await shopifyConnection(member))?.name || member.store.name;
+    const shop = (platform === "woocommerce" ? (await wooConnection(member))?.name : (await shopifyConnection(member))?.name) || member.store.name;
     const batch = (roots.slice(cursor, cursor + SUBSCRIBER_BATCH) as unknown as ConsentLine[]).flatMap((l) => {
-      const sub = movedSubscriber(l, shop);
+      const sub = movedSubscriber(l, shop, platform);
       return sub ? [sub] : [];
     });
-    const result = await addMovedSubscribers(member.store.id, member.store.localization.locales[0] ?? "en", batch);
+    const result = await addMovedSubscribers(member.store.id, member.store.localization.locales[0] ?? "en", batch, platform);
     await recordMoveItems(member.store.id, "subscriber", result.ids);
     made += result.added + result.already;
     return done(cursor + SUBSCRIBER_BATCH);

@@ -435,6 +435,7 @@ export async function addMovedSubscribers(
   storeId: string,
   locale: string,
   subscribers: readonly { email: string; name: string; consentedAt: string; confirmed: boolean; consentText: string }[],
+  source: "shopify" | "woocommerce" = "shopify",
 ): Promise<{ added: number; already: number; ids: string[] }> {
   let added = 0;
   let already = 0;
@@ -444,7 +445,7 @@ export async function addMovedSubscribers(
     if (!email || !email.includes("@") || Number.isNaN(Date.parse(sub.consentedAt))) continue;
     const rows = await db().execute<Row>(sql`
       insert into commerce.marketing_subscribers (store_id, email, name, locale, market_code, status, source, consent_text, consented_at, confirmed_at, token)
-      values (${storeId}::uuid, ${email}, ${sub.name.slice(0, 200)}, ${locale.slice(0, 20)}, null, 'subscribed', 'shopify', ${sub.consentText.slice(0, 1000)},
+      values (${storeId}::uuid, ${email}, ${sub.name.slice(0, 200)}, ${locale.slice(0, 20)}, null, 'subscribed', ${source}, ${sub.consentText.slice(0, 1000)},
         ${sub.consentedAt}::timestamptz, ${sub.confirmed ? sub.consentedAt : null}::timestamptz, ${newToken()})
       on conflict (store_id, lower(email)) do nothing
       returning id

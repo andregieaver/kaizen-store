@@ -3,7 +3,7 @@
  * Plugin Name:       Kaizena Flow
  * Plugin URI:        https://kaizenaflow.com
  * Description:       Show products from your Kaizena Flow stores on your WordPress site, as a grid or a carousel, with shortcodes you generate once and reuse anywhere.
- * Version:           1.2.1
+ * Version:           1.3.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Kaizena Flow
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KAIZEN_STORE_VERSION', '1.2.1' );
+define( 'KAIZEN_STORE_VERSION', '1.3.0' );
 define( 'KAIZEN_STORE_FILE', __FILE__ );
 define( 'KAIZEN_STORE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'KAIZEN_STORE_URL', plugin_dir_url( __FILE__ ) );
@@ -33,6 +33,7 @@ require_once KAIZEN_STORE_DIR . 'includes/class-kaizen-store-product.php';
 require_once KAIZEN_STORE_DIR . 'includes/class-kaizen-store-rest.php';
 require_once KAIZEN_STORE_DIR . 'includes/class-kaizen-store-shortcode.php';
 require_once KAIZEN_STORE_DIR . 'includes/class-kaizen-store-admin.php';
+require_once KAIZEN_STORE_DIR . 'includes/class-kaizen-store-mover.php';
 
 /**
  * Starts the plugin: the saved views, the shortcode, and (in the admin) the connection and the editor.
@@ -42,6 +43,7 @@ function kaizen_store_boot() {
 	Kaizen_Store_Product::init();
 	Kaizen_Store_Rest::init();
 	Kaizen_Store_Shortcode::init();
+	Kaizen_Store_Mover::init();
 	if ( is_admin() ) {
 		Kaizen_Store_Connect::init();
 		Kaizen_Store_Admin::init();
