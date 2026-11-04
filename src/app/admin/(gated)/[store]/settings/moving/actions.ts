@@ -105,9 +105,9 @@ export async function startCopyAction(storeSlug: string, options: unknown = null
   const member = await checkPermission(storeSlug, "owner");
   if (!member) return { ok: false };
   // *What to bring* (step 9): checked by `copyOptionsOf()`; the years become a date here, on the server's clock.
-  const o = options && typeof options === "object" ? (options as { skip?: unknown; ordersYears?: unknown }) : {};
+  const o = options && typeof options === "object" ? (options as { skip?: unknown; ordersYears?: unknown; wordpress?: unknown }) : {};
   const years = typeof o.ordersYears === "number" ? o.ordersYears : null;
-  const result = await startCopy(member, { skip: o.skip, ordersSince: ordersSinceFor(years, new Date()) });
+  const result = await startCopy(member, { skip: o.skip, ordersSince: ordersSinceFor(years, new Date()), wordpress: o.wordpress });
   if (result.ok) await advanceCopy(member);
   refresh();
   return result;

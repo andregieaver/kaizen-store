@@ -17,6 +17,11 @@ class Kaizen_Store_Mover {
 
 	const PAGE      = 'kaizen-store-mover';
 	const OPTION    = 'kaizen_store_mover_secret';
+	/** The new shop's address, as Kaizena Flow gave it when the owner allowed reading. */
+	const SHOP      = 'kaizen_store_mover_shop';
+	/** The owner's two switches for the move (D446 step 4): buying paused, and shoppers sent to the new shop. */
+	const PAUSED    = 'kaizen_store_mover_paused';
+	const MOVED     = 'kaizen_store_mover_moved';
 	const NAMESPACE = 'kaizena-mover/v1';
 	const SKEW      = 300;
 	const PAGE_SIZE = 500;
@@ -27,7 +32,85 @@ class Kaizen_Store_Mover {
 			add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 			add_action( 'admin_post_kaizen_store_mover_allow', array( __CLASS__, 'allow' ) );
 			add_action( 'admin_post_kaizen_store_mover_stop', array( __CLASS__, 'stop' ) );
+			add_action( 'admin_post_kaizen_store_mover_switch', array( __CLASS__, 'switch_mode' ) );
 		}
+		// The shop while it moves: only what the owner switched on here.
+		if ( '1' === get_option( self::PAUSED ) || '1' === get_option( self::MOVED ) ) {
+			add_filter( 'woocommerce_is_purchasable', '__return_false' );
+			add_action( 'wp_body_open', array( __CLASS__, 'moving_notice' ) );
+		}
+		if ( '1' === get_option( self::MOVED ) && '' !== (string) get_option( self::SHOP, '' ) ) {
+			add_action( 'template_redirect', array( __CLASS__, 'send_to_new_shop' ) );
+		}
+	}
+
+	/**
+	 * Buying paused: one line at the top of every page, while the shop moves.
+	 */
+	public static function moving_notice() {
+		echo '<div class="kaizen-moving" role="status" style="padding:10px 16px;text-align:center;background:#111;color:#fff;font-size:15px">' . esc_html__( 'We are moving our shop. Buying is paused for a few minutes.', 'kaizen-store' ) . '</div>';
+	}
+
+	/**
+	 * Shoppers sent to the new shop (permanent redirects): a product to its page, a category to its, the shop, the cart and the checkout to the
+	 * new shop's front. Every other page of the site stays as it is.
+	 */
+	public static function send_to_new_shop() {
+		if ( ! function_exists( 'is_product' ) ) {
+			return;
+		}
+		$shop   = untrailingslashit( (string) get_option( self::SHOP, '' ) );
+		$target = '';
+		if ( is_product() ) {
+			$target = $shop . '/p/' . rawurlencode( (string) get_post_field( 'post_name', get_queried_object_id() ) );
+		} elseif ( is_product_category() ) {
+			$term   = get_queried_object();
+			$target = $shop . '/category/' . rawurlencode( $term && isset( $term->name ) ? sanitize_title( $term->name ) : '' );
+		} elseif ( is_shop() || is_cart() || is_checkout() ) {
+			$target = $shop;
+		}
+		if ( '' !== $target ) {
+			wp_redirect( $target, 301 ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- the new shop is another site.
+			exit;
+		}
+	}
+
+	/**
+	 * The owner's press on one of the two switches.
+	 */
+	public static function switch_mode() {
+		if ( ! self::may() ) {
+			wp_die( esc_html__( 'You are not allowed to do that.', 'kaizen-store' ), 403 );
+		}
+		check_admin_referer( 'kaizen_store_mover_switch' );
+		$which = isset( $_POST['which'] ) ? sanitize_key( wp_unslash( (string) $_POST['which'] ) ) : '';
+		$on    = isset( $_POST['on'] ) && '1' === sanitize_key( wp_unslash( (string) $_POST['on'] ) );
+		if ( 'paused' === $which ) {
+			update_option( self::PAUSED, $on ? '1' : '0', true );
+		} elseif ( 'moved' === $which && '' !== (string) get_option( self::SHOP, '' ) ) {
+			update_option( self::MOVED, $on ? '1' : '0', true );
+		}
+		wp_safe_redirect( add_query_arg( array( 'page' => self::PAGE ), admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	/**
+	 * One switch's form: what it does, and one button that turns it on or off.
+	 *
+	 * @param string $which  `paused` or `moved`.
+	 * @param bool   $on     Whether it is on now.
+	 * @param string $text   What it does.
+	 * @param string $press  The button's words.
+	 */
+	private static function switch_form( $which, $on, $text, $press ) {
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin-bottom:12px">';
+		wp_nonce_field( 'kaizen_store_mover_switch' );
+		echo '<input type="hidden" name="action" value="kaizen_store_mover_switch" />';
+		echo '<input type="hidden" name="which" value="' . esc_attr( $which ) . '" />';
+		echo '<input type="hidden" name="on" value="' . ( $on ? '0' : '1' ) . '" />';
+		echo '<p>' . esc_html( $text ) . '</p>';
+		submit_button( $press, $on ? 'secondary' : 'primary', 'submit', false );
+		echo '</form>';
 	}
 
 	/**
@@ -76,6 +159,16 @@ class Kaizen_Store_Mover {
 			submit_button( __( 'Stop Kaizena Flow reading', 'kaizen-store' ), 'secondary' );
 			echo '</form>';
 		}
+		$shop = (string) get_option( self::SHOP, '' );
+		if ( '' !== $shop ) {
+			$paused = '1' === get_option( self::PAUSED );
+			$moved  = '1' === get_option( self::MOVED );
+			echo '<h2>' . esc_html__( 'Moving day', 'kaizen-store' ) . '</h2>';
+			/* translators: %s: the new shop's address. */
+			echo '<p>' . esc_html( sprintf( __( 'Your new shop: %s', 'kaizen-store' ), $shop ) ) . '</p>';
+			self::switch_form( 'paused', $paused, $paused ? __( 'Buying is paused: shoppers see that you are moving.', 'kaizen-store' ) : __( 'Pause buying for the few minutes of the move, so no order is placed here while it moves.', 'kaizen-store' ), $paused ? __( 'Let shoppers buy again', 'kaizen-store' ) : __( 'Pause buying', 'kaizen-store' ) );
+			self::switch_form( 'moved', $moved, $moved ? __( 'Shoppers are sent to the new shop: your products, categories, shop, cart and checkout lead there. Your other pages stay here.', 'kaizen-store' ) : __( 'Once your shop has moved, send shoppers to it: each product and category leads to its page in the new shop, and the shop, cart and checkout to its front. Your other pages stay here.', 'kaizen-store' ), $moved ? __( 'Keep shoppers here again', 'kaizen-store' ) : __( 'Send shoppers to the new shop', 'kaizen-store' ) );
+		}
 		echo '</div>';
 	}
 
@@ -111,6 +204,10 @@ class Kaizen_Store_Mover {
 			exit;
 		}
 		update_option( self::OPTION, $secret, false );
+		$shop = isset( $body['shop'] ) ? esc_url_raw( (string) $body['shop'] ) : '';
+		if ( 0 === strpos( $shop, 'https://' ) ) {
+			update_option( self::SHOP, $shop, false );
+		}
 		$back = isset( $body['back'] ) ? (string) $body['back'] : '';
 		// Only back to Kaizena Flow itself.
 		if ( 0 !== strpos( $back, $api . '/' ) ) {

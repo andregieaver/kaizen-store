@@ -18,6 +18,9 @@ delete_option( 'kaizen_store_product_page' );
 delete_option( 'kaizen_store_flush_rules' );
 delete_option( 'kaizen_store_version' );
 delete_option( 'kaizen_store_mover_secret' );
+delete_option( 'kaizen_store_mover_shop' );
+delete_option( 'kaizen_store_mover_paused' );
+delete_option( 'kaizen_store_mover_moved' );
 
 global $wpdb;
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery

@@ -547,6 +547,33 @@ and `menus` parts for a WooCommerce shop once our plugin reads (`WOO_MOVER_FEEDS
   - `woocommerce-mover.int.test.ts`: a page with a picture, one that cannot be fetched and a draft, a post, and a menu of every kind of
     link, brought over and undone.
 
+### The one question, asked first (4 November 2026, the owner's ask)
+
+*Copy my shop* on a WooCommerce shop asks first *What moves to Kaizena Flow?*:
+- **Everything:** the shop, and the site's pages, blog posts and menus.
+- **Only the shop:** WordPress keeps its pages and blog.
+
+Neither is chosen for the owner, and no copy starts without the answer (`startCopy()` refuses it; *Start again* asks again). With *only
+the shop*, the pages, posts and menus are not read at all (`WORDPRESS_FEEDS`). The answer is kept with the copy
+(`CopyOptions.wordpress`, `move` or `keep`), for step 4 and move day. It moved from after the copy (4.5) to before it, so nothing of a site
+that stays is ever read.
+
+### Step 4a: keeping WordPress, the switch (4 November 2026)
+
+For an owner who chose *Only the shop*. Every change to the site is the owner's own press in the plugin (1.3.4), never a remote command:
+the mover stays read-only.
+- When the owner allows reading, Kaizena Flow's answer to the plugin gives the new shop's address: its first market's (`marketUrl()`).
+  The plugin keeps it (`kaizen_store_mover_shop`, `https` only).
+- *Move to Kaizena Flow* then has *Moving day*, with two switches the owner presses there:
+  - **Pause buying** (Decision 4, catalogue mode): *Add to cart* gone (`woocommerce_is_purchasable`), and one line at the top of every page
+    saying the shop is moving.
+  - **Send shoppers to the new shop:** each product (`/p/{slug}`) and category (`/category/{slug}`) answers with a permanent redirect to
+    its page in the new shop, and the shop, cart and checkout to its front (`send_to_new_shop()`, tested in PHP by
+    `wordpress-mover-redirect.test.ts`). Every other page of the site stays. Buying stays paused while it is on.
+- Moving in says where the switches are. Uninstalling the plugin forgets them.
+
+**Still to come in step 4:** the D169 views of the new shop's products on WordPress's pages, and the `shop.` subdomain.
+
 **Not yet built:**
 - Keep WordPress (step 4); move day (step 5), which also makes the gift cards.
 - Categories with their parents, and a check report (*Here's your shop*) for WooCommerce.

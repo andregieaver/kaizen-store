@@ -36,6 +36,7 @@ import {
   MENUS_QUERY,
   PLAIN_FEEDS,
   CATCH_UP_FEEDS,
+  WORDPRESS_FEEDS,
   categoryName,
   consentLines,
   copyOptionsOf,
@@ -267,7 +268,11 @@ export async function startCopy(member: Membership, chosen: unknown = null): Pro
   // WooCommerce's copy brings its products, categories, customers, past orders and coupons (D446 step 1); its other parts are later steps'.
   if (source === "woocommerce") {
     // The plugin, once connected (step 2), brings the redirects and MailPoet's list too.
-    const parts: readonly CopyFeed[] = [...WOO_COPY_FEEDS, ...((await hasMover(member.store.id)) ? WOO_MOVER_FEEDS : [])];
+    // The owner's choice (D446 4.5): only the shop, and WordPress keeps its pages, posts and menus. A copy is never started without it.
+    if (options.wordpress !== "move" && options.wordpress !== "keep") return { ok: false };
+    const parts: readonly CopyFeed[] = [...WOO_COPY_FEEDS, ...((await hasMover(member.store.id)) ? WOO_MOVER_FEEDS : [])].filter(
+      (f) => options.wordpress === "move" || !WORDPRESS_FEEDS.includes(f),
+    );
     for (const feed of COPY_FEEDS) if (!parts.includes(feed)) feeds[feed] = { stage: "empty", count: 0 };
   }
   // Shopify keeps no reviews of its own (an app does): nothing to read.
@@ -278,7 +283,7 @@ export async function startCopy(member: Membership, chosen: unknown = null): Pro
   // No customers, no subscribers from them; no products, no categories from their collections.
   if (options.skip.includes("customers")) feeds.subscribers = { stage: "empty", count: 0 };
   if (options.skip.includes("products")) feeds.collections = { stage: "empty", count: 0 };
-  await save(member.store.id, { ...EMPTY_COPY, startedAt: new Date().toISOString(), ...(options.skip.length > 0 || options.ordersSince ? { options } : {}), feeds });
+  await save(member.store.id, { ...EMPTY_COPY, startedAt: new Date().toISOString(), ...(options.skip.length > 0 || options.ordersSince || options.wordpress ? { options } : {}), feeds });
   log("info", "shopify.copy_started", { storeId: member.store.id, source, skipped: options.skip.length, ordersSince: options.ordersSince !== null });
   return { ok: true };
 }
