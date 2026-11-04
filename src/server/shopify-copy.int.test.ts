@@ -229,6 +229,8 @@ describe("copying a Shopify shop", () => {
   });
 
   it("asks who makes the copied products once per vendor, and names the maker on them through the bulk editor", async () => {
+    // The store as it is now: the copy added Sweden beside Norway, so an EU responsible person is asked for (D452).
+    ({ owner } = await membersOf(fx));
     const view = (await makers.makersView(owner, deps))!;
     expect(view.groups).toEqual([{ vendor: "Nordic Wool", count: 1, toPublish: 1 }]);
     const nordic = { new: { name: "Nordic Wool", postalAddress: "Gata 1, 0150 Oslo", electronicAddress: "hei@nordicwool.example", country: "NO" } };

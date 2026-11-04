@@ -319,7 +319,7 @@ describe("the routes (D443)", () => {
     expect(await db().execute(sql`select 1 from commerce.docs_search_misses where query like '%@%'`)).toHaveLength(0);
     // The table holds nothing about the reader.
     const columns = await db().execute<Row>(sql`select column_name from information_schema.columns where table_schema = 'commerce' and table_name = 'docs_search_misses' order by ordinal_position`);
-    expect(columns.map((c) => c.column_name)).toEqual(["query", "lang", "misses", "first_at", "last_at"]);
+    expect(columns.map((c) => c.column_name)).toEqual(["query", "lang", "misses", "first_at", "last_at", "guide_misses"]);
     // The platform's admins read the list, most often first, and take one off it.
     const list = await search.listDocsMisses();
     expect(list.find((m) => m.query === `gift cards ${run}`)?.misses).toBe(2);

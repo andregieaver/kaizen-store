@@ -121,8 +121,11 @@ export const movingNb: MovingMessages = {
     someoneElse: "Nei, noen andre",
     choose: "Velg produsent",
     maker: "Produsenten",
-    responsible: "Ansvarlig person i EU",
-    responsibleNote: "Produsenten er utenfor EU, så EU-loven krever et selskap i EU som svarer for disse produktene.",
+    responsible: { eu: "Ansvarlig person i EU", eea: "Ansvarlig person i EØS" },
+    responsibleNote: {
+      eu: "Produsenten er utenfor EU og du selger i EU, så EU-loven krever et selskap i EU som svarer for disse produktene. Et selskap i Norge, Island eller Liechtenstein er ikke nok.",
+      eea: "Produsenten er utenfor EØS, så loven der du selger krever et selskap i EØS som svarer for disse produktene.",
+    },
     save: { one: "Lagre for {n} produkt", many: "Lagre for {n} produkter" },
     saving: "Lagrer …",
     cancel: "Avbryt",
@@ -133,7 +136,7 @@ export const movingNb: MovingMessages = {
     undo: "Angre",
     problems: {
       invalid: "Fyll inn selskapets navn, adresse, e-post eller nettadresse og land.",
-      responsible: "Legg til en ansvarlig person i EU.",
+      responsible: { eu: "Legg til en ansvarlig person i EU.", eea: "Legg til en ansvarlig person i EØS." },
       gone: "Disse produktene oppgir allerede produsenten. Last inn siden på nytt.",
       failed: "Det gikk ikke. Prøv igjen.",
     },

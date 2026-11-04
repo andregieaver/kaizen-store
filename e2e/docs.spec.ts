@@ -165,7 +165,8 @@ test.describe("on a phone", () => {
 
 test("⌘K opens the search dialog, which searches as you type within the page's track and language", async ({ page }) => {
   await page.goto(PAGE, { waitUntil: "networkidle" });
-  const opener = page.locator("button[aria-haspopup=dialog]");
+  // The search's own button (the AI guide's beside it opens a dialog too, D444).
+  const opener = page.locator("button[aria-haspopup=dialog][aria-keyshortcuts]");
   await page.keyboard.press("Control+k");
   const dialog = page.getByRole("dialog", { name: "Search the docs" });
   await expect(dialog).toBeVisible();
@@ -254,8 +255,8 @@ test("a search that finds nothing says so politely, offers the whole docs, and i
   await expect(dialog.getByRole("status")).toHaveText(`Nothing in the docs matches “${words}”.`);
   await expect(dialog.getByText("Try fewer words, other words or another spelling.")).toBeVisible();
   await expect(dialog.getByRole("link", { name: "Search all the docs" })).toBeVisible();
-  // The AI guide (unit E5) is not there yet: its offer waits for it.
-  await expect(dialog.getByRole("button", { name: "Ask the AI guide" })).toHaveCount(0);
+  // The AI guide (unit E5, D444) is offered with the question (below).
+  await expect(dialog.getByRole("button", { name: "Ask the AI guide" })).toBeVisible();
   const sql = testDb();
   try {
     await expect
@@ -266,6 +267,150 @@ test("a search that finds nothing says so politely, offers the whole docs, and i
     await sql.end();
   }
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The AI guide (E5, D444). The model is not called here: the answers are the browser's stand-ins for /api/docs/guide, as the chat's
+// specs stub /api/chat (the guide itself is tested in src/server/docs-guide.int.test.ts and the eval).
+// ---------------------------------------------------------------------------------------------------------------------
+
+const GUIDE_PROFILE = { on: true, name: "Ada", occupation: "", avatar: null, avatarStyle: null, greeting: "", keptDays: 1, aiUse: { tone: false, summaries: false } };
+
+/** Stands in for the guide's route: its profile, and an answer that links the page it used. */
+async function stubGuide(page: import("@playwright/test").Page, sent: Record<string, unknown>[]) {
+  await page.route("**/api/docs/guide**", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: GUIDE_PROFILE });
+      return;
+    }
+    const body = route.request().postDataJSON() as Record<string, unknown>;
+    sent.push(body);
+    const at = "2026-11-03T12:00:00.000Z";
+    await route.fulfill({
+      json: {
+        conversation: { id: "0b5c1d2e-3f40-4a51-8b62-7c83d94ea5f6", token: "tok_ABCDEFGHIJKLMNOPQRSTUVWXYZ012345" },
+        messages: [
+          { seq: 1, author: "reader", body: body.message, at },
+          {
+            seq: 2,
+            author: "ai",
+            body: "The docs do not say so. You create your store by signing up and following the setup steps.",
+            at,
+            links: [{ title: "Create your store", href: "/docs/owners/getting-started/create-your-store" }],
+          },
+        ],
+      },
+    });
+  });
+}
+
+test("Ask the AI guide from a search that found nothing opens the guide with the question filled in; an answer shows its links", async ({ page }) => {
+  const sent: Record<string, unknown>[] = [];
+  await stubGuide(page, sent);
+  // The guide's panel is no script of the page until it is opened (D336: the docs load their few parts only).
+  const scripts: Promise<string>[] = [];
+  page.on("response", (response) => {
+    if (response.request().resourceType() === "script") scripts.push(response.text().catch(() => ""));
+  });
+  const words = `zzqxgd${Date.now().toString(36)}`;
+  await page.goto(PAGE, { waitUntil: "networkidle" });
+  // `data-docs-guide-link` is the panel's own (its answers' links), and the guide's profile is asked only by the panel.
+  const guideAsked: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/docs/guide")) guideAsked.push(request.method());
+  });
+  expect((await Promise.all(scripts)).filter((text) => text.includes("data-docs-guide-link"))).toEqual([]);
+
+  await page.keyboard.press("Control+k");
+  const search = page.getByRole("dialog", { name: "Search the docs" });
+  await search.getByRole("searchbox").fill(words);
+  await expect(search.getByRole("status")).toHaveText(`Nothing in the docs matches “${words}”.`);
+  await search.getByRole("button", { name: "Ask the AI guide" }).click();
+
+  const guide = page.getByRole("dialog", { name: "Ada" });
+  await expect(guide).toBeVisible();
+  await expect(search).toBeHidden();
+  const field = guide.getByRole("textbox", { name: "Your question" });
+  await expect(field).toHaveValue(words);
+  await expect(field).toBeFocused();
+  await expect(guide.getByText("An AI answers from these docs, and it can be wrong.")).toBeVisible();
+  await expect(guide.getByText("We keep this conversation for up to 1 day.", { exact: false })).toBeVisible();
+  // Nothing is sent for the reader: the question waits in the field. The panel's code and its profile came with the opening.
+  expect(sent).toEqual([]);
+  expect((await Promise.all(scripts)).some((text) => text.includes("data-docs-guide-link"))).toBe(true);
+  expect(guideAsked).toEqual(["GET"]);
+
+  await guide.getByRole("button", { name: "Send" }).click();
+  const log = guide.getByRole("log", { name: "Conversation with the guide" });
+  await expect(log.getByText("The docs do not say so. You create your store by signing up and following the setup steps.")).toBeVisible();
+  await expect(log.getByRole("link", { name: "Create your store" })).toHaveAttribute("href", "/docs/owners/getting-started/create-your-store");
+  expect(sent[0]).toMatchObject({ message: words, lang: "en", page: "owners/getting-started/create-your-store", after: 0 });
+  expect(sent[0]).not.toHaveProperty("conversation");
+  await expect(field).toHaveValue("");
+
+  // Esc closes it, and the focus goes back.
+  await field.press("Escape");
+  await expect(guide).toBeHidden();
+  await expect(page.getByRole("button", { name: "Ask the AI guide" })).toBeFocused();
+
+  const sql = testDb();
+  try {
+    await sql`delete from commerce.docs_search_misses where query = ${words}`;
+  } finally {
+    await sql.end();
+  }
+});
+
+test("the guide opens again where it was after a page change, carries its conversation, and the search page's offer fills in the question", async ({ page }) => {
+  const sent: Record<string, unknown>[] = [];
+  await stubGuide(page, sent);
+  await page.goto("/docs?ask=How%20do%20refunds%20work%3F", { waitUntil: "networkidle" });
+  const guide = page.getByRole("dialog", { name: "Ada" });
+  await expect(guide.getByRole("textbox", { name: "Your question" })).toHaveValue("How do refunds work?");
+  // The address keeps no question.
+  await expect(page).toHaveURL(/\/docs$/);
+  await guide.getByRole("button", { name: "Send" }).click();
+  await expect(guide.getByRole("link", { name: "Create your store" })).toBeVisible();
+  expect(sent[0]).toMatchObject({ page: "" });
+
+  // A link it gave opens the page; the guide is there again, with the conversation, and the next message carries its reference.
+  await guide.getByRole("link", { name: "Create your store" }).click();
+  await expect(page).toHaveURL(/\/docs\/owners\/getting-started\/create-your-store$/);
+  await expect(guide.getByText("How do refunds work?")).toBeVisible();
+  await guide.getByRole("textbox", { name: "Your question" }).fill("And for a gift card?");
+  await guide.getByRole("textbox", { name: "Your question" }).press("Enter");
+  await expect.poll(() => sent.length).toBe(2);
+  expect(sent[1]).toMatchObject({ conversation: { id: "0b5c1d2e-3f40-4a51-8b62-7c83d94ea5f6", token: "tok_ABCDEFGHIJKLMNOPQRSTUVWXYZ012345" }, after: 2 });
+
+  // A new conversation forgets the old one in the tab.
+  await guide.getByRole("button", { name: "New conversation" }).click();
+  await expect(guide.getByText("How do refunds work?")).toHaveCount(0);
+});
+
+test("a guide that is not answering says so and offers the search and Kaizena Flow's support", async ({ page }) => {
+  await page.route("**/api/docs/guide**", (route) => route.fulfill({ json: { ...GUIDE_PROFILE, on: false, name: "" } }));
+  await page.goto("/no/docs", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Spør KI-veilederen" }).click();
+  const guide = page.getByRole("dialog", { name: "KI-veileder" });
+  await expect(guide.getByText("KI-veilederen svarer ikke akkurat nå.", { exact: false })).toBeVisible();
+  await expect(guide.getByRole("link", { name: "Søk i dokumentasjonen" })).toHaveAttribute("href", "/no/docs/search");
+  await expect(guide.getByRole("link", { name: "Kontakt Kaizena Flows kundestøtte i administrasjonen" })).toHaveAttribute("href", "/admin/account/kaizen-support");
+  await expect(guide.getByRole("button", { name: "Send" })).toBeDisabled();
+});
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`axe passes on the open guide with an answer, in ${scheme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await stubGuide(page, []);
+    await page.goto(PAGE, { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "Ask the AI guide" }).click();
+    const guide = page.getByRole("dialog", { name: "Ada" });
+    await guide.getByRole("textbox", { name: "Your question" }).fill("How do I create my store?");
+    await guide.getByRole("button", { name: "Send" }).click();
+    await expect(guide.getByRole("link", { name: "Create your store" })).toBeVisible();
+    const findings = await violationsOn(page);
+    expect(findings, describeFindings(findings).join("\n")).toEqual([]);
+  });
+}
 
 test("a section's pages are filtered and ordered as the search does, at an address of their own", async ({ page }) => {
   await page.goto("/docs/owners/getting-started");

@@ -639,8 +639,9 @@ On Moving in, once the copy has stopped moving: one row per Shopify vendor whose
   disconnect. A copy started before step 6 kept none: *Start again* reads them.
 - **The question**: *Is Nordic Wool the maker?* **Yes** opens Nordic Wool as a new company with its name filled in (or the store's company
   of that name); **No, someone else** opens one of the store's companies or a blank one. The product editor's own company picker
-  (`OperatorPicker`, now `src/components/admin/operator-picker.tsx`). A maker outside the EU (the database's `in_eu`) asks for the EU
-  responsible person too, and nothing is saved without one. The vendor is never taken as the maker without the owner's press.
+  (`OperatorPicker`, now `src/components/admin/operator-picker.tsx`). Where the countries the store sells to ask for a responsible person
+  (D452, `docs/product-safety-eea.md`: one in the EU for an EU country, never one in Norway, Iceland or Liechtenstein instead), it is
+  asked for too, and nothing is saved without one. The vendor is never taken as the maker without the owner's press.
 - **Saving** (`saveVendorMaker()`, `src/server/shopify-makers.ts`): the company is kept as the editor keeps one (`chooseOperator()`), then
   the bulk editor's new action *Set the manufacturer* (`manufacturer`, field `maker`, migration `20261103220311_bulk_makers` widening the
   two checks) names it on every product of that vendor still without one, 500 at a time, with the bulk editor's seven-day undo

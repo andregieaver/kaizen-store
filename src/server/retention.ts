@@ -28,6 +28,7 @@ import { pruneStoreEvents } from "./staff-alerts";
 import { pruneAnonymisedOrderTags } from "./order-tags";
 import { pruneInventoryMovements } from "./stock-alerts";
 import { anonymiseConversations, deleteOldRecords, transcriptsDue } from "./support";
+import { deleteOldGuideRecords, pruneGuideTranscripts } from "./docs-guide-store";
 import { textList } from "./sql-arrays";
 import { pruneRefusedComments } from "./blog-comments";
 import { pruneContentReports } from "./content-reports";
@@ -381,7 +382,8 @@ const STEPS: Record<RetentionStep, StepFn> = {
   },
 
   // Support (D216, docs/support.md 3.5): a transcript past its desk's period (support off: a day) loses its messages and actions and the
-  // conversation is anonymised; anonymised conversations go after the records' period.
+  // conversation is anonymised; anonymised conversations go after the records' period. The docs guide's conversations (D444) are kept as
+  // the platform chat's are: Kaizena Flow's desk's period, the same rule.
   async support_transcripts(ctx) {
     const cutoff = cutoffInstant(await period(ctx, "support_transcripts"), ctx.now);
     let count = 0;
@@ -391,11 +393,13 @@ const STEPS: Record<RetentionStep, StepFn> = {
       count += await db().transaction((tx) => anonymiseConversations(tx, ids));
       if (ids.length < ctx.batch) break;
     }
+    count += await pruneGuideTranscripts(ctx.now, cutoff, ctx.batch, MAX_ROUNDS);
     return { count };
   },
 
   async support_records(ctx) {
-    return { count: await deleteOldRecords(cutoffInstant(await period(ctx, "support_records"), ctx.now), ctx.batch) };
+    const cutoff = cutoffInstant(await period(ctx, "support_records"), ctx.now);
+    return { count: (await deleteOldRecords(cutoff, ctx.batch)) + (await deleteOldGuideRecords(cutoff, ctx.batch)) };
   },
 
   // Notifications (wave 3, D238, docs/wave-3-notifications.md 3.5; Kaizen's choices, no law is claimed): the store events 30 days after they were handled or

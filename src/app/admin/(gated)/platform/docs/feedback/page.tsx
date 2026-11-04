@@ -88,6 +88,7 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
                   <th scope="col" className="py-2 pr-4">{w.query}</th>
                   <th scope="col" className="py-2 pr-4">{w.language}</th>
                   <th scope="col" className="py-2 pr-4 text-right">{w.times}</th>
+                  <th scope="col" className="py-2 pr-4 text-right">{w.guideTimes}</th>
                   <th scope="col" className="py-2 pr-4">{w.first}</th>
                   <th scope="col" className="py-2 pr-4">{w.latest}</th>
                   <th scope="col" className="py-2 pr-4">
@@ -112,6 +113,7 @@ export default async function DocsFeedbackPage({ searchParams }: PageProps<"/adm
                     </td>
                     <td className="py-2 pr-4">{miss.lang === "nb" ? w.norwegian : w.english}</td>
                     <td className="py-2 pr-4 text-right tabular-nums">{miss.misses}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">{miss.guideMisses}</td>
                     <td className="py-2 pr-4 tabular-nums">{when(miss.firstAt)}</td>
                     <td className="py-2 pr-4 tabular-nums">{when(miss.lastAt)}</td>
                     <td className="py-2 pr-4">

@@ -147,7 +147,7 @@ describe("productProblems", () => {
     mainCurrency: "NOK",
     primaryLocale: "nb-NO",
     operatorCountries: { "11111111-1111-4111-8111-111111111111": "NO" },
-    euCountries: new Set(["DE", "SE", "BE"]),
+    safety: { eu: new Set(["DE", "SE", "BE"]), eea: new Set(["DE", "SE", "BE", "NO"]), rules: new Map<string, "eu" | "eea" | "none">([["SE", "eu"], ["NO", "none"]]) },
   };
 
   it("accepts a complete product", () => {
@@ -161,6 +161,21 @@ describe("productProblems", () => {
     );
     expect(problems).toEqual([
       "Add at least one picture before publishing the product.",
+      "The manufacturer is outside the EU, so add a responsible person established in the EU.",
+    ]);
+  });
+
+  it("asks for the responsible person by the countries sold to and their rule (D452)", () => {
+    const norwegian = { ...base, manufacturer: { id: "11111111-1111-4111-8111-111111111111" } };
+    // Norway only, while the GPSR is not part of the EEA Agreement: none needed.
+    expect(productProblems(norwegian, { ...context, markets: [{ code: "NO", currency: "NOK" }] })).toEqual([]);
+    // Norway once incorporated, a maker outside the EEA: one in the EEA.
+    const chinese = { ...base, manufacturer: { new: { name: "Maker", postalAddress: "Road 1, Shenzhen", electronicAddress: "a@b.cn", country: "CN" } } };
+    const incorporated = { ...context, markets: [{ code: "NO", currency: "NOK" }], safety: { ...context.safety, rules: new Map<string, "eu" | "eea" | "none">([["NO", "eea"]]) } };
+    expect(productProblems(chinese, incorporated)).toEqual(["The manufacturer is outside the EEA, so add a responsible person established in the EEA."]);
+    expect(productProblems({ ...chinese, responsiblePerson: { new: { name: "Rep", postalAddress: "Gata 1, Oslo", electronicAddress: "r@n.no", country: "NO" } } }, incorporated)).toEqual([]);
+    // Sweden too: an EU one, and one in Norway is not enough.
+    expect(productProblems({ ...norwegian, responsiblePerson: { new: { name: "Rep", postalAddress: "Gata 1, Oslo", electronicAddress: "r@n.no", country: "NO" } } }, context)).toEqual([
       "The manufacturer is outside the EU, so add a responsible person established in the EU.",
     ]);
   });
@@ -345,7 +360,7 @@ describe("content for the unit price (D160)", () => {
     mainCurrency: "NOK",
     primaryLocale: "nb-NO",
     operatorCountries: {},
-    euCountries: new Set(["DE"]),
+    safety: { eu: new Set(["DE"]), eea: new Set(["DE", "NO"]), rules: new Map<string, "eu" | "eea" | "none">() },
   };
 
   it("defaults to no measure and not sold by measure, as before", () => {

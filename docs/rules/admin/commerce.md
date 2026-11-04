@@ -16,6 +16,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   A product's own words around its price (D429, `products.price_words`: null for the store's, `{"mode": "none"}`, or its own
   by language) are `ProductInput.priceWords`, left out by an import or a tool so the product keeps them; `saveProduct()` checks
   each word (`priceWordProblem()`) for the store's languages and writes SQL null, never a JSON null, to follow the store.
+  The responsible person a manufacturer established elsewhere needs (D452, `docs/product-safety-eea.md`) is worked out per country
+  the store sells to from `commerce.country_memberships` (EU and EEA, never one inferred from the other) and the configured
+  `commerce.product_safety_rules`, by `src/lib/product-safety.ts` in code and `commerce.responsible_person_areas()` in the publish
+  trigger; read them through `productSafety()`, never `countries.in_eu`, and change a rule only by a migration of those rows.
+  EEA establishment never satisfies an `eu` rule.
 
 ## Checkout (`src/server/checkout.ts`, decision D16)
 

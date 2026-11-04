@@ -208,6 +208,9 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("support_inbound_emails", "shopper", via("email", "from_address"), ["from_address", "subject", "message_id"], null, "delete", "Emails received for a support desk (D332): the sender and the subject, kept 30 days to count and thread them, deleted on erasure; the words are the conversation's messages."),
   entry("support_messages", "shopper", via("none"), ["body", "data"], "support", "delete", "The messages of a support conversation are deleted with its transcript, at the desk's period (support off: a day after it ends) or on erasure; staff's notes and the partner's help are never exported.", { until: "support_transcripts" }),
   entry("support_actions", "shopper", via("none"), ["args", "summary", "details", "result"], null, "delete", "What the AI proposed or asked staff to decide for a customer is deleted with the conversation's transcript; the outcome is in the conversation's messages, which the export carries.", { until: "support_transcripts" }),
+  // The docs guide (D444): a reader of the docs, never signed in for it, known only by their tab's token.
+  entry("docs_guide_conversations", "pseudonymous", via("none"), ["token_hash", "page_path"], null, "none", "A conversation with the docs' AI guide, kept under a hash of a random token only the reader's tab holds, so it cannot be tied to a person or found for one; kept as the platform chat's conversations are: its token and page are cleared and its messages deleted after Kaizena Flow's desk's period (a day while the desk has support off), and the dates and counts go after 24 months.", { until: "support_transcripts" }),
+  entry("docs_guide_messages", "pseudonymous", via("none"), ["body", "data"], null, "none", "What a reader asked the docs' AI guide and what it answered (tokens, keys and passwords taken out before they are kept). Tied to no one but the tab's token; deleted with the conversation's transcript.", { until: "support_transcripts" }),
 
   // Fields ----------------------------------------------------------------------------------------------------------------------------
   entry("field_values", "shopper", via("customer", "entity_id"), ["values"], "customFields", "delete", "Fields staff filled in about the customer are deleted with the account; an order's are deleted when the order is anonymised."),
@@ -350,11 +353,13 @@ export const NOT_PERSONAL: Record<string, string> = {
   campaigns: "The name and rules of an offer.",
   cart_reminder_steps: "The store's own reminder email text, written for every shopper.",
   chat_agents: "The name and instructions of the store's chat agent.",
+  docs_guide: "The docs' AI guide's settings (D444): its name, picture, greetings and the platform's guidance, and the platform admin who saved them.",
   support_settings: "A support desk's settings (D216): its mode, hours, thresholds and the staff account that changed them; no shopper's data.",
   support_replies: "A support desk's saved replies (D216), written by staff for every customer, and the staff account that wrote them.",
   support_agents: "Who answers on a support desk (D216): a staff account, its status, its limit and the name customers see; staff data, not a shopper's.",
   cookie_notes: "A cookie's description.",
   countries: "Reference data.",
+  country_memberships: "Reference data (D452): each country's membership of the EU and of the EEA.",
   customer_tiers: "A customer group's name and percentage, and the owner's note about the group.",
   company_locations: "A company's location (D321 C.2): its name and the business's billing and shipping addresses; the company's data, kept with it.",
   price_lists: "A store's price list (D321): its name, a percentage and whether it is on.",
@@ -436,6 +441,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   store_themes: "A saved design theme's name.",
   terms: "A category or tag's name.",
   ui_translations: "Interface text in a language.",
+  product_safety_rules: "Reference data (D452): what the GPSR asks per destination country, with its legal basis, source and a note.",
   vat_rates: "A country's VAT rate and a note about its source.",
   duty_rates: "The platform's duty rates per country and HS heading (D343), each with its source address and a note about it: reference data, no person.",
 };

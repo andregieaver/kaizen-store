@@ -10,6 +10,7 @@ import { sendDueCartReminders } from "@/server/cart-reminders";
 import { catalogTag } from "@/server/catalog";
 import { pruneChatUsage } from "@/server/chat-agent";
 import { endIdleConversations } from "@/server/support";
+import { endIdleGuideConversations } from "@/server/docs-guide-store";
 import { expireActions } from "@/server/support-actions";
 import { summarisePending } from "@/server/support-summary";
 import { cronAuthorised } from "@/server/cron-auth";
@@ -152,6 +153,8 @@ async function dispatch() {
     editExpiry: () => expireOrderEdits(),
     // Support (D216): conversations with the AI that nobody has written in for the desk's time end, so their period begins.
     supportIdle: () => endIdleConversations(),
+    // The docs guide (D444): its conversations end as the platform chat's do, after Kaizena Flow's desk's time without a message.
+    docsGuideIdle: () => endIdleGuideConversations(),
     // Support (D216, step 7): the summaries of ended conversations not yet written, each tried again until it is done or failed.
     supportSummaries: () => summarisePending(),
     // Support (D216, step 10): proposals nobody confirmed in time are marked expired.
