@@ -537,7 +537,7 @@ held by `support-platform.scan.test.ts`).
 ## Staff summary (D238, wave 3, `docs/wave-3-notifications.md` 2.8)
 
 The daily or weekly email to the recipients of *Summary* (`staffSummaryFigures()` in `src/server/staff-summary.ts`, sent by `sendDueSummaries()`).
-The period is yesterday, or the seven store days ending yesterday, in the store's time zone. Nothing per customer; English.
+The period is yesterday, or the seven store days ending yesterday, in the store's time zone. Nothing per customer; in each recipient's admin language (D312 A10; the store's contact address in Norwegian when that is the store's main language, else English).
 
 | Figure | Definition |
 |---|---|

@@ -53,8 +53,8 @@ export const assistantEn = {
     remove: "Delete",
     confirmRemove: "Delete this skill?",
     shared: "Shared with the store",
-    share: "Share with the store's staff",
-    shareHint: "Staff can use it too, with their own permissions.",
+    share: "Share with the store's other owners",
+    shareHint: "They can use it too. Staff who are not owners have no AI manager.",
     mine: "Yours",
     by: "By {name}",
     saveAs: "Save as skill",
@@ -202,6 +202,8 @@ export const assistantEn = {
       payments: "Set up payments, so shoppers can pay (Settings, Payments).",
       plan: "Choose a plan with Kaizena Flow (Settings, Billing).",
       open: "Open",
+      /** A failing step's three choices (`RETRY_OPTIONS`, in their order): shown in the admin's language, answered as the plan wrote them. */
+      retryOptions: ["Try again", "Skip this step", "Stop the plan"] as string[],
     },
     plans: {
       empty: "No plans yet. Tell the AI manager what you want to achieve, and it will suggest one.",

@@ -84,7 +84,7 @@ describe("VatTreatmentPanel", () => {
   });
 
   it("names a shipping rule that is not the standard one", () => {
-    expect(panel({ ...reverse, kind: "standard", reason: "consumer", shippingRule: "follows_goods", shippingRate: 0.07 })).toContain("rule: follows goods");
+    expect(panel({ ...reverse, kind: "standard", reason: "consumer", shippingRule: "follows_goods", shippingRate: 0.07 })).toContain("rule: Follows the goods");
   });
 });
 

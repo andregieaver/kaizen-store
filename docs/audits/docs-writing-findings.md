@@ -50,37 +50,75 @@ signature checks, two Admin API descriptions (contract 1.5) and the docs' Markdo
 
 ## Admin words that are out of date or wrong
 
-- The Integrations page (`notifications` `carriersHint`) and the admin map say only Posten/Bring can be connected; all four carriers can (D136–D138).
+- The Integrations page (`notifications` `carriersHint`) and the admin map say only Posten/Bring can be connected; all four carriers can
+  (D136–D138). *Fixed 5 November: the hint says all four connect with the store's own agreement, and the admin map's Integrations and
+  Shipping carrier entries say the same.*
 - The staff dispute email says evidence is sent in Stripe's Dashboard; since D417 it is sent from *Prepare the evidence* on the order.
-- The invoice settings' notes say e-invoices (XRechnung, Peppol, EHF) are not built; D403 built them.
-- The chat page's *How it works* says conversations are kept only in the visitor's tab; since D216 the site keeps them.
+  *Fixed 5 November: the email says to prepare and send the evidence from the order with Prepare the evidence.*
+- The invoice settings' notes say e-invoices (XRechnung, Peppol, EHF) are not built; D403 built them. *Fixed 5 November: the notes say each
+  invoice and credit note downloads as an e-invoice from the order page (EN 16931 in UBL, the Peppol BIS Billing 3.0 format EHF uses), and
+  that sending it through the Peppol network is not built.*
+- The chat page's *How it works* says conversations are kept only in the visitor's tab; since D216 the site keeps them. *Fixed 5 November:
+  it says the site keeps them, deleted a day after they end with support off, else after the support settings' 30, 60 or 90 days.*
 - Staff alerts says staff emails are in English; they go in each person's admin language (D312, D395). `docs/analytics.md` says the same.
-- Staff alerts' defaults leave out disputes and overdue payments on terms, which owners get. The alert-level choice reuses the label *How often*.
-- The erase screen says kept sales are stored without the person's name, address and email; D162 removes those only when the bookkeeping period ends.
+  *Fixed 5 November: the page says each person's emails are in their own admin language (the contact address in Norwegian when that is the
+  store's main language, else English); `docs/analytics.md` and `staff-alerts.ts`'s comment say the same.*
+- Staff alerts' defaults leave out disputes and overdue payments on terms, which owners get. The alert-level choice reuses the label *How
+  often*. *Fixed 5 November: the defaults name disputes and overdue payments on terms, and the alert-level choice is labelled Which
+  alerts.*
+- The erase screen says kept sales are stored without the person's name, address and email; D162 removes those only when the bookkeeping
+  period ends. *Fixed 5 November: the screen says kept sales keep the name, address and email until the period ends, set aside and never
+  emailed, and are then made anonymous.*
 - The admin map's *Export customers* says marketing consent is not recorded; the export has `marketing_consent` (D295). Its Roles line says
   six starting roles; there are seven (*Support agent*). Its Header and footer entry names business details the store's page does not have.
-- The Locations hint says a place's country is only a label, kept for later; D383 routes orders by it.
-- D383 says routing takes `products:write`; the page offers it with `settings:write` only.
-- The product import names only Kaizena Flow and Shopify files; WooCommerce files are read too (D384).
-- *Prepare reorder* says press *Create*; the button is *Save as a draft*.
-- With gift cards off, the gift card list says checkout has no gift card field; cart and checkout always show it.
-- The Payments page tells non-owners only an owner can switch payments, but non-owners cannot open it; Analytics settings likewise.
-- The Payments card puts Swish in Stripe's Dashboard; `mollie-card.tsx` says Stripe does not give Swish to stores on Kaizena Flow.
-- The registry's tracking line promises tracking emails for all four carriers; D238 says Bring's only, today.
-- An order's tracking note says carriers are connected under Shipping; they are under Integrations.
+  *Fixed 5 November: Export customers names the `marketing_consent` column (the file is still not a mailing list), Roles names Support
+  agent among the seven, and Header and footer sends business details to Company.*
+- The Locations hint says a place's country is only a label, kept for later; D383 routes orders by it. *Fixed 5 November: the hint says the
+  country decides which locations are the delivery country's when orders take those first.*
+- D383 says routing takes `products:write`; the page offers it with `settings:write` only. *Fixed 5 November: the page was out of step, not
+  the row: the Locations page offers the choice with `products:write`, the key its action already asked for.*
+- The product import names only Kaizena Flow and Shopify files; WooCommerce files are read too (D384). *Skipped 5 November: the product
+  import's words, `products.*.ts` and the moving files are another session's work at the same time.*
+- *Prepare reorder* says press *Create*; the button is *Save as a draft*. *Fixed 5 November: it says press Save as a draft.*
+- With gift cards off, the gift card list says checkout has no gift card field; cart and checkout always show it. *Fixed 5 November: it
+  says the cart and the checkout keep the field, so cards already sold or issued can still be spent.*
+- The Payments page tells non-owners only an owner can switch payments, but non-owners cannot open it; Analytics settings likewise. *Fixed
+  5 November: the words nobody could see are gone (Payments' `ownerOnly` and Analytics settings' note Only owners can change these
+  settings): both pages are the owner's alone (D158), as the navigation and the admin map say.*
+- The Payments card puts Swish in Stripe's Dashboard; `mollie-card.tsx` says Stripe does not give Swish to stores on Kaizena Flow. *Fixed 5
+  November: the Payments card says Swish comes through Mollie, not Stripe.*
+- The registry's tracking line promises tracking emails for all four carriers; D238 says Bring's only, today. *Fixed 5 November: the two
+  carrier notifications say Posten / Bring's reports send them; the other carriers' are shown on the order and send no email yet.*
+- An order's tracking note says carriers are connected under Shipping; they are under Integrations. *Fixed 5 November: the note, the stop
+  reason and the Check now refusal say Integrations.*
 - A suppressed email shows as "the customer's address does not take emails"; suppression means an erased order or person, or a demo store.
+  *Fixed 5 November: it says the order's customer was erased, or the store is a demo store.*
 - The setup refusal names the *Plan* page, now *Billing*, in English only. Billing's trial line says a plan is first charged when the trial
-  ends; in its last two days it is charged at once.
-- `settings.en.ts` (SEO description) misses "as ChatGPT"; `website.en.ts` (staging name placeholder) misses words.
+  ends; in its last two days it is charged at once. *Fixed 5 November: the refusal names the Billing page and, with the setup's other
+  refusal, is said in the owner's language; Billing's trial line says a plan chosen in the trial's last two days is charged at once. The
+  Dream Factory's plan step names Billing too.*
+- `settings.en.ts` (SEO description) misses "as ChatGPT"; `website.en.ts` (staging name placeholder) misses words. *Not confirmed 5
+  November: `settings.en.ts` reads "AI assistants such as ChatGPT and Claude" and `website.en.ts` "What the changes are for, such as Spring
+  launch", as they have since they were written (D312 A8, D358), the Norwegian with them; nothing changed.*
 - The Pages list hands the header choice `"Your store"` in English, so the Norwegian admin reads *Your store viser denne toppteksten*.
+  *Fixed 5 November: the list hands it the catalogue's words (Butikken din viser denne toppteksten), with the rest of the list's words
+  (below).*
 - The article editor's *Authors* link opens the Blogs page. The Advanced fold of the product editor names "where it is sold", which is
-  under *Price and stock*. The reports page links *Settings, Invoices*; the menu says *Invoicing*.
+  under *Price and stock*. The reports page links *Settings, Invoices*; the menu says *Invoicing*. *Fixed 5 November: the editor's link
+  opens Authors while the store has none, else Blogs, as it says; the reports page links Settings, Invoicing. Skipped: the product editor's
+  Advanced fold, as `product-editor.tsx` and `product.*.ts` are another session's work at the same time.*
 - Decision rows out of step with the code: D63 (no reverse charge; D157 added it, and the Selling to businesses rule and Company page still
-  say prices are always charged with VAT), D359 (the trial's end stops nothing; D420 replaced it), D445 (nothing built; the Redirects
-  *Old shop* tab is), D103 (staff cannot use the AI manager, while skills offer *Share with the store's staff*), D130 and `docs/bonus.md`
-  (Bonus credits under Sales; the menu has Marketing; the expiry counts from earned or from usable).
+  say prices are always charged with VAT), D359 (the trial's end stops nothing; D420 replaced it), D445 (nothing built; the Redirects *Old
+  shop* tab is), D103 (staff cannot use the AI manager, while skills offer *Share with the store's staff*), D130 and `docs/bonus.md` (Bonus
+  credits under Sales; the menu has Marketing; the expiry counts from earned or from usable). *Fixed 5 November: D63 says reverse charge
+  since D157 (so do the Selling to businesses rule and the Company page); D359 that since D420 a trial that ends with no plan makes the
+  store private; D103 that a skill shared with the store reaches its other owners, and the skill's share box says so (Share with the
+  store's other owners: staff who are not owners have no AI manager); D130 and `docs/bonus.md` that Bonus credits is under Marketing and
+  expiry counts from when credits become usable (the Bonus page's hint said earned, and now says usable). Skipped: D445, another session's
+  row. The shopper's rules on the Bonus page still say "after you earn them": they are held to the storefront's own words in four
+  languages, a change of its own.*
 - The Norwegian withdrawal button reads *Bekreft angrer* (`nb-returns.ts`), most likely meant as *Bekreft angring*. Legal text: a person
-  should read it.
+  should read it. *Skipped 5 November: legal text, left for a person to read.*
 
 ## Norwegian words that differ between screens
 
@@ -100,4 +138,12 @@ The product editor's *Write with AI* panel; the autopilot's retry choices; the P
 *Create with AI*, *Front page*, *New article*, …) and the live site's edit buttons; *Copy of …*; the Domains page's title; *Where it's
 used* on product layouts; the export jobs' *Download* and *Open*; the file formats (*Standard*, *Excel (Nordic)*); the order page's *VAT
 treatment* panel; the carrier choice *Other*; and the extra VAT categories' names (*Food and drink*, *Books*, *Children's goods*). The
-Norwegian docs name these in italics.
+Norwegian docs name these in italics. *Fixed 5 November: the autopilot's retry choices (said in the admin's language, answered as the plan
+wrote them); the Pages, Blog, Product layouts, Headers and Footers lists (titles, introductions, New …, Create with AI, Categories and
+tags, Front page, All products page, Special pages with each place's words, the layouts' table with Where it's used) and the live site's
+Edit page, Edit text, Done editing and Custom CSS, given in the editor's admin language by `/api/platform/editor`; Copy of … (Kopi av … in
+the Norwegian admin); the Domains page's title and introduction; the export jobs' Download and Open; the order page's VAT treatment panel
+and its reverse-charge row; the carrier choice Other; and the extra VAT categories' names and hints (`common.vatCategories`, in the product
+editor's field and on draft orders). The Norwegian docs name them in Norwegian now. Skipped: the product editor's Write with AI panel and
+the file formats (Standard, Excel (Nordic)), another session's files at the same time. Still in English: the rest of an export job's card
+(Recent exports, rows, Your file is ready, from `data-admin.ts`, which the imports share) and the live site's text editor's own buttons.*

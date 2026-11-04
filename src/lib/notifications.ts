@@ -100,11 +100,11 @@ export const NOTIFICATIONS: readonly NotificationDef[] = [
     why: "A change to the contract is confirmed on a durable medium, and an extra payment is asked through it.",
   }),
   def("order.sent", "orders", "Order sent", "When a parcel is marked as sent.", { own: ["carrier", "tracking_number"] }),
-  def("order.parcel_out_for_delivery", "orders", "Out for delivery (carrier)", "When the carrier reports that a parcel is out for delivery.", {
+  def("order.parcel_out_for_delivery", "orders", "Out for delivery (carrier)", "When Posten / Bring reports that a parcel is out for delivery; the other carriers' reports are shown on the order but send no email yet.", {
     defaultOn: false,
     own: ["carrier", "tracking_number"],
   }),
-  def("order.parcel_delivered", "orders", "Delivered (carrier)", "When the carrier reports that a parcel was delivered.", {
+  def("order.parcel_delivered", "orders", "Delivered (carrier)", "When Posten / Bring reports that a parcel was delivered; the other carriers' reports are shown on the order but send no email yet.", {
     defaultOn: false,
     own: ["carrier", "tracking_number"],
   }),

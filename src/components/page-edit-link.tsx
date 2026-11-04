@@ -13,6 +13,10 @@ const SiteTextEditor = dynamic(() => import("./inline-edit/site-editor"), { ssr:
 // So is the CSS panel (D306).
 const SiteCssEditor = dynamic(() => import("./inline-edit/site-css-editor"), { ssr: false });
 
+/** The buttons' words: the editor's admin language once `/api/platform/editor` answers (`website.liveEdit`), English until then. */
+type EditWords = { lang: string; editText: string; doneEditing: string; customCss: string; editPage: string };
+const ENGLISH: EditWords = { lang: "en", editText: "Edit text", doneEditing: "Done editing", customCss: "Custom CSS", editPage: "Edit page" };
+
 const onStaff = (onChange: () => void) => {
   window.addEventListener(STAFF_EVENT, onChange);
   return () => window.removeEventListener(STAFF_EVENT, onChange);
@@ -48,6 +52,7 @@ export function PageEditLink({
   textEditable?: boolean;
 }) {
   const [member, setMember] = useState(false);
+  const [words, setWords] = useState<EditWords>(ENGLISH);
   // Back from the admin with a pass (D193), the page opens in editing; the mark is taken out of the address below.
   const [editing, setEditing] = useState(() => typeof window !== "undefined" && window.location.hash === EDIT_HASH);
   const [notice, setNotice] = useState<string | null>(null);
@@ -71,8 +76,9 @@ export function PageEditLink({
     const query = store ? `?store=${encodeURIComponent(store)}` : "";
     fetch(`/api/platform/editor${query}`, { signal: controller.signal, cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
-      .then((body: { editor?: boolean } | null) => {
+      .then((body: { editor?: boolean; words?: Partial<EditWords> } | null) => {
         setMember(Boolean(body?.editor));
+        if (body?.words) setWords({ ...ENGLISH, ...body.words });
         // A pass that is no longer one (ended, or the access with it): the note goes, and the button can start another.
         if (!body?.editor && !bySession && store) {
           forgetEditPass(store);
@@ -105,7 +111,7 @@ export function PageEditLink({
   return (
     <>
       <div
-        lang="en"
+        lang={words.lang}
         // Staff's tools, not the page's content (the theme switch e2e leaves them out).
         data-staff-tools=""
         className={`fixed z-50 flex flex-col gap-2 print:hidden ${
@@ -126,7 +132,7 @@ export function PageEditLink({
               onClick={() => (editing ? done() : setEditing(true))}
               className={`rounded-full border-2 border-foreground px-4 py-2 text-sm font-medium shadow-lg ${editing ? "bg-background text-foreground" : "bg-background/90 text-foreground"}`}
             >
-              {editing ? "Done editing" : "Edit text"}
+              {editing ? words.doneEditing : words.editText}
             </button>
           )}
           {member && (
@@ -138,7 +144,7 @@ export function PageEditLink({
               className={`rounded-full border-2 border-foreground px-4 py-2 font-mono text-sm font-medium shadow-lg ${css ? "bg-foreground text-background" : "bg-background/90 text-foreground"}`}
             >
               <span aria-hidden>{"{ } "}</span>
-              <span className="font-sans">Custom CSS</span>
+              <span className="font-sans">{words.customCss}</span>
             </button>
           )}
           {mayStartPass && (
@@ -147,14 +153,14 @@ export function PageEditLink({
               onClick={() => window.location.assign(grantUrl(adminOrigin, store!, `${window.location.pathname}${window.location.search}`))}
               className="rounded-full border-2 border-foreground bg-background/90 px-4 py-2 text-sm font-medium text-foreground shadow-lg"
             >
-              Edit text
+              {words.editText}
             </button>
           )}
           <a
             href={`${adminOrigin}/admin/${store ?? "platform"}/${article ? "articles" : "pages"}/${pageId}`}
             className="rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background shadow-lg"
           >
-            Edit page
+            {words.editPage}
           </a>
         </div>
       </div>

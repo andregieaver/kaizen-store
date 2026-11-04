@@ -48,8 +48,8 @@ export const assistantNb: AssistantMessages = {
     remove: "Slett",
     confirmRemove: "Slette denne ferdigheten?",
     shared: "Delt med butikken",
-    share: "Del med butikkens ansatte",
-    shareHint: "Ansatte kan også bruke den, med sine egne tillatelser.",
+    share: "Del med butikkens andre eiere",
+    shareHint: "De kan også bruke den. Ansatte som ikke er eiere, har ikke KI-assistenten.",
     mine: "Din",
     by: "Av {name}",
     saveAs: "Lagre som ferdighet",
@@ -196,6 +196,7 @@ export const assistantNb: AssistantMessages = {
       payments: "Sett opp betaling, så kundene kan betale (Innstillinger, Betaling).",
       plan: "Velg et abonnement hos Kaizena Flow (Innstillinger, Abonnement).",
       open: "Åpne",
+      retryOptions: ["Prøv igjen", "Hopp over dette steget", "Stopp planen"],
     },
     plans: {
       empty: "Ingen planer ennå. Fortell KI-assistenten hva du vil oppnå, så foreslår den en.",

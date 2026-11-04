@@ -284,7 +284,7 @@ export const privacyNb: PrivacyMessages = {
   erase: {
     customer: "Kunde",
     description:
-      "Les først hva som skjer. Salg som bokføringsloven krever oppbevart, beholdes uten personens navn, adresse og e-post til perioden er over, og anonymiseres deretter. Ingenting slettes fra regnskapet.",
+      "Les først hva som skjer. Salg som bokføringsloven krever oppbevart, beholdes med personens navn, adresse og e-post til perioden er over, men sperret: de brukes ikke til noe annet og får aldri e-post. Deretter anonymiseres de. Ingenting slettes fra regnskapet.",
     cannotUndo: "Sletting kan ikke angres.",
     confirm: "Bekreft",
     done: "Ferdig.",

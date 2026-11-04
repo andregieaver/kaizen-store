@@ -2,6 +2,12 @@ import type { DomainsMessages } from "./domains.en";
 
 /** Domener-siden på norsk (D312, D313). `{name}` er navnet på et språk. */
 export const domainsNb: DomainsMessages = {
+  page: {
+    title: "Domener",
+    description: "Der kundene finner butikken din: adressen den har hos Kaizena Flow, eller et eget domene.",
+    notSetUp:
+      "Butikken din ligger foreløpig på {address}, Kaizena Flows egen adresse. Butikkene får egne adresser, og kan bruke egne domener, når Kaizena Flows butikkdomene er satt opp.",
+  },
   forOneLanguage: "Bruk for ett språk",
   language: "Språk",
   everyLanguage: "Alle språk: leder til adressen din",

@@ -8,7 +8,6 @@ export const paymentsNb: PaymentsMessages = {
   page: {
     title: "Betalinger",
     intro: "Kundene betaler virksomheten din direkte gjennom butikkens egen Stripe-konto.",
-    ownerOnly: "Bare en eier kan slå betalinger av og på.",
     unavailableTitle: "Betalinger er ikke tilgjengelige ennå",
     unavailableAdmin:
       "Legg inn Kaizena Flows Stripe-nøkler i Vercel ({secret} og {publishable}, og {live}-paret når dere går live), publiser på nytt, og koble deretter til webhookene under Plattform → Stripe.",
@@ -80,7 +79,7 @@ export const paymentsNb: PaymentsMessages = {
     delayed: ". Pengene kommer etter noen dager; bestillingen venter med varene reservert.",
     save: "Lagre",
     repeat: "Abonnementer tar bare metodene Stripe tillater for gjentakende betaling, som kort og SEPA Direct Debit; abonnementsbokser tar kort.",
-    notActive: "En metode Stripe ikke har gjort aktiv, vises ikke for kundene, uansett hva som er krysset av. Lommebøker, Swish og resten av Stripes metoder finner du i",
+    notActive: "En metode Stripe ikke har gjort aktiv, vises ikke for kundene, uansett hva som er krysset av. Swish kommer gjennom Mollie, ikke Stripe. Lommebøker og resten av Stripes metoder finner du i",
     dashboard: "Stripe-dashbordet",
     kinds: {
       card: { label: "Kort, Apple Pay og Google Pay", where: "Overalt" },

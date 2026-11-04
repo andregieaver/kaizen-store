@@ -117,7 +117,7 @@ export const platformToolsEn = {
     off: "Off.",
     how: "How it works",
     howText:
-      "Visitors chat with an AI assistant in the corner of every page, in writing or aloud. It answers from the site's published pages and articles{store} and the knowledge base below, opens pages for the visitor while you talk, and declines anything that is not about {site}. Visitors are told it is AI. Conversations are kept only in the visitor's browser tab.",
+      "Visitors chat with an AI assistant in the corner of every page, in writing or aloud. It answers from the site's published pages and articles{store} and the knowledge base below, opens pages for the visitor while you talk, and declines anything that is not about {site}. Visitors are told it is AI. Conversations are kept by the site: with support off, their messages are deleted a day after they end; with support on, after the time chosen in the support settings (30, 60 or 90 days).",
     howStore: ", its products with their prices and stock, shipping",
     needsAi: "The chat needs an AI provider with a text model: {link}.",
     needsAiLink: "choose one on the AI page",

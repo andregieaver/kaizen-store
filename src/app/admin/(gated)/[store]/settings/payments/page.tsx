@@ -78,7 +78,7 @@ export default async function PaymentSettingsPage({
     <div className="flex flex-col gap-8">
       <PageHeader
         title={w.page.title}
-        description={<>{w.page.intro}{" "}{isOwner ? "" : w.page.ownerOnly}</>}
+        description={<>{w.page.intro}</>}
       />
 
       {modes.length === 0 && (

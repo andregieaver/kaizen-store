@@ -71,7 +71,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
         deactivate: deactivateLocationAction.bind(null, store.slug),
         reactivate: reactivateLocationAction.bind(null, store.slug),
         online: setOnlineAction.bind(null, store.slug),
-        routing: memberCan(member, "settings:write") ? setRoutingAction.bind(null, store.slug) : undefined,
+        routing: memberCan(member, "products:write") ? setRoutingAction.bind(null, store.slug) : undefined,
       }}
     />
     </AdminTextScope>

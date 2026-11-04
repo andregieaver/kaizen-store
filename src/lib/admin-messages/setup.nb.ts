@@ -147,5 +147,7 @@ export const setupNb: SetupMessages = {
   actions: {
     ownerOnly: "Bare en eier kan sette opp butikken.",
     opened: "Butikken din er åpen.",
+    trialOver: "Den gratis prøveperioden er over: velg et abonnement på siden Abonnement og faktura for å åpne butikken.",
+    notReady: "Legg inn opplysningene om virksomheten og minst ett land først.",
   },
 };

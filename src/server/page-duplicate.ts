@@ -3,6 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { adminLangOf, ADMIN_LANGS } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { copySlug, copyTitle } from "@/lib/page-duplicate";
 import { type PageType } from "@/lib/page-content";
 
@@ -33,7 +35,9 @@ export async function duplicatePage(
   const content = held ?? source.draft;
 
   const taken = await addressesInUse(owner, type);
-  const title = copyTitle(String(content.title ?? source.draft.title));
+  // "Copy of …" in the admin's language of the person copying (D312).
+  const prefix = adminText(adminLangOf(account.adminLocale), "website").list.copyOf;
+  const title = copyTitle(String(content.title ?? source.draft.title), prefix, ADMIN_LANGS.map((lang) => adminText(lang, "website").list.copyOf));
   const slug = copySlug(String(content.slug ?? source.slug), taken);
 
   const result = await savePage(account, owner, null, { ...content, title, slug }, { publish: false, type });

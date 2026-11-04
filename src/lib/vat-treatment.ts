@@ -175,7 +175,8 @@ export function vatTreatment(input: VatTreatmentInput): VatDecision {
   return { kind: "reverse_charge", reverseCharge: true, reason: "reverse_charge", notes: [] };
 }
 
-const STAFF_TEXT: Record<VatReason, string> = {
+/** The staff sentence of each reason, in English: the admin's catalogue (`order.vatTreatment.reasons`) says them in each language. */
+export const VAT_STAFF_TEXT: Record<VatReason, string> = {
   host_order: "A host's order: the host is the seller, so the destination country's VAT applies as set for the listing.",
   consumer: "A private buyer: the destination country's VAT is charged.",
   ioss: "A consignment of at most 150 EUR from outside the EU to a private buyer: destination VAT charged, marked with the store's IOSS number.",
@@ -226,7 +227,7 @@ const SHOPPER_TEXT: Record<VatReason, string> = {
 };
 
 /** A plain English sentence for staff (the order page's treatment panel). Needs review: legal-adjacent. */
-export const reasonStaffText = (reason: VatReason): string => STAFF_TEXT[reason];
+export const reasonStaffText = (reason: VatReason): string => VAT_STAFF_TEXT[reason];
 
 /**
  * The English default of the sentence a shopper sees for a reason ("" when there is nothing to say). The shopper-facing

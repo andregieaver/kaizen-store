@@ -174,7 +174,7 @@ export const staffEmailsEn = {
       status: "Status",
       evidenceDue: "Evidence due",
       deadline: "Deadline",
-      evidence: "Evidence is sent in your Stripe Dashboard.",
+      evidence: "Prepare and send your evidence from the order: open it and press Prepare the evidence.",
       stripe: "Open the dispute in Stripe",
       order: "Open the order",
     },

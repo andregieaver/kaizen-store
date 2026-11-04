@@ -75,4 +75,13 @@ export const commonNb: CommonMessages = {
     kept: "Lagres med kontoen din, så administrasjonen har samme språk på alle enheter du logger inn på.",
     partly: "Deler av administrasjonen som ennå ikke er skrevet på ditt språk, vises på engelsk.",
   },
+  jobs: { download: "Last ned", open: "Åpne" },
+  vatCategories: {
+    food: { label: "Mat og drikke", hint: "Mat og drikke til mennesker, der landet har redusert sats." },
+    books: { label: "Bøker", hint: "Trykte bøker, og e-bøker der landet bruker den reduserte satsen." },
+    periodicals: { label: "Aviser og tidsskrifter", hint: "Aviser, blader og tidsskrifter, der landet har redusert sats." },
+    medicines: { label: "Legemidler og medisinsk utstyr", hint: "Legemidler og medisinsk utstyr, der landet har redusert sats." },
+    culture_events: { label: "Kultur og arrangementer", hint: "Inngang til kulturarrangementer, kino og attraksjoner, der landet har redusert sats." },
+    children_goods: { label: "Barneartikler", hint: "Klær, sko og bilseter til barn, der landet har redusert sats." },
+  },
 };

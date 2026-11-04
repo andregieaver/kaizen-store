@@ -170,7 +170,7 @@ export const staffEmailsNb: StaffEmailsMessages = {
       status: "Status",
       evidenceDue: "Frist for dokumentasjon",
       deadline: "Frist",
-      evidence: "Dokumentasjonen sendes i Stripe-dashbordet ditt.",
+      evidence: "Forbered og send bevisene fra bestillingen: åpne den og trykk Forbered bevisene.",
       stripe: "Åpne tvisten i Stripe",
       order: "Åpne bestillingen",
     },

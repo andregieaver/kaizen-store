@@ -100,8 +100,8 @@ describe("a parcel's tracking on the staff order page (D238, 2.3)", () => {
   });
 
   it("tells staff how to have a parcel followed when its carrier is not connected", () => {
-    expect(plain(renderToString(h(ParcelStatus, { tracking: undefined, carrierName: "x", when, checkNow: null })))).toContain("Kaizena Flow follows parcels from carriers you connect under Shipping.");
-    expect(plain(renderToString(h(ParcelStatus, { tracking: tracking({ followed: null }), carrierName: "x", when, checkNow: null })))).toContain("carriers you connect under Shipping");
+    expect(plain(renderToString(h(ParcelStatus, { tracking: undefined, carrierName: "x", when, checkNow: null })))).toContain("Kaizena Flow follows parcels from carriers you connect under Integrations.");
+    expect(plain(renderToString(h(ParcelStatus, { tracking: tracking({ followed: null }), carrierName: "x", when, checkNow: null })))).toContain("carriers you connect under Integrations");
   });
 });
 

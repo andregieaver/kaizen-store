@@ -26,8 +26,8 @@ export const metadata: Metadata = { title: "Analytics settings" };
 
 /**
  * What turns sales into profit and what is counted about visitors (D152, `docs/analytics.md`): the cost of goods, the fees and
- * costs the store cannot see, a customer's lifetime, monthly revenue targets and visit counting. The owner's; any other member
- * sees how it is set up and is told who can change it. The page loads and the view draws.
+ * costs the store cannot see, a customer's lifetime, monthly revenue targets and visit counting. The owner's alone (D158): any other
+ * member is refused the page, as the navigation does not offer it. The page loads and the view draws.
  */
 export default async function AnalyticsSettingsPage({ params }: PageProps<"/admin/[store]/analytics/settings">) {
   const ctx = await analyticsContext((await params).store, {}, "owner");

@@ -57,8 +57,7 @@ De fleste produkter har alminnelig sats, og der starter et nytt produkt. Har et 
 | **Overnatting** | Hotellrom, feriehus og camping: en redusert sats der landet har en. Bare for opphold og utleie. |
 | **Unntatt fra merverdiavgift** | Uten mva., som helsetjenester. Sjekk med regnskapsføreren din at det gjelder deg. |
 
-Listen har også kategoriene Kaizena Flow holder for reduserte satser, for eksempel *Food and drink*, *Books* og *Children's goods*
-(navnene vises foreløpig på engelsk).
+Listen har også kategoriene Kaizena Flow holder for reduserte satser, for eksempel **Mat og drikke**, **Bøker** og **Barneartikler**.
 
 Under feltet viser hvert av landene dine satsen produktet har der nå. Står det *ingen redusert sats kjent her: den alminnelige satsen
 gjelder*, har Kaizena Flow ingen redusert sats for kategorien i det landet, og den alminnelige satsen beregnes.
@@ -90,7 +89,7 @@ Ellers beregnes merverdiavgift. Svarer ikke registeret, beregnes merverdiavgift,
 butikk i Norge, bruker aldri omvendt avgiftsplikt.
 
 På en bestilling med omvendt avgiftsplikt står det *Omvendt avgiftsplikt* på kundens bestillingsside og i bekreftelsen, med begge
-mva-numrene. På bestillingen i administrasjonen viser panelet *VAT treatment* hvordan merverdiavgiften ble behandlet og hvorfor, med
+mva-numrene. På bestillingen i administrasjonen viser panelet **Mva-behandling** hvordan merverdiavgiften ble behandlet og hvorfor, med
 det registeret svarte.
 
 > [!WARNING]

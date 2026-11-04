@@ -59,7 +59,7 @@ export const invoicesNb: InvoicesMessages = {
     "En kreditnota lages for hver tilbakebetaling som går gjennom, aldri over det fakturaen har igjen per sats. Et trekk for redusert verdi og returporto kunden betaler, reduserer kreditten slik systemet behandler dem som standard.",
     "Et abonnement som startet med en gratis prøveperiode, faktureres for det som forfaller nå; hver fornyelse får sin egen faktura når den er betalt.",
     "Bestillinger betalt i Stripes testmodus, historikk kopiert fra en annen butikk og en verts egne bestillinger får ingen faktura. Bestillinger betalt før fakturering ble slått på, faktureres ikke i ettertid.",
-    "Ikke laget ennå: ditt eget fakturaoppsett og logo, strukturerte e-fakturaer (XRechnung, Peppol, EHF), korrigerende fakturaer og manuelle kreditnotaer, og andre språk enn norsk, svensk, dansk og engelsk (dokumentet vises da på engelsk).",
+    "Hver faktura og kreditnota kan også lastes ned som strukturert e-faktura fra bestillingssiden (EN 16931 i UBL, Peppol BIS Billing 3.0-formatet som EHF bruker); å sende den gjennom Peppol-nettverket er ikke laget. Heller ikke laget ennå: ditt eget fakturaoppsett og logo, korrigerende fakturaer og manuelle kreditnotaer, og andre språk enn norsk, svensk, dansk og engelsk (dokumentet vises da på engelsk).",
   ],
   view: {
     title: "Fakturaer",

@@ -122,7 +122,7 @@ privat til du åpner den. Åpne **Innstillinger** og velg [Privat modus](/admin/
 - **Gjør butikken privat** eller **Åpne butikken for alle**.
 - **Passord**: besøkende som har det, kan komme inn. Uten passord er det bare teamet ditt som kan det. **Logg ut alle** gjør at de må
   skrive det inn igjen.
-- **Landingsside**: det besøkende ser, bygget i sidebyggeren og valgt under *Special pages* på listen over sider.
+- **Landingsside**: det besøkende ser, bygget i sidebyggeren og valgt under **Spesielle sider** på listen over sider.
 - **Forhåndsvis butikken** viser den slik den er, uten passordet, i 12 timer.
 
 En privat butikk holdes utenfor søkemotorene.

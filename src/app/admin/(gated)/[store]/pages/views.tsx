@@ -4,12 +4,13 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DemoHomePages } from "@/components/admin/demo-home-pages";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PageJobsPanel } from "@/components/admin/page-jobs-panel";
 import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
+import { fillWords, countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import type { WebsiteMessages } from "@/lib/admin-messages/website.en";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { ROLE_COPY, ROLE_GROUPS, partOfRole, type PageRole } from "@/lib/page-roles";
@@ -52,20 +53,9 @@ import { undoDemoHomeAction, useDemoHomeAction } from "./home-actions";
 type StoreParams = Promise<{ store: string }>;
 type Query = Promise<Record<string, string | string[] | undefined>>;
 
-const INTRO: Record<PageType, string> = {
-  page: "Pages of your own, such as About us or Delivery, in every country your store sells to. Save a page as a draft while you work on it; publish it to put it in your store, and add it to your menus under Header and footer.",
-  article:
-    "Your blog: articles at /blog/{address} in every country your store sells to, listed newest first at /blog. Save an article as a draft while you work on it; publish it to put it in the blog.",
-  product_layout:
-    "How your product pages are laid out: rows and columns of product components (pictures, title, price, buy, description …) with any other components around them. Publish a layout, then choose where it is used: for the whole store, for categories or tags, or for single products. Products without one use the standard layout.",
-  header:
-    "The top of every page in your store, built from components: your logo, menus, search, account, wishlist, cart, countries and anything else. Publish a header, then choose it as the store's header; until you do, the standard one is shown. Its logo and menus are the ones under Header and footer.",
-  footer:
-    "The bottom of every page in your store, built from components: your logo, menus, business details, countries, the cookies link and anything else. Publish a footer, then choose it as the store's footer; until you do, the standard one is shown. A footer shows your business details and the cookies link, as the law asks.",
-  variant: "A version of a page made for an A/B test: edited here like the page, shown only to the visitors the test gives it to, never at an address of its own.",
-  entry_layout:
-    "How each entry of a content type is shown on its own page: rows and columns whose headings, texts, pictures and buttons take their words from the entry's fields. Entries without a published layout use the standard entry page.",
-};
+/** The words of a store's page lists (`website.storePages`) and of the lists they share (`website.list`). */
+type ListWords = WebsiteMessages["storePages"];
+type SharedWords = WebsiteMessages["list"];
 
 export async function StorePagesListView({ type, params, searchParams }: { type: PageType; params: StoreParams; searchParams: Query }) {
   const gated = await requirePageTypeAccess((await params).store, type, "read");
@@ -73,27 +63,29 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
   const { store } = gated;
-  const copy = PAGE_TYPE_COPY[type];
   const [pages, query] = await Promise.all([listPages(store.id, type), searchParams]);
   const base = storePagesBase(store, type);
   const context = await storePageContext(store, type);
   // Pages that have a place of their own (D112) are not offered for another.
   const roleIds = new Set(Object.values(store.pageRoles));
-  const blogWords = adminText(adminLangOf(gated.account.adminLocale), "blog");
+  const lang = adminLangOf(gated.account.adminLocale);
+  const blogWords = adminText(lang, "blog");
+  const site = adminText(lang, "website");
+  const w = site.storePages;
+  const tw = w.types[type];
   const waitingComments = type === "article" ? (await commentCounts(store.id)).pending : 0;
   // What is scheduled for each page, article, header or footer, and what did not happen (D340), on the store's clock.
-  const lang = adminLangOf(gated.account.adminLocale);
   const clock = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
   const schedules = isScheduledType(type) ? await scheduleChips(store.id, type, adminText(lang, "schedules").chips, (iso) => clock.format(new Date(iso))) : {};
   return (
     <AdminTextScope texts={adminTexts(adminLangOf(gated.account.adminLocale), ["website", "schedules"])}>
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <PageHeader title={<>{copy.list}</>} description={<>{INTRO[type]}</>} />
+        <PageHeader title={tw.list} description={tw.intro} />
         <div className="flex flex-wrap gap-2">
           {!LAYOUT_TYPES.includes(type) && (
             <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
-              Categories and tags
+              {w.categories}
             </Link>
           )}
           {/* The store's blogs, their authors and the comments waiting (D341). */}
@@ -110,20 +102,20 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           )}
           {type === "page" && (
             <Link href={`${base}/ai`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
-              Create with AI
+              {w.createAi}
             </Link>
           )}
           <Link
             href={`${base}/new`}
             className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
           >
-            New {copy.one}
+            {tw.new}
           </Link>
         </div>
       </div>
       {query.deleted && (
         <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
-          The {copy.one} was deleted.
+          {tw.deleted}
         </p>
       )}
       {/* The AI's page work still going (PSI UX-01): builds and pictures, with a Stop for who may change the site. */}
@@ -137,7 +129,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
       )}
       {pages.length === 0 ? (
         <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
-          No {copy.many} yet. Make the first one with New {copy.one}.
+          {tw.none}
         </p>
       ) : type === "product_layout" ? (
         <ProductLayoutsTable
@@ -145,6 +137,9 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           adminBase={base}
           uses={await layoutUses(store.id)}
           terms={await listTerms({ storeId: store.id, contentType: "product" })}
+          words={w.layouts}
+          shared={site.list}
+          locale={ADMIN_LANG_FACTS[lang].locale}
         />
       ) : type === "header" || type === "footer" ? (
         <SiteLayoutsTable layouts={pages} adminBase={base} current={(await siteLayoutChoice(store.id))[type]} schedules={schedules} />
@@ -165,13 +160,15 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           type={type}
           layouts={pages}
           current={(await siteLayoutChoice(store.id))[type]}
-          siteName="Your store"
+          siteName={w.siteName}
           action={chooseStoreSiteLayoutAction.bind(null, store.slug, type)}
         />
       )}
       {type === "page" && (
         <FrontPageForm
           storeSlug={store.slug}
+          words={w}
+          shared={site.list}
           current={store.frontPageId}
           pages={pages.filter((p) => p.id !== store.productsPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.frontPageId))}
         />
@@ -190,6 +187,8 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
       {type === "page" && featureOn(store, "shop") && (
         <ProductsPageForm
           storeSlug={store.slug}
+          words={w}
+          shared={site.list}
           current={store.productsPageId}
           pages={pages.filter((p) => p.id !== store.frontPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.productsPageId))}
         />
@@ -197,21 +196,19 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
       {type === "page" && (
         <section className="flex flex-col gap-4" aria-labelledby="special-pages">
           <div className="flex flex-col gap-1">
-            <h2 id="special-pages" className="text-title text-ink">Special pages</h2>
-            <p className="max-w-2xl text-sm text-muted">
-              Your store&apos;s working pages, the blog and the 404 page have a standard look. Build any of them in the
-              page builder instead: choose one of your published pages for it, or start from a new page that looks like
-              the standard one. The standard page shows until you do.
-            </p>
+            <h2 id="special-pages" className="text-title text-ink">{w.special}</h2>
+            <p className="max-w-2xl text-sm text-muted">{w.specialNote}</p>
           </div>
           {ROLE_GROUPS.map((group) => (
             <div key={group.name} className="flex flex-col gap-3">
-              <h3 className="text-muted text-body-strong text-ink">{group.name}</h3>
+              <h3 className="text-muted text-body-strong text-ink">{(w.groups as Record<string, string | undefined>)[group.name] ?? group.name}</h3>
               {/* A working page of a store feature that is off (D178) is not offered; one already chosen stays, so it can be changed. */}
               {group.roles.filter((role) => roleOffered(store, role)).map((role) => (
                 <PageRoleForm
                   key={role}
                   storeSlug={store.slug}
+                  words={w}
+                  shared={site.list}
                   role={role}
                   current={store.pageRoles[role] ?? null}
                   pages={pages.filter(
@@ -235,7 +232,7 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
   const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
   if (shopOff) return shopOff;
   const { store, account } = gated;
-  const copy = PAGE_TYPE_COPY[type];
+  const tw = adminText(adminLangOf(account.adminLocale), "website").storePages.types[type];
   const [terms, fields] = await Promise.all([listTerms({ storeId: store.id, contentType: termContentOf(type) }), termFieldsSetup(store)]);
   return (
     // The categories manager's words are the products' (it is the same manager as theirs).
@@ -243,16 +240,13 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <Link href={storePagesBase(store, type)} className="w-fit text-sm underline">
-          {copy.list}
+          {tw.list}
         </Link>
-        <PageHeader
-          title={<>{copy.One} categories and tags</>}
-          description={<>Sort your {copy.many} into categories and label them with tags; a content grid can then show the {copy.many}{" "}of a category or tag. Product categories are under Products.</>}
-        />
+        <PageHeader title={tw.termsTitle} description={tw.terms} />
         </div>
       <TermsManager
         initial={terms}
-        usedBy={copy.many}
+        usedBy={tw.many}
         fields={fields}
         actions={{
           create: createStorePageTermAction.bind(null, store.slug, type),
@@ -272,44 +266,42 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
  */
 function FrontPageForm({
   storeSlug,
+  words,
+  shared,
   current,
   pages,
 }: {
   storeSlug: string;
+  words: ListWords;
+  shared: SharedWords;
   current: string | null;
   pages: { id: string; title: string; state: string }[];
 }) {
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
+  const f = words.front;
   return (
     <ActionForm
       action={setFrontPageAction.bind(null, storeSlug)}
       className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
     >
-      <h2 className="text-title text-ink">Front page</h2>
-      <p className="max-w-2xl text-sm text-muted">
-        What shoppers see first in your store: your products, or one of your published pages (with a content grid of
-        products, for instance).
-      </p>
+      <h2 className="text-title text-ink">{f.title}</h2>
+      <p className="max-w-2xl text-sm text-muted">{f.hint}</p>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
-          Your store opens with
+          {f.label}
           <select name="frontPage" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
-            <option value="">All products</option>
+            <option value="">{f.all}</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
-                {page.title || "Untitled"}
-                {page.state === "draft" ? " (not published)" : ""}
+                {page.title || shared.untitled}
+                {page.state === "draft" ? shared.notPublished : ""}
               </option>
             ))}
           </select>
         </label>
-        <SubmitButton>Save</SubmitButton>
+        <SubmitButton>{shared.save}</SubmitButton>
       </div>
-      {unpublished && (
-        <p className="text-sm text-muted">
-          This page is not published, so shoppers see your products until you publish it again.
-        </p>
-      )}
+      {unpublished && <p className="text-sm text-muted">{f.unpublished}</p>}
     </ActionForm>
   );
 }
@@ -317,42 +309,42 @@ function FrontPageForm({
 /** Which page is the store's All products page at /products (D83), or the standard list. */
 function ProductsPageForm({
   storeSlug,
+  words,
+  shared,
   current,
   pages,
 }: {
   storeSlug: string;
+  words: ListWords;
+  shared: SharedWords;
   current: string | null;
   pages: { id: string; title: string; state: string }[];
 }) {
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
+  const f = words.products;
   return (
     <ActionForm
       action={setProductsPageAction.bind(null, storeSlug)}
       className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
     >
-      <h2 className="text-title text-ink">All products page</h2>
-      <p className="max-w-2xl text-sm text-muted">
-        What shoppers see at All products (/products, where menus&apos; All products link goes): the standard list, or one
-        of your published pages. Give its content grid of products the Filter and sort button so shoppers can narrow it.
-      </p>
+      <h2 className="text-title text-ink">{f.title}</h2>
+      <p className="max-w-2xl text-sm text-muted">{f.hint}</p>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
-          All products shows
+          {f.label}
           <select name="productsPage" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
-            <option value="">The standard list</option>
+            <option value="">{f.standard}</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
-                {page.title || "Untitled"}
-                {page.state === "draft" ? " (not published)" : ""}
+                {page.title || shared.untitled}
+                {page.state === "draft" ? shared.notPublished : ""}
               </option>
             ))}
           </select>
         </label>
-        <SubmitButton>Save</SubmitButton>
+        <SubmitButton>{shared.save}</SubmitButton>
       </div>
-      {unpublished && (
-        <p className="text-sm text-muted">This page is not published, so shoppers see the standard list until you publish it again.</p>
-      )}
+      {unpublished && <p className="text-sm text-muted">{f.unpublished}</p>}
     </ActionForm>
   );
 }
@@ -364,39 +356,45 @@ function ProductsPageForm({
  */
 function PageRoleForm({
   storeSlug,
+  words,
+  shared,
   role,
   current,
   pages,
 }: {
   storeSlug: string;
+  words: ListWords;
+  shared: SharedWords;
   role: PageRole;
   current: string | null;
   pages: { id: string; title: string; state: string }[];
 }) {
-  const copy = ROLE_COPY[role];
+  // The place's name (`list.roles`) and its standard page and hint (`storePages.roles`), in the admin's language.
+  const name = shared.roles[role] ?? ROLE_COPY[role].name;
+  const { standard, hint } = words.roles[role] ?? ROLE_COPY[role];
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
   return (
-    <Card title={copy.name} description={copy.hint} level={4} className="flex flex-col gap-3" compact>
+    <Card title={name} description={hint} level={4} className="flex flex-col gap-3" compact>
       <ActionForm action={setPageRoleAction.bind(null, storeSlug, role)} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
-          {copy.name} shows
+          {fillWords(words.role.shows, { name })}
           <select name="page" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
-            <option value="">{copy.standard}</option>
+            <option value="">{standard}</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
-                {page.title || "Untitled"}
-                {page.state === "draft" ? " (not published)" : ""}
+                {page.title || shared.untitled}
+                {page.state === "draft" ? shared.notPublished : ""}
               </option>
             ))}
           </select>
         </label>
-        <SubmitButton>Save</SubmitButton>
+        <SubmitButton>{shared.save}</SubmitButton>
       </ActionForm>
       <ActionForm action={createRolePageAction.bind(null, storeSlug, role)} className="flex flex-wrap items-center gap-3">
-        <SubmitButton variant="secondary">Start from a new page</SubmitButton>
-        <span className="text-sm text-muted">Makes a page like the standard one, publishes it here and opens it in the builder.</span>
+        <SubmitButton variant="secondary">{words.role.start}</SubmitButton>
+        <span className="text-sm text-muted">{words.role.startHint}</span>
       </ActionForm>
-      {unpublished && <p className="text-sm text-muted">This page is not published, so shoppers see {copy.standard.toLowerCase()} until you publish it again.</p>}
+      {unpublished && <p className="text-sm text-muted">{fillWords(words.role.unpublished, { standard: standard.charAt(0).toLowerCase() + standard.slice(1) })}</p>}
     </Card>
   );
 }
@@ -407,26 +405,33 @@ function ProductLayoutsTable({
   adminBase,
   uses,
   terms,
+  words,
+  shared,
+  locale,
 }: {
   layouts: PageSummary[];
   adminBase: string;
   uses: Map<string, LayoutUse>;
   terms: Term[];
+  words: ListWords["layouts"];
+  shared: SharedWords;
+  /** The admin's locale, for the dates. */
+  locale: string;
 }) {
-  const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
   const names = (ids: string[]) => ids.map((id) => terms.find((term) => term.id === id)?.name).filter(Boolean).join(", ");
   const usedFor = (id: string) => {
     const use = uses.get(id);
-    if (!use) return "Not used yet";
+    if (!use) return words.notUsed;
     return (
       [
-        use.standard && "The store's standard",
-        use.categoryIds.length > 0 && `Categories: ${names(use.categoryIds)}`,
-        use.tagIds.length > 0 && `Tags: ${names(use.tagIds)}`,
-        use.products > 0 && (use.products === 1 ? "1 product" : `${use.products} products`),
+        use.standard && words.standard,
+        use.categoryIds.length > 0 && fillWords(words.categories, { names: names(use.categoryIds) }),
+        use.tagIds.length > 0 && fillWords(words.tags, { names: names(use.tagIds) }),
+        use.products > 0 && countWords(use.products, words.products),
       ]
         .filter(Boolean)
-        .join(" · ") || "Not used yet"
+        .join(" · ") || words.notUsed
     );
   };
   return (
@@ -435,13 +440,13 @@ function ProductLayoutsTable({
         <thead>
           <tr className="border-b border-line">
             <th scope="col" className="px-4 py-2 font-medium">
-              Layout
+              {words.layout}
             </th>
             <th scope="col" className="px-4 py-2 font-medium">
-              State
+              {words.state}
             </th>
             <th scope="col" className="px-4 py-2 font-medium">
-              Used for
+              {words.usedFor}
             </th>
           </tr>
         </thead>
@@ -450,17 +455,17 @@ function ProductLayoutsTable({
             <tr key={layout.id} className="border-b border-line last:border-0">
               <td className="px-4 py-2">
                 <Link href={`${adminBase}/${layout.id}`} className="font-medium underline">
-                  {layout.title || "Untitled"}
+                  {layout.title || shared.untitled}
                 </Link>
               </td>
               <td className="px-4 py-2">
-                {LAYOUT_STATES[layout.state]}
-                {layout.publishedAt && <span className="block text-muted">Published {date.format(new Date(layout.publishedAt))}</span>}
+                {shared.layoutStates[layout.state]}
+                {layout.publishedAt && <span className="block text-muted">{fillWords(shared.publishedOn, { date: date.format(new Date(layout.publishedAt)) })}</span>}
               </td>
               <td className="px-4 py-2">
                 {usedFor(layout.id)}
                 <Link href={`${adminBase}/${layout.id}/assign`} className="block w-fit underline">
-                  Where it&apos;s used
+                  {words.whereUsed}
                 </Link>
               </td>
             </tr>
@@ -470,12 +475,6 @@ function ProductLayoutsTable({
     </div>
   );
 }
-
-const LAYOUT_STATES: Record<PageSummary["state"], string> = {
-  draft: "Draft",
-  published: "Published",
-  changed: "Published, with unpublished changes",
-};
 
 /** Whether a store's Special pages offer a place (D178): its working page's feature is on, or a page is chosen for it already. */
 function roleOffered(store: { features: readonly string[]; pageRoles: Partial<Record<string, string>> }, role: PageRole): boolean {

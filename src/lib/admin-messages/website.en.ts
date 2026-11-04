@@ -61,6 +61,8 @@ export const websiteEn = {
     view: "View",
     duplicate: "Duplicate",
     duplicating: "Duplicating …",
+    /** Before a duplicated page's title (D126). */
+    copyOf: "Copy of",
     copyFailed: "The copy could not be made.",
     layoutNames: { header: "header", footer: "footer" },
     inUseTitle: { header: "The header in use", footer: "The footer in use" },
@@ -79,6 +81,199 @@ export const websiteEn = {
     publishedOn: "Published {date}",
     inUse: "In use",
   },
+  /**
+   * A store's lists of pages, articles, product layouts, headers and footers (D53, D57, D79, D80) and the places a page takes (D54, D83,
+   * D112): `groups` by `ROLE_GROUPS`' English name, `roles` each place's standard page and hint as `ROLE_COPY` writes them (its name is
+   * `list.roles`), held to it by `website.test.ts`.
+   */
+  storePages: {
+    types: {
+      page: {
+        list: "Pages",
+        many: "pages",
+        intro: "Pages of your own, such as About us or Delivery, in every country your store sells to. Save a page as a draft while you work on it; publish it to put it in your store, and add it to your menus under Header and footer.",
+        new: "New page",
+        deleted: "The page was deleted.",
+        none: "No pages yet. Make the first one with New page.",
+        termsTitle: "Page categories and tags",
+        terms: "Sort your pages into categories and label them with tags; a content grid can then show the pages of a category or tag. Product categories are under Products.",
+      },
+      article: {
+        list: "Blog",
+        many: "articles",
+        intro: "Your blog: articles at /blog/{address} in every country your store sells to, listed newest first at /blog. Save an article as a draft while you work on it; publish it to put it in the blog.",
+        new: "New article",
+        deleted: "The article was deleted.",
+        none: "No articles yet. Make the first one with New article.",
+        termsTitle: "Article categories and tags",
+        terms: "Sort your articles into categories and label them with tags; a content grid can then show the articles of a category or tag. Product categories are under Products.",
+      },
+      product_layout: {
+        list: "Product layouts",
+        many: "layouts",
+        intro: "How your product pages are laid out: rows and columns of product components (pictures, title, price, buy, description …) with any other components around them. Publish a layout, then choose where it is used: for the whole store, for categories or tags, or for single products. Products without one use the standard layout.",
+        new: "New layout",
+        deleted: "The layout was deleted.",
+        none: "No layouts yet. Make the first one with New layout.",
+        termsTitle: "Layout categories and tags",
+        terms: "Sort your layouts into categories and label them with tags; a content grid can then show the layouts of a category or tag. Product categories are under Products.",
+      },
+      header: {
+        list: "Headers",
+        many: "headers",
+        intro: "The top of every page in your store, built from components: your logo, menus, search, account, wishlist, cart, countries and anything else. Publish a header, then choose it as the store's header; until you do, the standard one is shown. Its logo and menus are the ones under Header and footer.",
+        new: "New header",
+        deleted: "The header was deleted.",
+        none: "No headers yet. Make the first one with New header.",
+        termsTitle: "Header categories and tags",
+        terms: "Sort your headers into categories and label them with tags; a content grid can then show the headers of a category or tag. Product categories are under Products.",
+      },
+      footer: {
+        list: "Footers",
+        many: "footers",
+        intro: "The bottom of every page in your store, built from components: your logo, menus, business details, countries, the cookies link and anything else. Publish a footer, then choose it as the store's footer; until you do, the standard one is shown. A footer shows your business details and the cookies link, as the law asks.",
+        new: "New footer",
+        deleted: "The footer was deleted.",
+        none: "No footers yet. Make the first one with New footer.",
+        termsTitle: "Footer categories and tags",
+        terms: "Sort your footers into categories and label them with tags; a content grid can then show the footers of a category or tag. Product categories are under Products.",
+      },
+      variant: {
+        list: "A/B tests",
+        many: "variants",
+        intro: "A version of a page made for an A/B test: edited here like the page, shown only to the visitors the test gives it to, never at an address of its own.",
+        new: "New variant",
+        deleted: "The variant was deleted.",
+        none: "No variants yet. Make the first one with New variant.",
+        termsTitle: "Variant categories and tags",
+        terms: "Sort your variants into categories and label them with tags; a content grid can then show the variants of a category or tag. Product categories are under Products.",
+      },
+      entry_layout: {
+        list: "Content",
+        many: "entry pages",
+        intro: "How each entry of a content type is shown on its own page: rows and columns whose headings, texts, pictures and buttons take their words from the entry's fields. Entries without a published layout use the standard entry page.",
+        new: "New entry page",
+        deleted: "The entry page was deleted.",
+        none: "No entry pages yet. Make the first one with New entry page.",
+        termsTitle: "Entry page categories and tags",
+        terms: "Sort your entry pages into categories and label them with tags; a content grid can then show the entry pages of a category or tag. Product categories are under Products.",
+      },
+    },
+    categories: "Categories and tags",
+    createAi: "Create with AI",
+    siteName: "Your store",
+    special: "Special pages",
+    specialNote: "Your store's working pages, the blog and the 404 page have a standard look. Build any of them in the page builder instead: choose one of your published pages for it, or start from a new page that looks like the standard one. The standard page shows until you do.",
+    groups: {
+      "Content pages": "Content pages",
+      Shopping: "Shopping",
+      "Customer account": "Customer account",
+      Catalogue: "Catalogue",
+      Information: "Information",
+      "Private mode": "Private mode",
+    },
+    roles: {
+      blog: {
+        standard: "The standard list of articles",
+        hint: "What shoppers see at your blog (/blog): the standard list of articles, or one of your published pages with a content grid of articles. Blog categories and tags keep the standard list.",
+      },
+      search: {
+        standard: "The standard search page",
+        hint: "What shoppers see when they search (/search): the standard page, or one of your published pages with a Search component, which draws the search box and its results.",
+      },
+      not_found: {
+        standard: "The standard message",
+        hint: "What shoppers see when an address on your store does not exist: a short message, or one of your published pages. It is shown with a 404 status, so search engines know the address is gone. A Search component with only the box helps shoppers find what they wanted.",
+      },
+      cart: {
+        standard: "The standard cart",
+        hint: "What shoppers see at the cart (/cart): the standard page, or one of your published pages with the Cart component, or with its pieces (items, summary, discount code, checkout button) laid out as you like. On phones the cart still slides out over the page.",
+      },
+      checkout: {
+        standard: "The standard checkout",
+        hint: "What shoppers see when they pay (/checkout): the standard page, or one of your published pages with the Checkout component, which holds the order summary and the payment form, or with its pieces laid out as you like. Keep the payment form: it is how the order gets paid.",
+      },
+      order: {
+        standard: "The standard confirmation",
+        hint: "What shoppers see after paying, and when they open their order from an email: the standard page, or one of your published pages with the Order confirmation component, or with its pieces (thank you, items, totals, downloads, address …) laid out as you like. Its address carries the order, so the page itself has none.",
+      },
+      account: {
+        standard: "The standard My account",
+        hint: "What shoppers see at My account (/account): the standard page, or one of your published pages with the My account component. Signed out, the component is the sign-in form, unless you choose a sign-in page.",
+      },
+      sign_in: {
+        standard: "The sign-in form on My account",
+        hint: "What shoppers who are not signed in see at My account (/account): the sign-in form on the account page, or one of your published pages with the Sign-in component. Emailed sign-in links keep their own page.",
+      },
+      wishlist: {
+        standard: "The standard wishlists",
+        hint: "What shoppers see at their wishlists (/wishlist): the standard page, or one of your published pages with the Wishlists component.",
+      },
+      subscription: {
+        standard: "The standard subscription page",
+        hint: "What shoppers see when they open a subscription from an email or My account to pause, skip or cancel it: the standard page, or one of your published pages with the Subscription component. Its address carries a link's secret, so the page itself has none.",
+      },
+      deliveries: {
+        standard: "The standard subscription boxes page",
+        hint: "What shoppers see at their subscription box (/deliveries), when you offer subscription boxes: the standard page, or one of your published pages with the Subscription boxes component.",
+      },
+      category: {
+        standard: "The standard category page",
+        hint: "What shoppers see on every category page (/category/…): the standard page, or one of your published pages with the Category products component, which draws the category the shopper is in. Put a content grid that recommends products (or anything else) around it; a grid on this page recommends around the category.",
+      },
+      tag: {
+        standard: "The standard tag page",
+        hint: "What shoppers see on every tag page (/tag/…): the standard page, or one of your published pages with the Tag products component, which draws the tag the shopper is in. A content grid that recommends products on this page recommends around the tag.",
+      },
+      private: {
+        standard: "The standard password page",
+        hint: "What visitors see while your store is private (Settings, Private mode): the standard page with your store's name and the password field, or one of your published pages with the Password component. Keep the component: it is how visitors with the password get in.",
+      },
+      cookies: {
+        standard: "The standard cookies page",
+        hint: "What shoppers see at your cookies page (/cookies): the standard list of what the site sets, or one of your published pages with the Cookies component. Keep the component: the list must stay reachable.",
+      },
+    },
+    front: {
+      title: "Front page",
+      hint: "What shoppers see first in your store: your products, or one of your published pages (with a content grid of products, for instance).",
+      label: "Your store opens with",
+      all: "All products",
+      unpublished: "This page is not published, so shoppers see your products until you publish it again.",
+    },
+    products: {
+      title: "All products page",
+      hint: "What shoppers see at All products (/products, where menus' All products link goes): the standard list, or one of your published pages. Give its content grid of products the Filter and sort button so shoppers can narrow it.",
+      label: "All products shows",
+      standard: "The standard list",
+      unpublished: "This page is not published, so shoppers see the standard list until you publish it again.",
+    },
+    role: {
+      shows: "{name} shows",
+      start: "Start from a new page",
+      startHint: "Makes a page like the standard one, publishes it here and opens it in the builder.",
+      unpublished: "This page is not published, so shoppers see {standard} until you publish it again.",
+    },
+    layouts: {
+      layout: "Layout",
+      state: "State",
+      usedFor: "Used for",
+      notUsed: "Not used yet",
+      standard: "The store's standard",
+      categories: "Categories: {names}",
+      tags: "Tags: {names}",
+      products: {
+        one: "1 product",
+        many: "{n} products",
+      },
+      whereUsed: "Where it's used",
+    },
+  },
+  /**
+   * The buttons on the live site for those who may edit it (D54, D192, D306): handed to the browser by `/api/platform/editor` in the
+   * person's admin language, so a visitor's page carries none of them.
+   */
+  liveEdit: { editText: "Edit text", doneEditing: "Done editing", customCss: "Custom CSS", editPage: "Edit page" },
   /** Home pages from the demo stores (D261). */
   demoHomes: {
     title: "Home pages from the demo stores",

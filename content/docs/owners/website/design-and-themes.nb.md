@@ -118,7 +118,7 @@ Gi deler stil med id-ene og klassene du gir dem under **Avansert** i innstilling
 eget nettsted eller mediebiblioteket. Hver CSS kan ha opptil 50 000 tegn. **Versjoner** i panelet tar vare på de 50 siste lagringene av
 CSS-en for hele nettstedet.
 
-Er du logget inn, åpner *Custom CSS* ved siden av *Edit text* på nettstedet det samme panelet over siden.
+Er du logget inn, åpner **Egen CSS** ved siden av **Rediger tekst** på nettstedet det samme panelet over siden.
 
 Et installert tema som ikke er i bruk, har sin egen CSS, under **Egen CSS** på siden Tilpass.
 

@@ -21,8 +21,10 @@ import {
   answerFeatureQuestion,
   archiveDemoProducts,
   completeSetup,
+  NOT_READY,
   saveStoreDetails,
   setMarkets,
+  TRIAL_OVER,
   type SetupStepId,
 } from "@/server/setup";
 import { storeTag } from "@/server/stores";
@@ -113,7 +115,11 @@ export async function openStoreAction(
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
   const result = await completeSetup(owner);
-  if (!result.ok) return { status: "error", messages: result.problems };
+  if (!result.ok) {
+    // The two refusals the setup knows, in the owner's language; anything else as the server said it.
+    const said = words(owner).actions;
+    return { status: "error", messages: result.problems.map((p) => (p === TRIAL_OVER ? said.trialOver : p === NOT_READY ? said.notReady : p)) };
+  }
   // A premium theme live at opening is due now (D286): invoiced through Kaizena Flow's billing after the answer.
   after(() => chargeDueThemePurchases({ storeId: owner.store.id }));
   refreshStore(owner);

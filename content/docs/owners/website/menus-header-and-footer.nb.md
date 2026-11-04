@@ -68,8 +68,8 @@ fra [Virksomhet](/admin/{store}/settings/company) under Innstillinger.
 
 Standardtoppteksten og -bunnteksten passer de fleste butikker. Vil du ha ditt eget oppsett:
 
-1. Åpne **Nettsted** og velg [Topptekster](/admin/{store}/headers) eller [Bunntekster](/admin/{store}/footers). Trykk *New header* eller
-   *New footer*: den starter som en kopi av standarden.
+1. Åpne **Nettsted** og velg [Topptekster](/admin/{store}/headers) eller [Bunntekster](/admin/{store}/footers). Trykk **Ny topptekst** eller
+   **Ny bunntekst**: den starter som en kopi av standarden.
 2. Bygg den i sidebyggeren. I tillegg til de vanlige komponentene har **Nettstedet** logoen, menyer, søk, handlekurven, valget av land og
    mer; en bunntekst beholder alltid firmaopplysningene og lenken til informasjonskapsler.
 3. Trykk **Publiser**.

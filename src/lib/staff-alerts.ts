@@ -2,7 +2,8 @@
  * Staff alerts (wave 3, D238, `docs/wave-3-notifications.md` 2.4 and 4.7): the events staff can be emailed about, the permission each needs, who gets
  * them by default and while the owner has chosen, the summary's periods and the emails' idempotency keys. Pure: `src/server/staff-alerts.ts` reads the
  * members, the settings and the recipients and asks here who receives what, checked at sending. Only relative type imports (`src/db/schema.ts` reads
- * `STAFF_ALERT_EVENTS` for its checks, and drizzle-kit loads this file without the app's path aliases). English, as every staff email.
+ * `STAFF_ALERT_EVENTS` for its checks, and drizzle-kit loads this file without the app's path aliases). The labels are English; the page and
+ * the emails say them in each person's admin language (D312 A10, `staffEmails` and `notifications` catalogues).
  */
 import type { PermissionKey } from "./permission-keys";
 

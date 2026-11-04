@@ -8,7 +8,7 @@ import type { AssistantMessages } from "@/lib/admin-messages/assistant.en";
 import { adminText } from "@/lib/admin-text";
 import { formatUsd } from "@/lib/ai-cost";
 import { AUTONOMY_AREAS, AUTONOMY_LEVELS, levelOf } from "@/lib/autopilot-autonomy";
-import { FINISHED_STEPS } from "@/lib/autopilot-plans";
+import { FINISHED_STEPS, RETRY_OPTIONS } from "@/lib/autopilot-plans";
 import type { AutopilotOverview } from "@/server/autopilot-overview";
 import type { Plan, PlanStep } from "@/server/autopilot-plans";
 
@@ -123,7 +123,8 @@ function Decisions({ overview, words: a, actions, links, locale }: { overview: A
                   {q.question.options.length > 0 ? (
                     q.question.options.map((option, i) => (
                       <Button key={option} type="submit" name="answer" value={option} kind={i === 0 ? "main" : "secondary"} size="dense">
-                        {option}
+                        {/* A failing step's own choices are the code's, so they are said in the admin's language; a plan's own as it wrote them. */}
+                        {q.question.retry ? (d.retryOptions[(RETRY_OPTIONS as readonly string[]).indexOf(option)] ?? option) : option}
                       </Button>
                     ))
                   ) : (

@@ -29,7 +29,7 @@ export const giftCardsNb: GiftCardsMessages = {
     description:
       "Penger kundene dine har til gode i butikken: gavekort de har kjøpt, og gavekort du utsteder. Et solgt gavekort er ikke et salg før det blir brukt.",
     issue: "Utsted et gavekort",
-    off: "Gavekort er slått av: ingen selges, og kassen har ikke noe felt for gavekort. Gavekort som allerede er solgt eller utstedt, beholdes her.",
+    off: "Gavekort er slått av: ingen selges. Handlekurven og kassen har fortsatt feltet for gavekort, så gavekort som allerede er solgt eller utstedt, kan fortsatt brukes; de beholdes her.",
     features: "Funksjoner",
     customersHold: "Kundene har til gode",
     customersHoldIn: "Kundene har til gode, {currency}",

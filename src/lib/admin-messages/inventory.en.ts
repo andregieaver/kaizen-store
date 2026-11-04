@@ -48,7 +48,7 @@ export const inventoryEn = {
       /** The prepared reorder (D416, *Prepare reorder* from the briefing). */
       reorder: {
         title: "A reorder, prepared for you",
-        intro: "What sells and what is left says these will run low within 37 days (30 days to cover and 7 for delivery). Check the units, the cost and the supplier, then press Create: it is saved as a draft and nothing is sent to anyone.",
+        intro: "What sells and what is left says these will run low within 37 days (30 days to cover and 7 for delivery). Check the units, the cost and the supplier, then press Save as a draft: nothing is sent to anyone.",
         none: "Nothing needs reordering at the pace of the last 30 days.",
         noCost: { one: "One line has no cost price yet: write what one unit costs.", many: "{n} lines have no cost price yet: write what one unit costs." },
       },
@@ -279,7 +279,7 @@ export const inventoryEn = {
     namePlaceholder: "Name, for example Bergen shop",
     add: "Add location",
     addHint:
-      "A new location goes last in the order. At most {max} locations; the name is unique among active locations. The country is kept for later (nearest-location orders, local pickup); today it only labels the place.",
+      "A new location goes last in the order. At most {max} locations; the name is unique among active locations. The country is where the place is: when orders choose the delivery country's locations first, it decides which those are.",
     atLimit: " The store has reached the limit.",
     units: { one: "{n} unit", many: "{n} units" },
     held: { one: "{units} across {n} variant", many: "{units} across {n} variants" },

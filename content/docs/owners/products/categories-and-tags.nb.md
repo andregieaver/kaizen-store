@@ -90,7 +90,7 @@ Navnene i listen finnes på engelsk, norsk, svensk og dansk; en side på et anne
 ## Et oppsett for en kategori
 
 Oppsettet på en produktside kan følge kategorien eller stikkordet. Under [Produktoppsett](/admin/{store}/product-layouts) trykker du
-*Where it's used* ved et oppsett, krysser av for kategoriene og stikkordene det skal gjelde, og trykker **Lagre**. Et produkt bruker
+**Hvor det brukes** ved et oppsett, krysser av for kategoriene og stikkordene det skal gjelde, og trykker **Lagre**. Et produkt bruker
 først sitt eget oppsett (**Sideoppsett** under **Kategorier og stikkord** i produktredigeringen), ellers nærmeste kategoris, ellers et
 av stikkordenes, ellers butikkens standardoppsett. En kategoris oppsett gjelder også kategoriene under den som ikke har sitt eget. Hvordan
 du bygger et oppsett, står i [Sidebyggeren](/docs/owners/website/the-page-builder).

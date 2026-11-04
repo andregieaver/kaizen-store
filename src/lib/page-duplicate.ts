@@ -8,10 +8,14 @@ import { PAGE_TITLE_MAX } from "./page-content";
 
 export const SLUG_MAX = 80;
 
-/** "Copy of About us"; a copy of a copy stays "Copy of About us", not "Copy of Copy of …". */
-export function copyTitle(title: string): string {
-  const base = title.trim().replace(/^Copy of\s+/i, "");
-  return `Copy of ${base}`.slice(0, PAGE_TITLE_MAX).trimEnd();
+/**
+ * "Copy of About us"; a copy of a copy stays "Copy of About us", not "Copy of Copy of …". `prefix` is the words in the admin's language
+ * ("Kopi av" in Norwegian); `known` are every language's, so a copy of a copy made in another language does not stack either.
+ */
+export function copyTitle(title: string, prefix = "Copy of", known: readonly string[] = [prefix]): string {
+  const escaped = [...new Set([prefix, ...known])].map((p) => p.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).filter(Boolean);
+  const base = title.trim().replace(new RegExp(`^(?:${escaped.join("|")})\\s+`, "i"), "");
+  return `${prefix} ${base}`.slice(0, PAGE_TITLE_MAX).trimEnd();
 }
 
 /** The first free address for a copy of `slug`, given the addresses the owner's pages already use. */

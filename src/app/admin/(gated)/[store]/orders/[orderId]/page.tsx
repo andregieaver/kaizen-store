@@ -421,7 +421,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
               <ReferralDiscountRow minor={order.copied ? 0 : order.referralDiscountMinor} currency={order.currency} locale={locale} words={words.referral} />
               <BonusUsedRow bonus={bonus} currency={bonusCurrency} locale={locale} words={words.bonus} />
-              <VatReliefRow kind={order.vatKind} reliefMinor={order.vatReliefMinor} money={money} />
+              <VatReliefRow kind={order.vatKind} reliefMinor={order.vatReliefMinor} money={money} words={words.vatTreatment} />
               <div className="flex justify-between font-medium"><dt>{w.total}</dt><dd>{money(order.totalMinor)}</dd></div>
               <div className="flex justify-between text-muted"><dt>{order.vatKind === "reverse_charge" ? w.vatReverse : w.vatIncluded}</dt><dd>{money(order.taxMinor)}</dd></div>
               {order.balanceMinor > 0 && (
@@ -477,6 +477,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               currency={order.currency}
               locale={locale}
               typedCompany={order.company?.name ?? null}
+              words={words.vatTreatment}
             />
           )}
 
@@ -675,7 +676,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 <SendParcelForm
                   rows={parcelRows}
                   basis={fulfilment.basis}
-                  carriers={CARRIERS.map(({ id, name }) => ({ id, name }))}
+                  carriers={CARRIERS.map(({ id, name }) => ({ id, name: id === "other" ? w.carrierOther : name }))}
                   hasEmail={Boolean(order.email)}
                   whole={weekly !== null}
                   submitLabel={toCharge ? w.chargeAndSend : held ? w.captureAndSend : sentParcels > 0 ? w.sendAnother : w.sendThis}

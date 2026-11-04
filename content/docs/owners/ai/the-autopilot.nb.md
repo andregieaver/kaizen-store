@@ -42,8 +42,7 @@ starter nøyaktig den versjonen du fikk se; endres planen etterpå, venter den p
 
 Så kjører den ett steg om gangen, i ditt navn og med det rollen din kan gjøre. Hver plan har sin egen samtale hos KI-assistenten,
 *Autopilot:* og planens tittel, så dine egne samtaler forblir dine. Etter hvert steg sjekker koden at det virket. Et steg som feiler,
-prøves igjen; etter tre forsøk blir det et spørsmål med valgene *Try again*, *Skip this step* og *Stop the plan* (de står foreløpig
-bare på engelsk).
+prøves igjen; etter tre forsøk blir det et spørsmål med valgene **Prøv igjen**, **Hopp over dette steget** og **Stopp planen**.
 
 Fanen Planer viser hver plan med stegene, hva hvert steg gjorde og hvor mange som er ferdige. **Sett på pause** og **Fortsett** en
 plan, eller **Stopp** den for godt; det den allerede har gjort, blir stående. En plan settes på pause av seg selv hvis personen den

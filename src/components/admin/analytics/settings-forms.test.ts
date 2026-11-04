@@ -237,12 +237,11 @@ describe("a store where every cost is entered", () => {
   });
 });
 
-describe("a member who is not an owner", () => {
+describe("the view without actions (read-only)", () => {
   const out = html({ ...normal, actions: null });
 
-  it("is told, politely, who can change it", () => {
-    expect(out).toContain("Only owners can change these settings");
-    expect(out).toContain("Ask an owner");
+  it("says nothing of owners: only an owner reaches the page (D158)", () => {
+    expect(out).not.toContain("Only owners can change these settings");
   });
 
   it("sees the set-up but has no form, field or button", () => {

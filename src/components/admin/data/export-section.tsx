@@ -1,3 +1,5 @@
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { isWorking } from "@/lib/data-admin";
 import type { JobKind } from "@/lib/data-job";
 import type { Membership } from "@/server/auth";
@@ -32,12 +34,13 @@ export async function ExportSection({ member, kind, jobId, base, now }: { member
   const named_ = named && named.kind === kind ? named : null;
   const shown = named_ ?? recent.find((j) => isWorking(j.status)) ?? null;
   const row = shown ? rowOf(shown) : null;
+  const buttons = adminText(adminLangOf(member.account.adminLocale), "common").jobs;
   return (
     <div className="flex flex-col gap-4">
       {row && isWorking(row.status) && <JobTracker tickUrl={`${base}/${row.id}/tick`} initial={row} />}
       {row && !isWorking(row.status) && row.status !== "done" && <JobProgressView job={row} />}
-      {row && <ExportFiles job={row} action={`${base}/file`} timeZone={timeZone} now={now} />}
-      <ExportJobList jobs={recent.map(rowOf)} pageHref={base} timeZone={timeZone} now={now} />
+      {row && <ExportFiles job={row} action={`${base}/file`} timeZone={timeZone} now={now} buttons={buttons} />}
+      <ExportJobList jobs={recent.map(rowOf)} pageHref={base} timeZone={timeZone} now={now} buttons={buttons} />
     </div>
   );
 }

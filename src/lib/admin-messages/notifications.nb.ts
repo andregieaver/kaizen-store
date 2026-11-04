@@ -55,8 +55,8 @@ export const notificationsNb: NotificationsMessages = {
         why: "En endring i avtalen bekreftes på et varig medium, og en tilleggsbetaling bes om gjennom den.",
       },
       "order.sent": { label: "Bestilling sendt", when: "Når en pakke er merket som sendt.", why: "" },
-      "order.parcel_out_for_delivery": { label: "Ute for levering (transportør)", when: "Når transportøren melder at en pakke er ute for levering.", why: "" },
-      "order.parcel_delivered": { label: "Levert (transportør)", when: "Når transportøren melder at en pakke er levert.", why: "" },
+      "order.parcel_out_for_delivery": { label: "Ute for levering (transportør)", when: "Når Posten / Bring melder at en pakke er ute for levering; de andre transportørenes meldinger vises på bestillingen, men sender ingen e-post ennå.", why: "" },
+      "order.parcel_delivered": { label: "Levert (transportør)", when: "Når Posten / Bring melder at en pakke er levert; de andre transportørenes meldinger vises på bestillingen, men sender ingen e-post ennå.", why: "" },
       "order.refunded": { label: "Refusjon", when: "Når en bestilling refunderes helt eller delvis.", why: "" },
       "order.cancelled": { label: "Bestilling kansellert", when: "Når ansatte kansellerer en bestilling.", why: "" },
       "order.payment_due": {
@@ -196,10 +196,10 @@ export const notificationsNb: NotificationsMessages = {
   staff: {
     title: "Varsler til ansatte",
     description:
-      "Velg hvem i teamet som får e-post når en bestilling er betalt, en kunde vil returnere noe, en refusjon er forsinket eller lageret blir lavt, og hvem som får et daglig eller ukentlig sammendrag. E-poster til ansatte er på engelsk.",
+      "Velg hvem i teamet som får e-post når en bestilling er betalt, en kunde vil returnere noe, en refusjon er forsinket eller lageret blir lavt, og hvem som får et daglig eller ukentlig sammendrag. Hver person får e-postene på sitt eget språk i administrasjonen; butikkens kontaktadresse får dem på norsk når det er butikkens hovedspråk, ellers på engelsk.",
     back: "Varsler",
     defaults:
-      "Dette er standardvalgene, fordi ingen har lagret denne siden ennå: eiere får nye bestillinger, returforespørsler og lavt lager; forsinkede refusjoner går til butikkens kontaktadresse (til eierne når det ikke finnes noen); ingen får sammendraget eller e-postene fra automatiseringen. Når du lagrer, blir valget ditt butikkens.",
+      "Dette er standardvalgene, fordi ingen har lagret denne siden ennå: eiere får nye bestillinger, returforespørsler, lavt lager, tilbakeføringer og forfalte betalinger på betalingsvilkår; forsinkede refusjoner går til butikkens kontaktadresse (til eierne når det ikke finnes noen); ingen får sammendraget eller e-postene fra automatiseringen. Når du lagrer, blir valget ditt butikkens.",
     who: "Hvem som får e-post",
     whoHint:
       "E-poster til ansatte nevner bestillingen eller returen, hva som ble kjøpt og en lenke dit. De har aldri med kundens navn, e-postadresse, telefonnummer eller adresse. En boks tilbys bare der personens rolle kan lese det e-posten viser; en endring i noens rolle gjelder med en gang.",
@@ -219,6 +219,7 @@ export const notificationsNb: NotificationsMessages = {
     alertFloorHint:
       "Analysevarslene sendes én gang om dagen, etter kl. 20 butikkens tid, til dem som er krysset av under Analysevarsler: hvert varsel én gang per dag, med de samme minstegrensene som siden. Gode nyheter sendes aldri.",
     floors: { urgent: "Bare det som haster", warning: "Det som haster og advarsler", info: "Alt unntatt gode nyheter" },
+    floorLabel: "Hvilke varsler",
     howOften: "Hvor ofte",
     offChoice: "Av",
     daily: "Daglig (i går)",
@@ -502,7 +503,7 @@ export const notificationsNb: NotificationsMessages = {
     setUp: "Sett opp",
     carriers: "Transportører",
     carriersHint:
-      "Etiketter, sporing, hentesteder og leveringsvalg fra transportørene du har avtale med. Posten / Bring er klar til å kobles til; de andre bygges nå: lagre opplysningene dine nå, så er de klare når hver av dem kommer.",
+      "Etiketter, sporing, hentesteder og leveringsvalg fra transportørene du har avtale med. Posten / Bring, PostNord, Porterbuddy og Helthjem kobles til med dine egne opplysninger fra avtalen.",
     carrier: {
       available: "Tilgjengelig",
       preparing: "Under arbeid",

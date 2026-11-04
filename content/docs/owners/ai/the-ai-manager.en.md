@@ -118,8 +118,8 @@ AI manager to save one. On the **Skills** tab you give it a **Name**, **When to 
 characters, never a password or a customer's details. Ask for a skill by name, or the AI manager uses it when the job comes up. The
 tab also lists the playbooks it knows already, under **Built in**.
 
-**Share with the store's staff** lets others use it with their own permissions. A skill never lets anyone do more than they may, and
-never skips a yes.
+**Share with the store's other owners** lets them use it too (staff who are not owners have no AI manager). A skill never lets anyone
+do more than they may, and never skips a yes.
 
 ### Voice
 
