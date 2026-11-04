@@ -421,9 +421,10 @@ test("a section's pages are filtered and ordered as the search does, at an addre
   await az.click();
   await expect(page.getByRole("heading", { level: 1, name: "Getting started" })).toBeVisible();
   const hits = page.locator("a[data-docs-hit]");
-  await expect(hits).toHaveCount(2);
+  await expect(hits).toHaveCount(3);
   await expect(hits.nth(0)).toContainText("Add your first product");
-  await expect(hits.nth(1)).toContainText("Create your store");
+  await expect(hits.nth(1)).toContainText("Choose a plan");
+  await expect(hits.nth(2)).toContainText("Create your store");
 });
 
 test("the Norwegian search is in Norwegian, with the Norwegian pages", async ({ page }) => {
