@@ -132,7 +132,7 @@ describe("sending", () => {
     await endpoints.removeEndpoint(store.member, added.id);
   });
 
-  it("sends a delivery again with the same payload id, only while the endpoint is on", async () => {
+  it("sends a delivery again with the same id in its body and header, only while the endpoint is on", async () => {
     const added = await endpoints.addEndpoint(store.member, { name: "Again", url: "https://hooks.example.com/again", topics: ["discount.created"] });
     if (!added.ok) throw new Error(added.problem);
     await pointHere(added.id);
@@ -148,7 +148,8 @@ describe("sending", () => {
     await integrations.deliverDue(500);
     const again = received.find((r) => r.headers[TOPIC_HEADER.toLowerCase()] === "discount.created");
     expect(JSON.parse(again!.body).id).toBe(String(first.id));
-    expect(again!.headers[ID_HEADER.toLowerCase()]).not.toBe(String(first.id));
+    // The header carries the body's id, as the contract says: a receiver doing the work once per Kaizena-Webhook-Id does it once.
+    expect(again!.headers[ID_HEADER.toLowerCase()]).toBe(String(first.id));
     await endpoints.removeEndpoint(store.member, added.id);
   });
 

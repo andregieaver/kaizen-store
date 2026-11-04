@@ -233,10 +233,10 @@ describe("filters, counts, orders and pages (D443)", () => {
     const section = { ...NO_FILTERS, section: "owners/getting-started", lang: ["en" as const] };
     const reading = await ask("", { filters: section });
     expect(reading.match).toBe("browse");
-    expect(docsOf(reading)).toEqual(["en:owners/getting-started/create-your-store", "en:owners/getting-started/your-first-product"]);
+    expect(docsOf(reading)).toEqual(["en:owners/getting-started/create-your-store", "en:owners/getting-started/your-first-product", "en:owners/getting-started/choose-a-plan"]);
     expect(reading.results[0].snippet.map((p) => p.text).join("")).toBe("Sign up, confirm your email address and follow the setup steps until your store is ready to open.");
     const az = await ask("", { filters: section, sort: "title" });
-    expect(docsOf(az)).toEqual(["en:owners/getting-started/your-first-product", "en:owners/getting-started/create-your-store"]);
+    expect(docsOf(az)).toEqual(["en:owners/getting-started/your-first-product", "en:owners/getting-started/choose-a-plan", "en:owners/getting-started/create-your-store"]);
     const tutorials = await ask("", { filters: { ...section, kind: ["tutorial"] } });
     expect(tutorials.total).toBe(2);
   });
