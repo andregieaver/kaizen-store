@@ -3,7 +3,7 @@
 The owner (3 November 2026) asked for a "moving from" plan per platform, like `docs/moving-from-shopify.md` (D445), "so simple and easy to
 follow that Homer Simpson could do it without breaking a sweat". This is WooCommerce's.
 
-**This file is a plan only: nothing here is built yet.** The move engine is the one D445 plans. This file does not describe it again, and
+**Steps 1 and 1b are built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
 refers to it by section ("Shopify 8.2"):
 
 | Part of the engine | Where in the Shopify plan |
@@ -340,6 +340,15 @@ D445's steps 1 (the address check and reconciliation) and 7 (move day) are share
 5. **WordPress.org listing**: list the plugin there (one-press install from his own admin, needs WordPress.org's review), or a zip from
    us (two steps more for Homer). Recommended: WordPress.org.
 
+**The owner's answers (4 November 2026):**
+- Decision 1: **one plugin**. The mover is a part of the existing WordPress plugin (D169).
+- Decision 2: open; asked when the email list is built (step 2).
+- Decision 3: **order history only**. Guest buyers never become customers.
+- Decision 4: **pause buying** (catalogue mode) for the switch.
+- Decision 5: **a zip from us**, not a WordPress.org listing. Connect links to the zip and to *Plugins → Add New → Upload Plugin* on the
+  owner's own site, with the steps written out; spike W1 is no longer needed. Until the mover is built (step 2), step 1's plain path
+  (WooCommerce's own read-only key) works without any plugin.
+
 ## 14. Spikes before code
 
 | # | Question | How |
@@ -371,3 +380,78 @@ As Shopify 15, plus:
 - It never moves a WordPress user, a password, a payment plugin's key or a saved card.
 - It never runs PHP, shortcodes or theme code from the old site.
 - It never subscribes anyone without a record of their consent.
+
+## 17. As built
+
+### Step 1: the plain path (4 November 2026)
+
+What it is: *Connect WooCommerce*, *Copy my shop* and *Bring it over* for products (with their variations and categories), customers,
+past orders and coupons, through WooCommerce's own read-only key. No plugin is needed for this step.
+
+- **Connect** (`src/lib/woocommerce.ts` pure, `src/server/woocommerce-connect.ts`):
+  - A second card on Settings → Moving in, *Bring your WooCommerce shop*: the owner types any address of his site.
+  - The site's REST root (`/wp-json/`, else `/?rest_route=/` for a site without pretty addresses) must name `wc/v3`. The address
+    WordPress gives itself settles the folder it lives in (`siteFromIndex()`).
+  - The owner then approves a `scope=read` key on WooCommerce's own *authorize* page (`wc-auth`) on his site.
+  - WooCommerce posts the key to `/api/woocommerce/callback` with a note sealed here (`user_id`: the store, the owner, the site, 60 minutes).
+    The post comes from WooCommerce's server, not the owner's browser, so the owner is checked again from the note (`passMembership()`).
+  - A key that can write is refused. The key is tried once (`woocommerce_currency`) and kept encrypted in `shop_moves` (`source`
+    `woocommerce`, `shop_domain` the site's host and folder, `scopes` `read`).
+  - A store moves from one shop at a time: connecting WooCommerce or Shopify is refused while the other is connected (`other_shop`).
+- **Every call to the site** goes through `safeFetch()` (any host the owner names, never a private network), over HTTPS, with the key as
+  HTTP Basic. `safeFetch()` gained `headers`, sent only to the first request's origin, never after a redirect to another. When a host drops
+  the `Authorization` header, the key is sent in the query instead, as WooCommerce allows over HTTPS.
+- **The copy** is D445's engine (`src/server/shopify-copy.ts`), now for whichever shop is connected (`copySource()`); only the reading
+  differs (`readWoo()` beside `readShopify()`):
+  - Each feed is read a page of 50 at a time, oldest first. A tick reads at most 8 pages or 20 seconds, keeping the lines between ticks in
+    a part file in the imports bucket.
+  - The pages are written as the lines Shopify's bulk reads give (`src/lib/woocommerce-copy.ts`), so `fileOfFeed()`, the imports, their
+    dry runs, *Bring it over*, *Undo this copy* and the import pages carry over unchanged. Files are named `woocommerce-*.csv`.
+  - **Products** keep their real address (`slug`; D384's guessing ends here). Their variations are read beside each page. The price is
+    what it sells for now, never a compare-at price. Stock is copied where WooCommerce manages it, and the weight in the shop's unit.
+    Published products are live; drafts, pending and private ones come as drafts. Grouped products (their products come on their own) and
+    external ones stay, counted in the log.
+  - **Categories** come from the products' own lines (`collectionLines()`), flat by name, through the product import (`later`).
+  - **Customers**: registered ones, with their billing address. Guest buyers stay in the order history only (Decision 3). No consent is
+    written: WooCommerce records none.
+  - **Orders**: completed is fulfilled; processing and on hold are paid; cancelled and refunded are cancelled. Pending, failed, drafts and
+    the bin stay. A line is at its price before the coupon, as WooCommerce's line subtotal says.
+  - **Coupons** become step 5b's discount lines (`couponLine()`), saved switched off by `saveDiscount()`: percent and fixed-cart coupons,
+    with minimum spend, usage limits, expiry, *Individual use only* and the products and categories they are limited to. A fixed-per-product
+    coupon, one limited to some customers' emails, or one excluding products is said and left.
+  - *Prices entered with tax* and the currency come from WooCommerce's own settings (`wooPrices()`).
+- **The page** shows only the parts step 1 brings, says the rest come later, and words the problems of WooCommerce, not Shopify
+  (`copy.problemsWoo`). *Details* holds *Undo this copy*. *Disconnect* forgets the key and says where the owner removes it on his site
+  (WooCommerce → Settings → Advanced → REST API): WooCommerce has no route to delete a key from outside.
+- **Tests**: `woocommerce.test.ts` (addresses, the REST root, the note, the key), `woocommerce-copy.test.ts` (each converter read back by
+  the import's own reader: `productsFile()`, `collectionsFile()`, `customersFile()`, `ordersFile()` with `readShopifyOrders()`, and the
+  coupons), and `woocommerce-copy.int.test.ts` end to end against a stand-in site: connect, copy, bring over, undo, disconnect.
+
+Migration version: `20261104161134_woocommerce_moves` (`shop_moves` takes `source` `woocommerce`, and a site's host and folder as its
+address).
+
+### Step 1b: reviews (4 November 2026)
+
+- A copy part of its own, `reviews` (`FEED_KIND` `direct`), read from `wc/v3/products/reviews` (`status=all`), a page at a time with the
+  handles of the products they are about read beside each page.
+- `reviewLines()` keeps WooCommerce's *approved* reviews (shown there) and *hold* ones (waiting there), each with its stars, the reviewer's
+  name, the words as plain text (`htmlToText()`) and its day. Spam and the bin stay, and so do reviews without stars, of a product not
+  read, or without a name; all are counted in the log.
+- At *Bring it over* they are written only by the review import's own writer (`importReviews()`, D301 G3b) from its own file
+  (`reviewsFile()`), as `import` reviews from *WooCommerce*: the approved ones published, the held ones waiting for the owner, 2,000 a
+  tick. A review already here is not added twice (the import's own key), and a row it refuses is counted.
+- **Never a verified purchase.** WooCommerce's *verified owner* is not carried: here a review is verified only when it is a buyer's of an
+  order line in this store (D301), and the storefront says which are which. The plan's "verified-owner flag kept" (section 5) is dropped.
+- The store must take reviews (feature `reviews`); otherwise the part says so (`feature_off`) and nothing is written.
+- `importReviews()` now returns the ids it wrote, and *Undo this copy* deletes exactly those (`shop_move_items` kind `review`) as a
+  mistaken import is deleted (`kaizen.review_delete`).
+- Shopify's copy has no reviews of its own: the part is empty there and not listed.
+- Tests: `woocommerce-copy.test.ts` reads the file back with `readReviewFile()`; `woocommerce-copy.int.test.ts` brings an approved, a held
+  and a spam review over and undoes them.
+
+Migration version: `20261104170733_woocommerce_reviews` (`shop_move_items` takes the kind `review`).
+
+**Not in steps 1 and 1b:**
+- The mover plugin and what it reads (step 2).
+- Pages, posts, menus (step 3); keep WordPress (step 4); move day (step 5).
+- Categories with their parents, and a check report (*Here's your shop*) for WooCommerce.

@@ -183,7 +183,7 @@ describe("the copy's state", () => {
   });
 
   it("is ready when every feed is checked or had nothing, and applies in order, customers before orders", () => {
-    const checked = at({ products: { stage: "checked" }, collections: { stage: "checked" }, customers: { stage: "checked" }, orders: { stage: "checked" }, pages: { stage: "empty" }, articles: { stage: "empty" }, menus: { stage: "empty" }, redirects: { stage: "empty" }, countries: { stage: "empty" }, shipping: { stage: "empty" }, discounts: { stage: "empty" }, look: { stage: "empty" }, subscribers: { stage: "empty" }, gift_cards: { stage: "empty" } });
+    const checked = at({ products: { stage: "checked" }, collections: { stage: "checked" }, customers: { stage: "checked" }, orders: { stage: "checked" }, pages: { stage: "empty" }, articles: { stage: "empty" }, menus: { stage: "empty" }, redirects: { stage: "empty" }, countries: { stage: "empty" }, shipping: { stage: "empty" }, discounts: { stage: "empty" }, reviews: { stage: "empty" }, look: { stage: "empty" }, subscribers: { stage: "empty" }, gift_cards: { stage: "empty" } });
     expect([copyReady(checked), copyMoving(checked), copyDone(checked)]).toEqual([true, false, false]);
     expect(nextToApply(checked)).toBeNull();
     const applying = { ...checked, apply: true };

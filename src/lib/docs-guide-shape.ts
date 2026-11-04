@@ -126,3 +126,42 @@ export function withoutSecrets(text: string): { text: string; removed: boolean }
   });
   return { text: out, removed };
 }
+
+/**
+ * A verdict on Kaizena Flow (D444): a ranking, "cheapest", "the best", "better than", or what reviewers are said to agree on, in English
+ * and Norwegian. The guide states what the docs say Kaizena Flow does and never weighs it against another platform; the prompt says so,
+ * and since a model may still repeat a page's praise (the eval's guide-comparison case, where a page told it to), its answer is held to it
+ * in code as well.
+ */
+const PLATFORMS = String.raw`(?:kaizena(?:\s+flow)?|shopify|woocommerce|wix|squarespace|bigcommerce|shopware|magento|prestashop|ecwid|webflow)`;
+const VERDICTS: RegExp[] = [
+  // "the cheapest platform", "the best e-commerce platform", "the leading store builder"
+  /\b(?:cheapest|best|most affordable|least expensive|leading|top[- ]rated|number one)\s+(?:platform|e-?commerce|store builder|shop(?:ping)? platform)\b/i,
+  // "the cheapest in Europe"
+  /\b(?:cheapest|best|leading)\s+(?:in|of)\s+(?:europe|the eu|the world)\b/i,
+  // "better than Shopify", "Kaizena Flow is cheaper than …"
+  new RegExp(String.raw`\b(?:better|cheaper|faster|easier|superior)\s+(?:than|to)\s+${PLATFORMS}\b`, "i"),
+  new RegExp(String.raw`\b${PLATFORMS}(?:'s)?\s+(?:is|are)\s+(?:much\s+|far\s+)?(?:better|cheaper|faster|easier|superior|the\s+(?:best|cheapest))\b`, "i"),
+  /\breviewers?\s+(?:agree|say|said|rate|rank|call|praise)/i,
+  /\b(?:billigste|beste|ledende)\s+(?:plattform(?:en)?|nettbutikkløsning(?:en)?)/i,
+  /\b(?:billigste|beste|ledende)\s+i\s+(?:europa|eu|verden)\b/i,
+  new RegExp(String.raw`\b(?:bedre|billigere|raskere|enklere)\s+enn\s+${PLATFORMS}\b`, "i"),
+  /\banmeldere\s+(?:er enige|sier|mener|kaller)/i,
+];
+
+/**
+ * A text with every sentence that makes such a verdict left out, and whether one was. Line breaks and every other sentence stay as written.
+ */
+export function withoutVerdicts(text: string): { text: string; removed: boolean } {
+  let removed = false;
+  const lines = text.split("\n").map((line) => {
+    const sentences = line.split(/(?<=[.!?])\s+/);
+    const kept = sentences.filter((sentence) => {
+      const verdict = VERDICTS.some((pattern) => pattern.test(sentence));
+      if (verdict) removed = true;
+      return !verdict;
+    });
+    return kept.join(" ");
+  });
+  return { text: lines.join("\n").replace(/\n{3,}/g, "\n\n").trim(), removed };
+}

@@ -6,9 +6,12 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { API_SCOPES, bearerToken, isApiScope, TOKEN_PREFIX, type ApiScope } from "@/lib/admin-api";
+import { API_SCOPES, bearerToken, isApiPower, isApiScope, TOKEN_PREFIX, type ApiScope } from "@/lib/admin-api";
+import { ADMIN_API } from "@/lib/admin-api-routes";
+import { scopeHeld, scopeKeys, type OAuthScope } from "@/lib/oauth";
 
-import { audit, passMembership, type Membership } from "./auth";
+import { activeAccount, audit, passMembership, type Membership } from "./auth";
+import { oauthAccess } from "./oauth";
 import { memberCan } from "./permissions";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -94,13 +97,66 @@ export async function revokeApiToken(member: Membership, id: string): Promise<bo
   return true;
 }
 
-export type ApiCaller = { token: { id: string; name: string; scopes: ApiScope[] }; member: Membership };
+/**
+ * Who calls the Admin API. `token`: an owner's `kf_` token, or, for an app's installation (D441), its grant (`id` the grant's, which the
+ * budget and the audit name). `app`: set for an app, with the grant's own scopes; its `member` is capped by them (`Membership.limit`).
+ */
+export type ApiCaller = {
+  token: { id: string; name: string; scopes: ApiScope[] };
+  member: Membership;
+  app?: { grantId: string; clientId: string; name: string; scopes: string[] };
+};
+
+/**
+ * The Admin API's scopes an app's installation amounts to (D441): a power when the grant holds it; any other scope when the grant holds
+ * the permission of one of its operations (`products:read` also covers price lists' buyers, which need `customers:read`). The route then
+ * asks each operation's own permission (`appMayCall()`), and the checks inside an operation are all of powers, which are held exactly.
+ */
+export function appApiScopes(grantScopes: readonly string[]): ApiScope[] {
+  return API_SCOPES.filter((scope) => {
+    if (isApiPower(scope)) return grantScopes.includes(scope);
+    const operations = ADMIN_API.filter((o) => o.scope === scope);
+    return operations.some((o) => scopeHeld(grantScopes, o.permission as OAuthScope));
+  });
+}
+
+/** An app's access token in an `Authorization: Bearer …` header (`kfa_` and 43 characters), or null. */
+function appBearer(header: string | null): string | null {
+  const match = /^Bearer\s+(kfa_[A-Za-z0-9_-]{43})\s*$/i.exec(header ?? "");
+  return match ? match[1] : null;
+}
+
+/**
+ * An app's installation calling (D441): its token live and for the Admin API (`oauthAccess()`), its person's account active, a member of
+ * the installation's one store now (not a template or a store being set up), and, where the store requires the second step or the person
+ * is a platform admin, an installation approved at it. The membership is capped by the grant's scopes, so `memberCan()` asks both.
+ */
+async function appCaller(token: string): Promise<ApiCaller | null> {
+  const grant = await oauthAccess(token, "admin");
+  if (!grant || grant.resource !== "admin" || grant.storeIds.length !== 1) return null;
+  const account = await activeAccount(grant.accountId);
+  if (!account || (account.platformAdmin && grant.aal !== "aal2")) return null;
+  const store = await typedRow(
+    z.object({ slug: col.text, require_two_step: col.bool }),
+    sql`select slug, require_two_step from commerce.stores where id = ${grant.storeIds[0]}::uuid and not (is_template or starter)`,
+  );
+  if (!store || (store.require_two_step && grant.aal !== "aal2")) return null;
+  const member = await passMembership(store.slug, account.id);
+  if (!member) return null;
+  return {
+    token: { id: grant.grantId, name: `App: ${grant.client.name}`, scopes: appApiScopes(grant.scopes) },
+    member: { ...member, limit: scopeKeys(grant.scopes) },
+    app: { grantId: grant.grantId, clientId: grant.client.clientId, name: grant.client.name, scopes: grant.scopes },
+  };
+}
 
 /**
  * Who calls, from the request's `Authorization` header: the token in use, and its maker's membership as it is now, only while the maker is
  * still the store's owner. Null for anything else (a 401 that never says which).
  */
 export async function apiCaller(header: string | null): Promise<ApiCaller | null> {
+  const app = appBearer(header);
+  if (app) return appCaller(app);
   const token = bearerToken(header);
   if (!token) return null;
   const row = await typedRow(

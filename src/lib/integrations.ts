@@ -141,6 +141,27 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
 
 export const isEvent = (value: string): value is IntegrationEvent => EVENTS.some((e) => e.id === value);
 
+/**
+ * What only an app's installation is sent (D441 D2), whatever topics it chose and though its endpoint is off by then: never an owner's
+ * endpoint, a service or a workflow. Kept apart from `EVENTS`, which every owner's list reads.
+ */
+export type AppEvent = "app.uninstalled" | "store.erase_requested";
+export const APP_EVENTS: { id: AppEvent; label: string; hint: string }[] = [
+  {
+    id: "app.uninstalled",
+    label: "App removed",
+    hint: "The app was removed from the store: by an owner, or because the person who installed it left the store or the app was blocked. Its tokens no longer work, and nothing else is sent but store.erase_requested.",
+  },
+  {
+    id: "store.erase_requested",
+    label: "Store data to erase",
+    hint: "48 hours after app.uninstalled: erase what the app keeps of the store, its customers and its orders.",
+  },
+];
+export const isAppEvent = (value: string): value is AppEvent => APP_EVENTS.some((e) => e.id === value);
+/** How long after an app is removed `store.erase_requested` is sent. */
+export const APP_ERASE_AFTER_HOURS = 48;
+
 /** The events of D354 go to an owner's own endpoints only: Zapier, Make and Slack get the events they always had. */
 const ENDPOINT_ONLY: ReadonlySet<IntegrationEvent> = new Set([
   "return.requested",

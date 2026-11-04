@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { WORDPRESS_PLUGIN_RELEASES, wordpressReleaseFile } from "../src/lib/wordpress-plugin";
+
 import { describeFindings, violationsOn } from "./a11y";
 import { testDb } from "./db";
 
@@ -142,6 +144,22 @@ test("the changelog, a track and a section have their pages; an address that is 
   const missing = await page.goto("/docs/owners/getting-started/nowhere");
   expect(missing?.status()).toBe(404);
   await expect(page.getByRole("heading", { level: 1, name: "This page is not in the docs." })).toBeVisible();
+});
+
+test("the WordPress plugin's section offers every version for download, newest first, each a zip the site serves", async ({ page, request }) => {
+  await page.goto("/docs/developers/wordpress");
+  await expect(page.getByRole("heading", { level: 1, name: "WordPress plugin" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Download the plugin" })).toBeVisible();
+  const links = page.locator("[data-docs-section-body] a[href*='/downloads/wordpress/']");
+  const hrefs = await links.evaluateAll((nodes) => nodes.map((node) => (node as HTMLAnchorElement).href));
+  expect(hrefs.map((href) => new URL(href).pathname)).toEqual(WORDPRESS_PLUGIN_RELEASES.map((r) => wordpressReleaseFile(r.version)));
+  for (const href of hrefs) {
+    const answer = await request.get(new URL(href).pathname);
+    expect(answer.status(), href).toBe(200);
+    expect((await answer.body()).subarray(0, 2).toString("latin1"), href).toBe("PK");
+  }
+  // The section's pages are listed under the downloads, as any section's are.
+  await expect(page.getByRole("link", { name: "Show a store's products on WordPress" }).first()).toHaveAttribute("href", "/docs/developers/wordpress/wordpress-plugin");
 });
 
 test.describe("on a phone", () => {

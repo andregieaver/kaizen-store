@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."shop_move_items" DROP CONSTRAINT "shop_move_items_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."shop_move_items" ADD CONSTRAINT "shop_move_items_kind" CHECK ("commerce"."shop_move_items"."kind" in ('job', 'customer', 'product', 'page', 'menu', 'discount', 'subscriber', 'gift_card', 'theme', 'market', 'review'));

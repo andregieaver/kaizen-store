@@ -8,19 +8,22 @@ import { API_POWERS, API_SCOPES, isApiPower } from "@/lib/admin-api";
 import { API_ROUTES } from "@/lib/admin-api-routes";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
+import { scopeLabel } from "@/lib/oauth-words";
 import { siteUrl } from "@/lib/site";
 import { listApiTokens } from "@/server/api-tokens";
-import { grantsReachingStore, storeCutoffs } from "@/server/oauth";
+import { grantsReachingStore, installationAsks, storeCutoffs } from "@/server/oauth";
 import { requireOwnerRole } from "@/server/permissions";
 
 import {
   addCustomAppAction,
+  approveInstallationScopesAction,
   cutGrantAction,
   liftCutoffAction,
   makeApiTokenAction,
   makeStorefrontTokenAction,
   relistCustomAppAction,
   removeCustomAppAction,
+  removeInstallationAction,
   revokeApiTokenAction,
   revokeStorefrontTokenAction,
   switchAppToolAction,
@@ -39,14 +42,19 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "notifications").apiTokens;
-  const [tokens, storefrontTokens, apps, grants, cutoffs] = await Promise.all([
+  const [tokens, storefrontTokens, apps, reaching, cutoffs, asks] = await Promise.all([
     listApiTokens(store.id),
     listStorefrontTokens(store.id),
     listCustomApps(store.id),
     grantsReachingStore(store.id),
     storeCutoffs(store.id),
+    installationAsks(store),
   ]);
+  // Apps for many stores installed here (D441) are listed apart from the AI assistants and apps connected over MCP (D439).
+  const installed = reaching.filter((grant) => grant.resource === "admin");
+  const grants = reaching.filter((grant) => grant.resource === "mcp");
   const ow = adminText(lang, "oauth");
+  const powerWords = w.scopeWords;
   const aw = adminText(lang, "notifications").customApps;
   const sw = adminText(lang, "notifications").storefrontTokens;
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
@@ -56,6 +64,57 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
     <AdminTextScope texts={adminTexts(lang, ["notifications"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={<>{w.description}</>} />
+        {/* Apps for many stores installed on this store (D441): each works as the person who installed it; Remove ends it at once. */}
+        {installed.length > 0 && (
+          <Card title={ow.store.apps.title} description={ow.store.apps.description}>
+            <List label={ow.store.apps.title}>
+              {installed.map((grant) => (
+                <ListRow key={grant.id}>
+                  <RowLead
+                    title={grant.client.name}
+                    sub={
+                      <>
+                        {grant.client.host} · {grant.client.verified ? ow.consent.verified : ow.consent.notVerified} ·{" "}
+                        {fillWords(ow.store.apps.by, { person: grant.person.name ?? grant.person.email, when: when(grant.createdAt) })} ·{" "}
+                        {grant.lastUsedAt ? fillWords(ow.connected.lastUsed, { when: when(grant.lastUsedAt) }) : ow.connected.neverUsed}
+                        {asks.has(grant.id) && (
+                          // Its app asks for more than this installation holds (D441 D2): what, in words, and Give it this.
+                          <details className="mt-2">
+                            <summary className="cursor-pointer text-sm text-ink">
+                              {ow.store.apps.asksMore} · {ow.store.apps.review}
+                            </summary>
+                            <p className="mt-2 text-sm text-ink-2">{ow.store.apps.asksIntro}</p>
+                            <ul className="mt-1 list-disc pl-5 text-sm text-ink-2">
+                              {asks.get(grant.id)!.more.map((scope) => (
+                                <li key={scope}>{isApiPower(scope) ? (powerWords[scope as keyof typeof powerWords] ?? scope) : scopeLabel(ow, scope)}</li>
+                              ))}
+                            </ul>
+                            {asks.get(grant.id)!.installerCan ? (
+                              <form action={approveInstallationScopesAction.bind(null, store.slug, grant.id)} className="mt-2">
+                                <button type="submit" className={buttonClass("main", "dense")}>
+                                  {ow.store.apps.approve}
+                                </button>
+                              </form>
+                            ) : (
+                              <p className="mt-2 text-sm text-ink-2">{fillWords(ow.store.apps.installerCant, { person: grant.person.name ?? grant.person.email })}</p>
+                            )}
+                          </details>
+                        )}
+                      </>
+                    }
+                  />
+                  <RowActions>
+                    <form action={removeInstallationAction.bind(null, store.slug, grant.id)}>
+                      <button type="submit" className={buttonClass("danger", "dense")}>
+                        {ow.store.apps.remove}
+                      </button>
+                    </form>
+                  </RowActions>
+                </ListRow>
+              ))}
+            </List>
+          </Card>
+        )}
         {/* AI assistants and apps connected through Kaizena Flow's authorization server (D439): every grant that reaches the store. */}
         <Card title={ow.store.title} description={ow.store.description}>
           {grants.length === 0 ? (

@@ -1,0 +1,5 @@
+ALTER TABLE "commerce"."shop_moves" DROP CONSTRAINT "shop_moves_source";--> statement-breakpoint
+ALTER TABLE "commerce"."shop_moves" DROP CONSTRAINT "shop_moves_shop";--> statement-breakpoint
+ALTER TABLE "commerce"."shop_moves" ADD CONSTRAINT "shop_moves_source" CHECK ("commerce"."shop_moves"."source" in ('shopify', 'woocommerce'));--> statement-breakpoint
+ALTER TABLE "commerce"."shop_moves" ADD CONSTRAINT "shop_moves_shop" CHECK (("commerce"."shop_moves"."source" = 'shopify' and "commerce"."shop_moves"."shop_domain" ~ '^[a-z0-9][a-z0-9-]*\.myshopify\.com$' and length("commerce"."shop_moves"."shop_domain") <= 120)
+        or ("commerce"."shop_moves"."source" = 'woocommerce' and "commerce"."shop_moves"."shop_domain" ~ '^[a-z0-9.-]{3,253}(/[a-z0-9._~-]{1,80})?$' and length("commerce"."shop_moves"."shop_domain") <= 340));

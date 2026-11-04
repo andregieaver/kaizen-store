@@ -9,12 +9,31 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-04
-sources: [D438, D439, D440]
+sources: [D438, D439, D440, D441]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.8 — 2026-11-04
+
+The Admin API's document names how an app calls it (D441).
+
+- A second security scheme, `appOAuth`: OAuth 2.1's authorization code flow with PKCE, its authorization and token addresses, and every
+  scope and power an app may ask for. Each operation lists it beside `adminToken`, with what an app's token needs for it: the operation's
+  permission and, where the operation needs one, its power. The webhook endpoints' operations, which only the owner may use, list no app.
+
+## 1.7 — 2026-11-04
+
+Apps for many stores (D441): what an installed app is sent.
+
+- Two new webhook topics, sent only to an app's installation: `app.uninstalled`, at once when the app is removed from a store (by an
+  owner, because the person who installed it left the store, or because the app was blocked), and `store.erase_requested`, 48 hours
+  later, when the app should erase what it keeps of the store. Both carry `data.installation` (`id`, `client_id`, `removed_at`). Nothing
+  else is sent to a removed app, and an app installed again within the 48 hours is not sent `store.erase_requested`.
+- Each topic in the catalogue says whether `apps` may be sent it (`receivers`): a topic an app chose whose area its installation's scopes
+  read, and the two above, which every installed app is sent. `customer.erased` is always sent to an installed app.
 
 ## 1.6 — 2026-11-04
 

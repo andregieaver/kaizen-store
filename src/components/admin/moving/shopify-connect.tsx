@@ -7,18 +7,25 @@ import { field, hint, primary, secondary } from "@/components/admin/data/ui";
 
 import { useAdminText } from "../admin-text";
 
-type Problem = "address" | "not_shopify" | "unreachable" | "off" | "forbidden";
+type Problem = "address" | "not_shopify" | "unreachable" | "off" | "forbidden" | "other_shop";
+type WooProblem = "address" | "not_wordpress" | "not_woocommerce" | "unreachable" | "off" | "forbidden" | "other_shop";
 
 /**
- * *Connect Shopify* (D445 step 2): the shop's address and one button. On success the action sends the browser to Shopify's own page, so
- * this only ever shows a problem.
+ * *Connect Shopify* (D445 step 2), or *Connect WooCommerce* (D446 step 1, `kind`): the shop's address and one button. On success the action
+ * sends the browser to the platform's own page, so this only ever shows a problem.
  */
-export function ShopifyConnectForm({ connect, initial = "" }: { connect: (address: string) => Promise<{ ok: false; problem: Problem }>; initial?: string }) {
-  const w = useAdminText("moving").connect;
-  const problems = useAdminText("moving").problems;
+export function ShopifyConnectForm(
+  props:
+    | { kind?: "shopify"; connect: (address: string) => Promise<{ ok: false; problem: Problem }>; initial?: string }
+    | { kind: "woocommerce"; connect: (address: string) => Promise<{ ok: false; problem: WooProblem }>; initial?: string },
+) {
+  const { connect, initial = "" } = props;
+  const all = useAdminText("moving");
+  const w = props.kind === "woocommerce" ? all.woo.connect : all.connect;
+  const problems: Record<string, string> = props.kind === "woocommerce" ? all.woo.problems : all.problems;
   const id = useId();
   const [address, setAddress] = useState(initial);
-  const [problem, setProblem] = useState<Problem | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
   return (
     <form
@@ -97,8 +104,8 @@ export function CheckOldLinks({ check }: { check: () => Promise<{ ok: false }> }
   );
 }
 
-/** *Disconnect*, behind a question. */
-export function ShopifyDisconnect({ disconnect }: { disconnect: () => Promise<{ ok: boolean }> }) {
+/** *Disconnect*, behind a question (`ask`: the question's own words, WooCommerce's). */
+export function ShopifyDisconnect({ disconnect, ask }: { disconnect: () => Promise<{ ok: boolean }>; ask?: string }) {
   const w = useAdminText("moving").connected;
   const router = useRouter();
   const [asking, setAsking] = useState(false);
@@ -111,7 +118,7 @@ export function ShopifyDisconnect({ disconnect }: { disconnect: () => Promise<{ 
     );
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label={w.disconnect}>
-      <span>{w.disconnectAsk}</span>
+      <span>{ask ?? w.disconnectAsk}</span>
       <button
         type="button"
         disabled={pending}

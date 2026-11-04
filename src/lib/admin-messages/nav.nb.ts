@@ -380,8 +380,13 @@ export const NAV_NB: Record<string, string> = {
   "Illegal content notices": "Meldinger om ulovlig innhold",
   "AI assistants and apps": "AI-assistenter og apper",
   "The AI assistants and apps people connected through Kaizena Flow's sign-in, to verify or block.": "AI-assistentene og appene folk har koblet til gjennom Kaizena Flows innlogging, til å bekrefte eller blokkere.",
+  "App listings": "Appoppføringer",
+  "Apps that ask to be listed in the app directory, to approve or decline.": "Apper som ber om å bli oppført i appkatalogen, til å godkjenne eller avslå.",
   "Connected apps and assistants": "Tilkoblede apper og assistenter",
   "The AI assistants and apps you let work with your stores, and Disconnect.": "AI-assistentene og appene du har latt jobbe med butikkene dine, og Koble fra.",
+  Developer: "Utvikler",
+  "Developer mode and your apps for many stores: make one, its secrets, and how many stores installed it.":
+    "Utviklermodus og appene dine for mange butikker: lag en, hemmelighetene dens, og hvor mange butikker som har installert den.",
   "Notices people sent about illegal content on stores, each decided with its reason (DSA).": "Meldinger folk har sendt om ulovlig innhold i butikker, hver avgjort med begrunnelse (DSA).",
   "The public status page: each part's checks every five minutes, incidents to post and update, and their subscribers.": "Den offentlige statussiden: sjekkene av hver del hvert femte minutt, hendelser å legge ut og oppdatere, og abonnentene.",
   "Your domains": "Domenene dine",

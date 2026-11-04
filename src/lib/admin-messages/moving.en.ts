@@ -21,6 +21,7 @@ export const movingEn = {
     unreachable: "That address didn't answer. Check it and try again.",
     off: "Connecting to Shopify isn't switched on yet.",
     forbidden: "Only the store's owner can connect another shop.",
+    other_shop: "Another shop is connected already. Disconnect it first: a store moves from one shop at a time.",
   },
   outcome: {
     connected: "Your Shopify shop is connected.",
@@ -76,7 +77,7 @@ export const movingEn = {
     text: "We copy your products, customers, past orders, pages, menus, countries, shipping, discount codes and look into this store. Nothing is saved here until you press Bring it over, and nothing changes on Shopify.",
     start: "Copy my shop",
     starting: "Starting …",
-    feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects", collections: "Collections", pages: "Pages", articles: "Blog posts", menus: "Menus", countries: "Countries", shipping: "Shipping", discounts: "Discount codes", look: "Look", subscribers: "Email subscribers", gift_cards: "Gift cards" },
+    feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects", collections: "Collections", pages: "Pages", articles: "Blog posts", menus: "Menus", countries: "Countries", shipping: "Shipping", discounts: "Discount codes", reviews: "Reviews", look: "Look", subscribers: "Email subscribers", gift_cards: "Gift cards" },
     onMoveDay: "New codes on move day",
     choose: {
       title: "Choose what to bring",
@@ -107,6 +108,18 @@ export const movingEn = {
       import_refused: "An import of this kind is already open, or nothing in it can be imported. Open it, finish or cancel it, then press Start again.",
       import_failed: "The import stopped. Open it to see why.",
       needs_fixing: "Nothing here could come over as it is. Open it to see what needs fixing, then press Start again.",
+      feature_off: "This part is switched off in your store. Switch it on in Features, then press Start again.",
+    },
+    /** The same problems, said of a WooCommerce shop (D446). */
+    problemsWoo: {
+      shopify_refused: "Your site didn't let us read these. Check that our key is still there (WooCommerce → Settings → Advanced → REST API), or connect again.",
+      shopify_failed: "Your site couldn't finish answering. Press Start again.",
+      too_large: "There are more than one copy can carry. Bring them over with files instead, a part at a time.",
+      storage: "The file could not be kept. Press Start again.",
+      import_refused: "An import of this kind is already open, or nothing in it can be imported. Open it, finish or cancel it, then press Start again.",
+      import_failed: "The import stopped. Open it to see why.",
+      needs_fixing: "Nothing here could come over as it is. Open it to see what needs fixing, then press Start again.",
+      feature_off: "This part is switched off in your store. Switch it on in Features, then press Start again.",
     },
     bring: "Bring it over",
     bringing: "Starting …",
@@ -119,6 +132,7 @@ export const movingEn = {
     againAsk: "Start the copy again? What is already here stays; a product read again is updated, not doubled.",
     cancel: "Cancel",
     files: "Use Shopify's file instead",
+    filesWoo: "Use a file instead",
     setHere: "Set it up here",
     lookHere: "Look at it",
   },
@@ -287,6 +301,34 @@ export const movingEn = {
     customers: "Import customers",
     orders: "Import past orders",
     links: "Check your old links",
+  },
+  /** Moving from WooCommerce (D446 step 1). */
+  woo: {
+    connect: {
+      title: "Bring your WooCommerce shop",
+      label: "Your website's address",
+      placeholder: "myshop.com",
+      help: "Your WordPress site with WooCommerce in it. WooCommerce then asks you, on your own site, to let Kaizena Flow read the shop. Nothing changes on your site, and it keeps selling.",
+      button: "Connect WooCommerce",
+      working: "Finding your shop …",
+    },
+    problems: {
+      address: "That isn't a website address. Type the one your shoppers use, like myshop.com.",
+      not_wordpress: "We couldn't find a WordPress site at that address. Check it. If it is right, a security plugin may block WordPress's REST API: ask whoever looks after your site.",
+      not_woocommerce: "That WordPress site doesn't have WooCommerce switched on.",
+      unreachable: "That address didn't answer. Check it and try again. Your site needs a padlock (HTTPS).",
+      off: "Connecting to WooCommerce isn't switched on yet.",
+      forbidden: "Only the store's owner can connect another shop.",
+      other_shop: "Another shop is connected already. Disconnect it first: a store moves from one shop at a time.",
+    },
+    outcome: {
+      connected: "Your WooCommerce shop is connected.",
+      declined: "Nothing was connected: you said no on WooCommerce's page.",
+      failed: "Connecting didn't work. Press Connect WooCommerce again.",
+    },
+    shop: "WooCommerce shop at {site}, connected {when}.",
+    later: "Your products, categories, customers, past orders, coupons and reviews come over now. Pages, blog posts, menus, redirects, gift cards and your email list come in a later step.",
+    disconnectAsk: "Disconnect your WooCommerce shop? Nothing is deleted here or on your site. To remove our key from your site too, open WooCommerce → Settings → Advanced → REST API there.",
   },
   off: {
     title: "Bring your shop over with Shopify's files",

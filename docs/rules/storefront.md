@@ -415,8 +415,10 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   is versioned (`guidePromptVersion()`); a change to it or to `guideTools()`
   needs a new eval recording. A reader's message loses every token, key and
   password (`withoutSecrets()`) before it is kept or sent; the answer passes
-  `cleanGuideReply()` and is drawn as text, its links drawn from the pages its
-  tools read. `/api/docs/guide` is same-site, budgeted (`docs_guide`, failing
+  `cleanGuideReply()` (no secret, and no sentence that ranks Kaizena Flow or
+  repeats reviewers' praise: `withoutVerdicts()`, whatever the model wrote) and
+  is drawn as text, its links drawn from the pages its tools read. The eval
+  scores the guide's answer after `cleanGuideReply()`, as its reader sees it. `/api/docs/guide` is same-site, budgeted (`docs_guide`, failing
   closed) and counted by `takeChatTurn()` under `guide:` before any model call.
   Its conversations (`docs-guide-store.ts`) are kept by the platform chat's
   periods (Kaizena Flow's desk, `support_transcripts`, `support_records`). The

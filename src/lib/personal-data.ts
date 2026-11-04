@@ -220,6 +220,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
   // Processors' queues ----------------------------------------------------------------------------------------------------------------
   entry("api_idempotency_keys", "shopper", via("none"), ["body"], null, "delete", "An Admin API answer kept under the client's Idempotency-Key so a repeated request gets it again (PSI DATA-03); it can hold what a route returned of a customer (an order's fulfilment, a customer's tags). Deleted 24 hours after the request by the dispatcher (pruneApiIdempotency()), whatever the person asks."),
+  entry("api_app_idempotency_keys", "shopper", via("none"), ["body"], null, "delete", "An app's Admin API answer kept under its Idempotency-Key per installation (D441), as api_idempotency_keys: it can hold what a route returned of a customer. Deleted 24 hours after the request by the dispatcher (pruneApiIdempotency()), whatever the person asks."),
   entry("webhook_events", "shopper", via("none"), ["payload"], null, "keep", "A payment provider's event holds a name, an email and an address; the payload is emptied 90 days after it was processed and the row stays so its id de-duplicates.", { until: "webhook_payloads" }),
   entry("integration_deliveries", "shopper", via("none"), ["payload"], null, "keep", "A queue of events sent to the store's connected services, deleted after 30 days; the services keep their own copies (said in the file's notIncluded).", { until: "integration_deliveries" }),
   entry("privacy_requests", "shopper", via("email", "subject_email", "subject_customer_id"), ["subject_email", "subject_customer_id", "note", "plan_summary"], null, "anonymise", "The record that a request was answered in time: the address is forgotten 30 days after it was answered, the row (counts and dates only) after 24 months.", { until: "privacy_request_contact" }),
@@ -305,6 +306,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   workflow_runs: "Each run of a workflow (D356): the event, the id of what it was about, whether its conditions held and each action's outcome; no name, address or words of a customer, kept 90 days.",
   api_uploads: "A picture an Admin API caller sends (D440): where it waits in the private imports bucket, its type and size, the token and the library item it became; no name or words.",
   api_tokens: "Admin API tokens (D355): a name the owner gives, the scopes, the token's hash and first characters, who made it and when it was last used; no customer.",
+  apps: "Apps for many stores (D441): what a developer publishes about an app (its description, homepage, privacy policy and the support address it gives its users), the scopes it asks for, its events address and secret encrypted, its distribution and Kaizena Flow's review; the developer only by id, no customer.",
   oauth_clients: "The clients of Kaizena Flow's authorization server (D439): an AI assistant's or app's name, addresses and logo as it published or registered them, whether Kaizena Flow verified or blocked it, and when it was seen; no person.",
   webhook_endpoints: "An owner's own endpoints (D354): a name the owner gives, the address and secret encrypted, the topics and whether it works; no customer (the deliveries' payloads are `integration_deliveries`').",
   live_drills: "A run of a store's money paths in Stripe's test mode (D406): the kinds asked, who asked (an admin's account) and each outcome with order numbers and amounts; no shopper.",
@@ -378,7 +380,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   not_found_ignored: "An address staff hid from the 404 report (D168) and the staff account that did it; never a person's data (the address passed the same filter as the report's).",
   old_shops: "The public addresses of the shop a store moved from (D445) and the staff account that read them; never a person's data.",
   shop_move_items: "What a move from Shopify made (D445 step 9): kinds and ids, a customer only as the md5 of their address; never an address or a name.",
-  shop_moves: "A store's connection to the Shopify shop it moves from (D445): the shop's name and address, encrypted tokens and the account that connected it; never a shopper's data.",
+  shop_moves: "A store's connection to the Shopify or WooCommerce shop it moves from (D445, D446): the shop's name and address, encrypted tokens or key and the account that connected it; never a shopper's data.",
   data_jobs: "An import or export (D165): its kind, options, counts and the staff account that ran it. The customer and order files it points to are the `storage:exports` entry; the job itself holds no shopper's data.",
   data_job_items: "A product of an import or a finding about the file (D165): a handle, a SKU, row numbers and a plain sentence that never quotes a cell.",
   data_job_assets: "A picture address an import fetched and the library address it became (D165): product pictures only.",
@@ -566,6 +568,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.content_report_flood": "staff",
   "platform.content_report_urgent": "staff",
   "platform.content_report_restricted": "staff",
+  // An app's listing decided by Kaizena Flow's review (D441 D3), to its developer.
+  "platform.app_listing_decided": "staff",
   "platform.access_approved": "staff",
   "platform.access_declined": "staff",
   "platform.access_confirm": "staff",

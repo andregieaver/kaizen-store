@@ -16,7 +16,8 @@ import { encryptionKey } from "./settings";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
- * An owner's own endpoints (D354): the only writer of `commerce.webhook_endpoints`. An endpoint is an HTTPS address that passes the address
+ * An owner's own endpoints (D354): the only writer of the owner's rows of `commerce.webhook_endpoints` (an app's installation's are
+ * `app-endpoints.ts`'s, D441, and never read, changed or counted here). An endpoint is an HTTPS address that passes the address
  * guard (`hostProblem()`) when it is saved and again at each send (`safeFetch()`), the topics it gets, and a signing secret of 32 random bytes,
  * kept encrypted and shown once (on adding and on renewing). The database queues each event for every endpoint that is on and asks for it
  * (`commerce.queue_integration_event()`); `src/server/integrations.ts` signs and sends them. Owners only, as the services are (D41).
@@ -68,7 +69,7 @@ export async function listEndpoints(storeId: string): Promise<Endpoint[]> {
       left join lateral (
         select d.status, d.created_at from commerce.integration_deliveries d where d.endpoint_id = e.id order by d.created_at desc limit 1
       ) last on true
-      where e.store_id = ${storeId}::uuid
+      where e.store_id = ${storeId}::uuid and e.app_grant_id is null
       order by e.created_at, e.id
     `,
   );
@@ -123,7 +124,7 @@ export async function addEndpoint({ account, store }: Membership, input: Endpoin
   const made = await db().transaction(async (tx) => {
     // One at a time per store, so two presses cannot pass the limit together.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('webhook_endpoints'), hashtext(${store.id}))`);
-    const [count] = await tx.execute<{ n: number }>(sql`select count(*)::int as n from commerce.webhook_endpoints where store_id = ${store.id}::uuid`);
+    const [count] = await tx.execute<{ n: number }>(sql`select count(*)::int as n from commerce.webhook_endpoints where store_id = ${store.id}::uuid and app_grant_id is null`);
     if (Number(count?.n ?? 0) >= ENDPOINTS_MAX) return null;
     const [row] = await tx.execute<{ id: string }>(sql`
       insert into commerce.webhook_endpoints (store_id, name, url_encrypted, hint, secret_encrypted, topics, created_by)
@@ -149,7 +150,7 @@ export async function updateEndpoint({ account, store }: Membership, id: string,
     update commerce.webhook_endpoints set name = ${name}, topics = ${`{${topics.join(",")}}`}::text[],
       ${url && key ? sql`url_encrypted = ${encryptSecret(url.url, key)}, hint = ${url.hint}, failing_since = null,` : sql``}
       updated_at = now()
-    where store_id = ${store.id}::uuid and id = ${id}::uuid
+    where store_id = ${store.id}::uuid and id = ${id}::uuid and app_grant_id is null
     returning id
   `);
   if (rows.length === 0) return { ok: false, problem: "gone" };
@@ -164,7 +165,7 @@ export async function updateEndpoint({ account, store }: Membership, id: string,
 export async function switchEndpoint({ account, store }: Membership, id: string, on: boolean): Promise<boolean> {
   const rows = await db().execute(sql`
     update commerce.webhook_endpoints set enabled = ${on}, disabled_reason = ${on ? null : "owner"}, failing_since = null, updated_at = now()
-    where store_id = ${store.id}::uuid and id = ${id}::uuid
+    where store_id = ${store.id}::uuid and id = ${id}::uuid and app_grant_id is null
     returning id
   `);
   if (rows.length === 0) return false;
@@ -179,7 +180,7 @@ export async function renewSecret({ account, store }: Membership, id: string): P
   const secret = newSecret();
   const rows = await db().execute(sql`
     update commerce.webhook_endpoints set secret_encrypted = ${encryptSecret(secret, key)}, updated_at = now()
-    where store_id = ${store.id}::uuid and id = ${id}::uuid
+    where store_id = ${store.id}::uuid and id = ${id}::uuid and app_grant_id is null
     returning id
   `);
   if (rows.length === 0) return { ok: false, problem: "gone" };
@@ -190,7 +191,7 @@ export async function renewSecret({ account, store }: Membership, id: string): P
 /** Removes an endpoint; its queue and log go with it. */
 export async function removeEndpoint({ account, store }: Membership, id: string): Promise<boolean> {
   const rows = await db().execute(sql`
-    delete from commerce.webhook_endpoints where store_id = ${store.id}::uuid and id = ${id}::uuid returning id
+    delete from commerce.webhook_endpoints where store_id = ${store.id}::uuid and id = ${id}::uuid and app_grant_id is null returning id
   `);
   if (rows.length === 0) return false;
   await audit(account.id, store.id, "integration.endpoint_removed", {}, { target: { type: "webhook_endpoint", id } });
@@ -207,7 +208,7 @@ export async function resendDelivery({ account, store }: Membership, deliveryId:
     sql`
       with source as (
         select d.* from commerce.integration_deliveries d
-        join commerce.webhook_endpoints e on e.id = d.endpoint_id and e.store_id = d.store_id
+        join commerce.webhook_endpoints e on e.id = d.endpoint_id and e.store_id = d.store_id and e.app_grant_id is null
         where d.store_id = ${store.id}::uuid and d.id = ${deliveryId}::uuid and d.status <> 'pending'
       ),
       made as (
@@ -257,6 +258,7 @@ export async function listEndpointDeliveries(storeId: string, endpointId: string
       select id, event, status, attempts, last_status, last_error, created_at, next_attempt_at
       from commerce.integration_deliveries
       where store_id = ${storeId}::uuid and endpoint_id = ${endpointId}::uuid
+        and endpoint_id in (select e.id from commerce.webhook_endpoints e where e.store_id = ${storeId}::uuid and e.app_grant_id is null)
       order by created_at desc limit ${limit}
     `,
   );

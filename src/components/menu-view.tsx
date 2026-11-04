@@ -40,6 +40,7 @@ export function MenuTreeView({
   layout,
   linkClassName,
   newTabLabel,
+  subLinksLabel = "",
   justify = "",
   hover,
 }: {
@@ -49,6 +50,8 @@ export function MenuTreeView({
   linkClassName: string;
   /** Read out after a link that opens a new tab, in the page's language. */
   newTabLabel: string;
+  /** Read out on the phone's menu's arrow, before the link's own words ("Links under"), in the page's language. */
+  subLinksLabel?: string;
   /** Where side-by-side links sit along the line (`justify-*` classes). */
   justify?: string;
   /** The links' hover and active effect (D207); side by side and in a column only, never the phone's menu. */
@@ -171,14 +174,33 @@ export function MenuTreeView({
     );
   }
 
-  const list = (items: MenuLinkNode[], depth: number) => (
+  const list = (items: MenuLinkNode[], depth: number): ReactNode => (
     <ul className={`flex flex-col ${layout === "column" ? "gap-1" : ""} ${depth > 0 ? "pl-4" : ""}`}>
-      {items.map((node) => (
-        <li key={node.key} className={item || undefined}>
-          {anchor(node, depth > 0 && layout === "drawer" ? "flex min-h-11 items-center text-base" : linkClassName)}
-          {node.children.length > 0 && list(node.children, depth + 1)}
-        </li>
-      ))}
+      {items.map((node) =>
+        layout === "drawer" && node.children.length > 0 ? (
+          // The phone's menu folds the links under a link away until asked (closed at first): the link still goes where it goes, and
+          // the arrow beside it, never around it, opens the links under it. A native <details>, so it works before any script.
+          <li key={node.key} className="relative">
+            {anchor(node, `${depth > 0 ? "flex min-h-11 items-center text-base" : linkClassName} pr-12`)}
+            <details className="group">
+              <summary
+                className={`absolute right-0 top-0 flex w-11 cursor-pointer list-none items-center justify-center rounded-md hover:bg-surface [&::-webkit-details-marker]:hidden ${depth > 0 ? "h-11" : "h-12"}`}
+              >
+                <Icon name="chevron" className="size-4 shrink-0 opacity-70 transition-transform group-open:rotate-180" />
+                <span className="sr-only">
+                  {subLinksLabel} {node.text}
+                </span>
+              </summary>
+              {list(node.children, depth + 1)}
+            </details>
+          </li>
+        ) : (
+          <li key={node.key} className={item || undefined}>
+            {anchor(node, depth > 0 && layout === "drawer" ? "flex min-h-11 items-center text-base" : linkClassName)}
+            {node.children.length > 0 && list(node.children, depth + 1)}
+          </li>
+        ),
+      )}
     </ul>
   );
   return boxed(list(nodes, 0));

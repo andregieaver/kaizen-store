@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import {
   checkWebhookUrl,
+  isAppEvent,
   isEvent,
   isServiceEvent,
   webhookHint,
@@ -328,6 +329,11 @@ async function buildSubject(store: { id: string; slug: string; name: string }, e
   }
   // An erased customer (D162) is gone: only its id, never read again.
   if (event === "customer.erased") return { erasure: { customer_id: subjectId } };
+  // An app removed from the store (D441 D2): its installation, kept 90 days after it ended.
+  if (isAppEvent(event)) {
+    const installation = await installationData(store.id, subjectId);
+    return installation && { installation };
+  }
   if (event === "customer.created" || event === "customer.updated") {
     const customer = await customerData(store.id, store.slug, subjectId);
     return customer && { customer };
@@ -425,6 +431,20 @@ export async function endpointPayload(
   const data = delivery.event === "test" ? { test: true, order: await testOrder(store) } : await subjectData(store, delivery.event, delivery.subjectId);
   if (!data) return null;
   return { id: delivery.id, topic: delivery.event, version: PAYLOAD_VERSION, store: { slug: store.slug, name: store.name }, created_at: delivery.createdAt, data };
+}
+
+/** An app's installation as its own two events carry it (D441 D2): its id, the app's client ID and when it was removed. */
+async function installationData(storeId: string, grantId: string): Promise<WebhookSubject<"installation"> | null> {
+  const row = await typedRow(
+    z.object({ id: col.uuid, client_id: col.text, removed_at: col.timestamp.nullable() }),
+    sql`
+      select g.id, c.client_id, g.revoked_at as removed_at
+      from commerce.oauth_grants g join commerce.oauth_clients c on c.id = g.client_id
+      where g.id = ${grantId}::uuid and g.store_id = ${storeId}::uuid and g.resource = 'admin'
+    `,
+  );
+  if (!row?.removed_at) return null;
+  return { id: row.id, client_id: row.client_id, removed_at: row.removed_at };
 }
 
 /** A return as an endpoint gets it (D354): its number, kind, state, lines and what is refunded, in the order's own currency. */
@@ -866,9 +886,13 @@ type Claimed = {
   createdAt: string;
   encryptedUrl: string | null;
   enabled: boolean;
-  /** An owner's endpoint (D354): its id and encrypted secret. */
+  /** An owner's endpoint (D354), or an app's installation's (D441): its id and encrypted secret. */
   endpointId: string | null;
   encryptedSecret: string | null;
+  /** Why the endpoint is off (`failing`, `owner`, `uninstalled`), or null. */
+  endpointOff: string | null;
+  /** The endpoint is an app's installation's (D441 D2), not the owner's. */
+  appEndpoint: boolean;
 };
 
 async function attempt(delivery: Claimed): Promise<Outcome> {
@@ -882,7 +906,9 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
     return { ok: false, status: null, error };
   };
   if (!delivery.encryptedUrl) return fail("Disconnected");
-  if (!delivery.enabled && delivery.event !== "test") return fail("Switched off");
+  // An app's own two events (D441 D2) reach the installation's endpoint though removing the app switched it off; nothing else does.
+  const farewell = delivery.appEndpoint && isAppEvent(delivery.event) && delivery.endpointOff === "uninstalled";
+  if (!delivery.enabled && delivery.event !== "test" && !farewell) return fail("Switched off");
   if (!key) return fail("Kaizena Flow could not read the address");
   const endpoint = delivery.provider === "webhook";
   if (!payload) {
@@ -954,7 +980,9 @@ async function keepEndpointHealth(delivery: Claimed, outcome: Outcome): Promise<
     update commerce.integration_deliveries set status = 'failed', last_error = 'Switched off'
     where endpoint_id = ${delivery.endpointId}::uuid and status = 'pending'
   `);
-  log("warn", "integrations.endpoint_switched_off", { storeId: delivery.storeId, endpointId: delivery.endpointId });
+  log("warn", "integrations.endpoint_switched_off", { storeId: delivery.storeId, endpointId: delivery.endpointId, app: delivery.appEndpoint });
+  // An app's installation's endpoint (D441) is the app's to mend: the store's owners are not told of an address they never gave.
+  if (delivery.appEndpoint) return;
   await notifyEndpointOff(
     { id: delivery.storeId, slug: delivery.storeSlug, name: delivery.storeName },
     { id: String(off.id), name: String(off.name), hint: String(off.hint), since: new Date(String(off.failing_since)).toISOString(), error: outcome.error ?? String(outcome.status ?? "") },
@@ -964,7 +992,7 @@ async function keepEndpointHealth(delivery: Claimed, outcome: Outcome): Promise<
 const claimedColumns = sql`
   d.id, d.store_id, s.slug, s.name, d.provider, d.event, d.subject_id, d.payload, d.attempts, d.created_at,
   coalesce(i.webhook_url_encrypted, e.url_encrypted) as webhook_url_encrypted, coalesce(i.enabled, e.enabled, false) as enabled,
-  d.endpoint_id, e.secret_encrypted,
+  d.endpoint_id, e.secret_encrypted, e.disabled_reason as endpoint_off, e.app_grant_id is not null as app_endpoint,
   coalesce((
     select m.default_locale from commerce.markets m
     where m.store_id = s.id and m.active
@@ -989,6 +1017,8 @@ function toClaimed(row: Row): Claimed {
     enabled: Boolean(row.enabled),
     endpointId: row.endpoint_id ? String(row.endpoint_id) : null,
     encryptedSecret: row.secret_encrypted ? String(row.secret_encrypted) : null,
+    endpointOff: row.endpoint_off ? String(row.endpoint_off) : null,
+    appEndpoint: row.app_endpoint === true,
   };
 }
 
@@ -1057,7 +1087,7 @@ export async function sendEndpointTest({ account, store }: Membership, endpointI
     with made as (
       insert into commerce.integration_deliveries (store_id, provider, event, endpoint_id, next_attempt_at)
       select e.store_id, 'webhook', 'test', e.id, now() + interval '5 minutes'
-      from commerce.webhook_endpoints e where e.store_id = ${store.id}::uuid and e.id = ${endpointId}::uuid
+      from commerce.webhook_endpoints e where e.store_id = ${store.id}::uuid and e.id = ${endpointId}::uuid and e.app_grant_id is null
       returning *
     )
     select ${claimedColumns}

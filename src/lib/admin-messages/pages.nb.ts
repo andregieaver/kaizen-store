@@ -674,6 +674,12 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Tilkoblede apper og assistenter",
     keywords: ["tilkoblede apper", "ai-assistent", "mcp", "claude", "chatgpt", "oauth", "koble fra", "tilbakekall", "tilgang", "integrasjoner"],
   },
+  "account:account.developer": {
+    title: "Utvikler",
+    keywords: ["utvikler", "app", "apper", "oauth", "klient-id", "klienthemmelighet", "admin-api", "lag en app", "integrasjon", "partner"],
+  },
+  "account:account.developer.new": { title: "Ny app", keywords: ["ny app", "lag app", "registrer app", "klienthemmelighet"] },
+  "account:account.developer.app": { title: "En app", keywords: ["appinnstillinger", "forny hemmelighet", "omdirigerings-uri", "tilganger", "hendelsesadresse"] },
   "account:account.wordpress.connect": {
     title: "Koble til et WordPress-nettsted",
     keywords: ["koble til wordpress", "godkjenn", "autoriser", "wordpress"],
@@ -818,6 +824,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:plan-limits": { title: "Grenser", keywords: ["grenser", "kvote", "lagring", "båndbredde", "trafikk", "standardgrenser"] },
   "platform:docs.feedback": { title: "Tilbakemeldinger på dokumentasjonen", keywords: ["dokumentasjon", "veiledning", "hjelp", "tilbakemelding", "artikler"] },
   "platform:docs.guide": { title: "Dokumentasjonsveileder", keywords: ["dokumentasjon", "veileder", "ki", "chat", "assistent", "utviklere"] },
+  "platform:apps": { title: "Appoppføringer", keywords: ["apper", "appkatalog", "oppføring", "gjennomgang", "godkjenn app", "avslå app", "utviklere"] },
   "platform:oauth": { title: "AI-assistenter og apper", keywords: ["oauth", "klienter", "mcp", "ai-assistenter", "apper", "bekreft", "blokker", "autorisasjonsserver"] },
   "platform:reports": { title: "Meldinger om ulovlig innhold", keywords: ["dsa", "ulovlig", "melding", "fjerning", "anmeldelse", "misbruk", "forfalskning", "moderering"] },
   "platform:status": { title: "Statusside", keywords: ["status", "hendelse", "nedetid", "oppetid", "driftsavbrudd", "vedlikehold"] },

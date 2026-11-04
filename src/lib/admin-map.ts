@@ -1025,6 +1025,16 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["connected apps", "ai assistant", "mcp", "claude", "chatgpt", "oauth", "disconnect", "revoke", "access", "integrations"],
     tasks: ["See which AI assistants and apps reach your stores", "Disconnect an AI assistant or app"],
   }),
+  account("account.developer", "/account/developer", "Developer", "Developer mode, turned on by accepting the developer terms, and your apps for many stores: each one's distribution (private, unlisted or listed after review), how many stores it is installed on, and New app.", {
+    keywords: ["developer", "app", "apps", "oauth", "client id", "client secret", "admin api", "build an app", "integration", "partner"],
+    tasks: ["Turn on developer mode", "Make an app for many stores", "See how many stores installed your app"],
+  }),
+  account("account.developer.new", "/account/developer/new", "New app", "The form for a new app: its name, what it does, its redirect URIs, what it needs (scopes and powers), who can install it and the events it wants; its client ID and secrets are shown once when it is made.", {
+    keywords: ["new app", "create app", "register app", "client secret"],
+  }),
+  account("account.developer.app", "/account/developer/[app]", "An app", "One of your apps: its client ID, Renew for the client secret and the events secret (each shown once), how a store installs it, and its form.", {
+    keywords: ["app settings", "renew secret", "redirect uri", "scopes", "events address"],
+  }),
   account("account.wordpress.connect", "/account/wordpress/connect", "Connect a WordPress site", "Where the plugin sends you to approve a WordPress site: it names the site and what it may read, and you approve or cancel.", {
     needs: "owner",
     keywords: ["approve", "authorize", "connect wordpress"],
@@ -1194,6 +1204,10 @@ const PAGES: readonly AdminPage[] = [
   platform("oauth", "/oauth", "AI assistants and apps", "Platform", "Every client of Kaizena Flow's authorization server (D439): the AI assistants and apps people connected to their stores, with how many people use each, its host, and Verify and Block; blocking ends every connection it has.", {
     keywords: ["oauth", "clients", "mcp", "ai assistants", "apps", "verify", "block", "authorization server"],
     tasks: ["Verify an AI assistant or app", "Block an AI assistant or app"],
+  }),
+  platform("apps", "/apps", "App listings", "Platform", "Apps for many stores that ask to be listed in the app directory (D441): each with what it does, its developer, its addresses and what it asks for, approved with a note or declined with the reason, which the developer is emailed.", {
+    keywords: ["apps", "app directory", "listing", "review", "approve app", "decline app", "developers"],
+    tasks: ["Review an app's listing", "Approve or decline an app for the directory"],
   }),
   platform("reports", "/reports", "Illegal content notices", "Platform", "Notices people sent about illegal content on stores, each decided with its reason; the sender is told, and the store when something is restricted (DSA).", {
     keywords: ["DSA", "illegal", "notice", "takedown", "report", "abuse", "counterfeit", "moderation"],

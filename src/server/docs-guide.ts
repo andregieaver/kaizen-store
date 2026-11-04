@@ -141,7 +141,7 @@ async function runTool(name: string, args: Record<string, unknown>, reader: Guid
 }
 
 /** The hosts whose addresses the guide's words may keep: Kaizena Flow's site and the docs' own. */
-function ownHosts(): string[] {
+export function ownHosts(): string[] {
   const hosts = ["kaizenaflow.com"];
   try {
     hosts.push(new URL(siteUrl()).host.toLowerCase());

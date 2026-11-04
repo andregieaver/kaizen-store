@@ -3,16 +3,21 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { EVENTS, isServiceEvent } from "./integrations";
+import { APP_TOPICS } from "./apps";
+import { APP_EVENTS, EVENTS, isAppEvent, isServiceEvent } from "./integrations";
 import { ID_HEADER, PAYLOAD_VERSION, SIGNATURE_HEADER, signWebhook, TIMESTAMP_HEADER, TOLERANCE_SECONDS, TOPIC_HEADER, verifyWebhook } from "./webhook-signature";
 import { topicOf, WEBHOOK_SUBJECTS, WEBHOOK_TEST_DATA, WEBHOOK_TOPICS, webhookCatalogue, webhookEnvelope, webhookOpenApi } from "./webhook-topics";
 
 /** The webhook topics' contracts (D438): every event of `EVENTS` typed, its receivers as the services and endpoints get it, and the catalogue. */
 describe("WEBHOOK_TOPICS", () => {
   it("is every event, in order, with who may be sent it", () => {
-    expect(WEBHOOK_TOPICS.map((t) => t.id)).toEqual(EVENTS.map((e) => e.id));
+    expect(WEBHOOK_TOPICS.map((t) => t.id)).toEqual([...EVENTS, ...APP_EVENTS].map((e) => e.id));
     for (const topic of WEBHOOK_TOPICS) {
-      expect(topic.receivers, topic.id).toEqual(isServiceEvent(topic.id) ? ["services", "endpoints"] : ["endpoints"]);
+      // An app is sent a topic it chose whose area its installation reads (D441), and its own two whatever it chose; never a service or an owner.
+      const expected = isAppEvent(topic.id)
+        ? ["apps"]
+        : [...(isServiceEvent(topic.id) ? ["services"] : []), "endpoints", ...(APP_TOPICS.includes(topic.id) ? ["apps"] : [])];
+      expect(topic.receivers, topic.id).toEqual(expected);
       // The data holds the subject under its own name, and nothing else.
       expect(Object.keys(topic.data.shape), topic.id).toEqual([topic.subject]);
       expect(topic.description.length).toBeGreaterThan(10);
@@ -64,7 +69,7 @@ describe("the topics' catalogue", () => {
 
   it("publishes every topic's payload, the version, the headers and the retries", () => {
     expect(catalogue.version).toBe(PAYLOAD_VERSION);
-    expect(catalogue.topics.map((t) => t.id)).toEqual(EVENTS.map((e) => e.id));
+    expect(catalogue.topics.map((t) => t.id)).toEqual([...EVENTS, ...APP_EVENTS].map((e) => e.id));
     expect(catalogue.headers.map((h) => h.name)).toEqual([ID_HEADER, TIMESTAMP_HEADER, TOPIC_HEADER, SIGNATURE_HEADER]);
     expect(catalogue.signature).toMatchObject({ algorithm: "HMAC-SHA256", header: SIGNATURE_HEADER, tolerance_seconds: TOLERANCE_SECONDS });
     expect(catalogue.description).toContain("1 minute, 5 minutes, 30 minutes, 2 hours, 6 hours");
@@ -88,7 +93,7 @@ describe("the topics' catalogue", () => {
 
   it("is the OpenAPI document's webhooks: each a POST of its envelope", () => {
     const hooks = webhookOpenApi() as Record<string, { post: { requestBody: { content: { "application/json": { schema: { properties: Record<string, { const?: unknown }> } } } } } }>;
-    expect(Object.keys(hooks)).toEqual(EVENTS.map((e) => e.id));
+    expect(Object.keys(hooks)).toEqual([...EVENTS, ...APP_EVENTS].map((e) => e.id));
     const schema = hooks["order.sent"].post.requestBody.content["application/json"].schema;
     expect(Object.keys(schema.properties)).toEqual(["id", "topic", "version", "store", "created_at", "data"]);
     expect(schema.properties.topic.const).toBe("order.sent");

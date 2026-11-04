@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { WORDPRESS_PLUGIN_RELEASES, wordpressReleaseFile } from "../src/lib/wordpress-plugin";
+
 import { testDb } from "./db";
 
 /**
@@ -82,6 +84,18 @@ test("the generated reference answers at the host's /reference, with its Markdow
   expect(md.status).toBe(200);
   expect(md.text).toContain(`](${docs("/reference/scopes#products-write")})`);
   expect((await fetchOnHost(page, "/reference.md")).text.startsWith("# API reference")).toBe(true);
+});
+
+test("the WordPress plugin's section on the host offers every version, each a zip on Kaizena Flow's site", async ({ page, request, baseURL }) => {
+  const response = await page.goto(docs("/developers/wordpress"));
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 2, name: "Download the plugin" })).toBeVisible();
+  for (const { version } of WORDPRESS_PLUGIN_RELEASES) {
+    const file = wordpressReleaseFile(version);
+    await expect(page.getByRole("link", { name: `kaizen-store-wordpress-${version}.zip` })).toHaveAttribute("href", `${baseURL}${file}`);
+    const answer = await request.get(`${baseURL}${file}`);
+    expect(answer.status(), file).toBe(200);
+  }
 });
 
 test("Kaizena Flow's own /docs moves to the host for good", async ({ page, request }) => {
