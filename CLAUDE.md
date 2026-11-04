@@ -370,5 +370,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   Platform → AI and its recording committed. The AI manager's conversations go after the retention rule's period or the owner's own
   (`stores.assistant_keep_months`, `pruneAssistantConversations()`); the chat's notice says when an AI reads tone or summarises
   (`ChatWidgetProfile.aiUse`), so a new AI use of a customer's messages is said there too.
+- A new page for Kaizena Flow's own site (kaizenaflow.com) is built from `docs/site-design.md`: the owner's theme, palette, classes
+  and row recipes, read from production. Save it as a draft for the owner to publish, and correct that file when the site's look changes.
 - Deferred work from the PSI audit is tracked in `docs/audits/psi-followups.md`: tick
   an item there when a change does it.
