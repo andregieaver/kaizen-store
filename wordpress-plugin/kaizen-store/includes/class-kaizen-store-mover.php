@@ -3,8 +3,8 @@
  * Moving to Kaizena Flow (D446 step 2): read-only routes for what WooCommerce's own key cannot reach. Kaizena Flow sends the owner here with
  * a sealed note; the owner presses Allow; this site makes a secret and posts it, server to server, only to the Kaizena Flow address it is set
  * up with. Each later read from Kaizena Flow is signed with that secret and the time, and is refused more than five minutes off. The routes
- * only read: which plugins the shop runs, the redirect plugins' redirects, every Yoast and Rank Math field of products and categories, and
- * MailPoet's subscribers. Stop reading forgets the secret.
+ * only read: which plugins the shop runs, the redirect plugins' redirects, every Yoast and Rank Math field of products and categories,
+ * MailPoet's subscribers, and the gift card plugins' cards with money left (never a card's code, only its last four characters). Stop reading forgets the secret.
  *
  * @package KaizenStore
  */
@@ -135,7 +135,7 @@ class Kaizen_Store_Mover {
 	// ---------------------------------------------------------------------------------------------------------------------------------
 
 	public static function routes() {
-		foreach ( array( 'plugins', 'redirects', 'seo', 'seo_terms', 'subscribers' ) as $route ) {
+		foreach ( array( 'plugins', 'redirects', 'seo', 'seo_terms', 'subscribers', 'gift_cards' ) as $route ) {
 			register_rest_route(
 				self::NAMESPACE,
 				'/' . $route,
@@ -478,6 +478,97 @@ class Kaizen_Store_Mover {
 			array(
 				'terms' => $out,
 				'more'  => count( $terms ) > self::PAGE_SIZE,
+			)
+		);
+	}
+
+	/**
+	 * A column of a table, when it has it (the gift card plugins added columns over their versions).
+	 *
+	 * @param string $table  The table.
+	 * @param string $column The column.
+	 * @return bool
+	 */
+	private static function has_column( $table, $column ) {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table's name is this site's prefix.
+		return null !== $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$table} LIKE %s", $column ) );
+	}
+
+	/**
+	 * A card as Kaizena Flow reads it: never its code (the new shop makes a new one), only its last four characters to tell it by.
+	 *
+	 * @param string     $source  The plugin.
+	 * @param int        $id      The card's own id there.
+	 * @param string     $code    The card's code, of which only the end is sent.
+	 * @param float      $balance What is left on it.
+	 * @param string     $expires When it expires (Y-m-d), or ''.
+	 * @param string     $email   Whom it was for, or ''.
+	 * @return array
+	 */
+	private static function card( $source, $id, $code, $balance, $expires, $email ) {
+		return array(
+			'source'  => $source,
+			'id'      => (int) $id,
+			'last4'   => strtoupper( substr( preg_replace( '/[^A-Za-z0-9]/', '', (string) $code ), -4 ) ),
+			'balance' => number_format( (float) $balance, 2, '.', '' ),
+			'expires' => (string) $expires,
+			'email'   => sanitize_email( (string) $email ),
+		);
+	}
+
+	/**
+	 * The gift cards with money left, of WooCommerce Gift Cards, PW Gift Cards and YITH Gift Cards, in the shop's currency, a page at a time.
+	 *
+	 * @param WP_REST_Request $request The request.
+	 */
+	public static function read_gift_cards( $request ) {
+		global $wpdb;
+		$all = array();
+		$wc  = $wpdb->prefix . 'woocommerce_gc_cards';
+		if ( self::table_exists( $wc ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table's name is this site's prefix.
+			$rows = $wpdb->get_results( "SELECT id, code, remaining, expire_date, recipient FROM {$wc} WHERE is_active = 'on' AND remaining > 0 ORDER BY id", ARRAY_A );
+			foreach ( (array) $rows as $row ) {
+				$expires = (int) $row['expire_date'] > 0 ? gmdate( 'Y-m-d', (int) $row['expire_date'] ) : '';
+				$all[]   = self::card( 'woocommerce-gift-cards', $row['id'], $row['code'], $row['remaining'], $expires, $row['recipient'] );
+			}
+		}
+		$pw       = $wpdb->prefix . 'pimwick_gift_card';
+		$activity = $wpdb->prefix . 'pimwick_gift_card_activity';
+		if ( self::table_exists( $pw ) && self::table_exists( $activity ) ) {
+			$email = self::has_column( $pw, 'recipient_email' ) ? 'c.recipient_email' : "''";
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the tables' names are this site's prefix.
+			$rows = $wpdb->get_results( "SELECT c.pimwick_gift_card_id AS id, c.number, c.expiration_date, {$email} AS email, COALESCE(SUM(a.amount), 0) AS balance FROM {$pw} c LEFT JOIN {$activity} a ON a.pimwick_gift_card_id = c.pimwick_gift_card_id WHERE c.active = 1 GROUP BY c.pimwick_gift_card_id HAVING balance > 0 ORDER BY c.pimwick_gift_card_id", ARRAY_A );
+			foreach ( (array) $rows as $row ) {
+				$expires = $row['expiration_date'] ? substr( (string) $row['expiration_date'], 0, 10 ) : '';
+				$all[]   = self::card( 'pw-gift-cards', $row['id'], $row['number'], $row['balance'], $expires, $row['email'] );
+			}
+		}
+		if ( post_type_exists( 'gift_card' ) ) {
+			$cards = get_posts(
+				array(
+					'post_type'      => 'gift_card',
+					'post_status'    => 'publish',
+					'posts_per_page' => -1,
+					'fields'         => 'ids',
+				)
+			);
+			foreach ( $cards as $id ) {
+				$balance = (float) get_post_meta( $id, '_ywgc_balance_total', true );
+				if ( $balance <= 0 || 'yes' === get_post_meta( $id, '_ywgc_card_disabled', true ) ) {
+					continue;
+				}
+				$expires = (int) get_post_meta( $id, '_ywgc_expiration', true );
+				$all[]   = self::card( 'yith-gift-cards', $id, get_the_title( $id ), $balance, $expires > 0 ? gmdate( 'Y-m-d', $expires ) : '', get_post_meta( $id, '_ywgc_recipient', true ) );
+			}
+		}
+		$offset = self::offset( $request );
+		return rest_ensure_response(
+			array(
+				'cards'    => array_slice( $all, $offset, self::PAGE_SIZE ),
+				'currency' => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : '',
+				'more'     => count( $all ) > $offset + self::PAGE_SIZE,
 			)
 		);
 	}

@@ -3,7 +3,7 @@
 The owner (3 November 2026) asked for a "moving from" plan per platform, like `docs/moving-from-shopify.md` (D445), "so simple and easy to
 follow that Homer Simpson could do it without breaking a sweat". This is WooCommerce's.
 
-**Steps 1, 1b and 2a are built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
+**Steps 1 to 2b are built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
 refers to it by section ("Shopify 8.2"):
 
 | Part of the engine | Where in the Shopify plan |
@@ -502,8 +502,25 @@ Migration version: `20261104173022_woocommerce_mover` (`shop_moves.mover_secret`
 
 Migration version: `20261104185119_woocommerce_seo_fields` (`shop_move_items` takes the kind `field_group`).
 
-**Not yet:**
-- Step 2b: gift cards from the gift card plugins (spike W6), and a Mailchimp or Klaviyo export (Decision 2).
+### Step 2b: gift cards and an email list outside WordPress (4 November 2026)
+
+The owner's answer (4 November 2026): **new codes, emailed on move day**, as Shopify's, though the gift card plugins keep their codes
+readable. Checkout keeps taking only our own code format.
+
+- **Gift cards** (plugin 1.3.2, route `gift_cards`): the cards with money left of WooCommerce Gift Cards (`woocommerce_gc_cards`), PW Gift
+  Cards (`pimwick_gift_card`, the balance the sum of its activity) and YITH Gift Cards (post type `gift_card`), in the shop's currency:
+  balance, expiry and holder, and only the last four characters of a code. A spendable code never leaves the site.
+  - `giftCardLinesOf()` makes them D445's gift card lines (`woo:{plugin}:{id}`). They are the copy's `gift_cards` part, read now and made
+    on move day by D445's own writer (`moveGiftCards()`).
+  - **Move day for WooCommerce is step 5:** until it is built, they wait, as the page says (*made on move day*).
+- **Mailchimp or Klaviyo** (Decision 2: read their export): *Your email list in Mailchimp or Klaviyo?* on the WooCommerce card takes the
+  export (`readListExport()`).
+  - Mailchimp's subscribed file: `OPTIN_TIME` and `CONFIRM_TIME`. Its unsubscribed and cleaned files are refused whole.
+  - Klaviyo's profiles: `Email Marketing Consent` `SUBSCRIBED` with its timestamp.
+  - Only rows with a subscription and its moment come over, through `addMovedSubscribers()` (`source` `woocommerce`, *as Mailchimp
+    recorded it*), written down for *Undo this copy*. Someone already on the list is left as they are, and nobody is emailed.
+- *Undo this copy* now also removes subscribers moved from WooCommerce. It removed only Shopify's before: MailPoet's from step 2a would
+  have stayed.
 
 **Not in steps 1 and 1b:**
 - The mover plugin and what it reads (step 2).

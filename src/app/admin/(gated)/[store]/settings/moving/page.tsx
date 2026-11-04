@@ -22,6 +22,7 @@ import { hasMover, moverStatus, wooConnection, wooOffered } from "@/server/wooco
 import { KNOWN_PLUGINS } from "@/lib/woocommerce-mover";
 import { WORDPRESS_PLUGIN_FILE } from "@/lib/wordpress-plugin";
 import { WooMover } from "@/components/admin/moving/woo-mover";
+import { WooList } from "@/components/admin/moving/woo-list";
 import { WOO_COPY_FEEDS, WOO_MOVER_FEEDS } from "@/lib/woocommerce-copy";
 import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
 import type { DataJob } from "@/server/data-job-store";
@@ -50,6 +51,7 @@ import {
   disconnectShopifyAction,
   disconnectMoverAction,
   disconnectWooAction,
+  importListAction,
   saveVendorMakerAction,
   shopifyClosedAction,
   scheduleMoveAction,
@@ -140,6 +142,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             <p className="text-sm">{w.woo.later}</p>
             <MoverPanel storeSlug={store.slug} />
             <CopyPanel storeSlug={store.slug} />
+            <WooList action={importListAction.bind(null, store.slug)} />
             <details className="text-sm">
               <summary className="w-fit cursor-pointer underline underline-offset-2">{w.details.title}</summary>
               <div className="mt-3">

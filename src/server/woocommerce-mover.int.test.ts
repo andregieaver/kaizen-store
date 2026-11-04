@@ -77,6 +77,8 @@ async function open(raw: string, headers?: Record<string, string>): Promise<Fetc
             ? [{ id: 21, plugin: "yoast", title: "Mover hat | Kari", description: "The warmest hat.", fields: { title: "%%title%% | %%sitename%%", description: "The warmest hat.", focus_keyword: "wool hat", canonical: "https://mover.example/product/mover-hat/", robots: "noindex", og_title: "Look at this hat", primary_category: "Hats" } }]
             : [],
         });
+      case "kaizena-mover/v1/gift_cards":
+        return answer({ currency: "NOK", cards: query.page === "1" ? [{ source: "woocommerce-gift-cards", id: 7, last4: "AB12", balance: "250.00", expires: "2030-01-31", email }] : [], more: false });
       case "kaizena-mover/v1/seo_terms":
         return answer({ terms: query.page === "1" ? [{ name: "Hats", slug: "hats", plugin: "yoast", title: "Warm hats", description: "Every hat we knit.", fields: { title: "Warm hats", description: "Every hat we knit.", focus_keyword: "hats" } }] : [], more: false });
       default:
@@ -154,6 +156,8 @@ describe("moving from WooCommerce, step 2: our plugin reads what WooCommerce's k
     await settle(owner);
     const view = (await copy.copyView(owner))!;
     expect([view.state.feeds.redirects.stage, view.state.feeds.redirects.count, view.state.feeds.subscribers.stage, view.state.feeds.subscribers.count]).toEqual(["checked", 1, "checked", 1]);
+    // The gift card plugins' cards are read now and made on move day (step 2b): none here before.
+    expect([view.state.feeds.gift_cards.stage, view.state.feeds.gift_cards.count]).toEqual(["checked", 1]);
     expect(await copy.bringItOver(owner)).toEqual({ ok: true });
     await settle(owner);
     expect(copyDone((await copy.copyView(owner))!.state)).toBe(true);
@@ -165,6 +169,8 @@ describe("moving from WooCommerce, step 2: our plugin reads what WooCommerce's k
     expect(String(sub?.consent_text)).toMatch(/while it was on WooCommerce, as MailPoet recorded it: SUBSCRIBED, CONFIRMED_OPT_IN/);
     const [{ gone }] = await db().execute<Row>(sql`select count(*)::int as gone from commerce.marketing_subscribers where store_id = ${fx.storeId}::uuid and email = ${`gone-${email}`}`);
     expect(gone).toBe(0);
+    const [{ cards }] = await db().execute<Row>(sql`select count(*)::int as cards from commerce.gift_cards where store_id = ${fx.storeId}::uuid`);
+    expect(cards).toBe(0);
     const [words] = await db().execute<Row>(sql`
       select t.seo_title, t.seo_description from commerce.product_translations t join commerce.products p on p.id = t.product_id
        where p.store_id = ${fx.storeId}::uuid and p.handle = 'mover-hat' and t.seo_title <> ''`);
@@ -195,11 +201,30 @@ describe("moving from WooCommerce, step 2: our plugin reads what WooCommerce's k
     expect((await copy.copyView(owner))!.state.feeds.seo).toMatchObject({ stage: "done", made: 2, refused: 0 });
   });
 
+  it("brings a Mailchimp export's subscribed people with their moment, and nobody else (Decision 2)", async () => {
+    const list = await import("./woocommerce-list");
+    const csv = [
+      "Email Address,First Name,Last Name,OPTIN_TIME,CONFIRM_TIME",
+      `mc-${email},Mia,C,2024-03-01 10:00:00,2024-03-01 10:05:00`,
+      `nodate-${email},No,Date,,`,
+      // Already on the list from MailPoet: left as it is.
+      `${email},Kari,N,2024-03-01 10:00:00,`,
+    ].join("\n");
+    expect(await list.importListExport(owner, new TextEncoder().encode(csv))).toEqual({ ok: true, source: "mailchimp", added: 1, already: 1, skipped: 1 });
+    const [sub] = await db().execute<Row>(sql`select source, confirmed_at, consent_text from commerce.marketing_subscribers where store_id = ${fx.storeId}::uuid and email = ${`mc-${email}`}`);
+    expect([sub?.source, sub?.confirmed_at !== null]).toEqual(["woocommerce", true]);
+    expect(String(sub?.consent_text)).toMatch(/while it was on WooCommerce, as Mailchimp recorded it: SUBSCRIBED, CONFIRMED_OPT_IN/);
+    expect(await list.importListExport(owner, new TextEncoder().encode("Email Address,OPTIN_TIME,UNSUB_TIME\na@example.com,2024-01-01 00:00:00,2024-02-01 00:00:00"))).toEqual({ ok: false, problem: "not_subscribed_file" });
+  });
+
   it("takes the field group back with Undo this copy", async () => {
     const undo = await import("./shopify-undo");
     expect(await undo.undoCopy(owner)).toMatchObject({ ok: true });
     const [{ n }] = await db().execute<Row>(sql`select count(*)::int as n from commerce.field_groups where store_id = ${fx.storeId}::uuid and slug = 'seo-from-wordpress'`);
     expect(n).toBe(0);
+    // The list's subscribers, MailPoet's and Mailchimp's, go too.
+    const [{ subs }] = await db().execute<Row>(sql`select count(*)::int as subs from commerce.marketing_subscribers where store_id = ${fx.storeId}::uuid and source = 'woocommerce'`);
+    expect(subs).toBe(0);
   });
 
   it("stops reading when the owner says so, and on Disconnect", async () => {

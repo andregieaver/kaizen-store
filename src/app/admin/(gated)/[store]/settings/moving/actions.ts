@@ -15,6 +15,8 @@ import { checkAddress, startAddress } from "@/server/shopify-address";
 import { undoCopy, type UndoResult } from "@/server/shopify-undo";
 import { copyMoving, ordersSinceFor } from "@/lib/shopify-copy";
 import { disconnectMover, disconnectWoo, startMoverConnect, startWooConnect, type WooStartProblem } from "@/server/woocommerce-connect";
+import { importListExport, type ListImport } from "@/server/woocommerce-list";
+import { LIST_EXPORT_BYTES } from "@/lib/list-export";
 
 /**
  * Settings → Moving in (D445 step 2): connect the Shopify shop (the state cookie set here, then Shopify's own page), disconnect it, and the
@@ -55,6 +57,18 @@ export async function disconnectMoverAction(storeSlug: string): Promise<{ ok: bo
   const member = await checkPermission(storeSlug, "owner");
   if (!member) return { ok: false };
   const result = await disconnectMover(member);
+  refresh();
+  return result;
+}
+
+/** A Mailchimp or Klaviyo export (D446 step 2b): only its subscribed rows with their moment come over. */
+export async function importListAction(storeSlug: string, _state: ListImport | null, form: FormData): Promise<ListImport | null> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false, problem: "forbidden" };
+  const file = form.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, problem: "empty" };
+  if (file.size > LIST_EXPORT_BYTES) return { ok: false, problem: "too_big" };
+  const result = await importListExport(member, new Uint8Array(await file.arrayBuffer()));
   refresh();
   return result;
 }

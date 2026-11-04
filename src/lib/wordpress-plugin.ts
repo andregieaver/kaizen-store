@@ -1,5 +1,5 @@
 /** The WordPress plugin's download (D169): the file built by `scripts/build-wordpress-plugin.mjs` into `public/downloads/`, and its version. */
-export const WORDPRESS_PLUGIN_VERSION = "1.3.1";
+export const WORDPRESS_PLUGIN_VERSION = "1.3.2";
 export const WORDPRESS_PLUGIN_FILE = "/downloads/kaizen-store-wordpress.zip";
 
 /** A version as it was released: its number and the day it was first offered. */
@@ -11,6 +11,7 @@ export type WordpressPluginRelease = { version: string; released: string };
  * (`content/docs/developers/wordpress/_section.en.md`). `wordpress-plugin.test.ts` holds the list, the files and the table together.
  */
 export const WORDPRESS_PLUGIN_RELEASES: readonly WordpressPluginRelease[] = [
+  { version: "1.3.2", released: "2026-11-04" },
   { version: "1.3.1", released: "2026-11-04" },
   { version: "1.3.0", released: "2026-11-04" },
   { version: "1.2.1", released: "2026-11-04" },

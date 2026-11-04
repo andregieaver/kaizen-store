@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { canonicalQuery, isMoverSecret, moverHeaders, moverSignature, openMoverState, pluginsOf, redirectLinesOf, sealMoverState, seoOf, subscriberLinesOf, termSeoOf } from "./woocommerce-mover";
+import { canonicalQuery, giftCardLinesOf, isMoverSecret, moverHeaders, moverSignature, openMoverState, pluginsOf, redirectLinesOf, sealMoverState, seoOf, subscriberLinesOf, termSeoOf } from "./woocommerce-mover";
 
 const SECRET = "a".repeat(64);
 const MOVER_PHP = path.join(process.cwd(), "wordpress-plugin/kaizen-store/includes/class-kaizen-store-mover.php");
@@ -129,5 +129,32 @@ describe("the plugin's answers, read", () => {
         { email: "ola@example.com", name: "Ola", state: "SUBSCRIBED", level: "SINGLE_OPT_IN", updatedAt: "2024-01-01T00:00:00.000Z" },
       ],
     });
+  });
+});
+
+describe("the gift card plugins' cards (step 2b)", () => {
+  it("takes each card with money left by its plugin and id, never a code: made here on move day with a new one", () => {
+    const read = giftCardLinesOf(
+      {
+        currency: "nok",
+        more: false,
+        cards: [
+          { source: "woocommerce-gift-cards", id: 7, last4: "ab12", balance: "250.00", expires: "2027-01-31", email: "Kari@Example.com" },
+          { source: "pw-gift-cards", id: 8, last4: "CD34", balance: "100.5", expires: "", email: "" },
+          { source: "yith-gift-cards", id: 9, last4: "EF56", balance: "0.00", expires: "", email: "" },
+          { source: "yith-gift-cards", id: 10, last4: "GH78", balance: "50.00", expires: "2020-01-01", email: "" },
+          { source: "../x", id: 11, last4: "IJ90", balance: "50.00", expires: "", email: "" },
+        ],
+      },
+      "2026-11-04",
+    );
+    expect(read).toEqual({
+      more: false,
+      lines: [
+        { id: "woo:woocommerce-gift-cards:7", last4: "AB12", amount: "250.00", currency: "NOK", expiresOn: "2027-01-31", email: "kari@example.com" },
+        { id: "woo:pw-gift-cards:8", last4: "CD34", amount: "100.5", currency: "NOK", expiresOn: null, email: null },
+      ],
+    });
+    expect(giftCardLinesOf({ currency: "", cards: [{ source: "pw-gift-cards", id: 1, balance: "5.00" }] }, "2026-11-04").lines).toEqual([]);
   });
 });

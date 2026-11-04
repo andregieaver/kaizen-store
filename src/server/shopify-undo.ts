@@ -157,7 +157,7 @@ export async function undoCopy(member: Membership): Promise<UndoResult> {
     kept += made.review.length - gone;
   }
   if (made.subscriber.length) {
-    const rows = await db().execute(sql`delete from commerce.marketing_subscribers where store_id = ${storeId}::uuid and source = 'shopify' and id = any(${pgUuidArray(made.subscriber)}::uuid[]) returning id`);
+    const rows = await db().execute(sql`delete from commerce.marketing_subscribers where store_id = ${storeId}::uuid and source in ('shopify', 'woocommerce') and id = any(${pgUuidArray(made.subscriber)}::uuid[]) returning id`);
     removed += rows.length;
     kept += made.subscriber.length - rows.length;
   }
