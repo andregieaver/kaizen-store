@@ -3,7 +3,7 @@
  * Moving to Kaizena Flow (D446 step 2): read-only routes for what WooCommerce's own key cannot reach. Kaizena Flow sends the owner here with
  * a sealed note; the owner presses Allow; this site makes a secret and posts it, server to server, only to the Kaizena Flow address it is set
  * up with. Each later read from Kaizena Flow is signed with that secret and the time, and is refused more than five minutes off. The routes
- * only read: which plugins the shop runs, the redirect plugins' redirects, the SEO plugins' titles and descriptions of products, and
+ * only read: which plugins the shop runs, the redirect plugins' redirects, every Yoast and Rank Math field of products and categories, and
  * MailPoet's subscribers. Stop reading forgets the secret.
  *
  * @package KaizenStore
@@ -135,7 +135,7 @@ class Kaizen_Store_Mover {
 	// ---------------------------------------------------------------------------------------------------------------------------------
 
 	public static function routes() {
-		foreach ( array( 'plugins', 'redirects', 'seo', 'subscribers' ) as $route ) {
+		foreach ( array( 'plugins', 'redirects', 'seo', 'seo_terms', 'subscribers' ) as $route ) {
 			register_rest_route(
 				self::NAMESPACE,
 				'/' . $route,
@@ -291,7 +291,139 @@ class Kaizen_Store_Mover {
 	}
 
 	/**
-	 * The SEO plugin's own title and description of the products asked for (`ids`, at most 100), Yoast's or Rank Math's.
+	 * Yoast's and Rank Math's fields of a product, by our name: post meta keys, Yoast's first.
+	 */
+	const POST_FIELDS = array(
+		'title'            => array( '_yoast_wpseo_title', 'rank_math_title' ),
+		'description'      => array( '_yoast_wpseo_metadesc', 'rank_math_description' ),
+		'focus_keyword'    => array( '_yoast_wpseo_focuskw', 'rank_math_focus_keyword' ),
+		'canonical'        => array( '_yoast_wpseo_canonical', 'rank_math_canonical_url' ),
+		'og_title'         => array( '_yoast_wpseo_opengraph-title', 'rank_math_facebook_title' ),
+		'og_description'   => array( '_yoast_wpseo_opengraph-description', 'rank_math_facebook_description' ),
+		'og_image'         => array( '_yoast_wpseo_opengraph-image', 'rank_math_facebook_image' ),
+		'twitter_title'    => array( '_yoast_wpseo_twitter-title', 'rank_math_twitter_title' ),
+		'twitter_description' => array( '_yoast_wpseo_twitter-description', 'rank_math_twitter_description' ),
+		'twitter_image'    => array( '_yoast_wpseo_twitter-image', 'rank_math_twitter_image' ),
+		'breadcrumb_title' => array( '_yoast_wpseo_bctitle', 'rank_math_breadcrumb_title' ),
+		'primary_category' => array( '_yoast_wpseo_primary_product_cat', 'rank_math_primary_product_cat' ),
+	);
+
+	/**
+	 * The same fields of a category: Yoast keeps them in one option by taxonomy and term, Rank Math as term meta.
+	 */
+	const TERM_FIELDS = array(
+		'title'            => array( 'wpseo_title', 'rank_math_title' ),
+		'description'      => array( 'wpseo_desc', 'rank_math_description' ),
+		'focus_keyword'    => array( 'wpseo_focuskw', 'rank_math_focus_keyword' ),
+		'canonical'        => array( 'wpseo_canonical', 'rank_math_canonical_url' ),
+		'og_title'         => array( 'wpseo_opengraph-title', 'rank_math_facebook_title' ),
+		'og_description'   => array( 'wpseo_opengraph-description', 'rank_math_facebook_description' ),
+		'og_image'         => array( 'wpseo_opengraph-image', 'rank_math_facebook_image' ),
+		'twitter_title'    => array( 'wpseo_twitter-title', 'rank_math_twitter_title' ),
+		'twitter_description' => array( 'wpseo_twitter-description', 'rank_math_twitter_description' ),
+		'twitter_image'    => array( 'wpseo_twitter-image', 'rank_math_twitter_image' ),
+		'breadcrumb_title' => array( 'wpseo_bctitle', 'rank_math_breadcrumb_title' ),
+	);
+
+	/**
+	 * A field's text as kept: a list (Rank Math's robots) joined with commas, anything else as text, tags taken out.
+	 *
+	 * @param mixed $value The kept value.
+	 * @return string
+	 */
+	private static function text_of( $value ) {
+		if ( is_array( $value ) ) {
+			$value = implode( ', ', array_filter( array_map( 'strval', $value ) ) );
+		}
+		return trim( wp_strip_all_tags( (string) $value ) );
+	}
+
+	/**
+	 * A title or description as the plugin itself shows it: its variables (`%%title%%`, `%title%`) replaced by the plugin's own function.
+	 * Without the plugin's function, the text as kept.
+	 *
+	 * @param string $text   The kept text.
+	 * @param string $plugin `yoast` or `rank-math`.
+	 * @param mixed  $object The post or term it belongs to.
+	 * @return string
+	 */
+	private static function shown( $text, $plugin, $object ) {
+		if ( '' === $text || false === strpos( $text, '%' ) ) {
+			return $text;
+		}
+		if ( 'yoast' === $plugin && function_exists( 'wpseo_replace_vars' ) ) {
+			return trim( wp_strip_all_tags( (string) wpseo_replace_vars( $text, $object ) ) );
+		}
+		if ( 'rank-math' === $plugin && class_exists( '\RankMath\Helper' ) && method_exists( '\RankMath\Helper', 'replace_vars' ) ) {
+			return trim( wp_strip_all_tags( (string) \RankMath\Helper::replace_vars( $text, $object ) ) );
+		}
+		return $text;
+	}
+
+	/**
+	 * Robots, as both plugins keep it: Yoast's two flags, or Rank Math's list.
+	 *
+	 * @param callable $get Reads a key.
+	 * @return string
+	 */
+	private static function robots( $get ) {
+		$rank = self::text_of( $get( 'rank_math_robots' ) );
+		if ( '' !== $rank ) {
+			return $rank;
+		}
+		$out = array();
+		$noindex = (string) $get( '_yoast_wpseo_meta-robots-noindex' );
+		if ( '1' === $noindex || 'noindex' === (string) $get( 'wpseo_noindex' ) ) {
+			$out[] = 'noindex';
+		}
+		if ( '1' === (string) $get( '_yoast_wpseo_meta-robots-nofollow' ) ) {
+			$out[] = 'nofollow';
+		}
+		return implode( ', ', $out );
+	}
+
+	/**
+	 * One thing's fields: each by its first key that holds something, with the plugin it came from; the title and description also as shown.
+	 *
+	 * @param array    $map    Our name to the keys.
+	 * @param callable $get    Reads a key.
+	 * @param mixed    $object The post or term, for the plugin's variables.
+	 * @return array
+	 */
+	private static function fields_of( $map, $get, $object ) {
+		$fields = array();
+		$plugin = '';
+		foreach ( $map as $name => $keys ) {
+			foreach ( $keys as $n => $key ) {
+				$value = self::text_of( $get( $key ) );
+				if ( '' !== $value ) {
+					$fields[ $name ] = $value;
+					if ( '' === $plugin ) {
+						$plugin = 0 === $n ? 'yoast' : 'rank-math';
+					}
+					break;
+				}
+			}
+		}
+		$robots = self::robots( $get );
+		if ( '' !== $robots ) {
+			$fields['robots'] = $robots;
+		}
+		if ( isset( $fields['primary_category'] ) && ctype_digit( $fields['primary_category'] ) ) {
+			$term                       = get_term( (int) $fields['primary_category'], 'product_cat' );
+			$fields['primary_category'] = $term && ! is_wp_error( $term ) ? $term->name : '';
+		}
+		return array(
+			'plugin'      => $plugin,
+			'title'       => isset( $fields['title'] ) ? self::shown( $fields['title'], $plugin, $object ) : '',
+			'description' => isset( $fields['description'] ) ? self::shown( $fields['description'], $plugin, $object ) : '',
+			'fields'      => array_filter( $fields, 'strlen' ),
+		);
+	}
+
+	/**
+	 * Yoast's or Rank Math's fields of the products asked for (`ids`, at most 100): every field kept as written, and the title and
+	 * description as the plugin shows them.
 	 *
 	 * @param WP_REST_Request $request The request.
 	 */
@@ -302,19 +434,52 @@ class Kaizen_Store_Mover {
 			if ( 'product' !== get_post_type( $id ) ) {
 				continue;
 			}
-			$title       = (string) get_post_meta( $id, '_yoast_wpseo_title', true );
-			$description = (string) get_post_meta( $id, '_yoast_wpseo_metadesc', true );
-			if ( '' === $title ) {
-				$title = (string) get_post_meta( $id, 'rank_math_title', true );
-			}
-			if ( '' === $description ) {
-				$description = (string) get_post_meta( $id, 'rank_math_description', true );
-			}
-			if ( '' !== $title || '' !== $description ) {
-				$out[] = array( 'id' => $id, 'title' => wp_strip_all_tags( $title ), 'description' => wp_strip_all_tags( $description ) );
+			$get  = function ( $key ) use ( $id ) {
+				return get_post_meta( $id, $key, true );
+			};
+			$seo  = self::fields_of( self::POST_FIELDS, $get, get_post( $id ) );
+			if ( ! empty( $seo['fields'] ) ) {
+				$out[] = array_merge( array( 'id' => $id ), $seo );
 			}
 		}
 		return rest_ensure_response( array( 'seo' => $out ) );
+	}
+
+	/**
+	 * The same of every product category, a page at a time: its name and address, and its fields.
+	 *
+	 * @param WP_REST_Request $request The request.
+	 */
+	public static function read_seo_terms( $request ) {
+		$yoast = get_option( 'wpseo_taxonomy_meta', array() );
+		$yoast = is_array( $yoast ) && isset( $yoast['product_cat'] ) && is_array( $yoast['product_cat'] ) ? $yoast['product_cat'] : array();
+		$terms = get_terms(
+			array(
+				'taxonomy'   => 'product_cat',
+				'hide_empty' => false,
+				'number'     => self::PAGE_SIZE + 1,
+				'offset'     => self::offset( $request ),
+				'orderby'    => 'term_id',
+			)
+		);
+		$terms = is_wp_error( $terms ) ? array() : $terms;
+		$out   = array();
+		foreach ( array_slice( $terms, 0, self::PAGE_SIZE ) as $term ) {
+			$own = isset( $yoast[ $term->term_id ] ) && is_array( $yoast[ $term->term_id ] ) ? $yoast[ $term->term_id ] : array();
+			$get = function ( $key ) use ( $own, $term ) {
+				return isset( $own[ $key ] ) ? $own[ $key ] : get_term_meta( $term->term_id, $key, true );
+			};
+			$seo = self::fields_of( self::TERM_FIELDS, $get, $term );
+			if ( ! empty( $seo['fields'] ) ) {
+				$out[] = array_merge( array( 'name' => $term->name, 'slug' => $term->slug ), $seo );
+			}
+		}
+		return rest_ensure_response(
+			array(
+				'terms' => $out,
+				'more'  => count( $terms ) > self::PAGE_SIZE,
+			)
+		);
 	}
 
 	/**

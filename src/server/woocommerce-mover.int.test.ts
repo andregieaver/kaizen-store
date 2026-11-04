@@ -72,7 +72,13 @@ async function open(raw: string, headers?: Record<string, string>): Promise<Fetc
           more: false,
         });
       case "kaizena-mover/v1/seo":
-        return answer({ seo: query.ids?.split(",").includes("21") ? [{ id: 21, title: "Mover hat | Kari", description: "The warmest hat." }] : [] });
+        return answer({
+          seo: query.ids?.split(",").includes("21")
+            ? [{ id: 21, plugin: "yoast", title: "Mover hat | Kari", description: "The warmest hat.", fields: { title: "%%title%% | %%sitename%%", description: "The warmest hat.", focus_keyword: "wool hat", canonical: "https://mover.example/product/mover-hat/", robots: "noindex", og_title: "Look at this hat", primary_category: "Hats" } }]
+            : [],
+        });
+      case "kaizena-mover/v1/seo_terms":
+        return answer({ terms: query.page === "1" ? [{ name: "Hats", slug: "hats", plugin: "yoast", title: "Warm hats", description: "Every hat we knit.", fields: { title: "Warm hats", description: "Every hat we knit.", focus_keyword: "hats" } }] : [], more: false });
       default:
         return { ok: false, problem: "404", status: 404 };
     }
@@ -88,7 +94,7 @@ async function open(raw: string, headers?: Record<string, string>): Promise<Fetc
     case "wc/v3/settings/products/woocommerce_weight_unit":
       return answer({ value: "kg" });
     case "wc/v3/products":
-      return list(page === 1 ? [{ id: 21, type: "simple", slug: "mover-hat", name: "Mover hat", status: "publish", description: "<p>Warm</p>", price: "199.00", sku: "MOVER-HAT", manage_stock: false, virtual: false, weight: "", tags: [], categories: [], images: [], attributes: [] }] : []);
+      return list(page === 1 ? [{ id: 21, type: "simple", slug: "mover-hat", name: "Mover hat", status: "publish", description: "<p>Warm</p>", price: "199.00", sku: "MOVER-HAT", manage_stock: false, virtual: false, weight: "", tags: [], categories: [{ id: 5, name: "Hats", slug: "hats" }], images: [], attributes: [] }] : []);
     default:
       return list([]);
   }
@@ -163,6 +169,37 @@ describe("moving from WooCommerce, step 2: our plugin reads what WooCommerce's k
       select t.seo_title, t.seo_description from commerce.product_translations t join commerce.products p on p.id = t.product_id
        where p.store_id = ${fx.storeId}::uuid and p.handle = 'mover-hat' and t.seo_title <> ''`);
     expect([words?.seo_title, words?.seo_description]).toEqual(["Mover hat | Kari", "The warmest hat."]);
+    // Every Yoast field as written, in the group the move made (private), on the product and on its category.
+    const [group] = await db().execute<Row>(sql`select id, name, entities, fields from commerce.field_groups where store_id = ${fx.storeId}::uuid and slug = 'seo-from-wordpress'`);
+    expect([group?.name, group?.entities]).toEqual(["SEO from Yoast / Rank Math", ["product", "term"]]);
+    const ids = Object.fromEntries((group!.fields as { id: string; name: string; access: string }[]).map((f) => [f.name, f.id]));
+    expect((group!.fields as { access: string }[]).every((f) => f.access === "private")).toBe(true);
+    const [values] = await db().execute<Row>(sql`
+      select v.values from commerce.field_values v join commerce.products p on p.id = v.entity_id
+       where v.store_id = ${fx.storeId}::uuid and v.entity = 'product' and p.handle = 'mover-hat' and v.locale <> ''`);
+    const kept = values!.values as Record<string, string>;
+    expect([kept[ids.title], kept[ids.focus_keyword], kept[ids.canonical], kept[ids.robots], kept[ids.og_title], kept[ids.primary_category], kept[ids.plugin]]).toEqual([
+      "%%title%% | %%sitename%%",
+      "wool hat",
+      "https://mover.example/product/mover-hat/",
+      "noindex",
+      "Look at this hat",
+      "Hats",
+      "Yoast SEO",
+    ]);
+    // The category's own words through the taxonomy's writer, and its fields beside them.
+    const [hats] = await db().execute<Row>(sql`select id, seo from commerce.terms where store_id = ${fx.storeId}::uuid and kind = 'category' and name = 'Hats'`);
+    expect(Object.values(hats!.seo as Record<string, unknown>)[0]).toEqual({ title: "Warm hats", description: "Every hat we knit." });
+    const [termValues] = await db().execute<Row>(sql`select values from commerce.field_values where store_id = ${fx.storeId}::uuid and entity = 'term' and entity_id = ${hats!.id}::uuid and locale <> ''`);
+    expect((termValues!.values as Record<string, string>)[ids.focus_keyword]).toBe("hats");
+    expect((await copy.copyView(owner))!.state.feeds.seo).toMatchObject({ stage: "done", made: 2, refused: 0 });
+  });
+
+  it("takes the field group back with Undo this copy", async () => {
+    const undo = await import("./shopify-undo");
+    expect(await undo.undoCopy(owner)).toMatchObject({ ok: true });
+    const [{ n }] = await db().execute<Row>(sql`select count(*)::int as n from commerce.field_groups where store_id = ${fx.storeId}::uuid and slug = 'seo-from-wordpress'`);
+    expect(n).toBe(0);
   });
 
   it("stops reading when the owner says so, and on Disconnect", async () => {

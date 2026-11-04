@@ -13491,7 +13491,7 @@ export const shopMoveItems = commerce.table(
   },
   (t) => [
     primaryKey({ name: "shop_move_items_pkey", columns: [t.storeId, t.kind, t.ref] }),
-    check("shop_move_items_kind", sql`${t.kind} in ('job', 'customer', 'product', 'page', 'menu', 'discount', 'subscriber', 'gift_card', 'theme', 'market', 'review')`),
+    check("shop_move_items_kind", sql`${t.kind} in ('job', 'customer', 'product', 'page', 'menu', 'discount', 'subscriber', 'gift_card', 'theme', 'market', 'review', 'field_group')`),
     check("shop_move_items_ref", sql`char_length(${t.ref}) between 1 and 300`),
   ],
 );

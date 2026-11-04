@@ -484,6 +484,24 @@ subscribed status and its date (step 2b).
 
 Migration version: `20261104173022_woocommerce_mover` (`shop_moves.mover_secret`, and `woocommerce` a subscriber's source).
 
+**Every Yoast and Rank Math field, preserved** (4 November 2026, the owner's ask; plugin 1.3.1):
+- The plugin's `seo` (products) and `seo_terms` (product categories) routes read every field of both plugins: the title and description,
+  focus keyword, canonical address, robots (Yoast's two flags or Rank Math's list), the Facebook and X titles, descriptions and pictures,
+  the breadcrumb title and the primary category (by name). Yoast's keys are read first, then Rank Math's.
+- A title or description written with the plugin's variables (`%%title%% %%sep%% %%sitename%%`, `%title%`) is expanded on the site by the
+  plugin's own function (`wpseo_replace_vars()`, `RankMath\Helper::replace_vars()`). That is the text shoppers saw, and it becomes the
+  product's or category's own SEO title and description here. One that cannot be expanded is not taken as the words, but is still kept as
+  written.
+- Every field, as the plugin kept it, goes into a custom field group *SEO from Yoast / Rank Math* (`seo-from-wordpress`, on products and
+  categories, every field private, in the editor's side column), made once by `saveFieldGroup()`. The values are written by
+  `saveFieldData()` (products) and `saveTermFields()` (categories): a copy part of its own, `seo`, after the products and categories are in.
+- A category's own SEO title and description are written by the taxonomy's writer (`updateTerm()`, nothing else of the category changed),
+  only where it has none of its own yet.
+- *Undo this copy* deletes the group with what was written in it (`shop_move_items` kind `field_group`).
+- WooCommerce's default category, *Uncategorized*, no longer comes over as a category.
+
+Migration version: `20261104185119_woocommerce_seo_fields` (`shop_move_items` takes the kind `field_group`).
+
 **Not yet:**
 - Step 2b: gift cards from the gift card plugins (spike W6), and a Mailchimp or Klaviyo export (Decision 2).
 

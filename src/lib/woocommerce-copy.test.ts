@@ -28,7 +28,7 @@ const simple = {
   virtual: false,
   weight: "0.2",
   tags: [{ name: "Winter" }],
-  categories: [{ id: 3, name: "Hats" }],
+  categories: [{ id: 3, name: "Hats" }, { id: 1, name: "Uncategorized", slug: "uncategorized" }],
   images: [{ src: "https://myshop.com/hat.jpg", alt: "A hat" }],
   attributes: [],
 };

@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { canonicalQuery, isMoverSecret, moverHeaders, moverSignature, openMoverState, pluginsOf, redirectLinesOf, sealMoverState, seoOf, subscriberLinesOf } from "./woocommerce-mover";
+import { canonicalQuery, isMoverSecret, moverHeaders, moverSignature, openMoverState, pluginsOf, redirectLinesOf, sealMoverState, seoOf, subscriberLinesOf, termSeoOf } from "./woocommerce-mover";
 
 const SECRET = "a".repeat(64);
 const MOVER_PHP = path.join(process.cwd(), "wordpress-plugin/kaizen-store/includes/class-kaizen-store-mover.php");
@@ -81,9 +81,35 @@ describe("the plugin's answers, read", () => {
     expect(read).toEqual({ lines: [{ id: "woo-redirect-redirection-0", path: "/old-hat/", target: "/product/wool-hat/" }], skipped: 3, more: true });
   });
 
-  it("keeps a product's own SEO words and leaves the plugin's variables", () => {
-    const seo = seoOf({ seo: [{ id: 11, title: "Wool hat | Kari", description: "Warm." }, { id: 12, title: "%%title%% %%sep%% %%sitename%%", description: "" }, { id: "x", title: "y" }] });
-    expect([...seo]).toEqual([[11, { title: "Wool hat | Kari", description: "Warm." }]]);
+  it("keeps every Yoast and Rank Math field as written, and the words shoppers saw as the SEO title and description", () => {
+    const seo = seoOf({
+      seo: [
+        {
+          id: 11,
+          plugin: "yoast",
+          title: "Wool hat - Kari's shop",
+          description: "Warm.",
+          fields: { title: "%%title%% %%sep%% %%sitename%%", description: "Warm.", focus_keyword: "wool hat", canonical: "https://myshop.com/wool-hat/", robots: "noindex", og_title: "Hat!", og_image: "https://myshop.com/hat.jpg", primary_category: "Hats", unknown: "dropped" },
+        },
+        // The plugin's function was not there: the title still holds a variable, so it is not the words; the field keeps it.
+        { id: 12, plugin: "rank-math", title: "%title% | Shop", description: "", fields: { title: "%title% | Shop", twitter_title: "Scarf" } },
+        { id: "x", title: "y" },
+      ],
+    });
+    expect(seo.get(11)).toEqual({
+      title: "Wool hat - Kari's shop",
+      description: "Warm.",
+      fields: { title: "%%title%% %%sep%% %%sitename%%", description: "Warm.", focus_keyword: "wool hat", canonical: "https://myshop.com/wool-hat/", robots: "noindex", og_title: "Hat!", og_image: "https://myshop.com/hat.jpg", primary_category: "Hats", plugin: "Yoast SEO" },
+    });
+    expect(seo.get(12)).toEqual({ title: "", description: "", fields: { title: "%title% | Shop", twitter_title: "Scarf", plugin: "Rank Math" } });
+    expect(seo.size).toBe(2);
+  });
+
+  it("reads the categories' fields the same way", () => {
+    expect(termSeoOf({ terms: [{ name: "Hats", slug: "hats", plugin: "rank-math", title: "All hats", description: "", fields: { title: "All hats", focus_keyword: "hats" } }, { name: "", fields: { title: "x" } }], more: true })).toEqual({
+      terms: [{ name: "Hats", slug: "hats", title: "All hats", description: "", fields: { title: "All hats", focus_keyword: "hats", plugin: "Rank Math" } }],
+      more: true,
+    });
   });
 
   it("takes MailPoet's subscribed subscribers with their day, confirmed when MailPoet says so", () => {

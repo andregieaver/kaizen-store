@@ -11,7 +11,7 @@ import type { CopyFeed, FeedProblem, FeedStage } from "@/lib/shopify-copy";
 import { useAdminText } from "../admin-text";
 
 /** The parts with no Shopify file to use instead: their own screen here is the way. */
-const SET_HERE: readonly CopyFeed[] = ["countries", "shipping", "discounts", "look", "pages", "articles", "menus", "subscribers", "gift_cards"];
+const SET_HERE: readonly CopyFeed[] = ["countries", "shipping", "discounts", "look", "pages", "articles", "menus", "subscribers", "gift_cards", "seo"];
 
 export type CopyRow = {
   feed: CopyFeed;
@@ -186,7 +186,7 @@ export function ShopCopy({
 }
 
 /** The parts a copy may leave out, in the order the page lists them. */
-const CHOOSABLE: readonly CopyFeed[] = ["products", "collections", "customers", "subscribers", "orders", "gift_cards", "discounts", "reviews", "pages", "articles", "menus", "redirects", "countries", "shipping", "look"];
+const CHOOSABLE: readonly CopyFeed[] = ["products", "collections", "customers", "subscribers", "orders", "gift_cards", "discounts", "reviews", "seo", "pages", "articles", "menus", "redirects", "countries", "shipping", "look"];
 const YEARS: readonly (number | null)[] = [null, 5, 2, 1];
 
 /**
