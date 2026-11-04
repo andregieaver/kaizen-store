@@ -11,7 +11,8 @@ signature checks, two Admin API descriptions (contract 1.5) and the docs' Markdo
    so the owner approves *Run add_order_note.* without the order or the note. (Suggested as its own task.)
 2. **The shopping agents' profile address can be dead.** For a store without its own domain, `agentProfileUrl()` gives
    `https://kaizenaflow.com/.well-known/ucp`, which is not served; the profile is at `/s/{store}/.well-known/ucp`. The agents' MCP also
-   answers only the first ten calls of a batch, silently. (Suggested as its own task.)
+   answers only the first ten calls of a batch, silently. *Fixed 4 November: the address is where the profile is served, a store that
+   sells in one country serves it (it answered 404), and a batch over ten is refused whole.*
 3. **The WordPress plugin refuses a cart line over 20 units**, though a quantity rule may allow 9,999 (D323). *Fixed 4 November in plugin
    1.2.1: a line takes up to 9,999.*
 4. **The order page writes times in Oslo time** whatever the store's time zone (`"Europe/Oslo"` in `orders/[orderId]/page.tsx`).

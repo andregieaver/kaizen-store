@@ -10,14 +10,20 @@ import { AgentToolError, agentStore, runAgentTool } from "@/server/shopping-agen
 /**
  * A store's public MCP server for AI shopping agents (D353, UCP over MCP): Streamable HTTP with JSON-RPC 2.0 and plain JSON answers, apart
  * from `/api/mcp`, which stays Kaizen Life's alone. No token, no cookie and nothing of a person: anyone may ask while the store serves shopping
- * agents (`agentStore()`), within a budget per store and per caller (a daily hash of the address, never the address). Nothing is ordered or
- * paid here: `create_cart` answers a link to the store's own checkout.
+ * agents (`agentStore()`), within a budget per store and per caller (a daily hash of the address, never the address); a batch holds 1 to 10
+ * calls and a body at most 50,000 bytes. Nothing is ordered or paid here: `create_cart` answers a link to the store's own checkout.
  */
 export const maxDuration = 30;
 
 const SERVER_INFO = { name: "kaizena-flow-store", version: UCP_VERSION };
 const PROTOCOL_VERSION = "2025-06-18";
 const HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" };
+/**
+ * At most this many calls in one batch, so one request stays within the budget it was counted as, and this many bytes in a body (UTF-8, not
+ * characters). A larger batch, or an empty one, is refused whole, as the owner MCP (`/api/mcp`) refuses it.
+ */
+const BATCH_MAX = 10;
+const BODY_MAX = 50_000;
 
 type RpcRequest = { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown> };
 
@@ -36,13 +42,18 @@ export async function POST(request: Request, { params }: RouteContext<"/api/ucp/
   if (!(await takeBudget(store.id, "agent", callerOf(request)))) {
     return Response.json(failure(null, -32002, "Too many requests. Wait a minute."), { status: 429, headers: { ...HEADERS, "Retry-After": "60" } });
   }
+  const tooLarge = () => Response.json(failure(null, -32600, "Too large."), { status: 413, headers: HEADERS });
+  if (Number(request.headers.get("content-length") ?? 0) > BODY_MAX) return tooLarge();
   let body: unknown;
   try {
     const raw = await request.text();
-    if (raw.length > 50_000) return Response.json(failure(null, -32600, "Too large."), { status: 413, headers: HEADERS });
+    if (Buffer.byteLength(raw) > BODY_MAX) return tooLarge();
     body = JSON.parse(raw);
   } catch {
     return Response.json(failure(null, -32700, "Parse error."), { status: 400, headers: HEADERS });
+  }
+  if (Array.isArray(body) && (body.length === 0 || body.length > BATCH_MAX)) {
+    return Response.json(failure(null, -32600, `A batch holds 1 to ${BATCH_MAX} calls.`), { status: 400, headers: HEADERS });
   }
   const handle = async (rpc: RpcRequest) => {
     switch (rpc.method) {
@@ -67,8 +78,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/ucp/
         return failure(rpc.id, -32601, `Unknown method ${String(rpc.method)}.`);
     }
   };
-  // At most ten calls in one batch, so one request stays within the budget it was counted as.
-  const requests = (Array.isArray(body) ? body.slice(0, 10) : [body]) as RpcRequest[];
+  const requests = (Array.isArray(body) ? body : [body]) as RpcRequest[];
   const answers = await Promise.all(requests.filter((r) => r && typeof r === "object" && r.id !== undefined).map(handle));
   if (answers.length === 0) return new Response(null, { status: 202, headers: HEADERS });
   return Response.json(Array.isArray(body) ? answers : answers[0], { headers: HEADERS });

@@ -4,7 +4,7 @@ import { languageAlternates, platformPath, type PlatformLang } from "@/lib/platf
 import { listIndexedEntries } from "./content-site";
 import { getPlatformLangs } from "./platform-navigation";
 import { refreshTag } from "./refresh";
-import { agentEndpoint, agentProblem, agentProfileUrl } from "./shopping-agents";
+import { agentProblem } from "./shopping-agents";
 import { sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
@@ -16,7 +16,8 @@ import { languageChoices, localizationOf } from "@/lib/localization";
 import { LEGAL_ROLES } from "@/lib/legal-roles";
 import { inView, offeredMarkets, shown, toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import { marketOrigin, marketPath, marketUrl, storeBase, storeDomain, storeSiteUrl } from "@/lib/paths";
+import { marketOrigin, marketPath, marketUrl, storeBase, storeDomain, storeFileUrl, storeSiteUrl } from "@/lib/paths";
+import { agentEndpoint, agentProfileUrl } from "@/lib/shopping-agents";
 import { articlePath, blogOfArticle, blogPath, inBlog } from "@/lib/blogs";
 import { pageExcerpt, parsePageContent } from "@/lib/page-content";
 import { pageImageUrls } from "@/lib/page-images";
@@ -763,7 +764,7 @@ export async function platformLlms(): Promise<string> {
           .filter((store) => store.indexable)
           .map((store) => ({
             title: store.name,
-            url: `${storeSiteUrl(store.slug)}${storeBase(store.slug)}/llms.txt`,
+            url: storeFileUrl(store.slug, "/llms.txt"),
             note: `sells to ${store.markets.map((m) => m.name).join(", ")}`,
           })),
       },
@@ -852,7 +853,7 @@ export async function storeLlms(slug: string): Promise<string | null> {
               `To buy: add products to the cart on the product page, then pay by card at checkout (${home(market.code)}/cart).`,
               // Shopping agents (D353): only while the store serves them.
               ...(agentProblem(store) === null
-                ? [`Shopping agents: the store's UCP profile is ${agentProfileUrl(store.slug)}, its MCP endpoint ${agentEndpoint(store.slug)} (see ${origin}/agents.md).`]
+                ? [`Shopping agents: the store's UCP profile is ${agentProfileUrl(store.slug)}, its MCP endpoint ${agentEndpoint(store.slug)} (see ${storeFileUrl(store.slug, "/agents.md")}).`]
                 : []),
             ],
           },
