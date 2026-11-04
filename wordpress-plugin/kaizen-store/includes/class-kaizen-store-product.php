@@ -389,7 +389,13 @@ class Kaizen_Store_Product {
 		}
 		$html .= '<p class="kaizen-stock" data-kaizen-stock aria-live="polite"></p>';
 		if ( $product['cartable'] ) {
-			$html .= '<div class="kaizen-buy"><label class="kaizen-qty"><span>' . esc_html( $labels['quantity'] ) . '</span><input type="number" min="1" max="20" value="1" inputmode="numeric" data-kaizen-qty></label>';
+			// The first variant's rule (D323) until the script takes over: from its minimum, by its step, up to what the rule and the stock allow.
+			$rule  = isset( $first['quantity_rule'] ) && is_array( $first['quantity_rule'] ) ? $first['quantity_rule'] : array();
+			$min   = isset( $rule['min'] ) ? max( 1, (int) $rule['min'] ) : 1;
+			$step  = isset( $rule['step'] ) ? max( 1, (int) $rule['step'] ) : 1;
+			$most  = isset( $first['stock']['max'] ) ? (int) $first['stock']['max'] : ( isset( $rule['max'] ) ? (int) $rule['max'] : 20 );
+			$most  = max( $min, min( Kaizen_Store_Rest::MAX_QUANTITY, $most ) );
+			$html .= '<div class="kaizen-buy"><label class="kaizen-qty"><span>' . esc_html( $labels['quantity'] ) . '</span><input type="number" min="' . esc_attr( (string) $min ) . '" max="' . esc_attr( (string) $most ) . '" step="' . esc_attr( (string) $step ) . '" value="' . esc_attr( (string) $min ) . '" inputmode="numeric" data-kaizen-qty></label>';
 			$html .= '<button type="button" class="kaizen-add kaizen-add--large" data-kaizen-buy>' . esc_html( $labels['addToCart'] ) . '</button></div>';
 		} else {
 			$html .= '<p><a class="kaizen-button" href="' . esc_url( $product['url'] ) . '">' . esc_html( $labels['viewInStore'] ) . '</a></p>';

@@ -10,6 +10,7 @@ import { marketHome, marketPath } from "./paths";
 import { STATIC_EXTENSIONS } from "./redirect-path";
 import {
   MARKET_ROUTES,
+  STORE_FILES,
   STORE_MATCHER,
   addressDecision,
   addressSegment,
@@ -221,6 +222,40 @@ describe("the proxy's store matcher", () => {
     expect(readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8")).toContain(JSON.stringify(STORE_MATCHER.source));
     expect(STORE_MATCHER.source.startsWith("/(")).toBe(true);
     expect(/\((?!\?)/.exec(STORE_MATCHER.source.slice(2))).toBeNull();
+  });
+});
+
+describe("the store's own files beside its markets", () => {
+  const matched = (pathname: string): boolean => Boolean(match(STORE_MATCHER.source)(pathname));
+  /** The addresses of the routes at the root of a store's pages (`src/app/s/[store]/`), outside its markets and its front door. */
+  function rootRoutes(dir = join(process.cwd(), "src/app/s/[store]"), at = ""): string[] {
+    return readdirSync(dir).flatMap((name) => {
+      const full = join(dir, name);
+      if (!statSync(full).isDirectory()) return /^route\.tsx?$/.test(name) ? [at] : [];
+      if (at === "" && (name.startsWith("[") || name.startsWith("(") || name === "private")) return [];
+      return rootRoutes(full, `${at}/${name}`);
+    });
+  }
+
+  it("are left to their routes by the proxy on both shapes of address, so a store of one country or several serves them as they are", () => {
+    const routes = rootRoutes();
+    expect(routes).toEqual(expect.arrayContaining(["/.well-known/ucp", "/agents.md", "/llms.txt"]));
+    for (const path of routes) {
+      for (const [pathname, host] of [[`/s/kaiza${path}`, null], [path, "kaiza"]] as const) {
+        const request = matched(pathname) ? storePathOf(pathname, host) : null;
+        expect(request, `${pathname} on ${host ?? "Kaizena Flow's host"}`).toBeNull();
+      }
+    }
+    expect(STORE_FILES.every((file) => routes.some((path) => path.split("/")[1] === file))).toBe(true);
+  });
+
+  it("are never moved into a market (D181) nor taken for a store's pages, while the pages beside them still are", () => {
+    expect(storePathOf("/s/kaiza/.well-known/ucp", null)).toBeNull();
+    expect(storePathOf("/.well-known/ucp", "kaiza")).toBeNull();
+    expect(storePathOf("/s/kaiza/agents.md", null)).toBeNull();
+    expect(storePathOf("/agents.md", "kaiza")).toBeNull();
+    expect(addressDecision(storePathOf("/s/kaiza/agents", null)!, single)).toEqual({ rewrite: "/s/kaiza/no/agents" });
+    expect(addressDecision(storePathOf("/well-known", "kaiza")!, single)).toEqual({ rewrite: "/no/well-known" });
   });
 });
 

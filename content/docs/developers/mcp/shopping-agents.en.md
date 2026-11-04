@@ -168,14 +168,16 @@ from it counts in the store's *AI agents* channel in its analytics.
 |---|---|
 | Requests from one caller | 60 a minute |
 | Requests to one store, from every caller together | 1,200 a minute |
-| Calls in one request | The first 10 of a batch are answered |
-| A request's body | 50,000 characters |
+| Calls in one batch | 1 to 10 |
+| A request's body | 50,000 bytes |
 | `search_catalog` | 10 products |
 | `lookup_catalog` | 20 ids |
 | `create_cart` | 20 lines, 99 of each |
 
-One HTTP request counts once, however many calls its batch holds. Past a limit the answer is `429` with `Retry-After: 60` and the
-JSON-RPC error `-32002`. A larger body is answered `413`.
+One HTTP request counts once, however many calls its batch holds. Past the requests a minute, the answer is `429` with
+`Retry-After: 60` and the JSON-RPC error `-32002`. A batch of more than 10 calls, or an empty one, is refused whole: `400` with the
+JSON-RPC error `-32600`, *A batch holds 1 to 10 calls.*, and none of its calls is made. A body over 50,000 bytes is answered `413` with
+`-32600`, *Too large.* The bytes are counted as UTF-8, so a character such as `€` counts as three.
 
 ## Who is calling
 

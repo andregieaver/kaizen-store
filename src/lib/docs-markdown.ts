@@ -235,16 +235,47 @@ function parseBlocks(lines: Line[], ctx: Ctx): Block[] {
 }
 
 /** A paragraph's lines as inline content: a line break where a line ends in two spaces or a backslash, else a space. */
+/** Where a hard break stood in a paragraph's joined text, until the inline parse is done: a character no article types. */
+const HARD_BREAK = "\uE000";
+
+/**
+ * A paragraph's inline content, read as one text: emphasis and links may run over a line's end, as Markdown's do (a soft break is a
+ * space). A hard break is written with a backslash at a line's end. Problems still name the line they are on.
+ */
 function inlineLines(lines: Line[], ctx: Ctx): Inline[] {
-  const out: Inline[] = [];
+  let joined = "";
+  const starts: { at: number; line: number }[] = [];
   lines.forEach((entry, i) => {
     const last = i === lines.length - 1;
-    // The line's own trailing spaces are already gone (`parseMarkdown()`): a hard break is written with a backslash at its end.
+    // The line's own trailing spaces are already gone (`parseMarkdown()`).
     const hard = !last && /\\$/.test(entry.text);
-    const text = (hard ? entry.text.slice(0, -1) : entry.text).trim();
-    out.push(...parseInline(text, entry.line, ctx));
-    if (!last) out.push(hard ? { type: "break" } : { type: "text", value: " " });
+    starts.push({ at: joined.length, line: entry.line });
+    joined += (hard ? entry.text.slice(0, -1) : entry.text).trim();
+    if (!last) joined += hard ? HARD_BREAK : " ";
   });
+  const lineAt = (offset: number) => {
+    let line = starts[0]?.line ?? 0;
+    for (const start of starts) if (start.at <= offset) line = start.line;
+    return line;
+  };
+  return withBreaks(parseInline(joined, starts[0]?.line ?? 0, ctx, false, 0, lineAt));
+}
+
+/** The hard breaks of a joined paragraph, back as breaks, at any depth. */
+function withBreaks(nodes: Inline[]): Inline[] {
+  const out: Inline[] = [];
+  for (const node of nodes) {
+    if (node.type === "text" && node.value.includes(HARD_BREAK)) {
+      node.value.split(HARD_BREAK).forEach((part, i) => {
+        if (i > 0) out.push({ type: "break" });
+        if (part) out.push({ type: "text", value: part });
+      });
+    } else if (node.type === "strong" || node.type === "em" || node.type === "link") {
+      out.push({ ...node, children: withBreaks(node.children) });
+    } else if (node.type === "code") {
+      out.push({ ...node, value: node.value.split(HARD_BREAK).join(" ") });
+    } else out.push(node);
+  }
   return mergeText(out);
 }
 
@@ -368,7 +399,7 @@ const ESCAPABLE = "\\`*_{}[]()#+-.!|<>~";
 /** What HTML would read as markup: a tag (`<b>`, `</div>`, `<img src=x>`), a comment, a declaration or an instruction. `a<b` is text. */
 const HTML_TAG = /^(?:<\/?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?\/?>|<!--|<![A-Za-z[]|<\?)/;
 
-function parseInline(text: string, line: number, ctx: Ctx, inLink = false): Inline[] {
+function parseInline(text: string, at: number, ctx: Ctx, inLink = false, base = 0, lineAt?: (offset: number) => number): Inline[] {
   const out: Inline[] = [];
   let buffer = "";
   const flush = () => {
@@ -377,6 +408,8 @@ function parseInline(text: string, line: number, ctx: Ctx, inLink = false): Inli
   };
   let html = false;
   let i = 0;
+  // The line a problem or a link is on: the paragraph's own line, where its text was joined from several.
+  const lineHere = () => (lineAt ? lineAt(base + i) : at);
   while (i < text.length) {
     const char = text[i];
     if (char === "\\" && i + 1 < text.length && ESCAPABLE.includes(text[i + 1])) {
@@ -403,7 +436,7 @@ function parseInline(text: string, line: number, ctx: Ctx, inLink = false): Inli
     if (char === "!" && text[i + 1] === "[") {
       const image = readLink(text, i + 1);
       if (image) {
-        ctx.problems.push({ line, message: "A picture stands on a line of its own: ![What it shows](/kaizen/docs/…)." });
+        ctx.problems.push({ line: lineHere(), message: "A picture stands on a line of its own: ![What it shows](/kaizen/docs/…)." });
         buffer += image.label;
         i = image.end;
         continue;
@@ -414,12 +447,12 @@ function parseInline(text: string, line: number, ctx: Ctx, inLink = false): Inli
       if (link) {
         flush();
         const href = classifyHref(link.href);
-        const children = parseInline(link.label, line, ctx, true);
+        const children = parseInline(link.label, at, ctx, true, base + i + 1, lineAt);
         if (href) {
           out.push({ type: "link", href, children });
-          ctx.links.push({ href, line });
+          ctx.links.push({ href, line: lineHere() });
         } else {
-          ctx.problems.push({ line, message: `The link ${JSON.stringify(link.href)} is refused: a link goes to /docs/…, #a-heading, a page of Kaizena Flow's site (/…) or an https, http or mailto address.` });
+          ctx.problems.push({ line: lineHere(), message: `The link ${JSON.stringify(link.href)} is refused: a link goes to /docs/…, #a-heading, a page of Kaizena Flow's site (/…) or an https, http or mailto address.` });
           out.push(...children);
         }
         i = link.end;
@@ -433,21 +466,21 @@ function parseInline(text: string, line: number, ctx: Ctx, inLink = false): Inli
         if (href) {
           flush();
           out.push({ type: "link", href, children: [{ type: "text", value: auto[1].replace(/^mailto:/i, "") }] });
-          ctx.links.push({ href, line });
+          ctx.links.push({ href, line: lineHere() });
           i += auto[0].length;
           continue;
         }
       }
       if (!html && HTML_TAG.test(text.slice(i))) {
         html = true;
-        ctx.problems.push({ line, message: "HTML is not allowed in the docs: it is shown as the characters typed. Write it in `code` if it is an example." });
+        ctx.problems.push({ line: lineHere(), message: "HTML is not allowed in the docs: it is shown as the characters typed. Write it in `code` if it is an example." });
       }
     }
     if (char === "*" || char === "_") {
       const emphasis = readEmphasis(text, i);
       if (emphasis) {
         flush();
-        out.push({ type: emphasis.strong ? "strong" : "em", children: parseInline(emphasis.inner, line, ctx, inLink) });
+        out.push({ type: emphasis.strong ? "strong" : "em", children: parseInline(emphasis.inner, at, ctx, inLink, base + i + (emphasis.strong ? 2 : 1), lineAt) });
         i = emphasis.end;
         continue;
       }

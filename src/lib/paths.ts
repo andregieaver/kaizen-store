@@ -211,6 +211,15 @@ export function storeSiteUrl(storeSlug: string): string {
   return storeOrigin(storeSlug) ?? siteUrl();
 }
 
+/**
+ * The full address of one of the store's own files at the root of its pages (`/llms.txt`, `/agents.md`, `/.well-known/ucp`), where it is
+ * served: at the root of the store's host once it has one (its primary domain, else `{slug}.{store domain}`), under `/s/{slug}` on Kaizen's
+ * until then. Never `storeSiteUrl()` and the path alone: without a host of its own that is Kaizen's root, where no store's file is.
+ */
+export function storeFileUrl(storeSlug: string, path: string): string {
+  return `${storeSiteUrl(storeSlug)}${storeBase(storeSlug)}${path}`;
+}
+
 /** The format `commerce.stores.slug` enforces: 3–40 characters. */
 const STORE_SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 

@@ -4,7 +4,7 @@ Tags: ecommerce, products, shortcode, carousel, grid
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -55,6 +55,9 @@ A cart, yes: a slide-out cart on your site. Not a checkout: pressing Checkout ma
 The connection and saved lists are removed. The views themselves are your content and stay in the database.
 
 == Changelog ==
+
+= 1.2.1 =
+* A product sold in larger amounts (24 at a time, say, up to 9,999 on a line) can be priced and taken to checkout: the site's cart no longer refuses a line of more than 20. The product page's quantity field starts at the first variant's own minimum and step before the script runs.
 
 = 1.2.0 =
 * Products sold so many at a time (a minimum, a maximum or in multiples): the quantity field and the cart's steps follow the store's rule, and the cart says it.

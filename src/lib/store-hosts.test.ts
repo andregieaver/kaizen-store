@@ -1,9 +1,14 @@
+// @ts-expect-error Next bundles path-to-regexp, the router's own matcher, without types.
+import { match } from "next/dist/compiled/path-to-regexp";
 import { getPathMatch } from "next/dist/shared/lib/router/utils/path-match";
 import { matchHas, prepareDestination } from "next/dist/shared/lib/router/utils/prepare-destination";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { marketPath, storeBase, storeDomain, storeHome, storeHref, storeOrigin, storeSiteUrl } from "./paths";
+import { marketPath, storeBase, storeDomain, storeFileUrl, storeHome, storeHosts, storeHref, storeOrigin, storeSiteUrl } from "./paths";
 import { storeOfHost } from "./ab-routing";
+import { agentProfileUrl } from "./shopping-agents";
+import { siteUrl } from "./site";
+import { STORE_MATCHER, storePathOf } from "./store-address";
 import { storeHostRoutes, type HostRedirect, type HostRewrite } from "./store-hosts";
 import { platformHref, themeHostRoutes, themeStoreAlternates, themeStorePath, themeStoreUrl, themesHost } from "./theme-host";
 
@@ -138,6 +143,40 @@ describe("stores on their own hosts (P7)", () => {
     expect(storeOrigin("kari")).toBe("http://butikk.example.no:3000");
     const local = storeHostRoutes("localhost:3000", "http://localhost:3000", hosts);
     expect(route(local, "kari.localhost:3000", "/no")).toEqual({ redirect: "http://butikk.example.no:3000/no" });
+  });
+});
+
+describe("a store's own files where they are served (D353)", () => {
+  /**
+   * The route an address reaches in this deployment: the host routing, after the proxy, which sees the path as asked with the host's store
+   * (`src/proxy.ts`) and would serve a page's address from another path (D181). Throws where the address is moved or taken for a page.
+   */
+  function servedAt(address: string): string {
+    const url = new URL(address);
+    const routed = route(storeHostRoutes(storeDomain(), siteUrl(), storeHosts()), url.host, url.pathname);
+    if ("redirect" in routed) throw new Error(`${address} moves to ${routed.redirect}`);
+    if (matched(url.pathname) && storePathOf(url.pathname, storeOfHost(url.host, storeDomain(), storeHosts()))) throw new Error(`${address} is taken for a page`);
+    return "rewrite" in routed && routed.rewrite ? routed.rewrite : url.pathname;
+  }
+  const matched = (pathname: string): boolean => Boolean(match(STORE_MATCHER.source)(pathname));
+  const files = (slug: string) => [agentProfileUrl(slug), storeFileUrl(slug, "/agents.md"), storeFileUrl(slug, "/llms.txt")];
+
+  it("advertises the profile under /s/{store} on Kaizena Flow's host while stores have no host of their own", () => {
+    expect(agentProfileUrl("demo")).toBe("http://localhost:3000/s/demo/.well-known/ucp");
+    expect(files("demo").map(servedAt)).toEqual(["/s/demo/.well-known/ucp", "/s/demo/agents.md", "/s/demo/llms.txt"]);
+  });
+
+  it("advertises it at the root of the store's host on the store domain", () => {
+    vi.stubEnv("NEXT_PUBLIC_STORE_DOMAIN", "kaizenstore.site");
+    expect(agentProfileUrl("demo")).toBe("https://demo.kaizenstore.site/.well-known/ucp");
+    expect(files("demo").map(servedAt)).toEqual(["/s/demo/.well-known/ucp", "/s/demo/agents.md", "/s/demo/llms.txt"]);
+  });
+
+  it("advertises it at the root of the store's own domain (P8)", () => {
+    vi.stubEnv("NEXT_PUBLIC_STORE_DOMAIN", "kaizenstore.site");
+    vi.stubEnv("NEXT_PUBLIC_STORE_HOSTS", JSON.stringify({ kari: { primary: "butikk.example.no", hosts: ["butikk.example.no", "example.no"] } }));
+    expect(agentProfileUrl("kari")).toBe("https://butikk.example.no/.well-known/ucp");
+    expect(files("kari").map(servedAt)).toEqual(["/s/kari/.well-known/ucp", "/s/kari/agents.md", "/s/kari/llms.txt"]);
   });
 });
 

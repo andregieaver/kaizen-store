@@ -738,6 +738,24 @@ The owner chose the recommended way for both (Decisions 1 and 2, section 13).
   the gift cards in Shopify.
 - A spend in the minutes between the last read and the card being made is the one gap; the daily look closes it.
 
+### Step 9a: *Undo this copy* (built 4 November 2026)
+
+The owner chose *remove or switch off*. On Moving in, Lisa's side, behind a confirmation that says what goes (`ShopUndo`,
+`src/server/shopify-undo.ts`):
+
+- **What the move made is written down as it is made**, in `commerce.shop_move_items` (migration `20261104120007_shop_move_items`): each import job it
+  ran (its own items name the orders and redirects it created), the products and customers that were not here before an import was
+  applied (products by handle, customers only as the md5 of their address, never the address), and the ids of the pages, posts, menus,
+  discount codes, subscribers, gift cards and theme it made and the countries it added. A copy made before step 9 was not written down, so
+  it is undone only for what it has rows for.
+- **Undo takes exactly that back**, each through its own writer: copied orders deleted with their lines, tags and history
+  (`commerce.delete_copied_order()`, migration `20261104120441_delete_copied_orders`: `forbid_change()` lets one copied order's history go while that
+  function says so, and nothing else; a real order is never deleted), subscribers and customers removed (directly, not through erasure,
+  which would email them: a customer something else now refers to stays and is counted), products archived, pages and posts deleted, menus
+  and codes deleted, redirects deleted, gift cards switched off (never deleted) and no longer tied to anyone, the theme removed, and the
+  countries it added taken away. Shipping rates it wrote stay. Nobody is emailed. The copy and the move start over; the connection stays.
+- **Only before the first real order** (an order that is not a copy); after it, the page says Undo is gone, and why.
+
 Left for later: the logo and favicon, metafields, reviews (they live in review apps, not in
 Shopify, spike S6); a catch-up copy on move day.
 

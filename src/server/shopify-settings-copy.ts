@@ -40,6 +40,7 @@ import { shopifyConnection, shopifyGraphql, type ShopifyDeps } from "./shopify-c
 import { currentStore, storeTag } from "./stores";
 import { listInstalls } from "./theme-installs";
 import { addMovedSubscribers } from "./marketing-subscribers";
+import { recordMoveItems } from "./shopify-undo";
 import { readShopifyGiftCards } from "./shopify-gift-cards";
 import { col, typedRows } from "./typed-rows";
 
@@ -136,7 +137,10 @@ export async function applySettingsFeed(member: Membership, feed: CopyFeed, f: F
     // Countries are only added: one the store sells to and Shopify does not stays. With Several countries off, none is added.
     if (missing.length > 0 && featureOn(member.store, "countries")) {
       const saved = await setMarkets(member, [...sold, ...missing]);
-      if (saved.ok) made += missing.length;
+      if (saved.ok) {
+        made += missing.length;
+        await recordMoveItems(member.store.id, "market", missing);
+      }
       else refused += missing.length;
       refreshTag(storeTag(member.store.slug));
     } else refused += missing.length;
@@ -207,6 +211,7 @@ export async function applySettingsFeed(member: Membership, feed: CopyFeed, f: F
         : null;
       if (saved?.ok) {
         made += 1;
+        if (saved.id) await recordMoveItems(member.store.id, "discount", [saved.id]);
         codes.add(normalizeCode(line.code));
       } else {
         refused += 1;
@@ -229,6 +234,7 @@ export async function applySettingsFeed(member: Membership, feed: CopyFeed, f: F
       return sub ? [sub] : [];
     });
     const result = await addMovedSubscribers(member.store.id, member.store.localization.locales[0] ?? "en", batch);
+    await recordMoveItems(member.store.id, "subscriber", result.ids);
     made += result.added + result.already;
     return done(cursor + SUBSCRIBER_BATCH);
   }
@@ -254,7 +260,8 @@ export async function applySettingsFeed(member: Membership, feed: CopyFeed, f: F
     if (!input.success) refused += 1;
     else {
       try {
-        await designLookTool({ account: member.account, store: member.store, invalidate: refreshTag }, input.data);
+        const designed = await designLookTool({ account: member.account, store: member.store, invalidate: refreshTag }, input.data);
+        await recordMoveItems(member.store.id, "theme", [designed.install]);
         made += 1;
       } catch (error) {
         if (!(error instanceof OwnerToolError)) throw error;

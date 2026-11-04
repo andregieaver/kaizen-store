@@ -176,10 +176,13 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   finds nothing (open, real, shop on, not private, AI assistants allowed, `stores.shopping_agents` on, written only by
   `src/server/shopping-agent-settings.ts`); its tools answer only from the storefront's own reads (`getProduct()`, `getVariantStock()`,
   `quoteCart()`) and a cart only through `createHandoffCart()` with `source = 'agent'`; nothing is ordered or paid there, no cookie is set and
-  nothing of a person is kept; every call is counted by `takeBudget()` (`agent`). A new tool is an entry of `AGENT_TOOLS` with its capability
-  in `TOOL_CAPABILITY` and a case in `runAgentTool()`. An AI channel's feed (`AGENT_FEED_CHANNELS`) is served only while its own switch in
-  `feed_settings.channels` is on; a new one is read from its programme's spec first. The `ai_agent` channel is a visit from an AI host or tag,
-  or an order from an agent's cart.
+  nothing of a person is kept; every call is counted by `takeBudget()` (`agent`), a batch holds 1 to 10 calls (more or none is refused whole
+  with `-32600`, as `/api/mcp` refuses it) and a body at most 50,000 bytes. The profile's address is `agentProfileUrl()`, a store file's
+  address `storeFileUrl()` (its host, or `/s/{store}` on Kaizena Flow's), never `storeSiteUrl()` and a path; a new file at the store's root
+  that the proxy's matcher lets through goes in `STORE_FILES`, or the proxy takes it for a page (D181). A new tool is an entry of
+  `AGENT_TOOLS` with its capability in `TOOL_CAPABILITY` and a case in `runAgentTool()`. An AI channel's feed (`AGENT_FEED_CHANNELS`) is
+  served only while its own switch in `feed_settings.channels` is on; a new one is read from its programme's spec first. The `ai_agent`
+  channel is a visit from an AI host or tag, or an order from an agent's cart.
 
 ## The Dream Factory (D409, `docs/dream-factory.md`, `src/lib/dream-factory.ts`, `src/server/dream-factory.ts`)
 

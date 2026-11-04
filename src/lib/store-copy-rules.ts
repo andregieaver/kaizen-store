@@ -284,6 +284,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   not_found_ignored: never("Addresses the original's staff hid from the 404 report (D168)."),
   old_shops: never("The addresses of the shop the original moved from (D445); a copy has not moved from it."),
   shop_moves: never("The original's connection to the shop it moves from (D445): a token, never copied."),
+  shop_move_items: never("What the original's move from Shopify made (D445 step 9), for its own undo: never the copy's."),
   page_replications: never("Jobs that copied another website's page for the original store; their drafts are pages and copied as pages."),
   credit_notes: never("Accounting documents with gap-free numbers of the original."),
   document_deliveries: never("Which emails carried which of the original's documents (D159)."),

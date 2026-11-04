@@ -254,6 +254,17 @@ export const movingNb: MovingMessages = {
       saving: "Lagrer …",
     },
   },
+  undo: {
+    button: "Angre denne kopien",
+    ask: { one: "Dette tar tilbake {n} ting kopien laget her: kopierte ordrer, sider, menyer, koder, omdirigeringer, abonnenter og kunder fjernes, produkter arkiveres, gavekort slås av. Det du har laget selv, blir værende, og ingen får e-post. Angre?", many: "Dette tar tilbake de {n} tingene kopien laget her: kopierte ordrer, sider, menyer, koder, omdirigeringer, abonnenter og kunder fjernes, produkter arkiveres, gavekort slås av. Det du har laget selv, blir værende, og ingen får e-post. Angre?" },
+    confirm: "Angre",
+    undoing: "Angrer …",
+    cancel: "Avbryt",
+    done: { one: "Angret: {n} ting tatt tilbake.", many: "Angret: {n} ting tatt tilbake." },
+    kept: { one: "{n} kunne ikke fjernes, fordi noe annet bruker den.", many: "{n} kunne ikke fjernes, fordi noe annet bruker dem." },
+    gone: "Angre tilbys ikke lenger: butikken har fått sin første ekte ordre.",
+    failed: "Det gikk ikke. Prøv igjen.",
+  },
   files: {
     products: "Importer produkter",
     customers: "Importer kunder",

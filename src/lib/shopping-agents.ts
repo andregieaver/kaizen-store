@@ -6,7 +6,22 @@
  * Prices are UCP's: integer minor units with the currency, VAT included as the storefront charges them. Nothing here is paid or ordered.
  */
 
+import { storeFileUrl } from "./paths";
+import { siteUrl } from "./site";
+
 export const UCP_VERSION = "2026-08-25";
+
+/** The business profile's path among the store's own files (`src/app/s/[store]/.well-known/ucp`). */
+export const UCP_PROFILE_PATH = "/.well-known/ucp";
+
+/** The endpoint's address, on Kaizena Flow's own host for every store. */
+export const agentEndpoint = (slug: string) => `${siteUrl()}/api/ucp/${slug}/mcp`;
+
+/**
+ * The profile's address, where it is served: `/.well-known/ucp` on the store's own host (its primary domain, else `{slug}.{store domain}`),
+ * `/s/{slug}/.well-known/ucp` on Kaizena Flow's until it has one (`storeFileUrl()`).
+ */
+export const agentProfileUrl = (slug: string) => storeFileUrl(slug, UCP_PROFILE_PATH);
 
 const UCP_SPEC = `https://ucp.dev/${UCP_VERSION}/specification/overview`;
 const UCP_SCHEMA = (path: string) => `https://ucp.dev/${UCP_VERSION}/${path}`;
