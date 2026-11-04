@@ -42,9 +42,9 @@ Kaizena Flow har ingen måte å belønne en omtale på, og produktsiden sier at 
 
 1. Åpne **Produkter** i menyen og velg [Omtaler](/admin/{store}/reviews). Omtaler som står under **Venter på kontroll**, kommer først.
 2. Les hver av dem, med stjernene, ordene, produktet og bestillingen den kom fra.
-3. Trykk **Publiser** for å vise den, eller **Skjul** for å holde den borte fra nettstedet. For å skjule en må du velge **Hvorfor den
-   ikke vises**: *Handler ikke om produktet*, *Krenkende eller hatefull*, *Inneholder personopplysninger*, *Spam eller reklame* eller
-   *En annen grunn*.
+3. Trykk **Publiser** for å vise den, eller **Skjul** for å holde den borte fra nettstedet. For å skjule en må du velge
+   **Hvorfor den ikke vises**: *Handler ikke om produktet*, *Krenkende eller hatefull*, *Inneholder personopplysninger*,
+   *Spam eller reklame* eller *En annen grunn*.
 
 > [!IMPORTANT]
 > Det er ikke lov å skjule en omtale fordi den er negativ. Publiser de gode og de dårlige likt, og svar heller på en klage.
@@ -90,8 +90,8 @@ Slik henter du inn omtaler fra en annen tjeneste, som Shopifys Product Reviews, 
 1. På siden Omtaler, under **Import og eksport**, trykker du **Importer omtaler**.
 2. Velg en CSV-fil med kolonnene `product_handle`, `rating`, `author` og `date`, og `title`, `body` og `source` hvis du har dem: høyst
    10 000 omtaler per fil. Eksporter fra Shopifys Product Reviews og Judge.me leses som de er.
-3. Fyll inn **Hvor de ble skrevet**, for rader uten egen kilde, og **Når de vises**: **Vis dem med en gang** eller **La meg kontrollere
-   hver enkelt først**.
+3. Fyll inn **Hvor de ble skrevet**, for rader uten egen kilde, og **Når de vises**: **Vis dem med en gang** eller
+   **La meg kontrollere hver enkelt først**.
 4. Kryss av for **Bare kontroller filen, importer ingenting** og trykk **Kontroller filen** først. Fjern så haken og trykk **Importer**.
 
 Hver rad finner produktet ditt ut fra handlen. Importerte omtaler vises med *Hentet fra …* og merkes aldri som bekreftet kjøp. En fil

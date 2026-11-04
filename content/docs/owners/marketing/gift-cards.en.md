@@ -15,8 +15,8 @@ sources: [D178, D300, D381]
 
 ## Switch gift cards on
 
-Gift cards are off until you switch them on: open **Settings**, choose [Features](/admin/{store}/settings/features) and switch on **Gift
-cards**.
+Gift cards are off until you switch them on: open **Settings**, choose [Features](/admin/{store}/settings/features) and switch on
+**Gift cards**.
 
 If you switch them off later, gift cards can no longer be bought. Cards already sold or issued can still be spent and refunded, since
 the money is the customer's, and the Gift cards page stays.

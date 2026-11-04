@@ -24,7 +24,7 @@ vil ha e-postene dine. De melder seg på på tre måter:
 
 En adresse som noen skriver inn, kommer med når eieren av den har bekreftet den fra en lenke vi sender på e-post. I et nyhetsbrevskjema
 heter dette **Bekreft adressen først (dobbel bekreftelse)**, og det er på med mindre du slår det av; la det stå på, siden det beviser
-samtykket. En innlogget kunde med bekreftet e-postadresse kommer med med en gang. De ansatte melder aldri på noen.
+samtykket. En innlogget kunde med bekreftet e-postadresse står på listen med en gang. De ansatte melder aldri på noen.
 
 Hver markedsførings-e-post har en lenke for å melde seg av, og avmeldingsknappen i e-postprogrammet virker også. En adresse som ikke
 finnes, eller der eieren merker en e-post som søppelpost, går av listen av seg selv.
@@ -39,8 +39,8 @@ Et nyhetsbrev er en e-post med nyheter eller tilbud, skrevet én gang og sendt t
 1. Åpne **Markedsføring** i menyen og velg [Nyhetsbrev](/admin/{store}/broadcasts). Trykk **Nytt nyhetsbrev**.
 2. Under **Start fra** velger du **Tomt** eller en av malene: **Nyheter**, **Nye produkter**, **Et tilbud**, **Sesongen** eller
    **Takk**.
-3. Gi det et **Navn**, som bare du ser, og velg **Hvem som får det**: **Alle som vil ha e-postene dine**, eller **Personene i et segment
-   som vil ha e-postene dine**.
+3. Gi det et **Navn**, som bare du ser, og velg **Hvem som får det**: **Alle som vil ha e-postene dine**, eller
+   **Personene i et segment som vil ha e-postene dine**.
 4. For hvert av språkene dine skriver du **Emne**, en valgfri **Forhåndsvisningslinje** og hva det sier, satt sammen av deler:
    **Overskrift**, **Tekst**, **Knapp**, **Bilde**, **Linje**, **Produkt** og **Kampanje**.
 5. Trykk **Lagre utkast**, så **Send en test til deg selv**, og les den.
@@ -54,16 +54,16 @@ kampanjen. Begge fylles inn når e-posten sendes, og utelates der produktet ikke
 
 > [!TIP]
 > **Skriv med KI** foreslår ordene ut fra noen få av dine egne, og kan velge produkter og kampanjer som pågår. KI-en skriver aldri
-> priser eller lager, og ingenting sendes før du sender det. Det krever at KI er satt opp for butikken ([KI-tekster og
-> bilder](/docs/owners/ai/ai-texts-and-pictures)).
+> priser eller lager, og ingenting sendes før du sender det. Det krever at KI er satt opp for butikken
+> ([KI-tekster og bilder](/docs/owners/ai/ai-texts-and-pictures)).
 
 ### Etter at du har sendt
 
 Mens et nyhetsbrev sendes, stopper **Stopp sendingen** resten. Et planlagt nyhetsbrev kan kalles tilbake med **Ikke send det da**.
 
-Når det er sendt, viser siden hvor mange det ble **Sendt til**, hvor mange som ble **Levert**, **Avvist** eller **Merket som
-søppelpost**, hvor mange som har **Meldt av siden**, og **Trykk på lenkene**. Åpninger spores ikke. Adressene fjernes 90 dager etter
-sendingen; tallene blir stående.
+Når det er sendt, viser siden hvor mange det ble **Sendt til**, hvor mange som ble **Levert**, **Avvist** eller
+**Merket som søppelpost**, hvor mange som har **Meldt av siden**, og **Trykk på lenkene**. Åpninger spores ikke. Adressene fjernes 90
+dager etter sendingen; tallene blir stående.
 
 Et nyhetsbrev du liker, kan du ta vare på med **Lagre som mal**. Da ligger det under **Malene dine** når du starter et nytt.
 
@@ -75,13 +75,13 @@ Et segment er en gruppe av kundene og abonnentene dine etter hva de har gjort. D
 alltid oppdatert.
 
 1. Åpne **Markedsføring** og velg [Segmenter](/admin/{store}/segments). Trykk **Nytt segment**.
-2. **Start fra** et ferdig segment, som *De beste kundene dine*, *Ingen bestilling på et halvt år* eller *Abonnerer, men har aldri
-   kjøpt*, eller fra alle.
-3. **Legg til et vilkår**: **Samtykke til e-post**, **Antall bestillinger**, **Beløp brukt**, **Siste bestilling**, **Første
-   bestilling**, **Kundetype**, **Land**, **Språk**, **Kundegruppe**, **Firmakonto**, **Konto** eller **Stikkord**. Velg om folk må
-   passe med alle vilkårene eller minst ett av dem.
-4. Se tallet endre seg mens du redigerer: hvor mange som er med, og hvor mange av dem som vil ha e-postene dine. Trykk så **Lagre
-   segment**.
+2. **Start fra** et ferdig segment, som *De beste kundene dine*, *Ingen bestilling på et halvt år* eller
+   *Abonnerer, men har aldri kjøpt*, eller fra alle.
+3. **Legg til et vilkår**: **Samtykke til e-post**, **Antall bestillinger**, **Beløp brukt**, **Siste bestilling**,
+   **Første bestilling**, **Kundetype**, **Land**, **Språk**, **Kundegruppe**, **Firmakonto**, **Konto** eller **Stikkord**. Velg om
+   folk må passe med alle vilkårene eller minst ett av dem.
+4. Se tallet endre seg mens du redigerer: hvor mange som er med, og hvor mange av dem som vil ha e-postene dine. Trykk så
+   **Lagre segment**.
 
 Send et nyhetsbrev til et segment, eller gi en [kode eller kampanje](/docs/owners/marketing/discount-codes-and-campaigns) bare til dem i
 det. Stikkord gir du folk på kundesiden deres. En butikk kan ha opptil 100 segmenter.

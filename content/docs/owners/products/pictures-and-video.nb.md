@@ -44,7 +44,7 @@ Trykk **Legg til en video**, og gjør ett av to:
 - **Eller lim inn en adresse fra YouTube eller Vimeo**, velg **Bildet som vises før den spilles av**, og trykk **Legg til videoen**.
   Ingenting hentes fra YouTube eller Vimeo.
 
-På produktsiden starter en video aldri av seg selv: kunden trykker på avspilling, og først da lastes den fra YouTube eller Vimeo.
+På produktsiden starter en video aldri av seg selv: kunden trykker på avspilling. En video fra YouTube eller Vimeo lastes først da.
 Skriv noen ord under **Beskriv videoen**.
 
 ## Legg til en 3D-modell
@@ -109,5 +109,5 @@ lenke.
 ## Flere valg
 
 - **Lag et bilde med KI.** **Lag med KI**, under **Bilder og videoer**, lager et nytt bilde ut fra ordene dine. Se
-  [KI-tekster og bilder](/docs/owners/ai/ai-texts-and-pictures).
+  [Tekster og bilder laget med KI](/docs/owners/ai/ai-texts-and-pictures).
 - **Produkter er en del av nettbutikken**, som alle nye butikker starter med. Den slås av og på under Innstillinger, Funksjoner.

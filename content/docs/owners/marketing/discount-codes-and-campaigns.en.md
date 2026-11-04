@@ -46,8 +46,8 @@ You can set any of these, or none:
 - **Uses in all (optional)**: every order that got the code counts unless it is cancelled, so a cancelled checkout gives its use back.
 - **Once per customer**: shoppers must sign in to My account to use it, so the store knows who they are.
 
-A percentage code on a subscription lowers only the first payment, unless you tick **Keep the discount on every renewal of a
-subscription**. A free shipping code on a subscription covers its first delivery.
+A percentage code on a subscription lowers only the first payment, unless you tick
+**Keep the discount on every renewal of a subscription**. A free shipping code on a subscription covers its first delivery.
 
 ### Who can use it
 
@@ -109,8 +109,9 @@ The cart tells shoppers how far they are from the next step or from an amount, a
 
 ## Codes and campaigns together
 
-What comes off, in order: campaigns, a customer group's discount, a friend's welcome discount from the [referral
-program](/docs/owners/marketing/loyalty-and-referrals), codes, and bonus credits last. Each counts what the one before it left.
+What comes off, in order: campaigns, a customer group's discount, a friend's welcome discount from the
+[referral program](/docs/owners/marketing/loyalty-and-referrals), codes, and bonus credits last. Each counts what the one before it
+left.
 
 **Several codes.** A shopper can put up to five codes on one order. Under **Using it with other codes**, tick the kinds of code this one
 may be used with: **Codes on chosen products, categories or tags**, **Codes on everything** or **Free shipping codes**. Two codes are
@@ -122,8 +123,8 @@ at first: the code comes off what the campaign leaves. Turn either off, and a ba
 shopper more, and the cart says which was left out.
 
 > [!NOTE]
-> Nothing comes off a gift card, and a gift card in the basket does not count towards a minimum or an amount. See [Gift
-> cards](/docs/owners/marketing/gift-cards).
+> Nothing comes off a gift card, and a gift card in the basket does not count towards a minimum or an amount. See
+> [Gift cards](/docs/owners/marketing/gift-cards).
 
 ## Change, switch off or delete
 

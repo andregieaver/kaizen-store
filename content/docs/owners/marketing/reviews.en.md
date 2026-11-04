@@ -15,8 +15,8 @@ sources: [D178, D301]
 
 ## Switch reviews on
 
-Reviews are off until you switch them on: open **Settings**, choose [Features](/admin/{store}/settings/features) and switch on **Product
-reviews**.
+Reviews are off until you switch them on: open **Settings**, choose [Features](/admin/{store}/settings/features) and switch on
+**Product reviews**.
 
 If you switch them off later, reviews stop showing and customers cannot write new ones. Every review is kept for when you switch them on
 again.
@@ -43,8 +43,8 @@ Flow has no way to reward one, and the product page says no one is rewarded.
 
 1. Open **Products** in the menu and choose [Reviews](/admin/{store}/reviews). Reviews **Waiting to be checked** are first.
 2. Read each one, with its stars, words, product, and the order it came from.
-3. Press **Publish** to show it, or **Hide** to keep it off your site. To hide one, choose **Why it is not shown**: *Not about the
-   product*, *Offensive or hateful*, *Holds personal details*, *Spam or advertising* or *Another reason*.
+3. Press **Publish** to show it, or **Hide** to keep it off your site. To hide one, choose **Why it is not shown**:
+   *Not about the product*, *Offensive or hateful*, *Holds personal details*, *Spam or advertising* or *Another reason*.
 
 > [!IMPORTANT]
 > Hiding a review because it is negative is not allowed. Publish the good and the bad alike, and answer a complaint instead.
@@ -89,8 +89,8 @@ To bring in reviews from another service, such as Shopify's Product Reviews, Jud
 1. On the Reviews page, under **Import and export**, press **Import reviews**.
 2. Choose a CSV file with the columns `product_handle`, `rating`, `author` and `date`, and `title`, `body` and `source` if you have
    them: at most 10,000 reviews a file. Exports from Shopify's Product Reviews and Judge.me are read as they are.
-3. Say **Where they were written**, for rows without a source, and **When they show**: **Show them at once** or **Let me check each one
-   first**.
+3. Say **Where they were written**, for rows without a source, and **When they show**: **Show them at once** or
+   **Let me check each one first**.
 4. Tick **Only check the file, import nothing** and press **Check the file** first. Then untick it and press **Import**.
 
 Each row finds your product by its handle. Imported reviews show *Imported from …* and are never marked as verified purchases. A file
@@ -100,5 +100,5 @@ imported twice adds nothing the second time.
 
 ## Reviews and personal data
 
-A review is its writer's personal data: it is in their data export, and erasing the customer deletes their reviews ([Personal
-data](/docs/owners/customers/personal-data)).
+A review is its writer's personal data: it is in their data export, and erasing the customer deletes their reviews
+([Personal data](/docs/owners/customers/personal-data)).

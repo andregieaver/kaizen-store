@@ -47,8 +47,8 @@ Du kan sette hvilke som helst av disse, eller ingen:
   tilbake.
 - **Én gang per kunde**: kundene må logge inn på Min konto for å bruke den, så butikken vet hvem de er.
 
-En prosentkode på et abonnement senker bare den første betalingen, med mindre du krysser av for **Behold rabatten ved hver fornyelse av
-et abonnement**. En kode for gratis frakt på et abonnement gjelder den første leveransen.
+En prosentkode på et abonnement senker bare den første betalingen, med mindre du krysser av for
+**Behold rabatten ved hver fornyelse av et abonnement**. En kode for gratis frakt på et abonnement gjelder den første leveransen.
 
 ### Hvem kan bruke den
 
@@ -117,9 +117,9 @@ Dette trekkes fra, i denne rekkefølgen: kampanjer, rabatten til en kundegruppe,
 etter den forrige.
 
 **Flere koder.** En kunde kan bruke opptil fem koder på én bestilling. Under **Bruk sammen med andre koder** krysser du av for hvilke
-slags koder denne kan brukes sammen med: **Koder på utvalgte produkter, kategorier eller stikkord**, **Koder på alt** eller **Koder for
-gratis frakt**. To koder brukes bare sammen når begge tillater den andre. I starten er ingenting krysset av, så en kode virker alene.
-Der to ikke kan brukes sammen, får kunden den som gir mest rabatt, og handlekurven sier hvorfor den andre ble utelatt.
+slags koder denne kan brukes sammen med: **Koder på utvalgte produkter, kategorier eller stikkord**, **Koder på alt** eller
+**Koder for gratis frakt**. To koder brukes bare sammen når begge tillater den andre. I starten er ingenting krysset av, så en kode
+virker alene. Der to ikke kan brukes sammen, får kunden den som gir mest rabatt, og handlekurven sier hvorfor den andre ble utelatt.
 
 **En kode ved siden av en kampanje.** **Kan brukes sammen med kampanjer** på en kode og **Kan brukes sammen med rabattkoder** på en
 kampanje er begge på i starten: koden trekkes fra det kampanjen lar stå igjen. Slår du en av dem av, får handlekurven enten koden eller

@@ -60,9 +60,9 @@ Alt dette er valgfritt, under **Nivåer og ekstra**:
 
 ### Belønninger
 
-Under **Belønninger** trykker du **Legg til en belønning** for å la kundene bruke kreditten på noe annet enn avslag. Gi den et **Navn
-kundene ser**, en **Pris i kreditt** og velg **Hva den gir**: **Gratis frakt**, **Et produkt gratis** (ett stykk) eller **Et beløp i
-avslag** (per land). En butikk kan ha opptil ti.
+Under **Belønninger** trykker du **Legg til en belønning** for å la kundene bruke kreditten på noe annet enn avslag. Gi den et
+**Navn kundene ser**, en **Pris i kreditt** og velg **Hva den gir**: **Gratis frakt**, **Et produkt gratis** (ett stykk) eller
+**Et beløp i avslag** (per land). En butikk kan ha opptil ti.
 
 En innlogget kunde velger en belønning på Min konto og får en egen kode som kan brukes én gang. Kreditt brukt på en belønning gis ikke
 tilbake om koden aldri blir brukt. Koden virker like lenge som kreditten, eller ett år når kreditten aldri utløper.
@@ -88,8 +88,8 @@ Innstillingene:
 
 - **Vennens velkomstrabatt**: **Rabatt på varene i den første bestillingen**, 10 % i starten, og **Det meste den trekker fra**. Den
   trekkes fra etter kampanjer og kundegrupperabatter, før rabattkoder og bonuskreditt.
-- **Det kunden som delte lenken, tjener**: **Bonuskreditt** som en prosent av det vennen betaler på nett for varer, og om **Bare vennens
-  første bestillinger gir kreditt**.
+- **Det kunden som delte lenken, tjener**: **Bonuskreditt** som en prosent av det vennen betaler på nett for varer, og om
+  **Bare vennens første bestillinger gir kreditt**.
 - **Det meste én kunde tjener i måneden**, hvis du vil ha en grense.
 - **Hvor lenge en besøkendes lenke huskes**, i dager. En lenke huskes bare for besøkende som tillater markedsføringsinformasjonskapsler,
   så butikken spør om informasjonskapsler når kampanjen er på.
@@ -108,7 +108,8 @@ nettbutikken.
 3. Folk søker fra Min konto, under **Skaperprogram**. **Godkjenn** eller **Avslå** hver søknad; **Stopp** en skaper senere om du må.
 
 En skaper tjener sin andel av det de betalte bestillingene deres betaler for varer, uten mva., i hver bestillings egen valuta. En
-tilbakebetaling eller kansellering trekker det tilbake. Kaizena Flow flytter ingen penger: du betaler skaperne selv, trykker **Før opp
-en utbetaling** for hver betaling, og **Last ned utbetalinger (CSV)** til regnskapet. Skaperens egen side viser aldri hvem som kjøpte.
+tilbakebetaling eller kansellering trekker det tilbake. Kaizena Flow flytter ingen penger: du betaler skaperne selv, trykker
+**Før opp en utbetaling** for hver betaling, og **Last ned utbetalinger (CSV)** til regnskapet. Skaperens egen side viser aldri hvem som
+kjøpte.
 
 Bare en eier kan endre programmet, en skapers egen provisjon og utbetalingene.

@@ -44,8 +44,8 @@ Press **Add a video**, then either:
 - **Or paste a YouTube or Vimeo address**, choose a **Picture shown before it plays**, and press **Add the video**. Nothing is
   fetched from YouTube or Vimeo.
 
-On the product page a video never starts by itself: the shopper presses play, and only then is it loaded from YouTube or Vimeo.
-Write a few words under **Describe the video**.
+On the product page a video never starts by itself: the shopper presses play. A YouTube or Vimeo video is only loaded from there at
+that press. Write a few words under **Describe the video**.
 
 ## Add a 3D model
 

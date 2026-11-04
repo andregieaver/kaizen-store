@@ -105,5 +105,6 @@ Customers and past orders have files of their own: [Import customers](/admin/{st
 
 - **Change many products without a file.** Tick products under [Products](/admin/{store}/products) and press a bulk action: set the
   status, archive, add to or remove from a category or tag, change the price, or set the stock (with one stock location). **Edit in a
-  grid** edits prices, SKUs, stock and cost in a table. You review every change before it is written, and a bulk change can be undone for 7 days.
+  grid** edits prices, SKUs, stock and cost in a table. You review every change before it is written, and a bulk change can be
+  undone for 7 days.
 - **Products are part of the online shop**, which every new store starts with. It is switched on and off under Settings, Features.

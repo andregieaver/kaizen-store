@@ -80,7 +80,8 @@ What it does:
   its products carry, named in the shopper's language.
 - **Feeds.** Your product feeds send Google's product category, and colour, material and pattern from the attributes.
 - **Search engines** read the category on the product page.
-- **Product files.** Shopify's *Product Category* column sets it on import. See [Import and export](/docs/owners/products/import-and-export).
+- **Product files.** Shopify's *Product Category* column sets it on import. See
+  [Import and export](/docs/owners/products/import-and-export).
 
 The list's names are in English, Norwegian, Swedish and Danish; a page in another language shows the English names.
 

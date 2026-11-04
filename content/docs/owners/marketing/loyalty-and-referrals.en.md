@@ -61,9 +61,9 @@ All of these are optional, under **Levels and extras**:
 
 ### Rewards
 
-Under **Rewards**, press **Add a reward** to let customers spend their credits on something besides money off. Give it a **Name
-customers see**, a **Cost in credits** and **What it gives**: **Free shipping**, **A product free** (one unit) or **An amount off** (per
-country). A store can have up to ten.
+Under **Rewards**, press **Add a reward** to let customers spend their credits on something besides money off. Give it a
+**Name customers see**, a **Cost in credits** and **What it gives**: **Free shipping**, **A product free** (one unit) or
+**An amount off** (per country). A store can have up to ten.
 
 A signed-in customer chooses a reward on My account and gets a code of their own, to use once. Credits spent on a reward are not given
 back if the code is never used. The code works as long as credits do, or a year when credits never expire.

@@ -82,7 +82,8 @@ Dette gjør den:
   produktene har, med navn på kundens språk.
 - **Feeder.** Produktfeedene dine sender Googles produktkategori, og farge, materiale og mønster fra egenskapene.
 - **Søkemotorer** leser kategorien på produktsiden.
-- **Produktfiler.** Shopifys kolonne *Product Category* setter den ved import. Se [Import og eksport](/docs/owners/products/import-and-export).
+- **Produktfiler.** Shopifys kolonne *Product Category* setter den ved import. Se
+  [Import og eksport](/docs/owners/products/import-and-export).
 
 Navnene i listen finnes på engelsk, norsk, svensk og dansk; en side på et annet språk viser de engelske navnene.
 

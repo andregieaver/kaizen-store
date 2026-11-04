@@ -106,9 +106,9 @@ Without an exchange rate for the supplier's currency, the cost is left as it was
 keeps what was already counted in. Purchase orders are your own records: nothing is sent to the supplier.
 
 > [!TIP]
-> When the briefing says stock is running out, **Prepare reorder** opens a purchase order filled in for you: the variants that will
-> run low within 37 days at the pace of the last 30, with their cost and the supplier you used last. Check it and press **Save as a
-> draft**.
+> When [the briefing](/docs/owners/analytics/reports-targets-and-alerts) says stock is running out, **Prepare reorder** opens a
+> purchase order filled in for you: the variants that will run low within 37 days at the pace of the last 30, with their cost and the
+> supplier you used last. Check it and press **Save as a draft**.
 
 ## Low-stock warnings
 

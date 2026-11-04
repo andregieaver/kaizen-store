@@ -45,8 +45,8 @@ paste the new one into each channel. **Turn off** stops all feeds.
 ## Ad tags in the browser
 
 Open **Settings** and choose [Cookies and tracking](/admin/{store}/settings/cookies). Under **Analytics and marketing tools**, paste the
-id of each tool you use: **Google Analytics 4**, **Google Tag Manager**, **Meta Pixel**, **Google Ads**, **TikTok Pixel** or **Pinterest
-Tag**, and press **Save tools**. Leave a field empty to switch the tool off.
+id of each tool you use: **Google Analytics 4**, **Google Tag Manager**, **Meta Pixel**, **Google Ads**, **TikTok Pixel** or
+**Pinterest Tag**, and press **Save tools**. Leave a field empty to switch the tool off.
 
 Each tool loads only after a visitor allows it in the cookie banner, which appears by itself once a tool is on. With consent, the tools
 hear product views, list views, searches and adds to the cart, with product ids and prices only. Checkouts and purchases are not sent
@@ -57,9 +57,10 @@ from the browser: they go from the server, as below.
 Sales sent from the server are counted even when a shopper uses an ad blocker.
 
 1. Open **Marketing** and choose [Ads and conversions](/admin/{store}/ads).
-2. Under the platform, paste its id and token: for **Meta (Facebook and Instagram)** the **Pixel id** and a **Conversions API access
-   token**; for **Google Analytics 4** the **Measurement id (G-…)** and a **Measurement Protocol API secret**; for **TikTok** the
-   **Pixel code** and an **Events API access token**; for **Pinterest** the **Ad account id** and a **Conversions token**.
+2. Under the platform, paste its id and token: for **Meta (Facebook and Instagram)** the **Pixel id** and a
+   **Conversions API access token**; for **Google Analytics 4** the **Measurement id (G-…)** and a **Measurement Protocol API secret**;
+   for **TikTok** the **Pixel code** and an **Events API access token**; for **Pinterest** the **Ad account id** and a
+   **Conversions token**.
 3. Choose **What to send**: **Standard**, the order and the ad's click id with nothing personal, or **Enhanced**, which also sends the
    shopper's email and phone, hashed, so more sales are matched to ads.
 4. Tick **Send events** and press **Save**. A **Test event code (optional)** from the platform lets you check events there first.

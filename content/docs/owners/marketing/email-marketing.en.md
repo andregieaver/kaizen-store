@@ -22,9 +22,9 @@ your emails. They join in three ways:
 - a box at checkout, which is never ticked for them;
 - the switch in My account.
 
-An address someone types joins once its owner confirms it from a link we email them. In a newsletter form this is **Confirm the address
-first (double opt-in)**, which is on unless you switch it off; keep it on, as it proves the consent. A signed-in customer with a
-confirmed email joins at once. Staff never add anyone.
+An address someone types joins once its owner confirms it from a link we email them. In a newsletter form this is
+**Confirm the address first (double opt-in)**, which is on unless you switch it off; keep it on, as it proves the consent. A signed-in
+customer with a confirmed email joins at once. Staff never add anyone.
 
 Every marketing email has a link to leave, and the unsubscribe button in people's mail apps works too. An address that does not exist,
 or whose owner marks an email as spam, leaves the list by itself.
@@ -37,10 +37,10 @@ press **Unsubscribe** for someone who asks you to take them off. The store's own
 A broadcast is an email with news or offers, written once and sent to everyone on your list, or to a segment.
 
 1. Open **Marketing** in the menu and choose [Broadcasts](/admin/{store}/broadcasts). Press **New broadcast**.
-2. Under **Start from**, choose **Blank** or one of the templates: **News**, **New products**, **An offer**, **The season** or **Thank
-   you**.
-3. Give it a **Name**, which only you see, and choose **Who gets it**: **Everyone who wants your emails**, or **The people in a segment
-   who want your emails**.
+2. Under **Start from**, choose **Blank** or one of the templates: **News**, **New products**, **An offer**, **The season** or
+   **Thank you**.
+3. Give it a **Name**, which only you see, and choose **Who gets it**: **Everyone who wants your emails**, or
+   **The people in a segment who want your emails**.
 4. For each of your languages, write the **Subject**, an optional **Preview line** and what it says, from parts: **Heading**, **Text**,
    **Button**, **Picture**, **Line**, **Product** and **Campaign**.
 5. Press **Save draft**, then **Send a test to yourself** and read it.
@@ -54,8 +54,8 @@ campaign's offer. Both are filled in when the email is sent, and left out where 
 
 > [!TIP]
 > **Write with AI** suggests the words from a few of your own, and can pick products and running campaigns. It never writes prices or
-> stock, and nothing is sent until you send it. It needs AI set up for your store ([AI texts and
-> pictures](/docs/owners/ai/ai-texts-and-pictures)).
+> stock, and nothing is sent until you send it. It needs AI set up for your store
+> ([AI texts and pictures](/docs/owners/ai/ai-texts-and-pictures)).
 
 ### After you send
 
