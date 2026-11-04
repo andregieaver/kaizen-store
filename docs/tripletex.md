@@ -84,7 +84,7 @@ the start day, "send the client's email", "attach PDFs", Pause, Disconnect, and 
 | Consumer token | `tripletexConsumerToken()` in `src/lib/env.ts`, `.env.example` | built |
 | Connect (one paste, environment found, company checked, setup planned), Start, Pause, settings check and save, Disconnect, counts | `src/server/tripletex.ts`, `tripletex.int.test.ts` | built, tested against the fake |
 | The Tripletex page: connect, the plan, Start, Customise, Disconnect | `src/app/admin/(gated)/[store]/integrations/tripletex/` | next |
-| Sync engine and its job | `src/server/tripletex-sync.ts`, a `tripletex` entry in the dispatcher | next |
+| Sync engine and its job: sweep since the start day, claim, customer cards on demand, vouchers, adoption after a lost answer, the retry ladder, rate limits, a refused token pausing the store, Try again | `src/server/tripletex-sync.ts`, `tripletex-sync.int.test.ts`, the dispatcher's `tripletex` job | built, tested against the fake |
 | Status on Work, invoices, the checkup, alerts, AI manager tools | as section 6 | after |
 
 ### Still to find out in Tripletex's sandbox (Appendix A, plus)

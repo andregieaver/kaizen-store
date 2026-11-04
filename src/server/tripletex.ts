@@ -146,16 +146,6 @@ export async function neededKeys(storeId: string): Promise<BookingKey[]> {
   return BOOKING_KEYS.filter((k) => keys.has(k));
 }
 
-/** Which of Work and the shop the store uses, so a connection sends what exists. */
-async function sourcesOf(storeId: string): Promise<TripletexSettings["sources"]> {
-  const row = await typedRow(
-    z.object({ work: col.bool, shop: col.bool }),
-    sql`select exists (select 1 from commerce.work_invoices where store_id = ${storeId}::uuid) as work,
-               exists (select 1 from commerce.invoices where store_id = ${storeId}::uuid) or not exists (select 1 from commerce.work_invoices where store_id = ${storeId}::uuid) as shop`,
-  );
-  return { work: row?.work ?? false, shop: row?.shop ?? true };
-}
-
 /** The settings a plan gives: Norway's defaults, with the plan's choices, and every bucket it could place. */
 function settingsOfPlan(plan: SetupPlan, sources: TripletexSettings["sources"]): TripletexSettings {
   return { ...defaultSettings([], sources), bookings: plan.bookings, receivableAccount: plan.receivableAccount ?? 1500 };
@@ -239,7 +229,8 @@ export async function connectTripletex(
   const needed = await neededKeys(store.id);
   const plan = planSetup(chart.chart, BOOKING_KEYS);
   const questions = plan.questions.filter((q) => q.key === "receivable" || needed.includes(q.key));
-  const sources = await sourcesOf(store.id);
+  // Both: the sweep finds only what the store has, and a store that starts invoicing later is booked from its first document.
+  const sources = { work: true, shop: true };
 
   const before = await getTripletexConnection(store.id);
   const sameCompany = before !== null && before.company.id === company.id && before.mode === credential.mode;

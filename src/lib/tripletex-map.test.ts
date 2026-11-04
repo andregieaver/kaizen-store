@@ -39,6 +39,7 @@ const WORK_INVOICE = workInvoiceDoc({
   issuedOn: "2026-09-29",
   currency: "NOK",
   totalMinor: 1_550_000,
+  vatMinor: 300_000,
   clientId: "client-1",
   buyerName: "Acme AS",
   lines: [
@@ -83,6 +84,7 @@ describe("a Work invoice as a voucher (D453)", () => {
       issuedOn: "2026-10-02",
       currency: "NOK",
       totalMinor: 150_000,
+      vatMinor: 30_000,
       clientId: "client-1",
       buyerName: "Acme AS",
       lines: [{ description: "Consulting 1 h", vat_category: "standard", vat_rate: "0.2500", excl_minor: 120_000, vat_minor: 30_000, incl_minor: 150_000 }],

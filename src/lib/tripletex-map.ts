@@ -35,6 +35,8 @@ export type BookingDoc = {
   currency: string;
   /** With VAT, positive (a credit note's too). */
   totalMinor: number;
+  /** The VAT on the document, positive, to compare with what Tripletex works out (`variance_minor`). */
+  vatMinor: number;
   lines: BookingLine[];
   customer: CustomerRef;
   /** The name on the voucher's text: the client or business, or null for a shopper. */
@@ -67,6 +69,7 @@ export type WorkInvoiceRow = {
   issuedOn: string;
   currency: string;
   totalMinor: number;
+  vatMinor: number;
   clientId: string;
   /** The buyer's name as printed (`buyer.legalName ?? buyer.name` of the snapshot). */
   buyerName: string;
@@ -83,6 +86,7 @@ export function workInvoiceDoc(row: WorkInvoiceRow): BookingDoc {
     issuedOn: row.issuedOn,
     currency: row.currency,
     totalMinor: row.totalMinor,
+    vatMinor: row.vatMinor,
     lines: row.lines.map((l) => ({ key: workLineKey(l.vatCategory, l.vatRate), text: l.description, grossMinor: l.inclMinor })),
     customer: { kind: "work_client", clientId: row.clientId },
     counterparty: row.buyerName,
@@ -109,6 +113,7 @@ export function workCreditNoteDoc(row: WorkCreditNoteRow): BookingDoc {
     issuedOn: row.issuedOn,
     currency: row.currency,
     totalMinor: row.totalMinor,
+    vatMinor: row.vatMinor,
     lines,
     customer: { kind: "work_client", clientId: row.clientId },
     counterparty: row.buyerName,
@@ -144,6 +149,7 @@ export function shopInvoiceDoc(id: string, snapshot: OrderInvoiceSnapshot): Book
     issuedOn: snapshot.issuedOn,
     currency: snapshot.currency,
     totalMinor: snapshot.totals.grossMinor,
+    vatMinor: snapshot.totals.vatMinor,
     lines,
     ...shopCustomer(snapshot.buyer),
   };
@@ -173,6 +179,7 @@ export function shopCreditNoteDoc(id: string, snapshot: CreditNoteSnapshot, invo
     issuedOn: snapshot.issuedOn,
     currency: snapshot.currency,
     totalMinor: snapshot.totals.grossMinor,
+    vatMinor: snapshot.totals.vatMinor,
     lines,
     ...shopCustomer(snapshot.buyer),
   };
