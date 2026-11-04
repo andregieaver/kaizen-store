@@ -522,7 +522,7 @@ export async function productApprovalWords(store: Store, tool: string, args: Rec
       const stored = await getProductForEdit(store, editor, found.id).catch(() => null);
       current = (stored?.variants ?? []).map((v) => ({ sku: v.sku, prices: (v.prices ?? {}) as Record<string, string> }));
     }
-    return productApprovalSummary(tool, args, found.title, markets, current);
+    return productApprovalSummary(tool, args, found.title, markets, current, found.status);
   } catch {
     return null;
   }

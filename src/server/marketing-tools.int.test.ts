@@ -28,7 +28,7 @@ const { makeStore } = await import("./trust-fixtures");
 const { getStore } = await import("./stores");
 const ownerTools = await import("./owner-tools");
 const subs = await import("./marketing-subscribers");
-const { broadcastApprovalSummary } = await import("./marketing-tools");
+const { broadcastApprovalSummary, segmentApprovalSummary } = await import("./marketing-tools");
 
 /**
  * The AI manager's marketing tools (PSI AGT-01): a broadcast drafted by the store's own writer (claims checked) and saved as a draft, sent or
@@ -92,6 +92,14 @@ describe("the marketing tools", () => {
     const automations = (await run("list_email_automations", {})) as { automations: { kind: string; on: boolean }[] };
     expect(automations.automations.map((a) => a.kind)).toEqual(["welcome", "after_purchase", "win_back", "back_in_stock"]);
     expect(automations.automations.every((a) => a.on === false)).toBe(true);
+  });
+
+  it("describes a segment kept for a yes by its rules, in the store's own money (D439)", async () => {
+    const rules = { match: "all", conditions: [{ kind: "orders", op: "atLeast", value: 2 }, { kind: "spent", op: "atLeast", minor: 100_000 }] };
+    expect(await segmentApprovalSummary((await ctx()).store, { name: "Big spenders", rules })).toMatch(
+      /^Save the segment "Big spenders": Ordered at least 2 times · and Spent at least 1\s000,00\skr \(without VAT\)\. Shoppers see nothing of it\.$/,
+    );
+    expect(await segmentApprovalSummary((await ctx()).store, { name: "Big spenders", rules: { match: "all" } })).toBeNull();
   });
 
   it("issues a gift card only by email, and never answers with its code", async () => {

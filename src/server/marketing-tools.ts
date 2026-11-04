@@ -8,7 +8,8 @@ import { mainCurrency } from "@/lib/markets";
 import { parseAmount } from "@/lib/field-money";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
-import { describeRules } from "@/lib/segments";
+import { describeRules, segmentRulesSchema } from "@/lib/segments";
+import { plainText } from "@/lib/approval-summaries";
 
 import { automationStats, getAutomations, switchAutomation } from "./automations";
 import { audienceCount, getBroadcast, listBroadcasts, saveBroadcast, scheduleBroadcast, startBroadcast, suggestBroadcast, type Broadcast } from "./broadcasts";
@@ -145,6 +146,27 @@ export async function broadcastApprovalSummary(store: Store, args: Record<string
     const reach = count?.ok ? ` (${count.people} ${count.people === 1 ? "person" : "people"} now)` : "";
     const when = typeof args.at === "string" && args.at ? ` at ${timeWords(store, sendAt(store, args.at))}` : " now";
     return `Send the broadcast "${found.title}"${subject ? ` ("${subject}")` : ""}${when} to ${who}${reach}.`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * What the owner says yes to when a segment is saved for them (D439): its name and its rules in the store's words, with its own money and
+ * customer groups. Null when the rules cannot be read, and the words made from the call stand.
+ */
+export async function segmentApprovalSummary(store: Store, args: Record<string, unknown>): Promise<string | null> {
+  const rules = segmentRulesSchema.safeParse(args.rules);
+  if (!rules.success) return null;
+  try {
+    const tiers = await listTiers(store.id);
+    const money = (minor: number) => formatMoney(minor, mainCurrency(store), store.localization.locales[0] ?? "en-GB");
+    const words = describeRules(rules.data, { money, groupName: (id) => tiers.find((t) => t.id === id)?.name });
+    const name = plainText(String(args.name ?? ""), 80);
+    const existing = typeof args.segment === "string" && args.segment.trim() ? await findSegment(store, args.segment).catch(() => null) : null;
+    const was = existing ? plainText(existing.name, 80) : "";
+    const what = !existing ? `Save the segment "${name}"` : was.toLowerCase() === name.toLowerCase() ? `Change the segment "${was}"` : `Change the segment "${was}", renamed "${name}"`;
+    return `${what}: ${plainText(words, 600)}. Shoppers see nothing of it.`;
   } catch {
     return null;
   }

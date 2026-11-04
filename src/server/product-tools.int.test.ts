@@ -176,6 +176,8 @@ describe("update_product, set_prices and set_product_status", () => {
 
   it("changes a draft at once, only the fields given, and leaves stock alone", async () => {
     expect(await ownerTools.gateNeeded(store.member.store, "update_product", { product: id })).toBe(false);
+    // Kept for a yes only when an outside assistant proposes it (D439): its card names it a draft, never a live product.
+    expect(await productTools.productApprovalWords(store.member.store, "update_product", { product: id, tags: ["winter"] })).toBe('Change the draft product "Wool scarf": the tags to winter.');
     const answer = await run("update_product", { product: "wool-scarf", title: "Merino scarf", tags: ["winter"], variants: [{ sku: "WOOL-SCARF", prices: { SE: "449" } }] });
     expect(answer.done).toBe('Changed "Merino scarf": the title; WOOL-SCARF: prices; the tags.');
     const product = await editorView(id);

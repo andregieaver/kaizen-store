@@ -97,7 +97,8 @@ Now approve it in Kaizena Flow:
 
 1. Open the link, or open [AI manager notices](/admin/account/notices) and the notice *Waiting for your yes*. You can also open the
    store's [AI manager](/admin/{store}/assistant) and the conversation called *From* and the assistant's name.
-2. The change is there, named after the assistant: *{name} asks: …*.
+2. The change is there, named after the assistant, with what it does: *{name} asks: Add a note to order 1042, for the store's staff
+   only: "Customer asked for gift wrap."*.
 3. Press **Approve**. The note is added to the order now. *Decline* would drop it.
 
 Only you can give the yes, in the admin. Nothing the assistant writes counts as one. A change with no answer in seven days is not done.

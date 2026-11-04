@@ -56,8 +56,10 @@ import {
   setHeaderFooterInput,
   setPagePlaceInput,
   useHeaderFooterInput,
+  STORE_PLACES,
   type StorePlace,
 } from "./site-tools";
+import { inputSummary, ownWordsSummary, plainText } from "./approval-summaries";
 import { draftStoreInput } from "./store-drafts";
 import { workflowInputSchema } from "./workflows";
 
@@ -2101,7 +2103,7 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "set_price_display":
     case "set_quote_requests":
     case "decline_quote":
-      return quoteToolSummary(name, input) ?? name;
+      return quoteToolSummary(name, input) ?? inputSummary(name, input);
     case "send_broadcast":
       return input.at ? `Send the broadcast "${text("broadcast")}" at ${text("at")} (the store's time) to the people on the list who asked for your emails.` : `Send the broadcast "${text("broadcast")}" now to the people on the list who asked for your emails.`;
     case "issue_work_invoice":
@@ -2198,7 +2200,7 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return publishSummary(input.type === "article" ? "article" : "page", null, text("page"));
     // The pages', menus' and logos' own names are put in by the server (`placeApprovalWords()` and co.); these words name them as given.
     case "set_page_place":
-      return input.page === null ? `Show the standard ${placeName(text("place") as StorePlace)} again.` : `Show the page ${text("page")} as the ${placeName(text("place") as StorePlace)}.`;
+      return input.page === null ? `Show the standard ${placeWords(input.place)} again.` : `Show the page ${text("page")} as the ${placeWords(input.place)}.`;
     case "save_menu":
       return `${input.menu ? `Change the menu "${text("menu")}"` : `Make the menu "${text("name")}"`} to ${Array.isArray(input.items) ? input.items.length : 0} links.`;
     case "set_header_footer":
@@ -2421,7 +2423,15 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Approve ${text("request")}'s request: create the store at /s/${text("slug")} and email them a sign-in link.`;
     case "decline_access_request":
       return `Decline ${text("request")}'s request to open a store.`;
+    // Every other tool that can be kept: its own words where it has some, else its title and its input's fields (D439), never only its name.
     default:
-      return `Run ${name}.`;
+      return ownWordsSummary(name, input) ?? inputSummary(name, input);
   }
+}
+
+/** A place a page is shown as, in the admin's words; a place that is none of them (a call not checked) as given, never a crash. */
+function placeWords(place: unknown): string {
+  if (typeof place === "string" && (STORE_PLACES as readonly string[]).includes(place)) return placeName(place as StorePlace);
+  const given = typeof place === "string" ? plainText(place, 40) : "";
+  return given ? `"${given}" place` : "place";
 }

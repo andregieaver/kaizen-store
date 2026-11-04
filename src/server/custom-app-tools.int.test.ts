@@ -116,7 +116,7 @@ describe("the AI manager with an owner's own app (D363)", () => {
     const events = await turn(member, "Book a pickup");
     const queued = events.find((e) => e.type === "approval") as { approval: Approval };
     expect(queued.approval).toMatchObject({ tool: "app__warehouse__book_pickup", category: "spend", status: "pending" });
-    expect(queued.approval.summary).toContain("Ask Warehouse to run book_pickup");
+    expect(queued.approval.summary).toBe("Ask Warehouse to run book_pickup.");
     expect(called.length).toBe(before);
     const decided = await assistant.decideApproval(member, queued.approval.id, true, () => {});
     expect(decided).toMatchObject({ status: "done", outcome: "Warehouse answered: Pickup booked" });
