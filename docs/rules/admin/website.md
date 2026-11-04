@@ -541,7 +541,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - **The docs portal (wave 14 unit E, D442, `src/lib/docs-content.ts`, `src/lib/docs-host.ts`, `src/server/docs.ts`, `content/docs/`)**:
   an article is a Markdown file `content/docs/{track}/{section}/{slug}.{lang}.md` (the owners' track in `en` and `nb`, the developers' in
-  `en`) with the front matter `compileDocs()` reads, its section titled by `_section.{lang}.md`, written from the rules and the code, never
+  `en`) with the front matter `compileDocs()` reads, its section titled by `_section.{lang}.md` (which may also hold a short body, drawn above the section's pages and checked as an article's: the WordPress plugin's downloads), written from the rules and the code, never
   from memory, naming its decisions in `sources:` and shipped in the same commit as the change it describes. Its body is the docs' Markdown
   (`docs-markdown.ts`): a subset read into a tree that React draws (`DocsMarkdown`), never HTML; a link goes only to `/docs/…` (written as on
   Kaizena Flow's site, whichever host serves the docs), `#a-heading`, the site's own routes, an admin page as the admin map has it

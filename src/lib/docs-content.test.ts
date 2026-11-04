@@ -55,7 +55,9 @@ function adminPath(path: string): boolean {
 const SITE_ROUTES = new Set(
   [join(ROOT, "src/app"), join(ROOT, "src/app/(platform)")].flatMap((dir) => readdirSync(dir).filter((name) => statSync(join(dir, name)).isDirectory() && !/^[([._]/.test(name))),
 );
-const sitePath = (path: string) => path === "/" || SITE_ROUTES.has(path.split("/")[1]);
+/** A page of the app, or a file the site serves from `public/` (the WordPress plugin's downloads under `/downloads/…`). */
+const sitePath = (path: string) =>
+  path === "/" || SITE_ROUTES.has(path.split("/")[1]) || (/^\/downloads\/[A-Za-z0-9._/-]+$/.test(path) && !path.includes("..") && existsSync(join(ROOT, "public", path)));
 
 /**
  * Unit A's registry of the Admin API (`ADMIN_API` in `src/lib/admin-api-routes.ts`, D438) is written beside this unit: once it is in the

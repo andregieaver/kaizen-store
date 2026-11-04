@@ -286,6 +286,12 @@ export function DocsPageRoute({ lang, segments }: { lang: DocLang; segments: rea
           <DocsBreadcrumbs trail={[home, trackCrumb(place.track), { label: section.title, href: null }]} words={words} />
           <h1 className={`mt-4 ${HEADING}`}>{section.title}</h1>
           {section.summary && <p className="mt-3 max-w-2xl text-lg text-muted">{section.summary}</p>}
+          {/* What the section says above its pages, when it says anything (the WordPress plugin's downloads). */}
+          {section.blocks.length > 0 && (
+            <div className="mt-8" data-docs-section-body>
+              <DocsMarkdown blocks={section.blocks} ctx={ctx} />
+            </div>
+          )}
           <PageList pages={entry.pages} />
           <DocsSectionFilters index={index} section={`${place.track}/${place.slug}`} lang={lang} words={words} />
         </DocsShell>

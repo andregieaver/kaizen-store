@@ -122,6 +122,12 @@ dependencies), its installable zip in `public/downloads/kaizen-store-wordpress.z
   shortcode as a grid and a carousel, hand-picked order, a phone width, and a revoke. The script is not kept in the repository: it needs a WordPress.
 - **After changing the plugin:** raise the version in `kaizen-store.php`, `readme.txt` and `src/lib/wordpress-plugin.ts` if it is a release, and run
   `node scripts/build-wordpress-plugin.mjs`; commit the zip. The zip is built to the same bytes every time (fixed dates and order).
+- **Every version stays downloadable** (4 November 2026): `public/downloads/wordpress/kaizen-store-wordpress-{version}.zip`, one per release, the
+  newest written by the same build, the earlier ones the last build committed under each number (1.0.0 of 5 October, 1.1.0 of 15 October as
+  renamed, 1.2.0 of 30 October). A new release adds its entry to `WORDPRESS_PLUGIN_RELEASES` (newest first) and its row to the download table
+  at the top of the docs' WordPress section (`content/docs/developers/wordpress/_section.en.md`, at `/developers/wordpress` on the docs' host);
+  `wordpress-plugin.test.ts` fails until the list, the files (each checked by its own header's version) and the table agree, and while a
+  released file differs from the zip the admin links. A released file is never rebuilt.
 
 ## Not done, and why
 

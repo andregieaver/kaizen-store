@@ -133,7 +133,21 @@ export type DocPage = {
   markdown: string;
 };
 
-export type DocSection = { track: DocTrack; slug: string; lang: DocLang; title: string; summary: string; order: number; file: string };
+/**
+ * A section of a track: its title, order and line about it, and what its page says above the list of its pages (`blocks`, empty for most): a
+ * short body in the docs' Markdown, such as the WordPress plugin's downloads, its links checked as a page's are.
+ */
+export type DocSection = {
+  track: DocTrack;
+  slug: string;
+  lang: DocLang;
+  title: string;
+  summary: string;
+  order: number;
+  file: string;
+  blocks: Block[];
+  headings: DocHeading[];
+};
 
 export type DocChangelog = { title: string | null; blocks: Block[]; headings: DocHeading[]; markdown: string; file: string };
 
@@ -242,6 +256,7 @@ export function compileDocs(
   let changelog: (DocChangelog & { links: { href: DocHref; line: number }[] }) | null = null;
   let missingNb: Record<string, string> = {};
   const links: { page: DocPage; href: DocHref; line: number }[] = [];
+  const sectionLinks: { file: string; href: DocHref; line: number }[] = [];
 
   for (const source of [...sources].sort((a, b) => a.file.localeCompare(b.file))) {
     const report = (message: string, line?: number) => problems.push({ file: source.file, ...(line !== undefined && { line }), message });
@@ -268,8 +283,11 @@ export function compileDocs(
       continue;
     }
     if (slug === "_section") {
-      const compiled = compileSection(source, track, section, lang, report);
-      if (compiled) sections.push(compiled);
+      const compiled = compileSection(source, track, section, lang, context, report);
+      if (compiled) {
+        sections.push(compiled.section);
+        for (const link of compiled.links) sectionLinks.push({ file: source.file, ...link });
+      }
       continue;
     }
     const page = compilePage(source, { track, section, slug, lang }, context, report);
@@ -294,6 +312,7 @@ export function compileDocs(
   const log = changelog ? stripLinks(changelog) : null;
   const index: DocsIndex = { pages, sections, changelog: log, missingNb, reference };
   for (const { page, href, line } of links) checkLink(index, page, href, context, (message) => problems.push({ file: page.file, line, message }));
+  for (const { file, href, line } of sectionLinks) checkLink(index, null, href, context, (message) => problems.push({ file, line, message }));
   for (const { href, line } of changelog?.links ?? []) checkLink(index, null, href, context, (message) => problems.push({ file: `${DOCS_ROOT}/developers/changelog.md`, line, message }));
 
   // The owners' pages in Norwegian, or the reason they are not yet.
@@ -351,7 +370,14 @@ function stripLinks(changelog: DocChangelog & { links: unknown }): DocChangelog 
   return { title, blocks, headings, markdown, file };
 }
 
-function compileSection(source: DocSource, track: DocTrack, slug: string, lang: DocLang, report: Report): DocSection | null {
+function compileSection(
+  source: DocSource,
+  track: DocTrack,
+  slug: string,
+  lang: DocLang,
+  context: DocsCheckContext,
+  report: Report,
+): { section: DocSection; links: { href: DocHref; line: number }[] } | null {
   if (!SLUG.test(slug)) report(`The section folder ${slug} is not lower-case letters, digits and hyphens.`);
   const front = readFrontMatter(source.text);
   for (const p of front.problems) report(p.message, p.line);
@@ -365,9 +391,12 @@ function compileSection(source: DocSource, track: DocTrack, slug: string, lang: 
   const order = data.order;
   if (!title) report("A section has a title.");
   if (typeof order !== "number") report("A section has an order: a whole number.");
-  if (front.body.trim() !== "") report("A section's file holds its front matter only.");
+  // What the section's page says above its pages: nothing for most, a short body for some (the WordPress plugin's downloads).
+  const parsed = parseMarkdown(front.body, front.bodyLine);
+  for (const p of parsed.problems) report(p.message, p.line);
+  if (context.image) for (const image of parsed.images) if (!context.image(image.src)) report(`The picture ${image.src} is not a file under public/.`, image.line);
   if (!title || typeof order !== "number") return null;
-  return { track, slug, lang, title, summary: text(data.summary) ?? "", order, file: source.file };
+  return { section: { track, slug, lang, title, summary: text(data.summary) ?? "", order, file: source.file, blocks: parsed.blocks, headings: parsed.headings }, links: parsed.links };
 }
 
 const PAGE_KEYS = ["title", "summary", "track", "section", "kind", "areas", "features", "plans", "admin", "order", "checked", "sources", "operations", "tools"];
@@ -465,6 +494,13 @@ function compilePage(
   };
 }
 
+/** The section a docs path (`{track}/{section}`) names, in `lang` where it has one, else in English. */
+function docSectionOf(index: DocsIndex, path: string, lang: DocLang): DocSection | null {
+  const [track, slug] = path.split("/");
+  const of = (l: DocLang) => index.sections.find((s) => s.track === track && s.slug === slug && s.lang === l);
+  return of(lang) ?? of("en") ?? null;
+}
+
 /** A link's target exists: another page (in English at least) and its heading, a heading of this page, the site's route, the admin's page. */
 function checkLink(index: DocsIndex, page: DocPage | null, href: DocHref, context: DocsCheckContext, problem: (message: string) => void): void {
   if (href.kind === "anchor") {
@@ -479,7 +515,8 @@ function checkLink(index: DocsIndex, page: DocPage | null, href: DocHref, contex
       return;
     }
     if (href.anchor) {
-      const headings = target === "changelog" ? (index.changelog?.headings ?? []) : typeof target === "object" ? target.headings : [];
+      const section = target === "section" ? docSectionOf(index, href.path, page?.lang ?? "en") : null;
+      const headings = target === "changelog" ? (index.changelog?.headings ?? []) : typeof target === "object" ? target.headings : (section?.headings ?? []);
       if (!headings.some((h) => h.id === href.anchor)) problem(`#${href.anchor} is not a heading of /docs/${href.path}.`);
     }
     return;
