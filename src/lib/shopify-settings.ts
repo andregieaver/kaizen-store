@@ -355,3 +355,33 @@ export function lookFromAnswer(data: unknown): LookLine | null {
   const content = s(o(nodes(theme.files)[0]?.body).content, 2_000_000);
   return content ? lookOf(s(theme.name, 50), content) : null;
 }
+
+// ---------------------------------------------------------------------------
+// Gift cards (D445 step 8, `docs/moving-from-shopify.md` 6.4)
+// ---------------------------------------------------------------------------
+
+/** One page of the shop's live gift cards (100 a page; the server follows `endCursor`). Shopify never gives a card's full code. */
+export const GIFT_CARDS_QUERY = `query KaizenCopyGiftCards($after: String) { giftCards(first: 100, after: $after, query: "status:enabled") {
+  pageInfo { hasNextPage endCursor }
+  nodes { id lastCharacters enabled expiresOn balance { amount currencyCode } customer { defaultEmailAddress { emailAddress } } }
+} }`;
+
+/** How many pages of cards one read takes (100 each): more is logged, never silently cut. */
+export const GIFT_CARD_PAGES_MAX = 50;
+
+/** A Shopify gift card with money left, as one line: its id there, the last characters people see, the balance, expiry and holder. */
+export type GiftCardLine = { id: string; last4: string; amount: string; currency: string; expiresOn: string | null; email: string | null };
+
+/** A card node as a line, or null when it has nothing left, is switched off or has expired. */
+export function giftCardOf(node: unknown, today: string): GiftCardLine | null {
+  const n = o(node);
+  const id = s(n.id, 200);
+  const money = o(n.balance);
+  const amount = amountOf(money.amount);
+  const cur = currency(money.currencyCode);
+  const expiresOn = typeof n.expiresOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(n.expiresOn) ? n.expiresOn : null;
+  if (!/^gid:\/\/shopify\/GiftCard\/\d+$/.test(id) || n.enabled === false || !amount || !cur || Number(amount) <= 0) return null;
+  if (expiresOn && expiresOn < today) return null;
+  const email = s(o(o(n.customer).defaultEmailAddress).emailAddress, 254).trim().toLowerCase();
+  return { id, last4: s(n.lastCharacters, 8).toUpperCase().slice(-4), amount, currency: cur, expiresOn, email: email.includes("@") ? email : null };
+}

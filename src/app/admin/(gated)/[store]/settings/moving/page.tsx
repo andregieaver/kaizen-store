@@ -13,6 +13,7 @@ import { ShopMove } from "@/components/admin/moving/shop-move";
 import { moveStatus, moveView } from "@/server/shopify-move";
 import { ShopAddress } from "@/components/admin/moving/shop-address";
 import { addressView } from "@/server/shopify-address";
+import { MoveWatchCard } from "@/components/admin/moving/move-watch-card";
 import { COPY_FEEDS, copyDone, copyFailed, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
 import { copyView, feedJobPage } from "@/server/shopify-copy";
 import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
@@ -33,11 +34,13 @@ import {
   advanceMoveAction,
   bringItOverAction,
   cancelMoveAction,
+  issueLeftCardAction,
   checkAddressAction,
   checkOldLinksAction,
   connectShopifyAction,
   disconnectShopifyAction,
   saveVendorMakerAction,
+  shopifyClosedAction,
   scheduleMoveAction,
   startAddressAction,
   startCopyAction,
@@ -123,6 +126,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             <MakersPanel storeSlug={store.slug} />
             <MovePanel storeSlug={store.slug} locale={locale} />
             <AddressPanel storeSlug={store.slug} />
+            <MoveWatchCard member={member} lang={lang} level={3} close={shopifyClosedAction.bind(null, store.slug)} />
             <CheckOldLinks check={checkOldLinksAction.bind(null, store.slug)} />
             <ShopifyDisconnect disconnect={disconnectShopifyAction.bind(null, store.slug)} />
           </div>
@@ -263,13 +267,14 @@ async function MovePanel({ storeSlug, locale }: { storeSlug: string; locale: str
         links: `${base}/redirects/old-shop`,
         waiting: "#shop-makers",
         address: "#shop-address",
-        steps: { catch_up: `${base}/products/import`, links: `${base}/redirects/old-shop`, open: `${base}/settings/private` },
+        steps: { catch_up: `${base}/products/import`, links: `${base}/redirects/old-shop`, gift_cards: `${base}/gift-cards`, open: `${base}/settings/private` },
       }}
       actions={{
         start: startMoveAction.bind(null, storeSlug),
         schedule: scheduleMoveAction.bind(null, storeSlug),
         cancel: cancelMoveAction.bind(null, storeSlug),
         advance: advanceMoveAction.bind(null, storeSlug),
+        issue: issueLeftCardAction.bind(null, storeSlug),
       }}
     />
   );
@@ -316,6 +321,8 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
     shipping: `${base}/settings/shipping`,
     discounts: `${base}/discounts`,
     look: `${base}/settings/design/themes`,
+    subscribers: `${base}/subscribers`,
+    gift_cards: `${base}/gift-cards`,
   };
   const rows: CopyRow[] = COPY_FEEDS.map((feed) => {
     const f = view.state.feeds[feed];

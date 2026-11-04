@@ -694,7 +694,51 @@ On Moving in, once the shop has moved (`src/lib/shopify-address.ts` pure, `src/s
 - A move with a chosen time says, with it, to lower the address's TTL the day before.
 - The provider sentences name today's menus of each provider: check them against the provider when one changes its screens.
 
-Left for later: the logo and favicon, metafields, gift cards and the email list (step 8); reviews (they live in review apps, not in
+### Step 7c: the 14 days after (built 4 November 2026)
+
+From the move until the owner says Shopify is closed (the rules in `src/lib/shopify-move.ts`, `advanceWatch()` and `watchView()` in
+`src/server/shopify-move.ts`, `MoveWatchCard`):
+
+- **The card**, on the store's home and on Moving in, the owner's alone: *Day n of 14*, then one line each, a ✓ or a link to fix it: the
+  address (*still leads to Shopify: Point it here*), old links that lead nowhere (*Fix them*, the old shop's page with its one press),
+  and orders that still came in on Shopify (*n orders came in on Shopify after the move and were copied here: See them*). *All good ✓*
+  when there is nothing.
+- **The daily look**: once a day for 14 days the five-minute job (`runDueMoves()`, a moved shop only when due or running) runs a catch-up
+  of only customers and orders made on Shopify since the last look (`startCatchUp(..., ["customers", "orders"])`), through the same
+  imports, one step each run. A look that could not start is tried again the next day. Stops when Shopify is disconnected.
+- **You can close Shopify now** (`closeReady()`): on day 14, or sooner when the address leads here, no old link leads nowhere, and the
+  latest look found nothing new. The owner's own steps there, each with Shopify's help page (uninstall the apps first, then Settings →
+  Plan → deactivate), and a note to export from Shopify first for a copy. *Done, I've closed it* ends the card. We never press anything
+  on Shopify.
+- The plan's *We keep a full copy for 90 days* is not built: the copy's files are the imports', kept as they keep them.
+
+### Step 8: the email list and gift cards (built 4 November 2026)
+
+The owner chose the recommended way for both (Decisions 1 and 2, section 13).
+
+**The email list** (`src/lib/shopify-subscribers.ts`, `addMovedSubscribers()` in `src/server/marketing-subscribers.ts`):
+- The customers' bulk read now asks for each address's `marketingState`, `marketingOptInLevel` and `marketingUpdatedAt`
+  (`consentLines()`); the subscriptions with a date become the copy's own part, *Email subscribers*, brought over after the customers.
+- Only `SUBSCRIBED` with a date becomes a subscriber: source `shopify`, `consentedAt` Shopify's date, confirmed only for
+  `CONFIRMED_OPT_IN`, and Shopify's record as the consent words (*Agreed to email from {shop} while it was on Shopify, as Shopify recorded
+  it: SUBSCRIBED, CONFIRMED_OPT_IN, {date}*), which the consent history keeps with its event. Every other state comes over as nothing, and
+  an address already on the list is left exactly as it is, so nobody who left is ever added back. Nothing is emailed.
+- A moved subscriber's first broadcast says, where the reason for the email goes, that the shop moved and they can leave any time
+  (`m.news.movedReason`, hand-written in nb, sv, da and en; `news.` is held for the legal review with the other consent words).
+
+**Gift cards** (`src/server/shopify-gift-cards.ts`, migrations `20261104103548_shopify_moved_money` and `…_rules`):
+- Read with the copy (*Gift cards: New codes on move day*), made only on move day, as the move's third step, after reading Shopify again
+  just before: the same balance, currency and expiry, tied to the customer with that email, one card here for each card there
+  (`commerce.gift_card_issue_moved()`, `gift_cards.moved_from`).
+- Its holder is emailed the new code (the gift card email, with *{shop} has moved to a new shop. This is the new code for your gift card
+  ending {last4}*). A card with no email waits on Moving in, by its last characters and balance, with *Issue it*, which reads it from
+  Shopify again and shows the new code once.
+- For the 14 days after, the daily look reads every card's balance on Shopify (a switched-off card too) and takes what was spent there off
+  the card here, never below zero, with the reason in its ledger; the card says how many. *You can close Shopify now* adds: switch off
+  the gift cards in Shopify.
+- A spend in the minutes between the last read and the card being made is the one gap; the daily look closes it.
+
+Left for later: the logo and favicon, metafields, reviews (they live in review apps, not in
 Shopify, spike S6); a catch-up copy on move day.
 
 **How steps 1 and 2 reached production.** A new admin page is a new entry in the admin map, and the map is part of the AI manager's

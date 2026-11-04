@@ -12,11 +12,11 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 
 /**
  * The platform's AI as the test sets it: none (search by words alone, as on a platform without an embedding model), or a stand-in whose
- * "vectors" put the parts of *Create your store* and the question "begin selling online" (whose words no page holds) close together and
+ * "vectors" put the parts of *Create your store* and the question "kickstart a webshop" (whose words no page holds) close together and
  * everything else apart, so search by meaning is tested without a provider.
  */
 let platformAi: AiConnection | null = null;
-const toyVector = (text: string) => (text.startsWith("Create your store\n") || text === "begin selling online" ? [1, 0.1, 0] : [0, 1, 0.1]);
+const toyVector = (text: string) => (text.startsWith("Create your store\n") || text === "kickstart a webshop" ? [1, 0.1, 0] : [0, 1, 0.1]);
 const embedded: string[] = [];
 vi.mock("./ai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./ai")>()),
@@ -183,9 +183,10 @@ describe("search by words (D443)", () => {
   });
 
   it("finds VAT as mva and moms through the synonyms, in each language's own words", async () => {
-    const norwegian = await ask("vat", { filters: { ...NO_FILTERS, lang: ["nb"] } });
+    // Within the getting-started section, where the page that names VAT only as "mva" is not crowded out by the tax section's own.
+    const norwegian = await ask("vat", { filters: { ...NO_FILTERS, lang: ["nb"], section: "owners/getting-started" } });
     expect(docsOf(norwegian)).toContain("nb:owners/getting-started/your-first-product");
-    const mva = await ask("mva", { filters: { ...NO_FILTERS, lang: ["en"] } });
+    const mva = await ask("mva", { filters: { ...NO_FILTERS, lang: ["en"], section: "owners/getting-started" } });
     expect(docsOf(mva)).toContain("en:owners/getting-started/your-first-product");
     const marked = mva.results.find((r) => r.doc === "en:owners/getting-started/your-first-product");
     expect(marked?.snippet.filter((p) => p.hit).map((p) => p.text)).toContain("VAT");
@@ -268,13 +269,13 @@ describe("search by meaning, merged by rank (D443)", () => {
   it("finds parts closest in meaning with the platform's AI, beside the words, and none without it", async () => {
     platformAi = { provider: "openai", source: "platform", apiUrl: "https://ai.example", apiKey: "k", space: "toy|4", embeddingModel: "toy", minSimilarity: 0.3 } as unknown as AiConnection;
     while ((await search.refreshDocsIndex()).embedded > 0);
-    // No page holds "begin" and "online", but the stand-in reads them as about making a store.
-    const answer = await ask("begin selling online", { filters: { ...NO_FILTERS, track: ["owners"], lang: ["en"] } });
+    // No page holds "kickstart" or "webshop", but the stand-in reads them as about making a store.
+    const answer = await ask("kickstart a webshop", { filters: { ...NO_FILTERS, track: ["owners"], lang: ["en"] } });
     expect(answer.meaning).toBe(true);
     expect(answer.match).toBe("all");
     expect(docsOf(answer)).toEqual(["en:owners/getting-started/create-your-store"]);
     platformAi = null;
-    const words = await ask("begin selling online", { filters: { ...NO_FILTERS, track: ["owners"], lang: ["en"] } });
+    const words = await ask("kickstart a webshop", { filters: { ...NO_FILTERS, track: ["owners"], lang: ["en"] } });
     expect(words.meaning).toBe(false);
   });
 });

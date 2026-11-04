@@ -7,7 +7,8 @@ import { designLookInput } from "@/lib/brand-design";
 import { parsePrice } from "@/lib/product-input";
 import { normalizeCode } from "@/lib/discounts";
 import { featureOn } from "@/lib/store-features";
-import type { CopyFeed, FeedState } from "@/lib/shopify-copy";
+import type { ConsentLine, CopyFeed, FeedState } from "@/lib/shopify-copy";
+import { movedSubscriber } from "@/lib/shopify-subscribers";
 import {
   COUNTRIES_QUERY,
   DISCOUNT_PAGES_MAX,
@@ -35,9 +36,11 @@ import { OwnerToolError } from "./owner-tool-error";
 import { refreshTag } from "./refresh";
 import { getShippingSettings, saveShippingSettings } from "./settings";
 import { setMarkets } from "./setup";
-import { shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
+import { shopifyConnection, shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
 import { currentStore, storeTag } from "./stores";
 import { listInstalls } from "./theme-installs";
+import { addMovedSubscribers } from "./marketing-subscribers";
+import { readShopifyGiftCards } from "./shopify-gift-cards";
 import { col, typedRows } from "./typed-rows";
 
 const CODE = z.object({ code: col.text });
@@ -53,7 +56,7 @@ const BY_NAME = z.object({ id: col.uuid, name: col.text });
  */
 
 /** The feeds this module reads and writes. */
-export const SETTINGS_FEEDS: readonly CopyFeed[] = ["countries", "shipping", "discounts", "look"];
+export const SETTINGS_FEEDS: readonly CopyFeed[] = ["countries", "shipping", "discounts", "look", "subscribers", "gift_cards"];
 
 /** One feed read from Shopify: its lines as JSON Lines text, or why not. */
 export async function readSettingsFeed(storeId: string, feed: CopyFeed, deps: ShopifyDeps): Promise<{ ok: true; text: string } | { ok: false }> {
@@ -77,6 +80,10 @@ export async function readSettingsFeed(storeId: string, feed: CopyFeed, deps: Sh
     }
     return lines(look ? [look] : []);
   }
+  if (feed === "gift_cards") {
+    const cards = await readShopifyGiftCards(storeId, deps);
+    return cards ? lines(cards) : { ok: false };
+  }
   if (feed === "discounts") {
     const out: unknown[] = [];
     let after: string | null = null;
@@ -99,6 +106,9 @@ async function freshMember(member: Membership): Promise<Membership> {
   const store = await currentStore(member.store.slug);
   return store ? { ...member, store } : member;
 }
+
+/** How many subscribers one tick writes. */
+const SUBSCRIBER_BATCH = 200;
 
 /** How many `discounts` lines one tick writes (each a `saveDiscount()` with its checks). */
 const DISCOUNT_BATCH = 10;
@@ -204,6 +214,23 @@ export async function applySettingsFeed(member: Membership, feed: CopyFeed, f: F
       }
     }
     return done(cursor + DISCOUNT_BATCH);
+  }
+
+  if (feed === "gift_cards") {
+    // Read now, made on move day (step 8): until then nobody could spend one balance in both shops.
+    return done(roots.length);
+  }
+
+  if (feed === "subscribers") {
+    const cursor = f.cursor ?? 0;
+    const shop = (await shopifyConnection(member))?.name || member.store.name;
+    const batch = (roots.slice(cursor, cursor + SUBSCRIBER_BATCH) as unknown as ConsentLine[]).flatMap((l) => {
+      const sub = movedSubscriber(l, shop);
+      return sub ? [sub] : [];
+    });
+    const result = await addMovedSubscribers(member.store.id, member.store.localization.locales[0] ?? "en", batch);
+    made += result.added + result.already;
+    return done(cursor + SUBSCRIBER_BATCH);
   }
 
   if (feed === "look") {

@@ -10,7 +10,7 @@ import { checkPermission } from "@/server/permissions";
 import { disconnectShopify, shopifyConnection, startShopifyConnect, type StartProblem } from "@/server/shopify-connect";
 import { advanceCopy, bringItOver, startCopy } from "@/server/shopify-copy";
 import { saveVendorMaker, type MakerSaved } from "@/server/shopify-makers";
-import { advanceMove, cancelMove, scheduleMove, startMove, type MoveProblem } from "@/server/shopify-move";
+import { advanceMove, cancelMove, issueLeftCard, scheduleMove, shopifyClosed, startMove, type MoveProblem } from "@/server/shopify-move";
 import { checkAddress, startAddress } from "@/server/shopify-address";
 import { copyMoving } from "@/lib/shopify-copy";
 
@@ -135,4 +135,21 @@ export async function checkAddressAction(storeSlug: string): Promise<{ done: boo
   const member = await checkPermission(storeSlug, "owner");
   if (!member) return { done: false };
   return checkAddress(member);
+}
+
+/** The 14 days after (D445 step 7c): *Done, I've closed it*. */
+export async function shopifyClosedAction(storeSlug: string): Promise<{ ok: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false };
+  const result = await shopifyClosed(member);
+  refresh();
+  return result;
+}
+
+/** *Issue it* on a Shopify gift card that had no email (D445 step 8): its new code, returned once to be shown, never kept. */
+export async function issueLeftCardAction(storeSlug: string, shopifyId: string): Promise<{ ok: true; code: string } | { ok: false; problem: "gone" | "made" | "no_codes" }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false, problem: "gone" };
+  const result = await issueLeftCard(member, typeof shopifyId === "string" ? shopifyId.slice(0, 100) : "");
+  return result.ok ? { ok: true, code: result.code } : result;
 }

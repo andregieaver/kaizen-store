@@ -929,6 +929,7 @@ export const da: Messages = {
     welcomeText: (store: string) => `Her er din kode hos ${store}. Skriv den i kurven, når du går til kassen. Den kan bruges én gang.`,
     welcomeShop: "Gå til butikken",
     emailReason: (store: string) => `Du får denne e-mail, fordi du har bedt om nyheder og tilbud fra ${store}.`,
+    movedReason: (store: string) => `${store} er flyttet til en ny webshop. Du får vores e-mails som før, og du kan afmelde dig når som helst.`,
   },
   // legal: needs review. Back in stock (D298, 6.4 and 6.5): the confirmation email, its page and the email when stock is back.
   stockNotice: {
@@ -1546,5 +1547,6 @@ export const da: Messages = {
     copyText: (amount: string, to: string) => `Vi har sendt gavekortet på ${amount} til ${to}. Koden står kun i deres e-mail.`,
     refundSubject: (store: string) => `Din refusion fra ${store} som tilgodebevis`,
     refundText: (number: string) => `Dette er din refusion for ordre ${number}, som tilgodebevis. Du bruger det som et gavekort.`,
+    movedText: (store: string, last4: string) => `${store} er flyttet til en ny webshop. Dette er den nye kode til dit gavekort, der slutter på ${last4}, med samme saldo. Den gamle kode virker ikke i den nye butik.`,
   },
 };
