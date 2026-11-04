@@ -1,6 +1,6 @@
 import "server-only";
 
-import { shopifyMoveTool } from "./shopify-move-tool";
+import type { shopifyMoveTool as ShopifyMoveTool } from "./shopify-move-tool";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
@@ -2480,7 +2480,8 @@ const handlersOf = (): Record<OwnerToolName, Handler> => (handlers ??= {
   reply_to_support: replyToSupportTool,
   end_support_conversation: endSupportConversationTool,
   gift_card_overview: giftCardOverviewTool,
-  shopify_move: shopifyMoveTool,
+  // Loaded when called: the copy it reads reaches back into the imports, which reach this module (an import cycle at load time).
+  shopify_move: async (...args: Parameters<typeof ShopifyMoveTool>) => (await import("./shopify-move-tool")).shopifyMoveTool(...args),
   reviews_overview: reviewsOverviewTool,
   issue_gift_card: issueGiftCardTool,
   list_broadcasts: listBroadcastsTool,
