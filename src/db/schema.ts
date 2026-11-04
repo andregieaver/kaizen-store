@@ -13420,9 +13420,10 @@ export const oldShops = commerce.table(
 );
 
 /**
- * A store's move from another platform (D445, `docs/moving-from-shopify.md` 3, 10), one row a store and source; step 2 keeps the connection:
+ * A store's move from another platform (D445, `docs/moving-from-shopify.md` 3, 10; WooCommerce D446), one row a store and source; step 2 keeps the connection:
  * the Shopify shop's own name, what it is called, its address, the scopes it granted, and the app's expiring offline token with its refresh
- * token (both encrypted with `SETTINGS_ENCRYPTION_KEY`, gone once disconnected). Written only by `src/server/shopify-connect.ts`; the
+ * token (both encrypted with `SETTINGS_ENCRYPTION_KEY`, gone once disconnected); a WooCommerce shop (D446) its site's host and folder and its
+ * read-only key, encrypted in `access_token`. Written only by `src/server/shopify-connect.ts` and `woocommerce-connect.ts`; the
  * owner's alone. Never copied, never in the store's file.
  */
 export const shopMoves = commerce.table(
@@ -13453,8 +13454,13 @@ export const shopMoves = commerce.table(
     primaryKey({ columns: [t.storeId, t.source] }),
     index("shop_moves_shop_idx").on(t.source, t.shopDomain),
     index("shop_moves_connected_by_idx").on(t.connectedBy),
-    check("shop_moves_source", sql`${t.source} in ('shopify')`),
-    check("shop_moves_shop", sql`${t.shopDomain} ~ '^[a-z0-9][a-z0-9-]*\\.myshopify\\.com$' and length(${t.shopDomain}) <= 120`),
+    check("shop_moves_source", sql`${t.source} in ('shopify', 'woocommerce')`),
+    // A Shopify shop by its `myshopify.com` name; a WooCommerce shop by its WordPress site's host and folder (D446, `siteKey()`).
+    check(
+      "shop_moves_shop",
+      sql`(${t.source} = 'shopify' and ${t.shopDomain} ~ '^[a-z0-9][a-z0-9-]*\\.myshopify\\.com$' and length(${t.shopDomain}) <= 120)
+        or (${t.source} = 'woocommerce' and ${t.shopDomain} ~ '^[a-z0-9.-]{3,253}(/[a-z0-9._~-]{1,80})?$' and length(${t.shopDomain}) <= 340)`,
+    ),
     check("shop_moves_status", sql`${t.status} in ('connected', 'disconnected')`),
     check("shop_moves_token", sql`${t.status} <> 'connected' or ${t.accessToken} is not null`),
     check("shop_moves_name", sql`length(${t.shopName}) <= 200 and (${t.primaryDomain} is null or length(${t.primaryDomain}) <= 255)`),

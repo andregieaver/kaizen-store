@@ -725,7 +725,7 @@ const STAGES: readonly FeedStage[] = ["waiting", "reading", "checking", "checked
 const PROBLEMS: readonly FeedProblem[] = ["shopify_refused", "shopify_failed", "too_large", "storage", "import_refused", "import_failed", "needs_fixing"];
 const GID = /^gid:\/\/shopify\/BulkOperation\/\d+$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const FILE_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/shopify-[a-z]+\.(csv|jsonl)$/i;
+const FILE_PATH = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(shopify|woocommerce)-[a-z]+(\.part)?\.(csv|jsonl)$/i;
 const count = (v: unknown): number | undefined => (typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : undefined);
 
 /** The kept state read back, every field checked (an unknown shape is a fresh start, never trusted). */

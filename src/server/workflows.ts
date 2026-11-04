@@ -123,7 +123,7 @@ async function checked(member: Membership, raw: unknown): Promise<{ ok: true; in
     if (action.kind === "ask_ai_manager" && !memberCan(member, "owner")) problems.push("Only an owner can make a workflow that asks the AI manager: it runs in their name.");
     if (action.kind === "send_request") {
       const [endpoint] = await db().execute(sql`
-        select 1 from commerce.webhook_endpoints where store_id = ${member.store.id}::uuid and id = ${action.endpointId}::uuid
+        select 1 from commerce.webhook_endpoints where store_id = ${member.store.id}::uuid and id = ${action.endpointId}::uuid and app_grant_id is null
       `);
       if (!endpoint) problems.push("Choose one of your own endpoints (Integrations → Your own endpoints).");
     }
@@ -331,7 +331,7 @@ async function act(run: { id: string; storeId: string; workflowId: string; event
       const rows = await db().execute(sql`
         insert into commerce.integration_deliveries (store_id, provider, event, subject_id, endpoint_id)
         select e.store_id, 'webhook', ${run.event}, ${run.subjectId}::uuid, e.id
-        from commerce.webhook_endpoints e where e.store_id = ${run.storeId}::uuid and e.id = ${action.endpointId}::uuid and e.enabled
+        from commerce.webhook_endpoints e where e.store_id = ${run.storeId}::uuid and e.id = ${action.endpointId}::uuid and e.enabled and e.app_grant_id is null
         returning id
       `);
       if (rows.length === 0) return fail("endpoint_off");

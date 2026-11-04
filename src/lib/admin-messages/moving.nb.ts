@@ -18,6 +18,7 @@ export const movingNb: MovingMessages = {
     unreachable: "Den adressen svarte ikke. Sjekk den og prøv igjen.",
     off: "Tilkobling til Shopify er ikke slått på ennå.",
     forbidden: "Bare eieren av butikken kan koble til en annen butikk.",
+    other_shop: "En annen butikk er allerede koblet til. Koble den fra først: en butikk flytter fra én butikk om gangen.",
   },
   outcome: {
     connected: "Shopify-butikken din er koblet til.",
@@ -105,6 +106,16 @@ export const movingNb: MovingMessages = {
       import_failed: "Importen stoppet. Åpne den for å se hvorfor.",
       needs_fixing: "Ingenting her kunne flyttes slik det er. Åpne den for å se hva som må rettes, og trykk Start på nytt.",
     },
+    /** De samme problemene, sagt om en WooCommerce-butikk (D446). */
+    problemsWoo: {
+      shopify_refused: "Nettstedet ditt lot oss ikke lese disse. Sjekk at nøkkelen vår fortsatt er der (WooCommerce → Innstillinger → Avansert → REST API), eller koble til på nytt.",
+      shopify_failed: "Nettstedet ditt klarte ikke å svare ferdig. Trykk Start på nytt.",
+      too_large: "Det er flere enn én kopi kan bære. Flytt dem med filer i stedet, litt om gangen.",
+      storage: "Filen kunne ikke lagres. Trykk Start på nytt.",
+      import_refused: "En import av denne typen er allerede åpen, eller ingenting i den kan importeres. Åpne den, fullfør eller avbryt den, og trykk Start på nytt.",
+      import_failed: "Importen stoppet. Åpne den for å se hvorfor.",
+      needs_fixing: "Ingenting her kunne flyttes slik det er. Åpne den for å se hva som må rettes, og trykk Start på nytt.",
+    },
     bring: "Ta det over",
     bringing: "Starter …",
     bringText: "Alt lagres her i rekkefølgen over. Et produkt som mangler bilde eller produsent, lagres som utkast og listes opp. Rabattkodene kommer slått av, og utseendet kommer som et tema du kan prøve: butikken beholder utseendet sitt til du velger det.",
@@ -116,6 +127,7 @@ export const movingNb: MovingMessages = {
     againAsk: "Starte kopieringen på nytt? Det som allerede er her, blir værende; et produkt som leses på nytt, oppdateres i stedet for å bli dobbelt.",
     cancel: "Avbryt",
     files: "Bruk Shopifys fil i stedet",
+    filesWoo: "Bruk en fil i stedet",
     setHere: "Ordne det her",
     lookHere: "Se på det",
   },
@@ -284,6 +296,34 @@ export const movingNb: MovingMessages = {
     customers: "Importer kunder",
     orders: "Importer tidligere ordrer",
     links: "Sjekk de gamle lenkene",
+  },
+  /** Flytting fra WooCommerce (D446 steg 1). */
+  woo: {
+    connect: {
+      title: "Ta med WooCommerce-butikken din",
+      label: "Adressen til nettstedet ditt",
+      placeholder: "minbutikk.no",
+      help: "WordPress-nettstedet ditt med WooCommerce. WooCommerce spør deg så, på ditt eget nettsted, om Kaizena Flow får lese butikken. Ingenting endres på nettstedet ditt, og det fortsetter å selge.",
+      button: "Koble til WooCommerce",
+      working: "Finner butikken din …",
+    },
+    problems: {
+      address: "Det er ikke en nettadresse. Skriv den kundene dine bruker, som minbutikk.no.",
+      not_wordpress: "Vi fant ikke et WordPress-nettsted på den adressen. Sjekk den. Er den riktig, kan en sikkerhetsutvidelse stenge WordPress' REST API: spør den som har ansvar for nettstedet ditt.",
+      not_woocommerce: "Det WordPress-nettstedet har ikke WooCommerce slått på.",
+      unreachable: "Den adressen svarte ikke. Sjekk den og prøv igjen. Nettstedet ditt må ha hengelås (HTTPS).",
+      off: "Tilkobling til WooCommerce er ikke slått på ennå.",
+      forbidden: "Bare eieren av butikken kan koble til en annen butikk.",
+      other_shop: "En annen butikk er allerede koblet til. Koble den fra først: en butikk flytter fra én butikk om gangen.",
+    },
+    outcome: {
+      connected: "WooCommerce-butikken din er koblet til.",
+      declined: "Ingenting ble koblet til: du sa nei på WooCommerce-siden.",
+      failed: "Tilkoblingen virket ikke. Trykk Koble til WooCommerce igjen.",
+    },
+    shop: "WooCommerce-butikk på {site}, koblet til {when}.",
+    later: "Produktene, kategoriene, kundene, tidligere ordrer og kupongene dine flyttes nå. Sider, blogginnlegg, menyer, videresendinger, anmeldelser, gavekort og e-postlisten din kommer i et senere steg.",
+    disconnectAsk: "Koble fra WooCommerce-butikken din? Ingenting slettes her eller på nettstedet ditt. For å fjerne nøkkelen vår fra nettstedet også, åpne WooCommerce → Innstillinger → Avansert → REST API der.",
   },
   off: {
     title: "Flytt butikken med Shopifys filer",

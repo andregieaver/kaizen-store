@@ -109,6 +109,11 @@ export const oauthNb: OauthMessages = {
       by: "Installert av {person} · {when}",
       remove: "Fjern",
       removed: "Fjernet: nøklene dens virker ikke lenger.",
+      asksMore: "Ber om mer",
+      review: "Se over",
+      asksIntro: "Appen ber nå også om å:",
+      approve: "Gi den dette",
+      installerCant: "Den jobber som {person}, som installerte den og ikke kan gi alt dette nå. For å gi det må noen som kan, installere den på nytt.",
     },
   },
   developer: {

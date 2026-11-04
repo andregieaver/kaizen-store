@@ -116,6 +116,11 @@ export const oauthEn = {
       by: "Installed by {person} · {when}",
       remove: "Remove",
       removed: "Removed: its tokens no longer work.",
+      asksMore: "Asks for more",
+      review: "Review",
+      asksIntro: "The app now also asks to:",
+      approve: "Give it this",
+      installerCant: "It works as {person}, who installed it and cannot give all of this now. To give it, have someone who can install it again.",
     },
   },
   /** Developer mode and the apps an account makes (D441), at Account → Developer. */

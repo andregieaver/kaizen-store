@@ -12,6 +12,7 @@ import { safeClientName } from "@/lib/oauth";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { checkEndpointUrl } from "@/lib/webhook-signature";
 
+import { syncAppEndpoints } from "./app-endpoints";
 import { audit, type Account } from "./auth";
 import { secretHash } from "./oauth-clients";
 import { hostProblem } from "./replicate-fetch";
@@ -236,6 +237,8 @@ export async function updateApp(account: Account, appId: string, input: AppInput
         updated_at = now()
       where id = ${app.id}::uuid
     `);
+    // Its installations' endpoints follow at once: the address, the secret and the topics each installation's scopes read (D2).
+    await syncAppEndpoints(app.clientRowId, tx);
   });
   await audit(account.id, null, "account.app_changed", { app: input.name, client_id: app.clientId, scopes: input.scopes, distribution: input.distribution }, { area: "account", target: { type: "app", id: app.id } });
   return { ok: true, id: app.id, shown: { clientId: app.clientId } };
@@ -254,7 +257,10 @@ export async function renewAppSecret(account: Account, appId: string, which: "cl
   const key = encryptionKey();
   if (!key) return { ok: false, problems: { form: "The server has no encryption key." } };
   const webhookSecret = newSecret("kfws_", 32);
-  await db().execute(sql`update commerce.apps set webhook_secret_encrypted = ${encryptSecret(webhookSecret, key)}, updated_at = now() where id = ${app.id}::uuid`);
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`update commerce.apps set webhook_secret_encrypted = ${encryptSecret(webhookSecret, key)}, updated_at = now() where id = ${app.id}::uuid`);
+    await syncAppEndpoints(app.clientRowId, tx);
+  });
   await audit(account.id, null, "account.app_webhook_secret_renewed", { app: app.name, client_id: app.clientId }, { area: "account", target: { type: "app", id: app.id } });
   return { ok: true, id: app.id, shown: { clientId: app.clientId, webhookSecret } };
 }

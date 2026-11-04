@@ -12,7 +12,7 @@ import { STOREFRONT_TOKENS_MAX } from "@/lib/storefront-api";
 import { makeStorefrontToken, revokeStorefrontToken } from "@/server/storefront-api";
 import { APPS_MAX, isAppGate } from "@/lib/custom-apps";
 import { addCustomApp, relistCustomApp, removeCustomApp, switchAppTool } from "@/server/custom-apps";
-import { cutGrantFromStore, liftStoreCutoff, removeInstallation } from "@/server/oauth";
+import { approveInstallationScopes, cutGrantFromStore, liftStoreCutoff, removeInstallation } from "@/server/oauth";
 
 /** Tokens act as their maker and reach the store's data, so only an owner makes or revokes one (D355). */
 export type TokenAnswer = { ok: true; token?: string } | { ok: false; message: string };
@@ -112,5 +112,13 @@ export async function removeInstallationAction(storeSlug: string, grantId: strin
   const owner = await checkOwnerRole(storeSlug);
   if (!owner) return;
   await removeInstallation(owner, grantId);
+  refresh();
+}
+
+/** An owner gives an installed app what it asks for now (D441 D2): the installation's scopes become the app's. */
+export async function approveInstallationScopesAction(storeSlug: string, grantId: string): Promise<void> {
+  const owner = await checkOwnerRole(storeSlug);
+  if (!owner) return;
+  await approveInstallationScopes(owner, grantId);
   refresh();
 }

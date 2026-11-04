@@ -21,11 +21,13 @@ import {
   type OAuthScope,
 } from "@/lib/oauth";
 import { isApiPower } from "@/lib/admin-api";
-import { normaliseAppScopes } from "@/lib/apps";
+import { missingPermissions, normaliseAppScopes } from "@/lib/apps";
+import { permissionsOf } from "@/lib/permissions";
 import { pkceMatches } from "@/lib/oauth-pkce";
 import { siteUrl } from "@/lib/site";
 
-import { audit, type Account, type Membership } from "./auth";
+import { syncInstallationEndpoint } from "./app-endpoints";
+import { audit, holderOf, passMembership, type Account, type Membership } from "./auth";
 import { log } from "./log";
 import { clientByClientId, clientSecretMatches, expireGrantApprovals, markClientSeen, type OAuthClient } from "./oauth-clients";
 import { memberCan } from "./permissions";
@@ -142,6 +144,26 @@ export async function approveInstallation(input: Omit<Approval, "storeIds" | "sc
       values (${input.account.id}::uuid, ${input.client.id}::uuid, array[${input.storeId}::uuid], ${input.storeId}::uuid, ${textArray(scopes)}, 'admin', 'change', ${input.aal})
       returning id
     `);
+    // Installing again is not removing (D2): the old installation's endpoint, with its deliveries, becomes the new one's, so ending the
+    // old one at the end of this transaction sends neither app.uninstalled nor store.erase_requested.
+    if (ended.length > 0) {
+      await tx.execute(sql`
+        update commerce.webhook_endpoints set app_grant_id = ${made.id}::uuid
+        where app_grant_id in (${sql.join(
+          ended.map((old) => sql`${old.id}::uuid`),
+          sql`, `,
+        )})
+      `);
+    }
+    // Installed again within 48 hours of being removed: the store's data is not to be erased after all.
+    await tx.execute(sql`
+      update commerce.integration_deliveries set status = 'failed', last_error = 'Installed again'
+      where status = 'pending' and event = 'store.erase_requested' and endpoint_id in (
+        select e.id from commerce.webhook_endpoints e join commerce.oauth_grants g on g.id = e.app_grant_id
+        where g.client_id = ${input.client.id}::uuid and g.store_id = ${input.storeId}::uuid
+      )
+    `);
+    await syncInstallationEndpoint(tx, String(made.id));
     await tx.execute(sql`
       insert into commerce.oauth_tokens (kind, token_hash, grant_id, family, code_challenge, redirect_uri, expires_at)
       values ('code', ${tokenHash(code)}, ${made.id}::uuid, ${randomUUID()}::uuid, ${input.request.codeChallenge}, ${input.request.redirectUri},
@@ -676,6 +698,68 @@ export async function removeInstallation(member: Membership, grantId: string): P
   if (!grant || !(await endGrant(grantId, sql`resource = 'admin' and store_id = ${member.store.id}::uuid`))) return false;
   await audit(member.account.id, member.store.id, "oauth.app_removed", { app: grant.client.name, installed_by: grant.person.id }, { target: { type: "oauth_grant", id: grantId } });
   return true;
+}
+
+/**
+ * What each live installation on a store is now asked for beyond what it holds (D441 D2): its app asked for more since it was installed
+ * (an installation keeps its own scopes until the store approves the new list). By installation (grant) id; installations asked for nothing
+ * more are left out.
+ */
+export async function installationAsks(store: { id: string; slug: string }): Promise<Map<string, { more: string[]; installerCan: boolean }>> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid, account_id: col.uuid, held: z.array(z.string()), asked: z.array(z.string()) }),
+    sql`
+      select g.id, g.account_id, g.scopes as held, a.scopes as asked
+      from commerce.oauth_grants g join commerce.apps a on a.client_id = g.client_id
+      where g.store_id = ${store.id}::uuid and g.resource = 'admin' and g.revoked_at is null
+    `,
+  );
+  const asks = new Map<string, { more: string[]; installerCan: boolean }>();
+  for (const row of rows) {
+    const scopes = normaliseAppScopes(row.asked);
+    const more = scopes.filter((scope) => !row.held.includes(scope));
+    if (more.length === 0) continue;
+    // The installation works as the person who installed it: only they, holding all of it now, can be given more.
+    const installer = await passMembership(store.slug, row.account_id);
+    asks.set(row.id, { more, installerCan: Boolean(installer) && missingPermissions(scopes, permissionsOf(holderOf(installer!))).length === 0 });
+  }
+  return asks;
+}
+
+export type ScopesApproval = { ok: true; added: string[] } | { ok: false; reason: "gone" | "installer" };
+
+/**
+ * An owner gives an installation what its app asks for now (D441 D2): its scopes become the app's (its tokens reach them at once) and its
+ * endpoint's topics follow. Only while the person who installed it may give them all, since the installation works as them; otherwise
+ * `installer`, and the app is to be installed again by someone who may. Owners only; the store's log says what was added
+ * (`oauth.app_scopes_approved`).
+ */
+export async function approveInstallationScopes(member: Membership, grantId: string): Promise<ScopesApproval> {
+  if (!memberCan(member, "owner") || !z.uuid().safeParse(grantId).success) return { ok: false, reason: "gone" };
+  const row = await typedRow(
+    z.object({ id: col.uuid, account_id: col.uuid, held: z.array(z.string()), asked: z.array(z.string()), name: col.text, client_id: col.text }),
+    sql`
+      select g.id, g.account_id, g.scopes as held, a.scopes as asked, c.name, c.client_id
+      from commerce.oauth_grants g
+      join commerce.apps a on a.client_id = g.client_id
+      join commerce.oauth_clients c on c.id = g.client_id
+      where g.id = ${grantId}::uuid and g.store_id = ${member.store.id}::uuid and g.resource = 'admin' and g.revoked_at is null
+        and c.blocked_at is null
+    `,
+  );
+  if (!row) return { ok: false, reason: "gone" };
+  const scopes = normaliseAppScopes(row.asked);
+  const installer = await passMembership(member.store.slug, row.account_id);
+  if (!installer || missingPermissions(scopes, permissionsOf(holderOf(installer))).length > 0) return { ok: false, reason: "installer" };
+  const added = scopes.filter((scope) => !row.held.includes(scope));
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`update commerce.oauth_grants set scopes = ${textArray(scopes)} where id = ${row.id}::uuid and revoked_at is null`);
+    await syncInstallationEndpoint(tx, row.id);
+  });
+  await audit(member.account.id, member.store.id, "oauth.app_scopes_approved", { app: row.name, client_id: row.client_id, added }, {
+    target: { type: "oauth_grant", id: row.id },
+  });
+  return { ok: true, added };
 }
 
 /** The stores an owner cut a client off from for a person (`oauth_store_cutoffs`): never offered to them for it, never reached by it. */

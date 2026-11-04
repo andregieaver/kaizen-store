@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { audit, type Account } from "./auth";
 import { log } from "./log";
 import { removeAvatarFiles } from "./media";
+import { expireGrantApprovals } from "./oauth-clients";
 import { forgetAlertRecipientIn } from "./staff-alerts";
 import { adminAuth } from "./supabase-admin";
 import { normaliseEmail } from "@/lib/email-address";
@@ -88,7 +89,29 @@ export async function eraseOwnAccount(account: Pick<Account, "id">, deps: { dele
     if (!plan.ok) return { plan, authUserId: null, avatar: null };
     const email = normaliseEmail(String(locked.email));
     const id = account.id;
-    // What is only theirs.
+    // Their apps for many stores (D441) are blocked, never handed on: every installation ends with its tokens (each app is sent
+    // app.uninstalled, and store.erase_requested 48 hours later), and the apps stay without a developer. Developer mode goes.
+    await tx.execute(sql`
+      update commerce.oauth_clients set blocked_at = coalesce(blocked_at, now())
+      where id in (select a.client_id from commerce.apps a where a.developer_id = ${id}::uuid)
+    `);
+    await tx.execute(sql`
+      update commerce.oauth_tokens set revoked_at = coalesce(revoked_at, now())
+      where revoked_at is null and grant_id in (
+        select g.id from commerce.oauth_grants g join commerce.apps a on a.client_id = g.client_id where a.developer_id = ${id}::uuid
+      )
+    `);
+    await expireGrantApprovals(
+      tx,
+      sql`oauth_grant_id in (select g.id from commerce.oauth_grants g join commerce.apps a on a.client_id = g.client_id where a.developer_id = ${id}::uuid)`,
+    );
+    await tx.execute(sql`
+      update commerce.oauth_grants set revoked_at = now()
+      where revoked_at is null and client_id in (select a.client_id from commerce.apps a where a.developer_id = ${id}::uuid)
+    `);
+    await tx.execute(sql`update commerce.apps set developer_id = null, updated_at = now() where developer_id = ${id}::uuid`);
+    await tx.execute(sql`delete from commerce.developers where account_id = ${id}::uuid`);
+    // What is only theirs. Their memberships going ends the apps they installed on those stores (store_member_left_apps(), D441).
     await tx.execute(sql`delete from commerce.store_members where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.assistant_conversations where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.assistant_memories where account_id = ${id}::uuid`);

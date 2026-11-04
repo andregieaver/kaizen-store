@@ -18,8 +18,8 @@ An app is software of yours that many stores install. Each store's install gives
 both the app's scopes and the role of the person who installed it allow at the time of the call.
 
 > [!NOTE]
-> Apps are new. Private and unlisted apps work today. Listing an app in a directory waits for Kaizena Flow's review and the developer
-> terms' legal review, and sending events to installed apps comes next.
+> Apps are new. Private and unlisted apps work today, with their events. Listing an app in a directory waits for Kaizena Flow's review
+> and the developer terms' legal review.
 
 ## Turn on developer mode
 
@@ -38,6 +38,7 @@ Press **New app** and give:
   install screen names each one.
 - **Who can install it**: *Private* (only stores you work in), *Unlisted* (any store you send to it) or *Listed* (asks for Kaizena
   Flow's review).
+- **Events**, under their own fold: the `https://` address they are sent to, and the topics you want.
 
 Press **Make the app**. The page shows the **client ID** (`kfapp_…`), the **client secret** (`kfas_…`) and the **events secret**
 (`kfws_…`) once. Copy them now: Kaizena Flow keeps only a hash of the client secret. **Renew** on the app's page makes a new one and the
@@ -96,8 +97,27 @@ A call outside the install's scopes answers `403` and names what is missing. If 
 removes the app, the tokens stop working at once and the call answers `401`. The same token works on `https://kaizenaflow.com/api/mcp`,
 where a change that asks the owner's yes still waits for it.
 
+## Receive events
+
+Each install sends your events address the topics you chose that its scopes read: `order.paid` needs `orders:read`, `product.updated`
+`products:read`, and so on (each topic's `receivers` in the [catalogue](/api/webhooks/v1/topics.json) says `apps` when an app may be sent
+it). `customer.erased` is always sent: forget that customer. Every delivery is signed with your events secret, the same way as an owner's
+own endpoint; [Verify signatures](/docs/developers/webhooks/verify-signatures) shows how to check it. Changing the address, the topics or the
+events secret on your app's page changes every install at once. The store's owner never sees or changes this address.
+
+Two topics are yours alone, sent whatever you chose:
+
+- `app.uninstalled`, at once when the app is removed from a store: by the owner, because the person who installed it left the store,
+  or because the app was blocked. Its tokens no longer work.
+- `store.erase_requested`, 48 hours later: erase what you keep of that store, its customers and its orders. It is not sent if the store
+  installs the app again before then.
+
+Both carry `data.installation`: its `id`, your app's `client_id` and `removed_at`. Nothing else is sent to a removed app.
+
 ## Installed, changed and removed
 
-- Installing again on the same store replaces the install: the old tokens stop working.
+- Installing again on the same store replaces the install: the old tokens stop working, and its events go on to the new one.
 - The store's owner sees the app under **Settings**, **Apps and API**, **Installed apps**, and **Remove** ends it.
+- When you add scopes to your app, each install keeps what it was given until the store agrees: the store sees **Asks for more** and
+  gives it with one press, as long as the person who installed it may give it. Its tokens reach the new scopes at once.
 - Your app's page shows how many stores it is installed on, never which.

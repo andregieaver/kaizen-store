@@ -259,6 +259,15 @@ yes for. Price lists' prices (D321). Updated-since filters (`?updated_after=`) o
   `store.erase_requested` 48 hours later, both sent to that endpoint though it is off; nothing else is.
 - **Scopes asked again.** When the app's scopes grow, an installation keeps its own until the store approves the new list: the Apps
   screen says *Asks for more* and *Review* runs the consent again.
+- **As built (4 November 2026).** The installation's endpoint is `src/server/app-endpoints.ts`'s (`syncInstallationEndpoint()`): made
+  with the installation, brought up to date when the app's address, secret or topics change, taken away when the app has no address.
+  Ending is the database's: a deferred trigger on `oauth_grants` (`app_installation_ended()`) switches the endpoint off and queues the
+  two events on every way an installation ends (Remove, a password or second step changed, the app blocked, the installer's membership
+  deleted by `store_member_left_apps()`, which covers an erased account too); installing again moves the old endpoint to the new
+  installation in the same transaction, so it sends neither, and cancels a `store.erase_requested` still waiting. *Review* is a fold on
+  the Apps screen listing what is newly asked in words with *Give it this* (an owner; the installation's scopes become the app's in
+  place, so its tokens keep working), shown only while the person who installed it may give all of it. Erasing a developer's account
+  blocks their apps (every installation ends) and removes developer mode. The two topics are contract 1.7.
 
 *D3, listing and the docs.*
 - *Request listing* puts a listed app in Kaizena Flow's review queue (`/admin/platform/apps`: approve with a note, or decline with the

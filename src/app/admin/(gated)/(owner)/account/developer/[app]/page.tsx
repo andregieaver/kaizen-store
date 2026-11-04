@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
@@ -68,9 +69,9 @@ export default async function AppPage({ params }: PageProps<"/admin/account/deve
         <Card title={w.install.title}>
           <p className="text-sm text-ink-2">
             {fillWords(w.install.text, { authorize: `${site}${OAUTH_PATHS.authorize}`, resource: resourceUrl(site, "admin"), token: `${site}${OAUTH_PATHS.token}` })}{" "}
-            <a href="/docs/developers/apps/build-an-app" className="underline">
+            <Link href="/docs/developers/apps/build-an-app" className="underline">
               {w.install.docs}
-            </a>
+            </Link>
           </p>
         </Card>
         <Card>
