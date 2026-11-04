@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
-import { EVENTS } from "@/lib/integrations";
+import { APP_EVENTS, EVENTS } from "@/lib/integrations";
 import { PAYLOAD_VERSION } from "@/lib/webhook-signature";
 import { WEBHOOK_TEST_DATA, WEBHOOK_TOPICS, webhookEnvelope } from "@/lib/webhook-topics";
 import { z } from "zod";
@@ -129,6 +129,17 @@ beforeAll(async () => {
   if (!issued.ok) throw new Error(issued.problem);
   subjects.gift_card = issued.cardId;
   subjects.review = await buyerReview(order.orderId);
+  // An app removed from the store (D441 D2): its ended installation is what app.uninstalled and store.erase_requested are about.
+  const [client] = await db().execute<Row>(sql`
+    insert into commerce.oauth_clients (kind, client_id, name, redirect_uris, secret_hash)
+    values ('app', ${`kfapp_topics${run}`}, 'Topics app', array['https://app.example/cb'], 'hash') returning id
+  `);
+  const [installation] = await db().execute<Row>(sql`
+    insert into commerce.oauth_grants (account_id, client_id, store_ids, store_id, scopes, resource, access, revoked_at)
+    values (${store.accountId}::uuid, ${String(client.id)}::uuid, array[${store.storeId}::uuid], ${store.storeId}::uuid, array['stores:read'], 'admin', 'change', now())
+    returning id
+  `);
+  subjects.installation = String(installation.id);
 }, 180_000);
 
 afterAll(async () => {
@@ -155,7 +166,7 @@ async function buyerReview(orderId: string): Promise<string> {
 
 describe("every webhook topic's payload (D438)", () => {
   it("is built in its topic's shape, under the envelope an endpoint gets", async () => {
-    expect(WEBHOOK_TOPICS.map((t) => t.id)).toEqual(EVENTS.map((e) => e.id));
+    expect(WEBHOOK_TOPICS.map((t) => t.id)).toEqual([...EVENTS, ...APP_EVENTS].map((e) => e.id));
     for (const topic of WEBHOOK_TOPICS) {
       const subjectId = subjects[topic.subject];
       expect(subjectId, `${topic.id}: no ${topic.subject} was made`).not.toBeUndefined();
