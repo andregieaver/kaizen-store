@@ -182,7 +182,7 @@ describe("moving from WooCommerce, step 2: our plugin reads what WooCommerce's k
     expect(await connect.hasMover(fx.storeId)).toBe(false);
     const done = await connect.finishMoverConnect({ note, secret: MOVER, site: "https://mover.example" }, { open });
     // With the new shop's own address, for the plugin's *Send shoppers to the new shop* (step 4).
-    expect(done).toEqual({ status: 200, back: expect.stringMatching(new RegExp(`/admin/${fx.slug}/settings/moving\\?mover=connected$`)), shop: expect.stringMatching(/^https?:\/\//) });
+    expect(done).toEqual({ status: 200, back: expect.stringMatching(new RegExp(`/admin/${fx.slug}/settings/moving\\?mover=connected$`)), shop: expect.stringMatching(/^https?:\/\//), store: fx.slug, market: expect.stringMatching(/^[a-z0-9-]+$/) });
     const [row] = await db().execute<Row>(sql`select mover_secret from commerce.shop_moves where store_id = ${fx.storeId}::uuid and source = 'woocommerce'`);
     expect(String(row.mover_secret)).not.toContain(MOVER);
     expect(await connect.moverStatus(owner, { open })).toEqual({ connected: true, plugins: [{ slug: "woocommerce", name: "WooCommerce" }, { slug: "mailpoet", name: "MailPoet" }, { slug: "redirection", name: "Redirection" }] });

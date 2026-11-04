@@ -3,7 +3,7 @@
 The owner (3 November 2026) asked for a "moving from" plan per platform, like `docs/moving-from-shopify.md` (D445), "so simple and easy to
 follow that Homer Simpson could do it without breaking a sweat". This is WooCommerce's.
 
-**Steps 1 to 3 are built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
+**Steps 1 to 5 are built (section 17).** The move engine is the one D445 plans. This file does not describe it again, and
 refers to it by section ("Shopify 8.2"):
 
 | Part of the engine | Where in the Shopify plan |
@@ -572,8 +572,40 @@ the mover stays read-only.
     `wordpress-mover-redirect.test.ts`). Every other page of the site stays. Buying stays paused while it is on.
 - Moving in says where the switches are. Uninstalling the plugin forgets them.
 
-**Still to come in step 4:** the D169 views of the new shop's products on WordPress's pages, and the `shop.` subdomain.
+### Step 4b: the new shop's products on WordPress, and `shop.{domain}` (4 November 2026)
+
+- **Views** (plugin 1.3.5): *Show the new shop's products on your pages* makes one saved view (D169) of each of the new shop's categories
+  and one of all its products, each with its shortcode to paste where the old shop's products were.
+  - The plugin learns the store's and market's names from Kaizena Flow's answer when reading is allowed, and reads the categories through
+    its own D169 connection (`Kaizen_Store_Api::terms()`), which the owner makes first; the page says so when it is missing.
+  - A view of the same name already there is left.
+- **The address:** with *only the shop*, the name that moves here is `shop.{domain}` alone (`namesToMove()` in `shopify-address.ts`): one
+  new record at the owner's host, nothing on the WordPress site changes. With *everything*, the site's own domain and its `www.` move, as
+  Shopify's do. The address panel says it in WooCommerce's words.
+
+### Step 5: move day for WooCommerce (4 November 2026)
+
+D445's move engine (`src/server/shopify-move.ts`) now works from whichever shop is connected. *Ready to move?*, *Move my shop*, *Choose a
+time* and the five-minute job are unchanged; the steps are:
+1. **Catch-up:** what changed on WooCommerce since the copy began (`modified_after`), not only what is new, through the same imports
+   (D446 4.7). The owner's choices stay with the copy through it (`startCatchUp()` keeps the options).
+2. **Old links:**
+   - *Everything*: read from the site's own sitemap and pointed here, as Shopify's.
+   - *Only the shop*: left to WordPress, whose plugin switch sends shoppers on.
+3. **Gift cards:** read again through the plugin just before they are made, so a balance spent since the copy is not given twice. Then made
+   with new codes by D445's own writer (`moveGiftCards()`).
+   - A card without an email waits for the owner's *Issue it*, which reads it again through the plugin (`issueReadGiftCard()`).
+   - Without the plugin there are none to make.
+4. **Open:** as Shopify's.
+
+- **Before the move:** the owner presses *Pause buying* in WordPress; the move's words say so.
+- **The 14 days after:** the daily catch-up of new customers and orders runs as Shopify's. Its card, and lowering a moved card's balance by
+  what was spent on the old shop, are Shopify's alone for now.
+- **The page:** a WooCommerce shop's card shows *Ready to move?*, the move's steps and the address, in WooCommerce's words (`woo.move`,
+  `woo.address`, merged over the shared ones by `overWords()`).
+- **Tests:** `woocommerce-copy.int.test.ts` moves a shop whose owner keeps WordPress: the catch-up asks for what changed, links are left,
+  the shop opens, and only `shop.{domain}` is to be pointed here.
 
 **Not yet built:**
-- Keep WordPress (step 4); move day (step 5), which also makes the gift cards.
+- The 14 days after's card for WooCommerce (closing WooCommerce), and lowering a moved card by what was spent on the old shop.
 - Categories with their parents, and a check report (*Here's your shop*) for WooCommerce.

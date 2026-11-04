@@ -23,6 +23,7 @@ import { KNOWN_PLUGINS } from "@/lib/woocommerce-mover";
 import { WORDPRESS_PLUGIN_FILE } from "@/lib/wordpress-plugin";
 import { WooMover } from "@/components/admin/moving/woo-mover";
 import { WooList } from "@/components/admin/moving/woo-list";
+import { MovingSource } from "@/components/admin/moving/moving-source";
 import { WOO_COPY_FEEDS, WOO_MOVER_FEEDS } from "@/lib/woocommerce-copy";
 import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
 import type { DataJob } from "@/server/data-job-store";
@@ -143,6 +144,10 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             <MoverPanel storeSlug={store.slug} />
             <CopyPanel storeSlug={store.slug} />
             <WooList action={importListAction.bind(null, store.slug)} />
+            <MovingSource source="woocommerce">
+              <MovePanel storeSlug={store.slug} locale={locale} />
+              <AddressPanel storeSlug={store.slug} />
+            </MovingSource>
             <details className="text-sm">
               <summary className="w-fit cursor-pointer underline underline-offset-2">{w.details.title}</summary>
               <div className="mt-3">

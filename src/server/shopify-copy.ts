@@ -214,6 +214,12 @@ async function stateOf(storeId: string): Promise<CopyState | null> {
   return (await connected(storeId))?.state ?? null;
 }
 
+/** A WooCommerce owner's answer to *What moves?* (D446 4.5), as kept with the copy; null before it is asked. */
+export async function copyChoice(member: Membership): Promise<"move" | "keep" | null> {
+  if (!memberCan(member, OWNER)) return null;
+  return (await connected(member.store.id))?.state.options?.wordpress ?? null;
+}
+
 /** The platform the connected shop is on (owner only), for the page's words and the parts it lists; null when none is connected. */
 export async function copySource(member: Membership): Promise<MoveSource | null> {
   if (!memberCan(member, OWNER)) return null;
@@ -300,7 +306,8 @@ export async function startCatchUp(member: Membership, since: string, only: read
   const feeds = Object.fromEntries(COPY_FEEDS.map((f) => [f, (CATCH_UP_FEEDS.includes(f) && only.includes(f)) || (f === "subscribers" && only.includes("customers")) ? { stage: "waiting" } : { stage: "empty", count: 0 }])) as CopyState["feeds"];
   const vendors = state.feeds.products.vendors;
   if (vendors) feeds.products = { ...feeds.products, vendors };
-  await save(member.store.id, { startedAt: new Date().toISOString(), apply: true, since, feeds });
+  // The owner's choices stay with the copy (a WooCommerce owner's *What moves?* is read by the address and move day).
+  await save(member.store.id, { startedAt: new Date().toISOString(), apply: true, since, ...(state.options ? { options: state.options } : {}), feeds });
   log("info", "shopify.catch_up_started", { storeId: member.store.id });
   return { ok: true };
 }
@@ -750,7 +757,7 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
   let finished = false;
   let skipped = 0;
   for (let n = 0; n < WOO_PAGES_A_TICK && Date.now() - started < WOO_TICK_MS; n += 1) {
-    const got = await wooList(storeId, WOO_ROUTES[feed], wooQuery(feed, page, { ordersSince: feed === "orders" ? (state.options?.ordersSince ?? null) : null }), deps);
+    const got = await wooList(storeId, WOO_ROUTES[feed], wooQuery(feed, page, { ordersSince: feed === "orders" ? (state.options?.ordersSince ?? null) : null, changedSince: state.since ?? null }), deps);
     if (!got.ok) {
       log("warn", "woocommerce.copy_read_failed", { storeId, feed, page, problem: got.problem });
       state.feeds[feed] = { stage: "failed", problem: got.problem };

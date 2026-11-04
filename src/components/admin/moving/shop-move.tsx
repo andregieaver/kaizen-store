@@ -10,6 +10,7 @@ import { MOVE_STEPS, type LeftCard, type MoveState, type MoveStep, type ReadyChe
 import type { MoveProblem } from "@/server/shopify-move";
 
 import { useAdminText } from "../admin-text";
+import { overWords, useMovingSource } from "./moving-source";
 
 export type MoveActions = {
   start: () => Promise<{ ok: boolean; problem?: MoveProblem }>;
@@ -42,7 +43,9 @@ export function ShopMove({
   hrefs: Record<ReadyCheck["key"], string> & { steps: Record<MoveStep, string>; address: string };
   actions: MoveActions;
 }) {
-  const w = useAdminText("moving").move;
+  const all = useAdminText("moving");
+  const source = useMovingSource();
+  const w = source === "woocommerce" ? overWords(all.move, all.woo.move) : all.move;
   const router = useRouter();
   const [pending, start] = useTransition();
   const [choosing, setChoosing] = useState(false);
@@ -209,7 +212,9 @@ export function ShopMove({
 
 /** The Shopify gift cards that had no email (D445 step 8): each recognisable by its last characters, issued here when its holder comes. */
 function LeftCards({ cards, issue }: { cards: LeftCard[]; issue: MoveActions["issue"] }) {
-  const w = useAdminText("moving").move.left;
+  const all = useAdminText("moving");
+  const source = useMovingSource();
+  const w = source === "woocommerce" ? overWords(all.move.left, all.woo.move.left) : all.move.left;
   return (
     <div className="flex flex-col gap-2">
       <h4 className="text-sm font-medium">{w.title}</h4>
@@ -224,7 +229,9 @@ function LeftCards({ cards, issue }: { cards: LeftCard[]; issue: MoveActions["is
 }
 
 function LeftCardRow({ card, issue }: { card: LeftCard; issue: MoveActions["issue"] }) {
-  const w = useAdminText("moving").move.left;
+  const all = useAdminText("moving");
+  const source = useMovingSource();
+  const w = source === "woocommerce" ? overWords(all.move.left, all.woo.move.left) : all.move.left;
   const [pending, start] = useTransition();
   const [said, setSaid] = useState<string | null>(null);
   return (

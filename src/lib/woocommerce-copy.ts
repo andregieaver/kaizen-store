@@ -52,10 +52,12 @@ export const WOO_MOVER_FEEDS = ["redirects", "subscribers", "seo", "gift_cards",
 export const WOO_PAGE_SIZE = 50;
 
 /** The query of a feed's page `page` (from 1). `since`: orders and customers changed from then (a catch-up), or orders placed from then. */
-export function wooQuery(feed: WooFeed, page: number, options: { ordersSince?: string | null } = {}): Record<string, string | number> {
+export function wooQuery(feed: WooFeed, page: number, options: { ordersSince?: string | null; changedSince?: string | null } = {}): Record<string, string | number> {
   const base = { page, per_page: WOO_PAGE_SIZE, orderby: "id", order: "asc" };
-  if (feed === "products") return { ...base, status: "any" };
-  if (feed === "orders") return { ...base, status: "any", ...(options.ordersSince ? { after: options.ordersSince } : {}) };
+  // Move day's catch-up (D446 4.7): what changed since the copy began, not only what is new, since WooCommerce shops often edit by hand.
+  const changed: Record<string, string> = options.changedSince ? { modified_after: options.changedSince } : {};
+  if (feed === "products") return { ...base, status: "any", ...changed };
+  if (feed === "orders") return { ...base, status: "any", ...(options.changedSince ? changed : options.ordersSince ? { after: options.ordersSince } : {}) };
   if (feed === "customers") return { ...base, role: "customer" };
   // Every review but spam and the bin: the approved ones were shown, the held ones were waiting (`reviewLines()` keeps which).
   if (feed === "reviews") return { ...base, status: "all" };
