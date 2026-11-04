@@ -389,6 +389,24 @@ export const movingEn = {
       stillShopify: "still answers from your old site",
       replace: "Where a record for the same name points to your old host, change it instead of adding another.",
     },
+    /** The 14 days after, said of a WooCommerce shop (D446): merged over the watch's own words; `close` holds its own steps. */
+    watch: {
+      address: { no: "Your address doesn't lead here yet" },
+      waiting: "We look at WooCommerce once a day for orders that still arrive there, and copy them here.",
+      none: "No new orders on WooCommerce ✓",
+      some: { one: "{n} order came in on WooCommerce after the move and was copied here", many: "{n} orders came in on WooCommerce after the move and were copied here" },
+      cardsLowered: { one: "{n} gift card's old code was used on WooCommerce: its balance here was lowered to match", many: "{n} gift cards' old codes were used on WooCommerce: their balances here were lowered to match" },
+      close: {
+        title: "You can close WooCommerce now",
+        text: "Everything is here and working. Close it yourself: we never change anything on your site but what you press there.",
+        moved: "In WordPress, open Kaizena Flow → Move to Kaizena Flow and check that Send shoppers to the new shop is on.",
+        giftCards: "Switch off your gift cards in your gift card plugin too, so their old codes can't be used there.",
+        deactivate: "Then deactivate WooCommerce: Plugins → WooCommerce → Deactivate. Your pages and blog stay as they are.",
+        backup: "Keep a copy of your old site first: Tools → Export in WordPress, or your host's backup.",
+        hosting: "Then cancel your WordPress hosting when you're ready: your address leads here now, so nobody sees the old site.",
+        how: "How",
+      },
+    },
     disconnectAsk: "Disconnect your WooCommerce shop? Nothing is deleted here or on your site. To remove our key from your site too, open WooCommerce → Settings → Advanced → REST API there.",
   },
   off: {

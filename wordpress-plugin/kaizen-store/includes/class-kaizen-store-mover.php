@@ -696,11 +696,14 @@ class Kaizen_Store_Mover {
 	 */
 	public static function read_gift_cards( $request ) {
 		global $wpdb;
-		$all = array();
+		// `all`: every card, with nothing left or switched off too, for what was spent since the move (the 14 days after).
+		$every = '1' === (string) $request->get_param( 'all' );
+		$all   = array();
 		$wc  = $wpdb->prefix . 'woocommerce_gc_cards';
 		if ( self::table_exists( $wc ) ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table's name is this site's prefix.
-			$rows = $wpdb->get_results( "SELECT id, code, remaining, expire_date, recipient FROM {$wc} WHERE is_active = 'on' AND remaining > 0 ORDER BY id", ARRAY_A );
+			$where = $every ? '' : "WHERE is_active = 'on' AND remaining > 0";
+			$rows  = $wpdb->get_results( "SELECT id, code, remaining, expire_date, recipient FROM {$wc} {$where} ORDER BY id", ARRAY_A );
 			foreach ( (array) $rows as $row ) {
 				$expires = (int) $row['expire_date'] > 0 ? gmdate( 'Y-m-d', (int) $row['expire_date'] ) : '';
 				$all[]   = self::card( 'woocommerce-gift-cards', $row['id'], $row['code'], $row['remaining'], $expires, $row['recipient'] );
@@ -711,7 +714,9 @@ class Kaizen_Store_Mover {
 		if ( self::table_exists( $pw ) && self::table_exists( $activity ) ) {
 			$email = self::has_column( $pw, 'recipient_email' ) ? 'c.recipient_email' : "''";
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the tables' names are this site's prefix.
-			$rows = $wpdb->get_results( "SELECT c.pimwick_gift_card_id AS id, c.number, c.expiration_date, {$email} AS email, COALESCE(SUM(a.amount), 0) AS balance FROM {$pw} c LEFT JOIN {$activity} a ON a.pimwick_gift_card_id = c.pimwick_gift_card_id WHERE c.active = 1 GROUP BY c.pimwick_gift_card_id HAVING balance > 0 ORDER BY c.pimwick_gift_card_id", ARRAY_A );
+			$where  = $every ? '' : 'WHERE c.active = 1';
+			$having = $every ? '' : 'HAVING balance > 0';
+			$rows   = $wpdb->get_results( "SELECT c.pimwick_gift_card_id AS id, c.number, c.expiration_date, {$email} AS email, COALESCE(SUM(a.amount), 0) AS balance FROM {$pw} c LEFT JOIN {$activity} a ON a.pimwick_gift_card_id = c.pimwick_gift_card_id {$where} GROUP BY c.pimwick_gift_card_id {$having} ORDER BY c.pimwick_gift_card_id", ARRAY_A );
 			foreach ( (array) $rows as $row ) {
 				$expires = $row['expiration_date'] ? substr( (string) $row['expiration_date'], 0, 10 ) : '';
 				$all[]   = self::card( 'pw-gift-cards', $row['id'], $row['number'], $row['balance'], $expires, $row['email'] );
@@ -728,7 +733,7 @@ class Kaizen_Store_Mover {
 			);
 			foreach ( $cards as $id ) {
 				$balance = (float) get_post_meta( $id, '_ywgc_balance_total', true );
-				if ( $balance <= 0 || 'yes' === get_post_meta( $id, '_ywgc_card_disabled', true ) ) {
+				if ( ! $every && ( $balance <= 0 || 'yes' === get_post_meta( $id, '_ywgc_card_disabled', true ) ) ) {
 					continue;
 				}
 				$expires = (int) get_post_meta( $id, '_ywgc_expiration', true );

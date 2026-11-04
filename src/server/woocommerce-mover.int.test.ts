@@ -281,6 +281,37 @@ describe("moving from WooCommerce, step 2: our plugin reads what WooCommerce's k
     expect(await list.importListExport(owner, new TextEncoder().encode("Email Address,OPTIN_TIME,UNSUB_TIME\na@example.com,2024-01-01 00:00:00,2024-02-01 00:00:00"))).toEqual({ ok: false, problem: "not_subscribed_file" });
   });
 
+  it("moves the shop (step 5): the gift card made with a new code, and lowered when its old code is used on WooCommerce", async () => {
+    const move = await import("./shopify-move");
+    const cards = await import("./shopify-gift-cards");
+    await db().execute(sql`update commerce.stores set private_mode = true, setup_completed_at = now() where id = ${fx.storeId}::uuid`);
+    ({ owner } = await membersOf(fx));
+    const moveDeps = { ...deps, readOld: async () => ({ ok: false }) };
+    expect(await move.startMove(owner, moveDeps)).toEqual({ ok: true });
+    let after = null;
+    for (let i = 0; i < 20; i += 1) {
+      const state = (await db().execute<Row>(sql`select copy from commerce.shop_moves where store_id = ${fx.storeId}::uuid and source = 'woocommerce'`))[0].copy as { feeds: Record<string, { job?: string; stage: string }> };
+      for (const f of Object.values(state.feeds)) if (f.job && (f.stage === "checking" || f.stage === "applying")) await runToEnd(f.job, data);
+      after = await move.advanceMove(owner, moveDeps);
+      if (after?.status === "moved") break;
+    }
+    expect(after?.status).toBe("moved");
+    expect(after?.steps.gift_cards).toMatchObject({ stage: "done", done: 1, failed: 0 });
+    const [card] = await db().execute<Row>(sql`select id, moved_from, commerce.gift_card_balance(id) as balance from commerce.gift_cards where store_id = ${fx.storeId}::uuid`);
+    expect([card?.moved_from, Number(card?.balance)]).toEqual(["woo:woocommerce-gift-cards:7", 25000]);
+    // The old code spent down to 100 on WooCommerce: 150 taken off here. A card WooCommerce did not answer for (switched off there) is left.
+    const read = async () => ({ ok: true as const, data: { currency: "NOK", more: false, cards: [{ source: "woocommerce-gift-cards", id: 7, balance: "100.00" }] } });
+    expect(await cards.lowerSpentOnWoo(owner, read)).toBe(1);
+    const [lowered] = await db().execute<Row>(sql`select commerce.gift_card_balance(id) as balance from commerce.gift_cards where id = ${card!.id}::uuid`);
+    expect(Number(lowered?.balance)).toBe(10000);
+    // Looked at again with nothing new spent: nothing more taken; and a card missing from the answer is never taken for spent.
+    expect(await cards.lowerSpentOnWoo(owner, read)).toBe(0);
+    expect(await cards.lowerSpentOnWoo(owner, async () => ({ ok: true as const, data: { currency: "NOK", more: false, cards: [] } }))).toBe(0);
+    // The 14 days after's card says it of WooCommerce, with WooCommerce's own steps.
+    const view = await move.watchView(owner, { configured: false, dns: { ns: async () => [], points: async () => ({ a: [], cname: null }) } });
+    expect([view?.source, view?.wordpress]).toEqual(["woocommerce", "move"]);
+  });
+
   it("takes the field group back with Undo this copy", async () => {
     const undo = await import("./shopify-undo");
     expect(await undo.undoCopy(owner)).toMatchObject({ ok: true });

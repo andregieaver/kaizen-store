@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { canonicalQuery, contentLinesOf, giftCardLinesOf, menusOf, isMoverSecret, moverHeaders, moverSignature, openMoverState, pluginsOf, redirectLinesOf, sealMoverState, seoOf, subscriberLinesOf, termSeoOf } from "./woocommerce-mover";
+import { canonicalQuery, contentLinesOf, giftCardBalancesOf, giftCardLinesOf, menusOf, isMoverSecret, moverHeaders, moverSignature, openMoverState, pluginsOf, redirectLinesOf, sealMoverState, seoOf, subscriberLinesOf, termSeoOf } from "./woocommerce-mover";
 
 const SECRET = "a".repeat(64);
 const MOVER_PHP = path.join(process.cwd(), "wordpress-plugin/kaizen-store/includes/class-kaizen-store-mover.php");
@@ -183,5 +183,16 @@ describe("WordPress's pages, posts and menus (step 3)", () => {
     expect(menusOf({ menus: [{ handle: "main", title: "Main", items: [{ title: "About", type: "PAGE", url: "/pages/about", items: [] }] }, { handle: "x", title: "" }] })).toEqual([
       { handle: "main", title: "Main", items: [{ title: "About", type: "PAGE", url: "/pages/about", items: [] }] },
     ]);
+  });
+});
+
+describe("every gift card's balance there, for the 14 days after", () => {
+  it("reads spent and switched-off cards too, by the id they were moved under", () => {
+    const read = giftCardBalancesOf({ currency: "NOK", more: true, cards: [{ source: "pw-gift-cards", id: 8, balance: "0.00" }, { source: "woocommerce-gift-cards", id: 7, balance: "100.00" }, { source: "x y", id: 1, balance: "5" }] });
+    expect([...read.balances]).toEqual([
+      ["woo:pw-gift-cards:8", { amount: "0.00", currency: "NOK" }],
+      ["woo:woocommerce-gift-cards:7", { amount: "100.00", currency: "NOK" }],
+    ]);
+    expect(read.more).toBe(true);
   });
 });

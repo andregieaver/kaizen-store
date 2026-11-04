@@ -34,7 +34,7 @@ import { giftCardLinesOf } from "@/lib/woocommerce-mover";
 import type { GiftCardLine } from "@/lib/shopify-settings";
 import { advanceCopy, startCatchUp, type CopyDeps } from "./shopify-copy";
 import { makersView } from "./shopify-makers";
-import { issueLeftGiftCard, issueReadGiftCard, lowerSpentOnShopify, moveGiftCards, readShopifyGiftCards } from "./shopify-gift-cards";
+import { issueLeftGiftCard, issueReadGiftCard, lowerSpentOnShopify, lowerSpentOnWoo, moveGiftCards, readShopifyGiftCards } from "./shopify-gift-cards";
 import { addressView, type AddressDeps } from "./shopify-address";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { db } from "@/db/client";
@@ -321,7 +321,10 @@ export async function advanceWatch(member: Membership, deps: MoveDeps = {}): Pro
       if (after && copyDone(after)) {
         const found = after.feeds.orders.stage === "done" ? (after.feeds.orders.count ?? 0) : 0;
         // A moved gift card's old code spent on Shopify since: taken off its card here.
-        const lowered = await lowerSpentOnShopify(member, deps).catch((error: unknown) => {
+        const lowered = await ((await rowOf(storeId))?.source === "woocommerce"
+          ? lowerSpentOnWoo(member, (page) => moverGet(storeId, "gift_cards", { page, all: 1 }, deps))
+          : lowerSpentOnShopify(member, deps)
+        ).catch((error: unknown) => {
           log("error", "shopify.gift_cards_lower_failed", { storeId }, error);
           return 0;
         });
@@ -358,6 +361,9 @@ export type WatchView = {
   /** Gift cards came over: the owner switches them off on Shopify too. */
   cardsMoved: boolean;
   canClose: boolean;
+  /** The platform it moved from, and for WooCommerce the owner's *What moves?* (the closing steps differ). */
+  source: "shopify" | "woocommerce";
+  wordpress: "move" | "keep" | null;
 };
 
 /** The card of the 14 days after (owner only): null when there is no moved shop, or the owner said Shopify is closed. */
@@ -377,6 +383,8 @@ export async function watchView(member: Membership, deps: MoveDeps & AddressDeps
     cardsLowered: row.move.watch.cardsLowered,
     cardsMoved: (row.move.steps.gift_cards.done ?? 0) > 0,
     canClose: closeReady(row.move, facts, now),
+    source: row.source,
+    wordpress: row.copy.options?.wordpress ?? null,
   };
 }
 

@@ -4,7 +4,7 @@ Tags: ecommerce, products, shortcode, carousel, grid
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.3.5
+Stable tag: 1.3.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -61,6 +61,9 @@ A cart, yes: a slide-out cart on your site. Not a checkout: pressing Checkout ma
 The connection and saved lists are removed. The views themselves are your content and stay in the database.
 
 == Changelog ==
+
+= 1.3.6 =
+* Moving to Kaizena Flow: for the 14 days after the move, Kaizena Flow reads your gift cards' balances again (spent and switched-off ones too), so a moved card's old code used here is taken off its new card.
 
 = 1.3.5 =
 * Move to Kaizena Flow: Show the new shop's products on your pages makes a view of each of your new shop's categories and one of all its products, each with its shortcode to paste where your old shop's products were.
