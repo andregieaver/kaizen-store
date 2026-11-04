@@ -36,8 +36,8 @@ takes it out again. When you publish changes later, the article keeps the date i
 
 ### Publish it later
 
-Once the article is saved, press **Schedule** beside Publish. Choose a **Day** and a **Time** on your store's clock: the draft as it is
-then is published, within five minutes of that time. While your store is not open, the schedule waits. The Blog list shows when each
+Once the article is saved, press **Schedule** beside Publish. Choose a **Day** and a **Time** on your store's clock, and press
+**Schedule**: the draft as it is then is published, within five minutes of that time. While your store is not open, the schedule waits. The Blog list shows when each
 article is due, and says so if one did not publish.
 
 ## More than one blog

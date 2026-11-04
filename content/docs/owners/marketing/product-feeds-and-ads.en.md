@@ -23,10 +23,10 @@ into the channel once, and the channel fetches it on its own schedule.
    **TikTok** and **Pinterest**. Press **Copy** beside the one you need.
 3. Paste the address into the channel's own account, as the channel asks for a feed address.
 
-Each variant is one item, with its price as that country's storefront shows it, VAT included, its stock, GTIN, brand, pictures, and
-your flat shipping rate. When a price is genuinely reduced, Google's feed gives the lowest price of the last 30 days as the price and
-the new one as the sale price. Prices and stock in the feeds are at most 15 minutes old. Channels can fetch the feeds only while your
-store is open.
+Each variant is one item, with its price as that country's storefront shows it, VAT included, its stock, GTIN, brand, pictures, and your
+flat shipping rate. When a price is genuinely reduced, Google's feed gives the lowest price of the last 30 days as the price and the new
+one as the sale price. Prices and stock in the feeds are at most 15 minutes old. Channels can fetch the feeds only while your store is
+open.
 
 ### Products left out
 
@@ -35,18 +35,18 @@ Under **Not in the feeds**, each country lists the products left out and why: *n
 
 ### Keep the address to yourself
 
-The address is secret: anyone who has it can read the feed. If it gets out, press **Make a new address**. The old one stops at once,
-so paste the new one into each channel. **Turn off** stops all feeds.
+The address is secret: anyone who has it can read the feed. If it gets out, press **Make a new address**. The old one stops at once, so
+paste the new one into each channel. **Turn off** stops all feeds.
 
 > [!NOTE]
-> The same page has **Shopping agents**, which lets AI assistants that shop for people search your products and put a cart together
-> for the shopper to pay in your own checkout, and a **ChatGPT shopping feed**. Both are off until you switch them on.
+> The same page has **Shopping agents**, which lets AI assistants that shop for people search your products and put a cart together for
+> the shopper to pay in your own checkout, and a **ChatGPT shopping feed**. Both are off until you switch them on.
 
 ## Ad tags in the browser
 
-Open **Settings** and choose [Cookies and tracking](/admin/{store}/settings/cookies). Under **Analytics and marketing tools**, paste
-the id of each tool you use: **Google Analytics 4**, **Google Tag Manager**, **Meta Pixel**, **Google Ads**, **TikTok Pixel** or
-**Pinterest Tag**, and press **Save tools**. Leave a field empty to switch the tool off.
+Open **Settings** and choose [Cookies and tracking](/admin/{store}/settings/cookies). Under **Analytics and marketing tools**, paste the
+id of each tool you use: **Google Analytics 4**, **Google Tag Manager**, **Meta Pixel**, **Google Ads**, **TikTok Pixel** or **Pinterest
+Tag**, and press **Save tools**. Leave a field empty to switch the tool off.
 
 Each tool loads only after a visitor allows it in the cookie banner, which appears by itself once a tool is on. With consent, the tools
 hear product views, list views, searches and adds to the cart, with product ids and prices only. Checkouts and purchases are not sent
@@ -62,7 +62,7 @@ Sales sent from the server are counted even when a shopper uses an ad blocker.
    **Pixel code** and an **Events API access token**; for **Pinterest** the **Ad account id** and a **Conversions token**.
 3. Choose **What to send**: **Standard**, the order and the ad's click id with nothing personal, or **Enhanced**, which also sends the
    shopper's email and phone, hashed, so more sales are matched to ads.
-4. Tick **Send events** and press **Save**. A **Test event code** from the platform lets you check events there first.
+4. Tick **Send events** and press **Save**. A **Test event code (optional)** from the platform lets you check events there first.
 
 From then on, each order made and each payment taken is sent within a minute, but only for shoppers who allowed marketing cookies. A
 purchase paid in test mode is never sent. The page shows the last 7 days: how many were sent, not sent and failed, with the reason.

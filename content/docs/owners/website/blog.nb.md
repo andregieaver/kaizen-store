@@ -36,8 +36,8 @@ Linjen nederst er den samme som for sider: **Lagre utkast** tar vare på arbeide
 
 ### Publiser den senere
 
-Når artikkelen er lagret, trykker du **Planlegg** ved siden av Publiser. Velg **Dag** og **Klokkeslett** etter butikkens klokke: utkastet
-slik det er da, blir publisert innen fem minutter etter det tidspunktet. Så lenge butikken ikke er åpnet, venter planen. Bloggens liste
+Når artikkelen er lagret, trykker du **Planlegg** ved siden av Publiser. Velg **Dag** og **Klokkeslett** etter butikkens klokke, og
+trykk **Planlegg**: utkastet slik det er da, blir publisert innen fem minutter etter det tidspunktet. Så lenge butikken ikke er åpnet, venter planen. Bloggens liste
 viser når hver artikkel skal publiseres, og sier fra hvis en ikke ble publisert.
 
 ## Flere blogger

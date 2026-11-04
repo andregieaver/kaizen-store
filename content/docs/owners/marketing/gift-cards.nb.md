@@ -64,7 +64,8 @@ En feil kode får bare *Dette gavekortet kan ikke brukes*, aldri om en slik kode
 per valuta. Under **Alle gavekort** søker du på de fire siste tegnene i en kode, et bestillingsnummer eller, hvis du har tilgang til
 kunder, en person, og filtrerer etter tilstand: *Ikke sendt ennå*, *Aktivt*, *Brukt opp*, *Utløpt* eller *Deaktivert*.
 
-Åpne et gavekort for å se verdien og hva som er igjen, når det utløper, hvordan det ble til, hele historikken og bestillingene det betalte.
+Åpne et gavekort for å se verdien og hva som er igjen, når det utløper, hvordan det ble til, hele historikken og bestillingene det
+betalte.
 
 ### Utsted et gavekort for hånd
 
@@ -72,8 +73,8 @@ kunder, en person, og filtrerer etter tilstand: *Ikke sendt ennå*, *Aktivt*, *B
 2. Oppgi **Beløp** og **Valuta**, en butikken selger i.
 3. Under **Hvem det er til (valgfritt)** oppgir du e-postadressen deres, så sendes koden dit, og navnet deres, en hilsen og språket i
    e-posten.
-4. Under **Hvorfor det utstedes** skriver du et notat til deg selv, for eksempel en kompensasjon for en bestilling. Mottakeren ser det
-   ikke.
+4. Under **Hvorfor det utstedes (for dine egne notater, vises ikke til dem)** skriver du et notat, for eksempel en kompensasjon for en
+   bestilling.
 5. Trykk **Utsted gavekortet**.
 
 Koden vises én gang, her: trykk **Kopier koden** hvis du skal gi den videre selv. For å utstede, endre og deaktivere gavekort må du ha
@@ -95,11 +96,11 @@ På siden til et gavekort:
 ### Hvor lenge gavekort varer
 
 Under **Hvor lenge gavekort varer** velger du hvor lenge **Nye gavekort varer**: fra 1 til 10 år, eller *Aldri*. Nye butikker starter på
-3 år. Et gavekort beholder datoen det ble utstedt med, og det som er igjen på det når det utløper, forsvinner. Mange land forventer minst
-tre år: sjekk hva som gjelder for deg.
+3 år. Et gavekort beholder datoen det ble utstedt med, og det som er igjen på det når det utløper, forsvinner. Mange land forventer
+minst tre år: sjekk hva som gjelder for deg.
 
 ## I tallene dine
 
-Et solgt gavekort er ikke et salg før det blir brukt. **Analyse**, **Økonomi** holder solgte gavekort utenfor salget og viser hva kundene
-har til gode på dem, per valuta, med hva som ble utstedt, brukt, tilbakebetalt til kortet og utløpt i perioden
+Et solgt gavekort er ikke et salg før det blir brukt. **Analyse**, **Økonomi** holder solgte gavekort utenfor salget og viser hva
+kundene har til gode på dem, per valuta, med hva som ble utstedt, brukt, tilbakebetalt til kortet og utløpt i perioden
 ([Analyse](/docs/owners/analytics/analytics)).

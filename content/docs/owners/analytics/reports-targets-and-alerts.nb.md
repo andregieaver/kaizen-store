@@ -28,8 +28,8 @@ Trykk **Ny rapport**. Under **Lag rapporten**:
 1. **Tall**: opptil seks av Salgsinntekt, Brutto varesalg, Rabatter, Refusjoner, Ordrer, Solgte enheter, Gjennomsnittlig ordreverdi,
    Kunder, Bruttofortjeneste og Merverdiavgift.
 2. **Fordelt på**: opptil to av Dag, Uke, Måned, Kvartal, Produkt, Variant, Kategori, Stikkord, Produkttype, Land, Valuta, Kanal,
-   Enhet, Rabattkode, Betalingsmåte eller Ny eller gjenkjøpende. **Ingenting: én sum** gir én rad. En fordeling som ikke passer til
-   tallene du har valgt, står det *Ikke med tallene som er valgt* ved.
+   Enhet, Rabattkode, Betalingsmåte eller Ny eller gjenkjøpende. **Ingenting: én sum** gir én rad. Ved en fordeling som ikke passer
+   til tallene du har valgt, står det *Ikke med tallene som er valgt*.
 3. **Bare der**: trykk **Legg til et filter**, velg hva du filtrerer på, og skriv verdiene, skilt med komma.
 4. **Periode** og **Sammenlign med**, som i oversikten.
 5. **Sorter etter**, **Rader** (opptil 500) og **Vis som**: **Tabell**, **Søyler** eller **Linje**.
@@ -54,7 +54,7 @@ For å lagre og laste ned trenger du en rolle som kan endre Analyse.
 
 Du kan også spørre KI-assistenten om tall med dine egne ord. Den svarer ut fra de samme rapportene og kan lagre en for deg.
 
-## Få en rapport på e-post fast
+## Få en rapport på e-post jevnlig
 
 Åpne en lagret rapport. Under **Send rapporten på e-post**:
 

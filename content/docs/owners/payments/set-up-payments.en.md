@@ -17,7 +17,7 @@ sources: [D15, D17, D20, D289, D292]
 
 Shoppers pay your business directly, through your store's own Stripe account, and Stripe pays the money out to your bank. Everything
 about payments is set on one page: open **Settings** in the menu and choose [Payments](/admin/{store}/settings/payments), under Selling.
-Only the store's owners can open it, and every change is listed under **Recent changes** at the bottom, with who made it.
+Only the store's owners can open it. **Recent changes**, at the bottom, lists the store's latest recorded changes, with who made them.
 
 ## Test payments
 

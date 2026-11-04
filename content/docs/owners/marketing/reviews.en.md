@@ -15,16 +15,16 @@ sources: [D178, D301]
 
 ## Switch reviews on
 
-Reviews are off until you switch them on: open **Settings**, choose [Features](/admin/{store}/settings/features) and switch on
-**Product reviews**.
+Reviews are off until you switch them on: open **Settings**, choose [Features](/admin/{store}/settings/features) and switch on **Product
+reviews**.
 
-If you switch them off later, reviews stop showing and customers cannot write new ones. Every review is kept for when you switch them
-on again.
+If you switch them off later, reviews stop showing and customers cannot write new ones. Every review is kept for when you switch them on
+again.
 
 ## Who can write a review
 
-Only people who bought a product in your store and received it. That makes every review written in your store a **Verified purchase**.
-A buyer can review:
+Only people who bought a product in your store and received it. That makes every review written in your store a **Verified purchase**. A
+buyer can review:
 
 - goods, once the order is delivered or collected;
 - a download, once it is paid;
@@ -66,8 +66,8 @@ The choice counts for reviews written or edited from then on.
 ## What shoppers see
 
 Once a product has a published review, its page shows the stars and the average under the title, and the reviews further down: the
-newest ten, with *Show more reviews* for the rest, each with its stars, words, name, date and the variant bought. Before then, nothing shows.
-With them, *How reviews are checked* tells shoppers who can write and why a review may not be shown. Search engines get the
+newest ten, with *Show more reviews* for the rest, each with its stars, words, name, date and the variant bought. Before then, nothing
+shows. With them, *How reviews are checked* tells shoppers who can write and why a review may not be shown. Search engines get the
 average and the count too.
 
 Reviews are shown in the words and language they were written in, never translated. If you made your own product layout, add the parts
@@ -100,5 +100,5 @@ imported twice adds nothing the second time.
 
 ## Reviews and personal data
 
-A review is its writer's personal data: it is in their data export, and erasing the customer deletes their reviews
-([Personal data](/docs/owners/customers/personal-data)).
+A review is its writer's personal data: it is in their data export, and erasing the customer deletes their reviews ([Personal
+data](/docs/owners/customers/personal-data)).

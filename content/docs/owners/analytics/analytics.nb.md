@@ -115,7 +115,7 @@ Under **Annonsekostnader** på Markedsføring legger du inn hva du har betalt fo
 **Beløp** ekskl. mva. og **Notat (valgfritt)**, og trykker **Legg til kostnad**. CAC og ROAS kommer bare fra det du legger inn. Ett beløp
 lagres for hver dag, kanal og kampanje: legger du det inn igjen, erstattes det forrige.
 
-Tabellene har **Last ned CSV** for dem som har en rolle som kan endre Analyse.
+Tabellene har **Last ned CSV**. For å legge inn annonsekostnader og laste ned trenger du en rolle som kan endre Analyse.
 
 ## Tell besøk
 
@@ -168,7 +168,8 @@ Bare eiere åpner [Innstillinger for analyse](/admin/{store}/analytics/settings)
 
 ### Hvem som ser hva
 
-Rollen til en i teamet trenger *Kan se* for Analyse for å åpne disse sidene, og *Kan endre* for å laste ned CSV-filer. Se
+Rollen til en i teamet trenger *Kan se* for Analyse for å åpne disse sidene, og *Kan endre* for å legge inn annonsekostnader og laste
+ned CSV-filer. Se
 [ansatte og tilganger](/docs/owners/team-and-settings/staff-and-permissions).
 
 Salgssidene er en del av nettbutikken. Er nettbutikken slått av under **Innstillinger**, **Funksjoner**, er bare Trafikk, Hastighet og

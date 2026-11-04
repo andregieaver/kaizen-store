@@ -17,7 +17,7 @@ sources: [D15, D17, D20, D289, D292]
 
 Kundene betaler virksomheten din direkte, gjennom butikkens egen Stripe-konto, og Stripe utbetaler pengene til banken din. Alt om
 betalinger stilles inn på én side: åpne **Innstillinger** i menyen og velg [Betalinger](/admin/{store}/settings/payments), under Salg.
-Bare butikkens eiere kan åpne siden, og hver endring står under **Siste endringer** nederst, med hvem som gjorde den.
+Bare butikkens eiere kan åpne siden. **Siste endringer** nederst viser butikkens siste registrerte endringer, med hvem som gjorde dem.
 
 ## Testbetalinger
 

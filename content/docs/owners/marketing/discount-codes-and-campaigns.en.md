@@ -38,12 +38,12 @@ The list shows how often each code was used, what it has given, and whether it i
 
 ### Limits on a code
 
-All of these are optional:
+You can set any of these, or none:
 
-- **Minimum number of items**: of what the code applies to, bought once (not subscriptions).
-- **Minimum order**: what the items must come to before shipping, in each country's currency.
-- **Starts** and **Ends**, in Norwegian time. Without dates, the code works while **Switched on** is ticked.
-- **Uses in all**: every order that got the code counts unless it is cancelled, so a cancelled checkout gives its use back.
+- **Minimum number of items (optional)**: of what the code applies to, bought once (not subscriptions).
+- **Minimum order (optional)**: what the items must come to before shipping, in each country's currency.
+- **Starts (optional)** and **Ends (optional)**, in Norwegian time. Without dates, the code works while **Switched on** is ticked.
+- **Uses in all (optional)**: every order that got the code counts unless it is cancelled, so a cancelled checkout gives its use back.
 - **Once per customer**: shoppers must sign in to My account to use it, so the store knows who they are.
 
 A percentage code on a subscription lowers only the first payment, unless you tick **Keep the discount on every renewal of a
@@ -69,14 +69,15 @@ code's page, under **Single-use codes**:
 2. Press **Make codes**. Each is eight characters, without characters that look alike, such as 0 and O.
 3. Press **Download the codes** for a CSV file of the codes, whether each was used, and when it was made.
 
-Each single-use code works for one order. **Uses in all** and **Once per customer** do not apply to them.
+Each single-use code works for one order. **Uses in all (optional)** and **Once per customer** do not apply to them.
 
 ## Start a campaign
 
 1. Open **Marketing** and choose [Campaigns](/admin/{store}/campaigns). Press **New campaign**.
 2. Give it a **Name**. Shoppers see it in their cart, at checkout and on their order, so write it for them: "Summer sale".
 3. Choose **What it gives** (see the table below), then what it applies to: the whole store, or chosen products, categories or tags.
-4. Under **When**, set **Starts** and **Ends** if you like, in Norwegian time. Without dates it runs while it is switched on.
+4. Under **When**, set **Starts (optional)** and **Ends (optional)** if you like, in Norwegian time. Without dates it runs while it is
+   switched on.
 5. Press **Save campaign**.
 
 | What it gives | What the shopper gets |
@@ -97,37 +98,37 @@ The cart tells shoppers how far they are from the next step or from an amount, a
 
 ### More campaign options
 
-- **Orders it can go to in all**: an order counts once, however many products it took effect on. The campaign stops by itself when
-  they are used up.
-- **Orders for each customer**: 1 is once per customer. Shoppers must be signed in to get it; the product pages say so.
+- **Orders it can go to in all (optional)**: an order counts once, however many products it took effect on. The campaign stops by itself
+  when they are used up.
+- **Orders for each customer (optional)**: 1 is once per customer. Shoppers must be signed in to get it; the product pages say so.
 - **Where**, when you sell in more than one country: **Every country the store sells to** or **Only some countries**.
-- **Who**: **Every shopper**, **Only customers in these groups** or **People in a segment**. Such a campaign is not announced on
-  product pages, which are the same for everyone.
+- **Who**: **Every shopper**, **Only customers in these groups** or **People in a segment**. Such a campaign is not announced on product
+  pages, which are the same for everyone.
 - **Also apply on top of other campaigns**, for a percentage, buy more pay for fewer, and bigger discounts for buying more. Normally a
   product gets one campaign; with this on, this one also comes off what the other left, in the order the campaigns were made.
 
 ## Codes and campaigns together
 
-What comes off, in order: campaigns, a customer group's discount, a friend's welcome discount from the
-[referral program](/docs/owners/marketing/loyalty-and-referrals), codes, and bonus credits last. Each counts what the one before it left.
+What comes off, in order: campaigns, a customer group's discount, a friend's welcome discount from the [referral
+program](/docs/owners/marketing/loyalty-and-referrals), codes, and bonus credits last. Each counts what the one before it left.
 
-**Several codes.** A shopper can put up to five codes on one order. Under **Using it with other codes**, tick the kinds of code this
-one may be used with: **Codes on chosen products, categories or tags**, **Codes on everything** or **Free shipping codes**. Two codes
-are used together only when each allows the other. Nothing is ticked at first, so a code works alone. Where two cannot be used
-together, the shopper gets the one that takes more off, and the cart says why the other was left out.
+**Several codes.** A shopper can put up to five codes on one order. Under **Using it with other codes**, tick the kinds of code this one
+may be used with: **Codes on chosen products, categories or tags**, **Codes on everything** or **Free shipping codes**. Two codes are
+used together only when each allows the other. Nothing is ticked at first, so a code works alone. Where two cannot be used together, the
+shopper gets the one that takes more off, and the cart says why the other was left out.
 
 **A code beside a campaign.** A code's **Can be used with campaigns** and a campaign's **Can be used with discount codes** are both on
-at first: the code comes off what the campaign leaves. Turn either off, and a basket gets the code or the campaigns, whichever gives
-the shopper more, and the cart says which was left out.
+at first: the code comes off what the campaign leaves. Turn either off, and a basket gets the code or the campaigns, whichever gives the
+shopper more, and the cart says which was left out.
 
 > [!NOTE]
-> Nothing comes off a gift card, and a gift card in the basket does not count towards a minimum or an amount. See
-> [Gift cards](/docs/owners/marketing/gift-cards).
+> Nothing comes off a gift card, and a gift card in the basket does not count towards a minimum or an amount. See [Gift
+> cards](/docs/owners/marketing/gift-cards).
 
 ## Change, switch off or delete
 
-Open a code or a campaign to change it, or press **Switch off** beside a campaign in the list. Their pages have **Delete this code**
-and **Delete this campaign**. Orders already placed keep what they got, whatever you change or delete.
+Open a code or a campaign to change it, or press **Switch off** beside a campaign in the list. Their pages have **Delete this code** and
+**Delete this campaign**. Orders already placed keep what they got, whatever you change or delete.
 
 > [!TIP]
 > A [cart reminder](/docs/owners/marketing/email-marketing) can carry a code, and a newsletter form can email each new subscriber a

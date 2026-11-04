@@ -30,20 +30,20 @@ Eksisterende kunder starter på null: bare bestillinger som betales fra da av, g
 
 ### Innstillingene
 
-- **Kreditt tilbake**: prosenten av det kunden betaler på nett for varer, 5 % i starten. Frakt, det som betales på stedet og kreditten de
-  brukte, teller ikke, og et gratis produkt gir ingenting.
+- **Kreditt tilbake**: prosenten av det kunden betaler på nett for varer, 5 % i starten. Frakt, det som betales på stedet og kreditten
+  de brukte, teller ikke, og et gratis produkt gir ingenting.
 - **Ventetid før kreditten kan brukes**: returperioden, 14 dager i starten. Kreditt fra en bestilling venter så lenge etter at den er
   betalt, så du ikke betaler ut kreditt for varer som returneres. Skriv 0 for at den kan brukes med en gang.
 - **Det meste av varene i en bestilling kreditten kan betale**, og **Minste kreditt som kan brukes om gangen**.
 - **Kreditt som ikke brukes, utløper**, etter så mange måneder du velger. Er dette av, varer kreditten for alltid. Den eldste kreditten
   brukes og utløper først, og kundene får en påminnelse på e-post før kreditten deres går ut.
 
-Kreditten trekkes bare fra varer, aldri fra frakt, og helt til slutt: etter kampanjer, kundegrupperabatter og rabattkoder. Det blir alltid
-noe igjen å betale på nett. En tilbakebetaling trekker tilbake det den tilbakebetalte delen av bestillingen ga.
+Kreditten trekkes bare fra varer, aldri fra frakt, og helt til slutt: etter kampanjer, kundegrupperabatter og rabattkoder. Det blir
+alltid noe igjen å betale på nett. En tilbakebetaling trekker tilbake det den tilbakebetalte delen av bestillingen ga.
 
-**Kreditt i korte trekk** viser hva butikken skylder i kreditt nå, hva som fortsatt venter, og hva som er tjent, brukt og utløpt de siste
-30 dagene. Kreditten og historikken til hver kunde står på kundesiden, der **Juster kreditt** legger til eller trekker fra kreditt, med en
-begrunnelse som blir stående i historikken.
+**Kreditt i korte trekk** viser hva butikken skylder i kreditt nå, hva som fortsatt venter, og hva som er tjent, brukt og utløpt de
+siste 30 dagene. Kreditten og historikken til hver kunde står på kundesiden, der **Juster kreditt** legger til eller trekker fra
+kreditt, med en begrunnelse som blir stående i historikken.
 
 Slår du programmet av, slutter kundene å tjene og bruke kreditt. Kreditten deres beholdes, og utløper ikke, til du slår det på igjen.
 
@@ -51,9 +51,9 @@ Slår du programmet av, slutter kundene å tjene og bruke kreditt. Kreditten der
 
 Alt dette er valgfritt, under **Nivåer og ekstra**:
 
-- **Nivåer**: opptil fire, hvert med et **Navn**, beløpet en kunde har handlet varer for de siste 12 månedene, minus refusjoner, som
-  nivået gjelder fra, og en høyere prosent **Tilbake**. Det høyeste nivået kunden når, gjelder, og kunden rykker ned av seg selv når året
-  går. Min konto viser kunden nivået og hva som skal til for det neste.
+- Nivåer: trykk **Legg til et nivå**, opptil fire ganger. Hvert nivå har et **Navn**, **Fra handlet for på et år** (det en kunde har
+  betalt for varer de siste 12 månedene, minus refusjoner) og en høyere prosent **Tilbake**. Det høyeste nivået kunden når, gjelder, og
+  kunden rykker ned av seg selv når året går. Min konto viser kunden nivået og hva som skal til for det neste.
 - **Kreditt for å opprette konto**: gis én gang og kan brukes med en gang.
 - **Kreditt på kundens bursdag**: gis én gang i året på bursdagen kunden har oppgitt på Min konto (bare måned og dag), tidligst 30 dager
   etter at den ble oppgitt.
@@ -81,8 +81,8 @@ bonusprogrammet er på.
 3. Kryss av for **Vervekampanjen er på**, se over innstillingene, og trykk **Lagre**.
 
 Alle innloggede kunder får en lenke første gang de åpner **Tips en venn** under Min konto; ingen trenger å godkjennes. Vennen må være
-logget inn for å få rabatten, og bare på sin første betalte bestilling. Ingen kan verve seg selv, og en kunde som har bestilt før, teller
-ikke som venn. En tilbakebetaling eller kansellering trekker tilbake kreditten bestillingen ga.
+logget inn for å få rabatten, og bare på sin første betalte bestilling. Ingen kan verve seg selv, og en kunde som har bestilt før,
+teller ikke som venn. En tilbakebetaling eller kansellering trekker tilbake kreditten bestillingen ga.
 
 Innstillingene:
 
@@ -108,7 +108,7 @@ nettbutikken.
 3. Folk søker fra Min konto, under **Skaperprogram**. **Godkjenn** eller **Avslå** hver søknad; **Stopp** en skaper senere om du må.
 
 En skaper tjener sin andel av det de betalte bestillingene deres betaler for varer, uten mva., i hver bestillings egen valuta. En
-tilbakebetaling eller kansellering trekker det tilbake. Kaizena Flow flytter ingen penger: du betaler skaperne selv, trykker **Før opp en
-utbetaling** for hver betaling, og **Last ned utbetalinger (CSV)** til regnskapet. Skaperens egen side viser aldri hvem som kjøpte.
+tilbakebetaling eller kansellering trekker det tilbake. Kaizena Flow flytter ingen penger: du betaler skaperne selv, trykker **Før opp
+en utbetaling** for hver betaling, og **Last ned utbetalinger (CSV)** til regnskapet. Skaperens egen side viser aldri hvem som kjøpte.
 
 Bare en eier kan endre programmet, en skapers egen provisjon og utbetalingene.

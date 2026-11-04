@@ -76,9 +76,9 @@ likevel, skrives det i aktivitetsloggen.
 
 ### Publiser senere
 
-Når siden er lagret, trykker du **Planlegg** ved siden av Publiser. Velg **Dag** og **Klokkeslett** etter butikkens klokke: utkastet
-slik det er da, blir publisert. Kryss av for **Sett versjonen fra før tilbake senere** hvis siden skal bli som før på et annet tidspunkt,
-for eksempel når et salg slutter. En plan venter så lenge butikken ikke er åpnet. **Avbryt planen** stopper den.
+Når siden er lagret, trykker du **Planlegg** ved siden av Publiser. Velg **Dag** og **Klokkeslett** etter butikkens klokke, og trykk
+**Planlegg**: utkastet slik det er da, blir publisert. For et salg som slutter, åpner du først **Sett versjonen fra før tilbake senere**
+og velger når siden skal bli som før. En plan venter så lenge butikken ikke er åpnet. **Avbryt planen** stopper den.
 
 ### Vis et utkast til noen
 

@@ -15,8 +15,8 @@ sources: [D178, D300, D381]
 
 ## Switch gift cards on
 
-Gift cards are off until you switch them on: open **Settings**, choose [Features](/admin/{store}/settings/features) and switch on
-**Gift cards**.
+Gift cards are off until you switch them on: open **Settings**, choose [Features](/admin/{store}/settings/features) and switch on **Gift
+cards**.
 
 If you switch them off later, gift cards can no longer be bought. Cards already sold or issued can still be spent and refunded, since
 the money is the customer's, and the Gift cards page stays.
@@ -29,8 +29,8 @@ the money is the customer's, and the Gift cards page stays.
 4. Publish it as any other product.
 
 On the product page, the shopper chooses the amount. To give it, they tick **Send it to someone** and fill in the person's email and
-name, who it is from, a message and the day to send it, from today to a year ahead. The card is emailed to that person on the day,
-from 08:00 in your store's time zone, and the buyer is told it is on its way. Otherwise it is emailed to the buyer at once.
+name, who it is from, a message and the day to send it, from today to a year ahead. The card is emailed to that person on the day, from
+08:00 in your store's time zone, and the buyer is told it is on its way. Otherwise it is emailed to the buyer at once.
 
 A card is made when its order is paid. Its code is in the email only: Kaizena Flow keeps only a fingerprint of it, so nobody can read a
 code back, staff included.
@@ -71,7 +71,7 @@ Open a card to see its value and what is left, when it expires, how it came to b
 2. Give the **Amount** and the **Currency**, one your store sells in.
 3. Under **Who it is for (optional)**, give their email, and the code is sent there, with their name, a message and the language of the
    email.
-4. Under **Why it is issued**, write a note for your own records, such as a make-good for an order. They do not see it.
+4. Under **Why it is issued (for your own records, not shown to them)**, write a note, such as a make-good for an order.
 5. Press **Issue the gift card**.
 
 The code is shown once, here: press **Copy the code** if you will pass it on yourself. Issuing, changing and deactivating cards needs
@@ -92,8 +92,7 @@ On a card's page:
 ### How long cards last
 
 Under **How long cards last**, choose how long **New cards last**: from 1 to 10 years, or *Never*. New stores start at 3 years. A card
-keeps the date it was issued with, and what is left on it when it expires goes. Many countries expect at least three years: check
-yours.
+keeps the date it was issued with, and what is left on it when it expires goes. Many countries expect at least three years: check yours.
 
 ## In your figures
 

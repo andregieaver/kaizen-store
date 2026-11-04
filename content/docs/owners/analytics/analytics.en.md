@@ -111,7 +111,7 @@ These pages have the Overview's period and comparison, except Inventory, which i
 VAT and **Note (optional)**, then **Add spend**. CAC and ROAS come only from what you enter. One amount is kept for each day, channel
 and campaign: entering it again replaces it.
 
-Tables have **Download CSV** for people whose role can change Analytics.
+Tables have **Download CSV**. Entering ad spend and downloading need a role that can change Analytics.
 
 ## Count visits
 
@@ -164,7 +164,7 @@ Only owners open [Analytics settings](/admin/{store}/analytics/settings). Beside
 
 ### Who sees what
 
-A team member's role needs Analytics *Can view* to open these pages, and *Can change* to download CSV files. See
+A team member's role needs Analytics *Can view* to open these pages, and *Can change* to enter ad spend and download CSV files. See
 [staff and permissions](/docs/owners/team-and-settings/staff-and-permissions).
 
 The sales pages are part of the online shop. With the shop switched off under **Settings**, **Features**, only Traffic, Speed and

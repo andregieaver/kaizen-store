@@ -22,9 +22,9 @@ vil ha e-postene dine. De melder seg på på tre måter:
 - en avkrysningsboks i kassen, som aldri er krysset av på forhånd;
 - bryteren i Min konto.
 
-En adresse som noen skriver inn, kommer med når eieren av den har bekreftet den fra en lenke vi sender på e-post. I et
-nyhetsbrevskjema heter dette **Bekreft adressen først (dobbel bekreftelse)**, og det er på med mindre du slår det av; la det stå på,
-siden det beviser samtykket. En innlogget kunde med bekreftet e-postadresse kommer med med en gang. De ansatte melder aldri på noen.
+En adresse som noen skriver inn, kommer med når eieren av den har bekreftet den fra en lenke vi sender på e-post. I et nyhetsbrevskjema
+heter dette **Bekreft adressen først (dobbel bekreftelse)**, og det er på med mindre du slår det av; la det stå på, siden det beviser
+samtykket. En innlogget kunde med bekreftet e-postadresse kommer med med en gang. De ansatte melder aldri på noen.
 
 Hver markedsførings-e-post har en lenke for å melde seg av, og avmeldingsknappen i e-postprogrammet virker også. En adresse som ikke
 finnes, eller der eieren merker en e-post som søppelpost, går av listen av seg selv.
@@ -54,8 +54,8 @@ kampanjen. Begge fylles inn når e-posten sendes, og utelates der produktet ikke
 
 > [!TIP]
 > **Skriv med KI** foreslår ordene ut fra noen få av dine egne, og kan velge produkter og kampanjer som pågår. KI-en skriver aldri
-> priser eller lager, og ingenting sendes før du sender det. Det krever at KI er satt opp for butikken
-> ([KI-tekster og bilder](/docs/owners/ai/ai-texts-and-pictures)).
+> priser eller lager, og ingenting sendes før du sender det. Det krever at KI er satt opp for butikken ([KI-tekster og
+> bilder](/docs/owners/ai/ai-texts-and-pictures)).
 
 ### Etter at du har sendt
 
@@ -112,10 +112,10 @@ samme handlekurven tilbake.
 2. Du starter med tre påminnelser: etter en time, en dag og tre dager. Åpne en for å endre når den går (fra 30 minutter til 30 dager
    etter at e-postadressen ble skrevet inn), ordene på hvert språk, eller for å legge til en rabattkode. Hver kan slås av for seg.
 
-Mens de er på, tar kassen vare på e-postadressen til en kunde som ikke er innlogget, så snart den skrives inn, og sier under feltet at det
-kan komme en påminnelse, med en lenke for å si nei. Hver påminnelse har en lenke for å stoppe dem. De stopper når handlekurven er kjøpt,
-og 30 dager etter at e-postadressen ble skrevet inn. E-postadressen og handlekurven slettes etter 60 dager. Innloggede kunder får ingen
-påminnelser.
+Mens de er på, tar kassen vare på e-postadressen til en kunde som ikke er innlogget, så snart den skrives inn, og sier under feltet at
+det kan komme en påminnelse, med en lenke for å si nei. Hver påminnelse har en lenke for å stoppe dem. De stopper når handlekurven er
+kjøpt, og 30 dager etter at e-postadressen ble skrevet inn. E-postadressen og handlekurven slettes etter 60 dager. Innloggede kunder får
+ingen påminnelser.
 
 Siden viser de siste 30 dagene: handlekurver med e-post, hvor mange som ble påminnet, hvor mange som kjøpte etter en påminnelse, og de
 salgene. Under **Til personvernerklæringen din** står det du bør skrive i personvernerklæringen.

@@ -42,8 +42,8 @@ If some items will never be sent, for example because they ran out, refund them 
 
 ## Packing slips and pick lists
 
-- **Packing slip**, at the top of an order, prints what is still to send, without prices. A gift order's slip also prints the buyer's
-  gift message.
+- **Packing slip**, at the top of an order, prints what is still to send, without prices. On a gift order the button reads **Print gift
+  slip**, and the slip also prints the buyer's gift message.
 - For several orders, tick them on Orders and choose **Print packing slips**: each order on its own page, in its own language.
 - **Print pick list** shows what to take off the shelves for the ticked orders, by product or by order, sorted by SKU, title or the most
   units.

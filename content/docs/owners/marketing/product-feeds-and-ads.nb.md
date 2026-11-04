@@ -30,8 +30,8 @@ tilbudspris. Priser og lager i feedene er høyst 15 minutter gamle. Kanalene kan
 ### Produkter som er utelatt
 
 Under **Ikke i feedene** viser hvert land produktene som er utelatt, og hvorfor: *ikke en vare eller nedlasting*, *selges bare som
-abonnement*, *bare for bedrifter*, *mangler bilde*, *mangler pris* eller *pris på forespørsel*. Legg til et bilde eller en pris, så kommer
-produktet med av seg selv.
+abonnement*, *bare for bedrifter*, *mangler bilde*, *mangler pris* eller *pris på forespørsel*. Legg til et bilde eller en pris, så
+kommer produktet med av seg selv.
 
 ### Hold adressen for deg selv
 
@@ -48,9 +48,9 @@ virke med en gang, så lim inn den nye i hver kanal. **Slå av** stopper alle fe
 markedsføring** limer du inn ID-en til hvert verktøy du bruker: **Google Analytics 4**, **Google Tag Manager**, **Meta Pixel**, **Google
 Ads**, **TikTok Pixel** eller **Pinterest Tag**, og trykker **Lagre verktøy**. La et felt stå tomt for å slå verktøyet av.
 
-Hvert verktøy lastes først når en besøkende tillater det i samtykkebanneret, som vises av seg selv når et verktøy er på. Med samtykke får
-verktøyene vite om produktvisninger, listevisninger, søk og varer lagt i handlekurven, bare med produkt-ID-er og priser. Kasser og kjøp
-sendes ikke fra nettleseren: de går fra serveren, som nedenfor.
+Hvert verktøy lastes først når en besøkende tillater det i samtykkebanneret, som vises av seg selv når et verktøy er på. Med samtykke
+får verktøyene vite om produktvisninger, listevisninger, søk og varer lagt i handlekurven, bare med produkt-ID-er og priser. Kasser og
+kjøp sendes ikke fra nettleseren: de går fra serveren, som nedenfor.
 
 ## Konverteringer fra serveren
 
@@ -62,8 +62,8 @@ Salg som sendes fra serveren, telles også når kunden bruker annonseblokkering.
    og **Tilgangstoken for Events API**; for **Pinterest** **Annonsekonto-ID** og **Konverteringstoken**.
 3. Velg **Hva som sendes**: **Standard**, ordren og annonsens klikk-ID uten noe personlig, eller **Utvidet**, som også sender kundens
    e-post og telefon, hashet, så flere salg kobles til annonser.
-4. Kryss av for **Send hendelser** og trykk **Lagre**. En **Kode for testhendelser** fra plattformen lar deg sjekke hendelsene der
-   først.
+4. Kryss av for **Send hendelser** og trykk **Lagre**. En **Kode for testhendelser (valgfri)** fra plattformen lar deg sjekke hendelsene
+   der først.
 
 Fra da av sendes hver bestilling som lages og hver betaling som tas, innen ett minutt, men bare for kunder som har tillatt
 markedsføringsinformasjonskapsler. Et kjøp betalt i testmodus sendes aldri. Siden viser de siste 7 dagene: hvor mange som ble sendt,
@@ -80,4 +80,5 @@ Butikken spør besøkende om informasjonskapsler bare når noe trenger samtykke,
 En besøkende som sier nei til markedsføring, spores ikke av annonsetagger og sender ingen konverteringer, og en verve- eller skaperlenke
 de åpnet, huskes bare til de forlater nettstedet.
 
-For å se hvilke kanaler og kampanjer som gir salg, åpner du **Analyse**, **Markedsføring** ([Analyse](/docs/owners/analytics/analytics)).
+For å se hvilke kanaler og kampanjer som gir salg, åpner du **Analyse**, **Markedsføring**
+([Analyse](/docs/owners/analytics/analytics)).

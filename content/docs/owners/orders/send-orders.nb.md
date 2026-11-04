@@ -43,8 +43,8 @@ krysset av. Se [Tilbakebetaling, kansellering og bytte](/docs/owners/orders/refu
 
 ## Pakklister og plukklister
 
-- **Pakkseddel**, øverst på en bestilling, skriver ut det som fortsatt skal sendes, uten priser. På en gavebestilling skrives også
-  kjøperens gavehilsen ut.
+- **Pakkseddel**, øverst på en bestilling, skriver ut det som fortsatt skal sendes, uten priser. På en gavebestilling heter knappen
+  **Skriv ut gavelapp**, og kjøperens gavehilsen skrives også ut.
 - For flere bestillinger krysser du av for dem på Bestillinger og velger **Skriv ut pakklister**: hver bestilling på sin egen side og på
   sitt eget språk.
 - **Skriv ut plukkliste** viser hva som skal tas ut av hyllene for bestillingene du har krysset av for, etter produkt eller etter

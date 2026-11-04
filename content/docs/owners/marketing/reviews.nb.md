@@ -75,9 +75,9 @@ delene **Vurdering** og **Anmeldelser** i det.
 
 ## Be kjøpere om en omtale
 
-Under **Be kjøpere om en omtale** krysser du av for **Send forespørsler om omtale** og velger **Dager etter mottak**: fra 3 til 60 dager,
-14 i starten. Hver bestilling får da én e-post, så mange dager etter at alt i den er mottatt, med en lenke for å skrive omtale uten å
-logge inn.
+Under **Be kjøpere om en omtale** krysser du av for **Send forespørsler om omtale** og velger **Dager etter mottak**: fra 3 til 60
+dager, 14 i starten. Hver bestilling får da én e-post, så mange dager etter at alt i den er mottatt, med en lenke for å skrive omtale
+uten å logge inn.
 
 Forespørslene går bare til kjøpere på [abonnentlisten](/docs/owners/marketing/email-marketing) din, siden det å be om en omtale er
 markedsføring. De teller som markedsførings-e-poster i abonnementet ditt. Bestillinger som ble mottatt før du slo dette på, får ingen
@@ -94,8 +94,8 @@ Slik henter du inn omtaler fra en annen tjeneste, som Shopifys Product Reviews, 
    hver enkelt først**.
 4. Kryss av for **Bare kontroller filen, importer ingenting** og trykk **Kontroller filen** først. Fjern så haken og trykk **Importer**.
 
-Hver rad finner produktet ditt ut fra handlen. Importerte omtaler vises med *Hentet fra …* og merkes aldri som bekreftet kjøp. En fil som
-importeres to ganger, legger ikke til noe den andre gangen.
+Hver rad finner produktet ditt ut fra handlen. Importerte omtaler vises med *Hentet fra …* og merkes aldri som bekreftet kjøp. En fil
+som importeres to ganger, legger ikke til noe den andre gangen.
 
 **Last ned som CSV** gir deg de publiserte og ventende omtalene dine.
 

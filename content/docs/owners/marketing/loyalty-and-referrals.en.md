@@ -15,8 +15,8 @@ sources: [D130, D131, D178, D386, D392, D401]
 
 ## Bonus credits
 
-Signed-in customers earn credits on what they pay, and use them as a price reduction on a later order. A credit is money in your
-store's main currency: one credit is worth one krone, euro or whichever your currency is.
+Signed-in customers earn credits on what they pay, and use them as a price reduction on a later order. A credit is money in your store's
+main currency: one credit is worth one krone, euro or whichever your currency is.
 
 ### Switch it on
 
@@ -52,9 +52,9 @@ on again.
 
 All of these are optional, under **Levels and extras**:
 
-- **Levels**: up to four, each with a **Name**, the amount a customer has spent on goods in the last 12 months, less refunds, from which
-  it applies, and a higher percentage **Back**. The highest level reached applies, and it moves down by itself as the year passes. My
-  account tells customers their level and what more the next one needs.
+- Levels: press **Add a level**, up to four times. Each level has a **Name**, **From spent in a year** (what a customer paid for goods
+  in the last 12 months, less refunds) and a higher percentage **Back**. The highest level reached applies, and it moves down by itself
+  as the year passes. My account tells customers their level and what more the next one needs.
 - **Credits for opening an account**: given once, usable at once.
 - **Credits on a customer's birthday**: given once a year on the birthday a customer gave on My account (month and day only), at the
   earliest 30 days after they gave it.
@@ -92,16 +92,16 @@ The settings:
 - **What the customer who shared the link earns**: **Bonus credits** as a percentage of what the friend pays online for goods, and
   whether **Only the friend's first orders earn credits**.
 - **The most one customer earns a month**, if you want a limit.
-- **How long a visitor's link is remembered**, in days. A link is remembered only for visitors who allow marketing cookies, so your store
-  asks about cookies once the program is on.
+- **How long a visitor's link is remembered**, in days. A link is remembered only for visitors who allow marketing cookies, so your
+  store asks about cookies once the program is on.
 
 **Referrers** lists the customers with a link; block one who abuses it, with a reason. **Orders through links** shows each order that
 came through a link, its welcome discount and the credits it earned. A customer who shares a link never sees who their friends are.
 
 ## Creators
 
-Creators are people with a channel of their own who sell your goods with a code and a link of their own, and earn a commission. It
-needs only the online shop.
+Creators are people with a channel of their own who sell your goods with a code and a link of their own, and earn a commission. It needs
+only the online shop.
 
 1. Open **Marketing** and choose [Creators](/admin/{store}/creators).
 2. Tick **Creators can apply and earn**, set the **Commission, percent of goods without VAT** (at most 50 %), and press **Save**. Under

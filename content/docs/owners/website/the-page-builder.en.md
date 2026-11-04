@@ -75,9 +75,9 @@ written in the activity log.
 
 ### Publish later
 
-Once the page is saved, press **Schedule** beside Publish. Choose a **Day** and a **Time** on your store's clock: the draft as it is then
-is published. Tick **Put the version before back later** to have the page go back to how it was at a second time, for a sale that ends.
-A schedule waits while your store is not open. **Cancel the schedule** stops it.
+Once the page is saved, press **Schedule** beside Publish. Choose a **Day** and a **Time** on your store's clock, and press **Schedule**:
+the draft as it is then is published. For a sale that ends, open **Put the version before back later** first and choose when the page
+goes back to how it was. A schedule waits while your store is not open. **Cancel the schedule** stops it.
 
 ### Show a draft to someone
 
