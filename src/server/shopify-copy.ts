@@ -89,7 +89,7 @@ import { customerMark, recordMoveItems } from "./shopify-undo";
 import { pgTextArray } from "./pg-arrays";
 import { SETTINGS_FEEDS, applySettingsFeed, readSettingsFeed } from "./shopify-settings-copy";
 import { hasMover, moverGet, wooGet, wooSetting } from "./woocommerce-connect";
-import { MOVER_PAGE_SIZE, SEO_FIELDS, SEO_FIELD_GROUP, redirectLinesOf, seoOf, subscriberLinesOf, termSeoOf } from "@/lib/woocommerce-mover";
+import { MOVER_PAGE_SIZE, SEO_FIELDS, SEO_FIELD_GROUP, giftCardLinesOf, redirectLinesOf, seoOf, subscriberLinesOf, termSeoOf } from "@/lib/woocommerce-mover";
 import { newFieldId, type FieldDef } from "@/lib/custom-fields";
 import { listFieldGroups, productFacts, saveFieldData, saveFieldGroup, saveTermFields } from "./custom-fields";
 import { listTerms, updateTerm } from "./taxonomy";
@@ -694,7 +694,7 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
     state.feeds.discounts = await readWooCoupons(member, deps);
     return;
   }
-  if (feed === "redirects" || feed === "subscribers") {
+  if (feed === "redirects" || feed === "subscribers" || feed === "gift_cards") {
     await readMoverFeed(member, feed, state, before, deps);
     return;
   }
@@ -904,10 +904,12 @@ async function applySeo(member: Membership, f: FeedState, roots: readonly Record
 const MOVER_PAGES = 40;
 
 /**
- * A part our WordPress plugin reads (D446 step 2): the redirect plugins' redirects (into the redirect import) or MailPoet's subscribed
- * subscribers (into the email list's own writer), every page in one tick. Without the plugin, nothing.
+ * A part our WordPress plugin reads (D446 step 2): the redirect plugins' redirects (into the redirect import), MailPoet's subscribed
+ * subscribers (into the email list's own writer), or the gift card plugins' cards with money left (made here on move day, step 2b), every
+ * page in one tick. Without the plugin, nothing.
  */
-async function readMoverFeed(member: Membership, feed: "redirects" | "subscribers", state: CopyState, before: CopyState["feeds"], deps: CopyDeps): Promise<void> {
+async function readMoverFeed(member: Membership, feed: "redirects" | "subscribers" | "gift_cards", state: CopyState, before: CopyState["feeds"], deps: CopyDeps): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
   const lines: Record<string, unknown>[] = [];
   let skipped = 0;
   for (let page = 1; page <= MOVER_PAGES; page += 1) {
@@ -921,7 +923,7 @@ async function readMoverFeed(member: Membership, feed: "redirects" | "subscriber
       state.feeds[feed] = { stage: "failed", problem: got.problem === "refused" ? "shopify_refused" : "shopify_failed" };
       return;
     }
-    const read = feed === "redirects" ? redirectLinesOf(got.data) : { ...subscriberLinesOf(got.data), skipped: 0 };
+    const read = feed === "redirects" ? redirectLinesOf(got.data) : feed === "gift_cards" ? { ...giftCardLinesOf(got.data, today), skipped: 0 } : { ...subscriberLinesOf(got.data), skipped: 0 };
     lines.push(...read.lines);
     skipped += read.skipped;
     if (!read.more || read.lines.length + read.skipped < MOVER_PAGE_SIZE / 2) break;

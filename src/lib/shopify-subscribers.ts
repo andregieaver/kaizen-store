@@ -9,9 +9,9 @@ import type { ConsentLine } from "./shopify-copy";
 export type MovedSubscriber = { email: string; name: string; consentedAt: string; confirmed: boolean; consentText: string };
 
 /** Shopify's record as the words kept with the subscription (the consent history keeps them with the event). */
-export function movedConsentText(shop: string, line: Pick<ConsentLine, "state" | "level" | "updatedAt">, platform: MovedPlatform = "shopify"): string {
+export function movedConsentText(shop: string, line: Pick<ConsentLine, "state" | "level" | "updatedAt">, platform: MovedPlatform = "shopify", recordedBy?: string): string {
   const on = platform === "woocommerce" ? "WooCommerce" : "Shopify";
-  const by = platform === "woocommerce" ? "MailPoet" : "Shopify";
+  const by = recordedBy ?? (platform === "woocommerce" ? "MailPoet" : "Shopify");
   return `Agreed to email from ${shop.slice(0, 200)} while it was on ${on}, as ${by} recorded it: ${line.state}, ${line.level || "no opt-in level"}, ${line.updatedAt ?? "no date"}.`.slice(0, 1000);
 }
 
@@ -19,7 +19,7 @@ export function movedConsentText(shop: string, line: Pick<ConsentLine, "state" |
 export type MovedPlatform = "shopify" | "woocommerce";
 
 /** A customer's line as a subscriber, or null when Shopify's record is not a subscription with its date. */
-export function movedSubscriber(line: ConsentLine, shop: string, platform: MovedPlatform = "shopify"): MovedSubscriber | null {
+export function movedSubscriber(line: ConsentLine, shop: string, platform: MovedPlatform = "shopify", recordedBy?: string): MovedSubscriber | null {
   if (line.state !== "SUBSCRIBED" || !line.updatedAt || !line.email.includes("@")) return null;
-  return { email: line.email, name: line.name, consentedAt: line.updatedAt, confirmed: line.level === "CONFIRMED_OPT_IN", consentText: movedConsentText(shop, line, platform) };
+  return { email: line.email, name: line.name, consentedAt: line.updatedAt, confirmed: line.level === "CONFIRMED_OPT_IN", consentText: movedConsentText(shop, line, platform, recordedBy) };
 }

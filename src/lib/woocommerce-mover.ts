@@ -11,9 +11,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import type { ConsentLine } from "./shopify-copy";
+import type { GiftCardLine } from "./shopify-settings";
 
 export const MOVER_NAMESPACE = "kaizena-mover/v1";
-export const MOVER_ROUTES = ["plugins", "redirects", "seo", "seo_terms", "subscribers"] as const;
+export const MOVER_ROUTES = ["plugins", "redirects", "seo", "seo_terms", "subscribers", "gift_cards"] as const;
 export type MoverRoute = (typeof MOVER_ROUTES)[number];
 /** How far apart Kaizena Flow's clock and the site's may be, in seconds. */
 export const MOVER_SKEW_SECONDS = 300;
@@ -249,6 +250,29 @@ export function subscriberLinesOf(answer: unknown): { lines: ConsentLine[]; more
       level: at(r.confirmed_at) ? "CONFIRMED_OPT_IN" : "SINGLE_OPT_IN",
       updatedAt: when,
     });
+  }
+  return { lines, more: a.more === true };
+}
+
+/**
+ * The gift card plugins' cards with money left (step 2b) as the gift cards' lines (`GiftCardLine`, the same as Shopify's): each made here on
+ * move day with a new code emailed to its holder (the owner's answer, 4 November 2026), never with the old code, which the plugin does not
+ * send. The card's id there names it (`woo:{plugin}:{id}`), so it is made once; an expired card, or one with nothing left, is left.
+ */
+export function giftCardLinesOf(answer: unknown, today: string): { lines: GiftCardLine[]; more: boolean } {
+  const a = o(answer);
+  const currency = s(a.currency, 3).toUpperCase();
+  const lines: GiftCardLine[] = [];
+  if (!/^[A-Z]{3}$/.test(currency)) return { lines, more: false };
+  for (const c of list(a.cards)) {
+    const source = s(c.source, 40);
+    const id = Number(c.id);
+    const amount = s(c.balance, 20);
+    const expiresOn = /^\d{4}-\d{2}-\d{2}$/.test(s(c.expires, 10)) ? s(c.expires, 10) : null;
+    if (!/^[a-z0-9-]+$/.test(source) || !Number.isSafeInteger(id) || id <= 0 || !/^\d+(\.\d{1,2})?$/.test(amount) || Number(amount) <= 0) continue;
+    if (expiresOn && expiresOn < today) continue;
+    const email = s(c.email, 254).toLowerCase();
+    lines.push({ id: `woo:${source}:${id}`, last4: s(c.last4, 4).toUpperCase(), amount, currency, expiresOn, email: email.includes("@") ? email : null });
   }
   return { lines, more: a.more === true };
 }
