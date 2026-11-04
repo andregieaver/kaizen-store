@@ -312,7 +312,7 @@ const CORE_API = [
     tag: "Products",
     summary: "Create a draft product",
     description:
-      "Makes a product as a draft, through the product editor's own save: its words, prices per market as typed in each market's currency, options, variants, stock and categories. Pictures are added in the admin. Publishing it is the owner's, in the admin.",
+      "Makes a product as a draft, through the product editor's own save: its words, prices per market as typed in each market's currency, options, variants, stock and categories. Its pictures are added with `POST /products/{id}/media`, and it is published with `POST /products/{id}/publish` (the power `products:publish`) or in the admin.",
     body: createProductInput.omit({ pictures: true }),
     response: one(apiProduct),
     status: 201,
@@ -327,7 +327,7 @@ const CORE_API = [
     tag: "Products",
     summary: "Change a draft product",
     description:
-      "Changes only the fields given, through the editor's save. A product on the site (`active`) and `status` itself are the owner's, in the admin: both are refused as `gated`.",
+      "Changes only the fields given, through the editor's save. A product on the site (`active`) is changed only by a token with the power `products:publish`, and is refused as `gated` without it. `status` itself is refused here as `gated`: it changes with `POST /products/{id}/publish`, `/unpublish` or `/archive`, or in the admin.",
     params: byId,
     body: updateProductInput.omit({ product: true, pictures: true, add_pictures: true }),
     response: one(apiProduct),

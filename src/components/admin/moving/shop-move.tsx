@@ -163,6 +163,7 @@ export function ShopMove({
           <button type="button" disabled={pending} className={secondary} onClick={() => press(actions.cancel)}>
             {w.cancel}
           </button>
+          <p className={hint}>{w.ttl}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-2">

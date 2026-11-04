@@ -11,6 +11,8 @@ import { ShopMakers } from "@/components/admin/moving/shop-makers";
 import { makersView } from "@/server/shopify-makers";
 import { ShopMove } from "@/components/admin/moving/shop-move";
 import { moveStatus, moveView } from "@/server/shopify-move";
+import { ShopAddress } from "@/components/admin/moving/shop-address";
+import { addressView } from "@/server/shopify-address";
 import { COPY_FEEDS, copyDone, copyFailed, copyMoving, copyReady, type CopyFeed } from "@/lib/shopify-copy";
 import { copyView, feedJobPage } from "@/server/shopify-copy";
 import { customerDryCountsOf, dryCountsOf, historyDryCountsOf, redirectDryCountsOf } from "@/server/data-jobs";
@@ -31,11 +33,13 @@ import {
   advanceMoveAction,
   bringItOverAction,
   cancelMoveAction,
+  checkAddressAction,
   checkOldLinksAction,
   connectShopifyAction,
   disconnectShopifyAction,
   saveVendorMakerAction,
   scheduleMoveAction,
+  startAddressAction,
   startCopyAction,
   startMoveAction,
 } from "./actions";
@@ -118,6 +122,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
             <CopyPanel storeSlug={store.slug} />
             <MakersPanel storeSlug={store.slug} />
             <MovePanel storeSlug={store.slug} locale={locale} />
+            <AddressPanel storeSlug={store.slug} />
             <CheckOldLinks check={checkOldLinksAction.bind(null, store.slug)} />
             <ShopifyDisconnect disconnect={disconnectShopifyAction.bind(null, store.slug)} />
           </div>
@@ -220,6 +225,23 @@ function dryOf(feed: CopyFeed, job: DataJob | undefined): { ready: number | null
   }
 }
 
+/** Move day, the address (D445 step 7b): once the shop has moved, its Shopify address pointed here. */
+async function AddressPanel({ storeSlug }: { storeSlug: string }) {
+  const member = await requireOwnerRole(storeSlug);
+  const move = await moveStatus(member);
+  if (move?.status !== "moved") return null;
+  const view = await addressView(member);
+  if (!view) return null;
+  const base = `/admin/${storeSlug}/settings/domains`;
+  return (
+    <ShopAddress
+      view={view}
+      actions={{ start: startAddressAction.bind(null, storeSlug), check: checkAddressAction.bind(null, storeSlug) }}
+      hrefs={{ domains: base, moveIn: `${base}/move-in` }}
+    />
+  );
+}
+
 /** Move day (D445 step 7a): once the copy is brought over, *Ready to move?*; while and after it moves, its steps. */
 async function MovePanel({ storeSlug, locale }: { storeSlug: string; locale: string }) {
   const member = await requireOwnerRole(storeSlug);
@@ -240,7 +262,7 @@ async function MovePanel({ storeSlug, locale }: { storeSlug: string; locale: str
         copy: "#shop-copy",
         links: `${base}/redirects/old-shop`,
         waiting: "#shop-makers",
-        address: `${base}/settings/domains`,
+        address: "#shop-address",
         steps: { catch_up: `${base}/products/import`, links: `${base}/redirects/old-shop`, open: `${base}/settings/private` },
       }}
       actions={{
