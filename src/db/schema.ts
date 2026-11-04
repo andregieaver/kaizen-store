@@ -13471,7 +13471,7 @@ export const shopMoves = commerce.table(
 /**
  * What a move from Shopify made here (D445 step 9, `docs/moving-from-shopify.md` 8.4): one row for each thing, so *Undo this copy* removes
  * those and nothing the owner made. `kind` names the table (`page`, `menu`, `discount`, `subscriber`, `gift_card`, `theme`, `market`,
- * `job` for an import whose created rows its items name, `product` a product the copy made, by its id), `ref` its id or code; a customer is
+ * `job` for an import whose created rows its items name, `product` a product the copy made, by its id, `review` a moved review, D446), `ref` its id or code; a customer is
  * the md5 of their address in lower case, never
  * the address. Written only by `src/server/shopify-undo.ts`; gone with the undo.
  */
@@ -13485,7 +13485,7 @@ export const shopMoveItems = commerce.table(
   },
   (t) => [
     primaryKey({ name: "shop_move_items_pkey", columns: [t.storeId, t.kind, t.ref] }),
-    check("shop_move_items_kind", sql`${t.kind} in ('job', 'customer', 'product', 'page', 'menu', 'discount', 'subscriber', 'gift_card', 'theme', 'market')`),
+    check("shop_move_items_kind", sql`${t.kind} in ('job', 'customer', 'product', 'page', 'menu', 'discount', 'subscriber', 'gift_card', 'theme', 'market', 'review')`),
     check("shop_move_items_ref", sql`char_length(${t.ref}) between 1 and 300`),
   ],
 );

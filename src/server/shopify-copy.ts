@@ -18,6 +18,8 @@ import {
   includeOf,
   orderLines,
   productLines,
+  reviewLines,
+  reviewProductIds,
   variableIds,
   weightUnitOf,
   wooQuery,
@@ -45,11 +47,13 @@ import {
   nextToApply,
   nextToRead,
   readBulkLines,
+  reviewsFile,
   type CopyFeed,
   type CopyState,
   type DirectItem,
   type FeedProblem,
   type FeedState,
+  type ReviewLine,
   type VendorLine,
 } from "@/lib/shopify-copy";
 
@@ -83,6 +87,7 @@ import { customerMark, recordMoveItems } from "./shopify-undo";
 import { pgTextArray } from "./pg-arrays";
 import { SETTINGS_FEEDS, applySettingsFeed, readSettingsFeed } from "./shopify-settings-copy";
 import { wooGet, wooSetting } from "./woocommerce-connect";
+import { importReviews } from "./review-import";
 
 type Row = Record<string, unknown>;
 
@@ -253,6 +258,8 @@ export async function startCopy(member: Membership, chosen: unknown = null): Pro
   for (const feed of options.skip) feeds[feed] = { stage: "empty", count: 0 };
   // WooCommerce's copy brings its products, categories, customers, past orders and coupons (D446 step 1); its other parts are later steps'.
   if (source === "woocommerce") for (const feed of COPY_FEEDS) if (!(WOO_COPY_FEEDS as readonly CopyFeed[]).includes(feed)) feeds[feed] = { stage: "empty", count: 0 };
+  // Shopify keeps no reviews of its own (an app does): nothing to read.
+  if (source === "shopify") feeds.reviews = { stage: "empty", count: 0 };
   // No customers, no subscribers from them; no products, no categories from their collections.
   if (options.skip.includes("customers")) feeds.subscribers = { stage: "empty", count: 0 };
   if (options.skip.includes("products")) feeds.collections = { stage: "empty", count: 0 };
@@ -447,12 +454,44 @@ async function blogIdsOf(member: Membership, items: readonly DirectItem[]): Prom
   return ids;
 }
 
+/** How many reviews one tick hands to the review import (its file takes 10,000 and 3.5 MB). */
+const REVIEW_BATCH = 2000;
+
+/**
+ * One tick of the reviews (D446 step 1b): the next lines written by the review import's own writer (`importReviews()`), the ones shown on
+ * the old shop published and the ones waiting there waiting, from WooCommerce. A review already here is not added again; a row the import
+ * refuses is counted. What it made is written down for *Undo this copy*. Off while the store has reviews switched off.
+ */
+async function applyReviews(member: Membership, f: FeedState, roots: readonly Record<string, unknown>[]): Promise<FeedState> {
+  const lines = roots.flatMap((r): ReviewLine[] =>
+    typeof r.handle === "string" && typeof r.rating === "number" && typeof r.author === "string" && typeof r.date === "string"
+      ? [{ handle: r.handle, rating: r.rating, author: r.author, body: typeof r.body === "string" ? r.body : "", date: r.date, approved: r.approved === true }]
+      : [],
+  );
+  const cursor = f.cursor ?? 0;
+  const part = lines.slice(cursor, cursor + REVIEW_BATCH);
+  let made = f.made ?? 0;
+  let refused = (f.refused ?? 0) + (cursor === 0 ? roots.length - lines.length : 0);
+  for (const publish of [true, false]) {
+    const group = part.filter((l) => l.approved === publish);
+    if (group.length === 0) continue;
+    const outcome = await importReviews(member.store.id, member.account.id, new TextEncoder().encode(reviewsFile(group, "WooCommerce")), { from: "WooCommerce", publish, check: false });
+    if (!outcome.ok) return outcome.problem === "closed" ? { ...f, stage: "failed", problem: "feature_off" } : { ...f, stage: "failed", problem: "import_refused" };
+    made += outcome.imported + outcome.duplicates;
+    refused += outcome.refusedCount;
+    if (outcome.ids && outcome.ids.length > 0) await recordMoveItems(member.store.id, "review", outcome.ids);
+  }
+  const next = cursor + REVIEW_BATCH;
+  return next >= lines.length ? { ...f, stage: "done", cursor: lines.length, made, refused } : { ...f, stage: "applying", cursor: next, made, refused };
+}
+
 /** One tick of a `direct` feed: the next items written by their editors' own writers; an item already here (same address or name) is left. */
 async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, deps: CopyDeps): Promise<FeedState> {
   const text = f.path ? await keptFile(f.path, deps) : null;
   if (text === null) return { ...f, stage: "failed", problem: "storage" };
   const tree = readBulkLines(text);
   if (SETTINGS_FEEDS.includes(feed)) return applySettingsFeed(member, feed, f, tree.roots);
+  if (feed === "reviews") return applyReviews(member, f, tree.roots);
   const cursor = f.cursor ?? 0;
   const size = DIRECT_BATCH[feed] ?? 10;
   let made = f.made ?? 0;
@@ -582,7 +621,10 @@ async function readShopify(member: Membership, state: CopyState, before: CopySta
   }
   // The next read, one at a time.
   const next = nextToRead(state);
-  if (next === "menus") {
+  if (next === "reviews") {
+    // A copy started before reviews were a part (or a Shopify one): Shopify has none to read.
+    state.feeds.reviews = { stage: "empty", count: 0 };
+  } else if (next === "menus") {
     const answer = await shopifyGraphql<{ menus?: { nodes?: Record<string, unknown>[] } }>(storeId, MENUS_QUERY, {}, deps);
     state.feeds.menus = answer.ok ? await stage(member, "menus", (answer.data.menus?.nodes ?? []).map((m) => JSON.stringify(m)).join("\n"), deps) : { stage: "failed", problem: "shopify_refused" };
   } else if (next && PLAIN_FEEDS.includes(next)) {
@@ -637,7 +679,7 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
     state.feeds.discounts = await readWooCoupons(member, deps);
     return;
   }
-  if (feed !== "products" && feed !== "customers" && feed !== "orders") {
+  if (feed !== "products" && feed !== "customers" && feed !== "orders" && feed !== "reviews") {
     state.feeds[feed] = { stage: "empty", count: 0 };
     return;
   }
@@ -681,7 +723,11 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
       lines = made.lines;
       skipped += made.skipped.length;
     } else if (feed === "customers") lines = customerLines(got.items);
-    else {
+    else if (feed === "reviews") {
+      const made = reviewLines(got.items, await wooNames(storeId, "wc/v3/products", reviewProductIds(got.items), "slug", deps));
+      lines = made.lines;
+      skipped += made.skipped.length;
+    } else {
       const made = orderLines(got.items);
       lines = made.lines;
       skipped += made.skipped;

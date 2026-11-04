@@ -22,7 +22,7 @@ type Row = Record<string, unknown>;
 /**
  * Moving from WooCommerce, step 1 (D446) end to end against a stand-in WordPress site and the real imports: *Connect WooCommerce* finds
  * the site by its REST root, WooCommerce posts a read-only key with the sealed note, and the key is kept; *Copy my shop* reads products
- * (with their variations), customers, orders and coupons a page at a time, each as the file Shopify's export makes, into the imports' dry
+ * (with their variations), customers, orders, coupons and reviews a page at a time, each as the file Shopify's export makes, into the imports' dry
  * runs; *Bring it over* saves them through the imports and the discount writer; *Undo this copy* takes them back.
  */
 
@@ -123,6 +123,16 @@ async function open(raw: string, headers?: Record<string, string>): Promise<Fetc
       return list(page === 1 ? products() : []);
     case "wc/v3/products/12/variations":
       return list(page === 1 ? variations : []);
+    case "wc/v3/products/reviews":
+      return list(
+        page === 1
+          ? [
+              { id: 1, product_id: 11, status: "approved", reviewer: "Ola N.", rating: 5, review: "<p>Warm &amp; soft.</p>", date_created_gmt: "2026-09-01T10:00:00", verified: true },
+              { id: 2, product_id: 12, status: "hold", reviewer: "Kari", rating: 3, review: "<p>Fine.</p>", date_created_gmt: "2026-09-02T10:00:00", verified: false },
+              { id: 3, product_id: 11, status: "spam", reviewer: "Spam", rating: 5, review: "buy now", date_created_gmt: "2026-09-03T10:00:00" },
+            ]
+          : [],
+      );
     case "wc/v3/products/categories":
       return list([{ id: 3, name: "Hats" }]);
     case "wc/v3/customers":
@@ -163,6 +173,8 @@ beforeAll(async () => {
   email = `kari-${fx.slug}@example.com`;
   await db().execute(sql`delete from commerce.shipping_rates where store_id = ${fx.storeId}::uuid`);
   await db().execute(sql`update commerce.markets set active = (code = 'NO') where store_id = ${fx.storeId}::uuid`);
+  // Reviews switched on, as the review import needs (step 1b).
+  await db().execute(sql`update commerce.stores set features = array_append(features, 'reviews') where id = ${fx.storeId}::uuid and not ('reviews' = any(features))`);
   ({ owner } = await membersOf(fx));
 });
 
@@ -217,6 +229,7 @@ describe("moving from WooCommerce, step 1", () => {
       customers: ["checked", 1],
       orders: ["checked", 1],
       discounts: ["checked", 2],
+      reviews: ["checked", 2],
       pages: ["empty", 0],
       redirects: ["empty", 0],
       subscribers: ["empty", 0],
@@ -261,6 +274,16 @@ describe("moving from WooCommerce, step 1", () => {
     expect(orders.map((o) => [o.number, o.customer_id])).toEqual([["C-2001", customer.id]]);
     const [code] = await db().execute<Row>(sql`select code, active from commerce.discount_codes where store_id = ${fx.storeId}::uuid and code = 'WOOHATS'`);
     expect([code?.code, code?.active]).toEqual(["WOOHATS", false]);
+    // Reviews through the review import: the one shown on WooCommerce published, the one waiting there waiting, never verified here; spam left.
+    const reviews = await db().execute<Row>(sql`
+      select p.handle, r.source, r.status, r.author_name, r.rating, r.body, r.imported_from, r.written_on::text as written_on, r.order_id
+        from commerce.product_reviews r join commerce.products p on p.id = r.product_id
+       where r.store_id = ${fx.storeId}::uuid order by r.author_name`);
+    expect(reviews).toEqual([
+      { handle: "woo-scarf", source: "import", status: "pending", author_name: "Kari", rating: 3, body: "Fine.", imported_from: "WooCommerce", written_on: "2026-09-02", order_id: null },
+      { handle: "woo-wool-hat", source: "import", status: "published", author_name: "Ola N.", rating: 5, body: "Warm & soft.", imported_from: "WooCommerce", written_on: "2026-09-01", order_id: null },
+    ]);
+    expect(view.state.feeds.reviews).toMatchObject({ stage: "done", made: 2, refused: 0 });
   });
 
   it("takes the copy back with Undo this copy, and forgets the key on Disconnect", async () => {
@@ -272,6 +295,8 @@ describe("moving from WooCommerce, step 1", () => {
     expect(live).toBe(0);
     const [{ orders }] = await db().execute<Row>(sql`select count(*)::int as orders from commerce.orders where store_id = ${fx.storeId}::uuid and copied_from is not null`);
     expect(orders).toBe(0);
+    const [{ reviews }] = await db().execute<Row>(sql`select count(*)::int as reviews from commerce.product_reviews where store_id = ${fx.storeId}::uuid`);
+    expect(reviews).toBe(0);
     // The copy starts afresh; the connection stays until the owner disconnects.
     expect((await copy.copyView(owner))?.state.startedAt).toBeNull();
     expect(await connect.disconnectWoo(owner)).toEqual({ ok: true });

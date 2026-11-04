@@ -3,7 +3,7 @@
 The owner (3 November 2026) asked for a "moving from" plan per platform, like `docs/moving-from-shopify.md` (D445), "so simple and easy to
 follow that Homer Simpson could do it without breaking a sweat". This is WooCommerce's.
 
-**Step 1 is built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
+**Steps 1 and 1b are built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
 refers to it by section ("Shopify 8.2"):
 
 | Part of the engine | Where in the Shopify plan |
@@ -430,8 +430,28 @@ past orders and coupons, through WooCommerce's own read-only key. No plugin is n
 Migration version: `20261104161134_woocommerce_moves` (`shop_moves` takes `source` `woocommerce`, and a site's host and folder as its
 address).
 
-**Not in step 1:**
-- Reviews (step 1b): they need a writer for moved reviews (D301 has only a buyer's own review).
+### Step 1b: reviews (4 November 2026)
+
+- A copy part of its own, `reviews` (`FEED_KIND` `direct`), read from `wc/v3/products/reviews` (`status=all`), a page at a time with the
+  handles of the products they are about read beside each page.
+- `reviewLines()` keeps WooCommerce's *approved* reviews (shown there) and *hold* ones (waiting there), each with its stars, the reviewer's
+  name, the words as plain text (`htmlToText()`) and its day. Spam and the bin stay, and so do reviews without stars, of a product not
+  read, or without a name; all are counted in the log.
+- At *Bring it over* they are written only by the review import's own writer (`importReviews()`, D301 G3b) from its own file
+  (`reviewsFile()`), as `import` reviews from *WooCommerce*: the approved ones published, the held ones waiting for the owner, 2,000 a
+  tick. A review already here is not added twice (the import's own key), and a row it refuses is counted.
+- **Never a verified purchase.** WooCommerce's *verified owner* is not carried: here a review is verified only when it is a buyer's of an
+  order line in this store (D301), and the storefront says which are which. The plan's "verified-owner flag kept" (section 5) is dropped.
+- The store must take reviews (feature `reviews`); otherwise the part says so (`feature_off`) and nothing is written.
+- `importReviews()` now returns the ids it wrote, and *Undo this copy* deletes exactly those (`shop_move_items` kind `review`) as a
+  mistaken import is deleted (`kaizen.review_delete`).
+- Shopify's copy has no reviews of its own: the part is empty there and not listed.
+- Tests: `woocommerce-copy.test.ts` reads the file back with `readReviewFile()`; `woocommerce-copy.int.test.ts` brings an approved, a held
+  and a spam review over and undoes them.
+
+Migration version: `20261104170733_woocommerce_reviews` (`shop_move_items` takes the kind `review`).
+
+**Not in steps 1 and 1b:**
 - The mover plugin and what it reads (step 2).
 - Pages, posts, menus (step 3); keep WordPress (step 4); move day (step 5).
 - Categories with their parents, and a check report (*Here's your shop*) for WooCommerce.

@@ -30,14 +30,14 @@ import { db } from "@/db/client";
 /**
  * *Undo this copy* (D445 step 9, `docs/moving-from-shopify.md` 8.4, the owner's choice: remove or switch off). Everything a move from Shopify
  * makes is written down as it is made (`commerce.shop_move_items`, this module its only writer); the undo takes exactly that back and nothing
- * the owner made: copied orders, pages, menus, discount codes, redirects, subscribers and customers removed; products archived; gift cards
+ * the owner made: copied orders, pages, menus, discount codes, redirects, reviews, subscribers and customers removed; products archived; gift cards
  * switched off; the countries it added taken away again; the theme it added removed. Only before the store's first real order (an order that
  * is not a copy), and never an email to anyone. Shipping rates it wrote stay (harmless, and the owner's to change). The owner's.
  */
 
 const OWNER = "owner" as const;
 
-export type MoveItemKind = "job" | "customer" | "product" | "page" | "menu" | "discount" | "subscriber" | "gift_card" | "theme" | "market";
+export type MoveItemKind = "job" | "customer" | "product" | "page" | "menu" | "discount" | "subscriber" | "gift_card" | "theme" | "market" | "review";
 
 /** A customer's mark: the md5 of their address in lower case, so the record never holds an address. */
 export const customerMark = (email: string): string => createHash("md5").update(normaliseEmail(email)).digest("hex");
@@ -89,6 +89,7 @@ async function madeBy(storeId: string): Promise<Record<"products" | "orders" | "
     gift_card: of("gift_card"),
     theme: of("theme"),
     market: of("market"),
+    review: of("review"),
   };
 }
 
@@ -137,6 +138,21 @@ export async function undoCopy(member: Membership): Promise<UndoResult> {
     const off = await deactivateGiftCard(storeId, member.account.id, id, "Undo of the Shopify copy");
     await db().execute(sql`update commerce.gift_cards set customer_id = null where store_id = ${storeId}::uuid and id = ${id}::uuid and moved_from is not null`);
     count(off.ok);
+  }
+  // Moved reviews (D446 step 1b): deleted as a mistaken import is, only those the move made.
+  if (made.review.length) {
+    const ids = made.review.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+    const gone = await db()
+      .transaction(async (tx) => {
+        await tx.execute(sql`select set_config('kaizen.review_delete', 'on', true)`);
+        return (await tx.execute(sql`delete from commerce.product_reviews where store_id = ${storeId}::uuid and source = 'import' and id = any(${pgUuidArray(ids)}::uuid[]) returning id`)).length;
+      })
+      .catch((error: unknown) => {
+        log("warn", "shopify.undo_reviews_kept", { storeId }, error);
+        return 0;
+      });
+    removed += gone;
+    kept += made.review.length - gone;
   }
   if (made.subscriber.length) {
     const rows = await db().execute(sql`delete from commerce.marketing_subscribers where store_id = ${storeId}::uuid and source = 'shopify' and id = any(${pgUuidArray(made.subscriber)}::uuid[]) returning id`);

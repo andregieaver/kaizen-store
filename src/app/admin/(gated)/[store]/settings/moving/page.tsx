@@ -434,12 +434,13 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
     countries: `${base}/settings/countries`,
     shipping: `${base}/settings/shipping`,
     discounts: `${base}/discounts`,
+    reviews: `${base}/reviews/import`,
     look: `${base}/settings/design/themes`,
     subscribers: `${base}/subscribers`,
     gift_cards: `${base}/gift-cards`,
   };
   // A WooCommerce copy lists the parts it brings (D446 step 1); the others are later steps'.
-  const feeds = source === "woocommerce" ? COPY_FEEDS.filter((f) => (WOO_COPY_FEEDS as readonly CopyFeed[]).includes(f)) : COPY_FEEDS;
+  const feeds = source === "woocommerce" ? COPY_FEEDS.filter((f) => (WOO_COPY_FEEDS as readonly CopyFeed[]).includes(f)) : COPY_FEEDS.filter((f) => f !== "reviews");
   const rows: CopyRow[] = feeds.map((feed) => {
     const f = view.state.feeds[feed];
     const dry = dryOf(feed, view.jobs[feed]);

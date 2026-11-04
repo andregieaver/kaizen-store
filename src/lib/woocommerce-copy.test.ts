@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { parseCsv } from "./csv";
 import { readShopifyOrders } from "./order-history";
-import { collectionsFile, customersFile, ordersFile, productsFile, readBulkLines } from "./shopify-copy";
-import { collectionLines, couponLine, couponRefs, customerLines, orderLines, productLines, variableIds, weightUnitOf, wooQuery } from "./woocommerce-copy";
+import { readReviewFile } from "./review-import";
+import { collectionsFile, customersFile, ordersFile, productsFile, readBulkLines, reviewsFile } from "./shopify-copy";
+import { collectionLines, couponLine, couponRefs, customerLines, includeOf, orderLines, productLines, reviewLines, reviewProductIds, variableIds, weightUnitOf, wooQuery } from "./woocommerce-copy";
 
 const jsonl = (lines: readonly unknown[]) => lines.map((l) => JSON.stringify(l)).join("\n");
 const table = (csv: string) => {
@@ -180,5 +181,36 @@ describe("WooCommerce's coupons as discount codes (D446 step 1)", () => {
 
   it("names the products and categories its coupons point at, once each", () => {
     expect(couponRefs([coupon({ product_ids: [11, 12], product_categories: [3] }), coupon({ product_ids: [11] })])).toEqual({ products: [11, 12], categories: [3] });
+  });
+});
+
+describe("WooCommerce's reviews through the review import (D446 step 1b)", () => {
+  const review = (extra: Record<string, unknown>) => ({ id: 1, product_id: 11, status: "approved", reviewer: "Ola Nordmann", rating: 5, review: "<p>Warm &amp; <strong>soft</strong>.</p><p>Fits well.</p>", date_created_gmt: "2026-09-01T22:30:00", verified: true, ...extra });
+
+  it("writes the shown and the waiting ones as the import's own file, read back row by row", () => {
+    const { lines, skipped } = reviewLines(
+      [review({}), review({ id: 2, status: "hold", reviewer: "Kari", rating: 3 }), review({ id: 3, status: "spam" }), review({ id: 4, status: "trash" }), review({ id: 5, rating: 0 }), review({ id: 6, product_id: 99 }), review({ id: 7, reviewer: "  " })],
+      new Map([[11, "wool-hat"]]),
+    );
+    expect(skipped).toEqual(["status", "status", "rating", "product", "author"]);
+    expect(lines.map((l) => [l.author, l.approved])).toEqual([
+      ["Ola Nordmann", true],
+      ["Kari", false],
+    ]);
+    const read = readReviewFile(reviewsFile(lines, "WooCommerce"), "WooCommerce", "2026-11-04");
+    expect(read).toEqual({
+      ok: true,
+      refused: [],
+      rows: [
+        { line: 2, handle: "wool-hat", rating: 5, title: null, body: "Warm & soft.\nFits well.", author: "Ola Nordmann", date: "2026-09-01", source: "WooCommerce" },
+        { line: 3, handle: "wool-hat", rating: 3, title: null, body: "Warm & soft.\nFits well.", author: "Kari", date: "2026-09-01", source: "WooCommerce" },
+      ],
+    });
+  });
+
+  it("reads every review but spam and the bin, and the products they are about once each", () => {
+    expect(wooQuery("reviews", 2)).toMatchObject({ page: 2, status: "all" });
+    expect(reviewProductIds([review({}), review({ id: 2 }), review({ id: 3, product_id: 12 })])).toEqual([11, 12]);
+    expect(includeOf([11, 12, -1])).toBe("11,12");
   });
 });
