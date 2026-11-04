@@ -8,13 +8,22 @@ areas: [api, webhooks, mcp]
 features: []
 plans: []
 order: 1000
-checked: 2026-11-03
+checked: 2026-11-04
 sources: [D438, D439, D440]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.5 — 2026-11-04
+
+Words only: nothing a call does changed.
+
+- `POST /products` and `PATCH /products/{id}` now say what a token with the power `products:publish` may do since 1.1: pictures are
+  added with `POST /products/{id}/media`, a product is published with `POST /products/{id}/publish`, and a product on the site is changed
+  with `PATCH` only by a token that holds the power (without it, `gated`). Their descriptions still said both were the owner's, in the
+  admin.
 
 ## 1.4 — 2026-11-03
 
