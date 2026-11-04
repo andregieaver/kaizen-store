@@ -162,20 +162,23 @@ jobs:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # In Playwright's image, as the e2e job: Chromium and its libraries come with it, so no apt mirror can hold the job up.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
     services:
       postgres:
         image: pgvector/pgvector:pg17
         env:
           POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+      TZ: UTC
       NEXT_PUBLIC_STORE_DOMAIN: localhost:3000
       # The theme store on its own host, a name under the store domain (docs/theme-phase-3.md step 3).
       NEXT_PUBLIC_THEMES_HOST: themes.localhost:3000
@@ -192,7 +195,7 @@ jobs:
       - name: Create the database with the demo catalogue and a store on a domain of its own
         run: node scripts/db-setup.mjs --seed && node e2e/hosts-seed.mjs
       - run: pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install chromium
       - run: pnpm exec playwright test e2e/store-hosts.spec.ts e2e/inline-edit-hosts.spec.ts e2e/theme-host.spec.ts e2e/docs-host.spec.ts
         env:
           E2E_CUSTOM_HOSTS: "1"
@@ -204,20 +207,23 @@ jobs:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # In Playwright's image, as the e2e job: Chromium and its libraries come with it, so no apt mirror can hold the job up.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
     services:
       postgres:
         image: pgvector/pgvector:pg17
         env:
           POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+      TZ: UTC
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:3912
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: e2e-publishable-key
       E2E_SIGNED_IN: "1"
@@ -232,7 +238,7 @@ jobs:
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
       - run: pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install chromium
       - run: pnpm exec playwright test --project=signed-in
 
   # Production's migrations and deploy (docs/ci-migrations.md). Vercel's own build of main is switched off in

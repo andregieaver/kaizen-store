@@ -43,6 +43,10 @@ signature checks, two Admin API descriptions (contract 1.5) and the docs' Markdo
     the contract's 50.*
 15. **Two storefront API mismatches**: `POST /carts` takes an empty body though the document marks it required, and a missing cart is
     `not_found` on the line routes but `no_such_cart` on `GET /carts/{cart}` and checkout.
+16. *Seen 5 November while making two end-to-end tests steady, not by the writers:* in WebKit, a quantity typed or a line removed in the
+    cart in the moment after it loads, before its script has taken over, was sometimes lost (the tests now wait for the script; 1 run
+    in 5 failed before, none after). A shopper on a slow phone could meet the same. Worth a look at whether the cart's forms should
+    work, or refuse plainly, in that moment.
 
 ## Admin words that are out of date or wrong
 
