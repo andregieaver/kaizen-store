@@ -639,6 +639,7 @@ export const sv: Messages = {
   mainMenu: "Huvudmeny",
   footerMenu: "Sidfotsmeny",
   opensInNewTab: "(öppnas i en ny flik)",
+  subLinksUnder: "Länkar under",
   shortcuts: "Genvägar",
   chooseVariantLabel: "Välj variant",
   /** A value of an option that makes no variant that can be bought with the others chosen (D320). */

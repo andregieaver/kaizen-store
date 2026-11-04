@@ -642,6 +642,7 @@ export const nb: Messages = {
   mainMenu: "Hovedmeny",
   footerMenu: "Bunnmeny",
   opensInNewTab: "(åpnes i ny fane)",
+  subLinksUnder: "Lenker under",
   shortcuts: "Snarveier",
   chooseVariantLabel: "Velg variant",
   /** A value of an option that makes no variant that can be bought with the others chosen (D320). */

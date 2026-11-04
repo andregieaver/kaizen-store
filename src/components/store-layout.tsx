@@ -99,7 +99,7 @@ export async function MenuLinks({
       linkExists(item.link, names) &&
       menuLabel(item, market.locale, builtIn, names, market.code) !== "",
   ).map(toNode);
-  return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} hover={hover} />;
+  return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} subLinksLabel={m.subLinksUnder} justify={justify} hover={hover} />;
 }
 
 /**

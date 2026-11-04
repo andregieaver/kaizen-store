@@ -662,6 +662,7 @@ export const en = {
   mainMenu: "Main menu",
   footerMenu: "Footer menu",
   opensInNewTab: "(opens in a new tab)",
+  subLinksUnder: "Links under",
   shortcuts: "Shortcuts",
   chooseVariantLabel: "Choose a variant",
   /** A value of an option that makes no variant that can be bought with the others chosen (D320). */
