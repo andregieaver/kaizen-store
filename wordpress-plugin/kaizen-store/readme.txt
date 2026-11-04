@@ -4,7 +4,7 @@ Tags: ecommerce, products, shortcode, carousel, grid
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -26,7 +26,7 @@ The products, prices, pictures, categories and tags your stores show shoppers, f
 
 = Moving a WooCommerce shop to Kaizena Flow =
 
-When you move your WooCommerce shop to Kaizena Flow, this plugin can read what WooCommerce's own key cannot: which plugins your shop uses, the redirects of Redirection, Yoast SEO Premium and Rank Math, your products' SEO titles and descriptions from Yoast or Rank Math, and MailPoet's subscribed subscribers with when they subscribed. It reads only after you press Allow under Kaizena Flow, Move to Kaizena Flow, and only for calls signed with a secret this site made and sent to Kaizena Flow alone. It never changes anything on this site. Stop Kaizena Flow reading forgets the secret.
+When you move your WooCommerce shop to Kaizena Flow, this plugin can read what WooCommerce's own key cannot: which plugins your shop uses, the redirects of Redirection, Yoast SEO Premium and Rank Math, every Yoast SEO and Rank Math field of your products and product categories (titles and descriptions as shoppers see them, focus keywords, canonical addresses, robots, social titles, descriptions and pictures, breadcrumb titles and primary categories), and MailPoet's subscribed subscribers with when they subscribed. It reads only after you press Allow under Kaizena Flow, Move to Kaizena Flow, and only for calls signed with a secret this site made and sent to Kaizena Flow alone. It never changes anything on this site. Stop Kaizena Flow reading forgets the secret.
 
 = Shortcode =
 
@@ -59,6 +59,9 @@ A cart, yes: a slide-out cart on your site. Not a checkout: pressing Checkout ma
 The connection and saved lists are removed. The views themselves are your content and stay in the database.
 
 == Changelog ==
+
+= 1.3.1 =
+* Moving to Kaizena Flow reads every Yoast SEO and Rank Math field of products and product categories, not only their titles and descriptions, and gives titles and descriptions written with the plugin's variables as the plugin shows them.
 
 = 1.3.0 =
 * Moving a WooCommerce shop to Kaizena Flow: Move to Kaizena Flow lets Kaizena Flow read, after you allow it, the plugins you use, your redirects, your products' SEO titles and descriptions, and MailPoet's subscribed subscribers. It only reads, and every call is signed.

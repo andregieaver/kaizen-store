@@ -77,7 +77,7 @@ export const movingEn = {
     text: "We copy your products, customers, past orders, pages, menus, countries, shipping, discount codes and look into this store. Nothing is saved here until you press Bring it over, and nothing changes on Shopify.",
     start: "Copy my shop",
     starting: "Starting …",
-    feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects", collections: "Collections", pages: "Pages", articles: "Blog posts", menus: "Menus", countries: "Countries", shipping: "Shipping", discounts: "Discount codes", reviews: "Reviews", look: "Look", subscribers: "Email subscribers", gift_cards: "Gift cards" },
+    feeds: { products: "Products", customers: "Customers", orders: "Past orders", redirects: "Redirects", collections: "Collections", pages: "Pages", articles: "Blog posts", menus: "Menus", countries: "Countries", shipping: "Shipping", discounts: "Discount codes", reviews: "Reviews", seo: "SEO fields (Yoast, Rank Math)", look: "Look", subscribers: "Email subscribers", gift_cards: "Gift cards" },
     onMoveDay: "New codes on move day",
     choose: {
       title: "Choose what to bring",

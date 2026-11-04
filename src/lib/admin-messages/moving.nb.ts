@@ -74,7 +74,7 @@ export const movingNb: MovingMessages = {
     text: "Vi kopierer produktene, kundene, tidligere ordrer, sidene, menyene, landene, frakten, rabattkodene og utseendet til denne butikken. Ingenting lagres her før du trykker Ta det over, og ingenting endres i Shopify.",
     start: "Kopier butikken min",
     starting: "Starter …",
-    feeds: { products: "Produkter", customers: "Kunder", orders: "Tidligere ordrer", redirects: "Omdirigeringer", collections: "Kolleksjoner", pages: "Sider", articles: "Blogginnlegg", menus: "Menyer", countries: "Land", shipping: "Frakt", discounts: "Rabattkoder", reviews: "Anmeldelser", look: "Utseende", subscribers: "E-postabonnenter", gift_cards: "Gavekort" },
+    feeds: { products: "Produkter", customers: "Kunder", orders: "Tidligere ordrer", redirects: "Omdirigeringer", collections: "Kolleksjoner", pages: "Sider", articles: "Blogginnlegg", menus: "Menyer", countries: "Land", shipping: "Frakt", discounts: "Rabattkoder", reviews: "Anmeldelser", seo: "SEO-felter (Yoast, Rank Math)", look: "Utseende", subscribers: "E-postabonnenter", gift_cards: "Gavekort" },
     onMoveDay: "Nye koder på flyttedagen",
     choose: {
       title: "Velg hva som skal tas over",

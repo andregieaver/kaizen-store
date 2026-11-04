@@ -13,7 +13,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ConsentLine } from "./shopify-copy";
 
 export const MOVER_NAMESPACE = "kaizena-mover/v1";
-export const MOVER_ROUTES = ["plugins", "redirects", "seo", "subscribers"] as const;
+export const MOVER_ROUTES = ["plugins", "redirects", "seo", "seo_terms", "subscribers"] as const;
 export type MoverRoute = (typeof MOVER_ROUTES)[number];
 /** How far apart Kaizena Flow's clock and the site's may be, in seconds. */
 export const MOVER_SKEW_SECONDS = 300;
@@ -152,22 +152,76 @@ export function redirectLinesOf(answer: unknown): { lines: { id: string; path: s
   return { lines, skipped, more: a.more === true };
 }
 
-/** A product's own SEO title and description from the SEO plugin (one with a variable, `%%title%%`, is left: it is not the words). */
-export type MoverSeo = { title: string; description: string };
+/**
+ * Every Yoast and Rank Math field the mover reads (step 2a, kept since the owner asked that they all be preserved): our name, its label, and
+ * whether it is long text. The title and description also become the product's or category's own SEO words here; every field, as the plugin
+ * kept it, goes into the custom field group *SEO from Yoast / Rank Math* (`SEO_FIELD_GROUP`), private until the owner shows it.
+ */
+export const SEO_FIELDS = [
+  { name: "title", label: "SEO title as written", long: false },
+  { name: "description", label: "Meta description as written", long: true },
+  { name: "focus_keyword", label: "Focus keyword", long: false },
+  { name: "canonical", label: "Canonical address", long: false },
+  { name: "robots", label: "Robots", long: false },
+  { name: "og_title", label: "Social title (Facebook)", long: false },
+  { name: "og_description", label: "Social description (Facebook)", long: true },
+  { name: "og_image", label: "Social picture (Facebook)", long: false },
+  { name: "twitter_title", label: "X (Twitter) title", long: false },
+  { name: "twitter_description", label: "X (Twitter) description", long: true },
+  { name: "twitter_image", label: "X (Twitter) picture", long: false },
+  { name: "breadcrumb_title", label: "Breadcrumb title", long: false },
+  { name: "primary_category", label: "Primary category", long: false },
+  { name: "plugin", label: "From", long: false },
+] as const;
+export type SeoFieldName = (typeof SEO_FIELDS)[number]["name"];
+export const SEO_FIELD_GROUP = { slug: "seo-from-wordpress", name: "SEO from Yoast / Rank Math" } as const;
 
+/**
+ * A product's or category's SEO from the plugin: the title and description as the plugin shows them (its variables replaced on the site;
+ * one still holding a variable is left, since it is not the words), and every field as the plugin kept it.
+ */
+export type MoverSeo = { title: string; description: string; fields: Partial<Record<SeoFieldName, string>> };
+
+const unresolved = (text: string) => /%%|%[a-z_]+%/i.test(text);
+
+function moverSeoOf(r: Obj): MoverSeo | null {
+  const raw = o(r.fields);
+  const fields: Partial<Record<SeoFieldName, string>> = {};
+  for (const f of SEO_FIELDS) {
+    if (f.name === "plugin") continue;
+    const value = s(raw[f.name], f.long ? 5000 : 500);
+    if (value) fields[f.name] = value;
+  }
+  const plugin = s(r.plugin, 20);
+  if (plugin === "yoast" || plugin === "rank-math") fields.plugin = plugin === "yoast" ? "Yoast SEO" : "Rank Math";
+  const shown = (v: unknown, max: number) => {
+    const text = s(v, max * 2);
+    return unresolved(text) ? "" : text.slice(0, max);
+  };
+  const seo = { title: shown(r.title, 255), description: shown(r.description, 1000), fields };
+  return seo.title || seo.description || Object.keys(fields).length > 0 ? seo : null;
+}
+
+/** A page of products' SEO, by WooCommerce's id. */
 export function seoOf(answer: unknown): Map<number, MoverSeo> {
   const out = new Map<number, MoverSeo>();
-  const words = (v: unknown, max: number) => {
-    const text = s(v, max * 2);
-    return /%%|%[a-z_]+%/i.test(text) ? "" : text.slice(0, max);
-  };
   for (const r of list(o(answer).seo)) {
     const id = Number(r.id);
-    if (!Number.isSafeInteger(id) || id <= 0) continue;
-    const seo = { title: words(r.title, 255), description: words(r.description, 1000) };
-    if (seo.title || seo.description) out.set(id, seo);
+    const seo = Number.isSafeInteger(id) && id > 0 ? moverSeoOf(r) : null;
+    if (seo) out.set(id, seo);
   }
   return out;
+}
+
+/** A page of product categories' SEO, by the category's name as the copy brings it (`categoryName()`). */
+export function termSeoOf(answer: unknown): { terms: (MoverSeo & { name: string; slug: string })[]; more: boolean } {
+  const a = o(answer);
+  const terms = list(a.terms).flatMap((r) => {
+    const name = s(r.name, 255);
+    const seo = name ? moverSeoOf(r) : null;
+    return seo ? [{ ...seo, name, slug: s(r.slug, 200) }] : [];
+  });
+  return { terms, more: a.more === true };
 }
 
 /**

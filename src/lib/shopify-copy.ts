@@ -18,7 +18,7 @@ import { writeCsv, type Cell } from "./csv";
  * products (they are the products' categories), customers before orders (an order is tied to its customer by email), discount codes after
  * the products and categories they name, menus after what they link to, redirects and the look last.
  */
-export const COPY_FEEDS = ["countries", "shipping", "products", "collections", "customers", "subscribers", "orders", "gift_cards", "discounts", "reviews", "pages", "articles", "menus", "redirects", "look"] as const;
+export const COPY_FEEDS = ["countries", "shipping", "products", "collections", "customers", "subscribers", "orders", "gift_cards", "discounts", "reviews", "seo", "pages", "articles", "menus", "redirects", "look"] as const;
 export type CopyFeed = (typeof COPY_FEEDS)[number];
 
 /**
@@ -37,6 +37,9 @@ export const FEED_KIND: Record<CopyFeed, "import" | "later" | "direct"> = {
   discounts: "direct",
   // WooCommerce's product reviews (D446 step 1b), through the review import's own writer (`importReviews()`); Shopify keeps none of its own.
   reviews: "direct",
+  // Every Yoast and Rank Math field of WooCommerce's products and categories (D446 step 2a), after both are in: the categories' own SEO words
+  // through the taxonomy's writer, every field into a custom field group through the custom fields' writers.
+  seo: "direct",
   look: "direct",
   products: "import",
   collections: "later",
@@ -90,6 +93,7 @@ export const BULK_QUERIES: Record<CopyFeed, string> = {
   gift_cards: "",
   discounts: "",
   reviews: "",
+  seo: "",
   look: "",
 };
 
@@ -127,6 +131,7 @@ export const FEED_FILES: Record<CopyFeed, string> = {
   shipping: "shopify-shipping.jsonl",
   discounts: "shopify-discounts.jsonl",
   reviews: "shopify-reviews.jsonl",
+  seo: "shopify-seo.jsonl",
   look: "shopify-look.jsonl",
 };
 
@@ -663,6 +668,7 @@ export function fileOfFeed(feed: CopyFeed, text: string): { csv: string; count: 
     case "gift_cards":
     case "discounts":
     case "reviews":
+    case "seo":
     case "look":
       return { csv: text, count: tree.roots.length };
   }
@@ -728,6 +734,7 @@ export const EMPTY_COPY: CopyState = {
     gift_cards: { stage: "waiting" },
     discounts: { stage: "waiting" },
     reviews: { stage: "waiting" },
+    seo: { stage: "waiting" },
     look: { stage: "waiting" },
     products: { stage: "waiting" },
     collections: { stage: "waiting" },
@@ -807,7 +814,7 @@ export function nextToApply(state: CopyState): CopyFeed | null {
 }
 
 /** The order feeds are READ in: the bulk reads first, then the few read by their own small queries (`PLAIN_FEEDS`). */
-export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus", "countries", "shipping", "discounts", "reviews", "look", "gift_cards", "subscribers"];
+export const READ_ORDER: readonly CopyFeed[] = ["products", "collections", "customers", "orders", "pages", "articles", "redirects", "menus", "countries", "shipping", "discounts", "reviews", "look", "gift_cards", "subscribers", "seo"];
 
 /** The feeds read by an ordinary query, in one tick, rather than a bulk operation. */
 export const PLAIN_FEEDS: readonly CopyFeed[] = ["menus", "countries", "shipping", "discounts", "look", "gift_cards"];

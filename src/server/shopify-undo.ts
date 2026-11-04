@@ -11,6 +11,7 @@ import { REDIRECT_BULK_DELETE_MAX } from "@/lib/data-limits";
 import { normaliseEmail } from "@/lib/email-address";
 
 import { audit, type Membership } from "./auth";
+import { deleteFieldGroup } from "./custom-fields";
 import { deleteDiscount } from "./discounts";
 import { deactivateGiftCard } from "./gift-cards-admin";
 import { log } from "./log";
@@ -37,7 +38,7 @@ import { db } from "@/db/client";
 
 const OWNER = "owner" as const;
 
-export type MoveItemKind = "job" | "customer" | "product" | "page" | "menu" | "discount" | "subscriber" | "gift_card" | "theme" | "market" | "review";
+export type MoveItemKind = "job" | "customer" | "product" | "page" | "menu" | "discount" | "subscriber" | "gift_card" | "theme" | "market" | "review" | "field_group";
 
 /** A customer's mark: the md5 of their address in lower case, so the record never holds an address. */
 export const customerMark = (email: string): string => createHash("md5").update(normaliseEmail(email)).digest("hex");
@@ -90,6 +91,7 @@ async function madeBy(storeId: string): Promise<Record<"products" | "orders" | "
     theme: of("theme"),
     market: of("market"),
     review: of("review"),
+    field_group: of("field_group"),
   };
 }
 
@@ -179,6 +181,8 @@ export async function undoCopy(member: Membership): Promise<UndoResult> {
       kept += part.length - done.deleted;
     } else kept += part.length;
   }
+  // The custom field group a move made for Yoast's and Rank Math's fields (D446 step 2a), with what was written in it.
+  for (const id of made.field_group) count((await deleteFieldGroup(member, id).catch(() => ({ ok: false }))).ok);
   for (const id of made.theme) count((await removeInstall(storeId, id, member.account.id).catch(() => ({ ok: false }))).ok);
   if (made.market.length) {
     const fresh = (await currentStore(member.store.slug)) ?? member.store;

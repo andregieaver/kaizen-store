@@ -117,20 +117,28 @@ jobs:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Playwright's own image: Chromium, WebKit and every library they need are in it. Installing WebKit's on the runner
+    # meant 181 packages (114 MB) from the Ubuntu mirror, which twice on 4 November 2026 came so slowly that the job ran
+    # out of time before a test ran (CI #979, #981). Its tag is the pinned @playwright/test version
+    # (src/lib/ci-playwright.scan.test.ts). Root in the container: Playwright runs Chromium without its sandbox anyway.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
     services:
       postgres:
         image: pgvector/pgvector:pg17
         env:
           POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      # From inside the job's container the database is the service's name, not localhost.
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+      # The runner's clock zone, which the tests have always run in (the image was built with another as a build argument).
+      TZ: UTC
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -143,7 +151,9 @@ jobs:
         run: node scripts/db-setup.mjs --seed
       - run: pnpm build
       # WebKit too: the shopper's pages also run in Safari's engine (playwright.config.ts, the webkit project; PSI UX-12).
-      - run: pnpm exec playwright install --with-deps chromium webkit
+      # The image has both browsers, so this finds them and does nothing; were the pinned version ever ahead of the
+      # image, it would fetch the browsers from Playwright's own servers, never the Ubuntu mirror (no --with-deps).
+      - run: pnpm exec playwright install chromium webkit
       - run: pnpm test:e2e
 
   # Stores on their own hosts (P7) and their own code (D61) exist only in a

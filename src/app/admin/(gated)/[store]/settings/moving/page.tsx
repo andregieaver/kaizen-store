@@ -461,6 +461,7 @@ async function CopyPanel({ storeSlug }: { storeSlug: string }) {
     shipping: `${base}/settings/shipping`,
     discounts: `${base}/discounts`,
     reviews: `${base}/reviews/import`,
+    seo: `${base}/fields`,
     look: `${base}/settings/design/themes`,
     subscribers: `${base}/subscribers`,
     gift_cards: `${base}/gift-cards`,

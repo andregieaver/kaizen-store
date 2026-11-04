@@ -46,7 +46,7 @@ export type WooFeed = keyof typeof WOO_ROUTES;
 /** The parts a WooCommerce copy brings in step 1 (categories come with the products); the others are later steps' (D446 12). */
 export const WOO_COPY_FEEDS = ["products", "collections", "customers", "orders", "discounts", "reviews"] as const;
 /** The parts our WordPress plugin brings once the owner connects it (D446 step 2): the redirect plugins' redirects and MailPoet's list. */
-export const WOO_MOVER_FEEDS = ["redirects", "subscribers"] as const;
+export const WOO_MOVER_FEEDS = ["redirects", "subscribers", "seo"] as const;
 
 /** How many of a feed a page holds: WooCommerce's most is 100; smaller pages are kinder to a shared host (D446 8). */
 export const WOO_PAGE_SIZE = 50;
@@ -113,7 +113,11 @@ export function productLines(page: unknown, variations: ReadonlyMap<number, unkn
       isGiftCard: false,
       seo: { title: "", description: "" },
       options,
-      categories: list(p.categories).map((c) => categoryName(s(c.name, 255))).filter(Boolean),
+      // WooCommerce gives a product with no category its default, *Uncategorized*: that is no category here.
+      categories: list(p.categories)
+        .filter((c) => s(c.slug, 200) !== "uncategorized")
+        .map((c) => categoryName(s(c.name, 255)))
+        .filter(Boolean),
     });
     const variant = (v: Obj, position: number, selected: { name: string; value: string }[]) => {
       const stock = v.manage_stock === true ? num(v.stock_quantity) : null;
