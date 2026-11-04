@@ -324,10 +324,10 @@ export const movingNb: MovingMessages = {
       failed: "Tilkoblingen virket ikke. Trykk Koble til WooCommerce igjen.",
     },
     shop: "WooCommerce-butikk på {site}, koblet til {when}.",
-    later: "Produktene, kategoriene, kundene, tidligere ordrer, kupongene og anmeldelsene dine flyttes nå; med utvidelsen vår også videresendingene, SEO-tekstene og MailPoet-abonnentene. Sider, blogginnlegg, menyer og gavekort kommer i et senere steg.",
+    later: "Produktene, kategoriene, kundene, tidligere ordrer, kupongene og anmeldelsene dine flyttes nå. Med utvidelsen vår også sidene, blogginnleggene, menyene, videresendingene, SEO-feltene, MailPoet-abonnentene og gavekortene (lages på flyttedagen).",
     mover: {
       title: "Les mer av butikken din",
-      text: "WordPress-utvidelsen vår leser det WooCommerce ikke kan dele: videresendingene dine, produktenes SEO-titler og -beskrivelser, MailPoet-abonnentene dine og hvilke utvidelser du bruker. Den bare leser.",
+      text: "WordPress-utvidelsen vår leser det WooCommerce ikke kan dele: sidene, innleggene og menyene dine, videresendingene, alle Yoast- og Rank Math-feltene, MailPoet-abonnentene og gavekortene, og hvilke utvidelser du bruker. Den bare leser.",
       steps: "Last ned utvidelsen, og åpne Utvidelser → Legg til ny → Last opp utvidelse på nettstedet ditt, velg filen og trykk Aktiver. Trykk så Koble til utvidelsen her.",
       download: "Last ned utvidelsen",
       connect: "Koble til utvidelsen",

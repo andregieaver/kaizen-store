@@ -30,7 +30,16 @@ type Row = Record<string, unknown>;
 let fx: Fixture;
 let owner: Membership;
 const storage = fakeStorage();
-const data = depsWith(storage);
+/** Pictures in pages: fetched from the stand-in site and kept in a stand-in library. */
+const fetchedPictures: string[] = [];
+let png = new Uint8Array();
+const data = depsWith(storage, {
+  fetchPicture: async (url) => {
+    fetchedPictures.push(url);
+    return url.includes("missing") ? { ok: false, problem: "The site answered 404." } : { ok: true, bytes: png, contentType: "image/png" };
+  },
+  storePicture: async (owner2, image) => ({ ok: true, url: `https://lib.test/${owner2.storeId}/${fetchedPictures.length}-${image.name}`, thumbnailUrl: `https://lib.test/t-${image.name}` }),
+});
 const KEY = `ck_${"3".repeat(40)}`;
 const SECRET = `cs_${"4".repeat(40)}`;
 const MOVER = "f".repeat(64);
@@ -79,6 +88,33 @@ async function open(raw: string, headers?: Record<string, string>): Promise<Fetc
         });
       case "kaizena-mover/v1/gift_cards":
         return answer({ currency: "NOK", cards: query.page === "1" ? [{ source: "woocommerce-gift-cards", id: 7, last4: "AB12", balance: "250.00", expires: "2030-01-31", email }] : [], more: false });
+      case "kaizena-mover/v1/content":
+        if (query.page !== "1") return answer({ items: [], more: false });
+        return answer({
+          items:
+            query.type === "page"
+              ? [
+                  { id: 5, slug: "our-story", title: "Our story", html: `<p>We knit.</p><figure><img src="https://mover.example/wp-content/uploads/knit.jpg" alt="Knitting"></figure><p>By hand.</p><img src="https://mover.example/missing.jpg">`, published: true, author: "Kari", shortcodes: ["contact-form-7"] },
+                  { id: 6, slug: "coming-soon", title: "Coming soon", html: "<p>Soon.</p>", published: false, author: "Kari", shortcodes: [] },
+                ]
+              : [{ id: 9, slug: "winter-is-here", title: "Winter is here", html: "<p>Time for hats.</p>", published: true, author: "Ola", shortcodes: [] }],
+          more: false,
+        });
+      case "kaizena-mover/v1/menus":
+        return answer({
+          menus: [
+            {
+              handle: "main",
+              title: "Woo main menu",
+              items: [
+                { title: "Home", type: "FRONTPAGE", url: "/", items: [] },
+                { title: "Shop", type: "CATALOG", url: "/shop/", items: [{ title: "Hats", type: "COLLECTION", url: "/collections/hats", items: [] }] },
+                { title: "Our story", type: "PAGE", url: "/pages/our-story", items: [] },
+                { title: "Mover hat", type: "PRODUCT", url: "/products/mover-hat", items: [] },
+              ],
+            },
+          ],
+        });
       case "kaizena-mover/v1/seo_terms":
         return answer({ terms: query.page === "1" ? [{ name: "Hats", slug: "hats", plugin: "yoast", title: "Warm hats", description: "Every hat we knit.", fields: { title: "Warm hats", description: "Every hat we knit.", focus_keyword: "hats" } }] : [], more: false });
       default:
@@ -114,6 +150,7 @@ async function settle(member: Membership, max = 20): Promise<void> {
 }
 
 beforeAll(async () => {
+  png = new Uint8Array(await (await import("sharp")).default({ create: { width: 40, height: 30, channels: 3, background: "#cc0000" } }).png().toBuffer());
   fx = await makeStore("woo-mover");
   ({ owner } = await membersOf(fx));
   email = `kari-${fx.slug}@example.com`;
@@ -199,6 +236,27 @@ describe("moving from WooCommerce, step 2: our plugin reads what WooCommerce's k
     const [termValues] = await db().execute<Row>(sql`select values from commerce.field_values where store_id = ${fx.storeId}::uuid and entity = 'term' and entity_id = ${hats!.id}::uuid and locale <> ''`);
     expect((termValues!.values as Record<string, string>)[ids.focus_keyword]).toBe("hats");
     expect((await copy.copyView(owner))!.state.feeds.seo).toMatchObject({ stage: "done", made: 2, refused: 0 });
+    // WordPress's pages and posts through the page editor's writer (step 3): words as text, each picture fetched into the library as an image
+    // block where it stood; a picture that cannot be fetched is left; a draft stays a draft; the post in the main blog with its author.
+    const [story] = await db().execute<Row>(sql`select published -> 'rows' as rows from commerce.pages where store_id = ${fx.storeId}::uuid and type = 'page' and slug = 'our-story'`);
+    const blocks = ((story!.rows as Row[])[0] as { columns: { blocks: Row[] }[] }).columns[0].blocks;
+    expect(blocks.map((b) => b.type)).toEqual(["richText", "image", "richText"]);
+    expect(blocks[1]).toMatchObject({ image: { width: 40, height: 30, alt: "Knitting" }, caption: "" });
+    expect(String((blocks[1].image as Row).url)).toMatch(/^https:\/\/lib\.test\//);
+    expect(fetchedPictures).toEqual(["https://mover.example/wp-content/uploads/knit.jpg", "https://mover.example/missing.jpg"]);
+    const [soon] = await db().execute<Row>(sql`select published_at, draft is not null as drafted from commerce.pages where store_id = ${fx.storeId}::uuid and type = 'page' and slug = 'coming-soon'`);
+    expect([soon?.published_at ?? null, soon?.drafted]).toEqual([null, true]);
+    const [post] = await db().execute<Row>(sql`select published ->> 'author' as author from commerce.pages where store_id = ${fx.storeId}::uuid and type = 'article' and slug = 'winter-is-here'`);
+    expect(post?.author).toBe("Ola");
+    // The menu through the menu editor's writer, its links to the new shop's own things.
+    const [menu] = await db().execute<Row>(sql`select items from commerce.menus where store_id = ${fx.storeId}::uuid and name = 'Woo main menu'`);
+    expect((menu!.items as Row[]).map((i) => [i.depth, i.link])).toEqual([
+      [0, { kind: "home" }],
+      [0, { kind: "products" }],
+      [1, { kind: "category", slug: "hats" }],
+      [0, { kind: "page", slug: "our-story" }],
+      [0, { kind: "product", handle: "mover-hat" }],
+    ]);
   });
 
   it("brings a Mailchimp export's subscribed people with their moment, and nobody else (Decision 2)", async () => {
@@ -222,6 +280,9 @@ describe("moving from WooCommerce, step 2: our plugin reads what WooCommerce's k
     expect(await undo.undoCopy(owner)).toMatchObject({ ok: true });
     const [{ n }] = await db().execute<Row>(sql`select count(*)::int as n from commerce.field_groups where store_id = ${fx.storeId}::uuid and slug = 'seo-from-wordpress'`);
     expect(n).toBe(0);
+    // The pages, the post and the menu the copy made go too.
+    const [{ pages }] = await db().execute<Row>(sql`select count(*)::int as pages from commerce.pages where store_id = ${fx.storeId}::uuid and slug in ('our-story', 'coming-soon', 'winter-is-here')`);
+    expect(pages).toBe(0);
     // The list's subscribers, MailPoet's and Mailchimp's, go too.
     const [{ subs }] = await db().execute<Row>(sql`select count(*)::int as subs from commerce.marketing_subscribers where store_id = ${fx.storeId}::uuid and source = 'woocommerce'`);
     expect(subs).toBe(0);

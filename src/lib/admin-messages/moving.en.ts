@@ -327,10 +327,10 @@ export const movingEn = {
       failed: "Connecting didn't work. Press Connect WooCommerce again.",
     },
     shop: "WooCommerce shop at {site}, connected {when}.",
-    later: "Your products, categories, customers, past orders, coupons and reviews come over now; with our plugin, your redirects, SEO texts and MailPoet subscribers too. Pages, blog posts, menus and gift cards come in a later step.",
+    later: "Your products, categories, customers, past orders, coupons and reviews come over now. With our plugin, so do your pages, blog posts, menus, redirects, SEO fields, MailPoet subscribers and gift cards (made on move day).",
     mover: {
       title: "Read more of your shop",
-      text: "Our WordPress plugin reads what WooCommerce can't share: your redirects, your products' SEO titles and descriptions, your MailPoet subscribers, and which plugins you use. It only reads.",
+      text: "Our WordPress plugin reads what WooCommerce can't share: your pages, posts and menus, your redirects, every Yoast and Rank Math field, your MailPoet subscribers and gift cards, and which plugins you use. It only reads.",
       steps: "Download the plugin, then on your site open Plugins → Add New → Upload Plugin, choose the file and press Activate. Then press Connect the plugin here.",
       download: "Download the plugin",
       connect: "Connect the plugin",

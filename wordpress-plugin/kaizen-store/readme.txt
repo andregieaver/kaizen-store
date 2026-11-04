@@ -4,7 +4,7 @@ Tags: ecommerce, products, shortcode, carousel, grid
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.3.2
+Stable tag: 1.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -26,7 +26,7 @@ The products, prices, pictures, categories and tags your stores show shoppers, f
 
 = Moving a WooCommerce shop to Kaizena Flow =
 
-When you move your WooCommerce shop to Kaizena Flow, this plugin can read what WooCommerce's own key cannot: which plugins your shop uses, the redirects of Redirection, Yoast SEO Premium and Rank Math, every Yoast SEO and Rank Math field of your products and product categories (titles and descriptions as shoppers see them, focus keywords, canonical addresses, robots, social titles, descriptions and pictures, breadcrumb titles and primary categories), MailPoet's subscribed subscribers with when they subscribed, and the gift cards of WooCommerce Gift Cards, PW Gift Cards and YITH Gift Cards with money left (their balance, expiry and holder, and only the last four characters of a code: Kaizena Flow gives each card a new code). It reads only after you press Allow under Kaizena Flow, Move to Kaizena Flow, and only for calls signed with a secret this site made and sent to Kaizena Flow alone. It never changes anything on this site. Stop Kaizena Flow reading forgets the secret.
+When you move your WooCommerce shop to Kaizena Flow, this plugin can read what WooCommerce's own key cannot: which plugins your shop uses, the redirects of Redirection, Yoast SEO Premium and Rank Math, every Yoast SEO and Rank Math field of your products and product categories (titles and descriptions as shoppers see them, focus keywords, canonical addresses, robots, social titles, descriptions and pictures, breadcrumb titles and primary categories), MailPoet's subscribed subscribers with when they subscribed, your pages, posts and menus (shortcodes are taken out, never run), and the gift cards of WooCommerce Gift Cards, PW Gift Cards and YITH Gift Cards with money left (their balance, expiry and holder, and only the last four characters of a code: Kaizena Flow gives each card a new code). It reads only after you press Allow under Kaizena Flow, Move to Kaizena Flow, and only for calls signed with a secret this site made and sent to Kaizena Flow alone. It never changes anything on this site. Stop Kaizena Flow reading forgets the secret.
 
 = Shortcode =
 
@@ -59,6 +59,9 @@ A cart, yes: a slide-out cart on your site. Not a checkout: pressing Checkout ma
 The connection and saved lists are removed. The views themselves are your content and stay in the database.
 
 == Changelog ==
+
+= 1.3.3 =
+* Moving to Kaizena Flow reads your pages and posts (drafts too, every shortcode taken out and named, never run) and your menus, so a whole site can move.
 
 = 1.3.2 =
 * Moving to Kaizena Flow reads the gift cards of WooCommerce Gift Cards, PW Gift Cards and YITH Gift Cards that have money left: their balance, expiry and holder, never a card's code (only its last four characters).
