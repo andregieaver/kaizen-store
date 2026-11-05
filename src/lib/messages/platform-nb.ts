@@ -173,6 +173,8 @@ export const platformNb: PlatformMessages = {
       heading: "Se det i bruk",
       text: "Demobutikker med {theme}, med egne tekster, bilder og produkter.",
       wears: (look) => `Bruker ${look}`,
+      tryIt: "Prøv det med dette temaet",
+      tryItNote: "Rediger en kopi av en butikk med temaet i den ekte sidebyggeren. Ingen registrering.",
     },
     highlights: {
       heading: "Høydepunkter",

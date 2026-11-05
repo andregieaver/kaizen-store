@@ -22,7 +22,9 @@ live."
   `commerce.theme_installs_charge()` makes the purchase, so no way of making a theme live skips it. On an open store it refuses a premium
   theme the store does not have unless the transaction carries the price the person agreed to (`kaizen.theme_charge`, `chargeToken()`),
   so nobody is charged a price they were not shown. Store templates (`starter`, `is_template`) and stores that are not open are never
-  charged. A theme a platform admin applies to a store is given (`grant`).
+  charged. A theme a platform admin applies to a store is given (`grant`). A page builder sandbox (D457) owes nothing while it is one and
+  shows premium themes without switching to them; when it is kept, `adopt_sandbox()` makes its live theme owed as on any store that has
+  not opened.
 * **A theme's first price** leaves the stores that already have it free (`granted`); **making a theme free again** cancels what was owed
   or due and not yet invoiced.
 * **Purchases only go forward** (`owed`, `due`, `invoiced`, `paid`; or `granted`, `cancelled`, `void`) and are never deleted

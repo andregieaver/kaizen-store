@@ -14,6 +14,7 @@ import { marketPath, storeBase, storeHref, storeOrigin } from "@/lib/paths";
 import { SANDBOX_PATH, sandboxBase, sandboxHome, type SandboxKind } from "@/lib/sandbox";
 import { siteUrl } from "@/lib/site";
 import { reservedChoiceSlugs } from "@/lib/store-address";
+import { requirementMet } from "@/lib/store-features";
 import { themeAttributes, themeCss } from "@/lib/theme";
 import { authorsNow, blogsNow } from "@/server/blogs";
 import { listContentTypes } from "@/server/content-types";
@@ -36,6 +37,7 @@ import {
   sandboxCssVersionsAction,
   sandboxDeletePartAction,
   sandboxDeleteTextStyleAction,
+  sandboxDualChoicesAction,
   sandboxDuplicateAction,
   sandboxGridPreviewAction,
   sandboxGridTermsAction,
@@ -68,8 +70,8 @@ import {
  * of the sandbox's wrappers (`./actions.ts`: the pass first, then the store's server function) bound to the sandbox's id. Only what is wired
  * here exists. Uploads (within the sandbox's storage) and the AI (*Make with AI*, *Remove background*, *Change with AI*, translation and
  * motion, through the sandbox's own routes and actions, within its allowance) are on since step S3, each while it can work, as in a store.
- * Left out: videos and files, scheduling, share links, A/B tests, a second page beside this one and sharing a saved part with other stores;
- * every link stays inside `/admin/try/{sandbox}`.
+ * A second document beside this one (dual page) is on since S4, from the sandbox's own documents. Left out: videos and files, scheduling,
+ * share links, A/B tests and sharing a saved part with other stores; every link stays inside `/admin/try/{sandbox}`.
  */
 export async function sandboxPageContext(sandbox: Sandbox, type: SandboxKind): Promise<PageOwnerContext> {
   const { store, id } = sandbox;
@@ -100,7 +102,13 @@ export async function sandboxPageContext(sandbox: Sandbox, type: SandboxKind): P
     adminBase: sandboxBase(id, type),
     // *View* opens the sandbox's own preview of the published version: the store's address is private, its landing page all it shows.
     viewAt: `${sandboxBase(id, type)}/{id}/preview?published=1`,
-    dualPages: null,
+    // A second document beside this one (D412; S4): the sandbox's own kinds, product layouts while its shop is on, opened through it.
+    dualPages: {
+      root: sandboxHome(id),
+      kinds: (["page", "article", "product_layout", "header", "footer"] as const).filter((kind) => kind !== "product_layout" || requirementMet(store, "shop")),
+      create: (["page", "article", "product_layout", "header", "footer"] as const).filter((kind) => kind !== "product_layout" || requirementMet(store, "shop")),
+      choices: bind(sandboxDualChoicesAction),
+    },
     siteBase: storeHref(store.slug, market ? marketPath(store.slug, market.slug) : storeBase(store.slug)) + PAGE_TYPE_COPY[type].sitePrefix,
     origin: storeOrigin(store.slug) ? "" : siteUrl(),
     languages: pageLanguages(store.localization.locales),

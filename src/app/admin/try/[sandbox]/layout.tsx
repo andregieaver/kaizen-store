@@ -13,8 +13,8 @@ import { sandboxOf } from "./sandbox";
 import { StartOver } from "./start-over";
 
 /**
- * One sandbox (D457): its bar on every page (the store's home, that only the visitor sees it, the days left, that its AI is used up once
- * its allowance is (S3), *Keep this store*, *Start over*) above the page, which uses the whole width as the store's editors do. A sandbox the pass does not open (ended, started over,
+ * One sandbox (D457): its bar on every page (the store's home, that only the visitor sees it, *See your store* (S4: its storefront for
+ * this browser alone), the days left, that its AI is used up once its allowance is (S3), *Keep this store*, *Start over*) above the page, which uses the whole width as the store's editors do. A sandbox the pass does not open (ended, started over,
  * another browser's) says so and offers a new one, the same words whatever the reason; one this browser kept (S2) says how to sign in.
  */
 export default async function SandboxLayout({ children, params }: LayoutProps<"/admin/try/[sandbox]">) {
@@ -54,6 +54,10 @@ export default async function SandboxLayout({ children, params }: LayoutProps<"/
           </Link>
           <Chip signal="insight">{w.bar.label}</Chip>
           <span className="text-body text-muted">{w.bar.privateNote}</span>
+          {/* A route that hands this browser the storefront's pass (S4), so a plain link: never prefetched. */}
+          <a href={`${sandboxHome(sandbox.id)}/store`} target="_blank" rel="noopener" title={w.bar.storefrontNote} className="text-body text-ink underline">
+            {w.bar.storefront}
+          </a>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {aiSpent && <span className="text-body text-ink-2">{w.bar.aiSpent}</span>}

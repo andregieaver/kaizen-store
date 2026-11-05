@@ -13,6 +13,7 @@ export function SeeItLive({
   heading = "See it live",
   text,
   wears = (look) => `Wears ${look}`,
+  tryIt,
 }: {
   /** The theme's name: what a demo store wearing its own look is said to wear. */
   title: string;
@@ -24,6 +25,8 @@ export function SeeItLive({
   text?: string;
   /** What a card says of the look its store wears, in the page's language (D312 P3). */
   wears?: (look: string) => string;
+  /** *Try it with this theme* (D457 S4): the page builder's sandbox started from the first demo store, with its words; absent, none. */
+  tryIt?: { href: string; label: string; note: string };
 }) {
   if (demos.length === 0) return null;
   const own = looks.find((look) => look.key === null);
@@ -38,6 +41,14 @@ export function SeeItLive({
           )}
           {text !== "" && <p className="text-muted">{text ?? `Demo stores wearing ${title}, with their own words, pictures and products.`}</p>}
         </div>
+      )}
+      {tryIt && (
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-2" data-try-theme="">
+          <a href={tryIt.href} className="inline-flex min-h-11 items-center rounded-full border border-current px-5 font-medium">
+            {tryIt.label}
+          </a>
+          <span className="text-sm text-muted">{tryIt.note}</span>
+        </p>
       )}
       <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {demos.map((demo) => {

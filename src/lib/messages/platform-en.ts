@@ -181,6 +181,8 @@ export const platformEn = {
       heading: "See it live",
       text: "Demo stores wearing {theme}, with their own words, pictures and products.",
       wears: (look: string) => `Wears ${look}`,
+      tryIt: "Try it with this theme",
+      tryItNote: "Edit a copy of a store wearing it in the real page builder. No sign-up.",
     },
     highlights: {
       heading: "Highlights",

@@ -5,6 +5,8 @@ import { closeDb, db } from "@/db/client";
 import { SANDBOX_COOKIE, readPass } from "@/lib/sandbox";
 import { newPageContent } from "@/lib/page-content";
 
+import type { Account } from "./auth";
+
 /**
  * The page builder's sandbox (D457) against a real database: the switch, the budget and the cap; a store made from the Standard store,
  * private and the sandbox account's; the pass that opens it and nothing else; a visit pushing its time on; saving a page as the sandbox
@@ -33,6 +35,10 @@ const { listGridStores } = await import("./content-grid");
 const signup = await import("./self-signup");
 const limits = await import("./limits");
 const sandboxAi = await import("./sandbox-ai");
+const storefront = await import("./sandbox-storefront");
+const { EMAIL_KINDS } = await import("@/lib/personal-data");
+const { readUnlock, unlockCookieName } = await import("@/lib/unlock-pass");
+const { unlockSecret } = await import("./private-secret");
 const { encryptSecret, parseKey } = await import("@/lib/secret-box");
 
 type Row = Record<string, unknown>;
@@ -135,12 +141,14 @@ describe("working in a sandbox", () => {
     expect(again).toEqual(first);
   });
 
-  it("sends no email of any kind", async () => {
+  it("sends no email of any kind: every kind the storefront and the admin can send is refused for it (4.4)", async () => {
     const { id } = await made("email");
     const opened = await sandbox.sandboxFor(id);
-    for (const kind of ["order.shipped", "staff.new_order", "newsletter.confirm"]) {
+    const kinds = Object.keys(EMAIL_KINDS);
+    expect(kinds.length).toBeGreaterThan(40);
+    for (const kind of kinds) {
       const outcome = await sendEmail({ storeId: opened!.store.id, kind, to: "someone@example.com", email: { subject: "Hi", html: "<p>Hi</p>", text: "Hi" }, fromName: "Shop", idempotencyKey: `sandbox-${kind}-${RUN}` });
-      expect(outcome).toBe("suppressed");
+      expect(outcome, kind).toBe("suppressed");
     }
   });
 
@@ -336,5 +344,104 @@ describe("purging a sandbox (D457 S3)", () => {
     expect(await sandbox.retireIdleSandboxes(new Date(Date.now() - 2 * 86_400_000).toISOString(), { remove })).toBeGreaterThanOrEqual(1);
     const rows = await db().execute<Row>(sql`select id, state from commerce.sandboxes where id in (${ended}::uuid, ${idle}::uuid) order by created_at`);
     expect(rows.map((r) => r.state)).toEqual(["purged", "purged"]);
+  });
+});
+
+describe("walking its storefront (D457 S4)", () => {
+  it("hands this browser the store's staff pass once the sandbox's own pass opens it, and nothing without it", async () => {
+    const { id } = await made("walk");
+    const store = (await sandbox.sandboxFor(id))!.store;
+    const answer = await storefront.sandboxStorefrontRequest(new Request(`https://kaizenaflow.test/admin/try/${id}/store`), id);
+    expect(answer.status).toBe(303);
+    expect(new URL(answer.headers.get("location")!).pathname).toBe(`/s/${store.slug}`);
+    const cookie = answer.headers.get("set-cookie") ?? "";
+    expect(cookie).toContain(`${unlockCookieName(store.id)}=`);
+    expect(cookie).toMatch(/HttpOnly/i);
+    const token = decodeURIComponent(cookie.split(";")[0].split("=").slice(1).join("="));
+    expect(readUnlock(unlockSecret()!, token)).toMatchObject({ kind: "staff", storeId: store.id, store: store.slug });
+    // Another browser, without the pass: back to the sandbox's page, which says it has ended; no pass is given.
+    jar.delete(SANDBOX_COOKIE);
+    const refused = await storefront.sandboxStorefrontRequest(new Request(`https://kaizenaflow.test/admin/try/${id}/store`), id);
+    expect(new URL(refused.headers.get("location")!).pathname).toBe(`/admin/try/${id}`);
+    expect(refused.headers.get("set-cookie")).toBeNull();
+  });
+});
+
+describe("trying another look (D457 S4)", () => {
+  it("makes a free published theme its look as the sandbox account, and owes nothing for it", async () => {
+    const { applyDesignPreset } = await import("./design-presets");
+    const { listInstalls } = await import("./theme-installs");
+    const { id } = await made("look");
+    const opened = (await sandbox.sandboxFor(id))!;
+    const [theme] = await db().execute<Row>(sql`
+      select p.id from commerce.design_presets p
+       where p.published and p.archived_at is null and not exists (select 1 from commerce.theme_prices t where t.preset_id = p.id)
+       order by p.title limit 1`);
+    const result = await applyDesignPreset(opened.store.id, String(theme.id), opened.account.id, { copyFile: async () => null, installFonts: async () => ({ ok: true }) });
+    expect(result.ok).toBe(true);
+    expect((await listInstalls(opened.store.id)).find((install) => install.live)?.presetId).toBe(String(theme.id));
+    const [owed] = await db().execute<Row>(sql`select count(*)::int as n from commerce.theme_purchases where store_id = ${opened.store.id}::uuid`);
+    expect(owed.n).toBe(0);
+  });
+});
+
+describe("the front door (D457 S4)", () => {
+  /** A published demo store wearing a new published theme, as Platform → Themes makes one (`demo-stores.int.test.ts`). */
+  async function demoStore(): Promise<{ id: string; storeId: string; theme: string }> {
+    const designs = await import("./design-presets");
+    const starters = await import("./store-starters");
+    const demos = await import("./demo-stores");
+    const { parseStarterDetails } = await import("@/lib/store-starters");
+    const deps = { copyFile: async (bucket: string, _from: string, to: string) => `https://x.supabase.co/storage/v1/object/public/${bucket}/${to}`, installFonts: async () => ({ ok: true as const }) };
+    const [row] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_admin) values (${`sandbox-demo-${RUN}@example.com`}, 'Admin', true) returning id, email`);
+    const admin = { id: String(row.id), email: String(row.email), name: "Admin", platformAdmin: true, adminView: "basic" } as Account;
+    const made = await designs.createDesign(admin, { details: { title: `Tidewater ${RUN}`, summary: "", description: "", pictureUrl: null }, origin: { kind: "scratch" } }, deps);
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const published = await designs.publishDesign(admin, made.id);
+    if (!published.ok) throw new Error(published.problems.join(" "));
+    const details = parseStarterDetails({ title: `Shore ${RUN}`, summary: "", description: "", category: "retail", pictureUrl: "" });
+    if (!details.ok) throw new Error(details.problems.join(" "));
+    const content = await starters.createStarter(admin, { slug: `shore-${RUN}`, details: details.details });
+    if (!content.ok) throw new Error(content.problems.join(" "));
+    const frozen = await starters.publishStarter(admin, content.id);
+    if (!frozen.ok) throw new Error(frozen.problems.join(" "));
+    const demo = await demos.createDemoStore(admin, { name: `Tide ${RUN}`, slug: `tide-${RUN}`, look: { id: made.id, variation: null }, contentId: content.id }, deps);
+    if (!demo.ok) throw new Error(demo.problems.join(" "));
+    const live = await demos.publishDemoStore(admin, demo.id);
+    if (!live.ok) throw new Error(live.problems.join(" "));
+    const [store] = await db().execute<Row>(sql`select store_id from commerce.store_starters where id = ${demo.id}::uuid`);
+    return { id: demo.id, storeId: String(store.store_id), theme: made.id };
+  }
+
+  it("starts from a free theme's demo store when asked, never a premium one's, and from the platform's source for anything else", async () => {
+    expect(await sandbox.sandboxDemo("not-an-id")).toBeNull();
+    expect(await sandbox.sandboxDemo(crypto.randomUUID())).toBeNull();
+    const demo = await demoStore();
+    expect(await sandbox.sandboxDemo(demo.id)).toMatchObject({ id: demo.id, name: `Tide ${RUN}`, theme: `Tidewater ${RUN}` });
+    const started = await sandbox.startSandbox(`demo-${RUN}`, demo.id);
+    if (!started.ok) throw new Error(started.problem);
+    const [made] = await db().execute<Row>(sql`select source_store_id from commerce.sandboxes where id = ${started.id}::uuid`);
+    expect(made.source_store_id).toBe(demo.storeId);
+    // It opens on its front page in the builder.
+    expect(await sandbox.sandboxStartPath(started.id)).toMatch(new RegExp(`^/admin/try/${started.id}/(pages/[0-9a-f-]{36})?$`));
+    // Priced, the theme is shown and never handed to a sandbox (D286).
+    await db().execute(sql`insert into commerce.theme_prices (preset_id, currency, amount_minor) values (${demo.theme}::uuid, 'EUR', 4900)`);
+    expect(await sandbox.sandboxDemo(demo.id)).toBeNull();
+    const plain = await sandbox.startSandbox(`plain-${RUN}`, crypto.randomUUID());
+    if (!plain.ok) throw new Error(plain.problem);
+    const [row] = await db().execute<Row>(sql`select source_store_id = (select id from commerce.stores where is_template) as standard from commerce.sandboxes where id = ${plain.id}::uuid`);
+    expect(row.standard).toBe(true);
+  });
+
+  it("counts the funnel for the last 7 and 30 days: started, changed something, published, kept", async () => {
+    const funnel = await sandbox.sandboxFunnel();
+    expect(funnel.map((p) => p.days)).toEqual([7, 30]);
+    for (const period of funnel) {
+      expect(period.made).toBeGreaterThan(0);
+      expect(period.changed).toBeLessThanOrEqual(period.made);
+      expect(period.published).toBeLessThanOrEqual(period.changed);
+      expect(period.kept).toBeLessThanOrEqual(period.made);
+    }
+    expect(funnel[1].made).toBeGreaterThanOrEqual(funnel[0].made);
   });
 });

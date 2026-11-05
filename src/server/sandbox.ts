@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
 
@@ -17,6 +18,7 @@ import {
   formatPass,
   isSandboxId,
   readPass,
+  sandboxHome,
   sandboxSlug,
 } from "@/lib/sandbox";
 
@@ -27,6 +29,7 @@ import { audit, type Account } from "./auth";
 import { markDemoContent } from "./demo-content";
 import { log } from "./log";
 import { removeStoredFiles } from "./media";
+import { refreshTag } from "./refresh";
 import { takeBudget } from "./request-budget";
 import { getStore, refreshStoreById, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -56,10 +59,22 @@ export async function sandboxSettings(): Promise<SandboxSettings> {
   }
 }
 
+/** What reads whether the sandbox is open from a cached page (the theme store's *Try it with this theme*, S4) is tagged with. */
+export const SANDBOX_TAG = "sandbox-switch";
+
+/** Whether the sandbox is open to visitors, for pages that are cached: kept minutes, and refreshed at once when the switch changes. */
+export async function sandboxOpen(): Promise<boolean> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(SANDBOX_TAG);
+  return (await sandboxSettings()).on;
+}
+
 /** Turns the sandbox on or off for everyone (Platform → Access requests), audited. */
 export async function setSandboxOn(admin: Account, on: boolean): Promise<void> {
   await db().execute(sql`update commerce.platform_settings set sandbox_on = ${on}`);
   await audit(admin.id, null, "platform.sandbox_set", { on });
+  refreshTag(SANDBOX_TAG);
 }
 
 /** Sandboxes made today (UTC) and open now, for the switch's card. */
@@ -70,6 +85,25 @@ export async function sandboxCounts(): Promise<{ today: number; open: number }> 
                (select count(*)::int from commerce.sandboxes where state = 'open') as open`,
   );
   return row ?? { today: 0, open: 0 };
+}
+
+/** One period of the funnel (S4): sandboxes made, and of them how many changed something, published and were kept. */
+export type FunnelPeriod = { days: number; made: number; changed: number; published: number; kept: number };
+
+/** The sandbox's funnel for Platform → Stores (S4, `docs/builder-sandbox.md` 8): the last 7 and 30 days, by when each was made. */
+export async function sandboxFunnel(): Promise<FunnelPeriod[]> {
+  const rows = await typedRows(
+    z.object({ days: col.int, made: col.int, changed: col.int, published: col.int, kept: col.int }),
+    sql`select d.days,
+               count(x.id)::int as made,
+               count(x.first_change_at)::int as changed,
+               count(x.first_publish_at)::int as published,
+               count(x.id) filter (where x.state = 'kept')::int as kept
+          from (values (7), (30)) as d(days)
+          left join commerce.sandboxes x on x.created_at >= now() - make_interval(days => d.days)
+         group by d.days order by d.days`,
+  );
+  return rows;
 }
 
 const hashSecret = (secret: string) => createHash("sha256").update(secret).digest("hex");
@@ -83,16 +117,36 @@ function sameHash(kept: string, given: string): boolean {
 export type StartAnswer = { ok: true; id: string; pass: string } | { ok: false; problem: "off" | "busy" | "full" | "failed" };
 
 /**
- * Makes a sandbox for a visitor (the budgets' daily hash of their network): while the switch is on, within the visitor's and the platform's
- * budget (a failed count refuses) and the day's cap. Returns its id and the pass's cookie value; the caller sets the cookie.
+ * A demo store a sandbox may start from (*Try it with this theme*, S4): published, not archived, its store open, and the theme it wears free
+ * (D286: a premium theme is shown, never handed to a sandbox). Null for anything else, so the platform's own source is used.
  */
-export async function startSandbox(visitor: string): Promise<StartAnswer> {
+export async function sandboxDemo(starterId: unknown): Promise<{ id: string; name: string; theme: string } | null> {
+  if (typeof starterId !== "string" || !z.uuid().safeParse(starterId).success) return null;
+  const row = await typedRow(
+    z.object({ id: col.uuid, name: col.text, theme: col.text }),
+    sql`select st.id, s.name, p.title as theme
+          from commerce.store_starters st
+          join commerce.stores s on s.id = st.store_id and s.starter and s.status = 'active'
+          join commerce.store_theme_installs i on i.store_id = s.id and i.live
+          join commerce.design_presets p on p.id = i.preset_id and p.published and p.archived_at is null
+         where st.id = ${starterId}::uuid and st.kind = 'demo' and st.published and st.archived_at is null
+           and not exists (select 1 from commerce.theme_prices tp where tp.preset_id = i.preset_id)`,
+  );
+  return row ?? null;
+}
+
+/**
+ * Makes a sandbox for a visitor (the budgets' daily hash of their network): while the switch is on, within the visitor's and the platform's
+ * budget (a failed count refuses) and the day's cap; from a free theme's demo store when one is asked for (`sandboxDemo()`), else the
+ * platform's source. Returns its id and the pass's cookie value; the caller sets the cookie.
+ */
+export async function startSandbox(visitor: string, demo: string | null = null): Promise<StartAnswer> {
   const settings = await sandboxSettings();
   if (!settings.on) return { ok: false, problem: "off" };
   if (!(await takeBudget(null, "sandbox", visitor))) return { ok: false, problem: "busy" };
   if ((await sandboxCounts()).today >= settings.dailyCap) return { ok: false, problem: "full" };
   const secret = randomBytes(32).toString("base64url");
-  let source = settings.source;
+  let source = (await sandboxDemo(demo))?.id ?? settings.source;
   const started = performance.now();
   for (let attempt = 0; attempt < 3; attempt++) {
     const slug = sandboxSlug(randomBytes(8));
@@ -124,6 +178,15 @@ export async function startSandbox(visitor: string): Promise<StartAnswer> {
     }
   }
   return { ok: false, problem: "failed" };
+}
+
+/** Where a new sandbox opens (S4): its front page in the builder, else its home. */
+export async function sandboxStartPath(id: string): Promise<string> {
+  const row = await typedRow(
+    z.object({ front: col.uuid.nullable() }),
+    sql`select s.front_page_id as front from commerce.sandboxes x join commerce.stores s on s.id = x.store_id where x.id = ${id}::uuid`,
+  );
+  return row?.front ? `${sandboxHome(id)}/pages/${row.front}` : sandboxHome(id);
 }
 
 /** The pass's cookie: HttpOnly, only on the sandbox's routes, for as long as a sandbox can last. */

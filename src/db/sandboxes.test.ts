@@ -273,7 +273,8 @@ describe("purging a sandbox (D457 S3)", () => {
   async function useSandbox(store: string): Promise<void> {
     const { id: product } = await one<{ id: string }>("insert into commerce.products (store_id, handle, tax_code) values ($1, 'mug', 'txcd_99999999') returning id", [store]);
     const { id: variant } = await one<{ id: string }>("insert into commerce.product_variants (store_id, product_id, sku) values ($1, $2, 'MUG') returning id", [store, product]);
-    await db.query("select commerce.set_price($1, 'NO', 1000)", [variant]);
+    // Two prices, the first a week back, so the history has a closed one (append-only anywhere else).
+    await db.query("select commerce.set_price($1, 'NO', 1000, now() - interval '7 days')", [variant]);
     await db.query("select commerce.set_price($1, 'NO', 900)", [variant]);
     const { id: location } = await one<{ id: string }>("insert into commerce.inventory_locations (store_id, name, country) values ($1, 'Oslo', 'NO') returning id", [store]);
     // The level's first stock is written as a movement, which is kept for 24 months anywhere else.
@@ -363,5 +364,59 @@ describe("purging a sandbox (D457 S3)", () => {
   it("is the retention rule's to time: seeded at a week after the last visit", async () => {
     const rule = await one<Record<string, unknown>>("select period_value, period_unit, enforced_by from commerce.retention_rules where kind = 'sandboxes'");
     expect(rule).toEqual({ period_value: 7, period_unit: "days", enforced_by: "runRetention: sandboxes" });
+  });
+});
+
+describe("premium themes in a sandbox (D457 S4)", () => {
+  const SNAP = '{"v":1,"theme":{"base":"minimal","settings":{}},"header":null,"footer":null,"productLayout":null,"css":""}';
+
+  async function theme(title: string, price: number | null): Promise<string> {
+    const { id } = await one<{ id: string }>("insert into commerce.design_presets (title, snapshot, published) values ($1, $2::jsonb, true) returning id", [title, SNAP]);
+    if (price !== null) await db.query("insert into commerce.theme_prices (preset_id, currency, amount_minor) values ($1, 'EUR', $2)", [id, price]);
+    return id;
+  }
+
+  /** A theme made live on the store as the app does: the live one put away, the new one live. */
+  async function goLive(store: string, preset: string): Promise<void> {
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.store_theme_installs (store_id, preset_id, title, look) values ($1, $2, 'A theme', '{}'::jsonb) returning id",
+      [store, preset],
+    );
+    await db.query("update commerce.store_theme_installs set live = false, look = '{}'::jsonb where store_id = $1 and live", [store]);
+    await db.query("update commerce.store_theme_installs set live = true, look = null, switched_at = now() where id = $1", [id]);
+  }
+
+  const purchases = async (store: string) =>
+    (await db.query<Record<string, unknown>>("select preset_id, status, currency, amount_minor::int as amount from commerce.theme_purchases where store_id = $1", [store])).rows;
+
+  async function keep(sandbox: string, slug: string): Promise<void> {
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.access_requests (email, name, store_name, sandbox_id) values ($1, 'Ola', 'Ola', $2) returning id",
+      [`${slug}@example.com`, sandbox],
+    );
+    await one("select commerce.adopt_sandbox($1, $2, 'Ola', null)", [id, slug]);
+  }
+
+  it("owes nothing for a premium theme while it is a sandbox, so its purge meets no purchase", async () => {
+    const premium = await theme("Gilded", 4900);
+    const { sandbox, store } = await makeSandbox();
+    await goLive(store, premium);
+    expect(await purchases(store)).toEqual([]);
+    await one("select commerce.expire_sandbox($1)", [sandbox]);
+    await one("select commerce.purge_sandbox($1)", [sandbox]);
+    expect((await one<{ state: string }>("select state from commerce.sandboxes where id = $1", [sandbox])).state).toBe("purged");
+  });
+
+  it("owes the premium theme live in it once it is kept, as a store that has not opened does, and nothing for a free one", async () => {
+    const premium = await theme("Velvet", 5900);
+    const free = await theme("Plain", null);
+    const { sandbox, store } = await makeSandbox();
+    await goLive(store, premium);
+    await keep(sandbox, "velvet-shop");
+    expect(await purchases(store)).toEqual([{ preset_id: premium, status: "owed", currency: "EUR", amount: 5900 }]);
+    const { sandbox: plain, store: plainStore } = await makeSandbox();
+    await goLive(plainStore, free);
+    await keep(plain, "plain-shop");
+    expect(await purchases(plainStore)).toEqual([]);
   });
 });

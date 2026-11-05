@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ButtonLink, Card, Chip, PageHeader } from "@/components/admin/ui";
 import { adminText } from "@/lib/admin-text";
 import type { SandboxMessages } from "@/lib/admin-messages/sandbox.en";
-import { sandboxBase, type SandboxKind } from "@/lib/sandbox";
+import { sandboxBase, sandboxHome, type SandboxKind } from "@/lib/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { listPages, type PageSummary } from "@/server/pages";
 
@@ -39,9 +39,14 @@ export default async function SandboxHome({ params }: PageProps<"/admin/try/[san
         title={w.title}
         description={w.lead}
         actions={
-          <ButtonLink kind="main" size="header" href={front ? `${pagesBase}/${front.id}` : `${pagesBase}/new`}>
-            {front ? w.editFront : w.newPage}
-          </ButtonLink>
+          <>
+            <ButtonLink kind="secondary" size="header" href={`${sandboxHome(sandbox.id)}/looks`}>
+              {w.looks}
+            </ButtonLink>
+            <ButtonLink kind="main" size="header" href={front ? `${pagesBase}/${front.id}` : `${pagesBase}/new`}>
+              {front ? w.editFront : w.newPage}
+            </ButtonLink>
+          </>
         }
       />
       <Kind sandboxId={sandbox.id} kind="page" title={w.pages} add={w.newPage} items={pages} frontId={store.frontPageId} w={w} />

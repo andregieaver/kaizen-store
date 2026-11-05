@@ -1,6 +1,7 @@
 # The page builder sandbox: try it without signing up
 
-Status: **steps S1, S2 and S3 built** (D457, 5 November 2026), behind its platform switch, which is off; S4 follows (section 8). The owner's
+Status: **steps S1 to S4 built** (D457, 5 November 2026); the switch is the owner's to turn on (Platform → Access requests), and the
+*Try the builder* page on kaizenaflow.com waits as a draft for the owner to publish (section 8.4). The owner's
 choices of 5 November 2026: **no email at all** to start, and the recommendations of section 10.
 A visitor presses *Try the builder* and is in the real builder, on a store of their own. An email is asked only when they choose to keep
 that store, because an account is an email (`accounts.email` is not null).
@@ -110,7 +111,7 @@ What the sandbox's context holds:
 | `templates.list`, `use`, `setActive` | On, the marketplace's templates only, previewed at the sandbox's own route (`previewBase`) | One account owns every sandbox, so "my stores" would be every other visitor's saved parts |
 | `templates.setSharing` | Answers that it is not in the sandbox | It decides who in other stores may use a saved part |
 | `themeSections` | On | A signature theme's own sections |
-| `dualPages` | Null; step S4 (moved from S3, 8.3) | Dual page (D412) loads a second document through its own routes, which need a sandbox twin each |
+| `dualPages` | On (S4): rooted at `/admin/try/{sandbox}`, its choices the sandbox's own documents, a second one loaded through the sandbox (`sandboxDual()` in its `editor.tsx`), its saved templates too | Dual page (D412) loads a second document through its own routes, so the sandbox has its twin of them |
 | `upload`, `media` | On (S3), within the storage allowance (4.5): `sandboxUploadAction()` calls `uploadToLibrary()`, which checks it | |
 | `pictures`, `pictureEdit`, `aiChange`, `actions.translate` | On (S3), through the sandbox's own routes (`/admin/try/{sandbox}/ai/make`, `/ai/edit`, `/ai/change`) and action, within the AI allowance, each while it can work | The store's routes (`/admin/{store}/media/make`, `/media/edit`, `/pages/change`) check membership |
 | `blog` | For articles (S3): the store's blogs and authors, its link to the sandbox's home | Blogs and authors have their own screens in a store, not in the sandbox |
@@ -268,7 +269,7 @@ The visitor is anonymous, but what they type or upload may be personal data, so:
   wording changed by hand there). **S3 makes it true** (5 November 2026): its purge deletes what was in a sandbox within minutes of its
   end, section 6 says so and what is kept (that it existed, its times and its AI's cost), and section 3 says what its AI sends to the
   platform's AI provider. **The owner can now write the live notice over** (Platform → Pages, the Legal pages card, the privacy notice
-  ticked), once S3 is in production. The start screen links to the notice in one line (S4).
+  ticked), once S3 is in production. The start screen links to the notice in one line (built with S4).
 - What the AI reads is sent to the platform's AI provider, as for any store on Kaizena Flow's key: `docs/dpia-ai.md` has sandbox visitors
   in its table of who is controller (written with S3), and pictures made by AI are marked as elsewhere (`docs/ai-act.md`).
 - Everything stays in the EU, where the platform already runs; no new vendor. If bots get past the budgets, an EU check (Friendly Captcha,
@@ -295,7 +296,7 @@ The visitor is anonymous, but what they type or upload may be personal data, so:
 | **S1** The sandbox, behind the switch | 4.1, 4.2, 4.3 for pages, the header and the footer (no uploads, no AI), 4.4, 4.6, expiry closing the store (4.8 without the purge); the switch and the daily cap keep the number small until S3 | A platform admin with the switch on starts a sandbox from `/admin/try` in a private window, edits and publishes the front page, sees the preview; nothing of it is on the storefront, Platform → Stores or any job's list |
 | **S2** Keep this store | 4.7 | A sandbox kept through the emailed link is the new owner's store, at its own address, with its pages, a trial, private until opened |
 | **S3** The rest of the builder, and cleanup | Uploads and the AI on their allowances (4.5), articles and product layouts, the purge, tombstones and the retention step (4.8), fresh copies kept ready if needed | An expired sandbox leaves only its tombstone; a spent allowance stops the AI with *Keep this store* beside it. Built (8.3); dual page moved to S4 |
-| **S4** The front door, opened | The guided path (2), *Try another look* (free themes; a premium one shown, never switched to, D286), walking the store's own storefront through a `staff` pass once its senders are proven silent (4.4), *Try it with this theme* (4.9), the funnel on Platform → Stores (made, changed something, published, kept), the kaizenaflow.com page as a draft; the switch on | The owner has watched the funnel for a week and publishes the page |
+| **S4** The front door, opened | The guided path (2), *Try another look* (free themes; a premium one shown, never switched to, D286), walking the store's own storefront through a `staff` pass once its senders are proven silent (4.4), *Try it with this theme* (4.9), the funnel on Platform → Stores (made, changed something, published, kept), the kaizenaflow.com page as a draft; the switch on | The owner has watched the funnel for a week and publishes the page. Built (8.4), with dual page; the switch and the page are the owner's |
 
 Each step goes to production as built (D5); the switch keeps S1 to S3 to platform admins' own tries.
 
@@ -393,8 +394,37 @@ Each step goes to production as built (D5); the switch keeps S1 to S3 to platfor
 - ***View* opens the sandbox's own preview** (`PageOwnerContext.viewAt`, `/admin/try/{sandbox}/{segment}/{id}/preview?published=1`, the
   published version): the owner found *View page* showing the store's private landing page ("not open to visitors yet"), as S1 had left
   it until S4. The *Published at …* notice still names the store's address, which S4's walk of the storefront will open.
-- **Found while building:** the editor's *Manage categories* link (`{adminBase}/categories`) opens a page the sandbox does not have; it
-  is a 404 inside the sandbox's frame, left for S4 with the menus' and blogs' screens.
+- **Corrected in S4:** the editor's *Manage categories* link (`{adminBase}/categories`) was said here to be a 404 in the sandbox; S1's
+  editor route already sends it to the sandbox's home.
+
+### 8.4 S4 as built (5 November 2026)
+
+- **Database** (migration `sandbox_themes`): `theme_installs_charge()` makes no theme purchase for a sandbox, as for a store template, so
+  a sandbox never owes anything and its purge never meets a purchase it may not delete; `adopt_sandbox()` makes the purchase its live
+  theme would have made on a store that has not opened (`owed` at the theme's price, due when it opens), so a premium theme cannot reach a
+  kept store for nothing, however it went live. Held by `src/db/sandboxes.test.ts`.
+- **Opening:** *Start building* opens the front page in the builder (`sandboxStartPath()`), with the **guided path** above it
+  (`SandboxGuide`: *Change the headline*, *Add a section*, *Try another look*, *See it on a phone*; each ticked or the whole hidden in one
+  press, remembered in this browser). The start screen links the privacy notice in one line.
+- ***Try another look*** (`/admin/try/{sandbox}/looks`, also on the home): the theme store's themes, the one it wears marked; a free one
+  becomes its look in one press (`sandboxUseLookAction()`: `applyDesignPreset()`, or the install it has made live again, within
+  `sandbox_copy`), a premium one shown with its price and *Keep this store*. The action refuses a premium theme whatever the form says.
+- ***See your store*** (the bar, a new tab): `/admin/try/{sandbox}/store` opens the sandbox with its pass, then hands this browser the
+  storefront's `staff` pass (D339, 12 hours) for that one store, as a member's *Preview the store* does. **Its senders are proven silent**
+  (4.4): `sendEmail()` refuses every email of a sandbox store, the integration test sends every kind in `EMAIL_KINDS` for one and each is
+  refused, a scan holds every `sendEmail()` call to naming its store, broadcasts need an active store and a sandbox never is one, and the
+  database refuses its orders.
+- ***Try it with this theme*** (4.9): beside *See it live* on a theme's page, while the sandbox is open (`sandboxOpen()`, cached minutes,
+  refreshed by the switch) and the theme free, to `/admin/try?demo={starter}`; the start screen says which store it starts from, and
+  `startSandbox()` uses the demo store only when `sandboxDemo()` finds it published and wearing a free theme, else the platform's source.
+- **The funnel** on Platform → Stores (`sandboxFunnel()`): sandboxes started in the last 7 and 30 days, and of them how many changed
+  something, published and were kept, with the switch's state and its link.
+- **Dual page** (moved from S3): the sandbox's context has `dualPages` rooted at the sandbox, its choices the sandbox's own documents
+  (`sandboxDualChoicesAction()`), and its editor loads the second document, or one of its own saved templates, through the sandbox alone.
+- **Words:** the funnel's and the looks' words are in the sandbox's catalogue, a server-only area, so they stay out of every admin screen's
+  first scripts; *Try it with this theme* is in the platform site's words (`platformText()`).
+- **Left to the owner:** turning the switch on, and publishing the *Try the builder* page on kaizenaflow.com, saved as a draft
+  (`docs/site-design.md` 9), then adding its link to the front page and the plans. "Done when" is the owner's: a week of the funnel, then the page.
 
 ## 9. Tests
 
@@ -426,6 +456,14 @@ integration test, the storage allowance, the AI given only while its allowance h
 spent), the AI routes refusing another site and a browser without the pass, the purge removing only the sandbox's own files and nothing
 when one cannot be removed, and the job's and the retention rule's purges; the scan test holds the AI to `sandboxAi()`, uploads to
 `uploadToLibrary()`, the routes to the pass and the context's AI to the sandbox's own routes; end to end, an article from the home.
+
+Built with S4: in PGlite, no purchase for a premium theme in a sandbox (and its purge goes through), and a kept sandbox owing its live
+premium theme and nothing for a free one; in the integration test, the storefront's pass given only through the sandbox's pass, every email
+kind refused for a sandbox, a free theme made its look as the sandbox account with nothing owed, the start from a free theme's demo store
+(a premium one's refused) and the funnel's counts; the scan test holds the looks to free themes within the copy budget, every
+`sendEmail()` call to naming its store, the storefront route to the pass, and dual page to the sandbox's own documents; end to end, the
+front page and its guided path at the start, *See your store* past the private landing page while another browser still meets it, and a
+free look used.
 
 ## 10. Decided by the owner (5 November 2026)
 
