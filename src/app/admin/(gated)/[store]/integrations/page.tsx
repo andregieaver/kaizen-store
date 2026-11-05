@@ -52,8 +52,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
         description={<>{w.description}</>}
       />
       <ul className="grid gap-4 sm:grid-cols-2">
-        {/* Tripletex (D453) is listed once its page is back, in the push after its migrations (docs/ci-migrations.md). */}
-        {INTEGRATIONS.filter((info) => info.id !== "tripletex").map((info) => {
+        {INTEGRATIONS.map((info) => {
           const status = info.id === "tripletex" ? (tripletex ? { enabled: tripletex.state === "on" } : undefined) : connected.find((c) => c.provider === info.id);
           const badge = info.id === "tripletex"
             ? tripletexBadge
