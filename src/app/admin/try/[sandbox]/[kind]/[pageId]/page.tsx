@@ -7,7 +7,7 @@ import { SandboxEditor, isPageId, sandboxAndKind } from "../../editor";
 
 export const metadata: Metadata = { title: "Edit page" };
 
-/** A page, header or footer of a sandbox in the editor (D456); the editor's link to manage categories leads home. */
+/** A page, header or footer of a sandbox in the editor (D457); the editor's link to manage categories leads home. */
 export default async function SandboxEditPage({ params, searchParams }: PageProps<"/admin/try/[sandbox]/[kind]/[pageId]">) {
   const [{ sandbox, kind }, { pageId }, query] = await Promise.all([sandboxAndKind(params), params, searchParams]);
   if (!sandbox) return null;

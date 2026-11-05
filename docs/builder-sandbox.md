@@ -1,6 +1,6 @@
 # The page builder sandbox: try it without signing up
 
-Status: **step S1 built** (D456, 5 November 2026), behind its platform switch, which is off; S2 to S4 follow (section 8). The owner's
+Status: **step S1 built** (D457, 5 November 2026), behind its platform switch, which is off; S2 to S4 follow (section 8). The owner's
 choices of 5 November 2026: **no email at all** to start, and the recommendations of section 10.
 A visitor presses *Try the builder* and is in the real builder, on a store of their own. An email is asked only when they choose to keep
 that store, because an account is an email (`accounts.email` is not null).

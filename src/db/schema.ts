@@ -637,7 +637,7 @@ export const stores = commerce.table(
      */
     starter: boolean("starter").notNull().default(false),
     /**
-     * The page builder's sandbox (D456, `docs/builder-sandbox.md`): a store made for one visitor without an account, at a `try-` address,
+     * The page builder's sandbox (D457, `docs/builder-sandbox.md`): a store made for one visitor without an account, at a `try-` address,
      * owned by the platform's sandbox account and opened only by its pass (`commerce.sandboxes`). Private, never open for jobs or orders
      * (`store_is_active()`), never a template; set only by `commerce.make_sandbox()`.
      */
@@ -844,7 +844,7 @@ export const stores = commerce.table(
     index("stores_starter_copy_of_idx").on(t.starterCopyOf),
     // A store template's frozen copy (D177) is a starter like it: never a real store.
     check("stores_starter_copy_is_starter", sql`${t.starterCopyOf} is null or ${t.starter}`),
-    // A sandbox (D456) is at a `try-` address and is never a template or a store template.
+    // A sandbox (D457) is at a `try-` address and is never a template or a store template.
     check("stores_sandbox_address", sql`not ${t.sandbox} or ${t.slug} like 'try-%'`),
     check("stores_sandbox_not_template", sql`not (${t.sandbox} and (${t.isTemplate} or ${t.starter}))`),
     index("stores_created_by_idx").on(t.createdBy),
@@ -1019,7 +1019,7 @@ export const storeStarters = commerce.table(
 );
 
 /**
- * The page builder's sandboxes (D456, `docs/builder-sandbox.md`): one row a sandbox store, made by `commerce.make_sandbox()` and ended by
+ * The page builder's sandboxes (D457, `docs/builder-sandbox.md`): one row a sandbox store, made by `commerce.make_sandbox()` and ended by
  * `commerce.expire_sandbox()`, read and touched only by `src/server/sandbox.ts`. The visitor's pass is a cookie whose secret is kept only
  * as its SHA-256 (`pass_hash`). Its time is 7 days after the last visit and 30 at most after it was made; the times of the first change
  * and the first publish are the funnel's. Never deleted (a purged sandbox keeps its row).
@@ -1781,11 +1781,11 @@ export const platformSettings = commerce.table(
     domainsPublic: boolean("domains_public").notNull().default(false),
     /** Self-serve sign-up (D359): `/sign-up` makes the account and a store once the address is confirmed; off, a request waits for approval. */
     selfServeSignup: boolean("self_serve_signup").notNull().default(false),
-    /** The page builder's sandbox (D456): *Start building* at `/admin/try` makes one while this is on; off, it says the sandbox is closed. */
+    /** The page builder's sandbox (D457): *Start building* at `/admin/try` makes one while this is on; off, it says the sandbox is closed. */
     sandboxOn: boolean("sandbox_on").notNull().default(false),
-    /** Sandboxes made a day (UTC) at most, for the whole platform (D456). */
+    /** Sandboxes made a day (UTC) at most, for the whole platform (D457). */
     sandboxDailyCap: integer("sandbox_daily_cap").notNull().default(300),
-    /** The store template a sandbox is copied from (D456): a published starting content or demo store; null, the Standard store. */
+    /** The store template a sandbox is copied from (D457): a published starting content or demo store; null, the Standard store. */
     sandboxSource: uuid("sandbox_source").references((): AnyPgColumn => storeStarters.id, { onDelete: "set null" }),
     /** Kaizena Flow's own AI check of new and changed listings (D411 part 2): on unless a platform admin turns it off, since it costs model calls. */
     contentScreening: boolean("content_screening").notNull().default(true),

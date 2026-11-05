@@ -148,7 +148,7 @@ export async function confirmationOf(token: string): Promise<{ storeName: string
 /** A free store address from the store's name: the name's own, else with a number, else with a random end. */
 export async function freeSlug(storeName: string): Promise<string> {
   const suggested = suggestSlug(storeName) || "store";
-  // `try` and addresses starting `try-` are the page builder's sandboxes' (D456): a store named so gets `my-` before its name.
+  // `try` and addresses starting `try-` are the page builder's sandboxes' (D457): a store named so gets `my-` before its name.
   const base = suggested === "try" || suggested.startsWith("try-") ? `my-${suggested}`.slice(0, 40).replace(/-+$/, "") : suggested;
   const stem = base.slice(0, 34).replace(/-+$/, "");
   if (base.length >= 3 && !slugProblem(base) && !(await isSlugTaken(base))) return base;

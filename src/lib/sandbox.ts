@@ -1,7 +1,7 @@
 import type { PageType } from "./page-content";
 
 /**
- * The page builder's sandbox (D456, `docs/builder-sandbox.md`): the pure parts. A visitor holds a pass, a cookie naming one sandbox and a
+ * The page builder's sandbox (D457, `docs/builder-sandbox.md`): the pure parts. A visitor holds a pass, a cookie naming one sandbox and a
  * secret; the server keeps only the secret's SHA-256 (`src/server/sandbox.ts`). A sandbox lasts 7 days after the last visit and 30 at
  * most after it was made. Step S1 offers pages, the header and the footer.
  */

@@ -1,6 +1,6 @@
 import type { SandboxMessages } from "./sandbox.en";
 
-/** Sandkassen for sidebyggeren (D456), på norsk bokmål, skrevet for hånd. */
+/** Sandkassen for sidebyggeren (D457), på norsk bokmål, skrevet for hånd. */
 export const sandboxNb: SandboxMessages = {
   start: {
     title: "Prøv sidebyggeren",

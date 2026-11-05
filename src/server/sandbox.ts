@@ -26,7 +26,7 @@ import { getStore, refreshStoreById, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
- * The page builder's sandbox (D456, `docs/builder-sandbox.md`): a store of its own a visitor edits without an account. Everything about a
+ * The page builder's sandbox (D457, `docs/builder-sandbox.md`): a store of its own a visitor edits without an account. Everything about a
  * sandbox goes through here: the platform's switch and cap, making one (`commerce.make_sandbox()`), the pass that opens it
  * (`sandboxFor()`, the only way in for every sandbox page and action), *Start over*, the first change and publish, and the job that ends
  * sandboxes past their time (`commerce.expire_sandbox()`). The pass's secret is never kept; only its SHA-256 is.
@@ -139,7 +139,7 @@ async function sandboxAccount(): Promise<Account | null> {
 }
 
 /**
- * The only way into a sandbox (D456 4.2): the sandbox `id` names, opened by this browser's pass, open and within its time. A visit pushes
+ * The only way into a sandbox (D457 4.2): the sandbox `id` names, opened by this browser's pass, open and within its time. A visit pushes
  * its time on (at most once a minute): 7 days from now, never past 30 days after it was made. Null for anything else, the same whatever
  * the reason.
  */

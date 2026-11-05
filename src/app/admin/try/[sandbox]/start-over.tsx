@@ -2,7 +2,7 @@
 
 import { SubmitButton } from "@/components/admin/action-form";
 
-/** *Start over* in the sandbox's bar (D456): asks first, since the store it leaves is closed. */
+/** *Start over* in the sandbox's bar (D457): asks first, since the store it leaves is closed. */
 export function StartOver({ action, label, confirm }: { action: () => Promise<void>; label: string; confirm: string }) {
   return (
     <form

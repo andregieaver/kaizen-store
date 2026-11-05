@@ -149,7 +149,7 @@ describe("demo stores are not real stores (D175)", () => {
 });
 
 /**
- * The page builder's sandboxes (D456, `docs/builder-sandbox.md` 4.6) are not real stores either: every reader above that means a real store
+ * The page builder's sandboxes (D457, `docs/builder-sandbox.md` 4.6) are not real stores either: every reader above that means a real store
  * leaves them out too (names `sandbox`), and so does every reader that leaves store templates out by `not s.starter` alone; or it is listed
  * here with the reason it need not. A sandbox is still limited (D314's exemption is the templates' alone) and still private.
  */
@@ -187,7 +187,7 @@ const SANDBOX_KEPT: Record<string, string> = {
   "src/server/work-owner.ts": MEMBERS,
 };
 
-describe("sandboxes are not real stores (D456)", () => {
+describe("sandboxes are not real stores (D457)", () => {
   const mentions = (file: string) => /\bsandbox\b/.test(code(path.join(ROOT, file)));
   const realReaders = Object.entries(READERS)
     .filter(([, meaning]) => meaning === "real" || meaning === "both")

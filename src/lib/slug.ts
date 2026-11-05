@@ -35,7 +35,7 @@ export function slugProblem(slug: string): string | null {
   if (!/^[a-z0-9-]+$/.test(slug)) return "Use only lowercase letters, digits and hyphens.";
   if (slug.startsWith("-") || slug.endsWith("-")) return "Start and end with a letter or digit.";
   if (!isStoreSlug(slug)) return "That address is reserved.";
-  // Addresses starting `try-` are the page builder's sandboxes' (D456).
+  // Addresses starting `try-` are the page builder's sandboxes' (D457).
   if (slug.startsWith("try-")) return "That address is reserved.";
   return null;
 }

@@ -45,7 +45,7 @@ import { saveThemeLibrary, saveThemeTab } from "@/server/themes";
 import { ruleChoices } from "@/server/visibility";
 
 /**
- * The sandbox's actions (D456, `docs/builder-sandbox.md` 4.3): each opens the sandbox with its pass first (`sandboxFor()`, refusing
+ * The sandbox's actions (D457, `docs/builder-sandbox.md` 4.3): each opens the sandbox with its pass first (`sandboxFor()`, refusing
  * anything else in the same words), then does what the store's own action does after its access check, with the sandbox's store and the
  * sandbox account. Only these exist: an allow-list. Templates come from the marketplace only, never from "my stores" (one account owns
  * every sandbox, so that source would be every other visitor's). Nothing here sends an email, calls an AI, uploads or reaches outside.

@@ -12,7 +12,7 @@ import { isPageId, sandboxAndKind } from "../../../editor";
 
 export const metadata: Metadata = { title: "Preview" };
 
-/** The last saved draft of a sandbox's page, header or footer, drawn as its store would show it (D456), as a store's own *Preview* does. */
+/** The last saved draft of a sandbox's page, header or footer, drawn as its store would show it (D457), as a store's own *Preview* does. */
 export default async function SandboxPreviewPage({ params }: PageProps<"/admin/try/[sandbox]/[kind]/[pageId]/preview">) {
   const [{ sandbox, kind }, { pageId }] = await Promise.all([sandboxAndKind(params), params]);
   if (!sandbox) return null;

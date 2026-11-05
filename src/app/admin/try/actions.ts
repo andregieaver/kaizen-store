@@ -8,7 +8,7 @@ import { budgetVisitor } from "@/server/request-budget";
 import { currentSandbox, passCookie, startSandbox } from "@/server/sandbox";
 
 /**
- * *Start building* (D456): a press makes a sandbox and hands this browser its pass, then opens it; a browser whose sandbox is still open goes
+ * *Start building* (D457): a press makes a sandbox and hands this browser its pass, then opens it; a browser whose sandbox is still open goes
  * back to it instead of making another. A refusal comes back to the start screen as its reason (`?problem=`), never as a store.
  */
 export async function startSandboxAction(): Promise<void> {

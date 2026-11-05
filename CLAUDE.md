@@ -287,7 +287,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Editing words where they are (D191, D192, D193)
 - Undo, redo and versions (D305), CSS on the live site (D306)
 - Dual page (D412, `docs/dual-page.md`, `src/lib/dual-page.ts`, `DualPageEditor`, `DualFrame`)
-- The page builder's sandbox (D456, `docs/builder-sandbox.md`, `src/lib/sandbox.ts`, `src/server/sandbox.ts`, `/admin/try`)
+- The page builder's sandbox (D457, `docs/builder-sandbox.md`, `src/lib/sandbox.ts`, `src/server/sandbox.ts`, `/admin/try`)
 - Find and replace (D307)
 - Before and after (D413, `src/components/before-after-slider.tsx`, `BeforeAfterBlock` in `src/lib/page-content.ts`)
 - Remove background on picture fields (D413, `RemoveBackgroundButton`, `PictureEditorProvider`, `editLibraryPicture()`)

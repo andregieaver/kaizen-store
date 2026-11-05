@@ -11,7 +11,7 @@ import { sandboxOf } from "./sandbox";
 import { StartOver } from "./start-over";
 
 /**
- * One sandbox (D456): its bar on every page (the store's home, that only the visitor sees it, the days left, *Start over*) above the page,
+ * One sandbox (D457): its bar on every page (the store's home, that only the visitor sees it, the days left, *Start over*) above the page,
  * which uses the whole width as the store's editors do. A sandbox the pass does not open (ended, started over, another browser's) says so
  * and offers a new one, the same words whatever the reason.
  */

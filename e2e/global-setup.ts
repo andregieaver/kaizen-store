@@ -10,7 +10,7 @@ export default async function globalSetup(): Promise<void> {
   const sql = testDb();
   try {
     await sql`alter table commerce.stores alter column private_mode set default false`;
-    // A sandbox (D456) stays private: the database refuses otherwise, and `make_sandbox()` makes each one private itself.
+    // A sandbox (D457) stays private: the database refuses otherwise, and `make_sandbox()` makes each one private itself.
     await sql`update commerce.stores set private_mode = false where private_mode and not sandbox`;
   } finally {
     await sql.end();

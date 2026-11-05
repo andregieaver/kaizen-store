@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Try the page builder" };
 const PROBLEMS = ["off", "busy", "full", "failed"] as const;
 
 /**
- * The sandbox's start screen (D456): one button, *Start building*, a form post so a crawler or a link preview makes nothing, and a line saying
+ * The sandbox's start screen (D457): one button, *Start building*, a form post so a crawler or a link preview makes nothing, and a line saying
  * the store is the visitor's alone for 7 days. A browser whose sandbox is still open is offered the way back to it instead.
  */
 export default async function TryPage({ searchParams }: PageProps<"/admin/try">) {

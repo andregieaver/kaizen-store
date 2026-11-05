@@ -1,4 +1,4 @@
--- `try` is reserved for the page builder's sandbox (D456). NOT VALID: new and changed stores are held to it at once, and the release
+-- `try` is reserved for the page builder's sandbox (D457). NOT VALID: new and changed stores are held to it at once, and the release
 -- never fails on an address an older store already has.
 ALTER TABLE "commerce"."stores" DROP CONSTRAINT "stores_slug_not_reserved";--> statement-breakpoint
 ALTER TABLE "commerce"."stores" ADD CONSTRAINT "stores_slug_not_reserved" CHECK ("commerce"."stores"."slug" not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'hosting', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'themes', 'try', 'www')) NOT VALID;

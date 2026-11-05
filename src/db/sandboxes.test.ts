@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDatabase } from "./testing";
 
 /**
- * The page builder's sandbox (D456, docs/builder-sandbox.md): the rules the database holds. A sandbox is a store `make_sandbox()` copies
+ * The page builder's sandbox (D457, docs/builder-sandbox.md): the rules the database holds. A sandbox is a store `make_sandbox()` copies
  * from the source `starter_source()` decides, owned by the disabled sandbox account, private, never open for jobs or orders, with only that
  * account as member and no domain or payment provider; its row keeps its store and pass, moves only forward and is never deleted;
  * `expire_sandbox()` ends it and closes its store.
@@ -53,7 +53,7 @@ afterAll(async () => {
   await db.close();
 });
 
-describe("the sandbox account (D456)", () => {
+describe("the sandbox account (D457)", () => {
   it("exists once, disabled, at an address no mail reaches", async () => {
     const account = await one<{ id: string; email: string; disabled: boolean }>(
       "select id, email, disabled_at is not null as disabled from commerce.accounts where id = commerce.sandbox_account()",

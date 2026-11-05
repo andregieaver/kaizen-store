@@ -41,7 +41,7 @@ export type Store = {
   isTemplate: boolean;
   /** A store template (D175, docs/store-templates.md): a preview that takes no orders and is never indexed. */
   starter: boolean;
-  /** The page builder's sandbox (D456, docs/builder-sandbox.md): a visitor's private try of the builder, never a real business. */
+  /** The page builder's sandbox (D457, docs/builder-sandbox.md): a visitor's private try of the builder, never a real business. */
   sandbox: boolean;
   setupCompletedAt: string | null;
   /** Stripe is switched on with keys for its mode, so shoppers can pay. */

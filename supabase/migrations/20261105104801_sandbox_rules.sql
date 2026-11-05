@@ -1,4 +1,4 @@
--- The page builder's sandbox (D456, docs/builder-sandbox.md, step S1): the rules the database holds.
+-- The page builder's sandbox (D457, docs/builder-sandbox.md, step S1): the rules the database holds.
 --
 -- * One platform account owns every sandbox store: *Kaizena Flow sandbox*, at an address no mail reaches (`.invalid`), disabled so it can
 --   never sign in (`signInAccount()` admits no disabled account). `commerce.sandbox_account()` names it.
@@ -49,7 +49,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM commerce.stores s WHERE s.id = NEW.store_id AND s.starter) THEN
     RAISE EXCEPTION 'orders.store_starter: a store template takes no orders' USING ERRCODE = 'check_violation';
   END IF;
-  -- A sandbox (D456) takes no order of any kind either: it is a visitor's try of the builder.
+  -- A sandbox (D457) takes no order of any kind either: it is a visitor's try of the builder.
   IF EXISTS (SELECT 1 FROM commerce.stores s WHERE s.id = NEW.store_id AND s.sandbox) THEN
     RAISE EXCEPTION 'orders.store_sandbox: a sandbox takes no orders' USING ERRCODE = 'check_violation';
   END IF;

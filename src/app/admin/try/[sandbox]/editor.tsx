@@ -33,7 +33,7 @@ export async function sandboxAndKind(params: Params): Promise<{ sandbox: Sandbox
 export const isPageId = (value: string) => z.uuid().safeParse(value).success;
 
 /**
- * The page editor in a sandbox (D456): the same `PageEditor` as a store's, with the sandbox's context (`sandboxPageContext()`), a new page
+ * The page editor in a sandbox (D457): the same `PageEditor` as a store's, with the sandbox's context (`sandboxPageContext()`), a new page
  * when `pageId` is null. Saved and published say so in the builder's own words.
  */
 export async function SandboxEditor({ sandbox, kind, pageId, saved }: { sandbox: Sandbox; kind: SandboxKind; pageId: string | null; saved: unknown }) {

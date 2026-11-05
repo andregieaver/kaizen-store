@@ -94,7 +94,7 @@ export type TemplateActions = {
    */
   previewStore: string | null;
   /**
-   * Where previews are drawn instead, when the builder is not in a signed-in admin: the page builder's sandbox (D456) gives
+   * Where previews are drawn instead, when the builder is not in a signed-in admin: the page builder's sandbox (D457) gives
    * `/admin/try/templates/{sandbox}`, and a template's preview is `{previewBase}/{id}/preview`. Absent everywhere else.
    */
   previewBase?: string | null;

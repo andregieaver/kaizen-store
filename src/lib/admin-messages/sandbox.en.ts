@@ -1,5 +1,5 @@
 /**
- * The page builder's sandbox (D456, `docs/builder-sandbox.md`), in English: the start screen at `/admin/try`, the bar every sandbox page
+ * The page builder's sandbox (D457, `docs/builder-sandbox.md`), in English: the start screen at `/admin/try`, the bar every sandbox page
  * has, the sandbox's home and what it says when a sandbox has ended. `{name}`-style placeholders are filled by `fillWords()`; a count is a
  * `{ one, many }` pair read by `countWords()`, with `{n}` the number.
  */

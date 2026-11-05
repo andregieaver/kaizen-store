@@ -73,12 +73,12 @@ export const BUDGETS = {
   // Fetching a client's metadata document for an authorization request (D439): the server fetches an address a visitor names, so a few
   // an hour from one address and a ceiling for the site; a document already kept is not fetched again.
   oauth_fetch: { window: "hour", visitor: 30, store: 3000 },
-  // Making a page builder sandbox (D456): each is a copied store, so a few an hour from one network and a ceiling for the whole site,
+  // Making a page builder sandbox (D457): each is a copied store, so a few an hour from one network and a ceiling for the whole site,
   // counted under no store; a failed count refuses. The platform's daily cap (`platform_settings.sandbox_daily_cap`) stands beside it.
   sandbox: { window: "hour", visitor: 5, store: 200 },
-  // A sandbox copying a Google Fonts family into Kaizena Flow's shared fonts (D456): the visitor is the sandbox's id.
+  // A sandbox copying a Google Fonts family into Kaizena Flow's shared fonts (D457): the visitor is the sandbox's id.
   sandbox_font: { window: "hour", visitor: 20, store: 600 },
-  // A sandbox placing a template or a theme's section (D456), each copying its pictures into the sandbox's library: the visitor is the
+  // A sandbox placing a template or a theme's section (D457), each copying its pictures into the sandbox's library: the visitor is the
   // sandbox's id, the ceiling the whole site's.
   sandbox_copy: { window: "hour", visitor: 30, store: 1500 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
@@ -89,7 +89,7 @@ export type BudgetEndpoint = keyof typeof BUDGETS;
  * Endpoints a failed count refuses rather than allows (PSI SEC-10): guessing a password must not get easier while the database struggles,
  * nor the notice form become a way to send mail from Kaizena Flow's address, nor the docs' search or guide a way to spend the platform's AI
  * unmetered (D443: each search may embed its words; D444: each message to the guide asks its text model), nor the sandbox a way to copy
- * stores unmetered (D456).
+ * stores unmetered (D457).
  */
 export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search", "docs_guide", "sandbox"]);
 

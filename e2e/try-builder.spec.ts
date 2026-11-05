@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { testDb } from "./db";
 
 /**
- * The page builder's sandbox (D456, `docs/builder-sandbox.md`), as a visitor without an account meets it: closed while its switch is off;
+ * The page builder's sandbox (D457, `docs/builder-sandbox.md`), as a visitor without an account meets it: closed while its switch is off;
  * on, *Start building* makes a store of their own and opens it, the real builder edits and publishes its front page, nobody else sees the
  * store (its storefront is private, another browser cannot open the sandbox), and *Start over* leaves it for a fresh one.
  */

@@ -8,7 +8,7 @@ import { requestAdminLang } from "@/server/admin-request-lang";
 export const metadata: Metadata = { robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 /**
- * The page builder's sandbox (D456, `docs/builder-sandbox.md`): outside the signed-in admin's gate, so a visitor without an account reaches
+ * The page builder's sandbox (D457, `docs/builder-sandbox.md`): outside the signed-in admin's gate, so a visitor without an account reaches
  * it; every page under it opens its sandbox with the pass (`sandboxFor()`), never a session. The admin's root layout gives its look; this
  * gives its words, in the signed-in account's language if there is one, else the browser's.
  */

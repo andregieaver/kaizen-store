@@ -11,7 +11,7 @@ export default async function setup(): Promise<void> {
   const sql = postgres(url, { max: 1, onnotice: () => {} });
   try {
     await sql`alter table commerce.stores alter column private_mode set default false`;
-    // A sandbox (D456) stays private: the database refuses otherwise.
+    // A sandbox (D457) stays private: the database refuses otherwise.
     await sql`update commerce.stores set private_mode = false where private_mode and not sandbox`;
   } finally {
     await sql.end();

@@ -202,7 +202,7 @@ async function suppressed(message: OutgoingEmail): Promise<string | null> {
   const kind = emailClassOf(message.kind);
   if (message.storeId) {
     const store = await storeKind(message.storeId);
-    // A sandbox (D456) sends no email at all, of any kind, to anyone.
+    // A sandbox (D457) sends no email at all, of any kind, to anyone.
     if (store.sandbox) return "suppressed: a sandbox sends no email";
     if ((kind === "shopper" || kind === "security") && store.starter) return "suppressed: a demo store does not email shoppers";
   }

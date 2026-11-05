@@ -4,7 +4,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * The page builder's sandbox is an allow-list (D456, `docs/builder-sandbox.md` 4.2 and 4.3), held here from the source:
+ * The page builder's sandbox is an allow-list (D457, `docs/builder-sandbox.md` 4.2 and 4.3), held here from the source:
  * - every action of a sandbox opens it with its pass first (`open()`, which is `sandboxFor()`), except the one that refuses everything;
  * - every page under `/admin/try/{sandbox}` and the template preview reads its sandbox through the pass;
  * - the builder's context leaves out what the sandbox must never do: uploads, every AI, scheduling, share links, A/B tests, translation,
@@ -41,7 +41,7 @@ function exportedFunctions(source: string): { name: string; body: string }[] {
   return out;
 }
 
-describe("the sandbox's allow-list (D456)", () => {
+describe("the sandbox's allow-list (D457)", () => {
   const actions = read(join(TRY, "[sandbox]/actions.ts"));
 
   it("opens the sandbox with its pass before anything else in every action", () => {

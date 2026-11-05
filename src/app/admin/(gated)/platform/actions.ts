@@ -52,7 +52,7 @@ export async function selfServeAction(_state: FormState, form: FormData): Promis
   return { status: "ok", messages: [adminText(await actionAdminLang(), "platform").requests.selfServe.saved] };
 }
 
-/** Turns the page builder's sandbox on or off (D456). */
+/** Turns the page builder's sandbox on or off (D457). */
 export async function sandboxAction(_state: FormState, form: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   await setSandboxOn(admin, form.get("on") === "on");

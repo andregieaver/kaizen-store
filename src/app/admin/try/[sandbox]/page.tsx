@@ -13,7 +13,7 @@ import { sandboxOf } from "./sandbox";
 export const metadata: Metadata = { title: "Your store" };
 
 /**
- * The sandbox's home (D456): *Edit the front page* as the one main action, then the store's pages, headers and footers, each to edit or
+ * The sandbox's home (D457): *Edit the front page* as the one main action, then the store's pages, headers and footers, each to edit or
  * preview, and a new one of each.
  */
 export default async function SandboxHome({ params }: PageProps<"/admin/try/[sandbox]">) {

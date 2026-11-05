@@ -13,7 +13,7 @@ import { listTemplates, previewTemplate } from "@/server/templates";
 export const metadata: Metadata = { title: "Template preview", robots: { index: false, follow: false } };
 
 /**
- * A marketplace template shown before it is used in a sandbox (D456), for the frame in the page builder: drawn as the sandbox's store draws
+ * A marketplace template shown before it is used in a sandbox (D457), for the frame in the page builder: drawn as the sandbox's store draws
  * its pages, inert and view-only, as a store's own template preview is (`/admin/account/templates/s/{store}/{id}/preview`). Opened with the
  * sandbox's pass; only a template the marketplace offers it, never one of another sandbox's saved parts.
  */

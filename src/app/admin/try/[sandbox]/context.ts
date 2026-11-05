@@ -55,7 +55,7 @@ import {
 } from "./actions";
 
 /**
- * The page editor's context in a sandbox (D456, `docs/builder-sandbox.md` 4.3): the store's own context's sibling, with every action one
+ * The page editor's context in a sandbox (D457, `docs/builder-sandbox.md` 4.3): the store's own context's sibling, with every action one
  * of the sandbox's wrappers (`./actions.ts`: the pass first, then the store's server function) bound to the sandbox's id. Only what is wired
  * here exists. Step S1 leaves out uploads, every AI (motion takes the rules' plan), scheduling, share links, A/B tests, translation, a
  * second page beside this one and sharing a saved part with other stores; every link stays inside `/admin/try/{sandbox}`.

@@ -92,7 +92,7 @@ describe("the admin's type and shapes", () => {
   });
 
   it("draws every signed-out page in the focus layout, not a page frame of its own", () => {
-    // The page builder's sandbox (D456) is a workspace without an account: its pages sit under its own bar as a store's editors sit in
+    // The page builder's sandbox (D457) is a workspace without an account: its pages sit under its own bar as a store's editors sit in
     // their frame, and its template preview is a drawing of the store's look, as the store's own is in `(print)`.
     const WORKSPACE = ["src/app/admin/try/[sandbox]/", "src/app/admin/try/templates/"];
     const signedOut = admin.filter(
