@@ -212,7 +212,7 @@ export function AdminFrame({
       {skip}
       {sheet}
       {before}
-      <HidingHeader>
+      <HidingHeader themeColor={false}>
         <header className="border-b border-line bg-card">
           <div className={`mx-auto flex h-14 items-center gap-2 px-4 ${bar}`}>
             {/* The slide-out menu (below) opens on any `data-open-menu` button. */}
