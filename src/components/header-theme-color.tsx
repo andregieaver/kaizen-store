@@ -1,6 +1,5 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useEffect, useRef, type RefObject } from "react";
 
 import { composite, gradientStart, hex, opaque, type Rgba } from "@/lib/header-color";
@@ -83,7 +82,6 @@ function themeColorMeta(): HTMLMetaElement {
 
 /** Keeps `theme-color` to the header in `ref` while it is on the page. */
 export function useHeaderThemeColor(ref: RefObject<HTMLElement | null>, on = true) {
-  const pathname = usePathname();
   useEffect(() => {
     const header = ref.current;
     if (!on || !header) return;
@@ -108,6 +106,10 @@ export function useHeaderThemeColor(ref: RefObject<HTMLElement | null>, on = tru
     // The header itself changing (its notice, its row's background, its see-through state).
     const own = new MutationObserver(soon);
     own.observe(header, { attributes: true, childList: true, subtree: true });
+    // A navigation (the page under a see-through header changes) or a part streamed in. Not `usePathname()`, which would keep every
+    // page with a header from being prerendered; the reading waits for the next frame, so a burst of changes costs one.
+    const page = new MutationObserver(soon);
+    page.observe(document.body, { childList: true, subtree: true });
     const scheme = window.matchMedia("(prefers-color-scheme: dark)");
     scheme.addEventListener("change", soon);
     window.addEventListener("scroll", soon, { passive: true });
@@ -121,12 +123,13 @@ export function useHeaderThemeColor(ref: RefObject<HTMLElement | null>, on = tru
       window.clearTimeout(settle);
       marks.disconnect();
       own.disconnect();
+      page.disconnect();
       scheme.removeEventListener("change", soon);
       window.removeEventListener("scroll", soon);
       window.removeEventListener("resize", soon);
       header.removeEventListener("transitionend", soon);
     };
-  }, [ref, on, pathname]);
+  }, [ref, on]);
 }
 
 /** For a header drawn on the server (the docs portal's): keeps `theme-color` to the element it is in. */
