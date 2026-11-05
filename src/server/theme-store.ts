@@ -94,6 +94,14 @@ export async function themePreviewNeighbours(slug: string): Promise<{ previous: 
   return around && { previous: { slug: around.previous.slug, title: around.previous.title }, next: { slug: around.next.slug, title: around.next.title } };
 }
 
+/**
+ * Every theme in the store as it is now, not as cached (the page builder's sandbox, D457 S4: *Try another look* lists and checks the themes
+ * per request, on a page visited too seldom to need the cache, so a theme published since the cache was filled is there at once).
+ */
+export async function themeStoreCardsNow(): Promise<ThemeStoreCard[]> {
+  return loadCards();
+}
+
 async function loadCards(): Promise<ThemeStoreCard[]> {
   const contents = await publishedContents();
   const rows = await readDb().execute<Row>(sql`

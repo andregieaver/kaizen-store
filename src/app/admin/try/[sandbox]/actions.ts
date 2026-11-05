@@ -55,7 +55,7 @@ import { applyTemplate, listTemplates, setTemplateActive } from "@/server/templa
 import { deleteTextStyle, saveTextStyle, textStylesTag, type DeleteStyleResult, type TextStyleResult } from "@/server/text-styles";
 import { placeThemeSection, themeSectionsFor } from "@/server/theme-sections";
 import { listInstalls, switchToInstall } from "@/server/theme-installs";
-import { themeStoreCards } from "@/server/theme-store";
+import { themeStoreCardsNow } from "@/server/theme-store";
 import { saveThemeLibrary, saveThemeTab } from "@/server/themes";
 import { ruleChoices } from "@/server/visibility";
 
@@ -428,7 +428,7 @@ export async function sandboxUseLookAction(sandboxId: string, presetId: string):
   const sandbox = await open(sandboxId);
   if (!sandbox) redirect(sandboxHome(sandboxId));
   const looks = `${sandboxHome(sandbox.id)}/looks`;
-  const theme = isId(presetId) ? (await themeStoreCards()).find((card) => card.id === presetId) : undefined;
+  const theme = isId(presetId) ? (await themeStoreCardsNow()).find((card) => card.id === presetId) : undefined;
   if (!theme || isPremium(theme.prices ?? [])) redirect(`${looks}?look=refused`);
   if (!(await takeBudget(null, "sandbox_copy", sandbox.id))) redirect(`${looks}?look=busy`);
   const { store, account } = sandbox;
