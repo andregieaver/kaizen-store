@@ -11,6 +11,7 @@ import { requirePermission } from "@/server/permissions";
 import { listIntegrations } from "@/server/integrations";
 import { listEndpoints } from "@/server/webhook-endpoints";
 import { listCarriers } from "@/server/shipping-carriers";
+import { getTripletexConnection, tripletexCounts } from "@/server/tripletex";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Integrations" };
@@ -24,7 +25,24 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
   const carrierWords = adminText(lang, "shipping").carrier.carriers as Record<string, { summary: string } | undefined>;
   const w = all.integrations;
   const k = w.carrier;
-  const [connected, carriers, endpoints] = await Promise.all([listIntegrations(store.id), listCarriers(store.id), listEndpoints(store.id)]);
+  const [connected, carriers, endpoints, tripletex, tripletexSent] = await Promise.all([
+    listIntegrations(store.id),
+    listCarriers(store.id),
+    listEndpoints(store.id),
+    getTripletexConnection(store.id),
+    tripletexCounts(store.id),
+  ]);
+  // Tripletex is not a webhook (D453): its state is its own connection's.
+  const tx = w.tripletex.listStatus;
+  const tripletexBadge = !tripletex
+    ? null
+    : tripletex.state === "auth_failed"
+      ? { text: tx.auth_failed, tone: "bg-warning-soft text-warning-text" }
+      : tripletex.state === "on" && (tripletexSent?.blocked ?? 0) + (tripletexSent?.failed ?? 0) > 0
+        ? { text: tx.problems, tone: "bg-warning-soft text-warning-text" }
+        : tripletex.state === "on"
+          ? { text: tx.on, tone: "bg-positive-soft text-positive-text" }
+          : { text: tx[tripletex.state], tone: "bg-sunken text-muted" };
   const base = `/admin/${store.slug}/integrations`;
 
   return (
@@ -35,13 +53,15 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
       />
       <ul className="grid gap-4 sm:grid-cols-2">
         {INTEGRATIONS.map((info) => {
-          const status = connected.find((c) => c.provider === info.id);
-          const badge = info.comingSoon
+          const status = info.id === "tripletex" ? (tripletex ? { enabled: tripletex.state === "on" } : undefined) : connected.find((c) => c.provider === info.id);
+          const badge = info.id === "tripletex"
+            ? tripletexBadge
+            : info.comingSoon
             ? { text: w.comingSoon, tone: "bg-sunken text-muted" }
             : !status
               ? null
               : status.enabled
-                ? status.recentFailures > 0
+                ? "recentFailures" in status && status.recentFailures > 0
                   ? { text: w.someFailed, tone: "bg-warning-soft text-warning-text" }
                   : { text: all.common.on, tone: "bg-positive-soft text-positive-text" }
                 : { text: all.common.off, tone: "bg-sunken text-muted" };

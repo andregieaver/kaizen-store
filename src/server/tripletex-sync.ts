@@ -28,6 +28,7 @@ import {
 import { BOOKING_KEYS, type TripletexSettings } from "@/lib/tripletex-settings";
 import type { Chart } from "@/lib/tripletex-setup";
 
+import { audit } from "./auth";
 import { log } from "./log";
 import { getTripletexConnection, readChart, tripletexCredential, type TripletexConnection } from "./tripletex";
 import { listAll, openSession, type TripletexDeps, type TripletexSession } from "./tripletex-client";
@@ -641,7 +642,10 @@ export async function syncDueTripletex(options: SyncOptions = {}): Promise<Tripl
  * owner's or an admin's press, or the AI manager's on the owner's yes). A row tried before keeps one try, so its next send
  * looks its voucher up first. Only those with the given reasons, when given. Returns how many.
  */
-export async function retryTripletex(storeId: string, options: { errorKeys?: readonly string[]; kind?: Kind; localId?: string } = {}): Promise<number> {
+export async function retryTripletex(
+  storeId: string,
+  options: { errorKeys?: readonly string[]; kind?: Kind; localId?: string; accountId?: string } = {},
+): Promise<number> {
   const connection = await getTripletexConnection(storeId);
   if (!connection) return 0;
   const rows = await db().execute(sql`
@@ -653,5 +657,7 @@ export async function retryTripletex(storeId: string, options: { errorKeys?: rea
        ${options.localId ? sql`and local_id = ${options.localId}` : sql``}
     returning local_id
   `);
+  // A person's press is written down (the sync's own re-tries after a settings change are not: the save is).
+  if (options.accountId && rows.length > 0) await audit(options.accountId, storeId, "integration.tripletex_retried", { count: rows.length, ...(options.kind ? { kind: options.kind } : {}) });
   return rows.length;
 }

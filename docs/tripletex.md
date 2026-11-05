@@ -83,9 +83,10 @@ the start day, "send the client's email", "attach PDFs", Pause, Disconnect, and 
 | Tripletex in memory | `src/server/tripletex-test-support.ts` | built |
 | Consumer token | `tripletexConsumerToken()` in `src/lib/env.ts`, `.env.example` | built |
 | Connect (one paste, environment found, company checked, setup planned), Start, Pause, settings check and save, Disconnect, counts | `src/server/tripletex.ts`, `tripletex.int.test.ts` | built, tested against the fake |
-| The Tripletex page: connect, the plan, Start, Customise, Disconnect | `src/app/admin/(gated)/[store]/integrations/tripletex/` | next |
+| The Tripletex page: one paste, the questions only Tripletex would refuse, Start, the card (sent this week, on their way, needs you), Needs you with Try again, where things are booked, Customise, Pause, Disconnect; Tripletex off "coming soon" on the Integrations list | `src/app/admin/(gated)/[store]/integrations/tripletex/`, catalogues `notifications` (en, nb) | built; pressed through in a browser against the local Auth stand-in (connect with a refused token, Try again, Pause, Disconnect) |
 | Sync engine and its job: sweep since the start day, claim, customer cards on demand, vouchers, adoption after a lost answer, the retry ladder, rate limits, a refused token pausing the store, Try again | `src/server/tripletex-sync.ts`, `tripletex-sync.int.test.ts`, the dispatcher's `tripletex` job | built, tested against the fake |
-| Status on Work, invoices, the checkup, alerts, AI manager tools | as section 6 | after |
+| Status on Work's settings and on each invoice, the store checkup and the daily email, AI manager tools (`tripletex_status`, `tripletex_retry`), Post again after a deleted voucher, PDFs attached | as section 6 | next |
+| Payments read back (T2), foreign currency, webhooks, the marketplace's Activate | sections 4.5, 4.6, TP13 | later |
 
 ### Still to find out in Tripletex's sandbox (Appendix A, plus)
 

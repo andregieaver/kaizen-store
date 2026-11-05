@@ -200,7 +200,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   with `for update skip locked` and an expiring claim, makes a customer card only for a document that can be booked, and classifies every
   failure (the ladder for Tripletex's own trouble, a rate limit waited out, a refused token pausing the store, anything else waiting for
   a person with a stable `error_key`); it never redates a voucher and never changes or deletes one. Every owner-facing failure is a sentence of
-  `failureWords()` or `BLOCK_WORDS`, never Tripletex's raw answer. Tests run against `fakeTripletex()`
+  the `notifications` catalogue's `integrations.tripletex` (`failures` keyed as `FAILURE_WORDS`, `blocks` as `BLOCK_WORDS`, `connectProblems`,
+  `startProblems`), read through `failureWords()`; the server answers codes, never sentences, and never Tripletex's raw answer but a clipped
+  validation message shown as what Tripletex said. The page (`/admin/{store}/integrations/tripletex`, owners act, `settings:read` sees) is
+  Homer's: one paste, then only the questions Tripletex would refuse (`checkTripletexSettings()` before Start), then Start; the card
+  speaks only when something needs the owner; every account, code, the start day and the switches are under Customise. Tests run against `fakeTripletex()`
   (`src/server/tripletex-test-support.ts`), which must answer as Tripletex's spec does and never refuses a repeated external number;
   nothing in CI calls Tripletex.
 

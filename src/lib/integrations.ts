@@ -63,8 +63,8 @@ export const INTEGRATIONS: IntegrationInfo[] = [
   {
     id: "tripletex",
     name: "Tripletex",
-    summary: "Orders, customers and payments straight into your Norwegian accounting.",
-    comingSoon: true,
+    // Not a webhook (D453): its own page, `/integrations/tripletex`, connected with one pasted token.
+    summary: "Your invoices and credit notes go straight into your Norwegian accounting.",
   },
 ];
 

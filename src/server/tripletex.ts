@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { todayIn } from "@/lib/analytics-period";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { norwegianOrgNumber, readPastedToken, tokenHint, type TripletexMode, type TripletexTokenKind } from "@/lib/tripletex";
-import { failureWords, type TripletexFailure } from "@/lib/tripletex-errors";
+import { type TripletexFailure } from "@/lib/tripletex-errors";
 import { shopKey, workLineKey } from "@/lib/tripletex-map";
 import { BOOKING_KEYS, defaultSettings, readSettings, type BookingKey, type TripletexSettings } from "@/lib/tripletex-settings";
 import { checkSettings, planSetup, type Chart, type ChartAccount, type ChartVatType, type SettingsProblem, type SetupPlan } from "@/lib/tripletex-setup";
@@ -155,6 +155,12 @@ function settingsOfPlan(plan: SetupPlan, sources: TripletexSettings["sources"]):
 // Connect, Start, Pause, Disconnect
 // ---------------------------------------------------------------------------------------------------------------------
 
+/** The store's own organisation number (Settings → Your business), to compare with the Tripletex company's. */
+export async function storeOrgNumber(storeId: string): Promise<string | null> {
+  const row = await typedRow(z.object({ organisation_number: col.textOrNull }), sql`select organisation_number from commerce.stores where id = ${storeId}::uuid`);
+  return row?.organisation_number ?? null;
+}
+
 export type ConnectResult =
   | {
       ok: true;
@@ -165,12 +171,14 @@ export type ConnectResult =
       /** Buckets of this store's own documents the plan could not place: the questions Homer is asked. */
       questions: SetupPlan["questions"];
     }
-  | { ok: false; message: string };
+  | { ok: false; problem: ConnectProblem; failureKey?: string };
 
-const TOKEN_WORDS = {
-  empty: "Paste the token you copied in Tripletex.",
-  not_a_token: "That does not look like a Tripletex token. Copy the whole token from Tripletex's window and paste it here.",
-} as const;
+/**
+ * Why a connect did not happen, for the page to say in the owner's language: nothing pasted, not a token, no key to keep it, Tripletex
+ * refused it, an employee token while Tripletex has not approved Kaizena Flow, the company is another store's, the token may not read
+ * the accounts, or another failure (its `failureKey`).
+ */
+export type ConnectProblem = "empty" | "not_a_token" | "no_key" | "refused" | "no_consumer_token" | "taken" | "no_read_access" | "failure";
 
 /**
  * Connects the store to the Tripletex company the token opens: tries the token, reads the company and its chart, plans the
@@ -178,16 +186,12 @@ const TOKEN_WORDS = {
  * state; a token for another company starts the setup again (what was sent to the first stays recorded). Owners only (the
  * action checks); nothing is sent to Tripletex but reads.
  */
-export async function connectTripletex(
-  accountId: string,
-  store: { id: string; organisationNumber: string | null },
-  pasted: string,
-  deps: TripletexDeps = {},
-): Promise<ConnectResult> {
+export async function connectTripletex(accountId: string, storeId: string, pasted: string, deps: TripletexDeps = {}): Promise<ConnectResult> {
+  const store = { id: storeId, organisationNumber: await storeOrgNumber(storeId) };
   const token = readPastedToken(pasted);
-  if (!token.ok) return { ok: false, message: TOKEN_WORDS[token.problem] };
+  if (!token.ok) return { ok: false, problem: token.problem };
   const key = encryptionKey();
-  if (!key) return { ok: false, message: "Kaizena Flow cannot keep the token safe right now, so nothing was saved. Try again later." };
+  if (!key) return { ok: false, problem: "no_key" };
 
   let credential: TripletexCredential = { kind: token.kind, mode: token.mode, token: token.token };
   let opened = await openSession(credential, deps);
@@ -202,11 +206,12 @@ export async function connectTripletex(
   }
   if (!opened.ok) {
     log("warn", "tripletex.connect_refused", { storeId: store.id, key: opened.failure.key, mode: credential.mode, kind: credential.kind });
-    return { ok: false, message: opened.failure.class === "auth" ? "Tripletex did not accept the token. Make a new one in Tripletex, copy all of it, and paste it here." : failureWords(opened.failure) };
+    if (opened.failure.key === "no_consumer_token") return { ok: false, problem: "no_consumer_token" };
+    return opened.failure.class === "auth" ? { ok: false, problem: "refused" } : { ok: false, problem: "failure", failureKey: opened.failure.key };
   }
   const session = opened.session;
   const me = await whoAmI(session);
-  if (!me.ok) return { ok: false, message: failureWords(me.failure) };
+  if (!me.ok) return { ok: false, problem: "failure", failureKey: me.failure.key };
   const company = me.value;
 
   const taken = await typedRow(
@@ -214,17 +219,11 @@ export async function connectTripletex(
     sql`select store_id from commerce.tripletex_connections
          where mode = ${credential.mode} and company_id = ${company.id} and store_id <> ${store.id}::uuid`,
   );
-  if (taken) return { ok: false, message: "This Tripletex company is already connected to another of your stores. Disconnect it there first, or use the token of this store's own company." };
+  if (taken) return { ok: false, problem: "taken" };
 
   const chart = await readChart(session);
   if (!chart.ok) {
-    return {
-      ok: false,
-      message:
-        chart.failure.class === "permission"
-          ? "The token may not read the accounts in Tripletex. Make it again with access to accounting (all rights, or Accounting and Customers), then paste the new one."
-          : failureWords(chart.failure),
-    };
+    return chart.failure.class === "permission" ? { ok: false, problem: "no_read_access" } : { ok: false, problem: "failure", failureKey: chart.failure.key };
   }
   const needed = await neededKeys(store.id);
   const plan = planSetup(chart.chart, BOOKING_KEYS);
@@ -266,7 +265,10 @@ export async function connectTripletex(
   return { ok: true, company, sameOrganisation, plan, questions };
 }
 
-export type StartResult = { ok: true; syncFrom: string } | { ok: false; message: string };
+/** Why Start did not happen: not connected, the token is refused, the settings are unreadable or would be refused, or a day in the future. */
+export type StartProblem = "not_connected" | "auth_failed" | "settings" | "problems" | "future_day";
+
+export type StartResult = { ok: true; syncFrom: string } | { ok: false; problem: StartProblem };
 
 /**
  * Start (or go on after a pause): from `syncFrom` (today in the store's time zone by default) every issued document is sent.
@@ -278,14 +280,14 @@ export async function startTripletex(
   options: { syncFrom?: string; problems?: readonly SettingsProblem[]; now?: Date } = {},
 ): Promise<StartResult> {
   const connection = await getTripletexConnection(storeId);
-  if (!connection) return { ok: false, message: "Connect Tripletex first." };
-  if (connection.state === "auth_failed") return { ok: false, message: "Tripletex no longer accepts the token. Paste a new one first." };
-  if (!connection.settings) return { ok: false, message: "The Tripletex settings need a look first." };
-  if (options.problems && options.problems.length > 0) return { ok: false, message: "Some accounts or VAT codes would be refused by Tripletex. Fix them under Customise first." };
+  if (!connection) return { ok: false, problem: "not_connected" };
+  if (connection.state === "auth_failed") return { ok: false, problem: "auth_failed" };
+  if (!connection.settings) return { ok: false, problem: "settings" };
+  if (options.problems && options.problems.length > 0) return { ok: false, problem: "problems" };
   const zone = await typedRow(z.object({ time_zone: col.text }), sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
   const today = todayIn(options.now ?? new Date(), zone?.time_zone ?? "Europe/Oslo");
   const syncFrom = options.syncFrom ?? connection.syncFrom ?? today;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(syncFrom) || syncFrom > today) return { ok: false, message: "The first day to send must be today or earlier." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(syncFrom) || syncFrom > today) return { ok: false, problem: "future_day" };
   await db().execute(sql`
     update commerce.tripletex_connections set state = 'on', sync_from = ${syncFrom}::date, updated_at = now(), updated_by = ${accountId}::uuid
      where store_id = ${storeId}::uuid
@@ -327,13 +329,17 @@ export async function saveTripletexSettings(accountId: string, storeId: string, 
 }
 
 /** The settings checked against the company as it is now (a session from the kept token). */
-export async function checkTripletexSettings(storeId: string, settings: TripletexSettings, deps: TripletexDeps = {}): Promise<{ ok: true; problems: SettingsProblem[]; chart: Chart } | { ok: false; message: string }> {
+export async function checkTripletexSettings(
+  storeId: string,
+  settings: TripletexSettings,
+  deps: TripletexDeps = {},
+): Promise<{ ok: true; problems: SettingsProblem[]; chart: Chart } | { ok: false; failureKey: string }> {
   const credential = await tripletexCredential(storeId);
-  if (!credential) return { ok: false, message: "Connect Tripletex first." };
+  if (!credential) return { ok: false, failureKey: "not_connected" };
   const opened = await openSession(credential, deps);
-  if (!opened.ok) return { ok: false, message: failureWords(opened.failure) };
+  if (!opened.ok) return { ok: false, failureKey: opened.failure.key };
   const chart = await readChart(opened.session);
-  if (!chart.ok) return { ok: false, message: failureWords(chart.failure) };
+  if (!chart.ok) return { ok: false, failureKey: chart.failure.key };
   return { ok: true, problems: checkSettings(settings, chart.chart, await neededKeys(storeId)), chart: chart.chart };
 }
 
@@ -371,4 +377,63 @@ export async function tripletexCounts(storeId: string): Promise<SyncCounts | nul
          where store_id = ${storeId}::uuid and mode = ${connection.mode} and company_id = ${connection.company.id} and kind <> 'customer'`,
   );
   return row ? { synced: row.synced, waiting: row.waiting, failed: row.failed, blocked: row.blocked, lastWeek: row.last_week } : null;
+}
+
+/** A document that waits for a person or keeps failing, for the page's "Needs you". */
+export type SyncProblem = {
+  kind: "work_invoice" | "work_credit_note" | "shop_invoice" | "shop_credit_note";
+  localId: string;
+  number: string | null;
+  state: "failed" | "blocked" | "drifted";
+  errorKey: string | null;
+  /** Tripletex's own validation words, clipped (owner-facing only). */
+  detail: string | null;
+  requestId: string | null;
+  at: string;
+};
+
+export async function tripletexProblems(storeId: string, limit = 20): Promise<SyncProblem[]> {
+  const connection = await getTripletexConnection(storeId);
+  if (!connection) return [];
+  const rows = await typedRows(
+    z.object({
+      kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note"]),
+      local_id: col.text,
+      number: col.textOrNull,
+      state: z.enum(["failed", "blocked", "drifted"]),
+      error_key: col.textOrNull,
+      error_detail: col.textOrNull,
+      request_id: col.textOrNull,
+      updated_at: col.timestamp,
+    }),
+    sql`select t.kind, t.local_id, coalesce(wi.document_number, wc.document_number, si.document_number, sc.document_number) as number,
+               t.state, t.error_key, t.error_detail, t.request_id, t.updated_at
+          from commerce.tripletex_sync t
+          left join commerce.work_invoices wi on t.kind = 'work_invoice' and wi.store_id = t.store_id and wi.id::text = t.local_id
+          left join commerce.work_credit_notes wc on t.kind = 'work_credit_note' and wc.store_id = t.store_id and wc.id::text = t.local_id
+          left join commerce.invoices si on t.kind = 'shop_invoice' and si.store_id = t.store_id and si.id::text = t.local_id
+          left join commerce.credit_notes sc on t.kind = 'shop_credit_note' and sc.store_id = t.store_id and sc.id::text = t.local_id
+         where t.store_id = ${storeId}::uuid and t.mode = ${connection.mode} and t.company_id = ${connection.company.id}
+           and t.kind <> 'customer' and t.state in ('failed', 'blocked', 'drifted')
+         order by t.updated_at desc
+         limit ${limit}`,
+  );
+  return rows.map((r) => ({ kind: r.kind, localId: r.local_id, number: r.number, state: r.state, errorKey: r.error_key, detail: r.error_detail, requestId: r.request_id, at: r.updated_at }));
+}
+
+/**
+ * Another first day to send, once started (Customise): an earlier day sends older documents too, a later one leaves those not yet sent
+ * alone. Never a day in the future.
+ */
+export async function setTripletexSyncFrom(accountId: string, storeId: string, day: string, now: Date = new Date()): Promise<StartResult> {
+  const connection = await getTripletexConnection(storeId);
+  if (!connection) return { ok: false, problem: "not_connected" };
+  const zone = await typedRow(z.object({ time_zone: col.text }), sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > todayIn(now, zone?.time_zone ?? "Europe/Oslo")) return { ok: false, problem: "future_day" };
+  if (connection.state === "setup") return { ok: true, syncFrom: day };
+  await db().execute(sql`
+    update commerce.tripletex_connections set sync_from = ${day}::date, updated_at = now(), updated_by = ${accountId}::uuid where store_id = ${storeId}::uuid
+  `);
+  await audit(accountId, storeId, "integration.tripletex_sync_from_changed", { before: connection.syncFrom, after: day });
+  return { ok: true, syncFrom: day };
 }

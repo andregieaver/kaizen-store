@@ -82,10 +82,10 @@ async function issued(actor: WorkActor, clientId: string, o: { fxRate?: string }
 async function connected(storeId: string, accountId: string, org: string | null, companyId: number): Promise<FakeTripletex> {
   const tx = fakeTripletex({ companyId, organizationNumber: org });
   tx.apiTokens.add(token(String(companyId)));
-  const result = await connectTripletex(accountId, { id: storeId, organisationNumber: org }, token(String(companyId)), { fetch: tx.fetch });
-  if (!result.ok) throw new Error(result.message);
+  const result = await connectTripletex(accountId, storeId, token(String(companyId)), { fetch: tx.fetch });
+  if (!result.ok) throw new Error(result.problem);
   const started = await startTripletex(accountId, storeId);
-  if (!started.ok) throw new Error(started.message);
+  if (!started.ok) throw new Error(started.problem);
   return tx;
 }
 
@@ -180,7 +180,7 @@ describe("sending Work's invoices to Tripletex (D453)", () => {
     // Nothing runs while the token is refused; a new token for the same company goes on where it stopped.
     expect(await sync(tx, storeId, later(20))).toMatchObject({ stores: 0 });
     tx.apiTokens.add(token("renewed"));
-    expect(await connectTripletex(actor.account.id, { id: storeId, organisationNumber: org }, token("renewed"), { fetch: tx.fetch })).toMatchObject({ ok: true });
+    expect(await connectTripletex(actor.account.id, storeId, token("renewed"), { fetch: tx.fetch })).toMatchObject({ ok: true });
     expect((await getTripletexConnection(storeId))?.state).toBe("on");
     expect(await sync(tx, storeId, later(30))).toMatchObject({ sent: 1 });
     expect(tx.vouchers.size).toBe(1);
@@ -265,7 +265,7 @@ describe("sending Work's invoices to Tripletex (D453)", () => {
     await issued(actor, await client(storeId));
     await sync(tx, storeId);
     await disconnectTripletex(actor.account.id, storeId);
-    await connectTripletex(actor.account.id, { id: storeId, organisationNumber: org }, token(String(BASE + 9)), { fetch: tx.fetch });
+    await connectTripletex(actor.account.id, storeId, token(String(BASE + 9)), { fetch: tx.fetch });
     await startTripletex(actor.account.id, storeId);
     expect(await sync(tx, storeId)).toMatchObject({ sent: 0 });
     expect(tx.vouchers.size).toBe(1);
@@ -279,7 +279,7 @@ describe("sending the shop's invoices", () => {
     const invoice = (await fx.invoiceOf(shop.storeId, order.orderId))!;
     const tx = fakeTripletex({ companyId: BASE + 101 });
     tx.apiTokens.add(token("shop"));
-    expect(await connectTripletex(shop.ownerId, { id: shop.storeId, organisationNumber: null }, token("shop"), { fetch: tx.fetch })).toMatchObject({ ok: true });
+    expect(await connectTripletex(shop.ownerId, shop.storeId, token("shop"), { fetch: tx.fetch })).toMatchObject({ ok: true });
     expect(await startTripletex(shop.ownerId, shop.storeId)).toMatchObject({ ok: true });
 
     expect(await sync(tx, shop.storeId)).toMatchObject({ sent: 1, blocked: 0 });

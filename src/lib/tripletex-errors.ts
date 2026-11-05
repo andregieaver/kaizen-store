@@ -86,44 +86,47 @@ export function networkFailure(kind: "timeout" | "network" | "redirect"): Triple
   return { class: kind === "redirect" ? "rule" : "transient", status: null, code: null, key: kind, requestId: null, retryAfter: null, detail: null };
 }
 
-/** What a failure says to an owner, in plain words, with what to do. */
-export function failureWords(failure: Pick<TripletexFailure, "key" | "class">): string {
-  switch (failure.key) {
-    case "http_401":
-      return "Tripletex no longer accepts the token. Make a new one in Tripletex and paste it on the Tripletex page.";
-    case "http_403":
-      return "The token may not do this in Tripletex. Give it access to accounting (vouchers, customers and accounts), then press Try again.";
-    case "http_404":
-      return "This was deleted in Tripletex. Post it again, or leave it out.";
-    case "closed_period":
-      return "Tripletex has closed the accounting period for this date. Open the period in Tripletex (or ask your accountant), then press Try again.";
-    case "rate_limit":
-      return "Tripletex asked us to slow down. It will go through by itself in a few minutes.";
-    case "timeout":
-    case "network":
-      return "Tripletex did not answer. It will be tried again by itself.";
-    case "redirect":
-      return "Tripletex answered from another address, which is not followed. It will be tried again.";
-    case "revision":
-      return "The customer was changed in Tripletex at the same moment. It will be tried again.";
-    case "duplicate":
-      return "Tripletex already has this. It is looked up and linked.";
-    case "no_consumer_token":
-      return "This token is made for the Kaizena Flow app, which Tripletex has not approved yet. In Tripletex, make an API token under Company → API tokens instead, and paste that.";
-    case "bad_answer":
-      return "Tripletex answered with something we could not read. It will be tried again.";
-    default:
-      if (failure.class === "transient") return "Tripletex had a problem on its side. It will be tried again by itself.";
-      return "Tripletex refused it. See what it said below, fix it in Tripletex or in the Tripletex settings, then press Try again.";
-  }
+/**
+ * What each failure says to an owner, in plain words, with what to do, by `TripletexFailure.key`; `transient` and `rule` for any other
+ * key of that class. The admin's catalogues give the same keys in each language (`notifications` → `integrations.tripletex.failures`).
+ */
+export const FAILURE_WORDS = {
+  http_401: "Tripletex no longer accepts the token. Make a new one in Tripletex and paste it on the Tripletex page.",
+  http_403: "The token may not do this in Tripletex. Give it access to accounting (vouchers, customers and accounts), then press Try again.",
+  http_404: "This was deleted in Tripletex. Post it again, or leave it out.",
+  closed_period: "Tripletex has closed the accounting period for this date. Open the period in Tripletex (or ask your accountant), then press Try again.",
+  rate_limit: "Tripletex asked us to slow down. It will go through by itself in a few minutes.",
+  timeout: "Tripletex did not answer. It will be tried again by itself.",
+  network: "Tripletex did not answer. It will be tried again by itself.",
+  redirect: "Tripletex answered from another address, which is not followed. It will be tried again.",
+  revision: "The customer was changed in Tripletex at the same moment. It will be tried again.",
+  duplicate: "Tripletex already has this. It is looked up and linked.",
+  no_consumer_token:
+    "This token is made for the Kaizena Flow app, which Tripletex has not approved yet. In Tripletex, make an API token under Company → API tokens instead, and paste that.",
+  bad_answer: "Tripletex answered with something we could not read. It will be tried again.",
+  not_connected: "Connect Tripletex first.",
+  transient: "Tripletex had a problem on its side. It will be tried again by itself.",
+  rule: "Tripletex refused it. See what it said below, fix it in Tripletex or in the Tripletex settings, then press Try again.",
+} as const;
+
+export type FailureWords = Record<keyof typeof FAILURE_WORDS, string>;
+
+/** What a failure says to an owner, in the words given (English by default). */
+export function failureWords(failure: Pick<TripletexFailure, "key" | "class">, words: FailureWords = FAILURE_WORDS): string {
+  if (failure.key in words) return words[failure.key as keyof FailureWords];
+  return failure.class === "transient" ? words.transient : words.rule;
 }
 
 /** Why a document waits before anything is sent (`BlockCode` of `tripletex-map.ts`, and the connection's own reasons), in words. */
-export const BLOCK_WORDS: Record<string, string> = {
+export const BLOCK_WORDS = {
   currency_unsupported: "Only invoices in Norwegian kroner are sent to Tripletex for now. Book this one by hand.",
   vat_unmapped: "This document has a kind of VAT the Tripletex settings do not place yet. Choose where it goes under Tripletex → Customise.",
   totals_mismatch: "The lines do not add up to the total, so nothing was sent. Contact support.",
   nothing_to_book: "There is nothing to book on this document.",
   waiting_for_invoice: "Waits until its invoice is in Tripletex.",
   settings_problem: "The Tripletex settings need a look before this can be sent.",
-};
+  customer_missing: "The client this document is for could not be read. Contact support.",
+  document_missing: "The document could not be read. Contact support.",
+} as const;
+
+export type BlockWords = Record<keyof typeof BLOCK_WORDS, string>;
