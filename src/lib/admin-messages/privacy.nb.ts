@@ -347,6 +347,7 @@ export const privacyNb: PrivacyMessages = {
       unconfirmed_signups: "Registreringer som aldri ble bekreftet",
       content_report_senders: "Avsendere av meldinger om ulovlig innhold",
       carrier_labels: "Fraktetiketter tatt vare på fra et fraktselskap",
+      sandboxes: "Sandkassene i sidebyggeren",
     },
     bases: {
       read: "Lest i kilden",

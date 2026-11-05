@@ -4,8 +4,9 @@ import { testDb } from "./db";
 
 /**
  * The page builder's sandbox (D457, `docs/builder-sandbox.md`), as a visitor without an account meets it: closed while its switch is off;
- * on, *Start building* makes a store of their own and opens it, the real builder edits and publishes its front page, nobody else sees the
- * store (its storefront is private, another browser cannot open the sandbox), and *Start over* leaves it for a fresh one.
+ * on, *Start building* makes a store of their own and opens it, the real builder edits and publishes its front page and opens a new
+ * article, nobody else sees the store (its storefront is private, another browser cannot open the sandbox), and *Start over* leaves it
+ * for a fresh one.
  */
 test.describe.configure({ mode: "serial" });
 
@@ -36,15 +37,16 @@ test("a visitor without an account builds and publishes in a private store of th
   await setSandbox(true);
   await page.goto("/admin/try");
   await page.getByRole("button", { name: "Start building" }).click();
-  await expect(page).toHaveURL(/\/admin\/try\/[0-9a-f-]{36}$/);
-  const home = page.url();
-  const id = home.split("/").pop()!;
-  await expect(page.getByRole("heading", { level: 1, name: "Your store" })).toBeVisible();
+  // The real builder opens on the store's front page (S4), with the guided path above it.
+  await expect(page).toHaveURL(/\/admin\/try\/[0-9a-f-]{36}\/pages\/[0-9a-f-]{36}$/);
+  const id = /\/admin\/try\/([0-9a-f-]{36})\//.exec(page.url())![1];
+  const home = new URL(`/admin/try/${id}`, page.url()).toString();
   await expect(page.getByText("Only you can see this store.")).toBeVisible();
   await expect(page.getByText("7 days left")).toBeVisible();
+  const guide = page.getByRole("complementary", { name: "Things to try" });
+  await expect(guide).toBeVisible();
+  await expect(guide.getByRole("link", { name: "Choose a look" })).toHaveAttribute("href", `/admin/try/${id}/looks`);
 
-  // The real builder, on the store's front page.
-  await page.getByRole("link", { name: "Edit the front page" }).click();
   const title = page.getByLabel("Title", { exact: true });
   await expect(title).toBeVisible();
   const heading = `Sandkasse ${Date.now().toString(36)}`;
@@ -61,16 +63,43 @@ test("a visitor without an account builds and publishes in a private store of th
         from commerce.sandboxes x join commerce.stores s on s.id = x.store_id where x.id = ${id}`;
     expect(row).toMatchObject({ private_mode: true, published: true, title: heading });
     // Nobody else sees it: the store's own address answers with its private landing page, never the page.
-    const storefront = await page.request.get(`/s/${row.slug}`);
-    expect(await storefront.text()).not.toContain(heading);
+    const storefront = await browser.newContext();
+    const outsider = await storefront.newPage();
+    await outsider.goto(`/s/${row.slug}`);
+    await expect(outsider.locator("[data-private-landing]")).toBeVisible();
+    await storefront.close();
+    // *See your store* (S4): the visitor walks their own storefront, in a new tab, past the private landing page.
+    const [walk] = await Promise.all([page.waitForEvent("popup"), page.getByRole("link", { name: "See your store" }).click()]);
+    await expect(walk).toHaveURL(new RegExp(`/s/${row.slug}`));
+    await walk.waitForLoadState();
+    await expect(walk.locator("[data-private-landing]")).toHaveCount(0);
+    await walk.close();
   } finally {
     await sql.end();
   }
+
+  // View opens the published page in the sandbox's own preview: the store's address is private and shows only its landing page.
+  await page.getByRole("link", { name: "View page", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/try\/[0-9a-f-]{36}\/pages\/[0-9a-f-]{36}\/preview\?published=1$/);
+  await expect(page.getByText("The published version, as your store shows it. Only you can see it.")).toBeVisible();
 
   // The preview draws it for the visitor.
   await page.goto(home);
   await page.getByRole("link", { name: "Preview" }).first().click();
   await expect(page.getByRole("link", { name: "Back to editing" })).toBeVisible();
+
+  // Articles are in the sandbox too (S3): a new one opens in the same builder.
+  await page.goto(home);
+  await page.getByRole("link", { name: "New article" }).click();
+  await expect(page).toHaveURL(/\/admin\/try\/[0-9a-f-]{36}\/articles\/new$/);
+  await expect(page.getByLabel("Title", { exact: true })).toBeVisible();
+
+  // *Try another look* (S4): a free theme becomes its look in one press.
+  await page.goto(`${home}/looks`);
+  await expect(page.getByRole("heading", { level: 1, name: "Try another look" })).toBeVisible();
+  await page.getByRole("button", { name: "Use this look" }).first().click();
+  await expect(page.getByText("Your store wears its new look. Open a page to see it.")).toBeVisible();
+  await expect(page.getByText("Your look", { exact: true })).toBeVisible();
 
   // Another browser, without the pass, cannot open it.
   const other = await browser.newContext();
@@ -103,9 +132,9 @@ test("Keep this store: the emailed link makes the sandbox the person's store, an
   try {
     await page.goto("/admin/try");
     await page.getByRole("button", { name: "Start building" }).click();
-    await expect(page).toHaveURL(/\/admin\/try\/[0-9a-f-]{36}$/);
-    const home = page.url();
-    const id = home.split("/").pop()!;
+    await expect(page).toHaveURL(/\/admin\/try\/[0-9a-f-]{36}\/pages\/[0-9a-f-]{36}$/);
+    const id = /\/admin\/try\/([0-9a-f-]{36})\//.exec(page.url())![1];
+    const home = new URL(`/admin/try/${id}`, page.url()).toString();
 
     // The bar's main action, then the sign-up's three answers.
     await page.getByRole("link", { name: "Keep this store" }).click();

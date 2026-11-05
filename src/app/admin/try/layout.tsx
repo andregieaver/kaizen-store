@@ -23,7 +23,7 @@ export default function TryLayout({ children }: LayoutProps<"/admin/try">) {
 async function Words({ children }: { children: React.ReactNode }) {
   const lang = await requestAdminLang();
   return (
-    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "shell", "sandbox"])}>
+    <AdminTextProvider lang={lang} texts={adminTexts(lang, ["common", "shell"])}>
       <AdminLangSync lang={lang} />
       {children}
     </AdminTextProvider>

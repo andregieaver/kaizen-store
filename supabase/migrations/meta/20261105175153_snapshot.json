@@ -1,6 +1,6 @@
 {
-  "id": "2c61f7c4-c36c-40b8-a763-31e391d27d09",
-  "prevId": "3305822d-659a-481c-9cc5-ae017dfffc55",
+  "id": "2da5cf0e-c14b-4bcb-9c5f-b421b515347b",
+  "prevId": "c5558395-e503-4d1f-a0cb-7370b1e68f12",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -45883,6 +45883,20 @@
           "primaryKey": false,
           "notNull": false
         },
+        "sandbox_ai_micros": {
+          "name": "sandbox_ai_micros",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 500000
+        },
+        "sandbox_storage_bytes": {
+          "name": "sandbox_storage_bytes",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 50000000
+        },
         "content_screening": {
           "name": "content_screening",
           "type": "boolean",
@@ -46125,6 +46139,14 @@
         "platform_settings_sandbox_daily_cap": {
           "name": "platform_settings_sandbox_daily_cap",
           "value": "\"commerce\".\"platform_settings\".\"sandbox_daily_cap\" between 0 and 10000"
+        },
+        "platform_settings_sandbox_ai": {
+          "name": "platform_settings_sandbox_ai",
+          "value": "\"commerce\".\"platform_settings\".\"sandbox_ai_micros\" between 0 and 100000000"
+        },
+        "platform_settings_sandbox_storage": {
+          "name": "platform_settings_sandbox_storage",
+          "value": "\"commerce\".\"platform_settings\".\"sandbox_storage_bytes\" between 0 and 1000000000"
         },
         "platform_settings_locales": {
           "name": "platform_settings_locales",
@@ -54735,7 +54757,7 @@
       "checkConstraints": {
         "retention_rules_kind": {
           "name": "retention_rules_kind",
-          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels')"
+          "value": "\"commerce\".\"retention_rules\".\"kind\" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes')"
         },
         "retention_rules_value": {
           "name": "retention_rules_value",
@@ -56977,9 +56999,31 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "purged_at": {
+          "name": "purged_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
+        "sandboxes_expired_idx": {
+          "name": "sandboxes_expired_idx",
+          "columns": [
+            {
+              "expression": "ended_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"sandboxes\".\"state\" = 'expired'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "sandboxes_open_idx": {
           "name": "sandboxes_open_idx",
           "columns": [
@@ -57072,6 +57116,10 @@
         "sandboxes_state": {
           "name": "sandboxes_state",
           "value": "\"commerce\".\"sandboxes\".\"state\" in ('open', 'expired', 'kept', 'purged')"
+        },
+        "sandboxes_purged": {
+          "name": "sandboxes_purged",
+          "value": "(\"commerce\".\"sandboxes\".\"state\" = 'purged') = (\"commerce\".\"sandboxes\".\"purged_at\" is not null)"
         },
         "sandboxes_pass_hash": {
           "name": "sandboxes_pass_hash",

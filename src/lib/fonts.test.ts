@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import rows from "./fonts/google-fonts.json";
-import { catalogFont, fontClass, fontSlug, fontStack, FONT_FAMILY, FONT_SLUG, installedStyles, type CatalogRow } from "./fonts";
+import { catalogFont, fontClass, fontSlug, fontStack, FONT_FAMILY, FONT_SLUG, installedStyles, latinUprightFile, type CatalogRow } from "./fonts";
 import { parseSiteFonts } from "./fonts-schema";
 
 describe("Google Fonts (D59)", () => {
@@ -42,5 +42,23 @@ describe("Google Fonts (D59)", () => {
     expect(parseSiteFonts({ heading: "Lora", body: "Inter" })).toEqual({ heading: "Lora", body: "Inter" });
     expect(parseSiteFonts({ heading: "Lora; }" })).toEqual({});
     expect(parseSiteFonts(null)).toEqual({});
+  });
+
+  it("finds the one file a family draws upright Latin text from, to preload, and none when each weight has its own", () => {
+    const face = (subset: string, style: string, weight: number, file: string) =>
+      `/* ${subset} */\n@font-face { font-family: 'Inter'; font-style: ${style}; font-weight: ${weight}; font-display: swap; src: url(/api/fonts/files/${file}.woff2) format('woff2'); unicode-range: U+0000-00FF; }`;
+    const a = "a".repeat(32);
+    const b = "b".repeat(32);
+    const c = "c".repeat(32);
+    const d = "d".repeat(32);
+    // A variable family: every upright weight in one file, italics and other scripts in others.
+    const variable = [face("latin-ext", "normal", 400, d), face("latin", "italic", 400, c), ...[400, 500, 600, 700].map((w) => face("latin", "normal", w, a))].join("\n");
+    expect(latinUprightFile(`${variable}\n.kf-inter { font-family: "Inter", sans-serif; }`)).toBe(`/api/fonts/files/${a}.woff2`);
+    // A file per weight: which one a page draws first is not known.
+    expect(latinUprightFile([face("latin", "normal", 400, a), face("latin", "normal", 700, b)].join("\n"))).toBeNull();
+    // Only italics, or no Latin at all: nothing to preload.
+    expect(latinUprightFile(face("latin", "italic", 400, c))).toBeNull();
+    expect(latinUprightFile(face("cyrillic", "normal", 400, a))).toBeNull();
+    expect(latinUprightFile("/* Not installed: the fallback font shows. */\n")).toBeNull();
   });
 });

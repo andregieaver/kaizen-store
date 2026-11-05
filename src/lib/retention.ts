@@ -39,6 +39,7 @@ export const RETENTION_KINDS = [
   "unconfirmed_signups",
   "content_report_senders",
   "carrier_labels",
+  "sandboxes",
 ] as const;
 export type RetentionKind = (typeof RETENTION_KINDS)[number];
 
@@ -202,6 +203,7 @@ export const RETENTION_SEED: readonly RetentionRuleRow[] = [
   seed({ kind: "content_report_senders", country: null, periodValue: 12, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: content_report_senders", note: "Notices of illegal content (DSA art. 16): the sender's name and address are blanked this long after the decision, long enough to answer a complaint about it (art. 20 allows six months); the notice and its decision stay as the record. REPORT_SENDER_MONTHS, a test holds them equal.", checkedOn: "2026-10-31" }),
   seed({ kind: "access_requests", country: null, periodValue: 12, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: access_requests", note: "Applications to open a store, once decided (approved or declined): the name, the email address and the message are blanked 12 months after the decision; the row stays as the record that it was decided. One still waiting is kept. An approved applicant has their own account by then.", checkedOn: "2026-10-31" }),
   seed({ kind: "carrier_labels", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: carrier_labels", note: "Shipping and return labels a carrier gives only once (DHL Express, PostNord, DHL Paket): the PDF, with a name and address, is deleted this long after it was booked, long after it is printed and handed in; the shipment or return and its tracking number stay with the order.", checkedOn: "2026-11-05" }),
+  seed({ kind: "sandboxes", country: null, periodValue: 7, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: sandboxes", note: "The page builder's sandbox (D457): a sandbox nobody has visited for this long is ended and everything in it deleted (its pages, words, pictures, styles and the record of what was done in it); only the bare record that it existed, its times and its AI's cost stay. One ended sooner (Start over, its 30 days) goes at once. SANDBOX_DAYS, a test holds them equal.", checkedOn: "2026-11-05" }),
 ];
 
 /** What an empty rules table means: the safe side, never "keep nothing" and never "delete everything". */

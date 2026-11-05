@@ -1,7 +1,8 @@
 /**
  * The page builder's sandbox (D457, `docs/builder-sandbox.md`), in English: the start screen at `/admin/try`, the bar every sandbox page
  * has, the sandbox's home and what it says when a sandbox has ended. `{name}`-style placeholders are filled by `fillWords()`; a count is a
- * `{ one, many }` pair read by `countWords()`, with `{n}` the number.
+ * `{ one, many }` pair read by `countWords()`, with `{n}` the number. Only the server reads them (`SERVER_AREAS`): a client part, such as
+ * *Start over*, gets its words as props, so they are not in every admin screen's first scripts.
  */
 export const sandboxEn = {
   start: {
@@ -14,6 +15,9 @@ export const sandboxEn = {
     busy: "Many sandboxes were started from your network just now. Try again in an hour.",
     full: "The sandbox is full for today. Try again tomorrow.",
     failed: "Your store could not be made. Try again.",
+    withTheme: "You start from {store}, a store wearing {theme}.",
+    privacy: "What is kept, and for how long:",
+    privacyLink: "our privacy notice",
   },
   bar: {
     label: "Sandbox",
@@ -24,17 +28,25 @@ export const sandboxEn = {
     keep: "Keep this store",
     startOver: "Start over",
     startOverConfirm: "Start again from a fresh store? This one is closed and what you made here is gone.",
+    aiSpent: "The AI in this sandbox is used up. Keep this store to go on using it.",
+    storefront: "See your store",
+    storefrontNote: "Opens your store as visitors would see it, in a new tab. Only this browser can open it.",
   },
   home: {
     title: "Your store",
     lead: "Change anything you like: the words, the pictures, the look. Press Publish to see a page as your store would show it.",
     editFront: "Edit the front page",
+    looks: "Try another look",
     pages: "Pages",
     headers: "Headers",
     footers: "Footers",
+    articles: "Articles",
+    productLayouts: "Product layouts",
     newPage: "New page",
     newHeader: "New header",
     newFooter: "New footer",
+    newArticle: "New article",
+    newProductLayout: "New product layout",
     edit: "Edit",
     preview: "Preview",
     front: "Front page",
@@ -77,9 +89,51 @@ export const sandboxEn = {
     notice: "Preview: nothing is saved or copied",
     by: "By {publisher}",
   },
+  funnel: {
+    title: "Page builder sandbox",
+    description: "Visitors who tried the builder without signing up, by when they started. Kept: became someone's store.",
+    period: { one: "Last {n} day", many: "Last {n} days" },
+    made: "Started",
+    changed: "Changed something",
+    published: "Published",
+    kept: "Kept",
+    off: "The sandbox is off. Turn it on under Access requests.",
+    on: "The sandbox is on.",
+    switchLink: "Access requests",
+  },
+  guide: {
+    title: "Things to try",
+    done: "Done",
+    hide: "Hide",
+    headline: { title: "Change the headline", hint: "Click the big words at the top of the page and type your own." },
+    section: { title: "Add a section", hint: "Open Rows beside the page and drag one onto it." },
+    look: { title: "Try another look", hint: "Your words stay, the colours and fonts change.", link: "Choose a look" },
+    phone: { title: "See it on a phone", hint: "Press Small above the page." },
+  },
+  looks: {
+    title: "Try another look",
+    lead: "Your pages and words stay. The colours, fonts, header and footer change to the theme's.",
+    current: "Your look",
+    use: "Use this look",
+    keepToUse: "Keep this store to use it",
+    premium: "Premium: {price}, paid when your store opens",
+    free: "Free",
+    used: "Your store wears its new look. Open a page to see it.",
+    refused: "That look cannot be used in the sandbox.",
+    busy: "You have changed the look many times in the last hour. Try again later.",
+    failed: "The look could not be changed. Try again.",
+    back: "Back to your store",
+  },
+  view: {
+    published: "The published version, as your store shows it. Only you can see it.",
+    draft: "The saved draft, as your store would show it once published.",
+    notPublished: "This is not published yet: the saved draft is shown.",
+  },
   refused: {
     gone: "This sandbox has ended. Start a new one to go on.",
     notHere: "That is not part of the sandbox.",
+    aiSpent: "The AI in this sandbox is used up. Keep this store to go on using it.",
+    noLanguages: "This store sells in one language, so there is nothing to translate into.",
   },
 };
 

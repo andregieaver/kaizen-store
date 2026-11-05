@@ -314,6 +314,7 @@ export const privacyEn = {
       unconfirmed_signups: "Sign-ups never confirmed",
       content_report_senders: "Senders of notices of illegal content",
       carrier_labels: "Shipping labels kept from a carrier",
+      sandboxes: "The page builder's sandboxes",
     },
     bases: {
       read: "Read at the source",

@@ -32,6 +32,7 @@ import { deleteOldGuideRecords, pruneGuideTranscripts } from "./docs-guide-store
 import { textList } from "./sql-arrays";
 import { pruneRefusedComments } from "./blog-comments";
 import { pruneContentReports } from "./content-reports";
+import { retireIdleSandboxes } from "./sandbox";
 import { pruneUnconfirmedSignups } from "./self-signup";
 
 type Row = Record<string, unknown>;
@@ -137,6 +138,7 @@ export const RETENTION_STEPS = [
   "access_requests",
   "content_report_senders",
   "carrier_labels",
+  "sandboxes",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -435,6 +437,12 @@ const STEPS: Record<RetentionStep, StepFn> = {
   // and its decision stay as the record of how it was handled.
   async content_report_senders(ctx) {
     return { count: await pruneContentReports(ctx.now, cutoffInstant(await period(ctx, "content_report_senders"), ctx.now)) };
+  },
+
+  // The page builder's sandboxes (D457 S3): one nobody has visited for the rule's period ended, and what was in every ended one deleted
+  // (its library's files, then its store's rows); the five-minute job does the same as each one's own time runs out.
+  async sandboxes(ctx) {
+    return { count: await retireIdleSandboxes(cutoffInstant(await period(ctx, "sandboxes"), ctx.now).toISOString()) };
   },
 
   // Labels a carrier gives only once (DHL Express, PostNord, DHL Paket; a parcel's or a return's, D458, D459): the PDF holds a name and address and is

@@ -5,11 +5,16 @@ import { closeDb, db } from "@/db/client";
 import { SANDBOX_COOKIE, readPass } from "@/lib/sandbox";
 import { newPageContent } from "@/lib/page-content";
 
+import type { Account } from "./auth";
+
 /**
  * The page builder's sandbox (D457) against a real database: the switch, the budget and the cap; a store made from the Standard store,
  * private and the sandbox account's; the pass that opens it and nothing else; a visit pushing its time on; saving a page as the sandbox
- * account; no email of any kind; a sandbox ended by Start over or by its time; and a sandbox left out of the grid's stores.
+ * account; no email of any kind; a sandbox ended by Start over or by its time; and a sandbox left out of the grid's stores. Step S3: its
+ * allowances (storage and AI) and the AI's budget, its AI routes opened only by the pass, and the purge (its own files only, then every
+ * row of its store) by the job and by the retention rule.
  */
+process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 const jar = vi.hoisted(() => new Map<string, string>());
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/mailer", () => ({ emailSignInLink: async () => true }));
@@ -28,6 +33,13 @@ const pages = await import("./pages");
 const { sendEmail } = await import("./email");
 const { listGridStores } = await import("./content-grid");
 const signup = await import("./self-signup");
+const limits = await import("./limits");
+const sandboxAi = await import("./sandbox-ai");
+const storefront = await import("./sandbox-storefront");
+const { EMAIL_KINDS } = await import("@/lib/personal-data");
+const { readUnlock, unlockCookieName } = await import("@/lib/unlock-pass");
+const { unlockSecret } = await import("./private-secret");
+const { encryptSecret, parseKey } = await import("@/lib/secret-box");
 
 type Row = Record<string, unknown>;
 const RUN = Date.now().toString(36);
@@ -129,12 +141,14 @@ describe("working in a sandbox", () => {
     expect(again).toEqual(first);
   });
 
-  it("sends no email of any kind", async () => {
+  it("sends no email of any kind: every kind the storefront and the admin can send is refused for it (4.4)", async () => {
     const { id } = await made("email");
     const opened = await sandbox.sandboxFor(id);
-    for (const kind of ["order.shipped", "staff.new_order", "newsletter.confirm"]) {
+    const kinds = Object.keys(EMAIL_KINDS);
+    expect(kinds.length).toBeGreaterThan(40);
+    for (const kind of kinds) {
       const outcome = await sendEmail({ storeId: opened!.store.id, kind, to: "someone@example.com", email: { subject: "Hi", html: "<p>Hi</p>", text: "Hi" }, fromName: "Shop", idempotencyKey: `sandbox-${kind}-${RUN}` });
-      expect(outcome).toBe("suppressed");
+      expect(outcome, kind).toBe("suppressed");
     }
   });
 
@@ -229,5 +243,205 @@ describe("keeping a sandbox (D457 S2)", () => {
     await keep(id, email, `Closed ${RUN}`);
     const [request] = await db().execute<Row>(sql`select sandbox_id from commerce.access_requests where lower(email) = lower(${email})`);
     expect(request.sandbox_id).toBeNull();
+  });
+});
+
+describe("a sandbox's allowances (D457 S3)", () => {
+  it("holds its uploads to its storage, as any store's", async () => {
+    const { id } = await made("storage");
+    const opened = await sandbox.sandboxFor(id);
+    const store = opened!.store.id;
+    expect(await limits.storageRefusal(store, 1_000_000)).toBeNull();
+    expect(await limits.storageRefusal(store, 60_000_000)).toMatch(/./);
+  });
+
+  it("gives the AI only while its allowance has room, and only so many calls an hour", async () => {
+    const [had] = await db().execute<Row>(sql`select count(*)::int as n from commerce.ai_providers where store_id is null`);
+    const added = Number(had.n) === 0;
+    if (added) {
+      await db().execute(sql`
+        insert into commerce.ai_providers (store_id, provider, api_key_encrypted, api_key_hint, enabled, text_model)
+        values (null, 'openai', ${encryptSecret("sk-test", parseKey(process.env.SETTINGS_ENCRYPTION_KEY)!)}, 'test', true, 'text-a')`);
+    }
+    try {
+      const { id } = await made("ai");
+      const opened = (await sandbox.sandboxFor(id))!;
+      expect(await sandbox.sandboxAi(opened, "page_change")).not.toBeNull();
+      // Spent: the allowance at nothing (as a month's cost past it would be).
+      await db().execute(sql`update commerce.limit_overrides set value = 0 where store_id = ${opened.store.id}::uuid and key = 'ai_cost_month_micros'`);
+      limits.forgetLimits(opened.store.id);
+      expect(await sandbox.sandboxAi(opened, "page_change")).toBeNull();
+      const spent = await sandboxAi.sandboxChangeRequest(
+        new Request("http://localhost/admin/try/x/ai/change", { method: "POST", body: JSON.stringify({ type: "page", content: "{}", description: "Make it calmer" }) }),
+        id,
+      );
+      expect(spent.status).toBe(400);
+      expect(await spent.json()).toEqual({ ok: false, problem: "The AI in this sandbox is used up. Keep this store to go on using it." });
+      // With room again, twenty calls an hour, then none.
+      await db().execute(sql`update commerce.limit_overrides set value = 500000 where store_id = ${opened.store.id}::uuid and key = 'ai_cost_month_micros'`);
+      limits.forgetLimits(opened.store.id);
+      let given = 0;
+      for (let i = 0; i < 21; i++) if (await sandbox.sandboxAi(opened, "page_motion")) given += 1;
+      expect(given).toBe(19);
+    } finally {
+      if (added) await db().execute(sql`delete from commerce.ai_providers where store_id is null`);
+    }
+  });
+
+  it("answers its AI routes only through the pass, and only from its own pages", async () => {
+    const { id } = await made("route");
+    const ask = (headers: Record<string, string> = {}) =>
+      sandboxAi.sandboxPictureRequest(new Request("http://localhost/x", { method: "POST", headers, body: JSON.stringify({ brief: "A calm shop" }) }), id);
+    expect((await ask({ "sec-fetch-site": "cross-site" })).status).toBe(403);
+    jar.delete(SANDBOX_COOKIE);
+    expect((await ask()).status).toBe(404);
+  });
+});
+
+describe("purging a sandbox (D457 S3)", () => {
+  /** A picture in the sandbox's own folder, and a row naming a file of another store's (as a copied product's address would). */
+  async function pictures(store: string): Promise<void> {
+    await db().execute(sql`
+      insert into commerce.media (store_id, kind, url, bucket, path, thumbnail_path, file_name, content_type, size_bytes) values
+        (${store}::uuid, 'image', ${`https://example.com/${store}/own-${RUN}.webp`}, 'product-images', ${`${store}/own-${RUN}.webp`}, ${`${store}/own-${RUN}-480.webp`}, 'own.webp', 'image/webp', 10),
+        (${store}::uuid, 'image', ${`https://example.com/other/${store}-${RUN}.webp`}, 'product-images', ${`other/${store}-${RUN}.webp`}, null, 'other.webp', 'image/webp', 10)`);
+  }
+
+  it("removes its own files, then every row of its store, and leaves a bare tombstone", async () => {
+    const { id } = await made("purge");
+    const store = (await sandbox.sandboxFor(id))!.store.id;
+    await pictures(store);
+    expect(await sandbox.purgeSandbox(id)).toBeNull();
+    await sandbox.endSandbox(id);
+    const removed: [string, string[]][] = [];
+    // A file that cannot be removed purges nothing, so the next run tries again with the rows that name it.
+    expect(await sandbox.purgeSandbox(id, { remove: async () => false })).toBeNull();
+    const [kept] = await db().execute<Row>(sql`select state, (select count(*)::int from commerce.pages where store_id = ${store}::uuid) as pages from commerce.sandboxes where id = ${id}::uuid`);
+    expect(kept.state).toBe("expired");
+    expect(Number(kept.pages)).toBeGreaterThan(0);
+    const deleted = await sandbox.purgeSandbox(id, { remove: async (bucket, paths) => (removed.push([bucket, paths]), true) });
+    expect(deleted).toBeGreaterThan(10);
+    expect(removed).toEqual([["product-images", [`${store}/own-${RUN}.webp`, `${store}/own-${RUN}-480.webp`]]]);
+    const [row] = await db().execute<Row>(sql`
+      select x.state, x.purged_at is not null as purged, s.status, s.custom_css,
+             (select count(*)::int from commerce.pages where store_id = s.id) as pages,
+             (select count(*)::int from commerce.store_members where store_id = s.id) as members,
+             (select count(*)::int from commerce.media where store_id = s.id) as media,
+             (select count(*)::int from commerce.audit_log where store_id = s.id) as audit
+        from commerce.sandboxes x join commerce.stores s on s.id = x.store_id where x.id = ${id}::uuid`);
+    expect(row).toEqual({ state: "purged", purged: true, status: "closed", custom_css: "", pages: 0, members: 0, media: 0, audit: 0 });
+    expect(await sandbox.purgeSandbox(id)).toBeNull();
+  });
+
+  it("purges ended sandboxes in the five-minute job's step, and idle ones by the retention rule", async () => {
+    const remove = async () => true;
+    const { id: ended } = await made("job");
+    await sandbox.endSandbox(ended);
+    expect((await sandbox.purgeSandboxes(1000, { remove })).purged).toBeGreaterThanOrEqual(1);
+    const { id: idle } = await made("idle");
+    await db().execute(sql`update commerce.sandboxes set last_seen_at = now() - interval '3 days' where id = ${idle}::uuid`);
+    // The rule's period shortened to two days: the sandbox visited three days ago goes, whatever time it had left.
+    expect(await sandbox.retireIdleSandboxes(new Date(Date.now() - 2 * 86_400_000).toISOString(), { remove })).toBeGreaterThanOrEqual(1);
+    const rows = await db().execute<Row>(sql`select id, state from commerce.sandboxes where id in (${ended}::uuid, ${idle}::uuid) order by created_at`);
+    expect(rows.map((r) => r.state)).toEqual(["purged", "purged"]);
+  });
+});
+
+describe("walking its storefront (D457 S4)", () => {
+  it("hands this browser the store's staff pass once the sandbox's own pass opens it, and nothing without it", async () => {
+    const { id } = await made("walk");
+    const store = (await sandbox.sandboxFor(id))!.store;
+    const answer = await storefront.sandboxStorefrontRequest(new Request(`https://kaizenaflow.test/admin/try/${id}/store`), id);
+    expect(answer.status).toBe(303);
+    expect(new URL(answer.headers.get("location")!).pathname).toBe(`/s/${store.slug}`);
+    const cookie = answer.headers.get("set-cookie") ?? "";
+    expect(cookie).toContain(`${unlockCookieName(store.id)}=`);
+    expect(cookie).toMatch(/HttpOnly/i);
+    const token = decodeURIComponent(cookie.split(";")[0].split("=").slice(1).join("="));
+    expect(readUnlock(unlockSecret()!, token)).toMatchObject({ kind: "staff", storeId: store.id, store: store.slug });
+    // Another browser, without the pass: back to the sandbox's page, which says it has ended; no pass is given.
+    jar.delete(SANDBOX_COOKIE);
+    const refused = await storefront.sandboxStorefrontRequest(new Request(`https://kaizenaflow.test/admin/try/${id}/store`), id);
+    expect(new URL(refused.headers.get("location")!).pathname).toBe(`/admin/try/${id}`);
+    expect(refused.headers.get("set-cookie")).toBeNull();
+  });
+});
+
+describe("trying another look (D457 S4)", () => {
+  it("makes a free published theme its look as the sandbox account, and owes nothing for it", async () => {
+    const { applyDesignPreset } = await import("./design-presets");
+    const { listInstalls } = await import("./theme-installs");
+    const { id } = await made("look");
+    const opened = (await sandbox.sandboxFor(id))!;
+    const [theme] = await db().execute<Row>(sql`
+      select p.id from commerce.design_presets p
+       where p.published and p.archived_at is null and not exists (select 1 from commerce.theme_prices t where t.preset_id = p.id)
+       order by p.title limit 1`);
+    const result = await applyDesignPreset(opened.store.id, String(theme.id), opened.account.id, { copyFile: async () => null, installFonts: async () => ({ ok: true }) });
+    expect(result.ok).toBe(true);
+    expect((await listInstalls(opened.store.id)).find((install) => install.live)?.presetId).toBe(String(theme.id));
+    const [owed] = await db().execute<Row>(sql`select count(*)::int as n from commerce.theme_purchases where store_id = ${opened.store.id}::uuid`);
+    expect(owed.n).toBe(0);
+  });
+});
+
+describe("the front door (D457 S4)", () => {
+  /** A published demo store wearing a new published theme, as Platform → Themes makes one (`demo-stores.int.test.ts`). */
+  async function demoStore(): Promise<{ id: string; storeId: string; theme: string }> {
+    const designs = await import("./design-presets");
+    const starters = await import("./store-starters");
+    const demos = await import("./demo-stores");
+    const { parseStarterDetails } = await import("@/lib/store-starters");
+    const deps = { copyFile: async (bucket: string, _from: string, to: string) => `https://x.supabase.co/storage/v1/object/public/${bucket}/${to}`, installFonts: async () => ({ ok: true as const }) };
+    const [row] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_admin) values (${`sandbox-demo-${RUN}@example.com`}, 'Admin', true) returning id, email`);
+    const admin = { id: String(row.id), email: String(row.email), name: "Admin", platformAdmin: true, adminView: "basic" } as Account;
+    const made = await designs.createDesign(admin, { details: { title: `Tidewater ${RUN}`, summary: "", description: "", pictureUrl: null }, origin: { kind: "scratch" } }, deps);
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const published = await designs.publishDesign(admin, made.id);
+    if (!published.ok) throw new Error(published.problems.join(" "));
+    const details = parseStarterDetails({ title: `Shore ${RUN}`, summary: "", description: "", category: "retail", pictureUrl: "" });
+    if (!details.ok) throw new Error(details.problems.join(" "));
+    const content = await starters.createStarter(admin, { slug: `shore-${RUN}`, details: details.details });
+    if (!content.ok) throw new Error(content.problems.join(" "));
+    const frozen = await starters.publishStarter(admin, content.id);
+    if (!frozen.ok) throw new Error(frozen.problems.join(" "));
+    const demo = await demos.createDemoStore(admin, { name: `Tide ${RUN}`, slug: `tide-${RUN}`, look: { id: made.id, variation: null }, contentId: content.id }, deps);
+    if (!demo.ok) throw new Error(demo.problems.join(" "));
+    const live = await demos.publishDemoStore(admin, demo.id);
+    if (!live.ok) throw new Error(live.problems.join(" "));
+    const [store] = await db().execute<Row>(sql`select store_id from commerce.store_starters where id = ${demo.id}::uuid`);
+    return { id: demo.id, storeId: String(store.store_id), theme: made.id };
+  }
+
+  it("starts from a free theme's demo store when asked, never a premium one's, and from the platform's source for anything else", async () => {
+    expect(await sandbox.sandboxDemo("not-an-id")).toBeNull();
+    expect(await sandbox.sandboxDemo(crypto.randomUUID())).toBeNull();
+    const demo = await demoStore();
+    expect(await sandbox.sandboxDemo(demo.id)).toMatchObject({ id: demo.id, name: `Tide ${RUN}`, theme: `Tidewater ${RUN}` });
+    const started = await sandbox.startSandbox(`demo-${RUN}`, demo.id);
+    if (!started.ok) throw new Error(started.problem);
+    const [made] = await db().execute<Row>(sql`select source_store_id from commerce.sandboxes where id = ${started.id}::uuid`);
+    expect(made.source_store_id).toBe(demo.storeId);
+    // It opens on its front page in the builder.
+    expect(await sandbox.sandboxStartPath(started.id)).toMatch(new RegExp(`^/admin/try/${started.id}/(pages/[0-9a-f-]{36})?$`));
+    // Priced, the theme is shown and never handed to a sandbox (D286).
+    await db().execute(sql`insert into commerce.theme_prices (preset_id, currency, amount_minor) values (${demo.theme}::uuid, 'EUR', 4900)`);
+    expect(await sandbox.sandboxDemo(demo.id)).toBeNull();
+    const plain = await sandbox.startSandbox(`plain-${RUN}`, crypto.randomUUID());
+    if (!plain.ok) throw new Error(plain.problem);
+    const [row] = await db().execute<Row>(sql`select source_store_id = (select id from commerce.stores where is_template) as standard from commerce.sandboxes where id = ${plain.id}::uuid`);
+    expect(row.standard).toBe(true);
+  });
+
+  it("counts the funnel for the last 7 and 30 days: started, changed something, published, kept", async () => {
+    const funnel = await sandbox.sandboxFunnel();
+    expect(funnel.map((p) => p.days)).toEqual([7, 30]);
+    for (const period of funnel) {
+      expect(period.made).toBeGreaterThan(0);
+      expect(period.changed).toBeLessThanOrEqual(period.made);
+      expect(period.published).toBeLessThanOrEqual(period.changed);
+      expect(period.kept).toBeLessThanOrEqual(period.made);
+    }
+    expect(funnel[1].made).toBeGreaterThanOrEqual(funnel[0].made);
   });
 });

@@ -13,10 +13,14 @@ import { formProblems } from "@/lib/form-problems";
 import type { CssVersionItem } from "@/lib/css-versions";
 import type { GridData } from "@/lib/content-grid";
 import type { MotionPlanResult } from "@/lib/motion-plan";
+import type { DualChoice } from "@/lib/dual-page";
 import type { DuplicateResult } from "@/lib/page-duplicate";
 import { pageBlockSchema, termContentOf } from "@/lib/page-content";
+import { translateRequest, type TranslateResult } from "@/lib/page-translate-ai";
 import type { PageVersionItem } from "@/lib/page-versions";
 import { SANDBOX_KINDS, sandboxHome, type SandboxKind } from "@/lib/sandbox";
+import { requirementMet } from "@/lib/store-features";
+import { isPremium } from "@/lib/theme-prices";
 import type { SavedPart } from "@/lib/saved-parts";
 import type { Term } from "@/lib/taxonomy";
 import type { TemplateItem, TemplateResult, TemplateSource } from "@/lib/templates";
@@ -24,20 +28,24 @@ import type { SectionResult, ThemeSectionsOffer } from "@/lib/theme-sections";
 import type { StoreTheme } from "@/lib/theme";
 import { KAIZEN_CHOICES, type VisibilityChoices } from "@/lib/visibility";
 import { actionAdminLang } from "@/server/admin-request-lang";
+import { AiError } from "@/server/ai";
 import { listCssVersions, readCssVersion } from "@/server/css-versions";
 import { fieldsTag, pageFacts, saveFieldData } from "@/server/custom-fields";
 import { installFont } from "@/server/fonts";
 import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
-import { pickerPictures } from "@/server/media-library";
+import type { UploadResult } from "@/server/media";
+import { pickerPictures, uploadToLibrary } from "@/server/media-library";
 import { planPageMotion, readMotionRows } from "@/server/motion-ai";
 import { duplicatePage } from "@/server/page-duplicate";
+import { translatePageTexts } from "@/server/page-translate";
 import { listVersions, readVersion } from "@/server/page-versions";
-import { deletePage, getPageForEdit, pagesTag, savePage, unpublishPage } from "@/server/pages";
+import { deletePage, getPageForEdit, listPages, pagesTag, savePage, unpublishPage } from "@/server/pages";
 import { recommendedGridData } from "@/server/recommend-grid";
 import { budgetVisitor, takeBudget } from "@/server/request-budget";
 import { addressOf } from "@/server/analytics-visits";
+import { applyDesignPreset, designTags } from "@/server/design-presets";
 import { createAccessRequest } from "@/server/platform";
-import { endSandbox, holdSandbox, noteSandboxChange, passCookie, sandboxFor, startSandbox, type Sandbox } from "@/server/sandbox";
+import { endSandbox, holdSandbox, noteSandboxChange, passCookie, sandboxAi, sandboxFor, startSandbox, type Sandbox } from "@/server/sandbox";
 import { selfServeOn, startSelfSignup } from "@/server/self-signup";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { saveSiteCss } from "@/server/site-css";
@@ -46,6 +54,8 @@ import { createTerm, listTerms, termsTag, type TermsResult } from "@/server/taxo
 import { applyTemplate, listTemplates, setTemplateActive } from "@/server/templates";
 import { deleteTextStyle, saveTextStyle, textStylesTag, type DeleteStyleResult, type TextStyleResult } from "@/server/text-styles";
 import { placeThemeSection, themeSectionsFor } from "@/server/theme-sections";
+import { listInstalls, switchToInstall } from "@/server/theme-installs";
+import { themeStoreCards } from "@/server/theme-store";
 import { saveThemeLibrary, saveThemeTab } from "@/server/themes";
 import { ruleChoices } from "@/server/visibility";
 
@@ -53,7 +63,8 @@ import { ruleChoices } from "@/server/visibility";
  * The sandbox's actions (D457, `docs/builder-sandbox.md` 4.3): each opens the sandbox with its pass first (`sandboxFor()`, refusing
  * anything else in the same words), then does what the store's own action does after its access check, with the sandbox's store and the
  * sandbox account. Only these exist: an allow-list. Templates come from the marketplace only, never from "my stores" (one account owns
- * every sandbox, so that source would be every other visitor's). Nothing here sends an email, calls an AI, uploads or reaches outside.
+ * every sandbox, so that source would be every other visitor's). Nothing here sends an email or reaches outside; the AI is reached only
+ * through `sandboxAi()` (the sandbox's allowance and budget), and an upload only within its storage (`uploadToLibrary()`'s own check).
  */
 
 const isId = (id: unknown): id is string => z.uuid().safeParse(id).success;
@@ -98,7 +109,7 @@ export async function sandboxSaveAction(
   if (!result.ok) return { status: "error", problems: result.problems, code: result.code, issues: result.issues };
   // Custom fields (D118) come along with a page's JSON, as in the store's own action.
   const fields = typeof json === "object" && json !== null ? (json as { fields?: unknown }).fields : undefined;
-  if (kind === "page" && fields !== undefined) {
+  if ((kind === "page" || kind === "article") && fields !== undefined) {
     const locales = store.localization.locales;
     const problems = await db().transaction(async (tx) => {
       const facts = await pageFacts(tx, store.id, result.id, "draft");
@@ -180,7 +191,39 @@ export async function sandboxMotionAction(sandboxId: string, kind: SandboxKind, 
   if (!isKind(kind)) return { ok: false, problem: await notHere() };
   const rows = readMotionRows(kind, rowsJson);
   if (!rows.ok) return rows;
-  return planPageMotion(null, rows.rows);
+  // The model's plan within the sandbox's AI, else the rules' plan, as a store without AI gets.
+  return planPageMotion(await sandboxAi(sandbox, "page_motion"), rows.rows);
+}
+
+/** A page's texts translated into the store's other languages (D109), on the sandbox's AI. */
+export async function sandboxTranslateAction(sandboxId: string, request: unknown): Promise<TranslateResult> {
+  const sandbox = await open(sandboxId);
+  if (!sandbox) return { ok: false, problem: await gone() };
+  const parsed = translateRequest.safeParse(request);
+  if (!parsed.success) return { ok: false, problem: (await said()).textsUnreadable };
+  if (sandbox.store.localization.locales.length < 2) return { ok: false, problem: (await words()).noLanguages };
+  const connection = await sandboxAi(sandbox, "page_translation");
+  if (!connection?.textModel) return { ok: false, problem: (await words()).aiSpent };
+  try {
+    const { done, skipped } = await translatePageTexts(connection, { accountId: sandbox.account.id, storeId: sandbox.store.id }, parsed.data);
+    return { ok: true, done, skipped };
+  } catch (error) {
+    return { ok: false, problem: error instanceof AiError ? (await said()).aiFailedWith.replace("{problem}", error.message) : (await said()).aiFailed };
+  }
+}
+
+/** The sandbox's documents of a kind it offers that may open beside another in the builder (dual page, D412; S4). */
+export async function sandboxDualChoicesAction(sandboxId: string, kind: unknown): Promise<DualChoice[]> {
+  const sandbox = await open(sandboxId);
+  if (!sandbox || !isKind(kind) || (kind === "product_layout" && !requirementMet(sandbox.store, "shop"))) return [];
+  return (await listPages(sandbox.store.id, kind)).map((page) => ({ id: page.id, title: page.title }));
+}
+
+/** A picture uploaded from the builder into the sandbox's library, within its storage allowance (D457 S3, 4.5). */
+export async function sandboxUploadAction(sandboxId: string, formData: FormData): Promise<UploadResult> {
+  const sandbox = await open(sandboxId);
+  if (!sandbox) return { ok: false, problem: await gone() };
+  return uploadToLibrary({ storeId: sandbox.store.id, accountId: sandbox.account.id }, formData);
 }
 
 // Categories and tags, saved parts, grids, links and conditions.
@@ -374,6 +417,31 @@ export async function sandboxPlaceThemeSectionAction(sandboxId: string, key: str
 }
 
 // Keep this store (D457 S2): the sign-up as `/sign-up` makes it, naming the sandbox, so that approving it takes this store over.
+
+/**
+ * *Try another look* (S4): one of the theme store's free themes made the sandbox's look, as a store's *Use this theme* makes it (fonts,
+ * pictures copied into its library, a new header, footer and product layout; its pages and words stay), or the one installed already made
+ * live again. A premium theme is shown and never switched to (D286): refused here whatever the form says, so nothing is owed or given.
+ * Within `sandbox_copy`, as it copies pictures. Back to the looks, saying what happened.
+ */
+export async function sandboxUseLookAction(sandboxId: string, presetId: string): Promise<void> {
+  const sandbox = await open(sandboxId);
+  if (!sandbox) redirect(sandboxHome(sandboxId));
+  const looks = `${sandboxHome(sandbox.id)}/looks`;
+  const theme = isId(presetId) ? (await themeStoreCards()).find((card) => card.id === presetId) : undefined;
+  if (!theme || isPremium(theme.prices ?? [])) redirect(`${looks}?look=refused`);
+  if (!(await takeBudget(null, "sandbox_copy", sandbox.id))) redirect(`${looks}?look=busy`);
+  const { store, account } = sandbox;
+  const installed = (await listInstalls(store.id)).find((install) => install.presetId === theme.id);
+  if (installed?.live) redirect(`${looks}?look=used`);
+  const result = installed
+    ? await switchToInstall(store.id, installed.id, account.id)
+    : await applyDesignPreset(store.id, theme.id, account.id);
+  if (!result.ok) redirect(`${looks}?look=failed`);
+  for (const tag of designTags(store)) updateTag(tag);
+  await noteSandboxChange(sandbox.id, false);
+  redirect(`${looks}?look=used`);
+}
 
 /**
  * Asks to keep the sandbox: the self-serve sign-up's request and confirmation link (`startSelfSignup()`, within its limits), or, while

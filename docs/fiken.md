@@ -72,7 +72,7 @@ version 2.0.0, downloaded 2026-11-05); **[U]** not verified, a risk until tried 
 | Setup from the company's accounts, and its check | `src/lib/fiken-setup.ts` |
 | Documents to sales, customers to contacts | `src/lib/fiken-map.ts`, `fiken-map.test.ts` |
 | Failures and their words | `src/lib/fiken-errors.ts` |
-| Tables | `commerce.fiken_connections`, `commerce.fiken_sync` (`20261105164532_fiken.sql`), `src/db/fiken.test.ts` |
+| Tables | `commerce.fiken_connections`, `commerce.fiken_sync` (`20261105175153_fiken.sql`), `src/db/fiken.test.ts` |
 | HTTP client (one call at a time, a quarter of a second apart; the token endpoint; revoke) | `src/server/fiken-client.ts` |
 | Connect, choose the company, Start, Pause, settings, Disconnect, counts, attention | `src/server/fiken.ts` |
 | Sync engine and its job (`fiken` in the five-minute dispatcher) | `src/server/fiken-sync.ts` |

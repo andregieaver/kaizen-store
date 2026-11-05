@@ -81,6 +81,9 @@ export const BUDGETS = {
   // A sandbox placing a template or a theme's section (D457), each copying its pictures into the sandbox's library: the visitor is the
   // sandbox's id, the ceiling the whole site's.
   sandbox_copy: { window: "hour", visitor: 30, store: 1500 },
+  // A sandbox's call to the platform's AI (D457 S3): beside its allowance in money, a count, since a model with no price set costs nothing
+  // there. The visitor is the sandbox's id, the ceiling the whole site's; a failed count refuses, as the AI costs money.
+  sandbox_ai: { window: "hour", visitor: 20, store: 600 },
 } as const satisfies Record<string, { window: BudgetWindow; visitor: number; store: number }>;
 
 export type BudgetEndpoint = keyof typeof BUDGETS;
@@ -89,9 +92,9 @@ export type BudgetEndpoint = keyof typeof BUDGETS;
  * Endpoints a failed count refuses rather than allows (PSI SEC-10): guessing a password must not get easier while the database struggles,
  * nor the notice form become a way to send mail from Kaizena Flow's address, nor the docs' search or guide a way to spend the platform's AI
  * unmetered (D443: each search may embed its words; D444: each message to the guide asks its text model), nor the sandbox a way to copy
- * stores unmetered (D457).
+ * stores or call the AI unmetered (D457).
  */
-export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search", "docs_guide", "sandbox"]);
+export const FAIL_CLOSED: ReadonlySet<BudgetEndpoint> = new Set<BudgetEndpoint>(["unlock", "report", "oauth_register", "oauth_fetch", "docs_search", "docs_guide", "sandbox", "sandbox_ai"]);
 
 /** The bucket names of an endpoint, for the store and a visitor. */
 export function budgetBuckets(endpoint: BudgetEndpoint, visitor: string): { store: string; visitor: string } {

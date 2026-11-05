@@ -11,7 +11,9 @@ import { shownLooks, themePreviewPath, themeStartLink, themeTryLink } from "@/li
 import { withThemeName } from "@/lib/theme-store-parts";
 import { platformHref, themeStorePath } from "@/lib/theme-host";
 import { isPremium, pricesText } from "@/lib/theme-prices";
+import { SANDBOX_PATH } from "@/lib/sandbox";
 import { liveDemosOf } from "@/server/demo-stores";
+import { sandboxOpen } from "@/server/sandbox";
 import type { ThemeStorePage } from "@/server/theme-store";
 
 /**
@@ -100,8 +102,15 @@ export function ThemeLivePart({ theme, lang = "en", heading, text }: { theme: Th
 }
 
 async function LiveDemos({ theme, heading, text, lang = "en" }: { theme: ThemeStorePage } & Words) {
-  const demos = await liveDemosOf(theme.id);
-  return <SeeItLive title={theme.title} demos={demos} looks={stageLooks(theme, lang)} heading={heading} text={text} wears={platformText(lang).themeStore.live.wears} />;
+  const [demos, sandbox] = await Promise.all([liveDemosOf(theme.id), sandboxOpen()]);
+  const w = platformText(lang).themeStore.live;
+  // *Try it with this theme* (D457 S4): the page builder's sandbox from its first demo store, while the sandbox is open and the theme is free
+  // (a premium theme is never handed to a sandbox, D286; the start screen checks the same again).
+  const tryIt =
+    sandbox && demos[0] && !(theme.prices && isPremium(theme.prices))
+      ? { href: platformHref(`${SANDBOX_PATH}?demo=${demos[0].id}`), label: w.tryIt, note: w.tryItNote }
+      : undefined;
+  return <SeeItLive title={theme.title} demos={demos} looks={stageLooks(theme, lang)} heading={heading} text={text} wears={w.wears} tryIt={tryIt} />;
 }
 
 /** Pictures composed from its photographs, with words a person wrote or accepted (`docs/theme-showcase-phase-2.md` step 2). */

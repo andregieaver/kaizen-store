@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ThemeStorePage } from "@/server/theme-store";
 
 vi.mock("@/server/demo-stores", () => ({ liveDemosOf: async () => [] }));
+vi.mock("@/server/sandbox", () => ({ sandboxOpen: async () => false }));
 
 const { ThemeDetailsPart, ThemeFeaturesPart, ThemeHighlightsPart, ThemePicturesPart } = await import("./theme-page-parts");
 

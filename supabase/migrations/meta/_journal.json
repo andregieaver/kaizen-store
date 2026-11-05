@@ -4702,8 +4702,29 @@
     {
       "idx": 671,
       "version": "7",
-      "when": 1793897132318,
-      "tag": "20261105164532_fiken",
+      "when": 1793891349491,
+      "tag": "20261105150909_sandbox_purge",
+      "breakpoints": true
+    },
+    {
+      "idx": 672,
+      "version": "7",
+      "when": 1793891383559,
+      "tag": "20261105150943_sandbox_purge_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 673,
+      "version": "7",
+      "when": 1793897276224,
+      "tag": "20261105164756_sandbox_themes",
+      "breakpoints": true
+    },
+    {
+      "idx": 674,
+      "version": "7",
+      "when": 1793901113861,
+      "tag": "20261105175153_fiken",
       "breakpoints": true
     }
   ]

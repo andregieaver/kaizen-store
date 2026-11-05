@@ -12,7 +12,7 @@ import { emailSignInLink } from "@/lib/supabase/mailer";
 
 import { starterRefusal } from "@/lib/store-starters";
 
-import { checkOwnerStores } from "./limits";
+import { checkOwnerStores, forgetLimits } from "./limits";
 import { activeAccount, audit, type Account } from "./auth";
 import { sendEmail } from "./email";
 import { markDemoContent } from "./demo-content";
@@ -385,6 +385,8 @@ async function adoptRequestSandbox(admin: Account | null, requestId: string, slu
   // Stale, not refreshed: the confirmation's press must not draw its page again, whose link it has just used up.
   if (before?.slug) staleTag(storeTag(String(before.slug)));
   staleTag(storeTag(slug));
+  // The sandbox's allowances are gone with it (`adopt_sandbox()`): the store's plan's limits from now on.
+  forgetLimits(storeId);
   const owner = await requesterOf(requestId);
   await audit(owner, storeId, "store.sandbox_kept", { requestId }, { area: "settings", target: { type: "store", id: storeId } });
   await db()
