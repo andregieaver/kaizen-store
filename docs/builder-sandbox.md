@@ -285,7 +285,8 @@ Each step goes to production as built (D5); the switch keeps S1 to S3 to platfor
 - **Server:** `src/server/sandbox.ts` (the settings, `startSandbox()` within the `sandbox` budget, 5 an hour from one network and 200 for the
   platform, fail closed, and the cap; `sandboxFor()`; `currentSandbox()`; `noteSandboxChange()`; `endSandbox()`; `expireSandboxes()`, the
   dispatcher's `sandboxes` job) and `src/lib/sandbox.ts` (the pass, the address, the times, the kinds). A font installed from a sandbox is
-  within its own budget, `sandbox_font`. The switch is a card on Platform → Access requests with the day's count and the open ones.
+  within its own budget, `sandbox_font`, and placing a template or a theme's section, which copies its pictures (copies are not held to the
+  storage limit), within `sandbox_copy`. The switch is a card on Platform → Access requests with the day's count and the open ones.
 - **Routes:** `/admin/try` (the start screen and `startSandboxAction`), `/admin/try/{sandbox}` (the bar, the home), `…/{pages|headers|
   footers}/new`, `…/{id}` and `…/{id}/preview`, and `/admin/try/templates/{sandbox}/{template}/preview`; words in the `sandbox` catalogue,
   English and Norwegian.
@@ -297,7 +298,8 @@ Each step goes to production as built (D5); the switch keeps S1 to S3 to platfor
   sandbox), so the sandbox lists, previews and applies the marketplace's only and keeps its own saved parts private; the store's template
   preview needs a signed-in account, so the sandbox has its own (`TemplateActions.previewBase`); the test databases' setup made every store
   public, which the database now refuses for a sandbox, so `e2e/global-setup.ts` and `test/integration-setup.ts` leave sandboxes private.
-- **Not yet, as planned:** the editor's *View* link opens the store's private landing page until S4 lets the visitor walk the storefront;
+- **Not yet, as planned:** the editor's *View* link, and the address its *Published at …* names, open the store's private landing page
+  until S4 lets the visitor walk the storefront;
   the purge (S3), so an ended sandbox stays a closed store until then, its number bounded by the switch and the cap.
 
 ## 9. Tests

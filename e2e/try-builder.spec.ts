@@ -13,6 +13,8 @@ async function setSandbox(on: boolean): Promise<void> {
   const sql = testDb();
   try {
     await sql`update commerce.platform_settings set sandbox_on = ${on}, sandbox_daily_cap = 10000`;
+    // Every test browser is one network: the `sandbox` budget (5 an hour) would refuse a run after a few others on this database.
+    await sql`delete from commerce.chat_usage where store_id is null and bucket like 'budget:sandbox%'`;
   } finally {
     await sql.end();
   }
@@ -47,8 +49,9 @@ test("a visitor without an account builds and publishes in a private store of th
   await expect(title).toBeVisible();
   const heading = `Sandkasse ${Date.now().toString(36)}`;
   await title.fill(heading);
-  await page.getByRole("button", { name: "Publish", exact: true }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Published." })).toBeVisible();
+  // The front page is published already, so its button publishes the changes.
+  await page.getByRole("button", { name: "Publish changes", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: /^Published at \/s\/try-[a-z0-9]{8}\// })).toBeVisible();
 
   const sql = testDb();
   try {
