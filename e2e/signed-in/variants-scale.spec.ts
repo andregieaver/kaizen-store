@@ -84,6 +84,9 @@ test.beforeAll(async () => {
 });
 
 test("draws only the rows on screen of 2,048 variants, filters them by a value and sets a price for all shown", async ({ page }) => {
+  // A product of 2,048 variants opened, filtered, priced and saved is more than the 30 s most tests get: on a busy CI run the save was
+  // left too little of it (CI #998, #1001).
+  test.setTimeout(90_000);
   await page.goto(`/admin/${STORE}/products/${bigId}`);
   const table = page.locator("table[aria-rowcount]");
   await expect(table).toHaveAttribute("aria-rowcount", "2049");
@@ -106,17 +109,21 @@ test("draws only the rows on screen of 2,048 variants, filters them by a value a
   await panel.getByRole("button", { name: "Set", exact: true }).click();
   await expect(page.getByText("Set for 128 variants. Save the product to keep it.")).toBeVisible();
   await page.getByRole("button", { name: "Save", exact: true }).first().click();
-  await expect(page.getByText("Saved.").first()).toBeVisible({ timeout: 30_000 });
+  // The save's answer: Saved., or what it refused, said as such rather than as a wait that runs out.
+  const refused = page.getByRole("alert").filter({ hasText: "Nothing was saved yet." });
+  await expect(page.getByText("Saved.").first().or(refused)).toBeVisible({ timeout: 60_000 });
+  if (await refused.isVisible()) throw new Error(`The save was refused: ${await refused.innerText()}`);
 
   const sql = testDb();
   try {
+    // The prices as stored, read from `prices` itself: `current_prices` works out every current price's 30-day reference (`prior_price()`)
+    // before it narrows to this product, which took 10 to 19 s while the database's statistics were not yet refreshed.
     const prices = await sql<{ colour: string; amount: number }[]>`
-      select distinct v.options->>'Farge' as colour, cp.amount_minor::int as amount
+      select distinct v.options->>'Farge' as colour, p.amount_minor::int as amount
         from commerce.product_variants v
-        join commerce.current_prices cp on cp.variant_id = v.id
-        join commerce.markets m on m.store_id = v.store_id and m.code = cp.market_code
+        join commerce.prices p on p.variant_id = v.id and p.valid_to is null
        where v.product_id = ${bigId}
-         and m.code = (select code from commerce.markets where store_id = v.store_id and active order by created_at, code limit 1)
+         and p.market_code = (select code from commerce.markets where store_id = v.store_id and active order by created_at, code limit 1)
        order by 1, 2`;
     const third = prices.filter((p) => p.colour === "Farge 3");
     expect(third).toEqual([{ colour: "Farge 3", amount: 77700 }]);
