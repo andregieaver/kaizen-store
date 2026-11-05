@@ -101,7 +101,13 @@ export default async function PlatformAiPage() {
             <input name="api_key" type="password" autoComplete="off" className="min-h-10 max-w-96 rounded-lg border border-edge bg-card px-3 text-sm" />
             <span className="text-caption text-muted">
               {search ? fillWords(w.webSearchKeySaved, { hint: search.keyHint }) : null}{" "}
-              <a href={SEARCH_APIS[search?.provider ?? SEARCH_API_IDS[0]].keyUrl} target="_blank" rel="noreferrer" className="underline">
+              {/* At least 24 px high (WCAG 2.5.8): before a key is saved it stands alone under the field, not inside a sentence. */}
+              <a
+                href={SEARCH_APIS[search?.provider ?? SEARCH_API_IDS[0]].keyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-6 items-center underline underline-offset-2"
+              >
                 {w.webSearchGetKey}
               </a>
             </span>

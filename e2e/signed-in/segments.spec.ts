@@ -26,7 +26,13 @@ test.beforeAll(async () => {
     });
     await sql`update commerce.stores set setup_completed_at = coalesce(setup_completed_at, now()) where slug = ${STORE}`;
     const [store] = await sql`select id from commerce.stores where slug = ${STORE}`;
-    await sql`delete from commerce.segments where store_id = ${store.id}`;
+    // A title is the store's once, so the segments an earlier run saved go; except the ones a code or campaign is limited to, which the
+    // database keeps (the second test leaves one so, as it shows), each titled for its own run.
+    await sql`
+      delete from commerce.segments s
+       where s.store_id = ${store.id}
+         and not exists (select 1 from commerce.discount_codes d where d.store_id = s.store_id and d.segment_id = s.id)
+         and not exists (select 1 from commerce.campaigns c where c.store_id = s.store_id and c.segment_id = s.id)`;
     await sql`
       insert into commerce.marketing_subscribers (store_id, email, locale, status, source, consent_text, consented_at, token)
       values (${store.id}, ${`nyhet-${RUN}@example.com`}, 'nb-NO', 'subscribed', 'form', 'Ja takk', now(), ${(RUN + "y".repeat(43)).slice(0, 43)})`;

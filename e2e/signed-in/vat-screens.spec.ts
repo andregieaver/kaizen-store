@@ -32,6 +32,19 @@ test.beforeAll(async () => {
 });
 
 test("a platform admin schedules a VAT rate, which starts unverified", async ({ browser }) => {
+  // A rate is never deleted and a new one must start after the latest (the rates' history, D157), so each run schedules the day after
+  // whatever an earlier run on this database left: a fixed date was refused the second time (CI's database is always new, a local one not).
+  const sql = testDb();
+  let from = "2099-01-01";
+  try {
+    const [latest] = await sql`
+      select to_char(greatest(max(valid_from) + 1, date '2099-01-01'), 'YYYY-MM-DD') as next
+        from commerce.vat_rates where country_code = 'MT' and category = 'books'`;
+    if (latest?.next) from = String(latest.next);
+  } finally {
+    await sql.end();
+  }
+
   const context = await browser.newContext({ storageState: ADMIN.state });
   const page = await context.newPage();
   await page.goto("/admin/platform/vat");
@@ -39,20 +52,20 @@ test("a platform admin schedules a VAT rate, which starts unverified", async ({ 
   await card.getByRole("combobox", { name: /^Country/ }).selectOption("MT");
   await card.getByRole("combobox", { name: /^Category/ }).selectOption("books");
   await card.getByLabel(/^Rate/).fill("7.5");
-  await card.getByLabel(/^From/).fill("2099-01-01");
+  await card.getByLabel(/^From/).fill(from);
   await card.getByLabel(/^Source/).fill(`https://example.com/vat/mt/${RUN}`);
   await card.getByRole("button", { name: "Set the rate" }).click();
   await expect(card.getByText(/^The rate is set. It starts unverified/)).toBeVisible();
   await context.close();
 
-  const sql = testDb();
+  const check = testDb();
   try {
-    const rows = await sql`
+    const rows = await check`
       select rate::text as rate, verified_at is null as unverified from commerce.vat_rates
-       where country_code = 'MT' and category = 'books' and valid_from = '2099-01-01' and source = ${`https://example.com/vat/mt/${RUN}`}`;
+       where country_code = 'MT' and category = 'books' and valid_from = ${from}::date and source = ${`https://example.com/vat/mt/${RUN}`}`;
     expect(rows).toEqual([{ rate: "0.0750", unverified: true }]);
   } finally {
-    await sql.end();
+    await check.end();
   }
 });
 
