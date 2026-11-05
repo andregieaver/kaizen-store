@@ -269,6 +269,22 @@ Section rows set their own colours: left to the theme they would be the dark sur
 `{{check}}` where the thing is built in; on a phone each row stacks with its column names. Every page with a table says where each line
 comes from (an accordion, `look: "boxed"`, at the foot).
 
+### 6.11 A feature page (the owner's, 5 November 2026)
+
+The feature pages published on 5 November (Selling Products, Campaigns, Discounts, Customer Care, Bonus Program and the others under
+*Explore*) share one shape, read from production that day:
+
+- **Gradients at 35°**, the hero's too (`angle: 35`, opacity 80), turns A and B taking turns, C (9 %) for a band of highlighted cards.
+- **The hero** (6.1) with the main action, a text link to the first section (*See how it works* → `#{id}`) and three side-by-side checks.
+- **Three cards under a heading**: one row of `layout: "1"` with `moreLines: ["3"]`, `contentMax` 1100, `equalHeight`; the first line the
+  section's dual heading and lead, each card `radius: 6`, `shadow: "md"`, white at 50 % (`{ "type": "color", "color": "#ffffff", "opacity":
+  50 }`), padding 40 / 24 / 46, an `h3` (5.1), a lead and three checks at 17 px, left-aligned.
+- **Feature rows** (6.3) with a list of checks beside the words instead of a screenshot, taking turns side.
+- **Highlighted cards**: a row of `layout: "3"` on turn C, each card as above with the line of 6.5 and an `h2` dual heading; one links on.
+- **Questions** in one white card (`radius: 6`, `shadow: "md"`, padding 30 / 30 / 40), a `faq` block `look: "boxed"`, `single: true`, each
+  answer a bold first sentence.
+- **The end** (6.7) with the main action and *Compare us to others* → `/compare`.
+
 ## 7. A page's own settings
 
 - **Title** as the menu would say it (*Move your store*, *Get started fast*). **Address** from the title (`pageSlugFromTitle()`); a page
@@ -308,6 +324,7 @@ comes from (an accordion, `look: "boxed"`, at the foot).
 | Move from WooCommerce | `/move-your-store/move-from-woocommerce` | 4 November 2026, the Shopify page's twin, plus *Keep WordPress, or move everything* (two cards) and what comes *straight from WooCommerce* beside what *our free WordPress plugin* adds. Claims from `docs/moving-from-woocommerce.md` 17 | draft, for the owner to publish |
 
 | The six comparison pages | `/kaizen-vs-{platform}` | 4 and 5 November 2026, made again by one generator (`docs/comparison-pages.md`): the hero, six reasons, the table (6.10), where the other is the better fit, moving over, questions, the main action, how we compared. `/compare` left as the owner made it | drafts over the live pages, for the owner to publish |
+| Store Manager | `/store-manager` | 5 November 2026, by `docs/site-pages/store-manager.test.ts` (`docs/site-pages/README.md`): what the AI Store Manager does for an owner, in the feature pages' shape (6.11) with *You stay in charge* (the three levels) and three highlighted cards | draft over the live page, for the owner to publish |
 
 A page for another platform (`move-from-{platform}`) is the same eight-part shape: the hero, the three steps, what is particular to that
 platform (as WordPress's choice), what comes with you, no stress, the free move, its questions, the main action ending on *Compare us to
@@ -322,3 +339,6 @@ For the owner, not to copy:
   more*), with the old name: the page began as a copy of `/compare`.
 - The Shopify logo on *Move your store* links nowhere; it can lead to `move-your-store/move-from-shopify` (brands' `href`, D205).
 - *As your business grows - so does your Kaizena FLow.* (front page) and *KainzenaLabs* (the draft *Switch to Kaizena Flow*) are typos.
+- (5 November) A second, published page at `/kaizena-store-manager` (*Kaizena Store Manager*) holds a copy of *About us* (*Products and
+  Services*, *KaizenaLabs*, *Kaizen Life*) with no search texts, beside `/store-manager`; once the new Store Manager page is published it can
+  be unpublished, or point to `/store-manager`.
