@@ -1393,7 +1393,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "No accounting connector: Tripletex is listed as coming soon and exists only as the proposal `docs/tripletex.md`. Webhooks to Zapier, Make and Slack carry order, customer and subscription events (D41, D101). Files an accountant can take instead: invoices and credit notes CSV (D159), VAT, OSS and IOSS CSVs (D161), payouts CSV (D290) and order exports (D165); no voucher or ledger export (SAF-T), no VAT code mapping.",
+    "gap": "Two accounting connectors, built against their published specs and in-memory fakes: Tripletex (D453, a pasted token, vouchers) and Fiken (D460, OAuth2 through Fiken's consent page, sales as Annet salg), each idempotent by the document's own number, VAT mapped per bucket from the company's own chart, failures shown per document with Try again, and alerts. Neither is yet tried against the vendor's sandbox or a real company; Fiken waits for Kaizena Flow's app to be set up and later for Fiken's production status. NOK only; no payments read back, no SAF-T or SIE export, no connector beyond Norway.",
     "history": [],
     "bucket": "B",
     "wave": 2,
@@ -1408,11 +1408,16 @@
         "src/lib/integrations.ts",
         "src/server/integrations.ts",
         "docs/tripletex.md",
-        "src/components/admin/integration-mark.tsx"
+        "src/components/admin/integration-mark.tsx",
+        "src/server/tripletex-sync.ts",
+        "src/server/fiken-sync.ts",
+        "src/lib/accounting-docs.ts"
       ],
       "tests": [
         "src/lib/integrations.test.ts",
-        "src/server/integrations.int.test.ts"
+        "src/server/integrations.int.test.ts",
+        "src/server/tripletex-sync.int.test.ts",
+        "src/server/fiken.int.test.ts"
       ],
       "untested": false
     },
@@ -1422,7 +1427,9 @@
       "D159",
       "D161",
       "D165",
-      "D290"
+      "D290",
+      "D453",
+      "D460"
     ]
   },
   {

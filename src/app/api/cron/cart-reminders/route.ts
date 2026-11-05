@@ -67,6 +67,7 @@ import { prepareDueDeliveries } from "@/server/standing-orders";
 import { runStoreCopies } from "@/server/store-copy";
 import { prepareDueRecurringWork } from "@/server/work-recurring";
 import { syncDueTripletex } from "@/server/tripletex-sync";
+import { syncDueFiken } from "@/server/fiken-sync";
 import { sendAutopilotBudgetAlerts } from "@/server/autopilot-settings";
 import { runNightlyUiTranslations } from "@/server/ui-nightly";
 
@@ -140,6 +141,8 @@ async function dispatch() {
     recurring: () => prepareDueRecurringWork(),
     // Tripletex (D453): the issued invoices and credit notes of stores whose connection is on, booked as vouchers, within 40 seconds.
     tripletex: () => syncDueTripletex(),
+    // Fiken (D460): the same for stores whose Fiken connection is on, booked as sales (Annet salg), within 40 seconds.
+    fiken: () => syncDueFiken(),
     storeCopies: () => runStoreCopies(),
     bonus: () => runBonusJobs(),
     affiliates: () => runAffiliateJobs(),

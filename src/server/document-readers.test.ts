@@ -59,11 +59,16 @@ describe("who reads invoices and credit notes", () => {
         "src/server/order-export.ts",
         // An order change (D174): the original invoice's number for the editor's summary (`kind = 'order'`), nothing else of it.
         "src/server/order-edits.ts",
-        // Tripletex's setup (D453): which VAT kinds the store's invoices of the last year used; nothing of a buyer.
+        // The accounting connections' reading (D453, D460): which VAT kinds the store's invoices of the last year used, and each document's
+        // snapshot as the booking reads it; nothing of a buyer leaves but what the two syncs below send.
+        "src/server/accounting-documents.ts",
+        // Tripletex's page (D453): a waiting document's number for "Needs you"; nothing of a buyer.
         "src/server/tripletex.ts",
         // Tripletex's sync (D453): each document's snapshot booked as a voucher in the owner's own books. A shopper's name and address never
         // leave (`shop_customers`); a business buyer's company name and Norwegian organisation number make its customer card there.
         "src/server/tripletex-sync.ts",
+        // Fiken's sync (D460): the same documents booked as sales in the owner's Fiken, on the same terms (one contact for every shopper).
+        "src/server/fiken-sync.ts",
       ].sort(),
     );
   });

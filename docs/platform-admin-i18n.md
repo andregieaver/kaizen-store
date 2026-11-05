@@ -79,8 +79,8 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
   `useAdminText(area)`. A page that draws another area's parts hands that area down too (`AdminTextScope`, or `AdminAreas` where the page
   has no language at hand): an area not handed down is drawn in English whatever the account's language. That English fallback is in
   every admin screen's first scripts, so an area only server pages read is listed in `SERVER_AREAS` (`src/lib/admin-text.ts`; the
-  carriers' own words, `carriers`, and the page builder's sandbox, `sandbox`, since 5 November 2026): the fallback leaves it out and
-  `useAdminText()` refuses it.
+  carriers' own words, `carriers`, the page builder's sandbox, `sandbox`, and the Fiken page's, `fiken`, since 5 November 2026): the fallback
+  leaves it out and `useAdminText()` refuses it.
 - **Plural and choice:** the ICU subset of `src/lib/icu-lite.ts` (`{count, plural, one {…} other {…}}`), never string joins; dates, numbers
   and money with the account's locale (`formatMoney(…, "nb-NO")`, `Intl.DateTimeFormat`).
 - **Messages from the server:** a saver's refusal becomes a key with values (`problem("shipping.notSold", { country })`), turned into words

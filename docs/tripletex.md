@@ -74,6 +74,7 @@ the start day, "send the client's email", "attach PDFs", Pause, Disconnect, and 
 | Part | Files | State |
 |---|---|---|
 | Token, external number, amounts | `src/lib/tripletex.ts` | built, tested |
+| The documents read for booking, the buckets, the document loader (shared with Fiken since D460; the Tripletex modules re-export them) | `src/lib/accounting-docs.ts`, `src/server/accounting-documents.ts` | built, tested |
 | Settings and buckets | `src/lib/tripletex-settings.ts` | built, tested |
 | Setup from the company's chart | `src/lib/tripletex-setup.ts` | built, tested |
 | Documents to vouchers, customer cards | `src/lib/tripletex-map.ts` | built, tested |

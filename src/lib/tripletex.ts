@@ -4,6 +4,8 @@
  * Tripletex takes. No I/O; safe in the browser.
  */
 
+export { clipText, norwegianOrgNumber } from "./accounting-docs";
+
 export type TripletexMode = "test" | "live";
 
 /**
@@ -96,17 +98,4 @@ export function minorOf(amount: unknown): number | null {
   if (typeof amount !== "number" || !Number.isFinite(amount)) return null;
   const minor = Math.round(amount * 100);
   return Math.abs(minor / 100 - amount) < 1e-9 && Number.isSafeInteger(minor) ? minor : null;
-}
-
-/** Text Tripletex keeps on a voucher or posting: one line, no control characters, clipped (its limit is unverified, so kept short). */
-export function clipText(text: string, max = 100): string {
-  const one = text.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
-  return one.length <= max ? one : `${one.slice(0, max - 1).trimEnd()}…`;
-}
-
-/** A Norwegian organisation number (nine digits, as Brønnøysund keeps them), or null. Spaces and an `MVA` suffix are dropped. */
-export function norwegianOrgNumber(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const digits = value.replace(/^NO/i, "").replace(/MVA$/i, "").replace(/[\s.-]/g, "");
-  return /^\d{9}$/.test(digits) ? digits : null;
 }

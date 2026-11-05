@@ -147,8 +147,8 @@ export const staffEmailsEn = {
         drafts: { one: "{n} product is a draft, not on the site.", many: "{n} products are drafts, not on the site." },
         payments_test: { one: "Payments are in test mode: shoppers cannot really pay yet.", many: "Payments are in test mode: shoppers cannot really pay yet." },
         integration: { one: "An integration failed {n} send this week.", many: "An integration failed {n} sends this week." },
-        accounting: { one: "{n} invoice or credit note waits for you before it can go to Tripletex.", many: "{n} invoices and credit notes wait for you before they can go to Tripletex." },
-        accounting_token: { one: "Tripletex stopped accepting the token: nothing is sent until a new one is pasted.", many: "Tripletex stopped accepting the token: nothing is sent until a new one is pasted." },
+        accounting: { one: "{n} invoice or credit note waits for you before it can go to your accounting.", many: "{n} invoices and credit notes wait for you before they can go to your accounting." },
+        accounting_token: { one: "Your accounting stopped letting Kaizena Flow in: nothing is sent until it is connected again.", many: "Your accounting stopped letting Kaizena Flow in: nothing is sent until it is connected again." },
       },
     },
     analyticsAlerts: {
@@ -194,14 +194,14 @@ export const staffEmailsEn = {
       text: "{amount} for order {order} was due on {due} and has not been recorded as paid. The customer has been sent a notice. When the money arrives outside Kaizena Flow, record it on the order.",
       button: "Open the order",
     },
-    /** What waits in Tripletex (D453): once a day while it lasts, counts only. */
+    /** What waits in the store's accounting, Tripletex (D453) or Fiken (D460), as `{system}`: once a day while it lasts, counts only. */
     accounting: {
-      subject: "{store}: Tripletex needs you",
-      tokenHeading: "Tripletex stopped accepting the token",
-      tokenText: "Nothing is sent to Tripletex until a new token is pasted. Make one in Tripletex and paste it on the Tripletex page; everything that waited goes then.",
-      waitingHeading: { one: "{n} document could not go to Tripletex", many: "{n} documents could not go to Tripletex" },
-      waitingText: "Each one says why on the Tripletex page, with what to do. They wait there until you press Try again.",
-      button: "Open Tripletex",
+      subject: "{store}: {system} needs you",
+      tokenHeading: "{system} stopped letting Kaizena Flow in",
+      tokenText: "Nothing is sent to {system} until it is connected again. Open the {system} page and do what it says; everything that waited goes then.",
+      waitingHeading: { one: "{n} document could not go to {system}", many: "{n} documents could not go to {system}" },
+      waitingText: "Each one says why on the {system} page, with what to do. They wait there until you press Try again.",
+      button: "Open {system}",
     },
     lowStock: {
       line: "{stock} left, level {level}",

@@ -7555,6 +7555,119 @@ export const tripletexSync = commerce.table(
 );
 
 /**
+ * A store's connection to its Fiken company (D460, `docs/fiken.md`, written only by `src/server/fiken.ts`): the grant its owner gave
+ * Kaizena Flow's app on fiken.no, as an encrypted access token and refresh token (`fikenAccess()` is the only reader), which company it
+ * books into, and where the store's documents are booked (`settings`, `fikenSettingsSchema`, account codes and VAT types, no secrets).
+ * `choose` while a grant opens several companies and the owner has not picked one; `setup` until Start, which sets `sync_from`;
+ * `auth_failed` when Fiken stops taking the grant. One company belongs to one store at a time.
+ */
+export const fikenConnections = commerce.table(
+  "fiken_connections",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    /** Fiken's name for the company in every address (`/companies/{slug}`); null while the owner chooses. */
+    companySlug: text("company_slug"),
+    companyName: text("company_name"),
+    companyOrgNumber: text("company_org_number"),
+    /** Fiken's own test company (`testCompany`): Fiken has no test environment, only companies made for testing. */
+    testCompany: boolean("test_company").notNull().default(false),
+    accessTokenEncrypted: text("access_token_encrypted").notNull(),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }),
+    refreshTokenEncrypted: text("refresh_token_encrypted"),
+    /** `choose`, `setup`, `on`, `paused` or `auth_failed`. */
+    state: text("state").notNull().default("choose"),
+    /** The first issue date sent; set by Start, never earlier unless the owner chose it. */
+    syncFrom: date("sync_from", { mode: "string" }),
+    settings: jsonb("settings").notNull().default({}),
+    lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
+    /** A `FikenFailure` key (`http_401`, `timeout`, …), never Fiken's own words. */
+    lastErrorKey: text("last_error_key"),
+    lastErrorAt: timestamp("last_error_at", { withTimezone: true }),
+    failuresInARow: integer("failures_in_a_row").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    uniqueIndex("fiken_connections_company_key").on(t.companySlug),
+    index("fiken_connections_updated_by_idx").on(t.updatedBy),
+    check("fiken_connections_state", sql`${t.state} in ('choose', 'setup', 'on', 'paused', 'auth_failed')`),
+    check("fiken_connections_company", sql`${t.state} = 'choose' or (${t.companySlug} is not null and ${t.companyName} is not null)`),
+    check("fiken_connections_started", sql`${t.state} in ('choose', 'setup') or ${t.syncFrom} is not null`),
+    check("fiken_connections_settings", sql`jsonb_typeof(${t.settings}) = 'object'`),
+    check(
+      "fiken_connections_texts",
+      sql`length(coalesce(${t.companySlug}, '')) <= 100 and length(coalesce(${t.companyName}, '')) <= 255 and length(coalesce(${t.companyOrgNumber}, '')) <= 20 and length(coalesce(${t.lastErrorKey}, '')) <= 40`,
+    ),
+    check("fiken_connections_failures", sql`${t.failuresInARow} >= 0`),
+  ],
+);
+
+/**
+ * What was sent to Fiken (D460, written only by `src/server/fiken-sync.ts`), one row per document and per customer contact: Fiken's id,
+ * the sale number sent (`external_key`, the document's own number, looked up before every send so nothing is booked twice), and where it
+ * stands. Ids, states, amounts and error codes only: never a name, an address or a token. Kept when a connection goes, so connecting the
+ * same company again never books a document twice.
+ */
+export const fikenSync = commerce.table(
+  "fiken_sync",
+  {
+    storeId: storeId().references(() => stores.id),
+    companySlug: text("company_slug").notNull(),
+    /** `customer`, `work_invoice`, `work_credit_note`, `shop_invoice` or `shop_credit_note`. */
+    kind: text("kind").notNull(),
+    /** The document's id, or a customer's key (`customerKey()`: a Work client's id, `org:{number}` or `shop`). */
+    localId: text("local_id").notNull(),
+    /** Fiken's id: a sale's `saleId`, a contact's `contactId`. */
+    theirId: bigint("their_id", { mode: "number" }),
+    /** What people read in Fiken: the sale's journal entry number, when it was read. */
+    theirRef: text("their_ref"),
+    /** The sale number sent (a document only). */
+    externalKey: text("external_key"),
+    /** 1, or more for a deliberate posting again after the sale was deleted in Fiken. */
+    posting: integer("posting").notNull().default(1),
+    /** A hash of the contact last sent, so a contact is sent again only when something on it changed. */
+    contentHash: text("content_hash"),
+    amountMinor: bigint("amount_minor", { mode: "number" }),
+    currency: char("currency", { length: 3 }),
+    /** The VAT Fiken booked less the VAT on the document, when they differ. */
+    varianceMinor: bigint("variance_minor", { mode: "number" }),
+    /** `pending`, `sending`, `synced`, `failed` (tried again by itself), `blocked` (waits for a person), `drifted` or `skipped`. */
+    state: text("state").notNull().default("pending"),
+    /** A `FikenBlockCode` or a `FikenFailure` key. */
+    errorKey: text("error_key"),
+    errorDetail: text("error_detail"),
+    requestId: text("request_id"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    syncedAt: timestamp("synced_at", { withTimezone: true }),
+    /** When the document's PDF was attached to its sale (a shop document's, once its PDF is made), and how often that was tried. */
+    attachedAt: timestamp("attached_at", { withTimezone: true }),
+    attachTries: integer("attach_tries").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.companySlug, t.kind, t.localId] }),
+    uniqueIndex("fiken_sync_external_key").on(t.storeId, t.companySlug, t.externalKey).where(sql`${t.externalKey} is not null`),
+    index("fiken_sync_due_idx").on(t.storeId, t.state, t.nextAttemptAt).where(sql`${t.state} in ('pending', 'failed')`),
+    index("fiken_sync_attach_idx").on(t.storeId, t.syncedAt).where(sql`${t.attachedAt} is null and ${t.state} = 'synced' and ${t.kind} in ('shop_invoice', 'shop_credit_note')`),
+    check("fiken_sync_kind", sql`${t.kind} in ('customer', 'work_invoice', 'work_credit_note', 'shop_invoice', 'shop_credit_note')`),
+    check("fiken_sync_state", sql`${t.state} in ('pending', 'sending', 'synced', 'failed', 'blocked', 'drifted', 'skipped')`),
+    check("fiken_sync_synced", sql`${t.state} <> 'synced' or ${t.theirId} is not null`),
+    check("fiken_sync_sale_number", sql`${t.kind} = 'customer' or ${t.state} not in ('sending', 'synced') or ${t.externalKey} is not null`),
+    check("fiken_sync_attempts", sql`${t.attempts} >= 0 and ${t.posting} >= 1 and ${t.attachTries} >= 0`),
+    check(
+      "fiken_sync_texts",
+      sql`length(${t.companySlug}) between 1 and 100 and length(${t.localId}) between 1 and 80 and length(coalesce(${t.externalKey}, '')) <= 50 and length(coalesce(${t.errorKey}, '')) <= 40 and length(coalesce(${t.errorDetail}, '')) <= 400 and length(coalesce(${t.theirRef}, '')) <= 60 and length(coalesce(${t.requestId}, '')) <= 100`,
+    ),
+  ],
+);
+
+/**
  * A workflow (D356, `src/server/workflows.ts`, its only writer with the runner): a trigger (an event of the store or a schedule), conditions on
  * the event's fields and up to ten actions, as JSON checked by `workflowInputSchema` and `workflowProblems()`. Saved off; `version` rises
  * with each save and it may be switched on only once `tested_version` equals it.

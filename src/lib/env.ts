@@ -127,6 +127,24 @@ export function tripletexConsumerToken(
 }
 
 /**
+ * Kaizena Flow's app at Fiken (D460): its OAuth2 client id and secret, from the app made under Fiken's user settings → API (a developer's
+ * account). Without them the Fiken page says it is not available yet. Confidential client: the secret stays on the server.
+ */
+export function fikenEnv(
+  source: Record<string, string | undefined> = {
+    FIKEN_CLIENT_ID: process.env.FIKEN_CLIENT_ID,
+    FIKEN_CLIENT_SECRET: process.env.FIKEN_CLIENT_SECRET,
+  },
+): { clientId: string; clientSecret: string } | null {
+  const clientId = source.FIKEN_CLIENT_ID?.trim();
+  const clientSecret = source.FIKEN_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
+  if (!/^[A-Za-z0-9._-]{8,128}$/.test(clientId)) throw new Error("FIKEN_CLIENT_ID must be the client id of Kaizena Flow's app at Fiken.");
+  if (clientSecret.length < 8 || clientSecret.length > 256 || /\s/.test(clientSecret)) throw new Error("FIKEN_CLIENT_SECRET must be the client secret of Kaizena Flow's app at Fiken.");
+  return { clientId, clientSecret };
+}
+
+/**
  * Kaizena Flow's own Shopify app for moving a shop in (D445 step 2, `docs/moving-from-shopify.md` 4.2, `shopify/shopify.app.toml`): its
  * client id and secret from Shopify's Dev Dashboard, with `{SITE_URL}/api/shopify/callback` as its redirect address. `SHOPIFY_ALL_ORDERS=1`
  * once Shopify has approved `read_all_orders` for the app. Null without both: *Connect Shopify* is not offered and the files stay the way in.

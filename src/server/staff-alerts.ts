@@ -808,16 +808,20 @@ export async function sendTermsOverdueAlert(storeId: string, orderId: string, se
   return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
 }
 
+/** The accounting systems a store may send its documents to (one at a time), by name and page. */
+const ACCOUNTING_SYSTEMS = { tripletex: { name: "Tripletex", path: "/integrations/tripletex" }, fiken: { name: "Fiken", path: "/integrations/fiken" } } as const;
+
 /**
- * What waits in Tripletex (D453): to the recipients of `accounting` (owners by default), at most once a day per store and recipient while it
- * lasts, with counts only and a link to the Tripletex page, which says why each document waits. `day` is the store's own; the Tripletex job
- * calls this after its run, so a store that is fine is never written to.
+ * What waits in the store's accounting, Tripletex (D453) or Fiken (D460): to the recipients of `accounting` (owners by default), at most once
+ * a day per store and recipient while it lasts, with counts only and a link to the system's page, which says why each document waits. `day`
+ * is the store's own; each system's job calls this after its run, so a store that is fine is never written to.
  */
 export async function sendAccountingAlert(
   storeId: string,
   attention: { tokenRefused: boolean; waiting: number },
   day: string,
   send: typeof sendEmail = sendEmail,
+  system: keyof typeof ACCOUNTING_SYSTEMS = "tripletex",
 ): Promise<{ ok: boolean; sent: number } | null> {
   if (!attention.tokenRefused && attention.waiting === 0) return null;
   const [store, targets] = await Promise.all([storeById(storeId), alertRecipients(storeId, "accounting")]);
@@ -831,17 +835,18 @@ export async function sendAccountingAlert(
   if (Number(already?.n ?? 0) >= targets.length) return { ok: true, sent: 0 };
   const email = (lang: AdminLang): RenderedEmail => {
     const w = wordsOf(lang).accounting;
-    const heading = attention.tokenRefused ? w.tokenHeading : countWords(attention.waiting, w.waitingHeading);
-    const text = attention.tokenRefused ? w.tokenText : w.waitingText;
+    const named = ACCOUNTING_SYSTEMS[system];
+    const heading = fillWords(attention.tokenRefused ? w.tokenHeading : countWords(attention.waiting, w.waitingHeading), { system: named.name });
+    const text = fillWords(attention.tokenRefused ? w.tokenText : w.waitingText, { system: named.name });
     return renderEmail({
-      subject: fillWords(w.subject, { store: store.name }),
+      subject: fillWords(w.subject, { store: store.name, system: named.name }),
       preview: heading,
       lang: ADMIN_LANG_FACTS[lang].tag,
       footer: emailFooter(store, footerText(lang)),
       blocks: [
         { type: "heading", text: heading },
         { type: "paragraph", text },
-        { type: "button", text: w.button, url: adminUrl(store.slug, "/integrations/tripletex") },
+        { type: "button", text: fillWords(w.button, { system: named.name }), url: adminUrl(store.slug, named.path) },
       ],
     });
   };
