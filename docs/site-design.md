@@ -169,12 +169,23 @@ A brands block for platforms and partners: `columns: 6`, `gap: 30`, `greyscale: 
 
 Each recipe is the settings the owner's pages use; copy them as they are. Ids are new UUIDs for every row, column and block.
 
+### 6.0 The owner's two rules (5 November 2026)
+
+They hold for every new page and win over any older value below or on the pages made before them:
+
+- **A column with a background** is always the *column box*: `background: { "type": "color", "color": "#ffffff", "opacity": 50 }`,
+  `radius: 6`, `shadow: "md"` (cards, the highlighted card, the white card round a table). Its text keeps `#171717` (8).
+- **A gradient background** is always at **35°** (`"angle": 35`): the hero, the section turns, the closing row.
+
+Pages made before 5 November 2026 (the front page, *Move your store*, the move and comparison pages, Selling Products and Selling
+Subscriptions) still have the older values (sand at 6 % with `radius: 20` cards, gradients at 215° and 240°) until they are made again.
+
 ### 6.1 The hero (every page starts with one)
 
 ```json
 { "type": "row", "layout": "1", "align": "middle", "height": 50,
   "style": { "padding": { "top": 150, "left": 20, "right": 20, "bottom": 100 } },
-  "background": { "type": "gradient", "style": "shift", "flow": "still", "angle": 215, "colors": ["#908064", "#ffffff"], "opacity": 80 },
+  "background": { "type": "gradient", "style": "shift", "flow": "still", "angle": 35, "colors": ["#908064", "#ffffff"], "opacity": 80 },
   "backgroundFixed": true, "contentMax": 968, "typography": { "text": { "align": "center" } },
   "at": { "sm": { "height": 100, "style": { "padding": { "top": 0, "left": 20, "right": 20, "bottom": 0 } } } } }
 ```
@@ -188,8 +199,8 @@ Every row after the hero has a fixed (`backgroundFixed: true`), still, `shift` g
 
 | Turn | Background |
 |---|---|
-| A | `{ "type": "gradient", "style": "shift", "flow": "still", "colors": ["#908064", "#ededed"] }` (no angle) |
-| B | `{ "type": "gradient", "style": "shift", "flow": "still", "angle": 240, "colors": ["#908064", "#ffffff"] }` |
+| A | `{ "type": "gradient", "style": "shift", "flow": "still", "angle": 35, "colors": ["#908064", "#ededed"] }` |
+| B | `{ "type": "gradient", "style": "shift", "flow": "still", "angle": 35, "colors": ["#908064", "#ffffff"] }` |
 | C, a plain band | `{ "type": "color", "color": "#908064", "opacity": 9 }` (26 behind the logos on *Move your store*) |
 
 ### 6.3 A feature row: text beside a screenshot
@@ -209,7 +220,7 @@ On a phone the picture column moves up 40 px (`at.sm.style.margin.top: -40`).
 
 A row of `layout: "2"` with `moreLines: ["2", "2"]` (six cards in three lines of two, the front page's last row) or `"3"` for three, `gap`
 70, `contentMax` 1000, each column `radius: 20` holding a dual heading (eyebrow 18 px, title, text `#171717`) and its text. For cards with
-their own box, the column takes `background: { "type": "color", "color": "#908064", "opacity": 6 }` and padding 40 / 0 / 46 (*What is Kaizena
+their own box, the column takes the column box of 6.0 (white at 50 %, `radius: 6`, `shadow: "md"`) and padding 40 / 0 / 46 (*What is Kaizena
 Flow?*), and the row `equalHeight: true`.
 
 ### 6.5 A highlighted card: the one thing to notice
@@ -217,8 +228,8 @@ Flow?*), and the row `equalHeight: true`.
 One centred column with its own line, as *Do you need assistance?* on *Move your store*:
 
 ```json
-{ "border": { "style": "solid", "color": "#c4bcad", "width": { "top": 5, "left": 1, "right": 1, "bottom": 1 } }, "radius": 10,
-  "background": { "type": "color", "color": "#ffffff", "opacity": 24 },
+{ "border": { "style": "solid", "color": "#c4bcad", "width": { "top": 5, "left": 1, "right": 1, "bottom": 1 } }, "radius": 6, "shadow": "md",
+  "background": { "type": "color", "color": "#ffffff", "opacity": 50 },
   "style": { "padding": { "top": 20, "left": 30, "right": 30, "bottom": 30 } }, "typography": { "text": { "align": "center" } } }
 ```
 
@@ -255,7 +266,7 @@ Every page is checked at phone width in the builder. The owner's habits:
 ### 6.10 A comparison table (the comparison pages, 5 November 2026)
 
 A table block (D194) in a **white card** on a sand row, so its words read the same in both colour modes: the row is turn B, its second line
-one column with `background: { "type": "color", "color": "#ffffff" }`, `radius: 20`, padding 24 (12 / 8 on a phone) and the text colour
+one column with the column box of 6.0 (white at 50 %, `radius: 6`, `shadow: "md"`), padding 24 (12 / 8 on a phone) and the text colour
 `#171717`. The table:
 
 ```json
@@ -311,6 +322,7 @@ comes from (an accordion, `look: "boxed"`, at the foot).
 
 | Selling Products | `/selling-products` | 5 November 2026, for physical and digital products: two cards (ship it or send it), three feature rows without pictures (catalogue, stock and shipping, downloads), four cards (prices, checkout, being found, the EU's rules), questions, the main action. Each claim a Full row of `docs/parity/rows` (backorders, a Partial row, left out) | draft over the live page, for the owner to publish |
 
+| Selling Bookings | `/selling-bookings` | 5 November 2026, the first page with the owner's two rules (6.0): stays and rentals (the menu's *Bookings and rentals*; appointments have their own page), two cards, four feature rows (prices and seasons, calendars with Airbnb and Booking.com, payment, hosts), questions, the main action. Claims from D65 to D71 and `international.dac7-reporting` | draft over the live page, for the owner to publish |
 | Selling Subscriptions | `/selling-subscriptions` | 5 November 2026: subscriptions and subscription boxes as two cards, then three feature rows (customers in charge, billing, the numbers), questions, the main action. Claims from D25, D29, D102 and `analytics.subscription-analytics`; payment retries and subscriptions of downloads or services not claimed | draft over the live page, for the owner to publish |
 
 A page for another platform (`move-from-{platform}`) is the same eight-part shape: the hero, the three steps, what is particular to that
