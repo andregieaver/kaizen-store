@@ -5,9 +5,11 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import type { FormState } from "@/components/admin/action-form";
 import type { PageSaveState } from "@/components/admin/page-context";
 import { db } from "@/db/client";
 import { adminText } from "@/lib/admin-text";
+import { formProblems } from "@/lib/form-problems";
 import type { CssVersionItem } from "@/lib/css-versions";
 import type { GridData } from "@/lib/content-grid";
 import type { MotionPlanResult } from "@/lib/motion-plan";
@@ -33,7 +35,10 @@ import { listVersions, readVersion } from "@/server/page-versions";
 import { deletePage, getPageForEdit, pagesTag, savePage, unpublishPage } from "@/server/pages";
 import { recommendedGridData } from "@/server/recommend-grid";
 import { budgetVisitor, takeBudget } from "@/server/request-budget";
-import { endSandbox, noteSandboxChange, passCookie, sandboxFor, startSandbox, type Sandbox } from "@/server/sandbox";
+import { addressOf } from "@/server/analytics-visits";
+import { createAccessRequest } from "@/server/platform";
+import { endSandbox, holdSandbox, noteSandboxChange, passCookie, sandboxFor, startSandbox, type Sandbox } from "@/server/sandbox";
+import { selfServeOn, startSelfSignup } from "@/server/self-signup";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { saveSiteCss } from "@/server/site-css";
 import { storeTag } from "@/server/stores";
@@ -366,6 +371,42 @@ export async function sandboxPlaceThemeSectionAction(sandboxId: string, key: str
   if (!sandbox) return { ok: false, problem: await gone() };
   if (!(await takeBudget(null, "sandbox_copy", sandbox.id))) return { ok: false, problem: await notHere() };
   return placeThemeSection(sandbox.store.id, sandbox.account, String(key).slice(0, 60));
+}
+
+// Keep this store (D457 S2): the sign-up as `/sign-up` makes it, naming the sandbox, so that approving it takes this store over.
+
+/**
+ * Asks to keep the sandbox: the self-serve sign-up's request and confirmation link (`startSelfSignup()`, within its limits), or, while
+ * self-serve sign-up is off, a request for a platform admin, either naming this sandbox; its time is held while the link waits. The same
+ * answer whatever happened to the request, as the sign-up page gives.
+ */
+export async function keepSandboxAction(sandboxId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const sandbox = await open(sandboxId);
+  if (!sandbox) return { status: "error", messages: [await gone()] };
+  const lang = await actionAdminLang();
+  const w = adminText(lang, "sandbox").keep;
+  const selfServe = await selfServeOn();
+  const sent = selfServe ? w.sent : w.sentWaiting;
+  // A field people never see; bots fill it in.
+  if (String(formData.get("website") ?? "") !== "") return { status: "ok", messages: [sent] };
+  const parsed = z
+    .object({
+      storeName: z.string().trim().min(1, w.errors.storeName).max(80, w.errors.storeName),
+      name: z.string().trim().min(1, w.errors.name).max(100, w.errors.name),
+      email: z.email(w.errors.email),
+    })
+    .safeParse({ storeName: formData.get("storeName") ?? "", name: formData.get("name") ?? "", email: String(formData.get("email") ?? "").trim() });
+  if (!parsed.success) return formProblems(parsed.error.issues);
+  // Sent under the sentence that links the terms and the privacy notice (PSI REG-02), as the sign-up page's form is.
+  const input = { ...parsed.data, message: "", lang, termsAccepted: true, sandboxId: sandbox.id };
+  try {
+    if (selfServe) await startSelfSignup(input, addressOf(await headers()) || null);
+    else await createAccessRequest(input);
+    await holdSandbox(sandbox.id);
+  } catch {
+    return { status: "error", messages: [w.failed] };
+  }
+  return { status: "ok", messages: [sent] };
 }
 
 // Start over: this sandbox ended, a new one made, within the same budget as the first.

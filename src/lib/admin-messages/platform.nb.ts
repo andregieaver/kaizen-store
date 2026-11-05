@@ -521,6 +521,7 @@ export const platformNb: PlatformMessages = {
       unconfirmed: "Venter på at e-postadressen bekreftes: {n}",
       saved: "Lagret.",
     },
+    keepsSandbox: "Laget med Behold butikken fra sandkassen for sidebyggeren: godkjenner du den, får de butikken de bygde der, på adressen nedenfor; temaet som velges her, brukes ikke.",
     sandbox: {
       title: "Sandkasse for sidebyggeren",
       on: "På: hvem som helst kan trykke Begynn å bygge på {address} og redigere en privat butikk i sidebyggeren uten å registrere seg, i 7 dager etter siste besøk.",

@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 const next = vi.hoisted(() => ({ update: vi.fn(), revalidate: vi.fn() }));
 vi.mock("next/cache", () => ({ updateTag: next.update, revalidateTag: next.revalidate }));
 
-const { refreshTag, refreshTagNow } = await import("./refresh");
+const { refreshTag, refreshTagNow, staleTag } = await import("./refresh");
 
 describe("refreshing a tag (DATA-02)", () => {
   beforeEach(() => {
@@ -25,6 +25,16 @@ describe("refreshing a tag (DATA-02)", () => {
       ["store:a", "max"],
       ["store:a", { expire: 0 }],
     ]);
+  });
+
+  it("only marks stale for a press whose page must not be drawn again (D457 S2), even in an action", () => {
+    staleTag("store:a");
+    expect(next.update).not.toHaveBeenCalled();
+    expect(next.revalidate.mock.calls).toEqual([["store:a", "max"]]);
+    next.revalidate.mockImplementation(() => {
+      throw new Error('Invariant: static generation store missing in revalidateTag("store:a")');
+    });
+    expect(() => staleTag("store:a")).not.toThrow();
   });
 
   it("does nothing where no Next request runs, and throws anything else", () => {

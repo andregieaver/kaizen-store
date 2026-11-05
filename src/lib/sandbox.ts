@@ -15,6 +15,8 @@ export const SANDBOX_DAYS = 7;
 export const SANDBOX_MAX_DAYS = 30;
 /** A visit pushes the time on at most once a minute. */
 export const SANDBOX_TOUCH_SECONDS = 60;
+/** While a request to keep it waits (its link lasts 24 hours), a sandbox lasts at least this long from the request (D457 S2). */
+export const KEEP_HOLD_HOURS = 48;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

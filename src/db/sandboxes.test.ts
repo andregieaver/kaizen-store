@@ -172,3 +172,73 @@ describe("ending a sandbox", () => {
     expect(store).toBeTruthy();
   });
 });
+
+describe("keeping a sandbox (D457 S2)", () => {
+  /** A pending request from a sandbox, as Keep this store makes one. */
+  async function keepRequest(sandbox: string | null, email: string): Promise<string> {
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.access_requests (email, name, store_name, sandbox_id) values ($1, 'Kari', 'Kari Keramikk', $2) returning id",
+      [email, sandbox],
+    );
+    return id;
+  }
+
+  it("hands the store, its address and name, to the person who asked, and keeps the sandbox", async () => {
+    const { sandbox, store } = await makeSandbox();
+    const request = await keepRequest(sandbox, "kari@example.com");
+    const { id } = await one<{ id: string }>("select commerce.adopt_sandbox($1, 'kari-keramikk', 'Kari Keramikk', null) as id", [request]);
+    expect(id).toBe(store);
+    const row = await one<Record<string, unknown>>(
+      `select s.slug, s.name, s.sandbox, s.private_mode, s.status, commerce.store_is_active(s.id) as active,
+              (select array_agg(a.email) from commerce.store_members m join commerce.accounts a on a.id = m.account_id where m.store_id = s.id) as members,
+              (select m.role from commerce.store_members m join commerce.accounts a on a.id = m.account_id where m.store_id = s.id and a.email = 'kari@example.com') as role,
+              x.state, x.ended_at is not null as ended, r.status as request, r.store_id = s.id as request_store
+         from commerce.stores s join commerce.sandboxes x on x.store_id = s.id join commerce.access_requests r on r.id = $2
+        where s.id = $1`,
+      [store, request],
+    );
+    expect(row).toEqual({
+      slug: "kari-keramikk",
+      name: "Kari Keramikk",
+      sandbox: false,
+      private_mode: true,
+      status: "active",
+      active: true,
+      members: ["kari@example.com"],
+      role: "owner",
+      state: "kept",
+      ended: true,
+      request: "approved",
+      request_store: true,
+    });
+    // Once kept, never a sandbox again, and its own members may be added.
+    await refused("update commerce.stores set sandbox = true where id = $1", [store], /stores\.sandbox_fixed/);
+    await refused("select commerce.adopt_sandbox($1, 'kari-2', 'Kari', null)", [request], /already approved/);
+  });
+
+  it("refuses a request that names no sandbox, or one that has ended", async () => {
+    await refused("select commerce.adopt_sandbox($1, 'no-sandbox', 'X', null)", [await keepRequest(null, "none@example.com")], /sandboxes\.not_named/);
+    const { sandbox } = await makeSandbox();
+    const request = await keepRequest(sandbox, "late@example.com");
+    await one("select commerce.expire_sandbox($1)", [sandbox]);
+    await refused("select commerce.adopt_sandbox($1, 'too-late', 'X', null)", [request], /sandboxes\.not_open/);
+    const { sandbox: due } = await makeSandbox();
+    const dueRequest = await keepRequest(due, "due@example.com");
+    await db.query("update commerce.sandboxes set expires_at = now() - interval '1 minute' where id = $1", [due]);
+    await refused("select commerce.adopt_sandbox($1, 'past-time', 'X', null)", [dueRequest], /sandboxes\.not_open/);
+  });
+
+  it("refuses a disabled account, and changes nothing then", async () => {
+    await db.query("insert into commerce.accounts (email, disabled_at) values ('gone@example.com', now())");
+    const { sandbox, store } = await makeSandbox();
+    const request = await keepRequest(sandbox, "gone@example.com");
+    await refused("select commerce.adopt_sandbox($1, 'gone-shop', 'X', null)", [request], /disabled/);
+    const row = await one<Record<string, unknown>>("select s.sandbox, x.state from commerce.stores s join commerce.sandboxes x on x.store_id = s.id where s.id = $1", [store]);
+    expect(row).toEqual({ sandbox: true, state: "open" });
+  });
+
+  it("is the only way out: the store's flag and address stay as they are without it", async () => {
+    const { store } = await makeSandbox();
+    await refused("update commerce.stores set sandbox = false, slug = 'free-shop' where id = $1", [store], /stores\.sandbox_fixed/);
+  });
+});

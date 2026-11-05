@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import {
+  KEEP_HOLD_HOURS,
   SANDBOX_COOKIE,
   SANDBOX_DAYS,
   SANDBOX_MAX_DAYS,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/sandbox";
 
 import { audit, type Account } from "./auth";
+import { markDemoContent } from "./demo-content";
 import { log } from "./log";
 import { takeBudget } from "./request-budget";
 import { getStore, refreshStoreById, type Store } from "./stores";
@@ -94,6 +96,10 @@ export async function startSandbox(visitor: string): Promise<StartAnswer> {
         sql`select commerce.make_sandbox(${source}::uuid, ${slug}, ${hashSecret(secret)}, ${SANDBOX_DAYS}) as id`,
       );
       if (!row) return { ok: false, problem: "failed" };
+      // What it was copied with is its demo content (D260), so once kept (S2) the owner can take away what they never touched in one
+      // press, and keeps every page they made or changed here. Never throws.
+      const store = await typedRow(z.object({ store_id: col.uuid }), sql`select store_id from commerce.sandboxes where id = ${row.id}::uuid`);
+      if (store) await markDemoContent(store.store_id).catch((error: unknown) => log("warn", "sandbox.demo_mark_failed", {}, error));
       log("info", "sandbox.made", { sandboxId: row.id, fromStandard: source === null });
       return { ok: true, id: row.id, pass: formatPass({ id: row.id, secret }) };
     } catch (error) {
@@ -175,6 +181,27 @@ export async function sandboxFor(id: unknown): Promise<Sandbox | null> {
 export async function currentSandbox(): Promise<Sandbox | null> {
   const pass = readPass((await cookies()).get(SANDBOX_COOKIE)?.value);
   return pass ? sandboxFor(pass.id) : null;
+}
+
+/**
+ * Whether this browser's pass opens a sandbox that was kept (D457 S2): its page then says the store is the person's now and how to sign in,
+ * instead of that it ended.
+ */
+export async function keptSandbox(id: unknown): Promise<boolean> {
+  if (!isSandboxId(id)) return false;
+  const pass = readPass((await cookies()).get(SANDBOX_COOKIE)?.value);
+  if (!pass || pass.id !== id) return false;
+  const row = await typedRow(z.object({ pass_hash: col.text }), sql`select pass_hash from commerce.sandboxes where id = ${id}::uuid and state = 'kept'`);
+  return Boolean(row && sameHash(row.pass_hash, hashSecret(pass.secret)));
+}
+
+/** A request to keep the sandbox waits for its link to be pressed (D457 S2): the sandbox lasts until then and a day more, 30 days at most. */
+export async function holdSandbox(id: string): Promise<void> {
+  await db().execute(sql`
+    update commerce.sandboxes
+       set expires_at = least(created_at + make_interval(days => ${SANDBOX_MAX_DAYS}), greatest(expires_at, now() + make_interval(hours => ${KEEP_HOLD_HOURS})))
+     where id = ${id}::uuid and state = 'open'
+  `);
 }
 
 /** The first change and the first publish in a sandbox, for the funnel; each kept once. */

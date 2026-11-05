@@ -5,21 +5,32 @@ import { countWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { SANDBOX_PATH, daysLeft, sandboxHome } from "@/lib/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
+import { keptSandbox } from "@/server/sandbox";
 
 import { startOverAction } from "./actions";
 import { sandboxOf } from "./sandbox";
 import { StartOver } from "./start-over";
 
 /**
- * One sandbox (D457): its bar on every page (the store's home, that only the visitor sees it, the days left, *Start over*) above the page,
- * which uses the whole width as the store's editors do. A sandbox the pass does not open (ended, started over, another browser's) says so
- * and offers a new one, the same words whatever the reason.
+ * One sandbox (D457): its bar on every page (the store's home, that only the visitor sees it, the days left, *Keep this store*, *Start
+ * over*) above the page, which uses the whole width as the store's editors do. A sandbox the pass does not open (ended, started over,
+ * another browser's) says so and offers a new one, the same words whatever the reason; one this browser kept (S2) says how to sign in.
  */
 export default async function SandboxLayout({ children, params }: LayoutProps<"/admin/try/[sandbox]">) {
   const { sandbox: id } = await params;
   const [lang, sandbox] = await Promise.all([requestAdminLang(), sandboxOf(id)]);
   const w = adminText(lang, "sandbox");
   if (!sandbox) {
+    // A sandbox this browser kept (S2) is the person's store now: sign in to it, rather than read that it ended.
+    if (await keptSandbox(id)) {
+      return (
+        <FocusFrame title={w.kept.title} description={w.kept.lead} lang={lang}>
+          <ButtonLink kind="main" full href="/admin/sign-in">
+            {w.kept.signIn}
+          </ButtonLink>
+        </FocusFrame>
+      );
+    }
     return (
       <FocusFrame title={w.ended.title} description={w.ended.lead} lang={lang}>
         <ButtonLink kind="main" full href={SANDBOX_PATH}>
@@ -44,6 +55,9 @@ export default async function SandboxLayout({ children, params }: LayoutProps<"/
         </div>
         <div className="flex items-center gap-3">
           <span className="text-body text-muted">{left <= 1 ? w.bar.lastDay : countWords(left, w.bar.daysLeft)}</span>
+          <ButtonLink kind="main" href={`${sandboxHome(sandbox.id)}/keep`}>
+            {w.bar.keep}
+          </ButtonLink>
           <StartOver action={startOverAction.bind(null, sandbox.id)} label={w.bar.startOver} confirm={w.bar.startOverConfirm} />
         </div>
       </header>

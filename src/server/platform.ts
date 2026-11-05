@@ -18,7 +18,9 @@ import { sendEmail } from "./email";
 import { markDemoContent } from "./demo-content";
 import { applyDesignPreset, isOfferedDesign } from "./design-presets";
 import { log } from "./log";
+import { staleTag } from "./refresh";
 import { notifyReferralOpened, usableReferralCode } from "./referrals";
+import { storeTag } from "./stores";
 import { PROMPT_MIN } from "@/lib/dream-factory";
 import { PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
 
@@ -45,6 +47,11 @@ export type AccessRequestInput = {
   dream?: boolean;
   /** Sent from the sign-up form under the sentence that links the terms and the privacy notice (PSI REG-02): recorded with the terms' version. */
   termsAccepted?: boolean;
+  /**
+   * *Keep this store* (D457 S2): the sandbox the request is made from, already opened by its pass. Kept on a new request only while the
+   * sandbox is open; a request merged into one pending for the address keeps what that one named.
+   */
+  sandboxId?: string | null;
 };
 
 /** The preset key when the design profile's published version has a preset of that key, else null (SQL, beside the profile's id). */
@@ -71,7 +78,7 @@ export async function createAccessRequest(
   const referralCode = await usableReferralCode(input.referralCode);
   const [made] = await db().execute<Row>(sql`
     insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation, locale, domain, dream,
-      terms_accepted_at, terms_version)
+      terms_accepted_at, terms_version, sandbox_id)
     values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode},
       (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published and st.kind = 'content'),
       (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published),
@@ -82,7 +89,8 @@ export async function createAccessRequest(
       ${input.termsAccepted === true
         ? sql`(select to_char(coalesce(p.published_at, p.updated_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') from commerce.pages p
                 where p.store_id is null and p.type = 'page' and p.slug = ${PLATFORM_LEGAL_SLUGS.terms} and p.published is not null)`
-        : sql`null`})
+        : sql`null`},
+      (select x.id from commerce.sandboxes x where x.id = ${input.sandboxId ?? null}::uuid and x.state = 'open'))
     on conflict ((lower(email))) where status = 'pending' do nothing
     returning id
   `);
@@ -133,6 +141,8 @@ export type AccessRequest = {
   designTitle: string | null;
   /** The profile's preset chosen with it (`docs/theme-showcase-phase-1.md` step 4), by key; null for its own look. */
   designVariation: string | null;
+  /** Made with *Keep this store* (D457 S2) from a sandbox still open: approving it takes that store over, whatever is chosen above. */
+  keepsSandbox: boolean;
 };
 
 /** Pending requests first (oldest first), then the 20 latest decisions. */
@@ -140,7 +150,9 @@ export async function listAccessRequests(): Promise<AccessRequest[]> {
   const rows = await db().execute<Row>(sql`
     (select r.*, s.slug as store_slug, st.title as starter_title, dp.title as design_title, exists (
        select 1 from commerce.accounts a where lower(a.email) = lower(r.email)
-     ) as has_account
+     ) as has_account, exists (
+       select 1 from commerce.sandboxes x where x.id = r.sandbox_id and x.state = 'open' and x.expires_at > now()
+     ) as keeps_sandbox
      from commerce.access_requests r
      left join commerce.stores s on s.id = r.store_id
      left join commerce.store_starters st on st.id = r.starter_id
@@ -150,7 +162,9 @@ export async function listAccessRequests(): Promise<AccessRequest[]> {
     union all
     (select r.*, s.slug as store_slug, st.title as starter_title, dp.title as design_title, exists (
        select 1 from commerce.accounts a where lower(a.email) = lower(r.email)
-     ) as has_account
+     ) as has_account, exists (
+       select 1 from commerce.sandboxes x where x.id = r.sandbox_id and x.state = 'open' and x.expires_at > now()
+     ) as keeps_sandbox
      from commerce.access_requests r
      left join commerce.stores s on s.id = r.store_id
      left join commerce.store_starters st on st.id = r.starter_id
@@ -175,6 +189,7 @@ export async function listAccessRequests(): Promise<AccessRequest[]> {
     designPresetId: row.design_preset_id ? String(row.design_preset_id) : null,
     designTitle: row.design_title ? String(row.design_title) : null,
     designVariation: row.design_variation ? String(row.design_variation) : null,
+    keepsSandbox: Boolean(row.keeps_sandbox),
   }));
 }
 
@@ -238,6 +253,12 @@ export async function approveAccessRequest(
   const problem = slugProblem(slug);
   if (problem) return { ok: false, problems: [`Store address: ${problem}`] };
   if (!storeName.trim()) return { ok: false, problems: ["Enter a store name."] };
+  // *Keep this store* (D457 S2): a request made from a sandbox still open takes that store over; one whose sandbox has ended is approved
+  // the usual way, from a template.
+  if (await namesOpenSandbox(requestId)) {
+    const kept = await adoptRequestSandbox(admin, requestId, slug, storeName.trim(), origin);
+    if (kept) return kept;
+  }
   // A profile the admin chose that is not offered is refused in plain words before anything is made.
   if (designPresetId && !(await isOfferedDesign(designPresetId))) {
     return { ok: false, problems: ["That theme is not offered any more. Choose another."] };
@@ -328,6 +349,62 @@ export async function approveAccessRequest(
     storeId,
     domain,
     fellBack: { starter: starterFellBack, design: designFellBack },
+  };
+}
+
+/** Whether a pending request names a sandbox that is still open (D457 S2). */
+async function namesOpenSandbox(requestId: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    select 1 as open from commerce.access_requests r join commerce.sandboxes x on x.id = r.sandbox_id
+     where r.id = ${requestId}::uuid and r.status = 'pending' and x.state = 'open' and x.expires_at > now()
+  `);
+  return Boolean(row);
+}
+
+/**
+ * Approves a request made from a sandbox by taking that store over (D457 S2, `commerce.adopt_sandbox()`): the account made or found,
+ * the store at its new address and name with the person as its owner, private until they open it, the sandbox kept. Then as an approval:
+ * the store's cache under both addresses refreshed, the owner's admin in the request's language, the approval and a sign-in link
+ * emailed. Null when the sandbox ended in the meantime, so the request is approved the usual way.
+ */
+async function adoptRequestSandbox(admin: Account | null, requestId: string, slug: string, storeName: string, origin: string): Promise<ApproveResult | null> {
+  const [before] = await db().execute<Row>(sql`
+    select s.slug, r.email, r.locale from commerce.access_requests r
+      join commerce.sandboxes x on x.id = r.sandbox_id join commerce.stores s on s.id = x.store_id
+     where r.id = ${requestId}::uuid
+  `);
+  let storeId: string;
+  try {
+    const [made] = await db().execute<Row>(sql`select commerce.adopt_sandbox(${requestId}::uuid, ${slug}, ${storeName}, ${admin?.id ?? null}::uuid) as store_id`);
+    storeId = String(made.store_id);
+  } catch (error) {
+    if (describe(error).includes("sandboxes.not_open")) return null;
+    return { ok: false, problems: [approvalProblem(error, slug)] };
+  }
+  const email = String(before?.email ?? "");
+  // Stale, not refreshed: the confirmation's press must not draw its page again, whose link it has just used up.
+  if (before?.slug) staleTag(storeTag(String(before.slug)));
+  staleTag(storeTag(slug));
+  const owner = await requesterOf(requestId);
+  await audit(owner, storeId, "store.sandbox_kept", { requestId }, { area: "settings", target: { type: "store", id: storeId } });
+  await db()
+    .execute(sql`
+      update commerce.accounts a set admin_locale = r.locale
+      from commerce.access_requests r
+      where r.id = ${requestId}::uuid and r.locale is not null and lower(a.email) = lower(r.email) and a.admin_locale is null
+    `)
+    .catch(() => null);
+  await sendAccessEmail("approved", requestId, `${origin}/admin/sign-in`);
+  log("info", "sandbox.kept", { storeId });
+  return {
+    ok: true,
+    slug,
+    email,
+    invited: await emailSignInLink(email, origin, before?.locale ? String(before.locale) : null),
+    design: null,
+    storeId,
+    domain: null,
+    fellBack: { starter: null, design: null },
   };
 }
 

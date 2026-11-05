@@ -142,6 +142,7 @@ async function PendingRequest({ request, designs, w }: { request: AccessRequest;
           {request.hasAccount && <span className="text-muted">{w.hasAccount}</span>}
         </p>
         {request.message && <p className="mt-2 whitespace-pre-line text-sm text-muted">{request.message}</p>}
+        {request.keepsSandbox && <p className="mt-2 text-sm text-insight-text">{w.keepsSandbox}</p>}
       </div>
       <ActionForm
         action={decideAction.bind(null, request.id)}

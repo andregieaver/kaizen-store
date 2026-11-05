@@ -517,6 +517,7 @@ export const platformEn = {
       unconfirmed: "Waiting for their email to be confirmed: {n}",
       saved: "Saved.",
     },
+    keepsSandbox: "Made with Keep this store from the page builder's sandbox: approving it gives them the store they built there, at the address below; the theme chosen here is not used.",
     sandbox: {
       title: "Page builder sandbox",
       on: "On: anyone can press Start building at {address} and edit a private store of their own in the page builder, without signing up, for 7 days after their last visit.",

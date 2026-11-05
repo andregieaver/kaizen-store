@@ -70,7 +70,7 @@ describe("the sandbox's allow-list (D457)", () => {
     }
   });
 
-  it("calls no AI, sends nothing and uploads nothing", () => {
+  it("calls no AI and uploads nothing, and sends no email itself (the keep request's link is the sign-up's own)", () => {
     expect(actions).not.toMatch(/\baiFor\(|sendEmail\(|uploadToLibrary\(|startVideoUpload\(|fetch\(/);
     expect(actions).toMatch(/planPageMotion\(null,/);
   });

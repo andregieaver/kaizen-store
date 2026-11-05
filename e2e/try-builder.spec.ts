@@ -94,3 +94,50 @@ test("a visitor without an account builds and publishes in a private store of th
     await check.end();
   }
 });
+
+test("Keep this store: the emailed link makes the sandbox the person's store, and the old tab says so", async ({ page }) => {
+  await setSandbox(true);
+  const sql = testDb();
+  const [{ self_serve_signup: selfServeWas }] = await sql`select self_serve_signup from commerce.platform_settings`;
+  await sql`update commerce.platform_settings set self_serve_signup = true`;
+  try {
+    await page.goto("/admin/try");
+    await page.getByRole("button", { name: "Start building" }).click();
+    await expect(page).toHaveURL(/\/admin\/try\/[0-9a-f-]{36}$/);
+    const home = page.url();
+    const id = home.split("/").pop()!;
+
+    // The bar's main action, then the sign-up's three answers.
+    await page.getByRole("link", { name: "Keep this store" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Keep this store" })).toBeVisible();
+    const run = Date.now().toString(36);
+    const email = `keeper-${run}@example.com`;
+    await page.getByLabel("Your store's name").fill(`Kari Keramikk ${run}`);
+    await page.getByLabel("Your name").fill("Kari");
+    await page.getByLabel("Your email").fill(email);
+    await page.getByRole("button", { name: "Email me the link" }).click();
+    await expect(page.getByText("Check your email")).toBeVisible();
+
+    // The link the email carries, pressed as the person would.
+    const [message] = await sql`select text from commerce.email_messages where to_address = ${email} and kind = 'platform.access_confirm' order by created_at desc limit 1`;
+    const link = /\/sign-up\/confirm\/[A-Za-z0-9_-]{43}/.exec(String(message?.text ?? ""))?.[0];
+    expect(link).toBeTruthy();
+    await page.goto(link!);
+    await page.getByRole("button", { name: "Start my store" }).click();
+    await expect(page.getByText(`Kari Keramikk ${run} is ready`)).toBeVisible();
+
+    const [store] = await sql`
+      select s.slug, s.sandbox, s.private_mode, x.state,
+             (select array_agg(a.email) from commerce.store_members m join commerce.accounts a on a.id = m.account_id where m.store_id = s.id) as members
+        from commerce.sandboxes x join commerce.stores s on s.id = x.store_id where x.id = ${id}`;
+    expect(store).toMatchObject({ slug: `kari-keramikk-${run}`, sandbox: false, private_mode: true, state: "kept", members: [email] });
+
+    // The tab that built it: the store is theirs now, and signing in is the way on.
+    await page.goto(home);
+    await expect(page.getByRole("heading", { level: 1, name: "This store is yours now" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/admin/sign-in");
+  } finally {
+    await sql`update commerce.platform_settings set self_serve_signup = ${Boolean(selfServeWas)}`;
+    await sql.end();
+  }
+});
