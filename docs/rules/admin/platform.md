@@ -62,7 +62,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Sign-up and setup (`docs/platform.md`)
 
-- Sign-up and setup (`docs/platform.md`): `/sign-up` stores an access request;
+- Sign-up and setup (`docs/platform.md`): `/sign-up` stores an access request,
+  asked for in three steps of one form (D456, `SignUpWizard`: the store, its
+  look, the person; a new field goes in its step, and the page still works
+  without scripts);
   platform admins approve at `/admin/platform`, which calls
   `commerce.approve_access_request()` (account + `clone_store()` + decision in
   one transaction) and emails a sign-in link. Owners of a store that is not

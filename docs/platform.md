@@ -39,8 +39,10 @@ otherwise.
 
 ## From sign-up to an open store
 
-1. **Request.** Anyone can ask for a store at `/sign-up` (name, email, store
-   name). It is stored in `commerce.access_requests`; repeat requests from the
+1. **Request.** Anyone can ask for a store at `/sign-up`, in three steps (D456:
+   the store's name and what it will sell, its look, then the person's name and
+   email; one form, every step shown at once without scripts). It is stored in
+   `commerce.access_requests`; repeat requests from the
    same email are merged, and the page never says which emails have asked.
 2. **Approval.** Platform admins see waiting requests at `/admin/platform/requests`,
    adjust the store name and address, and approve or decline.

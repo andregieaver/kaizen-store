@@ -25,6 +25,12 @@
   }
 }
 
+/*
+ * A page that works without scripts (sign-up's steps, D456): `noscript:flex` shows what scripts would have shown one at a time,
+ * and `noscript:hidden` hides the buttons that need them.
+ */
+@custom-variant noscript (@media (scripting: none));
+
 :root {
   color-scheme: light;
   --background: #ffffff;
