@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { CARRIER_FEATURE_LABELS, CARRIERS } from "../shipping-carriers";
 import { groupsFromBlocks, notOfferedWords } from "../shipping-method-form";
+import { carriersEn } from "./carriers.en";
+import { carriersNb } from "./carriers.nb";
 import { shippingEn } from "./shipping.en";
 import { shippingNb } from "./shipping.nb";
 
@@ -15,15 +17,20 @@ function leaves(value: unknown, path = ""): [string, string][] {
 const names = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 
 describe("the shipping catalogue (D312 A8)", () => {
-  it("keeps every placeholder of the English in the Norwegian", () => {
-    const nb = new Map(leaves(shippingNb));
-    for (const [path, en] of leaves(shippingEn)) expect(names(nb.get(path) ?? ""), path).toEqual(names(en));
+  it("keeps every placeholder of the English in the Norwegian, the carriers' own words too", () => {
+    for (const [english, norwegian] of [
+      [shippingEn, shippingNb],
+      [carriersEn, carriersNb],
+    ] as const) {
+      const nb = new Map(leaves(norwegian));
+      for (const [path, en] of leaves(english)) expect(names(nb.get(path) ?? ""), path).toEqual(names(en));
+    }
   });
 
   it("says in English what the carriers' registry says, so the admin shows the same words", () => {
     expect(shippingEn.carrier.features).toEqual(CARRIER_FEATURE_LABELS);
     for (const info of CARRIERS) {
-      const own = shippingEn.carrier.carriers[info.id];
+      const own = carriersEn[info.id];
       expect(own.summary).toBe(info.summary);
       expect(own.steps).toEqual(info.steps);
       const fields: Record<string, { label: string; help: string; placeholder: string }> = own.fields;

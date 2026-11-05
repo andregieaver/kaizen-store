@@ -1,0 +1,203 @@
+import type { Widen } from "./common.en";
+
+/**
+ * Each shipping carrier's own words (D133–D138, D458, D459; `CARRIERS` in `src/lib/shipping-carriers.ts` writes the same in English): its
+ * summary, the steps to get ready and its fields, on the integrations pages. Only the server reads them, so they are an area of their own that
+ * the browser's English fallback (`admin-text.tsx`) leaves out (`SERVER_AREAS` in `admin-text.ts`): they are not in every admin screen's
+ * first scripts. Carrier and service names stay as their owners write them.
+ */
+export const carriersEn = {
+  bring: {
+    summary: "Norway's postal service and Bring's parcels across the Nordics: home delivery, pickup points and the mailbox.",
+    steps: [
+      "Have an agreement with Posten / Bring and a Mybring account.",
+      "In Mybring, open the API settings and create API access for this store.",
+      "Copy the customer number, the API user and the API key to the form.",
+    ],
+    fields: {
+      customerNumber: { label: "Customer number", help: "Your number in your agreement with Posten / Bring.", placeholder: "" },
+      apiUid: { label: "Mybring API user", help: "The user (email) of your Mybring API access.", placeholder: "" },
+      apiKey: { label: "Mybring API key", help: "", placeholder: "" },
+      senderName: { label: "Sender name", help: "Shown on the label: your business or shop.", placeholder: "" },
+      senderStreet: { label: "Sender street address", help: "Where parcels are sent from.", placeholder: "" },
+      senderPostalCode: { label: "Sender postal code", help: "", placeholder: "" },
+      senderCity: { label: "Sender city", help: "", placeholder: "" },
+      senderPhone: { label: "Sender phone", help: "Bring may use it if there is a problem with a pickup.", placeholder: "" },
+    },
+  },
+  postnord: {
+    summary: "Parcels and letters in Sweden, Denmark, Norway and Finland, with pickup points and tracking.",
+    steps: [
+      "Have a customer agreement with PostNord.",
+      "At PostNord's developer portal, make an application and get an API key for it.",
+      "Copy the customer number and the API key to the form.",
+      "Ask PostNord for an application id for live bookings (apisupport@postnord.com), and add the address your parcels are sent from.",
+      "PostNord does not give prices through its API: you enter what you charge for each service from your agreement.",
+    ],
+    fields: {
+      customerNumber: { label: "Customer number", help: "Your number in your agreement with PostNord.", placeholder: "" },
+      apiKey: { label: "API key", help: "", placeholder: "" },
+      applicationId: { label: "Application id", help: "PostNord gives one when you go live: ask apisupport@postnord.com. Not needed in the test environment.", placeholder: "1234" },
+      senderName: { label: "Sender name", help: "Printed on the label: your business or shop.", placeholder: "" },
+      senderStreet: { label: "Sender street address", help: "Where parcels are sent from.", placeholder: "" },
+      senderPostalCode: { label: "Sender postal code", help: "", placeholder: "" },
+      senderCity: { label: "Sender city", help: "", placeholder: "" },
+      senderCountry: { label: "Sender country", help: "Where your PostNord agreement is: SE, DK, NO or FI.", placeholder: "SE" },
+      senderPhone: { label: "Sender phone", help: "PostNord's driver may call it about a collection.", placeholder: "" },
+      senderEmail: { label: "Sender email", help: "PostNord sends collection confirmations here.", placeholder: "" },
+      collectionHours: { label: "Collection hours", help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
+    },
+  },
+  porterbuddy: {
+    summary: "Fast home delivery in a time window your shopper chooses, including the same day.",
+    steps: [
+      "Have an agreement with Porterbuddy: register at porterbuddy.com/business (accounts are by invitation).",
+      "In their partner portal, open your profile and copy the API key. Use the test portal's key for the test environment.",
+      "Give the address and hours where the courier collects your parcels, so the delivery windows match when they are ready.",
+      "Use the test environment until Porterbuddy has approved your setup. Test orders deliver nothing.",
+    ],
+    fields: {
+      apiKey: { label: "API key", help: "From your profile in Porterbuddy's partner portal.", placeholder: "" },
+      senderName: { label: "Name for the pickup", help: "Printed on the label and given to the courier: your shop's name.", placeholder: "" },
+      senderStreet: { label: "Pickup street and number", help: "Where the courier collects the parcels, with the number: Keysers gate 3.", placeholder: "Keysers gate 3" },
+      senderPostalCode: { label: "Pickup postal code", help: "", placeholder: "" },
+      senderCity: { label: "Pickup city", help: "", placeholder: "" },
+      senderEmail: { label: "Pickup email", help: "Porterbuddy sends the pickup notices here.", placeholder: "" },
+      senderPhone: { label: "Pickup phone", help: "Who the courier can call, with the country code if it is not Norway.", placeholder: "" },
+      pickupHours: { label: "Parcels are ready between", help: "Your opening hours, written 10:00-17:00. Porterbuddy offers delivery windows after these.", placeholder: "10:00-17:00" },
+      pickupDays: { label: "Days you hand over parcels", help: "Weekdays as numbers, 1 is Monday and 7 Sunday: 1-5, or 1,2,3,4,6.", placeholder: "1-5" },
+    },
+  },
+  helthjem: {
+    summary: "Home delivery to the mailbox or doormat and delivery to service points across Norway, with labels and tracking.",
+    steps: [
+      "Be a Helthjem customer: apply at helthjem.no/bli-kunde.",
+      "Email integrations@helthjem.no for your client ID and secret, your shop ID and the transport solutions for your agreement.",
+      "Copy them to the form, with the address your parcels are sent from.",
+      "Use the test environment until Helthjem has approved your setup. Helthjem does not give prices through its API: you enter what you charge for each service at checkout.",
+    ],
+    fields: {
+      clientId: { label: "Client ID", help: "From Helthjem's integrations team, with your client secret.", placeholder: "" },
+      clientSecret: { label: "Client secret", help: "", placeholder: "" },
+      shopId: { label: "Shop ID", help: "Your shop's number in your agreement with Helthjem.", placeholder: "" },
+      homeSolutionId: { label: "Transport solution for home delivery", help: "The number Helthjem gave you for delivery to the door. 2 only delivers to the door; 114 falls back to a service point where the door is not covered.", placeholder: "114" },
+      collectSolutionId: { label: "Transport solution for service points", help: "The number for delivery to a service point, for example 86 (Helthjem's own) or 62 (with PostNord's as a fallback). Leave empty not to offer service points.", placeholder: "86" },
+      senderName: { label: "Sender name", help: "Printed on the label: your shop's name.", placeholder: "" },
+      senderStreet: { label: "Sender street and number", help: "", placeholder: "Akersgata 55" },
+      senderPostalCode: { label: "Sender postal code", help: "", placeholder: "" },
+      senderCity: { label: "Sender city", help: "", placeholder: "" },
+      senderPhone: { label: "Sender phone", help: "", placeholder: "" },
+    },
+  },
+  instabox: {
+    summary: "Parcel lockers in Sweden, Norway and Denmark, open around the clock, and home delivery: the shopper chooses at checkout and gets a code to open the locker.",
+    steps: [
+      "Have an agreement with Instabee for Instabox lockers: apply at instabee.com.",
+      "Ask your implementation manager for an API key for the Instabee API, one for the sandbox and one for live.",
+      "Copy the key to the form. Instabee already knows the address your parcels are collected from.",
+      "Use the test environment until Instabee has approved your setup. You enter what you charge for a locker or home delivery at checkout.",
+    ],
+    fields: {
+      apiKey: { label: "API key", help: "From your implementation manager at Instabee, for the Instabee API.", placeholder: "" },
+      collectionPointId: { label: "Warehouse id", help: "Only when you send from more than one place: the id Instabee gave the warehouse this store sends from.", placeholder: "" },
+    },
+  },
+  dhl: {
+    summary: "Express parcels across Europe and the world on your DHL Express account, to the door or a DHL ServicePoint, with prices, labels with customs papers, collection and tracking.",
+    steps: [
+      "Have a DHL Express account (a nine-digit account number).",
+      "Ask your DHL Express contact for access to the MyDHL API: they send an API key and secret for the test environment, and for live when you are approved.",
+      "Copy the key, the secret and the account number to the form, with the address your parcels are sent from.",
+      "DHL gives its prices for each parcel: your shoppers pay them with VAT and what you add. Parcels to a country outside the EU's customs union carry customs papers from your products' HS codes and countries of origin.",
+    ],
+    fields: {
+      apiKey: { label: "API key", help: "The MyDHL API key (user name) DHL gave you.", placeholder: "" },
+      apiSecret: { label: "API secret", help: "", placeholder: "" },
+      accountNumber: { label: "DHL Express account number", help: "Your nine-digit DHL Express account (shipper) number.", placeholder: "123456789" },
+      senderName: { label: "Sender name", help: "Printed on the label: your business or shop.", placeholder: "" },
+      senderStreet: { label: "Sender street address", help: "", placeholder: "" },
+      senderPostalCode: { label: "Sender postal code", help: "", placeholder: "" },
+      senderCity: { label: "Sender city", help: "", placeholder: "" },
+      senderCountry: { label: "Sender country", help: "The two-letter code of the country you send from, like NO, SE or DE.", placeholder: "NO" },
+      senderPhone: { label: "Sender phone", help: "DHL needs it on every shipment.", placeholder: "" },
+      senderEmail: { label: "Sender email", help: "", placeholder: "" },
+      collectionHours: { label: "Collection hours", help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
+    },
+  },
+  ups: {
+    summary: "Parcels by road and air across Europe and the world on your UPS account, to the door or to a UPS Access Point, with labels and tracking.",
+    steps: [
+      "Have a UPS account (a six-character account number).",
+      "Sign in at developer.ups.com, make an app with the Authorization, Rating, Shipping, Tracking, Locator and Pickup APIs, and add your account number to it.",
+      "Copy the app's client ID and secret and your account number to the form, with the address your parcels are sent from.",
+      "UPS gives its prices for each parcel, with your own rates when your account has them: your shoppers pay them with VAT and what you add.",
+    ],
+    fields: {
+      clientId: { label: "Client ID", help: "From your app on UPS's developer portal (developer.ups.com), with its client secret.", placeholder: "" },
+      clientSecret: { label: "Client secret", help: "", placeholder: "" },
+      accountNumber: { label: "UPS account number", help: "Your six-character UPS account (shipper) number. Add it to the app on the developer portal too.", placeholder: "A1B2C3" },
+      senderName: { label: "Sender name", help: "Printed on the label: your business or shop.", placeholder: "" },
+      senderStreet: { label: "Sender street address", help: "", placeholder: "" },
+      senderPostalCode: { label: "Sender postal code", help: "", placeholder: "" },
+      senderCity: { label: "Sender city", help: "", placeholder: "" },
+      senderCountry: { label: "Sender country", help: "The two-letter code of the country you send from, like NO, SE or DE.", placeholder: "NO" },
+      senderPhone: { label: "Sender phone", help: "UPS needs it on every shipment.", placeholder: "" },
+      senderEmail: { label: "Sender email", help: "", placeholder: "" },
+      collectionHours: { label: "Collection hours", help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
+    },
+  },
+  dhl_paket: {
+    summary: "Parcels from Germany on your DHL business customer account: to the door, as a small parcel or to a post office or Paketshop, with labels, returns and tracking.",
+    steps: [
+      "Have a DHL business customer contract (an EKP) and access to the Post & DHL Business Customer Portal, and make a system user there for this store.",
+      "At developer.dhl.com, make an app with Parcel DE Shipping, Parcel DE Returns, Location Finder - Unified and Shipment Tracking - Unified. DHL approves it for production after you have used the sandbox.",
+      "Copy the app's key and secret, the portal user and password and your EKP to the form, with the address in Germany your parcels are sent from.",
+      "DHL gives no prices through its API: you enter what you charge for each service and country at checkout. In the test environment use DHL's sandbox user user-valid, password SandboxPasswort2023! and EKP 3333333333.",
+    ],
+    fields: {
+      apiKey: { label: "API key", help: "The key of your app on DHL's developer portal (developer.dhl.com), with Parcel DE Shipping, Parcel DE Returns, Location Finder - Unified and Shipment Tracking - Unified added.", placeholder: "" },
+      apiSecret: { label: "API secret", help: "", placeholder: "" },
+      username: { label: "Business Customer Portal user", help: "A system user of the Post & DHL Business Customer Portal (geschaeftskunden.dhl.de) that may ship.", placeholder: "user-valid" },
+      password: { label: "Business Customer Portal password", help: "", placeholder: "" },
+      ekp: { label: "EKP (customer number)", help: "Your ten-digit DHL customer number.", placeholder: "1234567890" },
+      participation: { label: "Participation", help: "The last two characters of your billing numbers (Teilnahme): 01 unless DHL gave you another.", placeholder: "01" },
+      returnReceiverId: { label: "Returns receiver", help: "The returns receiver set up in the Business Customer Portal, for return labels: deu unless you named another.", placeholder: "deu" },
+      profile: { label: "User group profile", help: "", placeholder: "STANDARD_GRUPPENPROFIL" },
+      senderName: { label: "Sender name", help: "Printed on the label: your business or shop.", placeholder: "" },
+      senderStreet: { label: "Sender street address", help: "", placeholder: "" },
+      senderPostalCode: { label: "Sender postal code", help: "", placeholder: "" },
+      senderCity: { label: "Sender city", help: "", placeholder: "" },
+      senderCountry: { label: "Sender country", help: "DHL Paket sends from Germany: DE.", placeholder: "DE" },
+      senderPhone: { label: "Sender phone", help: "Needed when you ask DHL to collect.", placeholder: "" },
+      senderEmail: { label: "Sender email", help: "", placeholder: "" },
+      collectionHours: { label: "Collection hours", help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
+    },
+  },
+  nshift: {
+    summary: "Book every carrier of your own agreements through your nShift Delivery account: its delivery checkout's options at checkout, labels, collection and tracking.",
+    steps: [
+      "Have an nShift Delivery account with your carriers' agreements, and order APIConnect (the REST API) in its webshop.",
+      "Under Maintenance → API keys, make a key of type Web Services (REST) and copy its ID and secret ID to the form.",
+      "Give the Quick ID of your sender in nShift's address book, and the address your parcels are sent from.",
+      "To offer nShift's options at checkout, set up a delivery checkout in nShift with your services and prices, and give its ID. Use the test environment first: test shipments print TEST and are not sent to the carrier.",
+    ],
+    fields: {
+      apiKeyId: { label: "API key ID", help: "In nShift Delivery under Maintenance → API keys: a key of type Web Services (REST). Copy its ID.", placeholder: "" },
+      apiKey: { label: "API key secret ID", help: "The key's secret ID, shown with its ID.", placeholder: "" },
+      senderQuickId: { label: "Sender quick ID", help: "The Quick ID of your sender in nShift's address book, which holds your customer numbers with each carrier.", placeholder: "1" },
+      checkoutId: { label: "Delivery checkout ID", help: "Your delivery checkout in nShift, to offer its options at checkout. Leave it empty to book from orders only.", placeholder: "" },
+      defaultService: { label: "Service for orders without a choice", help: "The nShift service code staff book when the shopper chose your own shipping, like P18 (Help → Code lists in nShift).", placeholder: "P18" },
+      addons: { label: "Additional services on every booking", help: "nShift's addon codes your services need, separated by commas, like NOTSMS for a text message to the recipient.", placeholder: "" },
+      senderName: { label: "Sender name", help: "Printed on the label: your business or shop.", placeholder: "" },
+      senderStreet: { label: "Sender street address", help: "", placeholder: "" },
+      senderPostalCode: { label: "Sender postal code", help: "", placeholder: "" },
+      senderCity: { label: "Sender city", help: "", placeholder: "" },
+      senderCountry: { label: "Sender country", help: "The two-letter code of the country you send from, like NO, SE or DE.", placeholder: "NO" },
+      senderPhone: { label: "Sender phone", help: "", placeholder: "" },
+      senderEmail: { label: "Sender email", help: "", placeholder: "" },
+      collectionHours: { label: "Collection hours", help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
+    },
+  },
+};
+
+export type CarriersMessages = Widen<typeof carriersEn>;

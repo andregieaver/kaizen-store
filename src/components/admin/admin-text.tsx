@@ -64,7 +64,7 @@ import { blogEn } from "@/lib/admin-messages/blog.en";
 import { schedulesEn } from "@/lib/admin-messages/schedules.en";
 import { oauthEn } from "@/lib/admin-messages/oauth.en";
 import { sandboxEn } from "@/lib/admin-messages/sandbox.en";
-import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
+import type { AdminAreaMessages, ClientArea } from "@/lib/admin-text";
 
 import { AdminTextContext } from "./admin-text-context";
 
@@ -75,7 +75,8 @@ import { AdminTextContext } from "./admin-text-context";
  */
 
 
-const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, customReports: customReportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, capacity: capacityEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, moving: movingEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, content: contentEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn, blog: blogEn, schedules: schedulesEn, oauth: oauthEn, sandbox: sandboxEn };
+/** Every area a client part may read, in English; the server-only areas (`SERVER_AREAS`) are left out. */
+const ENGLISH: Pick<AdminAreaMessages, ClientArea> = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, customReports: customReportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, capacity: capacityEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, moving: movingEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, content: contentEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn, blog: blogEn, schedules: schedulesEn, oauth: oauthEn, sandbox: sandboxEn };
 
 
 export { AdminTextProvider } from "./admin-text-context";
@@ -90,9 +91,9 @@ export function AdminTextScope({ texts, children }: { texts: Partial<AdminAreaMe
 }
 
 /** An area's words in the account's language. */
-export function useAdminText<A extends AdminArea>(area: A): AdminAreaMessages[A] {
+export function useAdminText<A extends ClientArea>(area: A): Pick<AdminAreaMessages, ClientArea>[A] {
   const { texts } = useContext(AdminTextContext);
-  return (texts[area] as AdminAreaMessages[A] | undefined) ?? ENGLISH[area];
+  return (texts[area] as Pick<AdminAreaMessages, ClientArea>[A] | undefined) ?? ENGLISH[area];
 }
 
 /** The account's language for the admin. */

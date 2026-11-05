@@ -57,7 +57,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
   const lang = adminLangOf(current.account.adminLocale);
   const w = adminText(lang, "shipping").carrier;
   // The carrier's own words in the admin's language (its summary, steps and fields), else as `CARRIERS` writes them.
-  const own = w.carriers[info.id];
+  const own = adminText(lang, "carriers")[info.id];
   const ownFields: Record<string, { label: string; help: string; placeholder: string }> = own.fields;
   const feature = (f: keyof typeof w.features) => w.features[f];
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });

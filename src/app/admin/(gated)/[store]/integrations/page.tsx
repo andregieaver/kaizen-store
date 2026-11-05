@@ -22,7 +22,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const all = adminText(lang, "notifications");
-  const carrierWords = adminText(lang, "shipping").carrier.carriers as Record<string, { summary: string } | undefined>;
+  const carrierWords = adminText(lang, "carriers") as Record<string, { summary: string } | undefined>;
   const w = all.integrations;
   const k = w.carrier;
   const [connected, carriers, endpoints, tripletex, tripletexSent] = await Promise.all([

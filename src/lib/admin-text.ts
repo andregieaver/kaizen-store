@@ -57,6 +57,8 @@ import { paymentsEn, type PaymentsMessages } from "./admin-messages/payments.en"
 import { paymentsNb } from "./admin-messages/payments.nb";
 import { shippingEn, type ShippingMessages } from "./admin-messages/shipping.en";
 import { shippingNb } from "./admin-messages/shipping.nb";
+import { carriersEn, type CarriersMessages } from "./admin-messages/carriers.en";
+import { carriersNb } from "./admin-messages/carriers.nb";
 import { notificationsEn, type NotificationsMessages } from "./admin-messages/notifications.en";
 import { notificationsNb } from "./admin-messages/notifications.nb";
 import { legalEn, type LegalMessages } from "./admin-messages/legal.en";
@@ -145,6 +147,7 @@ export type AdminAreaMessages = {
   tax: TaxMessages;
   payments: PaymentsMessages;
   shipping: ShippingMessages;
+  carriers: CarriersMessages;
   notifications: NotificationsMessages;
   legal: LegalMessages;
   staff: StaffMessages;
@@ -181,6 +184,16 @@ export type AdminAreaMessages = {
 
 export type AdminArea = keyof AdminAreaMessages;
 
+/**
+ * Areas only the server reads: a page draws them, or hands its client parts the words they need as props. The browser's English fallback
+ * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
+ * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
+ */
+export const SERVER_AREAS = ["carriers"] as const;
+
+/** An area a client part may read with `useAdminText()`. */
+export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
+
 const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } = {
   common: { en: commonEn, nb: commonNb },
   domains: { en: domainsEn, nb: domainsNb },
@@ -207,6 +220,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   tax: { en: taxEn, nb: taxNb },
   payments: { en: paymentsEn, nb: paymentsNb },
   shipping: { en: shippingEn, nb: shippingNb },
+  carriers: { en: carriersEn, nb: carriersNb },
   notifications: { en: notificationsEn, nb: notificationsNb },
   legal: { en: legalEn, nb: legalNb },
   staff: { en: staffEn, nb: staffNb },
