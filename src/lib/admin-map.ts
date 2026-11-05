@@ -905,9 +905,6 @@ const PAGES: readonly AdminPage[] = [
     feature: "shop",
   }),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
-  store("integrations.tripletex", "/integrations/tripletex", "Tripletex", "Store", "Connects the store's Tripletex company with one pasted token and books its invoices and credit notes there; where they are booked, what needs the owner, Try again.", {
-    keywords: ["tripletex", "accounting", "bookkeeping", "regnskap", "bokføring", "vouchers", "bilag", "accountant"],
-  }),
   store("prices", "/settings/prices", "Prices and quantity", "Store", "How shoppers see prices and choose a quantity (D429, D430): whether whole amounts show ,00 (always, or hidden on whole amounts; never rounded), per country; short words before and after a product's price, per language, which a product can override; and the quantity chooser on product pages (− and + buttons, a number box or none), which a product layout's Buy component can override.", {
     keywords: ["decimals", ",00", "øre", "cents", "price format", "prefix", "suffix", "from only", "per piece", "quantity", "plus minus", "stepper", "antall"],
     tasks: ["Hide ,00 on whole prices", "Write words before or after prices", "Choose how shoppers pick a quantity"],
