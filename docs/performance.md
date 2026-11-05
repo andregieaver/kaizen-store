@@ -94,10 +94,18 @@ document. Blocking each in turn: without the fonts 93 (largest paint 2.9 s), wit
   draws upright Latin text from, which React names in the response's `Link` header. Only where one file serves every upright weight (a
   variable family); a family with a file per weight is left to its stylesheet. Through a proxy that rewrote the front page, four runs
   each: largest paint 4.05 s before, 3.88 s preloaded (the median; scores within the runs' noise).
-- **Not done yet**: the same files cut to the weights the builder offers (400 to 700) are 68 KB instead of 82 (largest paint 3.75 s in
-  the same test); with only the default OpenType features 58 KB. Google sends the whole axis even when asked for a range, so this needs
-  a subsetter when a family is installed, and the families installed again. The cart's, checkout's and sign-in's parts are 13 of the 55
-  client components Kaizena Flow's own pages load, though they never draw there (`StorePartSection` is imported by `PageArticle`).
+- **Variable fonts are cut to the weights the builder installs** (`trimFontFiles()`, `src/server/font-trim.ts`, D461): Google sends a
+  variable family's whole weight axis (100 to 900) even when asked for a range, and the builder installs 400 to 700. The five-minute
+  dispatcher cuts each file it has not looked at (`font_files.trimmed_at`) with HarfBuzz (`subset-font`) to its family's installed
+  weights (`installedWeightRange()`), keeping every character, OpenType feature and other axis, under the same name, so no stylesheet
+  or page changes. Inter's Latin file 48 KB to 34 KB, Montserrat's 35 to 32: the front page's fonts 82 KB to 67. Drawn at 400 to 700
+  the glyphs are the same and a line's width within 0.1 % (1.2 px in 1,550). In the proxy's test the largest paint was 3.75 s.
+- **The shops' working parts load only where they draw** (D461): the cart's, checkout's, order's and My account's components
+  (`StorePartSection`) were imported by `PageArticle`, so every page built in the builder loaded their scripts, Kaizena Flow's own
+  included, though they draw only on a store's working page. `RolePage`, the one place that draws one, now hands `PageArticle` what
+  draws them (`StorePartDrawer`), so only its routes carry them. Measured on a build (the gzipped chunks each route's client manifest
+  names): Kaizena Flow's front page 96 to 71 KB, a store's front page 100 to 76, a product page 116 to 100, the cart unchanged. The
+  cookie banner still loads where it is drawn (`lazy/extras.tsx`); the cookie list's settings button had carried it into every page.
 
 ## First scripts per route (PSI PERF-11, 30 October 2026)
 

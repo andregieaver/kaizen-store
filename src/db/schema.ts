@@ -9318,13 +9318,18 @@ export const fonts = commerce.table(
   ],
 );
 
-/** A font file, named by a hash of its bytes so families that share one store it once. */
+/**
+ * A font file, named by a hash of the file Google sent so families that share one store it once. A variable family's file is then cut
+ * to the weights it is installed in (`trimFontFiles()`), under the same name.
+ */
 export const fontFiles = commerce.table(
   "font_files",
   {
     name: text("name").primaryKey(),
     data: bytea("data").notNull(),
     createdAt: createdAt(),
+    /** When the trimmer looked at it (cut or left as it was); null until then. */
+    trimmedAt: timestamp("trimmed_at", { withTimezone: true }),
   },
   (t) => [
     check("font_files_name", sql`${t.name} ~ '^[0-9a-f]{32}\\.woff2$'`),

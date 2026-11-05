@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 
-import { blockFonts, blockHasContent, blockShowsUnbound, columnLines, columnsAsRow, partFonts, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageContent, type PageRow } from "@/lib/page-content";
+import { blockFonts, blockHasContent, blockShowsUnbound, columnLines, columnsAsRow, partFonts, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageContent, type PageRow, type StorePartBlock } from "@/lib/page-content";
 import { inlineMarkOf } from "@/lib/inline-edit";
 
 import { withoutBindings } from "@/lib/field-binding";
@@ -34,9 +34,15 @@ import { ThemeStoreSection } from "./theme-store-section";
 import { themePartDraws } from "@/lib/theme-store-parts";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelClass, rowBox, rowGrid, rowInnerClass } from "./page-parts";
 import { PartStyles } from "./part-styles";
-import { StorePartSection } from "./store-part-section";
 import { SearchSection } from "./search-section";
 import { VisiblePart } from "./visible-part";
+
+/**
+ * What draws a store's working components (D113: the cart, the checkout, My account, …) on the working page a block stands on:
+ * `StorePartSection`, handed in by `RolePage`, the one place that draws a working page. Imported here, their client components were in
+ * the first scripts of every page built in the builder, Kaizena Flow's own included, where they never draw (`docs/performance.md`).
+ */
+export type StorePartDrawer = (props: { block: StorePartBlock; place: GridPlace }) => ReactNode;
 
 /**
  * Whether the page's rows hold its main heading (D49): a heading component at level 1, a product's title (D79), or a theme's stage on
@@ -72,6 +78,7 @@ export function PageArticle({
   place = { pageId: null, owner: null },
   titled = false,
   renderBlock,
+  storePart,
   inAdmin = false,
   editable = false,
 }: {
@@ -82,6 +89,8 @@ export function PageArticle({
   titled?: boolean;
   /** Draws blocks the page itself knows, such as a product layout's product components (D79); null leaves one out. */
   renderBlock?: (block: PageBlock) => ReactNode;
+  /** Draws the store's working components on the working page it is (`StorePartDrawer`); without it they draw nothing. */
+  storePart?: StorePartDrawer;
   /** Shown in the admin (a preview), which draws the page's own CSS (D100) itself, kept inside the preview. */
   inAdmin?: boolean;
   /**
@@ -112,6 +121,7 @@ export function PageArticle({
           above={rowAbove(rows, index)}
           place={place}
           renderBlock={renderBlock}
+          storePart={storePart}
           inAdmin={inAdmin}
           first={row === first}
           editable={editable}
@@ -157,6 +167,8 @@ export function PageRowView(props: {
   above?: PageRow;
   place: GridPlace;
   renderBlock?: (block: PageBlock) => ReactNode;
+  /** The store's working components on a working page (`PageArticle`'s). */
+  storePart?: StorePartDrawer;
   /** A preview in the admin: a modal there does not open by itself. */
   inAdmin?: boolean;
   /** The first row in the flow of what is drawn (D128): its entrances play by CSS at once, without waiting for scripts. */
@@ -197,6 +209,7 @@ function RowView({
   above,
   place,
   renderBlock,
+  storePart,
   inAdmin = false,
   first = false,
   late = false,
@@ -209,12 +222,13 @@ function RowView({
       {/* Who sees the row (D179 phase 4): the server leaves it out for anyone else. */}
       <VisiblePart show={row.visibility?.show} place={place} preview={inAdmin}>
         {row.modal ? (
-          <ModalRow row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} />
+          <ModalRow row={row} place={place} renderBlock={renderBlock} storePart={storePart} inAdmin={inAdmin} />
         ) : (
           <RowMarkup
             row={row}
             place={place}
             renderBlock={renderBlock}
+            storePart={storePart}
             first={first}
             eager={first && !late}
             preview={inAdmin}
@@ -236,11 +250,13 @@ export async function ModalRow({
   row,
   place,
   renderBlock,
+  storePart,
   inAdmin,
 }: {
   row: PageRow;
   place: GridPlace;
   renderBlock?: (block: PageBlock) => ReactNode;
+  storePart?: StorePartDrawer;
   inAdmin: boolean;
 }) {
   const m = t(await placeLang(place)).modal;
@@ -254,7 +270,7 @@ export async function ModalRow({
       labels={{ close: m.close, dialog: m.dialog }}
       panelClassName={modalPanelClass(row)}
     >
-      <RowMarkup row={panelRow} place={place} renderBlock={renderBlock} inPanel preview={inAdmin} />
+      <RowMarkup row={panelRow} place={place} renderBlock={renderBlock} storePart={storePart} inPanel preview={inAdmin} />
     </PageModal>
   );
 }
@@ -264,6 +280,7 @@ function RowMarkup({
   row,
   place,
   renderBlock,
+  storePart: StorePart,
   inPanel = false,
   first = false,
   eager = false,
@@ -274,6 +291,7 @@ function RowMarkup({
   row: PageRow;
   place: GridPlace;
   renderBlock?: (block: PageBlock) => ReactNode;
+  storePart?: StorePartDrawer;
   inPanel?: boolean;
   first?: boolean;
   /** It may be on the first screen: its background pictures load at once (`PartBackground`). */
@@ -344,7 +362,8 @@ function RowMarkup({
               ) : block.type === "fieldLoop" ? (
                 <FieldLoopSection block={block} place={place} />
               ) : block.type === "storePart" ? (
-                <StorePartSection block={block} place={place} />
+                // Only on the working page it belongs to, which hands in what draws it (`RolePage`); anywhere else nothing.
+                StorePart && <StorePart block={block} place={place} />
               ) : block.type === "emailForm" || block.type === "newsletter" ? (
                 <FormSection block={block} place={place} />
               ) : block.type === "testimonials" && block.source === "google" ? (

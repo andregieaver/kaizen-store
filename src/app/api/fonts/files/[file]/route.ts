@@ -2,7 +2,10 @@ import { connection } from "next/server";
 
 import { fontFile } from "@/server/fonts";
 
-/** A self-hosted font file (D59), named by a hash of its bytes, so it can be kept for good. */
+/**
+ * A self-hosted font file (D59), named by a hash of the file Google sent, so it can be kept for good: a variable family's is later cut to
+ * the weights it is installed in (`trimFontFiles()`), which draws the same, so a browser that kept the whole file is not wrong.
+ */
 export async function GET(_request: Request, { params }: RouteContext<"/api/fonts/files/[file]">) {
   await connection();
   const data = await fontFile((await params).file);
