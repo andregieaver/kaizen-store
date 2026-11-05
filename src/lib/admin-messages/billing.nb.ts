@@ -9,6 +9,9 @@ export const billingNb: BillingMessages = {
     noPlan: "Ikke noe abonnement ennå",
     trial: "Gratis å prøve til {date}. Et abonnement du velger før det, belastes første gang den dagen; i prøveperiodens siste to dager belastes det med en gang.",
     trialEnded: "Prøveperioden din sluttet {date}.",
+    endsPrivate: "Når abonnementet ditt slutter {date}, blir butikken privat til du velger et abonnement igjen; alt du har laget, er tatt vare på.",
+    noCountry: "Legg først inn landet virksomheten er registrert i: det avgjør mva. på abonnementet.",
+    noCountryLink: "Legg det inn under Virksomhet",
     price: "Pris",
     priceLine: "{price}, ekskl. mva.",
     status: "Status",
@@ -108,5 +111,6 @@ export const billingNb: BillingMessages = {
     ends: "Abonnementet ditt slutter når den nåværende perioden gjør det.",
     typeCode: "Skriv inn rabattkoden.",
     removed: "Koden er fjernet.",
+    noCountry: "Legg først inn landet virksomheten er registrert i, under Innstillinger, Virksomhet: det avgjør mva. på abonnementet.",
   },
 };

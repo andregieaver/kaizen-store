@@ -13,6 +13,9 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * may look, change and open the store without a plan, and a plan chosen before the end is free until then (Stripe's `trial_end`). When the
  * trial ends with no plan, an open store is made private again (`settleTrials()`, the five-minute dispatcher's `trials`): kept, with a
  * banner saying to choose a plan; once a plan starts it is made public again. Only a store the job made private is ever made public by it.
+ * A store that began on a trial and later cancels its plan is made private the same way when the plan ends (decided 5 November 2026): it
+ * needs a running plan to be public, so one month paid cannot keep it public for good; Billing says so while the plan is ending, and the
+ * banner says the plan ended (`pausedAfter()`). A store that never had a trial (one a platform admin approved) is left as it is.
  */
 
 export const TRIAL_DAYS = 14;
@@ -50,6 +53,20 @@ export async function trialPausedAt(storeId: string): Promise<Date | null> {
     sql`select trial_paused_at from commerce.store_billing where store_id = ${storeId}::uuid`,
   );
   return row?.trial_paused_at ? new Date(row.trial_paused_at) : null;
+}
+
+/**
+ * Why the trial's end job made the store private (D420), for its banner: `plan` when it had a plan that has since ended (a store that
+ * began on a trial needs a running plan to be public, its trial or a cancelled plan ending alike), `trial` when it never had one; null
+ * when the job did not make it private.
+ */
+export async function pausedAfter(storeId: string): Promise<"trial" | "plan" | null> {
+  const row = await typedRow(
+    z.object({ trial_paused_at: col.timestampOrNull, had_plan: col.bool }),
+    sql`select trial_paused_at, subscription_id is not null as had_plan from commerce.store_billing where store_id = ${storeId}::uuid`,
+  );
+  if (!row?.trial_paused_at) return null;
+  return row.had_plan ? "plan" : "trial";
 }
 
 /** At most this many stores each way a run: the dispatcher comes back in five minutes. */

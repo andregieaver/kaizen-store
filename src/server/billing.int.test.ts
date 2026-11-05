@@ -488,6 +488,15 @@ describe("owners choosing their own plan", () => {
     owner = { id: String(account.id), email: String(account.email), name: "Owner", platformAdmin: false };
   });
 
+  it("asks for the store's country before a plan, never billing a store without one as Norwegian", async () => {
+    const plan = (await billing.listPlans()).find((p) => p.active && p.prices.some((x) => x.active && x.currency === "NOK"));
+    const price = plan?.prices.find((x) => x.active && x.currency === "NOK");
+    expect(price).toBeDefined();
+    // A new store has no country until its owner gives one with the business details.
+    expect(await billing.choosePlan(owner, ownerSlug, price?.id as string, "https://kaizen.test")).toEqual({ ok: false, problems: [billing.NO_COUNTRY] });
+    await db().execute(sql`update commerce.stores set country = 'NO' where id = ${ownerStore}::uuid`);
+  });
+
   const activePrice = async (interval: "month" | "year") => {
     const plan = (await billing.listPlans()).find((p) => p.active && p.prices.some((x) => x.active && x.interval === interval));
     return plan?.prices.find((x) => x.active && x.interval === interval && x.currency === "NOK");

@@ -46,7 +46,9 @@ Under **Choose a plan**, each plan has a card with:
 - a button to choose it paid yearly, and one paid monthly.
 
 Prices are without VAT. A store in Norway pays 25 % Norwegian VAT (MVA) on top; a store in another country is invoiced without VAT,
-under the reverse charge. Prices are in your store's main currency when the plans are offered in it.
+under the reverse charge. The country is the one your business is registered in, under [Company](/admin/{store}/settings/company);
+until it is there, Billing asks for it and no plan can be chosen. Prices are in your store's main currency when the plans are offered
+in it.
 
 Once Kaizena Flow has filled it in, **Compare plans**, under the cards, shows feature by feature what each plan includes.
 
@@ -82,6 +84,7 @@ Press **Cancel at the end of the period**. The plan runs to the end of the perio
 until then, **Keep my plan** undoes it.
 
 When the plan has ended, a store that began with a free trial is made private, as at the trial's end, until you choose a plan again.
+Billing says so beside the plan while it is ending, and the banner afterwards says that the plan ended.
 To stop selling altogether, [Close store](/admin/{store}/settings/close) under Settings also ends the plan at the end of its period.
 
 ## Usage and limits

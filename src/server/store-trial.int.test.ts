@@ -10,7 +10,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 vi.mock("next/server", () => ({ connection: async () => {}, after: () => {} }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }), headers: async () => new Headers() }));
 
-const { grantTrial, settleTrials, trialPausedAt, TRIAL_DAYS } = await import("./store-trial");
+const { grantTrial, pausedAfter, settleTrials, trialPausedAt, TRIAL_DAYS } = await import("./store-trial");
 const { setPrivateMode, privateState } = await import("./private-mode");
 const { completeSetup } = await import("./setup");
 const { addDrillOwner, DRILL_OWNER_DAYS } = await import("./live-drills");
@@ -63,6 +63,7 @@ describe("the free trial (D420)", () => {
     expect(settled.paused).toBeGreaterThanOrEqual(1);
     expect((await privateState(fx.storeId))?.private).toBe(true);
     expect(await trialPausedAt(fx.storeId)).toBeInstanceOf(Date);
+    expect(await pausedAfter(fx.storeId)).toBe("trial");
 
     const owner = await ownerOf(fx);
     expect(await setPrivateMode(owner, false)).toEqual({ ok: false, problem: "trial_ended" });
@@ -94,6 +95,22 @@ describe("the free trial (D420)", () => {
       order by created_at
     `);
     expect(actions.map((a) => a.via)).toEqual(["trial_ended", "plan_started"]);
+  });
+
+  it("makes it private again when a cancelled plan ends, and says the plan ended (decided 5 November 2026)", async () => {
+    expect(await pausedAfter(fx.storeId)).toBeNull();
+    await db().execute(sql`update commerce.stores set private_mode = false where id = ${fx.storeId}::uuid`);
+    // The owner cancelled; Stripe ends the subscription when the period does.
+    await db().execute(sql`update commerce.store_billing set subscription_id = 'sub_trial_then_cancelled', status = 'canceled' where store_id = ${fx.storeId}::uuid`);
+    const settled = await settleTrials();
+    expect(settled.paused).toBeGreaterThanOrEqual(1);
+    expect((await privateState(fx.storeId))?.private).toBe(true);
+    expect(await pausedAfter(fx.storeId)).toBe("plan");
+    // A plan again makes it public, as after the trial.
+    await db().execute(sql`update commerce.store_billing set status = 'active' where store_id = ${fx.storeId}::uuid`);
+    await settleTrials();
+    expect((await privateState(fx.storeId))?.private).toBe(false);
+    expect(await pausedAfter(fx.storeId)).toBeNull();
   });
 });
 

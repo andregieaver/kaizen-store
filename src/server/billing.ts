@@ -594,6 +594,8 @@ async function prepare(
   if (!mode || !stripe) return { ok: false, problems: ["Plans cannot be chosen right now."] };
   const store = await getStore(storeSlug);
   if (!store) return { ok: false, problems: ["Unknown store."] };
+  // The country decides the plan's VAT: never assumed (a store gives it with its business details).
+  if (!store.details.country) return { ok: false, problems: [NO_COUNTRY] };
 
   const [price] = await db().execute<Row>(sql`
     select pp.id, pp.plan_id, p.name as plan_name from commerce.plan_prices pp
@@ -633,9 +635,19 @@ async function vatRatesFor(p: Prepared): Promise<string[]> {
   return billingTaxRates(p.stripe, p.mode, p.store.details.country);
 }
 
-/** The VAT on anything Kaizena Flow bills a store (its plan, a premium theme, D286): 25 % MVA for a store in Norway, none for others. */
+/**
+ * Why Kaizena Flow bills nothing to a store without its country: the country decides the VAT on what it bills (25 % MVA in Norway, none
+ * elsewhere), so it is never assumed. A plan, a premium theme and a domain all wait for it (`prepare()`, `invoiceOne()`, `billTo()`).
+ */
+export const NO_COUNTRY = "Add the country your business is registered in under Settings, Company first: it decides the VAT on what Kaizena Flow bills.";
+
+/**
+ * The VAT on anything Kaizena Flow bills a store (its plan, a premium theme, D286, a domain): 25 % MVA for a store in Norway, none for
+ * others. A store without its country is refused (`NO_COUNTRY`), never billed as Norwegian; its callers ask for the country first.
+ */
 export async function billingTaxRates(stripe: Stripe, mode: PaymentModeName, country: string | null): Promise<string[]> {
-  return (country ?? "NO") === "NO" ? [await norwegianVatRate(stripe, mode)] : [];
+  if (!country) throw new Error(NO_COUNTRY);
+  return country === "NO" ? [await norwegianVatRate(stripe, mode)] : [];
 }
 
 /**

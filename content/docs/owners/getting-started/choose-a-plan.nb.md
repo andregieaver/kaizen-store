@@ -46,7 +46,9 @@ Under **Velg et abonnement** har hvert abonnement et kort med:
 - en knapp for å velge det med årlig betaling, og en for månedlig.
 
 Prisene er uten mva. En butikk i Norge betaler 25 % merverdiavgift i tillegg; en butikk i et annet land faktureres uten mva., med
-omvendt avgiftsplikt. Prisene vises i butikkens hovedvaluta når abonnementene tilbys i den.
+omvendt avgiftsplikt. Landet er det virksomheten er registrert i, under [Virksomhet](/admin/{store}/settings/company); før det er lagt
+inn, ber **Abonnement og faktura** om det, og ingen abonnement kan velges. Prisene vises i butikkens hovedvaluta når abonnementene
+tilbys i den.
 
 Når Kaizena Flow har fylt den ut, viser **Sammenlign abonnementer**, under kortene, hva hvert abonnement inkluderer, funksjon for
 funksjon.
@@ -84,7 +86,8 @@ Trykk **Si opp ved slutten av perioden**. Abonnementet varer ut perioden du har 
 med **Behold abonnementet**.
 
 Når abonnementet er over, gjøres en butikk som startet med gratis prøveperiode, privat, slik som når prøveperioden går ut, til du velger
-et abonnement igjen. Vil du slutte å selge helt, avslutter [Steng butikken](/admin/{store}/settings/close) under Innstillinger også
+et abonnement igjen. **Abonnement og faktura** sier det ved abonnementet mens det holder på å slutte, og banneret etterpå sier at
+abonnementet er avsluttet. Vil du slutte å selge helt, avslutter [Steng butikken](/admin/{store}/settings/close) under Innstillinger også
 abonnementet ved slutten av perioden.
 
 ## Bruk og grenser

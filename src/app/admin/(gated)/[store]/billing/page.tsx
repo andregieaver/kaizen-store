@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PlanDiscount } from "@/components/admin/plan-discount";
@@ -60,7 +61,9 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   const mode = billingMode();
   const onPlan = isOnPlan(billing?.status) && billing?.mode === mode;
   const current = plans.find((plan) => plan.id === billing?.planId);
-  const inNorway = (store.details.country ?? "NO") === "NO";
+  const inNorway = store.details.country === "NO";
+  // The country decides the plan's VAT: without it no plan can be chosen (`NO_COUNTRY`), and the page says where to add it.
+  const noCountry = !store.details.country;
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const words = adminText(lang, "billing");
@@ -118,6 +121,10 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
           <dt className="text-muted">{w.fee}</dt>
           <dd>{fillWords(w.feeLine, { fee: feeText(billing?.feeBps ?? 0, locale) })}</dd>
         </dl>
+        {/* A store that began on a trial goes private when a cancelled plan ends (D420), so its owner is told before. */}
+        {onPlan && billing?.cancelAtPeriodEnd && billing.currentPeriodEnd && trialEnd && (
+          <p className="mt-3">{fillWords(w.endsPrivate, { date: billing.currentPeriodEnd.slice(0, 10) })}</p>
+        )}
         {/* A self-serve store's trial (D359), while no plan is running. */}
         {trialEnd && !onPlan && (
           <p className="mt-3">{fillWords(trialEnd > new Date() ? w.trial : w.trialEnded, { date: trialEnd.toISOString().slice(0, 10) })}</p>
@@ -151,6 +158,14 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
               {lang === "en" ? "." : ""} {w.yearlyCheaper} {onPlan ? w.changeApplies : w.payByCard}
             </p>
             {!isOwner && <p className="text-sm text-muted">{w.ownerOnly}</p>}
+            {noCountry && (
+              <p role="status" className="mt-2 text-sm">
+                {w.noCountry}{" "}
+                <Link href={`/admin/${store.slug}/settings/company`} className="font-medium underline underline-offset-2">
+                  {w.noCountryLink}
+                </Link>
+              </p>
+            )}
           </div>
           {!onPlan && (isOwner || billing?.discount) && codeField}
           {!onPlan && isOwner && reminders && (
@@ -170,7 +185,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
                   currentPriceId={onPlan ? billing?.priceId ?? null : null}
                   currentPosition={onPlan ? current?.position ?? null : null}
                   storeSlug={store.slug}
-                  disabled={!isOwner}
+                  disabled={!isOwner || noCountry}
                   discount={onPlan ? null : waiting}
                   words={words}
                   locale={locale}

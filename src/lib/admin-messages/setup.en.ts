@@ -72,6 +72,7 @@ export const setupEn = {
     contactEmail: "Contact email for shoppers",
     address: "Registered business address",
     country: "Country the business is registered in",
+    chooseCountry: "Choose a country",
   },
   countries: {
     title: "Where you sell",
