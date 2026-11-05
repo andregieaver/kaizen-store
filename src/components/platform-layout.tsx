@@ -169,6 +169,12 @@ export function PlatformMenu({ chrome, lang = "en" }: Props) {
           </Link>
         </li>
       </ul>
+      {/* The site's languages (D312) at the menu's foot, as a store's menu ends with its own: a phone's header has no room for them. */}
+      {chrome.langs.length > 1 && (
+        <Suspense fallback={null}>
+          <LanguageSwitch lang={lang} offered={chrome.langs} menu />
+        </Suspense>
+      )}
     </MobileMenu>
   );
 }

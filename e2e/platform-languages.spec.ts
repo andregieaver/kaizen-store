@@ -36,6 +36,13 @@ test("the English site is as it was, and Norwegian is there only while it is off
   await expect(page.getByRole("contentinfo").getByRole("link", { name: /cookies|informasjonskapsler/i })).toHaveAttribute("href", "/no/cookies");
   const switcher = page.getByRole("navigation", { name: "Språk" });
   await expect(switcher.getByRole("link", { name: "English" })).toHaveAttribute("href", "/sign-up");
+  // On a phone the slide-out menu ends with the languages, as a store's menu does with its own.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Åpne menyen" }).first().click();
+  const menu = page.getByRole("dialog", { name: "Meny" });
+  const inMenu = menu.getByRole("navigation", { name: "Språk" });
+  await expect(inMenu.getByRole("link", { name: "English" })).toHaveAttribute("href", "/sign-up");
+  await expect(inMenu.getByText("Norsk")).toHaveAttribute("aria-current", "true");
 });
 
 test.describe("a Norwegian browser on an English page", () => {

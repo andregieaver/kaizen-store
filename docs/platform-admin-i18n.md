@@ -56,6 +56,9 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
 - One reader, `platformLang(request or params)`, gives the language a page is drawn in; every platform route and layout takes it, and
   `<html lang>`, `og:locale`, `SiteConsent`, `hreflang` alternates, the sitemap (one entry per language with alternates) and `llms.txt`
   follow it.
+- The switch (`LanguageSwitch`) is where the owner places the header's or footer's *Languages* part, the standard footer's own, and the
+  foot of the phone's slide-out menu (`PlatformMenu`, 2026-11-05: a phone's header has no room for it), as a store's menu ends with its
+  languages and countries.
 
 ### 3.2 Kaizena Flow's own site (the platform store)
 

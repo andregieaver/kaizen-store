@@ -14,16 +14,42 @@ function sameIn(lang: PlatformLang, pathname: string, query: string): string {
 
 /**
  * The site's languages, each a link to this page in it (D312): the *Languages* part of Kaizena Flow's header or footer, where the
- * owner places it (nothing is added under the footer by itself). A full page load, as each language is a root layout of its own. Each
- * is a target of 24 px at least (WCAG 2.5.8, `e2e/target-size.spec.ts`), in a footer as anywhere.
+ * owner places it (nothing is added under the footer by itself), and the foot of the phone's slide-out menu (`menu`), as a store's
+ * menu ends with its languages and countries. A full page load, as each language is a root layout of its own. Each is a target of
+ * 24 px at least (WCAG 2.5.8, `e2e/target-size.spec.ts`), in a footer as anywhere; in the menu, 44 px as its other links.
  * Drawn in a `<Suspense>`: it reads the address.
  */
-export function LanguageSwitch({ lang, offered }: { lang: PlatformLang; offered: readonly PlatformLang[] }) {
+export function LanguageSwitch({ lang, offered, menu = false }: { lang: PlatformLang; offered: readonly PlatformLang[]; menu?: boolean }) {
   const pathname = usePathname();
   const query = useSearchParams().toString();
   if (offered.length < 2) return null;
+  const label = LANGUAGE_HINT_TEXT[lang].switchLabel;
+  if (menu) {
+    // As the store's menu shows its countries: a heading, then one button-like link per language, the current one marked.
+    const pill = "flex min-h-11 items-center rounded-button border px-4 text-sm";
+    return (
+      <nav aria-label={label} className="mt-auto">
+        <p className="mb-2 text-sm text-muted">{label}</p>
+        <ul className="flex flex-wrap gap-2">
+          {offered.map((other) => (
+            <li key={other}>
+              {other === lang ? (
+                <span aria-current="true" lang={PLATFORM_LANG_FACTS[other].tag} className={`${pill} border-foreground font-semibold`}>
+                  {PLATFORM_LANG_FACTS[other].name}
+                </span>
+              ) : (
+                <a href={sameIn(other, pathname, query)} hrefLang={PLATFORM_LANG_FACTS[other].tag} lang={PLATFORM_LANG_FACTS[other].tag} className={`${pill} border-border`}>
+                  {PLATFORM_LANG_FACTS[other].name}
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </nav>
+    );
+  }
   return (
-    <nav aria-label={LANGUAGE_HINT_TEXT[lang].switchLabel} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+    <nav aria-label={label} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
       {offered.map((other) =>
         other === lang ? (
           <span key={other} aria-current="true" lang={PLATFORM_LANG_FACTS[other].tag} className="inline-flex min-h-6 items-center font-medium text-foreground">
