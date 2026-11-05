@@ -10,7 +10,7 @@ plans: []
 admin: /admin/{store}/orders/{id}
 order: 20
 checked: 2026-11-05
-sources: [D174, D238, D372, D374, D153, D289, D457]
+sources: [D174, D238, D372, D374, D153, D289, D457, D458]
 ---
 
 ## Se hva som skal sendes
@@ -56,8 +56,8 @@ Pakklister og plukklister tar høyst 100 bestillinger. Plukklisten endrer ingent
 
 Med en transportør koblet til (se [Transportører](/docs/owners/shipping/carriers)) tilbyr bestillingen en booking under **Send
 bestillingen**: **Book med Posten / Bring**, og **Book med Helthjem**, **Book med Porterbuddy** eller **Book med Instabox** når kunden
-valgte den transportøren i kassen. **Book med DHL Express** og **Book med UPS** vises når kunden valgte dem, eller valgte din egen frakt:
-da velger du tjenesten. Bookingen merker pakken som sendt med sporingsnummeret, og **Skriv ut etikett** åpner etiketten for utskrift.
+valgte den transportøren i kassen. **Book med DHL Express**, **UPS**, **PostNord**, **DHL Paket** og **nShift** vises når kunden valgte
+dem, eller valgte din egen frakt: da velger du tjenesten, og du kan be transportøren hente pakken. Bookingen merker pakken som sendt med sporingsnummeret, og **Skriv ut etikett** åpner etiketten for utskrift.
 
 For å booke en del av bestillingen setter du ned tallene før du booker, og veier den pakken: vekten som vises, er anslått ut fra hele
 bestillingen. Book resten rett etterpå som en egen pakke.
@@ -98,9 +98,10 @@ bestillingen og oppgir dagen. Bruk sporingen eller det kunden sier, aldri dagen 
 ## Angre en pakke
 
 Merket du en pakke som sendt ved en feil? Trykk **Angre «sendt»** på den, gjerne med en grunn. Varene går tilbake til det som gjenstår å
-sende, og pakken blir stående i historikken, merket som angret. Tre ting gjøres ikke for deg:
+sende, og pakken blir stående i historikken, merket som angret. En pakke booket med UPS, DHL Paket eller nShift kanselleres hos
+transportøren også, hvis den ikke er levert inn: meldingen sier om transportøren kansellerte den. Tre ting gjøres ikke for deg:
 
-- en booking hos transportøren kanselleres ikke: kanseller den hos transportøren;
+- en booking hos en annen transportør kanselleres ikke: kanseller den hos transportøren;
 - kunden får ingen e-post: si fra selv hvis kunden har fått beskjed om at den er på vei;
 - en registrert mottaksdag fjernes: registrer den igjen når varene kommer fram.
 

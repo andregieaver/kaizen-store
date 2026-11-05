@@ -108,4 +108,4 @@ method prices for *Rest of country*, subscriptions without a flat rate to pay, a
 ### Pickup, local delivery and carriers
 
 - [Pickup and local delivery](/docs/owners/shipping/pickup-and-local-delivery): let customers collect, or deliver nearby yourself.
-- [Shipping carriers](/docs/owners/shipping/carriers): offer Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express or UPS at checkout.
+- [Shipping carriers](/docs/owners/shipping/carriers): offer Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express, UPS, DHL Paket or nShift at checkout.

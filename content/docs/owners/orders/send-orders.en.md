@@ -10,7 +10,7 @@ plans: []
 admin: /admin/{store}/orders/{id}
 order: 20
 checked: 2026-11-05
-sources: [D174, D238, D372, D374, D153, D289, D457]
+sources: [D174, D238, D372, D374, D153, D289, D457, D458]
 ---
 
 ## See what to send
@@ -54,8 +54,8 @@ Slips and pick lists take at most 100 orders. The pick list changes nothing: mar
 
 With a carrier connected (see [Carriers](/docs/owners/shipping/carriers)), the order offers a booking under **Send the order**:
 **Book with Posten / Bring**, and **Book with Helthjem**, **Book with Porterbuddy** or **Book with Instabox** when the customer chose that
-carrier at checkout. **Book with DHL Express** and **Book with UPS** are there when the customer chose them, or chose your own shipping:
-then you choose the service. The booking marks the parcel sent with its tracking number, and **Print label** opens the label to print.
+carrier at checkout. **Book with DHL Express**, **UPS**, **PostNord**, **DHL Paket** and **nShift** are there when the customer chose them,
+or chose your own shipping: then you choose the service, and you can ask the carrier to collect the parcel. The booking marks the parcel sent with its tracking number, and **Print label** opens the label to print.
 
 To book part of an order, lower the numbers before you book, and weigh that parcel: the weight shown is guessed from the whole order.
 Book the rest straight after as a parcel of its own.
@@ -95,9 +95,10 @@ as received by the customer** and give the day. Use the tracking or what the cus
 ## Undo a parcel
 
 Marked a parcel sent by mistake? Press **Undo “sent”** on it, with a reason if you like. Its items go back to what is still to send, and
-the parcel stays in the history, marked undone. Three things are not done for you:
+the parcel stays in the history, marked undone. A parcel booked with UPS, DHL Paket or nShift is cancelled at the carrier too,
+if it has not been handed over: the message says whether the carrier cancelled it. Three things are not done for you:
 
-- a booking with the carrier is not cancelled: cancel it with the carrier;
+- a booking with another carrier is not cancelled: cancel it with the carrier;
 - the customer is not emailed: tell them if they were told it was on its way;
 - a recorded receipt day is cleared: record it again when the goods arrive.
 

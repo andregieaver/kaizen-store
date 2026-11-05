@@ -103,6 +103,33 @@ const UPS: Record<string, TrackingPhase> = {
   X: "problem",
 };
 
+/**
+ * DHL Paket through DHL's Shipment Tracking - Unified (`statusCode`, the documented enum "high-level grouping statuses" of its OpenAPI 1.5.8,
+ * read 2026-11-05): pre-transit, transit, delivered, failure, unknown. It has no out-for-delivery code.
+ */
+const DHL_PAKET: Record<string, TrackingPhase> = {
+  "pre-transit": "info_received",
+  transit: "in_transit",
+  delivered: "delivered",
+  failure: "problem",
+  unknown: "unknown",
+};
+
+/**
+ * nShift Delivery's shipment statuses (its REST API description, the response section of `root-resource-v1.raml`, and `Alerts.md`, read
+ * 2026-11-05): PRINTED, DISPATCHING, OUTFORDELIVERY, DELIVERING ("arrived to a pickup location"), DELIVERED, PARTDELIVERED, RETURNED, CANCELLED.
+ */
+const NSHIFT: Record<string, TrackingPhase> = {
+  PRINTED: "info_received",
+  DISPATCHING: "in_transit",
+  OUTFORDELIVERY: "out_for_delivery",
+  DELIVERING: "ready_for_collection",
+  DELIVERED: "delivered",
+  PARTDELIVERED: "in_transit",
+  RETURNED: "returned_to_sender",
+  CANCELLED: "problem",
+};
+
 /** Each carrier's table and whether its codes were read in the carrier's documentation. A code becomes verified only with its source written above. */
 export const CARRIER_PHASES: Record<string, { verified: boolean; codes: Record<string, TrackingPhase> }> = {
   bring: { verified: true, codes: BRING },
@@ -111,6 +138,8 @@ export const CARRIER_PHASES: Record<string, { verified: boolean; codes: Record<s
   porterbuddy: { verified: false, codes: PORTERBUDDY },
   dhl: { verified: true, codes: DHL },
   ups: { verified: false, codes: UPS },
+  dhl_paket: { verified: true, codes: DHL_PAKET },
+  nshift: { verified: true, codes: NSHIFT },
 };
 
 /** The phase of a carrier's status code; an unlisted code (or carrier) is `unknown` and unverified. */

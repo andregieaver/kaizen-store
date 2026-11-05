@@ -1,11 +1,12 @@
-import type { BookingRequest, PickupPoint } from "./shipping-carriers";
+import type { BookingRequest, PickupPoint, ReturnBookingRequest } from "./shipping-carriers";
 
 /**
- * Instabox (D457): what Instabee's API is sent and how its answers are read, as pure functions so they are tested without the network. The calls are
+ * Instabox (D457, D458): what Instabee's API is sent and how its answers are read, as pure functions so they are tested without the network. The calls are
  * in `src/server/carriers/instabox.ts`. Instabox is Instabee's brand of parcel lockers in Sweden, Norway and Denmark; a shop connects through
  * Instabee's integration API (docs.integration.instabee.com, beta, read 2026-11-05), with the API key Instabee's implementation manager gives it:
  * `Authorization: ApiKey …` and `Accept-Version: 1.0.0` on every call. Delivery options (the lockers near a postal code, with an availability token
- * held 14 days), orders (`PUT /orders`, booked and confirmed as packed at once) and labels. Instabee's documentation does not say whose price its
+ * held 14 days), orders (`PUT /orders`, booked and confirmed as packed at once, to a locker or home, D458), returns through a locker and labels.
+ * Instabee documents no call that cancels an order for these products. Instabee's documentation does not say whose price its
  * `deliveryPrice` is, so the store enters its own prices for checkout (`delivery-options.ts`, pricing "store").
  */
 
@@ -16,11 +17,22 @@ export const instaboxHost = (environment: string) => (environment === "live" ? I
 export const INSTABOX_BRAND = "instabox";
 /** Instabee's locker product ("Locker Delivery"). */
 export const LOCKER_PRODUCT = "LOCKER_EXPRESS";
+/** Instabee's home delivery product, which its order call documents for the `instabox` brand (D458). */
+export const HOME_PRODUCT = "HOME_DELIVERY";
+/** Instabee's return product: the shopper drops the parcel at a locker, and it comes back to the store (D458). */
+export const RETURN_PRODUCT = "LOCKER_RETURN";
 
-/** The services a store can offer at checkout: a locker the shopper chooses (at most 20 kg and 39 × 39 × 59 cm). */
-export const INSTABOX_SERVICES: { id: string; name: string; needsPickupPoint: boolean; maxWeightGrams: number }[] = [
+/**
+ * The services a store can offer at checkout: a locker the shopper chooses (at most 20 kg and 39 × 39 × 59 cm), and home delivery (D458), which
+ * Instabee confirms per postal code when it is booked. Instabee gives no weight limit for home delivery.
+ */
+export const INSTABOX_SERVICES: { id: string; name: string; needsPickupPoint: boolean; maxWeightGrams?: number }[] = [
   { id: "locker", name: "Instabox locker", needsPickupPoint: true, maxWeightGrams: 20_000 },
+  { id: "home", name: "Instabox home delivery", needsPickupPoint: false },
 ];
+
+/** The Instabee product a store's service is booked as. */
+export const instaboxProduct = (serviceId: string) => (serviceId === "home" ? HOME_PRODUCT : LOCKER_PRODUCT);
 
 export const instaboxHeaders = (apiKey: string, extra: Record<string, string> = {}): Record<string, string> => ({
   Authorization: `ApiKey ${apiKey}`,
@@ -38,9 +50,12 @@ const text = (value: unknown): string => (typeof value === "string" ? value.trim
 // Lockers
 // ---------------------------------------------------------------------------
 
-/** The lockers Instabox delivers to near a postal code, with their opening hours and distance. */
-export const deliveryOptionsUrl = (host: string, country: string, postalCode: string) =>
-  `${host}/availability/countries/${encodeURIComponent(country.toUpperCase())}/postal-codes/${encodeURIComponent(postalCode.replace(/\s+/g, ""))}/delivery-options?brand=${INSTABOX_BRAND}&product=${LOCKER_PRODUCT}`;
+/**
+ * The delivery options of a product near a postal code: the lockers Instabox delivers to (or takes returns at) with their opening hours and
+ * distance, or for home delivery whether it reaches the postal code at all (a 404 when it does not).
+ */
+export const deliveryOptionsUrl = (host: string, country: string, postalCode: string, product: string = LOCKER_PRODUCT) =>
+  `${host}/availability/countries/${encodeURIComponent(country.toUpperCase())}/postal-codes/${encodeURIComponent(postalCode.replace(/\s+/g, ""))}/delivery-options?brand=${INSTABOX_BRAND}&product=${product}`;
 
 /**
  * A locker as the shopper's choice keeps it: Instabox's sort code with the availability token it came with (`SORTCODE~token`), since a booking must
@@ -87,41 +102,66 @@ export function parseLockers(json: unknown): { token: string | null; lockers: Pi
 // Orders
 // ---------------------------------------------------------------------------
 
+const COUNTRY_CODES: Record<string, string> = { SE: "+46", NO: "+47", DK: "+45" };
+
+/**
+ * A phone number with its country code (Instabee asks home delivery for at least ten digits): written as given when it has one (`+` or `00`),
+ * else with the delivery country's code, a Swedish or Danish trunk 0 left out.
+ */
+export function internationalPhone(phone: string, country: string): string {
+  const compact = phone.replace(/[^\d+]/g, "");
+  if (compact.startsWith("+")) return compact;
+  if (compact.startsWith("00")) return `+${compact.slice(2)}`;
+  const code = COUNTRY_CODES[country.toUpperCase()];
+  return code && compact ? `${code}${compact.replace(/^0/, "")}` : compact;
+}
+
 /** What is missing for Instabox to take the booking, in plain words; empty when it can be made. */
 export function bookingProblems(request: BookingRequest): string[] {
   const problems: string[] = [];
-  if (!request.pickupPointId) problems.push("The customer's Instabox locker is missing.");
+  const home = request.serviceId === "home";
+  if (!INSTABOX_SERVICES.some((s) => s.id === request.serviceId)) problems.push("Choose an Instabox service.");
+  if (!home && !request.pickupPointId) problems.push("The customer's Instabox locker is missing.");
   const to = request.to;
   if (!["SE", "NO", "DK"].includes(to.country)) problems.push("Instabox delivers in Sweden, Norway and Denmark.");
   if (!to.name || !to.street || !to.postalCode || !to.city) problems.push("The delivery address needs a name, street, postal code and city.");
-  if (!to.phone) problems.push("The order has no phone number for the recipient: Instabox texts the code for the locker.");
+  if (!to.phone) problems.push(home ? "The order has no phone number for the recipient: Instabox texts when it delivers." : "The order has no phone number for the recipient: Instabox texts the code for the locker.");
+  else if (home && internationalPhone(to.phone, to.country).replace(/\D/g, "").length < 10) problems.push("The recipient's phone number is too short for Instabox's home delivery.");
   if (!to.email) problems.push("The order has no email for the recipient.");
   return problems;
 }
 
+/** Home delivery's answer for a postal code: the availability token, and the sort code of its delivery option when Instabee gave one. */
+export function parseHomeAvailability(json: unknown): { token: string | null; sortCode: string | null } {
+  const body = obj(json);
+  const option = list(body.deliveryOptions).map(obj).find((o) => text(o.sortCode));
+  return { token: text(body.availabilityToken) || null, sortCode: option ? text(option.sortCode) : null };
+}
+
 /**
- * The order, booked and confirmed as packed in one call (`parcelPackingConfirmed`): the locker's sort code and the token it came with, the recipient
- * Instabox texts the code to, the order number, and the parcel's weight and size. Instabee knows the store's warehouse; a store with several names
- * the one it sends from (`collectionPointId`).
+ * The order, booked and confirmed as packed in one call (`parcelPackingConfirmed`): the locker's sort code and the token it came with (for home
+ * delivery, the token and sort code of the postal code's availability, D458), the recipient Instabox texts, the order number, and the parcel's weight
+ * and size. Instabee knows the store's warehouse; a store with several names the one it sends from (`collectionPointId`).
  */
-export function orderBody(request: BookingRequest, token: string, sortCode: string, collectionPointId?: string) {
+export function orderBody(request: BookingRequest, token: string | null, sortCode: string | null, collectionPointId?: string) {
   const parcel = request.parcels[0];
   const grams = request.parcels.reduce((sum, p) => sum + Math.max(1, Math.round(p.weightGrams)), 0);
+  const product = instaboxProduct(request.serviceId);
   return {
     brand: INSTABOX_BRAND,
-    product: LOCKER_PRODUCT,
-    availabilityToken: token,
+    product,
+    ...(token ? { availabilityToken: token } : {}),
     parcelPackingConfirmed: true,
     recipient: {
       name: request.to.name.slice(0, 100),
       email: request.to.email ?? "",
-      phone: (request.to.phone ?? "").replace(/[^\d+]/g, ""),
+      phone: product === HOME_PRODUCT ? internationalPhone(request.to.phone ?? "", request.to.country) : (request.to.phone ?? "").replace(/[^\d+]/g, ""),
       street: request.to.street.slice(0, 100),
       postalCode: request.to.postalCode.replace(/\s+/g, ""),
       city: request.to.city.slice(0, 60),
       countryCode: request.to.country.toUpperCase(),
     },
-    deliveryOption: { sortCode },
+    ...(sortCode ? { deliveryOption: { sortCode } } : {}),
     ...(collectionPointId ? { dispatch: { collectionPointId } } : {}),
     cart: {
       orderNumber: (request.parcelReference ?? request.orderReference).slice(0, 60),
@@ -154,6 +194,59 @@ export function parseOrder(json: unknown): ParsedOrder {
 
 /** Instabox's public tracking page for a parcel. */
 export const instaboxTrackingPage = (parcelId: string) => `https://track.instabox.com/${encodeURIComponent(parcelId)}`;
+
+// ---------------------------------------------------------------------------
+// Returns through a locker (D458)
+// ---------------------------------------------------------------------------
+
+/** The return service: the shopper drops the parcel at an Instabox locker near them, with the label they print. */
+export const INSTABOX_RETURN_SERVICES: { id: string; name: string; confirmed: boolean }[] = [{ id: "locker_return", name: "Instabox locker return", confirmed: false }];
+export const INSTABOX_RETURN_DEFAULT = "locker_return";
+
+/** What is missing for Instabox to take a return, in plain words; empty when it can be made. */
+export function returnBookingProblems(request: ReturnBookingRequest): string[] {
+  const problems: string[] = [];
+  if (!INSTABOX_RETURN_SERVICES.some((s) => s.id === request.serviceId)) problems.push("Choose an Instabox return service.");
+  const from = request.from;
+  if (!["SE", "NO", "DK"].includes(from.country)) problems.push("Instabox takes returns in Sweden, Norway and Denmark.");
+  if (!from.name || !from.street || !from.postalCode || !from.city) problems.push("The customer's address needs a name, street, postal code and city.");
+  if (!from.email && !from.phone) problems.push("The return needs the customer's email or phone, for Instabox's messages.");
+  return problems;
+}
+
+/**
+ * A return (`LOCKER_RETURN`): the shopper as the sender, the locker nearest them (its sort code and the availability token it came with), the
+ * return's number, and the parcel: its weight and size when known, else Instabee's smallest size, which a parcel needs (sizes are agreed with
+ * Instabee). Instabee sends it to the store's warehouse.
+ */
+export function returnOrderBody(request: ReturnBookingRequest, token: string, sortCode: string) {
+  const parcel = request.parcels[0];
+  const grams = request.parcels.reduce((sum, p) => sum + Math.max(1, Math.round(p.weightGrams)), 0);
+  const sized = parcel?.lengthMm && parcel.widthMm && parcel.heightMm;
+  return {
+    brand: INSTABOX_BRAND,
+    product: RETURN_PRODUCT,
+    availabilityToken: token,
+    sender: {
+      name: request.from.name.slice(0, 100),
+      ...(request.from.email ? { email: request.from.email } : {}),
+      ...(request.from.phone ? { phone: internationalPhone(request.from.phone, request.from.country) } : {}),
+      street: request.from.street.slice(0, 100),
+      postalCode: request.from.postalCode.replace(/\s+/g, ""),
+      city: request.from.city.slice(0, 60),
+      countryCode: request.from.country.toUpperCase(),
+    },
+    deliveryOption: { sortCode },
+    cart: {
+      orderNumber: request.returnReference.slice(0, 60),
+      totalWeightInGrams: grams,
+      parcel: {
+        weightGram: grams,
+        ...(sized ? { lengthMm: parcel.lengthMm, widthMm: parcel.widthMm, heightMm: parcel.heightMm } : { estimatedSize: "SMALL" }),
+      },
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Labels

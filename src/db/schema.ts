@@ -12265,26 +12265,32 @@ export const shippingCarriers = commerce.table(
 );
 
 /**
- * A label a carrier gives only once, in its answer to the booking (DHL Express, D457): its PDF, kept with the parcel so staff can print it from the
- * order page and the labels page. Read and written only through `carrier-label.ts` and `carrier-delivery-booking.ts`, never by a page; the daily
- * retention run removes it after the period of `retention_rules` kind `carrier_labels`, and erasure with the person's orders. Other carriers' labels
- * are fetched from the carrier when they are printed and never kept.
+ * A label a carrier gives only in its answer to the booking (DHL Express, D457; PostNord and DHL Paket after its day's closing, D458): its PDF,
+ * kept with the parcel (`shipment_id`) or the return (`return_id`, a return label the shopper prints) so it can be printed from the order page,
+ * the labels page or the return's link. Read and written only through `carrier-label.ts`, `carrier-delivery-booking.ts` and `return-labels.ts`,
+ * never by a page; the daily retention run removes it after the period of `retention_rules` kind `carrier_labels`, and erasure with the person's
+ * orders. Other carriers' labels are fetched from the carrier when they are printed and never kept.
  */
 export const carrierLabels = commerce.table(
   "carrier_labels",
   {
+    id: uuid("id").primaryKey().defaultRandom(),
     storeId: storeId(),
-    shipmentId: uuid("shipment_id").notNull(),
+    shipmentId: uuid("shipment_id"),
+    returnId: uuid("return_id"),
     orderId: uuid("order_id").notNull(),
     carrier: text("carrier").notNull(),
     pdf: bytea("pdf").notNull(),
     createdAt: createdAt(),
   },
   (t) => [
-    primaryKey({ columns: [t.storeId, t.shipmentId] }),
     foreignKey({ name: "carrier_labels_shipment_fk", columns: [t.storeId, t.shipmentId], foreignColumns: [shipments.storeId, shipments.id] }).onDelete("cascade"),
+    foreignKey({ name: "carrier_labels_return_fk", columns: [t.storeId, t.returnId], foreignColumns: [returns.storeId, returns.id] }).onDelete("cascade"),
+    uniqueIndex("carrier_labels_shipment_key").on(t.storeId, t.shipmentId).where(sql`${t.shipmentId} is not null`),
+    uniqueIndex("carrier_labels_return_key").on(t.storeId, t.returnId).where(sql`${t.returnId} is not null`),
     index("carrier_labels_order_idx").on(t.storeId, t.orderId),
     index("carrier_labels_created_idx").on(t.createdAt),
+    check("carrier_labels_one_owner", sql`(${t.shipmentId} is null) <> (${t.returnId} is null)`),
     check("carrier_labels_carrier", sql`${t.carrier} in (${sqlList(CARRIER_IDS)})`),
     check("carrier_labels_pdf", sql`octet_length(${t.pdf}) between 5 and 5000000 and substring(${t.pdf} from 1 for 4) = '\\x25504446'::bytea`),
   ],

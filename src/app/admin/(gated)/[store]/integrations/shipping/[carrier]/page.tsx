@@ -202,7 +202,9 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
             {w.checkoutStart}
             {storePriced
               ? fillWords(w.storePriced, { name: info.name })
-              : fillWords(w.carrierPriced, { name: info.name, extra: info.id === "porterbuddy" ? w.porterbuddyExtra : info.id === "bring" ? w.bringExtra : w.convertedExtra })}
+              : info.id === "nshift"
+                ? w.nshiftPriced
+                : fillWords(w.carrierPriced, { name: info.name, extra: info.id === "porterbuddy" ? w.porterbuddyExtra : info.id === "bring" ? w.bringExtra : w.convertedExtra })}
             {fillWords(w.fallbackBefore, { name: info.name })}
             <Link href={`/admin/${store.slug}/settings/shipping`} className="underline">
               {w.shippingLink}

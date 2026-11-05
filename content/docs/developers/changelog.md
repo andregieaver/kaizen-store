@@ -18,10 +18,11 @@ Every change to a published contract gets a version here, newest first: the Admi
 
 ## 1.9 — 2026-11-05
 
-An addition to the Admin API (D457).
+An addition to the Admin API (D457, D458).
 
-- Marking an order as sent takes `instabox` as its `carrier`, with Instabox's tracking page for the parcel, beside the carriers it took
-  before. Instabox, DHL Express and UPS are now carriers a store connects, and their parcels name them.
+- Marking an order as sent takes `instabox`, `dhl_paket` and `nshift` as its `carrier`, beside the carriers it took before; Instabox and DHL
+  Paket give the parcel their tracking page. Instabox, DHL Express, UPS, DHL Paket and nShift are now carriers a store connects, and their
+  parcels name them.
 
 ## 1.8 — 2026-11-04
 

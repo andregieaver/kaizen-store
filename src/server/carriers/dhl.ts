@@ -11,10 +11,12 @@ import {
   dhlTrackingPage,
   parseCity,
   parseRates,
+  parseServicePoints,
   parseShipment,
   parseTracking,
   ratesBody,
   shipmentBody,
+  servicePointsUrl,
   shipmentUrl,
   trackingUrl,
   type DhlProduct,
@@ -22,8 +24,9 @@ import {
 import { bookingCustomsProblem, senderAddress, type CarrierContext, type ShippingAddress, type ShippingCarrierAdapter, type ShippingOption } from "@/lib/shipping-carriers";
 
 /**
- * DHL Express's connection (D457), through the MyDHL API on the store's own API key, secret and account number: Address Validate (the city of the
- * shopper's postal code, which Rates needs), Rates, Shipments and Tracking. In the store's test environment the calls go to DHL's test host, where
+ * DHL Express's connection (D457, D458), through the MyDHL API on the store's own API key, secret and account number: Address Validate (the city of
+ * the shopper's postal code, which Rates needs), Rates, the ServicePoint search, Shipments (with a collection when asked for) and Tracking. MyDHL has
+ * no call to cancel a shipment (only a pickup), so this connection has no `cancel`. In the store's test environment the calls go to DHL's test host, where
  * nothing is shipped. The label comes back only in the booking's answer, so it is handed on (`labelPdf`) to be kept in `carrier_labels`. Every call
  * has a timeout, and an answer that cannot be used is a plain sentence for the owner, so a page or checkout never depends on DHL being up.
  */
@@ -33,12 +36,12 @@ const TIMEOUT_MS = 15_000;
 type Fetch = typeof fetch;
 type Answer = { ok: true; json: unknown } | { ok: false; problem: string; status: number; json: unknown };
 
-async function call(fetcher: Fetch, context: CarrierContext, url: string, init: RequestInit = {}): Promise<Answer> {
+async function call(fetcher: Fetch, context: CarrierContext, url: string, init: RequestInit = {}, options: { version?: boolean } = {}): Promise<Answer> {
   let response: Response;
   try {
     response = await fetcher(url, {
       ...init,
-      headers: dhlHeaders(context.secrets.apiKey ?? "", context.secrets.apiSecret ?? "", init.body ? { "Content-Type": "application/json" } : {}),
+      headers: dhlHeaders(context.secrets.apiKey ?? "", context.secrets.apiSecret ?? "", init.body ? { "Content-Type": "application/json" } : {}, options),
       signal: AbortSignal.timeout(TIMEOUT_MS),
       cache: "no-store",
     });
@@ -96,6 +99,16 @@ export function createDhlAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapter
       });
     },
 
+    async pickupPoints(context, near) {
+      // The ServicePoint search names no version, and says "No Service Points found" with status 201 in a 200 answer.
+      const answer = await call(fetcher, context, servicePointsUrl(dhlHost(context.environment), near), {}, { version: false });
+      if (!answer.ok) {
+        if (answer.status === 404) return [];
+        throw new Error(answer.problem);
+      }
+      return parseServicePoints(answer.json);
+    },
+
     async book(context, request) {
       // A consignment that crosses a customs border is never booked without its customs lines (D343).
       const missingCustoms = bookingCustomsProblem(request);
@@ -123,6 +136,14 @@ export function createDhlAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapter
         test: context.environment === "test",
         ...(parsed.label ? { labelPdf: parsed.label } : {}),
         ...(declarable && request.customs ? { customs: { declared: true, reference: null, problem: null } } : {}),
+        // DHL books the collection with the shipment: its dispatch confirmation number says it did (D458).
+        ...(request.collection
+          ? {
+              collection: parsed.dispatchConfirmation
+                ? { booked: true, confirmation: parsed.dispatchConfirmation, problem: null }
+                : { booked: false, confirmation: null, problem: "DHL booked the shipment without a collection. Book one in MyDHL, or hand the parcel in." },
+            }
+          : {}),
       };
     },
 

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { asciiText, plannedShipping } from "@/lib/dhl";
+import { asciiText, gmtOffset, plannedShipping } from "@/lib/dhl";
 
 import { createDhlAdapter } from "./dhl";
 
@@ -63,6 +63,8 @@ describe("DHL Express's connection", () => {
     });
     expect(options).toEqual([
       { serviceId: "express", carrier: "dhl", name: "DHL Express", priceMinor: 65000, currency: "NOK", estimate: { minDays: 2, maxDays: 2 } },
+      // A ServicePoint delivery is the same product, priced the same (D458).
+      { serviceId: "servicepoint", carrier: "dhl", name: "DHL Express to a ServicePoint", priceMinor: 65000, currency: "NOK", needsPickupPoint: true, estimate: { minDays: 2, maxDays: 2 } },
       { serviceId: "economy", carrier: "dhl", name: "DHL Economy Select", priceMinor: 40000, currency: "NOK", estimate: { minDays: 5, maxDays: 5 } },
     ]);
     expect(d.calls[0].url).toBe("https://express.api.dhl.com/mydhlapi/address-validate?type=delivery&countryCode=SE&postalCode=11120&strictValidation=false");
@@ -160,10 +162,95 @@ describe("DHL Express's connection", () => {
   });
 });
 
+describe("DHL Express's ServicePoints and collections (D458)", () => {
+  const request = {
+    orderReference: "1042",
+    serviceId: "express",
+    from: { name: "Shop AS", street: "Lagerveien 2", postalCode: "0150", city: "Oslo", country: "NO", phone: "+4722334455" },
+    to: { name: "Kari Nordmann", street: "Storgata 1", postalCode: "0155", city: "Oslo", country: "NO", phone: "+4799887766", email: "kari@example.no" },
+    parcels: [{ weightGrams: 2000 }],
+  };
+  const points = {
+    status: { statusCode: 1, statusMessage: "OK" },
+    servicePoints: [
+      {
+        facilityId: "OSL123",
+        localName: "Narvesen Storgata",
+        servicePointName: "DHL Service Point",
+        address: { addressLine1: "Storgata 9", addressLine2: null, city: "OSLO", zipCode: "0155", country: "NO" },
+        distanceMetric: 0.42,
+        servicePointCapabilities: { shipmentCollection: true },
+        openingHours: { openingHours: [{ dayOfWeek: "MONDAY", openingTime: 600, closingTime: 990 }, { dayOfWeek: "SATURDAY", openingTime: 600, closingTime: 840 }] },
+      },
+      { facilityId: "OSL002", localName: "Drop-off only", address: { addressLine1: "Gata 1", city: "OSLO", zipCode: "0150", country: "NO" }, distanceMetric: 0.2, servicePointCapabilities: { shipmentCollection: false } },
+      { facilityId: "OSL777", servicePointNameFormatted: "DHL ServicePoint Grønland", address: { addressLine1: "Grønlandsleiret 5", city: "OSLO", zipCode: "0190", country: "NO" }, distanceMetric: 1.5 },
+    ],
+  };
+
+  it("finds the ServicePoints that hand parcels over near a postal code, nearest first, without the version header", async () => {
+    const d = dhl({ "/servicepoints": () => json(points) });
+    const found = await createDhlAdapter(d.fetcher).pickupPoints!(context(), { name: "", street: "", postalCode: "0155", city: "", country: "NO" });
+    expect(found).toEqual([
+      {
+        id: "OSL123",
+        name: "Narvesen Storgata",
+        address: { name: "Narvesen Storgata", street: "Storgata 9", postalCode: "0155", city: "OSLO", country: "NO" },
+        openingHours: "Mon 10:00–16:30, Sat 10:00–14:00",
+        distanceMeters: 420,
+      },
+      { id: "OSL777", name: "DHL ServicePoint Grønland", address: { name: "DHL ServicePoint Grønland", street: "Grønlandsleiret 5", postalCode: "0190", city: "OSLO", country: "NO" }, distanceMeters: 1500 },
+    ]);
+    expect(d.calls[0].url).toBe("https://express.api.dhl.com/mydhlapi/test/servicepoints?address=0155&countryCode=NO&servicePointResults=10&resultUom=km&language=eng");
+    expect(d.calls[0].headers["x-version"]).toBeUndefined();
+    expect(d.calls[0].headers.Authorization).toBe(`Basic ${Buffer.from("key:secret").toString("base64")}`);
+    // DHL found none: a status in the answer, not an error.
+    const none = dhl({ "/servicepoints": () => json({ status: { statusCode: 201, statusMessage: "Error: No Service Points found." } }) });
+    expect(await createDhlAdapter(none.fetcher).pickupPoints!(context(), { name: "", street: "", postalCode: "9990", city: "", country: "NO" })).toEqual([]);
+  });
+
+  it("books a ServicePoint delivery as On Demand Delivery to the point, with the shopper as the buyer", async () => {
+    const d = dhl({ "/rates": () => json({ products: [product("N", 300, 60, 1)] }), "/shipments": () => json({ shipmentTrackingNumber: "77", documents: [] }, 201) });
+    await createDhlAdapter(d.fetcher).book!(context(), { ...request, serviceId: "servicepoint", pickupPointId: "OSL123" });
+    const shipment = d.calls.find((c) => c.url.endsWith("/shipments"))!.body!;
+    expect(shipment.productCode).toBe("N");
+    expect(shipment.onDemandDelivery).toEqual({ deliveryOption: "servicepoint", servicePointId: "OSL123" });
+    expect((shipment.customerDetails as Record<string, unknown>).buyerDetails).toEqual((shipment.customerDetails as Record<string, unknown>).receiverDetails);
+    await expect(createDhlAdapter(d.fetcher).book!(context(), { ...request, serviceId: "servicepoint" })).rejects.toThrow(/ServicePoint is missing/);
+  });
+
+  it("asks DHL to collect on the day from the ready time in the sender's own zone, and says when DHL did not book it", async () => {
+    const d = dhl({ "/rates": () => json({ products: [product("N", 300)] }), "/shipments": () => json({ shipmentTrackingNumber: "78", dispatchConfirmationNumber: "OSL200227000256", documents: [] }, 201) });
+    const collection = { date: "2099-06-10", readyTime: "12:00", closeTime: "17:30" };
+    const booked = await createDhlAdapter(d.fetcher).book!(context(), { ...request, collection });
+    expect(booked.collection).toEqual({ booked: true, confirmation: "OSL200227000256", problem: null });
+    const shipment = d.calls.find((c) => c.url.endsWith("/shipments"))!.body!;
+    // Oslo is two hours ahead of GMT in June.
+    expect(shipment.plannedShippingDateAndTime).toBe("2099-06-10T12:00:00 GMT+02:00");
+    expect(shipment.pickup).toEqual({ isRequested: true, closeTime: "17:30" });
+    const without = dhl({ "/rates": () => json({ products: [product("N", 300)] }), "/shipments": () => json({ shipmentTrackingNumber: "79", documents: [] }, 201) });
+    expect((await createDhlAdapter(without.fetcher).book!(context(), { ...request, collection })).collection).toMatchObject({ booked: false, confirmation: null, problem: expect.stringMatching(/without a collection/) });
+    await expect(createDhlAdapter(without.fetcher).book!(context(), { ...request, collection: { ...collection, readyTime: "18:00" } })).rejects.toThrow(/ready before/);
+    // Without a collection nothing is asked for, as before.
+    await createDhlAdapter(without.fetcher).book!(context(), request);
+    expect(without.calls.filter((c) => c.url.endsWith("/shipments")).at(-1)!.body!.pickup).toEqual({ isRequested: false });
+  });
+
+  it("has no cancel: MyDHL cancels pickups, never shipments", () => {
+    expect(createDhlAdapter(dhl({}).fetcher).cancel).toBeUndefined();
+  });
+});
+
 describe("DHL's text and dates", () => {
   it("writes text as printable ASCII", () => {
     expect(asciiText("Ærøskøbing straße – Café", 100)).toBe("AEroskobing strasse Cafe");
     expect(asciiText("x".repeat(60), 45)).toHaveLength(45);
+  });
+
+  it("writes the sender's GMT offset for a local time, summer and winter", () => {
+    expect(gmtOffset("NO", "2026-07-01", "10:00")).toBe("GMT+02:00");
+    expect(gmtOffset("NO", "2026-12-01", "10:00")).toBe("GMT+01:00");
+    expect(gmtOffset("FI", "2026-12-01", "10:00")).toBe("GMT+02:00");
+    expect(gmtOffset("GB", "2026-12-01", "10:00")).toBe("GMT+00:00");
   });
 
   it("hands a parcel in today on a weekday morning, else the next weekday", () => {

@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { DEFAULT_RETURN_SETTINGS, type ReturnAddress, type ReturnSettings } from "@/lib/withdrawal";
 import { returnSettingsInput } from "@/lib/return-input";
 import { cleanTranslations, translationProblems, type InstructionTranslations } from "@/lib/return-instructions";
-import { isBringReturnService } from "@/lib/bring";
+import { isReturnService } from "@/lib/return-services";
 import { carrierInfo, isCarrierId, type CarrierId } from "@/lib/shipping-carriers";
 
 type Row = Record<string, unknown>;
@@ -145,10 +145,10 @@ export async function saveExchangeLabelSettings(storeId: string, input: unknown,
   const exchanges = v.exchanges === undefined ? true : v.exchanges === true;
   const carrier = typeof v.labelCarrier === "string" && v.labelCarrier !== "" ? v.labelCarrier : null;
   if (carrier !== null && (!isCarrierId(carrier) || !carrierInfo(carrier as CarrierId)?.available.includes("return_labels"))) {
-    problems.push("Choose a carrier that books return labels (Posten / Bring).");
+    problems.push("Choose a carrier that books return labels.");
   }
   const service = typeof v.labelService === "string" && v.labelService.trim() !== "" ? v.labelService.trim() : null;
-  if (service !== null && (carrier !== "bring" || !isBringReturnService(service))) problems.push("Choose one of the carrier's return services.");
+  if (service !== null && (carrier === null || !isReturnService(carrier, service))) problems.push("Choose one of the carrier's return services.");
   const auto = v.labelAuto === true;
   if (auto && carrier === null) problems.push("Choose the carrier before booking labels automatically.");
   if (problems.length > 0) return { ok: false, problems };

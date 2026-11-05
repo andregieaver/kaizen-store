@@ -239,6 +239,92 @@ describe("UPS's connection", () => {
     expect(await adapter.track!(context(), "1ZUNKNOWN")).toEqual([]);
   });
 
+  it("asks UPS to collect the parcel after booking it, and keeps the shipment when the collection fails (D458)", async () => {
+    const collection = { date: "2099-06-10", readyTime: "12:00", closeTime: "17:30" };
+    const u = ups({ "/api/shipments/": () => json(shipped), "/api/pickupcreation/": () => json({ PickupCreationResponse: { Response: { ResponseStatus: { Code: "1" } }, PRN: "2929602E9CP" } }) });
+    const booked = await createUpsAdapter(u.fetcher).book!(context(), { ...request, collection });
+    expect(booked.collection).toEqual({ booked: true, confirmation: "2929602E9CP", problem: null });
+    const pickup = u.calls.find((c) => c.url.includes("/api/pickupcreation/"))!;
+    expect(pickup.url).toBe("https://wwwcie.ups.com/api/pickupcreation/v2409/pickup");
+    expect(u.calls.findIndex((c) => c.url.includes("/api/pickupcreation/"))).toBeGreaterThan(u.calls.findIndex((c) => c.url.includes("/api/shipments/")));
+    expect(pickup.body).toEqual({
+      PickupCreationRequest: {
+        Request: { TransactionReference: { CustomerContext: "1042" } },
+        RatePickupIndicator: "N",
+        Shipper: { Account: { AccountNumber: "A1B2C3", AccountCountryCode: "NO" } },
+        PickupDateInfo: { CloseTime: "1730", ReadyTime: "1200", PickupDate: "20990610" },
+        PickupAddress: { CompanyName: "Shop AS", ContactName: "Shop AS", AddressLine: ["Lagerveien 2"], City: "Oslo", PostalCode: "0150", CountryCode: "NO", ResidentialIndicator: "N", Phone: { Number: "+4722334455" } },
+        AlternateAddressIndicator: "Y",
+        PickupPiece: [{ ServiceCode: "011", Quantity: "1", DestinationCountryCode: "NO", ContainerCode: "01" }],
+        TotalWeight: { Weight: "2.0", UnitOfMeasurement: "KGS" },
+        OverweightIndicator: "N",
+        TrackingData: [{ TrackingNumber: "1ZA1B2C30412345678" }],
+        PaymentMethod: "01",
+        ReferenceNumber: "1042",
+      },
+    });
+    const refused = ups({ "/api/shipments/": () => json(shipped), "/api/pickupcreation/": () => json({ response: { errors: [{ code: "9510113", message: "Pickup time is not available" }] } }, 400) });
+    const still = await createUpsAdapter(refused.fetcher).book!(context(), { ...request, collection });
+    expect(still.trackingNumber).toBe("1ZA1B2C30412345678");
+    expect(still.collection).toEqual({ booked: false, confirmation: null, problem: expect.stringMatching(/^UPS booked the shipment, but not the collection: UPS did not accept the request: Pickup time is not available/) });
+    // No collection asked for: no pickup call.
+    const plain = ups({ "/api/shipments/": () => json(shipped) });
+    expect((await createUpsAdapter(plain.fetcher).book!(context(), request)).collection).toBeUndefined();
+    expect(plain.calls.some((c) => c.url.includes("/api/pickupcreation/"))).toBe(false);
+  });
+
+  it("cancels a shipment by voiding it, and says plainly when UPS cannot", async () => {
+    const u = ups({ "/void/cancel/": () => json({ VoidShipmentResponse: { Response: { ResponseStatus: { Code: "1" } }, SummaryResult: { Status: { Code: "1", Description: "Voided" } } } }) });
+    const adapter = createUpsAdapter(u.fetcher);
+    expect(await adapter.cancel!(context(), { trackingNumber: "1ZA1B2C30412345678", consignmentNumber: "1ZA1B2C30412345678" })).toEqual({ ok: true });
+    const call = u.calls.find((c) => c.url.includes("/void/cancel/"))!;
+    expect([call.method, call.url]).toEqual(["DELETE", "https://wwwcie.ups.com/api/shipments/v2409/void/cancel/1ZA1B2C30412345678"]);
+    const late = ups({ "/void/cancel/": () => json({ response: { errors: [{ code: "190117", message: "Void period has expired" }] } }, 400) });
+    expect(await createUpsAdapter(late.fetcher).cancel!(context(), { trackingNumber: "1ZA1B2C30412345678", consignmentNumber: null })).toEqual({ ok: false, problem: "UPS did not accept the request: Void period has expired (190117)" });
+    expect(await adapter.cancel!(context(), { trackingNumber: "12345", consignmentNumber: null })).toMatchObject({ ok: false });
+  });
+
+  it("books a return label from the shopper to the store's return address, billed to the store, recovered as a PDF (D458)", async () => {
+    const u = ups({
+      "/api/shipments/": () =>
+        json({ ShipmentResponse: { ShipmentResults: { ShipmentIdentificationNumber: "1ZRETURN0000000001", NegotiatedRateCharges: { TotalCharge: { CurrencyCode: "NOK", MonetaryValue: "120.00" } }, PackageResults: [{ TrackingNumber: "1ZRETURN0000000001" }] } } }),
+    });
+    const returned = await createUpsAdapter(u.fetcher).bookReturn!(context(), {
+      returnReference: "1042-R1",
+      serviceId: "11",
+      from: { name: "Kari Nordmann", street: "Storgata 1", postalCode: "0155", city: "Oslo", country: "NO", email: "kari@example.no" },
+      to: { name: "Shop AS returns", street: "Lagerveien 2", postalCode: "0150", city: "Oslo", country: "NO", phone: "+4722334455", email: "shop@example.no" },
+      parcels: [{ weightGrams: 1000 }],
+    });
+    expect(returned).toEqual({
+      trackingNumber: "1ZRETURN0000000001",
+      trackingUrl: "https://www.ups.com/track?tracknum=1ZRETURN0000000001",
+      consignmentNumber: "1ZRETURN0000000001",
+      labelUrl: "https://wwwcie.ups.com/api/labels/v1/recovery#1ZRETURN0000000001",
+      test: true,
+      price: { amountMinor: 12000, currency: "NOK", vatIncluded: false },
+    });
+    const shipment = (u.calls.find((c) => c.url.includes("/api/shipments/"))!.body as { ShipmentRequest: { Shipment: Record<string, unknown> } }).ShipmentRequest.Shipment;
+    expect(shipment.ReturnService).toEqual({ Code: "9" });
+    expect(shipment.Shipper).toMatchObject({ Name: "Shop AS returns", ShipperNumber: "A1B2C3" });
+    expect(shipment.ShipFrom).toMatchObject({ Name: "Kari Nordmann", Address: { PostalCode: "0155" } });
+    expect(shipment.ShipTo).toMatchObject({ Name: "Shop AS returns", Address: { PostalCode: "0150" } });
+    expect((shipment.Package as { Description: string }[])[0].Description).toBe("Return 1042-R1");
+    // The return label is fetched as the order's labels are.
+    const recovery = ups({ "/api/labels/v1/recovery": () => json({ LabelRecoveryResponse: { LabelResults: [{ LabelImage: { GraphicImage: PDF } }] } }) });
+    expect(Buffer.from((await fetchUpsLabel(context(), returned.labelUrl!, recovery.fetcher))!).toString()).toBe("%PDF-1.4 label");
+    // A return across a customs border is not booked here.
+    await expect(
+      createUpsAdapter(u.fetcher).bookReturn!(context(), {
+        returnReference: "1042-R2",
+        serviceId: "11",
+        from: { name: "Kari", street: "Gata 1", postalCode: "11120", city: "Stockholm", country: "SE" },
+        to: { name: "Shop AS", street: "Lagerveien 2", postalCode: "0150", city: "Oslo", country: "NO", phone: "+4722334455" },
+        parcels: [{ weightGrams: 1000 }],
+      }),
+    ).rejects.toThrow(/customs border/);
+  });
+
   it("recovers the label as a PDF when it is printed, and sends the token only to UPS", async () => {
     const u = ups({ "/api/labels/v1/recovery": () => json({ LabelRecoveryResponse: { LabelResults: [{ TrackingNumber: "1ZA", LabelImage: { LabelImageFormat: { Code: "PDF" }, GraphicImage: PDF } }] } }) });
     const pdf = await fetchUpsLabel(context(), "https://wwwcie.ups.com/api/labels/v1/recovery#1ZA1B2C30412345678", u.fetcher);

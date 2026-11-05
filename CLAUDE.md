@@ -276,6 +276,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Porterbuddy (D137, `src/lib/porterbuddy.ts`, `src/server/carriers/porterbuddy.ts`, `src/server/porterbuddy-shipping.ts`)
 - Helthjem (D138, `src/lib/helthjem.ts`, `src/server/carriers/helthjem.ts`, `src/server/helthjem-shipping.ts`)
 - Instabox, DHL Express and UPS (D457, `src/lib/{instabox,dhl,ups}.ts`, `src/server/carriers/{instabox,dhl,ups}.ts`, `src/server/carrier-delivery-booking.ts`)
+- DHL Paket, nShift, PostNord's booking, collection, cancelling and return labels (D458, `src/server/carrier-cancel.ts`, `src/lib/carrier-collection.ts`, `src/lib/return-services.ts`)
 - Product recommendations (D139, `docs/recommendations.md`, `src/lib/recommendations.ts` pure, `src/server/recommend.ts` engine,…
 - A/B tests of pages (D148, `docs/ab-testing.md`, `src/lib/experiments.ts`, `src/server/experiments.ts`, `experiment-admin.ts`,…
 - Responsive editing (D179, `docs/responsive-editing.md`, phases 1 to 4 built)

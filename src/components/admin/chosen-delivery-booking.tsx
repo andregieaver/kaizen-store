@@ -30,6 +30,7 @@ export function ChosenDeliveryBooking({
   basis = null,
   services,
   serviceLabel,
+  collectLabel = null,
 }: {
   /** The *Order sent* email is switched off in Notifications (D238): no email is offered, and the box says so. */
   notifyOff?: string | null;
@@ -41,16 +42,19 @@ export function ChosenDeliveryBooking({
   /** The services staff may choose from when the customer chose none of this carrier's, with the word for the choice. */
   services?: { id: string; name: string }[];
   serviceLabel?: string;
+  /** The words for asking the carrier to collect the parcel (D458), when it can and the store gave its hours; ticked unless staff untick it. */
+  collectLabel?: string | null;
   estimatedGrams: number;
   test: boolean;
   hasEmail: boolean;
-  book: (input: { notify: boolean; parcel: { weightGrams: number }; lines: ParcelLine[] | null; seen: string | null; serviceId?: string }) => Promise<BookState>;
+  book: (input: { notify: boolean; parcel: { weightGrams: number }; lines: ParcelLine[] | null; seen: string | null; serviceId?: string; collect?: boolean }) => Promise<BookState>;
   /** The order's physical lines with what is still to send (D174), for the parcel's choice. */
   rows?: ParcelRow[];
 }) {
   const [serviceId, setServiceId] = useState(services?.[0]?.id ?? "");
   const [weight, setWeight] = useState(estimatedGrams > 0 ? (estimatedGrams / 1000).toString().replace(".", ",") : "");
   const [notify, setNotify] = useState(true);
+  const [collect, setCollect] = useState(true);
   const [typed, setTyped] = useState<Record<string, string>>({});
   const lines = parcelLinesFromChoice(rows, typed);
   const [result, setResult] = useState<BookState | null>(null);
@@ -60,7 +64,7 @@ export function ChosenDeliveryBooking({
     start(async () => {
       if (lines === "invalid") return;
       const grams = Math.round(Number(weight.replace(",", ".")) * 1000);
-      setResult(await book({ notify: hasEmail && !test && !notifyOff && notify, parcel: { weightGrams: grams }, lines, seen: basis, ...(services ? { serviceId } : {}) }));
+      setResult(await book({ notify: hasEmail && !test && !notifyOff && notify, parcel: { weightGrams: grams }, lines, seen: basis, ...(services ? { serviceId } : {}), ...(collectLabel ? { collect } : {}) }));
     });
 
   return (
@@ -93,6 +97,12 @@ export function ChosenDeliveryBooking({
         <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} className={input} />
       </label>
       {estimatedGrams === 0 && <p className="text-sm text-muted">No weight is set on these products, so enter the parcel&apos;s weight.</p>}
+      {collectLabel && (
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={collect} onChange={(e) => setCollect(e.target.checked)} className="size-4" />
+          {collectLabel}
+        </label>
+      )}
       {hasEmail && !test && !notifyOff && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="size-4" />

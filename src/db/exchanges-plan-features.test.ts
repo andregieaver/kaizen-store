@@ -4,7 +4,7 @@ import path from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { CARRIERS } from "@/lib/shipping-carriers";
+import { CARRIERS, carrierInfo as carrierInfoOf } from "@/lib/shipping-carriers";
 
 import { createTestDatabase } from "./testing";
 
@@ -70,9 +70,9 @@ describe("the plan comparison's rows for exchanges and return labels", () => {
     const booking = CARRIERS.filter((c) => c.available.includes("return_labels"));
     for (const c of booking) expect(labels).toContain(c.name);
     for (const c of CARRIERS.filter((x) => !x.available.includes("return_labels"))) expect(labels).not.toContain(c.name);
-    // Bring books return labels in Norway only (`returnCountries`), so the row says Norway.
-    expect(booking.flatMap((c) => c.returnCountries ?? [])).toEqual(["NO"]);
-    expect(labels).toContain("in Norway");
+    // Bring books return labels in Norway only (`returnCountries`), so the row says so beside the others' names (D458).
+    expect(carrierInfoOf("bring")?.returnCountries).toEqual(["NO"]);
+    expect(labels).toContain("Posten / Bring in Norway");
     // Section 7 of the spec: none of these is built.
     expect(`${exchanges} ${labels}`).not.toMatch(/unlimited|guarantee|instant|store credit|gift card|qr code|any carrier|every carrier|ai[- ]powered/i);
   });

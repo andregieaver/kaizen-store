@@ -1,5 +1,5 @@
 {
-  "id": "73b062a4-a01a-4f28-ad94-6e27837894df",
+  "id": "3b085468-96d6-4375-9e20-abf0fac16a85",
   "prevId": "0055a101-2f2d-4f0f-b824-4490033ab46c",
   "version": "7",
   "dialect": "postgresql",
@@ -12193,6 +12193,13 @@
       "name": "carrier_labels",
       "schema": "commerce",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
         "store_id": {
           "name": "store_id",
           "type": "uuid",
@@ -12203,7 +12210,13 @@
           "name": "shipment_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "return_id": {
+          "name": "return_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "order_id": {
           "name": "order_id",
@@ -12232,6 +12245,50 @@
         }
       },
       "indexes": {
+        "carrier_labels_shipment_key": {
+          "name": "carrier_labels_shipment_key",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "shipment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"commerce\".\"carrier_labels\".\"shipment_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "carrier_labels_return_key": {
+          "name": "carrier_labels_return_key",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "return_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"commerce\".\"carrier_labels\".\"return_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "carrier_labels_order_idx": {
           "name": "carrier_labels_order_idx",
           "columns": [
@@ -12285,23 +12342,35 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "carrier_labels_store_id_shipment_id_pk": {
-          "name": "carrier_labels_store_id_shipment_id_pk",
-          "columns": [
+        },
+        "carrier_labels_return_fk": {
+          "name": "carrier_labels_return_fk",
+          "tableFrom": "carrier_labels",
+          "tableTo": "returns",
+          "schemaTo": "commerce",
+          "columnsFrom": [
             "store_id",
-            "shipment_id"
-          ]
+            "return_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "carrier_labels_one_owner": {
+          "name": "carrier_labels_one_owner",
+          "value": "(\"commerce\".\"carrier_labels\".\"shipment_id\" is null) <> (\"commerce\".\"carrier_labels\".\"return_id\" is null)"
+        },
         "carrier_labels_carrier": {
           "name": "carrier_labels_carrier",
-          "value": "\"commerce\".\"carrier_labels\".\"carrier\" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups')"
+          "value": "\"commerce\".\"carrier_labels\".\"carrier\" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups', 'dhl_paket', 'nshift')"
         },
         "carrier_labels_pdf": {
           "name": "carrier_labels_pdf",
@@ -55191,7 +55260,7 @@
       "checkConstraints": {
         "return_settings_label_carrier": {
           "name": "return_settings_label_carrier",
-          "value": "\"commerce\".\"return_settings\".\"label_carrier\" is null or \"commerce\".\"return_settings\".\"label_carrier\" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups')"
+          "value": "\"commerce\".\"return_settings\".\"label_carrier\" is null or \"commerce\".\"return_settings\".\"label_carrier\" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups', 'dhl_paket', 'nshift')"
         },
         "return_settings_label_service": {
           "name": "return_settings_label_service",
@@ -55774,7 +55843,7 @@
         },
         "returns_label_carrier": {
           "name": "returns_label_carrier",
-          "value": "(\"commerce\".\"returns\".\"label_source\" is not distinct from 'carrier') = (\"commerce\".\"returns\".\"label_carrier_id\" is not null and \"commerce\".\"returns\".\"label_booked_at\" is not null)\n        and (\"commerce\".\"returns\".\"label_carrier_id\" is null or \"commerce\".\"returns\".\"label_carrier_id\" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups'))\n        and (\"commerce\".\"returns\".\"label_source\" is not distinct from 'carrier' or (\"commerce\".\"returns\".\"label_service\" is null and \"commerce\".\"returns\".\"label_consignment_number\" is null and \"commerce\".\"returns\".\"label_tracking_number\" is null\n             and \"commerce\".\"returns\".\"label_tracking_url\" is null and \"commerce\".\"returns\".\"label_carrier_url\" is null and \"commerce\".\"returns\".\"label_cost_minor\" is null and \"commerce\".\"returns\".\"label_cost_carrier\" is null and not \"commerce\".\"returns\".\"label_test\"))"
+          "value": "(\"commerce\".\"returns\".\"label_source\" is not distinct from 'carrier') = (\"commerce\".\"returns\".\"label_carrier_id\" is not null and \"commerce\".\"returns\".\"label_booked_at\" is not null)\n        and (\"commerce\".\"returns\".\"label_carrier_id\" is null or \"commerce\".\"returns\".\"label_carrier_id\" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups', 'dhl_paket', 'nshift'))\n        and (\"commerce\".\"returns\".\"label_source\" is not distinct from 'carrier' or (\"commerce\".\"returns\".\"label_service\" is null and \"commerce\".\"returns\".\"label_consignment_number\" is null and \"commerce\".\"returns\".\"label_tracking_number\" is null\n             and \"commerce\".\"returns\".\"label_tracking_url\" is null and \"commerce\".\"returns\".\"label_carrier_url\" is null and \"commerce\".\"returns\".\"label_cost_minor\" is null and \"commerce\".\"returns\".\"label_cost_carrier\" is null and not \"commerce\".\"returns\".\"label_test\"))"
         },
         "returns_label_urls": {
           "name": "returns_label_urls",
@@ -58861,7 +58930,7 @@
         },
         "shipping_carriers_carrier": {
           "name": "shipping_carriers_carrier",
-          "value": "\"commerce\".\"shipping_carriers\".\"carrier\" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups')"
+          "value": "\"commerce\".\"shipping_carriers\".\"carrier\" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups', 'dhl_paket', 'nshift')"
         },
         "shipping_carriers_environment": {
           "name": "shipping_carriers_environment",

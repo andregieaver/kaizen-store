@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type { OrderActionState } from "@/app/admin/(gated)/[store]/orders/actions";
 import type { FormState } from "@/components/admin/action-form";
-import { bookedCarrierName, undoneLine, undoWarnings } from "@/lib/shipment-undo";
+import { bookedCarrierName, cancelsOnUndo, undoneLine, undoWarnings } from "@/lib/shipment-undo";
 import { orderEn, type OrderMessages } from "@/lib/admin-messages/order.en";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -135,7 +135,7 @@ export function ShipmentList({
                 <UndoParcel
                   undo={undo(s.id)}
                   index={index + 1}
-                  warnings={undoWarnings({ bookedWith: bookedCarrierName(s.carrierId), units: s.lines.reduce((sum, l) => sum + l.quantity, 0), receiptRecorded }, w)}
+                  warnings={undoWarnings({ bookedWith: bookedCarrierName(s.carrierId), units: s.lines.reduce((sum, l) => sum + l.quantity, 0), receiptRecorded, cancels: cancelsOnUndo(s.carrierId) }, w)}
                 />
               </div>
             )}

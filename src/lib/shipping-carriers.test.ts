@@ -6,15 +6,28 @@ const bring = carrierInfo("bring")!;
 const none = { hasSecret: () => false };
 
 describe("the carriers", () => {
-  it("are the seven the store can connect", () => {
-    expect(CARRIER_IDS).toEqual(["bring", "postnord", "porterbuddy", "helthjem", "instabox", "dhl", "ups"]);
+  it("are the nine the store can connect", () => {
+    expect(CARRIER_IDS).toEqual(["bring", "postnord", "porterbuddy", "helthjem", "instabox", "dhl", "ups", "dhl_paket", "nshift"]);
     expect(CARRIERS.map((c) => c.id)).toEqual(CARRIER_IDS);
     expect(isCarrierId("dhl")).toBe(true);
     expect(isCarrierId("dpd")).toBe(false);
   });
 
   it("follow every carrier's parcels but Instabox's, which its own page follows", () => {
-    expect(FOLLOWED_CARRIERS).toEqual(["bring", "postnord", "porterbuddy", "helthjem", "dhl", "ups"]);
+    expect(FOLLOWED_CARRIERS).toEqual(["bring", "postnord", "porterbuddy", "helthjem", "dhl", "ups", "dhl_paket", "nshift"]);
+  });
+
+  it("say what each does now, each feature named in the admin, and books returns only where it says (D458)", () => {
+    for (const carrier of CARRIERS) {
+      for (const f of carrier.available) expect(carrier.features, `${carrier.id} ${f}`).toContain(f);
+      expect(Boolean(carrier.returnCountries?.length), carrier.id).toBe(carrier.available.includes("return_labels"));
+      if (carrier.collectionCountries) expect(carrier.available).toContain("collection");
+      if (carrier.available.includes("collection")) expect(carrier.fields.some((f) => f.key === "collectionHours" && !f.required), carrier.id).toBe(true);
+    }
+    expect(carrierInfo("postnord")!.available).toEqual(expect.arrayContaining(["labels", "return_labels", "collection"]));
+    expect(carrierInfo("postnord")!.collectionCountries).toEqual(["SE", "DK", "FI"]);
+    // nShift's return labels wait for a test account (the return shipment's parties are not confirmed).
+    expect(carrierInfo("nshift")!.available).not.toContain("return_labels");
   });
 
   it("ask the carriers that ship from anywhere in Europe where the parcels leave from", () => {

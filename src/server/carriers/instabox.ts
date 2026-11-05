@@ -1,6 +1,9 @@
 import "server-only";
 
 import {
+  HOME_PRODUCT,
+  LOCKER_PRODUCT,
+  RETURN_PRODUCT,
   bookingProblems,
   deliveryOptionsUrl,
   instaboxHeaders,
@@ -9,15 +12,20 @@ import {
   isInstaboxUrl,
   labelUrl,
   orderBody,
+  parseHomeAvailability,
   parseLockers,
   parseOrder,
   readLockerChoice,
+  returnBookingProblems,
+  returnOrderBody,
 } from "@/lib/instabox";
 import { bookingCustomsProblem, type CarrierContext, type ShippingCarrierAdapter } from "@/lib/shipping-carriers";
 
 /**
- * Instabox's connection (D457), through Instabee's integration API on the store's own API key: the lockers near a postal code (each with the
- * availability token a booking names), orders booked and confirmed as packed at once, and the label as a PDF when it is printed. Prices are not
+ * Instabox's connection (D457, D458), through Instabee's integration API on the store's own API key: the lockers near a postal code (each with the
+ * availability token a booking names), orders booked and confirmed as packed at once (to a locker, or home after Instabee confirms the postal code),
+ * returns dropped at the locker nearest the shopper, and the label as a PDF when it is printed. Instabee documents no cancel call, so this connection
+ * has no `cancel`. Prices are not
  * asked of Instabox: the store enters them for checkout. In the store's test environment the calls go to Instabee's sandbox. Every call has a timeout,
  * and an answer that cannot be used is a plain sentence for the owner, so a page or checkout never depends on Instabox being up.
  */
@@ -44,8 +52,8 @@ async function call(fetcher: Fetch, context: CarrierContext, url: string, init: 
 }
 
 export function createInstaboxAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapter {
-  const lockers = async (context: CarrierContext, country: string, postalCode: string) => {
-    const answer = await call(fetcher, context, deliveryOptionsUrl(instaboxHost(context.environment), country, postalCode));
+  const lockers = async (context: CarrierContext, country: string, postalCode: string, product: string = LOCKER_PRODUCT) => {
+    const answer = await call(fetcher, context, deliveryOptionsUrl(instaboxHost(context.environment), country, postalCode, product));
     if (!answer.ok) {
       // A postal code Instabox does not reach has no lockers.
       if (answer.status === 404) return { token: null, lockers: [] };
@@ -73,6 +81,19 @@ export function createInstaboxAdapter(fetcher: Fetch = fetch): ShippingCarrierAd
       if (missingCustoms) throw new Error(missingCustoms);
       const problems = bookingProblems(request);
       if (problems.length > 0) throw new Error(problems[0]);
+      const host = instaboxHost(context.environment);
+      const collectionPointId = context.details.collectionPointId?.trim() || undefined;
+      if (request.serviceId === "home") {
+        // Home delivery is offered at the store's price everywhere it ships with Instabox; whether Instabox reaches the postal code is asked here.
+        const available = await call(fetcher, context, deliveryOptionsUrl(host, request.to.country, request.to.postalCode, HOME_PRODUCT));
+        if (!available.ok) throw new Error(available.status === 404 ? "Instabox does not deliver home to that postal code. Send the order another way." : available.problem);
+        const home = parseHomeAvailability(available.json);
+        const made = await call(fetcher, context, `${host}/orders`, { method: "PUT", body: JSON.stringify(orderBody(request, home.token, home.sortCode, collectionPointId)) });
+        if (!made.ok) throw new Error(made.problem);
+        const order = parseOrder(made.json);
+        if (!order.ok) throw new Error(order.problem);
+        return { trackingNumber: order.parcelId, trackingUrl: order.trackingUrl, consignmentNumber: order.orderId, labelUrl: labelUrl(host, order.orderId), test: context.environment === "test" };
+      }
       const chosen = readLockerChoice(request.pickupPointId!);
       // The token the shopper's choice came with holds 14 days; without one (or a choice kept without it) the lockers are asked for again.
       let token = chosen.token;
@@ -84,10 +105,9 @@ export function createInstaboxAdapter(fetcher: Fetch = fetch): ShippingCarrierAd
         token = fresh.token;
       }
       if (!token) throw new Error("Instabox did not give an availability token for the locker.");
-      const host = instaboxHost(context.environment);
       const answer = await call(fetcher, context, `${host}/orders`, {
         method: "PUT",
-        body: JSON.stringify(orderBody(request, token, chosen.sortCode, context.details.collectionPointId?.trim() || undefined)),
+        body: JSON.stringify(orderBody(request, token, chosen.sortCode, collectionPointId)),
       });
       if (!answer.ok) throw new Error(answer.problem);
       const parsed = parseOrder(answer.json);
@@ -98,6 +118,31 @@ export function createInstaboxAdapter(fetcher: Fetch = fetch): ShippingCarrierAd
         consignmentNumber: parsed.orderId,
         labelUrl: labelUrl(host, parsed.orderId),
         test: context.environment === "test",
+      };
+    },
+
+    async bookReturn(context, request) {
+      // The shopper drops the parcel at the Instabox locker nearest them that takes returns, with the label printed from the return's link.
+      const problems = returnBookingProblems(request);
+      if (problems.length > 0) throw new Error(problems[0]);
+      const near = await lockers(context, request.from.country, request.from.postalCode, RETURN_PRODUCT);
+      const locker = near.lockers[0];
+      if (!locker || !near.token) throw new Error("Instabox has no locker for returns near the customer's postal code.");
+      const host = instaboxHost(context.environment);
+      const answer = await call(fetcher, context, `${host}/orders`, {
+        method: "PUT",
+        body: JSON.stringify(returnOrderBody(request, near.token, readLockerChoice(locker.id).sortCode)),
+      });
+      if (!answer.ok) throw new Error(answer.problem);
+      const parsed = parseOrder(answer.json);
+      if (!parsed.ok) throw new Error(parsed.problem);
+      return {
+        trackingNumber: parsed.parcelId,
+        trackingUrl: parsed.trackingUrl,
+        consignmentNumber: parsed.orderId,
+        labelUrl: labelUrl(host, parsed.orderId),
+        test: context.environment === "test",
+        price: null,
       };
     },
   };

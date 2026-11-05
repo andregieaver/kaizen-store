@@ -123,6 +123,65 @@ describe("Instabox's connection", () => {
     await expect(adapter.book!(context(), request)).rejects.toThrow(/no longer held/);
   });
 
+  it("books home delivery after Instabee confirms the postal code, with the phone's country code (D458)", async () => {
+    const i = instabee({
+      "product=HOME_DELIVERY": () => json({ availabilityToken: "home-tok", deliveryOptions: [{ sortCode: "HD123", type: "HOME" }], showAsOptionInCheckout: true }),
+      "/orders": () => json(made),
+    });
+    const home = { ...request, serviceId: "home", pickupPointId: undefined, to: { ...request.to, phone: "070-123 45 67" } };
+    const booked = await createInstaboxAdapter(i.fetcher).book!(context(), home);
+    expect(booked.trackingNumber).toBe("SHOP000000123456");
+    expect(i.calls[0].url).toBe("https://sandbox-api.integration.instabee.com/availability/countries/SE/postal-codes/11327/delivery-options?brand=instabox&product=HOME_DELIVERY");
+    expect(i.calls[1].body).toMatchObject({
+      brand: "instabox",
+      product: "HOME_DELIVERY",
+      availabilityToken: "home-tok",
+      deliveryOption: { sortCode: "HD123" },
+      recipient: { phone: "+46701234567" },
+    });
+    // A postal code Instabox does not reach at home: nothing is booked.
+    const far = instabee({ "product=HOME_DELIVERY": () => json({ status: 404, message: "Not serviceable" }, 404), "/orders": () => json(made) });
+    await expect(createInstaboxAdapter(far.fetcher).book!(context(), home)).rejects.toThrow(/does not deliver home/);
+    expect(far.calls.some((c) => c.method === "PUT")).toBe(false);
+    await expect(createInstaboxAdapter(far.fetcher).book!(context(), { ...home, to: { ...home.to, phone: "1234" } })).rejects.toThrow(/too short/);
+  });
+
+  it("books a return at the locker nearest the shopper that takes returns, with the label fetched when printed (D458)", async () => {
+    const i = instabee({ "product=LOCKER_RETURN": () => json(options, 201), "/orders": () => json({ ...made, orderId: "ret-1", parcelId: "SHOPRET0000001" }) });
+    const returned = await createInstaboxAdapter(i.fetcher).bookReturn!(context(), {
+      returnReference: "1042-R1",
+      serviceId: "locker_return",
+      from: { name: "Anna Svensson", street: "Upplandsgatan 42", postalCode: "11327", city: "Stockholm", country: "SE", email: "anna@example.com", phone: "0701234567" },
+      to: { name: "Shop AB", street: "Lagervägen 1", postalCode: "12345", city: "Stockholm", country: "SE" },
+      parcels: [{ weightGrams: 900 }],
+    });
+    expect(returned).toEqual({
+      trackingNumber: "SHOPRET0000001",
+      trackingUrl: "https://track.instabox.com/SHOP000000123456",
+      consignmentNumber: "ret-1",
+      labelUrl: "https://sandbox-api.integration.instabee.com/orders/ret-1/labels?fileFormat=pdf&template=a6",
+      test: true,
+      price: null,
+    });
+    expect(i.calls[0].url).toContain("product=LOCKER_RETURN");
+    expect(i.calls[1].body).toEqual({
+      brand: "instabox",
+      product: "LOCKER_RETURN",
+      availabilityToken: "019d-token",
+      sender: { name: "Anna Svensson", email: "anna@example.com", phone: "+46701234567", street: "Upplandsgatan 42", postalCode: "11327", city: "Stockholm", countryCode: "SE" },
+      deliveryOption: { sortCode: "IN123wOx9dJ" },
+      cart: { orderNumber: "1042-R1", totalWeightInGrams: 900, parcel: { weightGram: 900, estimatedSize: "SMALL" } },
+    });
+    const none = instabee({ "product=LOCKER_RETURN": () => json({ status: 404 }, 404) });
+    await expect(
+      createInstaboxAdapter(none.fetcher).bookReturn!(context(), { returnReference: "R", serviceId: "locker_return", from: { name: "A", street: "S 1", postalCode: "98132", city: "Kiruna", country: "SE", email: "a@b.se" }, to: { name: "Shop", street: "x", postalCode: "1", city: "y", country: "SE" }, parcels: [{ weightGrams: 1 }] }),
+    ).rejects.toThrow(/no locker for returns/);
+  });
+
+  it("has no cancel: Instabee documents none", () => {
+    expect(createInstaboxAdapter(instabee({}).fetcher).cancel).toBeUndefined();
+  });
+
   it("fetches the label as a PDF with the key, only from Instabee and the store's environment", async () => {
     const fetcher = vi.fn(async () => new Response("%PDF-1.4 instabox", { status: 200 })) as unknown as typeof fetch;
     const url = "https://sandbox-api.integration.instabee.com/orders/019aba69-order/labels?fileFormat=pdf&template=a6";

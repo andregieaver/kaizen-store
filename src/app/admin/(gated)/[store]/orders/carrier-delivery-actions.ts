@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { parcelLinesInput } from "@/lib/parcel-input";
 import { fillWords } from "@/lib/admin-fill";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { carrierInfo } from "@/lib/shipping-carriers";
 
@@ -29,6 +29,8 @@ const bookInput = z.object({
   lines: parcelLinesInput,
   /** The order's fulfilment as the page showed it (D372): a press made before it showed the last parcel is refused. */
   seen: z.string().max(100).nullish(),
+  /** Ask the carrier to collect the parcel (D458), in the hours on its page. */
+  collect: z.boolean().optional(),
 });
 
 /**
@@ -46,10 +48,24 @@ export async function carrierDeliveryBookAction(storeSlug: string, carrier: stri
   const input = bookInput.safeParse(raw);
   if (!input.success) return { ok: false, message: input.error.issues.some((i) => i.path[0] === "lines") ? w.lineNotWhole : w.enterWeight };
   const name = carrierInfo(carrier)?.name ?? carrier;
-  const booked = await bookCarrierDelivery(member.account.id, member.store.id, orderId, carrier, input.data);
+  const booked = await bookCarrierDelivery(member.account.id, member.store.id, orderId, carrier, {
+    ...input.data,
+    collect: input.data.collect ? { timeZone: member.store.timeZone || "Europe/Oslo" } : null,
+  });
   if (!booked.ok) return { ok: false, message: booked.problem };
-  if (booked.test) return { ok: true, message: fillWords(w.carrierTest, { carrier: name, tracking: booked.trackingNumber }) };
+  // What the carrier said to the collection asked for (D458): booked with its day, or why not, so staff arrange it themselves.
+  const lang = adminLangOf(member.account.adminLocale);
+  const collected = !booked.collection
+    ? ""
+    : booked.collection.booked
+      ? fillWords(booked.collection.confirmation ? w.collectedOn : w.collectedOnNoNumber, {
+          carrier: name,
+          date: new Date(`${booked.collection.date}T12:00:00Z`).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }),
+          confirmation: booked.collection.confirmation ?? "",
+        })
+      : fillWords(w.collectionFailed, { carrier: name, problem: booked.collection.problem ?? "" });
+  if (booked.test) return { ok: true, message: `${fillWords(w.carrierTest, { carrier: name, tracking: booked.trackingNumber })}${collected}` };
   if (input.data.notify) await sendShipped(member.store.id, orderId, booked.shipment);
   refresh();
-  return { ok: true, message: fillWords(w.booked, { carrier: name, tracking: booked.shipment.trackingNumber ?? "", told: input.data.notify ? w.andTold : "" }) };
+  return { ok: true, message: `${fillWords(w.booked, { carrier: name, tracking: booked.shipment.trackingNumber ?? "", told: input.data.notify ? w.andTold : "" })}${collected}` };
 }

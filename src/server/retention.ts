@@ -437,15 +437,16 @@ const STEPS: Record<RetentionStep, StepFn> = {
     return { count: await pruneContentReports(ctx.now, cutoffInstant(await period(ctx, "content_report_senders"), ctx.now)) };
   },
 
-  // Labels a carrier gives only once (DHL Express, D457): the PDF holds the recipient's name and address and is needed only until it is printed.
+  // Labels a carrier gives only once (DHL Express, PostNord, DHL Paket; a parcel's or a return's, D457, D458): the PDF holds a name and address and is
+  // needed only until it is printed.
   async carrier_labels(ctx) {
     const cutoff = cutoffInstant(await period(ctx, "carrier_labels"), ctx.now).toISOString();
     return {
       count: await batched(ctx.batch, () =>
         db().execute(sql`
-          delete from commerce.carrier_labels where (store_id, shipment_id) in (
-            select l.store_id, l.shipment_id from commerce.carrier_labels l where l.created_at < ${cutoff}::timestamptz order by l.created_at limit ${ctx.batch})
-          returning shipment_id
+          delete from commerce.carrier_labels where id in (
+            select l.id from commerce.carrier_labels l where l.created_at < ${cutoff}::timestamptz order by l.created_at limit ${ctx.batch})
+          returning id
         `),
       ),
     };

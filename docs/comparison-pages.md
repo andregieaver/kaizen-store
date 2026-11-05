@@ -34,6 +34,18 @@ the Dream Factory and the one-button moves from Shopify and WooCommerce were mis
   computes the advertised saving from the 30-day price since 6.7.16.0 and puts bundles in Evolve; BigCommerce's B2B Edition now comes with
   Performance; Squarespace reworded its pre-order page.
 
+## Changed after publishing, 5 November 2026 (D458)
+
+Shopify's page was published on 5 November. When Kaizena Flow gained DHL Paket in Germany, UPS and DHL Express across Europe and nShift's
+many carriers, *Where Shopify is the better fit* no longer read true as *You ship from a country where Shopify sells labels itself, such as
+Germany or France*: Flow books labels from those countries too. What stays Shopify's is that it sells the labels itself, so no carrier
+agreement of the merchant's own is needed (T24a in `shopify.md`, the same source). The line is now *You want to buy labels from Shopify
+itself, with no carrier agreement of your own, shipping from a country such as Germany or France*, in `data/shopify.json` and, as the
+editor's draft save, in that one sentence of the page's draft (its two places: the list and *Where each line comes from*; the rest of the
+draft is the published page). The generator checked it (no issues, no claims). **The live page keeps the old line until the owner publishes
+the draft.** No other platform's *better fit* names labels or carriers. The Kaizena Flow column's carrier line is unchanged (it rests on
+`orders.shipping-label-purchase-and-printing`, Partial until each carrier is verified against its production service).
+
 ## How the pages are made
 
 One generator, `docs/comparison-evidence/pages/compare.test.ts`, and one data file per platform, `docs/comparison-evidence/pages/data/{platform}.json`.

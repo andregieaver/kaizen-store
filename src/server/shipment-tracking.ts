@@ -50,6 +50,7 @@ const TRACKED: SQL = sql`(case
   when lower(sh.carrier) like '%porterbuddy%' then 'porterbuddy'
   when lower(sh.carrier) like '%helthjem%' then 'helthjem'
   when lower(sh.carrier) ~ '\\mups\\M' then 'ups'
+  when lower(sh.carrier) ~ '\\mdhl\\s*paket\\M' then 'dhl_paket'
   when lower(sh.carrier) ~ '\\mdhl\\M' then 'dhl'
   when lower(sh.carrier) like '%bring%' then 'bring'
   else null end)`;

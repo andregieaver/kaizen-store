@@ -1,6 +1,8 @@
 import { amountToMinor } from "./bring";
 import { minorUnitDigits } from "./money";
-import type { BookingRequest, CustomsLine, PickupPoint, ShippingAddress, ShippingOption, TrackingEvent } from "./shipping-carriers";
+import { crossesBorder } from "./duties";
+import { collectionProblem } from "./dhl";
+import type { BookingRequest, CustomsLine, PickupPoint, ReturnBookingRequest, ShippingAddress, ShippingOption, TrackingEvent } from "./shipping-carriers";
 
 /**
  * UPS (D457): what UPS's APIs are sent and how their answers are read, as pure functions so they are tested without the network. The calls are in
@@ -18,7 +20,7 @@ export const UPS_HOSTS = { live: "https://onlinetools.ups.com", test: "https://w
 export const upsHost = (environment: string) => (environment === "live" ? UPS_HOSTS.live : UPS_HOSTS.test);
 
 /** The API versions written against (Rating and Shipping v2409: lists are always lists; Label Recovery v1). */
-export const UPS_VERSIONS = { rating: "v2409", shipping: "v2409", labels: "v1", locator: "v3" } as const;
+export const UPS_VERSIONS = { rating: "v2409", shipping: "v2409", labels: "v1", locator: "v3", pickup: "v2409" } as const;
 
 /** UPS's public tracking page for a parcel (no UPS document gives it; it answers for any 1Z number). */
 export const upsTrackingPage = (trackingNumber: string) => `https://www.ups.com/track?tracknum=${encodeURIComponent(trackingNumber)}`;
@@ -239,6 +241,10 @@ export function bookingProblems(request: BookingRequest, accountNumber: string):
   if (!from.name || !from.street || !from.postalCode || !from.city || !from.phone) problems.push("Add the sender's name, address and phone on the carrier's page.");
   // Across a border UPS asks for the recipient's phone (Shipping.yaml `ShipTo.Phone`).
   if (from.country !== to.country && !to.phone) problems.push("The order has no phone number for the recipient, which UPS needs for a parcel to another country.");
+  if (request.collection) {
+    const wrong = collectionProblem(request.collection);
+    if (wrong) problems.push(wrong);
+  }
   return problems;
 }
 
@@ -373,6 +379,121 @@ export function parseLabelRecovery(json: unknown): Uint8Array | null {
   const bytes = Uint8Array.from(Buffer.from(image, "base64"));
   // A PDF starts with "%PDF".
   return bytes.length > 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 ? bytes : null;
+}
+
+// ---------------------------------------------------------------------------
+// Collection (Pickup.yaml, Pickup Creation): UPS comes for the parcels it was booked with (D458)
+// ---------------------------------------------------------------------------
+
+export const pickupUrl = (host: string) => `${host}/api/pickupcreation/${UPS_VERSIONS.pickup}/pickup`;
+
+/**
+ * An on-call pickup at the sender's address for the parcels just booked: the store's account pays (`PaymentMethod` 01, which needs the account and
+ * its country), the day and the window (`HHmm`, the sender's local time), one piece line per service (UPS's three-digit service code), their
+ * weight together, and the tracking numbers. Not rated (`RatePickupIndicator` N).
+ */
+export function pickupBody(request: BookingRequest, accountNumber: string, trackingNumbers: string[]) {
+  const collection = request.collection!;
+  const from = request.from;
+  const grams = request.parcels.reduce((sum, p) => sum + Math.max(1, Math.round(p.weightGrams)), 0);
+  const street = upsAddress(from).AddressLine?.[0] ?? from.street.slice(0, 35);
+  return {
+    PickupCreationRequest: {
+      Request: { TransactionReference: { CustomerContext: request.orderReference.slice(0, 512) } },
+      RatePickupIndicator: "N",
+      Shipper: { Account: { AccountNumber: accountNumber, AccountCountryCode: from.country.toUpperCase() } },
+      PickupDateInfo: { CloseTime: collection.closeTime.replace(":", ""), ReadyTime: collection.readyTime.replace(":", ""), PickupDate: collection.date.replace(/-/g, "") },
+      PickupAddress: {
+        CompanyName: from.name.slice(0, 27),
+        ContactName: from.name.slice(0, 22),
+        AddressLine: [street],
+        City: from.city.slice(0, 50),
+        PostalCode: from.postalCode.replace(/\s+/g, "").slice(0, 9),
+        CountryCode: from.country.toUpperCase(),
+        ResidentialIndicator: "N",
+        Phone: { Number: phoneOf(from.phone) },
+      },
+      AlternateAddressIndicator: "Y",
+      PickupPiece: [{ ServiceCode: upsServiceCode(request.serviceId).padStart(3, "0"), Quantity: String(request.parcels.length), DestinationCountryCode: request.to.country.toUpperCase(), ContainerCode: "01" }],
+      TotalWeight: { Weight: upsKilos(grams), UnitOfMeasurement: "KGS" },
+      OverweightIndicator: request.parcels.some((p) => p.weightGrams > 32_000) ? "Y" : "N",
+      TrackingData: trackingNumbers.map((n) => ({ TrackingNumber: n })),
+      PaymentMethod: "01",
+      ReferenceNumber: request.orderReference.slice(0, 35),
+    },
+  };
+}
+
+/** The pickup request number UPS gave the collection (`PRN`); null when the answer holds none. */
+export const parsePickup = (json: unknown): string | null => text(obj(obj(json).PickupCreationResponse).PRN) || null;
+
+// ---------------------------------------------------------------------------
+// Void (Shipping.yaml, Void Shipment): a shipment not yet handed over is cancelled (D458)
+// ---------------------------------------------------------------------------
+
+/** The void call for a shipment by its identification number (the first package's 1Z number). */
+export const voidUrl = (host: string, shipmentNumber: string) => `${host}/api/shipments/${UPS_VERSIONS.shipping}/void/cancel/${encodeURIComponent(shipmentNumber.toUpperCase())}`;
+
+/** Whether UPS voided the shipment: the summary status 1, or every package "Voided or Already Voided". */
+export function parseVoid(json: unknown): boolean {
+  const body = obj(obj(json).VoidShipmentResponse);
+  if (text(obj(obj(body.SummaryResult).Status).Code) === "1") return true;
+  const packages = many(body.PackageLevelResult ?? body.PackageLevelResults).map(obj);
+  return packages.length > 0 && packages.every((p) => text(obj(p.Status).Code) === "1");
+}
+
+// ---------------------------------------------------------------------------
+// Return labels (Shipping.yaml `ReturnService`): the shopper's parcel back to the store (D458)
+// ---------------------------------------------------------------------------
+
+/**
+ * The services a return label is booked with: UPS Print Return Label (`ReturnService` 9, a label the shopper prints from the link), by road or
+ * by air. Not confirmed against a live account (`confirmed: false`), like Bring's other return services.
+ */
+export const UPS_RETURN_SERVICES: { id: string; name: string; confirmed: boolean }[] = [
+  { id: "11", name: "UPS Standard return (print return label)", confirmed: false },
+  { id: "65", name: "UPS Express Saver return (print return label)", confirmed: false },
+];
+export const UPS_RETURN_DEFAULT = "11";
+export const isUpsReturnService = (id: string): boolean => UPS_RETURN_SERVICES.some((s) => s.id === id);
+
+/** What is missing for UPS to take a return label, in plain words; empty when it can be made. */
+export function returnBookingProblems(request: ReturnBookingRequest, accountNumber: string): string[] {
+  const problems: string[] = [];
+  if (!/^[A-Z0-9]{6}$/i.test(accountNumber)) problems.push("The UPS account number is six letters and digits: check it on the carrier's page.");
+  if (!isUpsReturnService(request.serviceId)) problems.push("Choose a UPS return service.");
+  const { from, to } = request;
+  if (!from.name || !from.street || !from.postalCode || !from.city) problems.push("The customer's address needs a name, street, postal code and city.");
+  if (!to.name || !to.street || !to.postalCode || !to.city || !to.phone) problems.push("Add the return address with a phone number in the return settings.");
+  // A return across a customs border needs its own customs papers, which a return label does not carry here.
+  if (crossesBorder(from.country, to.country)) problems.push("UPS return labels are booked within one customs area: this return crosses a customs border, so send its label from UPS's own tools.");
+  return problems;
+}
+
+/**
+ * A return shipment (`ReturnService` 9, Print Return Label): the store is the shipper and pays (its account and return address), the shopper's
+ * address is where it is sent from, the store's return address where it goes; the package says what it is (UPS requires a description with a
+ * return service). The label is a GIF here, and a PDF from Label Recovery when it is printed.
+ */
+export function returnShipBody(request: ReturnBookingRequest, accountNumber: string) {
+  return {
+    ShipmentRequest: {
+      Request: { RequestOption: "nonvalidate", SubVersion: "2409", TransactionReference: { CustomerContext: request.returnReference.slice(0, 512) } },
+      Shipment: {
+        Description: `Return ${request.returnReference}`.slice(0, 50),
+        ReturnService: { Code: "9" },
+        Shipper: party(request.to, { ShipperNumber: accountNumber }),
+        ShipFrom: party(request.from),
+        ShipTo: party(request.to),
+        PaymentInformation: { ShipmentCharge: [{ Type: "01", BillShipper: { AccountNumber: accountNumber } }] },
+        ReferenceNumber: [{ Value: request.returnReference.slice(0, 35) }],
+        Service: { Code: request.serviceId },
+        ShipmentRatingOptions: { NegotiatedRatesIndicator: "" },
+        Package: request.parcels.map((p) => ({ ...upsPackage(p, "Packaging"), Description: `Return ${request.returnReference}`.slice(0, 35) })),
+      },
+      LabelSpecification: { LabelImageFormat: { Code: "GIF" }, HTTPUserAgent: "Mozilla/4.5" },
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------

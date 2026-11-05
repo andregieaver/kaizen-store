@@ -54,6 +54,8 @@ import { HELTHJEM_SERVICES } from "@/lib/helthjem";
 import { INSTABOX_SERVICES } from "@/lib/instabox";
 import { DHL_SERVICES } from "@/lib/dhl";
 import { UPS_SERVICES } from "@/lib/ups";
+import { DHL_PAKET_SERVICES } from "@/lib/dhl-paket";
+import { NSHIFT_CHECKOUT_SERVICE, NSHIFT_SERVICES } from "@/lib/nshift";
 
 import { audit } from "./auth";
 import { checkoutRuleOutcome } from "./checkout-rules";
@@ -81,7 +83,16 @@ export const CHECKOUT_SERVICES: Partial<Record<CarrierId, { id: string; name: st
   instabox: INSTABOX_SERVICES,
   dhl: DHL_SERVICES.map((s) => ({ id: s.id, name: s.name, needsPickupPoint: s.needsPickupPoint, maxWeightGrams: s.maxWeightGrams })),
   ups: UPS_SERVICES,
+  dhl_paket: DHL_PAKET_SERVICES.map((s) => ({ id: s.id, name: s.name, needsPickupPoint: s.needsPickupPoint, maxWeightGrams: s.maxWeightGrams })),
+  nshift: NSHIFT_SERVICES,
 };
+
+/**
+ * Whether a carrier's option is one the store switched on. nShift's options are the store's own delivery checkout in nShift (D458), each named by
+ * nShift's service code, so switching on `checkout` offers whatever that checkout offers; every other carrier's are its fixed services.
+ */
+const switchedOnOption = (carrier: CarrierId, services: string[], serviceId: string) =>
+  carrier === "nshift" ? services.includes(NSHIFT_CHECKOUT_SERVICE) : services.includes(serviceId);
 
 /** The carriers that have checkout services built. */
 export const CHECKOUT_CARRIERS = Object.keys(CHECKOUT_SERVICES) as CarrierId[];
@@ -218,7 +229,8 @@ async function offersFrom(
   if (!adapter || !context) return null;
   const to: ShippingAddress = { name: "", street: "", postalCode, city: "", country: market.code };
   const known = CHECKOUT_SERVICES[active.carrier] ?? [];
-  let found: Omit<Offer, "points">[];
+  // An option may bring its own pickup points (nShift's checkout, D458); the others share the carrier's points near the postal code.
+  let found: (Omit<Offer, "points"> & { ownPoints?: QuotedPickupPoint[] })[];
   if (CHECKOUT_PRICING[active.carrier] === "store") {
     const prices = active.settings.prices[market.code];
     // A service has a weight it takes at most: not offered for a heavier cart.
@@ -256,7 +268,7 @@ async function offersFrom(
     }
     // Only what the store switched on, in the country's own currency: a carrier that prices in its account's currency (UPS and DHL bill a
     // Norwegian account in kroner for a parcel to Sweden, D457) is converted at the store's own rates, and left out when the store has none.
-    const switchedOn = offered.filter((o) => active.settings.services.includes(o.serviceId));
+    const switchedOn = offered.filter((o) => switchedOnOption(active.carrier, active.settings.services, o.serviceId));
     const rates = switchedOn.some((o) => o.currency !== market.nativeCurrency) ? ((await storeById(storeId))?.localization.rates ?? null) : null;
     const inCurrency = (o: ShippingOption) => (o.currency === market.nativeCurrency ? o.priceMinor : rates ? convertMinor(o.priceMinor, o.currency, market.nativeCurrency, rates) : null);
     found = switchedOn
@@ -271,10 +283,11 @@ async function offersFrom(
         window: o.window ? { start: o.window.start, end: o.window.end, expiresAt: o.window.expiresAt } : null,
         estimate: o.estimate && "minDays" in o.estimate ? o.estimate : null,
         needsPickupPoint: Boolean(o.needsPickupPoint),
+        ...(o.pickupPoints ? { ownPoints: o.pickupPoints.slice(0, MAX_PICKUP_POINTS).map(quotedPoint) } : {}),
       }));
   }
   let points: QuotedPickupPoint[] = [];
-  if (found.some((o) => o.needsPickupPoint) && adapter.pickupPoints) {
+  if (found.some((o) => o.needsPickupPoint && !o.ownPoints) && adapter.pickupPoints) {
     try {
       points = (await adapter.pickupPoints(context, to)).slice(0, MAX_PICKUP_POINTS).map(quotedPoint);
     } catch {
@@ -282,7 +295,9 @@ async function offersFrom(
       points = [];
     }
   }
-  return found.filter((o) => !o.needsPickupPoint || points.length > 0).map((o) => ({ ...o, points: o.needsPickupPoint ? points : [] }));
+  return found
+    .map(({ ownPoints, ...o }) => ({ ...o, points: o.needsPickupPoint ? (ownPoints ?? points) : [] }))
+    .filter((o) => !o.needsPickupPoint || o.points.length > 0);
 }
 
 /**
@@ -318,7 +333,8 @@ export async function quoteDelivery(
   const several = active.length > 1;
   const named = (o: Offer) => {
     const brand = carrierInfo(o.carrier)?.name ?? o.carrier;
-    return several && !o.name.toLowerCase().includes(o.carrier) ? `${brand}: ${o.name}` : o.name;
+    // nShift's options are named by the carrier that delivers them (the store's own agreements), never "nShift".
+    return several && o.carrier !== "nshift" && !o.name.toLowerCase().includes(o.carrier) ? `${brand}: ${o.name}` : o.name;
   };
   // Services cheapest first; delivery windows apart, the earliest first.
   const usable = [

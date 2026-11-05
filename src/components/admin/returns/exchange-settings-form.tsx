@@ -1,8 +1,8 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { returnsEn, type ReturnsMessages } from "@/lib/admin-messages/returns.en";
-import { fillWords } from "@/lib/admin-fill";
-import { BRING_RETURN_DEFAULT, BRING_RETURN_SERVICES } from "@/lib/bring";
+import { RETURN_SERVICES } from "@/lib/return-services";
+import type { CarrierId } from "@/lib/shipping-carriers";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -79,13 +79,21 @@ export function ExchangeSettingsForm({
               <label className={label}>
                 {t.service} <span className={hint}>{t.serviceHint}</span>
                 <select name="labelService" defaultValue={values.labelService ?? ""} className={input}>
-                  <option value="">{fillWords(t.carrierDefault, { service: BRING_RETURN_DEFAULT })}</option>
-                  {BRING_RETURN_SERVICES.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.id} {s.name}
-                      {s.confirmed ? "" : t.toConfirm}
-                    </option>
-                  ))}
+                  <option value="">{t.carriersDefault}</option>
+                  {carriers.map((c) => {
+                    const own = RETURN_SERVICES[c.id as CarrierId];
+                    return own ? (
+                      <optgroup key={c.id} label={c.name}>
+                        {own.services.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.id} {s.name}
+                            {s.id === own.default ? t.isDefault : ""}
+                            {s.confirmed ? "" : t.toConfirm}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null;
+                  })}
                 </select>
               </label>
             </div>

@@ -31,7 +31,7 @@ import { col, typedRows } from "./typed-rows";
 export const BULK_BRING_SERVICE = "5600";
 
 /** The carriers that book labels (D133: `labels` in their `available` features and a `book()` built). */
-const BOOKING_CARRIERS = ["bring", "porterbuddy", "helthjem", "instabox", "ups", "dhl"] as const satisfies readonly CarrierId[];
+const BOOKING_CARRIERS = ["bring", "porterbuddy", "helthjem", "instabox", "ups", "dhl", "postnord", "dhl_paket", "nshift"] as const satisfies readonly CarrierId[];
 type BookingCarrier = (typeof BOOKING_CARRIERS)[number];
 
 export type LabelOutcome =

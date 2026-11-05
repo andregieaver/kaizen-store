@@ -15,6 +15,8 @@ const CARRIER_NAMES: Record<string, string> = {
   instabox: "Instabox",
   ups: "UPS",
   dhl: "DHL Express",
+  dhl_paket: "DHL Paket",
+  nshift: "nShift",
 };
 
 /**

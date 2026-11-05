@@ -36,6 +36,7 @@ import { recordTermsPaidOutside } from "@/server/payment-terms";
 import { audit } from "@/server/auth";
 import { FULFILMENT_AUDIT_ACTIONS } from "@/lib/order-ops-events";
 import { undoneMessage } from "@/lib/shipment-undo";
+import { cancelAtCarrier } from "@/server/carrier-cancel";
 import type { FormState } from "@/components/admin/action-form";
 import { parcelLinesFromForm } from "@/lib/parcel-form";
 import { chargeDelivery, deliveryOfOrder } from "@/server/standing-orders";
@@ -157,8 +158,10 @@ export async function undoShipmentAction(
   if (!reason.success) return refused(undoRefusalText("reason_too_long"));
   const undone = await undoShipment(member.store.id, orderId, shipmentId, member.account.id, reason.data || null);
   if (!undone.ok) return refused(undoRefusalText(undone.reason));
+  // A booking with a carrier that can cancel is cancelled there too (D458); the parcel stays undone whatever it answers.
+  const cancelled = undone.bookedWith ? await cancelAtCarrier(member.store.id, orderId, shipmentId, member.account.id) : null;
   refresh();
-  return { status: "ok", messages: [undoneMessage(undone, adminText(adminLangOf(member.account.adminLocale), "order").parcels)] };
+  return { status: "ok", messages: [undoneMessage({ ...undone, cancelled }, adminText(adminLangOf(member.account.adminLocale), "order").parcels)] };
 }
 
 /** Refunds an amount through Stripe and puts chosen items back in stock. */

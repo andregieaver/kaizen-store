@@ -9,8 +9,8 @@ features: [shop]
 plans: []
 admin: /admin/{store}/returns
 order: 40
-checked: 2026-11-04
-sources: [D153, D239, D238, D174]
+checked: 2026-11-05
+sources: [D153, D239, D238, D174, D458]
 ---
 
 ## Angringer og returforespørsler
@@ -94,11 +94,12 @@ Varer som loven unntar, som varer laget etter bestilling eller åpnede hygienepr
 
 ## Returetiketter
 
-Med Posten / Bring koblet til (se [Transportører](/docs/owners/shipping/carriers)) velger du den som **Transportør** under
-**Returetiketter** i Innstillinger, Returer, med **Returtjeneste**. Kryss av for **Bestill returetiketter for angringer automatisk**, som
+Med en transportør som bestiller returetiketter koblet til (se [Transportører](/docs/owners/shipping/carriers)): Posten / Bring, PostNord,
+Instabox, UPS eller DHL Paket, velger du den som **Transportør** under **Returetiketter** i Innstillinger, Returer, med **Returtjeneste**
+eller transportørens standard. Kryss av for **Bestill returetiketter for angringer automatisk**, som
 er av som standard, for å få en etikett bestilt for hver angring i løpet av noen minutter.
 
-For å bestille en selv åpner du returen og trykker **Bestill en returetikett hos Posten / Bring** under **Returfrakt**. Kunden får en
+For å bestille en selv åpner du returen og trykker **Bestill en returetikett hos** transportøren under **Returfrakt**. Kunden får en
 e-post med en knapp for å skrive den ut, og finner den på siden for returen sin.
 
 Betaler kunden returfrakten, trekkes ingenting fra når etiketten bestilles. Ved tilbakebetalingen trykker du **Pakken kom med etiketten:

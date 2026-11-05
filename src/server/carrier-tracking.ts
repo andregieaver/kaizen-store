@@ -17,6 +17,7 @@ export function trackedCarrier(shipment: { carrierId: string | null; carrier: st
   if (name.includes("porterbuddy")) return "porterbuddy";
   if (name.includes("helthjem")) return "helthjem";
   if (/\bups\b/.test(name)) return "ups";
+  if (/\bdhl\s*paket\b/.test(name)) return "dhl_paket";
   if (/\bdhl\b/.test(name)) return "dhl";
   if (name.includes("bring")) return "bring";
   return null;

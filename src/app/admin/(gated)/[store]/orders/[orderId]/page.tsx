@@ -83,9 +83,9 @@ import { orderReturnsOverview } from "@/server/order-returns";
 import { exchangeOrdersOfReturns } from "@/server/exchange-admin";
 import { orderPrivacy } from "@/server/privacy-pages";
 import { getCarrier, listCarriers } from "@/server/shipping-carriers";
-import { DELIVERY_BOOKING_CARRIERS, STAFF_CHOSEN } from "@/server/carrier-delivery-booking";
-import { CHECKOUT_SERVICES } from "@/server/delivery-options";
+import { DELIVERY_BOOKING_CARRIERS, STAFF_CHOSEN, staffServices } from "@/server/carrier-delivery-booking";
 import { carrierInfo } from "@/lib/shipping-carriers";
+import { collectionHours } from "@/lib/carrier-collection";
 import { deliveryOfOrder } from "@/server/standing-orders";
 import { getOrderDownloads, getOrderEvents, getOrderTreatment, type Address, type OrderEvent } from "@/server/orders";
 import { archiveFactsFor } from "@/server/order-archive";
@@ -197,15 +197,20 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const bookable = fulfilment.unitsToSend > 0 && !awaitingEdit && canWrite && order.status !== "authorized";
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
   const [bring, porterbuddy, helthjem, estimatedGrams, savedCarriers] = await Promise.all([getCarrier(store.id, "bring"), getCarrier(store.id, "porterbuddy"), getCarrier(store.id, "helthjem"), estimateWeightGrams(store.id, order.id), listCarriers(store.id)]);
-  // Instabox, UPS and DHL Express (D457): booked for the delivery the customer chose with them, and UPS and DHL for an order whose customer chose no
-  // carrier (the flat rate or one of the store's own methods), with a service delivered to the door that staff choose.
+  // Instabox, UPS, DHL Express, PostNord, DHL Paket and nShift (D457, D458): booked for the delivery the customer chose with them, and (but Instabox)
+  // for an order whose customer chose no carrier (the flat rate or one of the store's own methods), with a service delivered to the door that staff choose.
   const deliveryBookings = DELIVERY_BOOKING_CARRIERS.flatMap((id) => {
     const saved = savedCarriers.find((c) => c.carrier === id);
     if (!saved?.complete) return [];
     const chose = order.delivery?.carrier === id;
     if (!chose && (!STAFF_CHOSEN[id] || order.delivery || order.deliveryMethod !== "ship")) return [];
-    const services = chose ? null : (CHECKOUT_SERVICES[id] ?? []).filter((s) => !s.needsPickupPoint).map((s) => ({ id: s.id, name: s.name }));
-    return [{ id, name: carrierInfo(id)?.name ?? id, test: saved.environment === "test", services }];
+    const services = chose ? null : staffServices(id, saved.details);
+    if (services && services.length === 0) return [];
+    // Asking the carrier to collect (D458): a carrier that can, from the sender's country, with the hours the store gave on its page.
+    const info = carrierInfo(id);
+    const collects = info?.available.includes("collection") && (!info.collectionCountries || info.collectionCountries.includes(saved.details.senderCountry ?? ""));
+    const hours = collects ? collectionHours(saved.details.collectionHours) : null;
+    return [{ id, name: carrierInfo(id)?.name ?? id, test: saved.environment === "test", services, hours: hours ? `${hours.from}–${hours.to}` : null }];
   });
   const locale = store.markets[0]?.locale ?? order.locale;
   const money = (minor: number) => formatMoney(minor, order.currency, locale);
@@ -691,6 +696,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                             : null
                         }
                         {...(booking.services ? { services: booking.services, serviceLabel: w.bookService } : {})}
+                        collectLabel={booking.hours ? fillWords(w.bookCollect, { carrier: booking.name, hours: booking.hours }) : null}
                         estimatedGrams={estimatedGrams}
                         test={booking.test}
                         hasEmail={Boolean(order.email)}

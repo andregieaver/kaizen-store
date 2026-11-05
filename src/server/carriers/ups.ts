@@ -11,12 +11,18 @@ import {
   locatorUrl,
   parseAccessPoints,
   parseLabelRecovery,
+  parsePickup,
   parseRates,
   parseShipment,
   parseToken,
   parseTracking,
+  parseVoid,
+  pickupBody,
+  pickupUrl,
   rateBody,
   ratingUrl,
+  returnBookingProblems,
+  returnShipBody,
   shipBody,
   shipUrl,
   tokenUrl,
@@ -24,11 +30,13 @@ import {
   upsHost,
   upsProblem,
   upsTrackingPage,
+  voidUrl,
 } from "@/lib/ups";
 
 /**
- * UPS's connection (D457), on the store's own client id and secret and account number: a bearer token (kept until it runs out and asked for again
- * once when refused), Rating, the Locator for UPS Access Points, Shipping and Tracking, and Label Recovery for the PDF when a label is printed. In the
+ * UPS's connection (D457, D458), on the store's own client id and secret and account number: a bearer token (kept until it runs out and asked for again
+ * once when refused), Rating, the Locator for UPS Access Points, Shipping (with a collection from the Pickup API when asked, return labels with a return
+ * service, and Void to cancel), Tracking, and Label Recovery for the PDF when a label is printed. In the
  * store's test environment the calls go to UPS's customer integration environment (wwwcie.ups.com), where nothing is shipped. Every call has a
  * timeout, and an answer that cannot be used is a plain sentence for the owner, so a page or checkout never depends on UPS being up.
  */
@@ -148,6 +156,15 @@ export function createUpsAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapter
       if (!answer.ok) throw new Error(answer.problem);
       const parsed = parseShipment(answer.json);
       if (!parsed.ok) throw new Error(parsed.problem);
+      // A collection is a pickup of its own, asked for once the shipment is booked: one that fails leaves the shipment booked and says why (D458).
+      let collection: { booked: boolean; confirmation: string | null; problem: string | null } | undefined;
+      if (request.collection) {
+        const pickup = await authed(fetcher, context, pickupUrl(host), { method: "POST", body: JSON.stringify(pickupBody(request, accountOf(context), [parsed.trackingNumber])) });
+        const prn = pickup.ok ? parsePickup(pickup.json) : null;
+        collection = prn
+          ? { booked: true, confirmation: prn, problem: null }
+          : { booked: false, confirmation: null, problem: `UPS booked the shipment, but not the collection${pickup.ok ? "." : `: ${pickup.problem}`} Book one at ups.com, or hand the parcel in.` };
+      }
       return {
         trackingNumber: parsed.trackingNumber,
         trackingUrl: upsTrackingPage(parsed.trackingNumber),
@@ -155,7 +172,36 @@ export function createUpsAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapter
         labelUrl: labelUrl(host, parsed.trackingNumber),
         test: context.environment === "test",
         ...(request.customs ? { customs: { declared: true, reference: null, problem: null } } : {}),
+        ...(collection ? { collection } : {}),
       };
+    },
+
+    async bookReturn(context, request) {
+      const problems = returnBookingProblems(request, accountOf(context));
+      if (problems.length > 0) throw new Error(problems[0]);
+      const host = upsHost(context.environment);
+      const answer = await authed(fetcher, context, shipUrl(host), { method: "POST", body: JSON.stringify(returnShipBody(request, accountOf(context))) });
+      if (!answer.ok) throw new Error(answer.problem);
+      const parsed = parseShipment(answer.json);
+      if (!parsed.ok) throw new Error(parsed.problem);
+      return {
+        trackingNumber: parsed.trackingNumber,
+        trackingUrl: upsTrackingPage(parsed.trackingNumber),
+        consignmentNumber: parsed.shipmentNumber,
+        // The return label is fetched again as a PDF from Label Recovery when the shopper or staff print it.
+        labelUrl: labelUrl(host, parsed.trackingNumber),
+        test: context.environment === "test",
+        price: parsed.price ? { ...parsed.price, vatIncluded: false } : null,
+      };
+    },
+
+    async cancel(context, shipment) {
+      // UPS voids a shipment by its identification number (the first package's 1Z number) until it is handed over.
+      const number = (shipment.consignmentNumber || shipment.trackingNumber).trim();
+      if (!/^1Z[A-Z0-9]{16}$/i.test(number)) return { ok: false, problem: "This is not a UPS shipment number, so UPS cannot cancel it." };
+      const answer = await authed(fetcher, context, voidUrl(upsHost(context.environment), number), { method: "DELETE" });
+      if (!answer.ok) return { ok: false, problem: answer.problem };
+      return parseVoid(answer.json) ? { ok: true } : { ok: false, problem: "UPS did not cancel the shipment: it may already be on its way. Check it at ups.com." };
     },
 
     async track(context, trackingNumber) {
