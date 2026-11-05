@@ -24,10 +24,12 @@ const ICON = "#3a4293";
 const TEXT = "#171717";
 const PURPLE = "#242a60";
 
-const TURN_A = { type: "gradient", style: "shift", flow: "still", colors: [SAND, "#ededed"] };
-const TURN_B = { type: "gradient", style: "shift", flow: "still", angle: 240, colors: [SAND, "#ffffff"] };
-const TURN_C = { type: "color", color: SAND, opacity: 9 };
-const HERO_BG = { type: "gradient", style: "shift", flow: "still", angle: 215, colors: [SAND, "#ffffff"], opacity: 80 };
+// The owner's two rules (docs/site-design.md 6.0): every gradient at 35 degrees, every column with a colour a white box at 50 % with a
+// 6 px radius and a medium shadow. The table and the questions sit in solid white boxes, as the owner made them on the Shopify page.
+const TURN_A = { type: "gradient", style: "shift", flow: "still", angle: 35, colors: [SAND, "#ededed"] };
+const TURN_B = { type: "gradient", style: "shift", flow: "still", angle: 35, colors: [SAND, "#ffffff"] };
+const QUESTIONS_BG = { type: "gradient", style: "shift", flow: "slow", angle: 35, colors: [SAND, "#ffffff"] };
+const HERO_BG = { type: "gradient", style: "shift", flow: "still", angle: 35, colors: [SAND, "#ffffff"], opacity: 80 };
 const pad = (top: number, side: number, bottom: number) => ({ padding: { top, left: side, right: side, bottom } });
 const margin = (top: number, left: number, right: number, bottom: number) => ({ margin: { top, left, right, bottom } });
 const onSand = { typography: { text: { color: TEXT } } };
@@ -90,8 +92,9 @@ const button = (label: string, href: string, align: "left" | "center" = "left") 
 const card = (first: string, rest: string, bold: string, words: string) => ({
   id: id(),
   ...onSand,
-  radius: 20,
-  background: { type: "color", color: SAND, opacity: 6 },
+  radius: 6,
+  shadow: "md",
+  background: { type: "color", color: "#ffffff", opacity: 50 },
   style: pad(40, 24, 46),
   blocks: [h3(first, rest), lead(bold, words)],
 });
@@ -132,8 +135,8 @@ const LINES: { key: LineKey; section: Section; label: string; flow: string }[] =
   { key: "wishlists", section: "Growing the shop", label: "Wishlists", flow: "{{check}} Built in, for guests too" },
   { key: "email", section: "Growing the shop", label: "Email campaigns and automations", flow: "{{check}} Built in, sent only to people who said yes" },
   { key: "reports", section: "Growing the shop", label: "Report emails on a schedule", flow: "{{check}} Built in, daily, weekly or monthly" },
-  // D94, D309 (the autopilot, NEVER_AUTOMATIC), checkout.mobilepay, orders.shipping-label-purchase-and-printing + .pickup-points-and-lockers-at-checkout (built parts)
-  { key: "ai", section: "AI and the Nordics", label: "An AI assistant in the admin", flow: "{{check}} AI Store Manager: works toward goals you set; refunds and emails to your whole list wait for your yes" },
+  // D94, D104 and D105 (voice; the platform's live voice model serves every store without its own), D309 (the autopilot, NEVER_AUTOMATIC), checkout.mobilepay, orders.shipping-label-purchase-and-printing + .pickup-points-and-lockers-at-checkout (built parts)
+  { key: "ai", section: "AI and the Nordics", label: "An AI assistant in the admin", flow: "{{check}} AI Store Manager on every admin page, by text or voice; refunds and emails to your whole list wait for your yes" },
   { key: "mobilepay", section: "AI and the Nordics", label: "MobilePay at checkout", flow: "{{check}} Built in, for Danish and Finnish shoppers" },
   { key: "carriers", section: "AI and the Nordics", label: "Nordic carriers: labels and pickup points", flow: "{{check}} Labels with Bring, Porterbuddy and Helthjem; pickup points with Bring, PostNord and Helthjem" },
 ];
@@ -277,7 +280,7 @@ function comparisonPage(p: Platform) {
             lead(`Where ${p.name} needs ${p.needs}, the table says so.`, `What we say about ${p.name} comes from its own pages, read on ${p.readOn}. Where we found nothing either way, we left the line out.`),
           ],
         },
-        { id: id(), ...onSand, radius: 20, background: { type: "color", color: "#ffffff" }, style: pad(24, 24, 24), at: { sm: { style: pad(12, 8, 12) } }, blocks: [t.block] },
+        { id: id(), ...onSand, radius: 6, shadow: "md", background: { type: "color", color: "#ffffff" }, style: pad(24, 24, 24), at: { sm: { style: pad(12, 8, 12) } }, blocks: [t.block] },
       ],
     },
     // 4. Where the other platform is the better fit (6.3, text beside the list).
@@ -300,9 +303,9 @@ function comparisonPage(p: Platform) {
     },
     // 6. Questions.
     {
-      id: id(), type: "row", layout: "1", style: pad(100, 20, 100), background: TURN_C, backgroundFixed: true, contentMax: 880, at: { sm: { contentMax: 320 } },
+      id: id(), type: "row", layout: "1", style: pad(100, 20, 100), background: QUESTIONS_BG, backgroundFixed: true, contentMax: 880, at: { sm: { contentMax: 320 } },
       columns: [{
-        id: id(),
+        id: id(), radius: 6, shadow: "md", background: { type: "color", color: "#ffffff" }, style: pad(30, 30, 40),
         blocks: [
           dual(2, "Good to know", "Your questions, answered", "light-color", { typography: { text: { color: TEXT, align: "center" }, first: { size: { unit: "px", value: 18 } } } }),
           { id: id(), type: "faq", look: "boxed", single: true, items: p.faq.map((f) => ({ id: id(), title: f.q, body: doc(para({ text: f.bold, bold: true }, { text: ` ${f.rest}` })) })) },
@@ -311,7 +314,7 @@ function comparisonPage(p: Platform) {
     },
     // 7. The end: the main action (6.7).
     {
-      id: id(), type: "row", layout: "1", align: "middle", style: pad(100, 20, 60), background: { ...TURN_B, angle: 215 }, backgroundFixed: true,
+      id: id(), type: "row", layout: "1", align: "middle", style: pad(100, 20, 60), background: TURN_B, backgroundFixed: true,
       contentMax: 968, typography: { text: { align: "center" } }, at: { sm: { contentMax: 320 } },
       columns: [{
         id: id(), ...onSand,
@@ -325,7 +328,7 @@ function comparisonPage(p: Platform) {
     },
     // 8. How we compared, and where each line comes from.
     {
-      id: id(), type: "row", layout: "1", style: pad(40, 20, 80), background: { ...TURN_B, angle: 215 }, backgroundFixed: true, contentMax: 880,
+      id: id(), type: "row", layout: "1", style: pad(40, 20, 80), background: TURN_B, backgroundFixed: true, contentMax: 880,
       at: { sm: { contentMax: 320 } },
       columns: [{
         id: id(), ...onSand,
