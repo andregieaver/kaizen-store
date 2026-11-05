@@ -7,6 +7,8 @@ import { mayRemember } from "@/lib/page-modal";
 import { englishPath, PLATFORM_LANG_FACTS, platformPath, suggestedLang, type PlatformLang } from "@/lib/platform-lang";
 import { LANGUAGE_HINT_KEY, LANGUAGE_HINT_TEXT } from "@/lib/platform-lang-text";
 
+import { HINT_CARD } from "./hint-card";
+
 /** This page's address in another language of the site, its query kept (D312). */
 function sameIn(lang: PlatformLang, pathname: string, query: string): string {
   return platformPath(lang, englishPath(pathname)) + (query ? `?${query}` : "");
@@ -106,7 +108,7 @@ export function LanguageHint({ lang, offered }: { lang: PlatformLang; offered: r
       aria-label={text.switchLabel}
       lang={PLATFORM_LANG_FACTS[target].tag}
       data-language-hint=""
-      className="fixed inset-x-4 bottom-20 z-40 mx-auto flex max-w-xl flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 text-sm shadow-lg md:bottom-4"
+      className={HINT_CARD}
     >
       <span className="min-w-0 flex-1">{text.offer}</span>
       <a href={sameIn(target, pathname, query)} hrefLang={PLATFORM_LANG_FACTS[target].tag} className="font-medium underline">
