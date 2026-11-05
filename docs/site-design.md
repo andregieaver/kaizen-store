@@ -311,6 +311,8 @@ comes from (an accordion, `look: "boxed"`, at the foot).
 
 | Selling Products | `/selling-products` | 5 November 2026, for physical and digital products: two cards (ship it or send it), three feature rows without pictures (catalogue, stock and shipping, downloads), four cards (prices, checkout, being found, the EU's rules), questions, the main action. Each claim a Full row of `docs/parity/rows` (backorders, a Partial row, left out) | draft over the live page, for the owner to publish |
 
+| Selling Subscriptions | `/selling-subscriptions` | 5 November 2026: subscriptions and subscription boxes as two cards, then three feature rows (customers in charge, billing, the numbers), questions, the main action. Claims from D25, D29, D102 and `analytics.subscription-analytics`; payment retries and subscriptions of downloads or services not claimed | draft over the live page, for the owner to publish |
+
 A page for another platform (`move-from-{platform}`) is the same eight-part shape: the hero, the three steps, what is particular to that
 platform (as WordPress's choice), what comes with you, no stress, the free move, its questions, the main action ending on *Compare us to
 {platform}* (`/kaizen-vs-{platform}`). Its claims come only from that platform's `docs/moving-from-*.md` and what it says is built.
