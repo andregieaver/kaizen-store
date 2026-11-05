@@ -1,0 +1,163 @@
+{
+ "key": "woocommerce",
+ "name": "WooCommerce",
+ "needs": "an extension or a plugin",
+ "slug": "kaizen-vs-woocommerce",
+ "moving": "woocommerce",
+ "cells": {
+  "invoices": {
+   "text": "Through a plugin; credit notes in its paid version",
+   "url": "https://wordpress.org/plugins/woocommerce-pdf-invoices-packing-slips/"
+  },
+  "omnibus": {
+   "text": "Through a plugin",
+   "url": "https://wordpress.org/plugins/omnibus/"
+  },
+  "withdrawal": {
+   "text": "{{check}} A withdrawal form in core since 11.1, off by default; exclusions through a plugin",
+   "url": "https://developer.woocommerce.com/2026/09/03/wc-11-1-release-notes/"
+  },
+  "gpsr": {
+   "text": "Through a plugin",
+   "url": "https://wordpress.org/plugins/woocommerce-germanized/"
+  },
+  "vat": {
+   "text": "Rates by country in core; OSS and IOSS reports through a plugin",
+   "url": "https://woocommerce.com/document/setting-up-taxes-in-woocommerce/"
+  },
+  "vies": {
+   "text": "Through an extension by WooCommerce",
+   "url": "https://woocommerce.com/products/eu-vat-number/"
+  },
+  "bookings": {
+   "text": "Through an extension by WooCommerce",
+   "url": "https://woocommerce.com/products/woocommerce-bookings/"
+  },
+  "subscriptions": {
+   "text": "Through an extension by WooCommerce",
+   "url": "https://woocommerce.com/products/woocommerce-subscriptions/"
+  },
+  "bundles": {
+   "text": "Through an extension by WooCommerce",
+   "url": "https://woocommerce.com/products/product-bundles/"
+  },
+  "b2b": {
+   "text": "Through an extension",
+   "url": "https://woocommerce.com/products/b2b-ecommerce-for-woocommerce/"
+  },
+  "stores": {
+   "text": "{{check}} Through WordPress Multisite",
+   "url": "https://woocommerce.com/posts/woocommerce-multiple-stores/"
+  },
+  "reviews": {
+   "text": "{{check}} Built in, with moderation",
+   "url": "https://woocommerce.com/document/product-reviews/"
+  },
+  "backinstock": {
+   "text": "Through an extension by WooCommerce",
+   "url": "https://woocommerce.com/products/back-in-stock-notifications/"
+  },
+  "preorders": {
+   "text": "Through an extension by WooCommerce",
+   "url": "https://woocommerce.com/products/woocommerce-pre-orders/"
+  },
+  "tiered": {
+   "text": "Through an extension",
+   "url": "https://woocommerce.com/products/dynamic-pricing/"
+  },
+  "loyalty": {
+   "text": "Through an extension by WooCommerce",
+   "url": "https://woocommerce.com/products/woocommerce-points-and-rewards/"
+  },
+  "referral": {
+   "text": "Through two extensions by WooCommerce",
+   "url": "https://woocommerce.com/products/automatewoo-refer-a-friend/"
+  },
+  "wishlists": {
+   "text": "Through an extension",
+   "url": "https://woocommerce.com/products/woocommerce-wishlists/"
+  },
+  "email": {
+   "text": "Through MailPoet, by WooCommerce",
+   "url": "https://woocommerce.com/products/mailpoet/"
+  },
+  "reports": {
+   "text": "Through an extension",
+   "url": "https://woocommerce.com/products/woocommerce-sales-report-email/"
+  },
+  "ai": {
+   "text": "WooCommerce AI, a private beta for U.S. stores in English",
+   "url": "https://woocommerce.com/products/woocommerce-ai/"
+  },
+  "mobilepay": {
+   "text": "Through the official Vipps MobilePay plugin",
+   "url": "https://wordpress.org/plugins/woo-vipps/"
+  },
+  "carriers": {
+   "text": "Through plugins, one per carrier or one for many",
+   "url": "https://wordpress.org/plugins/posten-bring-checkout/"
+  }
+ },
+ "strengths": [
+  {
+   "text": "You want open source on a server of your own choosing, and to keep every part of it",
+   "url": "https://wordpress.org/plugins/woocommerce/"
+  },
+  {
+   "text": "You rely on the WordPress world: more than 7 million active installations and hundreds of extensions",
+   "url": "https://wordpress.org/plugins/woocommerce/"
+  },
+  {
+   "text": "You want WooCommerce's own deep extensions for subscriptions, bookings and bundles",
+   "url": "https://woocommerce.com/products/woocommerce-bookings/"
+  },
+  {
+   "text": "You like the official plugins Nordic companies make for it, such as Vipps MobilePay and Posten Bring",
+   "url": "https://wordpress.org/plugins/woo-vipps/"
+  },
+  {
+   "text": "You are happy with free EU plugins such as Germanized for the legal parts",
+   "url": "https://wordpress.org/plugins/woocommerce-germanized/"
+  }
+ ],
+ "readOn": "4 November 2026",
+ "title": "Kaizena Flow compared with WooCommerce",
+ "seo": {
+  "title": "Kaizena Flow vs WooCommerce: compared for EU shops",
+  "description": "How Kaizena Flow compares with WooCommerce for EU shops: legal rules, hosting, extensions and AI, checked on WooCommerce's own pages. WordPress can stay."
+ },
+ "heroRest": "The legal side of EU selling, hosting, updates and an AI that runs the shop come with Flow, and your WordPress site can stay. Here is how it compares with WooCommerce, line by line.",
+ "strengthsLead": "Choose WooCommerce if:",
+ "faq": [
+  {
+   "q": "Can I move my WooCommerce shop to Flow?",
+   "bold": "Yes, with one button.",
+   "rest": "Connect WooCommerce, choose whether to keep WordPress, copy your shop and press Move when you are happy. Products, customers, orders, coupons, reviews and old links come with you."
+  },
+  {
+   "q": "Do I need extensions to get what the Flow column shows?",
+   "bold": "No.",
+   "rest": "Everything in the Flow column is part of Flow. Owning several stores starts on the Grow plan."
+  },
+  {
+   "q": "Can I keep my WordPress site?",
+   "bold": "Yes.",
+   "rest": "Move only the shop: your pages and blog stay on WordPress, and your shop moves to shop.yourdomain.com. Our free WordPress plugin can show its products on your pages."
+  },
+  {
+   "q": "Who looks after hosting and updates?",
+   "bold": "We do.",
+   "rest": "Flow is hosted and updated for you. There is no server to run and nothing to install."
+  },
+  {
+   "q": "Where is my data kept?",
+   "bold": "In Europe.",
+   "rest": "Your store's database and servers are in Dublin, Ireland."
+  },
+  {
+   "q": "Is it safe to let the AI work on its own?",
+   "bold": "You decide how much it does.",
+   "rest": "Refunds, emails to your whole list, changes to your staff and your domain always wait for your yes, and every change it makes is in the activity log."
+  }
+ ]
+}
