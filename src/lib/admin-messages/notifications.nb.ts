@@ -240,6 +240,7 @@ export const notificationsNb: NotificationsMessages = {
       dispute: "Tilbakeføring",
       payment_overdue: "Betaling forfalt",
       analytics: "Analysevarsler",
+      accounting: "Regnskap",
     },
     areas: {
       new_order: "Bestillinger",
@@ -251,6 +252,7 @@ export const notificationsNb: NotificationsMessages = {
       dispute: "Bestillinger",
       payment_overdue: "Bestillinger",
       analytics: "Analyse",
+      accounting: "Innstillinger",
     },
     weekdays: ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"],
     failed: {
@@ -769,6 +771,18 @@ export const notificationsNb: NotificationsMessages = {
       },
       tripletexSaid: "Tripletex sa: {detail}",
       listStatus: { setup: "Klar til å starte", on: "På", paused: "På pause", auth_failed: "Trenger ny nøkkel", problems: "På · trenger deg" },
+      panel: {
+        cardTitle: "Regnskap",
+        notConnected: "Send fakturaene og kreditnotaene dine rett inn i Tripletex.",
+        connect: "Koble til Tripletex",
+        manage: "Åpne Tripletex",
+        booked: "I Tripletex som bilag {voucher}",
+        bookedNoNumber: "I Tripletex",
+        withPdf: "med PDF",
+        onItsWay: "På vei til Tripletex",
+        notSent: "Ikke sendt: utstedt før Tripletex ble startet",
+        skipped: "Ikke sendt: Tripletex ble koblet fra først",
+      },
     },
     endpoints: {
       cardTitle: "Dine egne endepunkter",

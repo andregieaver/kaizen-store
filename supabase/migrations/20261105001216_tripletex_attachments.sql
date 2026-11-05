@@ -1,0 +1,5 @@
+ALTER TABLE "commerce"."tripletex_sync" DROP CONSTRAINT "tripletex_sync_attempts";--> statement-breakpoint
+ALTER TABLE "commerce"."tripletex_sync" ADD COLUMN "attached_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."tripletex_sync" ADD COLUMN "attach_tries" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+CREATE INDEX "tripletex_sync_attach_idx" ON "commerce"."tripletex_sync" USING btree ("store_id","synced_at") WHERE "commerce"."tripletex_sync"."attached_at" is null and "commerce"."tripletex_sync"."state" = 'synced' and "commerce"."tripletex_sync"."kind" in ('shop_invoice', 'shop_credit_note');--> statement-breakpoint
+ALTER TABLE "commerce"."tripletex_sync" ADD CONSTRAINT "tripletex_sync_attempts" CHECK ("commerce"."tripletex_sync"."attempts" >= 0 and "commerce"."tripletex_sync"."posting" >= 1 and "commerce"."tripletex_sync"."attach_tries" >= 0);

@@ -508,6 +508,19 @@ export const notificationsEn = {
       blocks: { ...BLOCK_WORDS } as Record<keyof typeof BLOCK_WORDS, string>,
       tripletexSaid: "Tripletex said: {detail}",
       listStatus: { setup: "Ready to start", on: "On", paused: "Paused", auth_failed: "Needs a new token", problems: "On · needs you" },
+      /** On a document's own page and on Work's settings. */
+      panel: {
+        cardTitle: "Accounting",
+        notConnected: "Send your invoices and credit notes straight into Tripletex.",
+        connect: "Connect Tripletex",
+        manage: "Open Tripletex",
+        booked: "In Tripletex as voucher {voucher}",
+        bookedNoNumber: "In Tripletex",
+        withPdf: "with its PDF",
+        onItsWay: "On its way to Tripletex",
+        notSent: "Not sent: issued before Tripletex was started",
+        skipped: "Not sent: Tripletex was disconnected first",
+      },
     },
     /** An owner's own endpoints (D354). */
     endpoints: {

@@ -272,6 +272,48 @@ describe("sending Work's invoices to Tripletex (D453)", () => {
   });
 });
 
+describe("telling the owner what waits (D453)", () => {
+  it("emails the owners once a day while a document waits for them, and the store checkup says so; a store that is fine gets nothing", async () => {
+    const { storeId, actor, org } = await workStore();
+    const tx = await connected(storeId, actor.account.id, org, BASE + 20);
+    await issued(actor, await client(storeId));
+    const alerts = () => db().execute<Row>(sql`select idempotency_key from commerce.email_messages where store_id = ${storeId}::uuid and kind = 'staff.accounting'`);
+
+    expect(await sync(tx, storeId)).toMatchObject({ sent: 1, alerted: 0 });
+    expect(await alerts()).toHaveLength(0);
+
+    tx.closedBefore = "2999-01-01";
+    await issued(actor, await client(storeId, { name: "Nord", org: "912000222" }));
+    expect(await sync(tx, storeId)).toMatchObject({ blocked: 1, alerted: 1 });
+    const sent = await alerts();
+    expect(sent).toHaveLength(1);
+    expect(String(sent[0].idempotency_key)).toMatch(new RegExp(`^staff-accounting:${storeId}:\\d{4}-\\d{2}-\\d{2}:${actor.account.id}$`));
+    // The next runs that day send nothing more.
+    expect(await sync(tx, storeId)).toMatchObject({ alerted: 0 });
+    expect(await alerts()).toHaveLength(1);
+
+    // The store checkup (the AI manager's and the briefing's) says the same.
+    const { checkupFindings } = await import("./store-checkup");
+    const { getStore } = await import("./stores");
+    const [slug] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
+    const store = (await getStore(String(slug.slug)))!;
+    const findings = await checkupFindings(store, actor.account.id);
+    expect(findings.find((f) => f.key === "accounting")).toMatchObject({ count: 1, page: "/integrations/tripletex" });
+    expect(findings.find((f) => f.key === "accounting_token")).toBeUndefined();
+  });
+
+  it("emails when Tripletex stops accepting the token", async () => {
+    const { storeId, actor, org } = await workStore();
+    const tx = await connected(storeId, actor.account.id, org, BASE + 21);
+    await issued(actor, await client(storeId));
+    tx.revokeAll();
+    const seen: { tokenRefused: boolean; waiting: number }[] = [];
+    await syncDueTripletex({ deps: { fetch: tx.fetch }, storeIds: [storeId], alert: async (_id, attention) => (seen.push(attention), { ok: true, sent: 1 }) });
+    expect((await getTripletexConnection(storeId))?.state).toBe("auth_failed");
+    expect(seen).toEqual([{ tokenRefused: true, waiting: 0 }]);
+  });
+});
+
 describe("sending the shop's invoices", () => {
   it("books a paid order's invoice on the shop's own customer card, never a shopper's name", async () => {
     const shop = await fx.makeStore("txshop");
@@ -299,5 +341,58 @@ describe("sending the shop's invoices", () => {
     expect(await sync(tx, shop.storeId)).toMatchObject({ sent: 1 });
     expect(tx.vouchers.size).toBe(2);
     expect(tx.customers.size).toBe(1);
+  });
+
+  it("attaches each document's PDF to its voucher once it is made, once, and never when switched off", async () => {
+    const shop = await fx.makeStore("txpdf");
+    const order = await fx.paidOrder(shop, [["DEMO-MUG-WHITE", 1]]);
+    const invoice = (await fx.invoiceOf(shop.storeId, order.orderId))!;
+    const tx = fakeTripletex({ companyId: BASE + 102 });
+    tx.apiTokens.add(token("pdf"));
+    await connectTripletex(shop.ownerId, shop.storeId, token("pdf"), { fetch: tx.fetch });
+    await startTripletex(shop.ownerId, shop.storeId);
+
+    // A bucket in memory, as the PDF job leaves it.
+    const files = new Map<string, Uint8Array>();
+    const storage = {
+      upload: async (path: string, bytes: Uint8Array) => (files.set(path, bytes), true),
+      download: async (path: string) => files.get(path) ?? null,
+      remove: async () => true,
+    };
+    const run = () => syncDueTripletex({ deps: { fetch: tx.fetch }, storeIds: [shop.storeId], storage });
+
+    // Booked before its PDF is made: nothing to attach yet.
+    expect(await run()).toMatchObject({ sent: 1, attached: 0 });
+    const [voucher] = [...tx.vouchers.values()];
+    expect(voucher.files).toEqual([]);
+
+    const path = `${shop.storeId}/invoices/${invoice.id}.pdf`;
+    files.set(path, new TextEncoder().encode(`%PDF-1.7 ${invoice.documentNumber}`));
+    await db().execute(sql`update commerce.invoices set pdf_path = ${path}, pdf_sha256 = ${"0".repeat(64)} where id = ${invoice.id}::uuid`);
+    expect(await run()).toMatchObject({ sent: 0, attached: 1 });
+    expect(voucher.files).toEqual([{ name: `${invoice.documentNumber.replace(/[^A-Za-z0-9._-]+/g, "-")}.pdf`, type: "application/pdf", size: files.get(path)!.length, head: "%PDF-" }]);
+    expect(await run()).toMatchObject({ attached: 0 });
+    expect(voucher.attachments).toBe(1);
+
+    // Tripletex refusing the file is counted, and the voucher is left as it is.
+    const second = await fx.paidOrder(shop, [["DEMO-MUG-WHITE", 1]]);
+    const secondInvoice = (await fx.invoiceOf(shop.storeId, second.orderId))!;
+    const secondPath = `${shop.storeId}/invoices/${secondInvoice.id}.pdf`;
+    files.set(secondPath, new TextEncoder().encode("%PDF-1.7"));
+    await db().execute(sql`update commerce.invoices set pdf_path = ${secondPath}, pdf_sha256 = ${"1".repeat(64)} where id = ${secondInvoice.id}::uuid`);
+    tx.failNext("POST", /^\/ledger\/voucher\/\d+\/attachment$/, 422);
+    expect(await run()).toMatchObject({ sent: 1, attached: 0 });
+    const [row] = await db().execute<Row>(sql`select state, attach_tries, attached_at from commerce.tripletex_sync where local_id = ${secondInvoice.id}`);
+    expect(row).toMatchObject({ state: "synced", attach_tries: 1, attached_at: null });
+    expect(await run()).toMatchObject({ attached: 1 });
+
+    // Switched off under Customise: a new document is booked without its PDF.
+    await db().execute(sql`update commerce.tripletex_connections set settings = settings || '{"attachPdf": false}'::jsonb where store_id = ${shop.storeId}::uuid`);
+    const third = await fx.paidOrder(shop, [["DEMO-MUG-WHITE", 1]]);
+    const thirdInvoice = (await fx.invoiceOf(shop.storeId, third.orderId))!;
+    const thirdPath = `${shop.storeId}/invoices/${thirdInvoice.id}.pdf`;
+    files.set(thirdPath, new TextEncoder().encode("%PDF-1.7"));
+    await db().execute(sql`update commerce.invoices set pdf_path = ${thirdPath}, pdf_sha256 = ${"2".repeat(64)} where id = ${thirdInvoice.id}::uuid`);
+    expect(await run()).toMatchObject({ sent: 1, attached: 0 });
   });
 });

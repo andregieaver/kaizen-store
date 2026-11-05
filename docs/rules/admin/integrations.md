@@ -202,7 +202,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   a person with a stable `error_key`); it never redates a voucher and never changes or deletes one. Every owner-facing failure is a sentence of
   the `notifications` catalogue's `integrations.tripletex` (`failures` keyed as `FAILURE_WORDS`, `blocks` as `BLOCK_WORDS`, `connectProblems`,
   `startProblems`), read through `failureWords()`; the server answers codes, never sentences, and never Tripletex's raw answer but a clipped
-  validation message shown as what Tripletex said. The page (`/admin/{store}/integrations/tripletex`, owners act, `settings:read` sees) is
+  validation message shown as what Tripletex said. A booked shop document's stored PDF is attached by `attachPdfs()` only, read through
+  `readPdf()` (never Chromium), never touching its voucher on a refusal. What needs a person is `tripletexAttention()`, told by the store
+  checkup (`accounting`, `accounting_token`) and the staff alert `accounting` (`sendAccountingAlert()`, once a day per store and recipient),
+  never by a channel of its own. A document's own page shows it through `TripletexDocumentsPanel`. The page (`/admin/{store}/integrations/tripletex`, owners act, `settings:read` sees) is
   Homer's: one paste, then only the questions Tripletex would refuse (`checkTripletexSettings()` before Start), then Start; the card
   speaks only when something needs the owner; every account, code, the start day and the switches are under Customise. Tests run against `fakeTripletex()`
   (`src/server/tripletex-test-support.ts`), which must answer as Tripletex's spec does and never refuses a repeated external number;

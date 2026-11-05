@@ -8,6 +8,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import type { CreditNoteSnapshot } from "@/lib/credit-allocation";
 import type { OrderInvoiceSnapshot } from "@/lib/invoice-snapshot";
+import { todayIn } from "@/lib/analytics-period";
 import { minorOf } from "@/lib/tripletex";
 import { type TripletexFailure } from "@/lib/tripletex-errors";
 import {
@@ -29,8 +30,10 @@ import { BOOKING_KEYS, type TripletexSettings } from "@/lib/tripletex-settings";
 import type { Chart } from "@/lib/tripletex-setup";
 
 import { audit } from "./auth";
+import { readPdf, type DocumentStorage } from "./invoice-storage";
 import { log } from "./log";
-import { getTripletexConnection, readChart, tripletexCredential, type TripletexConnection } from "./tripletex";
+import { sendAccountingAlert } from "./staff-alerts";
+import { getTripletexConnection, readChart, tripletexAttention, tripletexCredential, type TripletexConnection } from "./tripletex";
 import { listAll, openSession, type TripletexDeps, type TripletexSession } from "./tripletex-client";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { workEvent } from "./work";
@@ -53,9 +56,18 @@ const CLAIM_MINUTES = 5;
 const LADDER_MINUTES = [1, 5, 30, 120, 360];
 const DAILY_TRIES = 14;
 
-export type TripletexRun = { stores: number; sent: number; adopted: number; failed: number; blocked: number; waiting: number };
+export type TripletexRun = { stores: number; sent: number; adopted: number; failed: number; blocked: number; waiting: number; attached: number; alerted: number };
 
-export type SyncOptions = { now?: () => Date; deps?: TripletexDeps; storeIds?: readonly string[]; budgetMs?: number };
+export type SyncOptions = {
+  now?: () => Date;
+  deps?: TripletexDeps;
+  storeIds?: readonly string[];
+  budgetMs?: number;
+  /** Where the documents' PDFs are kept (tests pass one in memory); the private bucket by default. */
+  storage?: DocumentStorage | null;
+  /** The daily alert's sender (tests pass their own); `sendAccountingAlert()` by default. */
+  alert?: typeof sendAccountingAlert;
+};
 
 type Kind = "work_invoice" | "work_credit_note" | "shop_invoice" | "shop_credit_note";
 
@@ -557,7 +569,8 @@ async function syncStore(storeId: string, options: SyncOptions, run: TripletexRu
   const now = (options.now ?? (() => new Date()))();
   await sweep(storeId, ready);
   const rows = await claim(storeId, ready, now);
-  if (rows.length === 0) return;
+  const wantPdf = ready.settings.attachPdf;
+  if (rows.length === 0 && !(wantPdf && (await attachable(storeId, ready, now)).length > 0)) return;
   run.stores += 1;
 
   const ctx: Ctx = { storeId, connection: ready, session: null as unknown as TripletexSession, ids: null, chart: null, countries: null, now, run };
@@ -589,10 +602,78 @@ async function syncStore(storeId: string, options: SyncOptions, run: TripletexRu
       await release(ctx, row, at(now, 5));
     }
   }
+  // Then the PDFs of what is booked, including what was just booked when its PDF is already made.
+  if (!stopped && wantPdf && Date.now() <= deadline) {
+    try {
+      if ((await attachPdfs(ctx, await attachable(storeId, ready, now), options.storage)) === "stop") stopped = true;
+    } catch (error) {
+      log("error", "tripletex.attach_failed", { storeId }, error);
+    }
+  }
   const booked = run.sent + run.adopted - before.booked;
   const problems = run.failed + run.blocked - before.problems;
   if (stopped) return;
   await noteConnection(storeId, booked === 0 && problems > 0 ? "not_sent" : null);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The documents' PDFs
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** How long, and how often, a booked document's PDF is tried: a PDF is made by its own job a few minutes after issue. */
+const ATTACH_DAYS = 7;
+const ATTACH_TRIES = 20;
+const ATTACH_BATCH = 10;
+
+type Attachable = { kind: "shop_invoice" | "shop_credit_note"; localId: string; theirId: number; number: string };
+
+/** Booked shop documents of the last week whose PDF is made and not yet attached to their voucher. */
+async function attachable(storeId: string, connection: Ctx["connection"], now: Date): Promise<Attachable[]> {
+  const rows = await typedRows(
+    z.object({ kind: z.enum(["shop_invoice", "shop_credit_note"]), local_id: col.text, their_id: col.minor, number: col.text }),
+    sql`select t.kind, t.local_id, t.their_id, coalesce(si.document_number, sc.document_number) as number
+          from commerce.tripletex_sync t
+          left join commerce.invoices si on t.kind = 'shop_invoice' and si.store_id = t.store_id and si.id::text = t.local_id
+          left join commerce.credit_notes sc on t.kind = 'shop_credit_note' and sc.store_id = t.store_id and sc.id::text = t.local_id
+         where t.store_id = ${storeId}::uuid and t.mode = ${connection.mode} and t.company_id = ${connection.company.id}
+           and t.kind in ('shop_invoice', 'shop_credit_note') and t.state = 'synced' and t.attached_at is null and t.their_id is not null
+           and t.attach_tries < ${ATTACH_TRIES} and t.synced_at > ${now.toISOString()}::timestamptz - make_interval(days => ${ATTACH_DAYS})
+           and coalesce(si.pdf_path, sc.pdf_path) is not null and coalesce(si.anonymised_at, sc.anonymised_at) is null
+         order by t.synced_at
+         limit ${ATTACH_BATCH}`,
+  );
+  return rows.map((r) => ({ kind: r.kind, localId: r.local_id, theirId: r.their_id, number: r.number }));
+}
+
+/**
+ * Each document's stored PDF to its voucher's attachment (the bookkeeping document, "bilag"). A failure never touches the voucher:
+ * it is counted and tried again next run, for a week at most. Stops with the store's run on a refused token or a rate limit.
+ */
+async function attachPdfs(ctx: Ctx, rows: readonly Attachable[], storage: DocumentStorage | null | undefined): Promise<"go_on" | "stop"> {
+  for (const row of rows) {
+    const bytes = await readPdf(ctx.storeId, row.kind === "shop_invoice" ? "invoice" : "credit_note", row.localId, storage === undefined ? {} : { storage });
+    if (!bytes) continue;
+    const sent = await ctx.session.postFile(`/ledger/voucher/${row.theirId}/attachment`, {
+      name: `${row.number.replace(/[^A-Za-z0-9._-]+/g, "-")}.pdf`,
+      type: "application/pdf",
+      bytes,
+    });
+    if (sent.ok) {
+      await db().execute(sql`update commerce.tripletex_sync set attached_at = now(), updated_at = now() where ${where(ctx, row.kind, row.localId)}`);
+      ctx.run.attached += 1;
+      continue;
+    }
+    await db().execute(sql`update commerce.tripletex_sync set attach_tries = attach_tries + 1, updated_at = now() where ${where(ctx, row.kind, row.localId)}`);
+    if (sent.failure.class === "auth") {
+      await db().execute(sql`
+        update commerce.tripletex_connections set state = 'auth_failed', last_error_key = ${sent.failure.key}, last_error_at = now(), failures_in_a_row = failures_in_a_row + 1
+         where store_id = ${ctx.storeId}::uuid and state = 'on'
+      `);
+      return "stop";
+    }
+    if (sent.failure.class === "rate_limit") return "stop";
+  }
+  return "go_on";
 }
 
 /** The connection's last good contact and last problem, for the card and the alerts. */
@@ -612,26 +693,37 @@ async function noteConnection(storeId: string, problem: string | null): Promise<
  * Tripletex never holds the dispatcher up. Never throws.
  */
 export async function syncDueTripletex(options: SyncOptions = {}): Promise<TripletexRun> {
-  const run: TripletexRun = { stores: 0, sent: 0, adopted: 0, failed: 0, blocked: 0, waiting: 0 };
+  const run: TripletexRun = { stores: 0, sent: 0, adopted: 0, failed: 0, blocked: 0, waiting: 0, attached: 0, alerted: 0 };
   const deadline = Date.now() + (options.budgetMs ?? BUDGET_MS);
-  let stores: string[];
+  let stores: { id: string; timeZone: string }[];
   try {
     const rows = await typedRows(
-      z.object({ store_id: col.uuid }),
-      sql`select c.store_id from commerce.tripletex_connections c join commerce.stores s on s.id = c.store_id
-           where c.state = 'on' and s.status = 'active' order by c.last_ok_at nulls first`,
+      z.object({ store_id: col.uuid, time_zone: col.text }),
+      sql`select c.store_id, s.time_zone from commerce.tripletex_connections c join commerce.stores s on s.id = c.store_id
+           where c.state in ('on', 'auth_failed') and s.status = 'active' order by c.last_ok_at nulls first`,
     );
-    stores = rows.map((r) => r.store_id).filter((id) => !options.storeIds || options.storeIds.includes(id));
+    stores = rows.map((r) => ({ id: r.store_id, timeZone: r.time_zone })).filter((store) => !options.storeIds || options.storeIds.includes(store.id));
   } catch (error) {
     log("error", "tripletex.run_failed", {}, error);
     return run;
   }
-  for (const storeId of stores) {
+  const now = (options.now ?? (() => new Date()))();
+  for (const store of stores) {
     if (Date.now() > deadline) break;
     try {
-      await syncStore(storeId, options, run, deadline);
+      await syncStore(store.id, options, run, deadline);
     } catch (error) {
-      log("error", "tripletex.store_failed", { storeId }, error);
+      log("error", "tripletex.store_failed", { storeId: store.id }, error);
+    }
+    // What needs a person, told once a day while it lasts (the alert's own recipients, owners by default).
+    try {
+      const attention = await tripletexAttention(store.id);
+      if (attention && (attention.tokenRefused || attention.waiting > 0)) {
+        const sent = await (options.alert ?? sendAccountingAlert)(store.id, attention, todayIn(now, store.timeZone));
+        if (sent && sent.sent > 0) run.alerted += 1;
+      }
+    } catch (error) {
+      log("error", "tripletex.alert_failed", { storeId: store.id }, error);
     }
   }
   return run;

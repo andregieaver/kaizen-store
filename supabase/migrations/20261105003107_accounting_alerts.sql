@@ -1,0 +1,4 @@
+ALTER TABLE "commerce"."staff_alert_recipients" DROP CONSTRAINT "staff_alert_recipients_events";--> statement-breakpoint
+ALTER TABLE "commerce"."staff_alert_settings" DROP CONSTRAINT "staff_alert_settings_contact_events";--> statement-breakpoint
+ALTER TABLE "commerce"."staff_alert_recipients" ADD CONSTRAINT "staff_alert_recipients_events" CHECK (cardinality("commerce"."staff_alert_recipients"."events") > 0 and "commerce"."staff_alert_recipients"."events" <@ array['new_order', 'return_requested', 'refund_overdue', 'low_stock', 'summary', 'automation', 'dispute', 'payment_overdue', 'analytics', 'accounting']::text[]);--> statement-breakpoint
+ALTER TABLE "commerce"."staff_alert_settings" ADD CONSTRAINT "staff_alert_settings_contact_events" CHECK ("commerce"."staff_alert_settings"."contact_events" <@ array['new_order', 'return_requested', 'refund_overdue', 'low_stock', 'summary', 'automation', 'dispute', 'payment_overdue', 'analytics', 'accounting']::text[]);

@@ -808,6 +808,47 @@ export async function sendTermsOverdueAlert(storeId: string, orderId: string, se
   return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
 }
 
+/**
+ * What waits in Tripletex (D453): to the recipients of `accounting` (owners by default), at most once a day per store and recipient while it
+ * lasts, with counts only and a link to the Tripletex page, which says why each document waits. `day` is the store's own; the Tripletex job
+ * calls this after its run, so a store that is fine is never written to.
+ */
+export async function sendAccountingAlert(
+  storeId: string,
+  attention: { tokenRefused: boolean; waiting: number },
+  day: string,
+  send: typeof sendEmail = sendEmail,
+): Promise<{ ok: boolean; sent: number } | null> {
+  if (!attention.tokenRefused && attention.waiting === 0) return null;
+  const [store, targets] = await Promise.all([storeById(storeId), alertRecipients(storeId, "accounting")]);
+  if (!store) return null;
+  if (targets.length === 0) return { ok: true, sent: 0 };
+  // Sent today already (to everyone it goes to): nothing is rendered or sent again.
+  const [already] = await db().execute<Row>(sql`
+    select count(*)::int as n from commerce.email_messages
+     where store_id = ${storeId}::uuid and kind = ${ALERT_EMAIL_KINDS.accounting} and idempotency_key like ${`staff-accounting:${storeId}:${day}:%`}
+  `);
+  if (Number(already?.n ?? 0) >= targets.length) return { ok: true, sent: 0 };
+  const email = (lang: AdminLang): RenderedEmail => {
+    const w = wordsOf(lang).accounting;
+    const heading = attention.tokenRefused ? w.tokenHeading : countWords(attention.waiting, w.waitingHeading);
+    const text = attention.tokenRefused ? w.tokenText : w.waitingText;
+    return renderEmail({
+      subject: fillWords(w.subject, { store: store.name }),
+      preview: heading,
+      lang: ADMIN_LANG_FACTS[lang].tag,
+      footer: emailFooter(store, footerText(lang)),
+      blocks: [
+        { type: "heading", text: heading },
+        { type: "paragraph", text },
+        { type: "button", text: w.button, url: adminUrl(store.slug, "/integrations/tripletex") },
+      ],
+    });
+  };
+  const result = await sendToAll(storeId, store.name, ALERT_EMAIL_KINDS.accounting, targets, email, (r) => ALERT_KEYS.accounting(storeId, day, r), null, send);
+  return { ok: result.ok, sent: result.outcomes.filter((o) => o === "sent" || o === "logged").length };
+}
+
 // ---------------------------------------------------------------------------
 // The queue
 // ---------------------------------------------------------------------------
@@ -1287,6 +1328,7 @@ export const ALERT_EMAIL_KINDS: Record<StaffAlertEvent, string> = {
   dispute: "staff.dispute",
   payment_overdue: "staff.payment_overdue",
   analytics: "staff.analytics_alerts",
+  accounting: "staff.accounting",
 };
 
 /** An account erased (D377) is told of nothing again: its choices in every store go, inside the erasure's transaction. */

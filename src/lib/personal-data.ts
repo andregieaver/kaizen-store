@@ -599,6 +599,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   /** A held card's deadline is near (D289): the order's number and amount, never who the customer is. */
   "staff.capture_due": "staff",
   "staff.payment_overdue": "staff",
+  "staff.accounting": "staff",
   "staff.summary": "staff",
   /** Analytics alerts to the staff chosen for them (D348): the alerts' words and figures and a link each, never a customer. */
   "staff.analytics_alerts": "staff",

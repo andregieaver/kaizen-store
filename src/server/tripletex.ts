@@ -437,3 +437,55 @@ export async function setTripletexSyncFrom(accountId: string, storeId: string, d
   await audit(accountId, storeId, "integration.tripletex_sync_from_changed", { before: connection.syncFrom, after: day });
   return { ok: true, syncFrom: day };
 }
+
+/**
+ * What needs a person, for the checkup and the daily alert: a token Tripletex no longer takes, and documents that wait for a person
+ * (blocked, or still failing after the retry ladder's first rungs). Null without a connection or while it is set up or paused.
+ */
+export async function tripletexAttention(storeId: string): Promise<{ tokenRefused: boolean; waiting: number } | null> {
+  const row = await typedRow(
+    z.object({ state: col.text, waiting: col.minor }),
+    sql`select c.state,
+               coalesce((select count(*) from commerce.tripletex_sync t
+                          where t.store_id = c.store_id and t.mode = c.mode and t.company_id = c.company_id and t.kind <> 'customer'
+                            and (t.state in ('blocked', 'drifted') or (t.state = 'failed' and t.attempts >= 5))), 0) as waiting
+          from commerce.tripletex_connections c where c.store_id = ${storeId}::uuid`,
+  );
+  if (!row || (row.state !== "on" && row.state !== "auth_failed")) return null;
+  return { tokenRefused: row.state === "auth_failed", waiting: row.waiting };
+}
+
+/** Where each of these documents stands in Tripletex, for a document's own page: absent when it was never sent (issued before the start day). */
+export type DocumentInTripletex = {
+  state: "pending" | "sending" | "synced" | "failed" | "blocked" | "drifted" | "skipped";
+  voucher: string | null;
+  errorKey: string | null;
+  detail: string | null;
+  attached: boolean;
+};
+
+export async function tripletexDocuments(
+  storeId: string,
+  documents: readonly { kind: "work_invoice" | "work_credit_note" | "shop_invoice" | "shop_credit_note"; localId: string }[],
+): Promise<Map<string, DocumentInTripletex>> {
+  const connection = await getTripletexConnection(storeId);
+  const out = new Map<string, DocumentInTripletex>();
+  if (!connection || documents.length === 0) return out;
+  const rows = await typedRows(
+    z.object({
+      kind: col.text,
+      local_id: col.text,
+      state: z.enum(["pending", "sending", "synced", "failed", "blocked", "drifted", "skipped"]),
+      their_ref: col.textOrNull,
+      error_key: col.textOrNull,
+      error_detail: col.textOrNull,
+      attached: col.bool,
+    }),
+    sql`select kind, local_id, state, their_ref, error_key, error_detail, attached_at is not null as attached
+          from commerce.tripletex_sync
+         where store_id = ${storeId}::uuid and mode = ${connection.mode} and company_id = ${connection.company.id}
+           and (kind, local_id) in (${sql.join(documents.map((d) => sql`(${d.kind}, ${d.localId})`), sql`, `)})`,
+  );
+  for (const r of rows) out.set(`${r.kind}:${r.local_id}`, { state: r.state, voucher: r.their_ref, errorKey: r.error_key, detail: r.error_detail, attached: r.attached });
+  return out;
+}

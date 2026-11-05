@@ -50,6 +50,8 @@ export type FakeVoucher = {
   voucherType: { id: number } | null;
   postings: FakePosting[];
   attachments: number;
+  /** What was attached, as Tripletex took it from the multipart form's `file`. */
+  files: { name: string; type: string; size: number; head: string }[];
 };
 
 export type FakeCustomer = Json & { id: number; version: number; name: string; organizationNumber?: string; customerNumber: number };
@@ -194,6 +196,7 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
       voucherType: (body.voucherType as { id: number } | undefined) ?? null,
       postings: made,
       attachments: 0,
+      files: [],
     };
     state.vouchers.set(id, voucher);
     return answer(201, { value: voucher });
@@ -266,7 +269,11 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
       if (!voucher) return answer(404, { status: 404, code: 6000, message: "Objektet finnes ikke." });
       if (method === "GET" && !voucherPath[2]) return answer(200, { value: voucher });
       if (method === "POST" && voucherPath[2]) {
+        const file = init?.body instanceof FormData ? init.body.get("file") : null;
+        if (!(file instanceof Blob)) return invalid("Fil mangler.", "file");
+        const bytes = new Uint8Array(await file.arrayBuffer());
         voucher.attachments += 1;
+        voucher.files.push({ name: file instanceof File ? file.name : "", type: file.type, size: bytes.length, head: new TextDecoder().decode(bytes.slice(0, 5)) });
         return answer(201, { value: voucher });
       }
     }

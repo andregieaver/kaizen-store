@@ -7454,6 +7454,9 @@ export const tripletexSync = commerce.table(
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
     claimedUntil: timestamp("claimed_until", { withTimezone: true }),
     syncedAt: timestamp("synced_at", { withTimezone: true }),
+    /** When the document's PDF was attached to its voucher (a shop document's, once its PDF is made), and how often that was tried. */
+    attachedAt: timestamp("attached_at", { withTimezone: true }),
+    attachTries: integer("attach_tries").notNull().default(0),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -7467,7 +7470,8 @@ export const tripletexSync = commerce.table(
     check("tripletex_sync_state", sql`${t.state} in ('pending', 'sending', 'synced', 'failed', 'blocked', 'drifted', 'skipped')`),
     check("tripletex_sync_synced", sql`${t.state} <> 'synced' or ${t.theirId} is not null`),
     check("tripletex_sync_voucher_key", sql`${t.kind} = 'customer' or ${t.state} not in ('sending', 'synced') or ${t.externalKey} is not null`),
-    check("tripletex_sync_attempts", sql`${t.attempts} >= 0 and ${t.posting} >= 1`),
+    check("tripletex_sync_attempts", sql`${t.attempts} >= 0 and ${t.posting} >= 1 and ${t.attachTries} >= 0`),
+    index("tripletex_sync_attach_idx").on(t.storeId, t.syncedAt).where(sql`${t.attachedAt} is null and ${t.state} = 'synced' and ${t.kind} in ('shop_invoice', 'shop_credit_note')`),
     check(
       "tripletex_sync_texts",
       sql`length(${t.localId}) between 1 and 80 and length(coalesce(${t.externalKey}, '')) <= 70 and length(coalesce(${t.errorKey}, '')) <= 40 and length(coalesce(${t.errorDetail}, '')) <= 400 and length(coalesce(${t.theirRef}, '')) <= 60 and length(coalesce(${t.requestId}, '')) <= 100`,

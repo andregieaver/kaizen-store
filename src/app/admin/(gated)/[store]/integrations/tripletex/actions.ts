@@ -157,3 +157,17 @@ export async function disconnectTripletexAction(storeSlug: string): Promise<{ ok
   await disconnectTripletex(owner.account.id, owner.store.id);
   redirect(`/admin/${storeSlug}/integrations`);
 }
+
+const DOCUMENT_KINDS = ["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note"] as const;
+
+/** Try again for one document, from its own page (a Work invoice, a shop invoice): the owner's press, audited. */
+export async function retryTripletexDocumentAction(storeSlug: string, kind: string, localId: string): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (typeof owner === "string") return refused(owner);
+  const w = wordsOf(owner);
+  const known = DOCUMENT_KINDS.find((k) => k === kind);
+  if (!known || !/^[0-9a-f-]{36}$/.test(localId)) return refused(w.nothingToRetry);
+  const count = await retryTripletex(owner.store.id, { kind: known, localId, accountId: owner.account.id });
+  refresh();
+  return { status: "ok", messages: [count === 0 ? w.nothingToRetry : countWords(count, w.retried)] };
+}
