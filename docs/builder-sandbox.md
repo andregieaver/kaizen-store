@@ -1,6 +1,7 @@
 # The page builder sandbox: try it without signing up
 
-Status: **proposed** (D456, 5 November 2026). Nothing is built yet. The owner's choice of 5 November 2026: **no email at all** to start.
+Status: **step S1 built** (D456, 5 November 2026), behind its platform switch, which is off; S2 to S4 follow (section 8). The owner's
+choices of 5 November 2026: **no email at all** to start, and the recommendations of section 10.
 A visitor presses *Try the builder* and is in the real builder, on a store of their own. An email is asked only when they choose to keep
 that store, because an account is an email (`accounts.email` is not null).
 
@@ -106,10 +107,10 @@ What the sandbox's context holds:
 | `actions.saveThemeTab`, `saveLibrary`, `saveSiteCss`, `cssVersions` | On | The Theme tab and CSS are the showcase |
 | `actions.installFont` | On, a few families a sandbox | It copies a Google Fonts family into Kaizena Flow's shared fonts |
 | `actions.motion` | On; the model's plan within the AI allowance (4.5), else the rules' plan | `planMotionAction` already falls back to rules |
-| `templates.list`, `use`, `setActive` | On | They change only the sandbox's builder |
+| `templates.list`, `use`, `setActive` | On, the marketplace's templates only, previewed at the sandbox's own route (`previewBase`) | One account owns every sandbox, so "my stores" would be every other visitor's saved parts |
 | `templates.setSharing` | Answers that it is not in the sandbox | It decides who in other stores may use a saved part |
 | `themeSections` | On | A signature theme's own sections |
-| `dualPages` | On | Dual page (D412) |
+| `dualPages` | Step S3 | Dual page (D412) loads a second document through its own routes |
 | `upload`, `media` | Step S3, within the storage allowance (4.5) | |
 | `pictures`, `pictureEdit`, `aiChange`, `actions.translate` | Step S3, through the sandbox's own routes, within the AI allowance | The store's routes (`/admin/{store}/media/make`, `/media/edit`, `/pages/change`) check membership |
 | `startVideo`, `fields.startFile` | Null | Large files; the source's own videos still show |
@@ -270,26 +271,65 @@ The visitor is anonymous, but what they type or upload may be personal data, so:
 
 Each step goes to production as built (D5); the switch keeps S1 to S3 to platform admins' own tries.
 
+### 8.1 S1 as built (5 November 2026)
+
+- **Database** (migrations `sandbox`, `sandbox_rules`, `try_reserved`): `stores.sandbox` (only at a `try-` address, never a template or a
+  store template), `commerce.sandboxes` (RLS on; never copied, never exported, no person's data), `platform_settings.sandbox_on`,
+  `sandbox_daily_cap` (300) and `sandbox_source`; the sandbox account `sandbox@kaizenaflow.invalid`, disabled; `make_sandbox(starter, slug,
+  pass_hash, days)` and `expire_sandbox(id)`; `stores_sandbox_rules()` (made only by `make_sandbox()`, stays a sandbox, stays private, no
+  shopping agents or domain buying, keeps its address), `store_members_sandbox()`, `sandbox_doors()` on `store_domains` and
+  `payment_providers`, `sandboxes_rules()` (describes a sandbox only, keeps its store, source, pass and first times, moves only forward,
+  never deleted); `store_is_active()` false and `orders_store_open()` refusing (`orders.store_sandbox`) for a sandbox. `try` joins the
+  reserved addresses (`NOT VALID`, so no older address can fail the release) and `slugProblem()` refuses `try-`; `freeSlug()` puts `my-`
+  before a name that would start so. Held by `src/db/sandboxes.test.ts`.
+- **Server:** `src/server/sandbox.ts` (the settings, `startSandbox()` within the `sandbox` budget, 5 an hour from one network and 200 for the
+  platform, fail closed, and the cap; `sandboxFor()`; `currentSandbox()`; `noteSandboxChange()`; `endSandbox()`; `expireSandboxes()`, the
+  dispatcher's `sandboxes` job) and `src/lib/sandbox.ts` (the pass, the address, the times, the kinds). A font installed from a sandbox is
+  within its own budget, `sandbox_font`. The switch is a card on Platform → Access requests with the day's count and the open ones.
+- **Routes:** `/admin/try` (the start screen and `startSandboxAction`), `/admin/try/{sandbox}` (the bar, the home), `…/{pages|headers|
+  footers}/new`, `…/{id}` and `…/{id}/preview`, and `/admin/try/templates/{sandbox}/{template}/preview`; words in the `sandbox` catalogue,
+  English and Norwegian.
+- **Kept out:** besides the readers of `is_template` (now held for sandboxes by `store-starters.scan.test.ts`), the readers that leave
+  store templates out by `not s.starter` alone: the AI's check of new listings, alt texts and the media library's vectors (each a model call
+  a sandbox must never cost), cart reminders, deliveries, the control centre, the grid's stores and billing's list. `email.ts` refuses
+  every email of a sandbox store, of any kind, which is stronger than 4.4 asked.
+- **Found while building:** templates from "my stores" would have shown one visitor another's saved parts (one account owns every
+  sandbox), so the sandbox lists, previews and applies the marketplace's only and keeps its own saved parts private; the store's template
+  preview needs a signed-in account, so the sandbox has its own (`TemplateActions.previewBase`); the test databases' setup made every store
+  public, which the database now refuses for a sandbox, so `e2e/global-setup.ts` and `test/integration-setup.ts` leave sandboxes private.
+- **Not yet, as planned:** the editor's *View* link opens the store's private landing page until S4 lets the visitor walk the storefront;
+  the purge (S3), so an ended sandbox stays a closed store until then, its number bounded by the switch and the cap.
+
 ## 9. Tests
 
-- **PGlite** (`src/db/commerce.test.ts`): the rules of 4.1; `make_sandbox()`; `adopt_sandbox()` only for a sandbox, only once; and
-  `purge_sandbox()` refusing any other store and leaving, for every table in `commerce` with a `store_id` column (read from the catalogue,
-  so a future table is covered), no row of the sandbox's store but its audit entries and its `stores` row.
-- **Unit:** the pass (made, read, refused when changed, expired); budgets; times; `sandboxPageContext()` keeps every field of 4.3's table
-  as it says (a field added to `PageOwnerContext` later fails the test until it is decided for the sandbox).
-- **Scan:** every exported sandbox action and route calls `sandboxFor()` first; every query leaving out `is_template` and `starter` leaves out
-  `sandbox` (4.6).
-- **Integration** (`src/server/sandbox.int.test.ts`): make, act, expire, purge, keep, against a seeded database.
-- **End to end** (`e2e/try-builder.spec.ts`): the anonymous path in a fresh browser (no Auth stand-in needed): start, edit the headline,
-  publish, preview, the storefront still private, *Start over*, and the sandbox's address refused from another browser.
+Built with S1:
 
-## 10. Open questions for the owner
+- **PGlite** (`src/db/sandboxes.test.ts`): the sandbox account; `make_sandbox()` and its refusals; a sandbox's store rules (no order, a
+  copied one neither; made only by `make_sandbox()` and stays one; private, no agents, no domain buying, keeps its address; never a
+  template; no other member, domain or payment provider); its row's rules; `expire_sandbox()`.
+- **Unit** (`src/lib/sandbox.test.ts`): the pass, the address, the times, the kinds.
+- **Scan:** `src/server/sandbox.scan.test.ts` (every action opens the sandbox with its pass first, every page reads it through the pass, the
+  context leaves out what 4.3 leaves out, templates from the marketplace only, no AI, email or upload); `store-starters.scan.test.ts`
+  (sandboxes left out wherever a reader means a real store, or listed with the reason; limits still apply; no email).
+- **Integration** (`src/server/sandbox.int.test.ts`): the switch, the budget and the cap; the copy; the pass opening its own sandbox only;
+  a visit pushing the time on; a page saved and published as the sandbox account; no email of any kind; left out of the grid's stores;
+  Start over and the job ending sandboxes.
+- **End to end** (`e2e/try-builder.spec.ts`): closed while the switch is off; then in a fresh browser without an account: start, edit and
+  publish the front page in the real builder, the storefront still private, the preview, another browser refused, *Start over*.
 
-1. **The AI allowance:** on (proposed), and how much: a few *Change with AI* and three pictures' worth.
-2. **How long:** 7 days after the last visit, 30 at most (proposed).
-3. **Cleanup:** a store per sandbox, purged with a tombstone (proposed), rather than a pool reused between visitors (4.8 says why not).
-4. **Which demo stores are offered** as sources, and which is the default.
-5. **The daily cap** while the switch is on for everyone (proposed: 300 a day, raised by the funnel's numbers).
+To come with S2 and S3: `adopt_sandbox()` only for a sandbox and only once; `purge_sandbox()` refusing any other store and leaving, for
+every table in `commerce` with a `store_id` column (read from the catalogue, so a future table is covered), no row of the sandbox's store
+but its audit entries and its `stores` row.
+
+## 10. Decided by the owner (5 November 2026)
+
+The owner took the recommendations:
+
+1. **The AI allowance:** on, a few *Change with AI* and three pictures' worth a sandbox (step S3).
+2. **How long:** 7 days after the last visit, 30 at most.
+3. **Cleanup:** a store per sandbox, purged with a tombstone, never a pool reused between visitors.
+4. **Sources:** the Standard store by default (`platform_settings.sandbox_source` null); demo stores offered one by one.
+5. **The daily cap:** 300 a day (`platform_settings.sandbox_daily_cap`), raised by the funnel's numbers.
 
 ## 11. Not in this plan
 

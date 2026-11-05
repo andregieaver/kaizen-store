@@ -636,6 +636,12 @@ export const stores = commerce.table(
      * `is_template`, never unmarked; it takes no order, is not open for jobs (`store_is_active()`) and is never indexed.
      */
     starter: boolean("starter").notNull().default(false),
+    /**
+     * The page builder's sandbox (D456, `docs/builder-sandbox.md`): a store made for one visitor without an account, at a `try-` address,
+     * owned by the platform's sandbox account and opened only by its pass (`commerce.sandboxes`). Private, never open for jobs or orders
+     * (`store_is_active()`), never a template; set only by `commerce.make_sandbox()`.
+     */
+    sandbox: boolean("sandbox").notNull().default(false),
     /** The store template this store was made from (D175), for the platform's counts; nothing behaves differently by it. */
     madeFromStarter: uuid("made_from_starter").references((): AnyPgColumn => storeStarters.id),
     /**
@@ -830,7 +836,7 @@ export const stores = commerce.table(
     // Names the platform needs for its own routes and subdomains.
     check(
       "stores_slug_not_reserved",
-      sql`${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'hosting', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'themes', 'www')`,
+      sql`${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'hosting', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'themes', 'try', 'www')`,
     ),
     uniqueIndex("stores_one_template_idx").on(t.isTemplate).where(sql`${t.isTemplate}`),
     check("stores_starter_not_template", sql`not (${t.starter} and ${t.isTemplate})`),
@@ -838,6 +844,9 @@ export const stores = commerce.table(
     index("stores_starter_copy_of_idx").on(t.starterCopyOf),
     // A store template's frozen copy (D177) is a starter like it: never a real store.
     check("stores_starter_copy_is_starter", sql`${t.starterCopyOf} is null or ${t.starter}`),
+    // A sandbox (D456) is at a `try-` address and is never a template or a store template.
+    check("stores_sandbox_address", sql`not ${t.sandbox} or ${t.slug} like 'try-%'`),
+    check("stores_sandbox_not_template", sql`not (${t.sandbox} and (${t.isTemplate} or ${t.starter}))`),
     index("stores_created_by_idx").on(t.createdBy),
     index("stores_country_idx").on(t.country),
     index("stores_front_page_idx").on(t.id, t.frontPageId),
@@ -1006,6 +1015,42 @@ export const storeStarters = commerce.table(
       "store_starters_picture_url",
       sql`${t.pictureUrl} is null or (length(${t.pictureUrl}) <= 2000 and ${t.pictureUrl} ~ '^(https://|/[^/])')`,
     ),
+  ],
+);
+
+/**
+ * The page builder's sandboxes (D456, `docs/builder-sandbox.md`): one row a sandbox store, made by `commerce.make_sandbox()` and ended by
+ * `commerce.expire_sandbox()`, read and touched only by `src/server/sandbox.ts`. The visitor's pass is a cookie whose secret is kept only
+ * as its SHA-256 (`pass_hash`). Its time is 7 days after the last visit and 30 at most after it was made; the times of the first change
+ * and the first publish are the funnel's. Never deleted (a purged sandbox keeps its row).
+ */
+export const sandboxes = commerce.table(
+  "sandboxes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId()
+      .unique()
+      .references((): AnyPgColumn => stores.id),
+    /** The store it was copied from (`starter_source()`'s answer). */
+    sourceStoreId: uuid("source_store_id").references((): AnyPgColumn => stores.id),
+    passHash: text("pass_hash").notNull(),
+    /** `open`, `expired` (the pass no longer works, the store closed), `kept` (taken over at sign-up) or `purged`. */
+    state: text("state").notNull().default("open"),
+    createdAt: createdAt(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    firstChangeAt: timestamp("first_change_at", { withTimezone: true }),
+    firstPublishAt: timestamp("first_publish_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+  },
+  (t) => [
+    check("sandboxes_state", sql`${t.state} in ('open', 'expired', 'kept', 'purged')`),
+    check("sandboxes_pass_hash", sql`${t.passHash} ~ '^[0-9a-f]{64}$'`),
+    check("sandboxes_time", sql`${t.expiresAt} <= ${t.createdAt} + interval '30 days'`),
+    check("sandboxes_ended", sql`(${t.state} = 'open') = (${t.endedAt} is null)`),
+    index("sandboxes_open_idx").on(t.expiresAt).where(sql`${t.state} = 'open'`),
+    index("sandboxes_created_idx").on(t.createdAt),
+    index("sandboxes_source_idx").on(t.sourceStoreId),
   ],
 );
 
@@ -1736,6 +1781,12 @@ export const platformSettings = commerce.table(
     domainsPublic: boolean("domains_public").notNull().default(false),
     /** Self-serve sign-up (D359): `/sign-up` makes the account and a store once the address is confirmed; off, a request waits for approval. */
     selfServeSignup: boolean("self_serve_signup").notNull().default(false),
+    /** The page builder's sandbox (D456): *Start building* at `/admin/try` makes one while this is on; off, it says the sandbox is closed. */
+    sandboxOn: boolean("sandbox_on").notNull().default(false),
+    /** Sandboxes made a day (UTC) at most, for the whole platform (D456). */
+    sandboxDailyCap: integer("sandbox_daily_cap").notNull().default(300),
+    /** The store template a sandbox is copied from (D456): a published starting content or demo store; null, the Standard store. */
+    sandboxSource: uuid("sandbox_source").references((): AnyPgColumn => storeStarters.id, { onDelete: "set null" }),
     /** Kaizena Flow's own AI check of new and changed listings (D411 part 2): on unless a platform admin turns it off, since it costs model calls. */
     contentScreening: boolean("content_screening").notNull().default(true),
     /** Every AI that acts on its own (autopilot steps, reactions, reviews, follow-ups, Dream Factory runs) paused at once (PSI AST-07). */
@@ -1789,11 +1840,13 @@ export const platformSettings = commerce.table(
     check("platform_settings_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
     check("platform_settings_checkout_ui", sql`${t.checkoutUi} in ('custom', 'hosted')`),
     check("platform_settings_custom_css", sql`length(${t.customCss}) <= 50000`),
+    check("platform_settings_sandbox_daily_cap", sql`${t.sandboxDailyCap} between 0 and 10000`),
     // English always, first; the other languages the site has (`PLATFORM_LANGS`).
     check("platform_settings_locales", sql`coalesce(${t.locales}[1] = 'en-GB', false) and ${t.locales} <@ array['en-GB', 'nb-NO']::text[]`),
     index("platform_settings_updated_by_idx").on(t.updatedBy),
     index("platform_settings_header_menu_idx").on(t.headerMenuId),
     index("platform_settings_footer_menu_idx").on(t.footerMenuId),
+    index("platform_settings_sandbox_source_idx").on(t.sandboxSource),
   ],
 );
 

@@ -135,6 +135,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   theme_submissions: "record",
   tripletex_connections: "secret",
   tripletex_sync: "record",
+  // A sandbox's row (D456): the hash of the pass that opens it.
+  sandboxes: "secret",
   variant_cost_history: "catalogue",
   webhook_endpoints: "secret",
   work_invoice_lines: "record",

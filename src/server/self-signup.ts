@@ -11,7 +11,7 @@ import { requestLang } from "@/lib/access-emails";
 import { platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { parseKey } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
-import { suggestSlug } from "@/lib/slug";
+import { slugProblem, suggestSlug } from "@/lib/slug";
 
 import { audit, passMembership, type Account } from "./auth";
 import { startDreamRun } from "./dream-factory";
@@ -147,9 +147,11 @@ export async function confirmationOf(token: string): Promise<{ storeName: string
 
 /** A free store address from the store's name: the name's own, else with a number, else with a random end. */
 export async function freeSlug(storeName: string): Promise<string> {
-  const base = suggestSlug(storeName) || "store";
+  const suggested = suggestSlug(storeName) || "store";
+  // `try` and addresses starting `try-` are the page builder's sandboxes' (D456): a store named so gets `my-` before its name.
+  const base = suggested === "try" || suggested.startsWith("try-") ? `my-${suggested}`.slice(0, 40).replace(/-+$/, "") : suggested;
   const stem = base.slice(0, 34).replace(/-+$/, "");
-  if (base.length >= 3 && !(await isSlugTaken(base))) return base;
+  if (base.length >= 3 && !slugProblem(base) && !(await isSlugTaken(base))) return base;
   for (let n = 2; n <= 9; n++) if (!(await isSlugTaken(`${stem}-${n}`))) return `${stem}-${n}`;
   return `${stem}-${randomBytes(3).toString("hex")}`;
 }

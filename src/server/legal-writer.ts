@@ -135,7 +135,7 @@ export async function pageLanguages(storeId: string): Promise<{ languages: Legal
   return { languages: [main, ...new Set(others)], english: false };
 }
 
-const realOpenStore = (store: Store) => store.status === "active" && !store.isTemplate && !store.starter;
+const realOpenStore = (store: Store) => store.status === "active" && !store.isTemplate && !store.starter && !store.sandbox;
 
 // ---------------------------------------------------------------------------
 // The owner's choice
@@ -659,7 +659,7 @@ export async function runLegalUpkeep(deps: { texts?: SourceText[] } = {}): Promi
       from commerce.stores s
       where s.id = a.store_id and a.store_id in (
         select x.store_id from commerce.legal_ai_settings x join commerce.stores y on y.id = x.store_id
-        where x.enabled and y.status = 'active' and not (y.is_template or y.starter)
+        where x.enabled and y.status = 'active' and not (y.is_template or y.starter or y.sandbox)
           and (x.checked_at is null or x.checked_at < now() - ${`${UPKEEP_EVERY_HOURS} hours`}::interval)
         order by x.checked_at nulls first limit ${UPKEEP_STORES_PER_RUN} for update of x skip locked
       )

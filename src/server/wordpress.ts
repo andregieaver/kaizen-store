@@ -180,7 +180,7 @@ export async function storesOf(accountId: string): Promise<WpStore[]> {
     join commerce.stores s on s.id = m.store_id
     where m.account_id = ${accountId}::uuid and m.disabled_at is null
       and (m.expires_at is null or m.expires_at > now())
-      and s.status <> 'closed' and not (s.is_template or s.starter)
+      and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox)
     order by lower(s.name), s.slug
   `);
   const out: WpStore[] = [];
@@ -208,7 +208,7 @@ export async function storeFor(accountId: string, slug: string): Promise<Store |
     from commerce.store_members m
     join commerce.stores s on s.id = m.store_id
     where m.account_id = ${accountId}::uuid and s.slug = ${slug} and m.disabled_at is null
-      and (m.expires_at is null or m.expires_at > now()) and s.status <> 'closed' and not (s.is_template or s.starter)
+      and (m.expires_at is null or m.expires_at > now()) and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox)
   `);
   if (!row) return null;
   const store = await getStore(slug);

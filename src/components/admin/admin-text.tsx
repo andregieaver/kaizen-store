@@ -63,6 +63,7 @@ import { contentEn } from "@/lib/admin-messages/content.en";
 import { blogEn } from "@/lib/admin-messages/blog.en";
 import { schedulesEn } from "@/lib/admin-messages/schedules.en";
 import { oauthEn } from "@/lib/admin-messages/oauth.en";
+import { sandboxEn } from "@/lib/admin-messages/sandbox.en";
 import type { AdminArea, AdminAreaMessages } from "@/lib/admin-text";
 
 import { AdminTextContext } from "./admin-text-context";
@@ -74,7 +75,7 @@ import { AdminTextContext } from "./admin-text-context";
  */
 
 
-const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, customReports: customReportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, capacity: capacityEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, moving: movingEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, content: contentEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn, blog: blogEn, schedules: schedulesEn, oauth: oauthEn };
+const ENGLISH: AdminAreaMessages = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, customReports: customReportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, capacity: capacityEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, moving: movingEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, content: contentEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn, blog: blogEn, schedules: schedulesEn, oauth: oauthEn, sandbox: sandboxEn };
 
 
 export { AdminTextProvider } from "./admin-text-context";

@@ -75,7 +75,7 @@ export async function revokeStorefrontToken(owner: Membership, id: string): Prom
 
 /** Why a store's storefront API answers nothing, or null: open, a real store, the shop on, not private. */
 export function storefrontProblem(store: Store): "closed" | "no_shop" | "private" | null {
-  if (store.status !== "active" || store.isTemplate || store.starter) return "closed";
+  if (store.status !== "active" || store.isTemplate || store.starter || store.sandbox) return "closed";
   if (!featureOn(store, "shop")) return "no_shop";
   if (store.privateMode) return "private";
   return null;

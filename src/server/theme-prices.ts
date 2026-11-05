@@ -134,7 +134,7 @@ export async function setThemePrices(admin: Account, presetId: string, prices: r
         insert into commerce.theme_purchases (store_id, preset_id, status, currency, amount_minor, chosen_by)
         select distinct i.store_id, ${presetId}::uuid, 'granted', (select pr.currency from commerce.theme_price_for(i.store_id, ${presetId}::uuid) pr), 0, ${admin.id}::uuid
           from commerce.store_theme_installs i join commerce.stores s on s.id = i.store_id
-         where i.preset_id = ${presetId}::uuid and not (s.is_template or s.starter)
+         where i.preset_id = ${presetId}::uuid and not (s.is_template or s.starter or s.sandbox)
            and not exists (
              select 1 from commerce.theme_purchases p
               where p.store_id = i.store_id and p.preset_id = ${presetId}::uuid and p.status in ('owed', 'due', 'invoiced', 'paid', 'granted'))
@@ -169,7 +169,7 @@ export async function themeCharges(storeId: string, presetIds: readonly string[]
   const out = new Map<string, ThemeCharge>();
   if (ids.length === 0 || !isUuid(storeId)) return out;
   const rows = await db().execute<Row>(sql`
-    select t.id, s.setup_completed_at is not null as open, (s.starter or s.is_template) as kept,
+    select t.id, s.setup_completed_at is not null as open, (s.starter or s.is_template or s.sandbox) as kept,
       (select p.status from commerce.theme_purchases p
         where p.store_id = s.id and p.preset_id = t.id and p.status in ('owed', 'due', 'invoiced', 'paid', 'granted') limit 1) as owned,
       pr.currency, pr.amount_minor

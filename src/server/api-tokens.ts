@@ -138,7 +138,7 @@ async function appCaller(token: string): Promise<ApiCaller | null> {
   if (!account || (account.platformAdmin && grant.aal !== "aal2")) return null;
   const store = await typedRow(
     z.object({ slug: col.text, require_two_step: col.bool }),
-    sql`select slug, require_two_step from commerce.stores where id = ${grant.storeIds[0]}::uuid and not (is_template or starter)`,
+    sql`select slug, require_two_step from commerce.stores where id = ${grant.storeIds[0]}::uuid and not (is_template or starter or sandbox)`,
   );
   if (!store || (store.require_two_step && grant.aal !== "aal2")) return null;
   const member = await passMembership(store.slug, account.id);
@@ -164,7 +164,7 @@ export async function apiCaller(header: string | null): Promise<ApiCaller | null
     sql`
       select t.id, t.name, t.scopes, t.created_by, s.slug, (t.last_used_at is null or t.last_used_at < now() - interval '1 minute') as stale
       from commerce.api_tokens t join commerce.stores s on s.id = t.store_id
-      where t.token_hash = ${hashToken(token)} and t.revoked_at is null and not (s.is_template or s.starter)
+      where t.token_hash = ${hashToken(token)} and t.revoked_at is null and not (s.is_template or s.starter or s.sandbox)
     `,
   );
   if (!row?.created_by) return null;

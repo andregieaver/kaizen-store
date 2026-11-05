@@ -1856,7 +1856,7 @@ export const THEME_UPDATE_KEEP_DAYS = 90;
 export async function runThemeUpdates(limit = 20, deps: ApplyDeps = {}): Promise<{ updated: number; refused: number; stores: { id: string; slug: string }[] }> {
   const due = await db().execute<Row>(sql`
     select i.id, i.store_id, s.slug from commerce.store_theme_installs i
-    join commerce.stores s on s.id = i.store_id and s.status = 'active' and not (s.is_template or s.starter)
+    join commerce.stores s on s.id = i.store_id and s.status = 'active' and not (s.is_template or s.starter or s.sandbox)
     join commerce.design_presets p on p.id = i.preset_id and p.published and p.archived_at is null
     left join commerce.design_preset_versions cur on cur.id = i.version_id
     where i.follows_updates

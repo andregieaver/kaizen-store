@@ -27,7 +27,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/feed
   if (isAgentChannel(name.channel) && !owner.channels.includes(name.channel)) return notFound();
   const store = await getStore(owner.slug);
   // A private store (D339) has no feed: its products are not for any channel while it is private.
-  if (!store || store.status !== "active" || store.isTemplate || store.starter || store.privateMode || !featureOn(store, "shop")) return notFound();
+  if (!store || store.status !== "active" || store.isTemplate || store.starter || store.sandbox || store.privateMode || !featureOn(store, "shop")) return notFound();
   const market = offeredMarketIn(store, name.market);
   if (!market || market.slug !== name.market) return notFound();
   if (!(await takeBudget(store.id, "feed", feedTokenHash(token).slice(0, 16)))) {

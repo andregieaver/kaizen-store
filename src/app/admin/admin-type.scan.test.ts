@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "../../..");
 const DIRS = ["src/app/admin", "src/components/admin"];
-const THEIRS = ["(print)", "packing-slip", "document-page", "pages/drawing.tsx", "account/themes/[presetId]/preview", "replica/", "account/look/", "account/share/", "install-preview-view.tsx", "page-builder.tsx", "page-builder-fields.tsx", "page-builder-icons.tsx", "theme-editor.tsx"];
+const THEIRS = ["(print)", "packing-slip", "document-page", "pages/drawing.tsx", "account/themes/[presetId]/preview", "replica/", "account/look/", "account/share/", "install-preview-view.tsx", "page-builder.tsx", "page-builder-fields.tsx", "page-builder-icons.tsx", "theme-editor.tsx", "try/templates/"];
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -92,7 +92,12 @@ describe("the admin's type and shapes", () => {
   });
 
   it("draws every signed-out page in the focus layout, not a page frame of its own", () => {
-    const signedOut = admin.filter((path) => path.startsWith("src/app/admin/") && !path.startsWith("src/app/admin/(gated)") && path.endsWith("/page.tsx"));
+    // The page builder's sandbox (D456) is a workspace without an account: its pages sit under its own bar as a store's editors sit in
+    // their frame, and its template preview is a drawing of the store's look, as the store's own is in `(print)`.
+    const WORKSPACE = ["src/app/admin/try/[sandbox]/", "src/app/admin/try/templates/"];
+    const signedOut = admin.filter(
+      (path) => path.startsWith("src/app/admin/") && !path.startsWith("src/app/admin/(gated)") && path.endsWith("/page.tsx") && !WORKSPACE.some((w) => path.startsWith(w)),
+    );
     expect(signedOut.length).toBeGreaterThanOrEqual(6);
     const own = signedOut.filter((path) => {
       const source = readFileSync(join(ROOT, path), "utf8");

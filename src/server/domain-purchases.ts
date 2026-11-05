@@ -193,8 +193,8 @@ type Terms = { buyer: BuyerKind | null; vatKind: VatKind | null; vatNumber: stri
 async function gate(account: Account, holder: HolderRef, input: { connect: boolean; domain: string; buyer?: BuyerInput; consent?: BuyInput["consent"] }, deps: GateDeps): Promise<Result<{ terms: Terms; review: "name" | "risk" | null }>> {
   const storeId = storeOf(holder);
   if (storeId) {
-    const [store] = await db().execute<Row>(sql`select status, is_template, starter, country from commerce.stores where id = ${storeId}::uuid`);
-    if (!store || store.status !== "active" || store.is_template || store.starter) return { ok: false, problems: ["Domains can be bought for an open store only."] };
+    const [store] = await db().execute<Row>(sql`select status, is_template, starter, sandbox, country from commerce.stores where id = ${storeId}::uuid`);
+    if (!store || store.status !== "active" || store.is_template || store.starter || store.sandbox) return { ok: false, problems: ["Domains can be bought for an open store only."] };
     // The country decides the invoice's VAT, so it is asked for before anything is bought.
     if (!store.country) return { ok: false, problems: [NO_COUNTRY] };
     if (!(await buyingOpen(storeId))) return { ok: false, problems: ["Buying domains isn't open for this store yet."] };

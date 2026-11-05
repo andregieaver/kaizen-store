@@ -437,7 +437,7 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
 export async function listStoreBilling({ includeClosed = false }: { includeClosed?: boolean } = {}): Promise<StoreBilling[]> {
   const [rows, defaultBps] = await Promise.all([
     // Store templates (D175) have no plan: they are listed under Store templates, not here.
-    db().execute<Row>(billingQuery(includeClosed ? sql`not s.starter` : sql`s.status <> 'closed' and not s.starter`)),
+    db().execute<Row>(billingQuery(includeClosed ? sql`not s.starter and not s.sandbox` : sql`s.status <> 'closed' and not s.starter and not s.sandbox`)),
     getSaleFeeBps(),
   ]);
   return rows.map((row) => toBilling(row, defaultBps));

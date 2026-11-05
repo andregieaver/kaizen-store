@@ -147,3 +147,73 @@ describe("demo stores are not real stores (D175)", () => {
     }
   });
 });
+
+/**
+ * The page builder's sandboxes (D456, `docs/builder-sandbox.md` 4.6) are not real stores either: every reader above that means a real store
+ * leaves them out too (names `sandbox`), and so does every reader that leaves store templates out by `not s.starter` alone; or it is listed
+ * here with the reason it need not. A sandbox is still limited (D314's exemption is the templates' alone) and still private.
+ */
+const ADMIN_ONLY = "A page of a store's admin: a sandbox's only member is the sandbox account, which never signs in.";
+const NOT_OPEN = "Runs only for a store open for jobs (`commerce.store_is_active()`), which a sandbox never is.";
+const MEMBERS = "Lists a person's stores through their membership: a sandbox's only member is the sandbox account, which never signs in.";
+const SANDBOX_KEPT: Record<string, string> = {
+  "src/app/admin/(gated)/[store]/settings/seo/page.tsx": ADMIN_ONLY,
+  "src/app/admin/(gated)/[store]/settings/private/page.tsx": ADMIN_ONLY,
+  "src/app/admin/(gated)/[store]/settings/design/page.tsx": ADMIN_ONLY,
+  "src/app/admin/(gated)/[store]/settings/design/share/page.tsx": ADMIN_ONLY,
+  "src/app/s/[store]/(chooser)/layout.tsx": "A sandbox never finishes setting up, so its storefront is never indexed.",
+  "src/app/s/[store]/[market]/layout.tsx": "A sandbox never finishes setting up, so its storefront is never indexed.",
+  "src/server/account-erasure.ts": "An account's own erasure: the sandbox account is never erased.",
+  "src/server/automations.ts": NOT_OPEN,
+  "src/server/broadcasts.ts": `${NOT_OPEN} And email.ts suppresses every email of a sandbox.`,
+  "src/server/stock-requests.ts": NOT_OPEN,
+  "src/server/review-requests.ts": NOT_OPEN,
+  "src/server/review-picture-store.ts": NOT_OPEN,
+  "src/server/reviews.ts": NOT_OPEN,
+  "src/server/usage-alerts.ts": NOT_OPEN,
+  "src/server/review-import.ts": "Importing reviews is a store admin's action, which no sandbox has.",
+  "src/server/autopilot-goals.ts": "Counts stores that finished setting up, which a sandbox never does.",
+  "src/server/cookie-scans.ts": "Scans stores that finished setting up, which a sandbox never does.",
+  "src/server/private-mode.ts": "A sandbox is private as a real store may be; the database keeps it so (`stores.sandbox_private`).",
+  "src/server/redirect-resolve.ts": "Reads a private store's version: a sandbox is private as a real store may be.",
+  "src/server/seo.ts": "A sandbox is private and never finishes setting up, so it is never indexable.",
+  "src/server/setup-tools.ts": "The AI manager's setup tools, never offered in a sandbox.",
+  "src/server/page-looks.ts": "The AI manager's eyes, never offered in a sandbox.",
+  "src/server/shopping-agent-settings.ts": "The database refuses shopping agents for a sandbox (`stores.sandbox_closed_doors`).",
+  "src/server/store-trial.ts": "Makes private only a store that finished setting up and is public, which a sandbox never is.",
+  "src/server/support-kaizen.ts": MEMBERS,
+  "src/server/store-mcp.ts": MEMBERS,
+  "src/server/support-desk.ts": MEMBERS,
+  "src/server/work-owner.ts": MEMBERS,
+};
+
+describe("sandboxes are not real stores (D456)", () => {
+  const mentions = (file: string) => /\bsandbox\b/.test(code(path.join(ROOT, file)));
+  const realReaders = Object.entries(READERS)
+    .filter(([, meaning]) => meaning === "real" || meaning === "both")
+    .map(([file]) => file);
+  const starterOnly = files
+    .filter((f) => /\bnot\s+s\.starter\b/.test(code(f)))
+    .map((f) => path.relative(ROOT, f))
+    .filter((f) => !(f in READERS));
+
+  it("leaves sandboxes out wherever a reader means a real store, or says why not", () => {
+    const missing = [...realReaders, ...starterOnly].filter((file) => !mentions(file) && !(file in SANDBOX_KEPT));
+    expect(missing).toEqual([]);
+  });
+
+  it("keeps the list true: every file on it reads stores and names no sandbox", () => {
+    const readers = new Set([...realReaders, ...starterOnly]);
+    expect(Object.keys(SANDBOX_KEPT).filter((file) => !readers.has(file) || mentions(file))).toEqual([]);
+  });
+
+  it("never exempts a sandbox from the limits, as templates are", () => {
+    const limits = code(path.join(ROOT, "src/server/limits.ts"));
+    expect(limits).toMatch(/s\.is_template or s\.starter as exempt/);
+    expect(limits).not.toMatch(/sandbox[^\n]*as exempt|as exempt[^\n]*sandbox/);
+  });
+
+  it("sends no email from a sandbox, of any kind", () => {
+    expect(code(path.join(ROOT, "src/server/email.ts"))).toMatch(/if \(store\.sandbox\) return "suppressed: a sandbox sends no email";/);
+  });
+});

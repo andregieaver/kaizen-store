@@ -200,8 +200,11 @@ const SECRET = "[code]";
 async function suppressed(message: OutgoingEmail): Promise<string | null> {
   if (!message.to || message.to === REMOVED) return ERASED;
   const kind = emailClassOf(message.kind);
-  if (message.storeId && (kind === "shopper" || kind === "security") && (await isStarter(message.storeId))) {
-    return "suppressed: a demo store does not email shoppers";
+  if (message.storeId) {
+    const store = await storeKind(message.storeId);
+    // A sandbox (D456) sends no email at all, of any kind, to anyone.
+    if (store.sandbox) return "suppressed: a sandbox sends no email";
+    if ((kind === "shopper" || kind === "security") && store.starter) return "suppressed: a demo store does not email shoppers";
   }
   if (message.kind.startsWith("privacy.") || kind === "evidence") return null;
   if (!message.orderId && !message.subscriptionId) return null;
@@ -215,9 +218,9 @@ async function suppressed(message: OutgoingEmail): Promise<string | null> {
 
 const ERASED = "suppressed: the order or its person was erased";
 
-async function isStarter(storeId: string): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`select starter from commerce.stores where id = ${storeId}::uuid`);
-  return Boolean(row?.starter);
+async function storeKind(storeId: string): Promise<{ starter: boolean; sandbox: boolean }> {
+  const [row] = await db().execute<Row>(sql`select starter, sandbox from commerce.stores where id = ${storeId}::uuid`);
+  return { starter: Boolean(row?.starter), sandbox: Boolean(row?.sandbox) };
 }
 
 /** Keeps the email, then sends it if email is set up. Never throws. */
