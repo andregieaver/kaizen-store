@@ -5,6 +5,8 @@ import { DOCS_GUIDE_READY, DOCS_SEARCH_SUB } from "@/lib/docs-search";
 import { PLATFORM_LANG_FACTS } from "@/lib/platform-lang";
 import type { PlatformMessages } from "@/lib/platform-text";
 
+import { HeaderThemeColor } from "../header-theme-color";
+
 import { DocsGuide } from "./docs-guide";
 import { DocsSearch } from "./docs-search";
 import type { DocsSearchNames } from "./docs-search-panel";
@@ -39,6 +41,8 @@ export function DocsTopBar({ lang, track, words, languages }: { lang: DocLang; t
   ];
   return (
     <header className="border-b border-border print:border-0">
+      {/* The phone browser's colour follows this header, as on Kaizena Flow's other pages. */}
+      <HeaderThemeColor />
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <a href={docsPath("", lang)} className="flex min-h-11 items-center gap-2 text-lg font-semibold">
           <span>Kaizena Flow</span>

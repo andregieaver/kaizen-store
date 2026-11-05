@@ -2,6 +2,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 
+import { useHeaderThemeColor } from "./header-theme-color";
+
 /**
  * The storefront's moving parts (D30): a header that slides away while the
  * shopper scrolls down and back when they scroll up, a bottom bar on phones
@@ -85,13 +87,19 @@ const slide = "transition-transform duration-300 ease-out will-change-transform 
  * down. A header that may lie over the page (D80) is marked for the
  * stylesheet, which lays it over a page that asks for it (`data-header-overlay`)
  * and makes it see-through while the page is at its top.
+ *
+ * On every site (Kaizena Flow's and the stores') the phone browser's colour follows it (`useHeaderThemeColor`); the admin's
+ * header leaves it (`themeColor={false}`).
  */
-export function HidingHeader({ children, overlay }: { children: ReactNode; overlay?: { textColor?: string } }) {
+export function HidingHeader({ children, overlay, themeColor = true }: { children: ReactNode; overlay?: { textColor?: string }; themeColor?: boolean }) {
+  const wrap = useRef<HTMLDivElement>(null);
+  useHeaderThemeColor(wrap, themeColor);
   const { direction, atTop } = useScroll();
   const { focused, onFocus } = useFocusShows();
   const hidden = direction === "down" && !atTop && !focused;
   return (
     <div
+      ref={wrap}
       onFocus={onFocus}
       data-header-wrap={overlay ? "" : undefined}
       data-hiding-header
