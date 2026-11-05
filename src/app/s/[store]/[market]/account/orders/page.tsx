@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { accountTabHref } from "@/lib/account-tabs";
 import { accountsShown } from "@/lib/customer-accounts";
 import { ACCOUNT_ORDER_STATES, accountOrdersQuery, parseAccountOrderParams } from "@/lib/account-orders";
 import { t } from "@/lib/i18n";
@@ -54,7 +55,7 @@ async function Orders({ params, searchParams }: Pick<Props, "params" | "searchPa
   return (
     <>
       <div>
-        <Link href={account} className="text-sm underline">
+        <Link href={accountTabHref(account, "orders")} className="text-sm underline">
           ← {a.title}
         </Link>
         <h1 className="mt-2 text-3xl font-heading tracking-tight">{m.title}</h1>

@@ -19,6 +19,8 @@ export const da: Messages = {
   deliveries: {
     title: "Abonnementsboks",
     intro: "Hold en liste over det, du vil have i boksen. Vi leverer den på din leveringsdag: ændr den indtil fristen, så trækker vi dit kort, når leveringen er på vej.",
+    /** Its card in My account's overview (D461). */
+    accountCard: "Hvad der er i din boks, og hvornår den kommer.",
     signIn: "Log ind eller opret en konto for at starte en abonnementsboks.",
     signInLink: "Log ind",
     noSchedule: "Butikken leverer ikke abonnementsbokse til dette land endnu.",
@@ -1209,6 +1211,10 @@ export const da: Messages = {
     subscriptions: "Abonnementer",
     noSubscriptions: "Du har ingen abonnementer.",
     manage: "Administrer",
+    // My account's tabs (D461): the overview, the orders, the customer's own details and the settings.
+    tabs: { overview: "Overblik", orders: "Bestillinger", profile: "Profil", settings: "Indstillinger" },
+    recentOrders: "Seneste bestillinger",
+    toShop: "Gå til butikken",
     // Finding an order (D304 J2).
     orderList: {title: "Dine ordrer", all: "Alle", open: "Under forberedelse", sent: "På vej", delivered: "Leveret", returned: "Returneret", search: "Søg i dine ordrer", searchHint: "Ordrenummer, produkt eller trackingnummer", find: "Søg", none: "Ingen ordrer passer.", more: "Vis ældre ordrer", seeAll: "Se alle ordrer"},
     // Saved addresses (D304).

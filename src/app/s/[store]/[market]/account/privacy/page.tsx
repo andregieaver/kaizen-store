@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { PrivacyPageView, type PrivacyNotice } from "@/components/privacy-account-view";
 import { StepUpForm } from "@/components/privacy-forms";
+import { accountTabHref } from "@/lib/account-tabs";
 import { accountsShown } from "@/lib/customer-accounts";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
@@ -64,7 +65,7 @@ async function Privacy({ params, searchParams }: Pick<Props, "params" | "searchP
       notice={notice}
       exportHref={`${base}/account/privacy/export`}
       deleteHref={`${base}/account/privacy/confirm`}
-      accountHref={`${base}/account`}
+      accountHref={accountTabHref(`${base}/account`, "settings")}
       accountLabel={t(market.lang).account.title}
       stepUp={
         <StepUpForm

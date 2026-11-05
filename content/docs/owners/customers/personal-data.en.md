@@ -9,8 +9,8 @@ features: []
 plans: []
 admin: /admin/{store}/privacy
 order: 30
-checked: 2026-11-04
-sources: [D58, D162]
+checked: 2026-11-05
+sources: [D58, D162, D461]
 ---
 
 ## When someone asks
@@ -23,7 +23,7 @@ the request. Kaizena Flow keeps each request with its clock under **Customers**,
 
 ### A shopper with an account does it themselves
 
-Under **My account**, **Your data**, a signed-in shopper can press **Download my data** or **Continue to deletion**. Either needs a
+Under **My account**, **Settings**, **Your data**, a signed-in shopper can press **Download my data** or **Continue to deletion**. Either needs a
 sign-in from the last ten minutes, with a code sent to their email or their password. Their request shows in your log as *Asked on the
 site*, already answered.
 

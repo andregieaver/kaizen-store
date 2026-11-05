@@ -12,6 +12,8 @@ import {
 const input = "min-h-11 w-full rounded-md border border-border bg-background px-3";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const secondary = "min-h-11 rounded-button border border-border px-5 disabled:opacity-40";
+/** The Profile tab's one main action (D461), in the theme's own colour. */
+const primary = "min-h-11 button-primary px-5 font-medium disabled:opacity-40";
 const initial: AccountFormState = { ok: false, message: null };
 
 type Shop = { store: string; market: string };
@@ -69,7 +71,7 @@ export function DetailsForm({
         </fieldset>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending} className={secondary}>
+        <button type="submit" disabled={pending} className={primary}>
           {pending ? labels.saving : labels.save}
         </button>
         <Result state={state} />
