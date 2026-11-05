@@ -80,6 +80,13 @@ export function installedStyles(font: CatalogFont): { weights: number[]; italics
   return { weights, italics: WANTED_ITALICS.filter((w) => font.italics.includes(w)) };
 }
 
+/** The lightest and heaviest of a family's installed styles: all its stylesheet asks of a variable file's weight axis (`trimRange()`). */
+export function installedWeightRange(font: CatalogFont): { min: number; max: number } {
+  const { weights, italics } = installedStyles(font);
+  const all = [...weights, ...italics];
+  return { min: Math.min(...all), max: Math.max(...all) };
+}
+
 /** Scripts kept for the EU's languages: Latin, and Greek and Cyrillic (Bulgarian). */
 export const FONT_SUBSETS = ["latin", "latin-ext", "greek", "cyrillic"] as const;
 

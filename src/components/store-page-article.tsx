@@ -4,7 +4,7 @@ import type { GridPlace } from "@/server/content-grid";
 import { bindForPlace } from "@/server/field-binding";
 import { siteLayoutFor } from "@/server/site-layouts";
 
-import { PageArticle, pageRoomClass } from "./page-article";
+import { PageArticle, pageRoomClass, type StorePartDrawer } from "./page-article";
 import { HeaderOverlayMark } from "./store-chrome";
 
 /**
@@ -19,10 +19,13 @@ export async function StorePageArticle({
   place,
   front = false,
   editable = false,
+  storePart,
 }: {
   content: PageContent;
   place: GridPlace;
   front?: boolean;
+  /** On a working page, what draws its shop components (`RolePage`, `StorePartDrawer`). */
+  storePart?: StorePartDrawer;
   /** Signed-in staff may change its headings' and texts' words where they stand (D192): `PageArticle`'s. */
   editable?: boolean;
 }) {
@@ -33,7 +36,7 @@ export async function StorePageArticle({
   return (
     <div className={`store-page ${pageRoomClass(content, "pt-8", "pb-8")}`} data-header-overlay={over ? "" : undefined}>
       {over && <HeaderOverlayMark />}
-      <PageArticle content={content} place={place} editable={editable} />
+      <PageArticle content={content} place={place} editable={editable} storePart={storePart} />
     </div>
   );
 }
