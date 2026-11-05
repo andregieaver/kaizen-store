@@ -309,6 +309,8 @@ comes from (an accordion, `look: "boxed"`, at the foot).
 
 | The six comparison pages | `/kaizen-vs-{platform}` | 4 and 5 November 2026, made again by one generator (`docs/comparison-pages.md`): the hero, six reasons, the table (6.10), where the other is the better fit, moving over, questions, the main action, how we compared. `/compare` left as the owner made it | drafts over the live pages, for the owner to publish |
 
+| Selling Products | `/selling-products` | 5 November 2026, for physical and digital products: two cards (ship it or send it), three feature rows without pictures (catalogue, stock and shipping, downloads), four cards (prices, checkout, being found, the EU's rules), questions, the main action. Each claim a Full row of `docs/parity/rows` (backorders, a Partial row, left out) | draft over the live page, for the owner to publish |
+
 A page for another platform (`move-from-{platform}`) is the same eight-part shape: the hero, the three steps, what is particular to that
 platform (as WordPress's choice), what comes with you, no stress, the free move, its questions, the main action ending on *Compare us to
 {platform}* (`/kaizen-vs-{platform}`). Its claims come only from that platform's `docs/moving-from-*.md` and what it says is built.
