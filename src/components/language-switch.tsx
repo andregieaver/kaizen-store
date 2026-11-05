@@ -66,8 +66,10 @@ export function LanguageSwitch({ lang, offered, menu = false }: { lang: Platform
 }
 
 /**
- * A bar suggesting this page in the browser's own language, once (D312: the site suggests, never redirects). Closing it is remembered only
- * for a visitor who allowed preferences (`kaizen_lang_hint` in local storage); otherwise it stays closed for this page view.
+ * A card suggesting this page in the browser's own language, once (D312: the site suggests, never redirects). Closing it is remembered only
+ * for a visitor who allowed preferences (`kaizen_lang_hint` in local storage); otherwise it stays closed for this page view. It floats
+ * above the foot of the screen (the phone's bottom bar), as a store's country suggestion does: at the top of the page a header that lies
+ * over the page (D80), fixed there, covered it.
  */
 export function LanguageHint({ lang, offered }: { lang: PlatformLang; offered: readonly PlatformLang[] }) {
   const pathname = usePathname();
@@ -99,16 +101,20 @@ export function LanguageHint({ lang, offered }: { lang: PlatformLang; offered: r
     }
   };
   return (
-    <div role="region" aria-label={text.switchLabel} lang={PLATFORM_LANG_FACTS[target].tag} className="border-b border-border bg-surface text-sm">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-2">
-        <span>{text.offer}</span>
-        <a href={sameIn(target, pathname, query)} hrefLang={PLATFORM_LANG_FACTS[target].tag} className="font-medium underline">
-          {text.go}
-        </a>
-        <button type="button" onClick={close} className="ml-auto min-h-10 rounded-full px-3 hover:bg-background">
-          {text.close}
-        </button>
-      </div>
+    <div
+      role="region"
+      aria-label={text.switchLabel}
+      lang={PLATFORM_LANG_FACTS[target].tag}
+      data-language-hint=""
+      className="fixed inset-x-4 bottom-20 z-40 mx-auto flex max-w-xl flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 text-sm shadow-lg md:bottom-4"
+    >
+      <span className="min-w-0 flex-1">{text.offer}</span>
+      <a href={sameIn(target, pathname, query)} hrefLang={PLATFORM_LANG_FACTS[target].tag} className="font-medium underline">
+        {text.go}
+      </a>
+      <button type="button" onClick={close} className="min-h-10 rounded-full px-3 hover:bg-background">
+        {text.close}
+      </button>
     </div>
   );
 }
