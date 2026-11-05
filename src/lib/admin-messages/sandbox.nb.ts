@@ -22,6 +22,7 @@ export const sandboxNb: SandboxMessages = {
     keep: "Behold butikken",
     startOver: "Begynn på nytt",
     startOverConfirm: "Begynne på nytt med en ny butikk? Denne stenges, og det du har laget her, forsvinner.",
+    aiSpent: "AI-en i denne sandkassen er brukt opp. Behold butikken for å fortsette å bruke den.",
   },
   home: {
     title: "Butikken din",
@@ -30,9 +31,13 @@ export const sandboxNb: SandboxMessages = {
     pages: "Sider",
     headers: "Topptekster",
     footers: "Bunntekster",
+    articles: "Artikler",
+    productLayouts: "Produktoppsett",
     newPage: "Ny side",
     newHeader: "Ny topptekst",
     newFooter: "Ny bunntekst",
+    newArticle: "Ny artikkel",
+    newProductLayout: "Nytt produktoppsett",
     edit: "Rediger",
     preview: "Forhåndsvis",
     front: "Forside",
@@ -75,8 +80,15 @@ export const sandboxNb: SandboxMessages = {
     notice: "Forhåndsvisning: ingenting lagres eller kopieres",
     by: "Av {publisher}",
   },
+  view: {
+    published: "Den publiserte versjonen, slik butikken din viser den. Bare du kan se den.",
+    draft: "Det lagrede utkastet, slik butikken din ville vist det når det er publisert.",
+    notPublished: "Dette er ikke publisert ennå: det lagrede utkastet vises.",
+  },
   refused: {
     gone: "Denne sandkassen er avsluttet. Start en ny for å fortsette.",
     notHere: "Det er ikke en del av sandkassen.",
+    aiSpent: "AI-en i denne sandkassen er brukt opp. Behold butikken for å fortsette å bruke den.",
+    noLanguages: "Denne butikken selger på ett språk, så det er ingenting å oversette til.",
   },
 };

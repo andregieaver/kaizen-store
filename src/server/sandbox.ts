@@ -20,9 +20,13 @@ import {
   sandboxSlug,
 } from "@/lib/sandbox";
 
+import type { AiFeature } from "@/lib/ai-usage";
+
+import { aiFor, type AiConnection } from "./ai";
 import { audit, type Account } from "./auth";
 import { markDemoContent } from "./demo-content";
 import { log } from "./log";
+import { removeStoredFiles } from "./media";
 import { takeBudget } from "./request-budget";
 import { getStore, refreshStoreById, type Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -30,8 +34,9 @@ import { col, typedRow, typedRows } from "./typed-rows";
 /**
  * The page builder's sandbox (D457, `docs/builder-sandbox.md`): a store of its own a visitor edits without an account. Everything about a
  * sandbox goes through here: the platform's switch and cap, making one (`commerce.make_sandbox()`), the pass that opens it
- * (`sandboxFor()`, the only way in for every sandbox page and action), *Start over*, the first change and publish, and the job that ends
- * sandboxes past their time (`commerce.expire_sandbox()`). The pass's secret is never kept; only its SHA-256 is.
+ * (`sandboxFor()`, the only way in for every sandbox page and action), *Start over*, the first change and publish, its AI within its
+ * allowance (`sandboxAi()`), and the job that ends sandboxes past their time (`commerce.expire_sandbox()`) and deletes what was in them
+ * (`purgeSandbox()`: its library's files, then `commerce.purge_sandbox()`). The pass's secret is never kept; only its SHA-256 is.
  */
 
 export type SandboxSettings = { on: boolean; dailyCap: number; source: string | null };
@@ -88,6 +93,7 @@ export async function startSandbox(visitor: string): Promise<StartAnswer> {
   if ((await sandboxCounts()).today >= settings.dailyCap) return { ok: false, problem: "full" };
   const secret = randomBytes(32).toString("base64url");
   let source = settings.source;
+  const started = performance.now();
   for (let attempt = 0; attempt < 3; attempt++) {
     const slug = sandboxSlug(randomBytes(8));
     try {
@@ -100,7 +106,8 @@ export async function startSandbox(visitor: string): Promise<StartAnswer> {
       // press, and keeps every page they made or changed here. Never throws.
       const store = await typedRow(z.object({ store_id: col.uuid }), sql`select store_id from commerce.sandboxes where id = ${row.id}::uuid`);
       if (store) await markDemoContent(store.store_id).catch((error: unknown) => log("warn", "sandbox.demo_mark_failed", {}, error));
-      log("info", "sandbox.made", { sandboxId: row.id, fromStandard: source === null });
+      // How long a copy takes decides whether fresh copies should be kept ready (4.8): only past about two seconds.
+      log("info", "sandbox.made", { sandboxId: row.id, fromStandard: source === null, ms: Math.round(performance.now() - started) });
       return { ok: true, id: row.id, pass: formatPass({ id: row.id, secret }) };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -242,4 +249,102 @@ export async function expireSandboxes(limit = 200): Promise<{ expired: number }>
   }
   if (expired > 0) log("info", "sandbox.expired", { count: expired });
   return { expired };
+}
+
+/**
+ * The sandbox's AI for one feature (4.5): the platform's connection while the sandbox's allowance (`ai_cost_month_micros`, made with it)
+ * has room, and within the `sandbox_ai` budget, which counts the calls a price might not (a model with no price set costs nothing in
+ * the allowance). Null when either is spent: the feature then says so, with *Keep this store* beside it. The only way a sandbox reaches an
+ * AI.
+ */
+export async function sandboxAi(sandbox: Sandbox, feature: AiFeature): Promise<AiConnection | null> {
+  const connection = await aiFor(sandbox.store.id, { feature, accountId: sandbox.account.id });
+  if (!connection) return null;
+  if (!(await takeBudget(null, "sandbox_ai", sandbox.id))) return null;
+  return connection;
+}
+
+/** The files of a sandbox's library: only those in its own folder, never the addresses its copied products point at (the source's). */
+async function sandboxFiles(storeId: string): Promise<Map<string, string[]>> {
+  const rows = await typedRows(
+    z.object({ bucket: col.text, path: col.text, thumbnail_path: col.textOrNull }),
+    sql`select bucket, path, thumbnail_path from commerce.media where store_id = ${storeId}::uuid and bucket is not null and path is not null`,
+  );
+  const own = (path: string | null): path is string => Boolean(path?.startsWith(`${storeId}/`));
+  const files = new Map<string, string[]>();
+  for (const row of rows) {
+    const paths = [row.path, row.thumbnail_path].filter(own);
+    if (paths.length > 0) files.set(row.bucket, [...(files.get(row.bucket) ?? []), ...paths]);
+  }
+  return files;
+}
+
+/**
+ * Deletes what was in an expired sandbox (4.8): its library's files first, then every row of its store (`commerce.purge_sandbox()`), which
+ * leaves the bare store as a tombstone and the sandbox's row as the record that it was. When a file cannot be removed nothing is purged,
+ * so the next run tries again with the rows that name it. The rows deleted, or null when it was not purged.
+ */
+export async function purgeSandbox(id: string, deps: { remove?: typeof removeStoredFiles } = {}): Promise<number | null> {
+  const row = await typedRow(
+    z.object({ store_id: col.uuid }),
+    sql`select store_id from commerce.sandboxes where id = ${id}::uuid and state = 'expired'`,
+  );
+  if (!row) return null;
+  const remove = deps.remove ?? removeStoredFiles;
+  for (const [bucket, paths] of await sandboxFiles(row.store_id)) {
+    for (let i = 0; i < paths.length; i += 500) {
+      if (!(await remove(bucket, paths.slice(i, i + 500)))) {
+        log("warn", "sandbox.files_left", { sandboxId: id, files: paths.length });
+        return null;
+      }
+    }
+  }
+  const purged = await typedRow(z.object({ deleted: col.int }), sql`select commerce.purge_sandbox(${id}::uuid) as deleted`);
+  await refreshStoreById(row.store_id);
+  return purged?.deleted ?? 0;
+}
+
+/** Purges expired sandboxes, the longest ended first, a few a run, each on its own so one cannot stop the rest. */
+export async function purgeSandboxes(limit = 25, deps: { remove?: typeof removeStoredFiles } = {}): Promise<{ purged: number }> {
+  const due = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`select id from commerce.sandboxes where state = 'expired' order by ended_at limit ${limit}`,
+  );
+  let purged = 0;
+  for (const { id } of due) {
+    try {
+      if ((await purgeSandbox(id, deps)) !== null) purged += 1;
+    } catch (error) {
+      log("error", "sandbox.purge_failed", { sandboxId: id }, error);
+    }
+  }
+  if (purged > 0) log("info", "sandbox.purged", { count: purged });
+  return { purged };
+}
+
+/** The five-minute job's `sandboxes` step (`runJobs()`): sandboxes past their time ended, then what was in ended ones deleted. */
+export async function sandboxJob(): Promise<{ expired: number; purged: number }> {
+  const { expired } = await expireSandboxes();
+  const { purged } = await purgeSandboxes();
+  return { expired, purged };
+}
+
+/**
+ * The retention rule's step (`runRetention()`, kind `sandboxes`): a sandbox nobody has visited for the rule's period is ended, whatever
+ * time it had left, and every ended sandbox is purged. The rule is seeded at `SANDBOX_DAYS`, so it only acts when a platform admin
+ * shortens it; the five-minute job does the rest. The number purged.
+ */
+export async function retireIdleSandboxes(cutoff: string, deps: { remove?: typeof removeStoredFiles } = {}): Promise<number> {
+  const idle = await typedRows(
+    z.object({ id: col.uuid }),
+    sql`select id from commerce.sandboxes where state = 'open' and last_seen_at < ${cutoff}::timestamptz order by last_seen_at limit 1000`,
+  );
+  for (const { id } of idle) {
+    try {
+      await endSandbox(id);
+    } catch (error) {
+      log("error", "sandbox.expire_failed", { sandboxId: id }, error);
+    }
+  }
+  return (await purgeSandboxes(1000, deps)).purged;
 }

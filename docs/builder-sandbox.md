@@ -1,6 +1,6 @@
 # The page builder sandbox: try it without signing up
 
-Status: **steps S1 and S2 built** (D457, 5 November 2026), behind its platform switch, which is off; S3 and S4 follow (section 8). The owner's
+Status: **steps S1, S2 and S3 built** (D457, 5 November 2026), behind its platform switch, which is off; S4 follows (section 8). The owner's
 choices of 5 November 2026: **no email at all** to start, and the recommendations of section 10.
 A visitor presses *Try the builder* and is in the real builder, on a store of their own. An email is asked only when they choose to keep
 that store, because an account is an email (`accounts.email` is not null).
@@ -110,9 +110,10 @@ What the sandbox's context holds:
 | `templates.list`, `use`, `setActive` | On, the marketplace's templates only, previewed at the sandbox's own route (`previewBase`) | One account owns every sandbox, so "my stores" would be every other visitor's saved parts |
 | `templates.setSharing` | Answers that it is not in the sandbox | It decides who in other stores may use a saved part |
 | `themeSections` | On | A signature theme's own sections |
-| `dualPages` | Step S3 | Dual page (D412) loads a second document through its own routes |
-| `upload`, `media` | Step S3, within the storage allowance (4.5) | |
-| `pictures`, `pictureEdit`, `aiChange`, `actions.translate` | Step S3, through the sandbox's own routes, within the AI allowance | The store's routes (`/admin/{store}/media/make`, `/media/edit`, `/pages/change`) check membership |
+| `dualPages` | Null; step S4 (moved from S3, 8.3) | Dual page (D412) loads a second document through its own routes, which need a sandbox twin each |
+| `upload`, `media` | On (S3), within the storage allowance (4.5): `sandboxUploadAction()` calls `uploadToLibrary()`, which checks it | |
+| `pictures`, `pictureEdit`, `aiChange`, `actions.translate` | On (S3), through the sandbox's own routes (`/admin/try/{sandbox}/ai/make`, `/ai/edit`, `/ai/change`) and action, within the AI allowance, each while it can work | The store's routes (`/admin/{store}/media/make`, `/media/edit`, `/pages/change`) check membership |
+| `blog` | For articles (S3): the store's blogs and authors, its link to the sandbox's home | Blogs and authors have their own screens in a store, not in the sandbox |
 | `startVideo`, `fields.startFile` | Null | Large files; the source's own videos still show |
 | `schedule` | Null | Nothing to schedule in a store nobody else sees |
 | `share` | Null | A link that opens a draft without signing in would make the sandbox a free host |
@@ -146,8 +147,18 @@ The AI is the best of the showcase, so it is on, on a small allowance, through `
 
 - `ai_cost_month_micros`: the sandbox's AI on Kaizena Flow's key, for every feature at once (*Change with AI*, pictures by prompt, *Remove
   background*, motion, translation). When it is spent, `aiFor()` gives no connection and each feature says AI is not available here, with
-  *Keep this store* beside it. Its value is a platform setting; the proposal is a few changes and three pictures' worth.
-- `storage_bytes`: the uploads a sandbox may keep, refused past it by `storageRefusal()` as in any store. The proposal is 50 MB.
+  *Keep this store* beside it. Its value is a platform setting (`platform_settings.sandbox_ai_micros`, 500,000 millionths of a dollar:
+  a few changes and three pictures' worth).
+- `storage_bytes`: the uploads a sandbox may keep, refused past it by `storageRefusal()` as in any store
+  (`platform_settings.sandbox_storage_bytes`, 50 MB).
+
+`make_sandbox()` writes both rows from the settings, so a change reaches new sandboxes only; `adopt_sandbox()` removes them when the
+sandbox is kept, and the store has its plan's limits from then on. Beside the money, the `sandbox_ai` budget counts the calls (20 an hour a
+sandbox, 600 for the platform, fail closed), because a model with no price set costs nothing in the allowance. `sandboxAi()` in
+`src/server/sandbox.ts` is the only way a sandbox reaches an AI: the platform's connection while the allowance has room, then a call from
+the budget. Two things it does not cover, both small: the allowance is a month's, so a sandbox that lives across the first of a month
+starts again at nothing spent (its 30 days bound it to two allowances), and a picture the AI makes is kept without the storage check, as
+in any store (the AI's allowance bounds how many there are).
 
 Unlike templates and demo stores, which are never limited (D314), a sandbox always is: `src/server/limits.ts:51` exempts
 `is_template or starter`, never `sandbox`.
@@ -196,13 +207,23 @@ request, and the times of the first change, the first publish and the keep, for 
 - ***Start over*** makes a new sandbox (the same budget) and expires the old one at once.
 - **Expiry:** the five-minute dispatcher's `sandboxes` job (`runJobs()`) marks sandboxes past their time `expired` (the pass stops
   working) and the store `closed` with the reason *Sandbox ended*, written by `expire_sandbox()` without the closing emails of D171.
-- **Purge:** the same job runs `commerce.purge_sandbox()` on expired sandboxes. It refuses any store that is not a sandbox, deletes every row
-  of the store in every `commerce` table in order, and its library's files (`removeStoredFiles()` on its own library rows, never the
-  addresses its copied products point at, which belong to the source). The `stores` row stays as a tombstone: `commerce.audit_log`
-  references stores and is append-only for 24 months, so the bare row is deleted only when its audit entries have gone
-  (`pruneAuditLog()`).
-- **Retention:** a new retention kind and step, `sandboxes` (`src/lib/retention.ts`, `src/server/retention.ts`), seeded at 7 days after
-  the last visit, so the rule is on Platform → Data retention (`/admin/platform/retention`) beside the others.
+- **Purge:** the same job then purges expired sandboxes, 25 a run, the longest ended first (`purgeSandboxes()`). `purgeSandbox()` removes
+  its library's files first (`removeStoredFiles()` on its own library rows, and only paths in its own folder, never the addresses its
+  copied products point at, which belong to the source); a file that cannot be removed purges nothing, so the next run tries again with
+  the rows that name it. Then `commerce.purge_sandbox()` refuses any store that is not a closed sandbox whose row is expired, and deletes
+  every row of the store in every `commerce` table with a `store_id`, read from the catalogue so a later table is covered, tables pointed at
+  tried again after the others until a round deletes nothing. Its audit entries go with the rest (as built, 8.3): an anonymous try holds
+  nobody to account, and the entries hold what the visitor typed (a page's title, a part's name). Left: the `sandboxes` row (that it
+  existed, and its times), its AI usage (the platform's cost: counts, no words) and the `stores` row as a bare tombstone (its CSS and
+  look blanked), kept because the `sandboxes` row points at it.
+- **The guards:** the tables that keep rows for ever (prices, inventory movements, the audit log, the last owner, the live theme, a
+  preset's use) let the purge through for that one store only: their triggers run unless `commerce.sandbox_purging(store)` is true, which
+  it is only while `purge_sandbox()` names the store in `commerce.sandbox_purge` and the store is a closed sandbox whose row is expired.
+  The guard functions themselves are unchanged.
+- **Retention:** a retention kind and step, `sandboxes` (`src/lib/retention.ts`, `src/server/retention.ts`), seeded at 7 days after the
+  last visit (`SANDBOX_DAYS`, a test holds them equal), so the rule is on Platform → Data retention (`/admin/platform/retention`) beside
+  the others. The step ends a sandbox nobody has visited for the rule's period, whatever time it had left, and purges every ended one;
+  with the seed it only backs up the five-minute job, and acts on its own when a platform admin shortens the rule.
 
 D171 did not build deleting a store because orders, invoices and the audit log cannot go. A sandbox never had an order or an invoice, and
 the audit log is answered by the tombstone, so this purge is the small case that is safe.
@@ -244,11 +265,12 @@ The visitor is anonymous, but what they type or upload may be personal data, so:
   (section 2), what is kept, why and on what basis (section 3: legitimate interest, the cookie strictly necessary) and for how long
   (section 6). The cookie, `kaizen_sandbox`, is on the cookie page as necessary (`src/lib/cookie-consent.ts`). The live notice changes only
   when a platform admin writes the legal pages again from Platform → Pages, choosing to write the privacy notice over (which replaces any
-  wording changed by hand there). **Do that once S3's purge is built:** section 6 says what a visitor put in a sandbox is deleted after it
-  closes, and until the purge an ended sandbox stays a closed store. The AI of S3 adds to section 3 what the AI reads, as the AI manager's
-  line does. The start screen links to the notice in one line (S4).
-- What the AI reads is sent to the platform's AI provider, as for any store on Kaizena Flow's key: `docs/dpia-ai.md` adds sandbox visitors
-  as people whose text it reads, and pictures made by AI are marked as elsewhere (`docs/ai-act.md`).
+  wording changed by hand there). **S3 makes it true** (5 November 2026): its purge deletes what was in a sandbox within minutes of its
+  end, section 6 says so and what is kept (that it existed, its times and its AI's cost), and section 3 says what its AI sends to the
+  platform's AI provider. **The owner can now write the live notice over** (Platform → Pages, the Legal pages card, the privacy notice
+  ticked), once S3 is in production. The start screen links to the notice in one line (S4).
+- What the AI reads is sent to the platform's AI provider, as for any store on Kaizena Flow's key: `docs/dpia-ai.md` has sandbox visitors
+  in its table of who is controller (written with S3), and pictures made by AI are marked as elsewhere (`docs/ai-act.md`).
 - Everything stays in the EU, where the platform already runs; no new vendor. If bots get past the budgets, an EU check (Friendly Captcha,
   Germany) is the fallback, with its entry in `docs/residency-register.md`.
 
@@ -263,7 +285,7 @@ The visitor is anonymous, but what they type or upload may be personal data, so:
 - **Pure:** `src/lib/sandbox.ts` (the pass's format, times, allowances, what the context switches off).
 - **Routes:** `src/app/admin/try/` (the start screen, its layout, the sandbox's home, the editors and previews, its AI routes),
   `src/app/admin/try/[sandbox]/actions.ts`.
-- **Changed:** `BUDGETS` (`sandbox`), `isStoreSlug()` (`try`, `try-`), the 43 files of 4.6, `confirmSelfSignup()`, `grantTrial()`'s
+- **Changed:** `BUDGETS` (`sandbox`, `sandbox_font`, `sandbox_copy`, `sandbox_ai`), `isStoreSlug()` (`try`, `try-`), the 43 files of 4.6, `confirmSelfSignup()`, `grantTrial()`'s
   `via`, the retention kinds and steps, the sign-up form (inside the sandbox), the theme store's theme page.
 
 ## 8. Steps
@@ -272,7 +294,7 @@ The visitor is anonymous, but what they type or upload may be personal data, so:
 |---|---|---|
 | **S1** The sandbox, behind the switch | 4.1, 4.2, 4.3 for pages, the header and the footer (no uploads, no AI), 4.4, 4.6, expiry closing the store (4.8 without the purge); the switch and the daily cap keep the number small until S3 | A platform admin with the switch on starts a sandbox from `/admin/try` in a private window, edits and publishes the front page, sees the preview; nothing of it is on the storefront, Platform → Stores or any job's list |
 | **S2** Keep this store | 4.7 | A sandbox kept through the emailed link is the new owner's store, at its own address, with its pages, a trial, private until opened |
-| **S3** The rest of the builder, and cleanup | Uploads and the AI on their allowances (4.5), articles and product layouts, the purge, tombstones and the retention step (4.8), fresh copies kept ready if needed | An expired sandbox leaves only its tombstone; a spent allowance stops the AI with *Keep this store* beside it |
+| **S3** The rest of the builder, and cleanup | Uploads and the AI on their allowances (4.5), articles and product layouts, the purge, tombstones and the retention step (4.8), fresh copies kept ready if needed | An expired sandbox leaves only its tombstone; a spent allowance stops the AI with *Keep this store* beside it. Built (8.3); dual page moved to S4 |
 | **S4** The front door, opened | The guided path (2), *Try another look* (free themes; a premium one shown, never switched to, D286), walking the store's own storefront through a `staff` pass once its senders are proven silent (4.4), *Try it with this theme* (4.9), the funnel on Platform → Stores (made, changed something, published, kept), the kaizenaflow.com page as a draft; the switch on | The owner has watched the funnel for a week and publishes the page |
 
 Each step goes to production as built (D5); the switch keeps S1 to S3 to platform admins' own tries.
@@ -305,7 +327,7 @@ Each step goes to production as built (D5); the switch keeps S1 to S3 to platfor
   preview needs a signed-in account, so the sandbox has its own (`TemplateActions.previewBase`); the test databases' setup made every store
   public, which the database now refuses for a sandbox, so `e2e/global-setup.ts` and `test/integration-setup.ts` leave sandboxes private.
 - **Not yet, as planned:** the editor's *View* link, and the address its *Published at …* names, open the store's private landing page
-  until S4 lets the visitor walk the storefront;
+  until S4 lets the visitor walk the storefront (S3 sends *View* to the sandbox's own preview instead, 8.3);
   the purge (S3), so an ended sandbox stays a closed store until then, its number bounded by the switch and the cap.
 
 ### 8.2 S2 as built (5 November 2026)
@@ -342,6 +364,38 @@ Each step goes to production as built (D5); the switch keeps S1 to S3 to platfor
   adoption marks the tags stale instead (`staleTag()`, `revalidateTag(tag, "max")`, which Next does not count as the action's own write),
   so the press answers with its own words; the next request for the store reads it again.
 
+### 8.3 S3 as built (5 November 2026)
+
+- **Database** (migrations `sandbox_purge`, `sandbox_purge_rules`): `platform_settings.sandbox_ai_micros` (500,000) and
+  `sandbox_storage_bytes` (50 MB); `sandboxes.purged_at`, set exactly when the row is `purged`; `make_sandbox()` writes the two allowances
+  as limit overrides (reason *Sandbox allowance (D457)*), `adopt_sandbox()` removes them; `purge_sandbox(sandbox)` and
+  `sandbox_purging(store)`, and the six guard triggers made again with `WHEN (NOT commerce.sandbox_purging(OLD.store_id))` (4.8); the
+  retention kind `sandboxes` and its seed row. Held by `src/db/sandboxes.test.ts`: the allowances made and removed, the purge refusing an
+  open, kept or purged sandbox and any other store, leaving (read from the catalogue) only the `sandboxes` row and the AI usage, the
+  tombstone bare, and the guards holding for an open sandbox, for another store's rows and without the setting.
+- **Server:** in `src/server/sandbox.ts`, `sandboxAi()` (4.5), `purgeSandbox()`, `purgeSandboxes()`, `sandboxJob()` (the five-minute
+  job's `sandboxes` step: expire, then purge) and `retireIdleSandboxes()` (the retention step); `src/server/sandbox-ai.ts` answers the
+  three AI routes as the store's do, opened by the pass. `sandbox.made` now logs how long a copy took (`ms`), for the decision below.
+- **The builder:** uploads (`sandboxUploadAction()`), *Make with AI*, *Remove background* and *Change with AI* through
+  `/admin/try/{sandbox}/ai/make`, `/ai/edit` and `/ai/change` (a segment of its own, so the kinds' `[kind]` segment keeps
+  `/pages/…`), translation (`sandboxTranslateAction()`, while the store has more than one language) and motion on the model's plan, each
+  offered while it can work, as in a store; articles (with the store's blogs and authors) and product layouts (while the store's shop is
+  on), on the home and under `/admin/try/{sandbox}/articles` and `/product-layouts`, with their previews (a product layout's with the
+  product it is shown with). The bar says when the AI is used up, beside *Keep this store*.
+- **Kept out of the admin's first scripts:** the sandbox's words are a server-only area (`SERVER_AREAS`), as the carriers' are: no client
+  part reads them, and S2's added words had taken four signed-in pages past their script budgets (CI run 1005, a few KB each).
+- **Changed from the plan:** the purge deletes the sandbox's audit entries too (4.8), so the privacy notice's "deleted" holds for what the
+  visitor typed; the tombstone is kept for the `sandboxes` row instead. AI usage is kept (counts, no words), as for any deleted store.
+- **Not built, as decided:** fresh copies kept ready. A copy took 0.12 s on the test catalogue; production's time is now logged
+  (`sandbox.made`, `ms`), and copies kept ready are built only if it passes about two seconds. **Dual page moved to S4**: it needs a
+  sandbox twin of the store's second-document routes and choices (`storeDual()`, `storeSecondDoc()`, `storeTemplateDoc()`), more than
+  a showcase's first visit needs.
+- ***View* opens the sandbox's own preview** (`PageOwnerContext.viewAt`, `/admin/try/{sandbox}/{segment}/{id}/preview?published=1`, the
+  published version): the owner found *View page* showing the store's private landing page ("not open to visitors yet"), as S1 had left
+  it until S4. The *Published at …* notice still names the store's address, which S4's walk of the storefront will open.
+- **Found while building:** the editor's *Manage categories* link (`{adminBase}/categories`) opens a page the sandbox does not have; it
+  is a 404 inside the sandbox's frame, left for S4 with the menus' and blogs' screens.
+
 ## 9. Tests
 
 Built with S1:
@@ -365,8 +419,13 @@ time, the press, the address, the owner, the trial, the demo marks, the kept vie
 ended first, and no sandbox named by a request for one that is not open; and end to end, *Keep this store* from the bar to the emailed
 link's press and the old tab's *This store is yours now*.
 
-To come with S3: `purge_sandbox()` refusing any other store and leaving, for every table in `commerce` with a `store_id` column (read from
-the catalogue, so a future table is covered), no row of the sandbox's store but its audit entries and its `stores` row.
+Built with S3: in PGlite, the allowances made and removed at keeping, the platform's bounds, and `purge_sandbox()` refusing any other
+store and leaving, for every table in `commerce` with a `store_id` column (read from the catalogue, so a future table is covered), no row
+of the sandbox's store but its `sandboxes` row and its AI usage, with a bare tombstone, and the guards bent for that store only; in the
+integration test, the storage allowance, the AI given only while its allowance has room and within its budget (the route's answer once
+spent), the AI routes refusing another site and a browser without the pass, the purge removing only the sandbox's own files and nothing
+when one cannot be removed, and the job's and the retention rule's purges; the scan test holds the AI to `sandboxAi()`, uploads to
+`uploadToLibrary()`, the routes to the pass and the context's AI to the sandbox's own routes; end to end, an article from the home.
 
 ## 10. Decided by the owner (5 November 2026)
 

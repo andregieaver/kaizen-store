@@ -16,7 +16,7 @@ import type { Sandbox } from "@/server/sandbox";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 
 import { sandboxPageContext } from "./context";
-import { sandboxOf } from "./sandbox";
+import { offers, sandboxOf } from "./sandbox";
 
 /** The catalogue areas the page editor's parts read (D312 A7), as the store's own editor hands them down. */
 const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website", "blog", "schedules"] as const;
@@ -27,7 +27,10 @@ type Params = Promise<{ sandbox: string; kind: string }>;
 export async function sandboxAndKind(params: Params): Promise<{ sandbox: Sandbox | null; kind: SandboxKind }> {
   const { sandbox: id, kind: segment } = await params;
   if (!isSandboxSegment(segment)) notFound();
-  return { sandbox: await sandboxOf(id), kind: SANDBOX_KINDS[segment] };
+  const sandbox = await sandboxOf(id);
+  const kind = SANDBOX_KINDS[segment];
+  if (sandbox && !offers(sandbox, kind)) notFound();
+  return { sandbox, kind };
 }
 
 export const isPageId = (value: string) => z.uuid().safeParse(value).success;
@@ -50,7 +53,7 @@ export async function SandboxEditor({ sandbox, kind, pageId, saved }: { sandbox:
   const ew = adminText(lang, "builder").editor;
   const untitled = adminText(lang, "sandbox").home.untitled;
   const notice = saved === "draft" ? ew.draftSaved : saved === "published" ? ew.publishedShort : null;
-  const fieldData = found && kind === "page" ? await getFieldData(store.id, "page", found.id) : undefined;
+  const fieldData = found && (kind === "page" || kind === "article") ? await getFieldData(store.id, kind, found.id) : undefined;
   const fieldRoles = found ? Object.entries(store.pageRoles).filter(([, id]) => id === found.id).map(([role]) => role) : [];
   return (
     <AdminTextScope texts={adminTexts(lang, EDITOR_AREAS)}>

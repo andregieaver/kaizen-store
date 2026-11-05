@@ -242,3 +242,126 @@ describe("keeping a sandbox (D457 S2)", () => {
     await refused("update commerce.stores set sandbox = false, slug = 'free-shop' where id = $1", [store], /stores\.sandbox_fixed/);
   });
 });
+
+describe("a sandbox's allowances (D457 S3)", () => {
+  it("are the platform's settings, as limit overrides made with it, and go when the sandbox is kept", async () => {
+    await db.query("update commerce.platform_settings set sandbox_ai_micros = 250000, sandbox_storage_bytes = 20000000");
+    const { sandbox, store } = await makeSandbox();
+    const limits = async () =>
+      (await db.query<{ key: string; value: number }>("select key, value::int from commerce.limit_overrides where store_id = $1 order by key", [store])).rows;
+    expect(await limits()).toEqual([
+      { key: "ai_cost_month_micros", value: 250000 },
+      { key: "storage_bytes", value: 20000000 },
+    ]);
+    const { id: request } = await one<{ id: string }>(
+      "insert into commerce.access_requests (email, name, store_name, sandbox_id) values ('allowance@example.com', 'Ola', 'Ola', $1) returning id",
+      [sandbox],
+    );
+    await one("select commerce.adopt_sandbox($1, 'ola-butikk', 'Ola', null)", [request]);
+    expect(await limits()).toEqual([]);
+    await db.query("update commerce.platform_settings set sandbox_ai_micros = default, sandbox_storage_bytes = default");
+  });
+
+  it("keeps the platform's settings within bounds", async () => {
+    await refused("update commerce.platform_settings set sandbox_ai_micros = -1", [], /platform_settings_sandbox_ai/);
+    await refused("update commerce.platform_settings set sandbox_storage_bytes = 2000000000", [], /platform_settings_sandbox_storage/);
+  });
+});
+
+describe("purging a sandbox (D457 S3)", () => {
+  /** What a visitor leaves in a sandbox, in the tables whose guards keep rows for ever elsewhere, and a picture and some AI. */
+  async function useSandbox(store: string): Promise<void> {
+    const { id: product } = await one<{ id: string }>("insert into commerce.products (store_id, handle, tax_code) values ($1, 'mug', 'txcd_99999999') returning id", [store]);
+    const { id: variant } = await one<{ id: string }>("insert into commerce.product_variants (store_id, product_id, sku) values ($1, $2, 'MUG') returning id", [store, product]);
+    await db.query("select commerce.set_price($1, 'NO', 1000)", [variant]);
+    await db.query("select commerce.set_price($1, 'NO', 900)", [variant]);
+    const { id: location } = await one<{ id: string }>("insert into commerce.inventory_locations (store_id, name, country) values ($1, 'Oslo', 'NO') returning id", [store]);
+    // The level's first stock is written as a movement, which is kept for 24 months anywhere else.
+    await db.query("insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values ($1, $2, $3, 4)", [store, variant, location]);
+    await db.query(
+      "insert into commerce.pages (store_id, type, slug, draft) values ($1, 'page', 'mitt', '{\"title\":\"Mitt\"}'::jsonb)",
+      [store],
+    );
+    await db.query("update commerce.stores set custom_css = '.mine { color: red }' where id = $1", [store]);
+    await db.query(
+      "insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes) values ($1, 'image', $2, 'product-images', $3, 'mine.jpg', 'image/jpeg', 10)",
+      [store, `https://example.com/${store}/mine.jpg`, `${store}/mine.jpg`],
+    );
+    await db.query("insert into commerce.audit_log (store_id, account_id, action, details) values ($1, commerce.sandbox_account(), 'store.page_saved', '{\"title\":\"Mitt\"}')", [store]);
+    await db.query("insert into commerce.ai_usage (store_id, source, provider, model, kind, feature) values ($1, 'platform', 'openai', 'gpt', 'image', 'picture_make')", [store]);
+  }
+
+  /** The rows of a store in every table of `commerce` with a `store_id`, read from the catalogue, so a table added later is counted too. */
+  async function rowsLeft(store: string): Promise<Record<string, number>> {
+    const { rows: tables } = await db.query<{ name: string }>(
+      `select c.relname as name from pg_class c join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'commerce'
+         join pg_attribute a on a.attrelid = c.oid and a.attname = 'store_id' and not a.attisdropped
+        where c.relkind in ('r', 'p') and not c.relispartition order by 1`,
+    );
+    expect(tables.length).toBeGreaterThan(200);
+    const left: Record<string, number> = {};
+    for (const { name } of tables) {
+      const { n } = await one<{ n: number }>(`select count(*)::int as n from commerce.${name} where store_id = $1`, [store]);
+      if (n > 0) left[name] = n;
+    }
+    return left;
+  }
+
+  it("refuses a sandbox that is open, kept or purged, and any store that is not a sandbox", async () => {
+    const { sandbox } = await makeSandbox();
+    await refused("select commerce.purge_sandbox($1)", [sandbox], /sandboxes\.not_expired/);
+    await refused("select commerce.purge_sandbox($1)", [template], /sandboxes\.not_expired/);
+    await one("select commerce.expire_sandbox($1)", [sandbox]);
+    await one("select commerce.purge_sandbox($1)", [sandbox]);
+    await refused("select commerce.purge_sandbox($1)", [sandbox], /sandboxes\.not_expired/);
+  });
+
+  it("leaves nothing of the store but its sandbox row, its AI's cost and a bare tombstone", async () => {
+    const { sandbox, store } = await makeSandbox();
+    await useSandbox(store);
+    const before = await rowsLeft(store);
+    // The tables whose guards keep their rows for ever anywhere else.
+    for (const table of ["prices", "inventory_movements", "store_members", "audit_log", "pages", "media", "limit_overrides"]) expect(before[table], table).toBeGreaterThan(0);
+    await one("select commerce.expire_sandbox($1)", [sandbox]);
+    const { deleted } = await one<{ deleted: number }>("select commerce.purge_sandbox($1) as deleted", [sandbox]);
+    expect(deleted).toBeGreaterThan(10);
+    expect(await rowsLeft(store)).toEqual({ sandboxes: 1, ai_usage: 1 });
+    const row = await one<Record<string, unknown>>(
+      `select x.state, x.purged_at is not null as purged, s.slug like 'try-%' as address, s.status, s.sandbox, s.private_mode, s.custom_css, s.theme,
+              s.front_page_id, s.header_menu_id
+         from commerce.sandboxes x join commerce.stores s on s.id = x.store_id where x.id = $1`,
+      [sandbox],
+    );
+    expect(row).toEqual({ state: "purged", purged: true, address: true, status: "closed", sandbox: true, private_mode: true, custom_css: "", theme: {}, front_page_id: null, header_menu_id: null });
+    // Its row stays: the funnel's record that it was.
+    await refused("delete from commerce.sandboxes where id = $1", [sandbox], /sandboxes\.no_delete/);
+  });
+
+  it("bends the guards for that store only, and only while it purges an expired sandbox", async () => {
+    const { sandbox: open, store: openStore } = await makeSandbox();
+    await useSandbox(openStore);
+    const { store: other } = await makeSandbox();
+    await useSandbox(other);
+    await db.query("update commerce.sandboxes set state = 'expired', ended_at = now() where store_id = $1", [other]);
+    await db.query("update commerce.stores set status = 'closed' where id = $1", [other]);
+    // The setting names an open sandbox's store: its prices, movements and audit entries stay.
+    await db.query("begin");
+    await db.query("select set_config('commerce.sandbox_purge', $1, true)", [openStore]);
+    await refused("delete from commerce.prices where store_id = $1", [openStore], /append-only/);
+    await db.query("rollback");
+    // It names an expired one's store, but the rows are another store's.
+    await db.query("begin");
+    await db.query("select set_config('commerce.sandbox_purge', $1, true)", [other]);
+    await refused("delete from commerce.audit_log where store_id = $1", [openStore], /append-only/);
+    await db.query("rollback");
+    // Without the setting, an expired sandbox's guards hold as anywhere.
+    await refused("delete from commerce.inventory_movements where store_id = $1", [other], /append-only/);
+    await refused("delete from commerce.store_members where store_id = $1", [other], /keep at least one active owner/);
+    expect(await one<{ state: string }>("select state from commerce.sandboxes where id = $1", [open])).toEqual({ state: "open" });
+  });
+
+  it("is the retention rule's to time: seeded at a week after the last visit", async () => {
+    const rule = await one<Record<string, unknown>>("select period_value, period_unit, enforced_by from commerce.retention_rules where kind = 'sandboxes'");
+    expect(rule).toEqual({ period_value: 7, period_unit: "days", enforced_by: "runRetention: sandboxes" });
+  });
+});

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
+
 import {
   SANDBOX_KINDS,
   daysLeft,
@@ -58,12 +60,16 @@ describe("a sandbox's time", () => {
   });
 });
 
-describe("what the sandbox offers in step S1", () => {
-  it("is pages, headers and footers, each under its store admin's segment", () => {
-    expect(SANDBOX_KINDS).toEqual({ pages: "page", headers: "header", footers: "footer" });
+describe("what the sandbox offers", () => {
+  it("is pages, headers and footers (S1), articles and product layouts (S3), each under its store admin's segment", () => {
+    expect(SANDBOX_KINDS).toEqual({ pages: "page", headers: "header", footers: "footer", articles: "article", "product-layouts": "product_layout" });
     expect(segmentOf("header")).toBe("headers");
+    expect(segmentOf("product_layout")).toBe("product-layouts");
+    for (const kind of Object.values(SANDBOX_KINDS)) expect(segmentOf(kind)).toBe(PAGE_TYPE_COPY[kind].segment);
     expect(isSandboxSegment("pages")).toBe(true);
-    expect(isSandboxSegment("articles")).toBe(false);
+    expect(isSandboxSegment("articles")).toBe(true);
+    expect(isSandboxSegment("variants")).toBe(false);
+    expect(isSandboxSegment("ai")).toBe(false);
     expect(isSandboxSegment("toString")).toBe(false);
     expect(sandboxHome(ID)).toBe(`/admin/try/${ID}`);
     expect(sandboxBase(ID, "footer")).toBe(`/admin/try/${ID}/footers`);

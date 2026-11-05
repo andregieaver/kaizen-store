@@ -4698,6 +4698,20 @@
       "when": 1793888202410,
       "tag": "20261105141642_keep_sandbox_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 671,
+      "version": "7",
+      "when": 1793891349491,
+      "tag": "20261105150909_sandbox_purge",
+      "breakpoints": true
+    },
+    {
+      "idx": 672,
+      "version": "7",
+      "when": 1793891383559,
+      "tag": "20261105150943_sandbox_purge_rules",
+      "breakpoints": true
     }
   ]
 }

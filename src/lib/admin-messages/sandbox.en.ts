@@ -1,7 +1,8 @@
 /**
  * The page builder's sandbox (D457, `docs/builder-sandbox.md`), in English: the start screen at `/admin/try`, the bar every sandbox page
  * has, the sandbox's home and what it says when a sandbox has ended. `{name}`-style placeholders are filled by `fillWords()`; a count is a
- * `{ one, many }` pair read by `countWords()`, with `{n}` the number.
+ * `{ one, many }` pair read by `countWords()`, with `{n}` the number. Only the server reads them (`SERVER_AREAS`): a client part, such as
+ * *Start over*, gets its words as props, so they are not in every admin screen's first scripts.
  */
 export const sandboxEn = {
   start: {
@@ -24,6 +25,7 @@ export const sandboxEn = {
     keep: "Keep this store",
     startOver: "Start over",
     startOverConfirm: "Start again from a fresh store? This one is closed and what you made here is gone.",
+    aiSpent: "The AI in this sandbox is used up. Keep this store to go on using it.",
   },
   home: {
     title: "Your store",
@@ -32,9 +34,13 @@ export const sandboxEn = {
     pages: "Pages",
     headers: "Headers",
     footers: "Footers",
+    articles: "Articles",
+    productLayouts: "Product layouts",
     newPage: "New page",
     newHeader: "New header",
     newFooter: "New footer",
+    newArticle: "New article",
+    newProductLayout: "New product layout",
     edit: "Edit",
     preview: "Preview",
     front: "Front page",
@@ -77,9 +83,16 @@ export const sandboxEn = {
     notice: "Preview: nothing is saved or copied",
     by: "By {publisher}",
   },
+  view: {
+    published: "The published version, as your store shows it. Only you can see it.",
+    draft: "The saved draft, as your store would show it once published.",
+    notPublished: "This is not published yet: the saved draft is shown.",
+  },
   refused: {
     gone: "This sandbox has ended. Start a new one to go on.",
     notHere: "That is not part of the sandbox.",
+    aiSpent: "The AI in this sandbox is used up. Keep this store to go on using it.",
+    noLanguages: "This store sells in one language, so there is nothing to translate into.",
   },
 };
 

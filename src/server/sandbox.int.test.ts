@@ -8,8 +8,11 @@ import { newPageContent } from "@/lib/page-content";
 /**
  * The page builder's sandbox (D457) against a real database: the switch, the budget and the cap; a store made from the Standard store,
  * private and the sandbox account's; the pass that opens it and nothing else; a visit pushing its time on; saving a page as the sandbox
- * account; no email of any kind; a sandbox ended by Start over or by its time; and a sandbox left out of the grid's stores.
+ * account; no email of any kind; a sandbox ended by Start over or by its time; and a sandbox left out of the grid's stores. Step S3: its
+ * allowances (storage and AI) and the AI's budget, its AI routes opened only by the pass, and the purge (its own files only, then every
+ * row of its store) by the job and by the retention rule.
  */
+process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 const jar = vi.hoisted(() => new Map<string, string>());
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/mailer", () => ({ emailSignInLink: async () => true }));
@@ -28,6 +31,9 @@ const pages = await import("./pages");
 const { sendEmail } = await import("./email");
 const { listGridStores } = await import("./content-grid");
 const signup = await import("./self-signup");
+const limits = await import("./limits");
+const sandboxAi = await import("./sandbox-ai");
+const { encryptSecret, parseKey } = await import("@/lib/secret-box");
 
 type Row = Record<string, unknown>;
 const RUN = Date.now().toString(36);
@@ -229,5 +235,106 @@ describe("keeping a sandbox (D457 S2)", () => {
     await keep(id, email, `Closed ${RUN}`);
     const [request] = await db().execute<Row>(sql`select sandbox_id from commerce.access_requests where lower(email) = lower(${email})`);
     expect(request.sandbox_id).toBeNull();
+  });
+});
+
+describe("a sandbox's allowances (D457 S3)", () => {
+  it("holds its uploads to its storage, as any store's", async () => {
+    const { id } = await made("storage");
+    const opened = await sandbox.sandboxFor(id);
+    const store = opened!.store.id;
+    expect(await limits.storageRefusal(store, 1_000_000)).toBeNull();
+    expect(await limits.storageRefusal(store, 60_000_000)).toMatch(/./);
+  });
+
+  it("gives the AI only while its allowance has room, and only so many calls an hour", async () => {
+    const [had] = await db().execute<Row>(sql`select count(*)::int as n from commerce.ai_providers where store_id is null`);
+    const added = Number(had.n) === 0;
+    if (added) {
+      await db().execute(sql`
+        insert into commerce.ai_providers (store_id, provider, api_key_encrypted, api_key_hint, enabled, text_model)
+        values (null, 'openai', ${encryptSecret("sk-test", parseKey(process.env.SETTINGS_ENCRYPTION_KEY)!)}, 'test', true, 'text-a')`);
+    }
+    try {
+      const { id } = await made("ai");
+      const opened = (await sandbox.sandboxFor(id))!;
+      expect(await sandbox.sandboxAi(opened, "page_change")).not.toBeNull();
+      // Spent: the allowance at nothing (as a month's cost past it would be).
+      await db().execute(sql`update commerce.limit_overrides set value = 0 where store_id = ${opened.store.id}::uuid and key = 'ai_cost_month_micros'`);
+      limits.forgetLimits(opened.store.id);
+      expect(await sandbox.sandboxAi(opened, "page_change")).toBeNull();
+      const spent = await sandboxAi.sandboxChangeRequest(
+        new Request("http://localhost/admin/try/x/ai/change", { method: "POST", body: JSON.stringify({ type: "page", content: "{}", description: "Make it calmer" }) }),
+        id,
+      );
+      expect(spent.status).toBe(400);
+      expect(await spent.json()).toEqual({ ok: false, problem: "The AI in this sandbox is used up. Keep this store to go on using it." });
+      // With room again, twenty calls an hour, then none.
+      await db().execute(sql`update commerce.limit_overrides set value = 500000 where store_id = ${opened.store.id}::uuid and key = 'ai_cost_month_micros'`);
+      limits.forgetLimits(opened.store.id);
+      let given = 0;
+      for (let i = 0; i < 21; i++) if (await sandbox.sandboxAi(opened, "page_motion")) given += 1;
+      expect(given).toBe(19);
+    } finally {
+      if (added) await db().execute(sql`delete from commerce.ai_providers where store_id is null`);
+    }
+  });
+
+  it("answers its AI routes only through the pass, and only from its own pages", async () => {
+    const { id } = await made("route");
+    const ask = (headers: Record<string, string> = {}) =>
+      sandboxAi.sandboxPictureRequest(new Request("http://localhost/x", { method: "POST", headers, body: JSON.stringify({ brief: "A calm shop" }) }), id);
+    expect((await ask({ "sec-fetch-site": "cross-site" })).status).toBe(403);
+    jar.delete(SANDBOX_COOKIE);
+    expect((await ask()).status).toBe(404);
+  });
+});
+
+describe("purging a sandbox (D457 S3)", () => {
+  /** A picture in the sandbox's own folder, and a row naming a file of another store's (as a copied product's address would). */
+  async function pictures(store: string): Promise<void> {
+    await db().execute(sql`
+      insert into commerce.media (store_id, kind, url, bucket, path, thumbnail_path, file_name, content_type, size_bytes) values
+        (${store}::uuid, 'image', ${`https://example.com/${store}/own-${RUN}.webp`}, 'product-images', ${`${store}/own-${RUN}.webp`}, ${`${store}/own-${RUN}-480.webp`}, 'own.webp', 'image/webp', 10),
+        (${store}::uuid, 'image', ${`https://example.com/other/${store}-${RUN}.webp`}, 'product-images', ${`other/${store}-${RUN}.webp`}, null, 'other.webp', 'image/webp', 10)`);
+  }
+
+  it("removes its own files, then every row of its store, and leaves a bare tombstone", async () => {
+    const { id } = await made("purge");
+    const store = (await sandbox.sandboxFor(id))!.store.id;
+    await pictures(store);
+    expect(await sandbox.purgeSandbox(id)).toBeNull();
+    await sandbox.endSandbox(id);
+    const removed: [string, string[]][] = [];
+    // A file that cannot be removed purges nothing, so the next run tries again with the rows that name it.
+    expect(await sandbox.purgeSandbox(id, { remove: async () => false })).toBeNull();
+    const [kept] = await db().execute<Row>(sql`select state, (select count(*)::int from commerce.pages where store_id = ${store}::uuid) as pages from commerce.sandboxes where id = ${id}::uuid`);
+    expect(kept.state).toBe("expired");
+    expect(Number(kept.pages)).toBeGreaterThan(0);
+    const deleted = await sandbox.purgeSandbox(id, { remove: async (bucket, paths) => (removed.push([bucket, paths]), true) });
+    expect(deleted).toBeGreaterThan(10);
+    expect(removed).toEqual([["product-images", [`${store}/own-${RUN}.webp`, `${store}/own-${RUN}-480.webp`]]]);
+    const [row] = await db().execute<Row>(sql`
+      select x.state, x.purged_at is not null as purged, s.status, s.custom_css,
+             (select count(*)::int from commerce.pages where store_id = s.id) as pages,
+             (select count(*)::int from commerce.store_members where store_id = s.id) as members,
+             (select count(*)::int from commerce.media where store_id = s.id) as media,
+             (select count(*)::int from commerce.audit_log where store_id = s.id) as audit
+        from commerce.sandboxes x join commerce.stores s on s.id = x.store_id where x.id = ${id}::uuid`);
+    expect(row).toEqual({ state: "purged", purged: true, status: "closed", custom_css: "", pages: 0, members: 0, media: 0, audit: 0 });
+    expect(await sandbox.purgeSandbox(id)).toBeNull();
+  });
+
+  it("purges ended sandboxes in the five-minute job's step, and idle ones by the retention rule", async () => {
+    const remove = async () => true;
+    const { id: ended } = await made("job");
+    await sandbox.endSandbox(ended);
+    expect((await sandbox.purgeSandboxes(1000, { remove })).purged).toBeGreaterThanOrEqual(1);
+    const { id: idle } = await made("idle");
+    await db().execute(sql`update commerce.sandboxes set last_seen_at = now() - interval '3 days' where id = ${idle}::uuid`);
+    // The rule's period shortened to two days: the sandbox visited three days ago goes, whatever time it had left.
+    expect(await sandbox.retireIdleSandboxes(new Date(Date.now() - 2 * 86_400_000).toISOString(), { remove })).toBeGreaterThanOrEqual(1);
+    const rows = await db().execute<Row>(sql`select id, state from commerce.sandboxes where id in (${ended}::uuid, ${idle}::uuid) order by created_at`);
+    expect(rows.map((r) => r.state)).toEqual(["purged", "purged"]);
   });
 });

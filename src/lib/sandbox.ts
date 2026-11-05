@@ -61,8 +61,17 @@ export function daysLeft(expiresAt: Date, now: Date): number {
   return Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / DAY_MS));
 }
 
-/** The kinds of page the sandbox offers in step S1, by the address segment each is edited under (as a store's admin names them). */
-export const SANDBOX_KINDS = { pages: "page", headers: "header", footers: "footer" } as const satisfies Record<string, PageType>;
+/**
+ * The kinds of page the sandbox offers, by the address segment each is edited under (as a store's admin names them): pages, the header and
+ * the footer (step S1), articles and product layouts (S3; product layouts while the store's shop is on).
+ */
+export const SANDBOX_KINDS = {
+  pages: "page",
+  headers: "header",
+  footers: "footer",
+  articles: "article",
+  "product-layouts": "product_layout",
+} as const satisfies Record<string, PageType>;
 export type SandboxSegment = keyof typeof SANDBOX_KINDS;
 export type SandboxKind = (typeof SANDBOX_KINDS)[SandboxSegment];
 

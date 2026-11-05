@@ -1309,7 +1309,7 @@ export function PageEditor({
                 )
               : liveSlug &&
                 !layout && (
-                  <a href={`${siteBase}/${liveSlug}`} className="underline">
+                  <a href={context.viewAt && saved ? context.viewAt.replace("{id}", saved.id) : `${siteBase}/${liveSlug}`} className="underline">
                     {ew.view[noun]}
                   </a>
                 )}

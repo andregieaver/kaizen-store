@@ -1048,9 +1048,13 @@ export const sandboxes = commerce.table(
     firstChangeAt: timestamp("first_change_at", { withTimezone: true }),
     firstPublishAt: timestamp("first_publish_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
+    /** When `purge_sandbox()` deleted what was in it (D457 S3): its store is a bare tombstone from then on. */
+    purgedAt: timestamp("purged_at", { withTimezone: true }),
   },
   (t) => [
     check("sandboxes_state", sql`${t.state} in ('open', 'expired', 'kept', 'purged')`),
+    check("sandboxes_purged", sql`(${t.state} = 'purged') = (${t.purgedAt} is not null)`),
+    index("sandboxes_expired_idx").on(t.endedAt).where(sql`${t.state} = 'expired'`),
     check("sandboxes_pass_hash", sql`${t.passHash} ~ '^[0-9a-f]{64}$'`),
     check("sandboxes_time", sql`${t.expiresAt} <= ${t.createdAt} + interval '30 days'`),
     check("sandboxes_ended", sql`(${t.state} = 'open') = (${t.endedAt} is null)`),
@@ -1793,6 +1797,10 @@ export const platformSettings = commerce.table(
     sandboxDailyCap: integer("sandbox_daily_cap").notNull().default(300),
     /** The store template a sandbox is copied from (D457): a published starting content or demo store; null, the Standard store. */
     sandboxSource: uuid("sandbox_source").references((): AnyPgColumn => storeStarters.id, { onDelete: "set null" }),
+    /** What one sandbox's AI may cost on Kaizena Flow's key (D457 S3), in millionths of a dollar: its `ai_cost_month_micros` when it is made. */
+    sandboxAiMicros: bigint("sandbox_ai_micros", { mode: "number" }).notNull().default(500_000),
+    /** What one sandbox may keep of uploads and AI pictures (D457 S3), in bytes: its `storage_bytes` when it is made. */
+    sandboxStorageBytes: bigint("sandbox_storage_bytes", { mode: "number" }).notNull().default(50_000_000),
     /** Kaizena Flow's own AI check of new and changed listings (D411 part 2): on unless a platform admin turns it off, since it costs model calls. */
     contentScreening: boolean("content_screening").notNull().default(true),
     /** Every AI that acts on its own (autopilot steps, reactions, reviews, follow-ups, Dream Factory runs) paused at once (PSI AST-07). */
@@ -1847,6 +1855,8 @@ export const platformSettings = commerce.table(
     check("platform_settings_checkout_ui", sql`${t.checkoutUi} in ('custom', 'hosted')`),
     check("platform_settings_custom_css", sql`length(${t.customCss}) <= 50000`),
     check("platform_settings_sandbox_daily_cap", sql`${t.sandboxDailyCap} between 0 and 10000`),
+    check("platform_settings_sandbox_ai", sql`${t.sandboxAiMicros} between 0 and 100000000`),
+    check("platform_settings_sandbox_storage", sql`${t.sandboxStorageBytes} between 0 and 1000000000`),
     // English always, first; the other languages the site has (`PLATFORM_LANGS`).
     check("platform_settings_locales", sql`coalesce(${t.locales}[1] = 'en-GB', false) and ${t.locales} <@ array['en-GB', 'nb-NO']::text[]`),
     index("platform_settings_updated_by_idx").on(t.updatedBy),

@@ -1,0 +1,9 @@
+ALTER TABLE "commerce"."retention_rules" DROP CONSTRAINT "retention_rules_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."platform_settings" ADD COLUMN "sandbox_ai_micros" bigint DEFAULT 500000 NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."platform_settings" ADD COLUMN "sandbox_storage_bytes" bigint DEFAULT 50000000 NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."sandboxes" ADD COLUMN "purged_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "sandboxes_expired_idx" ON "commerce"."sandboxes" USING btree ("ended_at") WHERE "commerce"."sandboxes"."state" = 'expired';--> statement-breakpoint
+ALTER TABLE "commerce"."platform_settings" ADD CONSTRAINT "platform_settings_sandbox_ai" CHECK ("commerce"."platform_settings"."sandbox_ai_micros" between 0 and 100000000);--> statement-breakpoint
+ALTER TABLE "commerce"."platform_settings" ADD CONSTRAINT "platform_settings_sandbox_storage" CHECK ("commerce"."platform_settings"."sandbox_storage_bytes" between 0 and 1000000000);--> statement-breakpoint
+ALTER TABLE "commerce"."retention_rules" ADD CONSTRAINT "retention_rules_kind" CHECK ("commerce"."retention_rules"."kind" in ('bookkeeping', 'host_bookkeeping', 'unpaid_orders', 'email_bodies', 'security_emails', 'carts', 'delivery_quotes', 'customer_codes', 'customer_sessions', 'webhook_payloads', 'consents', 'privacy_request_contact', 'privacy_requests', 'search_queries', 'visits', 'audit_log', 'form_submissions', 'integration_deliveries', 'abandoned_checkouts', 'recommendation_events', 'ai_usage', 'support_transcripts', 'support_records', 'blog_comments', 'assistant_conversations', 'access_requests', 'unconfirmed_signups', 'content_report_senders', 'carrier_labels', 'sandboxes'));--> statement-breakpoint
+ALTER TABLE "commerce"."sandboxes" ADD CONSTRAINT "sandboxes_purged" CHECK (("commerce"."sandboxes"."state" = 'purged') = ("commerce"."sandboxes"."purged_at" is not null));

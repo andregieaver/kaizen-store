@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { AUDIT_RETENTION_MONTHS } from "./audit";
 import { REPORT_SENDER_MONTHS } from "./content-reports";
 import { RETENTION_MONTHS } from "./visit-record";
+import { SANDBOX_DAYS } from "./sandbox";
 import { EVENT_DAYS } from "./recommendations";
 import { RECORD_MONTHS, TRANSCRIPT_DAYS, TRANSCRIPT_DAYS_DEFAULT } from "./support-rules";
 import {
@@ -91,6 +92,8 @@ describe("the seed of the retention schedule", () => {
     // The two pruners that ran on constants (PSI REG-05): their constants are now the rules' seeds.
     expect([rule("unconfirmed_signups").periodValue, rule("unconfirmed_signups").periodUnit]).toEqual([constantIn("src/server/self-signup.ts", "UNCONFIRMED_KEPT_DAYS"), "days"]);
     expect([rule("content_report_senders").periodValue, rule("content_report_senders").periodUnit]).toEqual([REPORT_SENDER_MONTHS, "months"]);
+    // The page builder's sandbox (D457 S3): the rule is the time a sandbox lasts after its last visit.
+    expect([rule("sandboxes").periodValue, rule("sandboxes").periodUnit]).toEqual([SANDBOX_DAYS, "days"]);
   });
 });
 

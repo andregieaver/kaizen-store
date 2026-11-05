@@ -4,8 +4,9 @@ import { testDb } from "./db";
 
 /**
  * The page builder's sandbox (D457, `docs/builder-sandbox.md`), as a visitor without an account meets it: closed while its switch is off;
- * on, *Start building* makes a store of their own and opens it, the real builder edits and publishes its front page, nobody else sees the
- * store (its storefront is private, another browser cannot open the sandbox), and *Start over* leaves it for a fresh one.
+ * on, *Start building* makes a store of their own and opens it, the real builder edits and publishes its front page and opens a new
+ * article, nobody else sees the store (its storefront is private, another browser cannot open the sandbox), and *Start over* leaves it
+ * for a fresh one.
  */
 test.describe.configure({ mode: "serial" });
 
@@ -67,10 +68,21 @@ test("a visitor without an account builds and publishes in a private store of th
     await sql.end();
   }
 
+  // View opens the published page in the sandbox's own preview: the store's address is private and shows only its landing page.
+  await page.getByRole("link", { name: "View page", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/try\/[0-9a-f-]{36}\/pages\/[0-9a-f-]{36}\/preview\?published=1$/);
+  await expect(page.getByText("The published version, as your store shows it. Only you can see it.")).toBeVisible();
+
   // The preview draws it for the visitor.
   await page.goto(home);
   await page.getByRole("link", { name: "Preview" }).first().click();
   await expect(page.getByRole("link", { name: "Back to editing" })).toBeVisible();
+
+  // Articles are in the sandbox too (S3): a new one opens in the same builder.
+  await page.goto(home);
+  await page.getByRole("link", { name: "New article" }).click();
+  await expect(page).toHaveURL(/\/admin\/try\/[0-9a-f-]{36}\/articles\/new$/);
+  await expect(page.getByLabel("Title", { exact: true })).toBeVisible();
 
   // Another browser, without the pass, cannot open it.
   const other = await browser.newContext();

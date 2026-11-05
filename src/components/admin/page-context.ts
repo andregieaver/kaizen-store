@@ -228,6 +228,11 @@ export type PageOwnerContext = {
    * opens the place (`view`; null: nowhere to open yet). Absent everywhere else.
    */
   place?: { view: string | null; address: string };
+  /**
+   * Where *View* opens a published page when its address is not where it can be seen: `{id}` stands for the page's id. The page builder's
+   * sandbox (D457) opens its own preview of the published version, its store being private. Absent: the page's address on the site.
+   */
+  viewAt?: string;
   actions: {
     /** `acknowledged`: the checker's blocking problems the owner has seen and chose to publish with (issue ids), recorded in the audit log. */
     save: (id: string | null, payload: string, publish: boolean, acknowledged?: string[]) => Promise<PageSaveState>;

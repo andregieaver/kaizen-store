@@ -8,24 +8,27 @@ import { sandboxBase, type SandboxKind } from "@/lib/sandbox";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { listPages, type PageSummary } from "@/server/pages";
 
-import { sandboxOf } from "./sandbox";
+import { offers, sandboxOf } from "./sandbox";
 
 export const metadata: Metadata = { title: "Your store" };
 
 /**
- * The sandbox's home (D457): *Edit the front page* as the one main action, then the store's pages, headers and footers, each to edit or
- * preview, and a new one of each.
+ * The sandbox's home (D457): *Edit the front page* as the one main action, then the store's pages, headers, footers, articles and product
+ * layouts (while its shop is on), each to edit or preview, and a new one of each.
  */
 export default async function SandboxHome({ params }: PageProps<"/admin/try/[sandbox]">) {
   const { sandbox: id } = await params;
   const sandbox = await sandboxOf(id);
   if (!sandbox) return null;
   const { store } = sandbox;
-  const [lang, pages, headers, footers] = await Promise.all([
+  const layouts = offers(sandbox, "product_layout");
+  const [lang, pages, headers, footers, articles, productLayouts] = await Promise.all([
     requestAdminLang(),
     listPages(store.id, "page"),
     listPages(store.id, "header"),
     listPages(store.id, "footer"),
+    listPages(store.id, "article"),
+    layouts ? listPages(store.id, "product_layout") : [],
   ]);
   const w = adminText(lang, "sandbox").home;
   const front = pages.find((page) => page.id === store.frontPageId) ?? null;
@@ -44,6 +47,10 @@ export default async function SandboxHome({ params }: PageProps<"/admin/try/[san
       <Kind sandboxId={sandbox.id} kind="page" title={w.pages} add={w.newPage} items={pages} frontId={store.frontPageId} w={w} />
       <Kind sandboxId={sandbox.id} kind="header" title={w.headers} add={w.newHeader} items={headers} frontId={null} w={w} />
       <Kind sandboxId={sandbox.id} kind="footer" title={w.footers} add={w.newFooter} items={footers} frontId={null} w={w} />
+      <Kind sandboxId={sandbox.id} kind="article" title={w.articles} add={w.newArticle} items={articles} frontId={null} w={w} />
+      {layouts && (
+        <Kind sandboxId={sandbox.id} kind="product_layout" title={w.productLayouts} add={w.newProductLayout} items={productLayouts} frontId={null} w={w} />
+      )}
     </div>
   );
 }

@@ -6,9 +6,11 @@ import { describe, expect, it } from "vitest";
 /**
  * The page builder's sandbox is an allow-list (D457, `docs/builder-sandbox.md` 4.2 and 4.3), held here from the source:
  * - every action of a sandbox opens it with its pass first (`open()`, which is `sandboxFor()`), except the one that refuses everything;
- * - every page under `/admin/try/{sandbox}` and the template preview reads its sandbox through the pass;
- * - the builder's context leaves out what the sandbox must never do: uploads, every AI, scheduling, share links, A/B tests, translation,
- *   a second page beside, and sharing with other stores;
+ * - every page under `/admin/try/{sandbox}` and the template preview reads its sandbox through the pass, and so does every route (its AI);
+ * - the AI is reached only through `sandboxAi()` (the sandbox's allowance and budget), an upload only through `uploadToLibrary()` (its
+ *   storage), and the context's AI endpoints are the sandbox's own routes, never a store's;
+ * - the builder's context leaves out what the sandbox must never do: videos and files, scheduling, share links, A/B tests, a second page
+ *   beside, and sharing with other stores;
  * - templates come from the marketplace only.
  */
 const ROOT = process.cwd();
@@ -70,9 +72,30 @@ describe("the sandbox's allow-list (D457)", () => {
     }
   });
 
-  it("calls no AI and uploads nothing, and sends no email itself (the keep request's link is the sign-up's own)", () => {
-    expect(actions).not.toMatch(/\baiFor\(|sendEmail\(|uploadToLibrary\(|startVideoUpload\(|fetch\(/);
-    expect(actions).toMatch(/planPageMotion\(null,/);
+  it("reaches the AI only through sandboxAi(), uploads only within its storage, and sends no email itself (the keep request's link is the sign-up's own)", () => {
+    expect(actions).not.toMatch(/\baiFor\(|\bcompleteText\(|sendEmail\(|startVideoUpload\(|registerVideo\(|storePicture\(|copyToLibrary\(|fetch\(/);
+    expect(actions.match(/uploadToLibrary\(\{/g)?.length).toBe(1);
+    expect(exportedFunctions(actions).find((fn) => fn.name === "sandboxUploadAction")?.body).toMatch(
+      /return uploadToLibrary\(\{ storeId: sandbox\.store\.id, accountId: sandbox\.account\.id \}, formData\);/,
+    );
+    expect(actions).toMatch(/planPageMotion\(await sandboxAi\(sandbox, "page_motion"\), rows\.rows\)/);
+    expect(actions).toMatch(/const connection = await sandboxAi\(sandbox, "page_translation"\);/);
+    // sandboxAi() takes the platform's connection only while the allowance has room (`aiFor()`), and counts each call in its budget.
+    const server = read(join(ROOT, "src/server/sandbox.ts"));
+    expect(server).toMatch(/const connection = await aiFor\(sandbox\.store\.id, \{ feature, accountId: sandbox\.account\.id \}\);\n  if \(!connection\) return null;\n  if \(!\(await takeBudget\(null, "sandbox_ai", sandbox\.id\)\)\) return null;/);
+  });
+
+  it("answers the AI's requests only through the pass and on the sandbox's AI", () => {
+    const routes = files(TRY).filter((path) => path.endsWith("/route.ts"));
+    expect(routes.map((path) => relative(TRY, path)).sort()).toEqual(["[sandbox]/ai/change/route.ts", "[sandbox]/ai/edit/route.ts", "[sandbox]/ai/make/route.ts"]);
+    for (const route of routes) expect(read(route), route).toMatch(/from "@\/server\/sandbox-ai";/);
+    const ai = read(join(ROOT, "src/server/sandbox-ai.ts"));
+    expect(ai).not.toMatch(/\baiFor\(|checkPermission\(|getAccount\(/);
+    expect(ai).toMatch(/const sandbox = await sandboxFor\(sandboxId\);\n  if \(!sandbox\) return notFound\(\);/);
+    const handlers = [...ai.matchAll(/export async function (\w+)\(request: Request, sandboxId: string\): Promise<Response> \{\n(.*)\n/g)];
+    expect(handlers.map((m) => m[1])).toEqual(["sandboxPictureRequest", "sandboxEditRequest", "sandboxChangeRequest"]);
+    for (const handler of handlers) expect(handler[2], handler[1]).toBe("  const ask = await asked(request, sandboxId);");
+    for (const feature of ["page_pictures", "picture_edit", "page_change"]) expect(ai).toContain(`await connection(ask.sandbox, "${feature}")`);
   });
 
   it("reads every page's sandbox through the pass", () => {
@@ -82,12 +105,20 @@ describe("the sandbox's allow-list (D457)", () => {
     expect(unread).toEqual([]);
   });
 
-  it("leaves out of the builder's context what a sandbox never does", () => {
+  it("leaves out of the builder's context what a sandbox never does, and points its AI at its own routes", () => {
     const context = read(join(TRY, "[sandbox]/context.ts"));
-    for (const field of ["blog", "schedule", "share", "dualPages", "upload", "pictures", "pictureEdit", "aiChange", "startVideo", "experimentsHref", "variantOf", "translate", "previewStore"]) {
+    for (const field of ["schedule", "share", "dualPages", "startVideo", "experimentsHref", "variantOf", "previewStore"]) {
       expect(context, field).toMatch(new RegExp(`\\b${field}: null,`));
     }
     expect(context).toMatch(/startFile: null/);
     expect(context).toMatch(/signupCodes: \[\],/);
+    expect(context).toMatch(/upload: uploadsEnabled\(\) \? bind\(sandboxUploadAction\) : null,/);
+    for (const [field, route] of [["pictures", "make"], ["pictureEdit", "edit"], ["aiChange", "change"]]) {
+      expect(context, field).toMatch(new RegExp(`${field}: ${field} \\? \\{ endpoint: \`\\$\\{sandboxHome\\(id\\)\\}/ai/${route}\` \\} : null,`));
+    }
+    expect(context).not.toMatch(/\/admin\/\$\{/);
+    // *View* opens its own preview of the published page, never the store's private address.
+    expect(context).toContain("viewAt: `${sandboxBase(id, type)}/{id}/preview?published=1`,");
+    expect(context).toMatch(/manageHref: sandboxHome\(sandbox\.id\),/);
   });
 });
