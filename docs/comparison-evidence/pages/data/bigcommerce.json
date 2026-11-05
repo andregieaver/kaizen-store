@@ -1,0 +1,149 @@
+{
+ "key": "bigcommerce",
+ "name": "BigCommerce",
+ "needs": "an app or a higher plan",
+ "slug": "kaizen-vs-bigcommerce",
+ "moving": "other",
+ "cells": {
+  "invoices": {
+   "text": "Printable invoices built in; credit notes through an app",
+   "url": "https://docs.bigcommerce.com/docs/store-operations/orders/invoice-templates"
+  },
+  "omnibus": {
+   "text": "Through an app",
+   "url": "https://www.bigcommerce.com/apps/omnibus-pricing"
+  },
+  "withdrawal": {
+   "text": "Not offered natively yet, according to BigCommerce's blog post of 1 July 2026",
+   "url": "https://www.bigcommerce.com/blog/eu-right-of-withdrawal-requirement/"
+  },
+  "vat": {
+   "text": "Tax zones set by hand, or VAT worked out by an app",
+   "url": "https://support.bigcommerce.com/articles/Public/Tax-Overview"
+  },
+  "vies": {
+   "text": "Through an app",
+   "url": "https://www.bigcommerce.com/apps/sufio-automatic-invoices/"
+  },
+  "bookings": {
+   "text": "Through an app",
+   "url": "https://www.bigcommerce.com/apps/waypoint-booking/"
+  },
+  "subscriptions": {
+   "text": "Needs an app or a specific payment gateway, says BigCommerce",
+   "url": "https://support.bigcommerce.com/articles/en_US/Knowledge/Setting-up-Recurring-Billing"
+  },
+  "bundles": {
+   "text": "Through an app",
+   "url": "https://www.bigcommerce.com/apps/bundlebees/"
+  },
+  "b2b": {
+   "text": "B2B Edition, included with new Performance stores; price lists on Performance",
+   "url": "https://support.bigcommerce.com/articles/en_US/Knowledge/B2B-Edition-User-Guide"
+  },
+  "stores": {
+   "text": "{{check}} Built in, as a paid add-on per storefront, up to 3, 5 or 8 by plan",
+   "url": "https://www.bigcommerce.com/pricing/"
+  },
+  "reviews": {
+   "text": "{{check}} Built in, on every plan",
+   "url": "https://www.bigcommerce.com/pricing/"
+  },
+  "backinstock": {
+   "text": "Needs an app, says BigCommerce's help centre",
+   "url": "https://support.bigcommerce.com/articles/en_US/Knowledge/Product-Availability"
+  },
+  "preorders": {
+   "text": "{{check}} Built in, with a release date",
+   "url": "https://support.bigcommerce.com/articles/en_US/Knowledge/Product-Availability"
+  },
+  "tiered": {
+   "text": "{{check}} Built in, as bulk pricing",
+   "url": "https://support.bigcommerce.com/articles/en_US/Knowledge/Possible-Discounts-Offer"
+  },
+  "loyalty": {
+   "text": "Through an app",
+   "url": "https://www.bigcommerce.com/apps/yotpo-loyalty-rewards/"
+  },
+  "referral": {
+   "text": "Through an app",
+   "url": "https://www.bigcommerce.com/apps/yotpo-loyalty-rewards/"
+  },
+  "wishlists": {
+   "text": "{{check}} Built in",
+   "url": "https://docs.bigcommerce.com/developer/docs/storefront/catalyst/reference/wishlists"
+  },
+  "email": {
+   "text": "Abandoned-cart emails from the Growth plan; campaigns through an app",
+   "url": "https://www.bigcommerce.com/pricing/"
+  },
+  "reports": {
+   "text": "Through an app",
+   "url": "https://www.bigcommerce.com/apps/export-stash/"
+  },
+  "ai": {
+   "text": "{{check}} Companion, included; it changes nothing without your approval",
+   "url": "https://www.bigcommerce.com/product/companion/"
+  },
+  "mobilepay": {
+   "text": "{{check}} Through Adyen or Stripe, for Danish and Finnish billing addresses",
+   "url": "https://support.bigcommerce.com/articles/en_US/Knowledge/MobilePay"
+  },
+  "carriers": {
+   "text": "Through an app, such as one for PostNord labels",
+   "url": "https://www.bigcommerce.com/apps/multi-carrier-shipping-label-by-pluginhive/"
+  }
+ },
+ "strengths": [
+  {
+   "text": "You want your own headless front end: Catalyst is BigCommerce's open-source storefront on Next.js and React",
+   "url": "https://docs.bigcommerce.com/developer/docs/storefront/catalyst/overview"
+  },
+  {
+   "text": "You run several brands or regions as storefronts from one back end",
+   "url": "https://www.bigcommerce.com/solutions/multi-store/"
+  },
+  {
+   "text": "You need deep B2B on its top plan: company hierarchies, quotes, purchase orders and net terms",
+   "url": "https://www.bigcommerce.com/b2b-edition/"
+  },
+  {
+   "text": "You want its free migration app for a large catalogue",
+   "url": "https://www.bigcommerce.com/migration/"
+  },
+  {
+   "text": "You need a long list of security certifications, from PCI DSS Level 1 to ISO and SOC",
+   "url": "https://security.bigcommerce.com/"
+  }
+ ],
+ "readOn": "4 November 2026",
+ "title": "Kaizena Flow compared with BigCommerce",
+ "seo": {
+  "title": "Kaizena Flow vs BigCommerce: compared for EU shops",
+  "description": "How Kaizena Flow compares with BigCommerce for EU shops: the EU's rules, more ways to sell, AI, and what needs an app, checked on BigCommerce's own pages."
+ },
+ "heroRest": "The legal side of EU selling, more ways to sell and an AI that runs the shop come with Flow. Here is how it compares with BigCommerce, line by line.",
+ "strengthsLead": "Choose BigCommerce if:",
+ "faq": [
+  {
+   "q": "Can I move my BigCommerce shop to Flow?",
+   "bold": "Yes, and we do it for you.",
+   "rest": "As part of getting you started, we move your shop free of charge. You can also copy pages from your live site and check your old links yourself."
+  },
+  {
+   "q": "Do I need apps to get what the Flow column shows?",
+   "bold": "No.",
+   "rest": "Everything in the Flow column is part of Flow. Owning several stores starts on the Grow plan."
+  },
+  {
+   "q": "Where is my data kept?",
+   "bold": "In Europe.",
+   "rest": "Your store's database and servers are in Dublin, Ireland."
+  },
+  {
+   "q": "Is it safe to let the AI work on its own?",
+   "bold": "You decide how much it does.",
+   "rest": "Refunds, emails to your whole list, changes to your staff and your domain always wait for your yes, and every change it makes is in the activity log."
+  }
+ ]
+}

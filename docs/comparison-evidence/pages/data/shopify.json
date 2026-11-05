@@ -1,0 +1,153 @@
+{
+ "key": "shopify",
+ "name": "Shopify",
+ "needs": "an app or a higher plan",
+ "slug": "kaizen-vs-shopify",
+ "moving": "shopify",
+ "readOn": "4 and 5 November 2026",
+ "cells": {
+  "invoices": {
+   "text": "VAT invoices for EU and UK orders with Shopify Tax; credit notes through an app",
+   "url": "https://help.shopify.com/en/manual/taxes/shopify-tax/vat-invoices"
+  },
+  "omnibus": {
+   "text": "Typed into the compare-at price by hand, says Shopify's help centre; or an app",
+   "url": "https://help.shopify.com/en/manual/compliance/legal/pricing-indication-directive"
+  },
+  "withdrawal": {
+   "text": "Cancellations and returns from the customer account; a withdrawal form through an app",
+   "url": "https://help.shopify.com/en/manual/compliance/legal/eu-right-of-withdrawal"
+  },
+  "gpsr": {
+   "text": "Kept in product fields you fill in, says Shopify's help centre",
+   "url": "https://help.shopify.com/en/manual/international/gpsr"
+  },
+  "vat": {
+   "text": "{{check}} Built in, with your OSS or IOSS registration",
+   "url": "https://help.shopify.com/en/manual/taxes/eu/eu-tax-reference"
+  },
+  "vies": {
+   "text": "{{check}} Built in with Shopify Tax, but not for B2B checkouts",
+   "url": "https://help.shopify.com/en/manual/taxes/shopify-tax/vat-validate"
+  },
+  "bookings": {
+   "text": "Through an app",
+   "url": "https://apps.shopify.com/appointo"
+  },
+  "subscriptions": {
+   "text": "Through Shopify's free Subscriptions app",
+   "url": "https://help.shopify.com/en/manual/products/purchase-options/shopify-subscriptions"
+  },
+  "bundles": {
+   "text": "Through Shopify's free Bundles app",
+   "url": "https://help.shopify.com/en/manual/products/bundles/shopify-bundles"
+  },
+  "b2b": {
+   "text": "{{check}} Built in on most plans; some parts on Plus only",
+   "url": "https://help.shopify.com/en/manual/b2b/getting-started/plan-features"
+  },
+  "stores": {
+   "text": "{{check}} Built in on any plan; more on Plus",
+   "url": "https://help.shopify.com/en/manual/your-account/manage-orgs-and-stores/manage-orgs/group-store"
+  },
+  "reviews": {
+   "text": "Through an app",
+   "url": "https://apps.shopify.com/judgeme"
+  },
+  "backinstock": {
+   "text": "Through an app",
+   "url": "https://apps.shopify.com/back-in-stock"
+  },
+  "preorders": {
+   "text": "Needs an app, says Shopify's help centre",
+   "url": "https://help.shopify.com/en/manual/products/purchase-options/pre-orders"
+  },
+  "tiered": {
+   "text": "Through an app, or Checkout Blocks on Plus",
+   "url": "https://help.shopify.com/en/manual/discounts/discount-types"
+  },
+  "loyalty": {
+   "text": "Through an app",
+   "url": "https://apps.shopify.com/smile-io"
+  },
+  "referral": {
+   "text": "Through an app",
+   "url": "https://apps.shopify.com/refertech"
+  },
+  "wishlists": {
+   "text": "Through an app",
+   "url": "https://apps.shopify.com/wishlist-king"
+  },
+  "email": {
+   "text": "Through Shopify Messaging, Shopify's own app",
+   "url": "https://apps.shopify.com/shopify-email"
+  },
+  "reports": {
+   "text": "A weekly summary email built in; chosen reports through an app",
+   "url": "https://changelog.shopify.com/posts/receive-weekly-order-summary-in-your-inbox"
+  },
+  "ai": {
+   "text": "{{check}} Sidekick, included with every plan; features vary by plan",
+   "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick"
+  },
+  "mobilepay": {
+   "text": "{{check}} Built in, through Shopify Payments",
+   "url": "https://help.shopify.com/en/manual/payments/shopify-payments/local-payment-methods"
+  },
+  "carriers": {
+   "text": "Through an app, such as Posten Bring's; built-in labels and pickup points cover other countries",
+   "url": "https://help.shopify.com/en/manual/fulfillment/setup/delivery-methods/pickup-points"
+  }
+ },
+ "strengths": [
+  {
+   "text": "You need an unusual tool: the App Store has over 16,000 apps",
+   "url": "https://apps.shopify.com"
+  },
+  {
+   "text": "You also sell in physical shops: in-person selling comes with every plan",
+   "url": "https://www.shopify.com/pos/pricing"
+  },
+  {
+   "text": "You want Shop Pay's quick checkout and the Shop app's shoppers",
+   "url": "https://www.shopify.com/shop"
+  },
+  {
+   "text": "You want an AI assistant across the whole admin, by text, voice or screen sharing",
+   "url": "https://www.shopify.com/sidekick"
+  },
+  {
+   "text": "You ship from a country where Shopify sells labels itself, such as Germany or France",
+   "url": "https://help.shopify.com/en/manual/fulfillment/fulfilling-orders/shipping-labels/buying-labels/buying-labels"
+  }
+ ],
+ "title": "Kaizena Flow compared with Shopify",
+ "seo": {
+  "title": "Kaizena Flow vs Shopify: compared for EU shops",
+  "description": "How Kaizena Flow compares with Shopify for EU shops: the EU's rules, more ways to sell, AI, and what needs an app, checked on Shopify's own pages."
+ },
+ "heroRest": "The legal side of EU selling, more ways to sell and an AI that runs the shop come with Flow. Here is how it compares with Shopify, line by line.",
+ "strengthsLead": "Choose Shopify if:",
+ "faq": [
+  {
+   "q": "Can I move my Shopify shop to Flow?",
+   "bold": "Yes, with one button.",
+   "rest": "Connect Shopify, copy your shop and press Move when you are happy. Products, customers, orders, your email list, gift cards and old links come with you."
+  },
+  {
+   "q": "Do I need apps to get what the Flow column shows?",
+   "bold": "No.",
+   "rest": "Everything in the Flow column is part of Flow. Owning several stores starts on the Grow plan."
+  },
+  {
+   "q": "Where is my data kept?",
+   "bold": "In Europe.",
+   "rest": "Your store's database and servers are in Dublin, Ireland."
+  },
+  {
+   "q": "Is it safe to let the AI work on its own?",
+   "bold": "You decide how much it does.",
+   "rest": "Refunds, emails to your whole list, changes to your staff and your domain always wait for your yes, and every change it makes is in the activity log."
+  }
+ ]
+}

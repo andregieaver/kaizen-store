@@ -1,0 +1,153 @@
+{
+ "key": "wix",
+ "name": "Wix",
+ "needs": "an app or a higher plan",
+ "slug": "kaizen-vs-wix",
+ "moving": "other",
+ "cells": {
+  "invoices": {
+   "text": "{{check}} Invoices built in; a credit note is not possible, says Wix's help centre",
+   "url": "https://support.wix.com/en/article/wix-invoices-request-creating-a-negative-balance-invoice-for-refundedreturned-products-or-services"
+  },
+  "omnibus": {
+   "text": "Not possible automatically, says Wix's help centre; an app does it",
+   "url": "https://support.wix.com/en/article/wix-stores-request-displaying-a-products-lowest-price-over-30-days"
+  },
+  "withdrawal": {
+   "text": "The owner builds it from a form, says Wix's help centre; or an app",
+   "url": "https://support.wix.com/en/article/displaying-an-order-cancelation-button-on-your-site"
+  },
+  "gpsr": {
+   "text": "Through an app",
+   "url": "https://www.wix.com/app-market/e15ec2a7-774b-4b5d-8317-5ff9ce8cd838"
+  },
+  "vat": {
+   "text": "Tax by location; OSS and IOSS through an app",
+   "url": "https://support.wix.com/en/article/wix-stores-setting-up-tax-9768352"
+  },
+  "vies": {
+   "text": "Through an app",
+   "url": "https://support.wix.com/en/article/sales-tax-request-validating-vat-id-during-checkout"
+  },
+  "bookings": {
+   "text": "{{check}} Built in: Wix Bookings and Wix Hotels",
+   "url": "https://www.wix.com/booking"
+  },
+  "subscriptions": {
+   "text": "{{check}} Built in, for physical products",
+   "url": "https://support.wix.com/en/article/selling-product-subscriptions-in-wix-stores"
+  },
+  "bundles": {
+   "text": "Through an app, for stock counted from each item",
+   "url": "https://support.wix.com/en/article/wix-stores-request-ability-to-sell-products-bundled-together"
+  },
+  "b2b": {
+   "text": "Through an app",
+   "url": "https://support.wix.com/en/article/wix-stores-selling-wholesale-with-sparklayer"
+  },
+  "stores": {
+   "text": "{{check}} Many sites in one account, a Premium plan for each",
+   "url": "https://support.wix.com/en/article/managing-multiple-sites-under-one-account"
+  },
+  "reviews": {
+   "text": "{{check}} Built in, with moderation",
+   "url": "https://support.wix.com/en/article/wix-stores-adding-and-setting-up-wix-reviews"
+  },
+  "backinstock": {
+   "text": "{{check}} Built in",
+   "url": "https://support.wix.com/en/article/wix-stores-notifying-customers-when-products-are-back-in-stock"
+  },
+  "preorders": {
+   "text": "{{check}} Built in, paid in full upfront",
+   "url": "https://support.wix.com/en/article/wix-stores-setting-up-pre-orders"
+  },
+  "tiered": {
+   "text": "Not possible automatically, says Wix's help centre; an app does it",
+   "url": "https://support.wix.com/en/article/wix-stores-request-quantity-based-price-discounts"
+  },
+  "loyalty": {
+   "text": "{{check}} Built in",
+   "url": "https://support.wix.com/en/article/wix-loyalty-program-an-overview"
+  },
+  "referral": {
+   "text": "{{check}} Built in, on Business plans or higher",
+   "url": "https://support.wix.com/en/article/wix-referral-program-adding-and-setting-up-your-referral-program"
+  },
+  "wishlists": {
+   "text": "{{check}} Built in",
+   "url": "https://support.wix.com/en/article/wix-stores-adding-and-setting-up-a-wishlist"
+  },
+  "email": {
+   "text": "{{check}} Built in; scheduling a campaign needs an upgraded email plan",
+   "url": "https://support.wix.com/en/article/email-marketing-sending-your-email-campaign"
+  },
+  "reports": {
+   "text": "{{check}} Built in",
+   "url": "https://support.wix.com/en/article/scheduling-wix-analytics-report-emails"
+  },
+  "ai": {
+   "text": "{{check}} Aria and other AI agents; some use AI credits",
+   "url": "https://support.wix.com/en/article/ai-tools-about-wixs-ai-agents"
+  },
+  "mobilepay": {
+   "text": "Not offered as a payment provider, says Wix's help centre",
+   "url": "https://support.wix.com/en/article/request-connecting-mobilepay-as-a-payment-provider"
+  },
+  "carriers": {
+   "text": "Through apps, such as one for Posten Bring",
+   "url": "https://www.wix.com/app-market/bring-posten-shipping-rates"
+  }
+ },
+ "strengths": [
+  {
+   "text": "You want Wix's own booking and hotel tools in the same product as your shop",
+   "url": "https://www.wix.com/booking"
+  },
+  {
+   "text": "You sell on many channels from the store, from Amazon and eBay to TikTok and Instagram",
+   "url": "https://support.wix.com/en/article/wix-stores-wix-store-features"
+  },
+  {
+   "text": "You want AI agents beyond the dashboard, such as one that answers your phone",
+   "url": "https://support.wix.com/en/article/ai-tools-about-wixs-ai-agents"
+  },
+  {
+   "text": "You run a shop with a till in the US, Canada or the UK, where Wix POS works",
+   "url": "https://support.wix.com/en/article/wix-pos-register-about-wix-pos-for-your-brick-and-mortar-business"
+  },
+  {
+   "text": "You want a wide set of shop tools from Wix itself, in over 35 languages",
+   "url": "https://support.wix.com/en/article/wix-stores-wix-store-features"
+  }
+ ],
+ "readOn": "4 November 2026",
+ "title": "Kaizena Flow compared with Wix",
+ "seo": {
+  "title": "Kaizena Flow vs Wix: compared for EU shops",
+  "description": "How Kaizena Flow compares with Wix for EU shops: the EU's rules, more ways to sell, AI, and what needs an app, checked on Wix's own pages."
+ },
+ "heroRest": "The legal side of EU selling, more ways to sell and an AI that runs the shop come with Flow. Here is how it compares with Wix, line by line.",
+ "strengthsLead": "Choose Wix if:",
+ "faq": [
+  {
+   "q": "Can I move my Wix shop to Flow?",
+   "bold": "Yes, and we do it for you.",
+   "rest": "As part of getting you started, we move your shop free of charge. You can also copy pages from your live site and check your old links yourself."
+  },
+  {
+   "q": "Do I need apps to get what the Flow column shows?",
+   "bold": "No.",
+   "rest": "Everything in the Flow column is part of Flow. Owning several stores starts on the Grow plan."
+  },
+  {
+   "q": "Where is my data kept?",
+   "bold": "In Europe.",
+   "rest": "Your store's database and servers are in Dublin, Ireland."
+  },
+  {
+   "q": "Is it safe to let the AI work on its own?",
+   "bold": "You decide how much it does.",
+   "rest": "Refunds, emails to your whole list, changes to your staff and your domain always wait for your yes, and every change it makes is in the activity log."
+  }
+ ]
+}

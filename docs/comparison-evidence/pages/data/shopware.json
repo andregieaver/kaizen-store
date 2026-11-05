@@ -1,0 +1,149 @@
+{
+ "key": "shopware",
+ "name": "Shopware",
+ "needs": "an extension or a paid edition",
+ "slug": "kaizen-vs-shopware",
+ "moving": "other",
+ "readOn": "4 and 5 November 2026",
+ "cells": {
+  "invoices": {
+   "text": "{{check}} Built in: invoices, credit notes and cancellation invoices, with e-invoices",
+   "url": "https://docs.shopware.com/en/shopware-6-en/orders/overview"
+  },
+  "omnibus": {
+   "text": "A field you fill in by hand; working it out needs an extension",
+   "url": "https://docs.shopware.com/en/shopware-6-en/catalogues/products"
+  },
+  "withdrawal": {
+   "text": "{{check}} A withdrawal form in the core since 6.7.9.0; the merchant checks exclusions by hand",
+   "url": "https://www.shopware.com/en/news/withdrawal-button-requirement-germany-2026/"
+  },
+  "gpsr": {
+   "text": "Through custom fields, or an extension",
+   "url": "https://www.shopware.com/en/news/implementing-product-safety-regulation/"
+  },
+  "vat": {
+   "text": "Rates per country; VAT by the buyer's country through an extension",
+   "url": "https://docs.shopware.com/en/shopware-6-en/settings/taxes"
+  },
+  "vies": {
+   "text": "The number's format is checked; a VIES check needs an extension",
+   "url": "https://docs.shopware.com/en/shopware-6-en/settings/countries"
+  },
+  "bookings": {
+   "text": "Rentals through an extension",
+   "url": "https://store.shopware.com/en/rhiem46892485882m/rental-items-rental-and-lending-articles.html"
+  },
+  "subscriptions": {
+   "text": "On the Beyond edition",
+   "url": "https://docs.shopware.com/en/shopware-6-en/settings/shop/subscriptions"
+  },
+  "bundles": {
+   "text": "On the Evolve edition",
+   "url": "https://docs.shopware.com/en/shopware-6-en/shopware-services/bundles"
+  },
+  "b2b": {
+   "text": "On the Evolve edition; prices per customer on Beyond",
+   "url": "https://docs.shopware.com/en/shopware-6-en/commercial-features/b2b-components"
+  },
+  "stores": {
+   "text": "{{check}} Built in: unlimited sales channels",
+   "url": "https://docs.shopware.com/en/shopware-6-en/features/shopware-core"
+  },
+  "reviews": {
+   "text": "{{check}} Built in, with approval",
+   "url": "https://docs.shopware.com/en/shopware-6-en/catalogues/reviews"
+  },
+  "backinstock": {
+   "text": "Through an extension",
+   "url": "https://store.shopware.com/en/acris67848641835m/stock-notification-back-in-stock-via-e-mail.html"
+  },
+  "preorders": {
+   "text": "Through an extension",
+   "url": "https://store.shopware.com/en/barn788785395680m/preorder-and-availability-manager-pro.html"
+  },
+  "tiered": {
+   "text": "{{check}} Built in, as advanced pricing",
+   "url": "https://docs.shopware.com/en/shopware-6-en/catalogues/products"
+  },
+  "loyalty": {
+   "text": "Through an extension",
+   "url": "https://store.shopware.com/en/kommo72877837857m12/loyalty-earn-points-redeem-in-1-click-at-checkout.html"
+  },
+  "referral": {
+   "text": "Through an extension",
+   "url": "https://store.shopware.com/en/cogi387225193533m/customers-refer-friends-affiliate.html"
+  },
+  "wishlists": {
+   "text": "{{check}} Built in",
+   "url": "https://docs.shopware.com/en/shopware-6-en/tutorials-and-faq/using-the-wish-list"
+  },
+  "email": {
+   "text": "Event emails built in; newsletters through an extension",
+   "url": "https://docs.shopware.com/en/shopware-6-en/settings/Newsletter-configuration"
+  },
+  "reports": {
+   "text": "Through an extension",
+   "url": "https://store.shopware.com/en/scop498771391904m/daily-report-to-the-shop-owner-email.html"
+  },
+  "ai": {
+   "text": "{{check}} Copilot in every edition; more AI on the paid editions",
+   "url": "https://www.shopware.com/en/products/shopware-intelligence/"
+  },
+  "mobilepay": {
+   "text": "Through an extension, such as Mollie's",
+   "url": "https://store.shopware.com/en/molli20782621168f/mollie-payments-plugin-for-shopware-6.html"
+  }
+ },
+ "strengths": [
+  {
+   "text": "You want open source under the MIT licence, hosted and changed by your own team",
+   "url": "https://www.shopware.com/en/pricing/"
+  },
+  {
+   "text": "You sell in Germany and want e-invoices and the withdrawal form in the free core",
+   "url": "https://docs.shopware.com/en/shopware-6-en/orders/overview"
+  },
+  {
+   "text": "You need large B2B wholesale: roles, quotes, budgets and approvals on its paid editions",
+   "url": "https://docs.shopware.com/en/shopware-6-en/commercial-features/b2b-components"
+  },
+  {
+   "text": "You run many storefronts from one installation, each with its own languages and domains",
+   "url": "https://docs.shopware.com/en/shopware-6-en/settings/saleschannel"
+  },
+  {
+   "text": "You want to choose between hosting it yourself, PaaS and SaaS",
+   "url": "https://www.shopware.com/en/products/hosting/"
+  }
+ ],
+ "title": "Kaizena Flow compared with Shopware",
+ "seo": {
+  "title": "Kaizena Flow vs Shopware: compared for EU shops",
+  "description": "How Kaizena Flow compares with Shopware for EU shops: the EU's rules, more ways to sell, AI, and what needs an extension, checked on Shopware's own pages."
+ },
+ "heroRest": "The legal side of EU selling, more ways to sell and an AI that runs the shop come with Flow. Here is how it compares with Shopware, line by line.",
+ "strengthsLead": "Choose Shopware if:",
+ "faq": [
+  {
+   "q": "Can I move my Shopware shop to Flow?",
+   "bold": "Yes, and we do it for you.",
+   "rest": "As part of getting you started, we move your shop free of charge. You can also copy pages from your live site and check your old links yourself."
+  },
+  {
+   "q": "Do I need extensions to get what the Flow column shows?",
+   "bold": "No.",
+   "rest": "Everything in the Flow column is part of Flow. Owning several stores starts on the Grow plan."
+  },
+  {
+   "q": "Where is my data kept?",
+   "bold": "In Europe.",
+   "rest": "Your store's database and servers are in Dublin, Ireland."
+  },
+  {
+   "q": "Is it safe to let the AI work on its own?",
+   "bold": "You decide how much it does.",
+   "rest": "Refunds, emails to your whole list, changes to your staff and your domain always wait for your yes, and every change it makes is in the activity log."
+  }
+ ]
+}

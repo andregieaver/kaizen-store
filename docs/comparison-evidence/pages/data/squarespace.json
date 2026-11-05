@@ -1,0 +1,126 @@
+{
+ "key": "squarespace",
+ "name": "Squarespace",
+ "needs": "an extension, an add-on or a higher plan",
+ "slug": "kaizen-vs-squarespace",
+ "moving": "other",
+ "sourcesNote": "one extension listing on 5 November",
+ "cells": {
+  "invoices": {
+   "text": "Order receipts can show your VAT number and the tax",
+   "url": "https://support.squarespace.com/hc/en-us/articles/215074868"
+  },
+  "withdrawal": {
+   "text": "The owner sets up a form and answers each request, says Squarespace's guide",
+   "url": "https://support.squarespace.com/hc/en-us/articles/46757991027213"
+  },
+  "vat": {
+   "text": "{{check}} Automated EU VAT with OSS, from the Core plan",
+   "url": "https://support.squarespace.com/hc/en-us/articles/360053592211"
+  },
+  "vies": {
+   "text": "Not possible to exempt certain customers from VAT, says Squarespace's guide",
+   "url": "https://support.squarespace.com/hc/en-us/articles/215074868"
+  },
+  "bookings": {
+   "text": "Appointments through Acuity Scheduling, a separate subscription",
+   "url": "https://support.squarespace.com/hc/en-us/articles/45175469686541"
+  },
+  "subscriptions": {
+   "text": "{{check}} Built in, with Squarespace Payments or Stripe",
+   "url": "https://support.squarespace.com/hc/en-us/articles/360002012247"
+  },
+  "bundles": {
+   "text": "Through an extension",
+   "url": "https://www.squarespace.com/extensions/details/trunk"
+  },
+  "b2b": {
+   "text": "Invoices with due dates built in; wholesale through an extension",
+   "url": "https://support.squarespace.com/hc/en-us/articles/30494284979085"
+  },
+  "stores": {
+   "text": "Many sites in one login, each paid for separately",
+   "url": "https://support.squarespace.com/hc/en-us/articles/205810458"
+  },
+  "reviews": {
+   "text": "{{check}} Built in, on every plan",
+   "url": "https://support.squarespace.com/hc/en-us/articles/4413194180365"
+  },
+  "backinstock": {
+   "text": "{{check}} Waitlists, from the Core plan",
+   "url": "https://support.squarespace.com/hc/en-us/articles/360035947211"
+  },
+  "preorders": {
+   "text": "No dedicated feature, says Squarespace's help centre; a workaround is given",
+   "url": "https://support.squarespace.com/hc/en-us/articles/360002116567"
+  },
+  "referral": {
+   "text": "Through an extension",
+   "url": "https://www.squarespace.com/extensions/details/referralcandy"
+  },
+  "email": {
+   "text": "Email Campaigns, an add-on subscription; abandoned-cart emails on every plan",
+   "url": "https://support.squarespace.com/hc/en-us/articles/360002077567"
+  },
+  "ai": {
+   "text": "{{check}} Clarkson AI chat, rolling out in waves",
+   "url": "https://support.squarespace.com/hc/en-us/articles/16282290976013"
+  },
+  "carriers": {
+   "text": "Live rates from DHL, FedEx or UPS on Advanced; service points through an extension",
+   "url": "https://support.squarespace.com/hc/en-us/articles/213022907"
+  }
+ },
+ "strengths": [
+  {
+   "text": "Design comes first for you: templates and drag-and-drop editing on every plan",
+   "url": "https://support.squarespace.com/hc/en-us/articles/29215717722637"
+  },
+  {
+   "text": "You want automated EU VAT with OSS worked out for you, from the Core plan",
+   "url": "https://support.squarespace.com/hc/en-us/articles/360053592211"
+  },
+  {
+   "text": "You book appointments with Acuity Scheduling: reminders, intake forms and deposits",
+   "url": "https://support.squarespace.com/hc/en-us/articles/45175469686541"
+  },
+  {
+   "text": "You want reviews and subscriptions on every plan, Basic included",
+   "url": "https://support.squarespace.com/hc/en-us/articles/4413194180365"
+  },
+  {
+   "text": "You want an AI chat that edits pages, products and campaigns across the editor",
+   "url": "https://support.squarespace.com/hc/en-us/articles/16282290976013"
+  }
+ ],
+ "readOn": "4 November 2026",
+ "title": "Kaizena Flow compared with Squarespace",
+ "seo": {
+  "title": "Kaizena Flow vs Squarespace: compared for EU shops",
+  "description": "How Kaizena Flow compares with Squarespace for EU shops: the EU's rules, more ways to sell, AI, and what needs an add-on, checked on Squarespace's own pages."
+ },
+ "heroRest": "The legal side of EU selling, more ways to sell and an AI that runs the shop come with Flow. Here is how it compares with Squarespace, line by line.",
+ "strengthsLead": "Choose Squarespace if:",
+ "faq": [
+  {
+   "q": "Can I move my Squarespace shop to Flow?",
+   "bold": "Yes, and we do it for you.",
+   "rest": "As part of getting you started, we move your shop free of charge. You can also copy pages from your live site and check your old links yourself."
+  },
+  {
+   "q": "Do I need extensions to get what the Flow column shows?",
+   "bold": "No.",
+   "rest": "Everything in the Flow column is part of Flow. Owning several stores starts on the Grow plan."
+  },
+  {
+   "q": "Where is my data kept?",
+   "bold": "In Europe.",
+   "rest": "Your store's database and servers are in Dublin, Ireland."
+  },
+  {
+   "q": "Is it safe to let the AI work on its own?",
+   "bold": "You decide how much it does.",
+   "rest": "Refunds, emails to your whole list, changes to your staff and your domain always wait for your yes, and every change it makes is in the activity log."
+  }
+ ]
+}

@@ -252,6 +252,23 @@ Every page is checked at phone width in the builder. The owner's habits:
   wide one, `["xl", "lg"]` for the phone's).
 - Icon lists side by side become one under another; a dual button stacks (`at.sm.stack: true`) with margins 10 / 20 / 30.
 
+### 6.10 A comparison table (the comparison pages, 5 November 2026)
+
+A table block (D194) in a **white card** on a sand row, so its words read the same in both colour modes: the row is turn B, its second line
+one column with `background: { "type": "color", "color": "#ffffff" }`, `radius: 20`, padding 24 (12 / 8 on a phone) and the text colour
+`#171717`. The table:
+
+```json
+{ "type": "table", "header": true, "rowHeaders": true, "fixedHeader": "never",
+  "headerColor": "#ffffff", "headerBackground": "#242a60",
+  "sectionColor": "#171717", "sectionBackground": "#f3f1ec", "iconColor": "#3a4293",
+  "caption": "Kaizena Flow and {platform}, read on {date}", "sections": ["(null, or a section's title above that row)"] }
+```
+
+Section rows set their own colours: left to the theme they would be the dark surface in dark mode under dark text. Cells start with
+`{{check}}` where the thing is built in; on a phone each row stacks with its column names. Every page with a table says where each line
+comes from (an accordion, `look: "boxed"`, at the foot).
+
 ## 7. A page's own settings
 
 - **Title** as the menu would say it (*Move your store*, *Get started fast*). **Address** from the title (`pageSlugFromTitle()`); a page
@@ -289,6 +306,8 @@ Every page is checked at phone width in the builder. The owner's habits:
 |---|---|---|---|
 | Move from Shopify | `/move-your-store/move-from-shopify` | 4 November 2026, for Homer: three steps, what comes with you, no stress, the free move, six questions, the main action. Claims from `docs/moving-from-shopify.md` 17 | draft, for the owner to publish |
 | Move from WooCommerce | `/move-your-store/move-from-woocommerce` | 4 November 2026, the Shopify page's twin, plus *Keep WordPress, or move everything* (two cards) and what comes *straight from WooCommerce* beside what *our free WordPress plugin* adds. Claims from `docs/moving-from-woocommerce.md` 17 | draft, for the owner to publish |
+
+| The six comparison pages | `/kaizen-vs-{platform}` | 4 and 5 November 2026, made again by one generator (`docs/comparison-pages.md`): the hero, six reasons, the table (6.10), where the other is the better fit, moving over, questions, the main action, how we compared. `/compare` left as the owner made it | drafts over the live pages, for the owner to publish |
 
 A page for another platform (`move-from-{platform}`) is the same eight-part shape: the hero, the three steps, what is particular to that
 platform (as WordPress's choice), what comes with you, no stress, the free move, its questions, the main action ending on *Compare us to
