@@ -1,6 +1,6 @@
 {
-  "id": "3b085468-96d6-4375-9e20-abf0fac16a85",
-  "prevId": "0055a101-2f2d-4f0f-b824-4490033ab46c",
+  "id": "bed8fafd-a21f-4cfa-b96a-4cf0cd55d787",
+  "prevId": "8b04dc31-36e5-4a9d-84f9-6a395cac87d1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -45324,6 +45324,26 @@
           "notNull": true,
           "default": false
         },
+        "sandbox_on": {
+          "name": "sandbox_on",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "sandbox_daily_cap": {
+          "name": "sandbox_daily_cap",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 300
+        },
+        "sandbox_source": {
+          "name": "sandbox_source",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "content_screening": {
           "name": "content_screening",
           "type": "boolean",
@@ -45496,9 +45516,38 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "platform_settings_sandbox_source_idx": {
+          "name": "platform_settings_sandbox_source_idx",
+          "columns": [
+            {
+              "expression": "sandbox_source",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
+        "platform_settings_sandbox_source_store_starters_id_fk": {
+          "name": "platform_settings_sandbox_source_store_starters_id_fk",
+          "tableFrom": "platform_settings",
+          "tableTo": "store_starters",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "sandbox_source"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
         "platform_settings_updated_by_accounts_id_fk": {
           "name": "platform_settings_updated_by_accounts_id_fk",
           "tableFrom": "platform_settings",
@@ -45533,6 +45582,10 @@
         "platform_settings_custom_css": {
           "name": "platform_settings_custom_css",
           "value": "length(\"commerce\".\"platform_settings\".\"custom_css\") <= 50000"
+        },
+        "platform_settings_sandbox_daily_cap": {
+          "name": "platform_settings_sandbox_daily_cap",
+          "value": "\"commerce\".\"platform_settings\".\"sandbox_daily_cap\" between 0 and 10000"
         },
         "platform_settings_locales": {
           "name": "platform_settings_locales",
@@ -56312,6 +56365,190 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.sandboxes": {
+      "name": "sandboxes",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_store_id": {
+          "name": "source_store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pass_hash": {
+          "name": "pass_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_change_at": {
+          "name": "first_change_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_publish_at": {
+          "name": "first_publish_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ended_at": {
+          "name": "ended_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "sandboxes_open_idx": {
+          "name": "sandboxes_open_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"commerce\".\"sandboxes\".\"state\" = 'open'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sandboxes_created_idx": {
+          "name": "sandboxes_created_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sandboxes_source_idx": {
+          "name": "sandboxes_source_idx",
+          "columns": [
+            {
+              "expression": "source_store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "sandboxes_store_id_stores_id_fk": {
+          "name": "sandboxes_store_id_stores_id_fk",
+          "tableFrom": "sandboxes",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "sandboxes_source_store_id_stores_id_fk": {
+          "name": "sandboxes_source_store_id_stores_id_fk",
+          "tableFrom": "sandboxes",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "source_store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sandboxes_store_id_unique": {
+          "name": "sandboxes_store_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "sandboxes_state": {
+          "name": "sandboxes_state",
+          "value": "\"commerce\".\"sandboxes\".\"state\" in ('open', 'expired', 'kept', 'purged')"
+        },
+        "sandboxes_pass_hash": {
+          "name": "sandboxes_pass_hash",
+          "value": "\"commerce\".\"sandboxes\".\"pass_hash\" ~ '^[0-9a-f]{64}$'"
+        },
+        "sandboxes_time": {
+          "name": "sandboxes_time",
+          "value": "\"commerce\".\"sandboxes\".\"expires_at\" <= \"commerce\".\"sandboxes\".\"created_at\" + interval '30 days'"
+        },
+        "sandboxes_ended": {
+          "name": "sandboxes_ended",
+          "value": "(\"commerce\".\"sandboxes\".\"state\" = 'open') = (\"commerce\".\"sandboxes\".\"ended_at\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.saved_parts": {
       "name": "saved_parts",
       "schema": "commerce",
@@ -66693,6 +66930,13 @@
           "notNull": true,
           "default": false
         },
+        "sandbox": {
+          "name": "sandbox",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "made_from_starter": {
           "name": "made_from_starter",
           "type": "uuid",
@@ -67287,7 +67531,7 @@
         },
         "stores_slug_not_reserved": {
           "name": "stores_slug_not_reserved",
-          "value": "\"commerce\".\"stores\".\"slug\" not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'hosting', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'themes', 'www')"
+          "value": "\"commerce\".\"stores\".\"slug\" not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'hosting', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'themes', 'try', 'www')"
         },
         "stores_starter_not_template": {
           "name": "stores_starter_not_template",
@@ -67296,6 +67540,14 @@
         "stores_starter_copy_is_starter": {
           "name": "stores_starter_copy_is_starter",
           "value": "\"commerce\".\"stores\".\"starter_copy_of\" is null or \"commerce\".\"stores\".\"starter\""
+        },
+        "stores_sandbox_address": {
+          "name": "stores_sandbox_address",
+          "value": "not \"commerce\".\"stores\".\"sandbox\" or \"commerce\".\"stores\".\"slug\" like 'try-%'"
+        },
+        "stores_sandbox_not_template": {
+          "name": "stores_sandbox_not_template",
+          "value": "not (\"commerce\".\"stores\".\"sandbox\" and (\"commerce\".\"stores\".\"is_template\" or \"commerce\".\"stores\".\"starter\"))"
         }
       },
       "isRLSEnabled": false

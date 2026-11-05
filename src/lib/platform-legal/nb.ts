@@ -176,7 +176,7 @@ ${f.contactEmail}`,
         {
           topic: "scope",
           heading: "2. Hva erklæringen gjelder",
-          body: `Erklæringen gjelder personopplysningene vi behandler om dem som besøker Kaizena Flows eget nettsted, ber om tilgang, driver eller arbeider i butikker på Kaizena Flow, og kontakter oss.
+          body: `Erklæringen gjelder personopplysningene vi behandler om dem som besøker Kaizena Flows eget nettsted, prøver sidebyggeren i sandkassen, ber om tilgang, driver eller arbeider i butikker på Kaizena Flow, og kontakter oss.
 
 Den gjelder ikke det butikkene gjør med opplysninger om sine egne kunder. Hver butikk er behandlingsansvarlig for sine kunder og besøkende og har sin egen personvernerklæring; vi behandler de opplysningene på butikkens vegne etter [databehandleravtalen](${f.links.dpa}) vår.`,
         },
@@ -189,6 +189,7 @@ Den gjelder ikke det butikkene gjør med opplysninger om sine egne kunder. Hver 
 - **Fakturering:** opplysninger om virksomheten din, abonnementet, fakturaer og betalinger, for å ta betalt for tjenesten og føre regnskap. Grunnlag: avtalen vår (artikkel 6 nr. 1 bokstav b) og vår plikt til å føre regnskap (artikkel 6 nr. 1 bokstav c og bokføringsloven).
 - **Kundestøtte og KI-assistenten:** det du skriver til Kaizena Flows kundestøtte og til KI-assistenten, og det KI-assistenten husker for deg (som du kan se, endre og slå av), for å hjelpe deg. Grunnlag: avtalen vår (artikkel 6 nr. 1 bokstav b).
 - **E-post vi sender:** e-postene vi sender deg og om de kom fram, for å sende det tjenesten må fortelle deg. Grunnlag: avtalen vår og berettiget interesse (artikkel 6 nr. 1 bokstav b og f).
+- **Sandkassen for sidebyggeren:** når du trykker *Begynn å bygge* uten konto, lager vi en privat butikk til deg og tar vare på det du legger inn i den (sider, tekster, bildene du setter inn og stilene dine), når du sist besøkte den og når du første gang endret og publiserte noe, og en informasjonskapsel med nøkkelen som åpner den, som vi bare lagrer en beskyttet hash av. For å hindre misbruk teller vi hvor mange sandkasser som startes fra et nettverk under en kode som skifter hver dag, aldri selve adressen til nettverket. Bare du kan se sandkassen din, og ingenting i den sendes til noen; ikke legg inn personopplysninger om andre i den. Grunnlag: berettiget interesse i å la deg prøve tjenesten før du registrerer deg (artikkel 6 nr. 1 bokstav f); informasjonskapselen er strengt nødvendig for sandkassen du ba om.
 - **Nettstedet vårt:** informasjonskapslene som trengs for at nettstedet skal virke. Informasjonskapsler for statistikk eller markedsføring, og informasjonskapselen til vervekampanjen, settes bare hvis du samtykker, og valget ditt lagres i 12 måneder. Grunnlag: samtykke (artikkel 6 nr. 1 bokstav a). Se [siden om informasjonskapsler](${f.links.cookies}).
 - **Vervekampanjen:** hvem som vervet en butikk og kreditten som er opptjent, for å betale den som vervet. Grunnlag: avtalen vår med den som vervet (artikkel 6 nr. 1 bokstav b).
 - **Meldinger om ulovlig innhold:** når du melder fra om innhold gjennom *Meld fra om ulovlig innhold*, navnet ditt, e-postadressen, adressen du melder fra om og det du skriver, for å behandle meldingen, sende deg en kvittering og fortelle deg avgjørelsen. En KI-modell leser hver melding først for å sortere den og skrive et utkast til sammendrag, og en person avgjør den (se punkt 10). Grunnlag: den rettslige plikten vi har som vertstjeneste til å ta imot og avgjøre meldinger (artikkel 6 nr. 1 bokstav c og forordningen om digitale tjenester, forordning (EU) 2022/2065, artikkel 16 og 17).`,
@@ -220,6 +221,7 @@ Vi deler også opplysninger der loven krever det, for eksempel med skattemyndigh
 - Regnskapsopplysninger, som fakturaer: fem år etter utgangen av regnskapsåret (bokføringsloven § 13).
 - Samtaler med kundestøtten: så lenge det er satt for kundestøtten, og deretter anonymisert.
 - Valgene dine om informasjonskapsler: 12 måneder.
+- Sandkassen for sidebyggeren: 7 dager etter siste besøk, og senest 30 dager etter at den ble startet, eller med en gang du trykker *Begynn på nytt*, stenges sandkassen og nøkkelen slutter å virke; det du har lagt inn i den, slettes deretter. Informasjonskapselen varer høyst 30 dager, og tellingene av sandkasser startet fra et nettverk i to dager.
 - Meldinger om ulovlig innhold: navnet og e-postadressen til den som meldte fra, slettes 12 måneder etter at meldingen er avgjort; meldingen, KI-ens lesing og avgjørelsen vår lagres uten dem, som dokumentasjon på hvordan den ble behandlet.`,
         },
         {

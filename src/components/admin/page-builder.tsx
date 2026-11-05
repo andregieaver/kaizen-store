@@ -1640,7 +1640,7 @@ export function PageBuilder({
             />
             <TemplatePreviewDialog
               item={previewed}
-              href={previewed ? templatePreviewPath(templates.previewStore, previewed.id) : null}
+              href={previewed ? (templates.previewBase ? `${templates.previewBase}/${previewed.id}/preview` : templatePreviewPath(templates.previewStore, previewed.id)) : null}
               returnFocus={previewOpener}
               reason={previewed ? blockedReason(previewed, { pageType, rowsFull, blocksFull }) : null}
               switching={previewed ? controller.busy.has(previewed.id) : false}

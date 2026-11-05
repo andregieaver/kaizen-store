@@ -517,6 +517,15 @@ export const platformEn = {
       unconfirmed: "Waiting for their email to be confirmed: {n}",
       saved: "Saved.",
     },
+    sandbox: {
+      title: "Page builder sandbox",
+      on: "On: anyone can press Start building at {address} and edit a private store of their own in the page builder, without signing up, for 7 days after their last visit.",
+      off: "Off: {address} says the sandbox is closed. Turn it on to try it yourself first.",
+      turnOn: "Turn on the sandbox",
+      turnOff: "Turn off the sandbox",
+      counts: "Made today: {today} of {cap} · Open now: {open}",
+      saved: "Saved.",
+    },
     description:
       "Approving creates the store from the theme chosen (its look and its demo store, or the Standard store), makes the requester its owner, and emails them a sign-in link.",
     waiting: "Waiting ({n})",

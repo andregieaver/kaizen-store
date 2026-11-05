@@ -566,6 +566,22 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // The page builder's sandbox (D457): set when a visitor presses Start building, only on `/admin/try`; closed to scripts. Only a hash of
+    // the key it holds is kept on the server.
+    name: "kaizen_sandbox",
+    pattern: /^kaizen_sandbox$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: 30,
+    on: "platform",
+    purpose: {
+      en: "Holds the key to the store you are trying the page builder in, so that only you can open it, without an account.",
+      nb: "Inneholder nøkkelen til butikken du prøver sidebyggeren i, slik at bare du kan åpne den, uten konto.",
+      sv: "Innehåller nyckeln till butiken där du provar sidbyggaren, så att bara du kan öppna den, utan konto.",
+      da: "Indeholder nøglen til butikken, hvor du prøver sidebyggeren, så kun du kan åbne den, uden konto.",
+    },
+  },
+  {
     // Only for signed-in staff who press "Edit text" on a store's own domain, where the admin's sign-in cannot be seen (D193); closed to scripts.
     name: "kaizen_edit",
     pattern: /^kaizen_edit$/,

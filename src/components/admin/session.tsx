@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { cookiesReadable } from "@/lib/browser-access";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -12,6 +13,8 @@ import { createClient } from "@/lib/supabase/client";
  */
 export function SessionKeeper() {
   useEffect(() => {
+    // A template's sandboxed preview frame (D127) cannot read cookies: no session to keep there, and the client's timer would only fail.
+    if (!cookiesReadable(document)) return;
     try {
       const { data } = createClient().auth.onAuthStateChange(() => {});
       return () => data.subscription.unsubscribe();

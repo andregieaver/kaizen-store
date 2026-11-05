@@ -58,6 +58,7 @@ describe("cookie consent (D58)", () => {
       "kaizen_slack_connect",
       "kaizen_google",
       "kaizen_mollie_connect",
+      "kaizen_sandbox",
     ]);
     // The pass staff are given to change words on a store's own domain (D193) is known and necessary, and not declared to visitors, who are never given it.
     expect(knownCookie("kaizen_edit")).toMatchObject({ category: "necessary", staff: true });

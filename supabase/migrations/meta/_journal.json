@@ -4660,8 +4660,29 @@
     {
       "idx": 665,
       "version": "7",
-      "when": 1793884602129,
-      "tag": "20261105131642_more_carriers",
+      "when": 1793875623665,
+      "tag": "20261105104703_sandbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 666,
+      "version": "7",
+      "when": 1793875681926,
+      "tag": "20261105104801_sandbox_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 667,
+      "version": "7",
+      "when": 1793876068792,
+      "tag": "20261105105428_try_reserved",
+      "breakpoints": true
+    },
+    {
+      "idx": 668,
+      "version": "7",
+      "when": 1793886147960,
+      "tag": "20261105134227_more_carriers",
       "breakpoints": true
     }
   ]

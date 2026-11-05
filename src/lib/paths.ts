@@ -247,5 +247,7 @@ export const RESERVED_STORE_SLUGS: readonly string[] = [
   "support",
   // The theme store's own host, `themes.{domain}` (docs/theme-phase-3.md step 3).
   "themes",
+  // The page builder's sandbox (D457): `/admin/try` is its own route, and its stores' addresses start `try-`.
+  "try",
   "www",
 ];

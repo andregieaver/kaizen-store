@@ -93,6 +93,11 @@ export type TemplateActions = {
    * Null in Kaizen's own builder (D236), whose templates are Kaizen's own only: one source, always on, nothing to share.
    */
   previewStore: string | null;
+  /**
+   * Where previews are drawn instead, when the builder is not in a signed-in admin: the page builder's sandbox (D457) gives
+   * `/admin/try/templates/{sandbox}`, and a template's preview is `{previewBase}/{id}/preview`. Absent everywhere else.
+   */
+  previewBase?: string | null;
   /** Changes how one of this store's own saved parts is shared. */
   setSharing: (id: string, sharing: PartSharing) => Promise<TemplateResult>;
 };

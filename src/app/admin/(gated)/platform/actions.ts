@@ -29,6 +29,7 @@ import { registerVideo, uploadToLibrary } from "@/server/media-library";
 import { contentForLook, designTags } from "@/server/design-presets";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
 import { setSelfServe } from "@/server/self-signup";
+import { setSandboxOn } from "@/server/sandbox";
 import { PLATFORM_SEO_TAG, savePlatformSeo } from "@/server/seo";
 import {
   createPlatformDiscount,
@@ -49,6 +50,14 @@ export async function selfServeAction(_state: FormState, form: FormData): Promis
   await setSelfServe(admin, form.get("on") === "on");
   refresh();
   return { status: "ok", messages: [adminText(await actionAdminLang(), "platform").requests.selfServe.saved] };
+}
+
+/** Turns the page builder's sandbox on or off (D457). */
+export async function sandboxAction(_state: FormState, form: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  await setSandboxOn(admin, form.get("on") === "on");
+  refresh();
+  return { status: "ok", messages: [adminText(await actionAdminLang(), "platform").requests.sandbox.saved] };
 }
 
 /** The refusals and confirmations here, in the account's language (D312 A11). */

@@ -361,7 +361,7 @@ export async function listGridStores(): Promise<GridStore[]> {
     -- The countries it offers (D178: its own alone with Several countries off).
     left join commerce.markets m on m.store_id = s.id and m.active
       and (commerce.feature_on(s.id, 'countries') or m.code = commerce.home_market(s.id))
-    where s.status = 'active' and not s.starter
+    where s.status = 'active' and not s.starter and not s.sandbox
     group by s.id, s.name, s.is_template
     order by s.is_template desc, lower(s.name)
   `);

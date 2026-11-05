@@ -521,6 +521,15 @@ export const platformNb: PlatformMessages = {
       unconfirmed: "Venter på at e-postadressen bekreftes: {n}",
       saved: "Lagret.",
     },
+    sandbox: {
+      title: "Sandkasse for sidebyggeren",
+      on: "På: hvem som helst kan trykke Begynn å bygge på {address} og redigere en privat butikk i sidebyggeren uten å registrere seg, i 7 dager etter siste besøk.",
+      off: "Av: {address} sier at sandkassen er stengt. Slå den på for å prøve den selv først.",
+      turnOn: "Slå på sandkassen",
+      turnOff: "Slå av sandkassen",
+      counts: "Laget i dag: {today} av {cap} · Åpne nå: {open}",
+      saved: "Lagret.",
+    },
     description:
       "Å godkjenne oppretter butikken fra det valgte temaet (utseendet og demobutikken, eller standardbutikken), gjør den som spurte til eier og sender en innloggingslenke på e-post.",
     waiting: "Venter ({n})",

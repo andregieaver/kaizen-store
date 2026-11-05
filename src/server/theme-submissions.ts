@@ -275,7 +275,7 @@ export async function authoredThemes(accountId: string): Promise<AuthoredTheme[]
 /** How many real stores (never a template, a demo store or a workspace) have theme `p` installed. */
 export const STORES_USING = sql`(
   select count(distinct i.store_id)::int from commerce.store_theme_installs i join commerce.stores s on s.id = i.store_id
-   where i.preset_id = p.id and s.status = 'active' and not (s.is_template or s.starter)
+   where i.preset_id = p.id and s.status = 'active' and not (s.is_template or s.starter or s.sandbox)
 )`;
 
 // ---------------------------------------------------------------------------

@@ -18,8 +18,10 @@ import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 
 type W = PlatformMessages["requests"];
 
-import { decideAction, selfServeAction } from "../actions";
+import { decideAction, sandboxAction, selfServeAction } from "../actions";
 import { selfServeOn, unconfirmedCount } from "@/server/self-signup";
+import { sandboxCounts, sandboxSettings } from "@/server/sandbox";
+import { SANDBOX_PATH } from "@/lib/sandbox";
 
 export const metadata: Metadata = { title: "Access requests" };
 
@@ -32,7 +34,14 @@ export default async function PlatformPage() {
   const account = await requirePlatformAdmin();
   const w = adminText(adminLangOf(account.adminLocale), "platform").requests;
   // The themes offered, each look with the demo store it starts a store with (D273); the first card is Standard.
-  const [requests, { cards }, selfServe, unconfirmed] = await Promise.all([listAccessRequests(), designChoices(), selfServeOn(), unconfirmedCount()]);
+  const [requests, { cards }, selfServe, unconfirmed, sandbox, sandboxes] = await Promise.all([
+    listAccessRequests(),
+    designChoices(),
+    selfServeOn(),
+    unconfirmedCount(),
+    sandboxSettings(),
+    sandboxCounts(),
+  ]);
   const designs = cards.filter((card) => card.id);
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");
@@ -51,6 +60,16 @@ export default async function PlatformPage() {
             <SubmitButton variant="secondary">{selfServe ? w.selfServe.turnOff : w.selfServe.turnOn}</SubmitButton>
           </ActionForm>
           {unconfirmed > 0 && <span className="text-sm text-muted">{fillWords(w.selfServe.unconfirmed, { n: unconfirmed })}</span>}
+        </div>
+      </Card>
+
+      <Card title={w.sandbox.title} description={fillWords(sandbox.on ? w.sandbox.on : w.sandbox.off, { address: SANDBOX_PATH })}>
+        <div className="flex flex-wrap items-center gap-3">
+          <ActionForm action={sandboxAction}>
+            {!sandbox.on && <input type="hidden" name="on" value="on" />}
+            <SubmitButton variant="secondary">{sandbox.on ? w.sandbox.turnOff : w.sandbox.turnOn}</SubmitButton>
+          </ActionForm>
+          <span className="text-sm text-muted">{fillWords(w.sandbox.counts, { today: sandboxes.today, cap: sandbox.dailyCap, open: sandboxes.open })}</span>
         </div>
       </Card>
 

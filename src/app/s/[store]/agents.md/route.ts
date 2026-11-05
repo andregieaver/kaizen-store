@@ -6,7 +6,7 @@ import { getOpenStore } from "@/server/stores";
 /** The store's `agents.md` (D353): what an AI agent may do here, and where; says so when the store does not serve shopping agents. */
 export async function GET(_request: Request, { params }: RouteContext<"/s/[store]/agents.md">) {
   const store = await getOpenStore((await params).store);
-  if (!store || store.isTemplate || store.starter || store.privateMode) return new Response("Not found", { status: 404 });
+  if (!store || store.isTemplate || store.starter || store.sandbox || store.privateMode) return new Response("Not found", { status: 404 });
   const serves = agentProblem(store) === null;
   const body = agentsMarkdown({
     name: store.name,

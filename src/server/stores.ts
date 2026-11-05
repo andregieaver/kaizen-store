@@ -41,6 +41,8 @@ export type Store = {
   isTemplate: boolean;
   /** A store template (D175, docs/store-templates.md): a preview that takes no orders and is never indexed. */
   starter: boolean;
+  /** The page builder's sandbox (D457, docs/builder-sandbox.md): a visitor's private try of the builder, never a real business. */
+  sandbox: boolean;
   setupCompletedAt: string | null;
   /** Stripe is switched on with keys for its mode, so shoppers can pay. */
   paymentsOn: boolean;
@@ -218,7 +220,7 @@ export async function currentStore(slug: string): Promise<Store | null> {
 async function readStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
-      s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.setup_completed_at,
+      s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.sandbox, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
       s.terms_at_checkout, s.customer_accounts, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
       s.price_decimals, s.price_words, s.quantity_picker,
@@ -275,12 +277,13 @@ async function readStore(slug: string): Promise<Store | null> {
     closedAt: row.closed_at ? new Date(String(row.closed_at)).toISOString() : null,
     isTemplate: Boolean(row.is_template),
     starter: Boolean(row.starter),
+    sandbox: Boolean(row.sandbox),
     setupCompletedAt: row.setup_completed_at
       ? new Date(String(row.setup_completed_at)).toISOString()
       : null,
     // Test payments also need Kaizen's own test keys to be set.
     // A store template (D175) takes no payment whatever its switches say.
-    paymentsOn: !row.starter && Boolean(row.payments_on) && (!row.payments_test || platformModes().includes("test")),
+    paymentsOn: !row.starter && !row.sandbox && Boolean(row.payments_on) && (!row.payments_test || platformModes().includes("test")),
     paymentsTest: Boolean(row.payments_test),
     details: {
       legalName: text(row.legal_name),
@@ -299,7 +302,7 @@ async function readStore(slug: string): Promise<Store | null> {
     returnPolicy: returnPolicyOf(row.return_policy),
     visitCounting: Boolean(row.visit_counting),
     privateMode: Boolean(row.private_mode) && !row.is_template && !row.starter,
-    shoppingAgents: Boolean(row.shopping_agents) && !row.is_template && !row.starter,
+    shoppingAgents: Boolean(row.shopping_agents) && !row.is_template && !row.starter && !row.sandbox,
     privatePassword: Boolean(row.private_password),
     ...featured(row.features),
     workOn: ((row.modules ?? []) as string[]).includes("work"),

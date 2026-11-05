@@ -132,7 +132,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
   const [row] = await readDb().execute<Row>(sql`
     select p.id, p.slug, p.title, p.summary, p.description, p.picture_url, p.listing, p.snapshot, p.published_at, p.author_name,
            (select count(distinct i.store_id)::int from commerce.store_theme_installs i join commerce.stores s on s.id = i.store_id
-             where i.preset_id = p.id and s.status = 'active' and not (s.is_template or s.starter)) as stores
+             where i.preset_id = p.id and s.status = 'active' and not (s.is_template or s.starter or s.sandbox)) as stores
       from commerce.design_presets p
     where p.slug = ${slug} and p.published and p.archived_at is null
   `);

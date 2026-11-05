@@ -40,7 +40,7 @@ import { quoteCart } from "./wordpress-shop";
 
 /** Why a store does not serve shopping agents, or null when it does. */
 export function agentProblem(store: Store): "closed" | "off" | "private" | "no_shop" | "no_assistants" | null {
-  if (store.status !== "active" || store.isTemplate || store.starter) return "closed";
+  if (store.status !== "active" || store.isTemplate || store.starter || store.sandbox) return "closed";
   if (!store.shoppingAgents) return "off";
   if (store.privateMode) return "private";
   if (!featureOn(store, "shop")) return "no_shop";

@@ -213,7 +213,7 @@ export async function screenListings(limit = SCREEN_BATCH, only: { storeId?: str
       select p.id as product_id, p.store_id, s.slug as store_slug, p.handle, w.title, w.description, w.safety,
         md5(w.title || E'\\n' || w.description || E'\\n' || w.safety) as hash
       from commerce.products p
-      join commerce.stores s on s.id = p.store_id and not s.starter and s.closed_at is null
+      join commerce.stores s on s.id = p.store_id and not s.starter and not s.sandbox and s.closed_at is null
       join words w on w.product_id = p.id
       left join commerce.content_screened c on c.product_id = p.id
       where p.status = 'active' ${only.storeId ? sql`and p.store_id = ${only.storeId}::uuid` : sql``}

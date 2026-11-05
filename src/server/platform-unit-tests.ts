@@ -51,7 +51,7 @@ async function recommendationTests(onlyStore?: string): Promise<Measured[]> {
   const stores = await readDb().execute<Row>(sql`
     select s.id, s.slug, s.name, r.holdout_percent
     from commerce.recommendation_settings r join commerce.stores s on s.id = r.store_id
-    where r.enabled and r.holdout_percent > 0 and s.status <> 'closed' and not (s.is_template or s.starter)
+    where r.enabled and r.holdout_percent > 0 and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox)
       ${onlyStore ? sql`and s.id = ${onlyStore}::uuid` : sql``}
     order by lower(s.name)
   `);
