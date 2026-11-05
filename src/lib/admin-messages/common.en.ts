@@ -78,6 +78,20 @@ export const commonEn = {
     kept: "Kept with your account, so the admin is in the same language on every device you sign in on.",
     partly: "Parts of the admin not yet written in your language are shown in English.",
   },
+  /** The buttons of a list of export jobs (D165): a finished one's files, or the job's page. */
+  jobs: { download: "Download", open: "Open" },
+  /**
+   * The VAT categories the platform added beside the three built-in ones (D157, the tax engine's migration), as they are written there:
+   * shown in the admin's language wherever a category is chosen. A category a platform admin adds later keeps the words it was given.
+   */
+  vatCategories: {
+    food: { label: "Food and drink", hint: "Food and drink for people, where the country has a reduced rate." },
+    books: { label: "Books", hint: "Printed books, and e-books where the country applies the reduced rate." },
+    periodicals: { label: "Newspapers and periodicals", hint: "Newspapers, magazines and periodicals, where the country has a reduced rate." },
+    medicines: { label: "Medicines and medical aids", hint: "Medicines and medical aids, where the country has a reduced rate." },
+    culture_events: { label: "Culture and events", hint: "Admission to cultural events, cinemas and attractions, where the country has a reduced rate." },
+    children_goods: { label: "Children's goods", hint: "Children's clothing, footwear and car seats, where the country has a reduced rate." },
+  } as Record<string, { label: string; hint: string }>,
 };
 
 export type Widen<T> = T extends (...args: infer A) => infer R ? (...args: A) => R : T extends object ? { [K in keyof T]: Widen<T[K]> } : string;

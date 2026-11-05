@@ -67,7 +67,7 @@ export const invoicesEn = {
     "A credit note is made for each refund that succeeds, never above what the invoice has left per VAT rate. A deduction for diminished value and return postage the customer pays reduce the credit as the system treats them by default.",
     "A subscription started with a free trial is invoiced for what is due now; each renewal gets its own invoice when it is paid.",
     "Orders paid in Stripe's test mode, history copied from another store and a host's own orders get no invoice. Orders paid before invoicing was switched on are not invoiced afterwards.",
-    "Not built yet: your own invoice layout and logo, structured e-invoices (XRechnung, Peppol, EHF), corrective invoices and manual credit notes, and other languages than Norwegian, Swedish, Danish and English (the document then shows English).",
+    "Each invoice and credit note can also be downloaded as a structured e-invoice from the order page (EN 16931 in UBL, the Peppol BIS Billing 3.0 format that EHF uses); sending it through the Peppol network is not built. Not built yet either: your own invoice layout and logo, corrective invoices and manual credit notes, and other languages than Norwegian, Swedish, Danish and English (the document then shows English).",
   ],
   view: {
     title: "Invoices",
@@ -166,6 +166,19 @@ export const invoicesEn = {
     pdf: "PDF",
     xml: "E-invoice (XML)",
     sendAgain: "Send to the customer again",
+  },
+  /** When a document cannot be written as an e-invoice (D403): why, in words, where the link opened. */
+  einvoice: {
+    title: "This e-invoice cannot be made",
+    intro: "The document is fine as a PDF, but the e-invoice format needs more:",
+    back: "Back",
+    problems: {
+      seller_country: "The store's country is missing from its business details.",
+      buyer_country: "The buyer's address on the document has no country.",
+      seller_vat_number: "The document charges VAT, but the store's VAT number is missing from its tax profile.",
+      totals: "The document's totals do not add up to its lines, so the format would refuse it.",
+      currency: "The document's currency cannot be written in the format.",
+    },
   },
   forms: {
     checked: "Checked.",

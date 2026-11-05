@@ -48,17 +48,21 @@ export async function payoutsReport(store: Store, period: AnalyticsPeriod): Prom
   const ids = rows.map((r) => r.id);
   const lines = ids.length
     ? await typedRows(
-        z.object({ payout_id: col.uuid, ...lineMoney }),
+        z.object({ payout_id: col.uuid, ...lineMoney, platform_fee_minor: col.minor }),
         sql`
-        select payout_id, kind, amount_minor, fee_minor, net_minor, order_id from commerce.payout_lines
-         where store_id = ${store.id}::uuid and payout_id = any(${uuidList(ids)})
+        -- Kaizena Flow's application fee in a charge's fee, as its payment keeps it (read from the same balance line, D290).
+        select l.payout_id, l.kind, l.amount_minor, l.fee_minor, l.net_minor, l.order_id,
+          case when l.kind = 'charge' and pay.fee_currency = l.currency then coalesce(pay.application_fee_minor, 0) else 0 end as platform_fee_minor
+          from commerce.payout_lines l
+          left join commerce.payments pay on pay.id = l.payment_id and pay.store_id = l.store_id
+         where l.store_id = ${store.id}::uuid and l.payout_id = any(${uuidList(ids)})
       `,
       )
     : [];
   const byPayout = new Map<string, PayoutLineFacts[]>();
   for (const l of lines) {
     const list = byPayout.get(l.payout_id) ?? [];
-    list.push({ kind: l.kind as PayoutLineKind, amountMinor: l.amount_minor, feeMinor: l.fee_minor, netMinor: l.net_minor, orderId: l.order_id });
+    list.push({ kind: l.kind as PayoutLineKind, amountMinor: l.amount_minor, feeMinor: l.fee_minor, netMinor: l.net_minor, orderId: l.order_id, platformFeeMinor: l.platform_fee_minor });
     byPayout.set(l.payout_id, list);
   }
   const inputs: PayoutInput[] = rows.flatMap((r) =>

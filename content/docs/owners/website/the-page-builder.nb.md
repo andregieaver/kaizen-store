@@ -15,13 +15,13 @@ sources: [D42, D46, D53, D54, D55, D83, D92, D98, D112, D113, D125, D126, D127, 
 
 ## Start en side
 
-Åpne **Nettsted** i menyen og velg [Sider](/admin/{store}/pages). Trykk *New page* og skriv en tittel under **Tittel og adresse**.
+Åpne **Nettsted** i menyen og velg [Sider](/admin/{store}/pages). Trykk **Ny side** og skriv en tittel under **Tittel og adresse**.
 Adressen til siden lages fra tittelen mens du skriver; du kan endre den hvis du vil.
 
 En ny side er et utkast: besøkende ser ingenting av den før du publiserer den, så du kan lagre så ofte du vil underveis.
 
 > [!TIP]
-> *Create with AI* på listen over sider spør deg om siden du vil ha, og skriver og bygger den som et utkast du kan endre.
+> **Lag med KI** på listen over sider spør deg om siden du vil ha, og skriver og bygger den som et utkast du kan endre.
 
 ## Slik er en side bygget opp
 
@@ -101,8 +101,8 @@ tomt for ingen grense. Utenom disse tidene utelates delen fra siden, og lerretet
 
 ## Velg forsiden
 
-På listen over sider, under *Front page*, velger du hva butikken åpner med (*Your store opens with*): *All products*, eller en av de
-publiserte sidene dine. Trykk *Save*. Avpubliseres den siden senere, ser kundene produktene dine til du publiserer den igjen.
+På listen over sider, under **Forside**, velger du hva butikken åpner med (**Butikken din åpner med**): **Alle produkter**, eller en av
+de publiserte sidene dine. Trykk **Lagre**. Avpubliseres den siden senere, ser kundene produktene dine til du publiserer den igjen.
 
 Vil du starte forsiden fra en demobutikk, bruker du **Forsider fra demobutikkene** på samme liste og trykker **Bruk denne forsiden**.
 Den følger temaet ditt; ordene og bildene er demobutikkens til du endrer dem. **Sett tilbake forsiden din** henter fram den du hadde.
@@ -117,7 +117,7 @@ Den følger temaet ditt; ordene og bildene er demobutikkens til du endrer dem. *
   andre butikkeiere. Trykk **Forhåndsvis** for å se først, eller **Bruk** for å legge til en kopi. **Bla gjennom maler** slår på flere.
 - **Oppsettet til en hel side.** **Lagre som mal** i linjen nederst tar vare på radene. Bruker du et sideoppsett, blir du spurt om det
   skal erstatte radene dine eller legges etter dem.
-- **Dupliser** i linjen nederst, eller **Lag kopi** på listen over sider, lager en kopi med tittelen *Copy of …* som et upublisert utkast.
+- **Dupliser** i linjen nederst, eller **Lag kopi** på listen over sider, lager en kopi med tittelen **Kopi av …** som et upublisert utkast.
 
 ### Skjermstørrelser
 
@@ -141,12 +141,12 @@ Under **Søk og deling** gir du siden en egen tittel og beskrivelse til søkeres
 
 ### Spesialsider og alle produkter
 
-Under *Special pages* på listen over sider kan bloggsiden, søkesiden, 404-siden og arbeidssidene, som handlekurven, også bygges i
-sidebyggeren. Velg en av de publiserte sidene dine for hver av dem, eller trykk *Start from a new page*: da lages en side som ligner
-standardsiden, den publiseres på plassen og åpnes. Under *All products page* kan en av sidene dine ta plassen til standardlisten over
+Under **Spesielle sider** på listen over sider kan bloggsiden, søkesiden, 404-siden og arbeidssidene, som handlekurven, også bygges i
+sidebyggeren. Velg en av de publiserte sidene dine for hver av dem, eller trykk **Start fra en ny side**: da lages en side som ligner
+standardsiden, den publiseres på plassen og åpnes. Under **Side for alle produkter** kan en av sidene dine ta plassen til standardlisten over
 produkter.
 
 ### Rett tekst på nettstedet
 
-Logg inn, åpne en av de publiserte sidene dine på nettstedet og trykk *Edit text* ved siden av *Edit page*. Trykk på en overskrift eller
+Logg inn, åpne en av de publiserte sidene dine på nettstedet og trykk **Rediger tekst** ved siden av **Rediger siden**. Trykk på en overskrift eller
 en tekst, skriv, og trykk *Save*. Topptekster, bunntekster, oversettelser og deler som deles med andre sider, endrer du i sidebyggeren.

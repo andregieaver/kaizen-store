@@ -26,7 +26,7 @@ site and go into a cart there. The shopper pays at the store: *Checkout* takes t
 | In WordPress | An administrator: every page of the plugin needs the `manage_options` capability |
 | In Kaizena Flow | An account that is an owner or staff member of the store, with the store's online shop on |
 
-The plugin is version 1.3.1. It is installed by upload, not from wordpress.org. It offers shortcodes, not blocks for the block editor, and it
+The plugin is version 1.3.6. It is installed by upload, not from wordpress.org. It offers shortcodes, not blocks for the block editor, and it
 does not use WooCommerce.
 
 ## Install the plugin

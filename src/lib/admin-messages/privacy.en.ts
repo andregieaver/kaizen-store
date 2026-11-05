@@ -251,7 +251,7 @@ export const privacyEn = {
   erase: {
     customer: "Customer",
     description:
-      "Read what happens first. Sales the bookkeeping law keeps are kept without the person's name, address and email until the period ends, then made anonymous. Nothing is deleted from the accounts.",
+      "Read what happens first. Sales the bookkeeping law keeps are kept with the person's name, address and email until the period ends, set aside: used for nothing else and never emailed. Then they are made anonymous. Nothing is deleted from the accounts.",
     cannotUndo: "Erasing cannot be undone.",
     confirm: "Confirm",
     done: "Done.",

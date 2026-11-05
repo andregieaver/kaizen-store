@@ -81,7 +81,7 @@ export const taxReportsEn = {
     cardsDescription: "In {currency}, each document at the rate stored on it when it was issued. Credit notes are counted in the period they are issued.",
     nothing: "No invoice or credit note is dated in this period, so there is nothing to report.",
     invoicingOff: "Reports are made from your invoices. If invoicing is off, switch it on under",
-    settingsInvoices: "Settings, Invoices",
+    settingsInvoices: "Settings, Invoicing",
     kpi: {
       charged: "VAT charged",
       chargedHelp: "VAT of the invoices dated in the period.",

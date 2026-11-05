@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { PAGE_DEFAULT, PAGE_MAX } from "@/lib/admin-api";
 import { CONTENT_API } from "@/lib/admin-api-content";
 import type { AdminAnswer, ApiRoute } from "@/lib/admin-api-routes";
 import { entryStatus, type Entry } from "@/lib/content-types";
@@ -415,7 +416,8 @@ export async function answerContent(caller: ApiCaller, route: ContentRoute, requ
     }
     case "webhooks.deliveries": {
       await endpointById(storeId, route.id);
-      const limit = Math.min(Math.max(Number(params.get("limit")) || 25, 1), 100);
+      // The contract's own paging: 50 unless asked, at most 100.
+      const limit = Math.min(Math.max(Number(params.get("limit")) || PAGE_DEFAULT, 1), PAGE_MAX);
       const rows = await listEndpointDeliveries(storeId, route.id, limit);
       return ok(route.name, {
         data: rows.map((d) => ({ id: d.id, topic: d.event, status: d.status, attempts: d.attempts, last_status: d.lastStatus, last_error: d.lastError, created_at: d.createdAt, next_attempt_at: d.nextAttemptAt })),

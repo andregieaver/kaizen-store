@@ -106,10 +106,10 @@ export const notificationsEn = {
   staff: {
     title: "Staff alerts",
     description:
-      "Choose who on the team is emailed when an order is paid, a customer asks to return something, a refund is overdue or stock runs low, and who gets a daily or weekly summary. Staff emails are in English.",
+      "Choose who on the team is emailed when an order is paid, a customer asks to return something, a refund is overdue or stock runs low, and who gets a daily or weekly summary. Each person's emails are in their own admin language; the store's contact address gets them in Norwegian when that is the store's main language, else in English.",
     back: "Notifications",
     defaults:
-      "These are the defaults, as nobody has saved this page yet: owners get new orders, return requests and low stock; overdue refunds go to the store's contact address (to the owners when there is none); nobody gets the summary or the automation emails. Saving makes your choice the store's.",
+      "These are the defaults, as nobody has saved this page yet: owners get new orders, return requests, low stock, disputes and overdue payments on terms; overdue refunds go to the store's contact address (to the owners when there is none); nobody gets the summary or the automation emails. Saving makes your choice the store's.",
     who: "Who is emailed",
     whoHint:
       "Staff emails name the order or return, what was bought and a link to it. They never carry the customer's name, email address, phone number or address. A box is offered only where the person's role may read what the email shows; a change to someone's role takes effect at once.",
@@ -129,6 +129,7 @@ export const notificationsEn = {
     alertFloorHint:
       "Analytics alerts are sent once a day, after 20:00 in the store's time, to the people ticked under Analytics alerts: each alert once a day, with the same minimum volumes as the page. Good news is never emailed.",
     floors: { urgent: "Only what is urgent", warning: "Urgent and warnings", info: "Everything but good news" },
+    floorLabel: "Which alerts",
     howOften: "How often",
     offChoice: "Off",
     daily: "Daily (yesterday)",
@@ -335,7 +336,7 @@ export const notificationsEn = {
     setUp: "Set up",
     carriers: "Shipping carriers",
     carriersHint:
-      "Labels, tracking, pickup points and delivery options from the carriers you have an agreement with. Posten / Bring is ready to connect; the others are being built: save your details now and they are ready when each arrives.",
+      "Labels, tracking, pickup points and delivery options from the carriers you have an agreement with. Posten / Bring, PostNord, Porterbuddy and Helthjem connect with your own details from that agreement.",
     carrier: {
       available: "Available",
       preparing: "Preparing",

@@ -417,7 +417,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - Selling to businesses (D63, `src/lib/b2b.ts`, `src/server/b2b.ts`): stores
   sell to `consumers`, `businesses` or `both` (`stores.audience`). Prices are
-  always kept and charged with VAT; businesses see them without it. Draw
+  always kept with VAT and charged with it, except a reverse-charge order
+  (D157, `vatTreatment()`); businesses see them without it. Draw
   prices with `<Price>`/`VatAmount` (the catalogue's `PriceView` carries
   `vat`), never `formatMoney` of a price alone in the storefront; server-rendered
   per-request pages use `getBuyer()` and `shownAmount()`. In stores selling to

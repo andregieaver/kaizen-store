@@ -10,7 +10,6 @@ export const paymentsEn = {
   page: {
     title: "Payments",
     intro: "Shoppers pay your business directly through your store's own Stripe account.",
-    ownerOnly: "Only an owner can switch payments on and off.",
     unavailableTitle: "Payments are not available yet",
     unavailableAdmin:
       "Add Kaizena Flow's Stripe keys in Vercel ({secret} and {publishable}, and the {live} pair when going live), redeploy, then connect the webhooks under Platform → Stripe.",
@@ -82,7 +81,7 @@ export const paymentsEn = {
     delayed: ". The money arrives in a few days; the order waits with its stock held.",
     save: "Save",
     repeat: "Subscriptions take only the methods Stripe allows for repeat payments, such as cards and SEPA Direct Debit; subscription boxes take cards.",
-    notActive: "A method Stripe has not made active is not shown to shoppers, whatever is ticked. Wallets, Swish and the rest of Stripe's methods are in your",
+    notActive: "A method Stripe has not made active is not shown to shoppers, whatever is ticked. Swish comes through Mollie, not Stripe. Wallets and the rest of Stripe's methods are in your",
     dashboard: "Stripe Dashboard",
     /** `PAYMENT_METHODS`' words, by Stripe's type. */
     kinds: {

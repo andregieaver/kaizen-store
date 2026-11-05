@@ -181,12 +181,15 @@ export async function archiveDemoProducts({ account, store }: Membership): Promi
 }
 
 /** Why a store whose trial ended cannot open (D420); the setup tools say the same. */
-export const TRIAL_OVER = "The free trial has ended: choose a plan on the Plan page to open the store.";
+export const TRIAL_OVER = "The free trial has ended: choose a plan on the Billing page to open the store.";
+
+/** Why a store without its business details or a country cannot open. */
+export const NOT_READY = "Add your business details and at least one country first.";
 
 export async function completeSetup({ account, store }: Membership): Promise<SaveResult> {
   const progress = await getSetupProgress(store);
   if (!progress.readyToOpen) {
-    return { ok: false, problems: ["Add your business details and at least one country first."] };
+    return { ok: false, problems: [NOT_READY] };
   }
   if (progress.trialOver) return { ok: false, problems: [TRIAL_OVER] };
   await db().execute(sql`

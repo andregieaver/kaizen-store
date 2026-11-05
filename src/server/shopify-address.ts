@@ -17,6 +17,8 @@ import { addStoreDomain, checkStoreDomain, connectOwnedDomain, listStoreDomains,
 import { log } from "./log";
 import { memberCan } from "./permissions";
 import { shopifyConnection } from "./shopify-connect";
+import { copyChoice } from "./shopify-copy";
+import { wooConnection } from "./woocommerce-connect";
 import { domainsConfigured, vercelDomains, type DomainServices } from "./vercel";
 
 /**
@@ -72,13 +74,26 @@ export type AddressView = {
   configured: boolean;
 };
 
+/**
+ * The names that move here: a Shopify shop's own domain (and its `www.`); a WooCommerce shop's site domain when everything moves, or only
+ * `shop.{domain}` when WordPress stays (D446 4.6, step 4b: one new record at the owner's host, nothing on the WordPress site changes).
+ */
+async function namesToMove(member: Membership): Promise<string[] | null> {
+  const shopify = await shopifyConnection(member);
+  if (shopify) return addressesToMove(shopify.primaryDomain);
+  const woo = await wooConnection(member);
+  if (!woo) return null;
+  const host = woo.site.split("/")[0];
+  if (!host.includes(".")) return [];
+  return (await copyChoice(member)) === "keep" ? [`shop.${apexOf(host)}`] : addressesToMove(host);
+}
+
 /** The address as it stands (owner only), with each host's records and whether it still leads to Shopify. Null when no shop is connected. */
 export async function addressView(member: Membership, deps: AddressDeps = {}): Promise<AddressView | null> {
   if (!memberCan(member, OWNER)) return null;
-  const connection = await shopifyConnection(member);
-  if (!connection) return null;
+  const names = await namesToMove(member);
+  if (!names) return null;
   const configured = deps.configured ?? domainsConfigured();
-  const names = addressesToMove(connection.primaryDomain);
   if (names.length === 0) return { primary: null, apex: null, dnsHost: "unknown", hosts: [], done: true, configured };
   const dns = deps.dns ?? liveDns();
   const apex = apexOf(names[0]);
@@ -112,8 +127,7 @@ export type AddressStart = { ok: true } | { ok: false; problems: string[] };
  */
 export async function startAddress(member: Membership, deps: AddressDeps = {}): Promise<AddressStart> {
   if (!memberCan(member, OWNER)) return { ok: false, problems: ["Only the owner can do this."] };
-  const connection = await shopifyConnection(member);
-  const names = addressesToMove(connection?.primaryDomain ?? null);
+  const names = (await namesToMove(member)) ?? [];
   if (names.length === 0) return { ok: false, problems: [] };
   const services = deps.services ?? vercelDomains;
   const apex = apexOf(names[0]);
@@ -142,8 +156,7 @@ async function makePrimary(member: Membership, hostname: string, services: Domai
 /** The page's check every 30 seconds: each waiting address looked at again, and Shopify's primary made the store's address once it works. */
 export async function checkAddress(member: Membership, deps: AddressDeps = {}): Promise<{ done: boolean }> {
   if (!memberCan(member, OWNER)) return { done: false };
-  const connection = await shopifyConnection(member);
-  const names = addressesToMove(connection?.primaryDomain ?? null);
+  const names = (await namesToMove(member)) ?? [];
   const services = deps.services ?? vercelDomains;
   const domains = (await listStoreDomains(member.store.id)).filter((d) => names.includes(d.hostname));
   for (const d of domains) if (d.status !== "active") await checkStoreDomain(member.store.id, d.id, services);

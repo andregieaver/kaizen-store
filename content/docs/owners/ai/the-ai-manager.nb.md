@@ -118,8 +118,8 @@ spurt om, eller be KI-assistenten lagre en. I fanen **Ferdigheter** gir du den e
 per linje, høyst 2 000 tegn, aldri et passord eller en kundes opplysninger. Be om en ferdighet ved navn, eller så bruker
 KI-assistenten den når jobben dukker opp. Fanen viser også oppskriftene den kan fra før, under **Innebygd**.
 
-**Del med butikkens ansatte** lar andre bruke den, med sine egne tillatelser. En ferdighet lar aldri noen gjøre mer enn de har lov
-til, og hopper aldri over et ja.
+**Del med butikkens andre eiere** lar dem bruke den også (ansatte som ikke er eiere, har ikke KI-assistenten). En ferdighet lar aldri
+noen gjøre mer enn de har lov til, og hopper aldri over et ja.
 
 ### Tale
 

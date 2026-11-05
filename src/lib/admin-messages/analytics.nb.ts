@@ -547,10 +547,6 @@ export const analyticsNb: AnalyticsMessages = {
       targets: "Hva vil du nå hver måned?",
       visits: "Telles besøk, og hva er det egentlig som telles?",
     },
-    ownersOnly: {
-      title: "Bare eiere kan endre disse innstillingene",
-      body: "Du kan se hvordan butikken er satt opp, men en eier må endre det. Spør en eier av butikken hvis noe her bør være annerledes.",
-    },
     costs: {
       title: "Hva produktene koster",
       description: "Fortjeneste er det du selger for minus det varene koster deg. Legg inn kostnaden for én enhet av hver variant i produktredigeringen, i {currency} og ekskl. mva. Kostnaden lagres på hver ordrelinje når den selges, så en senere endring skriver aldri om tidligere salg.",

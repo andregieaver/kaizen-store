@@ -969,7 +969,7 @@ async function planStep({ run, member }: Context): Promise<StepOutcome | null> {
   // The free trial counts (D420): the store may open on it, and its end makes the store private again until a plan is chosen.
   if (!progress.trialOver && (await trialEndOf(member.store.id))) return { state: done(started(state), "On its free trial: a plan is chosen before it ends.") };
   if (run.test) return { state: skipped(started(state), "A test run needs no plan.") };
-  return state.status === "asking" ? null : { state: asking(state, "Choose a plan on the Plan page.") };
+  return state.status === "asking" ? null : { state: asking(state, "Choose a plan on the Billing page.") };
 }
 
 /** The rehearsal: the demo store's products archived, then the store's own checkup without a blocking finding, and every product still on sale everywhere. */

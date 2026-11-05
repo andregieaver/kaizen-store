@@ -48,8 +48,8 @@ export const assistantNb: AssistantMessages = {
     remove: "Slett",
     confirmRemove: "Slette denne ferdigheten?",
     shared: "Delt med butikken",
-    share: "Del med butikkens ansatte",
-    shareHint: "Ansatte kan også bruke den, med sine egne tillatelser.",
+    share: "Del med butikkens andre eiere",
+    shareHint: "De kan også bruke den. Ansatte som ikke er eiere, har ikke KI-assistenten.",
     mine: "Din",
     by: "Av {name}",
     saveAs: "Lagre som ferdighet",
@@ -196,6 +196,7 @@ export const assistantNb: AssistantMessages = {
       payments: "Sett opp betaling, så kundene kan betale (Innstillinger, Betaling).",
       plan: "Velg et abonnement hos Kaizena Flow (Innstillinger, Abonnement).",
       open: "Åpne",
+      retryOptions: ["Prøv igjen", "Hopp over dette steget", "Stopp planen"],
     },
     plans: {
       empty: "Ingen planer ennå. Fortell KI-assistenten hva du vil oppnå, så foreslår den en.",
@@ -214,6 +215,7 @@ export const assistantNb: AssistantMessages = {
       result: "Resultat",
       problem: "Problem",
       answeredWith: "Du svarte: {answer}",
+      told: "Gjort, og du ba om å få vite om det:",
     },
     goals: {
       empty: "Ingen mål ennå. Fortell KI-assistenten hva du vil oppnå: den tar vare på målet og måler det med butikkens egne tall.",
@@ -264,6 +266,7 @@ export const assistantNb: AssistantMessages = {
     },
     events: {
       title: "Det autopiloten har reagert på",
+      told: "Gjort, og du ba om å få vite om det:",
       kinds: { support_waiting: "En kunde ventet på et menneske", test_ended: "En A/B-test ble avsluttet", alert: "Et analysevarsel" },
       statuses: { pending: "Venter", running: "Jobber", done: "Ferdig", skipped: "Hoppet over", failed: "Mislyktes" },
     },

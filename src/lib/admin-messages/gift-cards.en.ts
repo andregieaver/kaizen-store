@@ -18,7 +18,7 @@ export const giftCardsEn = {
     title: "Gift cards",
     description: "Money your customers hold to spend in the store: cards they bought, and cards you issue. A card sold is not a sale until it is spent.",
     issue: "Issue a gift card",
-    off: "Gift cards are switched off: none are sold and the checkout has no gift card field. Cards already sold or issued are kept here.",
+    off: "Gift cards are switched off: none are sold. The cart and the checkout keep their gift card field, so cards already sold or issued can still be spent; they are kept here.",
     features: "Features",
     customersHold: "Customers hold",
     customersHoldIn: "Customers hold, {currency}",

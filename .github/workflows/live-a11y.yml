@@ -15,6 +15,12 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # In Playwright's image, as CI's browser jobs: Chromium and its libraries come with it, no apt mirror in the way.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
+    env:
+      TZ: UTC
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -23,5 +29,5 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install chromium
       - run: pnpm exec playwright test -c playwright.live.config.ts

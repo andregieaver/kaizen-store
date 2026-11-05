@@ -144,8 +144,9 @@ describe("a paid payout", () => {
     const report = await payoutsReport(store, customPeriod(today, today));
     expect(report.payouts).toHaveLength(1);
     expect(report.payouts[0]).toMatchObject({ reference, status: "paid", amountMinor: net, payments: 2, refunds: 1 });
-    expect(report.payouts[0].reconciliation).toMatchObject({ state: "reconciles", differenceMinor: 0, untiedCount: 0, feesMinor: 840 });
-    expect(report.totals).toEqual({ paidMinor: net, feesMinor: 840, paid: 1 });
+    // Kaizena Flow's application fee, kept on its payment from the same line, shown apart from Stripe's own.
+    expect(report.payouts[0].reconciliation).toMatchObject({ state: "reconciles", differenceMinor: 0, untiedCount: 0, feesMinor: 840, platformFeesMinor: 50, providerFeesMinor: 790 });
+    expect(report.totals).toEqual({ paidMinor: net, feesMinor: 840, providerFeesMinor: 790, platformFeesMinor: 50, paid: 1 });
     expect(report.flagged).toBe(0);
     const detail = await payoutDetail(store, report.payouts[0].id);
     expect(detail?.lines.find((l) => l.kind === "refund")?.orderNumber).toBe(a.number);
@@ -245,7 +246,7 @@ describe("a payout in euro", () => {
     expect(report.payouts[0]).toMatchObject({ currency: "EUR", amountMinor: 1900 });
     expect(report.payouts[0].reconciliation.state).toBe("reconciles");
     // 19,00 EUR and 1,00 EUR at 11.5 NOK.
-    expect(report.totals).toEqual({ paidMinor: 21_850, feesMinor: 1_150, paid: 1 });
+    expect(report.totals).toEqual({ paidMinor: 21_850, feesMinor: 1_150, providerFeesMinor: 1_150, platformFeesMinor: 0, paid: 1 });
     const [fee] = await db().execute<Row>(sql`select provider_fee_minor::int as fee, fee_currency from commerce.payments where provider_reference = ${session}`);
     expect(fee).toMatchObject({ fee: 100, fee_currency: "EUR" });
   });

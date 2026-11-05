@@ -59,7 +59,7 @@ export const invoicesNb: InvoicesMessages = {
     "En kreditnota lages for hver tilbakebetaling som går gjennom, aldri over det fakturaen har igjen per sats. Et trekk for redusert verdi og returporto kunden betaler, reduserer kreditten slik systemet behandler dem som standard.",
     "Et abonnement som startet med en gratis prøveperiode, faktureres for det som forfaller nå; hver fornyelse får sin egen faktura når den er betalt.",
     "Bestillinger betalt i Stripes testmodus, historikk kopiert fra en annen butikk og en verts egne bestillinger får ingen faktura. Bestillinger betalt før fakturering ble slått på, faktureres ikke i ettertid.",
-    "Ikke laget ennå: ditt eget fakturaoppsett og logo, strukturerte e-fakturaer (XRechnung, Peppol, EHF), korrigerende fakturaer og manuelle kreditnotaer, og andre språk enn norsk, svensk, dansk og engelsk (dokumentet vises da på engelsk).",
+    "Hver faktura og kreditnota kan også lastes ned som strukturert e-faktura fra bestillingssiden (EN 16931 i UBL, Peppol BIS Billing 3.0-formatet som EHF bruker); å sende den gjennom Peppol-nettverket er ikke laget. Heller ikke laget ennå: ditt eget fakturaoppsett og logo, korrigerende fakturaer og manuelle kreditnotaer, og andre språk enn norsk, svensk, dansk og engelsk (dokumentet vises da på engelsk).",
   ],
   view: {
     title: "Fakturaer",
@@ -157,6 +157,18 @@ export const invoicesNb: InvoicesMessages = {
     pdf: "PDF",
     xml: "E-faktura (XML)",
     sendAgain: "Send til kunden på nytt",
+  },
+  einvoice: {
+    title: "Denne e-fakturaen kan ikke lages",
+    intro: "Dokumentet er i orden som PDF, men formatet for e-faktura trenger mer:",
+    back: "Tilbake",
+    problems: {
+      seller_country: "Butikkens land mangler i bedriftsopplysningene.",
+      buyer_country: "Kjøperens adresse på dokumentet har ikke noe land.",
+      seller_vat_number: "Dokumentet har mva., men butikkens mva-nummer mangler i skatteprofilen.",
+      totals: "Summene på dokumentet stemmer ikke med linjene, så formatet ville avvist det.",
+      currency: "Valutaen på dokumentet kan ikke skrives i formatet.",
+    },
   },
   forms: {
     checked: "Sjekket.",

@@ -77,6 +77,9 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
   const locale = preview.market?.locale ?? draft.locale;
   const lang = adminLangOf(member.account.adminLocale);
   const words = adminText(lang, "drafts");
+  const builtInVat: Record<string, { label: string } | undefined> = adminText(lang, "product").vatCategory.builtIn;
+  const addedVat: Record<string, { label: string } | undefined> = adminText(lang, "common").vatCategories;
+  const vatCategoryName = (code: string, nameEn: string) => builtInVat[code]?.label ?? addedVat[code]?.label ?? nameEn;
   const problems = preview.problems.map((p) => ({ code: p.code, key: p.key ?? null, blocking: p.blocking, text: draftProblemText(p.code, words.problems) }));
   const base = `/admin/${store.slug}/orders/drafts`;
   return (
@@ -95,7 +98,8 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
           initialSummary: preview.summary,
           initialProblems: problems,
           marketOptions: draftMarketOptions(store.markets, store.localization),
-          categories: categories.filter((c) => c.active).map((c) => ({ code: c.code, name: c.nameEn })),
+          // A category's name in the admin's language where Kaizena Flow wrote it (the built-in three and those the tax engine added), else as the platform named it.
+          categories: categories.filter((c) => c.active).map((c) => ({ code: c.code, name: vatCategoryName(c.code, c.nameEn) })),
           defaultDays: settings.draftValidDays,
           mayRecordOutside,
           mayFindCustomers: mayFindDraftCustomers(member),

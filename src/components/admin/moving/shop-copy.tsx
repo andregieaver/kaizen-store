@@ -29,7 +29,7 @@ export type CopyRow = {
 
 export type CopyActions = {
   /** *What to bring* (step 9): parts left out, and past orders of the last so many years (null: all). */
-  start: (options?: { skip: CopyFeed[]; ordersYears: number | null }) => Promise<{ ok: boolean }>;
+  start: (options?: { skip: CopyFeed[]; ordersYears: number | null; wordpress?: "move" | "keep" }) => Promise<{ ok: boolean }>;
   advance: () => Promise<{ moving: boolean }>;
   bring: () => Promise<{ ok: boolean }>;
 };
@@ -71,7 +71,11 @@ export function ShopCopy({
   const [asking, setAsking] = useState(false);
   const [skip, setSkip] = useState<CopyFeed[]>([]);
   const [years, setYears] = useState<number | null>(null);
-  const startChosen = () => actions.start({ skip, ordersYears: years });
+  // A WooCommerce shop's one question (D446 4.5): everything, or only the shop. Asked before it starts, never chosen for the owner.
+  const [wordpress, setWordpress] = useState<"move" | "keep" | null>(null);
+  const asks = source === "woocommerce";
+  const startChosen = () => actions.start({ skip, ordersYears: years, ...(asks && wordpress ? { wordpress } : {}) });
+  const chosenParts = asks && wordpress === "keep" && parts ? parts.filter((f) => !WORDPRESS_PARTS.includes(f)) : parts;
 
   useEffect(() => {
     if (!moving) return;
@@ -103,9 +107,10 @@ export function ShopCopy({
           {w.title}
         </h3>
         <p className="text-sm">{w.text}</p>
-        <WhatToBring skip={skip} setSkip={setSkip} years={years} setYears={setYears} parts={parts} />
+        {asks && <WordpressChoice value={wordpress} onChange={setWordpress} />}
+        <WhatToBring skip={skip} setSkip={setSkip} years={years} setYears={setYears} parts={chosenParts} />
         <div>
-          <button type="button" disabled={pending} className={primary} onClick={() => press(startChosen)}>
+          <button type="button" disabled={pending || (asks && wordpress === null)} className={primary} onClick={() => press(startChosen)}>
             {pending ? w.starting : w.start}
           </button>
         </div>
@@ -168,8 +173,9 @@ export function ShopCopy({
         (asking ? (
           <div className="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label={w.again}>
             <span>{w.againAsk}</span>
-            <WhatToBring skip={skip} setSkip={setSkip} years={years} setYears={setYears} parts={parts} />
-            <button type="button" disabled={pending} className={secondary} onClick={() => press(startChosen)}>
+            {asks && <WordpressChoice value={wordpress} onChange={setWordpress} />}
+            <WhatToBring skip={skip} setSkip={setSkip} years={years} setYears={setYears} parts={chosenParts} />
+            <button type="button" disabled={pending || (asks && wordpress === null)} className={secondary} onClick={() => press(startChosen)}>
               {w.again}
             </button>
             <button type="button" onClick={() => setAsking(false)} className="underline underline-offset-2">
@@ -182,6 +188,31 @@ export function ShopCopy({
           </button>
         ))}
     </section>
+  );
+}
+
+/** The parts of a WordPress site that come only when everything moves. */
+const WORDPRESS_PARTS: readonly CopyFeed[] = ["pages", "articles", "menus"];
+
+/**
+ * *What moves?* (D446 4.5): the one question a WooCommerce owner is asked, Homer's, before the copy starts. Everything (the site's pages,
+ * posts and menus too, and WordPress can be switched off after the move), or only the shop (WordPress keeps its pages and blog).
+ */
+function WordpressChoice({ value, onChange }: { value: "move" | "keep" | null; onChange: (v: "move" | "keep") => void }) {
+  const w = useAdminText("moving").woo.choice;
+  return (
+    <fieldset className="flex flex-col gap-2 text-sm">
+      <legend className="mb-1 font-medium">{w.title}</legend>
+      {(["move", "keep"] as const).map((option) => (
+        <label key={option} className="flex items-start gap-2 rounded-card border border-line p-3">
+          <input type="radio" name="wordpress" value={option} checked={value === option} onChange={() => onChange(option)} className="mt-1" />
+          <span className="flex flex-col gap-0.5">
+            <span className="font-medium">{w[option].label}</span>
+            <span className={hint}>{w[option].text}</span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
   );
 }
 

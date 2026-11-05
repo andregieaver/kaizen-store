@@ -56,10 +56,16 @@ export async function sendAutopilotReports(deps: ReportDeps = {}): Promise<Repor
   const recipients = await typedRows(
     RECIPIENT,
     sql`
-      select distinct p.store_id, p.account_id, s.slug, s.time_zone
+      select p.store_id, p.account_id, s.slug, s.time_zone
       from commerce.assistant_plans p left join commerce.stores s on s.id = p.store_id
       where (p.status in ('running', 'paused') or (p.status in ('done', 'stopped') and p.finished_at > now() - interval '8 days'))
         and (p.store_id is null or commerce.store_is_active(p.store_id))
+      -- Whoever the autopilot reacted to an event for and told of a change (Do it and tell me), though no plan of theirs ran.
+      union
+      select e.store_id, e.account_id, s.slug, s.time_zone
+      from commerce.autopilot_events e join commerce.stores s on s.id = e.store_id
+      where e.account_id is not null and e.finished_at > now() - interval '8 days' and jsonb_typeof(e.facts->'told') = 'array'
+        and commerce.store_is_active(e.store_id)
       limit ${PER_RUN * 5}
     `,
   );
@@ -105,7 +111,7 @@ async function recipientOf(r: z.output<typeof RECIPIENT>): Promise<Recipient | n
 const scopeOf = (store: Store | null, column = sql`store_id`) => (store ? sql`${column} = ${store.id}::uuid` : sql`${column} is null`);
 
 /** What the person's plans did and what waits for them, over the last days. */
-async function workFacts(who: Recipient, days: number): Promise<Pick<ReportFacts, "stepsDone" | "stepsDoneCount" | "waiting" | "legal">> {
+async function workFacts(who: Recipient, days: number): Promise<Pick<ReportFacts, "stepsDone" | "stepsDoneCount" | "waiting" | "told" | "legal">> {
   const done = await typedRows(
     z.object({ title: col.text }),
     sql`
@@ -125,6 +131,20 @@ async function workFacts(who: Recipient, days: number): Promise<Pick<ReportFacts
       )::int as n
     `,
   );
+  // The changes made at *Do it and tell me* (D309 7.4) by the person's finished steps and the events run in their name: a count; the page lists them.
+  const told = await typedRow(
+    z.object({ n: col.int }),
+    sql`
+      select (
+        coalesce((select sum(jsonb_array_length(s.result->'told')) from commerce.assistant_plan_steps s join commerce.assistant_plans p on p.id = s.plan_id
+          where ${scopeOf(who.store, sql`p.store_id`)} and p.account_id = ${who.account.id}::uuid and s.status = 'done'
+            and s.finished_at > now() - make_interval(days => ${days}) and jsonb_typeof(s.result->'told') = 'array'), 0)
+        + coalesce((select sum(jsonb_array_length(e.facts->'told')) from commerce.autopilot_events e
+          where ${scopeOf(who.store, sql`e.store_id`)} and e.account_id = ${who.account.id}::uuid
+            and e.finished_at > now() - make_interval(days => ${days}) and jsonb_typeof(e.facts->'told') = 'array'), 0)
+      )::int as n
+    `,
+  );
   // The legal pages the AI wrote for the store in the period (D311): counts only; the Legal page says what each was.
   const legal = who.store
     ? await typedRow(
@@ -141,6 +161,7 @@ async function workFacts(who: Recipient, days: number): Promise<Pick<ReportFacts
     stepsDone: done.slice(0, STEPS_LISTED).map((d) => d.title),
     stepsDoneCount: done.length,
     waiting: waiting?.n ?? 0,
+    ...(told?.n ? { told: told.n } : {}),
     ...(legal && legal.published + legal.drafted + legal.failed > 0 ? { legal } : {}),
   };
 }

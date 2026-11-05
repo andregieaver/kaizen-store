@@ -201,7 +201,7 @@ export const settingsEn = {
     onlyOwnerBusiness: "Only an owner can change the business details.",
     customers: "Customers",
     customersText:
-      "Who you sell to. Prices are always charged with VAT; businesses see them without it, and give their company's name and organisation number at checkout.",
+      "Who you sell to. Prices are kept with VAT; businesses see them without it, and give their company's name and organisation number at checkout. A business in another EU country with a valid VAT number pays no VAT (reverse charge) when the store is VAT-registered in the EU (Settings, Tax).",
     sellingToBusinesses: "Selling to businesses",
     saveCustomers: "Save customers",
     onlyOwnerAudience: "Only an owner can change who the store sells to.",

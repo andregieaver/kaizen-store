@@ -7,6 +7,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
+import { editorOptions } from "@/lib/variant-grid";
 import { requirePermission } from "@/server/permissions";
 import { fieldsForEditor } from "@/server/custom-fields";
 import { getEditorContext, getProductForEdit } from "@/server/products";
@@ -27,7 +28,8 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
   const context = await getEditorContext(store);
   const product = await getProductForEdit(store, context, productId);
   if (!product) notFound();
-  const { archived, ...initial } = product;
+  const { archived, ...stored } = product;
+  const initial = { ...stored, options: editorOptions(stored.options, stored.variants) };
   const fields = await fieldsForEditor(store.id, "product", productId);
   const lang = adminLangOf(gated.account.adminLocale);
   const w = adminText(lang, "product").page;

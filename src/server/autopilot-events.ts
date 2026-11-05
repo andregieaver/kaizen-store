@@ -46,6 +46,8 @@ import { skipWhilePaused } from "./ai-pause";
 
 /** The longest an event's turn may take. */
 const TURN_MS = 120_000;
+/** The most changes made at *Do it and tell me* an event keeps (a turn's few calls; more would be an event doing a plan's work). */
+const TOLD_KEPT = 20;
 /** Stores whose alerts are read in one run: the read is heavy, and the next run takes the rest. */
 const ALERT_STORES_PER_RUN = 3;
 
@@ -236,10 +238,13 @@ export async function runEvents(deps: EventDeps = {}): Promise<EventRun> {
 async function finish(
   eventId: string,
   status: "done" | "skipped" | "failed",
-  fields: { outcome: string; planId?: string; started?: boolean; accountId?: string; conversationId?: string },
+  fields: { outcome: string; planId?: string; started?: boolean; accountId?: string; conversationId?: string; told?: readonly string[] },
 ): Promise<void> {
+  // The changes made at *Do it and tell me* (D309 7.4) are kept with the event's facts, code-written summaries, for the page and the digest.
+  const told = fields.told?.length ? JSON.stringify(fields.told.slice(0, TOLD_KEPT).map((t) => t.slice(0, 300))) : null;
   await db().execute(sql`
     update commerce.autopilot_events set status = ${status}, outcome = ${fields.outcome.slice(0, 500)}, plan_id = ${fields.planId ?? null}::uuid,
+      facts = case when ${told}::jsonb is null then facts else facts || jsonb_build_object('told', ${told}::jsonb) end,
       started = ${fields.started ?? false}, account_id = coalesce(${fields.accountId ?? null}::uuid, account_id),
       conversation_id = coalesce(${fields.conversationId ?? null}::uuid, conversation_id), finished_at = now(), claimed_until = null
     where id = ${eventId}::uuid and status = 'running'
@@ -316,7 +321,7 @@ async function reactTo(event: Pending, settings: Awaited<ReturnType<typeof auton
       connection,
     }),
   );
-  const who = { accountId: p.account.id, conversationId };
+  const who = { accountId: p.account.id, conversationId, told };
   if (seen.error) {
     await finish(event.id, "failed", { outcome: seen.error, ...who });
     return "failed";
@@ -395,18 +400,18 @@ async function eventConversation(p: Principal): Promise<string> {
   return made.id;
 }
 
-export type ReactedEvent = { id: string; kind: EventKind; status: string; outcome: string | null; at: string };
+export type ReactedEvent = { id: string; kind: EventKind; status: string; outcome: string | null; at: string; told: string[] };
 
 /** The store's latest events, for the Autopilot page (15.4). */
 export async function latestEvents(storeId: string, limit = 10): Promise<ReactedEvent[]> {
   const rows = await typedRows(
-    z.object({ id: col.uuid, kind: z.enum(EVENT_KINDS), status: col.text, outcome: col.textOrNull, at: col.timestamp }),
+    z.object({ id: col.uuid, kind: z.enum(EVENT_KINDS), status: col.text, outcome: col.textOrNull, at: col.timestamp, told: z.array(z.string()).catch([]) }),
     sql`
-      select id, kind, status, outcome, coalesce(finished_at, created_at) as at from commerce.autopilot_events
+      select id, kind, status, outcome, coalesce(finished_at, created_at) as at, coalesce(facts->'told', '[]'::jsonb) as told from commerce.autopilot_events
       where store_id = ${storeId}::uuid order by created_at desc limit ${limit}
     `,
   );
-  return rows.map((r) => ({ id: r.id, kind: r.kind, status: r.status, outcome: r.outcome, at: r.at }));
+  return rows.map((r) => ({ id: r.id, kind: r.kind, status: r.status, outcome: r.outcome, at: r.at, told: r.told }));
 }
 
 /** Events older than `EVENT_KEEP_DAYS` go (the daily job). */

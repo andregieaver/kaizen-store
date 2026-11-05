@@ -11,9 +11,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import type { ConsentLine } from "./shopify-copy";
+import type { GiftCardLine } from "./shopify-settings";
 
 export const MOVER_NAMESPACE = "kaizena-mover/v1";
-export const MOVER_ROUTES = ["plugins", "redirects", "seo", "seo_terms", "subscribers"] as const;
+export const MOVER_ROUTES = ["plugins", "redirects", "seo", "seo_terms", "subscribers", "gift_cards", "content", "menus"] as const;
 export type MoverRoute = (typeof MOVER_ROUTES)[number];
 /** How far apart Kaizena Flow's clock and the site's may be, in seconds. */
 export const MOVER_SKEW_SECONDS = 300;
@@ -251,4 +252,72 @@ export function subscriberLinesOf(answer: unknown): { lines: ConsentLine[]; more
     });
   }
   return { lines, more: a.more === true };
+}
+
+/**
+ * The gift card plugins' cards with money left (step 2b) as the gift cards' lines (`GiftCardLine`, the same as Shopify's): each made here on
+ * move day with a new code emailed to its holder (the owner's answer, 4 November 2026), never with the old code, which the plugin does not
+ * send. The card's id there names it (`woo:{plugin}:{id}`), so it is made once; an expired card, or one with nothing left, is left.
+ */
+export function giftCardLinesOf(answer: unknown, today: string): { lines: GiftCardLine[]; more: boolean } {
+  const a = o(answer);
+  const currency = s(a.currency, 3).toUpperCase();
+  const lines: GiftCardLine[] = [];
+  if (!/^[A-Z]{3}$/.test(currency)) return { lines, more: false };
+  for (const c of list(a.cards)) {
+    const source = s(c.source, 40);
+    const id = Number(c.id);
+    const amount = s(c.balance, 20);
+    const expiresOn = /^\d{4}-\d{2}-\d{2}$/.test(s(c.expires, 10)) ? s(c.expires, 10) : null;
+    if (!/^[a-z0-9-]+$/.test(source) || !Number.isSafeInteger(id) || id <= 0 || !/^\d+(\.\d{1,2})?$/.test(amount) || Number(amount) <= 0) continue;
+    if (expiresOn && expiresOn < today) continue;
+    const email = s(c.email, 254).toLowerCase();
+    lines.push({ id: `woo:${source}:${id}`, last4: s(c.last4, 4).toUpperCase(), amount, currency, expiresOn, email: email.includes("@") ? email : null });
+  }
+  return { lines, more: a.more === true };
+}
+
+/**
+ * A page of WordPress's pages or posts (step 3) as the page lines the Shopify copy reads (`directItems()`): its address, title, HTML (every
+ * shortcode already taken out on the site), whether it is published, and its author. Posts go to the store's main blog. The shortcodes the
+ * site's content used are named, so the owner is told what did not come over.
+ */
+export function contentLinesOf(answer: unknown): { lines: Obj[]; shortcodes: string[]; more: boolean } {
+  const a = o(answer);
+  const shortcodes = new Set<string>();
+  const lines: Obj[] = [];
+  for (const r of list(a.items)) {
+    const handle = s(r.slug, 200).toLowerCase();
+    const title = s(r.title, 200);
+    if (!handle || !title) continue;
+    for (const code of Array.isArray(r.shortcodes) ? r.shortcodes : []) if (typeof code === "string" && /^[a-z][a-z0-9_-]{0,60}$/.test(code)) shortcodes.add(code);
+    const id = Number(r.id);
+    lines.push({ id: `woo-content-${Number.isSafeInteger(id) && id > 0 ? id : handle}`, handle, title, body: typeof r.html === "string" ? r.html.slice(0, 400_000) : "", isPublished: r.published === true, author: { name: s(r.author, 100) }, blog: null });
+  }
+  return { lines, shortcodes: [...shortcodes].sort(), more: a.more === true };
+}
+
+/** WordPress's menus (step 3), already in the shape the Shopify copy's menus are read in (`menuInputOf()`): kept as given, at most 25. */
+export function menusOf(answer: unknown): Obj[] {
+  return list(o(answer).menus)
+    .filter((m) => s(m.title, 80) !== "")
+    .slice(0, 25);
+}
+
+/**
+ * Every card's balance there (step 5's 14 days after, the `all` reading: spent and switched-off cards too), by the id it was moved under
+ * (`woo:{plugin}:{id}`), in the shop's currency.
+ */
+export function giftCardBalancesOf(answer: unknown): { balances: Map<string, { amount: string; currency: string }>; more: boolean } {
+  const a = o(answer);
+  const currency = s(a.currency, 3).toUpperCase();
+  const balances = new Map<string, { amount: string; currency: string }>();
+  if (!/^[A-Z]{3}$/.test(currency)) return { balances, more: false };
+  for (const c of list(a.cards)) {
+    const source = s(c.source, 40);
+    const id = Number(c.id);
+    const amount = s(c.balance, 20);
+    if (/^[a-z0-9-]+$/.test(source) && Number.isSafeInteger(id) && id > 0 && /^\d+(\.\d{1,2})?$/.test(amount)) balances.set(`woo:${source}:${id}`, { amount, currency });
+  }
+  return { balances, more: a.more === true };
 }

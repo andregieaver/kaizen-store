@@ -703,13 +703,24 @@ export type FeedState = {
 /**
  * *What to bring* (D445 step 9, Lisa's): parts left out of the copy, and past orders only from a date (an ISO instant), else all of them.
  */
-export type CopyOptions = { skip: CopyFeed[]; ordersSince: string | null };
+/**
+ * `wordpress` (a WooCommerce shop, D446 4.5, the owner's own choice): `move`, everything comes, the site's pages, posts and menus too;
+ * `keep`, only the shop, WordPress keeping its pages and blog (step 4 sets up what that needs).
+ */
+export type CopyOptions = { skip: CopyFeed[]; ordersSince: string | null; wordpress?: "move" | "keep" };
+
+/** The parts of a WordPress site a WooCommerce copy brings only when the owner moves everything. */
+export const WORDPRESS_FEEDS: readonly CopyFeed[] = ["pages", "articles", "menus"];
 
 /** The options as the owner chose them, checked: a part that is not one is dropped, a date that is not one is all orders. */
 export function copyOptionsOf(raw: unknown): CopyOptions {
   const r = o(raw);
   const skip = Array.isArray(r.skip) ? [...new Set(r.skip.filter((f): f is CopyFeed => typeof f === "string" && (COPY_FEEDS as readonly string[]).includes(f)))] : [];
-  return { skip, ordersSince: typeof r.ordersSince === "string" && ISO_INSTANT.test(r.ordersSince) ? r.ordersSince : null };
+  return {
+    skip,
+    ordersSince: typeof r.ordersSince === "string" && ISO_INSTANT.test(r.ordersSince) ? r.ordersSince : null,
+    ...(r.wordpress === "move" || r.wordpress === "keep" ? { wordpress: r.wordpress } : {}),
+  };
 }
 
 /** The first moment of past orders brought for "the last `years` years", from `now`; null for all of them. */

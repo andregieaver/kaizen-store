@@ -147,6 +147,9 @@ export const setupEn = {
   actions: {
     ownerOnly: "Only an owner can set up the store.",
     opened: "Your store is open.",
+    /** `TRIAL_OVER` and `NOT_READY` of `src/server/setup.ts`, said in the owner's language. */
+    trialOver: "The free trial has ended: choose a plan on the Billing page to open the store.",
+    notReady: "Add your business details and at least one country first.",
   },
 };
 

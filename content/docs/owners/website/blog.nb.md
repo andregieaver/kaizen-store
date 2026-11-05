@@ -15,7 +15,7 @@ sources: [D50, D57, D340, D341]
 
 ## Skriv en artikkel
 
-Åpne **Nettsted** i menyen og velg [Blogg](/admin/{store}/articles). Trykk *New article* og gi artikkelen en tittel.
+Åpne **Nettsted** i menyen og velg [Blogg](/admin/{store}/articles). Trykk **Ny artikkel** og gi artikkelen en tittel.
 
 En artikkel bygges i den samme sidebyggeren som sidene dine, med rader, kolonner og komponenter:
 [Bygg sider i sidebyggeren](/docs/owners/website/the-page-builder) forklarer hvordan. Bloggen ligger på `/blog`, med de nyeste artiklene
@@ -60,7 +60,7 @@ Hver blogg har en feed som lesere kan følge i en feedleser, med de 50 nyeste pu
 Blogger.
 
 > [!TIP]
-> Vil du bygge siden til den første bloggen i sidebyggeren, velger du en under *Special pages* på listen over
+> Vil du bygge siden til den første bloggen i sidebyggeren, velger du en under **Spesielle sider** på listen over
 > [Sider](/admin/{store}/pages).
 
 ## Forfattere
@@ -92,6 +92,6 @@ En kommentar vises som ren tekst: lenker og kode i den følges ikke. Avviste kom
 ## Flere valg
 
 - **Land.** I en butikk som selger i flere land, kan en artikkel holdes til noen av dem, slik en side kan.
-- *Categories and tags* på bloggens liste styrer kategoriene og stikkordene i bloggen. Et innholdsrutenett på en hvilken som helst side
+- **Kategorier og stikkord** på bloggens liste styrer kategoriene og stikkordene i bloggen. Et innholdsrutenett på en hvilken som helst side
   kan vise artikler, og en meny kan lenke til bloggen, en artikkel eller en bloggkategori: se
   [Menyer, topptekst og bunntekst](/docs/owners/website/menus-header-and-footer).

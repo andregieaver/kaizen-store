@@ -22,7 +22,7 @@ nettbutikken, som slås på under Innstillinger, Funksjoner.
 
 1. Åpne bestillingen. Under **Send bestillingen** ser du for hver vare hvor mange som er bestilt, sendt og angret, og hvor mange som
    fortsatt skal sendes.
-2. Velg **Transportør** og skriv inn **Sporingsnummer**, hvis du har et. For en transportør som ikke står i listen, velger du *Other* og
+2. Velg **Transportør** og skriv inn **Sporingsnummer**, hvis du har et. For en transportør som ikke står i listen, velger du **Annen** og
    limer inn **Sporingslenke**.
 3. La **Si fra til kunden** være krysset av: kunden får en e-post om hva som er i pakken og hvordan den kan følges.
 4. Trykk **Send denne pakken**.

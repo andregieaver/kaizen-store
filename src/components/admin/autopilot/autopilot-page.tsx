@@ -8,7 +8,7 @@ import type { AssistantMessages } from "@/lib/admin-messages/assistant.en";
 import { adminText } from "@/lib/admin-text";
 import { formatUsd } from "@/lib/ai-cost";
 import { AUTONOMY_AREAS, AUTONOMY_LEVELS, levelOf } from "@/lib/autopilot-autonomy";
-import { FINISHED_STEPS } from "@/lib/autopilot-plans";
+import { FINISHED_STEPS, RETRY_OPTIONS } from "@/lib/autopilot-plans";
 import type { AutopilotOverview } from "@/server/autopilot-overview";
 import type { Plan, PlanStep } from "@/server/autopilot-plans";
 
@@ -123,7 +123,8 @@ function Decisions({ overview, words: a, actions, links, locale }: { overview: A
                   {q.question.options.length > 0 ? (
                     q.question.options.map((option, i) => (
                       <Button key={option} type="submit" name="answer" value={option} kind={i === 0 ? "main" : "secondary"} size="dense">
-                        {option}
+                        {/* A failing step's own choices are the code's, so they are said in the admin's language; a plan's own as it wrote them. */}
+                        {q.question.retry ? (d.retryOptions[(RETRY_OPTIONS as readonly string[]).indexOf(option)] ?? option) : option}
                       </Button>
                     ))
                   ) : (
@@ -232,7 +233,7 @@ function PlanCard({ plan, steps, words: a, action }: { plan: Plan; steps: PlanSt
               <span className={`text-body ${FINISHED_STEPS.includes(s.status) ? "text-ink-2" : "text-ink"}`}>{s.title}</span>
               <Chip signal={STEP_SIGNAL[s.status]}>{p.step[s.status]}</Chip>
             </div>
-            {s.result?.done && <p className="text-caption text-muted">{s.result.done}</p>}
+            {s.result && <StepOutcome result={s.result} toldLabel={p.told} />}
             {s.result?.problem && <p className="text-caption text-danger-text">{s.result.problem}</p>}
             {s.answer && s.status !== "asking" && <p className="text-caption text-muted">{fillWords(p.answeredWith, { answer: s.answer })}</p>}
           </li>
@@ -253,6 +254,35 @@ function PlanCard({ plan, steps, words: a, action }: { plan: Plan; steps: PlanSt
   );
 }
 
+/**
+ * What a step did, and the changes it made at *Do it and tell me* (D309 7.4), so the level tells. A tool step's one change is its result
+ * (kept cut to 300 characters), shown once under the label.
+ */
+function StepOutcome({ result, toldLabel }: { result: NonNullable<PlanStep["result"]>; toldLabel: string }) {
+  const told = result.told ?? [];
+  const toldIsDone = told.length === 1 && !!result.done?.startsWith(told[0]);
+  return (
+    <>
+      {result.done && !toldIsDone && <p className="text-caption text-muted">{result.done}</p>}
+      {told.length > 0 && <Told label={toldLabel} items={toldIsDone && result.done ? [result.done] : told} />}
+    </>
+  );
+}
+
+/** The changes made at *Do it and tell me*: code-written summaries, the label above them. */
+function Told({ label, items }: { label: string; items: readonly string[] }) {
+  return (
+    <span className="block text-caption text-ink-2">
+      <span className="block font-medium">{label}</span>
+      {items.map((item, i) => (
+        <span key={i} className="block">
+          · {item}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function Events({ events, words: a }: { events: NonNullable<AutopilotOverview["events"]>; words: Words }) {
   const e = a.events;
   return (
@@ -260,7 +290,17 @@ function Events({ events, words: a }: { events: NonNullable<AutopilotOverview["e
       <List label={e.title}>
         {events.map((event) => (
           <ListRow key={event.id}>
-            <RowLead title={e.kinds[event.kind]} sub={event.outcome ?? undefined} />
+            <RowLead
+              title={e.kinds[event.kind]}
+              sub={
+                event.outcome || event.told.length > 0 ? (
+                  <>
+                    {event.outcome}
+                    {event.told.length > 0 && <Told label={e.told} items={event.told} />}
+                  </>
+                ) : undefined
+              }
+            />
             <RowFact>{event.at.slice(0, 10)}</RowFact>
             <Chip signal={event.status === "done" ? "positive" : event.status === "failed" ? "danger" : "neutral"}>{e.statuses[event.status as keyof typeof e.statuses] ?? event.status}</Chip>
           </ListRow>

@@ -1,3 +1,5 @@
+import { VAT_STAFF_TEXT } from "../vat-treatment";
+
 import type { Widen } from "./common.en";
 
 /**
@@ -79,6 +81,8 @@ export const orderEn = {
       "Subscription box delivery for {date}. Marking it sent charges {amount} to the customer's card{card} first; if the card is refused, it is not marked sent and the customer is emailed a link to pay.",
     lastTry: "Last try: {problem}",
     theCarrier: "the carrier",
+    /** The send form's carrier for one not on the list. */
+    carrierOther: "Other",
     receiptCarrier: "Receipt recorded from the carrier's delivered event: {when}. Mark delivered on the returns card corrects it.",
     receiptHandover: "Handed over: {when}.",
     receiptStaff: "Delivered (marked by staff): {when}.",
@@ -485,9 +489,9 @@ export const orderEn = {
       old: "Kaizena Flow stopped following it: sent more than 30 days ago.",
       undone: "Kaizena Flow stopped following it: the parcel was undone.",
       carrier_failing: "Kaizena Flow could not reach the carrier for this parcel and stopped asking. Check now tries again.",
-      no_agreement: "The carrier's agreement is no longer saved under Shipping, so Kaizena Flow stopped asking. Check now tries again.",
+      no_agreement: "The carrier's agreement is no longer saved under Integrations, so Kaizena Flow stopped asking. Check now tries again.",
     },
-    notFollowed: "Kaizena Flow follows parcels from carriers you connect under Shipping.",
+    notFollowed: "Kaizena Flow follows parcels from carriers you connect under Integrations.",
     notChecked: "Not checked yet",
     notVerified: "({carrier}'s code is not yet checked against its documentation: no email or delivery date comes from it)",
     deliveredFrom: "Delivered (from {carrier}, {when})",
@@ -634,7 +638,7 @@ export const orderEn = {
       sent: "and the customer has been emailed.",
       logged: "but email is not set up yet, so the customer was not emailed.",
       duplicate: "and the email had been sent already.",
-      suppressed: "but the customer's address does not take emails, so none was sent.",
+      suppressed: "but the order's customer was erased, or this is a demo store, so no email was sent.",
       failed: "but the email could not be sent: try Send the email again.",
     } as Record<string, string>,
     noEmailNeeded: "and no email was needed.",
@@ -656,6 +660,36 @@ export const orderEn = {
     booked: "Booked with {carrier} ({tracking}) and marked as sent{told}. Print the label below.",
     bookedPorterbuddy: "Booked with Porterbuddy (order {tracking}) and marked as sent{told}. Print the label below.",
     andTold: ", and the customer has been told",
+  },
+  /** The order's VAT treatment for staff (D157, `VatTreatmentPanel`): its kind, why (`VAT_STAFF_TEXT`), the numbers and what VIES said. */
+  vatTreatment: {
+    title: "VAT treatment",
+    kinds: {
+      standard: "Standard: VAT charged",
+      reverse_charge: "Reverse charge: no VAT charged",
+      ioss: "IOSS: VAT charged and marked with the IOSS number",
+    },
+    vies: { valid: "Registered", invalid: "Not accepted", unavailable: "Could not be checked", not_checked: "Not checked" },
+    checked: "{status}, checked {when}",
+    sellerNumber: "Seller's VAT number",
+    buyerNumber: "Buyer's VAT number",
+    viesTerm: "VIES",
+    consultation: "Consultation number",
+    registeredName: "Registered name (VIES)",
+    registeredAddress: "Registered address (VIES)",
+    typedCompany: "Company the buyer typed",
+    notCharged: "VAT not charged",
+    onShipping: "of which on shipping",
+    iossNumber: "IOSS number",
+    consignment: "Consignment value (EUR, without VAT)",
+    shippingVat: "Shipping VAT",
+    shippingRule: "{rate} (rule: {rule})",
+    rules: { standard: "Standard rate", follows_goods: "Follows the goods", highest: "Highest rate in the basket" } as Record<string, string>,
+    nameDiffers:
+      "The name VIES holds is not the company the buyer typed. That can be harmless (a trading name). Nothing was blocked because of it: compare them if the order looks wrong.",
+    frozen: "Frozen when the order was placed. The buyer's number and VIES's answer are shown only to staff and to the buyer on their own order.",
+    reliefRow: "VAT not charged (reverse charge)",
+    reasons: { ...VAT_STAFF_TEXT } as Record<string, string>,
   },
 };
 

@@ -55,13 +55,9 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
   const domain = storeDomain();
+  const page = adminText(lang, "domains").page;
   if (!domain) {
-    return (
-      <PageHeader
-        title="Domains"
-        description={<>Your store is at {storeHref(store.slug, storeBase(store.slug))} on Kaizena Flow&apos;s own address for now. Stores get addresses of their own, and can use their own domains, once Kaizena Flow&apos;s store domain is set up.</>}
-      />
-    );
+    return <PageHeader title={page.title} description={fillWords(page.notSetUp, { address: storeHref(store.slug, storeBase(store.slug)) })} />;
   }
   // Waiting domains are checked as the owner looks; a deployment that did not happen is asked for again.
   await checkWaitingDomains(store.id);
@@ -70,7 +66,7 @@ export default async function DomainsPage({ params, searchParams }: PageProps<"/
   if (deploying) await deployIfBehind(store.slug, domains).catch(() => false);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Domains" description={<>Where shoppers find your store: its address on Kaizena Flow, or a domain of your own.</>} />
+      <PageHeader title={page.title} description={page.description} />
       {(await searchParams).dc === "back" && <p role="status" className="text-body text-ink-2">{adminText(lang, "domains").connectAuto.back}</p>}
       {memberCan(current, "owner") && (
         <Suspense fallback={null}>

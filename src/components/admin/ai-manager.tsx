@@ -103,8 +103,11 @@ export function AiManagerChat({
   onNavigate?: () => void;
   /** Asked to talk (the launcher's microphone, counted per click): voice mode starts. */
   startVoice?: number;
-  /** A first message handed over from the page (an alert's *Ask the AI manager*, D348), counted per press: it is sent once each time. */
-  ask?: { text: string; n: number };
+  /**
+   * A first message handed over from the page (an alert's *Ask the AI manager*, D348), counted per press: sent once each time, or with `send`
+   * false (the briefing's email link, D416) put in the message box for the person to read and send.
+   */
+  ask?: { text: string; n: number; send?: boolean };
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -135,6 +138,8 @@ export function AiManagerChat({
   const toAnnounce = answerToAnnounce(messages, announced.id, Boolean(streaming));
   if (toAnnounce) setAnnounced(toAnnounce);
   const sendRef = useRef<(text: string) => void>(() => undefined);
+  // Words put in the message box from outside (the briefing email's alert, D416), unsent.
+  const draftRef = useRef<(text: string) => void>(() => undefined);
   const panel = variant === "panel";
   const canTalk = abilities.hear && abilities.speak && actions.hear !== null;
   const voice = useVoice({
@@ -186,12 +191,13 @@ export function AiManagerChat({
     if (startVoice > 0) startRef.current();
   }, [startVoice]);
 
-  // An alert handed over from the page (D348): sent as the person's message, once per press.
+  // An alert handed over from the page (D348): sent as the person's message, once per press; from the briefing's email (D416) it waits in the box.
   const askedRef = useRef(0);
   useEffect(() => {
     if (!ask || ask.n <= askedRef.current) return;
     askedRef.current = ask.n;
-    sendRef.current(ask.text);
+    if (ask.send === false) draftRef.current(ask.text);
+    else sendRef.current(ask.text);
   }, [ask]);
 
   // Escape ends voice mode and calls.
@@ -288,6 +294,10 @@ export function AiManagerChat({
     }
   }
   sendRef.current = (text) => void send(text);
+  draftRef.current = (text) => {
+    setDraft(text);
+    inputRef.current?.focus();
+  };
 
   /**
    * Stop, pressed on purpose (PSI AGT-03): the turn is told to stop on the server, then the answer stops streaming here. Leaving the page

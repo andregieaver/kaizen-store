@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { IMPORT_MAX_BYTES } from "@/lib/data-limits";
 import { htmlToRichText } from "@/lib/html-rich-text";
+import { splitPictures } from "@/lib/html-pictures";
 import {
   WOO_COPY_FEEDS,
   WOO_MOVER_FEEDS,
@@ -35,6 +36,7 @@ import {
   MENUS_QUERY,
   PLAIN_FEEDS,
   CATCH_UP_FEEDS,
+  WORDPRESS_FEEDS,
   categoryName,
   consentLines,
   copyOptionsOf,
@@ -87,9 +89,10 @@ import { safeFetch } from "./replicate-fetch";
 import { shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
 import { customerMark, recordMoveItems } from "./shopify-undo";
 import { pgTextArray } from "./pg-arrays";
+import { pictureToLibrary } from "./product-import";
 import { SETTINGS_FEEDS, applySettingsFeed, readSettingsFeed } from "./shopify-settings-copy";
 import { hasMover, moverGet, wooGet, wooSetting } from "./woocommerce-connect";
-import { MOVER_PAGE_SIZE, SEO_FIELDS, SEO_FIELD_GROUP, redirectLinesOf, seoOf, subscriberLinesOf, termSeoOf } from "@/lib/woocommerce-mover";
+import { SEO_FIELDS, SEO_FIELD_GROUP, contentLinesOf, giftCardLinesOf, menusOf, redirectLinesOf, seoOf, subscriberLinesOf, termSeoOf } from "@/lib/woocommerce-mover";
 import { newFieldId, type FieldDef } from "@/lib/custom-fields";
 import { listFieldGroups, productFacts, saveFieldData, saveFieldGroup, saveTermFields } from "./custom-fields";
 import { listTerms, updateTerm } from "./taxonomy";
@@ -211,6 +214,12 @@ async function stateOf(storeId: string): Promise<CopyState | null> {
   return (await connected(storeId))?.state ?? null;
 }
 
+/** A WooCommerce owner's answer to *What moves?* (D446 4.5), as kept with the copy; null before it is asked. */
+export async function copyChoice(member: Membership): Promise<"move" | "keep" | null> {
+  if (!memberCan(member, OWNER)) return null;
+  return (await connected(member.store.id))?.state.options?.wordpress ?? null;
+}
+
 /** The platform the connected shop is on (owner only), for the page's words and the parts it lists; null when none is connected. */
 export async function copySource(member: Membership): Promise<MoveSource | null> {
   if (!memberCan(member, OWNER)) return null;
@@ -265,7 +274,11 @@ export async function startCopy(member: Membership, chosen: unknown = null): Pro
   // WooCommerce's copy brings its products, categories, customers, past orders and coupons (D446 step 1); its other parts are later steps'.
   if (source === "woocommerce") {
     // The plugin, once connected (step 2), brings the redirects and MailPoet's list too.
-    const parts: readonly CopyFeed[] = [...WOO_COPY_FEEDS, ...((await hasMover(member.store.id)) ? WOO_MOVER_FEEDS : [])];
+    // The owner's choice (D446 4.5): only the shop, and WordPress keeps its pages, posts and menus. A copy is never started without it.
+    if (options.wordpress !== "move" && options.wordpress !== "keep") return { ok: false };
+    const parts: readonly CopyFeed[] = [...WOO_COPY_FEEDS, ...((await hasMover(member.store.id)) ? WOO_MOVER_FEEDS : [])].filter(
+      (f) => options.wordpress === "move" || !WORDPRESS_FEEDS.includes(f),
+    );
     for (const feed of COPY_FEEDS) if (!parts.includes(feed)) feeds[feed] = { stage: "empty", count: 0 };
   }
   // Shopify keeps no reviews of its own (an app does): nothing to read.
@@ -276,7 +289,7 @@ export async function startCopy(member: Membership, chosen: unknown = null): Pro
   // No customers, no subscribers from them; no products, no categories from their collections.
   if (options.skip.includes("customers")) feeds.subscribers = { stage: "empty", count: 0 };
   if (options.skip.includes("products")) feeds.collections = { stage: "empty", count: 0 };
-  await save(member.store.id, { ...EMPTY_COPY, startedAt: new Date().toISOString(), ...(options.skip.length > 0 || options.ordersSince ? { options } : {}), feeds });
+  await save(member.store.id, { ...EMPTY_COPY, startedAt: new Date().toISOString(), ...(options.skip.length > 0 || options.ordersSince || options.wordpress ? { options } : {}), feeds });
   log("info", "shopify.copy_started", { storeId: member.store.id, source, skipped: options.skip.length, ordersSince: options.ordersSince !== null });
   return { ok: true };
 }
@@ -293,7 +306,8 @@ export async function startCatchUp(member: Membership, since: string, only: read
   const feeds = Object.fromEntries(COPY_FEEDS.map((f) => [f, (CATCH_UP_FEEDS.includes(f) && only.includes(f)) || (f === "subscribers" && only.includes("customers")) ? { stage: "waiting" } : { stage: "empty", count: 0 }])) as CopyState["feeds"];
   const vendors = state.feeds.products.vendors;
   if (vendors) feeds.products = { ...feeds.products, vendors };
-  await save(member.store.id, { startedAt: new Date().toISOString(), apply: true, since, feeds });
+  // The owner's choices stay with the copy (a WooCommerce owner's *What moves?* is read by the address and move day).
+  await save(member.store.id, { startedAt: new Date().toISOString(), apply: true, since, ...(state.options ? { options: state.options } : {}), feeds });
   log("info", "shopify.catch_up_started", { storeId: member.store.id });
   return { ok: true };
 }
@@ -417,7 +431,7 @@ async function registerLater(member: Membership, feed: CopyFeed, f: FeedState, d
 /** How many of a `direct` feed's items one tick writes: each is a page save (or a menu), with its checks. */
 const DIRECT_BATCH: Partial<Record<CopyFeed, number>> = { pages: 15, articles: 15, menus: 5 };
 
-const pageInputOf = (item: DirectItem, extra: Record<string, unknown> = {}) => ({
+const pageInputOf = (item: DirectItem, extra: Record<string, unknown> = {}, blocks: Record<string, unknown>[] | null = null) => ({
   title: item.title,
   slug: item.handle,
   thumbnail: null,
@@ -426,13 +440,35 @@ const pageInputOf = (item: DirectItem, extra: Record<string, unknown> = {}) => (
   aiAssistants: true,
   categories: [],
   tags: [],
-  rows: [{ id: randomUUID(), type: "row", layout: "1", columns: [{ id: randomUUID(), blocks: [{ id: randomUUID(), type: "richText", doc: htmlToRichText(item.body).doc }] }] }],
+  rows: [{ id: randomUUID(), type: "row", layout: "1", columns: [{ id: randomUUID(), blocks: blocks ?? [{ id: randomUUID(), type: "richText", doc: htmlToRichText(item.body).doc }] }] }],
   ...extra,
 });
 
+/**
+ * A page's blocks from its HTML (D446 step 3): its words as text blocks and each picture, fetched into the store's library
+ * (`pictureToLibrary()`, through `safeFetch()`), as an image block where it stood. A picture that cannot be fetched is left; a page with no
+ * picture is one text block, as before.
+ */
+async function pageBlocksOf(member: Membership, html: string, deps: CopyDeps): Promise<Record<string, unknown>[]> {
+  const { parts } = splitPictures(html);
+  if (!parts.some((p) => p.kind === "picture")) return [{ id: randomUUID(), type: "richText", doc: htmlToRichText(html).doc }];
+  const blocks: Record<string, unknown>[] = [];
+  for (const part of parts) {
+    if (part.kind === "html") {
+      const doc = htmlToRichText(part.html).doc;
+      if (doc.content.length > 0) blocks.push({ id: randomUUID(), type: "richText", doc });
+      continue;
+    }
+    const got = await pictureToLibrary({ storeId: member.store.id, accountId: member.account.id }, part.src, deps.data ?? {});
+    if (got.ok && got.width > 0 && got.height > 0) blocks.push({ id: randomUUID(), type: "image", image: { url: got.url, width: got.width, height: got.height, alt: part.alt }, caption: "" });
+    else log("info", "shopify.copy_picture_left", { storeId: member.store.id });
+  }
+  return blocks.length > 0 ? blocks : [{ id: randomUUID(), type: "richText", doc: htmlToRichText(html).doc }];
+}
+
 /** Saves one page or post through the editor's own `savePage()`; one the checker holds back is saved as a draft for the owner to look at. */
-async function savePageOf(member: Membership, item: DirectItem, type: "page" | "article", extra: Record<string, unknown>): Promise<boolean> {
-  const input = pageInputOf(item, extra);
+async function savePageOf(member: Membership, item: DirectItem, type: "page" | "article", extra: Record<string, unknown>, deps: CopyDeps = {}): Promise<boolean> {
+  const input = pageInputOf(item, extra, await pageBlocksOf(member, item.body, deps));
   const first = await savePage(member.account, member.store.id, null, input, { publish: item.published, type });
   const kept = async (result: Awaited<ReturnType<typeof savePage>>) => {
     // Written down for *Undo this copy* (step 9).
@@ -511,20 +547,26 @@ async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, dep
   let made = f.made ?? 0;
   let refused = f.refused ?? 0;
   let total = 0;
+  let step = size;
   if (feed === "pages" || feed === "articles") {
     const type = feed === "pages" ? "page" : "article";
     const items = directItems(tree);
     total = items.length;
     const here = new Set((await listPages(member.store.id, type)).map((p) => p.slug));
     const blogs = feed === "articles" ? await blogIdsOf(member, items) : new Map<string, string | null>();
+    // Fetching a page's pictures takes time: a tick stops after 40 seconds, and the next goes on.
+    const started = Date.now();
+    step = 0;
     for (const item of items.slice(cursor, cursor + size)) {
+      if (step > 0 && Date.now() - started > 40_000) break;
+      step += 1;
       if (here.has(item.handle)) {
         made += 1;
         continue;
       }
       const blogId = item.blog ? blogs.get(item.blog.handle) : null;
       const extra = type === "article" ? { ...(blogId ? { blogId } : {}), ...(item.author ? { author: item.author } : {}) } : {};
-      if (await savePageOf(member, item, type, extra)) made += 1;
+      if (await savePageOf(member, item, type, extra, deps)) made += 1;
       else refused += 1;
     }
     refreshTag(pagesTag(member.store.id));
@@ -558,7 +600,7 @@ async function applyDirect(member: Membership, feed: CopyFeed, f: FeedState, dep
     }
     refreshTag(storeTag(member.store.slug));
   }
-  const next = cursor + size;
+  const next = cursor + step;
   return next >= total ? { ...f, stage: "done", cursor: total, made, refused } : { ...f, stage: "applying", cursor: next, made, refused };
 }
 
@@ -694,7 +736,7 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
     state.feeds.discounts = await readWooCoupons(member, deps);
     return;
   }
-  if (feed === "redirects" || feed === "subscribers") {
+  if (feed === "redirects" || feed === "subscribers" || feed === "gift_cards" || feed === "pages" || feed === "articles" || feed === "menus") {
     await readMoverFeed(member, feed, state, before, deps);
     return;
   }
@@ -715,7 +757,7 @@ async function readWoo(member: Membership, state: CopyState, before: CopyState["
   let finished = false;
   let skipped = 0;
   for (let n = 0; n < WOO_PAGES_A_TICK && Date.now() - started < WOO_TICK_MS; n += 1) {
-    const got = await wooList(storeId, WOO_ROUTES[feed], wooQuery(feed, page, { ordersSince: feed === "orders" ? (state.options?.ordersSince ?? null) : null }), deps);
+    const got = await wooList(storeId, WOO_ROUTES[feed], wooQuery(feed, page, { ordersSince: feed === "orders" ? (state.options?.ordersSince ?? null) : null, changedSince: state.since ?? null }), deps);
     if (!got.ok) {
       log("warn", "woocommerce.copy_read_failed", { storeId, feed, page, problem: got.problem });
       state.feeds[feed] = { stage: "failed", problem: got.problem };
@@ -904,14 +946,24 @@ async function applySeo(member: Membership, f: FeedState, roots: readonly Record
 const MOVER_PAGES = 40;
 
 /**
- * A part our WordPress plugin reads (D446 step 2): the redirect plugins' redirects (into the redirect import) or MailPoet's subscribed
- * subscribers (into the email list's own writer), every page in one tick. Without the plugin, nothing.
+ * A part our WordPress plugin reads (D446 step 2): the redirect plugins' redirects (into the redirect import), MailPoet's subscribed
+ * subscribers (into the email list's own writer), or the gift card plugins' cards with money left (made here on move day, step 2b), every
+ * page in one tick. Without the plugin, nothing.
  */
-async function readMoverFeed(member: Membership, feed: "redirects" | "subscribers", state: CopyState, before: CopyState["feeds"], deps: CopyDeps): Promise<void> {
+async function readMoverFeed(
+  member: Membership,
+  feed: "redirects" | "subscribers" | "gift_cards" | "pages" | "articles" | "menus",
+  state: CopyState,
+  before: CopyState["feeds"],
+  deps: CopyDeps,
+): Promise<void> {
+  const shortcodes = new Set<string>();
+  const today = new Date().toISOString().slice(0, 10);
   const lines: Record<string, unknown>[] = [];
   let skipped = 0;
   for (let page = 1; page <= MOVER_PAGES; page += 1) {
-    const got = await moverGet(member.store.id, feed, { page }, deps);
+    const route = feed === "pages" || feed === "articles" ? "content" : feed;
+    const got = await moverGet(member.store.id, route, feed === "pages" || feed === "articles" ? { type: feed === "pages" ? "page" : "post", page } : feed === "menus" ? {} : { page }, deps);
     if (!got.ok) {
       if (got.problem === "none") {
         state.feeds[feed] = { stage: "empty", count: 0 };
@@ -921,13 +973,23 @@ async function readMoverFeed(member: Membership, feed: "redirects" | "subscriber
       state.feeds[feed] = { stage: "failed", problem: got.problem === "refused" ? "shopify_refused" : "shopify_failed" };
       return;
     }
-    const read = feed === "redirects" ? redirectLinesOf(got.data) : { ...subscriberLinesOf(got.data), skipped: 0 };
+    let read: { lines: Record<string, unknown>[]; skipped: number; more: boolean };
+    if (feed === "redirects") read = redirectLinesOf(got.data);
+    else if (feed === "gift_cards") read = { ...giftCardLinesOf(got.data, today), skipped: 0 };
+    else if (feed === "menus") read = { lines: menusOf(got.data), skipped: 0, more: false };
+    else if (feed === "pages" || feed === "articles") {
+      const content = contentLinesOf(got.data);
+      for (const code of content.shortcodes) shortcodes.add(code);
+      read = { lines: content.lines, skipped: 0, more: content.more };
+    } else read = { ...subscriberLinesOf(got.data), skipped: 0 };
     lines.push(...read.lines);
     skipped += read.skipped;
-    if (!read.more || read.lines.length + read.skipped < MOVER_PAGE_SIZE / 2) break;
+    if (!read.more) break;
   }
   // A pattern (a redirect by regular expression) stays: the import takes exact addresses.
   if (skipped > 0) log("info", "woocommerce.copy_skipped", { storeId: member.store.id, feed, skipped });
+  // The shortcodes WordPress's pages used are another plugin's code: taken out on the site, never run here; named in the log by their tags.
+  if (shortcodes.size > 0) log("info", "woocommerce.copy_shortcodes", { storeId: member.store.id, feed, tags: [...shortcodes].slice(0, 30).join(" ") });
   await finishRead(member, feed, lines.map((l) => JSON.stringify(l)).join("\n"), state, before, deps, "woocommerce");
 }
 

@@ -74,8 +74,12 @@ export function DownloadButton({ action, jobId, part, label }: { action: string;
   );
 }
 
+/** The words of a job list's buttons (`common.jobs`): English unless the page hands in the admin's. */
+export type JobButtonWords = { download: string; open: string };
+const JOB_BUTTONS: JobButtonWords = { download: "Download", open: "Open" };
+
 /** A done export: each file with its size, rows and when it goes, and a Download button per file. */
-export function ExportFiles({ job, action, timeZone, now }: { job: ExportJobRow; action: string; timeZone: string; now: Date }) {
+export function ExportFiles({ job, action, timeZone, now, buttons = JOB_BUTTONS }: { job: ExportJobRow; action: string; timeZone: string; now: Date; buttons?: JobButtonWords }) {
   if (job.status !== "done" || job.purged || job.files.length === 0) return null;
   const total = job.files.reduce((n, f) => n + f.rows, 0);
   return (
@@ -96,7 +100,7 @@ export function ExportFiles({ job, action, timeZone, now }: { job: ExportJobRow;
                 {wholeNumber(file.rows)} rows, {formatBytes(file.bytes)}
               </span>
             </span>
-            <DownloadButton action={action} jobId={job.id} part={file.index} label="Download" />
+            <DownloadButton action={action} jobId={job.id} part={file.index} label={buttons.download} />
           </li>
         ))}
       </ul>
@@ -105,7 +109,7 @@ export function ExportFiles({ job, action, timeZone, now }: { job: ExportJobRow;
 }
 
 /** The store's recent exports of a kind, newest first: when, how many rows, in what state and whether a file can still be downloaded. */
-export function ExportJobList({ jobs, pageHref, timeZone, now }: { jobs: ExportJobRow[]; pageHref: string; timeZone: string; now: Date }) {
+export function ExportJobList({ jobs, pageHref, timeZone, now, buttons = JOB_BUTTONS }: { jobs: ExportJobRow[]; pageHref: string; timeZone: string; now: Date; buttons?: JobButtonWords }) {
   if (jobs.length === 0) return null;
   return (
     <Card title="Recent exports" compact>
@@ -135,7 +139,7 @@ export function ExportJobList({ jobs, pageHref, timeZone, now }: { jobs: ExportJ
             </Chip>
             <RowActions>
               <ButtonLink href={`${pageHref}?job=${job.id}`} kind="quiet" size="dense">
-                {job.status === "done" && !job.purged ? "Download" : "Open"}
+                {job.status === "done" && !job.purged ? buttons.download : buttons.open}
               </ButtonLink>
             </RowActions>
           </ListRow>

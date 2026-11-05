@@ -114,7 +114,8 @@ export async function storePageContext(
             return {
               blogs: blogs.map((b) => ({ id: b.id, title: blogTitle(b, main ?? "en", main, t(market?.lang ?? "en").blog), address: blogPath(b), main: b.main })),
               authors: authors.map((a) => ({ id: a.id, name: a.name })),
-              manageHref: `/admin/${store.slug}/articles/blogs`,
+              // The editor's link says Authors while the store has none, else Blogs: each opens its own page.
+              manageHref: authors.length === 0 ? `/admin/${store.slug}/articles/authors` : `/admin/${store.slug}/articles/blogs`,
             };
           })()
         : null,

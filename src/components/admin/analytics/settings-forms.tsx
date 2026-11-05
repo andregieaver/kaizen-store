@@ -30,7 +30,7 @@ import { AnalyticsSection, Note } from "./section";
 
 type FormAction = (state: FormState, form: FormData) => Promise<FormState>;
 
-/** The server actions the page binds to the store. Without them (a member who is not an owner) the view is read-only. */
+/** The server actions the page binds to the store. Without them the view is read-only (the page itself is the owner's alone, D158). */
 export type SettingsActions = {
   saveSettings: FormAction;
   saveTarget: FormAction;
@@ -588,7 +588,6 @@ export function AnalyticsSettingsView(props: AnalyticsSettingsViewProps) {
           ))}
         </ul>
       </nav>
-      {actions ? null : <Note title={w.ownersOnly.title}>{w.ownersOnly.body}</Note>}
       <CostsSection base={base} currency={currency} summary={summary} actions={actions} />
       <FeesSection currency={currency} locale={locale} settings={settings} actions={actions} />
       <LifetimeSection settings={settings} actions={actions} />

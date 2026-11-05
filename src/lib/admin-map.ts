@@ -505,7 +505,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Turn the creator programme on or off", "Approve or decline a creator's application", "Change the commission", "Give a category its own commission", "Record a payout to a creator", "Download the payouts"],
     keywords: ["creator", "creators", "influencer", "influencers", "affiliate marketing", "commission", "content creator", "ambassador", "partner programme", "payout", "promo code"], feature: "shop" }),
   store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"], feature: "shop" }),
-  store("customers.export", "/customers/export", "Export customers", "Sales", "Downloads the store's customers as a CSV file: name, email, phone, address, company, customer group, language, when they joined, their paid orders, whether their address unsubscribed from emails, and the custom fields staff entered about them. The owner's only. Kaizena Flow does not record marketing consent yet, so the file must not be used as a mailing list.", {
+  store("customers.export", "/customers/export", "Export customers", "Sales", "Downloads the store's customers as a CSV file: name, email, phone, address, company, customer group, language, when they joined, their paid orders, whether their address unsubscribed from emails, their place on the subscriber list (marketing_consent: subscribed, pending, unsubscribed or none), and the custom fields staff entered about them. The owner's only. The file is not a mailing list: marketing goes to the subscriber list.", {
     needs: "owner",
     tasks: ["Export all customers", "Download a finished export"],
     keywords: ["export customers", "csv", "customer list", "download customers", "mailing list", "excel", "eksporter kunder"],
@@ -857,7 +857,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Check the old shop's links", "Fix the old links in one press", "Compare the old shop with this one", "Check again after an import"],
     keywords: ["moving", "migrate", "shopify", "old shop", "old links", "sitemap", "seo", "move from shopify", "gammel butikk", "flytte"],
   }),
-  store("navigation", "/settings/navigation", "Header and footer", "Store", "Logos, site icon, which menus the standard header and footer show, and business details.", {
+  store("navigation", "/settings/navigation", "Header and footer", "Store", "Logos, site icon and which menus the standard header and footer show; the business details the footer shows are under Company.", {
     keywords: ["logo", "favicon"],
   }),
   store("headers", "/headers", "Headers", "Store", "Custom headers built in the page builder."),
@@ -897,10 +897,10 @@ const PAGES: readonly AdminPage[] = [
   }),
   store("company.place.new", "/settings/company/places/new", "New place", "Store", "Adds a shop or pickup point."),
   store("company.place", "/settings/company/places/[placeId]", "Place", "Store", "One shop or pickup point."),
-  store("integrations", "/integrations", "Integrations", "Store", "Zapier, Make and Slack, and how their sends are doing; shipping carriers being prepared.", { keywords: ["zapier", "make", "slack", "webhooks", "shipping carriers"] }),
+  store("integrations", "/integrations", "Integrations", "Store", "Zapier, Make and Slack, and how their sends are doing; and the shipping carriers (Posten / Bring, PostNord, Porterbuddy and Helthjem), each connected with the store's own agreement.", { keywords: ["zapier", "make", "slack", "webhooks", "shipping carriers"] }),
   store("integrations.endpoints", "/integrations/endpoints", "Your own endpoints", "Store", "Sends signed events to the owner's own HTTPS endpoints: topics, the secret, a test, the log and sending again.", { keywords: ["webhooks", "endpoints", "signed events", "hmac", "developers"] }),
   store("integration", "/integrations/[provider]", "Integration", "Store", "Connects one integration, chooses its events, tests it, and shows recent sends."),
-  store("integrations.shipping", "/integrations/shipping/[carrier]", "Shipping carrier", "Store", "Saves the store's own agreement with Posten / Bring, PostNord, Porterbuddy or Helthjem, ready for the day its connection arrives.", {
+  store("integrations.shipping", "/integrations/shipping/[carrier]", "Shipping carrier", "Store", "Connects the store's own agreement with Posten / Bring, PostNord, Porterbuddy or Helthjem: its details, a check that the carrier accepts them, and what the carrier then does for the store.", {
     keywords: ["posten", "bring", "postnord", "porterbuddy", "helthjem", "carrier", "freight", "labels", "tracking"],
     feature: "shop",
   }),
@@ -943,7 +943,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Invite someone as staff or as a collaborator with an end date", "Change a member's role", "Remove access", "Require two-step sign-in of everyone"],
     keywords: ["users", "roles", "invite", "collaborator", "agency", "two-step", "2fa", "two factor", "authenticator", "permissions"],
   }),
-  store("staff.roles", "/staff/roles", "Roles", "Account", "The store's roles: what each can see and change, per area. Orders, Products, Marketing, Content, Analytics and Read-only to start from.", {
+  store("staff.roles", "/staff/roles", "Roles", "Account", "The store's roles: what each can see and change, per area. Orders, Products, Marketing, Content, Analytics, Support agent and Read-only to start from.", {
     needs: "owner",
     tasks: ["Make a role", "Choose what a role can view or change", "Delete a role nobody holds"],
     keywords: ["permissions", "access", "staff roles", "who can", "read only"],

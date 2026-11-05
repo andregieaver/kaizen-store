@@ -13,7 +13,7 @@ import type { Abilities, AiManagerActions, AiManagerChat } from "./ai-manager";
 import { MicIcon } from "./mic-icon";
 import { unlockVoiceAudio } from "./voice-mode";
 import { useAdminText } from "./admin-text";
-import { ASK_AI_MANAGER_EVENT, type AskDetail } from "@/lib/alert-ask";
+import { ASK_AI_MANAGER_EVENT, askFrom, type AskDetail } from "@/lib/alert-ask";
 
 import { NoticeBadge, NoticeList, useNoticeCount } from "./ai-notices";
 
@@ -79,7 +79,7 @@ export function AiManagerLauncher({
   /** Counts the microphone's clicks: each asks the panel to start voice mode. */
   const [talk, setTalk] = useState(0);
   /** An alert handed over (D348): its first message, counted per press so the same one can be asked again. */
-  const [ask, setAsk] = useState<{ text: string; n: number } | undefined>(undefined);
+  const [ask, setAsk] = useState<{ text: string; n: number; send: boolean } | undefined>(undefined);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const onItsPage = pathname === base;
@@ -148,9 +148,9 @@ export function AiManagerLauncher({
     const root = document.documentElement;
     root.dataset.aiManager = "on";
     const onAsk = (event: Event) => {
-      const message = (event as CustomEvent<AskDetail>).detail?.message;
-      if (typeof message !== "string" || !message.trim()) return;
-      setAsk((prev) => ({ text: message, n: (prev?.n ?? 0) + 1 }));
+      const detail = (event as CustomEvent<AskDetail>).detail;
+      if (!askFrom(detail)) return;
+      setAsk((prev) => askFrom(detail, prev) ?? prev);
       if (onItsPage) {
         focusAiComposer();
         return;

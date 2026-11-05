@@ -1,6 +1,21 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { testDb } from "./db";
+
+/**
+ * Goes to the cart by its link and waits until it is ready for the shopper's hand. Entering the cart from another page loads it afresh
+ * once (PayRouteGuard, wave 1 1e), and until the cart's script has taken over (a line's Update button is drawn only before it,
+ * CartQuantity) a change typed or pressed there can be lost: WebKit kept a quantity at 1 and a removed line in the cart so (CI #983,
+ * and here 1 run in 5 before this wait, 10 in 10 after).
+ */
+async function openCart(page: Page, link: Locator) {
+  const reloaded = page.waitForEvent("load");
+  await link.click();
+  await expect(page).toHaveURL(/\/cart$/);
+  await reloaded;
+  await expect(page.getByRole("button", { name: /Fjern/ }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Oppdater" })).toHaveCount(0);
+}
 
 test("add to cart, change quantity within stock, and remove", async ({ page }) => {
   await page.goto("/s/demo/no/p/demo-keramikkopp");
@@ -23,11 +38,9 @@ test("add to cart, change quantity within stock, and remove", async ({ page }) =
   await expect(page.getByRole("link", { name: "Handlekurv (1)" })).toBeVisible();
   await expect(add).toBeFocused();
 
-  await variants.getByRole("link", { name: "Gå til handlekurven" }).click();
+  await openCart(page, variants.getByRole("link", { name: "Gå til handlekurven" }));
   await expect(page).toHaveURL("/s/demo/no/cart");
   await expect(page.getByRole("heading", { level: 1, name: "Handlekurv" })).toBeVisible();
-  // The product page stays mounted but hidden (for back navigation), so look
-  // only at what is visible.
   await expect(page.getByText("Farge: Svart").filter({ visible: true })).toBeVisible();
 
   // Only 3 black mugs are in stock: asking for 5 settles on 3.
@@ -196,7 +209,7 @@ test("a download needs no stock or shipping", async ({ page }) => {
   expect(JSON.stringify(product)).not.toContain("shippingDetails");
 
   await page.getByRole("button", { name: "Legg i handlekurven" }).click();
-  await page.getByRole("link", { name: "Gå til handlekurven" }).click();
+  await openCart(page, page.getByRole("link", { name: "Gå til handlekurven" }));
   await expect(page.getByText("Digital nedlasting").filter({ visible: true })).toBeVisible();
   const summary = page.getByRole("complementary");
   await expect(summary).toContainText("99,00");

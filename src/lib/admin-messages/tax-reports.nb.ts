@@ -80,7 +80,7 @@ export const taxReportsNb: TaxReportsMessages = {
     cardsDescription: "I {currency}, hvert dokument til valutakursen som ble lagret på det da det ble utstedt. Kreditnotaer telles i perioden de utstedes.",
     nothing: "Ingen faktura eller kreditnota er datert i perioden, så det er ingenting å rapportere.",
     invoicingOff: "Rapportene lages av fakturaene dine. Er fakturering slått av, slår du den på under",
-    settingsInvoices: "Innstillinger, Fakturaer",
+    settingsInvoices: "Innstillinger, Fakturering",
     kpi: {
       charged: "Beregnet mva.",
       chargedHelp: "Merverdiavgiften på fakturaene som er datert i perioden.",

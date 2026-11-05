@@ -554,10 +554,6 @@ export const analyticsEn = {
       targets: "What do you want to reach each month?",
       visits: "Are visits counted, and what exactly is counted?",
     },
-    ownersOnly: {
-      title: "Only owners can change these settings",
-      body: "You can see how the store is set up, but an owner has to change it. Ask an owner of the store if something here should be different.",
-    },
     costs: {
       title: "What your products cost",
       description: "Profit is what you sell for minus what the goods cost you. Enter the cost of one unit of each variant in the product editor, in {currency} and without VAT. The cost is kept on each order line when it is sold, so changing a cost later never rewrites earlier sales.",

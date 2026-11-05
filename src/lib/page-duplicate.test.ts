@@ -16,6 +16,14 @@ describe("copyTitle", () => {
   it("stays within the longest title", () => {
     expect(copyTitle("x".repeat(PAGE_TITLE_MAX + 20)).length).toBeLessThanOrEqual(PAGE_TITLE_MAX);
   });
+
+  it("says Copy of in the admin's language, and stacks no language's words on a copy", () => {
+    const known = ["Copy of", "Kopi av"];
+    expect(copyTitle("Om oss", "Kopi av", known)).toBe("Kopi av Om oss");
+    expect(copyTitle("Kopi av Om oss", "Kopi av", known)).toBe("Kopi av Om oss");
+    expect(copyTitle("Copy of About us", "Kopi av", known)).toBe("Kopi av About us");
+    expect(copyTitle("Kopi av About us", "Copy of", known)).toBe("Copy of About us");
+  });
 });
 
 describe("copySlug", () => {

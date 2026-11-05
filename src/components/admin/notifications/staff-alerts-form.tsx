@@ -190,7 +190,7 @@ export function StaffAlertsForm({ view, save, test }: { view: StaffAlertsView; s
         </h2>
         <p className="text-sm text-muted">{w.alertFloorHint}</p>
         <label className="flex flex-col gap-1 text-sm font-medium">
-          {w.howOften}
+          {w.floorLabel}
           <select value={floor} onChange={(e) => setFloor(e.target.value as typeof floor)} className={`${select} max-w-sm`}>
             {(["urgent", "warning", "info"] as const).map((f) => (
               <option key={f} value={f}>

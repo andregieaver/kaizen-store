@@ -25,7 +25,7 @@ sources: [D165, D327, D384, D445]
 
 Filen har én rad for hver variant, med tekstene på alle språk, valg, priser for hvert land, lager, kostpris, opplysninger om
 produktsikkerhet, kategorier, stikkord og bilder. En butikk med opptil 2 000 rader får filen med en gang. En større butikk får den
-som en jobb på samme side, med en knapp, *Download*, når den er klar; filen tas vare på i 7 dager.
+som en jobb på samme side, med en knapp, **Last ned**, når den er klar; filen tas vare på i 7 dager.
 
 Filen har ikke med kjøpsvalg (abonnementer), nedlastingsfiler, bookinginnstillinger eller egendefinerte felt som ikke er enkle
 verdier (bilder, filer, lenker og lignende). En import lar disse være som de er.

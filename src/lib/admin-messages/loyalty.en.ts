@@ -111,7 +111,7 @@ export const loyaltyEn = {
     expiresHint:
       "Left off, credits last for ever. When they expire, the oldest credits are used first and expire first, and the customer is emailed a reminder before their credits run out.",
     expireAfter: "Expire after",
-    expireAfterHint: "Counted from the day the credits are earned.",
+    expireAfterHint: "Counted from the day the credits can be used: for an order, when its return period ends.",
     daysUnit: "days",
     monthsUnit: "months",
     summaryHeading: "What shoppers will read",

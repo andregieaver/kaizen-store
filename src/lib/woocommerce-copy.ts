@@ -46,16 +46,18 @@ export type WooFeed = keyof typeof WOO_ROUTES;
 /** The parts a WooCommerce copy brings in step 1 (categories come with the products); the others are later steps' (D446 12). */
 export const WOO_COPY_FEEDS = ["products", "collections", "customers", "orders", "discounts", "reviews"] as const;
 /** The parts our WordPress plugin brings once the owner connects it (D446 step 2): the redirect plugins' redirects and MailPoet's list. */
-export const WOO_MOVER_FEEDS = ["redirects", "subscribers", "seo"] as const;
+export const WOO_MOVER_FEEDS = ["redirects", "subscribers", "seo", "gift_cards", "pages", "articles", "menus"] as const;
 
 /** How many of a feed a page holds: WooCommerce's most is 100; smaller pages are kinder to a shared host (D446 8). */
 export const WOO_PAGE_SIZE = 50;
 
 /** The query of a feed's page `page` (from 1). `since`: orders and customers changed from then (a catch-up), or orders placed from then. */
-export function wooQuery(feed: WooFeed, page: number, options: { ordersSince?: string | null } = {}): Record<string, string | number> {
+export function wooQuery(feed: WooFeed, page: number, options: { ordersSince?: string | null; changedSince?: string | null } = {}): Record<string, string | number> {
   const base = { page, per_page: WOO_PAGE_SIZE, orderby: "id", order: "asc" };
-  if (feed === "products") return { ...base, status: "any" };
-  if (feed === "orders") return { ...base, status: "any", ...(options.ordersSince ? { after: options.ordersSince } : {}) };
+  // Move day's catch-up (D446 4.7): what changed since the copy began, not only what is new, since WooCommerce shops often edit by hand.
+  const changed: Record<string, string> = options.changedSince ? { modified_after: options.changedSince } : {};
+  if (feed === "products") return { ...base, status: "any", ...changed };
+  if (feed === "orders") return { ...base, status: "any", ...(options.changedSince ? changed : options.ordersSince ? { after: options.ordersSince } : {}) };
   if (feed === "customers") return { ...base, role: "customer" };
   // Every review but spam and the bin: the approved ones were shown, the held ones were waiting (`reviewLines()` keeps which).
   if (feed === "reviews") return { ...base, status: "all" };

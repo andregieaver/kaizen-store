@@ -199,7 +199,7 @@ export const settingsNb: SettingsMessages = {
     onlyOwnerBusiness: "Bare en eier kan endre opplysningene om virksomheten.",
     customers: "Kunder",
     customersText:
-      "Hvem du selger til. Prisene belastes alltid med merverdiavgift; bedrifter ser dem uten, og oppgir firmanavn og organisasjonsnummer i kassen.",
+      "Hvem du selger til. Prisene lagres med merverdiavgift; bedrifter ser dem uten, og oppgir firmanavn og organisasjonsnummer i kassen. En bedrift i et annet EU-land med gyldig mva-nummer betaler ikke merverdiavgift (omvendt avgiftsplikt) når butikken er mva-registrert i EU (Innstillinger, Avgift).",
     sellingToBusinesses: "Salg til bedrifter",
     saveCustomers: "Lagre kunder",
     onlyOwnerAudience: "Bare en eier kan endre hvem butikken selger til.",

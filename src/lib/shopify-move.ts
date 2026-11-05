@@ -33,7 +33,7 @@ function leftOf(raw: unknown): LeftCard[] | undefined {
   return raw.slice(0, LEFT_CARDS_MAX).flatMap((r) => {
     const c = o(r);
     const ok =
-      typeof c.id === "string" && /^gid:\/\/shopify\/GiftCard\/\d+$/.test(c.id) && typeof c.last4 === "string" && /^[A-Z0-9]{0,4}$/.test(c.last4) &&
+      typeof c.id === "string" && (/^gid:\/\/shopify\/GiftCard\/\d+$/.test(c.id) || /^woo:[a-z0-9-]{1,40}:\d{1,12}$/.test(c.id)) && typeof c.last4 === "string" && /^[A-Z0-9]{0,4}$/.test(c.last4) &&
       typeof c.amount === "string" && /^\d{1,12}(\.\d{1,2})?$/.test(c.amount) && typeof c.currency === "string" && /^[A-Z]{3}$/.test(c.currency);
     return ok ? [{ id: c.id as string, last4: c.last4 as string, amount: c.amount as string, currency: c.currency as string, expiresOn: typeof c.expiresOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(c.expiresOn) ? c.expiresOn : null }] : [];
   });

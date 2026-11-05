@@ -114,7 +114,7 @@ export const platformToolsNb: PlatformToolsMessages = {
     off: "Av.",
     how: "Slik virker den",
     howText:
-      "Besøkende chatter med en KI-assistent i hjørnet av hver side, skriftlig eller muntlig. Den svarer ut fra nettstedets publiserte sider og artikler{store} og kunnskapsbasen under, åpner sider for den besøkende mens dere snakker, og avslår alt som ikke handler om {site}. Besøkende får vite at den er KI. Samtalene lagres bare i den besøkendes nettleserfane.",
+      "Besøkende chatter med en KI-assistent i hjørnet av hver side, skriftlig eller muntlig. Den svarer ut fra nettstedets publiserte sider og artikler{store} og kunnskapsbasen under, åpner sider for den besøkende mens dere snakker, og avslår alt som ikke handler om {site}. Besøkende får vite at den er KI. Samtalene lagres av nettstedet: med kundestøtte av slettes meldingene en dag etter at samtalen er over; med kundestøtte på etter tiden som er valgt i innstillingene for kundestøtte (30, 60 eller 90 dager).",
     howStore: ", produktene med priser og lager, frakt",
     needsAi: "Chatten trenger en KI-leverandør med en tekstmodell: {link}.",
     needsAiLink: "velg en på KI-siden",

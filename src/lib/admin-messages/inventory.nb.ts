@@ -38,7 +38,7 @@ export const inventoryNb: InventoryMessages = {
       /** The prepared reorder (D416, *Prepare reorder* from the briefing). */
       reorder: {
         title: "Et innkjøp, forberedt for deg",
-        intro: "Det som selger og det som er igjen, sier at disse blir lave innen 37 dager (30 dager å dekke og 7 for levering). Sjekk antall, kostpris og leverandør, og trykk Opprett: det lagres som utkast, og ingenting sendes til noen.",
+        intro: "Det som selger og det som er igjen, sier at disse blir lave innen 37 dager (30 dager å dekke og 7 for levering). Sjekk antall, kostpris og leverandør, og trykk Lagre som utkast: ingenting sendes til noen.",
         none: "Ingenting trenger påfyll i takten fra de siste 30 dagene.",
         noCost: { one: "Én linje mangler kostpris: skriv hva én enhet koster.", many: "{n} linjer mangler kostpris: skriv hva én enhet koster." },
       },
@@ -310,7 +310,7 @@ export const inventoryNb: InventoryMessages = {
     namePlaceholder: "Navn, for eksempel Bergen-butikken",
     add: "Legg til lagersted",
     addHint:
-      "Et nytt lagersted kommer sist i rekkefølgen. Høyst {max} lagersteder; navnet er unikt blant de aktive. Landet tas vare på til senere (ordrer fra nærmeste lagersted, henting); i dag merker det bare stedet.",
+      "Et nytt lagersted kommer sist i rekkefølgen. Høyst {max} lagersteder; navnet er unikt blant de aktive. Landet er der stedet ligger: når ordrer velger lagersteder i leveringslandet først, avgjør det hvilke det er.",
     atLimit: " Butikken har nådd grensen.",
     units: { one: "{n} enhet", many: "{n} enheter" },
     held: { one: "{units} fordelt på {n} variant", many: "{units} fordelt på {n} varianter" },

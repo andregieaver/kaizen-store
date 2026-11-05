@@ -108,7 +108,7 @@ export const loyaltyNb: LoyaltyMessages = {
     expiresHint:
       "Er dette av, varer kreditten for alltid. Når den utløper, brukes den eldste kreditten først og utløper først, og kunden får en påminnelse på e-post før kreditten går ut.",
     expireAfter: "Utløper etter",
-    expireAfterHint: "Regnet fra dagen kreditten ble tjent.",
+    expireAfterHint: "Regnet fra dagen kreditten kan brukes: for en bestilling når angrefristen er over.",
     daysUnit: "dager",
     monthsUnit: "måneder",
     summaryHeading: "Dette leser kundene",

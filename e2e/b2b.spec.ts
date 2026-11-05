@@ -38,7 +38,8 @@ test("closing the first-visit question puts the focus at the start of the page, 
   await page.keyboard.press("Escape");
   await expect(question).toBeHidden();
   const inMain = () => page.evaluate(() => Boolean(document.activeElement?.closest("main")));
-  expect(await inMain()).toBe(true);
+  // The dialog's close event, which moves the focus, comes a moment after it is hidden: wait for it rather than look once (CI #983).
+  await expect.poll(inMain).toBe(true);
   // The next Tab goes on from there, into the page, never to the chat button at its end.
   await page.keyboard.press("Tab");
   expect(await inMain()).toBe(true);

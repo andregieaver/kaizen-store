@@ -43,6 +43,16 @@ describe("the digest", () => {
     expect(text({ ...daily, legal }, null, true)).toContain("Juridiske sider fra KI: 1 publisert, 2 utkast, 0 ikke skrevet.");
     expect(text(daily)).not.toContain("Legal pages by the AI");
   });
+
+  it("tells of the changes made at Do it and tell me, by count only, which is reason enough to send (D309 7.4)", () => {
+    expect(digestWorthSending({ stepsDoneCount: 0, waiting: 0, told: 2 })).toBe(true);
+    expect(digestWorthSending({ stepsDoneCount: 0, waiting: 0, told: 0 })).toBe(false);
+    expect(text({ ...daily, told: 1 })).toContain("It made one change you asked to be told of (Do it and tell me).");
+    expect(text({ ...daily, told: 3 })).toContain("It made 3 changes you asked to be told of");
+    expect(text({ ...daily, told: 3 }, null, true)).toContain("Den gjorde 3 endringer du ba om å få vite om (Gjør det og si fra).");
+    expect(text({ ...weekly, told: 3 })).toContain("It made 3 changes you asked to be told of");
+    expect(text(daily)).not.toContain("asked to be told of");
+  });
 });
 
 describe("the weekly report", () => {

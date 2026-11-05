@@ -5,6 +5,13 @@ import type { Widen } from "./common.en";
  * `{name}` is a language's name.
  */
 export const domainsEn = {
+  /** The page's own title and introduction; `{address}` is the store's address on Kaizena Flow. */
+  page: {
+    title: "Domains",
+    description: "Where shoppers find your store: its address on Kaizena Flow, or a domain of your own.",
+    notSetUp:
+      "Your store is at {address} on Kaizena Flow's own address for now. Stores get addresses of their own, and can use their own domains, once Kaizena Flow's store domain is set up.",
+  },
   forOneLanguage: "Use for one language",
   language: "Language",
   everyLanguage: "Every language: leads to your address",

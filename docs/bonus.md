@@ -1,7 +1,7 @@
 # The bonus program (D130)
 
 A store's signed-in customers earn **credits** on what they pay and use them as a price reduction on a later order.
-Switched on by the owner under Sales → Bonus credits (`/admin/{store}/bonus`); off by default. Since D178 (`docs/store-features.md`) the
+Switched on by the owner under Marketing → Bonus credits (`/admin/{store}/bonus`); off by default. Since D178 (`docs/store-features.md`) the
 program also stands behind the store feature `bonus` (Settings → Features): the feature is the gate (the Bonus page, the customer's bonus
 panel, the cart's and checkout's credits, My account's credits and the AI tools are there only while it is on), and the program's own
 switch (`bonus_settings.enabled`) stays on the Bonus page, so the rules can be set up before shoppers see them. The program **works**

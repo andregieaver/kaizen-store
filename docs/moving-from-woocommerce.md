@@ -3,7 +3,7 @@
 The owner (3 November 2026) asked for a "moving from" plan per platform, like `docs/moving-from-shopify.md` (D445), "so simple and easy to
 follow that Homer Simpson could do it without breaking a sweat". This is WooCommerce's.
 
-**Steps 1, 1b and 2a are built (section 17); the rest is a plan.** The move engine is the one D445 plans. This file does not describe it again, and
+**Steps 1 to 5 are built (section 17).** The move engine is the one D445 plans. This file does not describe it again, and
 refers to it by section ("Shopify 8.2"):
 
 | Part of the engine | Where in the Shopify plan |
@@ -502,10 +502,123 @@ Migration version: `20261104173022_woocommerce_mover` (`shop_moves.mover_secret`
 
 Migration version: `20261104185119_woocommerce_seo_fields` (`shop_move_items` takes the kind `field_group`).
 
-**Not yet:**
-- Step 2b: gift cards from the gift card plugins (spike W6), and a Mailchimp or Klaviyo export (Decision 2).
+### Step 2b: gift cards and an email list outside WordPress (4 November 2026)
 
-**Not in steps 1 and 1b:**
-- The mover plugin and what it reads (step 2).
-- Pages, posts, menus (step 3); keep WordPress (step 4); move day (step 5).
+The owner's answer (4 November 2026): **new codes, emailed on move day**, as Shopify's, though the gift card plugins keep their codes
+readable. Checkout keeps taking only our own code format.
+
+- **Gift cards** (plugin 1.3.2, route `gift_cards`): the cards with money left of WooCommerce Gift Cards (`woocommerce_gc_cards`), PW Gift
+  Cards (`pimwick_gift_card`, the balance the sum of its activity) and YITH Gift Cards (post type `gift_card`), in the shop's currency:
+  balance, expiry and holder, and only the last four characters of a code. A spendable code never leaves the site.
+  - `giftCardLinesOf()` makes them D445's gift card lines (`woo:{plugin}:{id}`). They are the copy's `gift_cards` part, read now and made
+    on move day by D445's own writer (`moveGiftCards()`).
+  - **Move day for WooCommerce is step 5:** until it is built, they wait, as the page says (*made on move day*).
+- **Mailchimp or Klaviyo** (Decision 2: read their export): *Your email list in Mailchimp or Klaviyo?* on the WooCommerce card takes the
+  export (`readListExport()`).
+  - Mailchimp's subscribed file: `OPTIN_TIME` and `CONFIRM_TIME`. Its unsubscribed and cleaned files are refused whole.
+  - Klaviyo's profiles: `Email Marketing Consent` `SUBSCRIBED` with its timestamp.
+  - Only rows with a subscription and its moment come over, through `addMovedSubscribers()` (`source` `woocommerce`, *as Mailchimp
+    recorded it*), written down for *Undo this copy*. Someone already on the list is left as they are, and nobody is emailed.
+- *Undo this copy* now also removes subscribers moved from WooCommerce. It removed only Shopify's before: MailPoet's from step 2a would
+  have stayed.
+
+### Step 3: WordPress's pages, posts and menus (4 November 2026)
+
+For an owner who moves the whole site (*Move everything*, 4.5; the question itself is step 4's). They are the copy's `pages`, `articles`
+and `menus` parts for a WooCommerce shop once our plugin reads (`WOO_MOVER_FEEDS`), and *What to bring* can leave any of them out.
+- **The plugin (1.3.3)** has two more read-only routes:
+  - `content` (`type` page or post, drafts, pending, private and scheduled ones too): each one's address, title, author, whether it is
+    published, and its HTML. Every shortcode is taken out on the site (`strip_shortcodes()`, and by its brackets when no plugin
+    registers it any more) and named, never run: a shortcode is another plugin's code. Blocks are rendered (`do_blocks()`), classic
+    content given its paragraphs (`wpautop()`). WooCommerce's own pages (shop, cart, checkout, my account) stay: the new shop has its own.
+  - `menus`: every menu, three levels deep, each item as what it is (the front page, the shop, a page, a post, a product, a category, an
+    address) and where it leads, in the shape the Shopify copy's menus are read in (`menuInputOf()`), so links point at the new shop's
+    own page, post, product and category.
+- **Pages and posts** are written by the page editor's own writer (`savePage()`), a draft as a draft, posts in the main blog with their
+  author, as Shopify's are (`directItems()`).
+- **Their pictures now come over too**, for Shopify's pages as well (`splitPictures()`, `src/lib/html-pictures.ts`):
+  - A page's HTML is split at its pictures: the words become text blocks, and each picture an image block where it stood.
+  - Each picture (the largest of a responsive one's sizes, at most 20 a page) is fetched into the store's library by the product import's
+    own `pictureToLibrary()` (through `safeFetch()`, a 1,600 px WebP and a 480 px copy).
+  - A picture that cannot be fetched is left. A tick stops after 40 seconds and the next goes on.
+- **The shortcodes** a site's pages used are named in the log by their tags.
+- Tests:
+  - `html-pictures.test.ts`, and `woocommerce-mover.test.ts` (the two readers).
+  - `woocommerce-mover.int.test.ts`: a page with a picture, one that cannot be fetched and a draft, a post, and a menu of every kind of
+    link, brought over and undone.
+
+### The one question, asked first (4 November 2026, the owner's ask)
+
+*Copy my shop* on a WooCommerce shop asks first *What moves to Kaizena Flow?*:
+- **Everything:** the shop, and the site's pages, blog posts and menus.
+- **Only the shop:** WordPress keeps its pages and blog.
+
+Neither is chosen for the owner, and no copy starts without the answer (`startCopy()` refuses it; *Start again* asks again). With *only
+the shop*, the pages, posts and menus are not read at all (`WORDPRESS_FEEDS`). The answer is kept with the copy
+(`CopyOptions.wordpress`, `move` or `keep`), for step 4 and move day. It moved from after the copy (4.5) to before it, so nothing of a site
+that stays is ever read.
+
+### Step 4a: keeping WordPress, the switch (4 November 2026)
+
+For an owner who chose *Only the shop*. Every change to the site is the owner's own press in the plugin (1.3.4), never a remote command:
+the mover stays read-only.
+- When the owner allows reading, Kaizena Flow's answer to the plugin gives the new shop's address: its first market's (`marketUrl()`).
+  The plugin keeps it (`kaizen_store_mover_shop`, `https` only).
+- *Move to Kaizena Flow* then has *Moving day*, with two switches the owner presses there:
+  - **Pause buying** (Decision 4, catalogue mode): *Add to cart* gone (`woocommerce_is_purchasable`), and one line at the top of every page
+    saying the shop is moving.
+  - **Send shoppers to the new shop:** each product (`/p/{slug}`) and category (`/category/{slug}`) answers with a permanent redirect to
+    its page in the new shop, and the shop, cart and checkout to its front (`send_to_new_shop()`, tested in PHP by
+    `wordpress-mover-redirect.test.ts`). Every other page of the site stays. Buying stays paused while it is on.
+- Moving in says where the switches are. Uninstalling the plugin forgets them.
+
+### Step 4b: the new shop's products on WordPress, and `shop.{domain}` (4 November 2026)
+
+- **Views** (plugin 1.3.5): *Show the new shop's products on your pages* makes one saved view (D169) of each of the new shop's categories
+  and one of all its products, each with its shortcode to paste where the old shop's products were.
+  - The plugin learns the store's and market's names from Kaizena Flow's answer when reading is allowed, and reads the categories through
+    its own D169 connection (`Kaizen_Store_Api::terms()`), which the owner makes first; the page says so when it is missing.
+  - A view of the same name already there is left.
+- **The address:** with *only the shop*, the name that moves here is `shop.{domain}` alone (`namesToMove()` in `shopify-address.ts`): one
+  new record at the owner's host, nothing on the WordPress site changes. With *everything*, the site's own domain and its `www.` move, as
+  Shopify's do. The address panel says it in WooCommerce's words.
+
+### Step 5: move day for WooCommerce (4 November 2026)
+
+D445's move engine (`src/server/shopify-move.ts`) now works from whichever shop is connected. *Ready to move?*, *Move my shop*, *Choose a
+time* and the five-minute job are unchanged; the steps are:
+1. **Catch-up:** what changed on WooCommerce since the copy began (`modified_after`), not only what is new, through the same imports
+   (D446 4.7). The owner's choices stay with the copy through it (`startCatchUp()` keeps the options).
+2. **Old links:**
+   - *Everything*: read from the site's own sitemap and pointed here, as Shopify's.
+   - *Only the shop*: left to WordPress, whose plugin switch sends shoppers on.
+3. **Gift cards:** read again through the plugin just before they are made, so a balance spent since the copy is not given twice. Then made
+   with new codes by D445's own writer (`moveGiftCards()`).
+   - A card without an email waits for the owner's *Issue it*, which reads it again through the plugin (`issueReadGiftCard()`).
+   - Without the plugin there are none to make.
+4. **Open:** as Shopify's.
+
+- **Before the move:** the owner presses *Pause buying* in WordPress; the move's words say so.
+- **The 14 days after:** the daily catch-up of new customers and orders runs as Shopify's. Its card, and lowering a moved card's balance by
+  what was spent on the old shop, are Shopify's alone for now.
+- **The page:** a WooCommerce shop's card shows *Ready to move?*, the move's steps and the address, in WooCommerce's words (`woo.move`,
+  `woo.address`, merged over the shared ones by `overWords()`).
+- **Tests:** `woocommerce-copy.int.test.ts` moves a shop whose owner keeps WordPress: the catch-up asks for what changed, links are left,
+  the shop opens, and only `shop.{domain}` is to be pointed here.
+
+### The 14 days after, for WooCommerce (4 November 2026)
+
+- **The card** (`MoveWatchCard`, on the store's home and on Moving in) says it of WooCommerce (`woo.watch`, merged over the shared words),
+  with WooCommerce's own closing steps by the owner's choice:
+  - *Only the shop*: check that *Send shoppers to the new shop* is on, switch the gift cards off in their plugin, then deactivate
+    WooCommerce (Plugins → WooCommerce → Deactivate). The pages and blog stay.
+  - *Everything*: keep a copy of the old site (Tools → Export, or the host's backup), switch the gift cards off, then cancel the hosting:
+    the address leads here.
+- **Gift cards spent on the old shop:** each daily look reads every card's balance again through the plugin (1.3.6, `gift_cards` with
+  `all`, so a spent or switched-off card is read too, never taken for spent). What was spent there since the last look is taken off its
+  card here, never below zero, with the reason in its ledger (`lowerSpentOnWoo()`; Shopify's `lowerSpentOnShopify()` shares its
+  `lowerFrom()`). A card the plugin did not answer for is left.
+- Before this, a moved WooCommerce shop's card on the home page would have shown Shopify's words and steps.
+
+**Built, every step of the plan.** What remains is trying it on a real WordPress site with WooCommerce and the plugins named here.
 - Categories with their parents, and a check report (*Here's your shop*) for WooCommerce.

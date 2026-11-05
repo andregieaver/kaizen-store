@@ -18,6 +18,7 @@ import { memberCan } from "./permissions";
 import { shopifyGraphql, type ShopifyDeps } from "./shopify-connect";
 import { col, typedRow, typedRows } from "./typed-rows";
 import { recordMoveItems } from "./shopify-undo";
+import { giftCardBalancesOf } from "@/lib/woocommerce-mover";
 import { db } from "@/db/client";
 
 /**
@@ -132,6 +133,18 @@ export async function issueLeftGiftCard(member: Membership, shopifyId: string, d
   return { ok: true, code: formatGiftCode(card.code), amountMinor: card.amountMinor, currency: line.currency };
 }
 
+/**
+ * *Issue it* for a card that had no email, already read again by the caller (a WooCommerce card through our plugin, D446 step 5): made here,
+ * its code returned to be shown once (never kept). Refused when it was made here already.
+ */
+export async function issueReadGiftCard(member: Membership, line: GiftCardLine): Promise<{ ok: true; code: string; amountMinor: number; currency: string } | { ok: false; problem: "gone" | "made" | "no_codes" }> {
+  if (!memberCan(member, OWNER)) return { ok: false, problem: "gone" };
+  const card = await issueOne(member, line);
+  if (!card) return { ok: false, problem: "no_codes" };
+  if (card.code === null) return { ok: false, problem: "made" };
+  return { ok: true, code: formatGiftCode(card.code), amountMinor: card.amountMinor, currency: line.currency };
+}
+
 const BALANCES_QUERY = `query KaizenCopyGiftBalances($after: String) { giftCards(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { id balance { amount currencyCode } } } }`;
 
 /**
@@ -142,11 +155,7 @@ const BALANCES_QUERY = `query KaizenCopyGiftBalances($after: String) { giftCards
 export async function lowerSpentOnShopify(member: Membership, deps: ShopifyDeps = {}): Promise<number> {
   if (!memberCan(member, OWNER)) return 0;
   const storeId = member.store.id;
-  const moved = await typedRows(
-    z.object({ id: col.uuid, moved_from: col.text, moved_balance_minor: col.minor, currency: col.currency, balance: col.minor }),
-    sql`select id, moved_from, moved_balance_minor, currency, commerce.gift_card_balance(id) as balance from commerce.gift_cards
-         where store_id = ${storeId}::uuid and moved_from is not null and status = 'active'`,
-  );
+  const moved = await movedCards(storeId);
   if (moved.length === 0) return 0;
   const now = new Map<string, { amount: string; currency: string }>();
   let after: string | null = null;
@@ -161,6 +170,24 @@ export async function lowerSpentOnShopify(member: Membership, deps: ShopifyDeps 
     after = answer.data.giftCards?.pageInfo?.hasNextPage ? (answer.data.giftCards.pageInfo.endCursor ?? null) : null;
     if (!after) break;
   }
+  return lowerFrom(member, moved, now);
+}
+
+/** The moved cards still in use here, with what each held when it came over and holds now. */
+async function movedCards(storeId: string) {
+  return typedRows(
+    z.object({ id: col.uuid, moved_from: col.text, moved_balance_minor: col.minor, currency: col.currency, balance: col.minor }),
+    sql`select id, moved_from, moved_balance_minor, currency, commerce.gift_card_balance(id) as balance from commerce.gift_cards
+         where store_id = ${storeId}::uuid and moved_from is not null and status = 'active'`,
+  );
+}
+
+/**
+ * What was spent on the old shop since the last look, taken off each moved card here (never below zero), with the reason in its ledger:
+ * `now` is each old card's balance there, by its id. A card the old shop did not answer for is left. Returns how many cards it lowered.
+ */
+async function lowerFrom(member: Membership, moved: Awaited<ReturnType<typeof movedCards>>, now: ReadonlyMap<string, { amount: string; currency: string }>): Promise<number> {
+  const storeId = member.store.id;
   let lowered = 0;
   for (const card of moved) {
     const there = now.get(card.moved_from);
@@ -169,11 +196,33 @@ export async function lowerSpentOnShopify(member: Membership, deps: ShopifyDeps 
     if (seen === null || seen >= card.moved_balance_minor) continue;
     const spent = Math.min(card.moved_balance_minor - seen, card.balance);
     if (spent > 0) {
-      const done = await adjustGiftCard(storeId, member.account.id, card.id, -spent, "Spent on Shopify after the move");
+      const done = await adjustGiftCard(storeId, member.account.id, card.id, -spent, spentReason(card.moved_from));
       if (done.ok) lowered += 1;
       else log("warn", "shopify.gift_card_lower_refused", { storeId, problem: done.problem });
     }
     await db().execute(sql`select commerce.gift_card_moved_seen(${storeId}::uuid, ${card.id}::uuid, ${seen}::bigint)`);
   }
   return lowered;
+}
+
+const spentReason = (movedFrom: string): string => (movedFrom.startsWith("woo:") ? "Spent on WooCommerce after the move" : "Spent on Shopify after the move");
+
+/**
+ * The daily look's part for a WooCommerce shop's gift cards (D446, the 14 days after): every card of the gift card plugins read again
+ * through our plugin (`all`: spent and switched-off ones too, so a card the owner switched off there is not taken for spent), and what was
+ * spent there since taken off its card here. Nothing without the plugin.
+ */
+export async function lowerSpentOnWoo(member: Membership, read: (page: number) => Promise<{ ok: true; data: unknown } | { ok: false }>): Promise<number> {
+  if (!memberCan(member, OWNER)) return 0;
+  const moved = (await movedCards(member.store.id)).filter((c) => c.moved_from.startsWith("woo:"));
+  if (moved.length === 0) return 0;
+  const now = new Map<string, { amount: string; currency: string }>();
+  for (let page = 1; page <= 40; page += 1) {
+    const got = await read(page);
+    if (!got.ok) return 0;
+    const read_ = giftCardBalancesOf(got.data);
+    for (const [id, balance] of read_.balances) now.set(id, balance);
+    if (!read_.more) break;
+  }
+  return lowerFrom(member, moved, now);
 }

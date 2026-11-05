@@ -1,5 +1,7 @@
 import { categoriesFor, describeRate, isBuiltInVatCategory, ratePercent, VAT_CATEGORIES, VAT_CATEGORY_LABELS, type VatCategoryRow } from "@/lib/vat";
 
+import { useAdminText } from "./admin-text";
+
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
@@ -48,14 +50,17 @@ export function VatCategoryField({
   words?: VatCategoryWords;
 }) {
   const translated = words !== ENGLISH;
-  // A built-in category in the admin's language; any other in the words the platform gave it.
-  const nameOf = (c: VatCategoryRow) => (translated && isBuiltInVatCategory(c.code) ? words.builtIn[c.code]?.label ?? c.nameEn : c.nameEn);
+  // The categories the platform added with the tax engine (food, books, …), in the admin's language (`common.vatCategories`).
+  const added = useAdminText("common").vatCategories;
+  // A built-in or an added category in the admin's language; any other in the words the platform gave it.
+  const ownWords = (code: string) => (isBuiltInVatCategory(code) ? words.builtIn[code] : added[code]);
+  const nameOf = (c: VatCategoryRow) => (translated ? ownWords(c.code)?.label ?? c.nameEn : c.nameEn);
   const options = categoriesFor(categories.length > 0 ? categories : BUILT_IN_ROWS, { kind, current: category });
   const chosen = options.find((c) => c.code === category);
   const description =
     chosen &&
-    (translated && isBuiltInVatCategory(chosen.code)
-      ? words.builtIn[chosen.code]?.hint ?? chosen.description
+    (translated && ownWords(chosen.code)
+      ? ownWords(chosen.code)?.hint ?? chosen.description
       : chosen.description || (chosen.code in VAT_CATEGORY_LABELS ? VAT_CATEGORY_LABELS[chosen.code as keyof typeof VAT_CATEGORY_LABELS].hint : ""));
   return (
     <div className="flex flex-col gap-2 text-sm">

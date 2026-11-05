@@ -12,6 +12,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import type { FieldData } from "@/lib/custom-fields";
 import { BUNDLE_COMPONENTS_MAX, productInput, type ProductInput } from "@/lib/product-input";
+import { editorOptions } from "@/lib/variant-grid";
 import { db } from "@/db/client";
 import { componentFacts, searchComponents, type ComponentFacts } from "@/server/bundles";
 import { addressChangeWords, type AddressChange } from "@/lib/redirect-admin";
@@ -118,8 +119,10 @@ export async function saveProductAction(
   const fresh = await getEditorContext(member.store);
   const product = await getProductForEdit(member.store, fresh, result.productId);
   if (!product) return { status: "error", problems: [w.notReloaded] };
-  const { archived, ...input } = product;
+  const { archived, ...stored } = product;
   void archived;
+  // The options of the variants sold, as the editor opens with them (a value taken out does not come back).
+  const input = { ...stored, options: editorOptions(stored.options, stored.variants) };
   return {
     status: "saved",
     productId: result.productId,
