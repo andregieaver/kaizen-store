@@ -15,8 +15,8 @@ import { crossesBorder, HS_CODE } from "./duties";
  * Pure types, checks and texts, shared by the browser and the server, which checks everything again.
  */
 
-export type CarrierId = "bring" | "postnord" | "porterbuddy" | "helthjem";
-export const CARRIER_IDS: CarrierId[] = ["bring", "postnord", "porterbuddy", "helthjem"];
+export type CarrierId = "bring" | "postnord" | "porterbuddy" | "helthjem" | "sendcloud";
+export const CARRIER_IDS: CarrierId[] = ["bring", "postnord", "porterbuddy", "helthjem", "sendcloud"];
 export const isCarrierId = (value: string): value is CarrierId => (CARRIER_IDS as string[]).includes(value);
 
 /** What a connection will do for the store, from the shopper's checkout to the parcel on its way. */
@@ -40,6 +40,11 @@ export type CarrierField = {
   required: boolean;
   help?: string;
   placeholder?: string;
+  /**
+   * Chosen from a list the carrier gives once the store's keys are saved, never typed: `sender_address` is one of the sender
+   * addresses of the store's own Sendcloud account (D454), kept as its id.
+   */
+  pick?: "sender_address";
 };
 
 export type CarrierInfo = {
@@ -53,6 +58,11 @@ export type CarrierInfo = {
   features: CarrierFeature[];
   /** What works now: a carrier without any is still being prepared. */
   available: CarrierFeature[];
+  /**
+   * Its connection can be checked before any feature works (Sendcloud's first step, D454): the store saves its keys, checks them
+   * and finishes its setup while labels, checkout and tracking are still being built.
+   */
+  checkable?: true;
   /** The countries the carrier books return labels in, from the shopper's address to the store's (D239); none without `return_labels`. */
   returnCountries?: string[];
   fields: CarrierField[];
@@ -161,9 +171,41 @@ export const CARRIERS: CarrierInfo[] = [
       "Use the test environment until Helthjem has approved your setup. Helthjem does not give prices through its API: you enter what you charge for each service at checkout.",
     ],
   },
+  {
+    id: "sendcloud",
+    name: "Sendcloud",
+    summary: "Labels from DHL, DPD, UPS, GLS and many other carriers at Sendcloud's own rates, with no carrier agreement of your own, for shops shipping from western Europe.",
+    // Where its carriers deliver for a shop of Flow's: the EU, the EEA's Norway, Switzerland and the UK (D454; read 5 November 2026).
+    countries: ["AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GB", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "NO", "PL", "PT", "RO", "SE", "SI", "SK"],
+    features: ["rates", "pickup_points", "labels", "tracking", "return_labels"],
+    available: [],
+    checkable: true,
+    fields: [
+      { key: "publicKey", label: "Public key", secret: false, required: true, help: "The public key of the Sendcloud API integration you add for this shop." },
+      { key: "secretKey", label: "Secret key", secret: true, required: true, help: "Shown by Sendcloud with the public key." },
+      {
+        key: "senderAddressId",
+        label: "Sender address",
+        secret: false,
+        required: false,
+        help: "Where your parcels leave from: one of the sender addresses in your Sendcloud account. Save your keys first, then choose it here.",
+        pick: "sender_address",
+      },
+    ],
+    docs: "https://sendcloud.dev",
+    steps: [
+      "Have a Sendcloud account for a shop shipping from Germany, France, the Netherlands, Belgium, Austria, Italy, Spain or the UK. Sendcloud is not offered to shops shipping from Norway or Finland.",
+      "In Sendcloud, open Settings, then Integrations, and add a Sendcloud API integration with Service Points switched on. Copy its public and secret key to the form.",
+      "Save, choose the sender address your parcels leave from, and check the connection.",
+      "Sendcloud has no test system: the test environment will only make Sendcloud's free test labels, so nothing is shipped or charged.",
+    ],
+  },
 ];
 
 export const carrierInfo = (id: string): CarrierInfo | null => CARRIERS.find((c) => c.id === id) ?? null;
+
+/** Whether the store can check its agreement with the carrier: a carrier with something that works, or one marked `checkable`. */
+export const canCheck = (info: Pick<CarrierInfo, "available" | "checkable">): boolean => info.available.length > 0 || info.checkable === true;
 
 export const CARRIER_ENVIRONMENTS = ["test", "live"] as const;
 export type CarrierEnvironment = (typeof CARRIER_ENVIRONMENTS)[number];
@@ -210,6 +252,10 @@ export function parseCarrierForm(
     const value = String(raw.fields[field.key] ?? "").trim();
     if (value.length > FIELD_MAX) {
       problems.push(`${field.label} is too long.`);
+      continue;
+    }
+    if (field.pick === "sender_address" && value && !/^\d{1,12}$/.test(value)) {
+      problems.push(`Choose the ${field.label.toLowerCase()} from the list.`);
       continue;
     }
     if (field.secret) {

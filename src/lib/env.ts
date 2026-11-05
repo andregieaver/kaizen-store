@@ -127,3 +127,14 @@ export function shopifyEnv(
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(clientId)) throw new Error("SHOPIFY_CLIENT_ID must be the app's client id from Shopify's Dev Dashboard.");
   return { clientId, clientSecret, allOrders: source.SHOPIFY_ALL_ORDERS?.trim() === "1" };
 }
+
+/**
+ * Kaizena Flow's Sendcloud Tech Partner id (D454, `docs/sendcloud-labels.md`), sent as `Sendcloud-Partner-Id` on every call once
+ * Sendcloud has approved the integration; Sendcloud refuses an id it does not know, so it stays unset until then. Null without it.
+ */
+export function sendcloudPartnerId(source: Record<string, string | undefined> = { SENDCLOUD_PARTNER_ID: process.env.SENDCLOUD_PARTNER_ID }): string | null {
+  const id = source.SENDCLOUD_PARTNER_ID?.trim();
+  if (!id) return null;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new Error("SENDCLOUD_PARTNER_ID must be the partner UUID Sendcloud gave.");
+  return id;
+}

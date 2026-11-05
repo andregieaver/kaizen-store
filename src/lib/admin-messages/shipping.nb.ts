@@ -346,6 +346,11 @@ export const shippingNb: ShippingMessages = {
     ready: "Tilkoblingen til {name} er klar. Den kan: {features}.",
     toCome: " Kommer senere: {features}.",
     testShipments: " I testmiljøet bestiller {name} testsendinger: ingenting sendes, og ordrene merkes ikke som sendt.",
+    connectFirst:
+      "Du kan lagre nøklene for {name} og sjekke tilkoblingen nå, slik at resten slås på for butikken din den dagen den kommer. Kommer senere: {features}.",
+    chooseSender: "Velg en avsenderadresse",
+    sendersAfterKeys: "Lagre nøklene først: da vises avsenderadressene i Sendcloud-kontoen din her, så du kan velge.",
+    noSenders: "Sendcloud-kontoen din har ingen avsenderadresse ennå: legg til en i Sendclouds innstillinger, og kom tilbake.",
     building:
       "Tilkoblingen til {name} bygges. Du kan lagre avtaleopplysningene dine nå, slik at den slås på for butikken din den dagen den kommer. Inntil da sendes ingenting til {name}, og kassen og ordrene virker som før.",
     willDo: "Hva den skal gjøre",
@@ -487,6 +492,24 @@ export const shippingNb: ShippingMessages = {
           senderPostalCode: { label: "Avsenders postnummer", help: "", placeholder: "" },
           senderCity: { label: "Avsenders poststed", help: "", placeholder: "" },
           senderPhone: { label: "Avsenders telefon", help: "", placeholder: "" },
+        },
+      },
+      sendcloud: {
+        summary: "Etiketter fra DHL, DPD, UPS, GLS og mange andre transportører til Sendclouds egne priser, uten egen transportøravtale, for butikker som sender fra Vest-Europa.",
+        steps: [
+          "Ha en Sendcloud-konto for en butikk som sender fra Tyskland, Frankrike, Nederland, Belgia, Østerrike, Italia, Spania eller Storbritannia. Sendcloud tilbys ikke butikker som sender fra Norge eller Finland.",
+          "I Sendcloud åpner du Innstillinger og deretter Integrasjoner, og legger til en Sendcloud API-integrasjon med Service Points slått på. Kopier den offentlige og den hemmelige nøkkelen til skjemaet.",
+          "Lagre, velg avsenderadressen pakkene sendes fra, og sjekk tilkoblingen.",
+          "Sendcloud har ikke noe testsystem: testmiljøet vil bare lage Sendclouds gratis testetiketter, så ingenting sendes eller faktureres.",
+        ],
+        fields: {
+          publicKey: { label: "Offentlig nøkkel", help: "Den offentlige nøkkelen til Sendcloud API-integrasjonen du legger til for denne butikken.", placeholder: "" },
+          secretKey: { label: "Hemmelig nøkkel", help: "Vises av Sendcloud sammen med den offentlige nøkkelen.", placeholder: "" },
+          senderAddressId: {
+            label: "Avsenderadresse",
+            help: "Hvor pakkene sendes fra: en av avsenderadressene i Sendcloud-kontoen din. Lagre nøklene først, og velg den her.",
+            placeholder: "",
+          },
         },
       },
     },

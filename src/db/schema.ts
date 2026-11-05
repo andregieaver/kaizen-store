@@ -12099,7 +12099,7 @@ export const shippingCarriers = commerce.table(
   "shipping_carriers",
   {
     storeId: storeId().references(() => stores.id),
-    /** `bring`, `postnord`, `porterbuddy` or `helthjem`. */
+    /** One of `CARRIER_IDS`: `bring`, `postnord`, `porterbuddy`, `helthjem` or `sendcloud` (D454). */
     carrier: text("carrier").notNull(),
     /** `test` or `live`. */
     environment: text("environment").notNull().default("test"),
@@ -12137,7 +12137,7 @@ export const shippingCarriers = commerce.table(
     check("shipping_carriers_free_over", sql`${t.freeOverMinor} is null or ${t.freeOverMinor} > 0`),
     check("shipping_carriers_default_weight", sql`${t.defaultWeightGrams} between 1 and 35000`),
     index("shipping_carriers_updated_by_idx").on(t.updatedBy),
-    check("shipping_carriers_carrier", sql`${t.carrier} in ('bring', 'postnord', 'porterbuddy', 'helthjem')`),
+    check("shipping_carriers_carrier", sql`${t.carrier} in (${sqlList(CARRIER_IDS)})`),
     check("shipping_carriers_environment", sql`${t.environment} in ('test', 'live')`),
   ],
 );

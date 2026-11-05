@@ -362,6 +362,11 @@ export const shippingEn = {
     ready: "The connection to {name} is ready. It can: {features}.",
     toCome: " Still to come: {features}.",
     testShipments: " In the test environment {name} books test shipments: nothing is shipped and orders are not marked as sent.",
+    connectFirst:
+      "You can save your {name} keys and check the connection now, so the rest switches on for your store the day it arrives. Still to come: {features}.",
+    chooseSender: "Choose a sender address",
+    sendersAfterKeys: "Save your keys first: your Sendcloud sender addresses are then listed here to choose from.",
+    noSenders: "Your Sendcloud account has no sender address yet: add one in Sendcloud's settings, then come back.",
     building:
       "The connection to {name} is being built. You can save your agreement details now, so it switches on for your store the day it arrives. Until then nothing is sent to {name} and your checkout and orders work as before.",
     willDo: "What it will do",
@@ -505,6 +510,24 @@ export const shippingEn = {
           senderPostalCode: { label: "Sender postal code", help: "", placeholder: "" },
           senderCity: { label: "Sender city", help: "", placeholder: "" },
           senderPhone: { label: "Sender phone", help: "", placeholder: "" },
+        },
+      },
+      sendcloud: {
+        summary: "Labels from DHL, DPD, UPS, GLS and many other carriers at Sendcloud's own rates, with no carrier agreement of your own, for shops shipping from western Europe.",
+        steps: [
+          "Have a Sendcloud account for a shop shipping from Germany, France, the Netherlands, Belgium, Austria, Italy, Spain or the UK. Sendcloud is not offered to shops shipping from Norway or Finland.",
+          "In Sendcloud, open Settings, then Integrations, and add a Sendcloud API integration with Service Points switched on. Copy its public and secret key to the form.",
+          "Save, choose the sender address your parcels leave from, and check the connection.",
+          "Sendcloud has no test system: the test environment will only make Sendcloud's free test labels, so nothing is shipped or charged.",
+        ],
+        fields: {
+          publicKey: { label: "Public key", help: "The public key of the Sendcloud API integration you add for this shop.", placeholder: "" },
+          secretKey: { label: "Secret key", help: "Shown by Sendcloud with the public key.", placeholder: "" },
+          senderAddressId: {
+            label: "Sender address",
+            help: "Where your parcels leave from: one of the sender addresses in your Sendcloud account. Save your keys first, then choose it here.",
+            placeholder: "",
+          },
         },
       },
     },

@@ -1,25 +1,44 @@
 import { describe, expect, it } from "vitest";
 
-import { carrierComplete, carrierInfo, CARRIER_IDS, CARRIERS, isCarrierId, parseCarrierForm, secretHint } from "./shipping-carriers";
+import { canCheck, carrierComplete, carrierInfo, CARRIER_IDS, CARRIERS, isCarrierId, parseCarrierForm, secretHint } from "./shipping-carriers";
 
 const bring = carrierInfo("bring")!;
 const none = { hasSecret: () => false };
 
 describe("the carriers", () => {
-  it("are the four the store will be able to connect", () => {
-    expect(CARRIER_IDS).toEqual(["bring", "postnord", "porterbuddy", "helthjem"]);
+  it("are the five the store will be able to connect", () => {
+    expect(CARRIER_IDS).toEqual(["bring", "postnord", "porterbuddy", "helthjem", "sendcloud"]);
     expect(CARRIERS.map((c) => c.id)).toEqual(CARRIER_IDS);
     expect(isCarrierId("dhl")).toBe(false);
   });
 
-  it("each need a secret that is required (an API key, or Helthjem's client secret), and say what they will do", () => {
+  it("each need a secret that is required (an API key, Helthjem's client secret or Sendcloud's secret key), and say what they will do", () => {
     for (const carrier of CARRIERS) {
-      expect(carrier.fields.some((f) => (f.key === "apiKey" || f.key === "clientSecret") && f.secret && f.required)).toBe(true);
+      expect(carrier.fields.some((f) => (f.key === "apiKey" || f.key === "clientSecret" || f.key === "secretKey") && f.secret && f.required)).toBe(true);
       expect(carrier.features).toContain("rates");
       expect(carrier.countries.length).toBeGreaterThan(0);
       expect(carrier.steps.length).toBeGreaterThan(1);
     }
     expect(carrierInfo("porterbuddy")!.features).toContain("same_day");
+  });
+});
+
+describe("Sendcloud's first step (D454)", () => {
+  const sendcloud = carrierInfo("sendcloud")!;
+
+  it("can be checked before anything else works, as can every carrier with a working feature", () => {
+    expect(sendcloud.available).toEqual([]);
+    expect(canCheck(sendcloud)).toBe(true);
+    expect(canCheck(carrierInfo("bring")!)).toBe(true);
+    expect(canCheck({ available: [] })).toBe(false);
+  });
+
+  it("is complete with its two keys; the sender address is chosen after, from Sendcloud's own list", () => {
+    expect(carrierComplete(sendcloud, { publicKey: "pub" }, ["secretKey"])).toBe(true);
+    const form = (senderAddressId: string) => ({ environment: "live", countries: ["de"], fields: { publicKey: "pub", secretKey: "sec", senderAddressId } });
+    expect(parseCarrierForm(sendcloud, form("12"), none)).toMatchObject({ ok: true, details: { publicKey: "pub", senderAddressId: "12" }, secrets: { secretKey: "sec" } });
+    expect(parseCarrierForm(sendcloud, form(""), none)).toMatchObject({ ok: true, details: { publicKey: "pub" } });
+    expect(parseCarrierForm(sendcloud, form("Berlin"), none)).toEqual({ ok: false, problems: ["Choose the sender address from the list."] });
   });
 });
 
