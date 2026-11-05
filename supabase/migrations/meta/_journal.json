@@ -4684,6 +4684,20 @@
       "when": 1793886147960,
       "tag": "20261105134227_more_carriers",
       "breakpoints": true
+    },
+    {
+      "idx": 669,
+      "version": "7",
+      "when": 1793888171792,
+      "tag": "20261105141611_keep_sandbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 670,
+      "version": "7",
+      "when": 1793888202410,
+      "tag": "20261105141642_keep_sandbox_rules",
+      "breakpoints": true
     }
   ]
 }

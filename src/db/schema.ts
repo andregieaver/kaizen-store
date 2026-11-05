@@ -584,6 +584,11 @@ export const accessRequests = commerce.table(
      */
     termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
     termsVersion: text("terms_version"),
+    /**
+     * *Keep this store* (D457 step S2): the sandbox the request was made from. While it is still open, approving the request takes that
+     * store over (`commerce.adopt_sandbox()`) instead of copying a template.
+     */
+    sandboxId: uuid("sandbox_id").references((): AnyPgColumn => sandboxes.id),
     createdAt: createdAt(),
   },
   (t) => [
@@ -602,6 +607,7 @@ export const accessRequests = commerce.table(
     index("access_requests_status_idx").on(t.status, t.createdAt),
     index("access_requests_starter_idx").on(t.starterId),
     index("access_requests_design_preset_idx").on(t.designPresetId),
+    index("access_requests_sandbox_idx").on(t.sandboxId),
   ],
 );
 

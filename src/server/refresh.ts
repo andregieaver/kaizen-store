@@ -16,6 +16,15 @@ export function refreshTag(tag: string): void {
 }
 
 /**
+ * The same, never drawing again the page an action answers: the tag is only marked stale (`revalidateTag(tag, "max")`, which Next does not
+ * count as the action's own write), so the next request for it is made again. For a change made by a press whose page must not be drawn
+ * again in the press's answer: sign-up's confirmation, whose link the press uses up, would then say the link does not work (D457 S2).
+ */
+export function staleTag(tag: string): void {
+  outsideNext(() => revalidateTag(tag, "max"));
+}
+
+/**
  * Runs a revalidation, doing nothing where no Next request is running (a script, a test): there is no cache there to refresh, and Next
  * says so by throwing that its static generation store is missing. Anything else it throws (a refresh during render) is thrown on.
  */

@@ -1,6 +1,6 @@
 # The page builder sandbox: try it without signing up
 
-Status: **step S1 built** (D457, 5 November 2026), behind its platform switch, which is off; S2 to S4 follow (section 8). The owner's
+Status: **steps S1 and S2 built** (D457, 5 November 2026), behind its platform switch, which is off; S3 and S4 follow (section 8). The owner's
 choices of 5 November 2026: **no email at all** to start, and the recommendations of section 10.
 A visitor presses *Try the builder* and is in the real builder, on a store of their own. An email is asked only when they choose to keep
 that store, because an account is an email (`accounts.email` is not null).
@@ -308,6 +308,40 @@ Each step goes to production as built (D5); the switch keeps S1 to S3 to platfor
   until S4 lets the visitor walk the storefront;
   the purge (S3), so an ended sandbox stays a closed store until then, its number bounded by the switch and the cap.
 
+### 8.2 S2 as built (5 November 2026)
+
+- **Database** (migrations `keep_sandbox`, `keep_sandbox_rules`): `access_requests.sandbox_id`, and `commerce.adopt_sandbox(request,
+  slug, name, decided_by)`: the request pending and naming a sandbox still open and within its time, else `sandboxes.not_named` or
+  `sandboxes.not_open`; the account made or found for the address as `approve_access_request()` makes it (a disabled one refused, nothing
+  changed); the store out of the sandbox at its new address and name, its creator the new account; the sandbox account's membership
+  handed to the new account as owner; the sandbox kept; the request approved with its store; the approval in the audit log as an approval
+  is. Held by `src/db/sandboxes.test.ts`.
+- **The keep form** (`/admin/try/{sandbox}/keep`, the bar's main action): the store's name (filled in), the person's name and email, under
+  the sign-up's sentence linking the terms and the privacy notice. `keepSandboxAction()` opens the sandbox with its pass first like every
+  sandbox action, then makes the request as the sign-up page does: `startSelfSignup()` within its limits while self-serve sign-up is on
+  (the confirmation link emailed), else `createAccessRequest()` for a platform admin. Either way the sandbox's time is held 48 hours from the
+  request (`holdSandbox()`, 30 days at most), and the answer is the same whatever happened to the request.
+- **A request names the sandbox only when it is new.** `createAccessRequest()` keeps `sandbox_id` only on a request it makes, and only for
+  a sandbox still open; one merged into a request already pending for the address keeps what that one named. Attaching a sandbox to
+  someone else's pending request by typing their address is therefore impossible; the confirmation email stays the guard on a new one, as
+  for any sign-up.
+- **Approval adopts.** `approveAccessRequest()`, which both the confirmation's press (`confirmSelfSignup()`) and a platform admin's
+  approval go through, takes the sandbox over while the request names one still open (`adoptRequestSandbox()`): the store's cache refreshed
+  under its old and new address, `store.sandbox_kept` audited in the owner's name, the owner's admin in the request's language, the approval
+  and a sign-in link emailed. A sandbox that ended before the press gives way to the usual approval from a template. The self-serve press
+  then gives the 14-day trial as for any self-serve store. Platform → Access requests marks such a request: its theme choice is not used.
+- **Demo content:** a sandbox's copied products, pages and terms are marked as demo content when it is made (`markDemoContent()` in
+  `startSandbox()`), so once kept the owner can take away in one press what they never touched and keeps every page they made or changed.
+  Adoption marks nothing, which would have marked the visitor's own work.
+- **The old tab:** a sandbox this browser kept says *This store is yours now* with *Sign in* (`keptSandbox()`, with the pass), not that it
+  ended.
+- **The address:** renaming is allowed only by `adopt_sandbox()` (`commerce.sandbox_change`); no other table keeps a store's address, the
+  caches are keyed by id or refreshed by tag, and a sandbox was never public, so nothing outside links to `try-…`.
+- **Found while building:** refreshing the store's cache with `updateTag()` during the confirmation's press made Next draw the page
+  again in the press's answer, and the page, its link now used, said the link did not work, although the store had been handed over. The
+  adoption marks the tags stale instead (`staleTag()`, `revalidateTag(tag, "max")`, which Next does not count as the action's own write),
+  so the press answers with its own words; the next request for the store reads it again.
+
 ## 9. Tests
 
 Built with S1:
@@ -325,9 +359,14 @@ Built with S1:
 - **End to end** (`e2e/try-builder.spec.ts`): closed while the switch is off; then in a fresh browser without an account: start, edit and
   publish the front page in the real builder, the storefront still private, the preview, another browser refused, *Start over*.
 
-To come with S2 and S3: `adopt_sandbox()` only for a sandbox and only once; `purge_sandbox()` refusing any other store and leaving, for
-every table in `commerce` with a `store_id` column (read from the catalogue, so a future table is covered), no row of the sandbox's store
-but its audit entries and its `stores` row.
+Built with S2: adoption in PGlite (the store, address, name, owner, sandbox and request; refused for a request naming no sandbox, one
+ended or past its time, a disabled account; only once; the only way out); in the integration test, the whole keep (the link, the held
+time, the press, the address, the owner, the trial, the demo marks, the kept view, the audit entry), the usual approval when the sandbox
+ended first, and no sandbox named by a request for one that is not open; and end to end, *Keep this store* from the bar to the emailed
+link's press and the old tab's *This store is yours now*.
+
+To come with S3: `purge_sandbox()` refusing any other store and leaving, for every table in `commerce` with a `store_id` column (read from
+the catalogue, so a future table is covered), no row of the sandbox's store but its audit entries and its `stores` row.
 
 ## 10. Decided by the owner (5 November 2026)
 
