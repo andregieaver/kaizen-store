@@ -39,7 +39,7 @@ export const shellEn = {
     widenSidebar: "Widen the sidebar",
     narrow: "Narrow",
   },
-  /** Basic and Advanced (D453): how much of a store's navigation is shown. `{count}` is how many pages Basic leaves out. */
+  /** Basic and Advanced (D454): how much of a store's navigation is shown. `{count}` is how many pages Basic leaves out. */
   view: {
     label: "How much the admin shows",
     basic: "Basic",

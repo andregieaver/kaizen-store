@@ -28,7 +28,7 @@ export type NavItem = {
   also?: string[];
   /** Drawn at the foot of the rail rather than with the others (Settings, docs/admin-style.md 5.3). */
   foot?: boolean;
-  /** Left out of the Basic view (D453) unless it is the page being viewed. */
+  /** Left out of the Basic view (D454) unless it is the page being viewed. */
   advanced?: boolean;
 };
 export type NavGroup = { heading: string; items: NavItem[] };
@@ -57,7 +57,7 @@ export function useAreaGroups(areas: NavArea[], fallback: NavGroup[]): NavGroup[
 
 /**
  * The sidebar of the section being viewed; nothing, not even its room, where the section has none. On a section's page of cards the cards
- * say what Basic leaves out (D453), so the sidebar beside them does not say it again.
+ * say what Basic leaves out (D454), so the sidebar beside them does not say it again.
  */
 export function AreaSidebar({ areas, fallback, label, railed = false }: { areas: NavArea[]; fallback: NavGroup[]; label: string; railed?: boolean }) {
   const groups = useAreaGroups(areas, fallback);
@@ -154,7 +154,7 @@ function Badge({ count }: { count?: number }) {
 }
 
 /**
- * The store's settings in groups, each under its heading. In the Basic view (D453) the links marked `advanced` are left out, but for the
+ * The store's settings in groups, each under its heading. In the Basic view (D454) the links marked `advanced` are left out, but for the
  * page being viewed; a group with none left is not drawn, and the foot says how many more Advanced has, with the switch to it.
  */
 export function StoreSidebar({ groups, label, hint = true }: { groups: NavGroup[]; label: string; hint?: boolean }) {

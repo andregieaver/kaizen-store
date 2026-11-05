@@ -92,7 +92,7 @@ export async function adminSchemeAction(scheme: unknown): Promise<void> {
 }
 
 /**
- * Keeps how much of a store's admin the account is shown (D453); the page has switched already. A store's admin and Your account both
+ * Keeps how much of a store's admin the account is shown (D454); the page has switched already. A store's admin and Your account both
  * call it; nothing is drawn again, as the navigation follows the choice in the browser.
  */
 export async function adminViewAction(view: unknown): Promise<void> {

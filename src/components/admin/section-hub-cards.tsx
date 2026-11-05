@@ -12,7 +12,7 @@ export type HubList = { heading: string; items: HubCard[] };
 
 /**
  * A page of cards' cards (D144, D147), in the words already chosen for the account: an icon, the page's name and its line, under a heading
- * for each group. In the Basic view (D453) the cards marked `advanced` are left out, a group with none left is not drawn, and a note at
+ * for each group. In the Basic view (D454) the cards marked `advanced` are left out, a group with none left is not drawn, and a note at
  * the foot says how many more Advanced has, with the switch to it.
  */
 export function HubCards({ lists }: { lists: HubList[] }) {

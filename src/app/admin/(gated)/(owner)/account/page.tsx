@@ -124,7 +124,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
         </Link>
       </section>
 
-      {/* Basic or Advanced (D453): the same choice as the switch at the top of a store's admin. */}
+      {/* Basic or Advanced (D454): the same choice as the switch at the top of a store's admin. */}
       <section aria-labelledby="view-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="view-heading" className="text-title text-ink">
           {vw.label}

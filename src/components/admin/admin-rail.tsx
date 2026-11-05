@@ -76,7 +76,7 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
   };
   // Named for what it does to the sidebar: a name with "name" in it would answer every search for a Name field. Its icon and name follow
   // `<html data-rail>` by CSS, as its width does, so they agree before the page is hydrated too (the names are the default on a wide
-  // screen, D453); only the click reads the state.
+  // screen, D454); only the click reads the state.
   const toggleLabel = named ? w.narrowSidebar : w.widenSidebar;
   return (
     <div

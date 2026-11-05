@@ -234,7 +234,7 @@ describe("what a member's navigation offers (wave 1, 1f)", () => {
   });
 });
 
-describe("the pages' icons and the Basic view (D453)", () => {
+describe("the pages' icons and the Basic view (D454)", () => {
   it("gives every page of every level an icon the admin draws", () => {
     const names = new Set<string>(NAV_ICON_NAMES);
     for (const section of STORE_SECTIONS) expect(names.has(section.icon), section.key).toBe(true);

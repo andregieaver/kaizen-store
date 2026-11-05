@@ -1,5 +1,5 @@
 /**
- * Basic and Advanced (D453, `docs/audits/admin-usability-2026-11.md`): how much of a store's navigation a person is shown. Basic, the
+ * Basic and Advanced (D454, `docs/audits/admin-usability-2026-11.md`): how much of a store's navigation a person is shown. Basic, the
  * default, is Homer's: each section's everyday pages, the rest one deliberate press away. Advanced is Lisa's: every page. It is the
  * account's own choice (`accounts.admin_view`), so it follows the person to every device and store.
  *

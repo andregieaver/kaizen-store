@@ -3,7 +3,7 @@
  * on `<html>`, set before the page is drawn by the admin's first script (`railNamesScript()`), so a page never opens narrow and then
  * widens; the rail's names and width follow it by CSS. Where storage is blocked it lasts for the page.
  *
- * With no choice made, the names are shown on a screen at least `RAIL_NAMES_WIDE` wide (D453): icons alone are recalled, names are
+ * With no choice made, the names are shown on a screen at least `RAIL_NAMES_WIDE` wide (D454): icons alone are recalled, names are
  * read, and a wide screen has the room. Narrowing it is kept as a choice (`RAIL_ICONS`), so it stays narrow.
  */
 

@@ -11,7 +11,7 @@ import { WORK_ROOT } from "./work-paths";
 
 export const OWNER_BASE = "/admin";
 
-/** A page of the Account section, with the icon drawn beside its label (D453). */
+/** A page of the Account section, with the icon drawn beside its label (D454). */
 export type OwnerItem = { path: string; label: string; description: string; icon: NavIconName; exact?: boolean; owner?: boolean; holder?: boolean };
 
 /** The Account section's pages, after `/admin`: the person's own first, then what concerns the stores they own. */

@@ -9,7 +9,7 @@ import type { NavIconName } from "@/components/admin/nav-icons";
 
 export const PLATFORM_BASE = "/admin/platform";
 
-/** A page in a section's sidebar and on its page of cards, with the icon drawn beside its label (D453). */
+/** A page in a section's sidebar and on its page of cards, with the icon drawn beside its label (D454). */
 export type SectionItem = { path: string; label: string; description: string; icon: NavIconName; exact?: boolean };
 
 const item = (path: string, label: string, description: string, icon: NavIconName, exact = false): SectionItem => ({ path, label, description, icon, exact });

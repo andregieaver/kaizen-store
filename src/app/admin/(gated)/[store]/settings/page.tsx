@@ -19,7 +19,7 @@ export default async function StoreSettingsPage({ params }: PageProps<"/admin/[s
   // The cards of a member's own role only (wave 1, 1f): a card for a page they cannot open would be a link to a 404.
   const holder = holderOf(member);
   const section = storeSections(store, (path) => canOpenPath(holder, path)).find((s) => s.key === "settings") ?? STORE_SECTIONS.find((s) => s.key === "settings")!;
-  // Each card says whether the Basic view leaves it out (D453): the cards follow the person's view as the sidebar does.
+  // Each card says whether the Basic view leaves it out (D454): the cards follow the person's view as the sidebar does.
   const groups = section.groups.map((g) => ({ ...g, items: g.items.map((i) => ({ ...i, advanced: advancedIn(section, i) })) }));
   return <SectionHub lang={adminLangOf(member.account.adminLocale)} title={section.label} intro={section.intro} groups={groups} base={`/admin/${store.slug}`} />;
 }

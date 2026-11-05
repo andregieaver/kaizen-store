@@ -11,7 +11,7 @@ import { AdminViewProvider, AdminViewToggle, BasicViewHint } from "./admin-view"
 import { HubCards } from "./section-hub-cards";
 import { StoreSidebar, type NavGroup } from "./store-admin-nav";
 
-/** Basic and Advanced (D453): what the sidebar, the pages of cards and the switch draw in each view. */
+/** Basic and Advanced (D454): what the sidebar, the pages of cards and the switch draw in each view. */
 
 const groups: NavGroup[] = [
   {

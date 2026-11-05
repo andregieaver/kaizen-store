@@ -9,7 +9,7 @@ import type { AdminView } from "@/lib/admin-view";
 import { useAdminText } from "./admin-text";
 
 /**
- * Basic and Advanced (D453, `src/lib/admin-view.ts`): the person's choice, held for a store's admin by `AdminViewProvider` so the sidebar,
+ * Basic and Advanced (D454, `src/lib/admin-view.ts`): the person's choice, held for a store's admin by `AdminViewProvider` so the sidebar,
  * the phone's menu and the pages of cards follow it at once, and kept on their account by `save` without drawing the page again. Outside a
  * provider (the platform, the owner's level) nothing is hidden and nothing is said about it.
  */
@@ -74,7 +74,7 @@ export function AdminViewToggle({ compact = false }: { compact?: boolean }) {
 }
 
 /**
- * What Basic says while it is in force (D453): that this is the everyday view, how many pages it leaves out here (`hidden`, when known),
+ * What Basic says while it is in force (D454): that this is the everyday view, how many pages it leaves out here (`hidden`, when known),
  * and one press to see them all. Nothing in Advanced, or outside a provider. `card` is the box for a page; the default sits at a
  * sidebar's foot.
  */

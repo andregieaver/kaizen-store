@@ -12,7 +12,7 @@ type Card = { path: string; label: string; description: string; icon?: NavIconNa
  * A section's first page (D144, D147): a card for each page in its sidebar, with its icon and a line on what it does; under a heading for
  * each group where the section has groups. `base` is the level's address (the platform's unless a store's is given). Its words are the
  * navigation's, written in English and shown in the account's language (`lang`, D312 A2). A card marked `advanced` is left out of the
- * Basic view (D453; a store's pages of cards only, `HubCards`).
+ * Basic view (D454; a store's pages of cards only, `HubCards`).
  */
 export function SectionHub({
   title,

@@ -101,7 +101,7 @@ import {
 /**
  * The small icons beside the admin's navigation (D144): one stroke, drawn at the text's size in its colour. Only what the navigation
  * names; a new one is a key here. The sections' own are drawn here (`PATHS`); each page in a sidebar and on a page of cards has one too
- * (D453: a picture beside the word is found again faster than the word alone), from lucide (`PAGE_ICONS`), at the same stroke. Settings'
+ * (D454: a picture beside the word is found again faster than the word alone), from lucide (`PAGE_ICONS`), at the same stroke. Settings'
  * cog is lucide's: the one drawn here read as a sun.
  */
 const PATHS = {

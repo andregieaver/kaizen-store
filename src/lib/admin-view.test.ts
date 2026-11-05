@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ADMIN_VIEWS, DEFAULT_ADMIN_VIEW, adminViewOf, hiddenIn, isAdminView, shownIn } from "./admin-view";
 
-describe("Basic and Advanced (D453)", () => {
+describe("Basic and Advanced (D454)", () => {
   it("starts everyone in Basic and reads only the views it has", () => {
     expect(ADMIN_VIEWS).toEqual(["basic", "advanced"]);
     expect(DEFAULT_ADMIN_VIEW).toBe("basic");

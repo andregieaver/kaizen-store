@@ -10,7 +10,7 @@ plans: []
 admin: /admin/{store}
 order: 15
 checked: 2026-11-04
-sources: [D453, D147]
+sources: [D454, D147]
 ---
 
 ## Seksjonene

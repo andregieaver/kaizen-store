@@ -50,7 +50,7 @@ describe("the rail", () => {
 
   it("has a button at its foot that shows the sections' names beside their icons, and none where it is narrowed for a tool (D262)", () => {
     const out = rail();
-    // Its name follows <html data-rail> by CSS, as its width does, so it is right before hydration too (D453).
+    // Its name follows <html data-rail> by CSS, as its width does, so it is right before hydration too (D454).
     expect(out).toContain('<span class="sr-only [[data-rail=names]_&amp;]:hidden">Widen the sidebar</span>');
     expect(out).toContain(">Narrow the sidebar</span>");
     expect(out).not.toContain('aria-label="Widen the sidebar"');
@@ -81,7 +81,7 @@ describe("the rail", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the names on a wide screen until the person narrows it (D453)", async () => {
+  it("shows the names on a wide screen until the person narrows it (D454)", async () => {
     const { RAIL_ICONS, RAIL_NAMES_KEY, RAIL_NAMES_WIDE, railNamesScript } = await import("@/lib/admin-rail");
     const run = (stored: string | null, wide: boolean) => {
       const attributes = new Map<string, string>();

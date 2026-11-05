@@ -484,7 +484,7 @@ export const accounts = commerce.table(
      */
     adminLocale: text("admin_locale"),
     /**
-     * How much of a store's admin they are shown (D453, `ADMIN_VIEWS` in `src/lib/admin-view.ts`): `basic`, everyday pages, the default for
+     * How much of a store's admin they are shown (D454, `ADMIN_VIEWS` in `src/lib/admin-view.ts`): `basic`, everyday pages, the default for
      * everyone; or `advanced`, every page. Their own choice, kept so it follows them to every device.
      */
     adminView: text("admin_view").notNull().default("basic"),

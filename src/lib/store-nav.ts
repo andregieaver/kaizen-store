@@ -17,7 +17,7 @@ export type StoreFlags = FeatureSource;
 /**
  * A page in a sidebar: its address after the store's, its label, and a line on what it is for (the hub's card). `feature` is the store
  * feature (D178) it stands behind: one, or several of which any is enough; the same as its `ADMIN_PAGES` entry's (a test holds them).
- * `icon` is drawn beside its label in the sidebar and on its card (D453). `basic` puts it in the Basic view (D453, `src/lib/admin-view.ts`):
+ * `icon` is drawn beside its label in the sidebar and on its card (D454). `basic` puts it in the Basic view (D454, `src/lib/admin-view.ts`):
  * an everyday page Homer needs; every other page is shown in Advanced only (and in Basic while it is the page being viewed). A section's
  * main page is always in Basic, since its tab leads there.
  */
@@ -354,7 +354,7 @@ export const storeLink = (base: string, item: Pick<StoreItem, "path" | "exact">)
 
 type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName; advanced?: boolean };
 
-/** Whether a section's page is left out of the Basic view (D453): one not marked `basic`, unless it is where the section's tab leads. */
+/** Whether a section's page is left out of the Basic view (D454): one not marked `basic`, unless it is where the section's tab leads. */
 export const advancedIn = (section: Pick<StoreSection, "start">, item: Pick<StoreItem, "path" | "basic">): boolean => !item.basic && item.path !== section.start;
 
 /**

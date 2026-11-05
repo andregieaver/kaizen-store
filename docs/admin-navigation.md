@@ -138,7 +138,7 @@ Shipping and Payments are `/settings/…` and Settings'. A tab with a page of ca
 sidebar, so Design marks Website and not Settings. The admin map's `group` for a store page is its section
 (`sectionOf()`), so the AI manager guides by the tabs people see.
 
-## Basic and Advanced (D453)
+## Basic and Advanced (D454)
 
 A store's admin lists each section's everyday pages in **Basic**, every account's default, and every page in **Advanced**
 (`src/lib/admin-view.ts`, the audit behind it in `docs/audits/admin-usability-2026-11.md`). The switch, **Basic | Advanced**, is in the
@@ -160,7 +160,7 @@ shows its sections' names on screens 1280 px and wider until the person narrows 
 
 - A new page goes in exactly one section of its level (`platform-nav.ts`, `store-nav.ts`, `owner-nav.ts`), and in
   `ADMIN_PAGES` (`src/lib/admin-map.ts`), so the AI manager can guide to it. It has an `icon`; a store page says `basic: true` only
-  if most owners use it every week (D453).
+  if most owners use it every week (D454).
 - A level's own pages check who is asking themselves (`requirePlatformAdmin()`,
   `requireAccount()`, `requireMember()`): a layout's check redirects only
   after its pages have started to be sent.

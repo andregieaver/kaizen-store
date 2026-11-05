@@ -38,7 +38,7 @@ export type Account = {
   adminScheme?: string;
   /** The admin's language for them (D312 A0): what `accounts.admin_locale` keeps (`en`, `nb-NO`), null until their first sign-in sets it. */
   adminLocale?: string | null;
-  /** How much of a store's admin they are shown (D453): `basic`, the default, or `advanced`. */
+  /** How much of a store's admin they are shown (D454): `basic`, the default, or `advanced`. */
   adminView?: AdminView;
   /** Where the session stands on two-step sign-in (wave 1, 1f): set by `getAccount()` and `getSessionAccount()`, absent on a hand-made account in a test. */
   assurance?: AccountAssurance;
@@ -466,7 +466,7 @@ export async function saveAdminScheme(accountId: string, scheme: string): Promis
   await db().execute(sql`update commerce.accounts set admin_scheme = ${scheme} where id = ${accountId}::uuid`);
 }
 
-/** Keeps how much of a store's admin the account is shown (D453); only a view the admin has. */
+/** Keeps how much of a store's admin the account is shown (D454); only a view the admin has. */
 export async function saveAdminView(accountId: string, view: AdminView): Promise<void> {
   await db().execute(sql`update commerce.accounts set admin_view = ${adminViewOf(view)} where id = ${accountId}::uuid`);
 }

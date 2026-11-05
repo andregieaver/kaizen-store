@@ -1,6 +1,6 @@
 # The admin's usability: an audit and a plan (November 2026)
 
-Decision D453. Written 4 November 2026 from two sources: the code of the admin (navigation data, the frame, about 60 of the store's 244
+Decision D454. Written 4 November 2026 from two sources: the code of the admin (navigation data, the frame, about 60 of the store's 244
 pages and their components) and the admin itself as an owner sees it, signed in to a fresh store on a local build, at 1440 px and on a
 phone. Phase 0 below is built in the same change; phases 1 to 4 are the plan.
 

@@ -90,7 +90,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const w = adminText(lang, "shell");
   const tabs: NavItem[] = storeTabs(base, store, canOpen, { support: waiting });
   const areas: NavArea[] = storeAreas(base, store, canOpen);
-  // Basic or Advanced (D453): the person's own, around the whole frame, so the sidebar, the phone's menu and the pages of cards follow it.
+  // Basic or Advanced (D454): the person's own, around the whole frame, so the sidebar, the phone's menu and the pages of cards follow it.
   return (
     <AdminViewProvider saved={account.adminView ?? "basic"} save={adminViewAction}>
       <AdminFrame
@@ -105,7 +105,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         }
         actions={
           <>
-            {/* Basic or Advanced (D453), from every page; on phones it is in the menu. */}
+            {/* Basic or Advanced (D454), from every page; on phones it is in the menu. */}
             <div className="hidden md:block">
               <AdminViewToggle compact />
             </div>

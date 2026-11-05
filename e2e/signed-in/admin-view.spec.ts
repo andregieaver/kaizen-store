@@ -5,7 +5,7 @@ import { testDb } from "../db";
 import { E2E_STORE, OWNER } from "./accounts";
 
 /**
- * Basic and Advanced (D453): a store's admin starts in Basic, lists each section's everyday pages, says where the rest are and switches
+ * Basic and Advanced (D454): a store's admin starts in Basic, lists each section's everyday pages, says where the rest are and switches
  * with one press; the choice is kept with the account. Each test sets the owner's view first and puts Basic back after, so the other
  * specs find the default.
  */

@@ -198,7 +198,7 @@ export default async function AdminOverview({ params, searchParams }: Props) {
           </ol>
         </Card>
       )}
-      {/* Home has no sidebar to say it (D453): in the Basic view, where the rest of the admin is and the switch to it. */}
+      {/* Home has no sidebar to say it (D454): in the Basic view, where the rest of the admin is and the switch to it. */}
       <BasicViewHint card />
     </div>
   );
