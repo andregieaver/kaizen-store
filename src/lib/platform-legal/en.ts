@@ -177,7 +177,7 @@ ${f.contactEmail}`,
         {
           topic: "scope",
           heading: "2. What this notice covers",
-          body: `This notice covers the personal data we process about people who visit Kaizena Flow's own website, ask for access, run stores on Kaizena Flow or work in them, and contact us.
+          body: `This notice covers the personal data we process about people who visit Kaizena Flow's own website, try the page builder in its sandbox, ask for access, run stores on Kaizena Flow or work in them, and contact us.
 
 It does not cover what stores do with their own customers' data. Each store is the controller for its customers and visitors and has its own privacy notice; we process that data on the store's behalf under our [data processing agreement](${f.links.dpa}).`,
         },
@@ -190,6 +190,7 @@ It does not cover what stores do with their own customers' data. Each store is t
 - **Billing:** your business's details, your plan, invoices and payments, to charge for the service and keep accounts. Basis: our contract (Article 6(1)(b)) and our legal duty to keep accounts (Article 6(1)(c) and the Norwegian Bookkeeping Act).
 - **Support and the AI manager:** what you write to Kaizena Flow's support and to the AI manager, and what the AI manager remembers for you (which you can see, change and turn off), to help you. Basis: our contract (Article 6(1)(b)).
 - **Emails we send:** the emails we send you and whether they were delivered, to send what the service needs to tell you. Basis: our contract and legitimate interest (Article 6(1)(b) and (f)).
+- **The page builder's sandbox:** when you press *Start building* without an account, we make a private store for you and keep what you put in it (pages, words, the pictures you place and your styles), when you last visited it and when you first changed and published something, and a cookie holding the key that opens it, of which we keep only a protected hash. To stop the sandbox being misused, we count how many sandboxes are started from a network under a code that changes every day, never the network's address itself. Only you can see your sandbox, and nothing in it is sent to anyone; please do not put other people's personal data in it. Basis: legitimate interest in letting you try the service before you sign up (Article 6(1)(f)); the cookie is strictly necessary for the sandbox you asked for.
 - **Our website:** the cookies needed for the site to work. Cookies for statistics or marketing, and the referral programme's cookie, are set only if you agree, and your choice is kept for 12 months. Basis: consent (Article 6(1)(a)). See the [cookies page](${f.links.cookies}).
 - **The referral programme:** who referred a store and the credit earned, to pay the referrer. Basis: our contract with the referrer (Article 6(1)(b)).
 - **Notices of illegal content:** when you report content through *Report illegal content*, your name, email address, the address you report and what you write, to handle the notice, send you a receipt and tell you our decision. An AI model reads each notice first to sort it and draft a summary, and a person decides it (see section 10). Basis: our legal duty as a hosting service to take and decide notices (Article 6(1)(c) and the Digital Services Act, Regulation (EU) 2022/2065, Articles 16 and 17).`,
@@ -221,6 +222,7 @@ We also share data where the law requires it, for example with tax authorities, 
 - Accounting records, such as invoices: five years after the end of the financial year (the Norwegian Bookkeeping Act, section 13).
 - Support conversations: as long as set for the support desk, and then anonymised.
 - Your cookie choices: 12 months.
+- The page builder's sandbox: 7 days after your last visit, and at most 30 days after it was started, or at once when you press *Start over*, the sandbox is closed and its key stops working; what you put in it is then deleted. Its cookie lasts at most 30 days, and the counts of sandboxes started from a network two days.
 - Notices of illegal content: the sender's name and email address are deleted 12 months after the notice is decided; the notice, the AI's reading and our decision are kept, without them, as the record of how it was handled.`,
         },
         {

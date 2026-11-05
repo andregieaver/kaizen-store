@@ -240,7 +240,13 @@ The visitor is anonymous, but what they type or upload may be personal data, so:
 - Kept: the sandbox's content and uploads, and the budget's counts under keyed hashes (as sign-up keeps them, never the address). Nothing
   else about the visitor.
 - Gone 7 days after the last visit (the retention rule, 4.8), or theirs to keep through sign-up.
-- Kaizena Flow's privacy notice gets a paragraph on the sandbox, and the start screen links to it in one line.
+- Kaizena Flow's privacy notice has the sandbox (written 5 November 2026, `src/lib/platform-legal/en.ts` and `nb.ts`): who it covers
+  (section 2), what is kept, why and on what basis (section 3: legitimate interest, the cookie strictly necessary) and for how long
+  (section 6). The cookie, `kaizen_sandbox`, is on the cookie page as necessary (`src/lib/cookie-consent.ts`). The live notice changes only
+  when a platform admin writes the legal pages again from Platform → Pages, choosing to write the privacy notice over (which replaces any
+  wording changed by hand there). **Do that once S3's purge is built:** section 6 says what a visitor put in a sandbox is deleted after it
+  closes, and until the purge an ended sandbox stays a closed store. The AI of S3 adds to section 3 what the AI reads, as the AI manager's
+  line does. The start screen links to the notice in one line (S4).
 - What the AI reads is sent to the platform's AI provider, as for any store on Kaizena Flow's key: `docs/dpia-ai.md` adds sandbox visitors
   as people whose text it reads, and pictures made by AI are marked as elsewhere (`docs/ai-act.md`).
 - Everything stays in the EU, where the platform already runs; no new vendor. If bots get past the budgets, an EU check (Friendly Captcha,
