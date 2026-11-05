@@ -2,11 +2,13 @@ import Link from "next/link";
 import { after } from "next/server";
 import { Suspense } from "react";
 
+import { adminViewAction } from "@/app/admin/(gated)/(owner)/account/actions";
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/admin-shell-parts";
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -88,132 +90,140 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const w = adminText(lang, "shell");
   const tabs: NavItem[] = storeTabs(base, store, canOpen, { support: waiting });
   const areas: NavArea[] = storeAreas(base, store, canOpen);
+  // Basic or Advanced (D453): the person's own, around the whole frame, so the sidebar, the phone's menu and the pages of cards follow it.
   return (
-    <AdminFrame
-      layout={LEVEL_LAYOUTS.store}
-      lang={lang}
-      home={{ href: "/admin", label: w.store.homeLabel }}
-      before={<AdminTrail storeSlug={store.slug} storeOrigins={storeOrigins(store.slug)} />}
-      switcher={
-        <Suspense fallback={<span className="px-2 font-medium">{store.name}</span>}>
-          <LevelSwitcher account={account} level="store" label={store.name} currentSlug={store.slug} />
-        </Suspense>
-      }
-      actions={
-        <>
-          {/* The AI manager (D103), from every page of the store's admin, for owners. */}
-          {isOwner && open && (
-            <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
-              <AiManagerLauncher
-                area="store"
-                base={`${base}/assistant`}
-                siteName={store.name}
-                settingsHref={`${base}/settings/ai`}
-                start={startAssistantAction.bind(null, store.slug)}
-                actions={{
-                  decide: decideApprovalAction.bind(null, store.slug),
-                  remove: deleteConversationAction.bind(null, store.slug),
-                  load: loadConversationAction.bind(null, store.slug),
-                  rate: rateAnswerAction.bind(null, store.slug),
-                  hear: assistantHearAction.bind(null, store.slug),
-                  saveSkill: saveSkillAction.bind(null, store.slug),
-                }}
-              />
-            </AdminTextScope>
-          )}
-          <Link href={storeHref(store.slug, storeBase(store.slug))} className="flex min-h-10 items-center gap-1.5 rounded-pill border border-edge px-3 hover:bg-sunken">
-            <span className="hidden sm:inline">{w.store.viewStore}</span>
-            <span className="sr-only sm:hidden">{w.store.viewStore}</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 5h5v5M19 5l-8 8M10 5H5v14h14v-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
-        </>
-      }
-      account={<AdminAccountMenu account={account} role={member.roleName ?? (member.kind === "collaborator" ? "collaborator" : role)} />}
-      tabs={tabs}
-      groups={[]}
-      areas={areas}
-      wide
-      tabsLabel={w.levels.storeSections}
-      menuTitle={<span className="font-medium">{store.name}</span>}
-      menuFooter={
-        <>
-          {stores.some((s) => s.role === "owner") && <MenuFooterLink href="/admin">{w.levels.controlCenter}</MenuFooterLink>}
-          <MenuFooterLink href="/admin/stores">{w.store.allYourStores}</MenuFooterLink>
-          {account.platformAdmin && <MenuFooterLink href="/admin/platform">{w.levels.platform}</MenuFooterLink>}
-          <MenuFooterLink href="/admin/account">{w.store.yourAccount}</MenuFooterLink>
-        </>
-      }
-      fullWidth={FULL_WIDTH}
-      workspaceLinks={INBOX}
-      focus={{ pattern: SETUP, back: { href: base, label: w.store.leaveSetup }, title: fillWords(w.store.settingUp, { name: store.name }) }}
-    >
-      {store.starter && starter?.kind === "demo" && (
-        <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
-          <p className="font-medium">{starter.published ? w.store.demoLive : w.store.demoNotPublished}</p>
-          <p className="text-muted">
-            {starter.published ? w.store.demoLiveText : w.store.demoDraftText} {w.store.demoRules}
-            {account.platformAdmin && (
-              <>
-                {" "}
-                <Link href={demoStoreHref(starter.id)} className="font-medium underline underline-offset-2">
-                  {w.store.itsPage}
-                </Link>
-              </>
+    <AdminViewProvider saved={account.adminView ?? "basic"} save={adminViewAction}>
+      <AdminFrame
+        layout={LEVEL_LAYOUTS.store}
+        lang={lang}
+        home={{ href: "/admin", label: w.store.homeLabel }}
+        before={<AdminTrail storeSlug={store.slug} storeOrigins={storeOrigins(store.slug)} />}
+        switcher={
+          <Suspense fallback={<span className="px-2 font-medium">{store.name}</span>}>
+            <LevelSwitcher account={account} level="store" label={store.name} currentSlug={store.slug} />
+          </Suspense>
+        }
+        actions={
+          <>
+            {/* Basic or Advanced (D453), from every page; on phones it is in the menu. */}
+            <div className="hidden md:block">
+              <AdminViewToggle compact />
+            </div>
+            {/* The AI manager (D103), from every page of the store's admin, for owners. */}
+            {isOwner && open && (
+              <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
+                <AiManagerLauncher
+                  area="store"
+                  base={`${base}/assistant`}
+                  siteName={store.name}
+                  settingsHref={`${base}/settings/ai`}
+                  start={startAssistantAction.bind(null, store.slug)}
+                  actions={{
+                    decide: decideApprovalAction.bind(null, store.slug),
+                    remove: deleteConversationAction.bind(null, store.slug),
+                    load: loadConversationAction.bind(null, store.slug),
+                    rate: rateAnswerAction.bind(null, store.slug),
+                    hear: assistantHearAction.bind(null, store.slug),
+                    saveSkill: saveSkillAction.bind(null, store.slug),
+                  }}
+                />
+              </AdminTextScope>
             )}
-          </p>
-        </div>
-      )}
-      {store.starter && starter?.kind !== "demo" && (
-        <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
-          <p className="font-medium">{w.store.startingContent}</p>
-          <p className="text-muted">
-            {w.store.startingContentText}
-            {account.platformAdmin && (
-              <>
-                {" "}
-                <Link href={starter ? demoStoreHref(starter.id) : STARTING_CONTENT_HREF} className="font-medium underline underline-offset-2">
-                  {w.store.itsPage}
-                </Link>
-              </>
-            )}
-          </p>
-        </div>
-      )}
-      {trialPaused && (
-        <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
-          <p className="font-medium">{w.store.trialEnded}</p>
-          <p className="text-muted">
-            {w.store.trialEndedText}
-            {memberCan(member, "billing:write") && (
-              <>
-                {" "}
-                <Link href={`${base}/billing`} className="font-medium underline underline-offset-2">
-                  {w.store.choosePlan}
-                </Link>
-              </>
-            )}
-          </p>
-        </div>
-      )}
-      {!open && (
-        <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
-          <p className="font-medium">{store.status === "suspended" ? w.store.suspended : w.store.closed}</p>
-          <p className="text-muted">
-            {store.status === "suspended" ? w.store.suspendedText : w.store.closedText}
-            {isOwner && store.status === "closed" && (
-              <>
-                {" "}
-                <Link href={`${base}/settings/close`} className="font-medium underline underline-offset-2">
-                  {ownerMayReopen(store.status, store.closedAt ? new Date(store.closedAt) : null, new Date()) ? w.store.reopen : w.store.aboutReopening}
-                </Link>
-              </>
-            )}
-          </p>
-        </div>
-      )}
-      {children}
-    </AdminFrame>
+            <Link href={storeHref(store.slug, storeBase(store.slug))} className="flex min-h-10 items-center gap-1.5 rounded-pill border border-edge px-3 hover:bg-sunken">
+              <span className="hidden sm:inline">{w.store.viewStore}</span>
+              <span className="sr-only sm:hidden">{w.store.viewStore}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 5h5v5M19 5l-8 8M10 5H5v14h14v-5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          </>
+        }
+        account={<AdminAccountMenu account={account} role={member.roleName ?? (member.kind === "collaborator" ? "collaborator" : role)} />}
+        tabs={tabs}
+        groups={[]}
+        areas={areas}
+        wide
+        tabsLabel={w.levels.storeSections}
+        menuTitle={<span className="font-medium">{store.name}</span>}
+        menuFooter={
+          <>
+            <AdminViewToggle />
+            {stores.some((s) => s.role === "owner") && <MenuFooterLink href="/admin">{w.levels.controlCenter}</MenuFooterLink>}
+            <MenuFooterLink href="/admin/stores">{w.store.allYourStores}</MenuFooterLink>
+            {account.platformAdmin && <MenuFooterLink href="/admin/platform">{w.levels.platform}</MenuFooterLink>}
+            <MenuFooterLink href="/admin/account">{w.store.yourAccount}</MenuFooterLink>
+          </>
+        }
+        fullWidth={FULL_WIDTH}
+        workspaceLinks={INBOX}
+        focus={{ pattern: SETUP, back: { href: base, label: w.store.leaveSetup }, title: fillWords(w.store.settingUp, { name: store.name }) }}
+      >
+        {store.starter && starter?.kind === "demo" && (
+          <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
+            <p className="font-medium">{starter.published ? w.store.demoLive : w.store.demoNotPublished}</p>
+            <p className="text-muted">
+              {starter.published ? w.store.demoLiveText : w.store.demoDraftText} {w.store.demoRules}
+              {account.platformAdmin && (
+                <>
+                  {" "}
+                  <Link href={demoStoreHref(starter.id)} className="font-medium underline underline-offset-2">
+                    {w.store.itsPage}
+                  </Link>
+                </>
+              )}
+            </p>
+          </div>
+        )}
+        {store.starter && starter?.kind !== "demo" && (
+          <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
+            <p className="font-medium">{w.store.startingContent}</p>
+            <p className="text-muted">
+              {w.store.startingContentText}
+              {account.platformAdmin && (
+                <>
+                  {" "}
+                  <Link href={starter ? demoStoreHref(starter.id) : STARTING_CONTENT_HREF} className="font-medium underline underline-offset-2">
+                    {w.store.itsPage}
+                  </Link>
+                </>
+              )}
+            </p>
+          </div>
+        )}
+        {trialPaused && (
+          <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
+            <p className="font-medium">{w.store.trialEnded}</p>
+            <p className="text-muted">
+              {w.store.trialEndedText}
+              {memberCan(member, "billing:write") && (
+                <>
+                  {" "}
+                  <Link href={`${base}/billing`} className="font-medium underline underline-offset-2">
+                    {w.store.choosePlan}
+                  </Link>
+                </>
+              )}
+            </p>
+          </div>
+        )}
+        {!open && (
+          <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
+            <p className="font-medium">{store.status === "suspended" ? w.store.suspended : w.store.closed}</p>
+            <p className="text-muted">
+              {store.status === "suspended" ? w.store.suspendedText : w.store.closedText}
+              {isOwner && store.status === "closed" && (
+                <>
+                  {" "}
+                  <Link href={`${base}/settings/close`} className="font-medium underline underline-offset-2">
+                    {ownerMayReopen(store.status, store.closedAt ? new Date(store.closedAt) : null, new Date()) ? w.store.reopen : w.store.aboutReopening}
+                  </Link>
+                </>
+              )}
+            </p>
+          </div>
+        )}
+        {children}
+      </AdminFrame>
+    </AdminViewProvider>
   );
 }

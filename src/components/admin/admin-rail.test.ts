@@ -50,7 +50,10 @@ describe("the rail", () => {
 
   it("has a button at its foot that shows the sections' names beside their icons, and none where it is narrowed for a tool (D262)", () => {
     const out = rail();
-    expect(out).toContain('aria-label="Widen the sidebar"');
+    // Its name follows <html data-rail> by CSS, as its width does, so it is right before hydration too (D453).
+    expect(out).toContain('<span class="sr-only [[data-rail=names]_&amp;]:hidden">Widen the sidebar</span>');
+    expect(out).toContain(">Narrow the sidebar</span>");
+    expect(out).not.toContain('aria-label="Widen the sidebar"');
     // Each name is there for the wider rail, hidden until the browser's choice on <html> shows it.
     expect(out).toMatch(/<span aria-hidden="true" class="hidden [^"]*\[\[data-rail=names\]_&amp;\]:inline">Orders<\/span>/);
     const narrow = renderToStaticMarkup(h(AdminRail, { items: tabs, home: { href: "/admin", label: "Home" }, label: "Main sections", collapseOn: "^/admin/s/orders" }));
@@ -58,7 +61,7 @@ describe("the rail", () => {
   });
 
   it("is set on <html> before the page is drawn, from the browser's choice, and kept by the button", async () => {
-    const { RAIL_NAMES_KEY, railNamesScript, setRailNames } = await import("@/lib/admin-rail");
+    const { RAIL_ICONS, RAIL_NAMES_KEY, railNamesScript, setRailNames } = await import("@/lib/admin-rail");
     const attributes = new Map<string, string>();
     const stored = new Map<string, string>();
     const root = { setAttribute: (k: string, v: string) => attributes.set(k, v), removeAttribute: (k: string) => attributes.delete(k), getAttribute: (k: string) => attributes.get(k) ?? null };
@@ -73,8 +76,25 @@ describe("the rail", () => {
     vi.stubGlobal("window", { dispatchEvent: () => true });
     setRailNames(false);
     expect(attributes.has("data-rail")).toBe(false);
-    expect(stored.has(RAIL_NAMES_KEY)).toBe(false);
+    // Narrowed by choice is kept as such, so a wide screen's default does not widen it again.
+    expect(stored.get(RAIL_NAMES_KEY)).toBe(RAIL_ICONS);
     vi.unstubAllGlobals();
+  });
+
+  it("shows the names on a wide screen until the person narrows it (D453)", async () => {
+    const { RAIL_ICONS, RAIL_NAMES_KEY, RAIL_NAMES_WIDE, railNamesScript } = await import("@/lib/admin-rail");
+    const run = (stored: string | null, wide: boolean) => {
+      const attributes = new Map<string, string>();
+      const root = { setAttribute: (k: string, v: string) => attributes.set(k, v) };
+      const storage = { getItem: (k: string) => (k === RAIL_NAMES_KEY ? stored : null) };
+      const matchMedia = (query: string) => ({ matches: query === RAIL_NAMES_WIDE && wide });
+      new Function("document", "localStorage", "matchMedia", railNamesScript())({ documentElement: root }, storage, matchMedia);
+      return attributes.get("data-rail") ?? null;
+    };
+    expect(run(null, true)).toBe("names");
+    expect(run(null, false)).toBe(null);
+    expect(run(RAIL_ICONS, true)).toBe(null);
+    expect(run("names", false)).toBe("names");
   });
 });
 

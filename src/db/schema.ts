@@ -483,6 +483,11 @@ export const accounts = commerce.table(
      * browser at their first sign-in, then their own choice; a new language widens the check. Never per store.
      */
     adminLocale: text("admin_locale"),
+    /**
+     * How much of a store's admin they are shown (D453, `ADMIN_VIEWS` in `src/lib/admin-view.ts`): `basic`, everyday pages, the default for
+     * everyone; or `advanced`, every page. Their own choice, kept so it follows them to every device.
+     */
+    adminView: text("admin_view").notNull().default("basic"),
     /** Operators of the platform itself (approve access requests). */
     platformAdmin: boolean("platform_admin").notNull().default(false),
     /** The AI manager learns their preferences from conversations (D103); off, it only keeps what they tell it to. */
@@ -520,6 +525,7 @@ export const accounts = commerce.table(
     check("accounts_color_mode", sql`${t.colorMode} in ('system', 'light', 'dark')`),
     check("accounts_admin_scheme", sql`${t.adminScheme} in ('meadow', 'indigo')`),
     check("accounts_admin_locale", sql`${t.adminLocale} in ('en', 'nb-NO')`),
+    check("accounts_admin_view", sql`${t.adminView} in ('basic', 'advanced')`),
   ],
 );
 

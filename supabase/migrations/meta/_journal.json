@@ -4628,6 +4628,13 @@
       "when": 1793818279897,
       "tag": "20261104185119_woocommerce_seo_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 661,
+      "version": "7",
+      "when": 1793835910568,
+      "tag": "20261104234510_admin_view",
+      "breakpoints": true
     }
   ]
 }

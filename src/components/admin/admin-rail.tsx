@@ -74,8 +74,9 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
       </li>
     );
   };
-  const Toggle = named ? PanelLeftClose : PanelLeftOpen;
-  // Named for what it does to the sidebar: a name with "name" in it would answer every search for a Name field.
+  // Named for what it does to the sidebar: a name with "name" in it would answer every search for a Name field. Its icon and name follow
+  // `<html data-rail>` by CSS, as its width does, so they agree before the page is hydrated too (the names are the default on a wide
+  // screen, D453); only the click reads the state.
   const toggleLabel = named ? w.narrowSidebar : w.widenSidebar;
   return (
     <div
@@ -94,14 +95,16 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
         <button
           type="button"
           onClick={() => setRailNames(!named)}
-          aria-label={toggleLabel}
           title={toggleLabel}
           className="mt-3 flex size-11 items-center justify-center gap-3 rounded-tile text-rail-icon hover:bg-[color-mix(in_srgb,var(--rail),white_8%)] hover:text-[color-mix(in_srgb,var(--rail-icon),white_45%)] [[data-rail=names]_&]:w-full [[data-rail=names]_&]:justify-start [[data-rail=names]_&]:px-3"
         >
-          <Toggle aria-hidden className="size-5 shrink-0" />
+          <PanelLeftOpen aria-hidden className="size-5 shrink-0 [[data-rail=names]_&]:hidden" />
+          <PanelLeftClose aria-hidden className="hidden size-5 shrink-0 [[data-rail=names]_&]:block" />
+          <span className="sr-only [[data-rail=names]_&]:hidden">{w.widenSidebar}</span>
           <span aria-hidden className="hidden text-caption [[data-rail=names]_&]:inline">
             {w.narrow}
           </span>
+          <span className="hidden [[data-rail=names]_&]:sr-only [[data-rail=names]_&]:block">{w.narrowSidebar}</span>
         </button>
       )}
     </div>

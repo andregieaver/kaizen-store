@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."accounts" ADD COLUMN "admin_view" text DEFAULT 'basic' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."accounts" ADD CONSTRAINT "accounts_admin_view" CHECK ("commerce"."accounts"."admin_view" in ('basic', 'advanced'));

@@ -207,6 +207,13 @@ returns and where it is sold) and the support settings (what the AI may do, the 
 summaries and how conversations end and are kept). Other screens move over when they are touched. A five-person usability session
 on both is the owner's to run; its findings go in this section.
 
+**The navigation too (D453).** The same two people meet the navigation before any screen. A store's admin opens in **Basic**, which
+lists each section's everyday pages (40 of 104); **Advanced** lists every page. The switch is in the top bar and on Your account,
+the choice is the account's, and while Basic is on the foot of each sidebar and page of cards says how many pages Advanced adds, with
+one press to see them (rule 7: what Homer must know, that there is more, is never hidden). Basic hides links, never pages. Every page
+in a sidebar and on a card has an icon beside its name, and the rail shows its sections' names where there is room: pictures with
+words, never pictures alone. `docs/audits/admin-usability-2026-11.md` has the audit behind it and the plan for the rest.
+
 ---
 
 ## 3. Tokens: three layers

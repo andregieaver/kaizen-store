@@ -109,9 +109,11 @@ Someone who only works in stores (staff) sees just Stores and Account.
 ## Store owner
 
 The owner's level (D147) is the same shape: tabs with icons, the whole width, and `src/lib/owner-nav.ts` as its data.
-Home (owners), Stores, Work (owners, or where a store has it on; it has its own sub-navigation) have no sidebar. Account
-has one for owners: Your account · Billing · AI usage · Referrals, which were tabs of their own before. Staff see Stores,
-Work where it is on, and Account without the owners' pages.
+Home (owners), Stores, Support (where the person may read a store's inbox), Work (owners, or where a store has it on; it has its own
+sub-navigation) have no sidebar. Account has one: the person's own pages (Your account, Appearance, Kaizena Flow support, Your themes,
+Connected apps and assistants, Developer) and, for owners, what concerns their stores (AI manager notices, Your domains, Billing, AI
+usage, Usage and limits, Referrals, WordPress), each with its icon (`ACCOUNT_ITEMS`). Staff see Stores, Work where it is on, and Account
+without the owners' pages.
 
 ## Store
 
@@ -136,10 +138,29 @@ Shipping and Payments are `/settings/…` and Settings'. A tab with a page of ca
 sidebar, so Design marks Website and not Settings. The admin map's `group` for a store page is its section
 (`sectionOf()`), so the AI manager guides by the tabs people see.
 
+## Basic and Advanced (D453)
+
+A store's admin lists each section's everyday pages in **Basic**, every account's default, and every page in **Advanced**
+(`src/lib/admin-view.ts`, the audit behind it in `docs/audits/admin-usability-2026-11.md`). The switch, **Basic | Advanced**, is in the
+top bar beside the AI manager (icons only below 1280 px), at the foot of the phone's menu and on Your account; the choice is kept on the
+account, so it follows the person, and the sidebar and the pages of cards follow it at once.
+
+- A page is in Basic when its `StoreItem` says `basic: true`, or when its section's tab leads to it. 40 of the 104 pages are; with only the
+  online shop on, a store's Basic lists about 28 (Settings 11 of 33).
+- Basic hides links, never pages. A link from Home, the setup checklist, a notice or the AI manager opens any page, and its sidebar then
+  lists it where it lives, marked as the page being viewed.
+- While Basic is on, the foot of each sidebar, the foot of each page of cards and Home say how many more pages Advanced has here, that it
+  is where to look when something is missing, and switch with one press.
+- The platform and the owner's level have no views.
+
+Every page in a sidebar and on a page of cards has an icon beside its name (`icon`, drawn by `NavIcon`), at all three levels. The rail
+shows its sections' names on screens 1280 px and wider until the person narrows it.
+
 ## Rules for changes
 
 - A new page goes in exactly one section of its level (`platform-nav.ts`, `store-nav.ts`, `owner-nav.ts`), and in
-  `ADMIN_PAGES` (`src/lib/admin-map.ts`), so the AI manager can guide to it.
+  `ADMIN_PAGES` (`src/lib/admin-map.ts`), so the AI manager can guide to it. It has an `icon`; a store page says `basic: true` only
+  if most owners use it every week (D453).
 - A level's own pages check who is asking themselves (`requirePlatformAdmin()`,
   `requireAccount()`, `requireMember()`): a layout's check redirects only
   after its pages have started to be sent.

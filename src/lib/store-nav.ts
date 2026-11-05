@@ -17,8 +17,11 @@ export type StoreFlags = FeatureSource;
 /**
  * A page in a sidebar: its address after the store's, its label, and a line on what it is for (the hub's card). `feature` is the store
  * feature (D178) it stands behind: one, or several of which any is enough; the same as its `ADMIN_PAGES` entry's (a test holds them).
+ * `icon` is drawn beside its label in the sidebar and on its card (D453). `basic` puts it in the Basic view (D453, `src/lib/admin-view.ts`):
+ * an everyday page Homer needs; every other page is shown in Advanced only (and in Basic while it is the page being viewed). A section's
+ * main page is always in Basic, since its tab leads there.
  */
-export type StoreItem = { path: string; label: string; description: string; exact?: boolean; feature?: FeatureRequirement };
+export type StoreItem = { path: string; label: string; description: string; icon: NavIconName; basic?: boolean; exact?: boolean; feature?: FeatureRequirement };
 export type StoreGroup = { heading: string; items: StoreItem[] };
 
 export type StoreSection = {
@@ -34,7 +37,7 @@ export type StoreSection = {
   groups: StoreGroup[];
 };
 
-const item = (path: string, label: string, description: string, extra: Partial<StoreItem> = {}): StoreItem => ({ path, label, description, ...extra });
+const item = (path: string, label: string, description: string, extra: Partial<StoreItem> & Pick<StoreItem, "icon">): StoreItem => ({ path, label, description, ...extra });
 
 export const STORE_SECTIONS: StoreSection[] = [
   {
@@ -51,13 +54,13 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Orders",
         items: [
-          item("/orders", "Orders", "Every order: search and filter them, save views, tag, archive, send and print in bulk, open one to fulfil or refund it."),
-          item("/orders/drafts", "Draft orders", "Orders you make for a customer: products, custom items and prices, a discount and shipping, sent as a pay link or recorded as paid outside Kaizena Flow."),
-          item("/returns", "Returns", "Customers' withdrawals and return requests: approve, receive, inspect and refund them in time."),
-          item("/invoices", "Invoices", "Invoices and credit notes for orders, the orders waiting for one, and a CSV for the accountant."),
-          item("/subscriptions", "Subscriptions", "Customers' recurring subscriptions and their payments.", { feature: "subscriptions" }),
-          item("/deliveries", "Subscription boxes", "Weekly delivery days, cutoffs, and the lists customers have set up.", { feature: "boxes" }),
-          item("/emails", "Emails", "Every email the store sent to customers and staff, and whether it arrived."),
+          item("/orders", "Orders", "Every order: search and filter them, save views, tag, archive, send and print in bulk, open one to fulfil or refund it.", { icon: "receipt", basic: true }),
+          item("/orders/drafts", "Draft orders", "Orders you make for a customer: products, custom items and prices, a discount and shipping, sent as a pay link or recorded as paid outside Kaizena Flow.", { icon: "file-pen" }),
+          item("/returns", "Returns", "Customers' withdrawals and return requests: approve, receive, inspect and refund them in time.", { icon: "undo", basic: true }),
+          item("/invoices", "Invoices", "Invoices and credit notes for orders, the orders waiting for one, and a CSV for the accountant.", { icon: "file-text" }),
+          item("/subscriptions", "Subscriptions", "Customers' recurring subscriptions and their payments.", { feature: "subscriptions", icon: "repeat", basic: true }),
+          item("/deliveries", "Subscription boxes", "Weekly delivery days, cutoffs, and the lists customers have set up.", { feature: "boxes", icon: "truck", basic: true }),
+          item("/emails", "Emails", "Every email the store sent to customers and staff, and whether it arrived.", { icon: "mail" }),
         ],
       },
     ],
@@ -73,12 +76,12 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Products",
         items: [
-          item("/products", "Products", "The catalogue: prices, stock, variants, pictures, categories and tags.", { feature: "shop" }),
-          item("/inventory", "Inventory", "Stock for each variant and location: on hand, held by checkouts and owed on backorder, with counts, adjustments with a reason, history and files.", { feature: "shop" }),
-          item("/gift-cards", "Gift cards", "Cards customers buy or you issue: what they hold, each card's history, issuing and changing one.", { feature: "gift_cards" }),
-          item("/reviews", "Reviews", "What buyers say about your products: check new reviews, publish or hide them and answer.", { feature: "reviews" }),
-          item("/product-layouts", "Product layouts", "How a product's page is laid out, for all products, a category, a tag or one product.", { feature: "shop" }),
-          item("/fields", "Custom fields", "Your own groups of fields for products, pages, customers and more."),
+          item("/products", "Products", "The catalogue: prices, stock, variants, pictures, categories and tags.", { feature: "shop", icon: "tag", basic: true }),
+          item("/inventory", "Inventory", "Stock for each variant and location: on hand, held by checkouts and owed on backorder, with counts, adjustments with a reason, history and files.", { feature: "shop", icon: "warehouse" }),
+          item("/gift-cards", "Gift cards", "Cards customers buy or you issue: what they hold, each card's history, issuing and changing one.", { feature: "gift_cards", icon: "gift", basic: true }),
+          item("/reviews", "Reviews", "What buyers say about your products: check new reviews, publish or hide them and answer.", { feature: "reviews", icon: "star", basic: true }),
+          item("/product-layouts", "Product layouts", "How a product's page is laid out, for all products, a category, a tag or one product.", { feature: "shop", icon: "layout-template" }),
+          item("/fields", "Custom fields", "Your own groups of fields for products, pages, customers and more.", { icon: "list-plus" }),
         ],
       },
     ],
@@ -94,12 +97,12 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Customers",
         items: [
-          item("/customers", "Customers", "Everyone with an account, their orders and details.", { feature: "shop" }),
-          item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers.", { feature: "shop" }),
-          item("/price-lists", "Price lists", "Prices of their own for customer groups and companies: a percentage off or fixed prices.", { feature: "shop" }),
-          item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { feature: "business" }),
-          item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it.", { feature: "shop" }),
-          item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock."),
+          item("/customers", "Customers", "Everyone with an account, their orders and details.", { feature: "shop", icon: "users", basic: true }),
+          item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers.", { feature: "shop", icon: "users-round" }),
+          item("/price-lists", "Price lists", "Prices of their own for customer groups and companies: a percentage off or fixed prices.", { feature: "shop", icon: "banknote" }),
+          item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { feature: "business", icon: "building", basic: true }),
+          item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it.", { feature: "shop", icon: "heart" }),
+          item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock.", { icon: "shield-check", basic: true }),
         ],
       },
     ],
@@ -115,20 +118,20 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Marketing",
         items: [
-          item("/campaigns", "Campaigns", "Offers without a code, for a time: a percentage off, buy N pay for M, a free product.", { feature: "shop" }),
-          item("/discounts", "Coupons", "Discount codes customers type at checkout.", { feature: "shop" }),
-          item("/recommendations", "Recommendations", "What the store suggests to each shopper, and how well it works.", { feature: "shop" }),
-          item("/experiments", "A/B tests", "Try two versions of a page on real visitors and keep the one that works better."),
-          item("/automations", "Email automations", "Emails that go by themselves: a welcome, after a purchase, win-back, and back in stock."),
-          item("/broadcasts", "Broadcasts", "Emails with news and offers to everyone who wants them, or to a segment, with what happened after."),
-          item("/segments", "Segments", "Groups of customers and subscribers by what they did, counted as you open them."),
-          item("/ads", "Ads and conversions", "Checkouts and purchases sent to your ad platforms from the server, for shoppers who allowed marketing."),
-          item("/feeds", "Product feeds", "Your products for Google Shopping, Meta, TikTok and Pinterest, at a secret address."),
-          item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when."),
-          item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop" }),
-          item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction.", { feature: "bonus" }),
-          item("/affiliates", "Referral program", "Customers who refer their friends, and what both get.", { feature: "referrals" }),
-          item("/creators", "Creators", "People with a channel who sell your goods with a code of their own, and the commission they earn.", { feature: "shop" }),
+          item("/campaigns", "Campaigns", "Offers without a code, for a time: a percentage off, buy N pay for M, a free product.", { feature: "shop", icon: "badge-percent", basic: true }),
+          item("/discounts", "Coupons", "Discount codes customers type at checkout.", { feature: "shop", icon: "ticket", basic: true }),
+          item("/recommendations", "Recommendations", "What the store suggests to each shopper, and how well it works.", { feature: "shop", icon: "thumbs-up" }),
+          item("/experiments", "A/B tests", "Try two versions of a page on real visitors and keep the one that works better.", { icon: "flask" }),
+          item("/automations", "Email automations", "Emails that go by themselves: a welcome, after a purchase, win-back, and back in stock.", { icon: "mail-check" }),
+          item("/broadcasts", "Broadcasts", "Emails with news and offers to everyone who wants them, or to a segment, with what happened after.", { icon: "send", basic: true }),
+          item("/segments", "Segments", "Groups of customers and subscribers by what they did, counted as you open them.", { icon: "chart-pie" }),
+          item("/ads", "Ads and conversions", "Checkouts and purchases sent to your ad platforms from the server, for shoppers who allowed marketing.", { icon: "target" }),
+          item("/feeds", "Product feeds", "Your products for Google Shopping, Meta, TikTok and Pinterest, at a secret address.", { icon: "rss" }),
+          item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when.", { icon: "user-check" }),
+          item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop", icon: "cart" }),
+          item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction.", { feature: "bonus", icon: "coins", basic: true }),
+          item("/affiliates", "Referral program", "Customers who refer their friends, and what both get.", { feature: "referrals", icon: "share", basic: true }),
+          item("/creators", "Creators", "People with a channel who sell your goods with a code of their own, and the commission they earn.", { feature: "shop", icon: "video" }),
         ],
       },
     ],
@@ -144,20 +147,20 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Analytics",
         items: [
-          item("/analytics", "Overview", "The store's main figures against the last period and last year, its funnel, best sellers, channels and what needs you today.", { exact: true, feature: "shop" }),
-          item("/analytics/live", "Live", "Who is in the store right now, carts and checkouts in progress, and today's orders so far.", { feature: "shop" }),
-          item("/analytics/finance", "Finance", "From gross sales to profit: discounts, refunds, costs, fees, marketing and what is left.", { feature: "shop" }),
-          item("/analytics/reports", "Reports", "Your sales cut the way you need them: ready reports and your own, saved and downloaded.", { feature: "shop" }),
-          item("/analytics/payouts", "Payouts", "What Stripe paid to your bank, what each payout settles and whether it adds up.", { feature: "shop" }),
-          item("/analytics/tax", "VAT", "VAT by country and rate, the quarterly OSS and monthly IOSS return data, and how they agree with your invoices and Finance.", { feature: "shop" }),
-          item("/analytics/customers", "Customers", "New and returning customers, repeat purchases, lifetime value, segments and cohorts.", { feature: "shop" }),
-          item("/analytics/products", "Products", "What sells, what earns, what is refunded, and how fast each product moves.", { feature: "shop" }),
-          item("/analytics/inventory", "Inventory", "Stock, its value, how many days it lasts, what is about to run out and what does not sell.", { feature: "shop" }),
-          item("/analytics/marketing", "Marketing", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons.", { feature: "shop" }),
-          item("/analytics/subscriptions", "Subscriptions", "Monthly recurring revenue, how it moves, churn and failed renewals.", { feature: "subscriptions" }),
-          item("/analytics/traffic", "Traffic", "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours."),
-          item("/analytics/speed", "Speed", "How fast your pages load for your visitors, measured in their browsers, and what to fix."),
-          item("/analytics/settings", "Analytics settings", "Costs, fees and targets that turn sales into profit, and whether visits are counted."),
+          item("/analytics", "Overview", "The store's main figures against the last period and last year, its funnel, best sellers, channels and what needs you today.", { exact: true, feature: "shop", icon: "dashboard", basic: true }),
+          item("/analytics/live", "Live", "Who is in the store right now, carts and checkouts in progress, and today's orders so far.", { feature: "shop", icon: "activity" }),
+          item("/analytics/finance", "Finance", "From gross sales to profit: discounts, refunds, costs, fees, marketing and what is left.", { feature: "shop", icon: "wallet" }),
+          item("/analytics/reports", "Reports", "Your sales cut the way you need them: ready reports and your own, saved and downloaded.", { feature: "shop", icon: "file-spreadsheet" }),
+          item("/analytics/payouts", "Payouts", "What Stripe paid to your bank, what each payout settles and whether it adds up.", { feature: "shop", icon: "landmark", basic: true }),
+          item("/analytics/tax", "VAT", "VAT by country and rate, the quarterly OSS and monthly IOSS return data, and how they agree with your invoices and Finance.", { feature: "shop", icon: "percent" }),
+          item("/analytics/customers", "Customers", "New and returning customers, repeat purchases, lifetime value, segments and cohorts.", { feature: "shop", icon: "users" }),
+          item("/analytics/products", "Products", "What sells, what earns, what is refunded, and how fast each product moves.", { feature: "shop", icon: "tag" }),
+          item("/analytics/inventory", "Inventory", "Stock, its value, how many days it lasts, what is about to run out and what does not sell.", { feature: "shop", icon: "warehouse" }),
+          item("/analytics/marketing", "Marketing", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons.", { feature: "shop", icon: "megaphone" }),
+          item("/analytics/subscriptions", "Subscriptions", "Monthly recurring revenue, how it moves, churn and failed renewals.", { feature: "subscriptions", icon: "repeat" }),
+          item("/analytics/traffic", "Traffic", "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours.", { icon: "pointer" }),
+          item("/analytics/speed", "Speed", "How fast your pages load for your visitors, measured in their browsers, and what to fix.", { icon: "gauge" }),
+          item("/analytics/settings", "Analytics settings", "Costs, fees and targets that turn sales into profit, and whether visits are counted.", { icon: "sliders" }),
         ],
       },
     ],
@@ -173,20 +176,20 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Website",
         items: [
-          item("/pages", "Pages", "The store's own pages, built in the page builder: draft, publish, and choose the front page and special pages."),
-          item("/articles", "Blog", "The store's blog: articles, their categories and tags."),
-          item("/articles/blogs", "Blogs", "The store's blogs, each with its address, feed and comments setting, and the authors of its articles."),
-          item("/articles/comments", "Blog comments", "Visitors' comments on the articles: approve, refuse or mark them as spam."),
-          item("/content", "Content", "Your own kinds of content, such as team members or locations: entries listed on pages, each with a page if you like."),
-          item("/media", "Media", "Pictures and videos for the store, searchable, with alt texts."),
-          item("/menus", "Menus", "Lists of links for the header, footer and pages."),
-          item("/redirects", "Redirects", "Redirects for addresses that changed and a report of the addresses shoppers could not find."),
-          item("/headers", "Headers", "Headers built from components; choose the one the store shows."),
-          item("/footers", "Footers", "Footers built from components; choose the one the store shows."),
-          item("/settings/design", "Design", "The store's look: template, colours, fonts, buttons and corners."),
-          item("/staging", "Staging", "Gather changes to pages, the look and menus, compare them with what visitors see, and make them live together."),
+          item("/pages", "Pages", "The store's own pages, built in the page builder: draft, publish, and choose the front page and special pages.", { icon: "files", basic: true }),
+          item("/articles", "Blog", "The store's blog: articles, their categories and tags.", { icon: "newspaper", basic: true }),
+          item("/articles/blogs", "Blogs", "The store's blogs, each with its address, feed and comments setting, and the authors of its articles.", { icon: "book-open" }),
+          item("/articles/comments", "Blog comments", "Visitors' comments on the articles: approve, refuse or mark them as spam.", { icon: "message-square" }),
+          item("/content", "Content", "Your own kinds of content, such as team members or locations: entries listed on pages, each with a page if you like.", { icon: "library" }),
+          item("/media", "Media", "Pictures and videos for the store, searchable, with alt texts.", { icon: "image", basic: true }),
+          item("/menus", "Menus", "Lists of links for the header, footer and pages.", { icon: "menu", basic: true }),
+          item("/redirects", "Redirects", "Redirects for addresses that changed and a report of the addresses shoppers could not find.", { icon: "signpost" }),
+          item("/headers", "Headers", "Headers built from components; choose the one the store shows.", { icon: "panel-top" }),
+          item("/footers", "Footers", "Footers built from components; choose the one the store shows.", { icon: "panel-bottom" }),
+          item("/settings/design", "Design", "The store's look: template, colours, fonts, buttons and corners.", { icon: "palette", basic: true }),
+          item("/staging", "Staging", "Gather changes to pages, the look and menus, compare them with what visitors see, and make them live together.", { icon: "layers" }),
           // More than one language comes with Several languages or with countries of different languages (D178); the page says when there is one.
-          item("/translate", "Translate the store", "Have AI suggest translations of the whole store, and read them before they are used.", { feature: ["languages", "countries"] }),
+          item("/translate", "Translate the store", "Have AI suggest translations of the whole store, and read them before they are used.", { feature: ["languages", "countries"], icon: "languages", basic: true }),
         ],
       },
     ],
@@ -203,11 +206,11 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Bookings",
         items: [
-          item("/bookings", "Calendar", "Every booking by week, with what can be done about it.", { exact: true, feature: ["appointments", "bookings"] }),
-          item("/bookings/staff", "Staff and hours", "The people who do appointments, their opening hours and capacity.", { feature: "appointments" }),
-          item("/bookings/stays", "Stays and rentals", "Products booked by night or day, with seasons and fees.", { feature: "bookings" }),
-          item("/bookings/units", "Rooms and items", "The rooms and items stays and rentals are booked on, and their calendars.", { feature: "bookings" }),
-          item("/hosts", "Hosts", "Outside hosts who list stays and rentals in the store, and the DAC7 report.", { feature: "bookings" }),
+          item("/bookings", "Calendar", "Every booking by week, with what can be done about it.", { exact: true, feature: ["appointments", "bookings"], icon: "calendar", basic: true }),
+          item("/bookings/staff", "Staff and hours", "The people who do appointments, their opening hours and capacity.", { feature: "appointments", icon: "clock", basic: true }),
+          item("/bookings/stays", "Stays and rentals", "Products booked by night or day, with seasons and fees.", { feature: "bookings", icon: "bed", basic: true }),
+          item("/bookings/units", "Rooms and items", "The rooms and items stays and rentals are booked on, and their calendars.", { feature: "bookings", icon: "door", basic: true }),
+          item("/hosts", "Hosts", "Outside hosts who list stays and rentals in the store, and the DAC7 report.", { feature: "bookings", icon: "house" }),
         ],
       },
     ],
@@ -224,12 +227,12 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Support",
         items: [
-          item("/support", "Inbox", "Every conversation with the store's customers as it happens: who is waiting, who is talking to the assistant, and what was said."),
-          item("/support/requests", "Requests", "What the chat assistant passed to your team (a refund, cancelling an order, a new address, an exception): decide each, and the customer is told."),
-          item("/support/reports", "Reports", "How the store's conversations went: how many, how many the AI handled alone, how long customers waited, ratings, tone and topics."),
-          item("/support/replies", "Saved replies", "Texts your team puts in an answer with / in the inbox, filled in with the customer's and the person's names and the store's."),
-          item("/chat", "Chat assistant", "The store's chat assistant for shoppers, and the knowledge it answers from."),
-          item("/support/settings", "Settings", "Who answers the store's customers (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept."),
+          item("/support", "Inbox", "Every conversation with the store's customers as it happens: who is waiting, who is talking to the assistant, and what was said.", { icon: "inbox", basic: true }),
+          item("/support/requests", "Requests", "What the chat assistant passed to your team (a refund, cancelling an order, a new address, an exception): decide each, and the customer is told.", { icon: "clipboard-check", basic: true }),
+          item("/support/reports", "Reports", "How the store's conversations went: how many, how many the AI handled alone, how long customers waited, ratings, tone and topics.", { icon: "chart-column" }),
+          item("/support/replies", "Saved replies", "Texts your team puts in an answer with / in the inbox, filled in with the customer's and the person's names and the store's.", { icon: "message-text" }),
+          item("/chat", "Chat assistant", "The store's chat assistant for shoppers, and the knowledge it answers from.", { icon: "bot" }),
+          item("/support/settings", "Settings", "Who answers the store's customers (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept.", { icon: "settings-2" }),
         ],
       },
     ],
@@ -245,59 +248,59 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Store",
         items: [
-          item("/settings/company", "Company", "The business details, places and contact information shoppers and invoices show."),
-          item("/settings/domains", "Domains", "The addresses the store is reached at."),
-          item("/settings/moving", "Moving in", "Bring a shop over from Shopify: connect it, check its old links, and import the rest."),
-          item("/settings/countries", "Countries", "The countries the store sells to, and its own country."),
-          item("/settings/localization", "Languages and currencies", "The languages and currencies the store offers, and the exchange rates."),
-          item("/settings/features", "Features", "Switch the online shop and the store's features on or off: subscriptions, bookings, countries, languages, selling to businesses and more."),
-          item("/settings/close", "Close store", "Stop sales and take the shop off the web. Nothing is deleted, and you can reopen it for thirty days."),
+          item("/settings/company", "Company", "The business details, places and contact information shoppers and invoices show.", { icon: "store", basic: true }),
+          item("/settings/domains", "Domains", "The addresses the store is reached at.", { icon: "link", basic: true }),
+          item("/settings/moving", "Moving in", "Bring a shop over from Shopify: connect it, check its old links, and import the rest.", { icon: "import" }),
+          item("/settings/countries", "Countries", "The countries the store sells to, and its own country.", { icon: "map", basic: true }),
+          item("/settings/localization", "Languages and currencies", "The languages and currencies the store offers, and the exchange rates.", { icon: "globe" }),
+          item("/settings/features", "Features", "Switch the online shop and the store's features on or off: subscriptions, bookings, countries, languages, selling to businesses and more.", { icon: "toggle", basic: true }),
+          item("/settings/close", "Close store", "Stop sales and take the shop off the web. Nothing is deleted, and you can reopen it for thirty days.", { icon: "power" }),
         ],
       },
       {
         heading: "Selling",
         items: [
-          item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use.", { feature: "shop" }),
-          item("/settings/shipping", "Shipping", "Flat rates, shipping methods with zones and profiles, pickup at your places, local delivery and carriers.", { feature: "shop" }),
-          item("/settings/orders", "Orders", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizena Flow.", { feature: "shop" }),
-          item("/settings/notifications", "Notifications", "The emails customers get about their orders and returns: which are sent, your own wording in each language, and who on the team is told of new orders.", { feature: "shop" }),
-          item("/settings/checkout", "Checkout rules", "Hide or rename a delivery option, leave a payment method out or stop an order when the basket matches; and questions the checkout asks.", { feature: "shop" }),
-          item("/settings/prices", "Prices and quantity", "How shoppers see prices, with or without ,00 on whole amounts and your words before and after them, and how they choose how many.", { feature: "shop" }),
-          item("/settings/workflows", "Workflows", "When something happens in the store, or at a set time: check what you choose, then tag, tell staff, post to Slack, send to your endpoint or ask the AI manager."),
-          item("/settings/automation", "Automation", "Rules that tag, hold or tell staff about paid orders that match conditions you choose, and the log of what they did.", { feature: "shop" }),
-          item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get.", { feature: "shop" }),
-          item("/settings/legal", "Legal pages", "Starter drafts of the terms, privacy statement, returns and shipping policies, withdrawal information and imprint, and what checkout says about the terms."),
-          item("/settings/tax", "Tax", "VAT registration and number, OSS and IOSS, and how the store charges VAT.", { feature: "shop" }),
-          item("/settings/customs", "Duties and import VAT", "Who pays duties and import VAT in each country outside your customs area: your customer to the carrier on delivery, or with the order at checkout.", { feature: "shop" }),
-          item("/settings/invoices", "Invoicing", "Switch on invoices, the numbering, the note printed on every invoice and credit note.", { feature: "shop" }),
-          item("/settings/producer-responsibility", "Producer responsibility", "Registrations for packaging, electrical equipment, batteries and other schemes in each country, and what is not sold without one.", { feature: "shop" }),
-          item("/integrations", "Integrations", "Connect shipping carriers, Slack, accounting and other services."),
+          item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use.", { feature: "shop", icon: "credit-card", basic: true }),
+          item("/settings/shipping", "Shipping", "Flat rates, shipping methods with zones and profiles, pickup at your places, local delivery and carriers.", { feature: "shop", icon: "truck", basic: true }),
+          item("/settings/orders", "Orders", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizena Flow.", { feature: "shop", icon: "clipboard-list" }),
+          item("/settings/notifications", "Notifications", "The emails customers get about their orders and returns: which are sent, your own wording in each language, and who on the team is told of new orders.", { feature: "shop", icon: "bell" }),
+          item("/settings/checkout", "Checkout rules", "Hide or rename a delivery option, leave a payment method out or stop an order when the basket matches; and questions the checkout asks.", { feature: "shop", icon: "list-filter" }),
+          item("/settings/prices", "Prices and quantity", "How shoppers see prices, with or without ,00 on whole amounts and your words before and after them, and how they choose how many.", { feature: "shop", icon: "calculator" }),
+          item("/settings/workflows", "Workflows", "When something happens in the store, or at a set time: check what you choose, then tag, tell staff, post to Slack, send to your endpoint or ask the AI manager.", { icon: "workflow" }),
+          item("/settings/automation", "Automation", "Rules that tag, hold or tell staff about paid orders that match conditions you choose, and the log of what they did.", { feature: "shop", icon: "zap" }),
+          item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get.", { feature: "shop", icon: "undo" }),
+          item("/settings/legal", "Legal pages", "Starter drafts of the terms, privacy statement, returns and shipping policies, withdrawal information and imprint, and what checkout says about the terms.", { icon: "scale", basic: true }),
+          item("/settings/tax", "Tax", "VAT registration and number, OSS and IOSS, and how the store charges VAT.", { feature: "shop", icon: "percent", basic: true }),
+          item("/settings/customs", "Duties and import VAT", "Who pays duties and import VAT in each country outside your customs area: your customer to the carrier on delivery, or with the order at checkout.", { feature: "shop", icon: "container" }),
+          item("/settings/invoices", "Invoicing", "Switch on invoices, the numbering, the note printed on every invoice and credit note.", { feature: "shop", icon: "file-text" }),
+          item("/settings/producer-responsibility", "Producer responsibility", "Registrations for packaging, electrical equipment, batteries and other schemes in each country, and what is not sold without one.", { feature: "shop", icon: "recycle" }),
+          item("/integrations", "Integrations", "Connect shipping carriers, Slack, accounting and other services.", { icon: "puzzle" }),
         ],
       },
       {
         heading: "Site",
         items: [
-          item("/settings/navigation", "Header and footer", "The store's logos, icon, business details and which menus its standard header and footer show."),
-          item("/settings/seo", "SEO & Reach", "How search engines and AI crawlers see the store."),
-          item("/settings/private", "Private mode", "Keep the store behind a landing page and a password while it is not ready, and preview it as staff."),
-          item("/settings/cookies", "Cookies and tracking", "The cookies the store sets, its tracking tools and consents."),
-          item("/settings/accessibility", "Accessibility", "What has been checked against the accessibility requirements, and a draft accessibility statement for the site."),
+          item("/settings/navigation", "Header and footer", "The store's logos, icon, business details and which menus its standard header and footer show.", { icon: "panels-top-left", basic: true }),
+          item("/settings/seo", "SEO & Reach", "How search engines and AI crawlers see the store.", { icon: "trending-up" }),
+          item("/settings/private", "Private mode", "Keep the store behind a landing page and a password while it is not ready, and preview it as staff.", { icon: "lock" }),
+          item("/settings/cookies", "Cookies and tracking", "The cookies the store sets, its tracking tools and consents.", { icon: "cookie" }),
+          item("/settings/accessibility", "Accessibility", "What has been checked against the accessibility requirements, and a draft accessibility statement for the site.", { icon: "accessibility" }),
         ],
       },
       {
         heading: "Tools",
         items: [
-          item("/search", "Search", "How the store's search works: keywords, meaning and what shoppers searched for.", { feature: "shop" }),
-          item("/settings/ai", "AI", "The AI provider and models the store uses, or its own key."),
-          item("/settings/api", "Apps and API", "Tokens for your own apps, warehouse or accounting to read and change the store through the Admin API."),
+          item("/search", "Search", "How the store's search works: keywords, meaning and what shoppers searched for.", { feature: "shop", icon: "search" }),
+          item("/settings/ai", "AI", "The AI provider and models the store uses, or its own key.", { icon: "sparkles" }),
+          item("/settings/api", "Apps and API", "Tokens for your own apps, warehouse or accounting to read and change the store through the Admin API.", { icon: "braces" }),
         ],
       },
       {
         heading: "Account",
         items: [
-          item("/billing", "Billing", "The store's plan, what it costs and its invoices."),
-          item("/staff", "Team", "Who can work in the store's admin, their roles, collaborators with an end date, and two-step sign-in."),
-          item("/activity", "Activity log", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings."),
+          item("/billing", "Billing", "The store's plan, what it costs and its invoices.", { icon: "receipt-text", basic: true }),
+          item("/staff", "Team", "Who can work in the store's admin, their roles, collaborators with an end date, and two-step sign-in.", { icon: "user-cog", basic: true }),
+          item("/activity", "Activity log", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings.", { icon: "file-clock" }),
         ],
       },
     ],
@@ -349,7 +352,10 @@ export const HOME_PATHS = ["/setup", "/assistant", "/dream-factory"];
 /** Where the cards of a page of cards or the sidebar link to. */
 export const storeLink = (base: string, item: Pick<StoreItem, "path" | "exact">) => ({ href: `${base}${item.path}`, ...(item.exact && { exact: true as const }) });
 
-type Link = { href: string; label: string; exact?: boolean };
+type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName; advanced?: boolean };
+
+/** Whether a section's page is left out of the Basic view (D453): one not marked `basic`, unless it is where the section's tab leads. */
+export const advancedIn = (section: Pick<StoreSection, "start">, item: Pick<StoreItem, "path" | "basic">): boolean => !item.basic && item.path !== section.start;
 
 /**
  * The tabs of a store's admin: Home, then each section offered, with the addresses inside it. A page of cards marks only itself, its pages are
@@ -379,7 +385,10 @@ export function storeAreas(base: string, flags: StoreFlags, canOpen?: CanOpen): 
     ...storeSections(flags, canOpen).map((s) => ({
       prefixes: s.groups.flatMap((g) => g.items.map((i) => `${base}${i.path}`)),
       ...(s.hub && { exact: [`${base}${s.start}`] }),
-      groups: s.groups.map((g) => ({ heading: g.heading, items: g.items.map((i) => ({ label: i.label, ...storeLink(base, i) })) })),
+      groups: s.groups.map((g) => ({
+        heading: g.heading,
+        items: g.items.map((i) => ({ label: i.label, icon: i.icon, ...storeLink(base, i), ...(advancedIn(s, i) && { advanced: true }) })),
+      })),
     })),
   ];
 }
