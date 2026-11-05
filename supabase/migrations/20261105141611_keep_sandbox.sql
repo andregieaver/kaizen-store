@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."access_requests" ADD COLUMN "sandbox_id" uuid;--> statement-breakpoint
+ALTER TABLE "commerce"."access_requests" ADD CONSTRAINT "access_requests_sandbox_id_sandboxes_id_fk" FOREIGN KEY ("sandbox_id") REFERENCES "commerce"."sandboxes"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "access_requests_sandbox_idx" ON "commerce"."access_requests" USING btree ("sandbox_id");
