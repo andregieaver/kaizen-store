@@ -78,6 +78,27 @@ need none of them), React (70 KB) and the router (35 KB).
 
 Scores move a few points between runs, and a page's own content (large pictures, many components) decides much of it.
 
+## Fonts found late (kaizenaflow.com, 5 November 2026)
+
+Lighthouse 12 as PageSpeed Insights runs it, against production at `a88cec7`, warm cache: a phone 83 to 88, a computer 97;
+accessibility 98, best practices and SEO 100. A run while a deploy went live scored 66 on a phone: the page took 3.1 s to answer, and
+Lighthouse counts that wait in every measure. So a score read just after a push is not the page's.
+
+On a phone the largest paint (the front row's picture, 14 KB) is 3.7 to 4.3 s, though the browser paints it at about 0.9 s. Lighthouse
+simulates slow 4G and charges the paint with every file that finished before it: 259 KB of scripts, 82 KB of fonts, 38 KB of CSS and the
+document. Blocking each in turn: without the fonts 93 (largest paint 2.9 s), without any script 97 (2.5 s). The two families
+(Montserrat, Inter) are whole variable fonts, weights 100 to 900, found only through their stylesheets (document, then
+`/api/fonts/css/…`, then the file).
+
+- **The site's fonts are preloaded** (`FontPreloads` in `StoreThemeStyles`, `latinUprightFile()`): the file each of the site's families
+  draws upright Latin text from, which React names in the response's `Link` header. Only where one file serves every upright weight (a
+  variable family); a family with a file per weight is left to its stylesheet. Through a proxy that rewrote the front page, four runs
+  each: largest paint 4.05 s before, 3.88 s preloaded (the median; scores within the runs' noise).
+- **Not done yet**: the same files cut to the weights the builder offers (400 to 700) are 68 KB instead of 82 (largest paint 3.75 s in
+  the same test); with only the default OpenType features 58 KB. Google sends the whole axis even when asked for a range, so this needs
+  a subsetter when a family is installed, and the families installed again. The cart's, checkout's and sign-in's parts are 13 of the 55
+  client components Kaizena Flow's own pages load, though they never draw there (`StorePartSection` is imported by `PageArticle`).
+
 ## First scripts per route (PSI PERF-11, 30 October 2026)
 
 Every route a visitor or a person signing in meets first has its own first-scripts budget in `e2e/performance.spec.ts`

@@ -85,3 +85,19 @@ export const FONT_SUBSETS = ["latin", "latin-ext", "greek", "cyrillic"] as const
 
 /** The families a site's fonts use. */
 export const siteFontFamilies = (fonts: SiteFonts) => [...new Set([fonts.heading, fonts.body].filter((f): f is string => Boolean(f)))];
+
+/**
+ * The one file a family's stylesheet (`fontCss()`) draws upright Latin text from, or null. A variable family has one such file for
+ * every weight, and nearly every page needs it, so a site preloads it (`FontPreloads`) instead of finding it only after the
+ * stylesheet. A family with a file per weight gives null: which weight a page draws first is not known, and a wrong guess is
+ * bytes the phone fetches for nothing.
+ */
+export function latinUprightFile(css: string): string | null {
+  const files = new Set<string>();
+  for (const [, body] of css.matchAll(/\/\*\s*latin\s*\*\/\s*@font-face\s*\{([^}]*)\}/g)) {
+    if (!/font-style:\s*normal\b/.test(body)) continue;
+    const file = /src:\s*url\((\/api\/fonts\/files\/[0-9a-f]{32}\.woff2)\)/.exec(body)?.[1];
+    if (file) files.add(file);
+  }
+  return files.size === 1 ? [...files][0] : null;
+}
