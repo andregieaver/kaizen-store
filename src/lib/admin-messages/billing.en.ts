@@ -13,6 +13,9 @@ export const billingEn = {
     noPlan: "No plan yet",
     trial: "Free to try until {date}. A plan you choose before then is first charged on that day; in the trial's last two days, it is charged at once.",
     trialEnded: "Your free trial ended on {date}.",
+    endsPrivate: "When your plan ends on {date}, your store becomes private until you choose a plan again; everything you made is kept.",
+    noCountry: "First add the country your business is registered in: it decides the VAT on your plan.",
+    noCountryLink: "Add it under Company",
     price: "Price",
     priceLine: "{price}, excluding VAT",
     status: "Status",
@@ -115,6 +118,7 @@ export const billingEn = {
     ends: "Your plan ends when the current period does.",
     typeCode: "Type the discount code.",
     removed: "Code removed.",
+    noCountry: "First add the country your business is registered in, under Settings, Company: it decides the VAT on your plan.",
   },
 };
 

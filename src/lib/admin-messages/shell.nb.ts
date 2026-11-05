@@ -97,6 +97,8 @@ export const shellNb: ShellMessages = {
     aboutReopening: "Om å åpne igjen",
     trialEnded: "Den gratis prøveperioden er over, så butikken er privat igjen.",
     trialEndedText: "Besøkende ser landingssiden din til du velger en plan; alt du har laget, er tatt vare på.",
+    planEnded: "Abonnementet ditt er avsluttet, så butikken er privat igjen.",
+    planEndedText: "Besøkende ser landingssiden din til du velger et abonnement igjen; alt du har laget, er tatt vare på.",
     choosePlan: "Velg en plan",
   },
   push: {

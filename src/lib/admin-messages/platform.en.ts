@@ -91,6 +91,7 @@ export const platformEn = {
     invoiceAbroad:
       "Stripe emails the store an invoice for each period, due in 14 days, without VAT (reverse charge).",
     testNote: " Kaizena Flow is in test mode: no real invoices are sent.",
+    planNeedsCountry: "The store has no country yet, and the country decides the VAT, so no plan can be started until its owner adds it under Settings, Company.",
     planAndPrice: "Plan and price",
     perSale: "{plan} ({fee} per sale)",
     trialDays: "Free trial (days)",

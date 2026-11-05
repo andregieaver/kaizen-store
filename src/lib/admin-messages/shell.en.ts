@@ -104,6 +104,8 @@ export const shellEn = {
     /** The free trial's end (D420). */
     trialEnded: "Your free trial has ended, so your store is private again.",
     trialEndedText: "Visitors see your landing page until you choose a plan; everything you made is kept.",
+    planEnded: "Your plan has ended, so your store is private again.",
+    planEndedText: "Visitors see your landing page until you choose a plan again; everything you made is kept.",
     choosePlan: "Choose a plan",
   },
   /** The installable admin and its notifications (D361): Your account's card and the offline page. */

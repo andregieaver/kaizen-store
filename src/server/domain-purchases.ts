@@ -24,7 +24,7 @@ import {
 } from "@/lib/domain-buyer";
 
 import { audit, type Account } from "./auth";
-import { billingMode, billingTaxRates } from "./billing";
+import { billingMode, billingTaxRates, NO_COUNTRY } from "./billing";
 import { connectOwnedDomain } from "./domains";
 import { accountHolder, heldBy, holderColumns, storeOf, type HolderRef } from "./domain-holder";
 import { domainPricingRows, priceContext, priceIn, storeDomainCurrency } from "./domain-prices";
@@ -193,8 +193,10 @@ type Terms = { buyer: BuyerKind | null; vatKind: VatKind | null; vatNumber: stri
 async function gate(account: Account, holder: HolderRef, input: { connect: boolean; domain: string; buyer?: BuyerInput; consent?: BuyInput["consent"] }, deps: GateDeps): Promise<Result<{ terms: Terms; review: "name" | "risk" | null }>> {
   const storeId = storeOf(holder);
   if (storeId) {
-    const [store] = await db().execute<Row>(sql`select status, is_template, starter from commerce.stores where id = ${storeId}::uuid`);
+    const [store] = await db().execute<Row>(sql`select status, is_template, starter, country from commerce.stores where id = ${storeId}::uuid`);
     if (!store || store.status !== "active" || store.is_template || store.starter) return { ok: false, problems: ["Domains can be bought for an open store only."] };
+    // The country decides the invoice's VAT, so it is asked for before anything is bought.
+    if (!store.country) return { ok: false, problems: [NO_COUNTRY] };
     if (!(await buyingOpen(storeId))) return { ok: false, problems: ["Buying domains isn't open for this store yet."] };
     if (input.connect) {
       const [connected] = await db().execute<Row>(sql`select 1 as on from commerce.store_domains where store_id = ${storeId}::uuid and hostname = ${input.domain}`);
@@ -464,6 +466,8 @@ async function billTo(row: Row, mode: PaymentModeName, stripe: ThemeBillingStrip
     const storeId = String(row.store_id);
     const [facts] = await db().execute<Row>(sql`select s.name, s.country from commerce.stores s where s.id = ${storeId}::uuid`);
     if (!facts) throw new BillingProblem("The store no longer exists.");
+    // The country decides the VAT: a store without it waits (and says why) until its owner gives it.
+    if (!facts.country) throw new BillingProblem(NO_COUNTRY);
     const account = await (deps.account ?? billedAccount)(storeId, mode);
     if (!account) throw new BillingProblem("The store has no Stripe account to bill yet, and one could not be made.");
     const { card } = await collectionFor(storeId, mode, stripe);

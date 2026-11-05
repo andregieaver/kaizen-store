@@ -769,7 +769,7 @@ export const settingsEn = {
     statePrivate: "Private: visitors see your landing page.",
     statePublic: "Public: everyone can see the store.",
     stateNever: "A demo store or starting content is never private.",
-    trialEnded: "Your free trial has ended: choose a plan to make the store public again.",
+    trialEnded: "Your store was made private when its free trial or plan ended: choose a plan to make it public again.",
     chipPrivate: "Private",
     chipPublic: "Public",
     makePrivate: "Make the store private",

@@ -13,7 +13,7 @@ import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
 import { createClient } from "@/lib/supabase/server";
 import type { Membership } from "@/server/auth";
 import { adminLangOf } from "@/lib/admin-lang";
-import { applyPlanDiscount, cancelPlan, choosePlan, portalUrl, removeWaitingDiscount } from "@/server/billing";
+import { applyPlanDiscount, cancelPlan, choosePlan, NO_COUNTRY, portalUrl, removeWaitingDiscount } from "@/server/billing";
 import { createAccountSession, createStripeAccount, refreshStripeAccount } from "@/server/connect";
 import { setPlanRemindersOptOut } from "@/server/plan-reminders";
 import { checkOwnerRole, checkPermission, NO_ACCESS, requireOwnerRole } from "@/server/permissions";
@@ -280,7 +280,8 @@ export async function choosePlanAction(storeSlug: string, _state: FormState, for
   const priceId = z.uuid().safeParse(formData.get("priceId"));
   if (!priceId.success) return { status: "error", messages: [billingWords(owner).choosePlan] };
   const result = await choosePlan(owner.account, owner.store.slug, priceId.data, await origin());
-  if (!result.ok) return { status: "error", messages: result.problems };
+  // Without the store's country no plan is chosen (it decides the VAT): said in the owner's language.
+  if (!result.ok) return { status: "error", messages: result.problems.map((p) => (p === NO_COUNTRY ? billingWords(owner).noCountry : p)) };
   if (result.checkoutUrl) redirect(result.checkoutUrl);
   refresh();
   return { status: "ok", messages: [billingWords(owner).changed] };

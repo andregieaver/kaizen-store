@@ -19,7 +19,7 @@ import {
 } from "@/lib/theme-prices";
 
 import { activeAccount, audit, type Account } from "./auth";
-import { billingMode, billingTaxRates, getStoreBilling, planCurrencies } from "./billing";
+import { billingMode, billingTaxRates, getStoreBilling, NO_COUNTRY, planCurrencies } from "./billing";
 import { createStripeAccount, ensureTestAccount, getStripeAccounts } from "./connect";
 import { log } from "./log";
 import { platformStripe } from "./stripe";
@@ -392,6 +392,8 @@ async function invoiceOne(row: Row, mode: PaymentModeName, stripe: ThemeBillingS
      where s.id = ${storeId}::uuid and d.id = ${String(row.preset_id)}::uuid
   `);
   if (!facts) throw new BillingProblem("The store or the theme no longer exists.");
+  // The country decides the VAT: a store without it waits (and says why) until its owner gives it.
+  if (!facts.country) throw new BillingProblem(NO_COUNTRY);
   const account = await (deps.account ?? billedAccount)(storeId, mode);
   if (!account) throw new BillingProblem("The store has no Stripe account to bill yet, and one could not be made.");
   const metadata = { kaizen_store_id: storeId, kaizen_theme_purchase: id, kaizen_theme_id: String(row.preset_id) };
