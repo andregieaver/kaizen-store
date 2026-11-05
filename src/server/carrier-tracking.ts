@@ -1,20 +1,24 @@
 import "server-only";
 
-import type { CarrierId, TrackingEvent } from "@/lib/shipping-carriers";
+import { isFollowedCarrier, type CarrierId, type TrackingEvent } from "@/lib/shipping-carriers";
 
 import { adapterFor } from "./carriers";
 import { carrierContext } from "./shipping-carriers";
 
 /**
  * Which connected carrier a shipment is with, for following its parcel: the carrier it was booked with, else the name staff
- * gave it when marking the order as sent ("PostNord", "Posten / Bring"). Null for any other carrier.
+ * gave it when marking the order as sent ("PostNord", "Posten / Bring", "UPS", "DHL"). Null for any other carrier, and for one Kaizena Flow
+ * does not follow (`FOLLOWED_CARRIERS`: Instabox's parcels are followed on its own page).
  */
 export function trackedCarrier(shipment: { carrierId: string | null; carrier: string }): CarrierId | null {
-  if (shipment.carrierId === "bring" || shipment.carrierId === "postnord" || shipment.carrierId === "porterbuddy" || shipment.carrierId === "helthjem") return shipment.carrierId;
+  if (shipment.carrierId) return isFollowedCarrier(shipment.carrierId) ? shipment.carrierId : null;
   const name = shipment.carrier.toLowerCase();
   if (name.includes("postnord")) return "postnord";
   if (name.includes("porterbuddy")) return "porterbuddy";
   if (name.includes("helthjem")) return "helthjem";
+  if (/\bups\b/.test(name)) return "ups";
+  if (/\bdhl\s*paket\b/.test(name)) return "dhl_paket";
+  if (/\bdhl\b/.test(name)) return "dhl";
   if (name.includes("bring")) return "bring";
   return null;
 }

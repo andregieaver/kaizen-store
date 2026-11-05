@@ -112,4 +112,4 @@ fraktmetode priser *Resten av landet*, abonnementer uten fast fraktpris å betal
 ### Henting, lokal levering og fraktselskaper
 
 - [Henting og lokal levering](/docs/owners/shipping/pickup-and-local-delivery): la kundene hente selv, eller lever i nærheten selv.
-- [Fraktselskaper](/docs/owners/shipping/carriers): tilby Posten / Bring, PostNord, Porterbuddy eller Helthjem i kassen.
+- [Fraktselskaper](/docs/owners/shipping/carriers): tilby Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express, UPS, DHL Paket eller nShift i kassen.

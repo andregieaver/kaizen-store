@@ -313,6 +313,7 @@ export const privacyEn = {
       access_requests: "Applications to open a store",
       unconfirmed_signups: "Sign-ups never confirmed",
       content_report_senders: "Senders of notices of illegal content",
+      carrier_labels: "Shipping labels kept from a carrier",
     },
     bases: {
       read: "Read at the source",

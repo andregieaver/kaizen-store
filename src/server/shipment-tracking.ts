@@ -3,7 +3,7 @@ import "server-only";
 import { sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import type { CarrierId } from "@/lib/shipping-carriers";
+import { FOLLOWED_CARRIERS, type CarrierId } from "@/lib/shipping-carriers";
 import {
   CHECK_NOW_SECONDS,
   FOLLOW_DAYS,
@@ -21,6 +21,7 @@ import {
 } from "@/lib/tracking-phases";
 
 import { fetchCarrierEvents, type CarrierAnswer } from "./carrier-tracking";
+import { textList } from "./sql-arrays";
 import type { SendOutcome } from "./email";
 import { sendParcelEvent } from "./shopper-emails";
 
@@ -44,10 +45,13 @@ type Row = Record<string, unknown>;
 
 /** The carrier a shipment is followed with, in SQL: the booked carrier, else the name staff gave it (the rule of `trackedCarrier()`). */
 const TRACKED: SQL = sql`(case
-  when sh.carrier_id in ('bring', 'postnord', 'porterbuddy', 'helthjem') then sh.carrier_id
+  when sh.carrier_id is not null then (case when sh.carrier_id = any(${textList(FOLLOWED_CARRIERS)}) then sh.carrier_id end)
   when lower(sh.carrier) like '%postnord%' then 'postnord'
   when lower(sh.carrier) like '%porterbuddy%' then 'porterbuddy'
   when lower(sh.carrier) like '%helthjem%' then 'helthjem'
+  when lower(sh.carrier) ~ '\\mups\\M' then 'ups'
+  when lower(sh.carrier) ~ '\\mdhl\\s*paket\\M' then 'dhl_paket'
+  when lower(sh.carrier) ~ '\\mdhl\\M' then 'dhl'
   when lower(sh.carrier) like '%bring%' then 'bring'
   else null end)`;
 

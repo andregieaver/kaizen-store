@@ -25,8 +25,8 @@ const card = "rounded-lg border border-line bg-card p-5";
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
- * One shipping carrier (D133), prepared before its connection exists: what it will do for the store, how to get an
- * agreement and API access, and a form to save the store's own details now. Nothing is sent to the carrier yet.
+ * One shipping carrier (D133): what it does for the store, how to get an agreement and API access, the form for the store's own details, what it
+ * offers at checkout, and a check that the carrier accepts the details.
  */
 export default async function CarrierPage({ params }: PageProps<"/admin/[store]/integrations/shipping/[carrier]">) {
   const { store: slug, carrier } = await params;
@@ -202,7 +202,9 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
             {w.checkoutStart}
             {storePriced
               ? fillWords(w.storePriced, { name: info.name })
-              : fillWords(w.carrierPriced, { name: info.name, extra: info.id === "porterbuddy" ? w.porterbuddyExtra : w.bringExtra })}
+              : info.id === "nshift"
+                ? w.nshiftPriced
+                : fillWords(w.carrierPriced, { name: info.name, extra: info.id === "porterbuddy" ? w.porterbuddyExtra : info.id === "bring" ? w.bringExtra : w.convertedExtra })}
             {fillWords(w.fallbackBefore, { name: info.name })}
             <Link href={`/admin/${store.slug}/settings/shipping`} className="underline">
               {w.shippingLink}

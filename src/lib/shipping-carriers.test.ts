@@ -1,15 +1,42 @@
 import { describe, expect, it } from "vitest";
 
-import { carrierComplete, carrierInfo, CARRIER_IDS, CARRIERS, isCarrierId, parseCarrierForm, secretHint } from "./shipping-carriers";
+import { carrierComplete, carrierInfo, CARRIER_IDS, CARRIERS, EUROPE, FOLLOWED_CARRIERS, isCarrierId, parseCarrierForm, secretHint, senderAddress } from "./shipping-carriers";
 
 const bring = carrierInfo("bring")!;
 const none = { hasSecret: () => false };
 
 describe("the carriers", () => {
-  it("are the four the store will be able to connect", () => {
-    expect(CARRIER_IDS).toEqual(["bring", "postnord", "porterbuddy", "helthjem"]);
+  it("are the nine the store can connect", () => {
+    expect(CARRIER_IDS).toEqual(["bring", "postnord", "porterbuddy", "helthjem", "instabox", "dhl", "ups", "dhl_paket", "nshift"]);
     expect(CARRIERS.map((c) => c.id)).toEqual(CARRIER_IDS);
-    expect(isCarrierId("dhl")).toBe(false);
+    expect(isCarrierId("dhl")).toBe(true);
+    expect(isCarrierId("dpd")).toBe(false);
+  });
+
+  it("follow every carrier's parcels but Instabox's, which its own page follows", () => {
+    expect(FOLLOWED_CARRIERS).toEqual(["bring", "postnord", "porterbuddy", "helthjem", "dhl", "ups", "dhl_paket", "nshift"]);
+  });
+
+  it("say what each does now, each feature named in the admin, and books returns only where it says (D459)", () => {
+    for (const carrier of CARRIERS) {
+      for (const f of carrier.available) expect(carrier.features, `${carrier.id} ${f}`).toContain(f);
+      expect(Boolean(carrier.returnCountries?.length), carrier.id).toBe(carrier.available.includes("return_labels"));
+      if (carrier.collectionCountries) expect(carrier.available).toContain("collection");
+      if (carrier.available.includes("collection")) expect(carrier.fields.some((f) => f.key === "collectionHours" && !f.required), carrier.id).toBe(true);
+    }
+    expect(carrierInfo("postnord")!.available).toEqual(expect.arrayContaining(["labels", "return_labels", "collection"]));
+    expect(carrierInfo("postnord")!.collectionCountries).toEqual(["SE", "DK", "FI"]);
+    // nShift's return labels wait for a test account (the return shipment's parties are not confirmed).
+    expect(carrierInfo("nshift")!.available).not.toContain("return_labels");
+  });
+
+  it("ask the carriers that ship from anywhere in Europe where the parcels leave from", () => {
+    for (const id of ["dhl", "ups"]) {
+      const info = carrierInfo(id)!;
+      expect(info.countries).toEqual(EUROPE);
+      expect(info.fields.find((f) => f.key === "senderCountry")).toMatchObject({ required: true, format: "country" });
+      expect(info.fields.find((f) => f.key === "accountNumber")).toMatchObject({ required: true, secret: false });
+    }
   });
 
   it("each need a secret that is required (an API key, or Helthjem's client secret), and say what they will do", () => {
@@ -58,6 +85,23 @@ describe("parseCarrierForm", () => {
     expect(parsed.ok).toBe(false);
     const fine = parseCarrierForm(bring, { ...good, fields: { ...good.fields, other: "x" } }, none);
     expect(fine.ok && Object.keys(fine.details)).toEqual(["customerNumber", "apiUid", "senderName", "senderStreet", "senderPostalCode", "senderCity"]);
+  });
+});
+
+describe("a sender's country", () => {
+  const ups = carrierInfo("ups")!;
+  const fields = { clientId: "c", clientSecret: "s", accountNumber: "A1B2C3", senderName: "Shop", senderStreet: "Hauptstr. 1", senderPostalCode: "10115", senderCity: "Berlin", senderPhone: "+4930123" };
+
+  it("is written in capitals, and refused when it is not two letters", () => {
+    const parsed = parseCarrierForm(ups, { environment: "test", countries: [], fields: { ...fields, senderCountry: "de" } }, none);
+    expect(parsed.ok && parsed.details.senderCountry).toBe("DE");
+    const wrong = parseCarrierForm(ups, { environment: "test", countries: [], fields: { ...fields, senderCountry: "Germany" } }, none);
+    expect(!wrong.ok && wrong.problems).toEqual(["Sender country: enter the country's two-letter code, like NO or SE."]);
+  });
+
+  it("is where the parcels leave from, Norway for a carrier that does not ask", () => {
+    expect(senderAddress({ ...fields, senderCountry: "DE", senderEmail: "a@b.de" })).toEqual({ name: "Shop", street: "Hauptstr. 1", postalCode: "10115", city: "Berlin", country: "DE", phone: "+4930123", email: "a@b.de" });
+    expect(senderAddress({ senderName: "Shop" }).country).toBe("NO");
   });
 });
 

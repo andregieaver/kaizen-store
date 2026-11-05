@@ -24,6 +24,14 @@ const EXACT: Record<string, AuditArea> = {
   "shipping.bring_booked": "orders",
   "shipping.helthjem_booked": "orders",
   "shipping.porterbuddy_booked": "orders",
+  "shipping.instabox_booked": "orders",
+  "shipping.ups_booked": "orders",
+  "shipping.dhl_booked": "orders",
+  "shipping.dhl_paket_booked": "orders",
+  "shipping.nshift_booked": "orders",
+  "shipping.postnord_booked": "orders",
+  // A carrier booking cancelled when its parcel is undone (D459).
+  "shipping.booking_cancelled": "orders",
   // The store's own company details (its office and places) are settings; `company.` otherwise is a company account.
   "company.office_saved": "settings",
   // Market price rules (D335 A.2): a rule saved or taken away, and a store's derived prices worked out again when its rates change.

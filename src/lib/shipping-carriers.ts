@@ -15,12 +15,25 @@ import { crossesBorder, HS_CODE } from "./duties";
  * Pure types, checks and texts, shared by the browser and the server, which checks everything again.
  */
 
-export type CarrierId = "bring" | "postnord" | "porterbuddy" | "helthjem";
-export const CARRIER_IDS: CarrierId[] = ["bring", "postnord", "porterbuddy", "helthjem"];
+export type CarrierId = "bring" | "postnord" | "porterbuddy" | "helthjem" | "instabox" | "dhl" | "ups" | "dhl_paket" | "nshift";
+export const CARRIER_IDS: CarrierId[] = ["bring", "postnord", "porterbuddy", "helthjem", "instabox", "dhl", "ups", "dhl_paket", "nshift"];
 export const isCarrierId = (value: string): value is CarrierId => (CARRIER_IDS as string[]).includes(value);
 
+/**
+ * The carriers whose parcels Kaizena Flow follows (D238): every carrier with a tracking call. Instabox is left out: Instabee's API reads an order by
+ * its own order id, not by the parcel number a shipment keeps, so its parcels are followed on Instabox's own tracking page (the shipment's link).
+ */
+export const FOLLOWED_CARRIERS: CarrierId[] = CARRIER_IDS.filter((id) => id !== "instabox");
+export const isFollowedCarrier = (value: string): value is CarrierId => (FOLLOWED_CARRIERS as string[]).includes(value);
+
+/** The countries a carrier that ships from anywhere in Europe delivers in (UPS, DHL Express, D458): the EU, the EEA, Switzerland and the UK. */
+export const EUROPE: string[] = [
+  "AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU", "LV", "MT", "NL",
+  "NO", "PL", "PT", "RO", "SE", "SI", "SK",
+];
+
 /** What a connection will do for the store, from the shopper's checkout to the parcel on its way. */
-export type CarrierFeature = "rates" | "pickup_points" | "labels" | "tracking" | "time_windows" | "same_day" | "return_labels";
+export type CarrierFeature = "rates" | "pickup_points" | "labels" | "tracking" | "time_windows" | "same_day" | "return_labels" | "collection" | "cancel";
 
 export const CARRIER_FEATURE_LABELS: Record<CarrierFeature, string> = {
   rates: "Delivery options and prices at checkout",
@@ -30,6 +43,8 @@ export const CARRIER_FEATURE_LABELS: Record<CarrierFeature, string> = {
   time_windows: "Home delivery in a time window",
   same_day: "Same-day delivery",
   return_labels: "Return labels for customers",
+  collection: "Collection of your parcels when you book",
+  cancel: "Cancel a booking when a parcel is undone",
 };
 
 /** A detail the store gives the carrier's API: secret ones are encrypted and shown only as saved. */
@@ -40,6 +55,8 @@ export type CarrierField = {
   required: boolean;
   help?: string;
   placeholder?: string;
+  /** A country code (ISO 3166-1 alpha-2): written in capitals and refused when it is not two letters. */
+  format?: "country";
 };
 
 export type CarrierInfo = {
@@ -55,6 +72,8 @@ export type CarrierInfo = {
   available: CarrierFeature[];
   /** The countries the carrier books return labels in, from the shopper's address to the store's (D239); none without `return_labels`. */
   returnCountries?: string[];
+  /** The sender countries the carrier collects from (D459), when it does not collect everywhere it books from. */
+  collectionCountries?: string[];
   fields: CarrierField[];
   /** Where the store gets an agreement and API access. */
   docs: string;
@@ -94,17 +113,30 @@ export const CARRIERS: CarrierInfo[] = [
     name: "PostNord",
     summary: "Parcels and letters in Sweden, Denmark, Norway and Finland, with pickup points and tracking.",
     countries: ["SE", "DK", "NO", "FI"],
-    features: ["rates", "pickup_points", "labels", "tracking"],
-    available: ["rates", "pickup_points", "tracking"],
+    features: ["rates", "pickup_points", "labels", "tracking", "return_labels", "collection"],
+    available: ["rates", "pickup_points", "labels", "tracking", "return_labels", "collection"],
+    returnCountries: ["SE", "DK", "NO", "FI"],
+    // PostNord collects in Sweden, Denmark and Finland, not from a sender in Norway (its booking guide, D459).
+    collectionCountries: ["SE", "DK", "FI"],
     fields: [
       { key: "customerNumber", label: "Customer number", secret: false, required: true, help: "Your number in your agreement with PostNord." },
       { key: "apiKey", label: "API key", secret: true, required: true },
+      { key: "applicationId", label: "Application id", secret: false, required: false, help: "PostNord gives one when you go live: ask apisupport@postnord.com. Not needed in the test environment.", placeholder: "1234" },
+      { key: "senderName", label: "Sender name", secret: false, required: true, help: "Printed on the label: your business or shop." },
+      { key: "senderStreet", label: "Sender street address", secret: false, required: true, help: "Where parcels are sent from." },
+      { key: "senderPostalCode", label: "Sender postal code", secret: false, required: true },
+      { key: "senderCity", label: "Sender city", secret: false, required: true },
+      { key: "senderCountry", label: "Sender country", secret: false, required: true, help: "Where your PostNord agreement is: SE, DK, NO or FI.", placeholder: "SE", format: "country" },
+      { key: "senderPhone", label: "Sender phone", secret: false, required: false, help: "PostNord's driver may call it about a collection." },
+      { key: "senderEmail", label: "Sender email", secret: false, required: false, help: "PostNord sends collection confirmations here." },
+      { key: "collectionHours", label: "Collection hours", secret: false, required: false, help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
     ],
     docs: "https://developer.postnord.com",
     steps: [
       "Have a customer agreement with PostNord.",
       "At PostNord's developer portal, make an application and get an API key for it.",
       "Copy the customer number and the API key to the form.",
+      "Ask PostNord for an application id for live bookings (apisupport@postnord.com), and add the address your parcels are sent from.",
       "PostNord does not give prices through its API: you enter what you charge for each service from your agreement.",
     ],
   },
@@ -161,6 +193,151 @@ export const CARRIERS: CarrierInfo[] = [
       "Use the test environment until Helthjem has approved your setup. Helthjem does not give prices through its API: you enter what you charge for each service at checkout.",
     ],
   },
+  {
+    id: "instabox",
+    name: "Instabox",
+    summary: "Parcel lockers in Sweden, Norway and Denmark, open around the clock, and home delivery: the shopper chooses at checkout and gets a code to open the locker.",
+    countries: ["SE", "NO", "DK"],
+    features: ["rates", "pickup_points", "labels", "tracking", "return_labels"],
+    available: ["rates", "pickup_points", "labels", "tracking", "return_labels"],
+    returnCountries: ["SE", "NO", "DK"],
+    fields: [
+      { key: "apiKey", label: "API key", secret: true, required: true, help: "From your implementation manager at Instabee, for the Instabee API." },
+      { key: "collectionPointId", label: "Warehouse id", secret: false, required: false, help: "Only when you send from more than one place: the id Instabee gave the warehouse this store sends from." },
+    ],
+    docs: "https://docs.integration.instabee.com",
+    steps: [
+      "Have an agreement with Instabee for Instabox lockers: apply at instabee.com.",
+      "Ask your implementation manager for an API key for the Instabee API, one for the sandbox and one for live.",
+      "Copy the key to the form. Instabee already knows the address your parcels are collected from.",
+      "Use the test environment until Instabee has approved your setup. You enter what you charge for a locker or home delivery at checkout.",
+    ],
+  },
+  {
+    id: "dhl",
+    name: "DHL Express",
+    summary: "Express parcels across Europe and the world on your DHL Express account, to the door or a DHL ServicePoint, with prices, labels with customs papers, collection and tracking.",
+    countries: EUROPE,
+    features: ["rates", "pickup_points", "labels", "tracking", "collection"],
+    available: ["rates", "pickup_points", "labels", "tracking", "collection"],
+    fields: [
+      { key: "apiKey", label: "API key", secret: true, required: true, help: "The MyDHL API key (user name) DHL gave you." },
+      { key: "apiSecret", label: "API secret", secret: true, required: true },
+      { key: "accountNumber", label: "DHL Express account number", secret: false, required: true, help: "Your nine-digit DHL Express account (shipper) number.", placeholder: "123456789" },
+      { key: "senderName", label: "Sender name", secret: false, required: true, help: "Printed on the label: your business or shop." },
+      { key: "senderStreet", label: "Sender street address", secret: false, required: true },
+      { key: "senderPostalCode", label: "Sender postal code", secret: false, required: true },
+      { key: "senderCity", label: "Sender city", secret: false, required: true },
+      { key: "senderCountry", label: "Sender country", secret: false, required: true, help: "The two-letter code of the country you send from, like NO, SE or DE.", placeholder: "NO", format: "country" },
+      { key: "senderPhone", label: "Sender phone", secret: false, required: true, help: "DHL needs it on every shipment." },
+      { key: "senderEmail", label: "Sender email", secret: false, required: false },
+      { key: "collectionHours", label: "Collection hours", secret: false, required: false, help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
+    ],
+    docs: "https://developer.dhl.com/api-reference/dhl-express-mydhl-api",
+    steps: [
+      "Have a DHL Express account (a nine-digit account number).",
+      "Ask your DHL Express contact for access to the MyDHL API: they send an API key and secret for the test environment, and for live when you are approved.",
+      "Copy the key, the secret and the account number to the form, with the address your parcels are sent from.",
+      "DHL gives its prices for each parcel: your shoppers pay them with VAT and what you add. Parcels to a country outside the EU's customs union carry customs papers from your products' HS codes and countries of origin.",
+    ],
+  },
+  {
+    id: "ups",
+    name: "UPS",
+    summary: "Parcels by road and air across Europe and the world on your UPS account, to the door or to a UPS Access Point, with labels and tracking.",
+    countries: EUROPE,
+    features: ["rates", "pickup_points", "labels", "tracking", "return_labels", "collection", "cancel"],
+    available: ["rates", "pickup_points", "labels", "tracking", "return_labels", "collection", "cancel"],
+    // A return within one country or between EU countries: UPS's connection refuses one across a customs border.
+    returnCountries: EUROPE,
+    fields: [
+      { key: "clientId", label: "Client ID", secret: false, required: true, help: "From your app on UPS's developer portal (developer.ups.com), with its client secret." },
+      { key: "clientSecret", label: "Client secret", secret: true, required: true },
+      { key: "accountNumber", label: "UPS account number", secret: false, required: true, help: "Your six-character UPS account (shipper) number. Add it to the app on the developer portal too.", placeholder: "A1B2C3" },
+      { key: "senderName", label: "Sender name", secret: false, required: true, help: "Printed on the label: your business or shop." },
+      { key: "senderStreet", label: "Sender street address", secret: false, required: true },
+      { key: "senderPostalCode", label: "Sender postal code", secret: false, required: true },
+      { key: "senderCity", label: "Sender city", secret: false, required: true },
+      { key: "senderCountry", label: "Sender country", secret: false, required: true, help: "The two-letter code of the country you send from, like NO, SE or DE.", placeholder: "NO", format: "country" },
+      { key: "senderPhone", label: "Sender phone", secret: false, required: true, help: "UPS needs it on every shipment." },
+      { key: "senderEmail", label: "Sender email", secret: false, required: false },
+      { key: "collectionHours", label: "Collection hours", secret: false, required: false, help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
+    ],
+    docs: "https://developer.ups.com",
+    steps: [
+      "Have a UPS account (a six-character account number).",
+      "Sign in at developer.ups.com, make an app with the Authorization, Rating, Shipping, Tracking, Locator and Pickup APIs, and add your account number to it.",
+      "Copy the app's client ID and secret and your account number to the form, with the address your parcels are sent from.",
+      "UPS gives its prices for each parcel, with your own rates when your account has them: your shoppers pay them with VAT and what you add.",
+    ],
+  },
+  {
+    id: "dhl_paket",
+    name: "DHL Paket",
+    summary: "Parcels from Germany on your DHL business customer account: to the door, as a small parcel or to a post office or Paketshop, with labels, returns and tracking.",
+    countries: EUROPE,
+    features: ["rates", "pickup_points", "labels", "tracking", "return_labels", "collection", "cancel"],
+    available: ["rates", "pickup_points", "labels", "tracking", "return_labels", "collection", "cancel"],
+    returnCountries: ["DE"],
+    collectionCountries: ["DE"],
+    fields: [
+      { key: "apiKey", label: "API key", secret: true, required: true, help: "The key of your app on DHL's developer portal (developer.dhl.com), with Parcel DE Shipping, Parcel DE Returns, Location Finder - Unified and Shipment Tracking - Unified added." },
+      { key: "apiSecret", label: "API secret", secret: true, required: true },
+      { key: "username", label: "Business Customer Portal user", secret: false, required: true, help: "A system user of the Post & DHL Business Customer Portal (geschaeftskunden.dhl.de) that may ship.", placeholder: "user-valid" },
+      { key: "password", label: "Business Customer Portal password", secret: true, required: true },
+      { key: "ekp", label: "EKP (customer number)", secret: false, required: true, help: "Your ten-digit DHL customer number.", placeholder: "1234567890" },
+      { key: "participation", label: "Participation", secret: false, required: false, help: "The last two characters of your billing numbers (Teilnahme): 01 unless DHL gave you another.", placeholder: "01" },
+      { key: "returnReceiverId", label: "Returns receiver", secret: false, required: false, help: "The returns receiver set up in the Business Customer Portal, for return labels: deu unless you named another.", placeholder: "deu" },
+      { key: "profile", label: "User group profile", secret: false, required: false, placeholder: "STANDARD_GRUPPENPROFIL" },
+      { key: "senderName", label: "Sender name", secret: false, required: true, help: "Printed on the label: your business or shop." },
+      { key: "senderStreet", label: "Sender street address", secret: false, required: true },
+      { key: "senderPostalCode", label: "Sender postal code", secret: false, required: true },
+      { key: "senderCity", label: "Sender city", secret: false, required: true },
+      { key: "senderCountry", label: "Sender country", secret: false, required: true, help: "DHL Paket sends from Germany: DE.", placeholder: "DE", format: "country" },
+      { key: "senderPhone", label: "Sender phone", secret: false, required: false, help: "Needed when you ask DHL to collect." },
+      { key: "senderEmail", label: "Sender email", secret: false, required: false },
+      { key: "collectionHours", label: "Collection hours", secret: false, required: false, help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
+    ],
+    docs: "https://developer.dhl.com/api-reference/parcel-de-shipping-post-parcel-germany-v2",
+    steps: [
+      "Have a DHL business customer contract (an EKP) and access to the Post & DHL Business Customer Portal, and make a system user there for this store.",
+      "At developer.dhl.com, make an app with Parcel DE Shipping, Parcel DE Returns, Location Finder - Unified and Shipment Tracking - Unified. DHL approves it for production after you have used the sandbox.",
+      "Copy the app's key and secret, the portal user and password and your EKP to the form, with the address in Germany your parcels are sent from.",
+      "DHL gives no prices through its API: you enter what you charge for each service and country at checkout. In the test environment use DHL's sandbox user user-valid, password SandboxPasswort2023! and EKP 3333333333.",
+    ],
+  },
+  {
+    id: "nshift",
+    name: "nShift",
+    summary: "Book every carrier of your own agreements through your nShift Delivery account: its delivery checkout's options at checkout, labels, collection and tracking.",
+    countries: EUROPE,
+    // Return labels are built but not offered until the return shipment's parties are confirmed with an nShift account (D459).
+    features: ["rates", "pickup_points", "labels", "tracking", "return_labels", "collection", "cancel"],
+    available: ["rates", "pickup_points", "labels", "tracking", "collection", "cancel"],
+    fields: [
+      { key: "apiKeyId", label: "API key ID", secret: false, required: true, help: "In nShift Delivery under Maintenance → API keys: a key of type Web Services (REST). Copy its ID." },
+      { key: "apiKey", label: "API key secret ID", secret: true, required: true, help: "The key's secret ID, shown with its ID." },
+      { key: "senderQuickId", label: "Sender quick ID", secret: false, required: true, help: "The Quick ID of your sender in nShift's address book, which holds your customer numbers with each carrier.", placeholder: "1" },
+      { key: "checkoutId", label: "Delivery checkout ID", secret: false, required: false, help: "Your delivery checkout in nShift, to offer its options at checkout. Leave it empty to book from orders only." },
+      { key: "defaultService", label: "Service for orders without a choice", secret: false, required: false, help: "The nShift service code staff book when the shopper chose your own shipping, like P18 (Help → Code lists in nShift).", placeholder: "P18" },
+      { key: "addons", label: "Additional services on every booking", secret: false, required: false, help: "nShift's addon codes your services need, separated by commas, like NOTSMS for a text message to the recipient." },
+      { key: "senderName", label: "Sender name", secret: false, required: true, help: "Printed on the label: your business or shop." },
+      { key: "senderStreet", label: "Sender street address", secret: false, required: true },
+      { key: "senderPostalCode", label: "Sender postal code", secret: false, required: true },
+      { key: "senderCity", label: "Sender city", secret: false, required: true },
+      { key: "senderCountry", label: "Sender country", secret: false, required: true, help: "The two-letter code of the country you send from, like NO, SE or DE.", placeholder: "NO", format: "country" },
+      { key: "senderPhone", label: "Sender phone", secret: false, required: true },
+      { key: "senderEmail", label: "Sender email", secret: false, required: false },
+      { key: "collectionHours", label: "Collection hours", secret: false, required: false, help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
+    ],
+    docs: "https://www.unifaunonline.com/rs-docs/",
+    steps: [
+      "Have an nShift Delivery account with your carriers' agreements, and order APIConnect (the REST API) in its webshop.",
+      "Under Maintenance → API keys, make a key of type Web Services (REST) and copy its ID and secret ID to the form.",
+      "Give the Quick ID of your sender in nShift's address book, and the address your parcels are sent from.",
+      "To offer nShift's options at checkout, set up a delivery checkout in nShift with your services and prices, and give its ID. Use the test environment first: test shipments print TEST and are not sent to the carrier.",
+    ],
+  },
 ];
 
 export const carrierInfo = (id: string): CarrierInfo | null => CARRIERS.find((c) => c.id === id) ?? null;
@@ -215,6 +392,9 @@ export function parseCarrierForm(
     if (field.secret) {
       if (value) secrets[field.key] = value;
       else if (field.required && !saved.hasSecret(field.key)) problems.push(`Enter the ${field.label.toLowerCase()}.`);
+    } else if (value && field.format === "country") {
+      if (/^[A-Za-z]{2}$/.test(value)) details[field.key] = value.toUpperCase();
+      else problems.push(`${field.label}: enter the country's two-letter code, like NO or SE.`);
     } else if (value) {
       details[field.key] = value;
     } else if (field.required) {
@@ -226,6 +406,22 @@ export function parseCarrierForm(
 
 /** The last four characters of a saved secret, to recognise it by (shorter ones show only dots). */
 export const secretHint = (value: string) => (value.length > 8 ? `…${value.slice(-4)}` : "…");
+
+/**
+ * Where a store's parcels are sent from, as its carrier page holds it: the sender's name, street, postal code, city and phone, and its country
+ * (`senderCountry`, asked by the carriers that ship from anywhere in Europe, D458; Norway for the carriers that only ship from there).
+ */
+export function senderAddress(details: Record<string, string>): ShippingAddress {
+  return {
+    name: details.senderName ?? "",
+    street: details.senderStreet ?? "",
+    postalCode: details.senderPostalCode ?? "",
+    city: details.senderCity ?? "",
+    country: /^[A-Z]{2}$/.test(details.senderCountry ?? "") ? details.senderCountry : "NO",
+    ...(details.senderPhone ? { phone: details.senderPhone } : {}),
+    ...(details.senderEmail ? { email: details.senderEmail } : {}),
+  };
+}
 
 /** Whether every required field is saved. */
 export function carrierComplete(info: CarrierInfo, details: Record<string, string>, secretKeys: string[]): boolean {
@@ -279,6 +475,8 @@ export type ShippingOption = {
   window?: DeliveryWindow;
   /** The price already contains VAT (a price made for the shopper to see), so none is added. */
   includesVat?: boolean;
+  /** The option's own pickup points, for a carrier whose options each come with theirs (nShift's delivery checkout, D459). */
+  pickupPoints?: PickupPoint[];
 };
 
 export type PickupPoint = { id: string; name: string; address: ShippingAddress; openingHours?: string; distanceMeters?: number };
@@ -298,6 +496,11 @@ export type BookingRequest = {
   /** The window the shopper chose, with the token the carrier gave for it (D137). */
   window?: DeliveryWindow;
   courierInstructions?: string;
+  /**
+   * Ask the carrier to collect the parcel at the sender's address (D459): the day (YYYY-MM-DD, the sender's own) and the window it is ready in
+   * ("HH:MM", the sender's local time). Only carriers with `collection` in `available` read it; the others book as if it were absent.
+   */
+  collection?: { date: string; readyTime: string; closeTime: string };
   /** The customs declaration of a consignment that crosses a customs border (D343): required then, and a carrier refuses to book without it. */
   customs?: BookingCustoms;
 };
@@ -360,10 +563,20 @@ export type BookingResult = {
   /** Made in the carrier's test mode: nothing was shipped. */
   test: boolean;
   /**
+   * The label's PDF, for a carrier that gives it only in its answer and never again (DHL Express, D458): kept in `carrier_labels` with the parcel
+   * until it has been printed for a while (`labelUrl` then says where the shipment is at the carrier). Absent for a carrier whose label is fetched.
+   */
+  labelPdf?: Uint8Array;
+  /**
    * The customs declaration sent with a consignment that crosses a border (D343): `declared` when the carrier accepted it, else its reason (the
    * shipment is booked either way, and staff are told to declare it in the carrier's own tools). Absent where nothing was declared.
    */
   customs?: { declared: boolean; reference: string | null; problem: string | null };
+  /**
+   * What became of a collection asked for (D459): the carrier's confirmation number when it took it, else why not (the shipment is booked either
+   * way, and staff are told to arrange the collection in the carrier's own tools). Absent when none was asked for.
+   */
+  collection?: { booked: boolean; confirmation: string | null; problem: string | null };
 };
 
 /**
@@ -406,4 +619,9 @@ export interface ShippingCarrierAdapter {
   bookReturn?(context: CarrierContext, request: ReturnBookingRequest): Promise<ReturnBookingResult>;
   /** `lang`: the order's language, for carriers that describe events in it (Bring, D238 4.5); others ignore it. */
   track?(context: CarrierContext, trackingNumber: string, options?: { lang?: string }): Promise<TrackingEvent[]>;
+  /**
+   * Cancels a booked shipment that has not been handed over (D459), when staff undo its parcel: carriers with `cancel` in `available` implement it.
+   * Given the parcel as its shipment keeps it; the answer's problem is a plain sentence for staff (the parcel stays undone in Kaizena Flow either way).
+   */
+  cancel?(context: CarrierContext, shipment: { trackingNumber: string; consignmentNumber: string | null }): Promise<{ ok: true } | { ok: false; problem: string }>;
 }

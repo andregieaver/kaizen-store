@@ -1,6 +1,6 @@
 ---
 title: Shipping carriers
-summary: Connect your own agreement with Posten / Bring, PostNord, Porterbuddy or Helthjem to offer their services at checkout, book and print labels from the order, and track parcels.
+summary: Connect your own agreement with Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express, UPS, DHL Paket or nShift to offer their services at checkout, book and print labels from the order, and track parcels.
 track: owners
 section: shipping
 kind: how-to
@@ -9,8 +9,8 @@ features: []
 plans: []
 admin: /admin/{store}/integrations
 order: 30
-checked: 2026-11-04
-sources: [D133, D134, D135, D136, D137, D138, D239, D374]
+checked: 2026-11-05
+sources: [D133, D134, D135, D136, D137, D138, D239, D374, D458, D459]
 ---
 
 ## What connecting a carrier gives you
@@ -21,12 +21,18 @@ keys. What each one does now:
 | Carrier | Delivers in | At checkout | Labels from the order |
 |---|---|---|---|
 | Posten / Bring | Norway, Sweden, Denmark, Finland | Bring's services and prices for parcels to Norway, with pickup points | Yes |
-| PostNord | Sweden, Denmark, Norway, Finland | Its services at prices you enter, with pickup points | Not yet |
+| PostNord | Sweden, Denmark, Norway, Finland | Its services at prices you enter, with pickup points | Yes, with customs papers |
 | Porterbuddy | Norway | Home delivery in a time window, the same day included | Yes |
 | Helthjem | Norway | Home delivery and service points, at prices you enter | Yes |
+| Instabox | Sweden, Norway, Denmark | Parcel lockers and home delivery, at prices you enter | Yes |
+| DHL Express | Europe, from any country in it | DHL's services and prices, to the door or a DHL ServicePoint | Yes, with customs papers |
+| UPS | Europe, from any country in it | UPS's services and prices, to the door or a UPS Access Point | Yes, with customs papers |
+| DHL Paket | Europe, from Germany | Parcels and small parcels to the door, or to a post office or Paketshop, at prices you enter | Yes, with customs papers |
+| nShift | Europe, every carrier of your nShift account | The options and prices of your nShift delivery checkout, with pickup points | Yes |
 
-All four have tracking: tracking numbers on the order and in emails. Posten / Bring can also book return labels for customers in Norway
-(see [Returns and withdrawals](/docs/owners/orders/returns-and-withdrawals)).
+All of them give tracking numbers on the order and in emails, and Kaizena Flow follows the parcels of all but Instabox, whose own tracking
+page follows its parcels. Return labels for customers (see [Returns and withdrawals](/docs/owners/orders/returns-and-withdrawals)) are
+booked with Posten / Bring in Norway, PostNord in its four countries, Instabox, UPS and DHL Paket.
 
 ## Connect a carrier
 
@@ -44,7 +50,7 @@ never shown again after saving, only their last characters; leave a key empty to
 
 > [!NOTE]
 > In the **Test** environment, booking makes a test shipment: nothing is shipped, and the order is not marked as sent. Switch the carrier
-> to **Live** when you are ready. Porterbuddy and Helthjem ask you to stay in test until they have approved your setup.
+> to **Live** when you are ready. Porterbuddy, Helthjem, Instabox and DHL ask you to stay in test until they have approved your setup.
 
 ## Offer the carrier at checkout
 
@@ -54,9 +60,12 @@ Once your details are saved, **Delivery options at checkout** appears on the car
 2. Under **Services to offer**, tick the services you want. Some let the shopper choose a pickup point; Helthjem's show the heaviest
    parcel each takes.
 3. Set the prices:
-   - **Posten / Bring and Porterbuddy** give their own price. Kaizena Flow adds VAT and what you add: a **Percentage added to the price
-     with VAT** and an **Amount added**. **Free when the basket is worth at least** makes them free from a basket value.
-   - **PostNord and Helthjem** have no price service. Enter each service's price for each country, with VAT, as the shopper pays it, from
+   - **nShift** offers the options and prices of your delivery checkout in nShift, which hold VAT already; Kaizena Flow adds what you add.
+   - **Posten / Bring, Porterbuddy, DHL Express and UPS** give their own price. Kaizena Flow adds VAT and what you add: a **Percentage
+     added to the price with VAT** and an **Amount added**. **Free when the basket is worth at least** makes them free from a basket value.
+     DHL Express and UPS price in your account's currency: a price in another currency than the country's is converted at your store's
+     exchange rates, and the service is left out where the store has no rate for it.
+   - **PostNord, Helthjem, Instabox and DHL Paket** have no price service. Enter each service's price for each country, with VAT, as the shopper pays it, from
      your agreement; leave a price empty and the service is not offered there. Each country has its own **Free when the basket is worth
      at least**.
 4. Under **Parcel weight when the goods have none (grams)**, give the weight to use for goods without one.
@@ -72,16 +81,28 @@ own price. With several carriers on in a country, their services are listed toge
 
 ## Book and print labels
 
-On an order sent with a carrier, press **Book with** the carrier. The booking starts from what the shopper chose at checkout. The order
-is marked as sent with its tracking number, and **Print label** opens the label. Labels are fetched from the carrier each time you print
-them and are never kept.
+On an order sent with a carrier, press **Book with** the carrier. The booking starts from what the shopper chose at checkout. With DHL
+Express, UPS, PostNord, DHL Paket and nShift you can also book an order whose shopper chose your own shipping: choose the **Service** first
+(for nShift, the service set on its page). The order is marked as sent with its tracking number, and **Print label** opens the label.
+Labels are fetched from the carrier each time you print them and are never kept, except where the carrier gives a label only once (DHL
+Express, PostNord, and DHL Paket after its day's closing): then it is kept with the parcel for 30 days and deleted.
+
+**Ask the carrier to collect it.** With **Collection hours** saved on the carrier's page (UPS, DHL Express, DHL Paket, nShift, and PostNord
+from Sweden, Denmark or Finland), the booking box offers it, ticked: the carrier is asked to collect today if the hours leave time, else on
+the next weekday. The message says the day and the carrier's confirmation, or why it was not taken; the parcel is booked either way.
+
+**Undoing a parcel** booked with UPS, DHL Paket or nShift cancels the booking at the carrier too, if it has not been handed over.
 
 For several orders at once, tick them in the Orders list and choose **Book labels**. See
 [Send orders](/docs/owners/orders/send-orders) for the rest of sending.
 
 - Porterbuddy's window is asked for again when you book. If it is gone, nothing is booked.
 - Helthjem's home delivery is checked for the full address before it is booked.
-- PostNord's booking and labels are still to come: its page lists them as *coming next*.
+- Instabox books the locker the shopper chose. If Instabox no longer offers it, nothing is booked: ask the shopper to choose another.
+- DHL Paket's Packstation is not offered: it needs the shopper's DHL Postnummer, which checkout does not ask for.
+- A DHL Express, UPS, PostNord, DHL Paket or nShift parcel to a country outside the EU's customs union (from Norway to Sweden, for example)
+  carries its customs papers,
+  from your products' HS codes, countries of origin and weights. A product without them is named, and nothing is booked until you add them.
 
 ## More options
 

@@ -136,6 +136,7 @@ export const RETENTION_STEPS = [
   "assistant_conversations",
   "access_requests",
   "content_report_senders",
+  "carrier_labels",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -434,6 +435,21 @@ const STEPS: Record<RetentionStep, StepFn> = {
   // and its decision stay as the record of how it was handled.
   async content_report_senders(ctx) {
     return { count: await pruneContentReports(ctx.now, cutoffInstant(await period(ctx, "content_report_senders"), ctx.now)) };
+  },
+
+  // Labels a carrier gives only once (DHL Express, PostNord, DHL Paket; a parcel's or a return's, D458, D459): the PDF holds a name and address and is
+  // needed only until it is printed.
+  async carrier_labels(ctx) {
+    const cutoff = cutoffInstant(await period(ctx, "carrier_labels"), ctx.now).toISOString();
+    return {
+      count: await batched(ctx.batch, () =>
+        db().execute(sql`
+          delete from commerce.carrier_labels where id in (
+            select l.id from commerce.carrier_labels l where l.created_at < ${cutoff}::timestamptz order by l.created_at limit ${ctx.batch})
+          returning id
+        `),
+      ),
+    };
   },
 
   // The AI manager's conversations (wave 11 unit L, D391): messages and decided approvals after the store's own period or the rule's, then

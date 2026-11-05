@@ -27,6 +27,7 @@ import { ChosenDeliveryBooking } from "@/components/admin/chosen-delivery-bookin
 import { sendDocumentAgainAction } from "../../invoices/actions";
 import { helthjemBookAction } from "../helthjem-actions";
 import { porterbuddyBookAction } from "../porterbuddy-actions";
+import { carrierDeliveryBookAction } from "../carrier-delivery-actions";
 import { answerText } from "@/lib/checkout-rules";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { formatWindow } from "@/lib/porterbuddy";
@@ -81,7 +82,10 @@ import { dayWords } from "@/lib/payment-terms";
 import { orderReturnsOverview } from "@/server/order-returns";
 import { exchangeOrdersOfReturns } from "@/server/exchange-admin";
 import { orderPrivacy } from "@/server/privacy-pages";
-import { getCarrier } from "@/server/shipping-carriers";
+import { getCarrier, listCarriers } from "@/server/shipping-carriers";
+import { DELIVERY_BOOKING_CARRIERS, STAFF_CHOSEN, staffServices } from "@/server/carrier-delivery-booking";
+import { carrierInfo } from "@/lib/shipping-carriers";
+import { collectionHours } from "@/lib/carrier-collection";
 import { deliveryOfOrder } from "@/server/standing-orders";
 import { getOrderDownloads, getOrderEvents, getOrderTreatment, type Address, type OrderEvent } from "@/server/orders";
 import { archiveFactsFor } from "@/server/order-archive";
@@ -192,7 +196,22 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   // A held card (D289) is captured before a carrier is booked: the booking card waits for it.
   const bookable = fulfilment.unitsToSend > 0 && !awaitingEdit && canWrite && order.status !== "authorized";
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
-  const [bring, porterbuddy, helthjem, estimatedGrams] = await Promise.all([getCarrier(store.id, "bring"), getCarrier(store.id, "porterbuddy"), getCarrier(store.id, "helthjem"), estimateWeightGrams(store.id, order.id)]);
+  const [bring, porterbuddy, helthjem, estimatedGrams, savedCarriers] = await Promise.all([getCarrier(store.id, "bring"), getCarrier(store.id, "porterbuddy"), getCarrier(store.id, "helthjem"), estimateWeightGrams(store.id, order.id), listCarriers(store.id)]);
+  // Instabox, UPS, DHL Express, PostNord, DHL Paket and nShift (D458, D459): booked for the delivery the customer chose with them, and (but Instabox)
+  // for an order whose customer chose no carrier (the flat rate or one of the store's own methods), with a service delivered to the door that staff choose.
+  const deliveryBookings = DELIVERY_BOOKING_CARRIERS.flatMap((id) => {
+    const saved = savedCarriers.find((c) => c.carrier === id);
+    if (!saved?.complete) return [];
+    const chose = order.delivery?.carrier === id;
+    if (!chose && (!STAFF_CHOSEN[id] || order.delivery || order.deliveryMethod !== "ship")) return [];
+    const services = chose ? null : staffServices(id, saved.details);
+    if (services && services.length === 0) return [];
+    // Asking the carrier to collect (D459): a carrier that can, from the sender's country, with the hours the store gave on its page.
+    const info = carrierInfo(id);
+    const collects = info?.available.includes("collection") && (!info.collectionCountries || info.collectionCountries.includes(saved.details.senderCountry ?? ""));
+    const hours = collects ? collectionHours(saved.details.collectionHours) : null;
+    return [{ id, name: carrierInfo(id)?.name ?? id, test: saved.environment === "test", services, hours: hours ? `${hours.from}–${hours.to}` : null }];
+  });
   const locale = store.markets[0]?.locale ?? order.locale;
   const money = (minor: number) => formatMoney(minor, order.currency, locale);
   // Bonus credits on an order (D130) are in the order's own currency; null for an order with none and for copied history.
@@ -662,6 +681,33 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   </div>
                 </details>
               )}
+              {order.status !== "pending_payment" &&
+                !order.copied &&
+                bookable &&
+                deliveryBookings.map((booking) => (
+                  <details key={booking.id} open={sentParcels === 0 && order.delivery?.carrier === booking.id} className="mb-4 rounded-md border border-line p-4">
+                    <summary className="cursor-pointer text-sm font-medium">{fillWords(w.bookWith, { carrier: booking.name })}</summary>
+                    <div className="mt-3">
+                      <ChosenDeliveryBooking
+                        carrierName={booking.name}
+                        chosenText={
+                          order.delivery?.carrier === booking.id
+                            ? `${order.delivery.label}${order.delivery.pickupPoint ? fillWords(w.at, { point: pickupPointLine(order.delivery.pickupPoint) }) : ""}`
+                            : null
+                        }
+                        {...(booking.services ? { services: booking.services, serviceLabel: w.bookService } : {})}
+                        collectLabel={booking.hours ? fillWords(w.bookCollect, { carrier: booking.name, hours: booking.hours }) : null}
+                        estimatedGrams={estimatedGrams}
+                        test={booking.test}
+                        hasEmail={Boolean(order.email)}
+                        book={carrierDeliveryBookAction.bind(null, store.slug, booking.id, order.id)}
+                        rows={parcelRows}
+                        notifyOff={notifyOff("order.sent")}
+                        basis={fulfilment.basis}
+                      />
+                    </div>
+                  </details>
+                ))}
               {!canWrite ? null : awaitingEdit ? (
                 <p className="text-sm text-muted">{w.changeWaitsSend}</p>
               ) : fulfilment.unitsToSend === 0 && !toCharge ? (

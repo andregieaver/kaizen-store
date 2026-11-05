@@ -12,6 +12,11 @@ const CARRIER_NAMES: Record<string, string> = {
   postnord: "PostNord",
   porterbuddy: "Porterbuddy",
   helthjem: "Helthjem",
+  instabox: "Instabox",
+  ups: "UPS",
+  dhl: "DHL Express",
+  dhl_paket: "DHL Paket",
+  nshift: "nShift",
 };
 
 /**

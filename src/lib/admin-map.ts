@@ -157,7 +157,7 @@ const PAGES: readonly AdminPage[] = [
   }),
   store("orders.labels", "/orders/labels", "Labels", "Main", "The carrier labels Book labels made on the orders page, one after another to print: each fetched from its carrier with your agreement when it is shown, never kept. Parcels undone since are left out.", {
     tasks: ["Print the labels of the orders you booked together"],
-    keywords: ["labels", "shipping labels", "print labels", "bulk labels", "book labels", "bring", "helthjem", "porterbuddy", "etiketter"],
+    keywords: ["labels", "shipping labels", "print labels", "bulk labels", "book labels", "bring", "helthjem", "porterbuddy", "instabox", "ups", "dhl", "dhl paket", "postnord", "nshift", "etiketter"],
     feature: "shop",
   }),
   store("orders.drafts", "/orders/drafts", "Draft orders", "Main", "Draft orders: orders you make for a customer, newest first, with what each is worth and where it stands (open, sent, paid, expired). A draft holds no stock until it is sent as a pay link.", {
@@ -897,11 +897,11 @@ const PAGES: readonly AdminPage[] = [
   }),
   store("company.place.new", "/settings/company/places/new", "New place", "Store", "Adds a shop or pickup point."),
   store("company.place", "/settings/company/places/[placeId]", "Place", "Store", "One shop or pickup point."),
-  store("integrations", "/integrations", "Integrations", "Store", "Zapier, Make and Slack, and how their sends are doing; and the shipping carriers (Posten / Bring, PostNord, Porterbuddy and Helthjem), each connected with the store's own agreement.", { keywords: ["zapier", "make", "slack", "webhooks", "shipping carriers"] }),
+  store("integrations", "/integrations", "Integrations", "Store", "Zapier, Make and Slack, and how their sends are doing; and the shipping carriers (Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express, UPS, DHL Paket and nShift), each connected with the store's own agreement.", { keywords: ["zapier", "make", "slack", "webhooks", "shipping carriers"] }),
   store("integrations.endpoints", "/integrations/endpoints", "Your own endpoints", "Store", "Sends signed events to the owner's own HTTPS endpoints: topics, the secret, a test, the log and sending again.", { keywords: ["webhooks", "endpoints", "signed events", "hmac", "developers"] }),
   store("integration", "/integrations/[provider]", "Integration", "Store", "Connects one integration, chooses its events, tests it, and shows recent sends."),
-  store("integrations.shipping", "/integrations/shipping/[carrier]", "Shipping carrier", "Store", "Connects the store's own agreement with Posten / Bring, PostNord, Porterbuddy or Helthjem: its details, a check that the carrier accepts them, and what the carrier then does for the store.", {
-    keywords: ["posten", "bring", "postnord", "porterbuddy", "helthjem", "carrier", "freight", "labels", "tracking"],
+  store("integrations.shipping", "/integrations/shipping/[carrier]", "Shipping carrier", "Store", "Connects the store's own agreement with Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express, UPS, DHL Paket or nShift: its details, a check that the carrier accepts them, and what the carrier then does for the store.", {
+    keywords: ["posten", "bring", "postnord", "porterbuddy", "helthjem", "instabox", "ups", "dhl", "dhl paket", "nshift", "unifaun", "carrier", "freight", "labels", "tracking"],
     feature: "shop",
   }),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),

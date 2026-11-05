@@ -8,13 +8,21 @@ areas: [api, webhooks, mcp]
 features: []
 plans: []
 order: 1000
-checked: 2026-11-04
-sources: [D438, D439, D440, D441]
+checked: 2026-11-05
+sources: [D438, D439, D440, D441, D458]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.9 — 2026-11-05
+
+An addition to the Admin API (D458, D459).
+
+- Marking an order as sent takes `instabox`, `dhl_paket` and `nshift` as its `carrier`, beside the carriers it took before; Instabox and DHL
+  Paket give the parcel their tracking page. Instabox, DHL Express, UPS, DHL Paket and nShift are now carriers a store connects, and their
+  parcels name them.
 
 ## 1.8 — 2026-11-04
 

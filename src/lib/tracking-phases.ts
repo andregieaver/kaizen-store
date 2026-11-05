@@ -74,12 +74,72 @@ const PORTERBUDDY: Record<string, TrackingPhase> = {
   ready: "info_received",
 };
 
+/**
+ * DHL Express MyDHL API tracking `typeCode`: the event codes of DHL's own reference data (`ExpressReferenceData_3.4.1`, sheet of checkpoint codes,
+ * downloaded from developer.dhl.com and read 2026-11-05): PU "pick up", AF/DF/PL arrived at, departed and processed at a facility, WC "with delivering
+ * courier", OK "delivery", NH "not home", CC "awaiting consignee collection", RT "returned to shipper". Only these are listed; any other is unknown.
+ */
+const DHL: Record<string, TrackingPhase> = {
+  PU: "in_transit",
+  AF: "in_transit",
+  DF: "in_transit",
+  PL: "in_transit",
+  WC: "out_for_delivery",
+  OK: "delivered",
+  NH: "attempted",
+  CC: "ready_for_collection",
+  RT: "returned_to_sender",
+};
+
+/**
+ * UPS Tracking API `activity[].status.type`. Unverified: UPS's OpenAPI document gives only the example "X"; the letters below are as integrations
+ * commonly read them (M label made, P picked up, I in transit, D delivered, X exception), so UPS's events are shown and never send an email.
+ */
+const UPS: Record<string, TrackingPhase> = {
+  M: "info_received",
+  P: "in_transit",
+  I: "in_transit",
+  D: "delivered",
+  X: "problem",
+};
+
+/**
+ * DHL Paket through DHL's Shipment Tracking - Unified (`statusCode`, the documented enum "high-level grouping statuses" of its OpenAPI 1.5.8,
+ * read 2026-11-05): pre-transit, transit, delivered, failure, unknown. It has no out-for-delivery code.
+ */
+const DHL_PAKET: Record<string, TrackingPhase> = {
+  "pre-transit": "info_received",
+  transit: "in_transit",
+  delivered: "delivered",
+  failure: "problem",
+  unknown: "unknown",
+};
+
+/**
+ * nShift Delivery's shipment statuses (its REST API description, the response section of `root-resource-v1.raml`, and `Alerts.md`, read
+ * 2026-11-05): PRINTED, DISPATCHING, OUTFORDELIVERY, DELIVERING ("arrived to a pickup location"), DELIVERED, PARTDELIVERED, RETURNED, CANCELLED.
+ */
+const NSHIFT: Record<string, TrackingPhase> = {
+  PRINTED: "info_received",
+  DISPATCHING: "in_transit",
+  OUTFORDELIVERY: "out_for_delivery",
+  DELIVERING: "ready_for_collection",
+  DELIVERED: "delivered",
+  PARTDELIVERED: "in_transit",
+  RETURNED: "returned_to_sender",
+  CANCELLED: "problem",
+};
+
 /** Each carrier's table and whether its codes were read in the carrier's documentation. A code becomes verified only with its source written above. */
 export const CARRIER_PHASES: Record<string, { verified: boolean; codes: Record<string, TrackingPhase> }> = {
   bring: { verified: true, codes: BRING },
   postnord: { verified: false, codes: POSTNORD },
   helthjem: { verified: false, codes: HELTHJEM },
   porterbuddy: { verified: false, codes: PORTERBUDDY },
+  dhl: { verified: true, codes: DHL },
+  ups: { verified: false, codes: UPS },
+  dhl_paket: { verified: true, codes: DHL_PAKET },
+  nshift: { verified: true, codes: NSHIFT },
 };
 
 /** The phase of a carrier's status code; an unlisted code (or carrier) is `unknown` and unverified. */

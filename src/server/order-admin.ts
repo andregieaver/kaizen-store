@@ -323,9 +323,13 @@ export const CARRIERS: { id: string; name: string; url: ((n: string) => string) 
   { id: "bring", name: "Bring", url: (n) => `https://sporing.bring.no/sporing/${encodeURIComponent(n)}` },
   { id: "porterbuddy", name: "Porterbuddy", url: null },
   { id: "helthjem", name: "Helthjem", url: null },
+  { id: "instabox", name: "Instabox", url: (n) => `https://track.instabox.com/${encodeURIComponent(n)}` },
   { id: "postnord", name: "PostNord", url: (n) => `https://tracking.postnord.com/tracking?id=${encodeURIComponent(n)}` },
   { id: "dhl", name: "DHL", url: (n) => `https://www.dhl.com/global-en/home/tracking.html?tracking-id=${encodeURIComponent(n)}` },
+  { id: "dhl_paket", name: "DHL Paket", url: (n) => `https://www.dhl.de/en/privatkunden/pakete-empfangen/verfolgen.html?piececode=${encodeURIComponent(n)}` },
   { id: "ups", name: "UPS", url: (n) => `https://www.ups.com/track?tracknum=${encodeURIComponent(n)}` },
+  // A parcel booked through nShift is carried by one of the store's own carriers; nShift gives no public tracking page.
+  { id: "nshift", name: "nShift", url: null },
   { id: "other", name: "Other", url: null },
 ];
 

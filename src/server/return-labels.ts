@@ -3,14 +3,14 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { BRING_RETURN_DEFAULT, isBringUrl } from "@/lib/bring";
+import { isReturnService, returnServiceFor } from "@/lib/return-services";
 import { LABEL_FETCHES_PER_HOUR, LABEL_TRIES, LABEL_TRY_AFTER_MINUTES } from "@/lib/exchange-limits";
 import { addressComplete, labelBlock, labelCostIn, LABEL_PROBLEMS, type LabelAddress, type LabelProblemCode } from "@/lib/return-label";
 import { carrierInfo, type CarrierContext, type CarrierId, type ShippingAddress } from "@/lib/shipping-carriers";
 
 import { audit } from "./auth";
 import { adapterFor } from "./carriers";
-import { fetchBringLabel } from "./carriers/bring";
+import { fetchCarrierLabel, hasLabelFetcher, keepReturnLabel, keptReturnLabel } from "./carrier-label";
 import { log } from "./log";
 import type { OrderActor } from "./order-actor";
 import { writeOrderEvent } from "./order-actor";
@@ -76,7 +76,9 @@ async function chosenCarrier(storeId: string): Promise<{ id: CarrierId; complete
   const able = carriers.filter((c) => carrierInfo(c.carrier)?.available.includes("return_labels"));
   const found = settings.labelCarrier ? able.find((c) => c.carrier === settings.labelCarrier) : able[0];
   if (!found) return null;
-  return { id: found.carrier, complete: found.complete, checkOk: Boolean(found.check?.ok), service: settings.labelService ?? (found.carrier === "bring" ? BRING_RETURN_DEFAULT : "") };
+  // A service chosen for another carrier (the setting kept when the carrier changed) is never sent: the carrier's own default is.
+  const chosen = settings.labelService && isReturnService(found.carrier, settings.labelService) ? settings.labelService : null;
+  return { id: found.carrier, complete: found.complete, checkOk: Boolean(found.check?.ok), service: returnServiceFor(found.carrier, chosen) };
 }
 
 async function load(storeId: string, returnId: string): Promise<Loaded | null> {
@@ -237,7 +239,8 @@ async function bookUnderLock(storeId: string, returnId: string, input: { weightG
     await writeOrderEvent(db(), storeId, l.orderId, "return.label_failed", { returnId, number: String(l.ret.number), carrier, ...(actor.accountId ? { by: actor.accountId } : {}) }, actor.kind);
     return refuse("carrier", said);
   }
-  const carrierUrl = booked.labelUrl && (carrier !== "bring" || isBringUrl(booked.labelUrl)) ? booked.labelUrl : null;
+  // Only an address the carrier's own label fetcher takes is kept (it checks the carrier's host when the label is printed).
+  const carrierUrl = booked.labelUrl && hasLabelFetcher(carrier, booked.labelUrl) ? booked.labelUrl : null;
   const fromCountry = l.to!.country;
   const costMinor = await costInOrderCurrency(storeId, price ?? booked.price ?? null, l.currency, fromCountry);
   const trackingUrl = booked.trackingUrl && /^https:\/\//.test(booked.trackingUrl) ? booked.trackingUrl : null;
@@ -253,6 +256,8 @@ async function bookUnderLock(storeId: string, returnId: string, input: { weightG
     returning id
   `);
   if (updated.length === 0) return refuse("state");
+  // A label the carrier gave only in its answer (PostNord, DHL Paket, D459) is kept with the return for the shopper's link.
+  if (booked.labelPdf) await keepReturnLabel(storeId, l.orderId, returnId, carrier, booked.labelPdf);
   await writeOrderEvent(
     db(),
     storeId,
@@ -265,12 +270,9 @@ async function bookUnderLock(storeId: string, returnId: string, input: { weightG
   return { ok: true, trackingNumber: booked.trackingNumber, test: booked.test, costMinor, emailed: null };
 }
 
-/** The label of a carrier, fetched with the agreement's keys from the carrier's own host only; null for any other host or a carrier that did not answer. */
+/** The label of a carrier, fetched with the agreement's keys from the carrier's own host only (each fetcher checks it); null for any other host or a carrier that did not answer. */
 async function fetchFromCarrier(storeId: string, carrier: string, url: string): Promise<Uint8Array | null> {
-  if (carrier !== "bring" || !isBringUrl(url)) return null;
-  const context = await carrierContext(storeId, "bring");
-  if (!context) return null;
-  return fetchBringLabel(context, url);
+  return fetchCarrierLabel(storeId, carrier, url);
 }
 
 export type LabelFetch =
@@ -294,15 +296,23 @@ async function fetchFor(storeId: string, where: { token: string } | { returnId: 
       ? sql`select id, number, status::text as status, label_source, label_carrier_id, label_carrier_url from commerce.returns where store_id = ${storeId}::uuid and public_token = ${where.token}`
       : sql`select id, number, status::text as status, label_source, label_carrier_id, label_carrier_url from commerce.returns where store_id = ${storeId}::uuid and id = ${where.returnId}::uuid`,
   );
-  if (!r || r.label_source !== "carrier" || !r.label_carrier_url || ["closed", "declined", "cancelled"].includes(String(r.status))) return { ok: false, status: 404, reason: "not_found" };
+  if (!r || r.label_source !== "carrier" || ["closed", "declined", "cancelled"].includes(String(r.status))) return { ok: false, status: 404, reason: "not_found" };
+  const filename = `return-${String(r.number).replace(/[^A-Za-z0-9-]/g, "")}.pdf`;
+  // A label the carrier gave only in its answer (PostNord, DHL Paket, D459) is printed from the copy kept with the return.
+  const kept = await keptReturnLabel(storeId, String(r.id));
+  if (kept) {
+    if (!(await takeFetch(storeId, String(r.id)))) return { ok: false, status: 429, reason: "limit" };
+    return { ok: true, pdf: kept, filename };
+  }
+  if (!r.label_carrier_url) return { ok: false, status: 404, reason: "not_found" };
   const url = String(r.label_carrier_url);
   const carrier = String(r.label_carrier_id);
-  // An address on any host the carrier's module does not name is never fetched.
-  if (carrier !== "bring" || !isBringUrl(url)) return { ok: false, status: 404, reason: "not_found" };
+  // An address on any host the carrier's module does not name is never fetched (the carrier's fetcher checks it).
+  if (!hasLabelFetcher(carrier, url)) return { ok: false, status: 404, reason: "not_found" };
   if (!(await takeFetch(storeId, String(r.id)))) return { ok: false, status: 429, reason: "limit" };
   const pdf = await fetchFromCarrier(storeId, carrier, url);
   if (!pdf) return { ok: false, status: 503, reason: "carrier" };
-  return { ok: true, pdf, filename: `return-${String(r.number).replace(/[^A-Za-z0-9-]/g, "")}.pdf` };
+  return { ok: true, pdf, filename };
 }
 
 /**

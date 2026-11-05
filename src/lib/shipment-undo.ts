@@ -14,22 +14,37 @@ import { carrierInfo } from "./shipping-carriers";
 /** The name of the carrier a parcel was booked with through its connection (D134 to D138), or null when it was recorded by hand. */
 export const bookedCarrierName = (carrierId: string | null | undefined): string | null => (carrierId ? (carrierInfo(carrierId)?.name ?? carrierId) : null);
 
+/** Whether undoing a parcel booked with this carrier cancels the booking there too (D459: the carrier's connection has `cancel`). */
+export const cancelsOnUndo = (carrierId: string | null | undefined): boolean => Boolean(carrierId && carrierInfo(carrierId)?.available.includes("cancel"));
+
 /** What the confirmation says before a parcel is undone: what happens, and what Kaizen does NOT do. */
-export function undoWarnings(parcel: { bookedWith: string | null; units: number; receiptRecorded: boolean }, w: UndoWords = orderEn.parcels): string[] {
+export function undoWarnings(parcel: { bookedWith: string | null; units: number; receiptRecorded: boolean; cancels?: boolean }, w: UndoWords = orderEn.parcels): string[] {
   const units = parcel.units > 0 ? countWords(parcel.units, w.warnUnits) : w.warnItems;
   return [
     fillWords(w.warnStays, { units }),
-    ...(parcel.bookedWith ? [fillWords(w.warnBooking, { carrier: parcel.bookedWith })] : []),
+    ...(parcel.bookedWith ? [fillWords(parcel.cancels ? w.warnCancels : w.warnBooking, { carrier: parcel.bookedWith })] : []),
     w.warnEmail,
     ...(parcel.receiptRecorded ? [w.warnReceipt] : []),
   ];
 }
 
-/** What staff read after a parcel was undone. */
-export function undoneMessage(done: { units: number; deliveredWas: string | null; bookedWith: string | null }, w: UndoWords = orderEn.parcels): string {
+/**
+ * What staff read after a parcel was undone. `cancelled`: what the carrier said when it was asked to cancel the booking (D459), absent when it was not
+ * asked (a carrier without a cancel call, or a parcel recorded by hand).
+ */
+export function undoneMessage(
+  done: { units: number; deliveredWas: string | null; bookedWith: string | null; cancelled?: { ok: true } | { ok: false; problem: string } | null },
+  w: UndoWords = orderEn.parcels,
+): string {
   const units = done.units > 0 ? countWords(done.units, w.undoneUnits) : "";
   const receipt = done.deliveredWas ? w.undoneReceipt : "";
-  const carrier = done.bookedWith ? fillWords(w.undoneCarrier, { carrier: done.bookedWith }) : "";
+  const carrier = !done.bookedWith
+    ? ""
+    : done.cancelled?.ok
+      ? fillWords(w.undoneCancelled, { carrier: done.bookedWith })
+      : done.cancelled
+        ? fillWords(w.undoneCancelFailed, { carrier: done.bookedWith, problem: done.cancelled.problem })
+        : fillWords(w.undoneCarrier, { carrier: done.bookedWith });
   return fillWords(w.undoneMessage, { units, receipt, carrier });
 }
 

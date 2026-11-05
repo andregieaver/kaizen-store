@@ -710,7 +710,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "Live prices from Bring's Shipping Guide and Porterbuddy's availability for Norway (D134, D135, D137; `CHECKOUT_PRICING` in `src/lib/delivery-options.ts` is `carrier` for these two only); PostNord and Helthjem services are priced by what the store enters (`store`), and D237's shipping methods are the store's own rate tables, so Sweden and Denmark have no carrier-calculated price. A carrier that fails leaves the flat rate (tested). Nothing has been checked against a carrier's production service (bucket B).",
+    "gap": "Live prices from Bring's Shipping Guide and Porterbuddy's availability for Norway (D134, D135, D137), and from UPS's Rating (negotiated rates first) and DHL Express's MyDHL Rates anywhere in Europe (D458), and the options of the store's own nShift delivery checkout (D459); a carrier's price in another currency than the market's is converted at the store's rates (`offersFrom()`, `carrier-delivery-booking.int.test.ts`). PostNord, Helthjem, Instabox and DHL Paket are priced by what the store enters (`store`), and D237's shipping methods are the store's own rate tables. A carrier that fails leaves the flat rate (tested). Nothing has been checked against a carrier's production service (bucket B).",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -726,7 +726,13 @@
         "src/lib/bring.ts",
         "src/lib/porterbuddy.ts",
         "src/server/delivery-options.ts",
-        "src/server/delivery-choice.ts"
+        "src/server/delivery-choice.ts",
+        "src/lib/ups.ts",
+        "src/lib/dhl.ts",
+        "src/lib/nshift.ts",
+        "src/server/carriers/ups.ts",
+        "src/server/carriers/dhl.ts",
+        "src/server/carriers/nshift.ts"
       ],
       "tests": [
         "src/lib/bring.test.ts",
@@ -734,7 +740,9 @@
         "src/server/carriers/bring.test.ts",
         "src/server/carriers/porterbuddy.test.ts",
         "src/server/delivery-options.int.test.ts",
-        "src/server/porterbuddy-shipping.int.test.ts"
+        "src/server/porterbuddy-shipping.int.test.ts",
+        "src/server/carrier-delivery-booking.int.test.ts",
+        "src/server/carrier-more.int.test.ts"
       ],
       "untested": false
     },
@@ -766,7 +774,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Booking from the order with Bring (D134), Porterbuddy (D137) and Helthjem (D138) for parcels in Norway; the booked parcel names its lines (D174), a second parcel of the same order is booked straight after the first (D372), and the label is fetched from the carrier's own host when printed and never stored (`carrier-label.ts`). *Book labels* on the Orders list (D374) books up to 100 orders' remaining units with their carriers through the same functions, names each refusal by order number (the carrier's own sentence included) and shows the labels one after another to print (`bulk-labels.int.test.ts`); it prints them from a page of the carriers' PDFs, not as one merged PDF. PostNord cannot book (D136, waiting for its EDI specification). In the store's test environment nothing real is booked. Undoing a parcel does not cancel the carrier's booking. Nothing has been verified against a carrier's live service (bucket B).",
+    "gap": "Booking from the order with Bring (D134), Porterbuddy (D137) and Helthjem (D138) in Norway, Instabox (SE, NO, DK), UPS and DHL Express across Europe (D458), and PostNord, DHL Paket (from Germany) and nShift (every carrier of the store's nShift account) (D459), with customs papers across a customs border (D343); UPS, DHL Express, PostNord, DHL Paket and nShift also book an order whose shopper chose the store's own shipping, with a service staff choose. The booked parcel names its lines (D174), a second parcel of the same order is booked straight after the first (D372), and the label is fetched from the carrier's own host when printed, or, where the carrier gives it only in its answer (DHL Express, PostNord, DHL Paket after its closing), kept 30 days in `carrier_labels` (`carrier-label.ts`). A collection can be asked for with the booking (UPS, DHL Express, DHL Paket, nShift, PostNord outside Norway), and undoing a parcel cancels the booking with UPS, DHL Paket and nShift (`carrier-cancel.ts`). *Book labels* on the Orders list (D374) books up to 100 orders' remaining units through the same functions and shows the labels one after another to print, not as one merged PDF. In the store's test environment nothing real is booked. Nothing has been verified against a carrier's live service (bucket B).",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -788,7 +796,16 @@
         "src/server/order-bulk.ts",
         "src/server/bulk-labels.ts",
         "src/server/carrier-booking.ts",
-        "src/app/admin/(gated)/[store]/orders/labels/page.tsx"
+        "src/app/admin/(gated)/[store]/orders/labels/page.tsx",
+        "src/server/carrier-delivery-booking.ts",
+        "src/server/carrier-cancel.ts",
+        "src/lib/carrier-collection.ts",
+        "src/server/carriers/ups.ts",
+        "src/server/carriers/dhl.ts",
+        "src/server/carriers/instabox.ts",
+        "src/server/carriers/postnord.ts",
+        "src/server/carriers/dhl-paket.ts",
+        "src/server/carriers/nshift.ts"
       ],
       "tests": [
         "src/server/bring-shipping.int.test.ts",
@@ -797,7 +814,10 @@
         "src/server/carriers/bring.test.ts",
         "src/server/fulfilment.int.test.ts",
         "src/server/order-bulk.int.test.ts",
-        "src/server/bulk-labels.int.test.ts"
+        "src/server/bulk-labels.int.test.ts",
+        "src/server/carrier-delivery-booking.int.test.ts",
+        "src/server/carrier-more.int.test.ts",
+        "src/lib/carrier-collection.test.ts"
       ],
       "untested": false
     },
@@ -828,7 +848,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Pickup points for Bring (service 5800), PostNord and Helthjem collect (D135, D136, D138), chosen at checkout and kept on the order; criteria 1 and 2 are held by `delivery-options.int.test.ts`. Nordic carriers only, none verified against a carrier's production service (bucket B); nothing for DPD, InPost, Packeta or GLS (criterion 3, optional breadth beyond Shopify). Pickup at the store's own places is its own row (D237, `orders.local-pickup-at-own-location`).",
+    "gap": "Pickup points for Bring (service 5800), PostNord and Helthjem collect (D135, D136, D138), Instabox lockers, UPS Access Points (D458), DHL Express ServicePoints, DHL Paket's post offices and Paketshops in Germany, and the pickup points of the store's nShift checkout options (D459), chosen at checkout and kept on the order; criteria 1 and 2 are held by `delivery-options.int.test.ts` and `carrier-more.int.test.ts`. None verified against a carrier's production service (bucket B); nothing for InPost, Packeta or GLS directly (criterion 3, optional breadth beyond Shopify), though nShift reaches the carriers of a store's own agreements; DHL Packstation is not offered (it needs the shopper's Postnummer). Pickup at the store's own places is its own row (D237, `orders.local-pickup-at-own-location`).",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -843,13 +863,19 @@
         "src/server/carriers/postnord.ts",
         "src/server/carriers/helthjem.ts",
         "src/server/carriers/bring.ts",
-        "src/lib/postnord.ts"
+        "src/lib/postnord.ts",
+        "src/lib/instabox.ts",
+        "src/lib/ups.ts",
+        "src/lib/dhl.ts",
+        "src/lib/dhl-paket.ts",
+        "src/lib/nshift.ts"
       ],
       "tests": [
         "src/server/delivery-options.int.test.ts",
         "src/lib/postnord.test.ts",
         "src/server/carriers/postnord.test.ts",
-        "src/server/shipping-carriers.int.test.ts"
+        "src/server/shipping-carriers.int.test.ts",
+        "src/server/carrier-more.int.test.ts"
       ],
       "untested": false
     },
@@ -1544,7 +1570,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Built against a faked carrier (D239, `docs/wave-3-exchanges.md`): Bring's `bookReturn()` (service 9300) is booked from an approved return's page (`LabelCard`, `label-actions.ts`) or, for a withdrawal return with `return_settings.label_auto`, by `bookPendingLabels()` in the five-minute job, one at a time under a lock; kept in `returns.label_*`; the shopper's email button and status-page link open `/returns/{token}/label`, which fetches from Bring's own host with the store's keys and keeps nothing; the label's cost is taken off the refund only through `labelDeduction()` when staff confirm the parcel came with it, never above the cost or for a test label; a failed booking leaves the pasted-address path working (`return-labels.int.test.ts`, `return-label.test.ts`, `bring-returns.test.ts`, the label route's test). Short of Full (bucket B): no label has been booked with a real Mybring user and return agreement; only Bring books returns; booking is a separate press after approval (spec 2.3's preselection on approval is not built) and no signed-in browser test drives it; whether a label was used is staff's word; the label texts need legal review.",
+    "gap": "Built against a faked carrier (D239, `docs/wave-3-exchanges.md`): Bring's `bookReturn()` (service 9300) is booked from an approved return's page (`LabelCard`, `label-actions.ts`) or, for a withdrawal return with `return_settings.label_auto`, by `bookPendingLabels()` in the five-minute job, one at a time under a lock; kept in `returns.label_*`; the shopper's email button and status-page link open `/returns/{token}/label`, which fetches from Bring's own host with the store's keys and keeps nothing; the label's cost is taken off the refund only through `labelDeduction()` when staff confirm the parcel came with it, never above the cost or for a test label; a failed booking leaves the pasted-address path working (`return-labels.int.test.ts`, `return-label.test.ts`, `bring-returns.test.ts`, the label route's test). Short of Full (bucket B): no label has been booked with a real Mybring user and return agreement; Bring, PostNord (Return Drop Off), Instabox (locker return), UPS (print return label) and DHL Paket (DHL Retoure) book returns (D459, `RETURN_SERVICES`), a label given only in the carrier's answer kept with the return (`carrier_labels`) and checked in `carrier-more.int.test.ts` for PostNord; nShift's are built but not offered; booking is a separate press after approval (spec 2.3's preselection on approval is not built) and no signed-in browser test drives it; whether a label was used is staff's word; the label texts need legal review.",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -1569,7 +1595,9 @@
         "src/app/admin/(gated)/[store]/returns/[returnId]/label-actions.ts",
         "src/app/admin/(gated)/[store]/returns/[returnId]/label/route.ts",
         "src/app/s/[store]/[market]/returns/[token]/label/route.ts",
-        "src/components/withdraw/return-status-view.tsx"
+        "src/components/withdraw/return-status-view.tsx",
+        "src/lib/return-services.ts",
+        "src/server/carrier-label.ts"
       ],
       "tests": [
         "src/server/return-labels.int.test.ts",
@@ -1582,7 +1610,8 @@
         "e2e/return-label.spec.ts",
         "src/server/returns.int.test.ts",
         "src/server/returns-actions.int.test.ts",
-        "src/lib/return-input.test.ts"
+        "src/lib/return-input.test.ts",
+        "src/server/carrier-more.int.test.ts"
       ],
       "untested": false
     },

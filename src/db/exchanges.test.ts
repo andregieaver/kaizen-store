@@ -771,7 +771,7 @@ describe("return labels (3.1, 3.3 point 9)", () => {
     const { ret } = await scene();
     const book = (sql: string) => db.query(`update commerce.returns set ${sql} where id = $1`, [ret]);
     await expect(book("label_source = 'carrier', label_carrier_id = 'bring'")).rejects.toThrow(/returns_label_carrier/);
-    await expect(book("label_source = 'carrier', label_carrier_id = 'dhl', label_booked_at = now()")).rejects.toThrow(/returns_label_carrier/);
+    await expect(book("label_source = 'carrier', label_carrier_id = 'dpd', label_booked_at = now()")).rejects.toThrow(/returns_label_carrier/);
     await expect(book("label_source = 'carrier', label_carrier_id = 'bring', label_booked_at = now(), label_carrier_url = 'http://api.bring.com/x'")).rejects.toThrow(/returns_label_urls/);
     await expect(book("label_tracking_number = '123'")).rejects.toThrow(/returns_label_carrier/);
     await book(

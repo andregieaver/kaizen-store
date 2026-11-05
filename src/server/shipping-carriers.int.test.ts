@@ -62,7 +62,7 @@ describe("shipping carriers", () => {
   it("refuses incomplete or unknown input and saves nothing", async () => {
     expect(await saveCarrier(accountId, storeId, "postnord", form({ customerNumber: "", apiKey: "" }))).toMatchObject({ ok: false });
     expect(await getCarrier(storeId, "postnord")).toBeNull();
-    expect(await saveCarrier(accountId, storeId, "dhl", form({}))).toEqual({ ok: false, problems: ["Unknown carrier."] });
+    expect(await saveCarrier(accountId, storeId, "dpd", form({}))).toEqual({ ok: false, problems: ["Unknown carrier."] });
   });
 
   it("gives no context for details that are not complete, and keeps each store's own", async () => {

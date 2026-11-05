@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { cleanPostalCode as cleanCode } from "./postal-code";
-import type { CarrierId } from "./shipping-carriers";
+import { EUROPE, type CarrierId } from "./shipping-carriers";
 
 /**
  * Delivery options at checkout (D135): a carrier's services and prices shown to the shopper next to the market's flat
@@ -12,15 +12,38 @@ import type { CarrierId } from "./shipping-carriers";
  * the server, which checks everything again.
  */
 
-/** The countries a carrier's checkout services cover, now: Posten / Bring's are for parcels within Norway (D134), PostNord's for its four countries. */
-export const CHECKOUT_COUNTRIES: Partial<Record<CarrierId, string[]>> = { bring: ["NO"], postnord: ["SE", "DK", "NO", "FI"], porterbuddy: ["NO"], helthjem: ["NO"] };
+/**
+ * The countries a carrier's checkout services cover, now: Posten / Bring's are for parcels within Norway (D134), PostNord's for its four countries,
+ * Instabox's lockers in Sweden, Norway and Denmark, and UPS's, DHL Express's, DHL Paket's and nShift's anywhere in Europe (D458, D459).
+ */
+export const CHECKOUT_COUNTRIES: Partial<Record<CarrierId, string[]>> = {
+  bring: ["NO"],
+  postnord: ["SE", "DK", "NO", "FI"],
+  porterbuddy: ["NO"],
+  helthjem: ["NO"],
+  instabox: ["SE", "NO", "DK"],
+  dhl: EUROPE,
+  ups: EUROPE,
+  dhl_paket: EUROPE,
+  nshift: EUROPE,
+};
 
 /**
  * Where a carrier's prices come from: its own price service for this parcel (`carrier`, Bring's Shipping Guide: the price
  * without VAT, to which the store's markup is added), or what the store enters from its agreement (`store`, PostNord has
  * no price API): per country and service, with VAT, as the shopper pays.
  */
-export const CHECKOUT_PRICING: Partial<Record<CarrierId, "carrier" | "store">> = { bring: "carrier", postnord: "store", porterbuddy: "carrier", helthjem: "store" };
+export const CHECKOUT_PRICING: Partial<Record<CarrierId, "carrier" | "store">> = {
+  bring: "carrier",
+  postnord: "store",
+  porterbuddy: "carrier",
+  helthjem: "store",
+  instabox: "store",
+  dhl: "carrier",
+  ups: "carrier",
+  dhl_paket: "store",
+  nshift: "carrier",
+};
 
 /** How long a quote holds: the time a shopper may take from seeing the prices to paying. */
 export const QUOTE_MINUTES = 120;

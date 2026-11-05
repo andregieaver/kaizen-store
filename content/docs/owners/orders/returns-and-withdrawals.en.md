@@ -9,8 +9,8 @@ features: [shop]
 plans: []
 admin: /admin/{store}/returns
 order: 40
-checked: 2026-11-04
-sources: [D153, D239, D238, D174]
+checked: 2026-11-05
+sources: [D153, D239, D238, D174, D459]
 ---
 
 ## Withdrawals and return requests
@@ -95,11 +95,12 @@ withdrawal**.
 
 ## Return labels
 
-With Posten / Bring connected (see [Carriers](/docs/owners/shipping/carriers)), choose it as the **Carrier** under **Return labels** in
-Settings, Returns, with its **Return service**. Tick **Book withdrawals' return labels automatically**, off by default, to have a label
+With a carrier that books return labels connected (see [Carriers](/docs/owners/shipping/carriers)): Posten / Bring, PostNord, Instabox,
+UPS or DHL Paket, choose it as the **Carrier** under **Return labels** in Settings, Returns, with its **Return service** or the carrier's
+default. Tick **Book withdrawals' return labels automatically**, off by default, to have a label
 booked for each withdrawal within a few minutes.
 
-To book one by hand, open the return, and under **Return shipping** press **Book a return label with Posten / Bring**. The customer gets
+To book one by hand, open the return, and under **Return shipping** press **Book a return label with** the carrier. The customer gets
 an email with a button to print it, and finds it on their return's page.
 
 When the customer pays return shipping, nothing is taken off when the label is booked. At the refund, press **The parcel came with the

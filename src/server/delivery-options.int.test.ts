@@ -255,17 +255,17 @@ describe("choosing", () => {
 describe("PostNord's services, at prices the store enters (D136)", () => {
   const postnord = {
     enabled: true,
-    services: ["17", "19"],
+    services: ["19", "17"],
     markup: { percent: 0, minor: 0 },
     freeOverMinor: null,
     defaultWeightGrams: 1000,
-    prices: { NO: { freeOverMinor: 50_000, services: { "17": 4_900, "19": 9_900 } }, SE: { freeOverMinor: null, services: { "19": 8_900 } } },
+    prices: { NO: { freeOverMinor: 50_000, services: { "19": 4_900, "17": 9_900 } }, SE: { freeOverMinor: null, services: { "17": 8_900 } } },
   };
   const bringOff = () => db().execute(sql`update commerce.shipping_carriers set checkout_enabled = false where store_id = ${storeId}::uuid and carrier = 'bring'`);
   const bringOn = () => db().execute(sql`update commerce.shipping_carriers set checkout_enabled = true where store_id = ${storeId}::uuid and carrier = 'bring'`);
 
   beforeAll(async () => {
-    expect(await saveCarrier(accountId, storeId, "postnord", { environment: "test", countries: ["NO"], fields: { customerNumber: "999", apiKey: "pn-key-0001" } })).toEqual({ ok: true });
+    expect(await saveCarrier(accountId, storeId, "postnord", { environment: "test", countries: ["NO"], fields: { customerNumber: "999", apiKey: "pn-key-0001", senderName: "Shop AS", senderStreet: "Akersgata 55", senderPostalCode: "0180", senderCity: "Oslo", senderCountry: "NO" } })).toEqual({ ok: true });
     expect(await saveCheckoutSettings(accountId, storeId, "postnord", postnord)).toEqual({ ok: true });
   });
 
@@ -286,7 +286,7 @@ describe("PostNord's services, at prices the store enters (D136)", () => {
     expect(listed.options[1].pickupPoints).toEqual([{ id: "PN-1", name: "PostNord Ombud", street: "Ombudsgata 3", postalCode: "0150", city: "OSLO", distanceMeters: 450 }]);
     // Chosen with its service point, it is the cart's shipping at the price entered.
     expect(await chooseDelivery(shop(), cart, listed.options[1].id, "PN-1")).toEqual({ ok: true });
-    expect(await chosenDelivery(db(), storeId, cart, no)).toMatchObject({ rate: { amountMinor: 4900, freeOverMinor: 50_000 }, delivery: { carrier: "postnord", serviceId: "17", pickupPoint: { id: "PN-1" } } });
+    expect(await chosenDelivery(db(), storeId, cart, no)).toMatchObject({ rate: { amountMinor: 4900, freeOverMinor: 50_000 }, delivery: { carrier: "postnord", serviceId: "19", pickupPoint: { id: "PN-1" } } });
     expect((await cartSummary(shop(), await getCart(shop()))).shipping).toBe(4900);
     await bringOn();
   });
