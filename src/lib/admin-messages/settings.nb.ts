@@ -762,7 +762,7 @@ export const settingsNb: SettingsMessages = {
     statePrivate: "Privat: besøkende ser landingssiden din.",
     statePublic: "Offentlig: alle kan se butikken.",
     stateNever: "En demobutikk eller startinnhold er aldri privat.",
-    trialEnded: "Den gratis prøveperioden er over: velg en plan for å gjøre butikken offentlig igjen.",
+    trialEnded: "Butikken ble gjort privat da prøveperioden eller abonnementet sluttet: velg et abonnement for å gjøre den offentlig igjen.",
     chipPrivate: "Privat",
     chipPublic: "Offentlig",
     makePrivate: "Gjør butikken privat",

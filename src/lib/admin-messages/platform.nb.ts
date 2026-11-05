@@ -92,6 +92,7 @@ export const platformNb: PlatformMessages = {
     invoiceAbroad:
       "Stripe sender butikken en faktura for hver periode på e-post, med forfall om 14 dager, uten merverdiavgift (omvendt avgiftsplikt).",
     testNote: " Kaizena Flow er i testmodus: ingen ekte fakturaer sendes.",
+    planNeedsCountry: "Butikken har ikke noe land ennå, og landet avgjør merverdiavgiften, så ingen abonnement kan startes før eieren legger det inn under Innstillinger, Virksomhet.",
     planAndPrice: "Abonnement og pris",
     perSale: "{plan} ({fee} per salg)",
     trialDays: "Gratis prøveperiode (dager)",

@@ -75,7 +75,9 @@ export function BusinessDetailsFields({
       </label>
       <label className={field}>
         {w.country}
-        <select name="country" defaultValue={details.country ?? "NO"} className={control}>
+        {/* Never chosen for the owner: the country decides the VAT on what Kaizena Flow bills, so it is asked for, not assumed. */}
+        <select name="country" required defaultValue={details.country ?? ""} className={control}>
+          {!details.country && <option value="">{w.chooseCountry}</option>}
           {countries.map((country) => (
             <option key={country.code} value={country.code}>
               {country.name}

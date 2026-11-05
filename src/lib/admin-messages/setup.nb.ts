@@ -71,6 +71,7 @@ export const setupNb: SetupMessages = {
     contactEmail: "E-post kundene kan kontakte",
     address: "Virksomhetens forretningsadresse",
     country: "Landet virksomheten er registrert i",
+    chooseCountry: "Velg et land",
   },
   countries: {
     title: "Hvor du selger",

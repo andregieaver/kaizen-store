@@ -24,7 +24,7 @@ import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/serve
 import { waitingCount } from "@/server/support";
 import { memberDesk } from "@/server/support-desk";
 import { starterOfStore } from "@/server/store-starters";
-import { trialPausedAt } from "@/server/store-trial";
+import { pausedAfter } from "@/server/store-trial";
 
 import {
   assistantHearAction,
@@ -82,8 +82,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const waiting = memberCan(member, "support:read") ? await waitingCount([memberDesk(member).desk]) : 0;
   // A starter store says what it is (D175): starting content, or a live demo store (D277) with its own page for platform admins.
   const starter = store.starter ? await starterOfStore(store.id) : null;
-  // A store whose free trial ended with no plan was made private again (D420): its members are told how to open it again.
-  const trialPaused = open ? await trialPausedAt(store.id) : null;
+  // A store whose free trial or plan ended with no plan running was made private again (D420): its members are told why, and how to open it.
+  const trialPaused = open ? await pausedAfter(store.id) : null;
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "shell");
   const tabs: NavItem[] = storeTabs(base, store, canOpen, { support: waiting });
@@ -183,9 +183,9 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       )}
       {trialPaused && (
         <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
-          <p className="font-medium">{w.store.trialEnded}</p>
+          <p className="font-medium">{trialPaused === "plan" ? w.store.planEnded : w.store.trialEnded}</p>
           <p className="text-muted">
-            {w.store.trialEndedText}
+            {trialPaused === "plan" ? w.store.planEndedText : w.store.trialEndedText}
             {memberCan(member, "billing:write") && (
               <>
                 {" "}

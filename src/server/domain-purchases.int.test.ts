@@ -58,6 +58,7 @@ vi.mock("./registrars", () => ({
 
 process.env.SETTINGS_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 const purchases = await import("./domain-purchases");
+const { NO_COUNTRY } = await import("./billing");
 
 let owner: Account;
 let storeId: string;
@@ -170,6 +171,11 @@ describe("buying a domain (D315 4.4)", () => {
     expect(quote).toMatchObject({ ok: true, quote: { domain, currency: "NOK", years: 1 } });
     const wrong = await purchases.startDomainPurchase(owner, storeId, { domain, years: 1, agreed: "NOK:1", connect: true, registrant });
     expect(wrong.ok).toBe(false);
+    // Without the store's country nothing is bought: it decides the invoice's VAT, and is never taken to be Norway.
+    await db().execute(sql`update commerce.stores set country = null where id = ${storeId}::uuid`);
+    const noCountry = await purchases.startDomainPurchase(owner, storeId, { domain, years: 1, agreed: `NOK:${quote.ok ? quote.quote.amountMinor : 0}`, connect: true, registrant });
+    expect(noCountry).toEqual({ ok: false, problems: [NO_COUNTRY] });
+    await db().execute(sql`update commerce.stores set country = 'NO' where id = ${storeId}::uuid`);
   });
 
   it("is invoiced, paid by the plan's card, registered, kept with its DNS zone, and connected", async () => {

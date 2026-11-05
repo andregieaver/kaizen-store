@@ -38,7 +38,11 @@ signature checks, two Admin API descriptions (contract 1.5) and the docs' Markdo
 11. **Payouts' "Stripe's fees" column also holds Kaizena Flow's fee** (`feesMinor`, `src/lib/payouts.ts`). *Fixed 5 November: Kaizena
     Flow's fee has a column of its own on the page, in the totals and in the export (`kaizena_flow_fee`), read from each charge's payment.*
 12. **A store with no country is billed with Norwegian VAT** (`store.details.country ?? "NO"`): safe for a Norwegian seller, worth knowing.
+    *Fixed 5 November, as the owner decided: the country is mandatory. Nothing is billed without it (a plan, a premium theme or a domain
+    waits, `NO_COUNTRY`), Billing says where to add it, and the business details ask for it with none chosen (D18).*
 13. **Cancelling a plan makes a store that began with a trial private** when the plan ends, as at the trial's end. Confirm it is meant.
+    *Decided 5 November: kept (a month paid should not keep a trial store public for good). Billing now warns while the plan is ending,
+    and the banner says the plan ended instead of the trial (D420).*
 14. **The deliveries list of a webhook endpoint defaults to 25** where the contract says 50. *Fixed 5 November: the Admin API's default is
     the contract's 50.*
 15. **Two storefront API mismatches**: `POST /carts` takes an empty body though the document marks it required, and a missing cart is

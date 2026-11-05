@@ -158,9 +158,11 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             <p className="text-sm text-muted">
               {onPlan
                 ? w.changeNow
-                : (store.details.country ?? "NO") === "NO"
-                  ? w.invoiceNo
-                  : w.invoiceAbroad}
+                : !store.details.country
+                  ? w.planNeedsCountry
+                  : store.details.country === "NO"
+                    ? w.invoiceNo
+                    : w.invoiceAbroad}
               {mode === "test" && w.testNote}
             </p>
             <label className="flex flex-col gap-1 text-sm font-medium">
