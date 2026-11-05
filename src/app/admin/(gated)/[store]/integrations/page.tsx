@@ -6,7 +6,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { countWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { INTEGRATIONS } from "@/lib/integrations";
-import { CARRIERS } from "@/lib/shipping-carriers";
+import { canCheck, CARRIERS } from "@/lib/shipping-carriers";
 import { requirePermission } from "@/server/permissions";
 import { listIntegrations } from "@/server/integrations";
 import { listEndpoints } from "@/server/webhook-endpoints";
@@ -144,7 +144,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
             const badge = !saved
               ? { text: info.available.length > 0 ? k.available : k.preparing, tone: "bg-sunken text-muted" }
               : saved.complete
-                ? info.available.length > 0
+                ? canCheck(info)
                   ? saved.check?.ok
                     ? { text: k.connected, tone: "bg-positive-soft text-positive-text" }
                     : { text: saved.check ? k.notAccepted : k.check, tone: "bg-warning-soft text-warning-text" }

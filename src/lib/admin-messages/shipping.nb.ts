@@ -346,6 +346,11 @@ export const shippingNb: ShippingMessages = {
     ready: "Tilkoblingen til {name} er klar. Den kan: {features}.",
     toCome: " Kommer senere: {features}.",
     testShipments: " I testmiljøet bestiller {name} testsendinger: ingenting sendes, og ordrene merkes ikke som sendt.",
+    connectFirst:
+      "Du kan lagre nøklene for {name} og sjekke tilkoblingen nå, slik at resten slås på for butikken din den dagen den kommer. Kommer senere: {features}.",
+    chooseSender: "Velg en avsenderadresse",
+    sendersAfterKeys: "Lagre nøklene først: da vises avsenderadressene i Sendcloud-kontoen din her, så du kan velge.",
+    noSenders: "Sendcloud-kontoen din har ingen avsenderadresse ennå: legg til en i Sendclouds innstillinger, og kom tilbake.",
     building:
       "Tilkoblingen til {name} bygges. Du kan lagre avtaleopplysningene dine nå, slik at den slås på for butikken din den dagen den kommer. Inntil da sendes ingenting til {name}, og kassen og ordrene virker som før.",
     willDo: "Hva den skal gjøre",

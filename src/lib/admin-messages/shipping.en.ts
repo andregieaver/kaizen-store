@@ -362,6 +362,11 @@ export const shippingEn = {
     ready: "The connection to {name} is ready. It can: {features}.",
     toCome: " Still to come: {features}.",
     testShipments: " In the test environment {name} books test shipments: nothing is shipped and orders are not marked as sent.",
+    connectFirst:
+      "You can save your {name} keys and check the connection now, so the rest switches on for your store the day it arrives. Still to come: {features}.",
+    chooseSender: "Choose a sender address",
+    sendersAfterKeys: "Save your keys first: your Sendcloud sender addresses are then listed here to choose from.",
+    noSenders: "Your Sendcloud account has no sender address yet: add one in Sendcloud's settings, then come back.",
     building:
       "The connection to {name} is being built. You can save your agreement details now, so it switches on for your store the day it arrives. Until then nothing is sent to {name} and your checkout and orders work as before.",
     willDo: "What it will do",

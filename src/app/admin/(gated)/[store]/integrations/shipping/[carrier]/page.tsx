@@ -6,11 +6,12 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { CHECKOUT_COUNTRIES, CHECKOUT_PRICING } from "@/lib/delivery-options";
-import { carrierInfo } from "@/lib/shipping-carriers";
+import { canCheck, carrierInfo } from "@/lib/shipping-carriers";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { CHECKOUT_SERVICES, getCheckoutSettings } from "@/server/delivery-options";
 import { getShippingSettings } from "@/server/settings";
 import { db } from "@/db/client";
+import { sendcloudSenders } from "@/server/sendcloud-shipping";
 import { getCarrier } from "@/server/shipping-carriers";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
@@ -40,6 +41,10 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
   const saved = await getCarrier(store.id, info.id);
   const owner = memberCan(current, "owner");
   const live = info.available.length > 0;
+  // A carrier whose connection can be checked before anything else works (Sendcloud's first step, D454).
+  const checkable = canCheck(info);
+  // Sendcloud's sender addresses (D454): read from the shop's own account once its keys are saved, to choose one from.
+  const senders = info.id === "sendcloud" && saved?.complete ? await sendcloudSenders(store.id) : null;
   const marketCountries = [...new Set(store.markets.map((m) => m.code.toUpperCase()))];
   // Markets the store sells to, the carrier's first: the carrier can only deliver where it delivers.
   const offered = marketCountries.filter((code) => info.countries.includes(code));
@@ -76,7 +81,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
               <>
                 {saved
                   ? saved.complete
-                    ? `${fillWords(w.savedLine, { when: when(saved.updatedAt), environment: saved.environment === "live" ? w.live : w.test })}${live ? (saved.check?.ok ? w.connected : saved.check ? w.notAccepted : w.notChecked) : w.waiting}`
+                    ? `${fillWords(w.savedLine, { when: when(saved.updatedAt), environment: saved.environment === "live" ? w.live : w.test })}${checkable ? (saved.check?.ok ? w.connected : saved.check ? w.notAccepted : w.notChecked) : w.waiting}`
                     : w.missing
                   : w.notSetUp}
               </>
@@ -92,6 +97,10 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
             fillWords(w.toCome, { features: info.features.filter((f) => !info.available.includes(f)).map((f) => feature(f).toLowerCase()).join("; ") })}
           {info.available.includes("labels") && fillWords(w.testShipments, { name: info.name })}
         </p>
+      ) : checkable ? (
+        <p role="status" className="rounded-md bg-sunken px-4 py-3 text-sm">
+          {fillWords(w.connectFirst, { name: info.name, features: info.features.map((f) => feature(f).toLowerCase()).join("; ") })}
+        </p>
       ) : (
         <p role="status" className="rounded-md bg-sunken px-4 py-3 text-sm">
           {fillWords(w.building, { name: info.name })}
@@ -106,7 +115,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
           {info.features.map((f) => (
             <li key={f}>
               {feature(f)}
-              {live && <span className="text-muted"> · {info.available.includes(f) ? w.worksNow : w.comingNext}</span>}
+              {checkable && <span className="text-muted"> · {info.available.includes(f) ? w.worksNow : w.comingNext}</span>}
             </li>
           ))}
         </ul>
@@ -151,6 +160,31 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
             {info.fields.map((field) => {
               const hint = field.secret ? saved?.secrets[field.key] : undefined;
               const words = ownFields[field.key];
+              if (field.pick === "sender_address") {
+                const current = saved?.details[field.key] ?? "";
+                const list = senders?.ok ? senders.senders : [];
+                return list.length > 0 ? (
+                  <label key={field.key} className="flex max-w-md flex-col gap-1 text-sm font-medium">
+                    {words?.label || field.label}
+                    <select name={`field:${field.key}`} defaultValue={current} className={control}>
+                      <option value="">{w.chooseSender}</option>
+                      {list.map((sender) => (
+                        <option key={sender.id} value={sender.id}>
+                          {sender.label}
+                        </option>
+                      ))}
+                    </select>
+                    {field.help && <span className="font-normal text-muted">{words?.help || field.help}</span>}
+                  </label>
+                ) : (
+                  <div key={field.key} className="flex max-w-md flex-col gap-1 text-sm">
+                    <span className="font-medium">{words?.label || field.label}</span>
+                    {/* Kept as saved while Sendcloud cannot list the addresses, so saving the keys again does not forget the choice. */}
+                    <input type="hidden" name={`field:${field.key}`} value={current} />
+                    <span className="text-muted">{!senders ? w.sendersAfterKeys : senders.ok ? w.noSenders : senders.problem}</span>
+                  </div>
+                );
+              }
               return (
                 <label key={field.key} className="flex max-w-md flex-col gap-1 text-sm font-medium">
                   {words?.label || field.label}
@@ -294,7 +328,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
         </section>
       )}
 
-      {live && owner && saved?.complete && (
+      {checkable && owner && saved?.complete && (
         <section aria-labelledby="check" className={card}>
           <h2 id="check" className="mb-1 text-title text-ink">
             {w.checkTitle}

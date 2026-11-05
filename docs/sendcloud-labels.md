@@ -177,7 +177,7 @@ for the parcel, not only the customer's choice.
 | Step | Builds | Done when |
 |---|---|---|
 | 0 (people) | A Sendcloud account Flow can test with (a shop in Germany or the Netherlands); the Tech Partner application; the questions of section 11 sent | Flow can make free `sendcloud:letter` labels with its own test keys |
-| 1 | The registry entry, the keys, *Check connection*, the sender addresses, test mode | A shop's keys are checked and its sender address chosen |
+| 1 | The registry entry, the keys, *Check connection*, the sender addresses, test mode. **Built 5 November 2026** against a stand-in for Sendcloud (`docs/shipping-carriers.md`, Sendcloud); to verify on a real account | A shop's keys are checked and its sender address chosen |
 | 2 | Booking from the order and *Book labels*, labels fetched never stored, customs, `cancel()` on undo | A test order is booked, its label printed and the parcel undone, all on a real account |
 | 3 | Checkout options (`store`-priced), pickup points; `carrier`-priced after the VAT basis is read | A test checkout in Germany offers DHL home and a DPD pickup point, and the order books the chosen one |
 | 4 | Tracking by polling, the delivered phase, the emails; 4b webhooks | A real parcel is followed to *delivered* and its date recorded once |

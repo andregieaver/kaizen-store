@@ -372,3 +372,29 @@ kept from nShift's prices, which are the shopper's.
 - **Return labels**: each carrier's services are in `RETURN_SERVICES` (the settings form groups them by connected carrier; a service chosen for
   another carrier is never sent). A return label given only in the carrier's answer is kept with the return and printed from there.
 
+## Sendcloud (D483): step 1, the connection
+
+The plan is `docs/sendcloud-labels.md`; this is what is built of it. Sendcloud is the shop's own Sendcloud account (shops shipping from
+Germany, France, the Netherlands, Belgium, Austria, Italy, Spain and the UK; not Norway or Finland), on API v3 only, with the public and secret
+key of a Sendcloud API integration sent as Basic auth. Pure code is `src/lib/sendcloud.ts` (tested on the documented answer of
+`GET /addresses/sender-addresses`); the calls are `src/server/carriers/sendcloud.ts` (`createSendcloudAdapter()`, `readSenders()`); the page's
+list is `src/server/sendcloud-shipping.ts` (`sendcloudSenders()`, the only caller of `carrierContext()` for it).
+
+**Works now**
+- **Connecting** (Integrations → Shipping carriers → Sendcloud, owners): the two keys, the environment and the countries. Sendcloud is
+  `checkable` with no `available` feature yet, so its card still says *Preparing*, while its page offers *Check connection* and says what is
+  still to come.
+- **The sender address** is chosen from the shop's own Sendcloud addresses, read with its keys when the page is drawn (every page, up to
+  five of 100, following the `Link` header only on `panel.sendcloud.sc`), and kept as its id (`details.senderAddressId`, digits only). Until
+  the keys are saved, or while Sendcloud does not answer, the page says why and keeps the saved choice.
+- **Check connection** reads the sender addresses: the keys work, the account has an address, and the one chosen is still there; otherwise
+  the owner is told which. The answer is kept as for the other carriers.
+- **Flow's partner id** (`SENDCLOUD_PARTNER_ID`, `sendcloudPartnerId()`) is sent as `Sendcloud-Partner-Id` once Sendcloud has approved
+  Kaizena Flow as a Tech Partner; unset until then.
+- **Test mode:** Sendcloud has no test system, so the environment changes no host. From step 2, the test environment books only
+  `SENDCLOUD_TEST_OPTION` (`sendcloud:letter`, free and never shipped) and never marks an order sent.
+- Migration `20261107082148_sendcloud_carrier` widens the checks built from `CARRIER_IDS` (`shipping_carriers_carrier`, `carrier_labels_carrier`,
+  `return_settings_label_carrier`, `returns_label_carrier`) to `sendcloud`.
+
+**To verify with a real Sendcloud account** (nothing here has met Sendcloud's servers yet): the keys' Basic auth on v3, the sender addresses'
+answer and paging, a 401's body, and whether the Free plan answers the API (step 0 of the plan).

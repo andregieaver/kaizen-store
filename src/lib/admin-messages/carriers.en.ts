@@ -198,6 +198,24 @@ export const carriersEn = {
       collectionHours: { label: "Collection hours", help: "When a courier can collect your parcels, written 10:00-17:00, to ask for a collection when you book. Leave it empty if you hand them in or have a standing collection.", placeholder: "10:00-17:00" },
     },
   },
+  sendcloud: {
+    summary: "Labels from DHL, DPD, UPS, GLS and many other carriers at Sendcloud's own rates, with no carrier agreement of your own, for shops shipping from western Europe.",
+    steps: [
+      "Have a Sendcloud account for a shop shipping from Germany, France, the Netherlands, Belgium, Austria, Italy, Spain or the UK. Sendcloud is not offered to shops shipping from Norway or Finland.",
+      "In Sendcloud, open Settings, then Integrations, and add a Sendcloud API integration with Service Points switched on. Copy its public and secret key to the form.",
+      "Save, choose the sender address your parcels leave from, and check the connection.",
+      "Sendcloud has no test system: the test environment will only make Sendcloud's free test labels, so nothing is shipped or charged.",
+    ],
+    fields: {
+      publicKey: { label: "Public key", help: "The public key of the Sendcloud API integration you add for this shop.", placeholder: "" },
+      secretKey: { label: "Secret key", help: "Shown by Sendcloud with the public key.", placeholder: "" },
+      senderAddressId: {
+        label: "Sender address",
+        help: "Where your parcels leave from: one of the sender addresses in your Sendcloud account. Save your keys first, then choose it here.",
+        placeholder: "",
+      },
+    },
+  },
 };
 
 export type CarriersMessages = Widen<typeof carriersEn>;
