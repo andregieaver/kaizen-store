@@ -48,7 +48,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   store_events: never("The original's queue of order and return events for staff alerts and rules (D238)."),
   order_rules: settings("Automation rules (D238), with new ids; a rule naming a product that was not copied loses it and is switched off."),
   order_rule_runs: never("The log of the original's automation runs (D238)."),
-  carrier_labels: never("Shipping labels of the original's parcels (D457): copied orders have no parcels."),
+  carrier_labels: never("Shipping labels of the original's parcels (D458): copied orders have no parcels."),
   shipment_tracking: never("The carrier events of the original's parcels (D238): copied orders have no parcels and are not followed."),
   appointment_settings: catalogue("How a product is booked; goes with its product."),
   booking_resources: settings(

@@ -2,7 +2,7 @@ import { minorUnitDigits } from "./money";
 import type { BookingRequest, PickupPoint, ShippingAddress, ShippingOption, TrackingEvent } from "./shipping-carriers";
 
 /**
- * DHL Express (D457): what the MyDHL API is sent and how its answers are read, as pure functions so they are tested without the network. The calls
+ * DHL Express (D458): what the MyDHL API is sent and how its answers are read, as pure functions so they are tested without the network. The calls
  * are in `src/server/carriers/dhl.ts`. Written against DHL's own OpenAPI document for the MyDHL API 3.4.1 (developer.dhl.com, released 2026-11-01,
  * read 2026-11-05) and its reference data (`ExpressReferenceData_3.4.1`): HTTP Basic with the store's API key and secret, `x-version` on every call,
  * Address Validate (the city of a postal code, which Rates needs), Rates, Shipments (the label comes back in the answer, as a PDF, and only there)
@@ -22,7 +22,7 @@ export const dhlTrackingPage = (trackingNumber: string) => `https://www.dhl.com/
 /**
  * The services a store can offer and book. DHL names a product per lane (Express Worldwide is `P` for goods through customs, `U` within the EU and
  * `N` within one country), so a service here is a family of DHL's product codes, and the code booked is the one Rates gives for the parcel's lane.
- * `servicepoint` is DHL Express delivered to a DHL ServicePoint the shopper chooses (On Demand Delivery, D458): the same products, priced the same.
+ * `servicepoint` is DHL Express delivered to a DHL ServicePoint the shopper chooses (On Demand Delivery, D459): the same products, priced the same.
  */
 export const DHL_SERVICES: { id: string; name: string; needsPickupPoint: boolean; maxWeightGrams?: number; codes: string[] }[] = [
   { id: "express", name: "DHL Express", needsPickupPoint: false, maxWeightGrams: 70_000, codes: ["P", "U", "N"] },
@@ -114,7 +114,7 @@ export function gmtOffset(country: string, date: string, time: string): string {
   return `GMT${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
 }
 
-/** A collection's day and window as DHL takes it (D458): HH:MM times, ready before close, the day not before today. Null when it is fine. */
+/** A collection's day and window as DHL takes it (D459): HH:MM times, ready before close, the day not before today. Null when it is fine. */
 export function collectionProblem(collection: NonNullable<BookingRequest["collection"]>, now: Date = new Date()): string | null {
   const time = /^([01]\d|2[0-3]):[0-5]\d$/;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(collection.date) || !time.test(collection.readyTime) || !time.test(collection.closeTime)) return "Give the collection's day and the times the parcel is ready from and until.";
@@ -246,7 +246,7 @@ const party = (a: ShippingAddress) => {
 /**
  * The shipment, for the product code Rates gave this lane: the store's account, a PDF label, the order number as the reference, and for a parcel
  * that crosses a customs border (D343) its value and export declaration with each line (DDP when the shopper paid the duties at checkout, else DAP).
- * No collection is asked for unless the request has one (D458): then DHL is asked to collect it on that day, from the ready time (in the sender's
+ * No collection is asked for unless the request has one (D459): then DHL is asked to collect it on that day, from the ready time (in the sender's
  * own time zone) until the close time. A ServicePoint delivery is On Demand Delivery to the point the shopper chose, which DHL takes only with the
  * buyer's details (the shopper).
  */

@@ -14,7 +14,7 @@ import { carrierInfo } from "./shipping-carriers";
 /** The name of the carrier a parcel was booked with through its connection (D134 to D138), or null when it was recorded by hand. */
 export const bookedCarrierName = (carrierId: string | null | undefined): string | null => (carrierId ? (carrierInfo(carrierId)?.name ?? carrierId) : null);
 
-/** Whether undoing a parcel booked with this carrier cancels the booking there too (D458: the carrier's connection has `cancel`). */
+/** Whether undoing a parcel booked with this carrier cancels the booking there too (D459: the carrier's connection has `cancel`). */
 export const cancelsOnUndo = (carrierId: string | null | undefined): boolean => Boolean(carrierId && carrierInfo(carrierId)?.available.includes("cancel"));
 
 /** What the confirmation says before a parcel is undone: what happens, and what Kaizen does NOT do. */
@@ -29,7 +29,7 @@ export function undoWarnings(parcel: { bookedWith: string | null; units: number;
 }
 
 /**
- * What staff read after a parcel was undone. `cancelled`: what the carrier said when it was asked to cancel the booking (D458), absent when it was not
+ * What staff read after a parcel was undone. `cancelled`: what the carrier said when it was asked to cancel the booking (D459), absent when it was not
  * asked (a carrier without a cancel call, or a parcel recorded by hand).
  */
 export function undoneMessage(

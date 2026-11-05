@@ -30,14 +30,14 @@ const FETCHERS: Partial<Record<CarrierId, (context: CarrierContext, url: string)
   instabox: fetchInstaboxLabel,
   ups: fetchUpsLabel,
   nshift: fetchNshiftLabel,
-  // Before the day's closing only: after it, the copy kept from the booking is printed (D458).
+  // Before the day's closing only: after it, the copy kept from the booking is printed (D459).
   dhl_paket: fetchDhlPaketLabel,
 };
 
 /**
  * The PDF label of a shipment booked through a carrier's connection, for the store's staff only: fetched when it is printed with the store's own
  * agreement and never kept (Posten / Bring, Porterbuddy, Helthjem, Instabox, UPS, nShift), or, for a carrier that gives it only in its answer to the
- * booking (DHL Express, PostNord, DHL Paket after the day's closing, D457, D458), the copy kept in `carrier_labels` until the retention run removes it. Null when there is none, the parcel was undone (D174 follow-up) or the
+ * booking (DHL Express, PostNord, DHL Paket after the day's closing, D458, D459), the copy kept in `carrier_labels` until the retention run removes it. Null when there is none, the parcel was undone (D174 follow-up) or the
  * carrier will not give it.
  */
 export async function carrierLabel(storeId: string, orderId: string, shipmentId: string): Promise<Uint8Array | null> {
@@ -82,7 +82,7 @@ export async function fetchCarrierLabel(storeId: string, carrier: string, url: s
 /** The carriers whose labels can be printed from Kaizena Flow: every carrier that books labels, fetched again or kept from the booking. */
 export const LABEL_CARRIERS: CarrierId[] = CARRIERS.filter((c) => c.available.includes("labels")).map((c) => c.id);
 
-/** Keeps a label a carrier gives only in its answer (DHL Express, PostNord, DHL Paket) with its parcel, for printing (D457, D458). Never throws: the booking stands without it. */
+/** Keeps a label a carrier gives only in its answer (DHL Express, PostNord, DHL Paket) with its parcel, for printing (D458, D459). Never throws: the booking stands without it. */
 export async function keepLabel(storeId: string, orderId: string, shipmentId: string, carrier: CarrierId, pdf: Uint8Array): Promise<boolean> {
   try {
     await db().execute(sql`
@@ -98,7 +98,7 @@ export async function keepLabel(storeId: string, orderId: string, shipmentId: st
 }
 
 /**
- * Keeps a return label a carrier gives only in its answer (PostNord, DHL Paket, D458) with the return, for the shopper's link and staff's *Print
+ * Keeps a return label a carrier gives only in its answer (PostNord, DHL Paket, D459) with the return, for the shopper's link and staff's *Print
  * label*; a label booked again (after a test one) takes its place. Never throws: the return's label stands booked without it, and staff are told.
  */
 export async function keepReturnLabel(storeId: string, orderId: string, returnId: string, carrier: CarrierId, pdf: Uint8Array): Promise<boolean> {

@@ -34,7 +34,7 @@ import {
 } from "@/lib/ups";
 
 /**
- * UPS's connection (D457, D458), on the store's own client id and secret and account number: a bearer token (kept until it runs out and asked for again
+ * UPS's connection (D458, D459), on the store's own client id and secret and account number: a bearer token (kept until it runs out and asked for again
  * once when refused), Rating, the Locator for UPS Access Points, Shipping (with a collection from the Pickup API when asked, return labels with a return
  * service, and Void to cancel), Tracking, and Label Recovery for the PDF when a label is printed. In the
  * store's test environment the calls go to UPS's customer integration environment (wwwcie.ups.com), where nothing is shipped. Every call has a
@@ -156,7 +156,7 @@ export function createUpsAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapter
       if (!answer.ok) throw new Error(answer.problem);
       const parsed = parseShipment(answer.json);
       if (!parsed.ok) throw new Error(parsed.problem);
-      // A collection is a pickup of its own, asked for once the shipment is booked: one that fails leaves the shipment booked and says why (D458).
+      // A collection is a pickup of its own, asked for once the shipment is booked: one that fails leaves the shipment booked and says why (D459).
       let collection: { booked: boolean; confirmation: string | null; problem: string | null } | undefined;
       if (request.collection) {
         const pickup = await authed(fetcher, context, pickupUrl(host), { method: "POST", body: JSON.stringify(pickupBody(request, accountOf(context), [parsed.trackingNumber])) });

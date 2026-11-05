@@ -158,7 +158,7 @@ export async function undoShipmentAction(
   if (!reason.success) return refused(undoRefusalText("reason_too_long"));
   const undone = await undoShipment(member.store.id, orderId, shipmentId, member.account.id, reason.data || null);
   if (!undone.ok) return refused(undoRefusalText(undone.reason));
-  // A booking with a carrier that can cancel is cancelled there too (D458); the parcel stays undone whatever it answers.
+  // A booking with a carrier that can cancel is cancelled there too (D459); the parcel stays undone whatever it answers.
   const cancelled = undone.bookedWith ? await cancelAtCarrier(member.store.id, orderId, shipmentId, member.account.id) : null;
   refresh();
   return { status: "ok", messages: [undoneMessage({ ...undone, cancelled }, adminText(adminLangOf(member.account.adminLocale), "order").parcels)] };

@@ -123,7 +123,7 @@ describe("Instabox's connection", () => {
     await expect(adapter.book!(context(), request)).rejects.toThrow(/no longer held/);
   });
 
-  it("books home delivery after Instabee confirms the postal code, with the phone's country code (D458)", async () => {
+  it("books home delivery after Instabee confirms the postal code, with the phone's country code (D459)", async () => {
     const i = instabee({
       "product=HOME_DELIVERY": () => json({ availabilityToken: "home-tok", deliveryOptions: [{ sortCode: "HD123", type: "HOME" }], showAsOptionInCheckout: true }),
       "/orders": () => json(made),
@@ -146,7 +146,7 @@ describe("Instabox's connection", () => {
     await expect(createInstaboxAdapter(far.fetcher).book!(context(), { ...home, to: { ...home.to, phone: "1234" } })).rejects.toThrow(/too short/);
   });
 
-  it("books a return at the locker nearest the shopper that takes returns, with the label fetched when printed (D458)", async () => {
+  it("books a return at the locker nearest the shopper that takes returns, with the label fetched when printed (D459)", async () => {
     const i = instabee({ "product=LOCKER_RETURN": () => json(options, 201), "/orders": () => json({ ...made, orderId: "ret-1", parcelId: "SHOPRET0000001" }) });
     const returned = await createInstaboxAdapter(i.fetcher).bookReturn!(context(), {
       returnReference: "1042-R1",

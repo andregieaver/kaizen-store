@@ -20,12 +20,12 @@ import { getOrder } from "./orders";
 import { carrierContext } from "./shipping-carriers";
 
 /**
- * Booking the newer carriers (Instabox, UPS and DHL Express, D457; PostNord, DHL Paket and nShift, D458) from an order, through one path: the
+ * Booking the newer carriers (Instabox, UPS and DHL Express, D458; PostNord, DHL Paket and nShift, D459) from an order, through one path: the
  * delivery the customer chose at checkout with that carrier (its service and pickup point), or, for the carriers in `STAFF_CHOSEN`, a door-to-door
  * service staff choose for an order whose customer chose no carrier (an order on the flat rate is still sent with the store's own agreement). The
  * rest is the other carriers' own (`helthjemBook()`): one booking of an order at a time and a press made before the page showed the last parcel
  * refused (D372), customs lines for a parcel that crosses a customs border (D343), `markSent()` with the tracking number and where the label is for a
- * real booking (a label given only in the answer kept in `carrier_labels`), a collection when asked for (D458), and only a sentence for a test one.
+ * real booking (a label given only in the answer kept in `carrier_labels`), a collection when asked for (D459), and only a sentence for a test one.
  */
 
 export const DELIVERY_BOOKING_CARRIERS = ["instabox", "ups", "dhl", "postnord", "dhl_paket", "nshift"] as const;
@@ -63,7 +63,7 @@ const parcelOf = (carrier: DeliveryBookingCarrier) =>
     heightMm: z.number().int().min(10).max(3000).optional(),
   });
 
-/** What became of a collection asked for with the booking (D458), when one was. */
+/** What became of a collection asked for with the booking (D459), when one was. */
 export type CollectionOutcome = { booked: boolean; date: string; confirmation: string | null; problem: string | null };
 
 export type CarrierBooked =
@@ -105,7 +105,7 @@ export async function bookCarrierDelivery(
     /** The order's fulfilment as the screen showed it (`OrderFulfilment.basis`); none from a caller that showed nothing (the bulk action). */
     seen?: string | null;
     /**
-     * Ask the carrier to collect the parcel (D458), in the store's time zone: the day and window come from the hours on the carrier's page
+     * Ask the carrier to collect the parcel (D459), in the store's time zone: the day and window come from the hours on the carrier's page
      * (`collectionFor()`). Only for a carrier with `collection` in its `available` features and hours saved; ignored otherwise.
      */
     collect?: { timeZone: string; now?: Date } | null;

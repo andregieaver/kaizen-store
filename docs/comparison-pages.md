@@ -34,7 +34,7 @@ the Dream Factory and the one-button moves from Shopify and WooCommerce were mis
   computes the advertised saving from the 30-day price since 6.7.16.0 and puts bundles in Evolve; BigCommerce's B2B Edition now comes with
   Performance; Squarespace reworded its pre-order page.
 
-## Changed after publishing, 5 November 2026 (D458)
+## Changed after publishing, 5 November 2026 (D459)
 
 Shopify's page was published on 5 November. When Kaizena Flow gained DHL Paket in Germany, UPS and DHL Express across Europe and nShift's
 many carriers, *Where Shopify is the better fit* no longer read true as *You ship from a country where Shopify sells labels itself, such as

@@ -26,7 +26,7 @@ export const isCarrierId = (value: string): value is CarrierId => (CARRIER_IDS a
 export const FOLLOWED_CARRIERS: CarrierId[] = CARRIER_IDS.filter((id) => id !== "instabox");
 export const isFollowedCarrier = (value: string): value is CarrierId => (FOLLOWED_CARRIERS as string[]).includes(value);
 
-/** The countries a carrier that ships from anywhere in Europe delivers in (UPS, DHL Express, D457): the EU, the EEA, Switzerland and the UK. */
+/** The countries a carrier that ships from anywhere in Europe delivers in (UPS, DHL Express, D458): the EU, the EEA, Switzerland and the UK. */
 export const EUROPE: string[] = [
   "AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU", "LV", "MT", "NL",
   "NO", "PL", "PT", "RO", "SE", "SI", "SK",
@@ -72,7 +72,7 @@ export type CarrierInfo = {
   available: CarrierFeature[];
   /** The countries the carrier books return labels in, from the shopper's address to the store's (D239); none without `return_labels`. */
   returnCountries?: string[];
-  /** The sender countries the carrier collects from (D458), when it does not collect everywhere it books from. */
+  /** The sender countries the carrier collects from (D459), when it does not collect everywhere it books from. */
   collectionCountries?: string[];
   fields: CarrierField[];
   /** Where the store gets an agreement and API access. */
@@ -116,7 +116,7 @@ export const CARRIERS: CarrierInfo[] = [
     features: ["rates", "pickup_points", "labels", "tracking", "return_labels", "collection"],
     available: ["rates", "pickup_points", "labels", "tracking", "return_labels", "collection"],
     returnCountries: ["SE", "DK", "NO", "FI"],
-    // PostNord collects in Sweden, Denmark and Finland, not from a sender in Norway (its booking guide, D458).
+    // PostNord collects in Sweden, Denmark and Finland, not from a sender in Norway (its booking guide, D459).
     collectionCountries: ["SE", "DK", "FI"],
     fields: [
       { key: "customerNumber", label: "Customer number", secret: false, required: true, help: "Your number in your agreement with PostNord." },
@@ -311,7 +311,7 @@ export const CARRIERS: CarrierInfo[] = [
     name: "nShift",
     summary: "Book every carrier of your own agreements through your nShift Delivery account: its delivery checkout's options at checkout, labels, collection and tracking.",
     countries: EUROPE,
-    // Return labels are built but not offered until the return shipment's parties are confirmed with an nShift account (D458).
+    // Return labels are built but not offered until the return shipment's parties are confirmed with an nShift account (D459).
     features: ["rates", "pickup_points", "labels", "tracking", "return_labels", "collection", "cancel"],
     available: ["rates", "pickup_points", "labels", "tracking", "collection", "cancel"],
     fields: [
@@ -409,7 +409,7 @@ export const secretHint = (value: string) => (value.length > 8 ? `…${value.sli
 
 /**
  * Where a store's parcels are sent from, as its carrier page holds it: the sender's name, street, postal code, city and phone, and its country
- * (`senderCountry`, asked by the carriers that ship from anywhere in Europe, D457; Norway for the carriers that only ship from there).
+ * (`senderCountry`, asked by the carriers that ship from anywhere in Europe, D458; Norway for the carriers that only ship from there).
  */
 export function senderAddress(details: Record<string, string>): ShippingAddress {
   return {
@@ -475,7 +475,7 @@ export type ShippingOption = {
   window?: DeliveryWindow;
   /** The price already contains VAT (a price made for the shopper to see), so none is added. */
   includesVat?: boolean;
-  /** The option's own pickup points, for a carrier whose options each come with theirs (nShift's delivery checkout, D458). */
+  /** The option's own pickup points, for a carrier whose options each come with theirs (nShift's delivery checkout, D459). */
   pickupPoints?: PickupPoint[];
 };
 
@@ -497,7 +497,7 @@ export type BookingRequest = {
   window?: DeliveryWindow;
   courierInstructions?: string;
   /**
-   * Ask the carrier to collect the parcel at the sender's address (D458): the day (YYYY-MM-DD, the sender's own) and the window it is ready in
+   * Ask the carrier to collect the parcel at the sender's address (D459): the day (YYYY-MM-DD, the sender's own) and the window it is ready in
    * ("HH:MM", the sender's local time). Only carriers with `collection` in `available` read it; the others book as if it were absent.
    */
   collection?: { date: string; readyTime: string; closeTime: string };
@@ -563,7 +563,7 @@ export type BookingResult = {
   /** Made in the carrier's test mode: nothing was shipped. */
   test: boolean;
   /**
-   * The label's PDF, for a carrier that gives it only in its answer and never again (DHL Express, D457): kept in `carrier_labels` with the parcel
+   * The label's PDF, for a carrier that gives it only in its answer and never again (DHL Express, D458): kept in `carrier_labels` with the parcel
    * until it has been printed for a while (`labelUrl` then says where the shipment is at the carrier). Absent for a carrier whose label is fetched.
    */
   labelPdf?: Uint8Array;
@@ -573,7 +573,7 @@ export type BookingResult = {
    */
   customs?: { declared: boolean; reference: string | null; problem: string | null };
   /**
-   * What became of a collection asked for (D458): the carrier's confirmation number when it took it, else why not (the shipment is booked either
+   * What became of a collection asked for (D459): the carrier's confirmation number when it took it, else why not (the shipment is booked either
    * way, and staff are told to arrange the collection in the carrier's own tools). Absent when none was asked for.
    */
   collection?: { booked: boolean; confirmation: string | null; problem: string | null };
@@ -620,7 +620,7 @@ export interface ShippingCarrierAdapter {
   /** `lang`: the order's language, for carriers that describe events in it (Bring, D238 4.5); others ignore it. */
   track?(context: CarrierContext, trackingNumber: string, options?: { lang?: string }): Promise<TrackingEvent[]>;
   /**
-   * Cancels a booked shipment that has not been handed over (D458), when staff undo its parcel: carriers with `cancel` in `available` implement it.
+   * Cancels a booked shipment that has not been handed over (D459), when staff undo its parcel: carriers with `cancel` in `available` implement it.
    * Given the parcel as its shipment keeps it; the answer's problem is a plain sentence for staff (the parcel stays undone in Kaizena Flow either way).
    */
   cancel?(context: CarrierContext, shipment: { trackingNumber: string; consignmentNumber: string | null }): Promise<{ ok: true } | { ok: false; problem: string }>;

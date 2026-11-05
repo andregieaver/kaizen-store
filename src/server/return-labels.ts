@@ -256,7 +256,7 @@ async function bookUnderLock(storeId: string, returnId: string, input: { weightG
     returning id
   `);
   if (updated.length === 0) return refuse("state");
-  // A label the carrier gave only in its answer (PostNord, DHL Paket, D458) is kept with the return for the shopper's link.
+  // A label the carrier gave only in its answer (PostNord, DHL Paket, D459) is kept with the return for the shopper's link.
   if (booked.labelPdf) await keepReturnLabel(storeId, l.orderId, returnId, carrier, booked.labelPdf);
   await writeOrderEvent(
     db(),
@@ -298,7 +298,7 @@ async function fetchFor(storeId: string, where: { token: string } | { returnId: 
   );
   if (!r || r.label_source !== "carrier" || ["closed", "declined", "cancelled"].includes(String(r.status))) return { ok: false, status: 404, reason: "not_found" };
   const filename = `return-${String(r.number).replace(/[^A-Za-z0-9-]/g, "")}.pdf`;
-  // A label the carrier gave only in its answer (PostNord, DHL Paket, D458) is printed from the copy kept with the return.
+  // A label the carrier gave only in its answer (PostNord, DHL Paket, D459) is printed from the copy kept with the return.
   const kept = await keptReturnLabel(storeId, String(r.id));
   if (kept) {
     if (!(await takeFetch(storeId, String(r.id)))) return { ok: false, status: 429, reason: "limit" };

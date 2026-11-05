@@ -197,7 +197,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const bookable = fulfilment.unitsToSend > 0 && !awaitingEdit && canWrite && order.status !== "authorized";
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
   const [bring, porterbuddy, helthjem, estimatedGrams, savedCarriers] = await Promise.all([getCarrier(store.id, "bring"), getCarrier(store.id, "porterbuddy"), getCarrier(store.id, "helthjem"), estimateWeightGrams(store.id, order.id), listCarriers(store.id)]);
-  // Instabox, UPS, DHL Express, PostNord, DHL Paket and nShift (D457, D458): booked for the delivery the customer chose with them, and (but Instabox)
+  // Instabox, UPS, DHL Express, PostNord, DHL Paket and nShift (D458, D459): booked for the delivery the customer chose with them, and (but Instabox)
   // for an order whose customer chose no carrier (the flat rate or one of the store's own methods), with a service delivered to the door that staff choose.
   const deliveryBookings = DELIVERY_BOOKING_CARRIERS.flatMap((id) => {
     const saved = savedCarriers.find((c) => c.carrier === id);
@@ -206,7 +206,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     if (!chose && (!STAFF_CHOSEN[id] || order.delivery || order.deliveryMethod !== "ship")) return [];
     const services = chose ? null : staffServices(id, saved.details);
     if (services && services.length === 0) return [];
-    // Asking the carrier to collect (D458): a carrier that can, from the sender's country, with the hours the store gave on its page.
+    // Asking the carrier to collect (D459): a carrier that can, from the sender's country, with the hours the store gave on its page.
     const info = carrierInfo(id);
     const collects = info?.available.includes("collection") && (!info.collectionCountries || info.collectionCountries.includes(saved.details.senderCountry ?? ""));
     const hours = collects ? collectionHours(saved.details.collectionHours) : null;

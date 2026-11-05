@@ -17,7 +17,7 @@ describe("the carriers", () => {
     expect(FOLLOWED_CARRIERS).toEqual(["bring", "postnord", "porterbuddy", "helthjem", "dhl", "ups", "dhl_paket", "nshift"]);
   });
 
-  it("say what each does now, each feature named in the admin, and books returns only where it says (D458)", () => {
+  it("say what each does now, each feature named in the admin, and books returns only where it says (D459)", () => {
     for (const carrier of CARRIERS) {
       for (const f of carrier.available) expect(carrier.features, `${carrier.id} ${f}`).toContain(f);
       expect(Boolean(carrier.returnCountries?.length), carrier.id).toBe(carrier.available.includes("return_labels"));

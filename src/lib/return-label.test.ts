@@ -31,7 +31,7 @@ describe("when a return label can be booked (4.7)", () => {
       [{ restricted: true }, "restricted"],
       [{ storeOpen: false }, "store_closed"],
       [{ carrier: null }, "no_carrier"],
-      // Helthjem books no return labels (PostNord does since D458).
+      // Helthjem books no return labels (PostNord does since D459).
       [{ carrier: { id: "helthjem", complete: true, checkOk: true } }, "no_carrier"],
       [{ carrier: { id: "helthjem", complete: true, checkOk: true } }, "no_carrier"],
       [{ carrier: { id: "bring", complete: false, checkOk: true } }, "carrier_incomplete"],

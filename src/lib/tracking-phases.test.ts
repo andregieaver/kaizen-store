@@ -64,7 +64,7 @@ describe("phaseOf(): carrier codes to Kaizena Flow's phases (4.4)", () => {
     expect(phaseOf("bring", "delivered")).toEqual({ phase: "unknown", verified: false });
   });
 
-  it("reads DHL Express's checkpoint codes from DHL's reference data as verified, and UPS's status letters as unverified (D457)", () => {
+  it("reads DHL Express's checkpoint codes from DHL's reference data as verified, and UPS's status letters as unverified (D458)", () => {
     expect(phaseOf("dhl", "OK")).toEqual({ phase: "delivered", verified: true });
     expect(phaseOf("dhl", "WC")).toEqual({ phase: "out_for_delivery", verified: true });
     expect(phaseOf("dhl", "CC")).toEqual({ phase: "ready_for_collection", verified: true });

@@ -30,7 +30,7 @@ const EXACT: Record<string, AuditArea> = {
   "shipping.dhl_paket_booked": "orders",
   "shipping.nshift_booked": "orders",
   "shipping.postnord_booked": "orders",
-  // A carrier booking cancelled when its parcel is undone (D458).
+  // A carrier booking cancelled when its parcel is undone (D459).
   "shipping.booking_cancelled": "orders",
   // The store's own company details (its office and places) are settings; `company.` otherwise is a company account.
   "company.office_saved": "settings",

@@ -437,7 +437,7 @@ const STEPS: Record<RetentionStep, StepFn> = {
     return { count: await pruneContentReports(ctx.now, cutoffInstant(await period(ctx, "content_report_senders"), ctx.now)) };
   },
 
-  // Labels a carrier gives only once (DHL Express, PostNord, DHL Paket; a parcel's or a return's, D457, D458): the PDF holds a name and address and is
+  // Labels a carrier gives only once (DHL Express, PostNord, DHL Paket; a parcel's or a return's, D458, D459): the PDF holds a name and address and is
   // needed only until it is printed.
   async carrier_labels(ctx) {
     const cutoff = cutoffInstant(await period(ctx, "carrier_labels"), ctx.now).toISOString();

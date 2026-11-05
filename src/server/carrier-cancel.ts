@@ -15,7 +15,7 @@ import { db } from "@/db/client";
 export type CarrierCancelled = { ok: true } | { ok: false; problem: string };
 
 /**
- * Cancels at the carrier the booking of a parcel staff have just undone (D458), for a carrier whose connection can (`cancel` in its `available`
+ * Cancels at the carrier the booking of a parcel staff have just undone (D459), for a carrier whose connection can (`cancel` in its `available`
  * features): the parcel must be this order's, booked through a connection and undone. The carrier is asked with the store's own agreement; what it
  * answers is staff's to read, and the parcel stays undone either way. A label kept for the parcel (`carrier_labels`) goes, as the booking it belongs to
  * is gone. Null when there was nothing to ask: a parcel recorded by hand, or a carrier without a cancel call. Never throws.

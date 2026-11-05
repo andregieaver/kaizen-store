@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { collectionFor, collectionHours } from "./carrier-collection";
 
-describe("a carrier's collection (D458)", () => {
+describe("a carrier's collection (D459)", () => {
   it("reads the hours the owner gave, and nothing else", () => {
     expect(collectionHours("9:00-17:30")).toEqual({ from: "09:00", to: "17:30" });
     expect(collectionHours(" 10:00 – 16:00 ")).toEqual({ from: "10:00", to: "16:00" });

@@ -1,7 +1,7 @@
 import { addDays, zonedDate, zonedTime } from "./booking-slots";
 
 /**
- * Asking a carrier to collect a parcel when it is booked (D458): the day and window it is ready in, worked out from the hours the owner gave on
+ * Asking a carrier to collect a parcel when it is booked (D459): the day and window it is ready in, worked out from the hours the owner gave on
  * the carrier's page ("10:00-17:00", `collectionHours`) in the store's time zone. Pure, so the order page and the booking agree.
  */
 

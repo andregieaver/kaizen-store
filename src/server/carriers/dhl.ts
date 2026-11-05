@@ -24,7 +24,7 @@ import {
 import { bookingCustomsProblem, senderAddress, type CarrierContext, type ShippingAddress, type ShippingCarrierAdapter, type ShippingOption } from "@/lib/shipping-carriers";
 
 /**
- * DHL Express's connection (D457, D458), through the MyDHL API on the store's own API key, secret and account number: Address Validate (the city of
+ * DHL Express's connection (D458, D459), through the MyDHL API on the store's own API key, secret and account number: Address Validate (the city of
  * the shopper's postal code, which Rates needs), Rates, the ServicePoint search, Shipments (with a collection when asked for) and Tracking. MyDHL has
  * no call to cancel a shipment (only a pickup), so this connection has no `cancel`. In the store's test environment the calls go to DHL's test host, where
  * nothing is shipped. The label comes back only in the booking's answer, so it is handed on (`labelPdf`) to be kept in `carrier_labels`. Every call
@@ -136,7 +136,7 @@ export function createDhlAdapter(fetcher: Fetch = fetch): ShippingCarrierAdapter
         test: context.environment === "test",
         ...(parsed.label ? { labelPdf: parsed.label } : {}),
         ...(declarable && request.customs ? { customs: { declared: true, reference: null, problem: null } } : {}),
-        // DHL books the collection with the shipment: its dispatch confirmation number says it did (D458).
+        // DHL books the collection with the shipment: its dispatch confirmation number says it did (D459).
         ...(request.collection
           ? {
               collection: parsed.dispatchConfirmation

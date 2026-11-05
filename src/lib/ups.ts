@@ -5,7 +5,7 @@ import { collectionProblem } from "./dhl";
 import type { BookingRequest, CustomsLine, PickupPoint, ReturnBookingRequest, ShippingAddress, ShippingOption, TrackingEvent } from "./shipping-carriers";
 
 /**
- * UPS (D457): what UPS's APIs are sent and how their answers are read, as pure functions so they are tested without the network. The calls are in
+ * UPS (D458): what UPS's APIs are sent and how their answers are read, as pure functions so they are tested without the network. The calls are in
  * `src/server/carriers/ups.ts`. Written against UPS's own OpenAPI documents (github.com/UPS-API/api-documentation, read 2026-11-05:
  * `OAuthClientCredentials.yaml`, `Rating.yaml`, `Shipping.yaml`, `Tracking.yaml`, `Locator.yaml`): a bearer token from the store's client id and
  * secret, Rating (`Shop`, every service at once, with the store's negotiated rates when its account has them), the Locator for UPS Access Points,
@@ -382,7 +382,7 @@ export function parseLabelRecovery(json: unknown): Uint8Array | null {
 }
 
 // ---------------------------------------------------------------------------
-// Collection (Pickup.yaml, Pickup Creation): UPS comes for the parcels it was booked with (D458)
+// Collection (Pickup.yaml, Pickup Creation): UPS comes for the parcels it was booked with (D459)
 // ---------------------------------------------------------------------------
 
 export const pickupUrl = (host: string) => `${host}/api/pickupcreation/${UPS_VERSIONS.pickup}/pickup`;
@@ -428,7 +428,7 @@ export function pickupBody(request: BookingRequest, accountNumber: string, track
 export const parsePickup = (json: unknown): string | null => text(obj(obj(json).PickupCreationResponse).PRN) || null;
 
 // ---------------------------------------------------------------------------
-// Void (Shipping.yaml, Void Shipment): a shipment not yet handed over is cancelled (D458)
+// Void (Shipping.yaml, Void Shipment): a shipment not yet handed over is cancelled (D459)
 // ---------------------------------------------------------------------------
 
 /** The void call for a shipment by its identification number (the first package's 1Z number). */
@@ -443,7 +443,7 @@ export function parseVoid(json: unknown): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Return labels (Shipping.yaml `ReturnService`): the shopper's parcel back to the store (D458)
+// Return labels (Shipping.yaml `ReturnService`): the shopper's parcel back to the store (D459)
 // ---------------------------------------------------------------------------
 
 /**

@@ -239,7 +239,7 @@ describe("UPS's connection", () => {
     expect(await adapter.track!(context(), "1ZUNKNOWN")).toEqual([]);
   });
 
-  it("asks UPS to collect the parcel after booking it, and keeps the shipment when the collection fails (D458)", async () => {
+  it("asks UPS to collect the parcel after booking it, and keeps the shipment when the collection fails (D459)", async () => {
     const collection = { date: "2099-06-10", readyTime: "12:00", closeTime: "17:30" };
     const u = ups({ "/api/shipments/": () => json(shipped), "/api/pickupcreation/": () => json({ PickupCreationResponse: { Response: { ResponseStatus: { Code: "1" } }, PRN: "2929602E9CP" } }) });
     const booked = await createUpsAdapter(u.fetcher).book!(context(), { ...request, collection });
@@ -284,7 +284,7 @@ describe("UPS's connection", () => {
     expect(await adapter.cancel!(context(), { trackingNumber: "12345", consignmentNumber: null })).toMatchObject({ ok: false });
   });
 
-  it("books a return label from the shopper to the store's return address, billed to the store, recovered as a PDF (D458)", async () => {
+  it("books a return label from the shopper to the store's return address, billed to the store, recovered as a PDF (D459)", async () => {
     const u = ups({
       "/api/shipments/": () =>
         json({ ShipmentResponse: { ShipmentResults: { ShipmentIdentificationNumber: "1ZRETURN0000000001", NegotiatedRateCharges: { TotalCharge: { CurrencyCode: "NOK", MonetaryValue: "120.00" } }, PackageResults: [{ TrackingNumber: "1ZRETURN0000000001" }] } } }),

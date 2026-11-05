@@ -36,7 +36,7 @@ import {
 import { bookingCustomsProblem, senderAddress, type CarrierContext, type ShippingCarrierAdapter } from "@/lib/shipping-carriers";
 
 /**
- * DHL Paket's connection (D458), on the store's own developer-portal app (API key and secret) and Business Customer Portal user: a token by the
+ * DHL Paket's connection (D459), on the store's own developer-portal app (API key and secret) and Business Customer Portal user: a token by the
  * password grant (kept until a minute before it runs out, asked for again once when refused), shipments and their labels (Parcel DE Shipping),
  * cancelling a shipment before the day's closing, return labels (Parcel DE Returns), a collection at the sender's address (Parcel DE Pickup, which
  * takes the user and password by Basic with the API key), the post offices and Paketshops near the shopper (Location Finder) and tracking (Shipment

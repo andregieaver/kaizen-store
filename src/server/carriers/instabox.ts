@@ -22,7 +22,7 @@ import {
 import { bookingCustomsProblem, type CarrierContext, type ShippingCarrierAdapter } from "@/lib/shipping-carriers";
 
 /**
- * Instabox's connection (D457, D458), through Instabee's integration API on the store's own API key: the lockers near a postal code (each with the
+ * Instabox's connection (D458, D459), through Instabee's integration API on the store's own API key: the lockers near a postal code (each with the
  * availability token a booking names), orders booked and confirmed as packed at once (to a locker, or home after Instabee confirms the postal code),
  * returns dropped at the locker nearest the shopper, and the label as a PDF when it is printed. Instabee documents no cancel call, so this connection
  * has no `cancel`. Prices are not

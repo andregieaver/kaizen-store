@@ -77,7 +77,7 @@ const request = {
 type Shipment = { parties: Record<string, unknown>; service: unknown; dateAndTimes: unknown };
 const shipmentOf = (body: Record<string, unknown> | null) => (body!.shipment as Shipment[])[0];
 
-describe("booking with PostNord (D458)", () => {
+describe("booking with PostNord (D459)", () => {
   it("books MyPack Collect to the shopper's service point with its label in one call, and gives the label to keep", async () => {
     const p = postnord({
       "/servicepoints/ids": () => json({ servicePointInformationResponse: { servicePoints: [{ servicePointId: "588462", name: "Hemköp Sjövikshallen", visitingAddress: { streetName: "Sjövikstorget", streetNumber: "17", postalCode: "11758", city: "STOCKHOLM", countryCode: "SE" } }] } }),

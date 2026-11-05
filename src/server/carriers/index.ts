@@ -12,7 +12,7 @@ import { createPorterbuddyAdapter } from "./porterbuddy";
 import { createPostnordAdapter } from "./postnord";
 import { createUpsAdapter } from "./ups";
 
-/** The carriers whose connections are built (D133, D134, D136, D137, D138, D457, D458). */
+/** The carriers whose connections are built (D133, D134, D136, D137, D138, D458, D459). */
 const ADAPTERS: Partial<Record<CarrierId, () => ShippingCarrierAdapter>> = {
   bring: () => createBringAdapter(),
   postnord: () => createPostnordAdapter(),

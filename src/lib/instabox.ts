@@ -1,11 +1,11 @@
 import type { BookingRequest, PickupPoint, ReturnBookingRequest } from "./shipping-carriers";
 
 /**
- * Instabox (D457, D458): what Instabee's API is sent and how its answers are read, as pure functions so they are tested without the network. The calls are
+ * Instabox (D458, D459): what Instabee's API is sent and how its answers are read, as pure functions so they are tested without the network. The calls are
  * in `src/server/carriers/instabox.ts`. Instabox is Instabee's brand of parcel lockers in Sweden, Norway and Denmark; a shop connects through
  * Instabee's integration API (docs.integration.instabee.com, beta, read 2026-11-05), with the API key Instabee's implementation manager gives it:
  * `Authorization: ApiKey …` and `Accept-Version: 1.0.0` on every call. Delivery options (the lockers near a postal code, with an availability token
- * held 14 days), orders (`PUT /orders`, booked and confirmed as packed at once, to a locker or home, D458), returns through a locker and labels.
+ * held 14 days), orders (`PUT /orders`, booked and confirmed as packed at once, to a locker or home, D459), returns through a locker and labels.
  * Instabee documents no call that cancels an order for these products. Instabee's documentation does not say whose price its
  * `deliveryPrice` is, so the store enters its own prices for checkout (`delivery-options.ts`, pricing "store").
  */
@@ -17,13 +17,13 @@ export const instaboxHost = (environment: string) => (environment === "live" ? I
 export const INSTABOX_BRAND = "instabox";
 /** Instabee's locker product ("Locker Delivery"). */
 export const LOCKER_PRODUCT = "LOCKER_EXPRESS";
-/** Instabee's home delivery product, which its order call documents for the `instabox` brand (D458). */
+/** Instabee's home delivery product, which its order call documents for the `instabox` brand (D459). */
 export const HOME_PRODUCT = "HOME_DELIVERY";
-/** Instabee's return product: the shopper drops the parcel at a locker, and it comes back to the store (D458). */
+/** Instabee's return product: the shopper drops the parcel at a locker, and it comes back to the store (D459). */
 export const RETURN_PRODUCT = "LOCKER_RETURN";
 
 /**
- * The services a store can offer at checkout: a locker the shopper chooses (at most 20 kg and 39 × 39 × 59 cm), and home delivery (D458), which
+ * The services a store can offer at checkout: a locker the shopper chooses (at most 20 kg and 39 × 39 × 59 cm), and home delivery (D459), which
  * Instabee confirms per postal code when it is booked. Instabee gives no weight limit for home delivery.
  */
 export const INSTABOX_SERVICES: { id: string; name: string; needsPickupPoint: boolean; maxWeightGrams?: number }[] = [
@@ -140,7 +140,7 @@ export function parseHomeAvailability(json: unknown): { token: string | null; so
 
 /**
  * The order, booked and confirmed as packed in one call (`parcelPackingConfirmed`): the locker's sort code and the token it came with (for home
- * delivery, the token and sort code of the postal code's availability, D458), the recipient Instabox texts, the order number, and the parcel's weight
+ * delivery, the token and sort code of the postal code's availability, D459), the recipient Instabox texts, the order number, and the parcel's weight
  * and size. Instabee knows the store's warehouse; a store with several names the one it sends from (`collectionPointId`).
  */
 export function orderBody(request: BookingRequest, token: string | null, sortCode: string | null, collectionPointId?: string) {
@@ -196,7 +196,7 @@ export function parseOrder(json: unknown): ParsedOrder {
 export const instaboxTrackingPage = (parcelId: string) => `https://track.instabox.com/${encodeURIComponent(parcelId)}`;
 
 // ---------------------------------------------------------------------------
-// Returns through a locker (D458)
+// Returns through a locker (D459)
 // ---------------------------------------------------------------------------
 
 /** The return service: the shopper drops the parcel at an Instabox locker near them, with the label they print. */

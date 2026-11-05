@@ -6,7 +6,7 @@ import { UPS_RETURN_DEFAULT, UPS_RETURN_SERVICES } from "./ups";
 import type { CarrierId } from "./shipping-carriers";
 
 /**
- * The return services each carrier books return labels with (D239, D458): the store chooses one in its return settings, or the carrier's default.
+ * The return services each carrier books return labels with (D239, D459): the store chooses one in its return settings, or the carrier's default.
  * Only carriers whose connection has `bookReturn()` and `return_labels` in `available` are here. Pure, for the settings form and the server's checks.
  */
 export type ReturnService = { id: string; name: string; confirmed: boolean };

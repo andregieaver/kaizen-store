@@ -122,7 +122,7 @@ Every call carries the store's own API key as `apikey`; in the store's test envi
   the services are listed together, cheapest first after the flat rate, each named for its carrier
   ("Posten / Bring: …"). A carrier that does not answer leaves the others, and the flat rate stays the fallback.
 
-**Booking and labels (D458)**, from PostNord's own public Postman collection (guide.developer.postnord.com, read 2026-11-05; the portal's
+**Booking and labels (D459)**, from PostNord's own public Postman collection (guide.developer.postnord.com, read 2026-11-05; the portal's
 EDI pages need a login): one call books and returns the label, `POST /rest/shipment/v3/edi/labels/pdf` with an EDI instruction (the store's
 customer number with its country's issuer code Z11 DK, Z12 SE, Z13 NO, Z14 FI; the recipient; the order number; one item per parcel), and
 `applicationId` (a store field; PostNord gives one on going live, its example 9999 in test). MyPack Collect carries the shopper's service
@@ -214,7 +214,7 @@ accepted, that service points are found by postal code alone, that the transport
 ones in the agreement, and the weight limits (5 and 20 kg, from Helthjem's delivery methods guide).
 
 
-## Instabox, DHL Express and UPS (D457)
+## Instabox, DHL Express and UPS (D458)
 
 All three book through one path, `bookCarrierDelivery()` (`src/server/carrier-delivery-booking.ts`), from the order page (*Book with …*,
 `carrierDeliveryBookAction`) and *Book labels*: one booking of an order at a time, the parcel's lines checked before the carrier is paid,
@@ -244,7 +244,7 @@ Denmark; it is reached through Instabee's integration API (docs.integration.inst
 - **Labels**: `GET /orders/{orderId}/labels?fileFormat=pdf&template=a6`, fetched when printed and never kept.
 - **Check connection**: the lockers near Stockholm Central.
 
-**Since D458**: home delivery (`home`, Instabee's post-purchase page names `HOME_DELIVERY` for the `instabox` brand; booked after a
+**Since D459**: home delivery (`home`, Instabee's post-purchase page names `HOME_DELIVERY` for the `instabox` brand; booked after a
 `HOME_DELIVERY` availability answer, the phone with its country code), and locker return labels (`LOCKER_RETURN`, the nearest return locker,
 fetched like the label).
 
@@ -276,7 +276,7 @@ store's price, and that the sort code is the same in a later availability answer
   so OK (delivered), WC (with courier), CC (awaiting collection) and the others listed in `tracking-phases.ts` are verified.
 - **Check connection**: a rate within the sender's own city.
 
-**Since D458**: delivery to a DHL ServicePoint (`servicepoint`: MyDHL's service point locator, `GET /servicepoints`, gives six-character
+**Since D459**: delivery to a DHL ServicePoint (`servicepoint`: MyDHL's service point locator, `GET /servicepoints`, gives six-character
 `facilityId`s; booked with `onDemandDelivery` and `buyerDetails`), and a collection (the shipment's `pickup` with the day and close time,
 `dispatchConfirmationNumber` the confirmation).
 
@@ -305,7 +305,7 @@ developer.ups.com with the account number added.
 - **Tracking**: `GET /api/track/v1/details/{number}`. UPS's status letters are not explained in its documents, so they are unverified.
 - **Check connection**: a rate within the sender's own country.
 
-**Since D458**: a collection (the Pickup API after the shipment, its PRN the confirmation), cancelling when a parcel is undone (`void`),
+**Since D459**: a collection (the Pickup API after the shipment, its PRN the confirmation), cancelling when a parcel is undone (`void`),
 and print return labels (`ReturnService` 9, Standard or Express Saver, recovered as a PDF like a label; none across a customs border).
 
 **Not yet**: UPS's own delivery estimates at checkout.
@@ -315,7 +315,7 @@ public id is used; Shipping allows 9 characters, the Locator gives up to 15), ho
 the tracking status letters.
 
 
-## DHL Paket (D458)
+## DHL Paket (D459)
 
 `src/lib/dhl-paket.ts` (pure), `src/server/carriers/dhl-paket.ts`. DHL's own OpenAPI documents (developer.dhl.com, read 2026-11-05): Parcel
 DE Shipping 2.2.0, Parcel DE Returns 1.1.0, Parcel DE Pickup 1.0.3, Location Finder - Unified and Shipment Tracking - Unified. The store's
@@ -339,7 +339,7 @@ own app on DHL's developer portal (its key and secret) and its Business Customer
 1 kg limit of Kleinpaket, the retail id a Filiale shipment takes, the returns receiver, Pick-Up rights, and Unified Tracking's limits (250
 calls a day at first, one per 5 s, until DHL upgrades the app).
 
-## nShift (D458)
+## nShift (D459)
 
 `src/lib/nshift.ts` (pure), `src/server/carriers/nshift.ts`. nShift Delivery's REST API (formerly Unifaun Online; its API description at
 www.unifaunonline.com/rs-docs, read 2026-11-05): `https://api.unifaun.com/rs-extapi/v1`, `Authorization: Bearer {id}-{secret}` with the
@@ -362,7 +362,7 @@ kept from nShift's prices, which are the shopper's.
 **To verify with an nShift account**: the checkout's `weight` parameter and whether `priceValue` holds VAT, the return shipment's parties,
 `printSet` for customs per carrier, and the licences each call needs (a missing one answers 403).
 
-## After the booking: collection, cancelling and return labels (D458)
+## After the booking: collection, cancelling and return labels (D459)
 
 - **Collection**: the booking box offers *Ask {carrier} to collect it ({hours})*, ticked, when the carrier has `collection` and its page has
   *Collection hours*, and (PostNord) the sender is in one of its `collectionCountries`. `collectionFor()` asks for today from the next quarter

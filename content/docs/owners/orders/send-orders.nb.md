@@ -10,7 +10,7 @@ plans: []
 admin: /admin/{store}/orders/{id}
 order: 20
 checked: 2026-11-05
-sources: [D174, D238, D372, D374, D153, D289, D457, D458]
+sources: [D174, D238, D372, D374, D153, D289, D458, D459]
 ---
 
 ## Se hva som skal sendes

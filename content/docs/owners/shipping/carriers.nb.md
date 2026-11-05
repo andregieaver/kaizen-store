@@ -10,7 +10,7 @@ plans: []
 admin: /admin/{store}/integrations
 order: 30
 checked: 2026-11-05
-sources: [D133, D134, D135, D136, D137, D138, D239, D374, D457, D458]
+sources: [D133, D134, D135, D136, D137, D138, D239, D374, D458, D459]
 ---
 
 ## Hva du får ved å koble til et fraktselskap

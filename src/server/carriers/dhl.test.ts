@@ -63,7 +63,7 @@ describe("DHL Express's connection", () => {
     });
     expect(options).toEqual([
       { serviceId: "express", carrier: "dhl", name: "DHL Express", priceMinor: 65000, currency: "NOK", estimate: { minDays: 2, maxDays: 2 } },
-      // A ServicePoint delivery is the same product, priced the same (D458).
+      // A ServicePoint delivery is the same product, priced the same (D459).
       { serviceId: "servicepoint", carrier: "dhl", name: "DHL Express to a ServicePoint", priceMinor: 65000, currency: "NOK", needsPickupPoint: true, estimate: { minDays: 2, maxDays: 2 } },
       { serviceId: "economy", carrier: "dhl", name: "DHL Economy Select", priceMinor: 40000, currency: "NOK", estimate: { minDays: 5, maxDays: 5 } },
     ]);
@@ -162,7 +162,7 @@ describe("DHL Express's connection", () => {
   });
 });
 
-describe("DHL Express's ServicePoints and collections (D458)", () => {
+describe("DHL Express's ServicePoints and collections (D459)", () => {
   const request = {
     orderReference: "1042",
     serviceId: "express",

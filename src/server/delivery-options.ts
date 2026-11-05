@@ -88,7 +88,7 @@ export const CHECKOUT_SERVICES: Partial<Record<CarrierId, { id: string; name: st
 };
 
 /**
- * Whether a carrier's option is one the store switched on. nShift's options are the store's own delivery checkout in nShift (D458), each named by
+ * Whether a carrier's option is one the store switched on. nShift's options are the store's own delivery checkout in nShift (D459), each named by
  * nShift's service code, so switching on `checkout` offers whatever that checkout offers; every other carrier's are its fixed services.
  */
 const switchedOnOption = (carrier: CarrierId, services: string[], serviceId: string) =>
@@ -229,7 +229,7 @@ async function offersFrom(
   if (!adapter || !context) return null;
   const to: ShippingAddress = { name: "", street: "", postalCode, city: "", country: market.code };
   const known = CHECKOUT_SERVICES[active.carrier] ?? [];
-  // An option may bring its own pickup points (nShift's checkout, D458); the others share the carrier's points near the postal code.
+  // An option may bring its own pickup points (nShift's checkout, D459); the others share the carrier's points near the postal code.
   let found: (Omit<Offer, "points"> & { ownPoints?: QuotedPickupPoint[] })[];
   if (CHECKOUT_PRICING[active.carrier] === "store") {
     const prices = active.settings.prices[market.code];
@@ -267,7 +267,7 @@ async function offersFrom(
       return null;
     }
     // Only what the store switched on, in the country's own currency: a carrier that prices in its account's currency (UPS and DHL bill a
-    // Norwegian account in kroner for a parcel to Sweden, D457) is converted at the store's own rates, and left out when the store has none.
+    // Norwegian account in kroner for a parcel to Sweden, D458) is converted at the store's own rates, and left out when the store has none.
     const switchedOn = offered.filter((o) => switchedOnOption(active.carrier, active.settings.services, o.serviceId));
     const rates = switchedOn.some((o) => o.currency !== market.nativeCurrency) ? ((await storeById(storeId))?.localization.rates ?? null) : null;
     const inCurrency = (o: ShippingOption) => (o.currency === market.nativeCurrency ? o.priceMinor : rates ? convertMinor(o.priceMinor, o.currency, market.nativeCurrency, rates) : null);

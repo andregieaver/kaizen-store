@@ -13,7 +13,7 @@ export type BookState = { ok: boolean; message: string };
 const input = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
- * Books the delivery the customer chose at checkout with its carrier (Porterbuddy D137, Helthjem D138, Instabox, UPS and DHL D457): the parcel's
+ * Books the delivery the customer chose at checkout with its carrier (Porterbuddy D137, Helthjem D138, Instabox, UPS and DHL D458): the parcel's
  * weight, then Book. What was chosen (a window, a service point) is given as text; the booking itself is the carrier's bound action. With `rows`
  * (D174) the booking takes the *In this parcel* choice: the chosen units, or everything still to send when nothing is lowered. With `services`
  * (UPS and DHL, for an order whose customer chose none of theirs) staff choose the service instead, and `chosenText` is not shown.
@@ -42,7 +42,7 @@ export function ChosenDeliveryBooking({
   /** The services staff may choose from when the customer chose none of this carrier's, with the word for the choice. */
   services?: { id: string; name: string }[];
   serviceLabel?: string;
-  /** The words for asking the carrier to collect the parcel (D458), when it can and the store gave its hours; ticked unless staff untick it. */
+  /** The words for asking the carrier to collect the parcel (D459), when it can and the store gave its hours; ticked unless staff untick it. */
   collectLabel?: string | null;
   estimatedGrams: number;
   test: boolean;

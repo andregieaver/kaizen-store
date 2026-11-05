@@ -762,7 +762,7 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   // The ad platforms' ids on the person's orders and open carts (D303 I2), and anything not yet sent for them.
   await tx.execute(sql`update commerce.orders set ad_signals = null where store_id = ${sid}::uuid and id = any(${orderIds}) and ad_signals is not null`);
   await tx.execute(sql`delete from commerce.ad_conversions where store_id = ${sid}::uuid and order_id = any(${orderIds}) and status = 'pending'`);
-  // Shipping labels kept from a carrier that gives them only once (D457): the recipient's name and address on a PDF, not needed for any record.
+  // Shipping labels kept from a carrier that gives them only once (D458): the recipient's name and address on a PDF, not needed for any record.
   await tx.execute(sql`delete from commerce.carrier_labels where store_id = ${sid}::uuid and order_id = any(${orderIds})`);
   // Staff-entered fields of an order that is anonymised now (a restricted order's go when it is).
   if (anonymisedNow.length > 0) {

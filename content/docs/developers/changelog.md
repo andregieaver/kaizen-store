@@ -9,7 +9,7 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-05
-sources: [D438, D439, D440, D441, D457]
+sources: [D438, D439, D440, D441, D458]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
@@ -18,7 +18,7 @@ Every change to a published contract gets a version here, newest first: the Admi
 
 ## 1.9 — 2026-11-05
 
-An addition to the Admin API (D457, D458).
+An addition to the Admin API (D458, D459).
 
 - Marking an order as sent takes `instabox`, `dhl_paket` and `nshift` as its `carrier`, beside the carriers it took before; Instabox and DHL
   Paket give the parcel their tracking page. Instabox, DHL Express, UPS, DHL Paket and nShift are now carriers a store connects, and their

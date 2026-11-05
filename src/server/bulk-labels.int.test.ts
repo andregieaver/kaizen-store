@@ -144,7 +144,7 @@ describe("Book labels on the Orders list (D374)", () => {
     const { result } = outcome;
     expect(result).toMatchObject({ action: "book_labels", requested: 7, applied: 3, emailed: 0 });
     expect(result.refused).toEqual([
-      // PostNord books labels now (D458), but this store has not connected it.
+      // PostNord books labels now (D459), but this store has not connected it.
       { id: postnord.id, number: postnord.number, reason: "no_carrier" },
       { id: unweighed.id, number: unweighed.number, reason: "no_weight" },
       { id: refused.id, number: refused.number, reason: "carrier_refused", detail: "The recipient's postal code does not exist" },

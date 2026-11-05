@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { alpha3, billingNumber, outletChoice, productFor, readOutletChoice, refNo } from "./dhl-paket";
 
-describe("DHL Paket's pure rules (D458)", () => {
+describe("DHL Paket's pure rules (D459)", () => {
   it("books each service as the product for the destination", () => {
     expect(productFor("paket", "DE")).toBe("V01PAK");
     expect(productFor("paket", "no")).toBe("V53WPAK");

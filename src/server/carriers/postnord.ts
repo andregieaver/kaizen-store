@@ -25,7 +25,7 @@ import {
 import { bookingCustomsProblem, senderAddress, type BookingResult, type CarrierContext, type PickupPoint, type ShippingCarrierAdapter } from "@/lib/shipping-carriers";
 
 /**
- * PostNord's connection (D136, booking D458), on the store's own API key and customer number: the service point search for where to collect,
+ * PostNord's connection (D136, booking D459), on the store's own API key and customer number: the service point search for where to collect,
  * Track and Trace for where a parcel is, a check that the key works, and the Booking APIs v3: a booking with its PDF label in one call, return
  * labels (Return Drop Off) and a pickup of the booked parcels from Sweden, Denmark or Finland. Prices are not asked of PostNord (there is no
  * price API): the store enters them for checkout. In the store's test environment the calls go to PostNord's sandbox. Every call has a timeout,

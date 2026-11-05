@@ -2,7 +2,7 @@ import { COUNTRY_ZONES, toInstant } from "./tracking-phases";
 import type { BookingRequest, CustomsLine, PickupPoint, ReturnBookingRequest, ShippingAddress, TrackingEvent } from "./shipping-carriers";
 
 /**
- * PostNord (D136, booking D458): what PostNord's APIs are sent and how their answers are read, as pure functions so they are tested
+ * PostNord (D136, booking D459): what PostNord's APIs are sent and how their answers are read, as pure functions so they are tested
  * without the network. The calls themselves are in `src/server/carriers/postnord.ts`. PostNord has no price API: what a
  * service costs is in the store's agreement, so the store enters its own prices for checkout (`delivery-options.ts`,
  * pricing "store"). Used here: the service point search (where to collect), Track and Trace v5, a connection check, and the
@@ -193,7 +193,7 @@ export function applicationIdOf(details: Record<string, string>, environment: st
 
 /**
  * The basic service code a booking is made as. A service point means MyPack Collect (19), the only one delivered to one; without a point, a
- * service quoted as 19 before PostNord's codes were corrected (D458) was MyPack Home (17). 17 and 18 are booked as they are.
+ * service quoted as 19 before PostNord's codes were corrected (D459) was MyPack Home (17). 17 and 18 are booked as they are.
  */
 export function basicServiceCode(serviceId: string, pickupPointId: string | null | undefined): string {
   if (pickupPointId) return "19";

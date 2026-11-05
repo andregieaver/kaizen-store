@@ -29,12 +29,12 @@ const bookInput = z.object({
   lines: parcelLinesInput,
   /** The order's fulfilment as the page showed it (D372): a press made before it showed the last parcel is refused. */
   seen: z.string().max(100).nullish(),
-  /** Ask the carrier to collect the parcel (D458), in the hours on its page. */
+  /** Ask the carrier to collect the parcel (D459), in the hours on its page. */
   collect: z.boolean().optional(),
 });
 
 /**
- * Books an order's parcel with Instabox, UPS or DHL Express (D457): the delivery the customer chose at checkout, or a service staff chose (UPS and
+ * Books an order's parcel with Instabox, UPS or DHL Express (D458): the delivery the customer chose at checkout, or a service staff chose (UPS and
  * DHL). A real booking marks the order as sent (and tells the customer when asked), a test one only says it worked.
  */
 export async function carrierDeliveryBookAction(storeSlug: string, carrier: string, orderId: string, raw: unknown): Promise<{ ok: boolean; message: string }> {
@@ -53,7 +53,7 @@ export async function carrierDeliveryBookAction(storeSlug: string, carrier: stri
     collect: input.data.collect ? { timeZone: member.store.timeZone || "Europe/Oslo" } : null,
   });
   if (!booked.ok) return { ok: false, message: booked.problem };
-  // What the carrier said to the collection asked for (D458): booked with its day, or why not, so staff arrange it themselves.
+  // What the carrier said to the collection asked for (D459): booked with its day, or why not, so staff arrange it themselves.
   const lang = adminLangOf(member.account.adminLocale);
   const collected = !booked.collection
     ? ""

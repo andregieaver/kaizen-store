@@ -3,7 +3,7 @@ import { splitStreet } from "./porterbuddy";
 import type { BookingRequest, PickupPoint, ReturnBookingRequest, TrackingEvent } from "./shipping-carriers";
 
 /**
- * DHL Paket (D458): Deutsche Post DHL's parcels from Germany, for a business customer with an EKP, as pure functions so they are tested without the
+ * DHL Paket (D459): Deutsche Post DHL's parcels from Germany, for a business customer with an EKP, as pure functions so they are tested without the
  * network. The calls are in `src/server/carriers/dhl-paket.ts`. Written against DHL's own OpenAPI documents on developer.dhl.com, read 2026-11-05:
  * Parcel DE Shipping 2.2.0 (`parcel-de-shipping-v2_4.yaml`), the Authentication API for Post & Parcel Germany (`pp-account-auth-ropc.yaml`),
  * Parcel DE Returns 1.1.0 (`pp-parcel-returns_1.yaml`), Parcel DE Pickup 1.0.3 (`parcel-de-pickup_0.yaml`), Location Finder - Unified 1.14.0 and

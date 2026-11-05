@@ -12265,7 +12265,7 @@ export const shippingCarriers = commerce.table(
 );
 
 /**
- * A label a carrier gives only in its answer to the booking (DHL Express, D457; PostNord and DHL Paket after its day's closing, D458): its PDF,
+ * A label a carrier gives only in its answer to the booking (DHL Express, D458; PostNord and DHL Paket after its day's closing, D459): its PDF,
  * kept with the parcel (`shipment_id`) or the return (`return_id`, a return label the shopper prints) so it can be printed from the order page,
  * the labels page or the return's link. Read and written only through `carrier-label.ts`, `carrier-delivery-booking.ts` and `return-labels.ts`,
  * never by a page; the daily retention run removes it after the period of `retention_rules` kind `carrier_labels`, and erasure with the person's

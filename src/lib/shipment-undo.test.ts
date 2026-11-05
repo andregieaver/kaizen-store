@@ -5,7 +5,7 @@ import { undoneMessage, undoWarnings } from "./shipment-undo";
 
 const done = { units: 2, deliveredWas: null, bookedWith: "UPS" };
 
-describe("undoing a parcel booked with a carrier (D458)", () => {
+describe("undoing a parcel booked with a carrier (D459)", () => {
   it("warns that the booking is cancelled there too, for a carrier that cancels, and to cancel it yourself otherwise", () => {
     expect(undoWarnings({ bookedWith: "UPS", units: 2, receiptRecorded: false, cancels: true })[1]).toBe("The booking with UPS is cancelled there too, if it has not been handed over.");
     expect(undoWarnings({ bookedWith: "Helthjem", units: 2, receiptRecorded: false })[1]).toBe("The booking with Helthjem is not cancelled: cancel it with Helthjem yourself.");

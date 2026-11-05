@@ -12,7 +12,7 @@ type Row = Record<string, unknown>;
 
 const PDF = (text: string) => Buffer.from(`%PDF-1.4 ${text}`).toString("base64");
 
-/** Stand-ins for UPS, DHL Express and Instabee that answer as their documents say and record what they are asked (D457). */
+/** Stand-ins for UPS, DHL Express and Instabee that answer as their documents say and record what they are asked (D458). */
 const carriers = vi.hoisted(() => {
   const calls: { url: string; method: string; body: Record<string, unknown> | null }[] = [];
   const state = { upsCurrency: "NOK" };
@@ -143,7 +143,7 @@ async function paidOrder(pick?: (options: { id: string; carrier: string; label: 
   return orderId;
 }
 
-describe("UPS at checkout and from the order (D457)", () => {
+describe("UPS at checkout and from the order (D458)", () => {
   it("offers UPS's services at its price with VAT, cheapest first", async () => {
     forgetUpsTokens();
     const cartId = await newCart();
@@ -201,7 +201,7 @@ describe("UPS at checkout and from the order (D457)", () => {
   });
 });
 
-describe("DHL Express's label, kept because DHL gives it once (D457)", () => {
+describe("DHL Express's label, kept because DHL gives it once (D458)", () => {
   it("is kept with the parcel, printed from there, and deleted by the retention run after 30 days", async () => {
     const orderId = await paidOrder();
     const booked = await bookCarrierDelivery(accountId, storeId, orderId, "dhl", { parcel, serviceId: "express" });
@@ -220,7 +220,7 @@ describe("DHL Express's label, kept because DHL gives it once (D457)", () => {
   });
 });
 
-describe("Instabox's lockers (D457)", () => {
+describe("Instabox's lockers (D458)", () => {
   it("are offered at the store's price, and the chosen one is booked with its token, printed and not polled", async () => {
     const orderId = await paidOrder((options) => {
       const locker = options.find((o) => o.carrier === "instabox")!;

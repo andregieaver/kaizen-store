@@ -11,7 +11,7 @@ process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 type Row = Record<string, unknown>;
 
 /**
- * PostNord's booking and return labels, DHL Paket and nShift through the shared booking path (D458), with stand-ins for each carrier that answer as
+ * PostNord's booking and return labels, DHL Paket and nShift through the shared booking path (D459), with stand-ins for each carrier that answer as
  * their documents say: kept labels, staff-chosen services, a collection asked for, cancelling when a parcel is undone, nShift's own checkout options.
  */
 const carriers = vi.hoisted(() => {
@@ -163,7 +163,7 @@ async function paidOrder(pick?: (options: Listed[]) => { id: string; point?: str
   return orderId;
 }
 
-describe("PostNord's booking and labels (D458)", () => {
+describe("PostNord's booking and labels (D459)", () => {
   it("books MyPack Collect (19) to the shopper's service point at the store's price, and prints the label kept from the answer", async () => {
     const orderId = await paidOrder((options) => {
       const collect = options.find((o) => o.carrier === "postnord" && o.label.includes("Collect"))!;
@@ -208,7 +208,7 @@ describe("PostNord's booking and labels (D458)", () => {
   });
 });
 
-describe("DHL Paket (D458)", () => {
+describe("DHL Paket (D459)", () => {
   it("books a parcel from Germany on a flat-rate order, asks DHL to collect it, keeps the label, and cancels it when the parcel is undone", async () => {
     const orderId = await paidOrder(undefined, berlin);
     // Thursday 5 November 2026, 09:00 in Berlin: today's window from the next quarter hour.
@@ -229,7 +229,7 @@ describe("DHL Paket (D458)", () => {
   });
 });
 
-describe("nShift (D458)", () => {
+describe("nShift (D459)", () => {
   it("offers the store's own nShift checkout at its prices with VAT, each option with its own pickup points, named by the carrier that delivers", async () => {
     const cartId = await newCart();
     expect(await quoteDelivery({ storeId, market: no }, cartId, "0566")).toEqual({ ok: true });

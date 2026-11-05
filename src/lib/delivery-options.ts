@@ -14,7 +14,7 @@ import { EUROPE, type CarrierId } from "./shipping-carriers";
 
 /**
  * The countries a carrier's checkout services cover, now: Posten / Bring's are for parcels within Norway (D134), PostNord's for its four countries,
- * Instabox's lockers in Sweden, Norway and Denmark, and UPS's, DHL Express's, DHL Paket's and nShift's anywhere in Europe (D457, D458).
+ * Instabox's lockers in Sweden, Norway and Denmark, and UPS's, DHL Express's, DHL Paket's and nShift's anywhere in Europe (D458, D459).
  */
 export const CHECKOUT_COUNTRIES: Partial<Record<CarrierId, string[]>> = {
   bring: ["NO"],
