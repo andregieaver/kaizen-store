@@ -11,8 +11,9 @@ import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
 import { isAdminLang } from "@/lib/admin-lang";
 import { isOfferedScheme } from "@/lib/admin-schemes";
+import { isAdminView } from "@/lib/admin-view";
 import { isColorChoice } from "@/lib/color-mode";
-import { audit, requireAccount, saveAdminLang, saveAdminScheme, saveColorMode } from "@/server/auth";
+import { audit, requireAccount, saveAdminLang, saveAdminScheme, saveAdminView, saveColorMode } from "@/server/auth";
 import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { endAccountGrants } from "@/server/oauth";
@@ -88,6 +89,15 @@ export async function colorModeAction(choice: unknown): Promise<void> {
 export async function adminSchemeAction(scheme: unknown): Promise<void> {
   const account = await requireAccount();
   if (isOfferedScheme(scheme) && scheme !== account.adminScheme) await saveAdminScheme(account.id, scheme);
+}
+
+/**
+ * Keeps how much of a store's admin the account is shown (D454); the page has switched already. A store's admin and Your account both
+ * call it; nothing is drawn again, as the navigation follows the choice in the browser.
+ */
+export async function adminViewAction(view: unknown): Promise<void> {
+  const account = await requireAccount();
+  if (isAdminView(view) && view !== account.adminView) await saveAdminView(account.id, view);
 }
 
 /** Keeps the account's language for the admin (D312 A0); the admin is drawn again in it. */

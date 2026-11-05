@@ -39,6 +39,20 @@ export const shellEn = {
     widenSidebar: "Widen the sidebar",
     narrow: "Narrow",
   },
+  /** Basic and Advanced (D454): how much of a store's navigation is shown. `{count}` is how many pages Basic leaves out. */
+  view: {
+    label: "How much the admin shows",
+    basic: "Basic",
+    advanced: "Advanced",
+    basicTitle: "Basic view: the pages you use every day",
+    advancedTitle: "Advanced view: every page and setting",
+    hintTitle: "You are in Basic view",
+    hint: "It shows the pages most owners use every day. Can't find what you're looking for? Switch to Advanced view to see every page and setting.",
+    more: "{count} more in Advanced view",
+    showAdvanced: "Switch to Advanced view",
+    showAdvancedShort: "Switch to Advanced",
+    accountHint: "Basic shows each store's everyday pages; Advanced shows every page and setting. Switch at any time from the top of a store's admin.",
+  },
   switcher: {
     goTo: "Go to",
     controlCenter: "Control center",

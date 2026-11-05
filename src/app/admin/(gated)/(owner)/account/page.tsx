@@ -5,6 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
 import { AppearanceField } from "@/components/admin/admin-colors";
 import { SchemeField } from "@/components/admin/admin-scheme";
+import { AdminViewProvider, AdminViewToggle } from "@/components/admin/admin-view";
 import { AdminLanguageField, AdminTextProvider } from "@/components/admin/admin-text";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
@@ -28,6 +29,7 @@ import {
   accountAvatarAction,
   adminLangAction,
   adminSchemeAction,
+  adminViewAction,
   colorModeAction,
   connectKaizenLifeAction,
   connectLifeAssistantAction,
@@ -49,6 +51,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   const lang = adminLangOf(account.adminLocale);
   const words = adminText(lang, "common").language;
   const w = adminText(lang, "bookings").account;
+  const vw = adminText(lang, "shell").view;
   const ow = adminText(lang, "oauth");
   const dateLocale = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const query = await searchParams;
@@ -119,6 +122,17 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
         <Link href="/admin/account/appearance" className="w-fit text-sm underline underline-offset-2">
           {w.allSchemes}
         </Link>
+      </section>
+
+      {/* Basic or Advanced (D454): the same choice as the switch at the top of a store's admin. */}
+      <section aria-labelledby="view-heading" className="flex max-w-md flex-col gap-3">
+        <h2 id="view-heading" className="text-title text-ink">
+          {vw.label}
+        </h2>
+        <p className="text-sm text-muted">{vw.accountHint}</p>
+        <AdminViewProvider saved={account.adminView ?? "basic"} save={adminViewAction}>
+          <AdminViewToggle />
+        </AdminViewProvider>
       </section>
 
       {owner && (

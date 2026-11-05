@@ -42,11 +42,11 @@ describe("the platform admin's sections (D144)", () => {
     for (const tab of platformTabs()) if (tab.href !== "/admin/platform") expect(known.has(tab.href), tab.href).toBe(true);
   });
 
-  it("names the pages of a sidebar under the platform's address, and marks only exact ones exact", () => {
+  it("names the pages of a sidebar under the platform's address, with their icons (D454), and marks only exact ones exact", () => {
     const links = withBase(PLAN_ITEMS);
-    expect(links[0]).toEqual({ href: "/admin/platform/plans", label: "Editor", exact: true });
-    expect(links[1]).toEqual({ href: "/admin/platform/plans/limits", label: "Limits" });
-    expect(links[2]).toEqual({ href: "/admin/platform/plans/features", label: "Features" });
+    expect(links[0]).toEqual({ href: "/admin/platform/plans", label: "Editor", icon: "credit-card", exact: true });
+    expect(links[1]).toEqual({ href: "/admin/platform/plans/limits", label: "Limits", icon: "gauge" });
+    expect(links[2]).toEqual({ href: "/admin/platform/plans/features", label: "Features", icon: "toggle" });
     expect(sectionPrefixes("/website", WEBSITE_ITEMS)[0]).toBe("/admin/platform/website");
     expect(sectionPrefixes(null, PLAN_ITEMS)[0]).toBe("/admin/platform/plans");
   });

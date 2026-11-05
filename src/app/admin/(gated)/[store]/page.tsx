@@ -7,6 +7,7 @@ import { AfterSaleNote } from "@/components/admin/after-sale-gate";
 import { BriefingOffer } from "@/components/admin/briefing-offer";
 import { StoreDraftsSection } from "@/components/admin/store-drafts-section";
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { BasicViewHint } from "@/components/admin/admin-view";
 import { DemoContentCard } from "@/components/admin/demo-content-card";
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { StaffAlertsFailed } from "@/components/admin/notifications/staff-alerts-failed";
@@ -197,6 +198,8 @@ export default async function AdminOverview({ params, searchParams }: Props) {
           </ol>
         </Card>
       )}
+      {/* Home has no sidebar to say it (D454): in the Basic view, where the rest of the admin is and the switch to it. */}
+      <BasicViewHint card />
     </div>
   );
 }

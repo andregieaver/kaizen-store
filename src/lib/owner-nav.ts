@@ -11,29 +11,30 @@ import { WORK_ROOT } from "./work-paths";
 
 export const OWNER_BASE = "/admin";
 
-export type OwnerItem = { path: string; label: string; description: string; exact?: boolean; owner?: boolean; holder?: boolean };
+/** A page of the Account section, with the icon drawn beside its label (D454). */
+export type OwnerItem = { path: string; label: string; description: string; icon: NavIconName; exact?: boolean; owner?: boolean; holder?: boolean };
 
 /** The Account section's pages, after `/admin`: the person's own first, then what concerns the stores they own. */
 export const ACCOUNT_ITEMS: OwnerItem[] = [
-  { path: "/account", label: "Your account", description: "Your name, picture, password, light or dark, and Kaizen Life.", exact: true },
-  { path: "/account/appearance", label: "Appearance", description: "Light or dark and the admin's colour scheme, with every scheme shown side by side." },
-  { path: "/account/notices", label: "AI manager notices", description: "What the AI manager finished or waits on while you were away, in every store.", owner: true },
-  { path: "/account/kaizen-support", label: "Kaizena Flow support", description: "Ask Kaizena Flow for help with your stores or your account, and read the answers." },
-  { path: "/account/domains", label: "Your domains", description: "Every domain you hold, which store uses it, renewal, DNS and moving it.", holder: true },
-  { path: "/account/billing", label: "Billing", description: "The plan of each store you own, what it costs and when it renews.", owner: true },
-  { path: "/account/usage", label: "AI usage", description: "What the AI used for the stores you own, with what it cost.", owner: true },
-  { path: "/account/limits", label: "Usage and limits", description: "What each store you own has used this month, against what its plan includes.", owner: true },
-  { path: "/account/referrals", label: "Referrals", description: "Your referral link, the stores that opened through it and your credit.", owner: true },
-  { path: "/account/themes", label: "Your themes", description: "The looks you shared as themes, their review, and how many stores use your themes." },
-  { path: "/account/connected", label: "Connected apps and assistants", description: "The AI assistants and apps you let work with your stores, and Disconnect." },
-  { path: "/account/developer", label: "Developer", description: "Developer mode and your apps for many stores: make one, its secrets, and how many stores installed it." },
-  { path: "/account/wordpress", label: "WordPress", description: "The WordPress plugin, and the sites connected to show your products.", owner: true },
+  { path: "/account", icon: "user", label: "Your account", description: "Your name, picture, password, light or dark, and Kaizen Life.", exact: true },
+  { path: "/account/appearance", icon: "palette", label: "Appearance", description: "Light or dark and the admin's colour scheme, with every scheme shown side by side." },
+  { path: "/account/notices", icon: "bell", label: "AI manager notices", description: "What the AI manager finished or waits on while you were away, in every store.", owner: true },
+  { path: "/account/kaizen-support", icon: "life-buoy", label: "Kaizena Flow support", description: "Ask Kaizena Flow for help with your stores or your account, and read the answers." },
+  { path: "/account/domains", icon: "globe", label: "Your domains", description: "Every domain you hold, which store uses it, renewal, DNS and moving it.", holder: true },
+  { path: "/account/billing", icon: "receipt-text", label: "Billing", description: "The plan of each store you own, what it costs and when it renews.", owner: true },
+  { path: "/account/usage", icon: "sparkles", label: "AI usage", description: "What the AI used for the stores you own, with what it cost.", owner: true },
+  { path: "/account/limits", icon: "gauge", label: "Usage and limits", description: "What each store you own has used this month, against what its plan includes.", owner: true },
+  { path: "/account/referrals", icon: "share", label: "Referrals", description: "Your referral link, the stores that opened through it and your credit.", owner: true },
+  { path: "/account/themes", icon: "paintbrush", label: "Your themes", description: "The looks you shared as themes, their review, and how many stores use your themes." },
+  { path: "/account/connected", icon: "plug", label: "Connected apps and assistants", description: "The AI assistants and apps you let work with your stores, and Disconnect." },
+  { path: "/account/developer", icon: "braces", label: "Developer", description: "Developer mode and your apps for many stores: make one, its secrets, and how many stores installed it." },
+  { path: "/account/wordpress", icon: "blocks", label: "WordPress", description: "The WordPress plugin, and the sites connected to show your products.", owner: true },
 ];
 
 /** Addresses inside the Account section besides its pages: Kaizen Life's sign-in return, deleting one's account (D377), and where the theme store's *Try it in your store* lands. */
 export const ACCOUNT_EXTRA = ["/account/kaizen-life", "/account/delete"];
 
-type Link = { href: string; label: string; exact?: boolean };
+type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName };
 /** Who the person is at this level: an owner of a store, someone with Work in a store, someone who may read a store's support inbox (D216). */
 export type OwnerWho = { owner: boolean; work: boolean; support?: boolean; domains?: boolean };
 
@@ -64,7 +65,7 @@ export function ownerAreas(who: OwnerWho): { prefixes: string[]; exact?: string[
     { prefixes: [WORK_ROOT], groups: [] },
     {
       prefixes: accountPaths(who).map((p) => `${OWNER_BASE}${p}`),
-      groups: who.owner || who.domains ? [{ heading: "Account", items: accountItems(who).map((i) => ({ href: `${OWNER_BASE}${i.path}`, label: i.label, ...(i.exact && { exact: true as const }) })) }] : [],
+      groups: who.owner || who.domains ? [{ heading: "Account", items: accountItems(who).map((i) => ({ href: `${OWNER_BASE}${i.path}`, label: i.label, icon: i.icon, ...(i.exact && { exact: true as const }) })) }] : [],
     },
   ];
 }

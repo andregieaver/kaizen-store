@@ -10,6 +10,7 @@ import { areaOfAction, type AuditChanges } from "@/lib/audit";
 import { isColorChoice, type ColorChoice } from "@/lib/color-mode";
 import { browserAdminLang, storedAdminLocale, type AdminLang } from "@/lib/admin-lang";
 import { adminScheme, isOfferedScheme } from "@/lib/admin-schemes";
+import { adminViewOf, type AdminView } from "@/lib/admin-view";
 import { signedInWithin } from "@/lib/fresh-sign-in";
 import { type PermissionHolder } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
@@ -37,6 +38,8 @@ export type Account = {
   adminScheme?: string;
   /** The admin's language for them (D312 A0): what `accounts.admin_locale` keeps (`en`, `nb-NO`), null until their first sign-in sets it. */
   adminLocale?: string | null;
+  /** How much of a store's admin they are shown (D454): `basic`, the default, or `advanced`. */
+  adminView?: AdminView;
   /** Where the session stands on two-step sign-in (wave 1, 1f): set by `getAccount()` and `getSessionAccount()`, absent on a hand-made account in a test. */
   assurance?: AccountAssurance;
 };
@@ -100,6 +103,7 @@ const toAccount = (row: Row): Account => ({
   colorMode: isColorChoice(row.color_mode) ? row.color_mode : "system",
   adminScheme: adminScheme(typeof row.admin_scheme === "string" ? row.admin_scheme : null).id,
   adminLocale: typeof row.admin_locale === "string" ? row.admin_locale : null,
+  adminView: adminViewOf(row.admin_view),
 });
 
 /** The kill switch (`ADMIN_TWO_STEP=off`) is read per call, so a test or a redeploy changes it at once. */
@@ -126,7 +130,7 @@ export const readSession = cache(async (): Promise<SessionFacts | null> => {
   const level = (data?.claims as { aal?: unknown } | undefined)?.aal === "aal2" ? "aal2" : "aal1";
 
   const [row] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale, two_step_since, two_step_reenrol_at from commerce.accounts
+    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale, admin_view, two_step_since, two_step_reenrol_at from commerce.accounts
     where auth_user_id = ${userId}::uuid and disabled_at is null
   `);
   if (!row) return null;
@@ -342,7 +346,7 @@ const loadMembership = cache(async (storeSlug: string): Promise<MembershipState>
  */
 export async function activeAccount(accountId: string): Promise<Account | null> {
   const [person] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale from commerce.accounts
+    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale, admin_view from commerce.accounts
     where id = ${accountId}::uuid and disabled_at is null
   `);
   return person ? toAccount(person) : null;
@@ -359,7 +363,7 @@ export async function passMembership(storeSlug: string, accountId: string): Prom
   const store = await getStore(storeSlug);
   if (!store) return null;
   const [person] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale from commerce.accounts
+    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale, admin_view from commerce.accounts
     where id = ${accountId}::uuid and disabled_at is null
   `);
   if (!person) return null;
@@ -432,7 +436,7 @@ export async function linkAccount(authUserId: string, email: string): Promise<Ac
      where lower(email) = lower(${email})
        and disabled_at is null
        and (auth_user_id is null or auth_user_id = ${authUserId}::uuid)
-    returning id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale
+    returning id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale, admin_view
   `);
   return row ? toAccount(row) : null;
 }
@@ -460,6 +464,11 @@ export async function setFirstAdminLang(accountId: string, acceptLanguage: strin
 export async function saveAdminScheme(accountId: string, scheme: string): Promise<void> {
   if (!isOfferedScheme(scheme)) return;
   await db().execute(sql`update commerce.accounts set admin_scheme = ${scheme} where id = ${accountId}::uuid`);
+}
+
+/** Keeps how much of a store's admin the account is shown (D454); only a view the admin has. */
+export async function saveAdminView(accountId: string, view: AdminView): Promise<void> {
+  await db().execute(sql`update commerce.accounts set admin_view = ${adminViewOf(view)} where id = ${accountId}::uuid`);
 }
 
 /** What an entry can say beyond its action and details (wave 1, 1f, docs/wave-1-trust.md 2.10): where it belongs, what it was done to, what changed. */

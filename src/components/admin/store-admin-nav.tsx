@@ -4,7 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { hiddenIn, shownIn } from "@/lib/admin-view";
+
 import { useAdminText } from "./admin-text";
+import { BasicViewHint, useAdminView } from "./admin-view";
 import { NavIcon, type NavIconName } from "./nav-icons";
 
 /**
@@ -25,6 +28,8 @@ export type NavItem = {
   also?: string[];
   /** Drawn at the foot of the rail rather than with the others (Settings, docs/admin-style.md 5.3). */
   foot?: boolean;
+  /** Left out of the Basic view (D454) unless it is the page being viewed. */
+  advanced?: boolean;
 };
 export type NavGroup = { heading: string; items: NavItem[] };
 
@@ -50,15 +55,20 @@ export function useAreaGroups(areas: NavArea[], fallback: NavGroup[]): NavGroup[
   return area ? area.groups : fallback;
 }
 
-/** The sidebar of the section being viewed; nothing, not even its room, where the section has none. */
+/**
+ * The sidebar of the section being viewed; nothing, not even its room, where the section has none. On a section's page of cards the cards
+ * say what Basic leaves out (D454), so the sidebar beside them does not say it again.
+ */
 export function AreaSidebar({ areas, fallback, label, railed = false }: { areas: NavArea[]; fallback: NavGroup[]; label: string; railed?: boolean }) {
   const groups = useAreaGroups(areas, fallback);
+  const pathname = usePathname();
+  const onHub = areas.some((a) => (a.exact ?? []).includes(pathname));
   if (groups.length === 0) return null;
   // Beside the rail there is no sticky header above it, so it keeps to the top of the screen.
   return (
     <aside className={`hidden w-52 shrink-0 lg:block ${railed ? "pt-2 pb-8" : "py-8"}`}>
       <div className={`sticky ${railed ? "top-6" : "top-32"}`}>
-        <StoreSidebar groups={groups} label={label} />
+        <StoreSidebar groups={groups} label={label} hint={!onHub} />
       </div>
     </aside>
   );
@@ -70,8 +80,11 @@ export function AreaSidebar({ areas, fallback, label, railed = false }: { areas:
  * has them on smaller screens.
  */
 export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallback: NavGroup[]; label: string }) {
-  const items = useAreaGroups(areas, fallback).flatMap((group) => group.items);
   const isCurrent = useIsCurrent();
+  const { view } = useAdminView();
+  const items = useAreaGroups(areas, fallback)
+    .flatMap((group) => group.items)
+    .filter((item) => shownIn(view, item, isCurrent(item)));
   if (items.length === 0) return null;
   return (
     <nav aria-label={label} className="hidden min-w-0 overflow-x-auto [scrollbar-width:none] lg:block [&::-webkit-scrollbar]:hidden">
@@ -83,6 +96,7 @@ export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallba
               aria-current={isCurrent(item) ? "page" : undefined}
               className="flex h-9 items-center rounded-pill px-3 text-body text-ink-2 hover:bg-card hover:text-ink aria-[current=page]:bg-card aria-[current=page]:text-body-strong aria-[current=page]:text-ink"
             >
+              {item.icon && <NavIcon name={item.icon} className="mr-1.5 size-4" />}
               {item.label}
               <Badge count={item.badge} />
             </Link>
@@ -139,12 +153,22 @@ function Badge({ count }: { count?: number }) {
   );
 }
 
-/** The store's settings in groups, each under its heading. */
-export function StoreSidebar({ groups, label }: { groups: NavGroup[]; label: string }) {
+/**
+ * The store's settings in groups, each under its heading. In the Basic view (D454) the links marked `advanced` are left out, but for the
+ * page being viewed; a group with none left is not drawn, and the foot says how many more Advanced has, with the switch to it.
+ */
+export function StoreSidebar({ groups, label, hint = true }: { groups: NavGroup[]; label: string; hint?: boolean }) {
   const isCurrent = useIsCurrent();
+  const { view } = useAdminView();
+  const shown = groups.map((group) => ({ ...group, items: group.items.filter((item) => shownIn(view, item, isCurrent(item))) })).filter((group) => group.items.length > 0);
+  const hidden = hiddenIn(
+    view,
+    groups.flatMap((group) => group.items),
+    isCurrent,
+  );
   return (
     <nav aria-label={label} className="flex flex-col gap-6">
-      {groups.map((group) => (
+      {shown.map((group) => (
         <div key={group.heading}>
           <h2 className="mb-1 px-3 text-xs tracking-wide text-muted uppercase text-title text-ink">{group.heading}</h2>
           <ul className="flex flex-col gap-0.5">
@@ -155,7 +179,7 @@ export function StoreSidebar({ groups, label }: { groups: NavGroup[]; label: str
                   aria-current={isCurrent(item) ? "page" : undefined}
                   className="flex min-h-10 items-center rounded-pill px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium"
                 >
-                  {item.icon && <NavIcon name={item.icon} className="mr-2 size-4" />}
+                  {item.icon && <NavIcon name={item.icon} className="mr-2 size-4 text-ink-2" />}
                   {item.label}
                   <Badge count={item.badge} />
                 </Link>
@@ -164,6 +188,7 @@ export function StoreSidebar({ groups, label }: { groups: NavGroup[]; label: str
           </ul>
         </div>
       ))}
+      {hint && hidden > 0 && <BasicViewHint hidden={hidden} />}
     </nav>
   );
 }

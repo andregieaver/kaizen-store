@@ -4649,6 +4649,13 @@
       "when": 1793838667324,
       "tag": "20261105003107_accounting_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 664,
+      "version": "7",
+      "when": 1793860772392,
+      "tag": "20261105063932_admin_view",
+      "breakpoints": true
     }
   ]
 }

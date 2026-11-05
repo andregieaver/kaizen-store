@@ -5,7 +5,11 @@ import { describe, expect, it } from "vitest";
 import { ADMIN_PAGES } from "./admin-map";
 import { ROLE_TEMPLATES, canOpenPath, type PermissionHolder } from "./permissions";
 import { AFTER_SALE_ADMIN_PATHS, FEATURE_IDS, isAfterSaleAdminPath, type FeatureRequirement } from "./store-features";
-import { HOME_PATHS, STORE_SECTIONS, sectionOf, sectionPaths, storeAreas, storeSections, storeTabs } from "./store-nav";
+import { NAV_ICON_NAMES } from "@/components/admin/nav-icons";
+
+import { ACCOUNT_ITEMS } from "./owner-nav";
+import { PLAN_ITEMS, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS } from "./platform-nav";
+import { HOME_PATHS, STORE_SECTIONS, advancedIn, sectionOf, sectionPaths, storeAreas, storeSections, storeTabs } from "./store-nav";
 
 const ROOT = "src/app/admin/(gated)/[store]";
 const ALL = { features: [...FEATURE_IDS] };
@@ -227,5 +231,59 @@ describe("what a member's navigation offers (wave 1, 1f)", () => {
     expect(settings.groups.find((g) => g.heading === "Selling")!.items.map((i) => i.path)).toContain("/settings/legal");
     expect(settings.groups.find((g) => g.heading === "Site")!.items.map((i) => i.path)).toContain("/settings/accessibility");
     expect(settings.groups.find((g) => g.heading === "Account")!.items.map((i) => i.path)).toEqual(["/billing", "/staff", "/activity"]);
+  });
+});
+
+describe("the pages' icons and the Basic view (D454)", () => {
+  it("gives every page of every level an icon the admin draws", () => {
+    const names = new Set<string>(NAV_ICON_NAMES);
+    for (const section of STORE_SECTIONS) expect(names.has(section.icon), section.key).toBe(true);
+    for (const page of [...items, ...ACCOUNT_ITEMS, ...WEBSITE_ITEMS, ...PLAN_ITEMS, ...SUPPORT_ITEMS, ...SETTINGS_ITEMS]) expect(names.has(page.icon), page.path).toBe(true);
+  });
+
+  it("keeps Basic to each section's everyday pages: some in every section, and fewer than half in all", () => {
+    let basic = 0;
+    for (const section of STORE_SECTIONS) {
+      const shown = section.groups.flatMap((g) => g.items).filter((i) => !advancedIn(section, i));
+      expect(shown.length, section.key).toBeGreaterThan(0);
+      expect(shown.length, section.key).toBeLessThanOrEqual(12);
+      basic += shown.length;
+    }
+    expect(basic).toBeLessThan(items.length / 2);
+    const settings = STORE_SECTIONS.find((s) => s.key === "settings")!;
+    expect(settings.groups.flatMap((g) => g.items).filter((i) => i.basic).map((i) => i.label)).toEqual([
+      "Company",
+      "Domains",
+      "Countries",
+      "Features",
+      "Payments",
+      "Shipping",
+      "Legal pages",
+      "Tax",
+      "Header and footer",
+      "Billing",
+      "Team",
+    ]);
+  });
+
+  it("never leaves out of Basic the page a section's tab leads to, whatever the store has on", () => {
+    for (const flags of [ALL, NONE, { features: [] }]) {
+      const areas = storeAreas("/admin/s", flags);
+      for (const section of storeSections(flags).filter((s) => !s.hub)) {
+        const links = areas.flatMap((a) => a.groups.flatMap((g) => g.items));
+        const start = links.find((l) => l.href === `/admin/s${section.start}`);
+        expect(start, `${section.key} ${flags.features.join(",")}`).toBeDefined();
+        expect(start!.advanced, section.key).toBeUndefined();
+      }
+    }
+  });
+
+  it("marks in the sidebar the links Basic leaves out, each with its icon", () => {
+    const settings = storeAreas("/admin/s", ALL).find((a) => a.exact?.includes("/admin/s/settings"))!;
+    const links = settings.groups.flatMap((g) => g.items);
+    expect(links.find((l) => l.label === "Payments")).toMatchObject({ icon: "credit-card" });
+    expect(links.find((l) => l.label === "Payments")!.advanced).toBeUndefined();
+    expect(links.find((l) => l.label === "Checkout rules")).toMatchObject({ icon: "list-filter", advanced: true });
+    for (const link of links) expect(link.icon, link.label).toBeDefined();
   });
 });

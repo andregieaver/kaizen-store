@@ -124,6 +124,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 
 - The admin's three levels (D107, `docs/admin-navigation.md`)
 - The admin's look (D149, D217–D232, `src/app/admin/admin.css`, `docs/admin-style.md`)
+- Basic and Advanced views (D454, `src/lib/admin-view.ts`, `docs/audits/admin-usability-2026-11.md`)
 - `/admin` has its own root layout
 - `/admin` lists the account's stores; `/admin/{store}/…` is one store
 - Sign-up and setup (`docs/platform.md`)
