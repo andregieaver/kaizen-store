@@ -14,6 +14,9 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 import { workWords } from "@/server/work-words";
 import { workText } from "@/lib/work-text";
+import { TripletexAccountingCard } from "@/components/admin/tripletex-panel";
+import { adminLangOf } from "@/lib/admin-lang";
+import { getTripletexConnection, tripletexAttention } from "@/server/tripletex";
 
 export const metadata: Metadata = { title: "Work settings" };
 
@@ -32,10 +35,12 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
   const off = (await workWords()).w.off;
   if (!store.workOn) return <WorkOff storeSlug={store.slug} title={off.titles.worksettings} words={off} />;
   const owner = memberCan(viewer, "owner");
-  const [settings, series, seller] = await Promise.all([
+  const [settings, series, seller, tripletex, attention] = await Promise.all([
     getWorkSettings(store.id),
     getWorkSeries(store.id),
     sellerDetails(store.id),
+    getTripletexConnection(store.id),
+    tripletexAttention(store.id),
   ]);
   const readiness = sellerReadiness(seller);
   const base = `/admin/${store.slug}`;
@@ -76,6 +81,9 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
           </ul>
         )}
       </section>
+
+      {/* Tripletex (D453): where the invoices go once issued, and the way to set it up or see how it goes. */}
+      <TripletexAccountingCard lang={adminLangOf(viewer.account.adminLocale)} storeSlug={store.slug} connection={tripletex} needYou={attention?.waiting ?? 0} />
 
       <section aria-labelledby="seller-heading" className={card}>
         <h2 id="seller-heading" className="mb-1 text-title text-ink">

@@ -14,6 +14,7 @@ import { getSetupProgress } from "./setup";
 import { onHandActive } from "./stock-sql";
 import type { Store } from "./stores";
 import { taxCheckupFindings } from "./tax-profile";
+import { tripletexAttention } from "./tripletex";
 
 type Row = Record<string, unknown>;
 
@@ -43,13 +44,16 @@ export const CHECKUP_KEYS = [
   "drafts",
   "payments_test",
   "integration",
+  // Tripletex (D453): documents that wait for the owner, and a token Tripletex no longer takes.
+  "accounting",
+  "accounting_token",
 ] as const;
 export type CheckupKey = (typeof CHECKUP_KEYS)[number];
 
 export type CheckupFinding = { key: CheckupKey; count: number; what: string; page: string };
 
 export async function checkupFindings(store: Store, accountId: string): Promise<CheckupFinding[]> {
-  const [[counts], [low], progress, integrations, restock, numbering, taxFindings, documentFindings, ledger, levels] = await Promise.all([
+  const [[counts], [low], progress, integrations, restock, numbering, taxFindings, documentFindings, ledger, levels, tripletex] = await Promise.all([
     db().execute<Row>(sql`
       select
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
@@ -83,6 +87,7 @@ export async function checkupFindings(store: Store, accountId: string): Promise<
     invoiceCheckupFindings(store.id),
     ledgerProblems(store.id),
     inventoryCounts(store.id),
+    tripletexAttention(store.id),
   ]);
   const findings: CheckupFinding[] = [];
   const add = (when: boolean, key: CheckupKey, count: number, what: string, page: string) => when && findings.push({ key, count, what, page });
@@ -108,6 +113,9 @@ export async function checkupFindings(store: Store, accountId: string): Promise<
   add(Number(counts.drafts) > 0, "drafts", Number(counts.drafts), `${counts.drafts} product(s) are drafts, not on the site.`, "/products");
   add(store.paymentsTest && store.paymentsOn, "payments_test", 1, "Payments are in test mode: shoppers cannot really pay yet.", "/settings/payments");
   for (const i of integrations) add(i.enabled && i.recentFailures > 0, "integration", i.recentFailures, `${i.provider} failed ${i.recentFailures} send(s) this week.`, `/integrations/${i.provider}`);
+  // Tripletex (D453): the token refused, or documents that wait for the owner; the page says why each one waits and what to do.
+  add(tripletex?.tokenRefused === true, "accounting_token", 1, "Tripletex stopped accepting the token: nothing is sent until a new one is pasted on the Tripletex page.", "/integrations/tripletex");
+  add((tripletex?.waiting ?? 0) > 0, "accounting", tripletex?.waiting ?? 0, `${tripletex?.waiting ?? 0} invoice(s) or credit note(s) wait for you before they can go to Tripletex.`, "/integrations/tripletex");
   return findings;
 }
 

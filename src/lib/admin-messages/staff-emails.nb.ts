@@ -143,6 +143,8 @@ export const staffEmailsNb: StaffEmailsMessages = {
         drafts: { one: "{n} produkt er et utkast, ikke på nettstedet.", many: "{n} produkter er utkast, ikke på nettstedet." },
         payments_test: { one: "Betalinger er i testmodus: kundene kan ikke betale på ordentlig ennå.", many: "Betalinger er i testmodus: kundene kan ikke betale på ordentlig ennå." },
         integration: { one: "En integrasjon feilet {n} sending denne uken.", many: "En integrasjon feilet {n} sendinger denne uken." },
+        accounting: { one: "{n} faktura eller kreditnota venter på deg før den kan gå til Tripletex.", many: "{n} fakturaer og kreditnotaer venter på deg før de kan gå til Tripletex." },
+        accounting_token: { one: "Tripletex sluttet å godta nøkkelen: ingenting sendes før en ny er limt inn.", many: "Tripletex sluttet å godta nøkkelen: ingenting sendes før en ny er limt inn." },
       },
     },
     analyticsAlerts: {
@@ -187,6 +189,14 @@ export const staffEmailsNb: StaffEmailsMessages = {
       heading: "En betaling på kreditt er forfalt",
       text: "{amount} for bestilling {order} forfalt {due} og er ikke registrert som betalt. Kunden har fått et varsel. Når pengene kommer utenom Kaizena Flow, registrerer du betalingen på bestillingen.",
       button: "Åpne bestillingen",
+    },
+    accounting: {
+      subject: "{store}: Tripletex trenger deg",
+      tokenHeading: "Tripletex sluttet å godta nøkkelen",
+      tokenText: "Ingenting sendes til Tripletex før en ny nøkkel er limt inn. Lag en i Tripletex og lim den inn på Tripletex-siden; alt som ventet, sendes da.",
+      waitingHeading: { one: "{n} dokument kunne ikke gå til Tripletex", many: "{n} dokumenter kunne ikke gå til Tripletex" },
+      waitingText: "Hvert av dem sier hvorfor på Tripletex-siden, med hva du skal gjøre. De venter der til du trykker Prøv igjen.",
+      button: "Åpne Tripletex",
     },
     lowStock: {
       line: "{stock} igjen, grense {level}",

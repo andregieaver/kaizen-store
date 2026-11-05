@@ -20,6 +20,9 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 import { workWords } from "@/server/work-words";
 import { workText } from "@/lib/work-text";
+import { TripletexDocumentsPanel } from "@/components/admin/tripletex-panel";
+import { adminLangOf } from "@/lib/admin-lang";
+import { getTripletexConnection, tripletexDocuments } from "@/server/tripletex";
 
 export const metadata: Metadata = { title: "Invoice" };
 
@@ -70,6 +73,13 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
 
   if (invoice.status !== "draft") {
     const homeCurrency = invoice.vatHomeMinor !== null ? await countryCurrency(detail.seller?.country ?? null) : null;
+    // Tripletex (D453): the invoice and its credit notes as they stand there, for a store that is connected.
+    const tripletex = await getTripletexConnection(store.id);
+    const booked = [
+      ...(invoice.documentNumber ? [{ kind: "work_invoice" as const, localId: invoice.id, number: invoice.documentNumber }] : []),
+      ...detail.creditNotes.map((note) => ({ kind: "work_credit_note" as const, localId: note.id, number: note.documentNumber })),
+    ];
+    const inTripletex = tripletex ? await tripletexDocuments(store.id, booked) : null;
     return (
       <div className="flex flex-col gap-6">
         {header}
@@ -81,6 +91,9 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
           isOwner={memberCan(viewer, "owner")}
           homeCurrency={homeCurrency}
         />
+        {inTripletex && !invoice.imported && (
+          <TripletexDocumentsPanel lang={adminLangOf(viewer.account.adminLocale)} storeSlug={store.slug} documents={booked} states={inTripletex} owner={memberCan(viewer, "owner")} />
+        )}
       </div>
     );
   }

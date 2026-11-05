@@ -18,7 +18,7 @@ const BASELINE = join(ROOT, "src/lib/admin-strings.baseline.json");
 const DIRS = ["src/app/admin", "src/components/admin"];
 
 /** Words the same in every language. */
-const NAMES = new Set(["Kaizena Flow", "Kaizen Life", "Stripe", "Mollie", "Google", "Slack", "WordPress", "Shopify", "CSV", "PDF", "SKU", "URL"]);
+const NAMES = new Set(["Kaizena Flow", "Kaizen Life", "Stripe", "Mollie", "Google", "Slack", "WordPress", "Shopify", "Tripletex", "CSV", "PDF", "SKU", "URL"]);
 
 /** Text between tags; a `>` of an arrow (`=> Promise<…>`) closes no tag. */
 const JSX_TEXT = /(?<!=)>\s*([^<>{}]*[A-Za-z]{2,}[^<>{}]*?)\s*</g;

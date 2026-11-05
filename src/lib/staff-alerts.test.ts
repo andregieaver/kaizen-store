@@ -25,7 +25,7 @@ const defaults = (hasContact: boolean): AlertChoices => ({ configuredAt: null, r
 
 describe("the events and what each needs (4.7)", () => {
   it("pins the events and their keys", () => {
-    expect(STAFF_ALERT_EVENTS).toEqual(["new_order", "return_requested", "refund_overdue", "low_stock", "summary", "automation", "dispute", "payment_overdue", "analytics"]);
+    expect(STAFF_ALERT_EVENTS).toEqual(["new_order", "return_requested", "refund_overdue", "low_stock", "summary", "automation", "dispute", "payment_overdue", "analytics", "accounting"]);
     expect(ALERT_NEEDS).toEqual({
       new_order: "orders:read",
       return_requested: "orders:read",
@@ -36,6 +36,7 @@ describe("the events and what each needs (4.7)", () => {
       dispute: "orders:read",
       payment_overdue: "orders:read",
       analytics: "analytics:read",
+      accounting: "settings:read",
     });
     for (const key of Object.values(ALERT_NEEDS)) expect(PERMISSION_KEYS).toContain(key);
   });
@@ -50,9 +51,9 @@ describe("the events and what each needs (4.7)", () => {
 });
 
 describe("defaults (today's behaviour until the owner saves)", () => {
-  it("sends owners new orders, returns requested, low stock, disputes (D288) and overdue payments (D293), and refunds overdue to the contact address", () => {
+  it("sends owners new orders, returns requested, low stock, disputes (D288), overdue payments (D293) and what waits in Tripletex (D453), and refunds overdue to the contact address", () => {
     const d = defaultRecipients([owner, packer], true);
-    expect([...d.accounts]).toEqual([["owner-1", ["new_order", "return_requested", "low_stock", "dispute", "payment_overdue"]]]);
+    expect([...d.accounts]).toEqual([["owner-1", ["new_order", "return_requested", "low_stock", "dispute", "payment_overdue", "accounting"]]]);
     expect(d.contact).toEqual(["refund_overdue"]);
   });
 

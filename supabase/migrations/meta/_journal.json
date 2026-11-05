@@ -4628,6 +4628,27 @@
       "when": 1793818279897,
       "tag": "20261104185119_woocommerce_seo_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 661,
+      "version": "7",
+      "when": 1793833660511,
+      "tag": "20261104230740_tripletex",
+      "breakpoints": true
+    },
+    {
+      "idx": 662,
+      "version": "7",
+      "when": 1793837536629,
+      "tag": "20261105001216_tripletex_attachments",
+      "breakpoints": true
+    },
+    {
+      "idx": 663,
+      "version": "7",
+      "when": 1793838667324,
+      "tag": "20261105003107_accounting_alerts",
+      "breakpoints": true
     }
   ]
 }
