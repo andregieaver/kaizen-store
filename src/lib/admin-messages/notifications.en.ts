@@ -431,6 +431,7 @@ export const notificationsEn = {
         no_consumer_token: FAILURE_WORDS.no_consumer_token,
         taken: "This Tripletex company is already connected to another of your stores. Disconnect it there first, or use this store's own company.",
         no_read_access: "The token may not read the accounts in Tripletex. Make it again with all rights (or access to accounting and customers), then paste the new one.",
+        other_system: "This store sends its books to Fiken. Disconnect Fiken first: a store keeps its books in one system.",
         failure: "Tripletex could not be reached. Try again in a moment.",
       },
       connectedTo: "Connected to {company}",

@@ -8,10 +8,10 @@ import { todayIn } from "@/lib/analytics-period";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { norwegianOrgNumber, readPastedToken, tokenHint, type TripletexMode, type TripletexTokenKind } from "@/lib/tripletex";
 import { type TripletexFailure } from "@/lib/tripletex-errors";
-import { shopKey, workLineKey } from "@/lib/tripletex-map";
-import { BOOKING_KEYS, defaultSettings, readSettings, type BookingKey, type TripletexSettings } from "@/lib/tripletex-settings";
+import { BOOKING_KEYS, defaultSettings, readSettings, type TripletexSettings } from "@/lib/tripletex-settings";
 import { checkSettings, planSetup, type Chart, type ChartAccount, type ChartVatType, type SettingsProblem, type SetupPlan } from "@/lib/tripletex-setup";
 
+import { neededKeys, storeOrgNumber } from "./accounting-documents";
 import { audit } from "./auth";
 import { log } from "./log";
 import { encryptionKey } from "./settings";
@@ -24,6 +24,8 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * token encrypted with a plan of where everything is booked (`planSetup()`); Start sends from that day on; Pause, Disconnect.
  * The token is decrypted only by `tripletexCredential()`, for the sync and the page's own actions, and never returned to a page.
  */
+
+export { neededKeys, storeOrgNumber } from "./accounting-documents";
 
 export type ConnectionState = "setup" | "on" | "paused" | "auth_failed";
 
@@ -115,36 +117,6 @@ export async function readChart(session: TripletexSession): Promise<{ ok: true; 
   };
 }
 
-/**
- * The buckets this store's documents of the last year fell in, so the setup asks only about those: Work's lines by category
- * and rate, the shop's by basis and rate (a gift card apart). With none yet, sales at 25 %.
- */
-export async function neededKeys(storeId: string): Promise<BookingKey[]> {
-  const work = await typedRows(
-    z.object({ vat_category: col.text, vat_rate: col.text }),
-    sql`select distinct l.vat_category, l.vat_rate::text as vat_rate
-          from commerce.work_invoice_lines l
-          join commerce.work_invoices i on i.store_id = l.store_id and i.id = l.invoice_id
-         where l.store_id = ${storeId}::uuid and i.status <> 'draft' and i.issued_on >= current_date - 365`,
-  );
-  const shop = await typedRows(
-    z.object({ basis: col.text, rate: col.text, voucher: col.bool }),
-    sql`select distinct line ->> 'basis' as basis, coalesce(line ->> 'vatRate', '0') as rate, coalesce((line ->> 'voucher')::boolean, false) as voucher
-          from commerce.invoices i, jsonb_array_elements(i.snapshot -> 'lines') as line
-         where i.store_id = ${storeId}::uuid and i.issued_on >= current_date - 365`,
-  );
-  const keys = new Set<BookingKey>();
-  for (const w of work) {
-    const key = workLineKey(w.vat_category, w.vat_rate);
-    if (key) keys.add(key);
-  }
-  for (const s of shop) {
-    const key = shopKey(s.basis, Number(s.rate), s.voucher);
-    if (key) keys.add(key);
-  }
-  if (keys.size === 0) keys.add("standard_25");
-  return BOOKING_KEYS.filter((k) => keys.has(k));
-}
 
 /** The settings a plan gives: Norway's defaults, with the plan's choices, and every bucket it could place. */
 function settingsOfPlan(plan: SetupPlan, sources: TripletexSettings["sources"]): TripletexSettings {
@@ -155,11 +127,6 @@ function settingsOfPlan(plan: SetupPlan, sources: TripletexSettings["sources"]):
 // Connect, Start, Pause, Disconnect
 // ---------------------------------------------------------------------------------------------------------------------
 
-/** The store's own organisation number (Settings → Your business), to compare with the Tripletex company's. */
-export async function storeOrgNumber(storeId: string): Promise<string | null> {
-  const row = await typedRow(z.object({ organisation_number: col.textOrNull }), sql`select organisation_number from commerce.stores where id = ${storeId}::uuid`);
-  return row?.organisation_number ?? null;
-}
 
 export type ConnectResult =
   | {
@@ -176,9 +143,9 @@ export type ConnectResult =
 /**
  * Why a connect did not happen, for the page to say in the owner's language: nothing pasted, not a token, no key to keep it, Tripletex
  * refused it, an employee token while Tripletex has not approved Kaizena Flow, the company is another store's, the token may not read
- * the accounts, or another failure (its `failureKey`).
+ * the accounts, the store keeps its books in Fiken (D460), or another failure (its `failureKey`).
  */
-export type ConnectProblem = "empty" | "not_a_token" | "no_key" | "refused" | "no_consumer_token" | "taken" | "no_read_access" | "failure";
+export type ConnectProblem = "empty" | "not_a_token" | "no_key" | "refused" | "no_consumer_token" | "taken" | "no_read_access" | "other_system" | "failure";
 
 /**
  * Connects the store to the Tripletex company the token opens: tries the token, reads the company and its chart, plans the
@@ -192,6 +159,9 @@ export async function connectTripletex(accountId: string, storeId: string, paste
   if (!token.ok) return { ok: false, problem: token.problem };
   const key = encryptionKey();
   if (!key) return { ok: false, problem: "no_key" };
+  // A store keeps its books in one system (D460): Fiken is disconnected first.
+  const fiken = await typedRow(z.object({ one: col.int }), sql`select 1 as one from commerce.fiken_connections where store_id = ${store.id}::uuid`);
+  if (fiken) return { ok: false, problem: "other_system" };
 
   let credential: TripletexCredential = { kind: token.kind, mode: token.mode, token: token.token };
   let opened = await openSession(credential, deps);

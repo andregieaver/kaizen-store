@@ -213,6 +213,27 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`src/server/tripletex-test-support.ts`), which must answer as Tripletex's spec does and never refuses a repeated external number;
   nothing in CI calls Tripletex.
 
+## Fiken (D460, `docs/fiken.md`, `src/lib/fiken*.ts`, `src/server/fiken.ts`, `src/server/fiken-client.ts`, `src/server/fiken-sync.ts`)
+
+- **Fiken (D460, `docs/fiken.md`, `src/lib/fiken*.ts`, `src/server/fiken.ts`, `src/server/fiken-client.ts`, `src/server/fiken-sync.ts`)**: Tripletex's
+  engine with Fiken's own way in. What both share is shared, never copied: documents are read only through `src/lib/accounting-docs.ts` and
+  `src/server/accounting-documents.ts`, a store's system and what needs a person there through `src/server/accounting.ts`, and the alert is
+  `sendAccountingAlert(…, system)`; a third system goes through the same. A store keeps its books in one system: Fiken and Tripletex each refuse
+  to connect while the other is. Fiken is connected only through OAuth2 with PKCE (never a pasted token: Fiken's terms forbid personal API
+  tokens in a third-party app): `startFikenConnect()` seals the nonce, store, account and verifier into the state cookie, and
+  `finishFikenConnect()` checks it and the owner signed in now before the code is spent. `commerce.fiken_connections` is written only by
+  `src/server/fiken.ts` (the owner's alone, each change audited `integration.fiken_*` without a token); its tokens are decrypted only by
+  `fikenAccess()`, which refreshes under the row's lock and stops the connection on a refused refresh; Disconnect revokes the grant at Fiken.
+  Fiken is called only through `fikenApi()` (`src/server/fiken-client.ts`): `FIKEN_API` and a path that is a constant of the code or Fiken's
+  own ids, a timeout, no redirect, no cache, one call at a time a quarter of a second apart; an answer is JSON with its `Location`, or a
+  `FikenFailure` (`classifyFikenFailure()`). A document becomes a sale only through `saleBody()` (`src/lib/fiken-map.ts`): Annet salg,
+  `external_invoice`, its own number as `saleNumber`, each line's net and VAT as the document charged them, a credit note's lines negative;
+  a sale is never made without first asking Fiken for one with its number (`sameSale()` adopts it, another waits as `number_taken`).
+  `commerce.fiken_sync` is written only by `src/server/fiken-sync.ts` and Disconnect, on the rules of `tripletex_sync`. Every owner-facing word
+  is the server-only area `fiken` (`failures` keyed as `FIKEN_FAILURE_WORDS`, `blocks` as `FIKEN_BLOCK_WORDS`), never Fiken's raw answer but
+  its words clipped and shown as what Fiken said. Tests run against `fakeFiken()` (`src/server/fiken-test-support.ts`), which answers as
+  Fiken's spec does and never refuses a repeated sale number; nothing in CI calls Fiken.
+
 ## Kaizen Life (D95, `src/server/kaizen-life.ts`)
 
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is

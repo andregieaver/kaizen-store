@@ -551,6 +551,7 @@ export const notificationsNb: NotificationsMessages = {
         ],
       },
       tripletex: { summary: "Fakturaene og kreditnotaene dine rett inn i regnskapet.", steps: [] },
+      fiken: { summary: "Fakturaene og kreditnotaene dine rett inn i Fiken.", steps: [] },
     },
     events: {
       "order.paid": { label: "Bestilling betalt", hint: "En kunde betalte, eller et abonnement ble fornyet." },
@@ -659,6 +660,7 @@ export const notificationsNb: NotificationsMessages = {
         no_consumer_token: "Denne nøkkelen er laget for Kaizena Flow-appen, som Tripletex ikke har godkjent ennå. Lag en API-nøkkel under Selskap → API-nøkler i Tripletex i stedet, og lim inn den.",
         taken: "Dette Tripletex-selskapet er allerede koblet til en annen av butikkene dine. Koble det fra der først, eller bruk denne butikkens eget selskap.",
         no_read_access: "Nøkkelen får ikke lese kontoene i Tripletex. Lag den på nytt med alle rettigheter (eller tilgang til regnskap og kunder), og lim inn den nye.",
+        other_system: "Denne butikken sender regnskapet til Fiken. Koble fra Fiken først: en butikk fører regnskapet i ett system.",
         failure: "Fikk ikke kontakt med Tripletex. Prøv igjen om litt.",
       },
       connectedTo: "Koblet til {company}",
