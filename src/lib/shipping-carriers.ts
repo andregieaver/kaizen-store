@@ -15,9 +15,22 @@ import { crossesBorder, HS_CODE } from "./duties";
  * Pure types, checks and texts, shared by the browser and the server, which checks everything again.
  */
 
-export type CarrierId = "bring" | "postnord" | "porterbuddy" | "helthjem";
-export const CARRIER_IDS: CarrierId[] = ["bring", "postnord", "porterbuddy", "helthjem"];
+export type CarrierId = "bring" | "postnord" | "porterbuddy" | "helthjem" | "instabox" | "dhl" | "ups";
+export const CARRIER_IDS: CarrierId[] = ["bring", "postnord", "porterbuddy", "helthjem", "instabox", "dhl", "ups"];
 export const isCarrierId = (value: string): value is CarrierId => (CARRIER_IDS as string[]).includes(value);
+
+/**
+ * The carriers whose parcels Kaizena Flow follows (D238): every carrier with a tracking call. Instabox is left out: Instabee's API reads an order by
+ * its own order id, not by the parcel number a shipment keeps, so its parcels are followed on Instabox's own tracking page (the shipment's link).
+ */
+export const FOLLOWED_CARRIERS: CarrierId[] = CARRIER_IDS.filter((id) => id !== "instabox");
+export const isFollowedCarrier = (value: string): value is CarrierId => (FOLLOWED_CARRIERS as string[]).includes(value);
+
+/** The countries a carrier that ships from anywhere in Europe delivers in (UPS, DHL Express, D457): the EU, the EEA, Switzerland and the UK. */
+export const EUROPE: string[] = [
+  "AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU", "LV", "MT", "NL",
+  "NO", "PL", "PT", "RO", "SE", "SI", "SK",
+];
 
 /** What a connection will do for the store, from the shopper's checkout to the parcel on its way. */
 export type CarrierFeature = "rates" | "pickup_points" | "labels" | "tracking" | "time_windows" | "same_day" | "return_labels";
@@ -40,6 +53,8 @@ export type CarrierField = {
   required: boolean;
   help?: string;
   placeholder?: string;
+  /** A country code (ISO 3166-1 alpha-2): written in capitals and refused when it is not two letters. */
+  format?: "country";
 };
 
 export type CarrierInfo = {
@@ -161,6 +176,79 @@ export const CARRIERS: CarrierInfo[] = [
       "Use the test environment until Helthjem has approved your setup. Helthjem does not give prices through its API: you enter what you charge for each service at checkout.",
     ],
   },
+  {
+    id: "instabox",
+    name: "Instabox",
+    summary: "Parcel lockers in Sweden, Norway and Denmark, open around the clock: the shopper chooses one at checkout and gets a code to open it.",
+    countries: ["SE", "NO", "DK"],
+    features: ["rates", "pickup_points", "labels", "tracking"],
+    available: ["rates", "pickup_points", "labels", "tracking"],
+    fields: [
+      { key: "apiKey", label: "API key", secret: true, required: true, help: "From your implementation manager at Instabee, for the Instabee API." },
+      { key: "collectionPointId", label: "Warehouse id", secret: false, required: false, help: "Only when you send from more than one place: the id Instabee gave the warehouse this store sends from." },
+    ],
+    docs: "https://docs.integration.instabee.com",
+    steps: [
+      "Have an agreement with Instabee for Instabox lockers: apply at instabee.com.",
+      "Ask your implementation manager for an API key for the Instabee API, one for the sandbox and one for live.",
+      "Copy the key to the form. Instabee already knows the address your parcels are collected from.",
+      "Use the test environment until Instabee has approved your setup. You enter what you charge for a locker delivery at checkout.",
+    ],
+  },
+  {
+    id: "dhl",
+    name: "DHL Express",
+    summary: "Express parcels across Europe and the world on your DHL Express account, with prices, labels with customs papers, and tracking.",
+    countries: EUROPE,
+    features: ["rates", "labels", "tracking"],
+    available: ["rates", "labels", "tracking"],
+    fields: [
+      { key: "apiKey", label: "API key", secret: true, required: true, help: "The MyDHL API key (user name) DHL gave you." },
+      { key: "apiSecret", label: "API secret", secret: true, required: true },
+      { key: "accountNumber", label: "DHL Express account number", secret: false, required: true, help: "Your nine-digit DHL Express account (shipper) number.", placeholder: "123456789" },
+      { key: "senderName", label: "Sender name", secret: false, required: true, help: "Printed on the label: your business or shop." },
+      { key: "senderStreet", label: "Sender street address", secret: false, required: true },
+      { key: "senderPostalCode", label: "Sender postal code", secret: false, required: true },
+      { key: "senderCity", label: "Sender city", secret: false, required: true },
+      { key: "senderCountry", label: "Sender country", secret: false, required: true, help: "The two-letter code of the country you send from, like NO, SE or DE.", placeholder: "NO", format: "country" },
+      { key: "senderPhone", label: "Sender phone", secret: false, required: true, help: "DHL needs it on every shipment." },
+      { key: "senderEmail", label: "Sender email", secret: false, required: false },
+    ],
+    docs: "https://developer.dhl.com/api-reference/dhl-express-mydhl-api",
+    steps: [
+      "Have a DHL Express account (a nine-digit account number).",
+      "Ask your DHL Express contact for access to the MyDHL API: they send an API key and secret for the test environment, and for live when you are approved.",
+      "Copy the key, the secret and the account number to the form, with the address your parcels are sent from.",
+      "DHL gives its prices for each parcel: your shoppers pay them with VAT and what you add. Parcels to a country outside the EU's customs union carry customs papers from your products' HS codes and countries of origin.",
+    ],
+  },
+  {
+    id: "ups",
+    name: "UPS",
+    summary: "Parcels by road and air across Europe and the world on your UPS account, to the door or to a UPS Access Point, with labels and tracking.",
+    countries: EUROPE,
+    features: ["rates", "pickup_points", "labels", "tracking"],
+    available: ["rates", "pickup_points", "labels", "tracking"],
+    fields: [
+      { key: "clientId", label: "Client ID", secret: false, required: true, help: "From your app on UPS's developer portal (developer.ups.com), with its client secret." },
+      { key: "clientSecret", label: "Client secret", secret: true, required: true },
+      { key: "accountNumber", label: "UPS account number", secret: false, required: true, help: "Your six-character UPS account (shipper) number. Add it to the app on the developer portal too.", placeholder: "A1B2C3" },
+      { key: "senderName", label: "Sender name", secret: false, required: true, help: "Printed on the label: your business or shop." },
+      { key: "senderStreet", label: "Sender street address", secret: false, required: true },
+      { key: "senderPostalCode", label: "Sender postal code", secret: false, required: true },
+      { key: "senderCity", label: "Sender city", secret: false, required: true },
+      { key: "senderCountry", label: "Sender country", secret: false, required: true, help: "The two-letter code of the country you send from, like NO, SE or DE.", placeholder: "NO", format: "country" },
+      { key: "senderPhone", label: "Sender phone", secret: false, required: true, help: "UPS needs it on every shipment." },
+      { key: "senderEmail", label: "Sender email", secret: false, required: false },
+    ],
+    docs: "https://developer.ups.com",
+    steps: [
+      "Have a UPS account (a six-character account number).",
+      "Sign in at developer.ups.com, make an app with the Authorization, Rating, Shipping, Tracking and Locator APIs, and add your account number to it.",
+      "Copy the app's client ID and secret and your account number to the form, with the address your parcels are sent from.",
+      "UPS gives its prices for each parcel, with your own rates when your account has them: your shoppers pay them with VAT and what you add.",
+    ],
+  },
 ];
 
 export const carrierInfo = (id: string): CarrierInfo | null => CARRIERS.find((c) => c.id === id) ?? null;
@@ -215,6 +303,9 @@ export function parseCarrierForm(
     if (field.secret) {
       if (value) secrets[field.key] = value;
       else if (field.required && !saved.hasSecret(field.key)) problems.push(`Enter the ${field.label.toLowerCase()}.`);
+    } else if (value && field.format === "country") {
+      if (/^[A-Za-z]{2}$/.test(value)) details[field.key] = value.toUpperCase();
+      else problems.push(`${field.label}: enter the country's two-letter code, like NO or SE.`);
     } else if (value) {
       details[field.key] = value;
     } else if (field.required) {
@@ -226,6 +317,22 @@ export function parseCarrierForm(
 
 /** The last four characters of a saved secret, to recognise it by (shorter ones show only dots). */
 export const secretHint = (value: string) => (value.length > 8 ? `…${value.slice(-4)}` : "…");
+
+/**
+ * Where a store's parcels are sent from, as its carrier page holds it: the sender's name, street, postal code, city and phone, and its country
+ * (`senderCountry`, asked by the carriers that ship from anywhere in Europe, D457; Norway for the carriers that only ship from there).
+ */
+export function senderAddress(details: Record<string, string>): ShippingAddress {
+  return {
+    name: details.senderName ?? "",
+    street: details.senderStreet ?? "",
+    postalCode: details.senderPostalCode ?? "",
+    city: details.senderCity ?? "",
+    country: /^[A-Z]{2}$/.test(details.senderCountry ?? "") ? details.senderCountry : "NO",
+    ...(details.senderPhone ? { phone: details.senderPhone } : {}),
+    ...(details.senderEmail ? { email: details.senderEmail } : {}),
+  };
+}
 
 /** Whether every required field is saved. */
 export function carrierComplete(info: CarrierInfo, details: Record<string, string>, secretKeys: string[]): boolean {
@@ -359,6 +466,11 @@ export type BookingResult = {
   labelUrl: string | null;
   /** Made in the carrier's test mode: nothing was shipped. */
   test: boolean;
+  /**
+   * The label's PDF, for a carrier that gives it only in its answer and never again (DHL Express, D457): kept in `carrier_labels` with the parcel
+   * until it has been printed for a while (`labelUrl` then says where the shipment is at the carrier). Absent for a carrier whose label is fetched.
+   */
+  labelPdf?: Uint8Array;
   /**
    * The customs declaration sent with a consignment that crosses a border (D343): `declared` when the carrier accepted it, else its reason (the
    * shipment is booked either way, and staff are told to declare it in the carrier's own tools). Absent where nothing was declared.

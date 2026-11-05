@@ -74,12 +74,43 @@ const PORTERBUDDY: Record<string, TrackingPhase> = {
   ready: "info_received",
 };
 
+/**
+ * DHL Express MyDHL API tracking `typeCode`: the event codes of DHL's own reference data (`ExpressReferenceData_3.4.1`, sheet of checkpoint codes,
+ * downloaded from developer.dhl.com and read 2026-11-05): PU "pick up", AF/DF/PL arrived at, departed and processed at a facility, WC "with delivering
+ * courier", OK "delivery", NH "not home", CC "awaiting consignee collection", RT "returned to shipper". Only these are listed; any other is unknown.
+ */
+const DHL: Record<string, TrackingPhase> = {
+  PU: "in_transit",
+  AF: "in_transit",
+  DF: "in_transit",
+  PL: "in_transit",
+  WC: "out_for_delivery",
+  OK: "delivered",
+  NH: "attempted",
+  CC: "ready_for_collection",
+  RT: "returned_to_sender",
+};
+
+/**
+ * UPS Tracking API `activity[].status.type`. Unverified: UPS's OpenAPI document gives only the example "X"; the letters below are as integrations
+ * commonly read them (M label made, P picked up, I in transit, D delivered, X exception), so UPS's events are shown and never send an email.
+ */
+const UPS: Record<string, TrackingPhase> = {
+  M: "info_received",
+  P: "in_transit",
+  I: "in_transit",
+  D: "delivered",
+  X: "problem",
+};
+
 /** Each carrier's table and whether its codes were read in the carrier's documentation. A code becomes verified only with its source written above. */
 export const CARRIER_PHASES: Record<string, { verified: boolean; codes: Record<string, TrackingPhase> }> = {
   bring: { verified: true, codes: BRING },
   postnord: { verified: false, codes: POSTNORD },
   helthjem: { verified: false, codes: HELTHJEM },
   porterbuddy: { verified: false, codes: PORTERBUDDY },
+  dhl: { verified: true, codes: DHL },
+  ups: { verified: false, codes: UPS },
 };
 
 /** The phase of a carrier's status code; an unlisted code (or carrier) is `unknown` and unverified. */

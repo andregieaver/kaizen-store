@@ -9,8 +9,8 @@ features: [shop]
 plans: []
 admin: /admin/{store}/orders/{id}
 order: 20
-checked: 2026-11-04
-sources: [D174, D238, D372, D374, D153, D289]
+checked: 2026-11-05
+sources: [D174, D238, D372, D374, D153, D289, D457]
 ---
 
 ## Se hva som skal sendes
@@ -55,8 +55,9 @@ Pakklister og plukklister tar høyst 100 bestillinger. Plukklisten endrer ingent
 ## Book en etikett hos transportøren
 
 Med en transportør koblet til (se [Transportører](/docs/owners/shipping/carriers)) tilbyr bestillingen en booking under **Send
-bestillingen**: **Book med Posten / Bring**, og **Book med Helthjem** eller **Book med Porterbuddy** når kunden valgte den transportøren
-i kassen. Bookingen merker pakken som sendt med sporingsnummeret, og **Skriv ut etikett** åpner etiketten for utskrift.
+bestillingen**: **Book med Posten / Bring**, og **Book med Helthjem**, **Book med Porterbuddy** eller **Book med Instabox** når kunden
+valgte den transportøren i kassen. **Book med DHL Express** og **Book med UPS** vises når kunden valgte dem, eller valgte din egen frakt:
+da velger du tjenesten. Bookingen merker pakken som sendt med sporingsnummeret, og **Skriv ut etikett** åpner etiketten for utskrift.
 
 For å booke en del av bestillingen setter du ned tallene før du booker, og veier den pakken: vekten som vises, er anslått ut fra hele
 bestillingen. Book resten rett etterpå som en egen pakke.

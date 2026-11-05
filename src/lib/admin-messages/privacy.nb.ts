@@ -346,6 +346,7 @@ export const privacyNb: PrivacyMessages = {
       access_requests: "Søknader om å åpne en butikk",
       unconfirmed_signups: "Registreringer som aldri ble bekreftet",
       content_report_senders: "Avsendere av meldinger om ulovlig innhold",
+      carrier_labels: "Fraktetiketter tatt vare på fra et fraktselskap",
     },
     bases: {
       read: "Lest i kilden",

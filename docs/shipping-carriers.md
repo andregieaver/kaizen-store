@@ -1,8 +1,8 @@
 # Shipping carriers (D133)
 
-Posten / Bring, PostNord, Porterbuddy and Helthjem are listed under **Integrations → Shipping carriers**
-(`/admin/{store}/integrations`). Their connections are not built yet. This is the preparation, so each can be switched
-on the day it arrives without rework.
+Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express and UPS are listed under **Integrations → Shipping carriers**
+(`/admin/{store}/integrations`), each connected with the store's own agreement. This file began as the preparation (D133); each
+carrier's section below says what its connection does now.
 
 ## What exists
 
@@ -206,3 +206,96 @@ and city, which checkout does not ask for; a fallback solution makes up for it).
 **To verify with real credentials** (nothing here has met Helthjem's servers): that a booking with `shipmentId: null` is
 accepted, that service points are found by postal code alone, that the transport solution ids on the carrier's page are the
 ones in the agreement, and the weight limits (5 and 20 kg, from Helthjem's delivery methods guide).
+
+
+## Instabox, DHL Express and UPS (D457)
+
+All three book through one path, `bookCarrierDelivery()` (`src/server/carrier-delivery-booking.ts`), from the order page (*Book with …*,
+`carrierDeliveryBookAction`) and *Book labels*: one booking of an order at a time, the parcel's lines checked before the carrier is paid,
+customs lines for a parcel across a customs border (D343), `markSent()` for a real booking and only a sentence for a test one. The
+customer's choice with that carrier is booked as chosen; UPS and DHL also book an order whose customer chose no carrier (the flat rate or
+the store's own method, shipped), with a door service staff choose. UPS and DHL ship from anywhere in Europe, so their pages ask for the
+sender's country (`senderCountry`), which checkout and booking read through `senderAddress()`; the four older carriers still ship from
+Norway.
+
+### Instabox
+
+`src/lib/instabox.ts` (pure), `src/server/carriers/instabox.ts`. Instabox is Instabee's brand of parcel lockers in Sweden, Norway and
+Denmark; it is reached through Instabee's integration API (docs.integration.instabee.com, beta, read 2026-11-05), live
+`api.integration.instabee.com`, sandbox `sandbox-api.integration.instabee.com`, every call with `Authorization: ApiKey …` and
+`Accept-Version: 1.0.0`. The key comes from Instabee's implementation manager with the agreement; Instabee knows the store's warehouse
+(`collectionPointId` only for a store that sends from several).
+
+**Works now**
+- **Lockers at checkout** (service `locker`, at most 20 kg), **at prices the store enters** per country (`checkout_prices`): the delivery
+  options near the shopper's postal code (`GET /availability/countries/{cc}/postal-codes/{pc}/delivery-options?brand=instabox&product=LOCKER_EXPRESS`),
+  nearest first. Each locker's id is its sort code with the availability token it came with (`SORTCODE~token`, `lockerChoice()`), since
+  a booking names both and the token holds 14 days.
+- **Booking** (`PUT /orders`, booked and confirmed as packed at once): the token and sort code, the recipient (Instabox texts the code,
+  so a phone is required), the parcel reference as the order number, weight and size. A choice kept without a token is asked for again,
+  and nothing is booked when the locker is gone. The parcel id is the tracking number with Instabox's tracking page; the order id is
+  kept as the consignment number.
+- **Labels**: `GET /orders/{orderId}/labels?fileFormat=pdf&template=a6`, fetched when printed and never kept.
+- **Check connection**: the lockers near Stockholm Central.
+
+**Not yet**: home delivery (Instabee documents it for Budbee and Porterbuddy; whether the `instabox` brand has it is unconfirmed), Budbee
+(Finland, the Netherlands, Belgium), following parcels (Instabee reads an order by its own id, so Instabox is not in `FOLLOWED_CARRIERS`;
+the shopper follows Instabox's page), events by webhook, cancelling.
+
+**To verify with real credentials**: the sandbox's answer shapes (the documentation is marked beta), whether `deliveryPrice` is the
+store's price, and that the sort code is the same in a later availability answer.
+
+### DHL Express
+
+`src/lib/dhl.ts` (pure), `src/server/carriers/dhl.ts`. The MyDHL API 3.4.1 (developer.dhl.com, OpenAPI released 2026-11-01): live
+`express.api.dhl.com/mydhlapi`, test `…/mydhlapi/test` (500 calls a day), HTTP Basic with the store's API key and secret, `x-version:
+3.4.1` on every call. DHL Express is the one DHL service a store anywhere in Europe can use with one connection; DHL's parcel networks
+(Parcel DE, Parcel EU, eConnect, DHL Freight Sweden's Service Point) are separate APIs per country.
+
+**Works now**
+- **Services at checkout**, in Europe (`EUROPE`), **priced by DHL** for the parcel: Express, Express 12:00 and Economy Select. DHL names a
+  product per lane (Express Worldwide is `P` through customs, `U` within the EU, `N` within one country), so each service is a family of
+  product codes (`DHL_SERVICES[].codes`). Rates needs the destination's city: checkout asks only for the postal code, so Address Validate
+  gives it first. The price is the billing currency's total less DHL's tax (`STTXA`), with VAT and the store's markup added as for Bring.
+- **Booking**: Rates is asked for the lane's product code for the store's service, then `POST /shipments` with a PDF label
+  (`ECOM26_84_001`), no pickup (the store hands in or has a standing pickup), and across a customs border the declared value and one
+  `exportDeclarations` entry with each line (HS code, origin, unit price, quantity, weight), DDP when the shopper paid the duties.
+- **Labels**: DHL gives the label only in the booking's answer (`get-image` has no label), so it is kept in `commerce.carrier_labels`
+  with the parcel and served by `carrierLabel()`; retention kind `carrier_labels` deletes it after 30 days, and erasure with the
+  person's orders. `label_url` holds the shipment's address at DHL.
+- **Tracking**: `GET /shipments/{waybill}/tracking` with each event's GMT offset. DHL's checkpoint codes are read from its reference data,
+  so OK (delivered), WC (with courier), CC (awaiting collection) and the others listed in `tracking-phases.ts` are verified.
+- **Check connection**: a rate within the sender's own city.
+
+**Not yet**: delivery to a DHL ServicePoint (`onDemandDelivery` takes a six-character id DHL's account managers give; Location Finder's
+ids are not said to apply to Express), pickups, Express 9:00 and 10:30, returns.
+
+**To verify with real credentials**: whether `totalPrice` holds VAT for a Norwegian account (the net is taken as the total less `STTXA`),
+that `exportDeclarations` line prices are unit prices, and DHL's portal terms, which say rating data may not be stored or modified (a
+quote is kept two hours and marked up as the store chooses).
+
+### UPS
+
+`src/lib/ups.ts` (pure), `src/server/carriers/ups.ts`. UPS's OpenAPI documents (github.com/UPS-API/api-documentation, read 2026-11-05):
+OAuth client credentials with HTTP Basic (`/security/v1/oauth/token`, the account as `x-merchant-id`), production `onlinetools.ups.com`,
+test `wwwcie.ups.com`, `transId` and `transactionSrc` on every call. The client id and secret come from an app the owner makes on
+developer.ups.com with the account number added.
+
+**Works now**
+- **Services at checkout**, in Europe, **priced by UPS** (Rating v2409 `Shop`, the negotiated rate when the account has one): Standard,
+  Express Saver, Express, and Standard held at a UPS Access Point (`AP`) the shopper chooses from the Locator
+  (`/api/locations/v3/search/availabilities/64`, by public access point id).
+- **Booking**: Shipping v2409 on the store's account, a GIF label (the only image Shipping makes), the order number as the reference, an
+  Access Point delivery as `ShipmentIndicationType` 01 with `AlternateDeliveryAddress` and UPS's notice to the recipient, and across a
+  customs border a description and a paperless commercial invoice (`InternationalForms`), duties billed to the store when DDP.
+- **Labels**: Label Recovery gives the label again as a PDF from the tracking number when it is printed (`labelUrl()` holds the number
+  after `#`), never kept.
+- **Tracking**: `GET /api/track/v1/details/{number}`. UPS's status letters are not explained in its documents, so they are unverified.
+- **Check connection**: a rate within the sender's own country.
+
+**Not yet**: pickups, returns, cancelling (`void`), UPS's own delivery estimates at checkout.
+
+**To verify with real credentials**: that the Locator answers for a postal code alone, which access point id Shipping takes (the
+public id is used; Shipping allows 9 characters, the Locator gives up to 15), how long Label Recovery keeps a label, and the meaning of
+the tracking status letters.
+

@@ -28,6 +28,7 @@ import { rulesOnOffer, shownLabel, type RuleOutcome } from "@/lib/checkout-rules
 import { cleanShopperText } from "@/lib/gift";
 import { t } from "@/lib/i18n";
 import { areaCovers, type AreaTerms } from "@/lib/local-delivery";
+import { convertMinor } from "@/lib/currency";
 import { shown, type Market } from "@/lib/markets";
 import { zoneFor } from "@/lib/postal-patterns";
 import { DEFAULT_WEIGHT_GRAMS, NOTE_MAX } from "@/lib/shipping-limits";
@@ -45,14 +46,18 @@ import {
   type RateBasis,
   type ShippingLine,
 } from "@/lib/shipping-methods";
-import { carrierInfo, type CarrierContext, type CarrierId, type PickupPoint, type ShippingAddress, type ShippingOption } from "@/lib/shipping-carriers";
+import { carrierInfo, senderAddress, type CarrierContext, type CarrierId, type PickupPoint, type ShippingAddress, type ShippingOption } from "@/lib/shipping-carriers";
 import { BRING_PRODUCTS } from "@/lib/bring";
 import { POSTNORD_SERVICES } from "@/lib/postnord";
 import { PORTERBUDDY_PRODUCTS } from "@/lib/porterbuddy";
 import { HELTHJEM_SERVICES } from "@/lib/helthjem";
+import { INSTABOX_SERVICES } from "@/lib/instabox";
+import { DHL_SERVICES } from "@/lib/dhl";
+import { UPS_SERVICES } from "@/lib/ups";
 
 import { audit } from "./auth";
 import { checkoutRuleOutcome } from "./checkout-rules";
+import { storeById } from "./shopper-emails";
 import { adapterFor } from "./carriers";
 import { carrierContext } from "./shipping-carriers";
 
@@ -73,6 +78,9 @@ export const CHECKOUT_SERVICES: Partial<Record<CarrierId, { id: string; name: st
   postnord: POSTNORD_SERVICES,
   porterbuddy: PORTERBUDDY_PRODUCTS,
   helthjem: HELTHJEM_SERVICES,
+  instabox: INSTABOX_SERVICES,
+  dhl: DHL_SERVICES.map((s) => ({ id: s.id, name: s.name, needsPickupPoint: s.needsPickupPoint, maxWeightGrams: s.maxWeightGrams })),
+  ups: UPS_SERVICES,
 };
 
 /** The carriers that have checkout services built. */
@@ -165,13 +173,8 @@ async function cartWeightGrams(storeId: string, cartId: string, defaultGrams: nu
   return Math.min(35_000, Math.max(total, 1));
 }
 
-const senderOf = (context: CarrierContext): ShippingAddress => ({
-  name: context.details.senderName ?? "",
-  street: context.details.senderStreet ?? "",
-  postalCode: context.details.senderPostalCode ?? "",
-  city: context.details.senderCity ?? "",
-  country: "NO",
-});
+/** Where the parcel leaves from: the sender on the carrier's page, in its country (Norway for the carriers that only ship from there). */
+const senderOf = (context: CarrierContext): ShippingAddress => senderAddress(context.details);
 
 const quotedPoint = (p: PickupPoint): QuotedPickupPoint => ({
   id: p.id,
@@ -251,15 +254,19 @@ async function offersFrom(
     } catch {
       return null;
     }
-    // Only what the store switched on and what is priced in the country's own currency.
-    found = offered
-      .filter((o) => active.settings.services.includes(o.serviceId) && o.currency === market.nativeCurrency)
+    // Only what the store switched on, in the country's own currency: a carrier that prices in its account's currency (UPS and DHL bill a
+    // Norwegian account in kroner for a parcel to Sweden, D457) is converted at the store's own rates, and left out when the store has none.
+    const switchedOn = offered.filter((o) => active.settings.services.includes(o.serviceId));
+    const rates = switchedOn.some((o) => o.currency !== market.nativeCurrency) ? ((await storeById(storeId))?.localization.rates ?? null) : null;
+    const inCurrency = (o: ShippingOption) => (o.currency === market.nativeCurrency ? o.priceMinor : rates ? convertMinor(o.priceMinor, o.currency, market.nativeCurrency, rates) : null);
+    found = switchedOn
+      .filter((o) => inCurrency(o) !== null)
       .map((o) => ({
         carrier: active.carrier,
         serviceId: o.serviceId,
         name: o.name,
         // A price made for the shopper to see already holds VAT (D137).
-        amountMinor: shopperPrice(o.priceMinor, o.includesVat ? 0 : vatRate, active.settings.markup),
+        amountMinor: shopperPrice(inCurrency(o)!, o.includesVat ? 0 : vatRate, active.settings.markup),
         freeOverMinor: active.settings.freeOverMinor,
         window: o.window ? { start: o.window.start, end: o.window.end, expiresAt: o.window.expiresAt } : null,
         estimate: o.estimate && "minDays" in o.estimate ? o.estimate : null,

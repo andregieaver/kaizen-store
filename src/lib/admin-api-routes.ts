@@ -114,7 +114,7 @@ export const setBody = z.object({
 
 export const ORDER_STATES = ["pending_payment", "authorized", "paid", "fulfilled", "closed", "cancelled"] as const;
 /** The carriers a parcel names (`CARRIERS` of `src/server/order-admin.ts`, held to this list by `admin-api.int.test.ts`). */
-export const SEND_CARRIERS = ["posten", "bring", "porterbuddy", "helthjem", "postnord", "dhl", "ups", "other"] as const;
+export const SEND_CARRIERS = ["posten", "bring", "porterbuddy", "helthjem", "instabox", "postnord", "dhl", "ups", "other"] as const;
 
 const address = z.object({
   name: z.string(),

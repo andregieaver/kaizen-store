@@ -7,17 +7,20 @@ import type { BulkReason } from "@/lib/order-bulk";
 import { carrierInfo, type CarrierId } from "@/lib/shipping-carriers";
 
 import { bringBook } from "./bring-shipping";
+import { LABEL_CARRIERS } from "./carrier-label";
+import { bookCarrierDelivery, isDeliveryBookingCarrier } from "./carrier-delivery-booking";
 import { helthjemBook } from "./helthjem-shipping";
 import type { Shipment } from "./order-admin";
 import { getOrder } from "./orders";
 import { porterbuddyBook } from "./porterbuddy-shipping";
 import { carrierContext } from "./shipping-carriers";
-import { uuidList } from "./sql-arrays";
+import { textList, uuidList } from "./sql-arrays";
 import { col, typedRows } from "./typed-rows";
 
 /**
  * *Book labels* on the Orders list (wave 10 unit K, D374): for one order, a parcel of everything still to send booked with its carrier through the same
- * function the order page's booking form calls (`bringBook()`, `helthjemBook()`, `porterbuddyBook()`, never a second path), so the test environment, the
+ * function the order page's booking form calls (`bringBook()`, `helthjemBook()`, `porterbuddyBook()`, `bookCarrierDelivery()` for Instabox, UPS and DHL
+ * Express, never a second path), so the test environment, the
  * one-booking-at-a-time lock (D372), the parcel's checks and `markSent()` are theirs. The carrier is the one the customer chose at checkout
  * (`orders.delivery`); an order without one goes with Posten / Bring's home parcel (`BULK_BRING_SERVICE`) when Bring is connected. The parcel's weight is
  * worked out from the variants of what is still to send, and an order with something of no weight is left to the order page, where staff enter it.
@@ -28,7 +31,7 @@ import { col, typedRows } from "./typed-rows";
 export const BULK_BRING_SERVICE = "5600";
 
 /** The carriers that book labels (D133: `labels` in their `available` features and a `book()` built). */
-const BOOKING_CARRIERS = ["bring", "porterbuddy", "helthjem"] as const satisfies readonly CarrierId[];
+const BOOKING_CARRIERS = ["bring", "porterbuddy", "helthjem", "instabox", "ups", "dhl"] as const satisfies readonly CarrierId[];
 type BookingCarrier = (typeof BOOKING_CARRIERS)[number];
 
 export type LabelOutcome =
@@ -95,7 +98,9 @@ export async function bookOrderLabel(
         })
       : carrier === "helthjem"
         ? await helthjemBook(accountId, storeId, orderId, { parcel })
-        : await porterbuddyBook(accountId, storeId, orderId, { parcel });
+        : isDeliveryBookingCarrier(carrier)
+          ? await bookCarrierDelivery(accountId, storeId, orderId, carrier, { parcel })
+          : await porterbuddyBook(accountId, storeId, orderId, { parcel });
   if (!booked.ok) return { ok: false, reason: "carrier_refused", detail: booked.problem };
   if (booked.test) return { ok: false, reason: "test_booking" };
   return { ok: true, shipment: booked.shipment, carrier: carrierInfo(carrier)?.name ?? carrier };
@@ -124,7 +129,7 @@ export async function labelsToPrint(storeId: string, shipmentIds: readonly strin
             from commerce.shipments s
             join commerce.orders o on o.store_id = s.store_id and o.id = s.order_id
             where s.store_id = ${storeId}::uuid and s.id = any(${uuidList(ids)}) and s.label_url is not null and s.undone_at is null
-              and s.carrier_id in ('bring', 'porterbuddy', 'helthjem')
+              and s.carrier_id = any(${textList(LABEL_CARRIERS)})
           `,
         );
   const byId = new Map(rows.map((r) => [r.id, r]));

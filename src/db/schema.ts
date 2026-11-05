@@ -12221,7 +12221,7 @@ export const shippingCarriers = commerce.table(
   "shipping_carriers",
   {
     storeId: storeId().references(() => stores.id),
-    /** `bring`, `postnord`, `porterbuddy` or `helthjem`. */
+    /** One of `CARRIER_IDS` (`src/lib/shipping-carriers.ts`). */
     carrier: text("carrier").notNull(),
     /** `test` or `live`. */
     environment: text("environment").notNull().default("test"),
@@ -12259,8 +12259,34 @@ export const shippingCarriers = commerce.table(
     check("shipping_carriers_free_over", sql`${t.freeOverMinor} is null or ${t.freeOverMinor} > 0`),
     check("shipping_carriers_default_weight", sql`${t.defaultWeightGrams} between 1 and 35000`),
     index("shipping_carriers_updated_by_idx").on(t.updatedBy),
-    check("shipping_carriers_carrier", sql`${t.carrier} in ('bring', 'postnord', 'porterbuddy', 'helthjem')`),
+    check("shipping_carriers_carrier", sql`${t.carrier} in (${sqlList(CARRIER_IDS)})`),
     check("shipping_carriers_environment", sql`${t.environment} in ('test', 'live')`),
+  ],
+);
+
+/**
+ * A label a carrier gives only once, in its answer to the booking (DHL Express, D457): its PDF, kept with the parcel so staff can print it from the
+ * order page and the labels page. Read and written only through `carrier-label.ts` and `carrier-delivery-booking.ts`, never by a page; the daily
+ * retention run removes it after the period of `retention_rules` kind `carrier_labels`, and erasure with the person's orders. Other carriers' labels
+ * are fetched from the carrier when they are printed and never kept.
+ */
+export const carrierLabels = commerce.table(
+  "carrier_labels",
+  {
+    storeId: storeId(),
+    shipmentId: uuid("shipment_id").notNull(),
+    orderId: uuid("order_id").notNull(),
+    carrier: text("carrier").notNull(),
+    pdf: bytea("pdf").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.shipmentId] }),
+    foreignKey({ name: "carrier_labels_shipment_fk", columns: [t.storeId, t.shipmentId], foreignColumns: [shipments.storeId, shipments.id] }).onDelete("cascade"),
+    index("carrier_labels_order_idx").on(t.storeId, t.orderId),
+    index("carrier_labels_created_idx").on(t.createdAt),
+    check("carrier_labels_carrier", sql`${t.carrier} in (${sqlList(CARRIER_IDS)})`),
+    check("carrier_labels_pdf", sql`octet_length(${t.pdf}) between 5 and 5000000 and substring(${t.pdf} from 1 for 4) = '\\x25504446'::bytea`),
   ],
 );
 

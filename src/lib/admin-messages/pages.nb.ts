@@ -30,7 +30,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:order.packing-slip": { title: "Pakkseddel", keywords: ["pakkseddel", "skriv ut", "pakke", "gavekvittering"] },
   "store:orders.packing-slips": { title: "Pakksedler", keywords: ["pakksedler", "pakkseddel", "skriv ut flere", "plukk"] },
   "store:orders.pick-list": { title: "Plukkliste", keywords: ["plukkliste", "plukking", "plukk", "lager"] },
-  "store:orders.labels": { title: "Etiketter", keywords: ["etiketter", "fraktetiketter", "skriv ut etiketter", "book etiketter", "bring", "helthjem", "porterbuddy"] },
+  "store:orders.labels": { title: "Etiketter", keywords: ["etiketter", "fraktetiketter", "skriv ut etiketter", "book etiketter", "bring", "helthjem", "porterbuddy", "instabox", "ups", "dhl"] },
   "store:orders.drafts": {
     title: "Utkast til bestillinger",
     keywords: ["utkast", "utkast til bestilling", "tilbud", "manuell ordre", "telefonordre", "betalingslenke", "opprett bestilling"],
@@ -588,7 +588,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:integration": { title: "Integrasjon", keywords: ["integrasjon", "koble til", "hendelser", "test"] },
   "store:integrations.shipping": {
     title: "Fraktselskap",
-    keywords: ["fraktselskap", "posten", "bring", "postnord", "porterbuddy", "helthjem", "etiketter", "sporing"],
+    keywords: ["fraktselskap", "posten", "bring", "postnord", "porterbuddy", "helthjem", "instabox", "ups", "dhl", "etiketter", "sporing"],
   },
   "store:integrations.google-reviews": { title: "Google-omtaler", keywords: ["google-omtaler", "google", "omtaler", "anmeldelser", "vurdering"] },
   "store:integrations.tripletex": { title: "Tripletex", keywords: ["tripletex", "regnskap", "bokføring", "bilag", "regnskapsfører", "faktura", "kreditnota"] },

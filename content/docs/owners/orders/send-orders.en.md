@@ -9,8 +9,8 @@ features: [shop]
 plans: []
 admin: /admin/{store}/orders/{id}
 order: 20
-checked: 2026-11-04
-sources: [D174, D238, D372, D374, D153, D289]
+checked: 2026-11-05
+sources: [D174, D238, D372, D374, D153, D289, D457]
 ---
 
 ## See what to send
@@ -53,8 +53,9 @@ Slips and pick lists take at most 100 orders. The pick list changes nothing: mar
 ## Book a carrier's label
 
 With a carrier connected (see [Carriers](/docs/owners/shipping/carriers)), the order offers a booking under **Send the order**:
-**Book with Posten / Bring**, and **Book with Helthjem** or **Book with Porterbuddy** when the customer chose that carrier at checkout.
-The booking marks the parcel sent with its tracking number, and **Print label** opens the label to print.
+**Book with Posten / Bring**, and **Book with Helthjem**, **Book with Porterbuddy** or **Book with Instabox** when the customer chose that
+carrier at checkout. **Book with DHL Express** and **Book with UPS** are there when the customer chose them, or chose your own shipping:
+then you choose the service. The booking marks the parcel sent with its tracking number, and **Print label** opens the label to print.
 
 To book part of an order, lower the numbers before you book, and weigh that parcel: the weight shown is guessed from the whole order.
 Book the rest straight after as a parcel of its own.

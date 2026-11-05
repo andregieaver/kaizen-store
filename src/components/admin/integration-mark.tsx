@@ -8,6 +8,9 @@ const TONES: Record<string, string> = {
   postnord: "bg-blue-700 text-white",
   porterbuddy: "bg-emerald-700 text-white",
   helthjem: "bg-amber-600 text-white",
+  instabox: "bg-pink-700 text-white",
+  ups: "bg-yellow-900 text-white",
+  dhl: "bg-yellow-400 text-red-800",
 };
 
 export function IntegrationMark({ id }: { id: string }) {

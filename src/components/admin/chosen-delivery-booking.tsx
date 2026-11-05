@@ -13,9 +13,10 @@ export type BookState = { ok: boolean; message: string };
 const input = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
- * Books the delivery the customer chose at checkout with its carrier (Porterbuddy D137, Helthjem D138): the parcel's weight,
- * then Book. What was chosen (a window, a service point) is given as text; the booking itself is the carrier's bound action. With `rows`
- * (D174) the booking takes the *In this parcel* choice: the chosen units, or everything still to send when nothing is lowered.
+ * Books the delivery the customer chose at checkout with its carrier (Porterbuddy D137, Helthjem D138, Instabox, UPS and DHL D457): the parcel's
+ * weight, then Book. What was chosen (a window, a service point) is given as text; the booking itself is the carrier's bound action. With `rows`
+ * (D174) the booking takes the *In this parcel* choice: the chosen units, or everything still to send when nothing is lowered. With `services`
+ * (UPS and DHL, for an order whose customer chose none of theirs) staff choose the service instead, and `chosenText` is not shown.
  */
 export function ChosenDeliveryBooking({
   carrierName,
@@ -27,21 +28,27 @@ export function ChosenDeliveryBooking({
   rows = [],
   notifyOff = null,
   basis = null,
+  services,
+  serviceLabel,
 }: {
   /** The *Order sent* email is switched off in Notifications (D238): no email is offered, and the box says so. */
   notifyOff?: string | null;
   /** The order's fulfilment as this page shows it (`OrderFulfilment.basis`, D372): a press made before the page showed the last parcel is refused. */
   basis?: string | null;
   carrierName: string;
-  /** What the customer chose, written out. */
-  chosenText: string;
+  /** What the customer chose, written out; null when staff choose from `services`. */
+  chosenText: string | null;
+  /** The services staff may choose from when the customer chose none of this carrier's, with the word for the choice. */
+  services?: { id: string; name: string }[];
+  serviceLabel?: string;
   estimatedGrams: number;
   test: boolean;
   hasEmail: boolean;
-  book: (input: { notify: boolean; parcel: { weightGrams: number }; lines: ParcelLine[] | null; seen: string | null }) => Promise<BookState>;
+  book: (input: { notify: boolean; parcel: { weightGrams: number }; lines: ParcelLine[] | null; seen: string | null; serviceId?: string }) => Promise<BookState>;
   /** The order's physical lines with what is still to send (D174), for the parcel's choice. */
   rows?: ParcelRow[];
 }) {
+  const [serviceId, setServiceId] = useState(services?.[0]?.id ?? "");
   const [weight, setWeight] = useState(estimatedGrams > 0 ? (estimatedGrams / 1000).toString().replace(".", ",") : "");
   const [notify, setNotify] = useState(true);
   const [typed, setTyped] = useState<Record<string, string>>({});
@@ -53,7 +60,7 @@ export function ChosenDeliveryBooking({
     start(async () => {
       if (lines === "invalid") return;
       const grams = Math.round(Number(weight.replace(",", ".")) * 1000);
-      setResult(await book({ notify: hasEmail && !test && !notifyOff && notify, parcel: { weightGrams: grams }, lines, seen: basis }));
+      setResult(await book({ notify: hasEmail && !test && !notifyOff && notify, parcel: { weightGrams: grams }, lines, seen: basis, ...(services ? { serviceId } : {}) }));
     });
 
   return (
@@ -63,9 +70,23 @@ export function ChosenDeliveryBooking({
           Test environment: {carrierName} delivers nothing and the order is not marked as sent.
         </p>
       )}
-      <p className="text-sm">
-        The customer chose <strong>{chosenText}</strong>.
-      </p>
+      {chosenText !== null && (
+        <p className="text-sm">
+          The customer chose <strong>{chosenText}</strong>.
+        </p>
+      )}
+      {services && (
+        <label className="flex max-w-xs flex-col gap-1 text-sm font-medium">
+          {serviceLabel}
+          <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className={input}>
+            {services.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <ParcelChoice rows={rows} typed={typed} onChange={setTyped} />
       <label className="flex max-w-xs flex-col gap-1 text-sm font-medium">
         Weight (kg)

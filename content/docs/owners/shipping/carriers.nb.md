@@ -1,6 +1,6 @@
 ---
 title: Fraktselskaper
-summary: Koble til din egen avtale med Posten / Bring, PostNord, Porterbuddy eller Helthjem for å tilby tjenestene deres i kassen, bestille frakt og skrive ut etiketter fra bestillingen, og spore pakker.
+summary: Koble til din egen avtale med Posten / Bring, PostNord, Porterbuddy, Helthjem, Instabox, DHL Express eller UPS for å tilby tjenestene deres i kassen, bestille frakt og skrive ut etiketter fra bestillingen, og spore pakker.
 track: owners
 section: shipping
 kind: how-to
@@ -9,8 +9,8 @@ features: []
 plans: []
 admin: /admin/{store}/integrations
 order: 30
-checked: 2026-11-04
-sources: [D133, D134, D135, D136, D137, D138, D239, D374]
+checked: 2026-11-05
+sources: [D133, D134, D135, D136, D137, D138, D239, D374, D457]
 ---
 
 ## Hva du får ved å koble til et fraktselskap
@@ -24,8 +24,12 @@ nøklene dine. Dette gjør hvert av dem nå:
 | PostNord | Sverige, Danmark, Norge, Finland | Tjenestene til priser du skriver inn, med hentesteder | Ikke ennå |
 | Porterbuddy | Norge | Hjemlevering i et tidsvindu, også samme dag | Ja |
 | Helthjem | Norge | Hjemlevering og utleveringssteder, til priser du skriver inn | Ja |
+| Instabox | Sverige, Norge, Danmark | Pakkebokser kunden velger, til priser du skriver inn | Ja |
+| DHL Express | Europa, fra alle land der | DHLs tjenester og priser, til døren | Ja, med tollpapirer |
+| UPS | Europa, fra alle land der | UPS' tjenester og priser, til døren eller et UPS Access Point | Ja, med tollpapirer |
 
-Alle fire har sporing: sporingsnumre på bestillingen og i e-poster. Posten / Bring kan også bestille returetiketter til kunder i Norge (se
+Alle gir sporingsnumre på bestillingen og i e-poster, og Kaizena Flow følger pakkene til alle unntatt Instabox, der Instabox' egen
+sporingsside følger pakkene. Posten / Bring kan også bestille returetiketter til kunder i Norge (se
 [Returer og angrerett](/docs/owners/orders/returns-and-withdrawals)).
 
 ## Koble til et fraktselskap
@@ -44,7 +48,8 @@ vises aldri igjen etter lagring, bare de siste tegnene; la en nøkkel stå tom f
 
 > [!NOTE]
 > I miljøet **Test** lager en bestilling av frakt en testsending: ingenting sendes, og bestillingen merkes ikke som sendt. Bytt
-> fraktselskapet til **Produksjon** når du er klar. Porterbuddy og Helthjem ber deg bruke testmiljøet til de har godkjent oppsettet ditt.
+> fraktselskapet til **Produksjon** når du er klar. Porterbuddy, Helthjem og Instabox ber deg bruke testmiljøet til de har godkjent
+> oppsettet ditt.
 
 ## Tilby fraktselskapet i kassen
 
@@ -54,10 +59,11 @@ Når opplysningene dine er lagret, vises **Leveringsvalg i kassen** på siden ti
 2. Under **Tjenester som tilbys** krysser du av for tjenestene du vil ha. Noen lar kunden velge et hentested; Helthjems viser den tyngste
    pakken hver tar.
 3. Sett prisene:
-   - **Posten / Bring og Porterbuddy** gir sin egen pris. Kaizena Flow legger til mva. og det du legger til: en **Prosent som legges til
-     prisen inkl. mva.** og et **Beløp som legges til**. **Gratis når handlekurven er verdt minst** gjør dem gratis fra en
-     handlekurvverdi.
-   - **PostNord og Helthjem** har ingen pristjeneste. Skriv inn prisen for hver tjeneste i hvert land, inkl. mva., slik kunden betaler,
+   - **Posten / Bring, Porterbuddy, DHL Express og UPS** gir sin egen pris. Kaizena Flow legger til mva. og det du legger til: en
+     **Prosent som legges til prisen inkl. mva.** og et **Beløp som legges til**. **Gratis når handlekurven er verdt minst** gjør dem
+     gratis fra en handlekurvverdi. DHL Express og UPS priser i kontoens valuta: en pris i en annen valuta enn landets regnes om etter
+     butikkens valutakurser, og tjenesten utelates der butikken ikke har noen kurs for den.
+   - **PostNord, Helthjem og Instabox** har ingen pristjeneste. Skriv inn prisen for hver tjeneste i hvert land, inkl. mva., slik kunden betaler,
      etter avtalen din; lar du en pris stå tom, tilbys ikke tjenesten der. Hvert land har sin egen **Gratis når handlekurven er verdt
      minst**.
 4. Under **Pakkens vekt når varene ikke har noen (gram)** oppgir du vekten som brukes for varer uten vekt.
@@ -74,14 +80,19 @@ pris. Er flere fraktselskaper slått på i et land, vises tjenestene deres samme
 ## Bestill frakt og skriv ut etiketter
 
 På en bestilling som skal sendes med et fraktselskap, trykker du **Book med** fraktselskapet. Bestillingen av frakt starter med det kunden
-valgte i kassen. Bestillingen merkes som sendt med sporingsnummeret, og **Skriv ut etikett** åpner etiketten. Etiketter hentes fra
-fraktselskapet hver gang du skriver dem ut, og lagres aldri.
+valgte i kassen. Med DHL Express og UPS kan du også booke en bestilling der kunden valgte din egen frakt: velg **Tjeneste** først.
+Bestillingen merkes som sendt med sporingsnummeret, og **Skriv ut etikett** åpner etiketten. Etiketter hentes fra fraktselskapet hver gang
+du skriver dem ut, og lagres aldri, unntatt DHL Express' etiketter: DHL gir en etikett bare én gang, så den tas vare på med pakken i 30
+dager og slettes så.
 
 For flere bestillinger på en gang krysser du dem av i listen over bestillinger og velger **Book etiketter**. Se
 [Send bestillinger](/docs/owners/orders/send-orders) for resten av sendingen.
 
 - Porterbuddys tidsvindu spørres om på nytt når du bestiller. Er det borte, bestilles ingenting.
 - Helthjems hjemlevering sjekkes for hele adressen før den bestilles.
+- Instabox booker boksen kunden valgte. Tilbyr Instabox den ikke lenger, bestilles ingenting: be kunden velge en annen.
+- En pakke med DHL Express eller UPS til et land utenfor EUs tollunion (fra Norge til Sverige, for eksempel) får tollpapirer fra
+  produktenes HS-koder, opprinnelsesland og vekt. Mangler et produkt dem, nevnes det, og ingenting bestilles før du legger dem til.
 - Bestilling og etiketter for PostNord kommer senere: siden viser dem som *kommer snart*.
 
 ## Flere valg
