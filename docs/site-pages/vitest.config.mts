@@ -1,4 +1,4 @@
-// Runs the generators of Kaizena Flow's own pages made by Claude (docs/site-design.md 9): `pnpm exec vitest run --config docs/site-pages/vitest.config.mts`.
+// Runs the generators of Kaizena Flow's own pages made by Claude (docs/site-design.md 9, docs/site-pages/README.md): `pnpm exec vitest run --config docs/site-pages/vitest.config.mts`.
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
