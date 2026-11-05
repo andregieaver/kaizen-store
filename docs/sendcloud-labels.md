@@ -1,8 +1,9 @@
-# Labels without a carrier agreement: Sendcloud (D454 proposed)
+# Labels without a carrier agreement: Sendcloud (D454)
 
 The owner (5 November 2026), on the Shopify comparison's *Where Shopify is the better fit*: "You want to buy labels from Shopify itself, with
 no carrier agreement of your own, shipping from a country such as Germany or France ... we should be able to solve easily", then "Write the
-plan for the Sendcloud labels integration". **This file is a plan: nothing in it is built.** Code, tests and texts follow it; where they
+plan for the Sendcloud labels integration", and chose the recommended answer to each of the three decisions (section 12). **This file is a
+plan: nothing in it is built.** Code, tests and texts follow it; where they
 disagree, this file is corrected first.
 
 Sendcloud's facts below were read on its own pages on 5 November 2026 (developer docs at `sendcloud.dev`, `sendcloud.com`'s pricing, terms
@@ -47,7 +48,7 @@ warehouse is not settled: ask Sendcloud (section 11).
 | Closes the Shopify line | Narrows it: no carrier agreement, but a Sendcloud account | Closes it: labels from Flow itself |
 | Risk to Flow | None beyond the code | Credit risk, prepayment Sendcloud may ask for, surcharges billed after the fact, VAT on resold transport, a reseller agreement |
 
-**Proposed: A now, B only as a later commercial step** with Sendcloud's written agreement, Flow's own billing of label costs and an
+**Chosen by the owner (5 November 2026): A now, B only as a later commercial step** with Sendcloud's written agreement, Flow's own billing of label costs and an
 accountant's reading of the VAT. A gets every shop in the countries above buying labels without a carrier agreement within the build order
 below, with nothing Flow has to invoice.
 
@@ -198,11 +199,34 @@ scenario), its decision and the rows of section 9.
 6. What does the Tech Partner programme ask of a platform, and what would way B need (the reseller terms)?
 7. The current sub-processor list.
 
-## 12. Decisions for the owner
+## 11a. The message to Sendcloud (for the owner to send)
 
-1. **The model:** each shop's own Sendcloud account now (proposed), and Flow selling labels itself only later with Sendcloud's consent.
-2. **Apply to the Tech Partner programme now** (proposed): it gives Flow a contact for section 11 and a place in Sendcloud's app store.
-3. **Checkout prices:** the shop's own prices first (proposed), Sendcloud's prices with a markup once the VAT basis is known.
+To Sendcloud's Tech Partner programme (the form at `sendcloud.com/ecosystem`), with the questions as the message. Plain text; change the
+signature and company details.
+
+> We build Kaizena Flow (kaizenaflow.com), an e-commerce platform for shops selling across the EU, with servers in Dublin. We would like to
+> join your Tech Partner programme and build a Sendcloud integration on API v3, where each shop connects its own Sendcloud account with its
+> own API keys, books labels from its orders, offers your shipping options and service points at checkout, follows its parcels and makes
+> return labels. Before we build, could you help with these questions?
+>
+> 1. Can a Norwegian company open a Sendcloud account to ship from a warehouse in Germany or the Netherlands? Is Norway planned as a
+>    sender country?
+> 2. Is API access included on every plan, the Free plan too?
+> 3. Do the prices returned by `POST /api/v3/shipping-options` (`calculate_quotes: true`) include VAT?
+> 4. For an integration where each shop uses its own API keys, which key signs the webhooks (`Sendcloud-Signature`)?
+> 5. When a label is cancelled within 42 days, is the label processing fee refunded too, and which carriers do not accept cancellations?
+> 6. What does the Tech Partner programme ask of a platform, and could we later offer labels under our own account to our shops (your
+>    "centralized" model), with your written consent?
+> 7. Could you send your current list of sub-processors?
+>
+> We would also be glad of a test account in Germany or the Netherlands to build against.
+
+## 12. Decisions, answered by the owner on 5 November 2026
+
+1. **The model:** each shop's own Sendcloud account now; Flow selling labels itself only later, with Sendcloud's written consent.
+2. **Apply to the Tech Partner programme now:** it gives Flow a contact for section 11 and a place in Sendcloud's app store. The owner sends
+   the application and the questions (section 11a); a person, not the code, holds that conversation.
+3. **Checkout prices:** the shop's own prices first; Sendcloud's prices with a markup once the VAT basis is known.
 
 ## 13. Not in the first version
 
