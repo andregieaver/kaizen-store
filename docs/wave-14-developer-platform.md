@@ -283,6 +283,10 @@ yes for. Price lists' prices (D321). Updated-since filters (`?updated_after=`) o
   review checklist are drafts beside the developer terms. The app events were contract 1.7 (with D2); the OAuth security scheme
   (`appOAuth`, each operation with the permission and power an app's token needs) is contract 1.8. *A first app* is a Node script; the
   owners' page is *Apps from other companies* (English and Norwegian).
+- **Where the directory lives (the owner, 5 November 2026):** at `kaizenaflow.com/apps`, never a subdomain such as
+  `extensions.kaizenaflow.com`: one site keeps search engines' trust in one place and owners' sign-in in one place, and the developer
+  guides stay on `docs.kaizenaflow.com`. When `APP_DIRECTORY_OPEN` is turned on, link `/apps` from the site's *Custom Extensions*
+  page (`/custom-extensions`, whose question *Is there an app store?* then changes) and from *Integrations*.
 
 ### Unit E: the docs portal (D442 to D444)
 
