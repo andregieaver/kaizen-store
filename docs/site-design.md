@@ -325,7 +325,8 @@ The feature pages published on 5 November (Selling Products, Campaigns, Discount
 
 | Try the page builder | `/try-the-page-builder` | 5 November 2026, for the builder's sandbox (D457 S4): the hero with *Start building* (`/admin/try`) and signing up as the text link, three cards (start, change, keep), the real builder beside a list, five questions, the main action again. Built by `docs/site-pages/try-the-page-builder.test.ts` (no issues, no claims). Its button works once the owner turns the sandbox on | draft, for the owner to publish; then a link from the front page and the plans |
 | The six comparison pages | `/kaizen-vs-{platform}` | 4 and 5 November 2026, made again by one generator (`docs/comparison-pages.md`): the hero, six reasons, the table (6.10), where the other is the better fit, moving over, questions, the main action, how we compared. `/compare` left as the owner made it | drafts over the live pages, for the owner to publish |
-| Store Manager | `/store-manager` | 5 November 2026, by `docs/site-pages/store-manager.test.ts` (`docs/site-pages/README.md`): what the AI Store Manager does for an owner, in the feature pages' shape (6.11) with *You stay in charge* (the three levels) and three highlighted cards | draft over the live page, for the owner to publish |
+| Store Manager | `/store-manager` | 5 November 2026, by `docs/site-pages/store-manager.test.ts` (`docs/site-pages/README.md`): what the AI Store Manager does for an owner, in the feature pages' shape (6.11) with *You stay in charge* (the three levels) and three highlighted cards | published by the owner, 5 November |
+| Languages and Currencies | `/languages-and-currencies` | 5 November 2026, by `docs/site-pages/languages-and-currencies.test.ts`: selling across borders (languages, currencies, payments, VAT, EU rules, shipping and customs, country by country), in the feature pages' shape (6.11) | draft over the live page, for the owner to publish |
 
 A page for another platform (`move-from-{platform}`) is the same eight-part shape: the hero, the three steps, what is particular to that
 platform (as WordPress's choice), what comes with you, no stress, the free move, its questions, the main action ending on *Compare us to
@@ -343,3 +344,6 @@ For the owner, not to copy:
 - (5 November) A second, published page at `/kaizena-store-manager` (*Kaizena Store Manager*) holds a copy of *About us* (*Products and
   Services*, *KaizenaLabs*, *Kaizen Life*) with no search texts, beside `/store-manager`; once the new Store Manager page is published it can
   be unpublished, or point to `/store-manager`.
+- (5 November) The shop's interface words are hand-written in Norwegian, Swedish, Danish and English only: `commerce.ui_translations` is
+  empty, so a store in any of the other 23 languages shows its buttons, checkout and emails in English until a platform admin presses
+  *Translate and review* at Platform → Languages. Pages say *27 languages* only of a store's own words until then (`docs/site-pages/README.md`).

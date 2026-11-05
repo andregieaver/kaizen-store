@@ -6,6 +6,12 @@ The comparison pages have their own generator (`docs/comparison-evidence/pages/`
 | Page | Address | Generator | Row id |
 |---|---|---|---|
 | Store Manager | `/store-manager` | `store-manager.test.ts` | `6adcc040-3916-4a40-81b2-7e6cff781b40` |
+| Languages and Currencies | `/languages-and-currencies` | `languages-and-currencies.test.ts` | `664ec8d9-171e-4c8f-bfe7-b66151da30f3` |
+
+`try-the-page-builder.test.ts` (*Try the page builder*, D457 S4) is here too, with its own parts and its notes in `docs/builder-sandbox.md`.
+
+The parts the pages above are built from (the hero, three cards, feature rows, highlighted cards, questions, the end) and the check are
+`parts.ts`, in the shape of the feature pages the owner published on 5 November 2026 (`docs/site-design.md` 6.11).
 
 ## Running one
 
@@ -37,3 +43,21 @@ D308 to D311, D328 to D331, D346, D350, D418, D437, D439) and the tools of `src/
 
 Before publishing: look at it on a phone and in dark mode in the builder; screenshots of the AI manager's panel, an approval card and the
 Autopilot page would make the feature rows better (none were added: the owner's feature pages of 5 November have no pictures either).
+**Published by the owner on 5 November 2026 at 17:33.**
+
+## Languages and Currencies, 5 November 2026
+
+The owner asked for an updated `/languages-and-currencies` "to promote what Kaizena Flow is capable of internationally". The live page
+(22 October) was a placeholder: a copy of *About us* under a *Localize* heading. The draft has eleven rows: the hero (*Sell Across Europe
+From One Store*), *Speak / Show / Take* (languages, currencies, payments), six feature rows (languages, currencies, VAT, EU rules, shipping and
+customs, country by country), three highlighted cards (the AI Store Manager adding a country, B2B abroad, data kept in Dublin), six
+questions and the main action. Its sources are beside each row in the generator: `docs/rules/storefront.md` (D109, D110, D335, D338, D342,
+D343), `docs/rules/admin/commerce.md` (D153, D157 to D161, D291, the carriers) and production's own tables read that day: 27 languages in
+`commerce.platform_languages` and 28 countries (the EU's 27 and Norway) in `commerce.countries`. No issues and no claims found.
+
+**Held back on purpose:** the shop's own words (buttons, checkout, emails) are written by hand in Norwegian, Swedish, Danish and English, and
+`commerce.ui_translations` was empty in production on 5 November, so in the other 23 languages a shopper sees them in English until a
+platform admin presses *Translate and review* at Platform → Languages (the nightly job then keeps them filled). The page therefore says *27 languages* of
+the owner's own words (products, pages, menus, articles) and names the four the shop comes in. Once the other languages are translated, the
+hero, the first card and the question *Which languages can my shop speak?* can say the whole shop speaks all 27. Vipps (through Mollie, live
+payments not yet open) is not named.
