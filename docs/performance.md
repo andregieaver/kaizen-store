@@ -92,7 +92,8 @@ document. Blocking each in turn: without the fonts 93 (largest paint 2.9 s), wit
 
 - **The site's fonts are preloaded** (`FontPreloads` in `StoreThemeStyles`, `latinUprightFile()`): the file each of the site's families
   draws upright Latin text from, which React names in the response's `Link` header. Only where one file serves every upright weight (a
-  variable family); a family with a file per weight is left to its stylesheet. Through a proxy that rewrote the front page, four runs
+  variable family); a family with a file per weight is left to its stylesheet. In its own `Suspense`: a family not installed is read for
+  seconds only (`fontCss()`), a hole that fails a prerendered page outside one. Through a proxy that rewrote the front page, four runs
   each: largest paint 4.05 s before, 3.88 s preloaded (the median; scores within the runs' noise).
 - **Not done yet**: the same files cut to the weights the builder offers (400 to 700) are 68 KB instead of 82 (largest paint 3.75 s in
   the same test); with only the default OpenType features 58 KB. Google sends the whole axis even when asked for a range, so this needs

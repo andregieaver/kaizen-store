@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { siteFontFamilies } from "@/lib/fonts";
 import { type SiteFonts } from "@/lib/fonts-schema";
 import { STORE_THEME_SELECTOR, themeCss, type StoreTheme } from "@/lib/theme";
@@ -17,7 +19,8 @@ function hash(text: string): string {
 
 /**
  * A store's look in the head of each of its pages (D60): its fonts from
- * Kaizen's copies (D59), their files preloaded (`FontPreloads`), and its theme's colours and sizes. The `<html>`
+ * Kaizen's copies (D59), their files preloaded (`FontPreloads`, in its own `Suspense`: a family not installed is read for
+ * seconds only, a hole a prerendered page must not wait on), and its theme's colours and sizes. The `<html>`
  * carries the theme's choices (`themeAttributes`). Its screen sizes' breakpoint
  * classes (D179) serve what is drawn outside a page's rows: the standard header,
  * the listing, the gallery.
@@ -26,7 +29,9 @@ export function StoreThemeStyles({ store }: { store: { id: string; theme: StoreT
   const css = themeCss(store.theme.settings, STORE_THEME_SELECTOR);
   return (
     <>
-      <FontPreloads families={siteFontFamilies(store.fonts)} />
+      <Suspense fallback={null}>
+        <FontPreloads families={siteFontFamilies(store.fonts)} />
+      </Suspense>
       <FontLinks families={siteFontFamilies(store.fonts)} />
       <BreakpointSheet breakpoints={breakpointsOf(store.theme.settings)} />
       <style href={`theme-${store.id}-${hash(css)}`} precedence="theme">
