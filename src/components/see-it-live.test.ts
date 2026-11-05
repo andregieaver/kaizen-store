@@ -28,6 +28,16 @@ describe("See it live", () => {
     expect(render([])).toBe("");
   });
 
+  it("offers Try it with this theme only when it is given (D457 S4): the sandbox from the first demo store", () => {
+    expect(render([demo()])).not.toContain("data-try-theme");
+    const html = renderToStaticMarkup(
+      createElement(SeeItLive, { title: "Harbour", demos: [demo()], looks, tryIt: { href: "/admin/try?demo=d1", label: "Try it with this theme", note: "No sign-up." } }),
+    );
+    expect(html).toContain('href="/admin/try?demo=d1"');
+    expect(html).toContain("Try it with this theme");
+    expect(html).toContain("No sign-up.");
+  });
+
   it("opens each demo store at its address, with its name, trade and the look it wears", () => {
     const html = render([demo(), demo({ id: "d2", name: "Salt", trade: "", variation: "coast", href: "https://salt.kaizenstore.site", pictureUrl: "https://x.example/salt.webp" })]);
     expect(html).toContain('<h2 id="see-it-live"');

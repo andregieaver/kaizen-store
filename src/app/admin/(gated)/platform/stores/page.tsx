@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { connection } from "next/server";
 
 import { formatBps, priceLabel } from "@/lib/plans";
 import { listStoreBilling } from "@/server/billing";
+import { sandboxFunnel, sandboxSettings } from "@/server/sandbox";
 import { requirePlatformAdmin } from "@/server/auth";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
@@ -20,7 +22,9 @@ export default async function PlatformStoresPage() {
   const w = adminText(lang, "platform").stores;
   const billingWords = adminText(lang, "billing");
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const stores = await listStoreBilling({ includeClosed: true });
+  const [stores, funnel, sandbox] = await Promise.all([listStoreBilling({ includeClosed: true }), sandboxFunnel(), sandboxSettings()]);
+  const f = adminText(lang, "sandbox").funnel;
+  const share = (n: number, of: number) => (of > 0 ? ` (${Math.round((n / of) * 100)} %)` : "");
   return (
     <>
       <PageHeader
@@ -33,6 +37,43 @@ export default async function PlatformStoresPage() {
           </ButtonLink>
         }
       />
+      {/* The page builder's sandbox (D457 S4): how far visitors who tried it went, beside the stores they became. */}
+      <Card
+        compact
+        title={f.title}
+        description={f.description}
+        aside={
+          <span>
+            {sandbox.on ? f.on : f.off}{" "}
+            <Link href="/admin/platform/requests" className="underline">
+              {f.switchLink}
+            </Link>
+          </span>
+        }
+      >
+        <table className="w-full text-left text-body">
+          <thead className="text-muted">
+            <tr>
+              <th scope="col" className="py-1 pr-4 font-normal" />
+              <th scope="col" className="py-1 pr-4 font-normal">{f.made}</th>
+              <th scope="col" className="py-1 pr-4 font-normal">{f.changed}</th>
+              <th scope="col" className="py-1 pr-4 font-normal">{f.published}</th>
+              <th scope="col" className="py-1 font-normal">{f.kept}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {funnel.map((period) => (
+              <tr key={period.days} className="border-t border-line">
+                <th scope="row" className="py-2 pr-4 font-normal text-ink-2">{countWords(period.days, f.period)}</th>
+                <td className="py-2 pr-4 text-ink">{period.made}</td>
+                <td className="py-2 pr-4 text-ink">{period.changed}{share(period.changed, period.made)}</td>
+                <td className="py-2 pr-4 text-ink">{period.published}{share(period.published, period.made)}</td>
+                <td className="py-2 text-ink">{period.kept}{share(period.kept, period.made)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
       <Card compact>
         <List label={w.title}>
           {stores.map((store) => (
