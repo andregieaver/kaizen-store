@@ -23,7 +23,7 @@ import {
   setTripletexSyncFrom,
   startTripletex,
 } from "@/server/tripletex";
-import { retryTripletex } from "@/server/tripletex-sync";
+import { checkTripletexDocument, postTripletexAgain, retryTripletex } from "@/server/tripletex-sync";
 
 /**
  * Tripletex (D453): the owner's actions on the Tripletex page. A connection sends the store's invoices and its customers' names and
@@ -170,4 +170,30 @@ export async function retryTripletexDocumentAction(storeSlug: string, kind: stri
   const count = await retryTripletex(owner.store.id, { kind: known, localId, accountId: owner.account.id });
   refresh();
   return { status: "ok", messages: [count === 0 ? w.nothingToRetry : countWords(count, w.retried)] };
+}
+
+/** Check in Tripletex: a booked document's voucher read back, nothing changed in Tripletex. */
+export async function checkTripletexDocumentAction(storeSlug: string, kind: string, localId: string): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (typeof owner === "string") return refused(owner);
+  const w = wordsOf(owner);
+  const known = DOCUMENT_KINDS.find((k) => k === kind);
+  if (!known || !/^[0-9a-f-]{36}$/.test(localId)) return refused(w.panel.notBooked);
+  const answer = await checkTripletexDocument(owner.store.id, known, localId);
+  if (answer === "gone") refresh();
+  if (answer === "booked") return { status: "ok", messages: [w.panel.checked] };
+  if (answer === "gone") return refused(w.panel.gone);
+  if (answer === "not_booked") return refused(w.panel.notBooked);
+  return refused(fillWords(w.cannotCheck, { problem: w.failures.transient }));
+}
+
+/** Post again: a voucher deleted in Tripletex booked anew under the next number (the owner's choice, audited). */
+export async function postTripletexAgainAction(storeSlug: string, kind: string, localId: string): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (typeof owner === "string") return refused(owner);
+  const w = wordsOf(owner);
+  const known = DOCUMENT_KINDS.find((k) => k === kind);
+  if (!known || !/^[0-9a-f-]{36}$/.test(localId) || !(await postTripletexAgain(owner.store.id, known, localId, owner.account.id))) return refused(w.nothingToRetry);
+  refresh();
+  return { status: "ok", messages: [w.panel.postedAgain] };
 }

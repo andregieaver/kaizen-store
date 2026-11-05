@@ -782,6 +782,12 @@ export const notificationsNb: NotificationsMessages = {
         onItsWay: "På vei til Tripletex",
         notSent: "Ikke sendt: utstedt før Tripletex ble startet",
         skipped: "Ikke sendt: Tripletex ble koblet fra først",
+        check: "Sjekk i Tripletex",
+        checked: "Det ligger i Tripletex, slik det ble ført.",
+        gone: "Det ligger ikke lenger i Tripletex. Før det på nytt, eller la det være.",
+        notBooked: "Det er ikke ført i Tripletex ennå.",
+        postAgain: "Før på nytt",
+        postedAgain: "Det går til Tripletex igjen innen fem minutter, under et nytt nummer.",
       },
     },
     endpoints: {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { retryTripletexDocumentAction } from "@/app/admin/(gated)/[store]/integrations/tripletex/actions";
+import { checkTripletexDocumentAction, postTripletexAgainAction, retryTripletexDocumentAction } from "@/app/admin/(gated)/[store]/integrations/tripletex/actions";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
 import type { AdminLang } from "@/lib/admin-lang";
@@ -64,7 +64,8 @@ export function TripletexDocumentsPanel({
                   ? w.problemsTitle
                   : p.onItsWay;
           const reason = state && state.state !== "synced" ? reasonOf(w, state) : null;
-          const waitsForPerson = state?.state === "blocked" || state?.state === "drifted" || state?.state === "failed";
+          const waitsForPerson = state?.state === "blocked" || state?.state === "failed";
+          const gone = state?.state === "drifted";
           return (
             <li key={`${d.kind}:${d.localId}`} className="flex flex-col gap-1">
               <span>
@@ -75,6 +76,17 @@ export function TripletexDocumentsPanel({
               {owner && waitsForPerson && (
                 <ActionForm action={retryTripletexDocumentAction.bind(null, storeSlug, d.kind, d.localId)} className="mt-1">
                   <SubmitButton variant="secondary">{w.tryAgain}</SubmitButton>
+                </ActionForm>
+              )}
+              {owner && gone && (
+                <ActionForm action={postTripletexAgainAction.bind(null, storeSlug, d.kind, d.localId)} className="mt-1">
+                  <SubmitButton variant="secondary">{p.postAgain}</SubmitButton>
+                </ActionForm>
+              )}
+              {/* Lisa's: whether the voucher is still there, read back; it changes nothing in Tripletex. */}
+              {owner && state?.state === "synced" && (
+                <ActionForm action={checkTripletexDocumentAction.bind(null, storeSlug, d.kind, d.localId)} className="mt-1">
+                  <SubmitButton variant="secondary">{p.check}</SubmitButton>
                 </ActionForm>
               )}
             </li>

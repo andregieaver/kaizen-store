@@ -22,6 +22,7 @@ import {
   connectTripletexAction,
   disconnectTripletexAction,
   pauseTripletexAction,
+  postTripletexAgainAction,
   retryTripletexAction,
   saveTripletexSettingsAction,
   startTripletexAction,
@@ -263,6 +264,12 @@ export default async function TripletexPage({ params }: PageProps<"/admin/[store
                         <>
                           {reason}
                           {p.detail && <span className="block">{fillWords(w.tripletexSaid, { detail: p.detail })}</span>}
+                          {/* A voucher deleted in Tripletex is never booked again on its own: Post again is the owner's choice. */}
+                          {owner && p.state === "drifted" && (
+                            <ActionForm action={postTripletexAgainAction.bind(null, store.slug, p.kind, p.localId)} className="mt-2">
+                              <SubmitButton variant="secondary">{w.panel.postAgain}</SubmitButton>
+                            </ActionForm>
+                          )}
                         </>
                       }
                     />

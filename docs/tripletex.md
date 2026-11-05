@@ -89,7 +89,8 @@ the start day, "send the client's email", "attach PDFs", Pause, Disconnect, and 
 | What needs a person, told: the store checkup's `accounting` and `accounting_token` (so the AI manager's checkup and the daily or weekly briefing say it), and the staff alert *Accounting* (owners by default, chosen on Settings → Notifications → Staff alerts like the others), at most once a day per store and recipient while it lasts | `tripletexAttention()`, `sendAccountingAlert()` in `src/server/staff-alerts.ts`, `STAFF_ALERT_EVENTS` (`20261105003107_accounting_alerts.sql`) | built, tested |
 | Tripletex on Work: a card on Work's settings (connect, or how it goes) and a panel on each issued Work invoice (the invoice and its credit notes: voucher number, on its way, or why it waits, with Try again for one) | `src/components/admin/tripletex-panel.tsx`, `tripletexDocuments()`, `retryTripletexDocumentAction()` | built, tested by rendering |
 | AI manager tools (`tripletex_status`, `tripletex_retry`) | as section 6.5 | next, with a new run of the agents' eval on Platform → AI: a new tool changes `toolsVersion()`, so CI's replay fails until its recording is committed |
-| Post again after a voucher deleted in Tripletex (`drifted`), Check in Tripletex, Tripletex's state on the shop's invoice list | section 3.4 | next |
+| Check in Tripletex (a booked document's voucher read back, nothing written) and Post again for one deleted there (`drifted`, booked anew under `#2`, `#3`; never on its own) | `checkTripletexDocument()`, `postTripletexAgain()` in `src/server/tripletex-sync.ts`, on the document panel and the page's Needs you | built, tested against the fake |
+| Tripletex's state on the shop's invoice list; *Leave it out* for a document the owner books by hand | section 3.4 | next |
 | Payments read back (T2), foreign currency, webhooks, the marketplace's Activate | sections 4.5, 4.6, TP13 | later |
 
 ### Still to find out in Tripletex's sandbox (Appendix A, plus)

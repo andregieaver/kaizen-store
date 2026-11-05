@@ -17,11 +17,13 @@ const documents = [
   { kind: "work_invoice" as const, localId: "00000000-0000-4000-8000-000000000001", number: "W-1042" },
   { kind: "work_credit_note" as const, localId: "00000000-0000-4000-8000-000000000002", number: "WCN-3" },
   { kind: "work_credit_note" as const, localId: "00000000-0000-4000-8000-000000000003", number: "WCN-4" },
+  { kind: "work_credit_note" as const, localId: "00000000-0000-4000-8000-000000000004", number: "WCN-5" },
 ];
 
 const states = new Map<string, DocumentInTripletex>([
   ["work_invoice:00000000-0000-4000-8000-000000000001", { state: "synced", voucher: "2026/145", errorKey: null, detail: null, attached: false }],
   ["work_credit_note:00000000-0000-4000-8000-000000000002", { state: "blocked", voucher: null, errorKey: "closed_period", detail: "date: Perioden er lukket", attached: false }],
+  ["work_credit_note:00000000-0000-4000-8000-000000000004", { state: "drifted", voucher: "2026/150", errorKey: "http_404", detail: null, attached: false }],
 ]);
 
 const render = (lang: "en" | "nb", owner: boolean) =>
@@ -40,10 +42,12 @@ describe("Tripletex on a document's own page (D453)", () => {
     expect(html).toContain('href="/admin/shop/integrations/tripletex"');
   });
 
-  it("offers Try again to an owner, for the one that waits, and to nobody else", () => {
-    const buttons = (html: string) => html.match(/<button[^>]*type="submit"/g) ?? [];
-    expect(buttons(render("en", true))).toHaveLength(1);
+  it("offers an owner Try again for the one that waits, Post again for one deleted in Tripletex and Check for one booked, and nobody else anything", () => {
+    const buttons = (html: string) => html.match(/<button[^>]*type="submit"[^>]*>[\s\S]*?<\/button>/g) ?? [];
+    const owner = buttons(render("en", true)).map((b) => b.replace(/<[^>]+>/g, "").trim());
+    expect(owner).toEqual(["Check in Tripletex", "Try again", "Post again"]);
     expect(buttons(render("en", false))).toHaveLength(0);
+    expect(render("en", true)).toContain("This was deleted in Tripletex. Post it again, or leave it out.");
   });
 
   it("speaks the owner's language", () => {

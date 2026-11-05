@@ -205,7 +205,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   validation message shown as what Tripletex said. A booked shop document's stored PDF is attached by `attachPdfs()` only, read through
   `readPdf()` (never Chromium), never touching its voucher on a refusal. What needs a person is `tripletexAttention()`, told by the store
   checkup (`accounting`, `accounting_token`) and the staff alert `accounting` (`sendAccountingAlert()`, once a day per store and recipient),
-  never by a channel of its own. A document's own page shows it through `TripletexDocumentsPanel`. The page (`/admin/{store}/integrations/tripletex`, owners act, `settings:read` sees) is
+  never by a channel of its own. A document's own page shows it through `TripletexDocumentsPanel`. A voucher deleted in Tripletex is found
+  only by Check (`checkTripletexDocument()`, read-only) and is never booked again but by the owner's Post again (`postTripletexAgain()`, the
+  next external number). The page (`/admin/{store}/integrations/tripletex`, owners act, `settings:read` sees) is
   Homer's: one paste, then only the questions Tripletex would refuse (`checkTripletexSettings()` before Start), then Start; the card
   speaks only when something needs the owner; every account, code, the start day and the switches are under Customise. Tests run against `fakeTripletex()`
   (`src/server/tripletex-test-support.ts`), which must answer as Tripletex's spec does and never refuses a repeated external number;

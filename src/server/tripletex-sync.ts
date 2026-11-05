@@ -753,3 +753,53 @@ export async function retryTripletex(
   if (options.accountId && rows.length > 0) await audit(options.accountId, storeId, "integration.tripletex_retried", { count: rows.length, ...(options.kind ? { kind: options.kind } : {}) });
   return rows.length;
 }
+
+type DocumentKind = "work_invoice" | "work_credit_note" | "shop_invoice" | "shop_credit_note";
+
+/**
+ * Check in Tripletex (read-only): is a booked document's voucher still there? A voucher deleted in Tripletex turns the row `drifted`, never
+ * booked again on its own; Post again is the owner's choice. Nothing is written in Tripletex.
+ */
+export async function checkTripletexDocument(storeId: string, kind: DocumentKind, localId: string, deps: TripletexDeps = {}): Promise<"booked" | "gone" | "not_booked" | "cannot_check"> {
+  const connection = await getTripletexConnection(storeId);
+  if (!connection) return "not_booked";
+  const row = await typedRow(
+    z.object({ their_id: col.minorOrNull, state: col.text }),
+    sql`select their_id, state from commerce.tripletex_sync
+         where store_id = ${storeId}::uuid and mode = ${connection.mode} and company_id = ${connection.company.id} and kind = ${kind} and local_id = ${localId}`,
+  );
+  if (!row?.their_id || row.state !== "synced") return "not_booked";
+  const credential = await tripletexCredential(storeId);
+  if (!credential) return "cannot_check";
+  const opened = await openSession(credential, deps);
+  if (!opened.ok) return "cannot_check";
+  const read = await opened.session.get(`/ledger/voucher/${row.their_id}`, { fields: "id" });
+  if (read.ok) return "booked";
+  if (read.failure.class !== "drift") return "cannot_check";
+  await db().execute(sql`
+    update commerce.tripletex_sync set state = 'drifted', error_key = 'http_404', error_detail = null, updated_at = now()
+     where store_id = ${storeId}::uuid and mode = ${connection.mode} and company_id = ${connection.company.id} and kind = ${kind} and local_id = ${localId} and state = 'synced'
+  `);
+  return "gone";
+}
+
+/**
+ * Post again: a document whose voucher was deleted in Tripletex is booked anew under the next external number (`#2`, `#3`), so the
+ * lookup that keeps a retry from booking twice never finds the deleted one. The owner's press, audited.
+ */
+export async function postTripletexAgain(storeId: string, kind: DocumentKind, localId: string, accountId: string): Promise<boolean> {
+  const connection = await getTripletexConnection(storeId);
+  if (!connection) return false;
+  const rows = await db().execute(sql`
+    update commerce.tripletex_sync
+       set state = 'pending', posting = posting + 1, external_key = regexp_replace(external_key, '#[0-9]+$', '') || '#' || (posting + 1),
+           their_id = null, their_ref = null, variance_minor = null, synced_at = null, attempts = 0, next_attempt_at = null, claimed_until = null,
+           error_key = null, error_detail = null, request_id = null, attached_at = null, attach_tries = 0, updated_at = now()
+     where store_id = ${storeId}::uuid and mode = ${connection.mode} and company_id = ${connection.company.id} and kind = ${kind} and local_id = ${localId}
+       and state = 'drifted' and external_key is not null
+    returning posting
+  `);
+  if (rows.length === 0) return false;
+  await audit(accountId, storeId, "integration.tripletex_posted_again", { kind, posting: Number((rows[0] as { posting: unknown }).posting) });
+  return true;
+}

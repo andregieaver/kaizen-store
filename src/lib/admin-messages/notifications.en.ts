@@ -520,6 +520,12 @@ export const notificationsEn = {
         onItsWay: "On its way to Tripletex",
         notSent: "Not sent: issued before Tripletex was started",
         skipped: "Not sent: Tripletex was disconnected first",
+        check: "Check in Tripletex",
+        checked: "It is in Tripletex, as it was booked.",
+        gone: "It is no longer in Tripletex. Post it again, or leave it out.",
+        notBooked: "It is not booked in Tripletex yet.",
+        postAgain: "Post again",
+        postedAgain: "It goes to Tripletex again within five minutes, under a new number.",
       },
     },
     /** An owner's own endpoints (D354). */

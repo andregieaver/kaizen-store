@@ -13,7 +13,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 const invoices = await import("./work-invoices");
 const fx = await import("./invoice-test-fixture");
 const { connectTripletex, startTripletex, disconnectTripletex, getTripletexConnection } = await import("./tripletex");
-const { syncDueTripletex, retryTripletex } = await import("./tripletex-sync");
+const { syncDueTripletex, retryTripletex, checkTripletexDocument, postTripletexAgain } = await import("./tripletex-sync");
 const { fakeTripletex } = await import("./tripletex-test-support");
 
 import type { InvoiceResult, WorkActor } from "./work-invoices";
@@ -269,6 +269,33 @@ describe("sending Work's invoices to Tripletex (D453)", () => {
     await startTripletex(actor.account.id, storeId);
     expect(await sync(tx, storeId)).toMatchObject({ sent: 0 });
     expect(tx.vouchers.size).toBe(1);
+  });
+});
+
+describe("a voucher deleted in Tripletex (D453)", () => {
+  it("is found by Check, never booked again on its own, and booked anew under the next number on Post again", async () => {
+    const { storeId, actor, org } = await workStore();
+    const tx = await connected(storeId, actor.account.id, org, BASE + 30);
+    const invoice = await issued(actor, await client(storeId));
+    await sync(tx, storeId);
+    const deps = { fetch: tx.fetch };
+    expect(await checkTripletexDocument(storeId, "work_invoice", invoice.id, deps)).toBe("booked");
+
+    tx.vouchers.clear();
+    expect(await checkTripletexDocument(storeId, "work_invoice", invoice.id, deps)).toBe("gone");
+    expect((await rowsOf(storeId)).find((r) => r.local_id === invoice.id)).toMatchObject({ state: "drifted", error_key: "http_404" });
+    // Not on its own: a run books nothing.
+    expect(await sync(tx, storeId, later(60))).toMatchObject({ sent: 0 });
+    expect(tx.vouchers.size).toBe(0);
+
+    expect(await postTripletexAgain(storeId, "work_invoice", invoice.id, actor.account.id)).toBe(true);
+    expect(await postTripletexAgain(storeId, "work_invoice", invoice.id, actor.account.id)).toBe(false);
+    expect(await sync(tx, storeId, later(61))).toMatchObject({ sent: 1 });
+    const [again] = [...tx.vouchers.values()];
+    expect(again.externalVoucherNumber).toBe(`${externalVoucherNumber(storeId, invoice.number)}#2`);
+    expect(await checkTripletexDocument(storeId, "work_invoice", invoice.id, deps)).toBe("booked");
+    const [entry] = await db().execute<Row>(sql`select action from commerce.audit_log where store_id = ${storeId}::uuid and action = 'integration.tripletex_posted_again'`);
+    expect(entry).toBeTruthy();
   });
 });
 
