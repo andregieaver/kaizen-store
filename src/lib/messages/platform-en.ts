@@ -21,15 +21,14 @@ export const platformEn = {
   signUp: {
     title: "Start your store",
     description: "Kaizena Flow is in a private beta. Ask for a store and we will set one up for you.",
-    intro: "Kaizena Flow is in a private beta. Tell us who you are and we will set up your store, ready to try with demo products.",
+    intro: "Kaizena Flow is in a private beta. Tell us about your store and we will set it up for you, ready to try with demo products.",
     name: "Your name",
     email: "Email",
     storeName: "Store name",
     storeNameHint: "You can change it later.",
-    themeLegend: "Theme (optional)",
-    themeHint:
-      "Your store starts with the theme's look and its demo store's products and pages, which you remove in one press when yours are in. Preview opens it in a new window; see them all on the Themes page.",
+    themeLegend: "Theme",
     sell: "What will you sell?",
+    sellPlaceholder: "For example: handmade cups and bowls",
     optional: "(optional)",
     website: "Website",
     submit: "Request a store",
@@ -40,6 +39,27 @@ export const platformEn = {
     signIn: "Sign in",
     received: "Thanks! We have your request. When your store is ready you will get an email with a link to sign in.",
     failed: "Your request could not be saved. Try again.",
+    /**
+     * The steps (D456): one thing at a time, Homer's way, all of them in the one form, so nothing typed is lost going back and the page
+     * still works without scripts (every step then shown at once). Plain texts with `{n}` and `{total}`: a client component reads them.
+     */
+    steps: {
+      list: "Steps",
+      stepOf: "Step {n} of {total}",
+      done: "(done)",
+      next: "Continue",
+      back: "Back",
+      change: "Change",
+      store: { label: "Your store", title: "Your store" },
+      look: {
+        label: "Look",
+        title: "Choose a look",
+        hint: "Your store starts with this look and its demo products and pages, which you remove in one press when yours are in. You can change the look at any time.",
+      },
+      you: { label: "About you", title: "About you", hint: "We write to you here when your store is ready." },
+      recapStore: "Store",
+      recapLook: "Look",
+    },
     errors: {
       name: "Enter your name.",
       email: "Enter a valid email address.",
@@ -48,7 +68,9 @@ export const platformEn = {
     },
     /** Self-serve sign-up (D359): the form's words while it is on, and the page the email's link opens. */
     selfServe: {
-      intro: "Tell us who you are and we will make your store at once, ready to try with demo products. It is free for 14 days and private until you open it.",
+      intro: "Tell us about your store and we will make it at once, ready to try with demo products. It is free for 14 days and private until you open it.",
+      /** The last step's line (D456): what happens to the address. */
+      youHint: "We email you a link to confirm your address. Your store is made when you press the button in it.",
       submit: "Start my store",
       received: "Check your email: we have sent you a link to confirm your address. Your store is made when you press the button in it.",
       confirmTitle: "Start your store",
@@ -78,6 +100,8 @@ export const platformEn = {
     preview: "Preview",
     opensInNewWindow: "(opens in a new window)",
     orPreset: "Or one of its presets",
+    /** Sign-up's look cards (D456): the theme's own look and its presets as choices under the chosen card. */
+    variants: "Variants",
     moreAbout: "More about it",
     premium: "Premium:",
     premiumNote: (price: string) => `${price} excl. VAT, once. Nothing to pay now: it is charged when your store opens with it.`,

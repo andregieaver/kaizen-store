@@ -57,7 +57,7 @@ test("a page has its tree, breadcrumbs, On this page, its check date, its neighb
   await expect(page.locator("h2#sign-up")).toHaveText("Sign up");
 
   await expect(page.getByText("In the admin:")).toBeVisible();
-  await expect(page.getByText("Last checked 3 November 2026")).toBeVisible();
+  await expect(page.getByText("Last checked 5 November 2026")).toBeVisible();
   await expect(page.getByRole("link", { name: "This page as Markdown" })).toHaveAttribute("href", `${PAGE}.md`);
   await expect(page.getByRole("link", { name: "Start your store" })).toHaveAttribute("href", "/sign-up");
   await expect(page.getByRole("note").first()).toContainText("Note");
@@ -75,7 +75,7 @@ test("the Norwegian page is the owners' track in Norwegian; the developers' trac
   expect(response?.status()).toBe(200);
   await expect(page.locator("html")).toHaveAttribute("lang", "nb");
   await expect(page.getByRole("heading", { level: 1, name: "Lag nettbutikken din" })).toBeVisible();
-  await expect(page.getByText("Sist kontrollert 3. november 2026")).toBeVisible();
+  await expect(page.getByText("Sist kontrollert 5. november 2026")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Brødsmulesti" }).getByRole("link", { name: "Butikkeiere" })).toHaveAttribute("href", "/no/docs/owners");
   await expect(page.getByRole("navigation", { name: "Språk" }).getByRole("link", { name: "English" })).toHaveAttribute("href", PAGE);
   // A link to another owners' page stays in Norwegian (the article's own words; the tree and the pager name the page with a capital).

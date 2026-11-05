@@ -40,6 +40,7 @@ export function ActionForm({
   className,
   successMessage = "Saved.",
   replaceOnSuccess = false,
+  successClassName = "rounded-panel border border-line bg-card p-4",
 }: {
   id?: string;
   action: (state: FormState, formData: FormData) => Promise<FormState>;
@@ -48,6 +49,8 @@ export function ActionForm({
   successMessage?: string;
   /** Show only the success message once the action succeeds (one-off forms). */
   replaceOnSuccess?: boolean;
+  /** The look of that message: the admin's card unless said (Kaizena Flow's own pages have no admin colours, D456). */
+  successClassName?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, idle);
   const formRef = useRef<HTMLFormElement>(null);
@@ -81,7 +84,7 @@ export function ActionForm({
   }, [state, formKey]);
   if (replaceOnSuccess && state.status === "ok") {
     return (
-      <p role="status" className="rounded-panel border border-line bg-card p-4">
+      <p role="status" className={successClassName}>
         {state.messages[0] ?? successMessage}
       </p>
     );
@@ -121,6 +124,7 @@ export function SubmitButton({
   name,
   value,
   skipValidation = false,
+  className,
 }: {
   children: ReactNode;
   disabled?: boolean;
@@ -130,6 +134,8 @@ export function SubmitButton({
   value?: string;
   /** Submit without the browser's field checks (e.g. a Decline button). */
   skipValidation?: boolean;
+  /** In place of the variant's look, where the admin's colours are not set (Kaizena Flow's own pages, D456). */
+  className?: string;
 }) {
   const { pending: posting } = useFormStatus();
   const pending = useContext(PendingContext) || posting;
@@ -143,9 +149,10 @@ export function SubmitButton({
       formNoValidate={skipValidation || undefined}
       disabled={disabled || pending}
       className={
-        variant === "primary"
+        className ??
+        (variant === "primary"
           ? "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
-          : "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40"
+          : "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40")
       }
     >
       {pending ? working : children}

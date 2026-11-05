@@ -140,7 +140,7 @@ describe("search by words (D443)", () => {
       lang: "en",
       title: "Create your store",
       section: { path: "owners/getting-started", title: "Getting started" },
-      checked: "2026-11-03",
+      checked: "2026-11-05",
     });
     const heading = await ask("setup steps");
     const hit = heading.results.find((r) => r.doc === "en:owners/getting-started/create-your-store");

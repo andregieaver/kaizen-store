@@ -68,7 +68,7 @@ describe("the docs' search index as rows (D443)", () => {
       title: "Create your store",
       headings: [],
       position: 0,
-      checked: "2026-11-03",
+      checked: "2026-11-05",
     });
     // The start holds the summary; each part its own words.
     expect(create[0].text.startsWith("Sign up, confirm your email address")).toBe(true);

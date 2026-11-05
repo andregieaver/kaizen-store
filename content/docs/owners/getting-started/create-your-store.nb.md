@@ -9,14 +9,20 @@ features: []
 plans: []
 admin: /admin/{store}/setup
 order: 10
-checked: 2026-11-03
-sources: [D359, D420, D178]
+checked: 2026-11-05
+sources: [D359, D420, D178, D456]
 ---
 
 ## Registrer deg
 
-Gå til [Start nettbutikken din](/sign-up) og skriv navnet ditt, e-postadressen din og et navn på butikken. Du kan også velge et tema der;
-det kan du endre senere.
+Gå til [Start nettbutikken din](/sign-up) og følg de tre korte stegene:
+
+1. **Nettbutikken.** Gi den et navn og, om du vil, fortell hva du skal selge. Navnet kan du endre senere.
+2. **Utseende.** Velg hvordan butikken skal se ut, eller behold Standard. Butikken starter med utseendets demoprodukter og sider; du kan
+   bytte utseende når som helst.
+3. **Om deg.** Navnet ditt og e-postadressen din, der vi skriver til deg.
+
+Du kan gå tilbake til et steg når som helst; det du har skrevet, blir tatt vare på.
 
 Hva som skjer videre, avhenger av hvordan registreringen er åpen når du kommer:
 

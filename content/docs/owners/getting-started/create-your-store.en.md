@@ -9,14 +9,20 @@ features: []
 plans: []
 admin: /admin/{store}/setup
 order: 10
-checked: 2026-11-03
-sources: [D359, D420, D178]
+checked: 2026-11-05
+sources: [D359, D420, D178, D456]
 ---
 
 ## Sign up
 
-Go to [Start your store](/sign-up) and give your name, your email address and a name for your store. You can also choose a theme there;
-you can change it later.
+Go to [Start your store](/sign-up) and follow its three short steps:
+
+1. **Your store.** Give it a name and, if you like, say what you will sell. You can change the name later.
+2. **Look.** Choose how your store looks, or keep Standard. Your store starts with the look's demo products and pages; you can change the
+   look any time.
+3. **About you.** Your name and your email address, where we write to you.
+
+You can go back to a step at any time; what you typed is kept.
 
 What happens next depends on how sign-up is open when you come:
 
