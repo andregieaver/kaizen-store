@@ -328,6 +328,8 @@ The feature pages published on 5 November (Selling Products, Campaigns, Discount
 | Store Manager | `/store-manager` | 5 November 2026, by `docs/site-pages/store-manager.test.ts` (`docs/site-pages/README.md`): what the AI Store Manager does for an owner, in the feature pages' shape (6.11) with *You stay in charge* (the three levels) and three highlighted cards | published by the owner, 5 November |
 | Languages and Currencies | `/languages-and-currencies` | 5 November 2026, by `docs/site-pages/languages-and-currencies.test.ts`: selling across borders (languages, currencies, payments, VAT, EU rules, shipping and customs, country by country), in the feature pages' shape (6.11) | draft over the live page, for the owner to publish |
 
+| Selling Products | `/selling-products` | 5 November 2026, for physical and digital products: two cards (ship it or send it), three feature rows without pictures (catalogue, stock and shipping, downloads), four cards (prices, checkout, being found, the EU's rules), questions, the main action. Each claim a Full row of `docs/parity/rows` (backorders, a Partial row, left out) | draft over the live page, for the owner to publish |
+
 A page for another platform (`move-from-{platform}`) is the same eight-part shape: the hero, the three steps, what is particular to that
 platform (as WordPress's choice), what comes with you, no stress, the free move, its questions, the main action ending on *Compare us to
 {platform}* (`/kaizen-vs-{platform}`). Its claims come only from that platform's `docs/moving-from-*.md` and what it says is built.
