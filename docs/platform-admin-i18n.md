@@ -68,7 +68,9 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
   client parts get only their slice (D211: no catalogue in a visitor's first scripts beyond what it draws).
 - **Content:** Kaizena Flow's builder gets the store's translate mode (D55): `translate` in the platform's `pages/context.ts`, texts in
   other languages laid over the page, `localizePage()` on the site; the AI page translation (`page-translate-ai.ts`) only suggests, as for
-  stores, and is never used for a legal page. Menus' words per language, as a store's.
+  stores, and is never used for a legal page. Menus' words per language, as a store's. A page's, header's or footer's links to the site's
+  own pages are written once, in English, and drawn in the page's language (`linksIn()`, `src/lib/platform-links.ts`, 2026-11-05): `/sign-up`
+  is `/no/sign-up` on a Norwegian page, a full address on the site's or the theme store's host too; code (an HTML part, CSS) is as written.
 - **The theme store's data:** listing words, highlights and launch themes' notes per language (`listing.words[lang]`), written by people;
   a theme without Norwegian words shows the English ones with `lang="en"` on them.
 - **Emails from the platform store:** access request received and decided, sign-in links, in the language the request was made in

@@ -104,6 +104,7 @@ test("a page of Kaizena Flow's reads in Norwegian under /no where its texts are 
             blocks: [
               { id: "h1", type: "heading", text: "Our story", level: 1 },
               { id: "h2", type: "heading", text: "Only in English", level: 2 },
+              { id: "h3", type: "heading", text: 'Read <a href="/sign-up">how to start</a> or <a href="/admin">sign in</a>', level: 3 },
             ],
           },
         ],
@@ -127,7 +128,11 @@ test("a page of Kaizena Flow's reads in Norwegian under /no where its texts are 
   // A text not written in Norwegian is the English one.
   await expect(page.getByRole("heading", { level: 2, name: "Only in English" })).toBeVisible();
   await expect(page).toHaveTitle(/Vår historie/);
+  // Its links to the site's own pages stay in Norwegian; the admin keeps its one address.
+  await expect(page.getByRole("link", { name: "how to start" })).toHaveAttribute("href", "/no/sign-up");
+  await expect(page.getByRole("link", { name: "sign in" })).toHaveAttribute("href", "/admin");
   // The English page is as written.
   await page.goto(`/${slug}`);
   await expect(page.getByRole("heading", { level: 1, name: "Our story" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "how to start" })).toHaveAttribute("href", "/sign-up");
 });

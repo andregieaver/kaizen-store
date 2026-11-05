@@ -9,6 +9,7 @@ import { headerOverlays } from "@/lib/site-layout";
 import type { PageContent } from "@/lib/page-content";
 import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { localizePage } from "@/lib/page-translation";
+import { linksIn } from "@/lib/platform-links";
 import { siteUrl } from "@/lib/site";
 import { pageJsonLd } from "@/lib/structured-data";
 import type { ThemeStorePart } from "@/lib/theme-store-parts";
@@ -22,9 +23,12 @@ import { siteLayoutFor } from "@/server/site-layouts";
  * place's address.
  */
 
-/** A page of Kaizena Flow's as it reads in `lang` (D312 P4): its texts in that language where they are written, else the English. */
+/**
+ * A page of Kaizena Flow's as it reads in `lang` (D312 P4): its texts in that language where they are written, else the English, and its
+ * links to the site's own pages in that language too (`linksIn()`), so a visitor stays in it.
+ */
 export function inPlatformLang(content: PageContent, lang: PlatformLang): PageContent {
-  return localizePage(content, pageLocaleOf(lang));
+  return linksIn(localizePage(content, pageLocaleOf(lang)), lang);
 }
 
 /**
