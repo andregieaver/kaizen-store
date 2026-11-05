@@ -24,6 +24,8 @@ export const en = {
   deliveries: {
     title: "Subscription box",
     intro: "Keep a list of what you want in your box. We deliver it on your delivery day: change it until the cutoff, and we charge your card when the delivery is on its way.",
+    /** Its card in My account's overview (D480). */
+    accountCard: "What goes in your box, and when it comes.",
     signIn: "Sign in or create an account to start a subscription box.",
     signInLink: "Sign in",
     noSchedule: "This store does not deliver subscription boxes to this country yet.",
@@ -1252,6 +1254,10 @@ export const en = {
     subscriptions: "Subscriptions",
     noSubscriptions: "You have no subscriptions.",
     manage: "Manage",
+    // My account's tabs (D480): the overview, the orders, the customer's own details and the settings.
+    tabs: { overview: "Overview", orders: "Orders", profile: "Profile", settings: "Settings" },
+    recentOrders: "Recent orders",
+    toShop: "Go to the shop",
     // Finding an order (D304 J2).
     orderList: {title: "Your orders", all: "All", open: "Being prepared", sent: "On the way", delivered: "Delivered", returned: "Returned", search: "Search your orders", searchHint: "Order number, product or tracking number", find: "Search", none: "No orders match.", more: "Show older orders", seeAll: "See all orders"},
     // Saved addresses (D304).

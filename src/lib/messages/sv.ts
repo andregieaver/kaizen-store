@@ -19,6 +19,8 @@ export const sv: Messages = {
   deliveries: {
     title: "Prenumerationsbox",
     intro: "Håll en lista över det du vill ha i boxen. Vi levererar den på din leveransdag: ändra den fram till stopptiden, så drar vi ditt kort när leveransen är på väg.",
+    /** Its card in My account's overview (D480). */
+    accountCard: "Vad som är i din låda, och när den kommer.",
     signIn: "Logga in eller skapa ett konto för att starta en prenumerationsbox.",
     signInLink: "Logga in",
     noSchedule: "Butiken levererar inte prenumerationsboxar till det här landet ännu.",
@@ -1282,6 +1284,10 @@ export const sv: Messages = {
     subscriptions: "Prenumerationer",
     noSubscriptions: "Du har inga prenumerationer.",
     manage: "Hantera",
+    // My account's tabs (D480): the overview, the orders, the customer's own details and the settings.
+    tabs: { overview: "Översikt", orders: "Beställningar", profile: "Profil", settings: "Inställningar" },
+    recentOrders: "Senaste beställningarna",
+    toShop: "Gå till butiken",
     // Finding an order (D304 J2).
     orderList: {title: "Dina beställningar", all: "Alla", open: "Förbereds", sent: "På väg", delivered: "Levererad", returned: "Returnerad", search: "Sök bland dina beställningar", searchHint: "Ordernummer, produkt eller spårningsnummer", find: "Sök", none: "Inga beställningar matchar.", more: "Visa äldre beställningar", seeAll: "Se alla beställningar"},
     // Saved addresses (D304).

@@ -80,7 +80,9 @@ test("a shopper downloads their data, confirms it is them when the session is ol
 
   // A fresh sign-in: My account offers Your data, and the page offers the download.
   await signInWithCode(page, email);
-  await expect(page.getByText(`Ordre ${number}`)).toBeVisible();
+  await expect(page.getByRole("tabpanel").getByText(`Ordre ${number}`)).toBeVisible();
+  // Your data is under Settings (D480).
+  await page.getByRole("tab", { name: "Innstillinger" }).click();
   await page.getByRole("link", { name: /Dine data/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Dine data" })).toBeVisible();
 
@@ -133,7 +135,7 @@ test("a shopper downloads their data, confirms it is them when the session is ol
 
   // Coming back with the same address starts empty: the kept order is not relinked.
   await signInWithCode(page, email);
-  await expect(page.getByText("Du har ingen bestillinger ennå.")).toBeVisible();
+  await expect(page.getByRole("tabpanel").getByText("Du har ingen bestillinger ennå.")).toBeVisible();
   await expect(page.getByText(`Ordre ${number}`)).toHaveCount(0);
 });
 
