@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."font_files" ADD COLUMN "trimmed_at" timestamp with time zone;

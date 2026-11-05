@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AbMarker } from "@/components/ab/ab-marker";
 import { PageEditLink } from "@/components/page-edit-link";
 import { StorePageArticle } from "@/components/store-page-article";
+import { StorePartSection } from "@/components/store-part-section";
 import type { Market } from "@/lib/markets";
 import { pageBlocks } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
@@ -17,7 +18,9 @@ import type { Store } from "@/server/stores";
  * A store's place on its site that an owner may build in the page builder
  * (D112, D113): the page chosen for the role, drawn with the route it stands
  * in for so its working components (the cart, the checkout, …) know where
- * they are; else `children`, the standard page.
+ * they are; else `children`, the standard page. It alone hands the page what
+ * draws those components (`StorePartSection`), so only the routes that draw a
+ * working page carry their scripts.
  */
 export async function RolePage({
   store,
@@ -49,6 +52,7 @@ export async function RolePage({
         content={content}
         place={{ ...place, pageId: page.id, owner: store.id, market: market.slug, route: route && { ...route, holds } }}
         editable={!route && market.locale === store.localization.locales[0]}
+        storePart={route ? StorePartSection : undefined}
       />
       <PageEditLink
         pageId={page.id}

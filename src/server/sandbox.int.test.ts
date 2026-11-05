@@ -57,6 +57,25 @@ async function made(tag: string): Promise<{ id: string; pass: string }> {
   return started;
 }
 
+/** Copying and fonts as the platform's tests stub them: nothing leaves the test. */
+const DESIGN_DEPS = {
+  copyFile: async (bucket: string, _from: string, to: string) => `https://x.supabase.co/storage/v1/object/public/${bucket}/${to}`,
+  installFonts: async () => ({ ok: true as const }),
+};
+
+/** A free theme published as Platform → Themes publishes one, by a platform admin of its own; the database holds nothing else for it. */
+async function publishedTheme(tag: string): Promise<{ id: string; title: string; admin: Account }> {
+  const designs = await import("./design-presets");
+  const [row] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_admin) values (${`sandbox-${tag}-${RUN}@example.com`}, 'Admin', true) returning id, email`);
+  const admin = { id: String(row.id), email: String(row.email), name: "Admin", platformAdmin: true, adminView: "basic" } as Account;
+  const title = `Tidewater ${tag} ${RUN}`;
+  const made = await designs.createDesign(admin, { details: { title, summary: "", description: "", pictureUrl: null }, origin: { kind: "scratch" } }, DESIGN_DEPS);
+  if (!made.ok) throw new Error(made.problems.join(" "));
+  const published = await designs.publishDesign(admin, made.id);
+  if (!published.ok) throw new Error(published.problems.join(" "));
+  return { id: made.id, title, admin };
+}
+
 beforeAll(async () => {
   const [row] = await db().execute<Row>(sql`select sandbox_on, sandbox_daily_cap from commerce.platform_settings`);
   was = { on: Boolean(row?.sandbox_on), cap: Number(row?.sandbox_daily_cap ?? 300) };
@@ -373,13 +392,10 @@ describe("trying another look (D457 S4)", () => {
     const { listInstalls } = await import("./theme-installs");
     const { id } = await made("look");
     const opened = (await sandbox.sandboxFor(id))!;
-    const [theme] = await db().execute<Row>(sql`
-      select p.id from commerce.design_presets p
-       where p.published and p.archived_at is null and not exists (select 1 from commerce.theme_prices t where t.preset_id = p.id)
-       order by p.title limit 1`);
-    const result = await applyDesignPreset(opened.store.id, String(theme.id), opened.account.id, { copyFile: async () => null, installFonts: async () => ({ ok: true }) });
+    const theme = await publishedTheme("look");
+    const result = await applyDesignPreset(opened.store.id, theme.id, opened.account.id, DESIGN_DEPS);
     expect(result.ok).toBe(true);
-    expect((await listInstalls(opened.store.id)).find((install) => install.live)?.presetId).toBe(String(theme.id));
+    expect((await listInstalls(opened.store.id)).find((install) => install.live)?.presetId).toBe(theme.id);
     const [owed] = await db().execute<Row>(sql`select count(*)::int as n from commerce.theme_purchases where store_id = ${opened.store.id}::uuid`);
     expect(owed.n).toBe(0);
   });
@@ -388,36 +404,29 @@ describe("trying another look (D457 S4)", () => {
 describe("the front door (D457 S4)", () => {
   /** A published demo store wearing a new published theme, as Platform → Themes makes one (`demo-stores.int.test.ts`). */
   async function demoStore(): Promise<{ id: string; storeId: string; theme: string }> {
-    const designs = await import("./design-presets");
     const starters = await import("./store-starters");
     const demos = await import("./demo-stores");
     const { parseStarterDetails } = await import("@/lib/store-starters");
-    const deps = { copyFile: async (bucket: string, _from: string, to: string) => `https://x.supabase.co/storage/v1/object/public/${bucket}/${to}`, installFonts: async () => ({ ok: true as const }) };
-    const [row] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_admin) values (${`sandbox-demo-${RUN}@example.com`}, 'Admin', true) returning id, email`);
-    const admin = { id: String(row.id), email: String(row.email), name: "Admin", platformAdmin: true, adminView: "basic" } as Account;
-    const made = await designs.createDesign(admin, { details: { title: `Tidewater ${RUN}`, summary: "", description: "", pictureUrl: null }, origin: { kind: "scratch" } }, deps);
-    if (!made.ok) throw new Error(made.problems.join(" "));
-    const published = await designs.publishDesign(admin, made.id);
-    if (!published.ok) throw new Error(published.problems.join(" "));
+    const { id: theme, admin } = await publishedTheme("demo");
     const details = parseStarterDetails({ title: `Shore ${RUN}`, summary: "", description: "", category: "retail", pictureUrl: "" });
     if (!details.ok) throw new Error(details.problems.join(" "));
     const content = await starters.createStarter(admin, { slug: `shore-${RUN}`, details: details.details });
     if (!content.ok) throw new Error(content.problems.join(" "));
     const frozen = await starters.publishStarter(admin, content.id);
     if (!frozen.ok) throw new Error(frozen.problems.join(" "));
-    const demo = await demos.createDemoStore(admin, { name: `Tide ${RUN}`, slug: `tide-${RUN}`, look: { id: made.id, variation: null }, contentId: content.id }, deps);
+    const demo = await demos.createDemoStore(admin, { name: `Tide ${RUN}`, slug: `tide-${RUN}`, look: { id: theme, variation: null }, contentId: content.id }, DESIGN_DEPS);
     if (!demo.ok) throw new Error(demo.problems.join(" "));
     const live = await demos.publishDemoStore(admin, demo.id);
     if (!live.ok) throw new Error(live.problems.join(" "));
     const [store] = await db().execute<Row>(sql`select store_id from commerce.store_starters where id = ${demo.id}::uuid`);
-    return { id: demo.id, storeId: String(store.store_id), theme: made.id };
+    return { id: demo.id, storeId: String(store.store_id), theme };
   }
 
   it("starts from a free theme's demo store when asked, never a premium one's, and from the platform's source for anything else", async () => {
     expect(await sandbox.sandboxDemo("not-an-id")).toBeNull();
     expect(await sandbox.sandboxDemo(crypto.randomUUID())).toBeNull();
     const demo = await demoStore();
-    expect(await sandbox.sandboxDemo(demo.id)).toMatchObject({ id: demo.id, name: `Tide ${RUN}`, theme: `Tidewater ${RUN}` });
+    expect(await sandbox.sandboxDemo(demo.id)).toMatchObject({ id: demo.id, name: `Tide ${RUN}`, theme: `Tidewater demo ${RUN}` });
     const started = await sandbox.startSandbox(`demo-${RUN}`, demo.id);
     if (!started.ok) throw new Error(started.problem);
     const [made] = await db().execute<Row>(sql`select source_store_id from commerce.sandboxes where id = ${started.id}::uuid`);

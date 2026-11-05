@@ -10,7 +10,7 @@ import { isPremium, pricesText } from "@/lib/theme-prices";
 import { cardPicture } from "@/lib/theme-store";
 import { requestAdminLang } from "@/server/admin-request-lang";
 import { listInstalls } from "@/server/theme-installs";
-import { themeStoreCards } from "@/server/theme-store";
+import { themeStoreCardsNow } from "@/server/theme-store";
 
 import { sandboxUseLookAction } from "../actions";
 import { sandboxOf } from "../sandbox";
@@ -28,7 +28,7 @@ export default async function SandboxLooksPage({ params, searchParams }: PagePro
   const [{ sandbox: id }, query] = await Promise.all([params, searchParams]);
   const sandbox = await sandboxOf(id);
   if (!sandbox) return null;
-  const [lang, themes, installs] = await Promise.all([requestAdminLang(), themeStoreCards(), listInstalls(sandbox.store.id)]);
+  const [lang, themes, installs] = await Promise.all([requestAdminLang(), themeStoreCardsNow(), listInstalls(sandbox.store.id)]);
   const w = adminText(lang, "sandbox").looks;
   const live = installs.find((install) => install.live)?.presetId ?? null;
   const note = (NOTES as readonly string[]).includes(String(query.look)) ? (query.look as Note) : null;

@@ -28,6 +28,9 @@ const DOCUMENT_PDF_FILES = [
 // The docs' content (D442): every article, the sections' titles and the list of Norwegian pages still to write.
 const DOCS_FILES = ["./content/docs/**/*"];
 
+// HarfBuzz's subsetter, which `subset-font` reads from disk at run time, for the dispatcher's font trimmer (`src/server/font-trim.ts`).
+const HARFBUZZ_FILES = ["./node_modules/.pnpm/harfbuzzjs@*/node_modules/harfbuzzjs/dist/harfbuzz-subset.wasm"];
+
 /**
  * Vercel's build machine has 8 GB, and the build outgrew it from 27 October 2026: the type check needs a 5 GB heap of its own since
  * the admin's catalogues were typed (D312), Turbopack's compile holds up to 7 GB, and the workers that collect and render pages start
@@ -41,6 +44,8 @@ const nextConfig: NextConfig = {
   // On Vercel (`ON_VERCEL`) the type check is left to CI, whose `static` job runs
   // `pnpm typecheck` on every push and whose builds still check; everywhere else `next build` checks as ever.
   typescript: { ignoreBuildErrors: ON_VERCEL },
+  // Read from node_modules at run time, not bundled: `subset-font` finds HarfBuzz's WebAssembly by its path (`HARFBUZZ_FILES`).
+  serverExternalPackages: ["subset-font", "fontverter"],
   // Chromium (the cookie scan, D58; the page replicator, D150) is read from disk, not
   // imported, so the trace needs telling; only the routes that launch it carry it.
   outputFileTracingIncludes: {
@@ -67,8 +72,9 @@ const nextConfig: NextConfig = {
     // keys are globs over the route's path with its groups (`/(docs)/docs/…`, `/(docs-nb)/no/docs/…`, `/api/docs/feedback`, the admin's).
     "/**/docs": DOCS_FILES,
     "/**/docs/**": DOCS_FILES,
-    // The five-minute dispatcher writes the docs' search index from the same files after a deploy that changed them (D443).
-    "/api/cron/cart-reminders": DOCS_FILES,
+    // The five-minute dispatcher writes the docs' search index from the same files after a deploy that changed them (D443), and cuts
+    // self-hosted fonts to their families' weights with HarfBuzz (D59).
+    "/api/cron/cart-reminders": [...DOCS_FILES, ...HARFBUZZ_FILES],
   },
   experimental: {
     // On Vercel, Turbopack without its build cache (its compile held 7.2 GB with it, 5.8 GB without) and one worker for the pages

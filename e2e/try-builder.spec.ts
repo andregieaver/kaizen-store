@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { LAUNCH_THEMES } from "../src/lib/launch-themes";
 import { testDb } from "./db";
 
 /**
@@ -21,8 +22,35 @@ async function setSandbox(on: boolean): Promise<void> {
   }
 }
 
+/** A free theme for *Try another look*, first in the theme store's order: a launch theme's look with no web fonts or layouts, so using it fetches nothing. */
+const LOOK = `e2e-look-${Date.now().toString(36)}`;
+let look = "";
+
+test.beforeAll(async () => {
+  const base = LAUNCH_THEMES[1].snapshot;
+  const snapshot = { ...base, header: null, footer: null, productLayout: null, theme: { ...base.theme, settings: { ...base.theme.settings, fonts: {} } } };
+  const sql = testDb();
+  try {
+    const [row] = await sql`
+      insert into commerce.design_presets (title, summary, description, snapshot, published, published_at, slug, listing, position)
+      values ('E2E Look', 'Calm.', 'A look made by the test.', ${sql.json(snapshot as never)}, true, now(), ${LOOK}, ${sql.json({ kinds: [], styles: [], pictures: [] })}, -2000)
+      returning id`;
+    look = String(row.id);
+    await sql`insert into commerce.design_preset_versions (preset_id, number, snapshot) values (${look}, 1, ${sql.json(snapshot as never)})`;
+  } finally {
+    await sql.end();
+  }
+});
+
 test.afterAll(async () => {
   await setSandbox(false);
+  const sql = testDb();
+  try {
+    // Unpublished and moved out of the way; versions are never deleted while their theme is there.
+    await sql`update commerce.design_presets set published = false, slug = null where id = ${look}`;
+  } finally {
+    await sql.end();
+  }
 });
 
 test("the sandbox is closed while its switch is off", async ({ page }) => {
@@ -97,7 +125,7 @@ test("a visitor without an account builds and publishes in a private store of th
   // *Try another look* (S4): a free theme becomes its look in one press.
   await page.goto(`${home}/looks`);
   await expect(page.getByRole("heading", { level: 1, name: "Try another look" })).toBeVisible();
-  await page.getByRole("button", { name: "Use this look" }).first().click();
+  await page.getByRole("listitem").filter({ hasText: "E2E Look" }).getByRole("button", { name: "Use this look" }).click();
   await expect(page.getByText("Your store wears its new look. Open a page to see it.")).toBeVisible();
   await expect(page.getByText("Your look", { exact: true })).toBeVisible();
 

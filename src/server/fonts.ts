@@ -5,15 +5,18 @@ import { createHash } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import type { CSSProperties } from "react";
+import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
-import { catalogFont, fontClass, fontSlug, fontStack, FONT_SUBSETS, installedStyles, siteFontFamilies, type CatalogFont, type CatalogRow } from "@/lib/fonts";
+import { catalogFont, fontClass, fontSlug, fontStack, FONT_SUBSETS, installedStyles, latinUprightFile, siteFontFamilies, type CatalogFont, type CatalogRow } from "@/lib/fonts";
 import { siteFontsSchema, type SiteFonts } from "@/lib/fonts-schema";
 import rows from "@/lib/fonts/google-fonts.json";
 
 import { audit, type Account } from "./auth";
 import { log } from "./log";
+import { refreshTag } from "./refresh";
 import { refreshStoreById } from "./stores";
+import { col, typedRow } from "./typed-rows";
 
 /**
  * Google Fonts, self-hosted (D59): the first time a site uses a family,
@@ -128,11 +131,13 @@ export async function installFont(
         where commerce.fonts.css !~ '\\S'
       `);
     });
-    return { ok: true };
   } catch (error) {
     log("error", "fonts.install_failed", { family }, error);
     return { ok: false, problem: `${family} could not be fetched from Google Fonts. Try again in a moment.` };
   }
+  // The pages of sites that use it get its preload (`fontPreloadFile()`, kept for hours while it was missing).
+  refreshTag(fontTag(fontSlug(family)));
+  return { ok: true };
 }
 
 /** Installs every family in a list, stopping at the first that fails. */
@@ -161,6 +166,19 @@ export async function fontCss(slug: string): Promise<string | null> {
   }
   cacheLife("days");
   return css;
+}
+
+/**
+ * The file a site preloads for an installed family (`latinUprightFile()`, `FontPreloads`), or null. Kept for hours even when there is
+ * none: it is read while a store's pages are prerendered, which may not use a cache shorter than five minutes (`fontCss()` keeps a miss
+ * for seconds, which made a store's pages fail to prerender with a family not yet installed). `installFont()` refreshes its tag.
+ */
+export async function fontPreloadFile(slug: string): Promise<string | null> {
+  "use cache";
+  cacheTag(fontTag(slug));
+  cacheLife("hours");
+  const row = await typedRow(z.object({ css: col.text }), sql`select css from commerce.fonts where slug = ${slug}`, readDb());
+  return row ? latinUprightFile(row.css) : null;
 }
 
 /** A font file by its name, or null. */
