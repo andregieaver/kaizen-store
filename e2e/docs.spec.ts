@@ -63,7 +63,7 @@ test("a page has its tree, breadcrumbs, On this page, its check date, its neighb
   await expect(page.getByRole("note").first()).toContainText("Note");
 
   const pager = page.getByRole("navigation", { name: "Previous and next page" });
-  await expect(pager.getByRole("link", { name: /Next\s*Add your first product/ })).toHaveAttribute("href", "/docs/owners/getting-started/your-first-product");
+  await expect(pager.getByRole("link", { name: /Next\s*Find your way around the admin/ })).toHaveAttribute("href", "/docs/owners/getting-started/find-your-way");
   await expect(pager.getByRole("link", { name: /Previous/ })).toHaveCount(0);
 
   const languages = page.getByRole("navigation", { name: "Language" });
@@ -439,10 +439,11 @@ test("a section's pages are filtered and ordered as the search does, at an addre
   await az.click();
   await expect(page.getByRole("heading", { level: 1, name: "Getting started" })).toBeVisible();
   const hits = page.locator("a[data-docs-hit]");
-  await expect(hits).toHaveCount(3);
+  await expect(hits).toHaveCount(4);
   await expect(hits.nth(0)).toContainText("Add your first product");
   await expect(hits.nth(1)).toContainText("Choose a plan");
   await expect(hits.nth(2)).toContainText("Create your store");
+  await expect(hits.nth(3)).toContainText("Find your way around the admin");
 });
 
 test("the Norwegian search is in Norwegian, with the Norwegian pages", async ({ page }) => {
