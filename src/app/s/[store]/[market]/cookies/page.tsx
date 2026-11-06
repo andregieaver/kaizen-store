@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { RolePage } from "@/components/role-page";
+import { houseLanguageAlternates } from "@/lib/house-alternates";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { marketMoved, resolveShop } from "@/server/shop";
@@ -13,9 +14,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return {};
+  // Kaizena Flow's own store names its languages as Kaizena Flow's site always has (D484).
+  const languages = houseLanguageAlternates(shop.store, (slug) => marketPath(shop.store.slug, slug, "/cookies"));
   return {
     title: t(shop.market.lang).cookies,
-    alternates: { canonical: marketPath(shop.store.slug, shop.market.slug, "/cookies") },
+    alternates: { canonical: marketPath(shop.store.slug, shop.market.slug, "/cookies"), ...(languages && { languages }) },
   };
 }
 

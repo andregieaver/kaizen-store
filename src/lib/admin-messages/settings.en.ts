@@ -806,6 +806,7 @@ export const settingsEn = {
     statePublic: "Public: everyone can see the store.",
     stateNever: "A demo store or starting content is never private.",
     trialEnded: "Your store was made private when its free trial or plan ended: choose a plan to make it public again.",
+    servesSite: "This store is Kaizena Flow's live site now. Switch the site back to the platform's pages (Platform → Website) before making it private.",
     chipPrivate: "Private",
     chipPublic: "Public",
     makePrivate: "Make the store private",

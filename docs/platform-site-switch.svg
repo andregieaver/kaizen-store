@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" font-family="Inter, system-ui, -apple-system, Segoe UI, sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">How kaizenaflow.com is answered with the switch (D484)</title>
+  <desc id="d">A request to kaizenaflow.com reaches the proxy. With the switch off the platform's own pages answer, as before. With it on, the platform's own routes stay the platform's and every other address is answered by Kaizena Flow's own store. Norwegian stays at /no/. The store's own address sends visitors to kaizenaflow.com.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
+  </defs>
+  <rect width="960" height="520" fill="#ffffff"/>
+  <text x="32" y="40" font-size="20" font-weight="700" fill="#0f172a">kaizenaflow.com with the switch (D484, step 5)</text>
+  <text x="32" y="64" font-size="13" fill="#475569">Platform → Website → Serve kaizenaflow.com from the store. Read by the proxy every few seconds: no deployment, and back in seconds.</text>
+
+  <!-- visitor -->
+  <rect x="32" y="196" width="150" height="64" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="107" y="222" font-size="14" font-weight="600" fill="#0f172a" text-anchor="middle">A visitor asks</text>
+  <text x="107" y="244" font-size="13" fill="#334155" text-anchor="middle">kaizenaflow.com/…</text>
+
+  <!-- switch -->
+  <path d="M182 228H232" stroke="#475569" stroke-width="1.6" marker-end="url(#a)"/>
+  <rect x="236" y="190" width="160" height="76" rx="12" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="316" y="218" font-size="14" font-weight="600" fill="#1e1b4b" text-anchor="middle">The proxy</text>
+  <text x="316" y="240" font-size="13" fill="#312e81" text-anchor="middle">is the switch on?</text>
+
+  <!-- off -->
+  <path d="M316 190V130H450" stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <text x="326" y="152" font-size="12" fill="#475569">off</text>
+  <rect x="454" y="96" width="220" height="68" rx="12" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="564" y="124" font-size="14" font-weight="600" fill="#0f172a" text-anchor="middle">The platform's own pages</text>
+  <text x="564" y="146" font-size="12" fill="#475569" text-anchor="middle">as today (null rows, kept until step 7)</text>
+
+  <!-- on -->
+  <path d="M396 228H450" stroke="#475569" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="404" y="220" font-size="12" fill="#475569">on</text>
+  <rect x="454" y="190" width="220" height="76" rx="12" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="564" y="216" font-size="14" font-weight="600" fill="#1e1b4b" text-anchor="middle">A platform route?</text>
+  <text x="564" y="236" font-size="11" fill="#312e81" text-anchor="middle">admin, api, sign-up, themes, docs,</text>
+  <text x="564" y="252" font-size="11" fill="#312e81" text-anchor="middle">status, report, get-domain, support …</text>
+
+  <path d="M674 210H740V130H678" stroke="#475569" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <text x="748" y="176" font-size="12" fill="#475569">yes</text>
+
+  <path d="M564 266V316" stroke="#475569" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="574" y="296" font-size="12" fill="#475569">no: the front page, pages, blog, cookies</text>
+  <rect x="404" y="320" width="320" height="92" rx="12" fill="#ecfdf5" stroke="#10b981"/>
+  <text x="564" y="348" font-size="14" font-weight="600" fill="#064e3b" text-anchor="middle">Kaizena Flow's own store</text>
+  <text x="564" y="370" font-size="12.5" fill="#065f46" text-anchor="middle">served from /s/kaizenaflow/…, its addresses</text>
+  <text x="564" y="388" font-size="12.5" fill="#065f46" text-anchor="middle">and canonicals kaizenaflow.com's, hreflang en · nb</text>
+
+  <!-- Norwegian -->
+  <rect x="748" y="300" width="180" height="124" rx="12" fill="#fffbeb" stroke="#f59e0b"/>
+  <text x="838" y="326" font-size="13.5" font-weight="600" fill="#78350f" text-anchor="middle">Norwegian stays at /no/</text>
+  <text x="760" y="350" font-size="12" fill="#92400e">/about-us → English</text>
+  <text x="760" y="370" font-size="12" fill="#92400e">/no/about-us → Norsk</text>
+  <text x="760" y="390" font-size="12" fill="#92400e">/nb/… , /no-nb/…</text>
+  <text x="760" y="408" font-size="12" fill="#92400e">   → 308 to /no/…</text>
+  <path d="M724 366H744" stroke="#f59e0b" stroke-width="1.6" stroke-dasharray="4 3"/>
+
+  <!-- store host -->
+  <rect x="32" y="440" width="896" height="52" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="48" y="463" font-size="13" fill="#0f172a"><tspan font-weight="600">While on:</tspan> kaizenaflow.kaizenstore.site sends visitors to kaizenaflow.com (307) · the store is public and cannot be made private</text>
+  <text x="48" y="482" font-size="13" fill="#0f172a">· one cookie consent · sitemap, robots.txt and llms.txt list the store's pages · no new copy. <tspan font-weight="600">Off:</tspan> the platform's pages at once, the store private.</text>
+</svg>

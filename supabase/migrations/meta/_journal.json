@@ -4999,6 +4999,20 @@
       "when": 1794039708658,
       "tag": "20261107082148_sendcloud_carrier",
       "breakpoints": true
+    },
+    {
+      "idx": 714,
+      "version": "7",
+      "when": 1794039995407,
+      "tag": "20261107082635_house_switch",
+      "breakpoints": true
+    },
+    {
+      "idx": 715,
+      "version": "7",
+      "when": 1794040022717,
+      "tag": "20261107082702_house_switch_rules",
+      "breakpoints": true
     }
   ]
 }
