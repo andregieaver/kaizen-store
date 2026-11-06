@@ -17994,3 +17994,147 @@ export const crmMoveLinks = commerce.table(
     check("crm_move_links_external", sql`${t.externalId} ~ '^[0-9]{1,20}$' and ${t.account} ~ '^[0-9]{1,20}$'`),
   ],
 );
+
+// Our own ledger (B2 of `docs/own-books-and-sales.md`, D478)
+
+/**
+ * A book: one legal entity's double-entry books, kept by a store from the day they open (a change of the business behind the store, D473,
+ * closes one and opens the next). Its country's pack gives its chart and VAT codes; its currency is every amount's. Entries dated on or
+ * before `locked_through` are refused. Opened by the owner; the platform's own books are its own store's (D467).
+ */
+export const ledgerBooks = commerce.table(
+  "ledger_books",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** Whose books: the legal entity's name and organisation number when they opened. */
+    legalName: text("legal_name").notNull(),
+    organisationNumber: text("organisation_number").notNull().default(""),
+    country: char("country", { length: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    openedOn: date("opened_on", { mode: "string" }).notNull(),
+    closedOn: date("closed_on", { mode: "string" }),
+    lockedThrough: date("locked_through", { mode: "string" }),
+    openedBy: uuid("opened_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("ledger_books_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("ledger_books_open_key").on(t.storeId).where(sql`${t.closedOn} is null`),
+    index("ledger_books_opened_by_idx").on(t.openedBy),
+    check("ledger_books_country", sql`${t.country} ~ '^[A-Z]{2}$' and ${t.currency} ~ '^[A-Z]{3}$'`),
+    check("ledger_books_name", sql`char_length(${t.legalName}) between 1 and 200 and char_length(${t.organisationNumber}) <= 40`),
+    check("ledger_books_closed", sql`${t.closedOn} is null or ${t.closedOn} >= ${t.openedOn}`),
+  ],
+);
+
+/** A book's chart: each account by its number, the standard account it reports as (SAF-T's), its kind, and the VAT code it takes by default. */
+export const ledgerAccounts = commerce.table(
+  "ledger_accounts",
+  {
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    number: integer("number").notNull(),
+    name: text("name").notNull(),
+    standard: text("standard").notNull(),
+    /** `asset`, `liability`, `equity`, `income` or `expense`. */
+    kind: text("kind").notNull(),
+    vatCode: text("vat_code"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.bookId, t.number] }),
+    foreignKey({ name: "ledger_accounts_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
+    index("ledger_accounts_store_book_idx").on(t.storeId, t.bookId),
+    check("ledger_accounts_number", sql`${t.number} between 1000 and 99999 and ${t.standard} ~ '^[0-9]{2,4}$'`),
+    check("ledger_accounts_name", sql`${t.name} = btrim(${t.name}) and char_length(${t.name}) between 1 and 120`),
+    check("ledger_accounts_kind", sql`${t.kind} in ('asset', 'liability', 'equity', 'income', 'expense')`),
+    check("ledger_accounts_vat", sql`${t.vatCode} is null or ${t.vatCode} ~ '^[0-9]{1,2}$'`),
+  ],
+);
+
+/**
+ * An entry (a voucher): numbered in its series and year without gaps, balanced, and never changed once posted; a mistake is put right by
+ * a reversing entry (`reverses`), at most one for each. Written only by `commerce.ledger_post()`. What it was posted from (a document, a
+ * payout) is kept, so it is posted once.
+ */
+export const ledgerEntries = commerce.table(
+  "ledger_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    series: text("series").notNull(),
+    year: integer("year").notNull(),
+    number: integer("number").notNull(),
+    entryDate: date("entry_date", { mode: "string" }).notNull(),
+    text: text("text").notNull(),
+    sourceKind: text("source_kind"),
+    sourceId: text("source_id"),
+    reverses: uuid("reverses"),
+    postedBy: uuid("posted_by").references(() => accounts.id, { onDelete: "set null" }),
+    postedAt: timestamp("posted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("ledger_entries_store_id_key").on(t.storeId, t.id),
+    unique("ledger_entries_number_key").on(t.bookId, t.series, t.year, t.number),
+    foreignKey({ name: "ledger_entries_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
+    foreignKey({ name: "ledger_entries_reverses_fk", columns: [t.reverses], foreignColumns: [t.id] }),
+    uniqueIndex("ledger_entries_reversed_once").on(t.reverses).where(sql`${t.reverses} is not null`),
+    index("ledger_entries_store_book_idx").on(t.storeId, t.bookId),
+    index("ledger_entries_date_idx").on(t.bookId, t.entryDate),
+    index("ledger_entries_source_idx").on(t.bookId, t.sourceKind, t.sourceId).where(sql`${t.sourceKind} is not null`),
+    index("ledger_entries_posted_by_idx").on(t.postedBy),
+    check("ledger_entries_series", sql`${t.series} ~ '^[A-Z]{1,3}$' and ${t.number} >= 1 and ${t.year} = extract(year from ${t.entryDate})::int`),
+    check("ledger_entries_text", sql`${t.text} = btrim(${t.text}) and char_length(${t.text}) between 1 and 200`),
+    check(
+      "ledger_entries_source",
+      sql`(${t.sourceKind} is null) = (${t.sourceId} is null) and (${t.sourceKind} is null or (${t.sourceKind} ~ '^[a-z_]{1,40}$' and char_length(${t.sourceId}) between 1 and 80))`,
+    ),
+  ],
+);
+
+/** An entry's lines: an account and an amount (a debit positive, a credit negative, in the book's currency), with its VAT code. */
+export const ledgerLines = commerce.table(
+  "ledger_lines",
+  {
+    entryId: uuid("entry_id").notNull(),
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    line: integer("line").notNull(),
+    account: integer("account").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    vatCode: text("vat_code"),
+    text: text("text"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.entryId, t.line] }),
+    foreignKey({ name: "ledger_lines_entry_fk", columns: [t.storeId, t.entryId], foreignColumns: [ledgerEntries.storeId, ledgerEntries.id] }),
+    foreignKey({ name: "ledger_lines_account_fk", columns: [t.bookId, t.account], foreignColumns: [ledgerAccounts.bookId, ledgerAccounts.number] }),
+    index("ledger_lines_store_entry_idx").on(t.storeId, t.entryId),
+    index("ledger_lines_account_idx").on(t.bookId, t.account),
+    check("ledger_lines_amount", sql`${t.amountMinor} <> 0 and abs(${t.amountMinor}) <= 1000000000000000 and ${t.line} >= 1`),
+    check("ledger_lines_vat", sql`${t.vatCode} is null or ${t.vatCode} ~ '^[0-9]{1,2}$'`),
+    check("ledger_lines_text", sql`${t.text} is null or char_length(${t.text}) between 1 and 200`),
+  ],
+);
+
+/** The last number given in each series and year of a book, so entries are numbered without gaps (under the book's row lock). */
+export const ledgerCounters = commerce.table(
+  "ledger_counters",
+  {
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    series: text("series").notNull(),
+    year: integer("year").notNull(),
+    last: integer("last").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.bookId, t.series, t.year] }),
+    foreignKey({ name: "ledger_counters_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
+    index("ledger_counters_store_book_idx").on(t.storeId, t.bookId),
+    check("ledger_counters_last", sql`${t.last} >= 1`),
+  ],
+);
