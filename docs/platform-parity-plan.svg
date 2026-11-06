@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" font-family="Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title>Today and proposed: Kaizena Flow's own store and the platform console</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1f6b3a"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#c2412d"/>
+    </marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#6b716d"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="760" fill="#f4f4ef"/>
+
+  <!-- Left: today -->
+  <text x="40" y="52" font-size="22" font-weight="700" fill="#141a17">Today: built twice</text>
+  <text x="40" y="78" font-size="14" fill="#4d5450">Every store feature is made a second time for Kaizena Flow, or left out.</text>
+
+  <rect x="40" y="108" width="470" height="150" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="64" y="142" font-size="17" font-weight="700" fill="#141a17">A store's admin</text>
+  <text x="64" y="164" font-size="13" fill="#4d5450" font-family="ui-monospace, Menlo, Consolas, monospace">/admin/{store}</text>
+  <text x="64" y="196" font-size="14" fill="#141a17">105 pages: website, marketing, analytics,</text>
+  <text x="64" y="216" font-size="14" fill="#141a17">customers, support, settings, the shop</text>
+  <text x="64" y="240" font-size="13" fill="#4d5450">Its rows carry its store id (P1's keys hold)</text>
+
+  <path d="M275 262 L275 340" stroke="#c2412d" stroke-width="2.5" stroke-dasharray="7 6" fill="none" marker-end="url(#arrow-red)"/>
+  <rect x="292" y="278" width="214" height="48" rx="8" fill="#fbe9e5"/>
+  <text x="304" y="298" font-size="13" font-weight="600" fill="#a3321f">Each feature built again</text>
+  <text x="304" y="317" font-size="13" fill="#a3321f">39 rows still missing</text>
+
+  <rect x="40" y="346" width="470" height="196" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="64" y="380" font-size="17" font-weight="700" fill="#141a17">Platform admin</text>
+  <text x="64" y="402" font-size="13" fill="#4d5450" font-family="ui-monospace, Menlo, Consolas, monospace">/admin/platform</text>
+  <text x="64" y="434" font-size="14" fill="#141a17">48 pages doing two jobs at once:</text>
+  <text x="80" y="456" font-size="14" fill="#141a17">• Kaizena Flow's own site and business</text>
+  <text x="80" y="476" font-size="14" fill="#141a17">• running every store</text>
+  <text x="64" y="504" font-size="13" fill="#4d5450">Its rows: no store id in ~80 tables,</text>
+  <text x="64" y="522" font-size="13" fill="#4d5450">9 platform_* twins of store tables</text>
+
+  <path d="M275 546 L275 600" stroke="#6b716d" stroke-width="2" fill="none" marker-end="url(#arrow-grey)"/>
+  <rect x="40" y="606" width="470" height="84" rx="14" fill="#e8e9e4" stroke="#c9ccc6"/>
+  <text x="64" y="638" font-size="16" font-weight="700" fill="#141a17">kaizenaflow.com</text>
+  <text x="64" y="662" font-size="13" fill="#4d5450">Drawn by its own routes from the null rows:</text>
+  <text x="64" y="680" font-size="13" fill="#4d5450">no visits counted, no redirects, no staging</text>
+
+  <!-- Divider -->
+  <line x1="560" y1="40" x2="560" y2="720" stroke="#d6d8d2" stroke-width="2"/>
+
+  <!-- Right: proposed -->
+  <text x="600" y="52" font-size="22" font-weight="700" fill="#141a17">Proposed: Kaizena Flow runs on Kaizena Flow</text>
+  <text x="600" y="78" font-size="14" fill="#4d5450">Its site and customers are a store of its own; the console runs the platform.</text>
+
+  <rect x="600" y="108" width="560" height="92" rx="14" fill="#ffffff" stroke="#c9ccc6"/>
+  <text x="624" y="140" font-size="17" font-weight="700" fill="#141a17">Every store's admin</text>
+  <text x="624" y="166" font-size="14" fill="#141a17">Each new store feature that applies to a website…</text>
+  <text x="624" y="186" font-size="13" fill="#4d5450">built once, as today</text>
+
+  <path d="M880 204 L880 262" stroke="#1f6b3a" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <text x="894" y="238" font-size="13" font-weight="600" fill="#1f6b3a">…arrives by itself</text>
+
+  <rect x="836" y="268" width="324" height="274" rx="14" fill="#e6f7ea" stroke="#38d26a" stroke-width="2"/>
+  <text x="858" y="300" font-size="17" font-weight="700" fill="#141a17">Kaizena Flow's store</text>
+  <text x="858" y="322" font-size="13" fill="#2f5a3d" font-family="ui-monospace, Menlo, Consolas, monospace">/admin/kaizenaflow · shop off</text>
+  <text x="858" y="352" font-size="14" fill="#141a17">A store's admin like any other:</text>
+  <text x="872" y="376" font-size="14" fill="#141a17">• Website, blogs, redirects, staging</text>
+  <text x="872" y="398" font-size="14" fill="#141a17">• Subscribers, segments, broadcasts</text>
+  <text x="872" y="420" font-size="14" fill="#141a17">• Visits, A/B tests, ads</text>
+  <text x="872" y="442" font-size="14" fill="#141a17">• Customers, deals, privacy</text>
+  <text x="872" y="464" font-size="14" fill="#141a17">• Support, team, settings</text>
+  <text x="858" y="496" font-size="13" fill="#2f5a3d">52 pages today, every new one</text>
+  <text x="858" y="514" font-size="13" fill="#2f5a3d">with no second build</text>
+
+  <rect x="600" y="268" width="210" height="274" rx="14" fill="#141a17"/>
+  <text x="620" y="300" font-size="17" font-weight="700" fill="#ffffff">Platform console</text>
+  <text x="620" y="322" font-size="13" fill="#a9b3ad" font-family="ui-monospace, Menlo, Consolas, monospace">/admin/platform</text>
+  <text x="620" y="352" font-size="14" fill="#ffffff">Running the platform:</text>
+  <text x="620" y="374" font-size="13" fill="#d7ddd9">stores, requests, plans,</text>
+  <text x="620" y="393" font-size="13" fill="#d7ddd9">theme store, accounts,</text>
+  <text x="620" y="412" font-size="13" fill="#d7ddd9">VAT and duty tables, AI,</text>
+  <text x="620" y="431" font-size="13" fill="#d7ddd9">usage, status, notices</text>
+  <text x="620" y="462" font-size="14" font-weight="600" fill="#38d26a">Its own track, C1 to C6:</text>
+  <text x="620" y="483" font-size="13" fill="#d7ddd9">team and roles, plan</text>
+  <text x="620" y="502" font-size="13" fill="#d7ddd9">analytics, its own money,</text>
+  <text x="620" y="521" font-size="13" fill="#d7ddd9">events and API</text>
+
+  <path d="M812 405 L832 405" stroke="#1f6b3a" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+  <rect x="600" y="556" width="560" height="34" rx="8" fill="#e6f7ea"/>
+  <text x="616" y="578" font-size="13" fill="#1f4d2e"><tspan font-weight="700">Console → store:</tspan> owners and leads become its customers, tagged with plan, trial, overdue</text>
+
+  <rect x="600" y="606" width="560" height="84" rx="14" fill="#e8e9e4" stroke="#c9ccc6"/>
+  <text x="624" y="638" font-size="16" font-weight="700" fill="#141a17">kaizenaflow.com</text>
+  <text x="624" y="662" font-size="13" fill="#4d5450"><tspan font-weight="600" fill="#141a17">Console:</tspan> /admin, sign-up, themes, docs, status, API</text>
+  <text x="624" y="680" font-size="13" fill="#4d5450"><tspan font-weight="600" fill="#141a17">Kaizena Flow's store:</tspan> every other address, unchanged</text>
+
+  <text x="40" y="738" font-size="12" fill="#6b716d">Counts read from src/lib/store-nav.ts, src/lib/platform-nav.ts and src/db/schema.ts on 6 November 2026. Plan: docs/platform-parity-plan.md</text>
+</svg>
