@@ -11,6 +11,7 @@ import { JobTracker } from "@/components/admin/data/job-tracker";
 import { JobProgressView } from "@/components/admin/data/job-views";
 import { DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { requireFeature } from "@/components/admin/feature-off";
+import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -37,7 +38,7 @@ const PAGE_SIZE = 50;
 export default async function CustomerImportJobPage({ params, searchParams }: Props) {
   const { store: slug, jobId } = await params;
   const member = await requireOwnerRole(slug);
-  const shopOff = requireFeature(member, "shop");
+  const shopOff = requireFeature(member, CUSTOMERS_FEATURE);
   if (shopOff) return shopOff;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "customers").staff.import.job;

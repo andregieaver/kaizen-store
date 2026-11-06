@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { Stat, StatGrid } from "@/components/admin/overview-parts";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ShareBar } from "@/components/admin/ui/bars";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
@@ -30,12 +30,26 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const days = (PERIODS as readonly number[]).includes(asked) ? asked : 30;
   const a = await planAnalytics(days);
   const money = (list: CurrencyFigure[]) => (list.length === 0 ? formatMoney(0, "NOK", locale) : list.map((f) => formatMoney(f.mrrMinor, f.currency, locale)).join(" · "));
+  // The tile's figure: each currency on a line of its own, in whole units (the lines below keep the øre).
+  const whole = (f: CurrencyFigure) => formatMoney(Math.round(f.mrrMinor / 100) * 100, f.currency, locale, { decimals: "hide_whole" });
+  const tile = (list: CurrencyFigure[]) =>
+    list.length === 0 ? (
+      formatMoney(0, "NOK", locale, { decimals: "hide_whole" })
+    ) : (
+      <span className="flex flex-col">
+        {list.map((f) => (
+          <span key={f.currency} className="whitespace-nowrap">
+            {whole(f)}
+          </span>
+        ))}
+      </span>
+    );
   const moved = (list: MovementFigure[]) => list.filter((m) => m.count > 0);
   const since = a.since ? new Date(a.since).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" }) : null;
 
   const summary = (s: PlanSummary) => (
     <StatGrid>
-      <Stat label={w.mrr} value={money(s.mrr)} sub={w.mrrSub} />
+      <Stat label={w.mrr} value={tile(s.mrr)} sub={w.mrrSub} />
       <Stat label={w.paying} value={s.paying} sub={s.late > 0 ? fillWords(w.late, { n: s.late }) : undefined} />
       <Stat label={w.trialing} value={s.trialing} />
       <Stat label={w.cancelling} value={s.cancelling} sub={w.cancellingSub} />
@@ -76,7 +90,7 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
               [w.payingStep, a.funnel.paying],
             ] as const
           ).map(([label, n]) => (
-            <ShareBar key={label} label={label} figure={n} share={share(n, a.funnel.asked) ?? 0} signal="neutral" />
+            <ShareBar key={label} label={label} figure={n} share={(share(n, a.funnel.asked) ?? 0) / 100} signal="positive" />
           ))}
         </div>
       </Card>
@@ -108,7 +122,7 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
             {a.live.byPlan.map((p) => (
               <li key={p.plan} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm">
                 <span>
-                  {p.plan} · {fillWords(w.stores, { n: p.stores })}
+                  {p.plan} · {countWords(p.stores, w.stores)}
                 </span>
                 <span className="tabular-nums text-ink-2">{money(p.mrr)}</span>
               </li>

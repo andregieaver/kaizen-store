@@ -7,6 +7,7 @@ import { CustomerUpload } from "@/components/admin/customer-import-flow";
 import { DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { requireFeature } from "@/components/admin/feature-off";
+import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -31,7 +32,7 @@ type Props = PageProps<"/admin/[store]/customers/import">;
  */
 export default async function CustomerImportPage({ params }: Props) {
   const member = await requireOwnerRole((await params).store);
-  const shopOff = requireFeature(member, "shop");
+  const shopOff = requireFeature(member, CUSTOMERS_FEATURE);
   if (shopOff) return shopOff;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "customers").staff.import;

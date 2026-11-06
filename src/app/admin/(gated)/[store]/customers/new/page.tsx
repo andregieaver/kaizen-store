@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { CustomerForm, EMPTY_CUSTOMER_FORM } from "@/components/admin/customer-staff";
 import { requireFeature } from "@/components/admin/feature-off";
+import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -21,7 +22,7 @@ export default async function NewCustomerPage({ params }: PageProps<"/admin/[sto
   const member = await requirePermission((await params).store, "customers:read");
   if (!memberCan(member, "customers:write")) notFound();
   // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
-  const shopOff = requireFeature(member, "shop");
+  const shopOff = requireFeature(member, CUSTOMERS_FEATURE);
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);

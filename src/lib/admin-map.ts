@@ -7,7 +7,7 @@
 
 import { requirementMet, type FeatureId, type FeatureRequirement } from "./store-features";
 import { PAGES_NB } from "./admin-messages/pages.nb";
-import { sectionOf } from "./store-nav";
+import { CUSTOMERS_FEATURE, sectionOf } from "./store-nav";
 
 export type AdminArea = "store" | "platform" | "account";
 
@@ -504,7 +504,7 @@ const PAGES: readonly AdminPage[] = [
   store("creators", "/creators", "Creators", "Sales", "The creator programme: people with a channel of their own apply from My account, and once approved sell the store's goods with a code and a link of their own. They earn a percentage of what their paid orders pay for goods without VAT, optionally more for some categories, in each order's own currency; refunds and cancellations take it back. Approve, decline or stop creators, set a creator's own rate, record the payouts you make and download them as a CSV.", {
     tasks: ["Turn the creator programme on or off", "Approve or decline a creator's application", "Change the commission", "Give a category its own commission", "Record a payout to a creator", "Download the payouts"],
     keywords: ["creator", "creators", "influencer", "influencers", "affiliate marketing", "commission", "content creator", "ambassador", "partner programme", "payout", "promo code"], feature: "shop" }),
-  store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"], feature: "shop" }),
+  store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"], feature: CUSTOMERS_FEATURE }),
   store("customers.export", "/customers/export", "Export customers", "Sales", "Downloads the store's customers as a CSV file: name, email, phone, address, company, customer group, language, when they joined, their paid orders, whether their address unsubscribed from emails, their place on the subscriber list (marketing_consent: subscribed, pending, unsubscribed or none), and the custom fields staff entered about them. The owner's only. The file is not a mailing list: marketing goes to the subscriber list.", {
     needs: "owner",
     tasks: ["Export all customers", "Download a finished export"],
@@ -522,8 +522,8 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["import customers", "csv", "shopify customers", "upload customers", "migrate customers", "importer kunder"],
     feature: "shop",
   }),
-  store("customers.import.job", "/customers/import/[jobId]", "Customer import", "Sales", "One customer import: the file, what the check found row by row, the import and its result, and the problems as a CSV. The owner's only.", { needs: "owner", feature: "shop" }),
-  store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails, their customer group and their bonus credits (balance, history, and adding or removing credits with a reason).", { feature: "shop" }),
+  store("customers.import.job", "/customers/import/[jobId]", "Customer import", "Sales", "One customer import: the file, what the check found row by row, the import and its result, and the problems as a CSV. The owner's only.", { needs: "owner", feature: CUSTOMERS_FEATURE }),
+  store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails, their customer group and their bonus credits (balance, history, and adding or removing credits with a reason).", { feature: CUSTOMERS_FEATURE }),
   store("customer.merge", "/customers/[customerId]/merge", "Merge customers", "Sales", "Folds another customer's account into this one: their orders, subscriptions, wishlists, saved addresses, tags, notes, custom field values and bonus credits move here, and the other account is deleted. Refused, before anything changes, when it would lose something (a company, subscription box lists, reviews, gift cards, the referral program, pending credits, too many addresses or tags).", {
     tasks: ["Merge two customers", "Combine duplicate customer accounts"],
     keywords: ["merge customers", "duplicate customer", "combine accounts", "slå sammen kunder", "duplikat"],

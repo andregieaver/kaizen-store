@@ -152,7 +152,11 @@ describe("the admin map (D103)", () => {
     expect(pagesFor("store", { work: true })).toEqual(expect.arrayContaining(work.filter((p) => p.area === "store")));
     const gated = ADMIN_PAGES.filter((p) => p.feature !== undefined);
     expect(gated.every((p) => p.area === "store")).toBe(true);
-    expect(pagesFor("store", { features: ["shop"] }).filter((p) => p.feature !== undefined && p.feature !== "shop")).toEqual([]);
+    // With the shop alone on, a page behind another feature is not offered; one the shop is enough for (customers: the shop or Deals) is.
+    const shopEnough = (feature: (typeof ADMIN_PAGES)[number]["feature"]) => feature === "shop" || (Array.isArray(feature) && feature.includes("shop"));
+    expect(pagesFor("store", { features: ["shop"] }).filter((p) => p.feature !== undefined && !shopEnough(p.feature))).toEqual([]);
+    // A website with Deals has its customers (D467: Kaizena Flow's own store is one).
+    expect(pagesFor("store", { features: ["sales"] }).map((p) => p.id)).toEqual(expect.arrayContaining(["customers", "customer", "deals"]));
     // A website (D178 step 5: the online shop off) is offered none of the shop's pages: orders, products, customers, sales analytics.
     const website = pagesFor("store", { features: [] }).map((p) => p.id);
     for (const id of ["orders", "order", "returns", "invoices", "products", "inventory", "customers", "campaigns", "discounts", "analytics", "payments", "shipping", "tax"]) {

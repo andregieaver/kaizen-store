@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { requireFeature } from "@/components/admin/feature-off";
+import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { DataPageHead, DataSkeleton, Notice, ProblemAlert } from "@/components/admin/data/page-parts";
 import { ExportSection } from "@/components/admin/data/export-section";
 import { CustomerExportForm } from "@/components/admin/data/export-forms";
@@ -26,7 +27,7 @@ const first = (value: string | string[] | undefined): string | null => (typeof v
 export default async function CustomerExportPage({ params, searchParams }: Props) {
   const gated = await requireOwnerRole((await params).store);
   // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
-  const shopOff = requireFeature(gated, "shop");
+  const shopOff = requireFeature(gated, CUSTOMERS_FEATURE);
   if (shopOff) return shopOff;
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);

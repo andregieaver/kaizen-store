@@ -5,6 +5,7 @@ import { z } from "zod";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { CustomerMerge } from "@/components/admin/customer-merge";
 import { requireFeature } from "@/components/admin/feature-off";
+import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
@@ -23,7 +24,7 @@ export default async function MergeCustomerPage({ params }: PageProps<"/admin/[s
   const { store: slug, customerId } = await params;
   const member = await requirePermission(slug, "customers:read");
   if (!memberCan(member, "customers:write")) notFound();
-  const shopOff = requireFeature(member, "shop");
+  const shopOff = requireFeature(member, CUSTOMERS_FEATURE);
   if (shopOff) return shopOff;
   const { store } = member;
   if (!z.uuid().safeParse(customerId).success) notFound();

@@ -5,7 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, type AdminLang } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords } from "@/lib/admin-fill";
 import { HOUSE_STORE_SLUG } from "@/lib/platform-nav";
 import type { SiteCopy } from "@/server/house-site";
 
@@ -24,7 +24,7 @@ export function HouseSiteCard({ lang, last, copy }: { lang: AdminLang; last: Sit
     <Card title={w.title} description={w.description}>
       <ActionForm action={copy} className="flex flex-col gap-4">
         <p className="text-sm text-ink-2">
-          {when ? fillWords(w.last, { when, rows: String(last.rows) }) : w.never}{" "}
+          {when ? countWords(last.rows, w.last, { when }) : w.never}{" "}
           {when && (
             <Link href={`/admin/${HOUSE_STORE_SLUG}/pages`} className="underline">
               {w.look}

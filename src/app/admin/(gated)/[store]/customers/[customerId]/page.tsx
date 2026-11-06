@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireFeature } from "@/components/admin/feature-off";
+import { CUSTOMERS_FEATURE } from "@/lib/store-nav";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CustomerForm, CustomerNotes, EMPTY_CUSTOMER_FORM } from "@/components/admin/customer-staff";
 import { CustomerAffiliateSection, showsAffiliate } from "@/components/admin/customer-affiliate";
@@ -56,7 +57,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const { store: slug, customerId } = await params;
   const member = await requirePermission(slug, "customers:read");
   // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
-  const shopOff = requireFeature(member, "shop");
+  const shopOff = requireFeature(member, CUSTOMERS_FEATURE);
   if (shopOff) return shopOff;
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);

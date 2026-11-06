@@ -49,6 +49,12 @@ export type StoreSection = {
 
 const item = (path: string, label: string, description: string, extra: Partial<StoreItem> & Pick<StoreItem, "icon">): StoreItem => ({ path, label, description, ...extra });
 
+/**
+ * The customer pages' features: the online shop, or Deals (D464), whose deals are with the store's people: a website with Deals has its
+ * customers too, as Kaizena Flow's own store does (D467).
+ */
+export const CUSTOMERS_FEATURE: FeatureRequirement = ["shop", "sales"];
+
 export const STORE_SECTIONS: StoreSection[] = [
   {
     key: "orders",
@@ -107,7 +113,7 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Customers",
         items: [
-          item("/customers", "Customers", "Everyone with an account, their orders and details.", { feature: "shop", icon: "users", basic: true }),
+          item("/customers", "Customers", "Everyone with an account, their orders and details.", { feature: CUSTOMERS_FEATURE, icon: "users", basic: true }),
           item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers.", { feature: "shop", icon: "users-round" }),
           item("/price-lists", "Price lists", "Prices of their own for customer groups and companies: a percentage off or fixed prices.", { feature: "shop", icon: "banknote" }),
           item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { feature: "business", icon: "building", basic: true }),

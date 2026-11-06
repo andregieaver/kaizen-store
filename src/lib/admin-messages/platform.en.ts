@@ -315,7 +315,7 @@ export const platformEn = {
     byPlanTitle: "By plan",
     byPlanDescription: "The stores on each plan, paying or trying it, and what it brings in a month.",
     noPlans: "No store is on a plan yet.",
-    stores: "{n} stores",
+    stores: { one: "{n} store", many: "{n} stores" },
     test: "Test payments",
     testText: "Plans paid with Stripe's test cards: no real money, kept apart from the figures above.",
   },
@@ -324,7 +324,7 @@ export const platformEn = {
     description:
       "The site moves into Kaizena Flow's own store, where it gets everything a store's site has. Copy it there to look at it beside the live site: the live site does not change, and copying again brings the latest.",
     never: "The site has not been copied yet.",
-    last: "Last copied {when}: {rows} pages, menus and parts.",
+    last: { one: "Last copied {when}: one page, menu or part.", many: "Last copied {when}: {n} pages, menus and parts." },
     look: "Look at it in the store",
     first: "Copy the site",
     again: "Copy it again",

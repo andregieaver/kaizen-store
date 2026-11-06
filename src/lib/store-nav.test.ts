@@ -295,6 +295,6 @@ describe("Kaizena Flow's own store (D466)", () => {
     const house = paths({ features: ["languages", "sales"], house: true });
     const website = paths({ features: ["languages", "sales"] });
     expect(website.filter((p) => !house.includes(p))).toEqual(["/settings/close", "/billing"]);
-    expect(house).toEqual(expect.arrayContaining(["/subscribers", "/broadcasts", "/segments", "/deals", "/privacy", "/redirects", "/staging", "/staff"]));
+    expect(house).toEqual(expect.arrayContaining(["/customers", "/subscribers", "/broadcasts", "/segments", "/deals", "/privacy", "/redirects", "/staging", "/staff"]));
   });
 });

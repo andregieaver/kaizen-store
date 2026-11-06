@@ -316,7 +316,7 @@ export const platformNb: PlatformMessages = {
     byPlanTitle: "Per abonnement",
     byPlanDescription: "Butikkene på hvert abonnement, betalende eller på prøve, og hva det gir i måneden.",
     noPlans: "Ingen butikker har et abonnement ennå.",
-    stores: "{n} butikker",
+    stores: { one: "{n} butikk", many: "{n} butikker" },
     test: "Testbetalinger",
     testText: "Abonnementer betalt med Stripes testkort: ingen ekte penger, holdt utenfor tallene over.",
   },
@@ -325,7 +325,7 @@ export const platformNb: PlatformMessages = {
     description:
       "Nettstedet flytter inn i Kaizena Flows egen butikk, der det får alt en butikks nettsted har. Kopier det dit for å se det ved siden av det levende nettstedet: det levende nettstedet endres ikke, og en ny kopi henter det siste.",
     never: "Nettstedet er ikke kopiert ennå.",
-    last: "Sist kopiert {when}: {rows} sider, menyer og deler.",
+    last: { one: "Sist kopiert {when}: én side, meny eller del.", many: "Sist kopiert {when}: {n} sider, menyer og deler." },
     look: "Se det i butikken",
     first: "Kopier nettstedet",
     again: "Kopier det igjen",
