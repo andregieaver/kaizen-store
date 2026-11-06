@@ -2713,6 +2713,7 @@ const ENTITY_WORDS: Record<FieldEntity, string> = {
   store: "the store",
   customer: "customers",
   order: "orders",
+  deal: "deals",
 };
 const FIELD_ENTITY_NOUN: Record<FieldEntity, string> = {
   product: "product",
@@ -2723,6 +2724,7 @@ const FIELD_ENTITY_NOUN: Record<FieldEntity, string> = {
   store: "store",
   customer: "customer",
   order: "order",
+  deal: "deal",
 };
 type FieldWords = BlocksMessages["fields"];
 

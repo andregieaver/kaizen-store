@@ -98,9 +98,12 @@ export function FieldGroupEditor({
   base,
   actions,
   sellsToBusinesses = true,
+  salesOn = true,
 }: {
   /** Sell to businesses is on (D178): only then is "Sold to" a rule to choose (a rule already using it stays as it is). */
   sellsToBusinesses?: boolean;
+  /** Deals are on (D464): only then are deals a kind of thing to choose (a group already on them keeps them). */
+  salesOn?: boolean;
   initial: FieldGroupInput;
   terms: EditorTerm[];
   /** The store's special pages, for the location rules. */
@@ -302,7 +305,7 @@ export function FieldGroupEditor({
           </label>
           <fieldset className="flex flex-col gap-1">
             <legend className="mb-1 text-sm font-medium">{w.usedOn}</legend>
-            {FIELD_ENTITY_KEYS.map((entity) => (
+            {FIELD_ENTITY_KEYS.filter((entity) => entity !== "deal" || salesOn || draft.entities.includes(entity)).map((entity) => (
               <label key={entity} className="flex min-h-10 items-center gap-3 text-sm">
                 <input
                   type="checkbox"

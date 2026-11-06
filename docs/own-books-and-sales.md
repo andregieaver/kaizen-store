@@ -109,7 +109,7 @@ not.
 Work invoices, returns, reviews, bookings, and later deals and activities. Nothing new is stored. Homer reads it top to bottom; Lisa
 filters it by kind.
 
-**S2. Deals and pipelines** (built 6 November 2026, D464; offered to a pilot store first, custom fields on a deal still to come). A deal exists before any quote ("met them at the fair"), so it needs a small table of its own: title,
+**S2. Deals and pipelines** (built 6 November 2026, D464; offered to a pilot store first). A deal exists before any quote ("met them at the fair"), so it needs a small table of its own: title,
 company or person, owner (a staff member), pipeline and stage, expected close date, an estimated value while nothing is linked, won or
 lost with a reason. It links to quote drafts, orders and Work assignments; once one is linked, the deal's value is theirs (one truth). A
 paid order or an issued Work invoice can win it. Homer gets one board with sensible stages (New, Talking, Quote sent, Won, Lost); Lisa
@@ -343,7 +343,7 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 | Order | Sales track | Books track |
 |---|---|---|
 | Now | S1 timeline (built, D462) | **B1 EHF out** (deadline 1 January 2027; built but the access point's adapter, D463) |
-| Next | S3 activities, S2's custom fields on a deal | B8 before the AS issues its first invoice; B2 the ledger in shadow on the AS's books from their opening balance, with B4's statement upload |
+| Next | S3 activities | B8 before the AS issues its first invoice; B2 the ledger in shadow on the AS's books from their opening balance, with B4's statement upload |
 | Then | S4 leads, S5 email (forwarding address), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
 | Then | S6 reports; `sales` opens to every store | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |
 | Then | | B6 accountants, ready before Human Web's turnover passes NOK 5 million (the threshold watch says when it is near); then ring 2 |

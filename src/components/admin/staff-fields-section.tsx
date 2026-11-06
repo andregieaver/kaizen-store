@@ -11,7 +11,7 @@ import type { Store } from "@/server/stores";
 
 
 /**
- * The custom fields of a customer or an order on its admin page (D120): every
+ * The custom fields of a customer, an order or a deal on its admin page (D120, D464): every
  * active group made for that kind of thing, filled in by staff. They are for
  * staff only and never shown to shoppers or on the site. Draws nothing when the
  * store has no such group, or the thing is not the store's own.

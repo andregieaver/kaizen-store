@@ -348,12 +348,14 @@ export async function storeRuleFacts(run: Runner, storeId: string, id: string): 
   return row ? { entity: "store", categories: [], tags: [], roles: [] } : null;
 }
 
-/** A customer's or an order's fields (D120, staff only): the thing must be the store's own; there are no rules to ask about. */
-export async function staffRuleFacts(run: Runner, storeId: string, entity: "customer" | "order", id: string): Promise<Facts | null> {
+/** A customer's, an order's or a deal's fields (D120, D464, staff only): the thing must be the store's own; there are no rules to ask about. */
+export async function staffRuleFacts(run: Runner, storeId: string, entity: "customer" | "order" | "deal", id: string): Promise<Facts | null> {
   const [row] = await run.execute<Row>(
     entity === "customer"
       ? sql`select id from commerce.customers where store_id = ${storeId}::uuid and id = ${id}::uuid`
-      : sql`select id from commerce.orders where store_id = ${storeId}::uuid and id = ${id}::uuid`,
+      : entity === "order"
+        ? sql`select id from commerce.orders where store_id = ${storeId}::uuid and id = ${id}::uuid`
+        : sql`select id from commerce.deals where store_id = ${storeId}::uuid and id = ${id}::uuid`,
   );
   return row ? { entity, categories: [], tags: [], roles: [] } : null;
 }
@@ -364,7 +366,7 @@ export function factsFor(run: Runner, storeId: string, entity: FieldEntity, id: 
   if (entity === "variant") return variantFacts(run, storeId, id);
   if (entity === "term") return termRuleFacts(run, storeId, id);
   if (entity === "store") return storeRuleFacts(run, storeId, id);
-  if (entity === "customer" || entity === "order") return staffRuleFacts(run, storeId, entity, id);
+  if (entity === "customer" || entity === "order" || entity === "deal") return staffRuleFacts(run, storeId, entity, id);
   return pageFacts(run, storeId, id);
 }
 

@@ -38,7 +38,7 @@ import type { SaveResult } from "./settings";
  * `shownFieldsFor(storeId, "store", storeId, …)`.
  */
 
-export type StaffEntity = "customer" | "order";
+export type StaffEntity = "customer" | "order" | "deal";
 
 export type EntityFieldsEditor = { groups: FieldGroup[]; data: FieldData; lookups: FieldLookups };
 

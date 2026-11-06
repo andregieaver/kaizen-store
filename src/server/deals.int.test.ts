@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { emptyGroup, newField } from "@/lib/custom-fields";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -17,6 +18,8 @@ const { gatherExport } = await import("./privacy-export");
 const { newStore, pay, place } = await import("./inventory-test-support");
 const { featureOffer, setFeature, setSalesPilot } = await import("./store-features");
 const { readTimeline } = await import("./customer-timeline");
+const { saveFieldGroup } = await import("./custom-fields");
+const { saveStaffFields, staffFieldsForEditor } = await import("./field-entities");
 
 type TestStore = Awaited<ReturnType<typeof newStore>>;
 type Row = Record<string, unknown>;
@@ -215,5 +218,27 @@ describe("finding and following a deal", () => {
     expect(read.visible).toContain("deal");
     expect(read.events.find((e) => e.what === "deal_opened")).toMatchObject({ label: "Mugs for the office", href: `/admin/${store.slug}/deals/${id}` });
     expect((await readTimeline(store.member, { kind: "person", email: "find-me-deal@example.com", customerId: person })).visible).not.toContain("deal");
+  });
+});
+
+describe("a deal's own fields", () => {
+  it("are staff's alone, kept with the deal, in its person's export, and gone with it", async () => {
+    const source = { ...newField("text"), name: "source", label: "Where we met", access: "private" as const };
+    const group = await saveFieldGroup(store.member, { ...emptyGroup(), name: "Deal facts", slug: `deal-facts-${Date.now().toString(36)}`, entities: ["deal"], fields: [source] });
+    expect(group, JSON.stringify(group)).toMatchObject({ ok: true });
+    const person = await customer(store, "fields-deal@example.com");
+    const id = await newDeal(store, { customerId: person, title: "Fair stand" });
+    expect((await staffFieldsForEditor(store.storeId, "deal", id))?.groups.map((g) => g.name)).toContain("Deal facts");
+    expect(await staffFieldsForEditor(other.storeId, "deal", id)).toBeNull();
+    const main = store.member.store.localization.locales[0];
+    expect(await saveStaffFields(store.member, "deal", id, { values: {}, translations: { [main]: { [source.id]: "The spring fair" } } })).toEqual({ ok: true });
+
+    const subject = await resolveSubject(store.storeId, { customerId: person }, { channel: "staff" });
+    const exported = await gatherExport(subject!, "en", new Date());
+    expect(exported?.customFields).toContainEqual(expect.objectContaining({ entity: "deal", reference: "Fair stand", label: "Where we met", value: "The spring fair" }));
+
+    expect(await deals.deleteDeal(store.member, id)).toMatchObject({ ok: true });
+    const [left] = await db().execute<Row>(sql`select count(*)::int as n from commerce.field_values where store_id = ${store.storeId}::uuid and entity = 'deal' and entity_id = ${id}::uuid`);
+    expect(left.n).toBe(0);
   });
 });

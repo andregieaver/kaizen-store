@@ -655,6 +655,7 @@ export const blocksNb: BlocksMessages = {
       store: "butikken",
       customer: "kunder",
       order: "bestillinger",
+      deal: "avtaler",
     },
     noun: {
       product: "produktet",
@@ -665,6 +666,7 @@ export const blocksNb: BlocksMessages = {
       store: "butikken",
       customer: "kunden",
       order: "bestillingen",
+      deal: "avtalen",
     },
     and: " og ",
     or: " eller ",

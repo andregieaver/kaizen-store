@@ -661,6 +661,7 @@ export const blocksEn = {
       store: "the store",
       customer: "customers",
       order: "orders",
+      deal: "deals",
     },
     noun: {
       product: "product",
@@ -671,6 +672,7 @@ export const blocksEn = {
       store: "store",
       customer: "customer",
       order: "order",
+      deal: "deal",
     },
     and: " and ",
     or: " or ",

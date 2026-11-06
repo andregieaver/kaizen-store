@@ -70,6 +70,7 @@ export const fieldsEn = {
     store: "The store",
     customer: "Customers",
     order: "Orders",
+    deal: "Deals",
   },
   positions: { main: "Main column", side: "Side column" },
   linkKinds: { page: "Page or article", product: "Product", category: "Category", tag: "Tag", url: "Web address" },
@@ -130,8 +131,8 @@ export const fieldsEn = {
   problems: {
     misfits: "Some location rules ask about something the chosen kinds of thing do not have. Remove them or choose the kind again.",
     ruleValue: "Choose what each location rule compares with.",
-    staffOnly: "A group for customers or orders can be on nothing else: their fields are for staff only.",
-    staffPublic: "{label} cannot be shown on the site: customer and order fields are for staff only.",
+    staffOnly: "A group for customers, orders or deals can be on nothing else: their fields are for staff only.",
+    staffPublic: "{label} cannot be shown on the site: customer, order and deal fields are for staff only.",
     staffFile: "{label} cannot hold a picture or file: they are kept where anyone with the address can open them.",
     shownByMissing: "{label} is shown by a field that is no longer above it. Change its logic or move the fields.",
     aField: "A field",

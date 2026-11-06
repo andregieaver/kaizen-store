@@ -8,6 +8,7 @@ import { DealFields } from "@/components/admin/deals/deal-fields";
 import { DealStatusControls } from "@/components/admin/deals/deal-status";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { requireFeature } from "@/components/admin/feature-off";
+import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { Card, Chip, List, ListRow, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -19,7 +20,7 @@ import { getDeal, linkCandidates, mayLink, pipelinesOf, type DealLink, type Deal
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
 
-import { deleteDealAction, linkThingAction, placeDealAction, searchWhoAction, unlinkThingAction, updateDealAction } from "../actions";
+import { deleteDealAction, linkThingAction, placeDealAction, saveDealFieldsAction, searchWhoAction, unlinkThingAction, updateDealAction } from "../actions";
 
 export const metadata: Metadata = { title: "Deal" };
 
@@ -209,6 +210,9 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
           </ActionForm>
         </Card>
       )}
+
+      {/* Custom fields on deals (D118, D464): for staff only, as a customer's and an order's are. */}
+      {canChange && <StaffFieldsSection store={store} entity="deal" id={deal.id} save={saveDealFieldsAction.bind(null, store.slug, deal.id)} />}
 
       <Card title={w.deal.history} compact>
         <ol className="flex flex-col gap-2 text-sm">

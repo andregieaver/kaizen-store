@@ -63,6 +63,7 @@ export const fieldsNb: FieldsMessages = {
     store: "Butikken",
     customer: "Kunder",
     order: "Bestillinger",
+    deal: "Avtaler",
   },
   positions: { main: "Hovedkolonnen", side: "Sidekolonnen" },
   linkKinds: { page: "Side eller artikkel", product: "Produkt", category: "Kategori", tag: "Stikkord", url: "Nettadresse" },
@@ -121,8 +122,8 @@ export const fieldsNb: FieldsMessages = {
   problems: {
     misfits: "Noen plasseringsregler spør om noe de valgte typene ikke har. Fjern dem, eller velg typen på nytt.",
     ruleValue: "Velg hva hver plasseringsregel sammenligner med.",
-    staffOnly: "En gruppe for kunder eller bestillinger kan ikke brukes på noe annet: feltene deres er bare for de ansatte.",
-    staffPublic: "{label} kan ikke vises på nettstedet: felt for kunder og bestillinger er bare for de ansatte.",
+    staffOnly: "En gruppe for kunder, bestillinger eller avtaler kan ikke brukes på noe annet: feltene deres er bare for de ansatte.",
+    staffPublic: "{label} kan ikke vises på nettstedet: felt for kunder, bestillinger og avtaler er bare for de ansatte.",
     staffFile: "{label} kan ikke inneholde et bilde eller en fil: de lagres der alle som har adressen, kan åpne dem.",
     shownByMissing: "{label} vises ut fra et felt som ikke lenger står over det. Endre logikken, eller flytt feltene.",
     aField: "Et felt",

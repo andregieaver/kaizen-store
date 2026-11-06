@@ -47,6 +47,7 @@ export default async function FieldGroupPage({ params }: PageProps<"/admin/[stor
           languages={storeLanguages(store, ADMIN_LANG_FACTS[lang].locale)}
           currencies={moneyCurrencies(store)}
           sellsToBusinesses={featureOn(store, "business")}
+          salesOn={featureOn(store, "sales")}
           save={saveFieldGroupAction.bind(null, store.slug)}
           base={base}
           actions={

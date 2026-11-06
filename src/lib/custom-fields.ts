@@ -42,7 +42,7 @@ const NAME_MAX = 40;
  * The kinds of thing a group can be on: products, their variants, pages,
  * articles, categories and tags (the store's own, `term`), the store itself
  * (`store`, D120: one set of values for the whole site) and, for staff only,
- * customers and orders.
+ * customers, orders and deals (D464).
  */
 export const FIELD_ENTITIES = {
   product: "Products",
@@ -53,6 +53,7 @@ export const FIELD_ENTITIES = {
   store: "The store",
   customer: "Customers",
   order: "Orders",
+  deal: "Deals",
 } as const;
 export type FieldEntity = keyof typeof FIELD_ENTITIES;
 export const FIELD_ENTITY_KEYS = Object.keys(FIELD_ENTITIES) as [FieldEntity, ...FieldEntity[]];
@@ -65,12 +66,12 @@ export const isFieldEntity = (value: unknown): value is FieldEntity =>
  * entered in them is never read by the storefront, the chat agent, search,
  * emails, integrations or the shopper's own pages.
  */
-export const STAFF_ENTITIES = ["customer", "order"] as const satisfies readonly FieldEntity[];
+export const STAFF_ENTITIES = ["customer", "order", "deal"] as const satisfies readonly FieldEntity[];
 export const isStaffEntity = (entity: string): boolean => (STAFF_ENTITIES as readonly string[]).includes(entity);
 
 const STAFF_PROBLEMS = {
-  staffOnly: "A group for customers or orders can be on nothing else: their fields are for staff only.",
-  staffPublic: "{label} cannot be shown on the site: customer and order fields are for staff only.",
+  staffOnly: "A group for customers, orders or deals can be on nothing else: their fields are for staff only.",
+  staffPublic: "{label} cannot be shown on the site: customer, order and deal fields are for staff only.",
   staffFile: "{label} cannot hold a picture or file: they are kept where anyone with the address can open them.",
 };
 
@@ -426,6 +427,7 @@ export const LOCATION_PARAMS: Record<FieldEntity, readonly { param: string; labe
   store: [],
   customer: [],
   order: [],
+  deal: [],
 };
 
 /** The fixed answers for the params that have some. */

@@ -1023,9 +1023,15 @@ async function loadCustomFields(s: PrivacySubject, orders: OrderRow[], main: str
   const groups = await listFieldGroups(s.storeId);
   const words = t(main.split("-")[0]).customFields;
   const out: CustomFieldRow[] = [];
-  const things: { entity: "customer" | "order"; id: string; reference: string | null }[] = [
+  // The person's own deals (D464) have staff's fields too, named by their title.
+  const deals = s.customerId && groups.some((g) => g.entities.includes("deal"))
+    ? await typedRows(z.object({ id: col.uuid, title: col.text }), sql`
+        select id, title from commerce.deals where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid order by created_at, id`)
+    : [];
+  const things: { entity: "customer" | "order" | "deal"; id: string; reference: string | null }[] = [
     ...(s.customerId ? [{ entity: "customer" as const, id: s.customerId, reference: null }] : []),
     ...orders.map((o) => ({ entity: "order" as const, id: o.id, reference: o.number })),
+    ...deals.map((d) => ({ entity: "deal" as const, id: d.id, reference: d.title })),
   ];
   for (const thing of things) {
     const applicable = groups.filter((g) => g.entities.includes(thing.entity));

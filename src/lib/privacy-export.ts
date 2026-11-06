@@ -334,7 +334,7 @@ export type ReviewExportRow = {
   /** The review's pictures (G4): each by the address that shows it to its signed-in author, and whether the store hides it. */
   pictures: { address: string; hidden: boolean }[];
 };
-export type CustomFieldRow = { entity: "customer" | "order"; reference: string | null; group: string; label: string; value: string | null; locale: string | null };
+export type CustomFieldRow = { entity: "customer" | "order" | "deal"; reference: string | null; group: string; label: string; value: string | null; locale: string | null };
 
 /** What `exportCustomerData()` gathers, by `store_id`, before shaping. */
 export type ExportInput = {

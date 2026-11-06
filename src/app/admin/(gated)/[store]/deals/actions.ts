@@ -34,7 +34,9 @@ import {
   type StageInput,
   type WhoChoice,
 } from "@/server/deals";
+import { saveStaffFields } from "@/server/field-entities";
 import { checkPermission } from "@/server/permissions";
+import type { SaveResult } from "@/server/settings";
 
 /**
  * Deals' actions (S2, D464): each checks the member may change customers and that Deals is on, whatever a stale page sends, and answers in
@@ -166,6 +168,16 @@ export async function unlinkThingAction(storeSlug: string, dealId: string, linkI
   if ("refused" in ok) return { status: "error", messages: [ok.refused] };
   if (!uuid.safeParse(dealId).success || !uuid.safeParse(linkId).success) return { status: "error", messages: [ok.w.problems.not_found] };
   return stateOf(ok.w, await unlinkThing(ok.member, dealId, linkId), ok.w.form.saved);
+}
+
+/** What staff entered in a deal's custom fields (D464, staff only). */
+export async function saveDealFieldsAction(storeSlug: string, dealId: string, changes: unknown): Promise<SaveResult> {
+  const ok = await writer(storeSlug);
+  if ("refused" in ok) return { ok: false, problems: [ok.refused] };
+  if (!uuid.safeParse(dealId).success) return { ok: false, problems: [ok.w.problems.not_found] };
+  const result = await saveStaffFields(ok.member, "deal", dealId, changes);
+  if (result.ok) refresh();
+  return result;
 }
 
 /** Who a new deal may be with, as the form's search asks (two letters or more). */
