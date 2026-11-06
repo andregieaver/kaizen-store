@@ -29,6 +29,8 @@ import { platformModes } from "@/server/stripe";
 import { removeDemoContentAction } from "./demo-actions";
 import { shopifyClosedAction } from "./settings/moving/actions";
 import { MoveWatchCard } from "@/components/admin/moving/move-watch-card";
+import { TodayCard } from "@/components/admin/activities/today-card";
+import { activityDoneAction } from "./deals/activity-actions";
 import { dismissBriefingAction, turnOnBriefingAction } from "./settings/notifications/staff/actions";
 
 type Props = PageProps<"/admin/[store]">;
@@ -122,6 +124,17 @@ export default async function AdminOverview({ params, searchParams }: Props) {
       {/* A website keeps Orders out of the menu, but reachable while an order can still be withdrawn from or returned (D178 step 5). */}
       <AfterSaleNote store={store} />
       {store.setupCompletedAt && <Attention items={attention} empty={selling ? h.nothingShop : h.nothing} words={words.attention} />}
+      {/* Today's calls, meetings and tasks (S3, D468), the viewer's or the team's: read after the page is shown. */}
+      {store.setupCompletedAt && featureOn(store, "sales") && memberCan(current, "customers:read") && (
+        <Suspense fallback={null}>
+          <TodayCard
+            member={current}
+            team={(await searchParams).today === "team"}
+            lang={lang}
+            done={memberCan(current, "customers:write") ? (id, done) => activityDoneAction.bind(null, store.slug, id, done) : null}
+          />
+        </Suspense>
+      )}
       {/* The 14 days after a move from Shopify (D445 step 7c): the owner's card, read after the page is shown. */}
       {store.setupCompletedAt && owner && (
         <Suspense fallback={null}>

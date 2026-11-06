@@ -10,6 +10,10 @@ import { CustomerTimeline } from "@/components/admin/customer-timeline";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listDeals } from "@/server/deals";
 import { DealsCard } from "@/components/admin/deals/deals-card";
+import { ActivitiesCard } from "@/components/admin/activities/activities-card";
+import { activityViews, newActivityValues } from "@/components/admin/activities/activity-view";
+import { activitiesOf } from "@/server/activities";
+import { activityActions, activityTeam } from "../../deals/activity-actions-of";
 import { featureOn } from "@/lib/store-features";
 import { employeePercent, getCompany, listInvites, listMembers } from "@/server/companies";
 import { companyOwes } from "@/server/payment-terms";
@@ -21,7 +25,7 @@ import { formatMoney } from "@/lib/money";
 import { PAYMENT_TERMS } from "@/lib/payment-terms";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { AdminTextScope } from "@/components/admin/admin-text";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatPriceInput } from "@/lib/product-input";
 import { listTiers } from "@/server/customer-tiers";
@@ -84,6 +88,8 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
   const salesOn = featureOn(store, "sales");
   const deals = salesOn ? await listDeals(store, { companyId: company.id }) : [];
   const dealWords = adminText(lang, "deals");
+  const mayChange = memberCan(current, "customers:write");
+  const [activities, team] = salesOn ? await Promise.all([activitiesOf(store.id, { companyId: company.id }), mayChange ? activityTeam(store.id) : Promise.resolve([])]) : [[], []];
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["bookings"])}>
@@ -119,6 +125,17 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
           addHref={memberCan(current, "customers:write") ? `${base}/deals/new?company=${company.id}` : null}
           words={dealWords.card}
           statuses={dealWords.statuses}
+        />
+      )}
+      {/* The calls, meetings and tasks about the company (S3, D468), its deals' among them. */}
+      {salesOn && (
+        <ActivitiesCard
+          items={activityViews(activities, "company", { now: new Date(), timeZone: store.timeZone, locale: ADMIN_LANG_FACTS[lang].locale, words: dealWords.activities, base, me: current.account.id })}
+          words={dealWords.activities}
+          actions={mayChange ? activityActions(store.slug) : null}
+          team={team}
+          me={current.account.id}
+          blank={newActivityValues({ companyId: company.id }, current.account.id, new Date(), store.timeZone)}
         />
       )}
 

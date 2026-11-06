@@ -16,11 +16,15 @@ import { PrivacyBanner, PrivacyCard } from "@/components/admin/privacy/privacy-c
 import { Avatar } from "@/components/avatar";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
 import { DealsCard } from "@/components/admin/deals/deals-card";
+import { ActivitiesCard } from "@/components/admin/activities/activities-card";
+import { activityViews, newActivityValues } from "@/components/admin/activities/activity-view";
+import { activitiesOf } from "@/server/activities";
+import { activityActions, activityTeam } from "../../deals/activity-actions-of";
 import { listDeals } from "@/server/deals";
 import { TIMELINE_KINDS, askedKind } from "@/lib/customer-timeline";
 import { exportProblemOf } from "@/lib/privacy-admin";
@@ -108,6 +112,10 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const salesOn = featureOn(store, "sales") && customer.customerId !== null;
   const deals = salesOn && customer.customerId ? await listDeals(store, { customerId: customer.customerId }) : [];
   const dealWords = adminText(lang, "deals");
+  const [activities, team] =
+    salesOn && customer.customerId
+      ? await Promise.all([activitiesOf(store.id, { customerId: customer.customerId }), mayTag ? activityTeam(store.id) : Promise.resolve([])])
+      : [[], []];
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}`;
   const spent = moneyByCurrency(customer.spentMinor, locale);
@@ -366,6 +374,17 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               addHref={mayTag ? `${base}/deals/new?customer=${customer.customerId}` : null}
               words={dealWords.card}
               statuses={dealWords.statuses}
+            />
+          )}
+          {/* The calls, meetings and tasks about them (S3, D468), their deals' among them. */}
+          {salesOn && customer.customerId && (
+            <ActivitiesCard
+              items={activityViews(activities, "customer", { now: new Date(), timeZone: store.timeZone, locale: ADMIN_LANG_FACTS[lang].locale, words: dealWords.activities, base, me: member.account.id })}
+              words={dealWords.activities}
+              actions={mayTag ? activityActions(store.slug) : null}
+              team={team}
+              me={member.account.id}
+              blank={newActivityValues({ customerId: customer.customerId }, member.account.id, new Date(), store.timeZone)}
             />
           )}
           <CustomerNotes

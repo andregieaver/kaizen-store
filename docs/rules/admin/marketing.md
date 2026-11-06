@@ -110,6 +110,17 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `stores.sales_pilot`, or `platform_settings.sales_open`); one kept on stays on. The words are the server-only area `deals`; the board's client
   parts get theirs as props.
 
+## Activities (S3, D468, `src/lib/activities.ts`, `src/server/activities.ts`, `ActivitiesCard`, `TodayCard`)
+
+- **Activities (S3, D468, `src/lib/activities.ts`, `src/server/activities.ts`, `ActivitiesCard`, `TodayCard`)**: a call, a meeting or a task
+  (`commerce.activities`) is written only by `src/server/activities.ts`, by a member with `customers:write` while the feature `sales` is on,
+  about the store's own person, company or deal and for a member whose access has not ended (the one who made it unless they chose). What is
+  typed is checked by `cleanActivityInput()`: a day in the store's time zone and a time or none, a length only for a meeting. When it is late and
+  what *Today* shows are `activityWhen()` and `todayList()`, never worked out again in a page; dates and times are drawn by
+  `activityViews()`/`whenText()` in the store's zone. The person it is for is told once on their devices when a timed one is due (the
+  dispatcher's `activities` job, claimed by `notified_at`). A deal's activities go with it; a person's or a company's lose the link; a merge
+  moves them; an erasure deletes those about the person alone and takes the person off the rest. Audited as `activity.*` with ids only.
+
 ## Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)
 
 - **Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)**: a store's creator programme (`commerce.creator_settings`,

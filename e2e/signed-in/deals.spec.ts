@@ -70,6 +70,21 @@ test("an owner switches Deals on, adds a deal for a customer, moves it, wins it 
 
   await expect(page.getByRole("heading", { level: 1, name: `Tote bags ${run}` })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("The estimate, until something is linked.")).toBeVisible();
+
+  // Its next step (S3, D468): a call for today, on the deal and under Today on the store's home, done there with one press.
+  const call = `Call about the totes ${run}`;
+  await page.getByText("Add activity", { exact: true }).click();
+  await page.getByLabel("What to do").fill(call);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByText(call)).toBeVisible({ timeout: 30_000 });
+  await page.goto(`/admin/${E2E_STORE}`);
+  const today = page.getByRole("region", { name: "Today" });
+  await expect(today.getByText(call)).toBeVisible({ timeout: 30_000 });
+  await today.getByRole("button", { name: `Mark ${call} done` }).click();
+  await expect(today.getByRole("button", { name: `Mark ${call} not done` })).toBeVisible({ timeout: 30_000 });
+  await today.getByRole("link", { name: `Tote bags ${run}` }).click();
+  await expect(page.getByRole("heading", { level: 1, name: `Tote bags ${run}` })).toBeVisible({ timeout: 30_000 });
+
   await page.getByLabel("Move to").selectOption({ label: "Talking" });
   await expect(page.getByRole("status").filter({ hasText: "Moved to Talking." })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Won", exact: true }).click();

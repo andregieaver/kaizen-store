@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { ActivitiesCard } from "@/components/admin/activities/activities-card";
+import { activityViews, newActivityValues } from "@/components/admin/activities/activity-view";
 import { DealFields } from "@/components/admin/deals/deal-fields";
 import { DealStatusControls } from "@/components/admin/deals/deal-status";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
@@ -16,10 +18,12 @@ import { adminText } from "@/lib/admin-text";
 import { formatPriceInput } from "@/lib/product-input";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
+import { activitiesOf } from "@/server/activities";
 import { getDeal, linkCandidates, mayLink, pipelinesOf, type DealLink, type DealMove } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
 
+import { activityActions } from "../activity-actions-of";
 import { deleteDealAction, linkThingAction, placeDealAction, saveDealFieldsAction, searchWhoAction, unlinkThingAction, updateDealAction } from "../actions";
 
 export const metadata: Metadata = { title: "Deal" };
@@ -44,10 +48,11 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
   const money = (minor: number, currency = main) => formatMoney(minor, currency, locale, { decimals: "hide_whole" });
   const when = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: store.timeZone });
   const canChange = memberCan(member, "customers:write");
-  const [pipelines, staff, candidates] = await Promise.all([
+  const [pipelines, staff, candidates, activities] = await Promise.all([
     pipelinesOf(store.id),
     canChange ? listStaff(store.id) : Promise.resolve([]),
     canChange ? linkCandidates(member, deal) : Promise.resolve([]),
+    activitiesOf(store.id, { dealId: deal.id }),
   ]);
   const pipeline = pipelines.find((p) => p.id === deal.pipelineId);
   const stage = pipeline?.stages.find((s) => s.id === deal.stageId);
@@ -143,6 +148,16 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
           </div>
         )}
       </Card>
+
+      {/* What happens next (S3, D468): the deal's calls, meetings and tasks, about its person and company too. */}
+      <ActivitiesCard
+        items={activityViews(activities, "deal", { now: new Date(), timeZone: store.timeZone, locale, words: w.activities, base, me: member.account.id })}
+        words={w.activities}
+        actions={canChange ? activityActions(store.slug) : null}
+        team={team}
+        me={member.account.id}
+        blank={newActivityValues({ dealId: deal.id, customerId: deal.customer?.id, companyId: deal.company?.id }, member.account.id, new Date(), store.timeZone)}
+      />
 
       <Card title={w.deal.links} compact>
         {deal.links.length === 0 ? (

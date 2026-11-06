@@ -11,6 +11,9 @@ import { todayIn } from "@/lib/analytics-period";
 import { boardColumns, daysInStage, whoLine } from "@/lib/deals";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
+import { whenText } from "@/components/admin/activities/activity-view";
+import { activityWhen } from "@/lib/activities";
+import { nextActivities } from "@/server/activities";
 import { ensurePipeline, listDeals } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 
@@ -46,6 +49,14 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
   const now = new Date();
   const today = todayIn(now, store.timeZone);
   const deals = await listDeals(store, { pipelineId: pipeline.id, closedSince: new Date(now.getTime() - CLOSED_DAYS * 86_400_000) });
+  const nexts = await nextActivities(store.id, deals.filter((d) => d.status === "open").map((d) => d.id));
+  const nextOf = (dealId: string): BoardColumnView["cards"][number]["next"] => {
+    const next = nexts.get(dealId);
+    if (!next) return "none";
+    const kind = w.activities.kinds[next.kind].toLocaleLowerCase(locale);
+    const when = whenText({ ...next, durationMinutes: null }, { now, timeZone: store.timeZone, locale, words: w.activities });
+    return { text: fillWords(w.board.next, { kind, when }), late: activityWhen({ id: dealId, doneAt: null, ...next }, now, store.timeZone) === "late" };
+  };
   const columns = boardColumns(
     pipeline.stages.map((s) => ({ id: s.id, name: s.name, probability: s.probability })),
     deals.map((deal) => ({ id: deal.id, stageId: deal.stageId, status: deal.status, value: deal.value.minor, expectedCloseOn: deal.expectedCloseOn, createdAt: deal.createdAt, deal })),
@@ -76,6 +87,7 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
         days: open ? countWords(daysInStage(deal.stageEnteredAt, now), w.board.daysInStage) : null,
         closes: open && deal.expectedCloseOn ? fillWords(late ? w.board.late : w.board.closes, { date: day(deal.expectedCloseOn) }) : null,
         late,
+        next: open ? nextOf(deal.id) : null,
       };
     }),
   }));

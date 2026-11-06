@@ -37,6 +37,9 @@ export const dealsEn = {
     dropped: "{title} moved to {stage}.",
     cancelled: "Move cancelled.",
     moved: "Moved to {stage}.",
+    /** A deal's next step (S3, D468): its earliest activity not done. */
+    next: "Next: {kind} {when}",
+    noNext: "No next step",
   },
 
   lost: {
@@ -139,6 +142,63 @@ export const dealsEn = {
     none: "No deals yet.",
     add: "New deal",
     open: { one: "{n} open deal", many: "{n} open deals" },
+  },
+
+  /** Activities (S3, D468): the calls, meetings and tasks on a deal's, a person's or a company's page. */
+  activities: {
+    title: "Activities",
+    none: "Nothing planned. Add a call, a meeting or a task so the next step is not forgotten.",
+    add: "Add activity",
+    kinds: { call: "Call", meeting: "Meeting", task: "Task" },
+    kind: "What it is",
+    titleLabel: "What to do",
+    titlePlaceholder: "Follow up on the quote",
+    dueOn: "Day",
+    dueTime: "Time",
+    dueTimeHint: "Leave the time empty for something to do that day.",
+    duration: "Length in minutes",
+    assignee: "Who does it",
+    me: "Me",
+    note: "Note",
+    save: "Add",
+    added: "Added.",
+    change: "Change",
+    saveChange: "Save",
+    saved: "Saved.",
+    remove: "Delete",
+    markDone: "Mark {title} done",
+    markOpen: "Mark {title} not done",
+    late: "Late",
+    at: "{date} at {time}",
+    minutes: "{n} min",
+    doneOn: "Done {date}",
+    doneCount: { one: "{n} done", many: "{n} done" },
+    by: "for {name}",
+    problems: {
+      kind: "Choose a call, a meeting or a task.",
+      title: "Say what to do, in at most 200 characters.",
+      note: "Keep the note to at most 2000 characters.",
+      due: "Choose a day, and a time as 14:30 if you give one.",
+      duration: "Write the length as whole minutes, at most 720.",
+      assignee: "Choose someone on the store's team.",
+      who: "That customer, company or deal is not this store's any more.",
+      forbidden: "You may not change activities.",
+      not_found: "That activity is gone.",
+    },
+  },
+
+  /** The store's home (S3, D468): what is late, due today and done today. */
+  today: {
+    title: "Today",
+    mine: "Mine",
+    team: "The team's",
+    show: "Show",
+    late: "Late",
+    due: "Due today",
+    done: "Done today",
+    none: "Nothing due today. Plan the next step on a deal or a customer.",
+    noneTeam: "Nothing due today for anyone on the team.",
+    deals: "Deals",
   },
 
   problems: {

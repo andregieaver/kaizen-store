@@ -23,6 +23,8 @@ export type BoardCard = {
   days: string | null;
   closes: string | null;
   late: boolean;
+  /** An open deal's next step (S3, D468): its earliest activity not done ("Next: call Mon 9 Nov"), or that it has none. */
+  next: { text: string; late: boolean } | "none" | null;
 };
 
 export type BoardColumnView = { key: string; title: string; status: DealStatus; count: string; total: string | null; weighted: string | null; cards: BoardCard[] };
@@ -216,6 +218,11 @@ function Card({
           {card.days && card.closes && " · "}
           {card.closes && <span className={card.late ? "text-danger-text" : undefined}>{card.closes}</span>}
         </p>
+      )}
+      {card.next === "none" ? (
+        <p className="text-warning-text">{w.noNext}</p>
+      ) : (
+        card.next && <p className={card.next.late ? "text-danger-text" : "text-ink-2"}>{card.next.text}</p>
       )}
       {canChange && (
         <select
