@@ -88,6 +88,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/ai/prices", "AI prices", "What each model costs per million tokens, per picture, per audio minute and per million characters, so the usage pages can show cost.", "coins"),
   item("/emails", "Emails", "Every email Kaizena Flow and the stores sent, and email setup.", "mail"),
   item("/languages", "Languages", "The languages stores can offer, and where each one's interface text stands.", "languages"),
+  item("/team", "Team", "Who runs Kaizena Flow: the platform admins, whether each has two-step sign-in, and adding or removing one.", "user-cog"),
   item("/activity", "Activity log", "What platform admins and the platform did: two-step sign-in events, approvals and settings, with who did it and when.", "file-clock"),
 ];
 

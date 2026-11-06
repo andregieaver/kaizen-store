@@ -331,6 +331,8 @@ export const NAV_NB: Record<string, string> = {
     "Hva leserne sa under hver side i dokumentasjonen: om den hjalp, og setningen noen legger til.",
   "Docs guide": "Dokumentasjonsveileder",
   "Kaizena Flow's store": "Kaizena Flows butikk",
+  "Who runs Kaizena Flow: the platform admins, whether each has two-step sign-in, and adding or removing one.":
+    "Hvem som driver Kaizena Flow: plattformadministratorene, om hver har totrinnsinnlogging, og å legge til eller fjerne en.",
   "What the stores' plans earn every month, how that moved, and how many who ask for a store end up paying.":
     "Hva butikkenes abonnementer gir hver måned, hvordan det har endret seg, og hvor mange av dem som ber om en butikk som ender med å betale.",
   "Kaizena Flow's own store, with every page a store's admin has: its customers, subscribers, email and, step by step, its site.":

@@ -1168,6 +1168,9 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["referral", "refer", "affiliate", "commission", "invite", "credit", "referrer"],
     tasks: ["Switch the referral program on or off and set its terms", "Block or unblock a referrer", "Void a referral", "Add or remove a referrer's credit with a reason"],
   }),
+  platform("team", "/team", "Platform team", "Platform", "Who runs Kaizena Flow: every platform admin with whether two-step sign-in is set up, adding one by email (their account, or a new one) after a fresh sign-in, and removing one (never oneself, never the last).", {
+    keywords: ["platform admins", "staff", "operators", "add admin", "remove admin", "team"],
+  }),
   platform("stripe", "/stripe", "Stripe", "Platform", "Kaizena Flow's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
   platform("pages", "/pages", "Pages", "Kaizena Flow site", "Kaizena Flow's own website pages."),
   platform("page.new", "/pages/new", "New page", "Kaizena Flow site", "Starts a Kaizena Flow page."),

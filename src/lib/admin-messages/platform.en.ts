@@ -288,6 +288,34 @@ export const platformEn = {
   },
   /** Kaizena Flow's site copied into its own store (D469, step 3 of the plan), on Platform → Website. */
   /** Analytics of Kaizena Flow's plans (C2, D470), Platform → Plans → Analytics. */
+  /** The platform's team (C1, D471), Platform → Settings → Team. */
+  team: {
+    title: "Team",
+    description: "Who runs Kaizena Flow. Each signs in with two-step sign-in and is also an owner of Kaizena Flow's own store.",
+    members: "Platform admins",
+    membersText: "Everyone here can do everything on the platform. Roles that give less are coming.",
+    you: "you",
+    twoStepOn: "Two-step sign-in on",
+    twoStepOff: "Two-step sign-in not set up yet: asked at the next sign-in",
+    since: "Since {date}",
+    remove: "Remove",
+    addTitle: "Add a platform admin",
+    addText: "Their account if they have one, else a new one: they sign in at Kaizena Flow's admin with this email and set up two-step sign-in.",
+    email: "Email",
+    name: "Name (if they have no account yet)",
+    add: "Add",
+    added: "{email} is a platform admin now.",
+    removed: "{email} is no longer a platform admin.",
+    signInAgain: "Sign in again first: adding a platform admin needs a sign-in in the last few minutes.",
+    problems: {
+      invalid: "Enter a valid email address.",
+      disabled: "That account is disabled.",
+      already: "That person is a platform admin already.",
+      self: "You cannot remove yourself: ask another platform admin.",
+      last: "The platform keeps at least one platform admin.",
+      not_found: "That person is not a platform admin.",
+    },
+  },
   planAnalytics: {
     title: "Plan analytics",
     description: "What the stores' plans earn every month, how that moved, and how many who ask for a store end up paying.",

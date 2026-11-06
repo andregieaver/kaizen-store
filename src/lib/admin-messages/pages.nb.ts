@@ -784,6 +784,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Abonnementsanalyse",
     keywords: ["mrr", "månedlige inntekter", "frafall", "inntekter", "trakt", "konvertering", "prøveperioder"],
   },
+  "platform:team": { title: "Plattformteam", keywords: ["plattformadministratorer", "ansatte", "operatører", "legg til administrator", "fjern administrator", "team"] },
   "platform:discounts": { title: "Rabatter", keywords: ["rabatter", "rabattkoder", "rabattkode", "kupong"] },
   "platform:discount": { title: "Rabatt", keywords: ["rabatt", "rabattkode", "kupong"] },
   "platform:plan-reminders": { title: "Påminnelser om plan", keywords: ["påminnelser", "forlatt kasse", "plan", "e-post"] },

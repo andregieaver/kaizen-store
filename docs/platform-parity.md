@@ -70,7 +70,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 | E-invoices (EHF, D463) | Kaizena Flow's plan invoices are Stripe's and go by email; from 1 January 2027 an owner's business registered in ELMA is owed EHF, which needs Kaizena Flow's own documents sent through B1's sender | Console, C3, with the books |
 | Apps and API | Settings → AI assistants and apps and App listings oversee others' apps; no Admin API for the platform (`api_tokens` needs a store) | Console, C4 |
 | AI | Has more than a store (pause, web search, prices, the eval); lacks how long AI manager conversations are kept | Console |
-| Team | None: a platform admin is one boolean, `accounts.platform_admin`, set by SQL; no roles, invitations or screen | Console, C1 |
+| Team (roles) | Platform → Settings → Team adds and removes platform admins (D471); every one can do everything: no roles yet | Console, C1 |
 
 ### Home
 
