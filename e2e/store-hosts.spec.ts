@@ -22,31 +22,37 @@ const ENGLISH_HOST = "english.kari.localhost";
 
 const storeUrl = (slug: string, path = "") => `http://${slug}.${domain}${path}`;
 
-test("a store is served on its own host, and its old address moves there", async ({ page }) => {
-  await page.goto(storeUrl("demo", "/"));
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  const market = page.getByRole("link", { name: /Norge|Norway/ }).first();
-  await expect(market).toHaveAttribute("href", "/no");
+// The demo store's country chooser leads each visitor into a country in their browser's language (D479): a Norwegian visitor here,
+// so the first link is Norway in its own.
+test.describe("a Norwegian visitor to a store's own host", () => {
+  test.use({ locale: "nb-NO" });
 
-  await page.goto(storeUrl("demo", "/no/p/demo-keramikkopp"));
-  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(storeUrl("demo", "/no/p/demo-keramikkopp"));
-  // Actions post to the store's host.
-  await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
-  await expect(page.getByRole("status").filter({ hasText: "Lagt i handlekurven." })).toBeVisible();
-  // The cart is a pay route, entered by a full page load (`PayRouteGuard` reloads one reached by a client navigation): the link is
-  // followed as a load of its own, so no reload is still on its way when the next page is asked for.
-  const toCart = page.getByRole("link", { name: "Gå til handlekurven" });
-  await expect(toCart).toHaveAttribute("href", "/no/cart");
-  await page.goto(storeUrl("demo", "/no/cart"));
-  await expect(page).toHaveURL(storeUrl("demo", "/no/cart"));
+  test("a store is served on its own host, and its old address moves there", async ({ page }) => {
+    await page.goto(storeUrl("demo", "/"));
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const market = page.getByRole("link", { name: /Norge|Norway/ }).first();
+    await expect(market).toHaveAttribute("href", "/no");
 
-  // Kaizen's address for the store moves to the store's own.
-  await page.goto("/s/demo/no/p/demo-keramikkopp");
-  await expect(page).toHaveURL(storeUrl("demo", "/no/p/demo-keramikkopp"));
+    await page.goto(storeUrl("demo", "/no/p/demo-keramikkopp"));
+    expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(storeUrl("demo", "/no/p/demo-keramikkopp"));
+    // Actions post to the store's host.
+    await page.getByRole("button", { name: "Legg i handlekurven" }).first().click();
+    await expect(page.getByRole("status").filter({ hasText: "Lagt i handlekurven." })).toBeVisible();
+    // The cart is a pay route, entered by a full page load (`PayRouteGuard` reloads one reached by a client navigation): the link is
+    // followed as a load of its own, so no reload is still on its way when the next page is asked for.
+    const toCart = page.getByRole("link", { name: "Gå til handlekurven" });
+    await expect(toCart).toHaveAttribute("href", "/no/cart");
+    await page.goto(storeUrl("demo", "/no/cart"));
+    await expect(page).toHaveURL(storeUrl("demo", "/no/cart"));
 
-  // Nothing of Kaizen's but shared files answers on a store's host: not the admin.
-  expect((await page.goto(storeUrl("demo", "/admin/sign-in")))?.status()).toBe(404);
-  expect((await page.goto(storeUrl("demo", "/demo/logo.svg")))?.status()).toBe(200);
+    // Kaizen's address for the store moves to the store's own.
+    await page.goto("/s/demo/no/p/demo-keramikkopp");
+    await expect(page).toHaveURL(storeUrl("demo", "/no/p/demo-keramikkopp"));
+
+    // Nothing of Kaizen's but shared files answers on a store's host: not the admin.
+    expect((await page.goto(storeUrl("demo", "/admin/sign-in")))?.status()).toBe(404);
+    expect((await page.goto(storeUrl("demo", "/demo/logo.svg")))?.status()).toBe(200);
+  });
 });
 
 /** A new store with code in each place: necessary in the head, statistics at the body's start, marketing at its end. */
