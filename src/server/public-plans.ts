@@ -22,7 +22,7 @@ export async function getPublicPlans(): Promise<PublicPlans> {
   "use cache";
   cacheLife("hours");
   cacheTag(PLANS_TAG);
-  const [plans, prices, features, grants, limits] = await Promise.all([
+  const [plans, prices, features, grants, limits, rates] = await Promise.all([
     readDb().execute<Row>(sql`
       select id, name, description, sale_fee_bps, position from commerce.plans where active order by position, lower(name)
     `),
@@ -33,6 +33,8 @@ export async function getPublicPlans(): Promise<PublicPlans> {
     readDb().execute<Row>(sql`select feature_id, plan_id from commerce.plan_feature_grants`),
     // What each plan includes of its limits (D314); a plan without a row of its own shows nothing for that limit.
     readDb().execute<Row>(sql`select plan_id, key, value from commerce.plan_limits where plan_id is not null`),
+    // The ECB's latest rate of each currency (D474): the AI a plan includes is in euros, shown in the page's currency.
+    readDb().execute<Row>(sql`select distinct on (currency) currency::text as currency, rate::text as rate from commerce.ecb_reference_rates order by currency, rate_date desc`),
   ]);
   return {
     plans: plans.map((plan) => ({
@@ -57,5 +59,6 @@ export async function getPublicPlans(): Promise<PublicPlans> {
       description: String(f.description ?? ""),
       position: Number(f.position),
     })),
+    euroRates: Object.fromEntries(rates.map((r) => [String(r.currency).trim(), Number(r.rate)])),
   };
 }

@@ -1126,6 +1126,12 @@ export const en = {
     notIncluded: "Not included",
     choose: "Get started",
     yearlyPrice: (price: string): string => `or ${price} per year`,
+    /** The switch between monthly and yearly prices (D474), named for screen readers by `period`. */
+    period: "Billing period",
+    monthly: "Monthly",
+    yearly: "Yearly",
+    save: (percent: string): string => `Save ${percent} %`,
+    saveUpTo: (percent: string): string => `Save up to ${percent} %`,
   },
   /** A table's section divider without a title, as a screen reader says it (D197). */
   tableSection: "Section",

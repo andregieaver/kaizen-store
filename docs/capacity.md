@@ -230,7 +230,7 @@ Status: built.
 
 ```ts
 export type MetricKind = "gauge" | "counter";
-export type MetricUnit = "bytes" | "count" | "micros"; // micros: millionths of a US dollar, as ai-cost.ts
+export type MetricUnit = "bytes" | "count" | "micros"; // micros: millionths of a euro (D474), each day's dollars at its ECB rate
 export type MetricSource = "storage" | "database" | "traffic" | "email" | "ai";
 
 export const USAGE_METRICS = {
@@ -333,7 +333,10 @@ Status: built.
     the condition).
   - `ai_cost_micros`: from `ai_usage` of that day where `source = 'platform'`, priced with `costMicrosSql`. Unpriced
     calls are counted as zero, and the platform page shows them as "No price" through the existing `unpricedSql`, as
-    the AI usage pages do.
+    the AI usage pages do. Since D474 it is millionths of a euro: the models' prices are in dollars, so each UTC day's
+    cost is divided by `commerce.usd_per_euro(day)` (the ECB's rate that day, the working day before for a weekend).
+    The limit `ai_cost_month_micros` is typed in euros, and shown in the currency a page or a store's plan is priced in
+    at the ECB's latest rate (`AiMoney`, `formatLimit()`), a converted limit in whole units.
 - Each metric is one `insert … select … on conflict (store_id, day, metric) do update set value = excluded.value,
   updated_at = now()`. Run it inside `setBased()` style limits (a read-only part first, then the write), and never
   loop per store in TypeScript.

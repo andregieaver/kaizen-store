@@ -61,6 +61,10 @@ describe("Kaizena Flow's plans for its pages (D142)", () => {
     // Limits are what the plan includes (D314), as numbers; nothing about stores or Stripe.
     expect(Object.keys(mine[0]).sort()).toEqual(["description", "featureIds", "id", "limits", "name", "position", "prices", "saleFeeBps"]);
     expect(mine[0].limits).toEqual([]);
+    // The ECB's latest rates travel with them (D474), for the AI a plan includes in the page's currency; never the euro itself.
+    const [usd] = await db().execute<Record<string, unknown>>(sql`select rate::float8 as rate from commerce.ecb_reference_rates where currency = 'USD' order by rate_date desc limit 1`);
+    if (usd) expect(data.euroRates?.USD).toBe(Number(usd.rate));
+    expect(data.euroRates?.EUR).toBeUndefined();
   });
 
   it("makes cards from what the database holds", async () => {

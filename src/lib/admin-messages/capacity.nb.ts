@@ -25,7 +25,7 @@ export const capacityNb: CapacityMessages = {
     egress_bytes_month: "Båndbredde i måneden",
     stores_owned: "Butikker per eier",
   },
-  units: { gb: "GB", count: "", money: "USD" },
+  units: { gb: "GB", count: "", money: "EUR" },
   states: { ok: "", near: "Nesten brukt opp", reached: "Brukt opp", over: "Over grensen" },
   usage: {
     title: "Bruk denne måneden",

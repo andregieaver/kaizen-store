@@ -5246,15 +5246,27 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
         {pw.prices}
         <select
           id={`${id}-interval`}
-          value={block.interval ?? ""}
-          onChange={(event) => onChange({ interval: (event.target.value || undefined) as PlansBlock["interval"] })}
+          value={block.switcher ? `switch-${block.interval ?? "month"}` : (block.interval ?? "")}
+          onChange={(event) => {
+            // A switch (D474) starts on the interval after its dash; the others show one interval, or both.
+            const [kind, start] = event.target.value.split("-");
+            onChange(kind === "switch" ? { switcher: true, interval: start === "year" ? "year" : undefined } : { switcher: undefined, interval: (kind || undefined) as PlansBlock["interval"] });
+          }}
           className={input}
         >
           <option value="">{pw.monthlyYearly}</option>
           <option value="month">{pw.monthly}</option>
           <option value="year">{pw.yearly}</option>
+          <option value="switch-month">{pw.switchMonthly}</option>
+          <option value="switch-year">{pw.switchYearly}</option>
         </select>
       </label>
+      <Check
+        label={pw.wholeAmounts}
+        hint={pw.wholeAmountsHint}
+        checked={block.decimals === "hide_whole"}
+        onChange={(whole) => onChange({ decimals: whole ? "hide_whole" : undefined })}
+      />
       <label htmlFor={`${id}-highlight`} className="flex flex-col gap-1 text-sm font-medium">
         {pw.recommend}
         <select
@@ -5470,7 +5482,8 @@ function PlansStandIn({ block }: { block: PlansBlock }) {
   const pw = useAdminText("builder").plans;
   const parts = [
     block.currency ? fillWords(pw.pricesIn, { currency: block.currency }) : pw.mainCurrency,
-    block.interval === "month" ? pw.monthlyPrices : block.interval === "year" ? pw.yearlyPrices : pw.bothPrices,
+    block.switcher ? pw.switchPrices : block.interval === "month" ? pw.monthlyPrices : block.interval === "year" ? pw.yearlyPrices : pw.bothPrices,
+    ...(block.decimals === "hide_whole" ? [pw.wholePrices] : []),
     block.comparison ? pw.withComparison : pw.withoutComparison,
   ];
   return (

@@ -279,6 +279,12 @@ html[data-buyer="business"] [data-buyer-choice="business"] {
   color: var(--accent-foreground);
 }
 
+/* The Plans component's switch (D474): the prices of the radio chosen show, before the page's code runs and without it. */
+[data-plan-switch]:has([data-plan-pick="year"]:checked) [data-plan-panel="month"],
+[data-plan-switch]:has([data-plan-pick="month"]:checked) [data-plan-panel="year"] {
+  display: none;
+}
+
 /* A product page's add-to-cart bar takes the place of the phone's bottom bar (D30). */
 body:has([data-product-bar]) [data-default-bar] {
   display: none;

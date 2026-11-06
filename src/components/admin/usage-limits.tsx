@@ -1,16 +1,16 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { CapacityMessages } from "@/lib/admin-messages/capacity.en";
 import { fillWords } from "@/lib/admin-fill";
-import { formatLimit, formatUsage } from "@/lib/usage-format";
+import { formatLimit, formatUsage, type AiMoney } from "@/lib/usage-format";
 import { hardLimitReached, type PanelAction, type RowAction, type UsageLine } from "@/lib/usage-view";
 
 import { ButtonLink, ShareBar } from "./ui";
 
-/** A line's figure: what is used of what the plan includes, unlimited, or not measured yet. */
-export function usageFigure(line: UsageLine, w: CapacityMessages, locale: string): string {
+/** A line's figure: what is used of what the plan includes, unlimited, or not measured yet; AI in `money` (D474, euros unless given). */
+export function usageFigure(line: UsageLine, w: CapacityMessages, locale: string, money?: AiMoney): string {
   if (!line.measured) return w.usage.notMeasured;
-  const used = formatUsage(line.metric, line.used, locale);
-  const figure = line.limit === null ? `${used} · ${w.usage.noLimit}` : fillWords(w.usage.ofLimit, { used, limit: formatLimit(line.key, line.limit, locale) });
+  const used = formatUsage(line.metric, line.used, locale, money);
+  const figure = line.limit === null ? `${used} · ${w.usage.noLimit}` : fillWords(w.usage.ofLimit, { used, limit: formatLimit(line.key, line.limit, locale, money) });
   return line.estimated ? `${figure} (${w.usage.estimated})` : figure;
 }
 
@@ -18,7 +18,7 @@ export function usageFigure(line: UsageLine, w: CapacityMessages, locale: string
  * What a store used this month against its limits (D314, `docs/capacity.md` 4, step 2.5): a bar per limit, and one plain sentence and
  * button when something is used up. A soft limit over its share says the shop stays open.
  */
-export function UsageLines({ lines, words: w, locale, plansHref }: { lines: readonly UsageLine[]; words: CapacityMessages; locale: string; plansHref?: string }) {
+export function UsageLines({ lines, words: w, locale, plansHref, money }: { lines: readonly UsageLine[]; words: CapacityMessages; locale: string; plansHref?: string; money?: AiMoney }) {
   const softOver = lines.some((l) => l.enforce === "soft" && (l.state === "reached" || l.state === "over"));
   const hardFull = hardLimitReached(lines);
   return (
@@ -26,7 +26,7 @@ export function UsageLines({ lines, words: w, locale, plansHref }: { lines: read
       <div className="grid gap-4 sm:grid-cols-2">
         {lines.map((line) => (
           <div key={line.metric} className="grid gap-1">
-            <ShareBar label={w.metrics[line.metric]} figure={usageFigure(line, w, locale)} share={line.share} signal={line.measured ? line.signal : "neutral"} />
+            <ShareBar label={w.metrics[line.metric]} figure={usageFigure(line, w, locale, money)} share={line.share} signal={line.measured ? line.signal : "neutral"} />
             {line.measured && line.state !== "ok" && <span className={`text-caption ${line.signal === "danger" ? "text-danger-text" : "text-warning-text"}`}>{w.states[line.state]}</span>}
           </div>
         ))}
@@ -45,7 +45,7 @@ export function UsageLines({ lines, words: w, locale, plansHref }: { lines: read
 const DAY_METRICS = ["storage_bytes", "products", "requests", "server_errors", "emails", "marketing_emails", "ai_cost_micros"] as const;
 
 /** Lisa's details: each measured day's figures, newest first, in a table (figures compared down a column). */
-export function UsageDays({ days, words: w, locale }: { days: readonly { day: string; values: Partial<Record<(typeof DAY_METRICS)[number], number>> }[]; words: CapacityMessages; locale: string }) {
+export function UsageDays({ days, words: w, locale, money }: { days: readonly { day: string; values: Partial<Record<(typeof DAY_METRICS)[number], number>> }[]; words: CapacityMessages; locale: string; money?: AiMoney }) {
   if (days.length === 0) return null;
   return (
     <details className="text-body">
@@ -65,7 +65,7 @@ export function UsageDays({ days, words: w, locale }: { days: readonly { day: st
               <tr key={row.day}>
                 <th scope="row" className="py-1 pr-4 text-ink-2">{row.day}</th>
                 {DAY_METRICS.map((m) => (
-                  <td key={m} className="py-1 pr-4 text-right tabular-nums">{row.values[m] === undefined ? "" : formatUsage(m, row.values[m] ?? 0, locale)}</td>
+                  <td key={m} className="py-1 pr-4 text-right tabular-nums">{row.values[m] === undefined ? "" : formatUsage(m, row.values[m] ?? 0, locale, money)}</td>
                 ))}
               </tr>
             ))}

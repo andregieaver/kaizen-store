@@ -130,7 +130,8 @@ describe("a plan's limits (D314)", () => {
     expect(en).toContain("1 store<");
     expect(en).toContain("1.99 % fee per sale");
     expect(en).toContain("Unlimited staff");
-    expect(en).toContain("$5.00 of AI a month");
+    // The AI a plan includes is in euros (D474): the page's NOK has no rate here, so it stays in euros.
+    expect(en).toContain("€5.00 of AI a month");
     const nb = html(block(), limited, "nb");
     expect(nb).toContain("500 produkter");
     expect(nb).toContain("1 eget domene<");
@@ -138,7 +139,10 @@ describe("a plan's limits (D314)", () => {
     expect(nb).toMatch(/1\s000\s000 besøk i måneden/);
     expect(nb).toContain("1,99 % gebyr per salg");
     expect(nb).toContain("per måned");
-    expect(nb).toMatch(/5,00\s\$ til KI i måneden/);
+    expect(nb).toMatch(/5,00\s€ til KI i måneden/);
+    // With the ECB's rate it is in the page's currency, in whole kroner.
+    expect(html(block(), { ...limited, euroRates: { NOK: 11.71 } }, "nb")).toMatch(/58,00\skr til KI i måneden/);
+    expect(html(block({ decimals: "hide_whole" }), { ...limited, euroRates: { NOK: 11.71 } }, "nb")).toMatch(/>58\skr til KI i måneden/);
     // What is counted has no ceiling in a number; what is not, in itself.
     expect(nb).toContain("Ubegrenset antall ansatte");
     expect(nb).toContain("Ubegrenset lagring");
@@ -151,5 +155,51 @@ describe("a plan's limits (D314)", () => {
       {},
     );
     expect(cards[0].limits).toEqual([{ key: "storage_bytes", value: 10 * 1024 ** 3 }, { key: "products", value: null }]);
+  });
+});
+
+describe("whole amounts and the switch between monthly and yearly (D474)", () => {
+  it("leaves the decimals off whole prices only when asked, and keeps an amount's cents", () => {
+    expect(html(block())).toMatch(/NOK\s299\.00/);
+    const whole = html(block({ decimals: "hide_whole" }));
+    expect(whole).toMatch(/NOK\s299 </);
+    expect(whole).not.toContain("299.00");
+    const cents: PublicPlans = { ...data, plans: [{ ...data.plans[0], prices: [{ currency: "NOK", interval: "month", amountMinor: 29950 }] }] };
+    expect(html(block({ decimals: "hide_whole" }), cents)).toMatch(/NOK\s299\.50/);
+  });
+
+  it("draws both sets of cards with a radio pair to choose, starting where the component says", () => {
+    const out = html(block({ switcher: true }));
+    expect(out).toContain("data-plan-switch");
+    expect(out).toContain('data-plan-panel="month"');
+    expect(out).toContain('data-plan-panel="year"');
+    expect(out).toMatch(/<legend class="sr-only">Billing period<\/legend>/);
+    expect(out).toMatch(/checked="" value="month"/);
+    expect(out).not.toMatch(/checked="" value="year"/);
+    // Monthly cards show the month alone; the yearly set leads with the year and what it saves, said once more by the switch.
+    expect(out).not.toContain("or NOK");
+    expect(out).toContain("Save 17 % with yearly billing");
+    expect(out).toContain("Save 17 %</span>");
+    // Each set names its own headings: no id twice.
+    const ids = [...out.matchAll(/ id="([^"]+)"/g)].map((match) => match[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(html(block({ switcher: true, interval: "year" }))).toMatch(/checked="" value="year"/);
+  });
+
+  it("says up to when the plans save differently", () => {
+    const differ: PublicPlans = {
+      ...data,
+      plans: [
+        { ...data.plans[0], prices: [{ currency: "NOK", interval: "month", amountMinor: 10000 }, { currency: "NOK", interval: "year", amountMinor: 90000 }] },
+        data.plans[1],
+      ],
+    };
+    expect(html(block({ switcher: true }), differ)).toContain("Save up to 25 %");
+    expect(html(block({ switcher: true }), differ, "nb")).toContain("Spar opptil 25 %");
+  });
+
+  it("is saved and cleaned as the component's other choices", () => {
+    expect(pageBlockSchema.safeParse(block({ switcher: true, interval: "year", decimals: "hide_whole" })).success).toBe(true);
+    expect(pageBlockSchema.safeParse({ ...block(), decimals: "always" }).success).toBe(false);
   });
 });

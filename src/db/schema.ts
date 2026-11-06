@@ -1810,7 +1810,7 @@ export const platformSettings = commerce.table(
     sandboxDailyCap: integer("sandbox_daily_cap").notNull().default(300),
     /** The store template a sandbox is copied from (D457): a published starting content or demo store; null, the Standard store. */
     sandboxSource: uuid("sandbox_source").references((): AnyPgColumn => storeStarters.id, { onDelete: "set null" }),
-    /** What one sandbox's AI may cost on Kaizena Flow's key (D457 S3), in millionths of a dollar: its `ai_cost_month_micros` when it is made. */
+    /** What one sandbox's AI may cost on Kaizena Flow's key (D457 S3), in millionths of a euro (D474): its `ai_cost_month_micros` when it is made. */
     sandboxAiMicros: bigint("sandbox_ai_micros", { mode: "number" }).notNull().default(500_000),
     /** What one sandbox may keep of uploads and AI pictures (D457 S3), in bytes: its `storage_bytes` when it is made. */
     sandboxStorageBytes: bigint("sandbox_storage_bytes", { mode: "number" }).notNull().default(50_000_000),

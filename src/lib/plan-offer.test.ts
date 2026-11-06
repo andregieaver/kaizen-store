@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { comparisonTable, offerCurrency, planCards, yearlySaving, type PublicPlans } from "./plan-offer";
+import { bestYearlySaving, comparisonTable, offerCurrency, planCards, yearlySaving, type PublicPlans } from "./plan-offer";
 
 const feature = (id: string, category: string, name: string, position: number) => ({ id, category, name, description: "", position });
 const data: PublicPlans = {
@@ -67,6 +67,11 @@ describe("planCards", () => {
     const monthly = planCards(data, { interval: "month" }).cards;
     expect(monthly.map((c) => [c.id, c.main.interval])).toEqual([["start", "year"], ["pro", "month"]]);
     expect(monthly[1].yearlySavingPercent).toBeNull();
+    // A card leading with its yearly price says what it saves (D474); the most any saves is what the switch says.
+    expect(yearly[1].yearlySavingPercent).toBe(17);
+    expect(yearly[0].yearlySavingPercent).toBeNull();
+    expect(bestYearlySaving(yearly)).toBe(17);
+    expect(bestYearlySaving(monthly)).toBeNull();
   });
 
   it("lists each plan's features in the platform's order, marks the highlighted plan, and takes another currency", () => {

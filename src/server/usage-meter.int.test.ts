@@ -70,6 +70,58 @@ describe("measureDay", () => {
   });
 });
 
+describe("AI on Kaizena Flow's key, in euros (D474)", () => {
+  // Days far from any rate another test stores; the rates table is append-only, so these stay, harmless, in 2019.
+  const friday = "2019-03-01";
+  const sunday = "2019-03-03";
+  const provider = `euro-${run}`;
+
+  beforeAll(async () => {
+    await db().execute(sql`insert into commerce.ecb_reference_rates (rate_date, currency, rate) values (${friday}::date, 'USD', 1.25) on conflict do nothing`);
+    // A dollar per million tokens is a millionth of a dollar a token.
+    await db().execute(sql`
+      insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, effective_from)
+      values (${provider}, 'm', 1, 0, '2019-01-01T00:00:00Z')
+    `);
+    for (const [at, tokens] of [[`${friday}T12:00:00Z`, 2_500_000], [`${sunday}T09:00:00Z`, 1_250_000]] as const) {
+      await db().execute(sql`
+        insert into commerce.ai_usage (created_at, store_id, source, provider, model, kind, feature, input_tokens, output_tokens)
+        values (${at}::timestamptz, ${store.id}::uuid, 'platform', ${provider}, 'm', 'text', 'other', ${tokens}, 0)
+      `);
+    }
+  });
+
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.ai_usage where provider = ${provider}`);
+    await db().execute(sql`delete from commerce.ai_model_prices where provider = ${provider}`);
+  });
+
+  it("counts each day's dollars in euros at that day's ECB rate, a weekend at the Friday's", async () => {
+    const [rate] = await db().execute<Row>(sql`select commerce.usd_per_euro(${friday}::date)::float8 as friday, commerce.usd_per_euro(${sunday}::date)::float8 as sunday`);
+    expect(Number(rate.friday)).toBe(1.25);
+    expect(Number(rate.sunday)).toBe(1.25);
+    await measureDay(friday, false);
+    await measureDay(sunday, false);
+    // $2.50 is €2.00, $1.25 is €1.00.
+    expect(await value("ai_cost_micros", friday)).toBe(2_000_000);
+    expect(await value("ai_cost_micros", sunday)).toBe(1_000_000);
+  });
+
+  it("counts a month the same way live, as the check before an AI call reads it", async () => {
+    const { aiCostSql } = await import("./usage-sql");
+    const [row] = await db().execute<Row>(aiCostSql(new Date(`${friday}T00:00:00Z`), new Date("2019-04-01T00:00:00Z"), store.id));
+    expect(Number(row.value)).toBe(3_000_000);
+  });
+
+  it("writes it in another currency at the ECB's latest rate, and in euros where a currency has none", async () => {
+    const { aiMoneyIn } = await import("./usage");
+    const [latest] = await db().execute<Row>(sql`select rate::float8 as rate from commerce.ecb_reference_rates where currency = 'USD' order by rate_date desc limit 1`);
+    expect(await aiMoneyIn("USD")).toEqual({ currency: "USD", perEuro: Number(latest.rate) });
+    expect(await aiMoneyIn("EUR")).toEqual({ currency: "EUR", perEuro: 1 });
+    expect(await aiMoneyIn("XTS")).toEqual({ currency: "EUR", perEuro: 1 });
+  });
+});
+
 describe("pruneUsageDaily", () => {
   it("removes rows older than 25 months", async () => {
     await putUsage(store.id, "2020-01-01", "requests", 1);

@@ -23,7 +23,7 @@ import type { BillingMessages } from "@/lib/admin-messages/billing.en";
 import { PeaksForm, UsageDays, UsageLines } from "@/components/admin/usage-limits";
 import { storePeaks } from "@/server/capacity-events";
 import { addPeakAction, removePeakAction } from "./peak-actions";
-import { storeUsageLines, usageDays } from "@/server/usage";
+import { storeAiMoney, storeUsageLines, usageDays } from "@/server/usage";
 
 /** A share of a sale in the admin's language: `formatBps()`'s English, or the number written the language's way ("2,5 %"). */
 const feeText = (bps: number, locale: string) => (locale.startsWith("en") ? formatBps(bps) : `${(bps / 100).toLocaleString(locale, { maximumFractionDigits: 2 })} %`);
@@ -49,7 +49,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   // Back from Stripe Checkout: record the new plan now rather than waiting for the webhook.
   if (typeof checkout === "string") await completePlanCheckout(store.id, checkout);
 
-  const [billing, plans, matrix, themes, usage, usageByDay, peaks, trialEnd] = await Promise.all([
+  const [billing, plans, matrix, themes, usage, usageByDay, peaks, trialEnd, aiMoney] = await Promise.all([
     getStoreBilling(store.id),
     listPlans(),
     getFeatureMatrix(),
@@ -58,6 +58,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
     usageDays(store.id),
     storePeaks(store.id),
     trialEndOf(store.id),
+    storeAiMoney(store.id),
   ]);
   const isOwner = memberCan(staffer, "owner");
   const [reminders, optedOut] = await Promise.all([planRemindersOn(), planRemindersOptedOut(account.id)]);
@@ -137,8 +138,8 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
 
       <Card title={cw.usage.title} description={cw.usage.description} compact>
         <div className="grid gap-4">
-          <UsageLines lines={usage} words={cw} locale={locale} plansHref="#plans-heading" />
-          <UsageDays days={usageByDay} words={cw} locale={locale} />
+          <UsageLines lines={usage} words={cw} locale={locale} plansHref="#plans-heading" money={aiMoney} />
+          <UsageDays days={usageByDay} words={cw} locale={locale} money={aiMoney} />
         </div>
       </Card>
 

@@ -4873,6 +4873,13 @@
       "when": 1793975585114,
       "tag": "20261106143305_business_change_ticks",
       "breakpoints": true
+    },
+    {
+      "idx": 696,
+      "version": "7",
+      "when": 1793980185834,
+      "tag": "20261106154945_ai_allowance_in_euros",
+      "breakpoints": true
     }
   ]
 }

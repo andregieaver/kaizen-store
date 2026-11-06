@@ -1,14 +1,18 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { LIMITS, type LimitKey } from "@/lib/limits";
+import { EURO_MONEY, type AiMoney } from "@/lib/usage-format";
 import { monthOf, USAGE_METRIC_IDS, USAGE_METRICS, type UsageMetric } from "@/lib/usage-metrics";
 import { usageLine, type UsageLine } from "@/lib/usage-view";
 
 import { ownedStores } from "./ai-usage";
+import { storeDomainCurrency } from "./domain-prices";
 import { storeLimits, usageNow } from "./limits";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * Reading usage for people (D314, `docs/capacity.md` step 1.5): a store's lines against its limits (its Billing page, the owner's page),
@@ -61,12 +65,31 @@ export async function storeUsageLines(storeId: string, now: Date = new Date()): 
   );
 }
 
-export type OwnerUsage = { stores: { id: string; slug: string; name: string; lines: UsageLine[] }[] };
+export type OwnerUsage = { stores: { id: string; slug: string; name: string; lines: UsageLine[]; aiMoney: AiMoney }[] };
 
-/** The owner's stores, each with its lines. */
+/** The owner's stores, each with its lines and the money its AI is written in. */
 export async function ownerUsage(accountId: string, now: Date = new Date()): Promise<OwnerUsage> {
   const stores = await ownedStores(accountId);
-  return { stores: await Promise.all(stores.map(async (s) => ({ ...s, lines: await storeUsageLines(s.id, now) }))) };
+  return { stores: await Promise.all(stores.map(async (s) => ({ ...s, lines: await storeUsageLines(s.id, now), aiMoney: await storeAiMoney(s.id) }))) };
+}
+
+/** AI money in a currency (D474): euros as it is measured, another currency at the ECB's latest rate; euros when it has none. */
+export async function aiMoneyIn(currency: string): Promise<AiMoney> {
+  if (currency === "EUR") return EURO_MONEY;
+  const row = await typedRow(
+    z.object({ rate: col.decimal }),
+    sql`select rate from commerce.ecb_reference_rates where currency = ${currency} order by rate_date desc limit 1`,
+  );
+  return row && row.rate > 0 ? { currency, perEuro: row.rate } : EURO_MONEY;
+}
+
+/**
+ * The money a store's owner reads its AI allowance in (D474): the currency it pays Kaizena Flow in (its plan's, else its own country's
+ * when plans are priced in it, else euros), as its domains are priced (`storeDomainCurrency()`).
+ */
+export async function storeAiMoney(storeId: string): Promise<AiMoney> {
+  const priced = await typedRows(z.object({ currency: col.currency }), sql`select distinct currency from commerce.plan_prices where active order by currency`);
+  return aiMoneyIn((await storeDomainCurrency(storeId, priced.map((p) => p.currency))) ?? "EUR");
 }
 
 export type PlatformUsageRow = { storeId: string | null; slug: string | null; name: string | null; plan: string | null; status: string | null; values: Partial<Record<UsageMetric, number>>; estimated: boolean };
