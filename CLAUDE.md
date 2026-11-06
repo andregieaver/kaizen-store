@@ -15,6 +15,8 @@ phased build plan are in `docs/plan.md`; read it before architectural work.
   of `*.md` and `docs/**` alone run nothing, except the docs portal's articles under `content/` (D442), which are
   checked and deployed like code. Each deploy then waits until `/api/health` reports the commit (D389,
   `scripts/await-deploy.mjs`), and fails the job when it does not.
+- The owner loves to see frequent screenshots and graphics of what is built: send screenshots of new or changed
+  screens (and a diagram where it explains how something works) as the work goes, not only at the end.
 
 ## Stack
 
