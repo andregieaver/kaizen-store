@@ -20,6 +20,7 @@ import {
   startingChart,
   trialBalance,
   type DocProblem,
+  type DocRate,
   type EntryProblem,
   type LedgerEntryInput,
   type LedgerPosting,
@@ -201,8 +202,9 @@ export async function postLedgerDoc(
   doc: BookingDoc,
   posting: LedgerPosting,
   by: string | null = null,
+  fx: DocRate | null = null,
 ): Promise<{ ok: true; id: string } | { ok: false; problem: DocProblem | PostProblem }> {
-  const made = entryOfDoc(doc, posting, book.currency);
+  const made = entryOfDoc(doc, posting, book.currency, fx);
   if (!made.ok) return made;
   const posted = await postLedgerEntry(book.id, made.entry, by);
   return posted.ok ? posted : { ok: false, problem: posted.problems[0] };
@@ -296,6 +298,28 @@ async function chartFor(storeId: string, bookId: string, posting: LedgerPosting)
   for (const number of needed) if (!have.has(number) && standardOf(number)) await addLedgerAccount(storeId, bookId, { number });
 }
 
+const RATE = z.object({ fx_rate: col.textOrNull, vat_home_minor: z.union([z.number(), z.string()]).nullable(), home: col.textOrNull });
+
+/**
+ * A document's own rate into the book's currency, as it was issued (`fx_rate`, and its VAT there, `vat_home_minor`): a shop's document says
+ * which currency that is, and is used only where it is the book's; a Work document's is the seller's, which its books are kept in.
+ */
+async function docRateOf(storeId: string, kind: DocumentKind, id: string, bookCurrency: string): Promise<DocRate | null> {
+  const query =
+    kind === "work_invoice"
+      ? sql`select fx_rate::text, vat_home_minor, null::text as home from commerce.work_invoices where store_id = ${storeId}::uuid and id = ${id}::uuid`
+      : kind === "work_credit_note"
+        ? sql`select fx_rate::text, vat_home_minor, null::text as home from commerce.work_credit_notes where store_id = ${storeId}::uuid and id = ${id}::uuid`
+        : kind === "shop_invoice"
+          ? sql`select fx_rate::text, vat_home_minor, vat_home_currency::text as home from commerce.invoices where store_id = ${storeId}::uuid and id = ${id}::uuid`
+          : sql`select fx_rate::text, vat_home_minor, vat_home_currency::text as home from commerce.credit_notes where store_id = ${storeId}::uuid and id = ${id}::uuid`;
+  const row = await typedRow(RATE, query);
+  if (!row || row.fx_rate === null || row.vat_home_minor === null) return null;
+  if (row.home !== null && row.home.trim() !== bookCurrency) return null;
+  const vatHomeMinor = Number(row.vat_home_minor);
+  return Number.isSafeInteger(vatHomeMinor) ? { rate: row.fx_rate, vatHomeMinor } : null;
+}
+
 const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note"]), id: col.text });
 
 /**
@@ -358,7 +382,8 @@ export async function postDueDocuments(
   for (const d of due) {
     if (options.deadline && Date.now() > options.deadline) break;
     const loaded = await loadDocument(storeId, d.kind as DocumentKind, d.id);
-    const result = loaded ? await postLedgerDoc({ id: book.id, currency: book.currency }, loaded.doc, posting) : { ok: false as const, problem: "unreadable" };
+    const fx = loaded && loaded.doc.currency !== book.currency ? await docRateOf(storeId, d.kind as DocumentKind, d.id, book.currency) : null;
+    const result = loaded ? await postLedgerDoc({ id: book.id, currency: book.currency }, loaded.doc, posting, null, fx) : { ok: false as const, problem: "unreadable" };
     if (result.ok) {
       posted += 1;
       await db().execute(sql`delete from commerce.ledger_waiting where book_id = ${book.id}::uuid and source_kind = ${d.kind} and source_id = ${d.id}`);

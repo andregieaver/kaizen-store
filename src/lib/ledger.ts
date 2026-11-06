@@ -1,6 +1,7 @@
 import saft from "@/data/ledger/no-saft.json";
 
 import { BOOKING_KEYS, clipText, type BookingDoc, type BookingKey } from "./accounting-docs";
+import { minorUnitDigits } from "./money";
 
 /**
  * Our own ledger (B2 of `docs/own-books-and-sales.md`, D478), pure: double-entry books, one for each legal entity a store has been
@@ -167,8 +168,14 @@ export const docSourceKind = (doc: Pick<BookingDoc, "source" | "kind">): string 
  * posted as it is waits for a person, with why: another currency than the book's (a rate is step 2's), a bucket with no account or VAT
  * where its bucket has none, totals that do not add up, or nothing to post.
  */
-export function entryOfDoc(doc: BookingDoc, posting: LedgerPosting, bookCurrency: string): { ok: true; entry: LedgerEntryInput } | { ok: false; problem: DocProblem } {
-  if (doc.currency.toUpperCase() !== bookCurrency.toUpperCase()) return { ok: false, problem: "currency" };
+export function entryOfDoc(
+  doc: BookingDoc,
+  posting: LedgerPosting,
+  bookCurrency: string,
+  fx: DocRate | null = null,
+): { ok: true; entry: LedgerEntryInput } | { ok: false; problem: DocProblem } {
+  const foreign = doc.currency.toUpperCase() !== bookCurrency.toUpperCase();
+  if (foreign && !fx) return { ok: false, problem: "currency" };
   if (doc.lines.length === 0 || doc.totalMinor === 0) return { ok: false, problem: "nothing" };
   const income = new Map<string, LedgerLineInput>();
   const vat = new Map<string, LedgerLineInput>();
@@ -193,10 +200,18 @@ export function entryOfDoc(doc: BookingDoc, posting: LedgerPosting, bookCurrency
     }
   }
   if (gross !== doc.totalMinor) return { ok: false, problem: "totals" };
+  let incomeLines = [...income.values()];
+  let vatLines = [...vat.values()];
+  let total = doc.totalMinor;
+  if (foreign && fx) {
+    const converted = convertLines(incomeLines, vatLines, doc.currency, bookCurrency, fx);
+    if (!converted) return { ok: false, problem: "currency" };
+    ({ incomeLines, vatLines, total } = converted);
+  }
   const sign = doc.kind === "invoice" ? 1 : -1;
   const lines: LedgerLineInput[] = [
-    { account: posting.receivable, amountMinor: sign * doc.totalMinor, vatCode: null },
-    ...[...income.values(), ...vat.values()].map((l) => ({ ...l, amountMinor: -sign * l.amountMinor })),
+    { account: posting.receivable, amountMinor: sign * total, vatCode: null },
+    ...[...incomeLines, ...vatLines].map((l) => ({ ...l, amountMinor: -sign * l.amountMinor })),
   ].filter((l) => l.amountMinor !== 0);
   if (lines.length < 2) return { ok: false, problem: "nothing" };
   const word = doc.kind === "invoice" ? "Faktura" : "Kreditnota";
@@ -210,6 +225,45 @@ export function entryOfDoc(doc: BookingDoc, posting: LedgerPosting, bookCurrency
       lines,
     },
   };
+}
+
+/**
+ * A document in another currency than the book's, as it was issued: its rate (units of the book's currency for one of the document's, as
+ * the document froze it) and its VAT in the book's currency, as it was reported.
+ */
+export type DocRate = { rate: string; vatHomeMinor: number };
+
+/**
+ * A document's lines in the book's currency at the document's own rate: each converted and rounded, the VAT lines then made to add up to
+ * the VAT the document reported in the book's currency (the difference of rounding on the largest), and the receivable their sum. Null when
+ * the rate is not a positive number or VAT is reported where the document has none.
+ */
+function convertLines(
+  incomeLines: LedgerLineInput[],
+  vatLines: LedgerLineInput[],
+  from: string,
+  to: string,
+  fx: DocRate,
+): { incomeLines: LedgerLineInput[]; vatLines: LedgerLineInput[]; total: number } | null {
+  const rate = Number(fx.rate);
+  if (!Number.isFinite(rate) || rate <= 0 || !Number.isSafeInteger(fx.vatHomeMinor)) return null;
+  let factor: number;
+  try {
+    factor = rate * 10 ** (minorUnitDigits(to) - minorUnitDigits(from));
+  } catch {
+    return null;
+  }
+  const convert = (l: LedgerLineInput) => ({ ...l, amountMinor: Math.round(l.amountMinor * factor) });
+  const income = incomeLines.map(convert);
+  const vat = vatLines.map(convert);
+  const vatSum = vat.reduce((sum, l) => sum + l.amountMinor, 0);
+  if (vat.length === 0 && fx.vatHomeMinor !== 0) return null;
+  if (vat.length > 0 && vatSum !== fx.vatHomeMinor) {
+    const largest = vat.reduce((best, l, i) => (Math.abs(l.amountMinor) > Math.abs(vat[best].amountMinor) ? i : best), 0);
+    vat[largest] = { ...vat[largest], amountMinor: vat[largest].amountMinor + (fx.vatHomeMinor - vatSum) };
+  }
+  const total = [...income, ...vat].reduce((sum, l) => sum + l.amountMinor, 0);
+  return { incomeLines: income, vatLines: vat, total };
 }
 
 /** The posting a store's Tripletex settings make (its receivable and each bucket's account), over Norway's defaults. */

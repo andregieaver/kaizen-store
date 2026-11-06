@@ -29,7 +29,7 @@ export const booksEn = {
     count: { one: "{n} document could not be posted yet", many: "{n} documents could not be posted yet" },
     kinds: { work_invoice: "Invoice", work_credit_note: "Credit note", shop_invoice: "Shop invoice", shop_credit_note: "Shop credit note" } as Record<string, string>,
     problems: {
-      currency: "in another currency than the books (coming next)",
+      currency: "in another currency than the books, with no rate of its own",
       vat_unmapped: "a VAT kind with no account",
       totals: "its amounts do not add up",
       nothing: "nothing to post",
