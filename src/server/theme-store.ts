@@ -7,6 +7,7 @@ import { readDb } from "@/db/client";
 import { parseDesignSnapshot, type DesignSnapshot } from "@/lib/design-presets";
 import { variationSnapshot, variationsOf } from "@/lib/design-variations";
 import {
+  inLanguage,
   readListing,
   shownLooks,
   swatchOf,
@@ -138,6 +139,11 @@ export type ThemeStorePage = ThemeStoreCard & {
 };
 
 /** One theme's page, by its address; null when it is not in the store. */
+/** A theme's page in `lang` (D312 P3): its own words (`inLanguage()`) and its changelog where they are written in it. */
+export function themePageIn(page: ThemeStorePage, lang: PlatformLang): ThemeStorePage {
+  return { ...inLanguage(page, lang), changelog: page.changelogIn[lang] ?? page.changelog };
+}
+
 export async function themeStorePage(slug: string): Promise<ThemeStorePage | null> {
   "use cache";
   cacheLife("hours");

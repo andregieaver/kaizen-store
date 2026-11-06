@@ -78,4 +78,13 @@ describe("a theme's page's parts", () => {
     expect(draw(ThemeDetailsPart, { theme: theme(), heading: "More about it" })).toContain(">More about it</span>");
     expect(draw(ThemeDetailsPart, { theme: theme() })).toContain("A quiet theme.");
   });
+
+  it("marks the changelog as English on a Norwegian page only while it has no Norwegian (D312 P3)", () => {
+    const english = [{ number: 1, date: "2026-10-15", lines: ["The first version."] }];
+    const norsk = [{ number: 1, date: "2026-10-15", lines: ["Den første versjonen."] }];
+    expect(draw(ThemeDetailsPart, { theme: theme({ changelog: english }), lang: "nb" })).toContain('<ul class="list-disc pl-5 text-sm" lang="en">');
+    const shown = draw(ThemeDetailsPart, { theme: theme({ changelog: norsk, changelogIn: { nb: norsk } }), lang: "nb" });
+    expect(shown).toContain("Den første versjonen.");
+    expect(shown).not.toContain('lang="en"><li>Den første');
+  });
 });

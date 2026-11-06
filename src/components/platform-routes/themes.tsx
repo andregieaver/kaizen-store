@@ -15,7 +15,7 @@ import { themePartsWith } from "@/lib/theme-store-parts";
 import { isPremium } from "@/lib/theme-prices";
 import { getPlatformLangs } from "@/server/platform-navigation";
 import { platformPageForRole } from "@/server/platform-roles";
-import { themeStoreCards, themeStorePage } from "@/server/theme-store";
+import { themePageIn, themeStoreCards, themeStorePage } from "@/server/theme-store";
 
 type Query = Promise<Record<string, string | string[] | undefined>>;
 
@@ -99,7 +99,7 @@ export async function ThemeRoute({ lang, slug }: { lang: PlatformLang; slug: str
     notFound();
   }
   // Its own words and its changelog in the page's language (D312 P3), each where written.
-  const theme = { ...inLanguage(found, lang), changelog: found.changelogIn[lang] ?? found.changelog };
+  const theme = themePageIn(found, lang);
   const url = themeStoreUrl(theme.slug, lang);
   const jsonLd = <JsonLdScript data={themeJsonLd({ ...theme, pictureUrl: sharePicture(theme) }, url, "Kaizena Flow", platformText(lang).themeStore.genre)} />;
   if (page) {

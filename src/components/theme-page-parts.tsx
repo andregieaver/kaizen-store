@@ -250,8 +250,8 @@ export function ThemeDetailsPart({ theme, lang = "en", heading }: { theme: Theme
                 <p className="text-sm font-medium">
                   {d.versionN(entry.number)} <span className="font-normal text-muted">· {entry.date}</span>
                 </p>
-                {/* What changed is written from the versions in English, and its notes by the theme's makers. */}
-                <ul className="list-disc pl-5 text-sm" {...english(lang)}>
+                {/* What changed is written from the versions, in the page's language where its words are written (`changelogIn`), else English. */}
+                <ul className="list-disc pl-5 text-sm" {...english(lang, !theme.changelogIn[lang])}>
                   {entry.lines.map((line) => (
                     <li key={line}>{line}</li>
                   ))}

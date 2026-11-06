@@ -4,7 +4,7 @@ import type { ThemeStoreBlock } from "@/lib/page-content";
 import type { PlatformLang } from "@/lib/platform-lang";
 import { inLanguage, parseThemeFilter, type ThemeFilter, type ThemeStoreCard } from "@/lib/theme-store";
 import type { GridPlace } from "@/server/content-grid";
-import { themeStoreCards, themeStorePage } from "@/server/theme-store";
+import { themePageIn, themeStoreCards, themeStorePage } from "@/server/theme-store";
 
 import { ThemeDetailsPart, ThemeFeaturesPart, ThemeHighlightsPart, ThemeLivePart, ThemePicturesPart, ThemeStagePart } from "./theme-page-parts";
 import { ThemeStoreList } from "./theme-store-view";
@@ -33,7 +33,7 @@ export async function ThemeStoreSection({ block, place }: { block: ThemeStoreBlo
   if (!place.themeSlug) return null;
   const found = await themeStorePage(place.themeSlug);
   if (!found) return null;
-  const theme = inLanguage(found, lang);
+  const theme = themePageIn(found, lang);
   const words = { heading: block.heading, text: block.text, lang };
   switch (block.part) {
     case "stage":
