@@ -106,24 +106,44 @@ test("the store's own code is added as far as the shopper allows", async ({ page
   await expect.poll(() => ran(page)).toEqual(["head", "statistics"]);
 });
 
-test("a store on a domain of its own is served there, and its other addresses lead there (P8)", async ({ page }) => {
-  test.skip(!process.env.E2E_CUSTOM_HOSTS, "needs e2e/hosts-seed.mjs before the build");
-  const own = `http://${CUSTOM_HOST}:${new URL(storeUrl("x")).port}`;
-  // It sells in its own country alone, so its addresses have no country (D181): `butikk.kari.localhost/om-oss`.
-  const response = await page.goto(`${own}/`);
-  expect(response?.status()).toBe(200);
-  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(own);
-  await expect(page.getByRole("link", { name: /Handlekurv/ }).first()).toHaveAttribute("href", "/cart");
-  expect((await page.goto(`${own}/om-oss`))?.status()).toBe(200);
-  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(`${own}/om-oss`);
+// A Norwegian visitor: the store starts with the browser's language at its front door (D479), and English is on a domain of its own.
+test.describe("a Norwegian browser", () => {
+  test.use({ locale: "nb-NO" });
 
-  // Its old addresses with the country, and its other addresses, lead there.
-  await page.goto(`${own}/no/om-oss`);
-  await expect(page).toHaveURL(`${own}/om-oss`);
-  await page.goto(storeUrl(CUSTOM_STORE, "/no/cart"));
-  await expect(page).toHaveURL(`${own}/cart`);
-  await page.goto(`/s/${CUSTOM_STORE}/no`);
-  await expect(page).toHaveURL(`${own}/`);
+  test("a store on a domain of its own is served there, and its other addresses lead there (P8)", async ({ page }) => {
+    test.skip(!process.env.E2E_CUSTOM_HOSTS, "needs e2e/hosts-seed.mjs before the build");
+    const own = `http://${CUSTOM_HOST}:${new URL(storeUrl("x")).port}`;
+    // It sells in its own country alone, so its addresses have no country (D181): `butikk.kari.localhost/om-oss`.
+    const response = await page.goto(`${own}/`);
+    expect(response?.status()).toBe(200);
+    expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(own);
+    await expect(page.getByRole("link", { name: /Handlekurv/ }).first()).toHaveAttribute("href", "/cart");
+    expect((await page.goto(`${own}/om-oss`))?.status()).toBe(200);
+    expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(`${own}/om-oss`);
+
+    // Its old addresses with the country, and its other addresses, lead there.
+    await page.goto(`${own}/no/om-oss`);
+    await expect(page).toHaveURL(`${own}/om-oss`);
+    await page.goto(storeUrl(CUSTOM_STORE, "/no/cart"));
+    await expect(page).toHaveURL(`${own}/cart`);
+    await page.goto(`/s/${CUSTOM_STORE}/no`);
+    await expect(page).toHaveURL(`${own}/`);
+  });
+});
+
+test.describe("an English browser", () => {
+  test.use({ locale: "en-GB" });
+
+  test("at the front door of a store in its browser's language is taken to that language's own domain (D479)", async ({ page }) => {
+    test.skip(!process.env.E2E_CUSTOM_HOSTS, "needs e2e/hosts-seed.mjs before the build");
+    const port = new URL(storeUrl("x")).port;
+    await page.goto(`http://${CUSTOM_HOST}:${port}/`);
+    await expect(page).toHaveURL(`http://${ENGLISH_HOST}:${port}/`);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    // A page's own address stays in its language.
+    await page.goto(`http://${CUSTOM_HOST}:${port}/om-oss`);
+    await expect(page).toHaveURL(`http://${CUSTOM_HOST}:${port}/om-oss`);
+  });
 });
 
 test("a language on a domain of its own shows the store in it, without the language in its addresses (D313)", async ({ page }) => {
