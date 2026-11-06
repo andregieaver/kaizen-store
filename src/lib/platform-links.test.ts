@@ -38,6 +38,29 @@ describe("a link on Kaizena Flow's own pages in another language (D312 P4)", () 
     }
   });
 
+  it("takes the docs into the language only where they have it", () => {
+    const withDocs: OwnHosts = { ...hosts, docs: "docs.kaizenaflow.com" };
+    // The front page, search and the owners' track are in Norwegian.
+    expect(linkIn("/docs", "nb", withDocs)).toBe("/no/docs");
+    expect(linkIn("/docs/owners/getting-started/create-your-store", "nb", withDocs)).toBe("/no/docs/owners/getting-started/create-your-store");
+    expect(linkIn("/docs/search?q=vat", "nb", withDocs)).toBe("/no/docs/search?q=vat");
+    expect(linkIn("https://docs.kaizenaflow.com/", "nb", withDocs)).toBe("https://docs.kaizenaflow.com/no");
+    expect(linkIn("https://docs.kaizenaflow.com/owners/orders#refunds", "nb", withDocs)).toBe("https://docs.kaizenaflow.com/no/owners/orders#refunds");
+    // The developers' track, the reference and the changelog are in English alone: their Norwegian address would be a 404.
+    for (const href of [
+      "/docs/developers/quickstarts/admin-api-token",
+      "/docs/reference/admin-api",
+      "/docs/changelog",
+      "https://docs.kaizenaflow.com/developers/quickstarts/admin-api-token",
+      "https://docs.kaizenaflow.com/no/owners/orders",
+      "/no/docs/owners/orders",
+    ]) {
+      expect(linkIn(href, "nb", withDocs), href).toBe(href);
+    }
+    // "/docsearch" is not the docs.
+    expect(linkIn("/docsearch", "nb", withDocs)).toBe("/no/docsearch");
+  });
+
   it("is the page as it is in English", () => {
     expect(linkIn("/sign-up", "en", hosts)).toBe("/sign-up");
     const content = { rows: [{ blocks: [{ type: "button", href: "/sign-up" }] }] };
