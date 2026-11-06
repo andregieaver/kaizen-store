@@ -8,6 +8,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CustomerForm, CustomerNotes, EMPTY_CUSTOMER_FORM } from "@/components/admin/customer-staff";
 import { CustomerAffiliateSection, showsAffiliate } from "@/components/admin/customer-affiliate";
 import { CustomerBonus, showsBonus } from "@/components/admin/customer-bonus";
+import { CustomerTimeline } from "@/components/admin/customer-timeline";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
 import { PrivacyBanner, PrivacyCard } from "@/components/admin/privacy/privacy-card";
@@ -17,6 +18,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
+import { TIMELINE_KINDS, askedKind } from "@/lib/customer-timeline";
 import { exportProblemOf } from "@/lib/privacy-admin";
 import { ORDER_STATUS_SIGNAL } from "@/lib/order-status";
 import { featureOn } from "@/lib/store-features";
@@ -27,8 +29,8 @@ import { avatarFor } from "@/server/avatars";
 import { getBonusSettings, customerBonus } from "@/server/bonus";
 import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
 import { customerAccess, listTiers } from "@/server/customer-tiers";
-import { listEmails } from "@/server/email";
 import { notesOf, staffFormValues } from "@/server/customer-staff";
+import { readTimeline } from "@/server/customer-timeline";
 import { privacyCard } from "@/server/privacy-admin";
 import { tagsOf } from "@/server/segments";
 import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
@@ -42,9 +44,10 @@ export const metadata: Metadata = { title: "Customer" };
 const card = "rounded-lg border border-line bg-card p-5";
 
 /**
- * One customer (D35): who they are and how to reach them, every order and
- * subscription they have, and the emails they got; each links to its own
- * page, which links back here.
+ * One customer (D35): who they are and how to reach them, what happened with them
+ * as one timeline (D462: orders, quotes, conversations, emails, notes, returns and
+ * more, each as the viewer may see it), every order and subscription they have;
+ * each links to its own page, which links back here.
  */
 export default async function CustomerPage({ params, searchParams }: PageProps<"/admin/[store]/customers/[customerId]">) {
   const { store: slug, customerId } = await params;
@@ -60,14 +63,18 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const query = await searchParams;
   const exportParam = query.export;
   const merged = query.merged === "1";
+  // The timeline's filter and its *Show everything* (D462): plain links, `?show={kind}` and `?full=1`.
+  const show = askedKind(query.show, TIMELINE_KINDS);
+  const full = query.full === "1";
   if (!z.uuid().safeParse(customerId).success) notFound();
   const ref = await findCustomer(store.id, customerId);
   if (!ref) notFound();
   // An order's or subscription's id finds its customer; the page lives at the customer's own address.
   if (ref.key !== customerId) redirect(`/admin/${store.slug}/customers/${ref.key}`);
-  const [customer, emails, groups, privacy, tags, notes, formValues, returns] = await Promise.all([
+  const [customer, timeline, groups, privacy, tags, notes, formValues, returns] = await Promise.all([
     getCustomerDetail(store.id, ref),
-    listEmails({ storeId: store.id, to: ref.email, limit: 20 }),
+    // What happened with them, newest first, as this viewer may see it (D462); the emails they got are part of it.
+    readTimeline(member, { kind: "person", email: ref.email, customerId: ref.customerId }, { show, full }),
     listTiers(store.id),
     // What the store holds about the person, and the open privacy request if staff logged one (D162).
     privacyCard(store.id, ref.key),
@@ -154,6 +161,16 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
+          <CustomerTimeline
+            read={timeline}
+            full={full}
+            path={`${base}/customers/${ref.key}`}
+            words={all.timeline}
+            orderStatuses={statuses}
+            locale={locale}
+            timeZone={store.timeZone}
+          />
+
           <section aria-labelledby="orders" className={card}>
             <h2 id="orders" className="mb-3 text-title text-ink">{words.orders}</h2>
             {customer.orderList.length === 0 ? (
@@ -276,23 +293,6 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             </Card>
           ))}
 
-          <section aria-labelledby="emails" className={card}>
-            <h2 id="emails" className="mb-3 text-title text-ink">{words.emails}</h2>
-            {emails.length === 0 ? (
-              <p className="text-sm text-muted">{words.noEmails}</p>
-            ) : (
-              <ul className="divide-y divide-line text-sm">
-                {emails.map((email) => (
-                  <li key={email.id} className="flex flex-wrap justify-between gap-2 py-2">
-                    <Link href={`${base}/emails/${email.id}`} className="underline">
-                      {email.subject}
-                    </Link>
-                    <span className="text-muted">{date(email.createdAt)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
         </div>
 
         <div className="flex flex-col gap-6">

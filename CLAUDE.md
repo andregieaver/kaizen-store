@@ -229,6 +229,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Workflows (wave 9 unit C, D356, `src/lib/workflows.ts`, `src/server/workflows.ts`)
 - Refund to store credit and customer accounts (wave 10 units A and B, D364, D365, `docs/wave-10-must-haves.md`)
 - Customers in the admin (wave 10 unit C, D366, `src/server/customer-staff.ts`, `src/server/customer-merge.ts`, `src/server/customer-import.ts`)
+- A customer's timeline (D462, `src/lib/customer-timeline.ts`, `src/server/customer-timeline.ts`, `CustomerTimeline`)
 - Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)
 - Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)
 - Tripletex (D453, `docs/tripletex.md`, `src/lib/tripletex*.ts`, `src/server/tripletex.ts`, `src/server/tripletex-client.ts`, `src/server/tripletex-sync.ts`)

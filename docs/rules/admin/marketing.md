@@ -90,6 +90,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   changes for `MERGE_REFUSALS`), so a new table that points at a customer gets a line there (move it, or a refusal) as well as in erasure. The
   customer import is a D165 job (`customer_import`, the owner's) that never sets a password or subscribes anyone and names a row by its number only.
 
+## A customer's timeline (D462, `src/lib/customer-timeline.ts`, `src/server/customer-timeline.ts`, `CustomerTimeline`)
+
+- **A customer's timeline (D462, `src/lib/customer-timeline.ts`, `src/server/customer-timeline.ts`, `CustomerTimeline`)**: a person's and a
+  company's timeline only reads what the store keeps (`readTimeline()`); nothing is stored for it. A new kind is a reader in `READERS` through
+  `typedRows()`, its events in `TIMELINE_KIND_OF`, its gate in `visibleKinds()` (the permission and feature of the page it comes from, so it never
+  shows more than that page would) and its words in the customers catalogue in every admin language; it leaves out what the privacy rules hide (an
+  order with `restricted_at` or `anonymised_at` and what hangs on it). What someone typed is an excerpt (`excerptOf()`) shown as text.
+
 ## Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)
 
 - **Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)**: a store's creator programme (`commerce.creator_settings`,

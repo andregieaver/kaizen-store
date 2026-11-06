@@ -6,9 +6,13 @@ import { z } from "zod";
 import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CompanyFields } from "@/components/admin/company-fields";
+import { CustomerTimeline } from "@/components/admin/customer-timeline";
 import { requirePermission } from "@/server/permissions";
 import { employeePercent, getCompany, listInvites, listMembers } from "@/server/companies";
 import { companyOwes } from "@/server/payment-terms";
+import { readTimeline } from "@/server/customer-timeline";
+import { TIMELINE_KINDS, askedKind } from "@/lib/customer-timeline";
+import { normaliseEmail } from "@/lib/email-address";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { PAYMENT_TERMS } from "@/lib/payment-terms";
@@ -40,13 +44,15 @@ export const metadata: Metadata = { title: "Company" };
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const card = "flex flex-col gap-3 rounded-lg border border-line bg-card p-5";
 
-export default async function CompanyPage({ params }: PageProps<"/admin/[store]/companies/[companyId]">) {
+export default async function CompanyPage({ params, searchParams }: PageProps<"/admin/[store]/companies/[companyId]">) {
   const { store: slug, companyId } = await params;
+  const query = await searchParams;
   const current = await requirePermission(slug, "customers:read");
   const off = requireFeature(current, "business");
   if (off) return off;
   const { store } = current;
-  const all = adminText(adminLangOf(current.account.adminLocale), "customers");
+  const lang = adminLangOf(current.account.adminLocale);
+  const all = adminText(lang, "customers");
   const words = all.company;
   if (!z.uuid().safeParse(companyId).success) notFound();
   const company = await getCompany(store.id, companyId);
@@ -58,14 +64,22 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
     companyOwes(store.id, company.id),
     listLocations(store.id, company.id),
   ]);
-  const currency = mainCurrency(store);
   const base = `/admin/${store.slug}`;
+  // What happened with the company (D462): its people's orders, quotes, conversations, emails, notes and returns, and its own Work invoices.
+  const full = query.full === "1";
+  const timeline = await readTimeline(
+    current,
+    { kind: "company", companyId: company.id, people: members.map((m) => ({ id: m.id, email: m.email })) },
+    { show: askedKind(query.show, TIMELINE_KINDS), full },
+  );
+  const people = Object.fromEntries(members.map((m) => [normaliseEmail(m.email), { name: m.name || m.email, href: `${base}/customers/${m.id}` }]));
+  const currency = mainCurrency(store);
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const employees = employeePercent(company);
 
   return (
-    <AdminTextScope texts={adminTexts(adminLangOf(current.account.adminLocale), ["bookings"])}>
+    <AdminTextScope texts={adminTexts(lang, ["bookings"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: `${base}/companies`, label: words.back }}
@@ -77,6 +91,18 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
               ? fillWords(employees ? words.discount : words.discountNoEmployees, { group: company.tierName, percent: company.tierPercent ?? 0, employees: employees ?? 0 })
               : words.noDiscount
         }
+      />
+
+      <CustomerTimeline
+        read={timeline}
+        full={full}
+        path={`${base}/companies/${company.id}`}
+        words={all.timeline}
+        orderStatuses={adminText(lang, "common").orderStatus}
+        locale={locale}
+        timeZone={store.timeZone}
+        people={people}
+        company
       />
 
       <section aria-labelledby="settings" className={card}>

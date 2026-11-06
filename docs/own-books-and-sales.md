@@ -105,7 +105,7 @@ not.
 
 ### 3.2 The units
 
-**S1. A timeline per person and per company.** One read across what exists: orders, quotes, support conversations, emails sent, notes,
+**S1. A timeline per person and per company** (built 6 November 2026, D462). One read across what exists: orders, quotes, support conversations, emails sent, notes,
 Work invoices, returns, reviews, bookings, and later deals and activities. Nothing new is stored. Homer reads it top to bottom; Lisa
 filters it by kind.
 
@@ -342,7 +342,7 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 
 | Order | Sales track | Books track |
 |---|---|---|
-| Now | S1 timeline | **B1 EHF out** (deadline 1 January 2027) |
+| Now | S1 timeline (built, D462) | **B1 EHF out** (deadline 1 January 2027) |
 | Next | S2 deals and pipelines, S3 activities | B8 before the AS issues its first invoice; B2 the ledger in shadow on the AS's books from their opening balance, with B4's statement upload |
 | Then | S4 leads, S5 email (forwarding address), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
 | Then | S6 reports; `sales` opens to every store | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |
