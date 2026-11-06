@@ -21,6 +21,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { audit, type Membership } from "./auth";
 import { schemaProblems, staffWords } from "./customer-tiers";
 import { claimOrders, preRegisterCustomer, sha256, normalEmail } from "./customers";
+import { openDealsOfCompany } from "./deals";
 import { releaseCompanyTerms } from "./payment-terms";
 import type { SaveResult } from "./settings";
 import { sendCompanyEnded, sendCompanyInvite, sendCompanyJoined, type EmailMarket } from "./shopper-emails";
@@ -153,6 +154,8 @@ export async function deleteCompany({ account, store }: Membership, id: string):
   const words = staffWords(account);
   if (company.members > 0) return { ok: false, problems: [words.companyHasAccounts] };
   // Orders on payment terms (D293) name the company until paid: one that still owes keeps the company; paid ones forget it.
+  // Open deals naming the company (D464) would be left with no one to sell to.
+  if ((await openDealsOfCompany(store.id, id)) > 0) return { ok: false, problems: [words.companyHasDeals] };
   if (!(await releaseCompanyTerms(store.id, id))) return { ok: false, problems: [words.companyOwes] };
   await db().execute(sql`delete from commerce.customer_companies where store_id = ${store.id}::uuid and id = ${id}::uuid`);
   await audit(account.id, store.id, "company.deleted", { name: company.name });

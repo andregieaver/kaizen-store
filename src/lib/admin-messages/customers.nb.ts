@@ -596,6 +596,7 @@ export const customersNb: CustomersMessages = {
     companyTaken: "Butikken har allerede en bedrift som heter {name}.",
     companyHasAccounts: "Det hører kontoer til denne bedriften. Fjern dem først, eller slå bedriften av.",
     companyOwes: "Denne bedriften skylder fortsatt for ordrer med betalingsvilkår. Slå den av i stedet.",
+    companyHasDeals: "Denne bedriften har åpne avtaler. Lukk dem, eller flytt dem til en annen bedrift, først.",
     otherCompany: "Den kontoen hører allerede til en annen bedrift.",
     companyFull: "Bedriften er full.",
     schema: {

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { readAnswers } from "@/lib/checkout-rules";
@@ -56,6 +57,7 @@ import { privacyStore, resolveSubject, type PrivacySubject, type SubjectRef } fr
 export { subjectOf } from "./privacy-subject";
 import { retentionRules } from "./retention";
 import { textList, uuidList } from "./sql-arrays";
+import { col, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -994,6 +996,28 @@ async function loadCustomerNotes(s: PrivacySubject): Promise<{ text: string; wri
   return rows.map((r) => ({ text: strs(r.body), writtenAt: new Date(String(r.created_at)).toISOString() }));
 }
 
+/** Staff's deals with the person (D464), by their account: the title, stage, estimate, status and reason, and when; never who owns it. */
+async function loadCustomerDeals(s: PrivacySubject): Promise<NonNullable<ExportInput["customerDeals"]>> {
+  if (!s.customerId) return [];
+  const rows = await typedRows(
+    z.object({
+      title: col.text, stage: col.textOrNull, status: col.text, estimate_minor: col.minorOrNull, currency: col.currency,
+      expected_close_on: col.textOrNull, close_reason: col.textOrNull, created_at: col.timestamp, closed_at: col.timestampOrNull,
+    }),
+    sql`
+      select d.title, st.name as stage, d.status, d.estimate_minor, d.currency, to_char(d.expected_close_on, 'YYYY-MM-DD') as expected_close_on,
+        d.close_reason, d.created_at, d.closed_at
+      from commerce.deals d left join commerce.deal_stages st on st.store_id = d.store_id and st.id = d.stage_id
+      where d.store_id = ${s.storeId}::uuid and d.customer_id = ${s.customerId}::uuid
+      order by d.created_at, d.id
+    `,
+  );
+  return rows.map((r) => ({
+    title: r.title, stage: r.stage, status: r.status, estimateMinor: r.estimate_minor, currency: r.currency, expectedCloseOn: r.expected_close_on,
+    closeReason: r.close_reason, openedAt: r.created_at, closedAt: r.closed_at,
+  }));
+}
+
 /** What staff entered in the customer's and their orders' custom fields, as label and words in the store's main language. */
 async function loadCustomFields(s: PrivacySubject, orders: OrderRow[], main: string): Promise<CustomFieldRow[]> {
   const groups = await listFieldGroups(s.storeId);
@@ -1053,13 +1077,14 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, customerNotes, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
     loadMarketing(s),
     loadCustomerTags(s),
     loadCustomerNotes(s),
+    loadCustomerDeals(s),
     loadBroadcasts(s),
     loadAutomations(s),
     loadStockRequests(s),
@@ -1102,6 +1127,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     marketing,
     customerTags,
     customerNotes,
+    customerDeals,
     signupCodes,
     broadcasts,
     automations,

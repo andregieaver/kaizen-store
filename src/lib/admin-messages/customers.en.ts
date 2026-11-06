@@ -606,6 +606,7 @@ export const customersEn = {
     companyTaken: "The store already has a company called {name}.",
     companyHasAccounts: "Accounts belong to this company. Remove them first, or switch the company off.",
     companyOwes: "This company still owes for orders on payment terms. Switch it off instead.",
+    companyHasDeals: "This company has open deals. Close them, or move them to another company, first.",
     otherCompany: "That account already belongs to another company.",
     companyFull: "The company is full.",
     /** The forms' own checks (`tierInput`, `companyInput`), by the English the schema writes. */

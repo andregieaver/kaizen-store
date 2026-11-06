@@ -95,6 +95,9 @@ const PREFIXES: Record<string, AuditArea> = {
   "price_list.": "customers",
   "company.": "customers",
   "company.place_": "settings",
+  // Deals and pipelines (D464): ids, a stage and a kind of link, never a title, a reason or an amount.
+  "deal.": "customers",
+  "pipeline.": "customers",
   // Marketing
   "discount.": "marketing",
   "campaign.": "marketing",
