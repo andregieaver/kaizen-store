@@ -27,6 +27,7 @@ export function DocumentsCard({
   locale = "en-GB",
   words: w = invoicesEn,
   reasons = screensEn.invoiceReasons,
+  einvoice = {},
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -40,6 +41,8 @@ export function DocumentsCard({
   words?: InvoicesMessages;
   /** Why there is no invoice yet, in the reader's words (`screens.invoiceReasons`); English unless given. */
   reasons?: ScreensMessages["invoiceReasons"];
+  /** Each document's e-invoice line by `type:id` (D463, `einvoiceLines()`), in the reader's words; none for one that went by email alone. */
+  einvoice?: Readonly<Record<string, string>>;
 }) {
   const c = w.card;
   const { invoice, creditNotes } = documents;
@@ -49,9 +52,9 @@ export function DocumentsCard({
     <Card title={c.title} compact>
       {invoice ? (
         <ul className="flex flex-col gap-3 text-sm">
-          <DocumentRow base={base} link={invoice} label={c.invoice} canWrite={canWrite} sendAgain={sendAgain} locale={locale} w={w} />
+          <DocumentRow base={base} link={invoice} label={c.invoice} canWrite={canWrite} sendAgain={sendAgain} locale={locale} w={w} einvoice={einvoice[`invoice:${invoice.id}`]} />
           {creditNotes.map((note) => (
-            <DocumentRow key={note.id} base={base} link={note} label={c.creditNote} canWrite={canWrite} sendAgain={sendAgain} locale={locale} w={w} />
+            <DocumentRow key={note.id} base={base} link={note} label={c.creditNote} canWrite={canWrite} sendAgain={sendAgain} locale={locale} w={w} einvoice={einvoice[`credit_note:${note.id}`]} />
           ))}
         </ul>
       ) : (
@@ -88,6 +91,7 @@ function DocumentRow({
   sendAgain,
   locale,
   w,
+  einvoice,
 }: {
   base: string;
   link: DocumentLink;
@@ -96,6 +100,7 @@ function DocumentRow({
   sendAgain: (type: "invoice" | "credit_note", id: string) => Action;
   locale: string;
   w: InvoicesMessages;
+  einvoice?: string;
 }) {
   return (
     <li className="flex flex-col gap-2 border-b border-line pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
@@ -117,6 +122,7 @@ function DocumentRow({
             {w.card.xml}
           </a>
         </p>
+        {einvoice && <p className="mt-1 text-muted">{einvoice}</p>}
       </div>
       {canWrite && <SendAgainForm action={sendAgain(link.type, link.id)} label={w.card.sendAgain} />}
     </li>

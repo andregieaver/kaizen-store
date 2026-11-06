@@ -208,6 +208,41 @@ export const screensEn = {
     check: "Check",
     open: { company: "Open the Company page", settings: "Open Work settings", client: "Open the client", invoice: "Go to the lines" },
   },
+  /** A sales document's way to its buyer as an e-invoice (D463, `einvoice_sends`), one line under the document; `{problems}` are the reasons. */
+  einvoiceState: {
+    pending: "Being sent as an e-invoice.",
+    sent: "Sent as an e-invoice.",
+    delivered: "Delivered as an e-invoice.",
+    refused: "The e-invoice was refused: {problems}",
+    failed: "Not sent as an e-invoice yet: it is tried again soon.",
+    waiting: "The buyer receives e-invoices (EHF). It went by email: Kaizena Flow's e-invoice sending is not switched on yet.",
+    not_receiver: "Sent by email: the buyer does not receive e-invoices.",
+    not_valid: "Cannot be sent as an e-invoice: {problems}",
+    problems: {
+      buyer_vat_number: "the client's VAT number is missing, and reverse charge needs it",
+      outside_scope_mixed: "lines outside the scope of VAT cannot stand beside lines with VAT on one e-invoice",
+      seller_organisation_number: "the seller's organisation number is missing or not valid",
+      document_changed: "the document changed after it was looked at",
+      receiver_refused: "the buyer's system turned it down",
+      network: "the access point could not be reached",
+      timeout: "the access point did not answer in time",
+    } as Record<string, string>,
+  },
+  /** An issued Work invoice's page (D122): its title and the client it is for, and its e-invoice card (D463). */
+  workInvoicePage: {
+    title: "Invoice {number}",
+    draft: "Draft",
+    for: "For",
+    orgNumber: "Organisation number {number}",
+    vatNumber: "VAT number {number}",
+    account: "Account {account}",
+    bic: ", BIC {bic}",
+    einvoiceTitle: "E-invoice (EHF)",
+    invoice: "Invoice {number}",
+    creditNote: "Credit note {number}",
+    download: "Download as an e-invoice (XML)",
+    notYet: "Looked at within five minutes of being issued: whether the client receives e-invoices, and whether the document can be one.",
+  },
   /** Work's document series on its settings page (`SERIES_TEXT` names them in English for the server's messages). */
   workSeries: { work_invoice: "Invoices", work_credit_note: "Credit notes" },
   /** Work's report totals: what each figure counts. */

@@ -234,6 +234,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)
 - Tripletex (D453, `docs/tripletex.md`, `src/lib/tripletex*.ts`, `src/server/tripletex.ts`, `src/server/tripletex-client.ts`, `src/server/tripletex-sync.ts`)
 - Fiken (D460, `docs/fiken.md`, `src/lib/fiken*.ts`, `src/server/fiken.ts`, `src/server/fiken-client.ts`, `src/server/fiken-sync.ts`)
+- E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)
 - Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…
 - Sign in with Google (wave 10 unit L, D375, `src/lib/google-sign-in.ts`, `src/server/google-sign-in.ts`)
 - Leaving (wave 10 unit P, D377)

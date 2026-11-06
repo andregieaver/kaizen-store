@@ -106,6 +106,7 @@ import { PageHeader } from "@/components/admin/ui";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { einvoiceLines } from "@/server/einvoice-sending";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import type { OrderMessages } from "@/lib/admin-messages/order.en";
 
@@ -786,6 +787,11 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           <DocumentsCard
             words={adminText(lang, "invoices")}
             reasons={adminText(lang, "screens").invoiceReasons}
+            einvoice={await einvoiceLines(
+              store.id,
+              [...(documents.invoice ? [{ type: "invoice" as const, id: documents.invoice.id }] : []), ...documents.creditNotes.map((n) => ({ type: "credit_note" as const, id: n.id }))],
+              lang,
+            )}
             base={`/admin/${store.slug}`}
             documents={documents}
             canWrite={memberCan(member, "orders:write")}

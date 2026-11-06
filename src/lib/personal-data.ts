@@ -436,7 +436,11 @@ export const NOT_PERSONAL: Record<string, string> = {
   tripletex_connections: "A store's connection to its Tripletex company (D453): the company's name and organisation number, an encrypted token, the store's account and VAT code choices and the staff account that changed them; never a shopper's data.",
   tripletex_sync: "What was sent to Tripletex (D453): ids, states, amounts and error codes of documents and customer cards; never a name, an address or a token.",
   fiken_connections: "A store's connection to its Fiken company (D460): the company's name, slug and organisation number, an encrypted grant (access and refresh token), the store's account and VAT type choices and the staff account that changed them; never a shopper's data.",
-  fiken_sync: "What was sent to Fiken (D460): ids, sale numbers, states, amounts and error codes of documents and customer contacts; never a name, an address or a token.",
+  einvoice_sends:
+    "Which documents went to their buyer as e-invoices through the Peppol network (D463): the document's type and id, the state, our own key for a problem, the access point's name and message id, and times; the buyer is the document's own and never copied here.",
+  peppol_receivers:
+    "What the Peppol network's public register says a business receives (D463): its participant value (the scheme and its organisation number) and whether it takes invoices and credit notes, shared by every store; a business's public identifier, never tied to a person or a store, and refreshed after a day.",
+    fiken_sync: "What was sent to Fiken (D460): ids, sale numbers, states, amounts and error codes of documents and customer contacts; never a name, an address or a token.",
   shipping_settings: "The store's own shipping setup (D237): a default weight.",
   shipping_profiles: "The store's own shipping setup (D237): a profile's name.",
   shipping_zones: "The store's own shipping setup (D237): a zone's name and the postal codes and prefixes it covers, which are the store's areas, not a person's address.",

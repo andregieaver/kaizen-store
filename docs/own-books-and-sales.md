@@ -170,7 +170,7 @@ buckets each goes to (`src/lib/accounting-docs.ts`, `src/server/accounting-docum
 
 ### 4.3 The units
 
-**B1. EHF out through a Peppol access point (by 1 January 2027).** Before an invoice or credit note to a business is sent, the buyer's
+**B1. EHF out through a Peppol access point (by 1 January 2027; everything but the vendor built 6 November 2026, D463).** Before an invoice or credit note to a business is sent, the buyer's
 organisation number is looked up in the Peppol directory (ELMA in Norway): one that can receive gets the D403 document through the
 access point, the others the email and PDF as today. Each document shows *Sent as e-invoice*, *Delivered* or *Refused* with the reason.
 Work invoices and shop invoices alike. Also: the organisation number on every sales document to a business (2028). The access point is a
@@ -342,7 +342,7 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 
 | Order | Sales track | Books track |
 |---|---|---|
-| Now | S1 timeline (built, D462) | **B1 EHF out** (deadline 1 January 2027) |
+| Now | S1 timeline (built, D462) | **B1 EHF out** (deadline 1 January 2027; built but the access point's adapter, D463) |
 | Next | S2 deals and pipelines, S3 activities | B8 before the AS issues its first invoice; B2 the ledger in shadow on the AS's books from their opening balance, with B4's statement upload |
 | Then | S4 leads, S5 email (forwarding address), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
 | Then | S6 reports; `sales` opens to every store | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |

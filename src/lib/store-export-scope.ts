@@ -138,6 +138,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   tripletex_sync: "record",
   fiken_connections: "secret",
   fiken_sync: "record",
+  // Which documents went as e-invoices, and their state (D463).
+  einvoice_sends: "record",
   // A sandbox's row (D457): the hash of the pass that opens it.
   sandboxes: "secret",
   variant_cost_history: "catalogue",

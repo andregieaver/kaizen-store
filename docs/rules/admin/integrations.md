@@ -234,6 +234,23 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   its words clipped and shown as what Fiken said. Tests run against `fakeFiken()` (`src/server/fiken-test-support.ts`), which answers as
   Fiken's spec does and never refuses a repeated sale number; nothing in CI calls Fiken.
 
+## E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)
+
+- **E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)**: a sales document to a business goes to it as EN 16931 UBL (Peppol BIS Billing 3.0, EHF in Norway) where the buyer
+  receives it on the Peppol network. A shop's documents are D403's (`invoiceUbl()`, `creditNoteUbl()`), Work's `workDocumentUbl()` from the
+  issued document only (its lines as they rounded, its VAT groups; reverse charge without the client's VAT number, outside scope beside VAT
+  and totals that do not add up are refused, never sent). The buyer is a participant only by its country's scheme and organisation number
+  (`participantOf()`: 0192 Norway with the check digit, 0007 Sweden, 0184 Denmark), and the network itself is asked (`receiverOf()`: the
+  SML's NAPTR record at `base32(sha256(lowercase value))` per POLICY 7, then the SMP for the document type), an answer kept a day in
+  `commerce.peppol_receivers`; a lookup that could not finish is not trusted and asked again. The dispatcher's `einvoices` job looks at each
+  document issued to a business in the last two days once (never one issued before `EINVOICES_FROM`) and records its state in
+  `commerce.einvoice_sends`: `not_valid` (with the reasons), `not_receiver`, `waiting` (receives, but no access point is connected: it went
+  by email and is never sent later, so nothing reaches a buyer twice), or `pending`, then `sent`, `failed` (tried again with a growing wait,
+  at most six times), `refused` or `delivered`. The access point is one adapter of `AccessPoint` (`src/server/access-point.ts`); none is
+  configured until the owner signs with a vendor. The row never holds the buyer: the document does. Each document shows its line
+  (`einvoiceLines()`, `screens.einvoiceState`) on the order page and on a Work invoice, where the XML is also downloaded
+  (`…/work/s/{store}/invoices/{id}/xml`, `…/credit-notes/{id}/xml`). Email is unchanged in this step.
+
 ## Kaizen Life (D95, `src/server/kaizen-life.ts`)
 
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is

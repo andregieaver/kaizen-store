@@ -6842,6 +6842,64 @@ export const documentDeliveries = commerce.table(
 );
 
 /**
+ * Each sales document's way to its buyer as an e-invoice through the Peppol network (B1 of `docs/own-books-and-sales.md`, D463): a shop's
+ * invoices and credit notes (D159) and Work's (D122) sent to a business that receives them, one row per document once the sending job has
+ * looked at it. Its state says what happened; the buyer is the document's own (its frozen snapshot), so nothing of them is kept here.
+ * `waiting` is a document whose buyer receives e-invoices while no access point is connected (it went by email as before and is never sent
+ * later); `not_receiver` one whose buyer does not receive it on Peppol; `not_valid` one EN 16931 would reject (`problem` lists why).
+ */
+export const einvoiceSends = commerce.table(
+  "einvoice_sends",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** `invoice` and `credit_note` (a shop's), `work_invoice` and `work_credit_note` (Work's). */
+    documentType: text("document_type").notNull(),
+    documentId: uuid("document_id").notNull(),
+    state: text("state").notNull(),
+    /** Why it was refused, failed or is not valid: our own keys (`receiver_refused`, `timeout`, `http_502`, EN 16931 problem codes), never a party's words. */
+    problem: text("problem"),
+    /** The access point that took it (its adapter's name) and its id for the message. */
+    accessPoint: text("access_point"),
+    messageId: text("message_id"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("einvoice_sends_document_key").on(t.storeId, t.documentType, t.documentId),
+    uniqueIndex("einvoice_sends_message_key").on(t.accessPoint, t.messageId).where(sql`${t.messageId} is not null`),
+    index("einvoice_sends_due_idx").on(t.nextAttemptAt).where(sql`${t.state} in ('pending', 'failed')`),
+    check("einvoice_sends_type", sql`${t.documentType} in ('invoice', 'credit_note', 'work_invoice', 'work_credit_note')`),
+    check("einvoice_sends_state", sql`${t.state} in ('pending', 'sent', 'delivered', 'refused', 'failed', 'waiting', 'not_receiver', 'not_valid')`),
+    // Handed over means an access point and its message id; refused, failed and not valid say why.
+    check("einvoice_sends_sent", sql`${t.state} not in ('sent', 'delivered') or (${t.accessPoint} is not null and ${t.messageId} is not null and ${t.sentAt} is not null)`),
+    check("einvoice_sends_problem", sql`${t.state} not in ('refused', 'failed', 'not_valid') or ${t.problem} is not null`),
+    check("einvoice_sends_attempts", sql`${t.attempts} >= 0`),
+  ],
+);
+
+/**
+ * What the Peppol network's public register answered about a business (D463): whether it receives invoices and credit notes in Peppol BIS
+ * Billing 3.0, by its participant value (`0192:923609016`), kept a day so the sending job asks once. A business's public identifier and
+ * capability, shared by every store; never a person's data. `problem` is set when the lookup itself failed (and the row is not trusted).
+ */
+export const peppolReceivers = commerce.table(
+  "peppol_receivers",
+  {
+    participant: text("participant").primaryKey(),
+    invoice: boolean("invoice").notNull(),
+    creditNote: boolean("credit_note").notNull(),
+    problem: text("problem"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("peppol_receivers_participant", sql`${t.participant} ~ '^[0-9]{4}:[0-9A-Za-z]{1,50}$'`)],
+);
+
+/**
  * Attempts to render a document's PDF (D159): the only mutable table of the unit, with no personal data. A document that
  * failed five times is shown as "PDF not made" and retried by hand.
  */

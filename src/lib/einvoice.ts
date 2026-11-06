@@ -21,17 +21,18 @@ export type Einvoice = { ok: true; xml: string; fileName: string } | { ok: false
  * and a way back, instead of the reasons as JSON. Everything in it is escaped.
  */
 export function einvoiceRefusedPage(
-  problems: readonly EinvoiceProblem[],
-  words: { title: string; intro: string; back: string; problems: Record<EinvoiceProblem, string> },
+  problems: readonly string[],
+  words: { title: string; intro: string; back: string; problems: Readonly<Record<string, string>> },
   back: string,
   lang: string,
 ): string {
   const esc = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-  const items = problems.map((p) => `<li>${esc(words.problems[p] ?? p)}</li>`).join("");
+  const sentence = (text: string) => text.charAt(0).toLocaleUpperCase(lang) + text.slice(1);
+  const items = problems.map((p) => `<li>${esc(sentence(words.problems[p] ?? p))}</li>`).join("");
   return `<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${esc(words.title)}</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:3rem auto;padding:0 1rem;color:#1a1a1a}@media (prefers-color-scheme:dark){body{background:#111;color:#eee}a{color:#9cf}}</style></head><body><h1>${esc(words.title)}</h1><p>${esc(words.intro)}</p><ul>${items}</ul><p><a href="${esc(back)}">${esc(words.back)}</a></p></body></html>`;
 }
 
-const NS = [
+export const NS = [
   'xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"',
   'xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"',
 ].join(" ");
@@ -80,7 +81,7 @@ const EXEMPTION: Partial<Record<"E" | "AE" | "O", { code: string; reason: string
   E: { code: "VATEX-EU-132", reason: "Exempt from VAT" },
 };
 
-function taxCategory(tag: "ClassifiedTaxCategory" | "TaxCategory", category: string, rate: number, withReason: boolean): string {
+export function taxCategory(tag: "ClassifiedTaxCategory" | "TaxCategory", category: string, rate: number, withReason: boolean): string {
   const exemption = EXEMPTION[category as "E" | "AE" | "O"];
   return [
     `<cac:${tag}>`,
@@ -93,7 +94,7 @@ function taxCategory(tag: "ClassifiedTaxCategory" | "TaxCategory", category: str
 }
 
 /** The electronic address scheme (EAS) of an organisation number by country, else the party's email (`EM`). */
-function endpoint(country: string | null, orgNumber: string | null, email: string | null): { scheme: string; id: string } | null {
+export function endpoint(country: string | null, orgNumber: string | null, email: string | null): { scheme: string; id: string } | null {
   const digits = (orgNumber ?? "").replace(/\D/g, "");
   if (digits) {
     if (country === "NO" && digits.length === 9) return { scheme: "0192", id: digits };
@@ -104,15 +105,16 @@ function endpoint(country: string | null, orgNumber: string | null, email: strin
 }
 
 /** The seller's one-string address split into its lines: the first is the street, a line like "0155 Oslo" the postal code and city. */
-function sellerAddress(seller: SnapshotSeller): { street: string | null; postalCode: string | null; city: string | null } {
+function sellerAddress(seller: Pick<SnapshotSeller, "address">): { street: string | null; postalCode: string | null; city: string | null } {
   const lines = (seller.address ?? "").split(/\r?\n|,/).map((l) => l.trim()).filter(Boolean);
   const place = lines.length > 1 ? /^(\d{3,6})\s+(.+)$/.exec(lines[lines.length - 1]) : null;
   return { street: lines[0] ?? null, postalCode: place?.[1] ?? null, city: place?.[2] ?? null };
 }
 
-const el = (tag: string, value: string | null | undefined) => (value ? `<cbc:${tag}>${xmlText(value)}</cbc:${tag}>` : "");
+export const el = (tag: string, value: string | null | undefined) => (value ? `<cbc:${tag}>${xmlText(value)}</cbc:${tag}>` : "");
 
-function sellerParty(seller: SnapshotSeller, vatNumber: string | null): string {
+/** The seller (BG-4): its endpoint, name, address, VAT number, organisation number and email; the Work documents' too (`work-einvoice.ts`). */
+export function sellerParty(seller: Pick<SnapshotSeller, "legalName" | "organisationNumber" | "address" | "country" | "email">, vatNumber: string | null): string {
   const at = sellerAddress(seller);
   const end = endpoint(seller.country, seller.organisationNumber, seller.email);
   return [

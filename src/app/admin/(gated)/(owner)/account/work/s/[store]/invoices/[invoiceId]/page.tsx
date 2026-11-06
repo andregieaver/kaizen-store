@@ -17,9 +17,11 @@ import {
 import { getWorkInvoiceDetail, nextInvoiceNumberPreview } from "@/server/work-invoices";
 import { workBase } from "@/lib/work-paths";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, PageHeader } from "@/components/admin/ui";
 import { workWords } from "@/server/work-words";
-import { workText } from "@/lib/work-text";
+import { workScreens, workText } from "@/lib/work-text";
+import { fillWords } from "@/lib/admin-fill";
+import { einvoiceLines } from "@/server/einvoice-sending";
 import { TripletexDocumentsPanel } from "@/components/admin/tripletex-panel";
 import { adminLangOf } from "@/lib/admin-lang";
 import { getTripletexConnection, tripletexDocuments } from "@/server/tripletex";
@@ -47,7 +49,8 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
   const { invoice, client } = detail;
   const locale = store.markets[0]?.locale ?? "en";
   const list = `${workBase(store.slug)}/invoices`;
-  const title = invoice.documentNumber ? `Invoice ${invoice.documentNumber}` : tw.draftInvoice;
+  const pw = workScreens().workInvoicePage;
+  const title = invoice.documentNumber ? fillWords(pw.title, { number: invoice.documentNumber }) : tw.draftInvoice;
 
   const header = (
     <header className="flex flex-col gap-2">
@@ -55,14 +58,14 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
         <Link href={list} className="underline">
           {tw.invoices}
         </Link>{" "}
-        / {invoice.documentNumber ?? "Draft"}
+        / {invoice.documentNumber ?? pw.draft}
       </nav>
       <div className="flex flex-wrap items-center gap-3">
         <PageHeader title={<>{title}</>} />
         {invoice.status === "draft" && <InvoiceStatusChip status="draft" dueOn={null} today={detail.today} />}
       </div>
       <p className="text-sm text-muted">
-        For{" "}
+        {pw.for}{" "}
         <Link href={`${workBase(store.slug)}/clients/${client.id}`} className="underline">
           {client.name}
         </Link>
@@ -80,6 +83,13 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
       ...detail.creditNotes.map((note) => ({ kind: "work_credit_note" as const, localId: note.id, number: note.documentNumber })),
     ];
     const inTripletex = tripletex ? await tripletexDocuments(store.id, booked) : null;
+    // E-invoices (D463): to a business client, the invoice and its credit notes as the network and the access point left them.
+    const lang = adminLangOf(viewer.account.adminLocale);
+    const einvoiceDocs = [
+      ...(invoice.documentNumber && !invoice.imported ? [{ type: "work_invoice" as const, id: invoice.id, label: fillWords(pw.invoice, { number: invoice.documentNumber }), href: `${workBase(store.slug)}/invoices/${invoice.id}/xml` }] : []),
+      ...detail.creditNotes.map((note) => ({ type: "work_credit_note" as const, id: note.id, label: fillWords(pw.creditNote, { number: note.documentNumber }), href: `${workBase(store.slug)}/credit-notes/${note.id}/xml` })),
+    ];
+    const einvoice = detail.buyer?.business && einvoiceDocs.length > 0 ? await einvoiceLines(store.id, einvoiceDocs, lang) : null;
     return (
       <div className="flex flex-col gap-6">
         {header}
@@ -91,6 +101,21 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
           isOwner={memberCan(viewer, "owner")}
           homeCurrency={homeCurrency}
         />
+        {einvoice && (
+          <Card title={pw.einvoiceTitle} compact>
+            <ul className="flex flex-col gap-2 text-sm">
+              {einvoiceDocs.map((doc) => (
+                <li key={doc.id}>
+                  <p className="font-medium">{doc.label}</p>
+                  <p className="text-muted">{einvoice[`${doc.type}:${doc.id}`] ?? pw.notYet}</p>
+                  <a href={doc.href} className="underline">
+                    {pw.download}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
         {inTripletex && !invoice.imported && (
           <TripletexDocumentsPanel lang={adminLangOf(viewer.account.adminLocale)} storeSlug={store.slug} documents={booked} states={inTripletex} owner={memberCan(viewer, "owner")} />
         )}

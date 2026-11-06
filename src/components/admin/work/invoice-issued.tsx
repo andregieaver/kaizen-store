@@ -16,7 +16,7 @@ import { InvoiceStatusChip } from "./invoice-status";
 import { InvoiceTotalsView } from "./invoice-totals";
 import { Badge, card, hintText, secondaryButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
-import { workText } from "@/lib/work-text";
+import { workScreens, workText } from "@/lib/work-text";
 import { fillWords } from "@/lib/admin-fill";
 
 export type IssuedViewProps = {
@@ -40,6 +40,7 @@ const th = "px-3 py-2 text-left text-eyebrow text-muted uppercase";
  */
 export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner, homeCurrency }: IssuedViewProps) {
   const tw = workText().invoiceIssued;
+  const pw = workScreens().workInvoicePage;
   const { invoice, amounts, seller, buyer, lines, totals } = detail;
   const money = (minor: number) => formatMoney(minor, invoice.currency, locale);
   const when = (iso: string) =>
@@ -170,9 +171,9 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
             lines={[
               seller?.legalName,
               seller?.address,
-              seller?.organisationNumber && `Organisation number ${seller.organisationNumber}`,
-              seller?.vatRegistered ? seller.vatNumber && `VAT number ${seller.vatNumber}` : tw.notRegisteredForVat,
-              seller?.bankAccount && `Account ${seller.bankAccount}${seller.bic ? `, BIC ${seller.bic}` : ""}`,
+              seller?.organisationNumber && fillWords(pw.orgNumber, { number: seller.organisationNumber }),
+              seller?.vatRegistered ? seller.vatNumber && fillWords(pw.vatNumber, { number: seller.vatNumber }) : tw.notRegisteredForVat,
+              seller?.bankAccount && `${fillWords(pw.account, { account: seller.bankAccount })}${seller.bic ? fillWords(pw.bic, { bic: seller.bic }) : ""}`,
               seller?.email,
             ]}
           />
@@ -181,8 +182,8 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
             lines={[
               buyer?.name,
               buyer ? addressText(buyer.address, buyer.country) : null,
-              buyer?.organisationNumber && `Organisation number ${buyer.organisationNumber}`,
-              buyer?.vatNumber && `VAT number ${buyer.vatNumber}`,
+              buyer?.organisationNumber && fillWords(pw.orgNumber, { number: buyer.organisationNumber }),
+              buyer?.vatNumber && fillWords(pw.vatNumber, { number: buyer.vatNumber }),
               buyer?.email,
             ]}
           />

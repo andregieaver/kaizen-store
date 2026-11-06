@@ -290,6 +290,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   credit_notes: never("Accounting documents with gap-free numbers of the original."),
   document_deliveries: never("Which emails carried which of the original's documents (D159)."),
   document_pdf_state: never("Render attempts of the original's documents (D159)."),
+  einvoice_sends: never("How the original's documents went as e-invoices (D463): the copy's documents are its own and start unsent."),
   tax_rate_overrides: never("An owner's euro rate for a filed period belongs to that store's own returns (D161)."),
   tax_report_exports: never("A log of the original's VAT, OSS and IOSS exports (D161)."),
   customer_codes: never("Sign-in codes."),

@@ -69,6 +69,10 @@ describe("who reads invoices and credit notes", () => {
         "src/server/tripletex-sync.ts",
         // Fiken's sync (D460): the same documents booked as sales in the owner's Fiken, on the same terms (one contact for every shopper).
         "src/server/fiken-sync.ts",
+        // E-invoices (D463): a business buyer's country and organisation number from the documents issued to businesses in the last two
+        // days, to ask the Peppol network whether it receives them and to send the document's UBL to that business's own e-invoice address;
+        // a consumer's document is never read, and nothing of a buyer is kept (`einvoice_sends` holds the state alone).
+        "src/server/einvoice-sending.ts",
       ].sort(),
     );
   });

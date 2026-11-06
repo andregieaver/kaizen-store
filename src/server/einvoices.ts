@@ -36,10 +36,16 @@ export function einvoiceBack(request: Request, storeSlug: string): string {
  * The answer of a route that serves one: the file, a 404, or (422) a short page saying why in the staff member's admin language, with a link
  * back to where they came from, since the route is opened by a link and a browser would show JSON as it is.
  */
-export function einvoiceResponse(out: Einvoice | null, page: { lang: AdminLang; back: string }): Response {
+export function einvoiceResponse(
+  out: Einvoice | { ok: true; xml: string; fileName: string } | { ok: false; problems: readonly string[] } | null,
+  page: { lang: AdminLang; back: string },
+): Response {
   if (!out) return new Response("Not found", { status: 404 });
   if (!out.ok) {
-    const html = einvoiceRefusedPage(out.problems, adminText(page.lang, "invoices").einvoice, page.back, page.lang);
+    // A shop document's reasons, and those only Work's documents can have (D463).
+    const words = adminText(page.lang, "invoices").einvoice;
+    const more = adminText(page.lang, "screens").einvoiceState.problems;
+    const html = einvoiceRefusedPage(out.problems, { ...words, problems: { ...more, ...words.problems } }, page.back, page.lang);
     return new Response(html, { status: 422, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store" } });
   }
   return new Response(out.xml, {
