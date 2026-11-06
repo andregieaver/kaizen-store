@@ -266,6 +266,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Store",
         items: [
           item("/settings/company", "Company", "The business details, places and contact information shoppers and invoices show.", { icon: "store", basic: true }),
+          item("/settings/books", "Books", "Your own books, kept from your invoices and credit notes as you issue them: the trial balance, what waits, and locking a period.", { icon: "book-open" }),
           item("/settings/domains", "Domains", "The addresses the store is reached at.", { icon: "link", basic: true }),
           item("/settings/moving", "Moving in", "Bring a shop over from Shopify: connect it, check its old links, and import the rest.", { icon: "import" }),
           item("/settings/countries", "Countries", "The countries the store sells to, and its own country.", { icon: "map", basic: true }),
