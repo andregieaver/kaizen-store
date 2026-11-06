@@ -95,16 +95,18 @@ export type OpenBookProblem = "open" | "no_pack" | "date";
 export async function openLedgerBook(member: Membership, openedOn: string): Promise<{ ok: true; book: LedgerBook } | { ok: false; problem: OpenBookProblem }> {
   if (!isDay(openedOn)) return { ok: false, problem: "date" };
   const store = await typedRow(
-    z.object({ name: col.text, legal_name: col.textOrNull, organisation_number: col.textOrNull, country: col.text }),
+    z.object({ name: col.text, legal_name: col.textOrNull, organisation_number: col.textOrNull, country: col.textOrNull }),
     sql`select name, legal_name, organisation_number, country from commerce.stores where id = ${member.store.id}::uuid`,
   );
-  if (!store || !PACKS.has(store.country)) return { ok: false, problem: "no_pack" };
+  // The store's own country, else its first market's (a store set up before it was asked).
+  const country = store?.country ?? member.store.markets[0]?.code ?? null;
+  if (!store || !country || !PACKS.has(country)) return { ok: false, problem: "no_pack" };
   if (await openBookOf(member.store.id)) return { ok: false, problem: "open" };
   const currency = mainCurrency(member.store);
   const book = await db().transaction(async (tx) => {
     const [row] = await tx.execute<{ id: string }>(sql`
       insert into commerce.ledger_books (store_id, legal_name, organisation_number, country, currency, opened_on, opened_by)
-      values (${member.store.id}::uuid, ${(store.legal_name || store.name).slice(0, 200)}, ${(store.organisation_number ?? "").slice(0, 40)}, ${store.country},
+      values (${member.store.id}::uuid, ${(store.legal_name || store.name).slice(0, 200)}, ${(store.organisation_number ?? "").slice(0, 40)}, ${country},
               ${currency}, ${openedOn}::date, ${member.account.id}::uuid)
       on conflict do nothing
       returning id
@@ -119,7 +121,7 @@ export async function openLedgerBook(member: Membership, openedOn: string): Prom
     return String(row.id);
   });
   if (!book) return { ok: false, problem: "open" };
-  await audit(member.account.id, member.store.id, "work.ledger_book_opened", { bookId: book, openedOn, country: store.country, currency });
+  await audit(member.account.id, member.store.id, "work.ledger_book_opened", { bookId: book, openedOn, country, currency });
   return { ok: true, book: (await openBookOf(member.store.id))! };
 }
 

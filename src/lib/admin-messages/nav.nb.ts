@@ -219,6 +219,9 @@ export const NAV_NB: Record<string, string> = {
   Company: "Virksomhet",
   "The business details, places and contact information shoppers and invoices show.":
     "Opplysningene om virksomheten, stedene og kontaktinformasjonen som kundene og fakturaene viser.",
+  Books: "Regnskap",
+  "Your own books, kept from your invoices and credit notes as you issue them: the trial balance, what waits, and locking a period.":
+    "Ditt eget regnskap, ført fra fakturaene og kreditnotaene dine etter hvert som du utsteder dem: saldobalansen, det som venter, og låsing av en periode.",
   Domains: "Domener",
   "The addresses the store is reached at.": "Adressene butikken nås på.",
   "Moving in": "Flytt inn",
