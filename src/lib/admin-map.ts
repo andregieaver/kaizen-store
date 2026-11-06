@@ -924,6 +924,8 @@ const PAGES: readonly AdminPage[] = [
   }),
   store("books", "/settings/books", "Books", "Store", "The store's own books (D478): opened from a day by the owner, every invoice and credit note posted to them as it is issued, on the same accounts as Tripletex; what waits and why, the trial balance of any days with its result, and locking the books through a day.", {
     keywords: ["books", "ledger", "accounting", "bookkeeping", "regnskap", "hovedbok", "saldobalanse", "trial balance", "bilag", "lock period"],
+    // The pilot's (D478): offered where the owner keeps Work, as Human Web does; so the AI manager's fixed drawing, and its eval, are as recorded.
+    needs: "work",
   }),
   store("integrations.fiken", "/integrations/fiken", "Fiken", "Store", "Connects the store's Fiken company through Fiken's own page and books its invoices and credit notes there as sales; where they are booked, what needs the owner, Try again.", {
     keywords: ["fiken", "accounting", "bookkeeping", "regnskap", "bokføring", "annet salg", "bilag", "accountant"],
