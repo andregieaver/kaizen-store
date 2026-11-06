@@ -3,7 +3,7 @@
 import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { requirePlatformAdmin } from "@/server/auth";
 import { copySiteIntoHouse } from "@/server/house-site";
 
@@ -14,5 +14,7 @@ export async function copySiteAction(): Promise<FormState> {
   const result = await copySiteIntoHouse(admin);
   if (!result.ok) return { status: "error", messages: [result.problem === "no_store" ? w.noStore : w.failed] };
   const pages = result.counts.page ?? 0;
-  return { status: "ok", messages: [fillWords(w.copied, { pages: String(pages) })] };
+  // Settings changed in the store stay the store's (D474): said, so nobody wonders why the live site's did not come.
+  const kept = result.counts.settings_kept ?? 0;
+  return { status: "ok", messages: [fillWords(w.copied, { pages: String(pages) }), ...(kept > 0 ? [countWords(kept, w.kept)] : [])] };
 }

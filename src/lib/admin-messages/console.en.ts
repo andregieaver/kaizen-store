@@ -10,7 +10,7 @@ export const consoleEn = {
   houseSite: {
     title: "Kaizena Flow's site in its own store",
     description:
-      "The site moves into Kaizena Flow's own store, where it gets everything a store's site has. Copy it there to look at it beside the live site: the live site does not change, and copying again brings the latest.",
+      "The site moves into Kaizena Flow's own store, where it gets everything a store's site has. Copy it there to look at it beside the live site: the live site does not change, and copying again brings the latest pages. A setting changed in the store, such as its SEO or a logo, stays the store's.",
     never: "The site has not been copied yet.",
     last: {
       one: "Last copied {when}: one page, menu or part.",
@@ -21,6 +21,10 @@ export const consoleEn = {
     again: "Copy it again",
     copied:
       "Copied: {pages} pages, headers and footers, with their menus, parts and look.",
+    kept: {
+      one: "One setting changed in the store was kept.",
+      many: "{n} settings changed in the store were kept.",
+    },
     noStore: "Kaizena Flow's own store does not exist yet.",
     failed: "The site could not be copied. Nothing was changed; try again.",
   },

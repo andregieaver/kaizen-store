@@ -17708,14 +17708,27 @@ export const houseSiteCopies = commerce.table(
     storeId: storeId().references(() => stores.id),
     sourceId: uuid("source_id").notNull(),
     copyId: uuid("copy_id").notNull(),
-    /** `page`, `menu`, `saved_part`, `text_style`, `term`, `content_type` or `content_entry`. */
+    /**
+     * `page`, `menu`, `saved_part`, `text_style`, `term`, `content_type` or `content_entry`; or `settings` (D474): one row, the platform's
+     * settings onto the store itself (its `source_id` and `copy_id` both the store's id).
+     */
     kind: text("kind").notNull(),
     copiedAt: timestamp("copied_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The `settings` row's alone (D474): the site's look, logos, SEO, header, footer, menus and front page as the platform had them at the
+     * last copy, ids the copies'. A setting of the store still equal to it was not changed in the store, so the next copy brings the live
+     * site's; one changed in the store stays the store's.
+     */
+    settings: jsonb("settings"),
   },
   (t) => [
     primaryKey({ columns: [t.storeId, t.sourceId] }),
     unique("house_site_copies_copy_key").on(t.storeId, t.copyId),
-    check("house_site_copies_kind", sql`${t.kind} in ('page', 'menu', 'saved_part', 'text_style', 'term', 'content_type', 'content_entry')`),
+    check(
+      "house_site_copies_kind",
+      sql`${t.kind} in ('page', 'menu', 'saved_part', 'text_style', 'term', 'content_type', 'content_entry', 'settings')`,
+    ),
+    check("house_site_copies_settings", sql`(${t.kind} = 'settings') = (${t.settings} is not null)`),
   ],
 );
 

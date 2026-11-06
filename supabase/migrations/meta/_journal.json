@@ -4950,6 +4950,20 @@
       "when": 1793996103315,
       "tag": "20261106201503_ledger_waiting_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 707,
+      "version": "7",
+      "when": 1793997895666,
+      "tag": "20261106204455_house_site_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 708,
+      "version": "7",
+      "when": 1793997925137,
+      "tag": "20261106204525_house_site_settings_rules",
+      "breakpoints": true
     }
   ]
 }
