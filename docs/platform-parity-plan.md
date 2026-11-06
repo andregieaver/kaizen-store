@@ -117,6 +117,34 @@ Each step is one change or a few, tested in production like everything else. Ste
 | **6. Support and chat** | One desk for Kaizena Flow: visitors of its site, and owners asking from their admin, with each one's timeline | Decide: move the site's visitors to the store's desk and keep owners on the platform's, or move both now that owners are customers. The AI's platform tools (an owner's store and plan) stay the console's | M |
 | **7. One copy** | The platform admin's Website section is one link; nothing to keep in step | The null-store paths of the site removed (`platform-theme-installs.ts`, `platform-roles.ts`, the `(platform)` page and blog routes, `platform-layout.tsx`), the twin tables retired, keys tightened where a null served only the site | M |
 
+### Step 5, as designing it found (6 November 2026)
+
+Steps 1 to 4 are built (D466, D467, D469). The switch is the one step that changes kaizenaflow.com, so it waits for the owner to look at the
+copy (Platform → Website → *Copy the site*, then the store's own admin, behind its private mode) and is built with these, found while
+designing it:
+
+- **The switch at run time, not in the build.** The proxy (`src/proxy.ts`) already sees every page request and reads stores' facts every few
+  seconds (`storeRequestAnswer()`); with `platform_settings.site_from_store` on, a request on Kaizena Flow's own host for a path that is not one
+  of the platform's own is answered as Kaizena Flow's store's host (`hostStore` = `kaizenaflow`), so switching and switching back need no
+  deployment. The platform's own first segments, which stay: `admin`, `api`, `auth`, `oauth`, `r`, `s`, `sign-up`, `get-domain`, `report`,
+  `themes`, `status`, `support`, `unsubscribe`, `holding`, `docs`, `robots.txt`, `sitemap.xml`, `sitemap-kaizen.xml`, `llms.txt`, and the same
+  under `/no/` (`sign-up`, `get-domain`, `report`, `themes`, `status`). Everything else (the front page, pages, `blog`, `category`, `tag`,
+  `cookies`) is the store's.
+- **Norwegian stays at `/no/`.** A store in Norway whose main language is English puts Norwegian at `/nb/…` and reads `/no/…` as its own
+  country's old long address (308 to English). Kaizena Flow's store needs the language alias `nb` ↔ `no` in `StoreAddress`
+  (`storeAddressOf()`, `addressSegment()`, `shortChoiceOf()`, `longMarketSlug()`, `addressDecision()`), for it alone, so links, canonical
+  and hreflang say `/no/…` and `/no/…` is served from the long `no-nb` view.
+- **One consent and one chat.** The platform's own pages ask for cookie consent and show Kaizena Flow's chat under no store (`store_id`
+  null); the store's pages under the store. Behind one host a visitor must be asked once: the platform's own routes read and write the
+  house store's consent while the switch is on, and the chat on them is the store's (step 6 joins the desks).
+- **Sitemaps, robots and llms.txt.** `sitemap.xml` keeps listing Kaizena Flow's pages from the store instead of `sitemap-kaizen.xml`'s null
+  rows; `robots.txt` and `llms.txt` the same; the store's own `/s/kaizenaflow` sitemap is not listed twice.
+- **The theme store's pages** (`platform_page_roles` `themes`, `theme`) stay the platform's and are drawn by `/themes` as now; the copy
+  leaves them out of the store's front and special pages.
+- **Pictures**: the media library's rows move to the store at the switch (`media.url` is unique, so they were not copied).
+- **Checked before and after**: every address in `sitemap-kaizen.xml` answers 200 with the same canonical and hreflang, at phone and
+  computer widths, light and dark, in English and Norwegian (`e2e-live/` holds the axe scan; the same list).
+
 Step 3's copy and step 5's switch are where things can go wrong; the copy is kept side by side, compared, and the switch has its undo.
 The null rows are deleted only in step 7, weeks after the switch.
 
