@@ -105,6 +105,11 @@ export type FakeTripletex = {
   calls: FakeCall[];
   /** Vouchers dated before this day are refused as in a closed period. */
   closedBefore: string | null;
+  /**
+   * How the answers that identify a session are shaped. `spec` is Tripletex's OpenAPI file; the others are what its guide leaves
+   * open: a session token not wrapped in `value`, and `>whoAmI` giving only the company's id (as when `fields` is not expanded).
+   */
+  shapes: { session: "spec" | "bare"; whoAmI: "spec" | "id_only" };
   /** The next matching call fails with this status, `times` times. */
   failNext(method: string, path: RegExp, status: number, body?: unknown, headers?: Record<string, string>, times?: number): void;
   /** The next matching call is done, but its answer never arrives (the network drops it). */
@@ -134,6 +139,7 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
     vouchers: new Map(),
     calls: [],
     closedBefore: null,
+    shapes: { session: "spec", whoAmI: "spec" },
     failNext(method, path, status, body, headers, times = 1) {
       failures.push({ method, path, status, body, headers, times });
     },
@@ -210,7 +216,7 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
       if (!state.apiTokens.has(String(body.refreshToken))) return answer(401, { status: 401, code: 3000, message: "Ugyldig token." });
       const token = `session-${++nextId}`;
       sessions.set(token, true);
-      return answer(201, { value: { token } });
+      return answer(201, state.shapes.session === "bare" ? { token, expirationDate: "2026-11-07" } : { value: { token } });
     }
     if (method === "POST" && path === "/token/session/:create") {
       if (!state.consumerTokens.has(String(body.consumerToken)) || !state.employeeTokens.has(String(body.employeeToken))) {
@@ -225,7 +231,11 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
     const [user, session] = Buffer.from(auth.replace(/^Basic /, ""), "base64").toString().split(":");
     if (user !== "0" || !sessions.has(session)) return answer(401, { status: 401, code: 3000, message: "Ikke innlogget." });
 
-    if (method === "GET" && path === "/token/session/>whoAmI") return answer(200, { value: { companyId: state.company.id, company: state.company } });
+    if (method === "GET" && path === "/token/session/>whoAmI") {
+      const company = state.shapes.whoAmI === "id_only" ? { id: state.company.id, url: `tripletex.no/v2/company/${state.company.id}` } : state.company;
+      return answer(200, { value: { employeeId: 7, companyId: state.company.id, company } });
+    }
+    if (method === "GET" && path === `/company/${state.company.id}`) return answer(200, { value: state.company });
     if (method === "GET" && path === "/ledger/account") {
       const number = url.searchParams.get("number");
       return list(state.accounts.filter((a) => !number || String(a.number) === number), url);

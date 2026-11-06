@@ -4,6 +4,8 @@ import { tripletexConsumerToken } from "@/lib/env";
 import { TRIPLETEX_BASE, type TripletexMode, type TripletexTokenKind } from "@/lib/tripletex";
 import { classifyFailure, networkFailure, type TripletexFailure } from "@/lib/tripletex-errors";
 
+import { log } from "./log";
+
 /**
  * Tripletex's API (D453, `docs/tripletex.md` 1.1): a session opened from the one token an owner pasted, and the calls made
  * with it. The address is one of two, fixed in code and chosen by the token (never typed). Every call has a timeout, follows
@@ -59,7 +61,38 @@ async function call<T>(fetcher: typeof fetch, url: string, init: RequestInit): P
   }
   const header = (name: string) => response.headers.get(name);
   if (!response.ok) return { ok: false, failure: classifyFailure(response.status, json, header) };
+  if (json === null && text !== "") {
+    // An answer that is not JSON: its path (a constant of the code), status and type, never its body.
+    log("warn", "tripletex.not_json", { path: new URL(url).pathname, status: response.status, contentType: header("content-type")?.slice(0, 80) ?? null });
+  }
   return { ok: true, value: json as T, requestId: header("x-tlx-request-id") };
+}
+
+/**
+ * The shape of an answer we could not read, for the log: its keys and its `value`'s keys, field names only (never a value, so never
+ * a token), so the next unreadable answer says what Tripletex sent instead of what its spec promises.
+ */
+function shapeOf(answer: unknown): string {
+  const keys = (o: unknown) =>
+    o && typeof o === "object" && !Array.isArray(o)
+      ? Object.keys(o)
+          .filter((k) => /^[A-Za-z0-9_]{1,40}$/.test(k))
+          .slice(0, 20)
+          .join(",")
+      : o === null
+        ? "null"
+        : Array.isArray(o)
+          ? "array"
+          : typeof o;
+  const inner = answer && typeof answer === "object" && "value" in answer ? (answer as { value: unknown }).value : undefined;
+  return inner === undefined ? `{${keys(answer)}}` : `{${keys(answer)}} value{${keys(inner)}}`;
+}
+
+/** The object an answer is about: Tripletex wraps one in `value` [spec]; an answer without the wrapper is read as it is. */
+function unwrap<T extends object>(answer: unknown): Partial<T> {
+  if (!answer || typeof answer !== "object") return {};
+  const inner = (answer as { value?: unknown }).value;
+  return (inner && typeof inner === "object" && !Array.isArray(inner) ? inner : answer) as Partial<T>;
 }
 
 /** Tomorrow in Oslo, as Tripletex's session expiry wants it: the token stops at midnight before that date. */
@@ -85,7 +118,7 @@ export type TripletexSession = {
 export async function openSession(credential: TripletexCredential, deps: TripletexDeps = {}): Promise<{ ok: true; session: TripletexSession } | { ok: false; failure: TripletexFailure }> {
   const fetcher = deps.fetch ?? fetch;
   const json = { "Content-Type": "application/json", Accept: "application/json" };
-  let opened: TxResult<{ value?: { token?: unknown } }>;
+  let opened: TxResult<unknown>;
   if (credential.kind === "api_token") {
     opened = await call(fetcher, urlOf(credential.mode, "/token/session/:createFromRefreshToken"), {
       method: "POST",
@@ -106,8 +139,12 @@ export async function openSession(credential: TripletexCredential, deps: Triplet
     const f = opened.failure;
     return { ok: false, failure: f.class === "rule" || f.class === "permission" || f.class === "drift" ? { ...f, class: "auth", key: "http_401", detail: null } : f };
   }
-  const token = opened.value?.value?.token;
-  if (typeof token !== "string" || token === "") return { ok: false, failure: failure("bad_answer", "transient") };
+  // `{ value: { token } }` [spec]; Tripletex's guide says only that "the response contains a token field", so a bare one is read too.
+  const token = unwrap<{ token: unknown }>(opened.value).token;
+  if (typeof token !== "string" || token === "") {
+    log("warn", "tripletex.bad_answer", { step: "session", kind: credential.kind, mode: credential.mode, shape: shapeOf(opened.value) });
+    return { ok: false, failure: failure("bad_answer", "transient") };
+  }
 
   const auth = `Basic ${Buffer.from(`0:${token}`).toString("base64")}`;
   const headers = { ...json, Authorization: auth };
@@ -131,17 +168,34 @@ export async function openSession(credential: TripletexCredential, deps: Triplet
 /** Who the token is: the company it opens, read once at connect and compared with the store (`GET /token/session/>whoAmI`). */
 export type TripletexCompany = { id: number; name: string; organizationNumber: string | null };
 
+type CompanyJson = { id?: unknown; name?: unknown; organizationNumber?: unknown };
+
+const textOf = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
+/**
+ * Which company the session opens. `>whoAmI` gives its id, and its name and organisation number when Tripletex expands `company`;
+ * when it gives only the id, the company is read on its own (`GET /company/{id}`), so a token that works is never refused for a name.
+ */
 export async function whoAmI(session: TripletexSession): Promise<TxResult<TripletexCompany>> {
-  const answer = await session.get<{ value?: { companyId?: unknown; company?: { id?: unknown; name?: unknown; organizationNumber?: unknown } } }>("/token/session/>whoAmI", {
-    fields: "companyId,company(id,name,organizationNumber)",
-  });
+  const answer = await session.get<unknown>("/token/session/>whoAmI", { fields: "companyId,company(id,name,organizationNumber)" });
   if (!answer.ok) return answer;
-  const value = answer.value?.value;
-  const id = Number(value?.company?.id ?? value?.companyId);
-  const name = typeof value?.company?.name === "string" ? value.company.name.trim() : "";
-  if (!Number.isSafeInteger(id) || id <= 0 || name === "") return { ok: false, failure: failure("bad_answer", "transient") };
-  const org = typeof value?.company?.organizationNumber === "string" && value.company.organizationNumber.trim() !== "" ? value.company.organizationNumber.trim() : null;
-  return { ok: true, value: { id, name: name.slice(0, 255), organizationNumber: org }, requestId: answer.requestId };
+  const me = unwrap<{ companyId: unknown; company: CompanyJson | null }>(answer.value);
+  const id = Number(me.company?.id ?? me.companyId);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    log("warn", "tripletex.bad_answer", { step: "whoAmI", shape: shapeOf(answer.value) });
+    return { ok: false, failure: failure("bad_answer", "transient") };
+  }
+  let company: CompanyJson = me.company ?? {};
+  if (textOf(company.name) === "") {
+    const read = await session.get<unknown>(`/company/${id}`, { fields: "id,name,organizationNumber" });
+    company = read.ok ? unwrap<CompanyJson>(read.value) : {};
+    if (textOf(company.name) === "") {
+      log("warn", "tripletex.bad_answer", { step: "company", whoAmI: shapeOf(answer.value), company: read.ok ? shapeOf(read.value) : read.failure.key });
+      return { ok: false, failure: failure("bad_answer", "transient") };
+    }
+  }
+  const org = textOf(company.organizationNumber);
+  return { ok: true, value: { id, name: textOf(company.name).slice(0, 255), organizationNumber: org === "" ? null : org }, requestId: answer.requestId };
 }
 
 /** Every value of a list, a page at a time (Tripletex caps a page; `fullResultSize` says how many there are). */
