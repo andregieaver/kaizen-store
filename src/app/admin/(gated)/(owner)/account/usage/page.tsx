@@ -21,6 +21,7 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").usage;
+  const sw = adminText(lang, "screens").ownerUsage;
   const query = await searchParams;
   const chosen = usagePeriod(typeof query.period === "string" ? query.period : undefined);
   const owned = await ownedStores(account.id);
@@ -39,16 +40,16 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
       <div className="flex flex-col gap-3">
         <PageHeader
           title={w.title}
-          description={fillWords(w.ownerIntro, {
-            who: store ? store.name : owned.length === 1 ? owned[0].name : w.yourStores,
+          description={fillWords(sw.ownerIntro, {
+            who: store ? store.name : owned.length === 1 ? owned[0].name : sw.yourStores,
             period: (w.periods[chosen.id] ?? chosen.label).toLowerCase(),
           })}
         />
         <PeriodLinks base={base} period={chosen.id} extra={keep} words={w} />
         {owned.length > 1 && (
-          <nav aria-label={w.storeNav} className="flex flex-wrap gap-1 text-sm">
+          <nav aria-label={sw.storeNav} className="flex flex-wrap gap-1 text-sm">
             <Link href={`${base}?period=${chosen.id}`} aria-current={!store ? "page" : undefined} className={`rounded-pill px-3 py-1.5 ${!store ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`}>
-              {w.allMyStores}
+              {sw.allMyStores}
             </Link>
             {owned.map((s) => (
               <Link
@@ -64,7 +65,7 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
         )}
       </div>
       {owned.length === 0 ? (
-        <p className="rounded-panel border border-line p-4 text-sm">{w.noneOwned}</p>
+        <p className="rounded-panel border border-line p-4 text-sm">{sw.noneOwned}</p>
       ) : (
         <UsageReport rows={rows} days={days} scope="owner" words={w} locale={ADMIN_LANG_FACTS[lang].locale} />
       )}

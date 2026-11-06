@@ -35,7 +35,7 @@ export async function AfterSaleNote({ store }: { store: { id: string; slug: stri
   const after = await afterSaleOf(store.id);
   if (!afterSaleIsOpen(after)) return null;
   const base = `/admin/${store.slug}`;
-  const w = adminText(await requestAdminLang(), "settings").afterSale;
+  const w = adminText(await requestAdminLang(), "screens").afterSale;
   const parts = [
     after.withdrawable > 0 && countWords(after.withdrawable, w.withdrawable),
     after.openReturns > 0 && countWords(after.openReturns, w.openReturns),

@@ -35,7 +35,7 @@ export default async function DuplicateStorePage({
   const result = full ? null : await copyChoicesAction(slug);
   if (result && !result.ok) notFound();
   const lang = adminLangOf(account.adminLocale);
-  const w = adminText(lang, "platform").copyPage;
+  const w = adminText(lang, "screens").copyPage;
 
   return (
     <div className="flex flex-col gap-6">

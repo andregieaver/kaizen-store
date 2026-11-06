@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/admin/ui";
 
 import { WorkSwitchForm } from "./owner-switch";
 import { Badge, card } from "./work-parts";
-import { workText } from "@/lib/work-text";
+import { readinessText, workScreens, workText } from "@/lib/work-text";
 import { fillWords } from "@/lib/admin-fill";
 
 /** A store's server action for the switch, already bound to its slug. */
@@ -39,7 +39,7 @@ function StoreCard({ row, action }: { row: OwnerSettingsRow; action: SwitchActio
             !owner
               ? tw.onlyAnOwnerOf
               : store.workOn
-                ? `${tw.onNote} ${switchOffNote({ issuedInvoices: row.issuedInvoices, runningTimers: row.runningTimers })}`
+                ? `${tw.onNote} ${switchOffNote({ issuedInvoices: row.issuedInvoices, runningTimers: row.runningTimers }, workScreens().workSwitchOff)}`
                 : tw.offNote
           }
         />
@@ -53,7 +53,7 @@ function StoreCard({ row, action }: { row: OwnerSettingsRow; action: SwitchActio
               <p className="font-medium">{tw.beforeTheFirstInvoice}</p>
               <ul className="list-disc pl-5">
                 {ready.map((problem) => (
-                  <li key={problem.code}>{problem.message}</li>
+                  <li key={problem.code}>{readinessText(problem)}</li>
                 ))}
               </ul>
             </>

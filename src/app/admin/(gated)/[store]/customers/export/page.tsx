@@ -5,13 +5,13 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { DataPageHead, DataSkeleton, Notice, ProblemAlert } from "@/components/admin/data/page-parts";
 import { ExportSection } from "@/components/admin/data/export-section";
 import { CustomerExportForm } from "@/components/admin/data/export-forms";
-import { NEVER_EMAILED_NOTE, NO_CONSENT_NOTE, PERSONAL_DATA_WARNING } from "@/lib/data-admin";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
-import { EXPORT_PROBLEM_TEXT, type ExportProblemCode } from "@/server/data-jobs";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { requireOwnerRole } from "@/server/permissions";
+import { exportProblemWords } from "@/lib/data-admin";
+import { EXPORT_KEEP_DAYS } from "@/lib/data-limits";
 
 export const metadata: Metadata = { title: "Export customers" };
 
@@ -31,6 +31,7 @@ export default async function CustomerExportPage({ params, searchParams }: Props
   const { store } = gated;
   const lang = adminLangOf(gated.account.adminLocale);
   const words = adminText(lang, "customers").export;
+  const notes = adminText(lang, "screens").exportNotes;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead
@@ -40,11 +41,11 @@ export default async function CustomerExportPage({ params, searchParams }: Props
         intro={fillWords(words.intro, { max: DIRECT_EXPORT_MAX_ROWS.toLocaleString(ADMIN_LANG_FACTS[lang].locale) })}
       />
       <Notice title={words.personal} tone="warning">
-        <p>{PERSONAL_DATA_WARNING}</p>
-        <p className="mt-1">{NEVER_EMAILED_NOTE}</p>
+        <p>{fillWords(notes.personalData, { days: EXPORT_KEEP_DAYS })}</p>
+        <p className="mt-1">{notes.neverEmailed}</p>
       </Notice>
       <Notice title={words.consent}>
-        <p>{NO_CONSENT_NOTE}</p>
+        <p>{notes.noConsent}</p>
         <p className="mt-1">
           {words.columns}
         </p>
@@ -60,7 +61,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const member = await requireOwnerRole(storeSlug);
   const query = await searchParams;
   const code = first(query.problem);
-  const problem = code && Object.hasOwn(EXPORT_PROBLEM_TEXT, code) ? EXPORT_PROBLEM_TEXT[code as ExportProblemCode] : code ? EXPORT_PROBLEM_TEXT.failed : null;
+  const exportLang = adminLangOf(member.account.adminLocale);
+  const problem = code ? exportProblemWords(code, adminText(exportLang, "screens").exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
   return (
     <>
       <ProblemAlert text={problem} />

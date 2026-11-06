@@ -163,4 +163,9 @@ export const shellNb: ShellMessages = {
     offlineBody: "Kaizena Flows administrasjon trenger tilkobling. Arbeidet ditt er lagret på serveren; last inn på nytt når du er tilkoblet igjen.",
     reload: "Last inn på nytt",
   },
+  notFound: {
+    title: "Denne siden finnes ikke",
+    text: "Den kan være flyttet eller slettet, eller det er en feil i adressen.",
+    home: "Gå til starten av adminpanelet",
+  },
 };

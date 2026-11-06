@@ -6,7 +6,7 @@
  */
 import { commonEn, type CommonMessages } from "./admin-messages/common.en";
 import { fillWords } from "./admin-fill";
-import { EXPORT_KEEP_DAYS } from "./data-limits";
+import { DATA_EXPORTS_ACTIVE_MAX, EXPORT_KEEP_DAYS, EXPORT_MAX_ROWS } from "./data-limits";
 import { isEnded, type JobKind, type JobPhase, type JobStatus } from "./data-job";
 
 /** Shown on the order and customer export pages: the file holds personal data (GDPR Art. 5(1)(c), (e), (f)). Needs a human read (section 8). */
@@ -70,6 +70,12 @@ export function momentText(iso: string | null | undefined, timeZone: string, loc
   } catch {
     return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(date);
   }
+}
+
+/** Why an export was not made, from its code (`ExportProblemCode` of `src/server/data-jobs.ts`), in the export notes' words (D312). */
+export function exportProblemWords(code: string, words: { problems: Record<string, string> }, locale = "en-GB"): string {
+  const template = words.problems[code] ?? words.problems.failed;
+  return fillWords(template, { max: EXPORT_MAX_ROWS.toLocaleString(locale), n: DATA_EXPORTS_ACTIVE_MAX });
 }
 
 /** The data jobs' words (`common.dataJobs`, D312): English unless a page hands in the admin's. */

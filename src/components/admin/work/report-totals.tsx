@@ -2,11 +2,12 @@ import { Stat, StatGrid } from "@/components/admin/overview-parts";
 import { formatMoney } from "@/lib/money";
 import { formatDuration } from "@/lib/work-time";
 import type { PeriodReport, ReportTotals } from "@/lib/work-reports";
-import { workText } from "@/lib/work-text";
+import { workScreens, workText } from "@/lib/work-text";
 import { fillWords } from "@/lib/admin-fill";
 
 function Figures({ total, locale, many }: { total: ReportTotals; locale: string; many: boolean }) {
   const tw = workText().reportTotals;
+  const sw = workScreens().workReport;
   const money = (minor: number) => formatMoney(minor, total.currency, locale);
   return (
     <div className="flex flex-col gap-2">
@@ -15,10 +16,10 @@ function Figures({ total, locale, many }: { total: ReportTotals; locale: string;
         <Stat
           label={tw.invoiced}
           value={money(total.netInvoicedMinor)}
-          sub={total.creditedMinor > 0 ? `without VAT, after ${money(total.creditedMinor)} credited` : "without VAT"}
+          sub={total.creditedMinor > 0 ? fillWords(sw.withoutVatCredited, { amount: money(total.creditedMinor) }) : sw.withoutVat}
         />
-        <Stat label={tw.paid} value={money(total.paidMinor)} sub="on those invoices, with VAT" />
-        <Stat label={tw.outstanding} value={money(total.outstandingMinor)} sub="still owed on them, with VAT" />
+        <Stat label={tw.paid} value={money(total.paidMinor)} sub={sw.paidSub} />
+        <Stat label={tw.outstanding} value={money(total.outstandingMinor)} sub={sw.owedSub} />
         <Stat
           label={tw.unbilledTime}
           value={money(total.unbilledMinor)}

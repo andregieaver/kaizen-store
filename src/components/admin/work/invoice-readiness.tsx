@@ -1,10 +1,11 @@
 import Link from "next/link";
 
 import type { InvoiceReadiness } from "@/server/work-invoices";
+import { countWords } from "@/lib/admin-fill";
 import { problemHref } from "@/lib/work-invoice-ui";
 
 import { Badge } from "./work-parts";
-import { workText } from "@/lib/work-text";
+import { readinessText, workText } from "@/lib/work-text";
 
 /**
  * What is missing before the draft can be issued, as the owner reads it (docs/work.md 4.5 6): each problem in words,
@@ -30,7 +31,7 @@ export function ReadinessList({
       <p role="status" className="text-sm font-medium">
         {readiness.ready
           ? tw.readyToIssue
-          : `${errors.length} ${errors.length === 1 ? "thing" : "things"} to fix before you can issue this invoice.`}
+          : countWords(errors.length, tw.toFix)}
       </p>
       {readiness.problems.length > 0 && (
         <ul className="flex flex-col gap-2">
@@ -43,12 +44,12 @@ export function ReadinessList({
               >
                 <span className="flex flex-wrap items-center gap-2">
                   <Badge tone={problem.severity === "error" ? "bad" : "warn"}>
-                    {problem.severity === "error" ? "Fix" : "Check"}
+                    {problem.severity === "error" ? tw.fix : tw.check}
                   </Badge>
-                  <span>{problem.message}</span>
+                  <span>{readinessText(problem)}</span>
                 </span>
                 <Link href={fix.href} className="self-start text-sm underline">
-                  {fix.label}
+                  {tw.open[problem.where]}
                 </Link>
               </li>
             );

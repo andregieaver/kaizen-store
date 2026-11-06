@@ -13,7 +13,7 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { CurrencyNote, StoreTag } from "./owner-common";
 import { NewInStoreButton } from "./owner-parts";
-import { workText } from "@/lib/work-text";
+import { readinessText, workText } from "@/lib/work-text";
 import { fillWords } from "@/lib/admin-fill";
 
 const table = "w-full text-sm";
@@ -102,7 +102,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
                 <p className="font-medium">{store.name}</p>
                 <ul className="mb-1 list-disc pl-5">
                   {problems.map((problem) => (
-                    <li key={problem.code}>{problem.message}</li>
+                    <li key={problem.code}>{readinessText(problem)}</li>
                   ))}
                 </ul>
                 <Link href={`${workBase(store.slug)}/settings`} className="underline">

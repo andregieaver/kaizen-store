@@ -33,9 +33,10 @@ export default async function KaizenTemplatePreviewPage({
   const { preview } = result;
   const chrome = await getPlatformChrome();
   const tw = adminText(adminLangOf(account.adminLocale), "builder").templates;
+  const pw = adminText(adminLangOf(account.adminLocale), "screens").templatePreview;
   const what =
     preview.kind === "page" && preview.pageType
-      ? fillWords(tw.kindFor, { kind: tw.kinds.page.one, types: tw.layoutTypes[preview.pageType].many })
+      ? fillWords(pw.kindFor, { kind: tw.kinds.page.one, types: tw.layoutTypes[preview.pageType].many })
       : tw.kinds[preview.kind].one;
   const content = { ...newPageContent(), title: preview.name, rows: preview.rows, css: preview.css };
   const place = { pageId: preview.id, owner: null };
@@ -46,8 +47,8 @@ export default async function KaizenTemplatePreviewPage({
         role="status"
         className="sticky top-0 z-50 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 bg-foreground px-4 py-2 text-xs text-background"
       >
-        <span className="font-medium">{tw.previewBar}</span>
-        <span>{fillWords(tw.previewLine, { name: preview.name, what, publisher: preview.publisher })}</span>
+        <span className="font-medium">{pw.previewBar}</span>
+        <span>{fillWords(pw.previewLine, { name: preview.name, what, publisher: preview.publisher })}</span>
       </p>
       {/* Nothing in the template can be clicked, focused or submitted. */}
       <div inert className="pointer-events-none min-w-0 flex-1 select-none">

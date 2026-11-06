@@ -1041,13 +1041,6 @@ export const bookingsNb: BookingsMessages = {
     later: "Senere produkter",
     pageOf: "Side {page} av {pages}",
   },
-  appearance: {
-    title: "Utseende",
-    forYou: "Hvordan adminpanelet ser ut for deg",
-    storesKeep: "Butikkene dine beholder fargene som er satt under Design",
-    every: "Alle fargeskjemaer",
-    everyText: "Hvert fargeskjema i lyst og i mørkt, med adminpanelets knapper, etiketter, kort, tall, stolper og lister. Navnene og tallene i dem er eksempler.",
-  },
   lookFields: {
     colours: "Farger",
     choices: { system: "Som på denne enheten", light: "Lyst", dark: "Mørkt" },

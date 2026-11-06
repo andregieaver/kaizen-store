@@ -17,7 +17,7 @@ export default async function CreditNotePrintPage({ params, searchParams }: Page
   const { store } = await requirePermission(slug, "orders:read");
   // The print button's words are Work's (`DocumentPage`), in the account's language once `workWords()` has set it.
   const { lang } = await workWords();
-  const w = adminText(lang, "invoices").print;
+  const w = adminText(lang, "screens").invoicePrint;
   if (!z.uuid().safeParse(creditNoteId).success) notFound();
   const doc = await getCreditNote(store.id, creditNoteId);
   if (!doc) notFound();

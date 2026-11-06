@@ -27,7 +27,7 @@ export default async function OwnerBillingPage() {
   await connection();
   const account = await requireAccount();
   const b = adminText(adminLangOf(account.adminLocale), "billing");
-  const w = b.owner;
+  const w = adminText(adminLangOf(account.adminLocale), "screens").ownerBilling;
   const per = (price: NonNullable<StoreBilling["price"]>) =>
     fillWords(w.per, { price: money(price.amountMinor, price.currency), interval: b.intervals[price.interval as keyof typeof b.intervals] ?? price.interval });
   const owned = await ownedStores(account.id);

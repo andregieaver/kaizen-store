@@ -18,6 +18,18 @@ export function workText() {
   return adminText(current().lang, "work");
 }
 
+/** The server-only words of Work's screens (`screens`, D312), in the request's language. */
+export function workScreens() {
+  return adminText(current().lang, "screens");
+}
+
+/** A Work invoice's readiness problem in the request's language (D312), by its code; the server's own English in English, or when the code has no words. */
+export function readinessText(problem: { code: string; message: string; values?: Record<string, string> }): string {
+  if (current().lang === "en") return problem.message;
+  const template = (workText().readinessProblems as Record<string, string | undefined>)[problem.code];
+  return template ? template.replace(/\{(\w+)\}/g, (whole, name: string) => problem.values?.[name] ?? whole) : problem.message;
+}
+
 export function workLocale(): string {
   return ADMIN_LANG_FACTS[current().lang].locale;
 }

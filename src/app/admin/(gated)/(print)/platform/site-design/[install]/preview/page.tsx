@@ -33,7 +33,7 @@ export const metadata: Metadata = { title: "Theme preview", robots: { index: fal
 export default async function PlatformThemePreviewPage({ params, searchParams }: PageProps<"/admin/platform/site-design/[install]/preview">) {
   await connection();
   const account = await requirePlatformAdmin();
-  const w = adminText(adminLangOf(account.adminLocale), "platformSite").themePreview;
+  const w = adminText(adminLangOf(account.adminLocale), "screens").themePreview;
   const { install: installId } = await params;
   const query = await searchParams;
   const [preview, base, roles] = await Promise.all([platformInstallPreview(installId), getPlatformChrome(), getPlatformPageRoles()]);

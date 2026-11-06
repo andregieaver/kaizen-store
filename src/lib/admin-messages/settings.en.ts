@@ -882,15 +882,6 @@ export const settingsEn = {
       no_border: "Goods sent to this country cross no customs border, so there is nothing to collect.",
     },
   },
-  /** What a store whose online shop is off says while orders can still be withdrawn from or returned (D178). */
-  afterSale: {
-    withdrawable: { one: "{n} order can still be withdrawn from or returned", many: "{n} orders can still be withdrawn from or returned" },
-    openReturns: { one: "{n} return is still open", many: "{n} returns are still open" },
-    and: ", and ",
-    note: "The online shop is off. {parts}, so Orders and Returns stay here until they are done, and the storefront keeps its withdrawal link.",
-    orders: "Orders",
-    returns: "Returns",
-  },
 };
 
 export type SettingsMessages = Widen<typeof settingsEn>;

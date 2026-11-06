@@ -8,7 +8,7 @@ import { formatDuration } from "@/lib/work-time";
 import type { CurrencyFigures, WorkOverview } from "@/lib/work-overview";
 import type { ReadinessProblem } from "@/lib/work-vat";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
-import { workText } from "@/lib/work-text";
+import { readinessText, workText } from "@/lib/work-text";
 import { fillWords } from "@/lib/admin-fill";
 
 /** What the overview shows, from the reader's rows and the names to put on them (`getWorkOverview`). */
@@ -97,7 +97,7 @@ export function OverviewBody(props: OverviewProps) {
           </h2>
           <ul className="mb-2 list-disc pl-5">
             {props.missing.map((problem) => (
-              <li key={problem.code}>{problem.message}</li>
+              <li key={problem.code}>{readinessText(problem)}</li>
             ))}
           </ul>
           <Link href={props.settingsHref} className="underline">

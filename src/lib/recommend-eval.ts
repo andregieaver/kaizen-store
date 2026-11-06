@@ -79,14 +79,21 @@ export function compareArms(ai: ArmShares, plain: ArmShares): { clicked: Compari
   return { clicked, added, words: verdictWords(clicked, added) };
 }
 
+/** The words of `verdictWords()` (`bookings.recommendVerdicts`, D312): English unless a page hands in the admin's. */
+export type VerdictWords = { tooFew: string; none: string; plain: string; ai: string };
+const VERDICT_WORDS: VerdictWords = {
+  tooFew: "Too few visitors to say yet: wait for at least {n} in each ranking (the plain ranking's share is the smaller one, so raise it if this takes too long).",
+  none: "No clear difference between the AI's order and the plain one yet. Keep it running, or switch the AI off to save its tokens if it stays that way.",
+  plain: "The plain ranking is doing better than the AI's order on this measure: consider switching the AI off for recommendations.",
+  ai: "The AI's order is doing clearly better than the plain ranking on this measure: keep it on.",
+};
+
 /** What the two comparisons add up to, in plain words, with what to do next. */
-export function verdictWords(clicked: Comparison, added: Comparison): string {
-  if (clicked.verdict === "too_few" || added.verdict === "too_few") {
-    return `Too few visitors to say yet: wait for at least ${MIN_PER_ARM} in each ranking (the plain ranking's share is the smaller one, so raise it if this takes too long).`;
-  }
+export function verdictWords(clicked: Comparison, added: Comparison, w: VerdictWords = VERDICT_WORDS): string {
+  if (clicked.verdict === "too_few" || added.verdict === "too_few") return w.tooFew.replace("{n}", String(MIN_PER_ARM));
   const side = (c: Comparison) => (c.verdict === "a_better" ? "ai" : c.verdict === "b_better" ? "plain" : "none");
   const [x, y] = [side(clicked), side(added)];
-  if (x === "none" && y === "none") return "No clear difference between the AI's order and the plain one yet. Keep it running, or switch the AI off to save its tokens if it stays that way.";
-  if (x === "plain" || y === "plain") return "The plain ranking is doing better than the AI's order on this measure: consider switching the AI off for recommendations.";
-  return "The AI's order is doing clearly better than the plain ranking on this measure: keep it on.";
+  if (x === "none" && y === "none") return w.none;
+  if (x === "plain" || y === "plain") return w.plain;
+  return w.ai;
 }

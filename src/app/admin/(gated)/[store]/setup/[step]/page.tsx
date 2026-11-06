@@ -170,9 +170,14 @@ async function FeaturesStep({ member, answered, w }: { member: Membership; answe
   const [facts, starter] = await Promise.all([featureFacts(store.id), starterTitleOf(store)]);
   // What switching off a feature that is on now would mean, for the form's tick (the Features page's confirmation, D178).
   const locale = store.markets[0]?.locale ?? "en";
+  const lang = adminLangOf(member.account.adminLocale);
+  const featureWords = { s: adminText(lang, "settings").features, c: adminText(lang, "common").features };
+  // The line that says which features stop with it is left out: the question asks about each of them on its own.
+  const asleep = featureWords.s.warnings.asleep;
+  const sleeping = (line: string) => [asleep.one, asleep.many].some((template) => line.endsWith(template.split("{labels}")[1] ?? template));
   const warnings: QuestionWarning[] = QUESTION_FEATURES.filter((id) => featureOn(store, id)).flatMap((id) => {
-    const lines = featureWarnings(id, facts, store, moneyIn(locale)).filter((line) => !line.includes("so it stops too") && !line.includes("so they stop too"));
-    return lines.length > 0 ? [{ label: FEATURES_BY_ID[id].label, lines }] : [];
+    const lines = featureWarnings(id, facts, store, moneyIn(locale), featureWords).filter((line) => !sleeping(line));
+    return lines.length > 0 ? [{ label: featureWords.c.labels[id] ?? FEATURES_BY_ID[id].label, lines }] : [];
   });
   return (
     <FeatureQuestion
@@ -329,7 +334,7 @@ async function ProductsStep({ member, progress, w }: { member: Membership; progr
                   ? w.products.draft
                   : kindOffered(store, product.kind)
                     ? w.products.published
-                    : fillWords(w.products.notShown, { feature: FEATURES_BY_ID[kindFeature(product.kind)!].label })}
+                    : fillWords(w.products.notShown, { feature: adminText(adminLangOf(member.account.adminLocale), "common").features.labels[kindFeature(product.kind)!] ?? FEATURES_BY_ID[kindFeature(product.kind)!].label })}
               </span>
             </li>
           ))}

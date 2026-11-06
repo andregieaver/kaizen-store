@@ -874,12 +874,4 @@ export const settingsNb: SettingsMessages = {
       no_border: "Varer som sendes til dette landet, krysser ingen tollgrense, så det er ikke noe å kreve inn.",
     },
   },
-  afterSale: {
-    withdrawable: { one: "{n} bestilling kan fortsatt angres eller returneres", many: "{n} bestillinger kan fortsatt angres eller returneres" },
-    openReturns: { one: "{n} retur er fortsatt åpen", many: "{n} returer er fortsatt åpne" },
-    and: ", og ",
-    note: "Nettbutikken er slått av. {parts}, så Bestillinger og Returer blir her til de er ferdige, og nettbutikken beholder lenken for å angre.",
-    orders: "Bestillinger",
-    returns: "Returer",
-  },
 };

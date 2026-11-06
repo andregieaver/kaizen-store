@@ -260,8 +260,10 @@ export type ReadinessProblem = {
   severity: "error" | "warning";
   /** Where to fix it: the store's Company page, Work settings, the client, or the invoice. */
   where: "company" | "settings" | "client" | "invoice";
-  /** The owner's words: English, like the rest of the admin. */
+  /** The owner's words in English; a page says it in the admin's language by its code (`readinessText()`, D312). */
   message: string;
+  /** What the words fill in, for a message that names something (`vat_home_amount`: the currency). */
+  values?: Record<string, string>;
 };
 
 export type ReadinessInput = {
@@ -292,7 +294,8 @@ export function workInvoiceReadiness(input: ReadinessInput): { ready: boolean; p
     severity: ReadinessProblem["severity"],
     where: ReadinessProblem["where"],
     message: string,
-  ) => problems.push({ code, severity, where, message });
+    values?: Record<string, string>,
+  ) => problems.push(values ? { code, severity, where, message, values } : { code, severity, where, message });
 
   if (blank(seller.legalName))
     add("seller_legal_name", "error", "company", "Add your business's legal name on the Company page.");
@@ -426,7 +429,7 @@ export function workInvoiceReadiness(input: ReadinessInput): { ready: boolean; p
         "vat_home_amount",
         "error",
         "invoice",
-        `The VAT must also be stated in ${input.sellerHomeCurrency}: set the exchange rate for the issue date.`,
+        `The VAT must also be stated in ${input.sellerHomeCurrency}: set the exchange rate for the issue date.`, { currency: String(input.sellerHomeCurrency) },
       );
     }
   }

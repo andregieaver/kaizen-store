@@ -972,9 +972,4 @@ export const websiteNb: WebsiteMessages = {
     stagedMenuNote: "Du redigerer en klargjort endring: den lagres når klargjøringssettet publiseres, ikke nå.",
     backToStaging: "Tilbake til klargjøring",
   },
-  layoutPreview: {
-    noProduct: "Legg til et produkt med pris for å se oppsettet med det.",
-    shownWith: "Vist med",
-    show: "Vis",
-  },
 };

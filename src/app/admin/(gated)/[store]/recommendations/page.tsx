@@ -17,6 +17,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 
 import { addRuleAction, removeRuleAction, saveRecommendSettingsAction } from "./actions";
+import { verdictWords } from "@/lib/recommend-eval";
 
 export const metadata: Metadata = { title: "Recommendations" };
 
@@ -257,7 +258,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         </div>
         <p className="rounded-panel border border-line bg-card p-4 text-sm" role="status">
           <strong className="font-medium">{w.against} </strong>
-          {report.comparison.words}
+          {verdictWords(report.comparison.clicked, report.comparison.added, adminText(lang, "screens").recommendVerdicts)}
           {report.comparison.clicked.p !== null && (
             <span className="block text-xs text-muted">
               {fillWords(w.tabsClicked, { a: report.comparison.clicked.a ?? "", b: report.comparison.clicked.b ?? "", p: report.comparison.clicked.p })}

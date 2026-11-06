@@ -10,9 +10,9 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { DIRECT_EXPORT_MAX_ROWS } from "@/lib/data-limits";
-import { EXPORT_PROBLEM_TEXT, type ExportProblemCode } from "@/server/data-jobs";
 import { requirePermission } from "@/server/permissions";
 import { listTerms } from "@/server/taxonomy";
+import { exportProblemWords } from "@/lib/data-admin";
 
 export const metadata: Metadata = { title: "Export products" };
 
@@ -51,7 +51,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const member = await requirePermission(storeSlug, "products:read");
   const query = await searchParams;
   const code = first(query.problem);
-  const problem = code && Object.hasOwn(EXPORT_PROBLEM_TEXT, code) ? EXPORT_PROBLEM_TEXT[code as ExportProblemCode] : code ? EXPORT_PROBLEM_TEXT.failed : null;
+  const exportLang = adminLangOf(member.account.adminLocale);
+  const problem = code ? exportProblemWords(code, adminText(exportLang, "screens").exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
   const terms = await listTerms({ storeId: member.store.id, contentType: "product" });
   const w = adminText(adminLangOf(member.account.adminLocale), "products").exportPage;
   return (

@@ -29,7 +29,7 @@ export async function PagePlaceForm({
   start: Action;
 }) {
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
-  const w = adminText(await requestAdminLang(), "platformSite").pagePlace;
+  const w = adminText(await requestAdminLang(), "screens").pagePlace;
   return (
     <Card title={name} description={hint} level={3} className="flex flex-col gap-3" compact>
       <ActionForm action={choose as never} className="flex flex-wrap items-end gap-3">

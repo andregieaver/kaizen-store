@@ -1041,14 +1041,6 @@ export const bookingsEn = {
     later: "Later products",
     pageOf: "Page {page} of {pages}",
   },
-  /** Your account's Appearance page (D99, D221, D222). */
-  appearance: {
-    title: "Appearance",
-    forYou: "How the admin looks for you",
-    storesKeep: "Your stores keep the colours set under Design",
-    every: "Every scheme",
-    everyText: "Each scheme in light and in dark, with the admin's buttons, labels, cards, figures, bars and lists. The names and figures in them are examples.",
-  },
   /** The light-or-dark and colour scheme fields (D99, D222), on Your account and Appearance. */
   lookFields: {
     colours: "Colours",

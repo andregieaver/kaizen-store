@@ -235,7 +235,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     .filter((l) => l.variantId && l.delivery === "physical" && l.restockable > 0)
     .map((l) => {
       const history = stockByVariant.get(l.variantId!);
-      return { id: l.id, title: l.title, left: l.restockable, putBack: putBackWords(history?.taken ?? [], history?.returned ?? [], stockLocations) };
+      return { id: l.id, title: l.title, left: l.restockable, putBack: putBackWords(history?.taken ?? [], history?.returned ?? [], stockLocations, adminText(lang, "screens").putBack) };
     });
   // Units sold on backorder on a paid order that is not sent: the order waits for stock (wave 3, D172).
   const owedUnits = order.status === "paid" ? order.lines.reduce((sum, l) => sum + (l.backorder?.units ?? 0), 0) : 0;
@@ -785,6 +785,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           <DocumentsCard
             words={adminText(lang, "invoices")}
+            reasons={adminText(lang, "screens").invoiceReasons}
             base={`/admin/${store.slug}`}
             documents={documents}
             canWrite={memberCan(member, "orders:write")}

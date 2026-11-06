@@ -173,6 +173,12 @@ export const shellEn = {
     offlineBody: "Kaizena Flow's admin needs a connection. Your work is kept on the server; reload when you are back online.",
     reload: "Reload",
   },
+  /** The admin's own page for an address that leads nowhere (D312). */
+  notFound: {
+    title: "This page could not be found",
+    text: "It may have been moved or deleted, or the address has a mistake in it.",
+    home: "Go to the start of the admin",
+  },
 };
 
 export type ShellMessages = Widen<typeof shellEn>;

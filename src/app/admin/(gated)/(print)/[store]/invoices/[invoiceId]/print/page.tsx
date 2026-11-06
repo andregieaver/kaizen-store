@@ -22,7 +22,7 @@ export default async function InvoicePrintPage({ params, searchParams }: PagePro
   const { store } = await requirePermission(slug, "orders:read");
   // The print button's words are Work's (`DocumentPage`), in the account's language once `workWords()` has set it.
   const { lang } = await workWords();
-  const w = adminText(lang, "invoices").print;
+  const w = adminText(lang, "screens").invoicePrint;
   if (!z.uuid().safeParse(invoiceId).success) notFound();
   const doc = await getInvoice(store.id, invoiceId);
   if (!doc) notFound();

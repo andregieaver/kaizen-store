@@ -119,7 +119,7 @@ export const fikenNb: FikenMessages = {
   syncFrom: "Første dag å sende",
   syncFromHint: "Fakturaer og kreditnotaer utstedt fra denne dagen går til Fiken. En tidligere dag sender eldre også.",
   sources: "Hva som sendes",
-  sourceWork: "Works fakturaer og kreditnotaer",
+  sourceWork: "Fakturaer og kreditnotaer i Arbeid",
   sourceShop: "Nettbutikkens fakturaer og kreditnotaer",
   language: "Språk på tekstene i Fiken",
   languages: { nb: "Norsk", en: "Engelsk" },

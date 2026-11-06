@@ -11,8 +11,8 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { redirectPaths } from "@/lib/redirect-admin";
-import { EXPORT_PROBLEM_TEXT, type ExportProblemCode } from "@/server/data-jobs";
 import { requirePermission } from "@/server/permissions";
+import { exportProblemWords } from "@/lib/data-admin";
 
 export const metadata: Metadata = { title: "Export redirects" };
 
@@ -50,7 +50,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
   const w = adminText(adminLangOf(member.account.adminLocale), "redirects").export;
   const query = await searchParams;
   const code = first(query.problem);
-  const problem = code && Object.hasOwn(EXPORT_PROBLEM_TEXT, code) ? EXPORT_PROBLEM_TEXT[code as ExportProblemCode] : code ? EXPORT_PROBLEM_TEXT.failed : null;
+  const exportLang = adminLangOf(member.account.adminLocale);
+  const problem = code ? exportProblemWords(code, adminText(exportLang, "screens").exportNotes, ADMIN_LANG_FACTS[exportLang].locale) : null;
   return (
     <>
       <ProblemAlert text={problem} />

@@ -113,7 +113,7 @@ async function LayoutPreview({
   const products = market ? await listProducts(store.id, market) : [];
   const chosen = products.find((p) => p.handle === asked) ?? products[0];
   const product = chosen && market ? await getProduct(store.id, market, chosen.handle) : null;
-  const w = adminText(await requestAdminLang(), "website").layoutPreview;
+  const w = adminText(await requestAdminLang(), "screens").layoutPreview;
   if (!market || !product) return <p className="text-sm text-muted">{w.noProduct}</p>;
   return (
     <>

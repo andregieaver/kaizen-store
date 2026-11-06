@@ -10,6 +10,7 @@ import type { DocumentLink, OrderDocuments } from "@/server/invoices";
 import { Card } from "@/components/admin/ui";
 
 import { SendAgainForm } from "./waiting-actions";
+import { screensEn, type ScreensMessages } from "@/lib/admin-messages/screens.en";
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
@@ -25,6 +26,7 @@ export function DocumentsCard({
   sendAgain,
   locale = "en-GB",
   words: w = invoicesEn,
+  reasons = screensEn.invoiceReasons,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -36,6 +38,8 @@ export function DocumentsCard({
   locale?: string;
   /** The reader's words (D312 A4); English unless given. */
   words?: InvoicesMessages;
+  /** Why there is no invoice yet, in the reader's words (`screens.invoiceReasons`); English unless given. */
+  reasons?: ScreensMessages["invoiceReasons"];
 }) {
   const c = w.card;
   const { invoice, creditNotes } = documents;
@@ -55,7 +59,7 @@ export function DocumentsCard({
           {documents.waiting ? (
             <>
               <p className="font-medium">{fillWords(c.waiting, { reason: w.labels.waiting[documents.waiting].toLocaleLowerCase(w.labels.countryLanguage) })}</p>
-              <p className="text-muted">{documents.staffNote}</p>
+              <p className="text-muted">{reasons.waiting[documents.waiting] ?? documents.staffNote}</p>
               <p className="flex flex-wrap gap-x-4 gap-y-1">
                 {WAITING_WORDS[documents.waiting].fixAt && (
                   <Link href={`${base}${WAITING_WORDS[documents.waiting].fixAt}`} className="underline">
@@ -68,7 +72,7 @@ export function DocumentsCard({
               </p>
             </>
           ) : (
-            <p className="text-muted">{documents.staffNote ?? c.none}</p>
+            <p className="text-muted">{documents.staffNote === null ? c.none : (reasons.eligibility[documents.eligibility] ?? documents.staffNote)}</p>
           )}
         </div>
       )}

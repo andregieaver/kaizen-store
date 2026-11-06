@@ -230,12 +230,4 @@ export const invoicesNb: InvoicesMessages = {
     savedOff: "Lagret. Nye bestillinger får ingen faktura.",
     saved: "Lagret.",
   },
-  print: {
-    invoiceGone: "Denne fakturaen er anonymisert",
-    invoiceGoneText: "Oppbevaringstiden er ute, så kjøperens opplysninger er fjernet fra fakturaen. Nummeret, datoen og beløpene er tatt vare på.",
-    backInvoices: "Tilbake til fakturaene",
-    creditNoteGone: "Denne kreditnotaen er anonymisert",
-    creditNoteGoneText: "Oppbevaringstiden er ute, så kjøperens opplysninger er fjernet fra kreditnotaen. Nummeret, datoen og beløpene er tatt vare på.",
-    backCreditNotes: "Tilbake til kreditnotaene",
-  },
 };

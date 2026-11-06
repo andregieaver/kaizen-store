@@ -944,7 +944,7 @@ export const platformNb: PlatformMessages = {
         "Fakturaer og nummereringen av dem",
         "Fakturering og planen: den nye butikken velger sin egen",
         "Teammedlemmer: du er eier av den nye butikken",
-        "Work-data: kunder, oppdrag, timer og fakturaer",
+        "Data i Arbeid: kunder, oppdrag, timer og fakturaer",
         "Logger og samtykker til informasjonskapsler",
         "Kundenes abonnementer og lister for abonnementsbokser, så ingen faktureres eller får levert to ganger",
       ],
@@ -1007,12 +1007,5 @@ export const platformNb: PlatformMessages = {
         and: "og",
       },
     },
-  },
-  copyPage: {
-    back: "Butikkene dine",
-    title: "Dupliser {name}",
-    titleAny: "Dupliser en butikk",
-    description: "Lag en ny butikk fra denne. Velg hva som skal være med; den nye butikken starter stengt, og du er eieren.",
-    limit: "Du kan eie opptil {max} butikker. Kontakt Kaizena Flow for flere.",
   },
 };

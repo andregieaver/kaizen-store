@@ -22,7 +22,7 @@ export default async function AppearancePage() {
   const account = await requireAccount();
   const words = adminText(adminLangOf(account.adminLocale), "bookings");
   const previewWords = words.schemePreview;
-  const w = words.appearance;
+  const w = adminText(adminLangOf(account.adminLocale), "screens").appearance;
   const schemes = offeredSchemes();
   return (
     <div className="flex flex-col gap-10">

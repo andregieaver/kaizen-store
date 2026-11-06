@@ -13,6 +13,7 @@ import {
   type ReportRow,
   type ReportTotals,
 } from "./work-reports";
+import { countWords, fillWords } from "./admin-fill";
 
 /**
  * Work at the store owner's level (D123, docs/work.md): one place for the clients, hours and invoices of every
@@ -444,12 +445,19 @@ export const ownerReportFileName = (report: Pick<OwnerReport, "from" | "to" | "b
 // --- Settings ----------------------------------------------------------------------------------------------
 
 /** What the settings page says about turning Work off: it hides, and nothing is lost. */
-export function switchOffNote(counts: { issuedInvoices: number; runningTimers: number }): string {
+export type SwitchOffWords = { note: string; keeps: string; invoices: { one: string; many: string }; timers: { one: string; many: string }; and: string };
+const SWITCH_OFF: SwitchOffWords = {
+  note: "Turning Work off hides it here and in the store. Everything you saved is kept, and turning it on again brings it back.{keeps}",
+  keeps: " It has {parts}.",
+  invoices: { one: "{n} issued invoice", many: "{n} issued invoices" },
+  timers: { one: "{n} running timer", many: "{n} running timers" },
+  and: " and ",
+};
+
+export function switchOffNote(counts: { issuedInvoices: number; runningTimers: number }, w: SwitchOffWords = SWITCH_OFF): string {
   const parts: string[] = [];
-  if (counts.issuedInvoices > 0)
-    parts.push(`${counts.issuedInvoices} issued ${counts.issuedInvoices === 1 ? "invoice" : "invoices"}`);
-  if (counts.runningTimers > 0)
-    parts.push(`${counts.runningTimers} running ${counts.runningTimers === 1 ? "timer" : "timers"}`);
-  const keeps = parts.length ? ` It has ${parts.join(" and ")}.` : "";
-  return `Turning Work off hides it here and in the store. Everything you saved is kept, and turning it on again brings it back.${keeps}`;
+  if (counts.issuedInvoices > 0) parts.push(countWords(counts.issuedInvoices, w.invoices));
+  if (counts.runningTimers > 0) parts.push(countWords(counts.runningTimers, w.timers));
+  const keeps = parts.length ? fillWords(w.keeps, { parts: parts.join(w.and) }) : "";
+  return fillWords(w.note, { keeps });
 }

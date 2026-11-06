@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { CARD_CLASS } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { productsEn, type ProductsMessages } from "@/lib/admin-messages/products.en";
+import { screensEn, type ScreensMessages } from "@/lib/admin-messages/screens.en";
 
 /**
  * The products page's part of the unit price (D160, `docs/wave-1d-unit-price.md` 2.2): a notice with the count of active products
@@ -20,9 +20,9 @@ export type NeedsContent = {
   skus: string[];
 };
 
-/** The words of these parts (`products.unitGaps`, D312): English unless the page hands in the admin's. */
-type GapWords = ProductsMessages["unitGaps"];
-const GAP_WORDS: GapWords = productsEn.unitGaps;
+/** The words of these parts (`screens.unitGaps`, D312): English unless the page hands in the admin's. */
+type GapWords = ScreensMessages["unitGaps"];
+const GAP_WORDS: GapWords = screensEn.unitGaps;
 
 export const needsReasonWords = (reason: NeedsContent["reason"], words: GapWords = GAP_WORDS): string =>
   reason.kind === "flag" ? words.byMeasure : fillWords(words.category, { category: reason.category });

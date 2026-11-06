@@ -16,6 +16,7 @@ import {
   type AdjustReason,
   type StockPolicy,
 } from "./inventory";
+import { fillWords } from "./admin-fill";
 
 // ---------------------------------------------------------------------------
 // Tabs and addresses
@@ -321,7 +322,18 @@ export function takenFromWords(taken: readonly StockPart[], locations: readonly 
  * already went back there; a location that is no longer active gives its units to the first active one. With nothing recorded the first active location
  * takes them. `locations` are in rank order. The server's `restockPlan()` decides; this only tells what it will do.
  */
-export function putBackWords(taken: readonly StockPart[], returned: readonly StockPart[], locations: readonly NamedLocation[]): string {
+/** The words of `putBackWords()` (`order.putBack`, D312): English unless a page hands in the admin's. */
+export type PutBackWords = { noRecord: string; allBack: string; movedOne: string; movedMany: string; and: string; back: string };
+const PUT_BACK: PutBackWords = {
+  noRecord: "No record of where these were taken from: they go back to {location}.",
+  allBack: "Everything taken has already gone back: any more goes to {location}.",
+  movedOne: "Taken from {parts}. {moved} is not active, so those units go back to {location}.",
+  movedMany: "Taken from {parts}. {moved} are not active, so those units go back to {location}.",
+  and: " and ",
+  back: "They go back where they were taken from: {parts}.",
+};
+
+export function putBackWords(taken: readonly StockPart[], returned: readonly StockPart[], locations: readonly NamedLocation[], w: PutBackWords = PUT_BACK): string {
   const firstActive = locations.find((l) => l.active);
   if (!firstActive) return "";
   const left = new Map<string, number>();
@@ -330,13 +342,13 @@ export function putBackWords(taken: readonly StockPart[], returned: readonly Sto
   // In the order the locations are ranked, not the order the movements were read in.
   const rank = new Map(locations.map((l, i) => [l.id, i]));
   const parts = [...left.entries()].filter(([, n]) => n > 0).sort((a, b) => (rank.get(a[0]) ?? 1e9) - (rank.get(b[0]) ?? 1e9));
-  if (taken.length === 0) return `No record of where these were taken from: they go back to ${firstActive.name}.`;
-  if (parts.length === 0) return `Everything taken has already gone back: any more goes to ${firstActive.name}.`;
+  if (taken.length === 0) return fillWords(w.noRecord, { location: firstActive.name });
+  if (parts.length === 0) return fillWords(w.allBack, { location: firstActive.name });
   const words = parts.map(([id, n]) => `${nameOf(locations, id)} ${n}`).join(", ");
   const moved = parts.filter(([id]) => !locations.find((l) => l.id === id)?.active).map(([id]) => nameOf(locations, id));
   return moved.length > 0
-    ? `Taken from ${words}. ${moved.join(" and ")} ${moved.length === 1 ? "is" : "are"} not active, so those units go back to ${firstActive.name}.`
-    : `They go back where they were taken from: ${words}.`;
+    ? fillWords(moved.length === 1 ? w.movedOne : w.movedMany, { parts: words, moved: moved.join(w.and), location: firstActive.name })
+    : fillWords(w.back, { parts: words });
 }
 
 /** The id typed in a refund form's "Put back at" select; empty for "where it was taken from", else a UUID (the server checks it is an active location of the store). */
