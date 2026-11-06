@@ -106,7 +106,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
                 initial={{ title: seo.title[market.locale] ?? "", description: seo.description[market.locale] ?? "" }}
                 fallback={{ title: store.name, description: t(market.lang).storeSummary(store.name, market.name) }}
                 url={marketUrl(store.slug, market.slug)}
-                words={adminText(lang, "product").seo}
+                words={adminText(lang, "common").snippet}
               />
             </fieldset>
           ))}

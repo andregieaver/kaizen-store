@@ -309,6 +309,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         restore={restoreDesignForStoreAction.bind(null, store.slug)}
         canChange={store.status === "active"}
         closedNote={w.closedNote}
+        lang={lang}
       />
 
       {/* The page migration of docs/theme-store.md 4.4 (D241): a dry run only in phase 1. */}

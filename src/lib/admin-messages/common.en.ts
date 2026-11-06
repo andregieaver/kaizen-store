@@ -172,6 +172,14 @@ export const commonEn = {
     culture_events: { label: "Culture and events", hint: "Admission to cultural events, cinemas and attractions, where the country has a reduced rate." },
     children_goods: { label: "Children's goods", hint: "Children's clothing, footwear and car seats, where the country has a reduced rate." },
   } as Record<string, { label: string; hint: string }>,
+  /** The search snippet fields (`SearchSnippetFields`): a product, a page, a category, the store's and Kaizena Flow's front page. */
+  snippet: {
+    count: "{length} of about {advice} characters",
+    cut: ": search engines may cut the end",
+    title: "Title in search results",
+    description: "Description in search results",
+    preview: "Preview in search results",
+  },
 };
 
 export type Widen<T> = T extends (...args: infer A) => infer R ? (...args: A) => R : T extends object ? { [K in keyof T]: Widen<T[K]> } : string;

@@ -601,13 +601,6 @@ export const productNb: ProductMessages = {
     hint: "Hvilke satser i fraktmetodene dine som prissetter det.",
     profiles: "Fraktprofiler",
   },
-  seo: {
-    count: "{length} av omtrent {advice} tegn",
-    cut: ": søkemotorer kan kutte slutten",
-    title: "Tittel i søkeresultater",
-    description: "Beskrivelse i søkeresultater",
-    preview: "Forhåndsvisning i søkeresultater",
-  },
   vatCategory: {
     label: "Mva.-kategori",
     inactive: " (inaktiv)",

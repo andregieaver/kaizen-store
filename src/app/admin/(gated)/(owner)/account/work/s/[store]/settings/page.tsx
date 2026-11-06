@@ -13,7 +13,7 @@ import { saveWorkSeriesAction, saveWorkSettingsAction } from "../settings-action
 import { memberCan, requirePermission } from "@/server/permissions";
 import { PageHeader } from "@/components/admin/ui";
 import { workWords } from "@/server/work-words";
-import { workText } from "@/lib/work-text";
+import { readinessText, workScreens, workText } from "@/lib/work-text";
 import { TripletexAccountingCard } from "@/components/admin/tripletex-panel";
 import { FikenAccountingCard } from "@/components/admin/fiken-card";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -47,6 +47,7 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
     fikenAttention(store.id),
   ]);
   const readiness = sellerReadiness(seller);
+  const rw = workScreens().workReadiness;
   const base = `/admin/${store.slug}`;
   const where = (place: string) => (place === "company" ? `${base}/settings/company` : "#vat-heading");
 
@@ -74,9 +75,9 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs ${problem.severity === "error" ? "bg-danger-soft text-danger-text " : "bg-warning-soft text-warning-text "}`}
                 >
-                  {problem.severity === "error" ? "Needed" : "Check"}
+                  {problem.severity === "error" ? rw.needed : rw.check}
                 </span>
-                <span>{problem.message}</span>
+                <span>{readinessText(problem)}</span>
                 <Link href={where(problem.where)} className="underline">
                   {problem.where === "company" ? tw.openTheCompanyPage : tw.fixItBelow}
                 </Link>

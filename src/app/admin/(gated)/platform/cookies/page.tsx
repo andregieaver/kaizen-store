@@ -3,6 +3,8 @@ import { connection } from "next/server";
 
 import { CookieScanPanel } from "@/components/admin/cookie-scan";
 import { ConsentLog, TrackingForm } from "@/components/admin/cookie-settings";
+import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { reviewFindings } from "@/lib/cookie-scan";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listConsents } from "@/server/consents";
@@ -20,7 +22,9 @@ export const metadata: Metadata = { title: "Cookies and tracking" };
 export default async function PlatformCookiesPage() {
   await connection();
   await requirePlatformAdmin();
-  const { w } = await platformSiteWords();
+  const { w, lang } = await platformSiteWords();
+  const words = adminText(lang, "legal");
+  const locale = ADMIN_LANG_FACTS[lang].locale;
   const [chrome, consents, scans, lastDone, notes] = await Promise.all([
     getPlatformChrome(),
     listConsents(null),
@@ -34,15 +38,18 @@ export default async function PlatformCookiesPage() {
         title={w.misc.cookies.title}
         description={w.misc.cookies.description}
       />
-      <TrackingForm tracking={chrome.tracking} action={savePlatformTrackingAction} cookiePage="/cookies" />
+      <TrackingForm tracking={chrome.tracking} action={savePlatformTrackingAction} cookiePage="/cookies" words={words} />
       <CookieScanPanel
         scans={scans}
         lastDone={lastDone}
         findings={lastDone ? reviewFindings(lastDone.items, notes) : []}
         scanAction={requestPlatformScanAction}
         noteAction={savePlatformCookieNoteAction}
+        words={words}
+        locale={locale}
+        purposeLang={lang}
       />
-      <ConsentLog consents={consents} />
+      <ConsentLog consents={consents} words={words} locale={locale} />
     </>
   );
 }

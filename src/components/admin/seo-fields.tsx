@@ -2,22 +2,17 @@
 
 import { useId, useState } from "react";
 
+import { useCommonText } from "./admin-text-context";
+
+import type { CommonMessages } from "@/lib/admin-messages/common.en";
 import { shrinkImage } from "@/lib/image-resize";
 import { DESCRIPTION_ADVICE, DESCRIPTION_MAX, TITLE_ADVICE, TITLE_MAX, summarize } from "@/lib/seo";
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
-/** The snippet fields' words (D312 A5): English unless a page hands in the admin's catalogue (the product editor's `product.seo`). */
-const SNIPPET_EN = {
-  count: "{length} of about {advice} characters",
-  cut: ": search engines may cut the end",
-  title: "Title in search results",
-  description: "Description in search results",
-  preview: "Preview in search results",
-};
-
-export type SnippetWords = typeof SNIPPET_EN;
+/** The snippet fields' words (D312): `common.snippet`, which the signed-in layout hands down in the account's language. */
+export type SnippetWords = CommonMessages["snippet"];
 
 /** "42 of 60 characters", and a word when search engines are likely to cut the text. */
 function Count({ id, length, advice, words }: { id: string; length: number; advice: number; words: SnippetWords }) {
@@ -42,7 +37,7 @@ export function SearchSnippetFields({
   url,
   lang,
   names,
-  words = SNIPPET_EN,
+  words: given,
 }: {
   value: Texts;
   onChange: (value: Texts) => void;
@@ -54,6 +49,8 @@ export function SearchSnippetFields({
   names?: { title: string; description: string };
   words?: SnippetWords;
 }) {
+  const handed = useCommonText().snippet;
+  const words = given ?? handed;
   const id = useId();
   const title = value.title || fallback.title;
   const description = value.description || fallback.description;

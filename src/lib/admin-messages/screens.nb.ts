@@ -179,6 +179,7 @@ export const screensNb: ScreensMessages = {
     },
     toFix: { one: "{n} ting å rette før du kan utstede denne fakturaen.", many: "{n} ting å rette før du kan utstede denne fakturaen." },
     fix: "Rett",
+    needed: "Mangler",
     check: "Sjekk",
     open: { company: "Åpne Firma-siden", settings: "Åpne innstillingene for Arbeid", client: "Åpne kunden", invoice: "Gå til linjene" },
   },

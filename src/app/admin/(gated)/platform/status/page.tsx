@@ -23,8 +23,10 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3";
 export default async function PlatformStatusPage() {
   await connection();
   const admin = await requirePlatformAdmin();
-  const w = adminText(adminLangOf(admin.adminLocale), "platform").status;
-  const names = platformText("en").status.components;
+  const lang = adminLangOf(admin.adminLocale);
+  const w = adminText(lang, "platform").status;
+  // The components as the public status page names them, in the admin's language (both languages are the site's own, D312).
+  const names = platformText(lang).status.components;
   const [view, subscribers] = await Promise.all([readStatusOverview(), subscriberCount()]);
   return (
     <div className="flex flex-col gap-6">

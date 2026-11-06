@@ -770,7 +770,6 @@ function TextSection({
             }}
             url={productUrl}
             lang={locale}
-            words={w.seo}
           />
         </div>
       </div>

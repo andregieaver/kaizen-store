@@ -600,13 +600,6 @@ export const productEn = {
     hint: "Which rates of your shipping methods price it.",
     profiles: "Shipping profiles",
   },
-  seo: {
-    count: "{length} of about {advice} characters",
-    cut: ": search engines may cut the end",
-    title: "Title in search results",
-    description: "Description in search results",
-    preview: "Preview in search results",
-  },
   vatCategory: {
     label: "VAT category",
     inactive: " (inactive)",

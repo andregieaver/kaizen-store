@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { SearchTextFields, ShareImageField } from "@/components/admin/seo-fields";
+import { adminText } from "@/lib/admin-text";
 import { LLMS_MAX, RULES_MAX } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 import { uploadsEnabled } from "@/server/media";
@@ -25,7 +26,7 @@ export default async function PlatformSeoPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   await requirePlatformAdmin();
-  const { w } = await platformSiteWords();
+  const { w, lang } = await platformSiteWords();
   const t = w.seo;
   const seo = await getPlatformSeo();
   const origin = siteUrl();
@@ -62,6 +63,7 @@ export default async function PlatformSeoPage() {
             initial={{ title: seo.title.en ?? "", description: seo.description.en ?? "" }}
             fallback={PLATFORM_DEFAULTS}
             url={`${origin}/`}
+            words={adminText(lang, "common").snippet}
           />
         </section>
 
@@ -75,6 +77,7 @@ export default async function PlatformSeoPage() {
             locales={["en"]}
             languageNames={{ en: "English" }}
             generated="/og.png"
+            words={adminText(lang, "settings").seo.shareField}
           />
         </section>
 

@@ -204,6 +204,7 @@ export const screensEn = {
     },
     toFix: { one: "{n} thing to fix before you can issue this invoice.", many: "{n} things to fix before you can issue this invoice." },
     fix: "Fix",
+    needed: "Needed",
     check: "Check",
     open: { company: "Open the Company page", settings: "Open Work settings", client: "Open the client", invoice: "Go to the lines" },
   },
