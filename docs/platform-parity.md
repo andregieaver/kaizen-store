@@ -75,6 +75,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 | Integrations: own endpoints | None | Console, C4 (next of D465) |
 | Integrations: *Add to Slack* | A pasted webhook (D465) | Console, C4 (next of D465) |
 | Integrations: accounting (Tripletex, Fiken) | Kaizena Flow's plan invoices are Stripe's (D35), not a series of its own: Stripe's payouts and invoices into Human Web's books, to decide | Console, C3 |
+| E-invoices (EHF, D463) | Kaizena Flow's plan invoices are Stripe's and go by email; from 1 January 2027 an owner's business registered in ELMA is owed EHF, which needs Kaizena Flow's own documents sent through B1's sender | Console, C3, with the books |
 | Apps and API | Settings → AI assistants and apps and App listings oversee others' apps; no Admin API for the platform (`api_tokens` needs a store) | Console, C4 |
 | AI | Has more than a store (pause, web search, prices, the eval); lacks how long AI manager conversations are kept | Console |
 | Team | None: a platform admin is one boolean, `accounts.platform_admin`, set by SQL; no roles, invitations or screen | Console, C1 |
