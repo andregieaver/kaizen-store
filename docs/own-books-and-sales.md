@@ -2,8 +2,11 @@
 
 Status: **proposed 6 November 2026**, no decision number yet. The owner's aim: a store owner should need neither an accounting system
 (Tripletex, Fiken), a sales pipeline (Pipedrive) nor a separate CRM beside Kaizena Flow. Open to every store owner on the platform in
-the end; **Human Web AS is the pilot** (Norwegian AS, no payroll, no outside accountant, invoices clients through Work, books in
-Tripletex today), and each step is proven there before it opens to others.
+the end; **Human Web is the pilot**, and each step is proven there before it opens to others. Human Web is HUMAN WEB ANDRÉ GIÆVER, a
+sole proprietorship (ENK, organisation number 915 429 777, VAT registered; Brønnøysund's register, read 2026-11-06), not an AS as
+`docs/tripletex.md`'s examples say. It runs no payroll, invoices its clients through Work and keeps its books in Tripletex today. It
+has no outside accountant **until its turnover passes NOK 5 million a year; then the owner's wife, an accountant, takes that role**
+(the owner's rule, 6 November 2026; section 4.4).
 
 This is a plan, not a design: each unit below gets its own design (and decision) when it starts, as Tripletex did (`docs/tripletex.md`).
 
@@ -35,9 +38,10 @@ Sources are listed at the end.
    Tripletex invoices, so Tripletex does not send them as EHF. On 1 January 2027 a Norwegian store (Human Web among them, through Work)
    that invoices a business able to receive EHF has no way to send one from Kaizena Flow. B1 (EHF out through a Peppol access point) is
    needed before then.
-5. **The pilot's finish line is B5.** Human Web runs no payroll and has no outside accountant, so it can leave Tripletex once the ledger,
-   purchases, bank and the VAT return work (B2 to B5). The platform needs two more units before it opens to every Norwegian store:
-   accountants' access across their clients (B6) and payroll, through a partner (B7).
+5. **The pilot leaves Tripletex at B5, and needs B6 before NOK 5 million.** Human Web runs no payroll and keeps its own books, so it can
+   leave Tripletex once the ledger, purchases, bank and the VAT return work (B2 to B5). Once its turnover passes NOK 5 million a year it
+   takes an outside accountant, the owner's wife (section 4.4), so accountants' access (B6) is built and proven at Human Web before it
+   opens to other stores. Payroll, through a partner (B7), is the one unit the pilot will not prove.
 6. **Tripletex and Fiken stay, as the bridge.** A store keeps them until its books move to Kaizena Flow at a period boundary; during the
    pilot, Tripletex's books are the reference our ledger is compared with. No new accounting connectors (PowerOffice, Fortnox, e-conomic,
    Visma) are started: that effort goes to our own books.
@@ -67,9 +71,9 @@ Sources are listed at the end.
 
 | Ring | Who | Sales (S units) | Books (B units) | Needs first |
 |---|---|---|---|---|
-| 0 | Human Web AS | S1 to S7 | B1 to B5 | the pilot's own exit criteria (sections 3 and 4) |
+| 0 | Human Web | S1 to S7 | B1 to B5; B6 before its turnover passes NOK 5 million | the pilot's own exit criteria (sections 3 and 4) |
 | 1 | Norwegian stores without employees whose owner keeps the books (Fiken's crowd) | all stores (sales opens EU-wide after ring 0) | B1 to B5 | a full year closed at Human Web; accountant's review of the Norway pack |
-| 2 | Norwegian stores with an outside accountant | | B1 to B6 | B6, and accountants who agree to work in it |
+| 2 | Norwegian stores with an outside accountant | | B1 to B6 | B6 proven at Human Web with its accountant (section 4.4), and accountants who agree to work in it |
 | 3 | Norwegian stores with payroll | | B1 to B7 | B7 (a payroll partner) |
 | 4 | Stores in other countries | | their country's pack | a pack per country, chosen by where stores sign up |
 
@@ -175,6 +179,7 @@ mandates (Belgium, Germany, Poland) [U], so the same unit carries to other count
 reversing entry; accounting periods that can be locked; a chart of accounts per store from the country pack (Norway: NS 4102, with the
 SAF-T standard VAT codes); opening balances. Posted from the same documents the Tripletex sync reads, plus payouts and fees, gift cards
 and store credit, and refunds. Reports: trial balance, profit and loss, balance sheet, VAT by code and period. Hand-made entries for Lisa.
+The ledger also knows each store's turnover over the last twelve months, which the threshold watch reads (section 4.4).
 
 For the pilot it runs beside Tripletex: a daily comparison, per account and period, with Tripletex's postings read back through the
 client we have (`GET /ledger/posting` [docs, Tripletex's spec]); a difference is a line in *Needs you* with both sides. Opening balances
@@ -196,20 +201,52 @@ Flow (payment initiation) later [U]. [U: Norwegian banks covered, consent length
 validation API, signed in by the person with ID-porten in 2026's way, a *systembruker* when Skatteetaten offers it); a corrected return
 when one is needed (a new complete return). SAF-T Financial export. Year-end: closing entries, simple depreciation, accruals, the figures
 for the annual accounts and the business's tax return [U: what can be submitted by API for an AS, what is filed by hand from our
-figures].
+figures]. An ENK without a duty to file annual accounts, as Human Web is today, ends its year in the business's part of the owner's own
+tax return (*næringsspesifikasjon*) [U: confirm, and whether it goes by Skatteetaten's tax return API]; an AS also files annual
+accounts with Brønnøysund and is audited unless it may opt out (section 4.4).
 
 *Pilot exit, and the ring 0 finish line:* one VAT period computed by us and compared with the return filed from Tripletex; the next filed
 from Kaizena Flow; then a full financial year closed in Kaizena Flow. Human Web stops paying for Tripletex.
 
-**B6. Accountants (gate for ring 2).** An accountant is a person with access to many clients' stores: a role template *Accountant*
-(today's templates are Orders, Products, Marketing, Content, Analytics, Support agent and Read-only, `src/lib/permissions.ts`) with new
-`books:read`/`books:write` permissions, an invitation from the owner, and a screen across all their clients: VAT due, bank lines not
-matched, supplier invoices not approved, periods not locked. A partner programme for accounting firms: they are both the gate and the
-channel.
+**B6. Accountants (proven at Human Web, then the gate for ring 2).** An accountant is a person with access to many clients' stores: a
+role template *Accountant* (today's templates are Orders, Products, Marketing, Content, Analytics, Support agent and Read-only,
+`src/lib/permissions.ts`) with new `books:read`/`books:write` permissions, an invitation from the owner, and a screen across all their
+clients: VAT due, bank lines not matched, supplier invoices not approved, periods not locked. The accountant locks a period, and the
+owner cannot post into it until the accountant opens it again; everything the accountant does is in the audit log under their name
+(D158). Built and proven at Human Web, with the owner's wife as its accountant, before Human Web's turnover passes NOK 5 million
+(section 4.4). Then a partner programme for accounting firms: they are both the gate and the channel.
 
 **B7. Payroll (gate for ring 3).** Through a partner, not built: pay slips, a-melding, holiday pay, tax deductions and pension have their
 own rules and their own Skatteetaten reporting. The partner's postings come into the ledger. [U: which partner, in the EU, with an
 API.]
+
+### 4.4 The pilot's accountant, and the thresholds that change a store's duties
+
+**The owner's rule** (6 November 2026): when Human Web's turnover passes **NOK 5 million over twelve months**, Human Web takes an
+outside accountant, and that is the owner's wife, an accountant. What it means for the plan:
+
+1. **B6 is ready before then**, and Human Web is where it is proven: the owner invites the accountant, the accountant gets the
+   *Accountant* role, locks periods, reviews the VAT return before the owner sends it, and closes the year.
+2. **A threshold watch** (with B2): the ledger's turnover over the last twelve months against the thresholds that change a store's
+   duties. Homer's home says it before it happens, for example "Turnover NOK 4.3 million over the last 12 months: invite your accountant
+   before NOK 5 million", and the store checkup (`accountingAttention()`) carries it, so the AI manager's checkup and the briefing say it
+   too. An owner can add a threshold of their own (Human Web's NOK 5 million); the country pack brings the legal ones.
+3. **Before then, as a design partner, if the owner's wife agrees**: reviewing the Norway pack (section 6, item 4) and shaping B6 from
+   read-only access to the pilot's books. Whether and when is the owner's and the wife's choice; nothing in the plan waits for it.
+
+**The law nearby.** No rule was found that requires an accountant at NOK 5 million; this is the owner's choice. The rules that sit near it:
+
+| Rule | What it means here | Evidence |
+|---|---|---|
+| Doing bookkeeping for others *as a business* requires authorisation as an accountant (*regnskapsførerloven* § 1); the regulation's exceptions found concern groups of companies | The owner's wife keeps Human Web's books as an authorised accountant, or the arrangement is checked first | [3P] search summary of the act and Skatteetaten's notices; [U] whether she is authorised, and whether keeping a spouse's books unpaid falls under the rule |
+| A spouse is a close relation (*nærstående*) under the auditor's independence rules | The owner's wife can be the accountant but never the auditor, if Human Web ever needs one | [3P] Stortinget's committee report on the auditors' act |
+| An AS may opt out of audit with operating revenue under NOK 7 million, a balance under NOK 27 million and on average no more than ten full-time employees; the two amounts are set in a regulation | Watched for every AS on our books; matters to Human Web only if it becomes an AS | [3P] Stortinget 2025–2026, Brønnøysund 2023; [U] check the current regulation |
+| An ENK files annual accounts (and is audited) only above size limits on assets or employees | Watched for every ENK on our books; Human Web is far below them today | [U] read *regnskapsloven* § 1-2 and the auditors' act for the numbers |
+| NOK 50 000 a year: the e-invoicing and electronic bookkeeping exemptions (section 4.1) | The lowest threshold in the pack | [3P] KPMG |
+
+**If Human Web becomes an AS** as it grows [U: whether planned]: a new organisation number and a new company in the books, opening
+balances carried over (B2), annual accounts and the audit threshold joining the watch. How a store changes the legal entity behind it
+is a question for B2's design.
 
 ## 5. Tripletex and Fiken from here
 
@@ -225,8 +262,8 @@ API.]
 1. **Choose a Peppol access point and sign with it** (EU processing, API, price, the countries it serves). Needed now for 1 January.
 2. **Apply to Skatteetaten for API access** (test, then production) as a supplier of an end-user system.
 3. **Choose an account-information provider** (B4) and sign.
-4. **An authorised accountant to review** the Norway pack (chart, VAT codes, what each document posts) and B5's return. Human Web needs
-   none, but the platform does before ring 1.
+4. **An authorised accountant to review** the Norway pack (chart, VAT codes, what each document posts) and B5's return before ring 1.
+   The first choice is the owner's wife, Human Web's accountant from NOK 5 million (section 4.4), if willing and authorised [U].
 5. **A lawyer**: Kaizena Flow's terms as a bookkeeping system; the vendor's duties, if any, under the amended regulations; the data
    processing terms for the access point, the bank provider and, later, payroll.
 6. **For the pilot**: where Human Web's sales are kept today and access to export them (S7); Tripletex stays connected through B5.
@@ -242,7 +279,8 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 | Next | S2 deals and pipelines, S3 activities | B2 the ledger in shadow at Human Web |
 | Then | S4 leads, S5 email (forwarding address), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
 | Then | S6 reports; `sales` opens to every store | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |
-| Later | S5 Microsoft 365 and Gmail sync | B6 accountants (ring 2), B7 payroll partner (ring 3), a second country pack (ring 4) |
+| Then | | B6 accountants, ready before Human Web's turnover passes NOK 5 million (the threshold watch says when it is near); then ring 2 |
+| Later | S5 Microsoft 365 and Gmail sync | B7 payroll partner (ring 3), a second country pack (ring 4) |
 
 ## 8. Open questions [U]
 
@@ -253,6 +291,9 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 5. Account-information providers: Norwegian bank coverage, consent length, payment initiation, price.
 6. Gmail's security assessment: cost and time.
 7. Pipedrive's and HubSpot's export and API limits for S7.
+8. Is the owner's wife an authorised accountant, and does keeping a spouse's books need the authorisation if it is unpaid?
+9. Does Human Web stay an ENK as it grows, or become an AS (annual accounts, the audit threshold, a new organisation number)?
+10. The size limits above which an ENK files annual accounts and is audited, and how an ENK's year-end reaches Skatteetaten by system.
 
 ## Sources
 
@@ -273,4 +314,13 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 * Account information: Neonomics, <https://openbankingtracker.com/neonomics>; Neonomics and Tink compared,
   <https://openbankingtracker.com/api-aggregators/neonomics/vs/tink> (both [3P]).
 * Bookkeeping retention: Bokføringsloven § 13, <https://lovdata.no/lov/2004-11-19-73/§13> (as read for `docs/wave-1g-gdpr.md`).
+* Human Web's entry in the Central Coordinating Register: <https://data.brreg.no/enhetsregisteret/api/enheter/915429777>.
+* Audit thresholds for an AS: Stortinget, Innst. 165 S (2025–2026),
+  <https://stortinget.no/globalassets/pdf/innstillinger/stortinget/2025-2026/inns-202526-165s.pdf>; Brønnøysund's answer of April 2023,
+  <https://www.regnskapnorge.no/contentassets/9ad24c8fdd874a849914a5ea0dcfd761/230425---svar-fra-brreg---endring-av-terskelverdier-for-revisjon.pdf>;
+  Skatteetaten, <https://www.skatteetaten.no/en/rettskilder/type/kunngjoringer/terskelverdiene-for-revisjonsplikt-justeres/>.
+* Accountants' authorisation: Skatteetaten,
+  <https://www.skatteetaten.no/en/rettskilder/type/skattedirektoratets-meldinger/regnskapsforeres-plikter-etter-lov-og-forskrift-om-autorisasjon-av-regnskapsforere2.-oversendelse-av-opplysninger-til-finanstilsynet-nar-regnskapsforere-har-misligholdt-sine-plikter/>;
+  a spouse as an auditor's close relation: Stortinget, Innst. O. nr. 44 (2005–2006),
+  <https://stortinget.no/no/Saker-og-publikasjoner/Publikasjoner/Innstillinger/Odelstinget/2005-2006/inno-200506-044/?lvl=0>.
 * Tripletex's API: `docs/tripletex.md` sections 1.1 and 1.2 and its Appendix B.
