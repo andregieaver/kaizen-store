@@ -22,6 +22,8 @@ import {
   type FunnelCounts,
   type LandingKind,
 } from "@/lib/analytics-traffic";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { screensEn } from "@/lib/admin-messages/screens.en";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
@@ -275,14 +277,16 @@ async function orderGaps(store: Store, period: AnalyticsPeriod, range: Range | n
 const count = (rows: Row[], key: string, field = "n"): Map<string, number> => new Map(rows.map((r) => [String(r[key]), num(r, field)]));
 
 const money = (n: number) => n.toLocaleString("en-US");
+/** The notes, in English: a page in another language says them in its own (`noteIn()`, `src/lib/analytics-notes.ts`). */
+const NOTES = screensEn.analyticsNotes.traffic;
 
 function commonNotes(coverage: Coverage, excluded: { unconverted: number; missing: string[] }, uncovered: Money): string[] {
   const notes: string[] = [];
-  if (!coverage.counting) notes.push("Visit counting is off, so visits, the funnel and where orders came from are not known. Switch it on in the analytics settings.");
-  else if (coverage.firstDay === null) notes.push("No visit has been counted yet.");
-  else if (coverage.partial) notes.push(`Visits have been counted since ${coverage.firstDay}, so these figures cover only the days from then.`);
-  if (coverage.counting && uncovered.orders > 0) notes.push(`${money(uncovered.orders)} paid ${uncovered.orders === 1 ? "order" : "orders"} fall outside the days with counted visits and are left out of the rates.`);
-  if (excluded.unconverted > 0) notes.push(`${money(excluded.unconverted)} paid ${excluded.unconverted === 1 ? "order" : "orders"} in ${excluded.missing.join(", ")} could not be converted, so they are left out.`);
+  if (!coverage.counting) notes.push(NOTES.countingOff);
+  else if (coverage.firstDay === null) notes.push(NOTES.noneCounted);
+  else if (coverage.partial) notes.push(fillWords(NOTES.partial, { day: coverage.firstDay }));
+  if (coverage.counting && uncovered.orders > 0) notes.push(countWords(uncovered.orders, NOTES.outside, { n: money(uncovered.orders) }));
+  if (excluded.unconverted > 0) notes.push(countWords(excluded.unconverted, NOTES.unconverted, { n: money(excluded.unconverted), currencies: excluded.missing.join(", ") }));
   return notes;
 }
 
@@ -475,9 +479,9 @@ export async function trafficReport(store: Store, period: AnalyticsPeriod, now: 
     exchangeOrders: exchanges,
     notes: [
       ...commonNotes(coverage, excluded, uncovered),
-      ...(staff.orders > 0 ? [`${money(staff.orders)} staff-made paid ${staff.orders === 1 ? "order" : "orders"} (draft orders) are left out of these tables and of conversion: they were not visits. They are in the period's revenue and in the Marketing page's channel table as Staff-made.`] : []),
-      ...(exchanges.orders > 0 ? [`${money(exchanges.orders)} paid exchange ${exchanges.orders === 1 ? "order" : "orders"} (replacements for a return) are left out of these tables and of conversion: they were not visits. They are in the period's revenue and in the Marketing page's channel table as Exchanges.`] : []),
-      ...(landingTruncated ? [`Only the ${LANDING_LIMIT} landing pages with most visits are shown.`] : []),
+      ...(staff.orders > 0 ? [countWords(staff.orders, NOTES.staff, { n: money(staff.orders) })] : []),
+      ...(exchanges.orders > 0 ? [countWords(exchanges.orders, NOTES.exchanges, { n: money(exchanges.orders) })] : []),
+      ...(landingTruncated ? [fillWords(NOTES.landing, { n: LANDING_LIMIT })] : []),
       ...funnel(counts).notes,
     ],
   };
@@ -717,7 +721,7 @@ export async function marketingReport(store: Store, period: AnalyticsPeriod, now
     table: guarded,
     spend: { totalMinor: totalSpend, byChannel, outsideCoverageMinor: totalSpend - inRange },
     unknownOrders: { orders: unknown.orders, revenueMinor: unknown.revenueMinor },
-    notes: [...notes, ...(anyUnknown ? ["Product costs are missing for some channels' sales, so their contribution and the blended one are not shown."] : []), ...(totalSpend > inRange ? ["Spend entered for days with no counted visits is left out of CAC and ROAS."] : [])],
+    notes: [...notes, ...(anyUnknown ? [NOTES.costsMissing] : []), ...(totalSpend > inRange ? [NOTES.spendOutside] : [])],
   };
 }
 

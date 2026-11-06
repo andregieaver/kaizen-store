@@ -2,6 +2,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { formatCount, NO_FIGURE } from "@/lib/analytics-core";
 import { financeNumbers } from "@/lib/finance-words";
+import { asWritten, type Say } from "@/lib/analytics-notes";
 import type { RefundsReport } from "@/server/analytics-refunds-data";
 
 import { HorizontalBars, type BarRow } from "./charts";
@@ -26,6 +27,8 @@ export type RefundsViewProps = {
   marketNames?: Readonly<Record<string, string>>;
   /** The words in the admin's language (D312 A9); English unless given. */
   words?: FinanceMessages;
+  /** The report's notes in the admin's language (`sayIn()`); as written unless given. */
+  say?: Say;
 };
 
 /** The four cards: how much, as a share of sales, how many orders, how many refunds. */
@@ -64,7 +67,7 @@ export function refundCards({ currency, locale, report: r, words = financeEn }: 
 export const marketName = (names: RefundsViewProps["marketNames"], code: string) => names?.[code] ?? names?.[code.toUpperCase()] ?? code;
 
 export function RefundsView(props: RefundsViewProps) {
-  const { currency, locale, report: r, marketNames, words = financeEn } = props;
+  const { currency, locale, report: r, marketNames, words = financeEn, say = asWritten } = props;
   const w = words.refunds;
   const pct = financeNumbers(words).percent;
   const money = safeMoney(currency, locale);
@@ -132,7 +135,7 @@ export function RefundsView(props: RefundsViewProps) {
       title={w.title}
       description={w.description}
     >
-      <Note title={w.notSeen}>{r.notSeenNote}</Note>
+      <Note title={w.notSeen}>{say(r.notSeenNote)}</Note>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {refundCards(props).map((c) => (
           <KpiCard key={c.label} {...c} />
@@ -142,7 +145,7 @@ export function RefundsView(props: RefundsViewProps) {
         <div className="space-y-2">
           {r.notes.map((n) => (
             <Note key={n} tone="warning">
-              {n}
+              {say(n)}
             </Note>
           ))}
         </div>

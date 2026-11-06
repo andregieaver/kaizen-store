@@ -11,6 +11,7 @@ import { queryText } from "@/lib/analytics-export";
 import { analyticsWords } from "@/lib/analytics-words";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { analyticsContext } from "@/server/analytics-context";
+import { analyticsCaptions } from "@/server/analytics-say";
 import { overviewReads } from "@/server/analytics-overview-reads";
 import { overviewHead } from "@/server/analytics-totals";
 import { sessionTotals } from "@/server/analytics-traffic-data";
@@ -43,7 +44,7 @@ export default async function AnalyticsOverviewPage({ params, searchParams }: Pa
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
-    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}

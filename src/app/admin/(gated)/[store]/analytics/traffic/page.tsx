@@ -10,6 +10,7 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext } from "@/server/analytics-context";
+import { analyticsCaptions, analyticsSay } from "@/server/analytics-say";
 import { geoReport } from "@/server/analytics-geo-data";
 import { refundsReport } from "@/server/analytics-refunds-data";
 import { returnsReport } from "@/server/analytics-returns-data";
@@ -42,10 +43,11 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
   const w = adminText(ctx.lang, "reports");
   const finance = adminText(ctx.lang, "finance");
+  const say = analyticsSay(ctx.lang, ctx.locale);
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics", "finance"])}>
-    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
@@ -53,9 +55,9 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
           title={w.pages.traffic.title}
           description={w.pages.traffic.description}
         />
-        <TrafficView base={ctx.base} currency={currency} locale={locale} timeZone={store.timeZone} traffic={traffic} geo={geo} search={search} time={time} words={w.traffic} />
-        <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.allMarkets.map((m) => [m.code, m.name]))} words={finance} />
-        <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} words={finance} />
+        <TrafficView base={ctx.base} currency={currency} locale={locale} timeZone={store.timeZone} traffic={traffic} geo={geo} search={search} time={time} words={w.traffic} say={say} />
+        <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.allMarkets.map((m) => [m.code, m.name]))} words={finance} say={say} />
+        <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} words={finance} say={say} reasonLabels={adminText(ctx.lang, "returns").labels.reason} />
       </div>
     </ExportScope>
     </AdminTextScope>

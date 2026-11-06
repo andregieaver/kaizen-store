@@ -20,6 +20,8 @@ import {
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 import { DEFAULT_RETURN_SETTINGS } from "@/lib/withdrawal";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { screensEn } from "@/lib/admin-messages/screens.en";
 
 import { productNames } from "./analytics-refunds-data";
 import { inPeriod, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
@@ -49,8 +51,10 @@ export const TOP_RETURNED_PRODUCTS = 10;
 /** The most refunded returns read for the times (the newest first); the page says so when it is reached. */
 export const TIMING_CAP = 5_000;
 
-export const NOT_SEEN_RETURNS_NOTE =
-  "Returns made without Kaizena Flow's withdrawal function or a return request (a parcel sent back with no message) are not included.";
+/** The notes, in English: a page in another language says them in its own (`noteIn()`, `src/lib/analytics-notes.ts`). */
+const NOTES = screensEn.analyticsNotes.returns;
+
+export const NOT_SEEN_RETURNS_NOTE = NOTES.notSeen;
 
 export type ReturnKind = "withdrawal" | "return";
 
@@ -415,9 +419,9 @@ export async function returnsReport(store: Store, period: AnalyticsPeriod, now: 
 
   const notes: string[] = [];
   if (unconverted > 0) {
-    notes.push(`${unconverted} ${unconverted === 1 ? "order or return" : "orders and returns"} in ${[...missing].sort().join(", ")} ${unconverted === 1 ? "is" : "are"} left out: the store has no exchange rate for it.`);
+    notes.push(countWords(unconverted, NOTES.unconverted, { currencies: [...missing].sort().join(", ") }));
   }
-  if (timingTruncated) notes.push(`More than ${TIMING_CAP} returns were refunded in this period: the times are made of the latest ones.`);
+  if (timingTruncated) notes.push(fillWords(NOTES.timingTruncated, { n: TIMING_CAP }));
 
   const today = todayIn(now, store.timeZone);
   return {
@@ -441,8 +445,8 @@ export async function returnsReport(store: Store, period: AnalyticsPeriod, now: 
     refunded: { minor: refundedMinor, returns: refundedReturns, outside: refundedOutside },
     reasons: reasonBreakdown([...reasonInputs.values()]),
     timing: {
-      requestToRefund: timingOf(requestDays, "a request date"),
-      receivedToRefund: timingOf(receivedDays, "the goods received first"),
+      requestToRefund: timingOf(requestDays, screensEn.analyticsNotes.phrases.requestDate),
+      receivedToRefund: timingOf(receivedDays, screensEn.analyticsNotes.phrases.goodsReceivedFirst),
       afterDeadline: { late, of: withDeadline },
       truncated: timingTruncated,
     },

@@ -16,6 +16,7 @@ import { mainCurrency } from "@/lib/markets";
 import { storeHref, storeHome, storeOrigins } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { analyticsContext } from "@/server/analytics-context";
+import { analyticsCaptions, analyticsSay } from "@/server/analytics-say";
 import { customersReport } from "@/server/analytics-customers-data";
 import { discountsReport } from "@/server/analytics-discounts-data";
 import { listSpend } from "@/server/analytics-settings";
@@ -66,10 +67,11 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
   const currency = mainCurrency(store);
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
   const w = adminText(ctx.lang, "reports");
+  const say = analyticsSay(ctx.lang, ctx.locale);
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
-    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
@@ -86,6 +88,7 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
           ltv={customers ? marketingLtv(customers.ltv) : null}
           words={w.marketing}
           channelWords={w.channels}
+          say={say}
         />
         <CampaignsView report={campaigns} currency={currency} locale={locale} modelHref={modelHref} words={w.campaigns}>
           <div className="grid gap-4 lg:grid-cols-2">
@@ -101,7 +104,7 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
           limit={SPEND_LISTED}
           actions={{ add: addSpendAction.bind(null, store.slug), remove: deleteSpendAction.bind(null, store.slug) }}
         />
-        <DiscountsView currency={currency} locale={locale} report={discounts} words={w.discounts} />
+        <DiscountsView currency={currency} locale={locale} report={discounts} words={w.discounts} say={say} />
       </div>
     </ExportScope>
     </AdminTextScope>

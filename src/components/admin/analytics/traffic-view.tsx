@@ -19,6 +19,7 @@ import { safeMoney } from "./subscriptions-view";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+import { asWritten, type Say } from "@/lib/analytics-notes";
 
 /** The words of this view (D312 A9), English unless given. */
 export type TrafficWords = ReportsMessages["traffic"];
@@ -52,6 +53,8 @@ export type TrafficViewProps = {
   time: TimeReport;
   /** The words, in the account's language (D312 A9); English unless given. */
   words?: TrafficWords;
+  /** The report's notes in the account's language (`sayIn()`); as written unless given. */
+  say?: Say;
 };
 
 // ---------------------------------------------------------------------------
@@ -740,7 +743,7 @@ function WhenSection({ time, timeZone, money, w }: { time: TimeReport; timeZone:
 const QUESTION_IDS = ["funnel", "search", "when"] as const;
 
 export function TrafficView(props: TrafficViewProps) {
-  const { base, currency, locale, timeZone, traffic, geo, search, time } = props;
+  const { base, currency, locale, timeZone, traffic, geo, search, time, say = asWritten } = props;
   const w = props.words ?? reportsEn.traffic;
   const money = safeMoney(currency, locale);
   const notes = traffic.notes.filter((n) => n.length > 0 && !CUT_STEP_NOTE.test(n) && !(traffic.sessions === null && COUNTING_NOTE.test(n)));
@@ -764,7 +767,7 @@ export function TrafficView(props: TrafficViewProps) {
       {notes.length > 0 ? (
         <div className="space-y-2">
           {notes.map((n) => (
-            <Note key={n}>{n}</Note>
+            <Note key={n}>{say(n)}</Note>
           ))}
         </div>
       ) : null}

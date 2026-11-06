@@ -63,7 +63,7 @@ import { contentEn } from "@/lib/admin-messages/content.en";
 import { blogEn } from "@/lib/admin-messages/blog.en";
 import { schedulesEn } from "@/lib/admin-messages/schedules.en";
 import { oauthEn } from "@/lib/admin-messages/oauth.en";
-import type { AdminAreaMessages, ClientArea } from "@/lib/admin-text";
+import type { AdminAreaMessages, ClientArea, HandedArea } from "@/lib/admin-text";
 
 import { AdminTextContext } from "./admin-text-context";
 
@@ -93,6 +93,15 @@ export function AdminTextScope({ texts, children }: { texts: Partial<AdminAreaMe
 export function useAdminText<A extends ClientArea>(area: A): Pick<AdminAreaMessages, ClientArea>[A] {
   const { texts } = useContext(AdminTextContext);
   return (texts[area] as Pick<AdminAreaMessages, ClientArea>[A] | undefined) ?? ENGLISH[area];
+}
+
+/**
+ * A server-only area the page handed down on purpose (`HandedArea`), or null where it did not: the part then uses the English of its own
+ * module (the builder's shop parts from `store-parts.ts`), so no catalogue is added to every screen's first scripts.
+ */
+export function useHandedText<A extends HandedArea>(area: A): AdminAreaMessages[A] | null {
+  const { texts } = useContext(AdminTextContext);
+  return (texts[area] as AdminAreaMessages[A] | undefined) ?? null;
 }
 
 /** The account's language for the admin. */

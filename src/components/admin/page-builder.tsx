@@ -28,7 +28,7 @@ import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { PartBackground, blockBox, columnBox, rowBox, rowFrame, rowGrid, rowInnerClass, rowInnerStyle } from "@/components/page-parts";
 import { ColumnDividers, RowWidthHandles } from "./row-resize";
-import { useAdminText } from "./admin-text";
+import { useAdminText, useHandedText } from "./admin-text";
 import { QuestionPartFields, QuotePlacementField } from "./product-question-fields";
 import type { BuilderMessages } from "@/lib/admin-messages/builder.en";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -695,6 +695,7 @@ export function PageBuilder({
   aside: ReactNode;
 }) {
   const w = useAdminText("builder");
+  const partCopy = usePartCopy();
   const fw = w.frame;
   // One of two (D412): the frame's drag and drop, sidebars and screen size are shared; a page alone has its own.
   const hub = useContext(DualHubContext);
@@ -1584,7 +1585,7 @@ export function PageBuilder({
                   ? dragging.type === "site"
                     ? w.siteParts[dragging.part as SitePart]
                     : dragging.type === "storePart"
-                      ? shopPartCopy(dragging.part as ShopPart).name
+                      ? partCopy.part(dragging.part as ShopPart).name
                       : w.productParts[dragging.part as ProductPart]
                   : w.blockNames[dragging.type]
               }
@@ -1815,6 +1816,7 @@ function Sidebar({
   blocksFull: boolean;
 }) {
   const w = useAdminText("builder");
+  const partCopy = usePartCopy();
   const fw = w.frame;
   const sw = w.sidebar;
   const id = useId();
@@ -1947,7 +1949,7 @@ function Sidebar({
                         key={part}
                         id={`palette:shop:${part}`}
                         data={{ kind: "palette-block", type: "storePart", part }}
-                        label={STORE_PARTS[part].name}
+                        label={partCopy.part(part).name}
                         preview={<ShopPartIcon part={part} />}
                         onAdd={() => onAddBlock("storePart", part)}
                         disabled={blocksFull}
@@ -1959,15 +1961,15 @@ function Sidebar({
               {shop &&
                 pieceGroups.map((group) => (
                   <div key={group.route} className="flex flex-col gap-3">
-                    <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{group.name}</h3>
-                    <p className="text-xs text-muted">{group.hint}</p>
+                    <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{partCopy.group(group).name}</h3>
+                    <p className="text-xs text-muted">{partCopy.group(group).hint}</p>
                     <div className="grid grid-cols-2 gap-3">
                       {group.pieces.map((part) => (
                         <PaletteTile
                           key={part}
                           id={`palette:shop:${part}`}
                           data={{ kind: "palette-block", type: "storePart", part }}
-                          label={shopPartCopy(part).name}
+                          label={partCopy.part(part).name}
                           preview={<ShopPartIcon part={part} />}
                           onAdd={() => onAddBlock("storePart", part)}
                           disabled={blocksFull}
@@ -2021,7 +2023,7 @@ function Sidebar({
                       key={part}
                       id={`palette:shop:${part}`}
                       data={{ kind: "palette-block", type: "storePart", part }}
-                      label={STORE_PARTS[part].name}
+                      label={partCopy.part(part).name}
                       preview={<ShopPartIcon part={part} />}
                       onAdd={() => onAddBlock("storePart", part)}
                       disabled={blocksFull}
@@ -3437,6 +3439,7 @@ function Dialogs({
   // The screen size the fields edit (D179 phase 2): Extra large is the parts' own settings, a smaller size its overrides.
   const { size } = useSizeEdit();
   const w = useAdminText("builder");
+  const partCopy = usePartCopy();
   const dw = w.dialogs;
   const blockWords = useAdminText("blocks");
   // Who sees a part (D179 phase 4): the facts the page offers and the store's choices.
@@ -4107,22 +4110,22 @@ function Dialogs({
                     <optgroup label={dw.wholePages}>
                       {STORE_PART_KEYS.map((part) => (
                         <option key={part} value={part}>
-                          {STORE_PARTS[part].name}
+                          {partCopy.part(part).name}
                         </option>
                       ))}
                     </optgroup>
                     {PIECE_GROUPS.map((group) => (
-                      <optgroup key={group.route} label={group.name}>
+                      <optgroup key={group.route} label={partCopy.group(group).name}>
                         {piecesOf(group.route).map((part) => (
                           <option key={part} value={part}>
-                            {shopPartCopy(part).name}
+                            {partCopy.part(part).name}
                           </option>
                         ))}
                       </optgroup>
                     ))}
                   </select>
                 </label>
-                <p className="text-sm text-muted">{shopPartCopy(block.part).hint}</p>
+                <p className="text-sm text-muted">{partCopy.part(block.part).hint}</p>
                 <p className="text-sm text-muted">
                   {dw.shopPartWhere}
                 </p>
@@ -5496,13 +5499,23 @@ function FieldLoopStandIn({ block }: { block: FieldLoopBlock }) {
   );
 }
 
+/** The shop's components and pieces in the account's language: the page hands them down (`storeParts`, D312), else `store-parts.ts`'s English. */
+function usePartCopy() {
+  const words = useHandedText("storeParts");
+  return {
+    part: (part: ShopPart): { name: string; hint: string } => words?.parts[part] ?? shopPartCopy(part),
+    group: (group: (typeof PIECE_GROUPS)[number]): { name: string; hint: string } => words?.groups[group.route] ?? group,
+  };
+}
+
 /** A part of a store feature that is off (D178), on the canvas: the site draws nothing for it until the feature is switched on again. */
 function SwitchedOffStandIn({ block }: { block: PageBlock }) {
   const feature = partFeature(block);
   const w = useAdminText("builder");
   const sw = w.standIns;
+  const partCopy = usePartCopy();
   const name =
-    block.type === "storePart" ? shopPartCopy(block.part).name : block.type === "site" ? w.siteParts[block.part] : block.type === "product" ? w.productParts[block.part] : sw.thisPart;
+    block.type === "storePart" ? partCopy.part(block.part).name : block.type === "site" ? w.siteParts[block.part] : block.type === "product" ? w.productParts[block.part] : sw.thisPart;
   return (
     <div className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-surface p-4">
       <p className="text-sm font-medium">{fillWords(sw.switchedOff, { name })}</p>
@@ -5515,7 +5528,7 @@ function SwitchedOffStandIn({ block }: { block: PageBlock }) {
 
 /** A working page's component on the canvas (D113): what it is, and that the site draws it with the shopper's own data. */
 function StorePartStandIn({ block }: { block: StorePartBlock }) {
-  const copy = shopPartCopy(block.part);
+  const copy = usePartCopy().part(block.part);
   const sw = useAdminText("builder").standIns;
   return (
     <div className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-surface p-4">
@@ -5868,29 +5881,29 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
         return (
           <span className="block rounded-lg bg-accent p-3 text-sm text-accent-foreground">
             <span className="block font-medium">{shop.sale}</span>
-            <span className="block opacity-90">The offer is taken off in the cart. (Shown while a campaign reaches the product.)</span>
+            <span className="block opacity-90">{shop.campaignsNote}</span>
           </span>
         );
       case "rating":
-        return <span className="block text-sm">★★★★☆ 4.3 out of 5 (12 reviews). (Shown once the product has a published review.)</span>;
+        return <span className="block text-sm">{shop.rating}</span>;
       case "reviews":
         return (
           <span className="block rounded-lg border border-border p-4 text-sm">
             <span className="block font-medium">{shop.reviews}</span>
             <span className="block">{shop.review}</span>
-            <span className="block opacity-80">The product&apos;s published reviews, newest first. (Shown once there is one.)</span>
+            <span className="block opacity-80">{shop.reviewsNote}</span>
           </span>
         );
       case "notice":
-        return <span className="block rounded-lg border border-border p-4 text-sm">Sold only to businesses. (Shown to private shoppers for such products.)</span>;
+        return <span className="block rounded-lg border border-border p-4 text-sm">{shop.notice}</span>;
       case "host":
-        return <span className="text-sm">Hosted by … (for outside hosts&apos; stays and rentals)</span>;
+        return <span className="text-sm">{shop.host}</span>;
       case "buy":
         return (
           <span className="flex flex-col gap-2">
             <span className="font-medium">{shop.variants}</span>
             <span className="divide-y divide-border rounded-lg border border-border">
-              {["Variant one", "Variant two"].map((name) => (
+              {[shop.variantOne, shop.variantTwo].map((name) => (
                 <span key={name} className="flex items-center justify-between gap-4 p-3 text-sm">
                   <span>
                     {name}
@@ -5900,22 +5913,22 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
                 </span>
               ))}
             </span>
-            <span className="text-xs text-muted">Appointments show free times here; stays and rentals, dates.</span>
+            <span className="text-xs text-muted">{shop.bookingNote}</span>
           </span>
         );
       case "description":
         return (
           <span className="flex flex-col gap-2">
-            {heading("Description")}
+            {heading(shop.description)}
             {lines(3)}
           </span>
         );
       case "withdrawal":
-        return <span className="text-sm">No right of withdrawal … (only for products without one)</span>;
+        return <span className="text-sm">{shop.withdrawal}</span>;
       case "safety":
         return (
           <span className="flex flex-col gap-2 text-sm">
-            {heading("Safety and manufacturer")}
+            {heading(shop.safety)}
             {lines(2)}
           </span>
         );
@@ -5938,7 +5951,7 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
         const columns = block.columns ?? 4;
         return (
           <span className="flex flex-col gap-3">
-            {heading("You may also like")}
+            {heading(shop.related)}
             <span className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
               {Array.from({ length: Math.min(block.limit ?? 4, columns) }, (_, i) => (
                 <span key={i} className="flex flex-col gap-2">

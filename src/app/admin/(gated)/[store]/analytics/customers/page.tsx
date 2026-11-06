@@ -8,6 +8,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { analyticsContext } from "@/server/analytics-context";
+import { analyticsCaptions, analyticsSay } from "@/server/analytics-say";
 import { customersReport } from "@/server/analytics-customers-data";
 import { featureOn } from "@/lib/store-features";
 import { memberCan } from "@/server/permissions";
@@ -30,10 +31,11 @@ export default async function AnalyticsCustomersPage({ params, searchParams }: P
 
   const locale = ctx.lang === "en" ? (store.markets[0]?.locale ?? "en") : ctx.locale;
   const w = adminText(ctx.lang, "reports");
+  const say = analyticsSay(ctx.lang, ctx.locale);
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
-    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
@@ -41,7 +43,7 @@ export default async function AnalyticsCustomersPage({ params, searchParams }: P
           title={w.pages.customers.title}
           description={w.pages.customers.description}
         />
-        <CustomersView base={ctx.base} locale={locale} timeZone={store.timeZone} isOwner={ctx.owner} report={report} bonusOn={featureOn(store, "bonus")} seesPeople={memberCan(ctx, "customers:read") && memberCan(ctx, "marketing:read")} words={w.customers} />
+        <CustomersView base={ctx.base} locale={locale} timeZone={store.timeZone} isOwner={ctx.owner} report={report} bonusOn={featureOn(store, "bonus")} seesPeople={memberCan(ctx, "customers:read") && memberCan(ctx, "marketing:read")} words={w.customers} say={say} />
       </div>
     </ExportScope>
     </AdminTextScope>

@@ -57,6 +57,7 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
   const powerWords = w.scopeWords;
   const aw = adminText(lang, "notifications").customApps;
   const sw = adminText(lang, "notifications").storefrontTokens;
+  const routeWords = adminText(lang, "screens").storefrontRoutes;
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone || "Europe/Oslo" });
   const base = `${siteUrl()}/api/admin/v1`;
 
@@ -229,7 +230,7 @@ export default async function ApiTokensPage({ params }: PageProps<"/admin/[store
               {STOREFRONT_ROUTES.map((route) => (
                 <li key={`${route.method} ${route.path}`}>
                   <span className="font-mono">{`${route.method.padEnd(6, " ")} /api/storefront/v1/${store.slug}${route.path}`}</span>
-                  <span className="block text-muted">{route.text}</span>
+                  <span className="block text-muted">{routeWords[route.what] ?? route.text}</span>
                 </li>
               ))}
             </ul>

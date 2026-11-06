@@ -9,6 +9,7 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { periodQuery } from "@/lib/analytics-period";
 import { analyticsContext } from "@/server/analytics-context";
+import { analyticsCaptions } from "@/server/analytics-say";
 import { productsReport } from "@/server/analytics-products-data";
 
 export const metadata: Metadata = { title: "Product analytics" };
@@ -40,7 +41,7 @@ export default async function AnalyticsProductsPage({ params, searchParams }: Pa
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
-    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}

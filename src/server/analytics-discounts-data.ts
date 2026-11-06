@@ -17,6 +17,8 @@ import { addDays, addMonths, startOfMonth, type AnalyticsPeriod } from "@/lib/an
 import { safeRatio } from "@/lib/analytics-core";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { screensEn } from "@/lib/admin-messages/screens.en";
 
 import { num, PAID, SOLD_AT, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
@@ -386,9 +388,9 @@ export async function discountsReport(store: Store, period: AnalyticsPeriod): Pr
 
   const notes: string[] = [];
   if (unconverted > 0) {
-    notes.push(`${unconverted} paid order${unconverted === 1 ? "" : "s"} in ${[...missing].sort().join(", ")} ${unconverted === 1 ? "is" : "are"} left out: the store has no exchange rate for it.`);
+    notes.push(countWords(unconverted, screensEn.analyticsNotes.discounts.unconverted, { currencies: [...missing].sort().join(", ") }));
   }
-  if (couponsTruncated) notes.push(`More than ${COUPON_CAP} codes were used: the biggest by revenue are shown.`);
+  if (couponsTruncated) notes.push(fillWords(screensEn.analyticsNotes.discounts.couponsTruncated, { n: COUPON_CAP }));
 
   return {
     currency: mainCurrency(store),

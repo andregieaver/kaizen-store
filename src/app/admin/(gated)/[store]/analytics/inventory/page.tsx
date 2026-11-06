@@ -8,6 +8,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { analyticsContext } from "@/server/analytics-context";
+import { analyticsCaptions } from "@/server/analytics-say";
 import { inventoryReport } from "@/server/analytics-inventory-data";
 
 export const metadata: Metadata = { title: "Inventory analytics" };
@@ -32,7 +33,7 @@ export default async function AnalyticsInventoryPage({ params, searchParams }: P
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
-    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}

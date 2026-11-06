@@ -9,11 +9,16 @@ import { todayIn, type AnalyticsPeriod } from "@/lib/analytics-period";
 import { arr, churnRate, monthlyMinor, mrrMovements, type MrrMovements } from "@/lib/analytics-subscriptions";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { screensEn } from "@/lib/admin-messages/screens.en";
 
 import { dayStart, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 import { checkedRows, col, typedRows } from "./typed-rows";
+
+/** The notes, in English: a page in another language says them in its own (`noteIn()`, `src/lib/analytics-notes.ts`). */
+const NOTES = screensEn.analyticsNotes.subscriptions;
 
 /**
  * The Subscriptions page's figures (D152, docs/analytics.md): monthly recurring revenue and how it moved, churn, failed
@@ -287,13 +292,14 @@ export async function subscriptionsReport(store: Store, period: AnalyticsPeriod,
   const base = sets.start.count;
   const notes: string[] = [];
   if (unconvertedSubscriptions + unconvertedOrders > 0) {
-    notes.push(`${unconvertedSubscriptions} subscription${unconvertedSubscriptions === 1 ? "" : "s"} and ${unconvertedOrders} order${unconvertedOrders === 1 ? "" : "s"} in ${[...missing].sort().join(", ")} are left out: the store has no exchange rate for it.`);
+    const key = `${unconvertedSubscriptions === 1 ? "one" : "many"}${unconvertedOrders === 1 ? "One" : "Many"}` as const;
+    notes.push(fillWords(NOTES.unconverted[key], { s: unconvertedSubscriptions, o: unconvertedOrders, currencies: [...missing].sort().join(", ") }));
   }
-  if (unvalued > 0) notes.push(`${unvalued} subscription${unvalued === 1 ? "" : "s"} with an unusable renewal interval are left out of the figures.`);
-  if (truncated) notes.push(`There are more than ${GROUP_CAP} different prices: the most common are counted.`);
+  if (unvalued > 0) notes.push(countWords(unvalued, NOTES.unvalued));
+  if (truncated) notes.push(fillWords(NOTES.truncated, { n: GROUP_CAP }));
   const undated = num(durations, "undated");
-  if (undated > 0) notes.push(`${undated} cancelled subscription${undated === 1 ? " has" : "s have"} no end date and ${undated === 1 ? "is" : "are"} left out of churn and the movements.`);
-  if (sets.paused.count > 0 && endsNow) notes.push(`${sets.paused.count} paused subscription${sets.paused.count === 1 ? " is" : "s are"} not in the MRR now, but ${sets.paused.count === 1 ? "is" : "are"} counted as active at the start: the difference is in "other".`);
+  if (undated > 0) notes.push(countWords(undated, NOTES.undated));
+  if (sets.paused.count > 0 && endsNow) notes.push(countWords(sets.paused.count, NOTES.paused));
 
   return {
     currency: main,

@@ -16,16 +16,32 @@ import { useAdminText } from "../admin-text";
  * (a table drawn on its own, in a test) no button is drawn.
  */
 
-type Scope = { action: string; query: string; owner: boolean; canExport: boolean };
+type Scope = { action: string; query: string; owner: boolean; canExport: boolean; captions?: Readonly<Record<string, string>> };
 
 const ExportContext = createContext<Scope | null>(null);
 
 /**
  * `canExport` is whether the member holds `analytics:write` (a member who may only read sees no button, as the VAT page shows its note), and
  * `owner` whether they hold the owner role: a table that lists people or what only the owner enters (`OWNER_ONLY_TABLES`) is the owner's to download.
+ * `captions` are the tables' captions in the admin's language (`analyticsCaptions()`), handed down by the page so no catalogue joins the
+ * first scripts; the registry's English without them.
  */
-export function ExportScope({ base, query, owner, canExport, children }: { base: string; query: string; owner: boolean; canExport: boolean; children: ReactNode }) {
-  return <ExportContext.Provider value={{ action: `${base}/analytics/export`, query, owner, canExport }}>{children}</ExportContext.Provider>;
+export function ExportScope({
+  base,
+  query,
+  owner,
+  canExport,
+  captions,
+  children,
+}: {
+  base: string;
+  query: string;
+  owner: boolean;
+  canExport: boolean;
+  captions?: Readonly<Record<string, string>>;
+  children: ReactNode;
+}) {
+  return <ExportContext.Provider value={{ action: `${base}/analytics/export`, query, owner, canExport, captions }}>{children}</ExportContext.Provider>;
 }
 
 export type LeftOut = { orders: number; currencies: readonly string[] };
@@ -36,7 +52,7 @@ export function ExportButton({ exportId, leftOut }: { exportId: string; leftOut?
   const w = useAdminText("analytics").exportButton;
   if (!scope || !scope.canExport || (OWNER_ONLY_TABLES.has(exportId) && !scope.owner)) return null;
   const label = downloadLabel(leftOut ?? { orders: 0, currencies: [] }, w);
-  const caption = ANALYTICS_TABLES[exportId]?.caption;
+  const caption = scope.captions?.[exportId] ?? ANALYTICS_TABLES[exportId]?.caption;
   return (
     <form method="post" action={scope.action} className="inline-flex" data-export-form={exportId}>
       <input type="hidden" name="table" value={exportId} />

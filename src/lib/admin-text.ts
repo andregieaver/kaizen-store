@@ -63,6 +63,8 @@ import { fikenEn, type FikenMessages } from "./admin-messages/fiken.en";
 import { fikenNb } from "./admin-messages/fiken.nb";
 import { screensEn, type ScreensMessages } from "./admin-messages/screens.en";
 import { screensNb } from "./admin-messages/screens.nb";
+import { storePartsEn, type StorePartsMessages } from "./admin-messages/store-parts.en";
+import { storePartsNb } from "./admin-messages/store-parts.nb";
 import { notificationsEn, type NotificationsMessages } from "./admin-messages/notifications.en";
 import { notificationsNb } from "./admin-messages/notifications.nb";
 import { legalEn, type LegalMessages } from "./admin-messages/legal.en";
@@ -154,6 +156,7 @@ export type AdminAreaMessages = {
   carriers: CarriersMessages;
   fiken: FikenMessages;
   screens: ScreensMessages;
+  storeParts: StorePartsMessages;
   notifications: NotificationsMessages;
   legal: LegalMessages;
   staff: StaffMessages;
@@ -195,10 +198,16 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "screens"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "screens", "storeParts"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
+
+/**
+ * Server-only areas a page may hand down to a client part whose English is in its own module already (`useHandedText()`): the builder's
+ * shop parts, named in `store-parts.ts`. Handed down only where a page draws that part, in another language than English.
+ */
+export type HandedArea = "storeParts";
 
 const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } = {
   common: { en: commonEn, nb: commonNb },
@@ -229,6 +238,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   carriers: { en: carriersEn, nb: carriersNb },
   fiken: { en: fikenEn, nb: fikenNb },
   screens: { en: screensEn, nb: screensNb },
+  storeParts: { en: storePartsEn, nb: storePartsNb },
   notifications: { en: notificationsEn, nb: notificationsNb },
   legal: { en: legalEn, nb: legalNb },
   staff: { en: staffEn, nb: staffNb },

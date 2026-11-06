@@ -5,6 +5,8 @@ import { fillWords } from "@/lib/admin-fill";
 import { CHANNELS } from "@/lib/analytics-channels";
 import { formatCount } from "@/lib/analytics-core";
 import { channelLabel } from "@/lib/analytics-traffic";
+import { adminText } from "@/lib/admin-text";
+import { analyticsLang } from "@/lib/analytics-lang";
 import { analyticsWords } from "@/lib/analytics-words";
 import type { StoredSpend } from "@/server/analytics-settings";
 
@@ -54,9 +56,12 @@ function Field({ label, hint, children }: { label: ReactNode; hint?: ReactNode; 
 export function SpendSection({ currency, locale, today, entries, limit, actions }: SpendSectionProps) {
   const money = moneyWriter(currency, locale);
   const w = analyticsWords().spend;
+  // A channel's name in the request's language (D312), the registry's English where the words have none.
+  const channelWords: Record<string, string | undefined> = adminText(analyticsLang(), "reports").channels;
+  const channelName = (key: string) => channelWords[key] ?? channelLabel(key);
   const columns: Column<StoredSpend>[] = [
     { key: "day", label: w.day, cell: (e) => dayText(e.day) },
-    { key: "channel", label: w.channel, cell: (e) => channelLabel(e.channel) },
+    { key: "channel", label: w.channel, cell: (e) => channelName(e.channel) },
     { key: "campaign", label: w.campaign, cell: (e) => (e.campaign === "" ? <span className="text-muted">{w.wholeChannel}</span> : e.campaign) },
     { key: "amount", label: fillWords(w.amountColumn, { currency }), align: "right", cell: (e) => money(e.amountMinor) },
     { key: "note", label: w.note, cell: (e) => (e.note ? e.note : <span className="text-muted">–</span>) },
@@ -69,7 +74,7 @@ export function SpendSection({ currency, locale, today, entries, limit, actions 
           <input type="hidden" name="id" value={e.id} />
           <SubmitButton variant="secondary">
             {w.remove}
-            <span className="sr-only">{fillWords(w.removeWhat, { amount: money(e.amountMinor), channel: channelLabel(e.channel), day: dayText(e.day) })}</span>
+            <span className="sr-only">{fillWords(w.removeWhat, { amount: money(e.amountMinor), channel: channelName(e.channel), day: dayText(e.day) })}</span>
           </SubmitButton>
         </ActionForm>
       ),
@@ -91,7 +96,7 @@ export function SpendSection({ currency, locale, today, entries, limit, actions 
                 </option>
                 {CHANNELS.map((c) => (
                   <option key={c.key} value={c.key}>
-                    {c.label}
+                    {channelWords[c.key] ?? c.label}
                   </option>
                 ))}
               </select>

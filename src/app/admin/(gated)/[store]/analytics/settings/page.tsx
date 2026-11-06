@@ -9,6 +9,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminTexts } from "@/lib/admin-text";
 import { analyticsWords } from "@/lib/analytics-words";
 import { analyticsContext } from "@/server/analytics-context";
+import { analyticsCaptions } from "@/server/analytics-say";
 import { analyticsSetupSummary } from "@/server/analytics-settings-data";
 import { listPeriodTargets, listTargets } from "@/server/analytics-settings";
 
@@ -38,7 +39,7 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
   const w = analyticsWords().settings;
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
-    <ExportScope base={ctx.base} query="" owner={ctx.owner} canExport={ctx.canExport}>
+    <ExportScope base={ctx.base} query="" owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-6">
         <AnalyticsHeader
           ctx={ctx}

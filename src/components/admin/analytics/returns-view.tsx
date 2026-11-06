@@ -1,6 +1,7 @@
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { financeEn, type FinanceMessages } from "@/lib/admin-messages/finance.en";
 import { formatCount, NO_FIGURE } from "@/lib/analytics-core";
+import { asWritten, type Say } from "@/lib/analytics-notes";
 import { MIN_PRODUCT_UNITS, MIN_TIMING_SAMPLE } from "@/lib/analytics-returns";
 import { financeNumbers } from "@/lib/finance-words";
 import type { ReturnsReport } from "@/server/analytics-returns-data";
@@ -27,10 +28,14 @@ export type ReturnsViewProps = {
   queueHref?: string;
   /** The words in the admin's language (D312 A9); English unless given. */
   words?: FinanceMessages;
+  /** The report's notes in the admin's language (`sayIn()`); as written unless given. */
+  say?: Say;
+  /** The reasons' names in the admin's language (`returns.labels.reason`); the report's English unless given. */
+  reasonLabels?: Readonly<Record<string, string>>;
 };
 
 /** The seven cards. A rate that cannot be given is a missing card with its reason; the counts are always numbers. */
-export function returnCards({ currency, locale, report: r, queueHref, words = financeEn }: ReturnsViewProps): KpiCardProps[] {
+export function returnCards({ currency, locale, report: r, queueHref, words = financeEn, say = asWritten }: ReturnsViewProps): KpiCardProps[] {
   const w = words.returns;
   const HELP = w.help;
   const { percent: pct, days: formatDays } = financeNumbers(words);
@@ -53,7 +58,7 @@ export function returnCards({ currency, locale, report: r, queueHref, words = fi
 
   cards.push(
     r.orderRate.value === null
-      ? { label: w.orderRate, value: null, state: "missing", missing: { text: r.orderRate.missing ?? w.notKnown }, help: HELP.orderRate }
+      ? { label: w.orderRate, value: null, state: "missing", missing: { text: r.orderRate.missing ? say(r.orderRate.missing) : w.notKnown }, help: HELP.orderRate }
       : {
           label: w.orderRate,
           value: pct(r.orderRate.value),
@@ -65,7 +70,7 @@ export function returnCards({ currency, locale, report: r, queueHref, words = fi
 
   cards.push(
     r.unitRate.value === null
-      ? { label: w.unitRate, value: null, state: "missing", missing: { text: r.unitRate.missing ?? w.notKnown }, help: HELP.unitRate }
+      ? { label: w.unitRate, value: null, state: "missing", missing: { text: r.unitRate.missing ? say(r.unitRate.missing) : w.notKnown }, help: HELP.unitRate }
       : {
           label: w.unitRate,
           value: pct(r.unitRate.value),
@@ -92,7 +97,7 @@ export function returnCards({ currency, locale, report: r, queueHref, words = fi
   const t = r.timing.requestToRefund;
   cards.push(
     t.medianDays === null
-      ? { label: w.timing, value: null, state: "missing", missing: { text: t.missing ?? w.notKnown }, help: HELP.timing }
+      ? { label: w.timing, value: null, state: "missing", missing: { text: t.missing ? say(t.missing) : w.notKnown }, help: HELP.timing }
       : {
           label: w.timing,
           value: formatDays(t.medianDays),
@@ -115,14 +120,14 @@ export function returnCards({ currency, locale, report: r, queueHref, words = fi
   const kept = x.transfers > 0 ? fillWords(w.kept, { amount: money(x.keptMinor) }) : "";
   cards.push(
     !x.tracked
-      ? { label: w.exchanged, value: null, state: "missing", missing: { text: x.share.missing ?? w.noneExchanged }, help: HELP.exchanged }
+      ? { label: w.exchanged, value: null, state: "missing", missing: { text: x.share.missing ? say(x.share.missing) : w.noneExchanged }, help: HELP.exchanged }
       : {
           label: w.exchanged,
           value: formatCount(x.returns),
           help: HELP.exchanged,
           hint:
             x.share.value === null
-              ? `${x.share.missing ?? ""}${kept}`.trim()
+              ? `${x.share.missing ? say(x.share.missing) : ""}${kept}`.trim()
               : fillWords(w.exchangedHint, { share: pct(x.share.value), returns: formatCount(r.made.returns), kept }),
         },
   );
@@ -130,7 +135,7 @@ export function returnCards({ currency, locale, report: r, queueHref, words = fi
 }
 
 export function ReturnsView(props: ReturnsViewProps) {
-  const { currency, locale, report: r, words = financeEn } = props;
+  const { currency, locale, report: r, words = financeEn, say = asWritten, reasonLabels } = props;
   const w = words.returns;
   const { percent: pct, days: formatDays } = financeNumbers(words);
   const money = safeMoney(currency, locale);
@@ -138,7 +143,7 @@ export function ReturnsView(props: ReturnsViewProps) {
 
   const reasonRows: BarRow[] = r.reasons.rows.map((x) => ({
     key: x.reason === "" ? "none" : x.reason,
-    label: x.label,
+    label: x.reason !== "" && reasonLabels?.[x.reason] ? reasonLabels[x.reason] : say(x.label),
     value: x.returns,
     valueText: formatCount(x.returns),
     detail: [countWords(x.units, w.unitsN, { n: formatCount(x.units) }), x.share === null ? null : pct(x.share)].filter(Boolean).join(", "),
@@ -172,7 +177,7 @@ export function ReturnsView(props: ReturnsViewProps) {
       key: "median",
       label: w.typical,
       align: "right",
-      cell: (x) => (x.timing.medianDays === null ? <span title={x.timing.missing ?? ""}>{NO_FIGURE}</span> : formatDays(x.timing.medianDays)),
+      cell: (x) => (x.timing.medianDays === null ? <span title={x.timing.missing ? say(x.timing.missing) : ""}>{NO_FIGURE}</span> : formatDays(x.timing.medianDays)),
     },
     { key: "slowest", label: w.slowest, align: "right", cell: (x) => (x.timing.slowestDays === null ? NO_FIGURE : formatDays(x.timing.slowestDays)) },
   ];
@@ -187,7 +192,7 @@ export function ReturnsView(props: ReturnsViewProps) {
       align: "right",
       cell: (p) =>
         p.rate.value === null ? (
-          <span title={p.rate.missing ?? ""}>{NO_FIGURE}</span>
+          <span title={p.rate.missing ? say(p.rate.missing) : ""}>{NO_FIGURE}</span>
         ) : (
           <ShareBar share={p.rate.value} text={pct(p.rate.value)} label={w.returnShare} />
         ),
@@ -203,18 +208,18 @@ export function ReturnsView(props: ReturnsViewProps) {
       title={w.title}
       description={w.description}
     >
-      <Note title={w.notSeen}>{r.notSeenNote}</Note>
+      <Note title={w.notSeen}>{say(r.notSeenNote)}</Note>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {returnCards(props).map((c) => (
           <KpiCard key={c.label} {...c} />
         ))}
       </div>
-      {r.maturity ? <Note tone="warning">{r.maturity}</Note> : null}
+      {r.maturity ? <Note tone="warning">{say(r.maturity)}</Note> : null}
       {r.notes.length > 0 ? (
         <div className="space-y-2">
           {r.notes.map((n) => (
             <Note key={n} tone="warning">
-              {n}
+              {say(n)}
             </Note>
           ))}
         </div>
@@ -233,7 +238,7 @@ export function ReturnsView(props: ReturnsViewProps) {
           <div className="grid gap-4 2xl:grid-cols-2">
             <ChartCard title={w.whyTitle} description={w.whyDescription}>
               <HorizontalBars label={w.whyLabel} rows={reasonRows} emptyText={w.noReturns} exportId="traffic.return_reasons" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
-              {r.reasons.note ? <p className="mt-2 text-xs text-muted">{r.reasons.note}</p> : null}
+              {r.reasons.note ? <p className="mt-2 text-xs text-muted">{say(r.reasons.note)}</p> : null}
             </ChartCard>
             <div className="min-w-0 space-y-2">
               <h3 className="text-body-strong text-ink">{w.kindsTitle}</h3>

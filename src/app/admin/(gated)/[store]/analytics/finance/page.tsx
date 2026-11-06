@@ -16,6 +16,7 @@ import { financeStatement } from "@/lib/analytics-finance";
 import { bucketFor, type AnalyticsPeriod } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext, type AnalyticsContext } from "@/server/analytics-context";
+import { analyticsCaptions } from "@/server/analytics-say";
 import { paymentMethodsReport } from "@/server/analytics-payments-data";
 import { analyticsSetupSummary } from "@/server/analytics-settings-data";
 import { periodTotals, seriesByBucket } from "@/server/analytics-totals";
@@ -70,7 +71,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["finance", "analytics"])}>
-    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader ctx={ctx} path="/analytics/finance" title={words.pages.financeTitle} description={words.pages.financeDescription} />
         <FinanceView

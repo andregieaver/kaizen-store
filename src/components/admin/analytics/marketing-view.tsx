@@ -10,6 +10,8 @@ import type { CustomersReport } from "@/server/analytics-customers-data";
 import type { MarketingReport } from "@/server/analytics-traffic-data";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+import { screensEn } from "@/lib/admin-messages/screens.en";
+import { asWritten, type Say } from "@/lib/analytics-notes";
 
 /** The words of this view and a channel's name (D312 A9), English unless given. */
 export type MarketingWords = ReportsMessages["marketing"];
@@ -61,6 +63,8 @@ export type MarketingViewProps = {
   words?: MarketingWords;
   /** A channel's name, in the account's language; English unless given. */
   channelWords?: ChannelWords;
+  /** The report's notes in the account's language (`sayIn()`); as written unless given. */
+  say?: Say;
 };
 
 /** The lifetime value of the customers report as the card needs it. */
@@ -92,7 +96,7 @@ export function formatLtvToCac(ratio: number | null | undefined): string {
 }
 
 /** The generic note the report adds for spend outside the covered days; the view words it with the amount instead. */
-export const OUTSIDE_SPEND_NOTE = "Spend entered for days with no counted visits is left out of CAC and ROAS.";
+export const OUTSIDE_SPEND_NOTE = screensEn.analyticsNotes.traffic.spendOutside;
 
 /** Which colour a channel keeps wherever it is drawn: its place in the list of channels, and the muted colour for what is not in it. */
 export function channelColorIndex(key: string): number {
@@ -462,8 +466,13 @@ function ChannelsSection({
 // ---------------------------------------------------------------------------
 
 /** The notes under the headline: what the report says it leaves out, and the spend that cannot be matched to visits, in words with the amount. */
-export function marketingNotes(report: MarketingReport, money: (minor: number) => string, w: MarketingWords = reportsEn.marketing): { tone: "info" | "warning"; text: string }[] {
-  const notes: { tone: "info" | "warning"; text: string }[] = report.notes.filter((n) => n !== OUTSIDE_SPEND_NOTE).map((text) => ({ tone: "info", text }));
+export function marketingNotes(
+  report: MarketingReport,
+  money: (minor: number) => string,
+  w: MarketingWords = reportsEn.marketing,
+  say: Say = asWritten,
+): { tone: "info" | "warning"; text: string }[] {
+  const notes: { tone: "info" | "warning"; text: string }[] = report.notes.filter((n) => n !== OUTSIDE_SPEND_NOTE).map((text) => ({ tone: "info", text: say(text) }));
   const outside = report.spend.outsideCoverageMinor;
   if (outside > 0) {
     notes.push({
@@ -482,7 +491,7 @@ export function MarketingView(props: MarketingViewProps) {
   const w = props.words ?? reportsEn.marketing;
   const money = moneyWriter(currency, locale);
   const cards = headlineCards(props);
-  const notes = marketingNotes(report, money, w);
+  const notes = marketingNotes(report, money, w, props.say);
   const hasSpend = report.spend.totalMinor > 0;
 
   return (

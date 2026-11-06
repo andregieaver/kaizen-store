@@ -35,7 +35,7 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
       <div className="flex max-w-xl flex-col gap-3">
         <PageHeader title={w.connectTitle} />
         <p role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
-          {fillWords(w.unusable, { reason: read.reason })}
+          {fillWords(w.unusable, { reason: adminText(adminLangOf(account.adminLocale), "screens").wordpressProblems[read.code] })}
         </p>
       </div>
     );

@@ -13,6 +13,7 @@ import { AnalyticsSection, Note } from "./section";
 import { CARD_CLASS } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+import { asWritten, type Say } from "@/lib/analytics-notes";
 
 /** The words of this view (D312 A9), English unless given. */
 export type SubscriptionsWords = ReportsMessages["subscriptions"];
@@ -34,6 +35,8 @@ export type SubscriptionsViewProps = {
   report: SubscriptionsReport;
   /** The words, in the account's language (D312 A9); English unless given. */
   words?: SubscriptionsWords;
+  /** The report's notes in the account's language (`sayIn()`); as written unless given. */
+  say?: Say;
 };
 
 // ---------------------------------------------------------------------------
@@ -400,7 +403,7 @@ export function SubscriptionsView(props: SubscriptionsViewProps) {
           <div className="space-y-2">
             {report.notes.map((n) => (
               <Note key={n} tone="warning">
-                {n}
+                {(props.say ?? asWritten)(n)}
               </Note>
             ))}
           </div>

@@ -4,6 +4,7 @@ import { addDays, addMonths, startOfMonth } from "@/lib/analytics-period";
 import type { CouponReportRow, DiscountsReport } from "@/server/analytics-discounts-data";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { reportsEn, type ReportsMessages } from "@/lib/admin-messages/reports.en";
+import { asWritten, type Say } from "@/lib/analytics-notes";
 
 /** The words of this view (D312 A9), English unless given. */
 export type DiscountsWords = ReportsMessages["discounts"];
@@ -29,6 +30,8 @@ export type DiscountsViewProps = {
   report: DiscountsReport;
   /** The words, in the account's language (D312 A9); English unless given. */
   words?: DiscountsWords;
+  /** The report's notes in the account's language (`sayIn()`); as written unless given. */
+  say?: Say;
 };
 
 // ---------------------------------------------------------------------------
@@ -153,7 +156,7 @@ export function couponColumns(money: (minor: number) => string, w: DiscountsWord
 // The view
 // ---------------------------------------------------------------------------
 
-export function DiscountsView({ currency, locale, report, words: w = reportsEn.discounts }: DiscountsViewProps) {
+export function DiscountsView({ currency, locale, report, words: w = reportsEn.discounts, say = asWritten }: DiscountsViewProps) {
   const money = moneyWriter(currency, locale);
   const s = report.summary;
   const cards = discountCards(report, money, w);
@@ -264,7 +267,7 @@ export function DiscountsView({ currency, locale, report, words: w = reportsEn.d
       {report.notes.length > 0 ? (
         <div className="space-y-2">
           {report.notes.map((n) => (
-            <Note key={n}>{n}</Note>
+            <Note key={n}>{say(n)}</Note>
           ))}
         </div>
       ) : null}

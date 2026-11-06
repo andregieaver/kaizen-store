@@ -1,3 +1,5 @@
+import { countWords, fillWords } from "./admin-fill";
+import { screensEn } from "./admin-messages/screens.en";
 import { formatCount, formatNumber, safeRatio } from "./analytics-core";
 import { daysBetween } from "./analytics-period";
 import { REASON_LABELS } from "./return-admin";
@@ -23,7 +25,8 @@ export const MIN_TIMING_SAMPLE = 5;
 /** A ratio, or the plain reason there is none: never a zero that stands for "not known". */
 export type Figure = { value: number | null; missing: string | null };
 
-const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+/** The notes, in English: a page in another language says them in its own (`noteIn()`, `src/lib/analytics-notes.ts`). */
+const NOTES = screensEn.analyticsNotes.returns;
 
 /**
  * A rate of `part` over `whole`. It has no value when nothing was recorded in the store at all (`tracked` false: the figure would be
@@ -31,17 +34,9 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
  */
 export function gatedRate(input: { part: number; whole: number; min: number; unit: "orders" | "units"; tracked: boolean }): Figure {
   const { part, whole, min, unit, tracked } = input;
-  const singular = unit === "orders" ? "order" : "unit";
-  if (!tracked) {
-    return { value: null, missing: "No return has been recorded in Kaizena Flow yet, so there is nothing to rate. Returns made through the withdrawal function or a return request appear here." };
-  }
-  if (whole <= 0) return { value: null, missing: `No goods ${unit === "orders" ? "orders were" : "units were"} sold in this period.` };
-  if (whole < min) {
-    return {
-      value: null,
-      missing: `Only ${formatCount(whole)} ${plural(whole, singular, unit)} in this period: a rate needs at least ${formatCount(min)}, or one return would swing it.`,
-    };
-  }
+  if (!tracked) return { value: null, missing: NOTES.notTracked };
+  if (whole <= 0) return { value: null, missing: NOTES.noneSold[unit] };
+  if (whole < min) return { value: null, missing: countWords(whole, NOTES.tooFew[unit], { n: formatCount(whole), min: formatCount(min) }) };
   return { value: safeRatio(part, whole), missing: null };
 }
 
@@ -72,13 +67,13 @@ export type Timing = {
 /** A time to refund: median and slowest in days, but only from `MIN_TIMING_SAMPLE` returns; fewer says how many there were. */
 export function timingOf(days: readonly (number | null)[], what: string, min = MIN_TIMING_SAMPLE): Timing {
   const known = days.filter((d): d is number => d !== null && Number.isFinite(d) && d >= 0);
-  if (known.length === 0) return { n: 0, medianDays: null, slowestDays: null, missing: `No return was refunded in this period that has ${what}.` };
+  if (known.length === 0) return { n: 0, medianDays: null, slowestDays: null, missing: fillWords(NOTES.timingNone, { what }) };
   if (known.length < min) {
     return {
       n: known.length,
       medianDays: null,
       slowestDays: null,
-      missing: `Only ${formatCount(known.length)} ${plural(known.length, "return", "returns")} refunded with ${what}: a typical time needs at least ${formatCount(min)}.`,
+      missing: countWords(known.length, NOTES.timingFew, { n: formatCount(known.length), what, min: formatCount(min) }),
     };
   }
   return { n: known.length, medianDays: median(known), slowestDays: Math.max(...known), missing: null };
@@ -135,12 +130,12 @@ export function reasonBreakdown(inputs: readonly ReasonInput[], min = MIN_REASON
   const rows: ReasonRow[] = [...named.entries()]
     .map(([reason, v]) => ({ reason, label: REASON_LABELS[reason], returns: v.returns, units: v.units, share: sharesShown ? safeRatio(v.returns, given) : null }))
     .sort((a, b) => b.returns - a.returns || b.units - a.units || (a.reason < b.reason ? -1 : 1));
-  if (none.returns > 0) rows.push({ reason: "", label: "No reason given", returns: none.returns, units: none.units, share: null });
+  if (none.returns > 0) rows.push({ reason: "", label: screensEn.analyticsNotes.phrases.noReasonGiven, returns: none.returns, units: none.units, share: null });
   let note: string | null = null;
   if (total === 0) note = null;
-  else if (given === 0) note = "None of the returns in this period has a reason. A withdrawal asks for none, and a shopper is never asked first.";
-  else if (!sharesShown) note = `Only ${formatCount(given)} ${plural(given, "return has", "returns have")} a reason: shares need at least ${formatCount(min)}, so only counts are shown.`;
-  else if (none.returns > 0) note = `${formatCount(given)} of ${formatCount(total)} returns have a reason; shares are of those. A withdrawal asks for none.`;
+  else if (given === 0) note = NOTES.reasonsNone;
+  else if (!sharesShown) note = countWords(given, NOTES.reasonsFew, { n: formatCount(given), min: formatCount(min) });
+  else if (none.returns > 0) note = fillWords(NOTES.reasonsSome, { given: formatCount(given), total: formatCount(total) });
   return { rows, total, given, sharesShown, note };
 }
 
@@ -153,7 +148,7 @@ export function maturityNote(period: { to: string }, today: string, windowDays: 
   const open = Math.max(1, Math.floor(windowDays));
   // Settled once a whole return window has passed since the period ended.
   if (sinceEnd >= open) return null;
-  return `Orders from the last ${formatCount(open)} days can still be returned, so the rates for this period are still rising and are not final.`;
+  return fillWords(NOTES.maturity, { n: formatCount(open) });
 }
 
 /**
@@ -163,10 +158,8 @@ export function maturityNote(period: { to: string }, today: string, windowDays: 
 export function exchangeShare(input: { exchanged: number; returns: number; tracked: boolean; min?: number }): Figure {
   const { exchanged, returns, tracked } = input;
   const min = input.min ?? MIN_RATE_ORDERS;
-  if (!tracked) return { value: null, missing: "No return has been exchanged in Kaizena Flow yet. An exchange is made on a return's page, and appears here once it is settled." };
-  if (returns <= 0) return { value: null, missing: "No return was made in this period." };
-  if (returns < min) {
-    return { value: null, missing: `Only ${formatCount(returns)} ${plural(returns, "return", "returns")} made in this period: a share needs at least ${formatCount(min)}.` };
-  }
+  if (!tracked) return { value: null, missing: NOTES.exchangeNotTracked };
+  if (returns <= 0) return { value: null, missing: NOTES.exchangeNoneMade };
+  if (returns < min) return { value: null, missing: countWords(returns, NOTES.exchangeFew, { n: formatCount(returns), min: formatCount(min) }) };
   return { value: safeRatio(Math.min(exchanged, returns), returns), missing: null };
 }

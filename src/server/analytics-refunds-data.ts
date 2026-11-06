@@ -9,6 +9,8 @@ import type { AnalyticsPeriod } from "@/lib/analytics-period";
 import { allocateRefund } from "@/lib/analytics-products";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { screensEn } from "@/lib/admin-messages/screens.en";
 
 import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row, soldIn, toMainOne } from "./analytics-sql";
 import { setBasedReplica as setBased } from "./analytics-totals";
@@ -138,8 +140,10 @@ export type RefundsReport = {
   notes: string[];
 };
 
-export const NOT_SEEN_NOTE =
-  "Refunds made in Stripe's or Mollie's own dashboard are included once the provider reports them, with the reason it was given there; a refund the provider cannot match to an order here is not. Other reasons are what staff wrote.";
+/** The notes, in English: a page in another language says them in its own (`noteIn()`, `src/lib/analytics-notes.ts`). */
+const NOTES = screensEn.analyticsNotes.refunds;
+
+export const NOT_SEEN_NOTE = NOTES.notSeen;
 
 // ---------------------------------------------------------------------------
 // Pure parts
@@ -490,12 +494,12 @@ export async function refundsReport(store: Store, period: AnalyticsPeriod): Prom
 
   const notes: string[] = [];
   if (unconverted > 0) {
-    notes.push(`${unconverted} refund${unconverted === 1 ? "" : "s"} in ${[...missing].sort().join(", ")} ${unconverted === 1 ? "is" : "are"} left out: the store has no exchange rate for it.`);
+    notes.push(countWords(unconverted, NOTES.unconverted, { currencies: [...missing].sort().join(", ") }));
   } else if (missing.size > 0) {
-    notes.push(`Paid orders in ${[...missing].sort().join(", ")} are left out of revenue: the store has no exchange rate for it.`);
+    notes.push(fillWords(NOTES.revenueUnconverted, { currencies: [...missing].sort().join(", ") }));
   }
-  if (productsTruncated) notes.push(`More than ${PRODUCT_REFUND_CAP} refunds were made: the products are made of the biggest ones.`);
-  if (reasonRows.length > REASON_CAP) notes.push("The reasons are made of the biggest refunds only: there were very many different texts.");
+  if (productsTruncated) notes.push(fillWords(NOTES.productsTruncated, { n: PRODUCT_REFUND_CAP }));
+  if (reasonRows.length > REASON_CAP) notes.push(NOTES.reasonsTruncated);
 
   return {
     currency: mainCurrency(store),

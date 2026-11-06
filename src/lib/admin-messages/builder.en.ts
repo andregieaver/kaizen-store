@@ -1483,6 +1483,18 @@ export const builderEn = {
     addToCart: "Add to cart",
     question: "Ask about this product",
     questionButton: "Send the question",
+    campaignsNote: "The offer is taken off in the cart. (Shown while a campaign reaches the product.)",
+    rating: "★★★★☆ 4.3 out of 5 (12 reviews). (Shown once the product has a published review.)",
+    reviewsNote: "The product's published reviews, newest first. (Shown once there is one.)",
+    notice: "Sold only to businesses. (Shown to private shoppers for such products.)",
+    host: "Hosted by … (for outside hosts' stays and rentals)",
+    variantOne: "Variant one",
+    variantTwo: "Variant two",
+    bookingNote: "Appointments show free times here; stays and rentals, dates.",
+    description: "Description",
+    withdrawal: "No right of withdrawal … (only for products without one)",
+    safety: "Safety and manufacturer",
+    related: "You may also like",
   },
   /** Request a quote and the product question (D431): the buy part's placement and the question part's settings. */
   quotePart: {

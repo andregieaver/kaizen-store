@@ -10,6 +10,7 @@ import { EraseSkeleton } from "@/components/admin/privacy/skeletons";
 import { alertText } from "@/components/admin/privacy/styles";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
+import { planReasonsNb } from "@/lib/personal-data.nb";
 import { findCustomer } from "@/server/customer-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { erasurePreview } from "@/server/privacy-admin";
@@ -68,7 +69,7 @@ async function Preview({ storeSlug, customerId, searchParams }: { storeSlug: str
           />
           <p className={`mt-2 text-sm font-medium ${alertText}`}>{w.erase.cannotUndo}</p>
         </div>
-        <ErasurePlanView plan={preview.plan} locale={locale} words={w} dateLocale={ADMIN_LANG_FACTS[lang].locale} />
+        <ErasurePlanView plan={lang === "en" ? preview.plan : planReasonsNb(preview.plan)} locale={locale} words={w} dateLocale={ADMIN_LANG_FACTS[lang].locale} />
         <EraseForm email={preview.email} action={eraseCustomerAction.bind(null, store.slug, ref.key, request)} />
       </div>
     </AdminTextScope>

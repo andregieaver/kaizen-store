@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { formatCount, formatDate, formatMonth, formatPercent, NO_FIGURE, safeRatio } from "@/lib/analytics-core";
 import { formatAmount, formatDecimal } from "@/lib/analytics-format";
 import { MIN_COHORT_SIZE, type RfmSegment } from "@/lib/analytics-customers";
+import { asWritten, type Say } from "@/lib/analytics-notes";
 import type { CustomersReport, TopCustomer } from "@/server/analytics-customers-data";
 
 import { maxOf } from "./chart-math";
@@ -39,6 +40,8 @@ export type CustomersViewProps = {
   report: CustomersReport;
   /** The bonus program's feature is on (D178): advice that names bonus credit is given only then. */
   bonusOn?: boolean;
+  /** The report's sentences in the account's language (`sayIn()`); as written unless given. */
+  say?: Say;
 };
 
 /** A repeat rate over fewer customers than this is called a rough guide. */
@@ -203,6 +206,7 @@ export function CustomersView({
   bonusOn = true,
   seesPeople = false,
   words: w = reportsEn.customers,
+  say = asWritten,
 }: CustomersViewProps & { words?: CustomersWords; /** Whether the member may read customers: each type then opens its people (D380). */ seesPeople?: boolean }) {
   const money = moneyOf(report.currency, locale);
   const decimal = decimalOf();
@@ -563,7 +567,7 @@ export function CustomersView({
         title={w.cohortsTitle}
         description={w.cohortsDescription}
       >
-        <p className={trend.verdict === "unknown" ? "text-sm text-muted" : "text-sm font-medium"}>{trend.sentence}</p>
+        <p className={trend.verdict === "unknown" ? "text-sm text-muted" : "text-sm font-medium"}>{say(trend.sentence)}</p>
         <ChartCard title={w.retentionTitle} description={w.retentionDescription}>
           <CohortTable label={w.retentionLabel} columns={columns} rows={retentionRows} emptyText={w.noCohorts} exportId="customers.retention" exportLeftOut={leftOut} />
         </ChartCard>

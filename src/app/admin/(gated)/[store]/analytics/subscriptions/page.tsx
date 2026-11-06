@@ -9,6 +9,7 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext } from "@/server/analytics-context";
+import { analyticsCaptions, analyticsSay } from "@/server/analytics-say";
 import { subscriptionsReport } from "@/server/analytics-subscriptions-data";
 
 export const metadata: Metadata = { title: "Subscription analytics" };
@@ -31,7 +32,7 @@ export default async function AnalyticsSubscriptionsPage({ params, searchParams 
 
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["reports", "analytics"])}>
-    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
       <div className="flex flex-col gap-8">
         <AnalyticsHeader
           ctx={ctx}
@@ -39,7 +40,7 @@ export default async function AnalyticsSubscriptionsPage({ params, searchParams 
           title={w.pages.subscriptions.title}
           description={w.pages.subscriptions.description}
         />
-        <SubscriptionsView base={ctx.base} currency={mainCurrency(store)} locale={locale} report={report} words={w.subscriptions} />
+        <SubscriptionsView base={ctx.base} currency={mainCurrency(store)} locale={locale} report={report} words={w.subscriptions} say={analyticsSay(ctx.lang, ctx.locale)} />
       </div>
     </ExportScope>
     </AdminTextScope>

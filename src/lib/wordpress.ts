@@ -88,20 +88,25 @@ export function siteLabel(value: unknown, fallback: string): string {
 /** What an approval asks for, as the plugin's address carries it. */
 export type ApprovalRequest = { site: string; name: string; returnTo: URL; state: string; challenge: string };
 
+/** Why an approval's address is not one, by code: the page says it in the account's language (`screens.wordpressProblems`). */
+export type ApprovalProblem = "site" | "return" | "state" | "challenge";
+
 /** The approval page's query read into a request, or why it is not one. */
-export function readApproval(query: Record<string, string | string[] | undefined>): { ok: true; request: ApprovalRequest } | { ok: false; reason: string } {
+export function readApproval(
+  query: Record<string, string | string[] | undefined>,
+): { ok: true; request: ApprovalRequest } | { ok: false; reason: string; code: ApprovalProblem } {
   const one = (key: string) => {
     const value = query[key];
     return typeof value === "string" ? value : undefined;
   };
   const site = siteOrigin(one("site"));
-  if (!site) return { ok: false, reason: "The site's address is missing, or is not an https address." };
+  if (!site) return { ok: false, code: "site", reason: "The site's address is missing, or is not an https address." };
   const returnTo = returnAddress(site, one("return"));
-  if (!returnTo) return { ok: false, reason: "The return address does not belong to the site." };
+  if (!returnTo) return { ok: false, code: "return", reason: "The return address does not belong to the site." };
   const state = one("state") ?? "";
-  if (!/^[A-Za-z0-9_-]{16,128}$/.test(state)) return { ok: false, reason: "The request has no valid state." };
+  if (!/^[A-Za-z0-9_-]{16,128}$/.test(state)) return { ok: false, code: "state", reason: "The request has no valid state." };
   const challenge = one("challenge") ?? "";
-  if (!SECRET.test(challenge)) return { ok: false, reason: "The request has no valid code challenge." };
+  if (!SECRET.test(challenge)) return { ok: false, code: "challenge", reason: "The request has no valid code challenge." };
   return { ok: true, request: { site, name: siteLabel(one("name"), new URL(site).host), returnTo, state, challenge } };
 }
 

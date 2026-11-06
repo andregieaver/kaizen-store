@@ -7,6 +7,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { queryText } from "@/lib/analytics-export";
 import { analyticsContext } from "@/server/analytics-context";
+import { analyticsCaptions } from "@/server/analytics-say";
 import { speedReport } from "@/server/analytics-speed";
 
 export const metadata: Metadata = { title: "Speed" };
@@ -22,7 +23,7 @@ export default async function AnalyticsSpeedPage({ params, searchParams }: PageP
   const words = adminText(ctx.lang, "analytics");
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["analytics"])}>
-      <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+      <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport} captions={analyticsCaptions(ctx.lang)}>
         <div className="flex flex-col gap-8">
           <AnalyticsHeader ctx={ctx} path="/analytics/speed" title={words.speed.title} description={words.speed.description} picker={false} showCompare={false} />
           <SpeedView base={ctx.base} locale={ctx.locale} report={report} words={words} />
