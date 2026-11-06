@@ -4761,6 +4761,20 @@
       "when": 1793952352021,
       "tag": "20261106080551_sales_needs_nothing",
       "breakpoints": true
+    },
+    {
+      "idx": 680,
+      "version": "7",
+      "when": 1793958376027,
+      "tag": "20261106094616_platform_integrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 681,
+      "version": "7",
+      "when": 1793958416206,
+      "tag": "20261106094656_platform_integrations_rules",
+      "breakpoints": true
     }
   ]
 }

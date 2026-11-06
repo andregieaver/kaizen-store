@@ -12,9 +12,8 @@ then reading each. A row marked *check* was not read in depth: decide it when it
 
 | Store feature | Store admin | What it is for Kaizena Flow | State |
 |---|---|---|---|
-| Zapier, Make and Slack (D41, D101) | Integrations | Kaizena Flow's own events (a store asked for, a store made or opened, a plan started or ended, a notice of illegal content) to the operator's Slack channel and automations | Missing |
-| Events to own endpoints (D354) | Integrations → Your own endpoints | The same platform events, signed, to Kaizena Flow's own systems | Missing |
-| "Add to Slack" (D101) | Integrations → Slack | Picking the platform's channel through Slack's own page, not a pasted address | Missing |
+| Events to own endpoints (D354) | Integrations → Your own endpoints | Kaizena Flow's events (D465), signed, to its own systems | Missing: next of D465 |
+| "Add to Slack" (D101) | Integrations → Slack | Picking the platform's channel through Slack's own page (today a pasted webhook, D465) | Missing: next of D465 |
 | Accounting: Tripletex, Fiken (D453, D460) | Integrations | Kaizena Flow's plan invoices in Human Web's books. They are Stripe's invoices (D35), not Kaizena Flow's own series, so this is Stripe's payouts and invoices into the books: to decide | To decide |
 | Analytics (D152) | Analytics | Kaizena Flow's own site: visits, sign-ups, the funnel to a paid plan | Check |
 | Redirects and the 404 report (D168) | Website → Redirects | Kaizena Flow's moved and missing pages | Missing |
@@ -44,6 +43,7 @@ then reading each. A row marked *check* was not read in depth: decide it when it
 | Discount codes | Discounts | Plans → Discounts |
 | Activity log | Activity | Settings → Activity log |
 | Apps and AI assistants (D439, D441) | Settings → Apps and API | Settings → AI assistants and apps, App listings |
+| Zapier, Make and Slack (D41, D101; the platform's D465) | Integrations | Settings → Integrations: Kaizena Flow's own events (a store requested, made or opened, a plan started, changed, cancelled or not paid, a notice of illegal content) |
 
 ## Store-only: cannot apply to Kaizena Flow
 

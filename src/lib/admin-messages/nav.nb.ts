@@ -370,6 +370,8 @@ export const NAV_NB: Record<string, string> = {
     "Hva Kaizena Flow gjør med personopplysninger, formål for formål (GDPR art. 30), laget fra registeret.",
   "How long each kind of personal data is kept, where each period comes from, and what the daily job removed.":
     "Hvor lenge hver type personopplysninger lagres, hvor hver periode kommer fra, og hva den daglige jobben har fjernet.",
+  "Kaizena Flow's own news to Slack, Zapier or Make: a store asked for, made or opened, a plan started or ended, a notice of illegal content.":
+    "Kaizena Flows egne nyheter til Slack, Zapier eller Make: en butikk det er bedt om, som er laget eller åpnet, et abonnement som startet eller sluttet, en melding om ulovlig innhold.",
   "Google reviews": "Google-omtaler",
   "Kaizena Flow's own Google reviews for testimonials.": "Kaizena Flows egne Google-omtaler til anbefalinger.",
   Stripe: "Stripe",

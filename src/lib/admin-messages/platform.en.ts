@@ -2,6 +2,43 @@ import type { Widen } from "./common.en";
 
 /** Kaizena Flow's own admin: overview, stores, access requests, customers, referrals, plans and reminders, discounts, Stripe, emails, activity and settings (D312 A11). */
 export const platformEn = {
+  /** Kaizena Flow's own integrations (D465): Zapier, Make and Slack for the platform's events. Shared labels are the stores' (`notifications.integrations`). */
+  integrations: {
+    title: "Integrations",
+    description:
+      "Kaizena Flow's own news where you work: a store asked for, made or opened, a plan started or ended, a notice of illegal content. Each goes to Slack, Zapier or Make as it happens.",
+    storesHave: "Each store connects its own under its Integrations; these are Kaizena Flow's.",
+    summaries: {
+      zapier: "Send Kaizena Flow's requests, new stores and plans to thousands of apps, such as a CRM, Google Sheets or your accounts.",
+      make: "Send Kaizena Flow's requests, new stores and plans to your Make scenarios, and on to the apps you use.",
+      slack: "A message in Kaizena Flow's channel when a store is asked for, made or opened, a plan starts or ends, or illegal content is reported.",
+    } as Record<string, string>,
+    events: {
+      "request.received": { label: "Store requested", hint: "Someone asked for a store, and the request waits for a platform admin. A self-serve sign-up comes as New store." },
+      "store.created": { label: "New store", hint: "A store was made for an owner: approved, self-serve, copied or kept from the sandbox. Never a demo store or a template." },
+      "store.opened": { label: "Store opened", hint: "An owner opened their store to everyone." },
+      "plan.started": { label: "Plan started", hint: "A store started a plan, on a trial or paid." },
+      "plan.changed": { label: "Plan changed", hint: "A store on a plan moved to another plan." },
+      "plan.cancelled": { label: "Plan cancelled", hint: "A store cancelled its plan (it ends with the period), or it was ended at once." },
+      "plan.payment_failed": { label: "Plan payment failed", hint: "Stripe could not charge a store's plan, and tries again." },
+      "report.received": { label: "Notice of illegal content", hint: "Someone reported illegal content on a store, or screening found some (DSA): its category and the store, never who sent it or what they wrote." },
+    } as Record<string, { label: string; hint: string }>,
+    slackPrivacy:
+      "Messages name the store and, for a request, the person who asked; never an email address. Everyone in the channel sees them, so choose a channel for Kaizena Flow's own people.",
+    privacy:
+      "Kaizena Flow sends {name} the name and email of each person who asks for a store, and the stores' names and plans. Make sure your agreement with {name} covers personal data (a data processing agreement).",
+    slackTest: "Sends the newest store (or a sample one) to the channel now, marked as a test. It is sent even while Slack is switched off here.",
+    testHint: "Sends the newest store (or a sample one) now, marked as a test, so {name} can learn the fields. It is sent even while the integration is switched off.",
+    problems: {
+      address: "Paste the webhook address from the service.",
+      zapier: "That is not a Zapier webhook address. It starts with https://hooks.zapier.com/hooks/.",
+      make: "That is not a Make webhook address. It starts with https://hook. and ends in make.com.",
+      slack: "That is not a Slack webhook address. It starts with https://hooks.slack.com/services/.",
+      key: "Kaizena Flow cannot keep the address safe right now, so it was not saved. Try again later.",
+      events: "Choose at least one event to send.",
+    },
+    saveFirst: "Save the webhook address first.",
+  },
   referrals: {
     title: "Referrals",
     description:

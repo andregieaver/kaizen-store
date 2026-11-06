@@ -288,3 +288,22 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   the `incoming-webhook` scope, `SLACK_CLIENT_ID`/`_SECRET`, callback
   `/api/integrations/slack/callback`) or paste a webhook; Kaizen keeps no
   Slack token. A new event gets a message there too.
+
+## Kaizena Flow's own integrations (D465, `docs/platform-parity.md`, `src/lib/platform-integrations.ts`, `src/server/platform-integrations.ts`)
+
+- **Kaizena Flow's own integrations (D465, `docs/platform-parity.md`, `src/lib/platform-integrations.ts`, `src/server/platform-integrations.ts`)**: the platform's twin
+  of a store's Zapier, Make and Slack (D41, D101), at Settings → Integrations (`/admin/platform/integrations`, platform admins only), for
+  Kaizena Flow's own events (`PLATFORM_EVENTS`: `request.received`, `store.created`, `store.opened`, `plan.started`, `plan.changed`,
+  `plan.cancelled`, `plan.payment_failed`, `report.received`). A connection is `commerce.platform_integrations` (one per service, the address
+  checked by the stores' `checkWebhookUrl()` and kept encrypted) and each event `commerce.platform_integration_deliveries`, both written only
+  by `platform-integrations.ts`. Every event is queued by the database where it happens (`commerce.queue_platform_event()` from triggers on
+  `access_requests`, `stores`, `store_billing` and `content_reports`); `store.created` is a deferred constraint trigger that reads the store
+  again at commit, so a demo store, a template or a sandbox flagged in the transaction that made it is never news, and a sandbox kept as a
+  store (D457) is. `deliverPlatformDue()` sends them every minute in the integrations cron with the stores' `postToService()` and
+  `RETRY_SECONDS`, and keeps them `PLATFORM_DELIVERY_KEEP_DAYS` (30). Zapier and Make get a request's name and email (the operator's own
+  leads); Slack's message (`platformSlackMessage()`, everything escaped) names the person but never an email, and a notice gives its category
+  and store, never its sender or words. Blanking a request (retention or the account's erasure) empties every delivery about it at once. A new
+  platform event is an id in `PLATFORM_EVENTS`, a trigger that calls `queue_platform_event()`, its payload in `platformPayload()`, its message
+  in `platformSlackMessage()`, its words in the `platform` catalogues (`integrations.events`, every language) and a case in
+  `src/db/platform-integrations.test.ts`. Own endpoints (D354), *Add to Slack* and accounting are not on the platform yet
+  (`docs/platform-parity.md`).

@@ -7501,6 +7501,31 @@ export const storeIntegrations = commerce.table(
 );
 
 /**
+ * Kaizena Flow's own connection to an automation service (D465, `docs/platform-parity.md`): the platform's twin of
+ * `store_integrations`, for its own events (a store asked for, made or opened, a plan started or ended, a notice of illegal content).
+ * Written only by `src/server/platform-integrations.ts`; the webhook address is kept encrypted, as a store's is.
+ */
+export const platformIntegrations = commerce.table(
+  "platform_integrations",
+  {
+    /** `zapier`, `make` or `slack`. */
+    provider: text("provider").primaryKey(),
+    enabled: boolean("enabled").notNull().default(false),
+    webhookUrlEncrypted: text("webhook_url_encrypted").notNull(),
+    /** Where the address points, shown to platform admins: e.g. `hooks.slack.com/services/…/ab12`. */
+    webhookHint: text("webhook_hint").notNull(),
+    events: text("events").array().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    index("platform_integrations_updated_by_idx").on(t.updatedBy),
+    check("platform_integrations_provider", sql`${t.provider} in ('zapier', 'make', 'slack')`),
+  ],
+);
+
+/**
  * A store's connection to its Tripletex company (D453, `docs/tripletex.md`, written only by `src/server/tripletex.ts`): the
  * one token its owner pasted, encrypted (`tripletexToken()` is the only reader), which company it opened, and where the
  * store's documents are booked (`settings`, `tripletexSettingsSchema`, account and VAT code numbers, no secrets). `setup`
@@ -8319,6 +8344,39 @@ export const integrationDeliveries = commerce.table(
       .where(sql`${t.status} = 'pending' and ${t.payload} is null`),
     check("integration_deliveries_endpoint", sql`(${t.provider} = 'webhook') = (${t.endpointId} is not null)`),
     check("integration_deliveries_status", sql`${t.status} in ('pending', 'delivered', 'failed')`),
+  ],
+);
+
+/**
+ * One of Kaizena Flow's own events on its way to the platform's integration (D465): queued by `commerce.queue_platform_event()` where it
+ * happens, built and sent by `deliverPlatformDue()` with the stores' retries, and kept 30 days as theirs are. A request's payload names the
+ * person who asked (for Zapier and Make; Slack's message never carries an email), so it goes with the row.
+ */
+export const platformIntegrationDeliveries = commerce.table(
+  "platform_integration_deliveries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: text("provider").notNull(),
+    /** `request.received`, `store.created`, `plan.started`, … or `test`. */
+    event: text("event").notNull(),
+    /** The access request, store or notice it is about. */
+    subjectId: uuid("subject_id"),
+    /** What was sent, built at the first try and sent the same on every retry. */
+    payload: jsonb("payload"),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    lastStatus: integer("last_status"),
+    lastError: text("last_error"),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("platform_integration_deliveries_due_idx").on(t.nextAttemptAt).where(sql`${t.status} = 'pending'`),
+    index("platform_integration_deliveries_provider_idx").on(t.provider, t.createdAt),
+    index("platform_integration_deliveries_subject_idx").on(t.subjectId),
+    check("platform_integration_deliveries_provider", sql`${t.provider} in ('zapier', 'make', 'slack')`),
+    check("platform_integration_deliveries_status", sql`${t.status} in ('pending', 'delivered', 'failed')`),
   ],
 );
 

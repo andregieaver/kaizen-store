@@ -2,6 +2,42 @@ import type { PlatformMessages } from "./platform.en";
 
 /** Kaizena Flows egen administrasjon på norsk (D312 A11), skrevet for hånd. */
 export const platformNb: PlatformMessages = {
+  integrations: {
+    title: "Integrasjoner",
+    description:
+      "Kaizena Flows egne nyheter der du jobber: en butikk det er bedt om, som er laget eller åpnet, et abonnement som startet eller sluttet, en melding om ulovlig innhold. Hver sendes til Slack, Zapier eller Make når den skjer.",
+    storesHave: "Hver butikk kobler til sine egne under Integrasjoner; disse er Kaizena Flows.",
+    summaries: {
+      zapier: "Send Kaizena Flows forespørsler, nye butikker og abonnementer til tusenvis av apper, som et CRM, Google Sheets eller regnskapet ditt.",
+      make: "Send Kaizena Flows forespørsler, nye butikker og abonnementer til scenarioene dine i Make, og videre til appene du bruker.",
+      slack: "En melding i Kaizena Flows kanal når noen ber om en butikk, en butikk lages eller åpnes, et abonnement starter eller slutter, eller ulovlig innhold meldes.",
+    },
+    events: {
+      "request.received": { label: "Forespørsel om butikk", hint: "Noen ba om en butikk, og forespørselen venter på en plattformadministrator. En selvbetjent registrering kommer som Ny butikk." },
+      "store.created": { label: "Ny butikk", hint: "En butikk ble laget for en eier: godkjent, selvbetjent, kopiert eller beholdt fra prøvebutikken. Aldri en demobutikk eller en mal." },
+      "store.opened": { label: "Butikk åpnet", hint: "En eier åpnet butikken sin for alle." },
+      "plan.started": { label: "Abonnement startet", hint: "En butikk startet et abonnement, med prøveperiode eller betalt." },
+      "plan.changed": { label: "Abonnement endret", hint: "En butikk med abonnement gikk over til et annet abonnement." },
+      "plan.cancelled": { label: "Abonnement sagt opp", hint: "En butikk sa opp abonnementet sitt (det slutter når perioden er over), eller det ble avsluttet med en gang." },
+      "plan.payment_failed": { label: "Betaling for abonnement mislyktes", hint: "Stripe kunne ikke belaste en butikks abonnement, og prøver igjen." },
+      "report.received": { label: "Melding om ulovlig innhold", hint: "Noen meldte fra om ulovlig innhold i en butikk, eller kontrollen fant noe (DSA): kategorien og butikken, aldri hvem som sendte meldingen eller hva de skrev." },
+    },
+    slackPrivacy:
+      "Meldingene nevner butikken og, for en forespørsel, personen som spurte; aldri en e-postadresse. Alle i kanalen ser dem, så velg en kanal for Kaizena Flows egne folk.",
+    privacy:
+      "Kaizena Flow sender {name} navnet og e-postadressen til hver person som ber om en butikk, og butikkenes navn og abonnementer. Sørg for at avtalen din med {name} dekker personopplysninger (en databehandleravtale).",
+    slackTest: "Sender den nyeste butikken (eller en eksempelbutikk) til kanalen nå, merket som en test. Den sendes selv om Slack er slått av her.",
+    testHint: "Sender den nyeste butikken (eller en eksempelbutikk) nå, merket som en test, så {name} kan lære feltene. Den sendes selv om integrasjonen er slått av.",
+    problems: {
+      address: "Lim inn webhook-adressen fra tjenesten.",
+      zapier: "Det er ikke en webhook-adresse fra Zapier. Den begynner med https://hooks.zapier.com/hooks/.",
+      make: "Det er ikke en webhook-adresse fra Make. Den begynner med https://hook. og slutter på make.com.",
+      slack: "Det er ikke en webhook-adresse fra Slack. Den begynner med https://hooks.slack.com/services/.",
+      key: "Kaizena Flow kan ikke lagre adressen trygt akkurat nå, så den ble ikke lagret. Prøv igjen senere.",
+      events: "Velg minst én hendelse som skal sendes.",
+    },
+    saveFirst: "Lagre webhook-adressen først.",
+  },
   referrals: {
     title: "Verving",
     description:

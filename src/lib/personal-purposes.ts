@@ -282,6 +282,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   status_subscribers: "platform_applicants",
   content_reports: "illegal_content",
   access_requests: "platform_applicants",
+  platform_integration_deliveries: "platform_applicants",
   abandoned_plan_checkouts: "platform_applicants",
   accessibility_settings: "platform_service",
   assistant_memories: "platform_service",

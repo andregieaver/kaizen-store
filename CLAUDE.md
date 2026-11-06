@@ -345,6 +345,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Light and dark (D99, `src/lib/color-mode.ts`)
 - Owners' own CSS (D100, `src/lib/custom-css.ts`, `CssPanel`)
 - Slack (D101, `src/lib/slack.ts`, `src/server/slack.ts`)
+- Kaizena Flow's own integrations (D465, `docs/platform-parity.md`, `src/lib/platform-integrations.ts`, `src/server/platform-integrations.ts`)
 - Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,…
 - Secrets in the database (Kaizen's webhook secrets, old per-store keys) are encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and…
 

@@ -851,6 +851,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:ai.dream": { title: "Dream Factory-kjøring", keywords: ["dream factory", "øvelse", "testkjøring", "se på", "bygging"] },
   "platform:ai.prices": { title: "KI-priser", keywords: ["ki-priser", "pris", "kostnad", "dollar", "modell"] },
   "platform:chat": { title: "Chatassistent", keywords: ["chatassistent", "chatbot", "kunnskapsbase", "chat"] },
+  "platform:integrations": { title: "Integrasjoner", keywords: ["integrasjoner", "zapier", "make", "slack", "webhooks", "varsler"] },
+  "platform:integration": { title: "Integrasjon", keywords: ["integrasjon", "koble til", "hendelser", "test"] },
   "platform:google-reviews": { title: "Google-omtaler", keywords: ["google-omtaler", "google", "omtaler", "anmeldelser", "attester"] },
   "platform:experiments": { title: "A/B-tester", keywords: ["a/b-tester", "a/b-test", "eksperiment", "splittest", "test", "sikkerhetsgrense"] },
   "platform:retention": {

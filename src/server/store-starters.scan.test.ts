@@ -22,6 +22,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/db/schema.ts": "both",
   // The agents' safety eval plays its cases on the template store (PSI 2026-10-24, AST-09).
   "src/server/ai-usage.ts": "real",
+  // Kaizena Flow's own integrations (D465): a test sends the newest real store.
+  "src/server/platform-integrations.ts": "real",
   // An Admin API token (D355) answers for a real store only.
   "src/server/api-tokens.ts": "real",
   "src/server/auth.ts": "real",

@@ -237,6 +237,10 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     OWN +
     " Når personen sletter sin egen konto (D377, `eraseOwnAccount()`), tømmes søkerens e-post, navn og melding, og i en avgjort søknad tømmes de 12 måneder etter avgjørelsen (PSI REG-05).",
   abandoned_plan_checkouts: "En butikkeiers uferdige kjøp av et abonnement. " + OWN,
+  platform_integration_deliveries:
+    "Kaizena Flows egne hendelser på vei til Slack, Zapier eller Make (D465): innholdet for en forespørsel nevner personen som spurte (navn og e-postadresse; meldingen til Slack aldri e-postadressen). " +
+    OWN +
+    " Slettes 30 dager etter hendelsen, som butikkenes; når forespørselen tømmes (oppbevaringsregelen eller kontoens egen sletting), tømmes innholdet i alle hendelser om den med en gang.",
   accessibility_settings: "Butikkens egen kontakt for tilgjengelighetserklæringen. " + OWN,
   assistant_memories:
     "KI-assistentens minne om en ansatt; en oppbevaringstid er opp til eieren av KI-assistenten (docs/wave-1g-gdpr.md avsnitt 7); slettes når personen sletter sin egen konto (D377). Personen laster ned minnene sine som en fil fra minnesiden og sletter noen av dem eller alle; et minne beholder aldri kontaktopplysninger eller numre som identifiserer noen (`NEVER_KEPT`), og et minne som navngir en kunde, slettes når kundens opplysninger slettes (PSI AGT-07).",

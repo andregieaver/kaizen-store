@@ -42,7 +42,7 @@ type Row = Record<string, unknown>;
  */
 
 /** When to try again after each failed try; after the last, the delivery has failed (published in the topics' catalogue, D438). */
-const RETRY_SECONDS: readonly number[] = WEBHOOK_RETRY_SECONDS;
+export const RETRY_SECONDS: readonly number[] = WEBHOOK_RETRY_SECONDS;
 const TIMEOUT_MS = WEBHOOK_TIMEOUT_SECONDS * 1000;
 const KEEP_DAYS = 30;
 
@@ -806,12 +806,13 @@ function sampleOrder(country: string, currency: string): WebhookSubject<"order">
 export type DeliveryStatus = "pending" | "delivered" | "failed";
 
 /** `final`: the service said it never will take it (Slack's channel or webhook is gone), so it is not tried again. */
-type Outcome = { ok: boolean; status: number | null; error: string | null; final?: boolean };
+export type Outcome = { ok: boolean; status: number | null; error: string | null; final?: boolean };
 
 /** Slack's answers that trying again cannot change: a bad message, or a webhook, channel or app gone. */
 const SLACK_FINAL = new Set([400, 403, 404, 410]);
 
-async function post(provider: Provider, url: string, deliveryId: string, event: string, payload: Record<string, unknown>): Promise<Outcome> {
+/** A service's own webhook (Zapier, Make, Slack), for a store's events and Kaizena Flow's own (D465). */
+export async function postToService(provider: Provider, url: string, deliveryId: string, event: string, payload: Record<string, unknown>): Promise<Outcome> {
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -939,7 +940,7 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
     } catch {
       return fail("Kaizena Flow could not read the address");
     }
-    outcome = await post(delivery.provider as Provider, url, delivery.id, delivery.event, payload);
+    outcome = await postToService(delivery.provider as Provider, url, delivery.id, delivery.event, payload);
   }
   const tries = delivery.attempts + 1;
   const wait = outcome.final ? undefined : RETRY_SECONDS[tries - 1];
