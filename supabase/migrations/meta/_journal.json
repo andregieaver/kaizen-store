@@ -4775,6 +4775,20 @@
       "when": 1793958416206,
       "tag": "20261106094656_platform_integrations_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 682,
+      "version": "7",
+      "when": 1793963152570,
+      "tag": "20261106110552_house_store",
+      "breakpoints": true
+    },
+    {
+      "idx": 683,
+      "version": "7",
+      "when": 1793963183260,
+      "tag": "20261106110623_house_store_rules",
+      "breakpoints": true
     }
   ]
 }

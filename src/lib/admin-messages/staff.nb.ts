@@ -38,6 +38,8 @@ export const staffNb: StaffMessages = {
     roles: "Roller",
     activity: "Aktivitetslogg",
     members: "Medlemmer",
+    houseTitle: "Dette er Kaizena Flows egen butikk",
+    houseText: "Alle som driver plattformen, arbeider her som eiere, og foreløpig ingen andre: de legges til og fjernes sammen med plattformens administratorer.",
     collaboratorUntil: "Samarbeidspartner til {date}",
     twoStepOn: "Totrinns på",
     noTwoStep: "Ikke totrinns",
@@ -106,6 +108,7 @@ export const staffNb: StaffMessages = {
   },
   actions: {
     noAccess: "Du har ikke tilgang til dette.",
+    houseRefused: "Bare plattformens administratorer arbeider i Kaizena Flows egen butikk.",
     inviteInvalid: "Skriv inn en gyldig e-postadresse og velg en rolle.",
     invited: "{email} kan nå logge inn på /admin/sign-in.",
     collaboratorInvalid: "Skriv inn en gyldig e-postadresse og velg en rolle: en samarbeidspartner er aldri eier.",

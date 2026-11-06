@@ -83,7 +83,8 @@ export default async function AdminOverview({ params, searchParams }: Props) {
             : []),
         ]
       : []),
-    { done: progress.plan, label: h.steps.plan, href: "billing" },
+    // Kaizena Flow's own store has no plan (D466).
+    ...(store.house ? [] : [{ done: progress.plan, label: h.steps.plan, href: "billing" }]),
     ...(selling
       ? [
           {

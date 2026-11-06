@@ -330,6 +330,9 @@ export const NAV_NB: Record<string, string> = {
   "What readers said under each page of the docs: whether it helped, and the sentence some add.":
     "Hva leserne sa under hver side i dokumentasjonen: om den hjalp, og setningen noen legger til.",
   "Docs guide": "Dokumentasjonsveileder",
+  "Kaizena Flow's store": "Kaizena Flows butikk",
+  "Kaizena Flow's own store, with every page a store's admin has: its customers, subscribers, email and, step by step, its site.":
+    "Kaizena Flows egen butikk, med alle sidene en butikks administrasjon har: kundene, abonnentene, e-postene og, steg for steg, nettstedet.",
   "The AI guide that answers readers in the docs from the docs alone: on or off, its name, picture, greeting and daily limit.":
     "KI-veilederen som svarer lesere i dokumentasjonen bare ut fra dokumentasjonen: av eller på, navn, bilde, hilsen og daglig grense.",
   Editor: "Redigering",

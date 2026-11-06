@@ -213,11 +213,46 @@ describe("sandboxes are not real stores (D457)", () => {
 
   it("never exempts a sandbox from the limits, as templates are", () => {
     const limits = code(path.join(ROOT, "src/server/limits.ts"));
-    expect(limits).toMatch(/s\.is_template or s\.starter as exempt/);
+    expect(limits).toMatch(/s\.is_template or s\.starter or s\.house as exempt/);
     expect(limits).not.toMatch(/sandbox[^\n]*as exempt|as exempt[^\n]*sandbox/);
   });
 
   it("sends no email from a sandbox, of any kind", () => {
     expect(code(path.join(ROOT, "src/server/email.ts"))).toMatch(/if \(store\.sandbox\) return "suppressed: a sandbox sends no email";/);
+  });
+});
+
+/**
+ * Kaizena Flow's own store (D466, `docs/platform-parity-plan.md` seam 1) is a real store, but not a customer: it has no plan, no limits and
+ * no trial, and is never counted among Kaizena Flow's stores. Every reader that leaves templates, store templates and sandboxes out all
+ * together (a customer's store) names `house` too, or is listed here with why Kaizena Flow's store counts there as any store does.
+ */
+const AS_ANY_STORE = "A store's own working, which Kaizena Flow's store has as any store does.";
+const HOUSE_COUNTS: Record<string, string> = {
+  "src/server/api-tokens.ts": "Its own Admin API tokens (D355), as any store's.",
+  "src/server/auth.ts": "The stores a person works in: Kaizena Flow's store is in the platform admins' switcher.",
+  "src/server/design-presets.ts": "Theme updates reach its installed themes as any store's (D245).",
+  "src/server/experiments.ts": "The proxy's store for A/B tests: Kaizena Flow tests its own pages (step 5).",
+  "src/server/platform-unit-tests.ts": AS_ANY_STORE,
+  "src/server/store-features.ts": "Deals open for it as a pilot, as for any store (D464).",
+  "src/server/vat-admin.ts": "A country its market is in is in use, as any store's.",
+  "src/server/wordpress.ts": AS_ANY_STORE,
+};
+
+describe("Kaizena Flow's own store is not a customer (D466)", () => {
+  const CUSTOMER = /is_template or s?\.?starter or s?\.?sandbox\)|starter or s\.is_template or s\.sandbox/;
+  const readers = files.filter((f) => CUSTOMER.test(code(f))).map((f) => path.relative(ROOT, f));
+  const mentions = (file: string) => /\bhouse\b/.test(code(path.join(ROOT, file)));
+
+  it("leaves it out wherever the stores are a customer's, or says why it counts", () => {
+    expect(readers.filter((file) => !mentions(file) && !(file in HOUSE_COUNTS))).toEqual([]);
+  });
+
+  it("keeps the list true: every file on it reads customers' stores and names no house", () => {
+    expect(Object.keys(HOUSE_COUNTS).filter((file) => !readers.includes(file) || mentions(file))).toEqual([]);
+  });
+
+  it("exempts it from the limits, bills it nowhere and lists it among no plans", () => {
+    expect(code(path.join(ROOT, "src/server/billing.ts"))).toMatch(/not s\.house` : sql`s\.status <> 'closed' and not s\.starter and not s\.sandbox and not s\.house`/);
   });
 });

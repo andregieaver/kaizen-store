@@ -276,7 +276,7 @@ export async function startStoreCopy(
     select
       (select count(*)::int from commerce.store_members m join commerce.stores s on s.id = m.store_id
         where m.account_id = ${account.id}::uuid and m.role = 'owner' and m.disabled_at is null
-          and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox)) as stores,
+          and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)) as stores,
       (select count(*)::int from commerce.store_copies c where c.requested_by = ${account.id}::uuid and c.status = 'running') as running
   `);
   if (!account.platformAdmin && Number(owned?.stores ?? 0) >= MAX_STORES_PER_OWNER) {

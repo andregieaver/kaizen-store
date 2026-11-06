@@ -54,7 +54,7 @@ const idList = (ids: string[]) => sql.join(ids.map((id) => sql`${id}::uuid`), sq
  */
 export async function controlCenter(account: Account, onlyStore?: string): Promise<ControlCenter> {
   const storeRows = await db().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.status, s.setup_completed_at, s.modules, s.features, s.time_zone, m.role, m.kind, m.role_id, sr.permissions as role_permissions,
+    select s.id, s.slug, s.name, s.status, s.setup_completed_at, s.modules, s.features, s.time_zone, s.house, m.role, m.kind, m.role_id, sr.permissions as role_permissions,
            p.name as plan_name, b.status as billing_status, b.current_period_end, coalesce(b.cancel_at_period_end, false) as cancelling,
            pr.enabled as payments_on, pr.active_mode,
            exists (select 1 from commerce.stripe_accounts a where a.store_id = s.id and a.mode = 'live' and a.card_payments = 'active') as live_ready
@@ -74,7 +74,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   // Where the member may see each kind of figure.
   const orderIds = idsWith(storeRows, "orders:read");
   const productIds = idsWith(storeRows, "products:read");
-  const billingIds = new Set(idsWith(storeRows, "billing:read"));
+  // Kaizena Flow's own store has no plan (D466): its plan is hidden as from a role that does not read it, so nobody is asked to choose one.
+  const billingIds = new Set(idsWith(storeRows.filter((r) => !r.house), "billing:read"));
   const orderSet = new Set(orderIds);
   const productSet = new Set(productIds);
 

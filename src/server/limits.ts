@@ -48,7 +48,7 @@ export async function storeLimits(storeId: string, now = Date.now()): Promise<St
 
 async function readStoreLimits(storeId: string): Promise<StoreLimits> {
   const rows = await db().execute<Row>(sql`
-    select 'store' as kind, s.is_template or s.starter as exempt, null as key, null as value from commerce.stores s where s.id = ${storeId}::uuid
+    select 'store' as kind, s.is_template or s.starter or s.house as exempt, null as key, null as value from commerce.stores s where s.id = ${storeId}::uuid
     union all
     select 'override', null, o.key, o.value from commerce.limit_overrides o
      where o.store_id = ${storeId}::uuid and (o.expires_at is null or o.expires_at > now())
@@ -85,7 +85,7 @@ export async function ownerLimitFor(accountId: string, key: LimitKey): Promise<R
      where o.account_id = ${accountId}::uuid and o.key = ${key} and (o.expires_at is null or o.expires_at > now())
     union all
     select 'store', null, s.id from commerce.store_members m
-      join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox)
+      join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
      where m.account_id = ${accountId}::uuid and m.role = 'owner' and m.disabled_at is null
     union all
     select 'plan', l.value, b.store_id from commerce.store_billing b
@@ -113,7 +113,7 @@ export async function ownerLimitFor(accountId: string, key: LimitKey): Promise<R
 export async function ownedStoreCount(accountId: string): Promise<number> {
   const [row] = await db().execute<Row>(sql`
     select count(distinct s.id)::int as n from commerce.store_members m
-      join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox)
+      join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
      where m.account_id = ${accountId}::uuid and m.role = 'owner' and m.disabled_at is null
   `);
   return Number(row?.n ?? 0);

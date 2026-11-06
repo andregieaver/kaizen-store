@@ -45,6 +45,9 @@ export const staffEn = {
     roles: "Roles",
     activity: "Activity log",
     members: "Members",
+    /** Kaizena Flow's own store (D466): its team is the platform admins. */
+    houseTitle: "This is Kaizena Flow's own store",
+    houseText: "Everyone who runs the platform works here as an owner, and nobody else yet: they are added and removed with the platform admins.",
     collaboratorUntil: "Collaborator until {date}",
     twoStepOn: "Two-step on",
     noTwoStep: "No two-step",
@@ -113,6 +116,7 @@ export const staffEn = {
   },
   actions: {
     noAccess: "You do not have access to this.",
+    houseRefused: "Only platform admins work in Kaizena Flow's own store.",
     inviteInvalid: "Enter a valid email and choose a role.",
     invited: "{email} can now sign in at /admin/sign-in.",
     collaboratorInvalid: "Enter a valid email and choose a role: a collaborator is never an owner.",

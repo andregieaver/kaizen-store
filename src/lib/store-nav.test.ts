@@ -287,3 +287,14 @@ describe("the pages' icons and the Basic view (D454)", () => {
     for (const link of links) expect(link.icon, link.label).toBeDefined();
   });
 });
+
+describe("Kaizena Flow's own store (D466)", () => {
+  const paths = (flags: { features: string[]; house?: boolean }) => storeSections(flags).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.path)));
+
+  it("offers every page a website has but the plan and closing, which only a customer's store has", () => {
+    const house = paths({ features: ["languages", "sales"], house: true });
+    const website = paths({ features: ["languages", "sales"] });
+    expect(website.filter((p) => !house.includes(p))).toEqual(["/settings/close", "/billing"]);
+    expect(house).toEqual(expect.arrayContaining(["/subscribers", "/broadcasts", "/segments", "/deals", "/privacy", "/redirects", "/staging", "/staff"]));
+  });
+});

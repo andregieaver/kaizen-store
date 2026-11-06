@@ -436,8 +436,8 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
 /** Every store's billing; closed stores only for the platform's own list, which must find them to reopen them (D171). */
 export async function listStoreBilling({ includeClosed = false }: { includeClosed?: boolean } = {}): Promise<StoreBilling[]> {
   const [rows, defaultBps] = await Promise.all([
-    // Store templates (D175) have no plan: they are listed under Store templates, not here.
-    db().execute<Row>(billingQuery(includeClosed ? sql`not s.starter and not s.sandbox` : sql`s.status <> 'closed' and not s.starter and not s.sandbox`)),
+    // Store templates (D175) have no plan: they are listed under Store templates, not here. Nor has Kaizena Flow's own store (D466).
+    db().execute<Row>(billingQuery(includeClosed ? sql`not s.starter and not s.sandbox and not s.house` : sql`s.status <> 'closed' and not s.starter and not s.sandbox and not s.house`)),
     getSaleFeeBps(),
   ]);
   return rows.map((row) => toBilling(row, defaultBps));

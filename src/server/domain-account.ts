@@ -78,7 +78,7 @@ export async function linkableStores(accountId: string): Promise<{ id: string; s
   const rows = await db().execute<Row>(sql`
     select s.id, s.slug, s.name from commerce.store_members m join commerce.stores s on s.id = m.store_id
      where m.account_id = ${accountId}::uuid and m.role = 'owner' and m.disabled_at is null
-       and s.status = 'active' and not (s.is_template or s.starter or s.sandbox)
+       and s.status = 'active' and not (s.is_template or s.starter or s.sandbox or s.house)
      order by s.name
   `);
   return rows.map((r) => ({ id: String(r.id), slug: String(r.slug), name: String(r.name) }));

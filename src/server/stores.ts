@@ -43,6 +43,8 @@ export type Store = {
   starter: boolean;
   /** The page builder's sandbox (D457, docs/builder-sandbox.md): a visitor's private try of the builder, never a real business. */
   sandbox: boolean;
+  /** Kaizena Flow's own store (D466, docs/platform-parity-plan.md): its site and customers; never billed, limited, closed or counted as a customer. */
+  house: boolean;
   setupCompletedAt: string | null;
   /** Stripe is switched on with keys for its mode, so shoppers can pay. */
   paymentsOn: boolean;
@@ -220,7 +222,7 @@ export async function currentStore(slug: string): Promise<Store | null> {
 async function readStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
-      s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.sandbox, s.setup_completed_at,
+      s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.sandbox, s.house, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
       s.terms_at_checkout, s.customer_accounts, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
       s.price_decimals, s.price_words, s.quantity_picker,
@@ -278,6 +280,7 @@ async function readStore(slug: string): Promise<Store | null> {
     isTemplate: Boolean(row.is_template),
     starter: Boolean(row.starter),
     sandbox: Boolean(row.sandbox),
+    house: Boolean(row.house),
     setupCompletedAt: row.setup_completed_at
       ? new Date(String(row.setup_completed_at)).toISOString()
       : null,

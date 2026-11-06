@@ -35,7 +35,7 @@ export async function storesBuyingDomains(): Promise<{ id: string; slug: string;
 export async function setStoreDomainBuying(account: Account, slug: string, open: boolean): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const rows = await db().execute<Row>(sql`
     update commerce.stores set domain_buying = ${open}
-     where slug = ${slug.trim().toLowerCase()} and not (is_template or starter or sandbox)
+     where slug = ${slug.trim().toLowerCase()} and not (is_template or starter or sandbox or house)
     returning id
   `);
   if (rows.length === 0) return { ok: false, problems: [`There is no store at ${slug}.`] };
@@ -149,7 +149,7 @@ export async function domainLeads(): Promise<DomainLeads> {
     opened as (
       select a.id, a.created_at, min(m.created_at) as first_store from domain_accounts a
         join commerce.store_members m on m.account_id = a.id and m.role = 'owner'
-        join commerce.stores s on s.id = m.store_id and not (s.is_template or s.starter or s.sandbox)
+        join commerce.stores s on s.id = m.store_id and not (s.is_template or s.starter or s.sandbox or s.house)
        group by a.id, a.created_at
     )
     select (select count(*)::int from domain_accounts) as accounts,

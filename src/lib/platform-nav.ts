@@ -29,6 +29,21 @@ export const WEBSITE_ITEMS: SectionItem[] = [
   item("/docs/guide", "Docs guide", "The AI guide that answers readers in the docs from the docs alone: on or off, its name, picture, greeting and daily limit.", "bot"),
 ];
 
+/** Kaizena Flow's own store (D466, `docs/platform-parity-plan.md`): made by its migration at this address, never moved. */
+export const HOUSE_STORE_SLUG = "kaizenaflow";
+
+/**
+ * Kaizena Flow's own store as the first card of the Website hub (D466): a store's admin of its own, where its customers, subscribers and
+ * email are kept and its site moves step by step. A card only, outside the sidebar: it leads to another level.
+ */
+export const HOUSE_STORE_CARD = {
+  path: "",
+  href: `/admin/${HOUSE_STORE_SLUG}`,
+  label: "Kaizena Flow's store",
+  description: "Kaizena Flow's own store, with every page a store's admin has: its customers, subscribers, email and, step by step, its site.",
+  icon: "store" as NavIconName,
+};
+
 export const PLAN_ITEMS: SectionItem[] = [
   item("/plans", "Editor", "Kaizena Flow's plans, their prices and fees, synced to Stripe.", "credit-card", true),
   item("/plans/limits", "Limits", "What each plan includes of storage, products, staff, domains, emails, AI and traffic, and the default for stores without a plan.", "gauge"),

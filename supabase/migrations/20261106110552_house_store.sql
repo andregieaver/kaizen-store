@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."stores" ADD COLUMN "house" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "stores_one_house_idx" ON "commerce"."stores" USING btree ("house") WHERE "commerce"."stores"."house";--> statement-breakpoint
+ALTER TABLE "commerce"."stores" ADD CONSTRAINT "stores_house_real" CHECK (not ("commerce"."stores"."house" and ("commerce"."stores"."is_template" or "commerce"."stores"."starter" or "commerce"."stores"."sandbox")));

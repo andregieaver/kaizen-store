@@ -5,7 +5,7 @@ well.* Kaizena Flow's own site and store are run from the platform admin (`/admi
 `platform_*` tables. The rule is in `CLAUDE.md` (Conventions). This file is its list: what a store's admin has, and whether the
 platform has it. Tick a row (move it to *Built for both*) in the change that brings it.
 
-**How the gap closes:** [`platform-parity-plan.md`](platform-parity-plan.md) (proposed 6 November 2026, waiting for the owner's choice):
+**How the gap closes:** [`platform-parity-plan.md`](platform-parity-plan.md) (chosen 6 November 2026, D466; step 1 built: Kaizena Flow's store exists):
 Kaizena Flow's site and its customers move into a store of its own, which gets every store page for a website by itself (*Store*, with
 the plan's step), and the platform console gets what is about running the business (*Console*, C1 to C6).
 

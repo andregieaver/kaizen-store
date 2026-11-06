@@ -43,6 +43,7 @@ export async function inviteStaffAction(storeSlug: string, _state: FormState, fo
   const member = await checkOwnerRole(storeSlug);
   if (!member) return denied();
   const w = wordsOf(member);
+  if (member.store.house) return refused([w.houseRefused]);
   const address = email.safeParse(String(formData.get("email") ?? "").trim());
   const choice = parseRoleChoice(formData.get("role"));
   if (!address.success || !choice) return refused([w.inviteInvalid]);
@@ -55,6 +56,7 @@ export async function inviteCollaboratorAction(storeSlug: string, _state: FormSt
   const member = await checkOwnerRole(storeSlug);
   if (!member) return denied();
   const w = wordsOf(member);
+  if (member.store.house) return refused([w.houseRefused]);
   const address = email.safeParse(String(formData.get("email") ?? "").trim());
   const choice = parseRoleChoice(formData.get("role"));
   if (!address.success || !choice || choice.kind === "owner") return refused([w.collaboratorInvalid]);

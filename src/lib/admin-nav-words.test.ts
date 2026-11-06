@@ -18,6 +18,7 @@ function navTexts(): string[] {
     }
   }
   for (const list of [PLATFORM.WEBSITE_ITEMS, PLATFORM.PLAN_ITEMS, PLATFORM.SUPPORT_ITEMS, PLATFORM.SETTINGS_ITEMS]) for (const i of list) texts.add(i.label).add(i.description);
+  texts.add(PLATFORM.HOUSE_STORE_CARD.label).add(PLATFORM.HOUSE_STORE_CARD.description);
   for (const t of PLATFORM.platformTabs()) texts.add(t.label);
   for (const intro of Object.values(PLATFORM.PLATFORM_HUB_INTROS)) texts.add(intro);
   for (const i of ACCOUNT_ITEMS) texts.add(i.label).add(i.description);

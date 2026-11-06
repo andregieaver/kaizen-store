@@ -36,7 +36,7 @@ export async function storeTotals(period: Pick<AnalyticsPeriod, "from" | "to">):
       select s.id, s.slug, s.name, coalesce(ss.mode, 'off') as mode,
         (select count(*)::int from commerce.support_conversations w where w.store_id = s.id and w.status = 'open' and w.handler = 'queue') as waiting
       from commerce.stores s left join commerce.support_settings ss on ss.store_id = s.id
-      where not (s.is_template or s.starter or s.sandbox)
+      where not (s.is_template or s.starter or s.sandbox or s.house)
         and (ss.store_id is not null or exists (
           select 1 from commerce.support_conversations c where c.store_id = s.id and ${startedIn(period, KAIZEN_TIME_ZONE)}
         ))

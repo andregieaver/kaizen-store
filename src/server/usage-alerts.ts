@@ -33,7 +33,7 @@ export async function sendUsageAlerts(now: Date = new Date()): Promise<{ stores:
       select s.id, s.slug, s.name,
              exists (select 1 from commerce.capacity_events e where e.store_id = s.id and e.starts_at <= ${now.toISOString()}::timestamptz and e.ends_at > ${now.toISOString()}::timestamptz) as busy
       from commerce.stores s
-      where commerce.store_is_active(s.id) and not (s.is_template or s.starter)
+      where commerce.store_is_active(s.id) and not (s.is_template or s.starter or s.house)
     `);
     const month = monthOf(now).key;
     for (const store of stores) {

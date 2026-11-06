@@ -12,7 +12,7 @@ import { requirementMet, type FeatureRequirement, type FeatureSource } from "./s
  * What the navigation is filtered by: the store's features (D178), as kept (`store.features`); a page or section behind a feature is offered
  * only while it is on (`requirementMet()`: kept on with everything it needs).
  */
-export type StoreFlags = FeatureSource;
+export type StoreFlags = FeatureSource & { house?: boolean };
 
 /**
  * A page in a sidebar: its address after the store's, its label, and a line on what it is for (the hub's card). `feature` is the store
@@ -21,7 +21,17 @@ export type StoreFlags = FeatureSource;
  * an everyday page Homer needs; every other page is shown in Advanced only (and in Basic while it is the page being viewed). A section's
  * main page is always in Basic, since its tab leads there.
  */
-export type StoreItem = { path: string; label: string; description: string; icon: NavIconName; basic?: boolean; exact?: boolean; feature?: FeatureRequirement };
+export type StoreItem = {
+  path: string;
+  label: string;
+  description: string;
+  icon: NavIconName;
+  basic?: boolean;
+  exact?: boolean;
+  feature?: FeatureRequirement;
+  /** A page only a customer's store has: left out for Kaizena Flow's own store (D466), which has no plan and is never closed. */
+  customer?: true;
+};
 export type StoreGroup = { heading: string; items: StoreItem[] };
 
 export type StoreSection = {
@@ -255,7 +265,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/countries", "Countries", "The countries the store sells to, and its own country.", { icon: "map", basic: true }),
           item("/settings/localization", "Languages and currencies", "The languages and currencies the store offers, and the exchange rates.", { icon: "globe" }),
           item("/settings/features", "Features", "Switch the online shop and the store's features on or off: subscriptions, bookings, countries, languages, selling to businesses and more.", { icon: "toggle", basic: true }),
-          item("/settings/close", "Close store", "Stop sales and take the shop off the web. Nothing is deleted, and you can reopen it for thirty days.", { icon: "power" }),
+          item("/settings/close", "Close store", "Stop sales and take the shop off the web. Nothing is deleted, and you can reopen it for thirty days.", { icon: "power", customer: true }),
         ],
       },
       {
@@ -299,7 +309,7 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Account",
         items: [
-          item("/billing", "Billing", "The store's plan, what it costs and its invoices.", { icon: "receipt-text", basic: true }),
+          item("/billing", "Billing", "The store's plan, what it costs and its invoices.", { icon: "receipt-text", basic: true, customer: true }),
           item("/staff", "Team", "Who can work in the store's admin, their roles, collaborators with an end date, and two-step sign-in.", { icon: "user-cog", basic: true }),
           item("/activity", "Activity log", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings.", { icon: "file-clock" }),
         ],
@@ -321,10 +331,11 @@ export type CanOpen = (path: string) => boolean;
  */
 export function storeSections(flags: StoreFlags, canOpen?: CanOpen): StoreSection[] {
   const on = (feature?: FeatureRequirement) => requirementMet(flags, feature);
+  const house = !Array.isArray(flags) && (flags as { house?: boolean }).house === true;
   const open = (path: string) => !canOpen || canOpen(path);
   return STORE_SECTIONS.filter((s) => on(s.feature))
     .map((s) => {
-      const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.feature) && open(i.path)) })).filter((g) => g.items.length > 0);
+      const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.feature) && open(i.path) && !(house && i.customer)) })).filter((g) => g.items.length > 0);
       // A section whose main page is hidden opens on the first page it has left (D178 step 5: a website's Customers open on Privacy requests).
       const left = groups.flatMap((g) => g.items.map((i) => i.path));
       const start = s.hub || left.length === 0 || left.includes(s.start) ? s.start : left[0];

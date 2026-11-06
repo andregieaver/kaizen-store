@@ -6,7 +6,8 @@ import { PageHeader } from "@/components/admin/ui";
 import type { NavIconName } from "./nav-icons";
 import { HubCards } from "./section-hub-cards";
 
-type Card = { path: string; label: string; description: string; icon?: NavIconName; advanced?: boolean };
+/** A card leads to `base` and its path, or to its own `href` (a card that leads to another level). */
+type Card = { path: string; href?: string; label: string; description: string; icon?: NavIconName; advanced?: boolean };
 
 /**
  * A section's first page (D144, D147): a card for each page in its sidebar, with its icon and a line on what it does; under a heading for
@@ -38,7 +39,7 @@ export function SectionHub({
         lists={lists.map((list) => ({
           heading: list.heading ? say(list.heading) : "",
           items: list.items.map((item) => ({
-            href: `${base}${item.path}`,
+            href: item.href ?? `${base}${item.path}`,
             label: say(item.label),
             description: say(item.description),
             ...(item.icon && { icon: item.icon }),

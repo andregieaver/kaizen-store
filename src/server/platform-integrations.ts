@@ -296,7 +296,7 @@ async function testStore(): Promise<StoreData> {
     storeRow,
     sql`
       select id, slug, name, country, created_at, setup_completed_at from commerce.stores
-      where not (is_template or starter) and not sandbox and status = 'active'
+      where not (is_template or starter) and not sandbox and not house and status = 'active'
       order by created_at desc limit 1
     `,
   );

@@ -91,7 +91,7 @@ export async function platformUsage(month: string): Promise<PlatformUsageRow[]> 
     left join commerce.stores s on s.id = f.store_id
     left join commerce.store_billing b on b.store_id = f.store_id
     left join commerce.plans p on p.id = b.plan_id
-    where f.store_id is null or not (s.is_template or s.starter or s.sandbox)
+    where f.store_id is null or not (s.is_template or s.starter or s.sandbox or s.house)
     group by f.store_id, s.slug, s.name, s.status, p.name
     order by f.store_id is not null, s.name
   `);

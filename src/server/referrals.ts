@@ -101,7 +101,7 @@ export async function saveReferralSettings(actor: Account, raw: unknown): Promis
 export async function ownsAStore(accountId: string): Promise<boolean> {
   const [row] = await db().execute<Row>(sql`
     select exists (
-      select 1 from commerce.store_members m join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox)
+      select 1 from commerce.store_members m join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
        where m.account_id = ${accountId}::uuid and m.role = 'owner' and m.disabled_at is null
     ) as owns
   `);

@@ -134,7 +134,7 @@ export async function setThemePrices(admin: Account, presetId: string, prices: r
         insert into commerce.theme_purchases (store_id, preset_id, status, currency, amount_minor, chosen_by)
         select distinct i.store_id, ${presetId}::uuid, 'granted', (select pr.currency from commerce.theme_price_for(i.store_id, ${presetId}::uuid) pr), 0, ${admin.id}::uuid
           from commerce.store_theme_installs i join commerce.stores s on s.id = i.store_id
-         where i.preset_id = ${presetId}::uuid and not (s.is_template or s.starter or s.sandbox)
+         where i.preset_id = ${presetId}::uuid and not (s.is_template or s.starter or s.sandbox or s.house)
            and not exists (
              select 1 from commerce.theme_purchases p
               where p.store_id = i.store_id and p.preset_id = ${presetId}::uuid and p.status in ('owed', 'due', 'invoiced', 'paid', 'granted'))

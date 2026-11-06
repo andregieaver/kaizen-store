@@ -522,7 +522,7 @@ export async function createStoreForOwner(
     select count(*)::int as n from commerce.store_members m
     join commerce.stores s on s.id = m.store_id
     where m.account_id = ${account.id}::uuid and m.role = 'owner' and m.disabled_at is null
-      and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox)
+      and s.status <> 'closed' and not (s.is_template or s.starter or s.sandbox or s.house)
   `);
   const count = Number(owned?.n ?? 0);
   if (!account.platformAdmin && count === 0) {

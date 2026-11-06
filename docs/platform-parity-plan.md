@@ -1,6 +1,6 @@
 # Kaizena Flow runs on Kaizena Flow: the plan to close the gap
 
-*Proposed 6 November 2026. Waiting for the owner's choice (section 9). Nothing here is built yet.*
+*Proposed and chosen 6 November 2026 (D466: "Let's go with your recommendations. execute the plan"). Built so far: step 1 (D466).*
 
 The owner, 6 November 2026, comparing Platform → Settings with a store's Settings: *there still seems to be a wide gap between
 what the main store owner has on the platform and what a customer's store owner has. Make a plan to give the main store owner the
@@ -152,7 +152,12 @@ through it; that is not part of this plan.
 | Owners' data in a second place | One controller, Kaizena Flow; the record of processing and the retention rules name it; a person's privacy request covers both their customer record and their account |
 | A store feature assumes a shop | A website store already runs without one (D178 step 5); each step's tests run Kaizena Flow's store as a website |
 
-## 9. What the owner decides
+## 9. What the owner decided
+
+The owner took the recommendations (6 November 2026): Kaizena Flow's own store, `kaizenaflow` named Kaizena Flow; every existing
+owner brought in as a customer, with no marketing email without their consent; one desk for visitors and owners; the console's team
+and plan analytics first. The questions as they were asked:
+
 
 1. **The direction:** Kaizena Flow's own store (recommended), or keep building each feature a second time.
 2. **Its name and address in the admin:** `kaizenaflow`, named *Kaizena Flow*.

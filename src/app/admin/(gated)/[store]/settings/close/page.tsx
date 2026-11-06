@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { fillWords } from "@/lib/admin-fill";
@@ -22,6 +23,8 @@ const day = (date: Date, locale: string) => date.toLocaleDateString(locale, { da
 export default async function CloseStorePage({ params }: PageProps<"/admin/[store]/settings/close">) {
   const member = await requireOwnerRole((await params).store);
   const { store } = member;
+  // Kaizena Flow's own store is never closed (D466): the database refuses it too.
+  if (store.house) notFound();
   const lang = adminLangOf(member.account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "settings").close;

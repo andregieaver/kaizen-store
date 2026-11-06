@@ -81,7 +81,17 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
         words={words}
       />
 
-      <InviteForms roles={roles} words={words} actions={{ staff: inviteStaffAction.bind(null, slug), collaborator: inviteCollaboratorAction.bind(null, slug) }} />
+      {/* Kaizena Flow's own store (D466): its team is the platform admins, kept in step by the database; nobody is invited here. */}
+      {store.house ? (
+        <section aria-labelledby="house-team-heading" className={`p-5 ${CARD_CLASS}`}>
+          <h2 id="house-team-heading" className="text-title text-ink">
+            {w.houseTitle}
+          </h2>
+          <p className="mt-1 text-sm text-muted">{w.houseText}</p>
+        </section>
+      ) : (
+        <InviteForms roles={roles} words={words} actions={{ staff: inviteStaffAction.bind(null, slug), collaborator: inviteCollaboratorAction.bind(null, slug) }} />
+      )}
     </div>
   );
 }

@@ -648,6 +648,12 @@ export const stores = commerce.table(
      * (`store_is_active()`), never a template; set only by `commerce.make_sandbox()`.
      */
     sandbox: boolean("sandbox").notNull().default(false),
+    /**
+     * Kaizena Flow's own store (D466, `docs/platform-parity-plan.md`): its site and its customers, a store like any other with the online
+     * shop off, that is not a customer. Never billed, limited, closed or suspended, and left out wherever the stores are counted as
+     * Kaizena Flow's customers; its members are the platform admins. At most one, made only by `commerce.make_house_store()`, never unmarked.
+     */
+    house: boolean("house").notNull().default(false),
     /** The store template this store was made from (D175), for the platform's counts; nothing behaves differently by it. */
     madeFromStarter: uuid("made_from_starter").references((): AnyPgColumn => storeStarters.id),
     /**
@@ -855,6 +861,9 @@ export const stores = commerce.table(
     // A sandbox (D457) is at a `try-` address and is never a template or a store template.
     check("stores_sandbox_address", sql`not ${t.sandbox} or ${t.slug} like 'try-%'`),
     check("stores_sandbox_not_template", sql`not (${t.sandbox} and (${t.isTemplate} or ${t.starter}))`),
+    // Kaizena Flow's own store (D466): one at most, and never a template, a store template or a sandbox.
+    uniqueIndex("stores_one_house_idx").on(t.house).where(sql`${t.house}`),
+    check("stores_house_real", sql`not (${t.house} and (${t.isTemplate} or ${t.starter} or ${t.sandbox}))`),
     index("stores_created_by_idx").on(t.createdBy),
     index("stores_country_idx").on(t.country),
     index("stores_front_page_idx").on(t.id, t.frontPageId),
