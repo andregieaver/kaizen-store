@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore, useTransition } from "react";
 
 import { ColorModeSwitch } from "@/components/color-mode-switch";
 import { ADMIN_COLOR_KEY, applyColorChoice, COLOR_CHOICES, COLOR_EVENT, isColorChoice, type ColorChoice } from "@/lib/color-mode";
+import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
 
 /**
  * The admin's light or dark (D99): each account's own choice, kept on the
@@ -62,12 +63,12 @@ export function AdminColorSwitch({
 }
 
 /** Your account's choice of the admin's colours: the device's, light or dark. */
-export function AppearanceField({ saved, save }: { saved: ColorChoice; save: SaveColorMode }) {
+export function AppearanceField({ saved, save, words }: { saved: ColorChoice; save: SaveColorMode; words: BookingsMessages["lookFields"] }) {
   const choice = useSyncExternalStore(subscribe, stored, () => saved);
   const [pending, start] = useTransition();
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="sr-only">Colours</legend>
+      <legend className="sr-only">{words.colours}</legend>
       <div className="flex flex-wrap gap-2">
         {(Object.keys(COLOR_CHOICES) as ColorChoice[]).map((option) => (
           <label
@@ -84,12 +85,12 @@ export function AppearanceField({ saved, save }: { saved: ColorChoice; save: Sav
                 start(() => save(option));
               }}
             />
-            {COLOR_CHOICES[option]}
+            {words.choices[option]}
           </label>
         ))}
       </div>
       <p className="text-xs text-muted" aria-live="polite">
-        {pending ? "Saving …" : "Kept with your account, so the admin looks the same on every device you sign in on."}
+        {pending ? words.saving : words.kept}
       </p>
     </fieldset>
   );

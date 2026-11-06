@@ -1,5 +1,8 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Card } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { adminText } from "@/lib/admin-text";
+import { requestAdminLang } from "@/server/admin-request-lang";
 
 type Action = (state: never, form: FormData) => Promise<never>;
 
@@ -8,7 +11,7 @@ type Action = (state: never, form: FormData) => Promise<never>;
  * which published page the place shows, or the standard one, and a starter page to begin from, published in place.
  * The actions are bound to the place by the page that draws the form.
  */
-export function PagePlaceForm({
+export async function PagePlaceForm({
   name,
   hint,
   standard,
@@ -26,28 +29,29 @@ export function PagePlaceForm({
   start: Action;
 }) {
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
+  const w = adminText(await requestAdminLang(), "platformSite").pagePlace;
   return (
     <Card title={name} description={hint} level={3} className="flex flex-col gap-3" compact>
       <ActionForm action={choose as never} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
-          {name} shows
+          {fillWords(w.shows, { name })}
           <select name="page" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
             <option value="">{standard}</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
-                {page.title || "Untitled"}
-                {page.state === "draft" ? " (not published)" : ""}
+                {page.title || w.untitled}
+                {page.state === "draft" ? w.notPublished : ""}
               </option>
             ))}
           </select>
         </label>
-        <SubmitButton>Save</SubmitButton>
+        <SubmitButton>{w.save}</SubmitButton>
       </ActionForm>
       <ActionForm action={start as never} className="flex flex-wrap items-center gap-3">
-        <SubmitButton variant="secondary">Start from a new page</SubmitButton>
-        <span className="text-sm text-muted">Makes a page like the standard one, publishes it here and opens it in the builder.</span>
+        <SubmitButton variant="secondary">{w.start}</SubmitButton>
+        <span className="text-sm text-muted">{w.startHint}</span>
       </ActionForm>
-      {unpublished && <p className="text-sm text-muted">This page is not published, so visitors see {standard.toLowerCase()} until you publish it again.</p>}
+      {unpublished && <p className="text-sm text-muted">{fillWords(w.unpublished, { standard: standard.toLowerCase() })}</p>}
     </Card>
   );
 }

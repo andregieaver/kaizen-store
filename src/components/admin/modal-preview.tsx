@@ -17,7 +17,8 @@ import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { t } from "@/lib/i18n";
 import { blockHasContent, blockOwnContent, columnLines, columnsAsRow, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageRow } from "@/lib/page-content";
-import { MODAL_LEFT_OUT, modalSummary } from "@/lib/page-modal";
+import { modalSummary } from "@/lib/page-modal";
+import { useAdminText } from "@/components/admin/admin-text";
 
 /**
  * A modal's row on the builder's canvas (D121): it stays in the page, where
@@ -27,24 +28,25 @@ import { MODAL_LEFT_OUT, modalSummary } from "@/lib/page-modal";
  */
 export function ModalBar({ row, lang }: { row: PageRow; lang: string | undefined }) {
   const [open, setOpen] = useState(false);
+  const w = useAdminText("blocks").modal;
   const modal = row.modal;
   if (!modal) return null;
   const m = t(lang ?? "en").modal;
   return (
     <>
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md bg-warning-soft px-2 py-1 text-xs text-warning-text">
-        <span data-modal-badge>{modalSummary(modal)}</span>
+        <span data-modal-badge>{modalSummary(modal, w)}</span>
         <button
           type="button"
           onClick={() => setOpen(true)}
           className="ml-auto min-h-7 rounded border border-warning-text px-2 font-medium hover:bg-warning-soft focus-visible:outline-2"
         >
-          Preview
+          {w.preview}
         </button>
         {/* The preview below draws the form as it would look; the site leaves the row out when nothing in it shows. */}
         {!rowShows(row) && (
           <p data-modal-left-out className="basis-full font-medium">
-            {MODAL_LEFT_OUT}
+            {w.leftOut}
           </p>
         )}
       </div>
@@ -112,6 +114,7 @@ function PreviewNested({ block, renderColumn }: { block: ColumnsBlock; renderCol
 }
 
 function PreviewBlock({ block, lang }: { block: PageBlock; lang: string | undefined }) {
+  const w = useAdminText("blocks").modal;
   if (block.type === "emailForm" || block.type === "newsletter")
     return <SiteForm form={publicForm(block)} store={null} lang={lang} preview />;
   if (
@@ -121,14 +124,14 @@ function PreviewBlock({ block, lang }: { block: PageBlock; lang: string | undefi
     block.type === "menu" ||
     block.type === "search"
   ) {
-    return <p className="rounded-md bg-sunken p-3 text-sm text-muted">Shown here on the site.</p>;
+    return <p className="rounded-md bg-sunken p-3 text-sm text-muted">{w.shownOnSite}</p>;
   }
   if (block.type === "customField" || block.type === "fieldLoop" || block.type === "storePart") {
-    return <p className="rounded-md bg-sunken p-3 text-sm text-muted">Shown here on the site.</p>;
+    return <p className="rounded-md bg-sunken p-3 text-sm text-muted">{w.shownOnSite}</p>;
   }
   return blockHasContent(block) && blockOwnContent(block) ? (
     <PageBlockView block={block} />
   ) : (
-    <p className="rounded-md bg-sunken p-3 text-sm text-muted">Nothing to show yet.</p>
+    <p className="rounded-md bg-sunken p-3 text-sm text-muted">{w.nothingYet}</p>
   );
 }

@@ -18,6 +18,9 @@ import { siteFontStyle } from "@/server/fonts";
 import { getPlatformChrome } from "@/server/platform-navigation";
 import { getPlatformPageRoles } from "@/server/platform-roles";
 import { platformInstallPreview, platformPreviewPage } from "@/server/platform-theme-preview";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Theme preview", robots: { index: false, follow: false } };
 
@@ -29,7 +32,8 @@ export const metadata: Metadata = { title: "Theme preview", robots: { index: fal
  */
 export default async function PlatformThemePreviewPage({ params, searchParams }: PageProps<"/admin/platform/site-design/[install]/preview">) {
   await connection();
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
+  const w = adminText(adminLangOf(account.adminLocale), "platformSite").themePreview;
   const { install: installId } = await params;
   const query = await searchParams;
   const [preview, base, roles] = await Promise.all([platformInstallPreview(installId), getPlatformChrome(), getPlatformPageRoles()]);
@@ -53,14 +57,17 @@ export default async function PlatformThemePreviewPage({ params, searchParams }:
       <div role="status" className="sticky top-0 z-50 flex flex-col gap-1.5 bg-foreground px-4 py-2 text-xs text-background">
         <p className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <span className="font-medium">
-            Preview of “{preview.install.title}”{preview.install.live ? ", the live theme," : ""} on {chosen ? `“${chosen.title}”` : "no page"}: nothing is saved, and visitors do
-            not see it
+            {fillWords(w.bar, {
+              theme: preview.install.title,
+              live: preview.install.live ? w.live : "",
+              page: chosen ? fillWords(w.page, { title: chosen.title }) : w.noPage,
+            })}
           </span>
           <Link href={preview.install.live ? "/admin/platform/site-design" : `/admin/platform/site-design/${preview.install.id}`} className="underline">
-            Back to the theme
+            {w.back}
           </Link>
         </p>
-        <nav aria-label="Pages to preview" className="flex flex-wrap gap-x-3 gap-y-1">
+        <nav aria-label={w.pages} className="flex flex-wrap gap-x-3 gap-y-1">
           {preview.pages.slice(0, 30).map((page) => (
             <Link key={page.id} href={`${here}?page=${page.id}`} aria-current={chosen?.id === page.id ? "page" : undefined} className="underline aria-[current=page]:no-underline aria-[current=page]:font-medium">
               {page.title}
@@ -92,7 +99,7 @@ export default async function PlatformThemePreviewPage({ params, searchParams }:
                 <PageArticle content={shown.content} place={place} inAdmin />
               )
             ) : (
-              <p className="mx-auto w-full max-w-(--content-width) px-4 py-8">Kaizena Flow has no published page to show yet.</p>
+              <p className="mx-auto w-full max-w-(--content-width) px-4 py-8">{w.nothing}</p>
             )}
           </main>
           {preview.footer ? <KaizenSiteFooter chrome={chrome} layout={preview.footer} theme={theme} /> : <PlatformFooter chrome={chrome} />}

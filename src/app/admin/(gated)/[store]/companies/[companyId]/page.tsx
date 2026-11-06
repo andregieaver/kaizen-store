@@ -253,7 +253,7 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
         <ActionForm action={inviteToCompanyAction.bind(null, store.slug, company.id)} className="flex flex-col gap-2 border-t border-line pt-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             {words.invite}
-            <textarea name="emails" rows={2} required placeholder="anna@example.com, ola@example.com" className={`${control} py-2`} />
+            <textarea name="emails" rows={2} required placeholder={"anna@example.com, ola@example.com"} className={`${control} py-2`} />
           </label>
           <div>
             <SubmitButton variant="secondary">{words.sendInvitations}</SubmitButton>

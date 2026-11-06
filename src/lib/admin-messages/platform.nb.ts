@@ -1008,4 +1008,11 @@ export const platformNb: PlatformMessages = {
       },
     },
   },
+  copyPage: {
+    back: "Butikkene dine",
+    title: "Dupliser {name}",
+    titleAny: "Dupliser en butikk",
+    description: "Lag en ny butikk fra denne. Velg hva som skal være med; den nye butikken starter stengt, og du er eieren.",
+    limit: "Du kan eie opptil {max} butikker. Kontakt Kaizena Flow for flere.",
+  },
 };

@@ -1,9 +1,11 @@
+import { LoadingWords } from "@/components/admin/loading-words";
+
 /** What Traffic shows while its figures are read: the shape of the page in the admin's placeholder style. */
 export default function AnalyticsTrafficLoading() {
   const block = "animate-pulse rounded-lg bg-card";
   return (
     <div className="flex flex-col gap-8" role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading traffic…</span>
+      <span className="sr-only"><LoadingWords of="traffic" /></span>
       <div className="space-y-3">
         <div className={`${block} h-8 w-40`} />
         <div className={`${block} h-4 w-full max-w-xl`} />

@@ -7,6 +7,8 @@ import type { ParcelRow } from "@/components/admin/orders/send-parcel";
 import type { ParcelLine } from "@/lib/fulfilment";
 import { parcelLinesFromChoice } from "@/lib/parcel-form";
 import { NotifySwitchedOff } from "@/components/admin/orders/notify-off";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type BookState = { ok: boolean; message: string };
 
@@ -51,6 +53,7 @@ export function ChosenDeliveryBooking({
   /** The order's physical lines with what is still to send (D174), for the parcel's choice. */
   rows?: ParcelRow[];
 }) {
+  const w = useAdminText("order").booking;
   const [serviceId, setServiceId] = useState(services?.[0]?.id ?? "");
   const [weight, setWeight] = useState(estimatedGrams > 0 ? (estimatedGrams / 1000).toString().replace(".", ",") : "");
   const [notify, setNotify] = useState(true);
@@ -71,12 +74,12 @@ export function ChosenDeliveryBooking({
     <div className="flex flex-col gap-3">
       {test && (
         <p role="status" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
-          Test environment: {carrierName} delivers nothing and the order is not marked as sent.
+          {fillWords(w.testCarrier, { carrier: carrierName })}
         </p>
       )}
       {chosenText !== null && (
         <p className="text-sm">
-          The customer chose <strong>{chosenText}</strong>.
+          {w.customerChose} <strong>{chosenText}</strong>.
         </p>
       )}
       {services && (
@@ -93,10 +96,10 @@ export function ChosenDeliveryBooking({
       )}
       <ParcelChoice rows={rows} typed={typed} onChange={setTyped} />
       <label className="flex max-w-xs flex-col gap-1 text-sm font-medium">
-        Weight (kg)
+        {w.weight}
         <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} className={input} />
       </label>
-      {estimatedGrams === 0 && <p className="text-sm text-muted">No weight is set on these products, so enter the parcel&apos;s weight.</p>}
+      {estimatedGrams === 0 && <p className="text-sm text-muted">{w.noWeight}</p>}
       {collectLabel && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={collect} onChange={(e) => setCollect(e.target.checked)} className="size-4" />
@@ -106,13 +109,13 @@ export function ChosenDeliveryBooking({
       {hasEmail && !test && !notifyOff && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="size-4" />
-          Email the customer that it is on its way
+          {w.email}
         </label>
       )}
-      {hasEmail && !test && notifyOff && <NotifySwitchedOff href={notifyOff}>Email the customer that it is on its way</NotifySwitchedOff>}
+      {hasEmail && !test && notifyOff && <NotifySwitchedOff href={notifyOff}>{w.email}</NotifySwitchedOff>}
       <div>
         <button type="button" onClick={submit} disabled={busy || !weight.trim() || lines === "invalid"} className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50">
-          {busy ? "Booking …" : test ? "Make a test booking" : "Book and mark as sent"}
+          {busy ? w.booking : test ? w.testBook : w.book}
         </button>
       </div>
       {result && (

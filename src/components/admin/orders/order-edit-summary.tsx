@@ -151,7 +151,7 @@ export function OrderEditSummary({
             <p className="flex justify-between gap-3 font-medium">
               <span>{w.difference}</span>
               <span className="tabular-nums">
-                {summary.differenceMinor > 0 ? "+" : summary.differenceMinor < 0 ? "−" : ""}
+                {["−", "", "+"][Math.sign(summary.differenceMinor) + 1]}
                 {money(Math.abs(summary.differenceMinor))}
               </span>
             </p>

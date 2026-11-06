@@ -700,6 +700,31 @@ export const orderEn = {
     reliefRow: "VAT not charged (reverse charge)",
     reasons: { ...VAT_STAFF_TEXT } as Record<string, string>,
   },
+  /** Booking a parcel with a carrier from the order (D134 to D138, D458): Bring's panel and the chosen delivery's. */
+  booking: {
+    testBring: "Test environment: Bring books a test shipment. Nothing is shipped and the order is not marked as sent.",
+    testCarrier: "Test environment: {carrier} delivers nothing and the order is not marked as sent.",
+    weight: "Weight (kg)",
+    sides: { l: "Length (cm)", w: "Width (cm)", h: "Height (cm)" },
+    optional: "optional",
+    shopperChose: "The shopper chose",
+    withPickup: " with pickup at {place}",
+    customerChose: "The customer chose",
+    noWeight: "No weight is set on these products, so enter the parcel's weight.",
+    asking: "Asking Bring …",
+    update: "Update services",
+    show: "Show Bring's services",
+    service: "Service",
+    price: "{name} · {price} excl. VAT",
+    days: { one: "{n} working day", many: "{n} working days" },
+    pickupPoint: "Pickup point",
+    noPoint: "Bring found no pickup point near the recipient. Choose another service.",
+    chosenByShopper: "{place} (chosen by the shopper)",
+    email: "Email the customer that it is on its way",
+    booking: "Booking …",
+    testBook: "Make a test booking",
+    book: "Book and mark as sent",
+  },
 };
 
 export type OrderMessages = Widen<typeof orderEn>;

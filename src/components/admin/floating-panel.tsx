@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useAdminText } from "@/components/admin/admin-text";
 
 /**
  * The settings panel of a row, column or component in the page builder: a floating, non-modal panel the editor can move
@@ -125,6 +126,7 @@ function PlacedPanel({
   footer?: ReactNode;
   wide?: boolean;
 }) {
+  const ui = useAdminText("common").ui;
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
   // Where it was last left (kept inside this window), else its default place.
@@ -232,8 +234,8 @@ function PlacedPanel({
         <div className="flex items-center gap-1">
           <button
             type="button"
-            aria-label="Move the panel"
-            title="Focus this and press the arrow keys to move the panel; Shift and the arrow keys resize it"
+            aria-label={ui.movePanel}
+            title={ui.movePanelHint}
             onPointerDown={(event) => event.stopPropagation()}
             onKeyDown={keys}
             className="flex size-9 items-center justify-center rounded-full hover:bg-sunken"
@@ -246,7 +248,7 @@ function PlacedPanel({
             type="button"
             onPointerDown={(event) => event.stopPropagation()}
             onClick={onClose}
-            aria-label="Close"
+            aria-label={ui.close}
             className="flex size-9 items-center justify-center rounded-full hover:bg-sunken"
           >
             <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">

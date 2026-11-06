@@ -58,8 +58,8 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       <Notice title={w.aboutTitle}>
         <ul className="list-disc pl-5">
           <li>
-            {w.about1a} <strong>Redirect from</strong> {w.about1b} <strong>Redirect to</strong>
-            {w.about1c} <code>type</code>, <code>created</code>, <code>used</code> {w.about1b} <code>last_used</code> {w.about1d}
+            {w.about1a} <strong>{"Redirect from"}</strong> {w.about1b} <strong>{"Redirect to"}</strong>
+            {w.about1c} <code>{"type"}</code>, <code>{"created"}</code>, <code>{"used"}</code> {w.about1b} <code>{"last_used"}</code> {w.about1d}
           </li>
           <li>{w.about2}</li>
           <li>

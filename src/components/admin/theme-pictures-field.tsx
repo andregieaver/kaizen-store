@@ -56,7 +56,7 @@ export function ThemePicturesField({ initial, upload, max }: { initial: string[]
           <ImageUploadButton upload={upload} label={f.upload} onUploaded={(image) => add(image.url)} />
           <label className="flex flex-col gap-1">
             <span>{f.orAddress}</span>
-            <input value={typed} onChange={(event) => setTyped(event.target.value)} maxLength={2000} placeholder="/… or https://…" className="min-h-10 rounded-md border border-line bg-card px-3" />
+            <input value={typed} onChange={(event) => setTyped(event.target.value)} maxLength={2000} placeholder={f.addressPlaceholder} className="min-h-10 rounded-md border border-line bg-card px-3" />
           </label>
           <button
             type="button"

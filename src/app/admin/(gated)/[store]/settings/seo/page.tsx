@@ -186,7 +186,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
             <span className={hint}>
               {w.addedUnder}{" "}
               <a href={`${base}/llms.txt`} className="underline">
-                llms.txt
+                {"llms.txt"}
               </a>
               {w.addedUnderEnd}
             </span>

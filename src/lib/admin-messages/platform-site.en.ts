@@ -687,6 +687,7 @@ export const platformSiteEn = {
     remove: "Remove",
     pictureN: "picture {n}",
     orAddress: "Or an address",
+    addressPlaceholder: "/… or https://…",
     addAddress: "Add the address",
   },
   /** What the platform's site and theme actions answer (D312 A11), read through `platformActionWords()`. */
@@ -819,6 +820,26 @@ export const platformSiteEn = {
     previewOnPages: "Preview on its pages",
     openPages: "Open its pages",
     pagesNotPlaced: "Its pages are placed when it is taken into review.",
+  },
+  /** One of Kaizena Flow's installed themes on its own pages (D252): the bar over the preview. */
+  themePreview: {
+    bar: "Preview of “{theme}”{live} on {page}: nothing is saved, and visitors do not see it",
+    live: ", the live theme,",
+    page: "“{title}”",
+    noPage: "no page",
+    back: "Back to the theme",
+    pages: "Pages to preview",
+    nothing: "Kaizena Flow has no published page to show yet.",
+  },
+  /** One of Kaizena Flow's pages chosen for a place of its own (D143). */
+  pagePlace: {
+    shows: "{name} shows",
+    untitled: "Untitled",
+    notPublished: " (not published)",
+    save: "Save",
+    start: "Start from a new page",
+    startHint: "Makes a page like the standard one, publishes it here and opens it in the builder.",
+    unpublished: "This page is not published, so visitors see {standard} until you publish it again.",
   },
 } as const;
 

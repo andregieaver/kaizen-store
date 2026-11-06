@@ -9,6 +9,7 @@ import { documentFileName } from "@/lib/work-invoice-print";
 import { creditNoteDocumentData } from "@/server/work-invoices";
 import { workBase } from "@/lib/work-paths";
 import { requirePermission } from "@/server/permissions";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Print credit note", robots: { index: false, follow: false } };
 
@@ -23,10 +24,11 @@ export default async function CreditNotePrintPage({
 }: PageProps<"/admin/account/work/s/[store]/credit-notes/[creditNoteId]/print">) {
   const { store: slug, creditNoteId } = await params;
   const { store } = await requirePermission(slug, "settings:read");
+  const { w } = await workWords();
   if (!store.workOn) {
     return (
       <div className="p-8">
-        <WorkOff storeSlug={store.slug} title="Credit note" />
+        <WorkOff storeSlug={store.slug} title={w.documentPage.creditNote} words={w.off} />
       </div>
     );
   }
@@ -37,7 +39,7 @@ export default async function CreditNotePrintPage({
   return (
     <DocumentPage
       backHref={`${workBase(store.slug)}/invoices/${doc.invoiceId}`}
-      backLabel="Back to the invoice"
+      backLabel={w.documentPage.backToInvoice}
       documentTitle={documentFileName(doc.wording.title, doc.documentNumber)}
       auto={auto}
     >

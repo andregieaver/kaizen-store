@@ -1,10 +1,12 @@
+import { LoadingWords } from "@/components/admin/loading-words";
+
 const block = "animate-pulse rounded-lg bg-card";
 
 /** The VAT pages while they are read: the heading and the cards. */
 export default function PlatformVatLoading() {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading VAT…</span>
+      <span className="sr-only"><LoadingWords of="vat" /></span>
       <div className="space-y-3" aria-hidden="true">
         <div className={`${block} h-8 w-32`} />
         <div className={`${block} h-4 w-full max-w-xl`} />

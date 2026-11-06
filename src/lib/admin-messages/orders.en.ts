@@ -366,6 +366,18 @@ export const ordersEn = {
     invoices: "Invoices",
     reports: "VAT, OSS and IOSS reports",
   },
+  /** The pasted list of order numbers on the order export (D165, 2.3.1). */
+  numbersField: {
+    label: "Order numbers",
+    placeholder: "One order number on each line, or separated by commas",
+    atMost: "At most {max} order numbers. An order number is as it is shown in the orders list, without the #.",
+    checking: "Checking …",
+    check: "Check the numbers",
+    found: { one: "{n} of these is an order of this store.", many: "{n} of these are orders of this store." },
+    notFound: " Not found: {list}.",
+    andMore: "{list} and {n} more",
+    tooMany: " {n} too many: the file takes at most {max}.",
+  },
 };
 
 export type OrdersMessages = Widen<typeof ordersEn>;

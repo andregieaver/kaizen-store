@@ -1,8 +1,10 @@
+import { LoadingWords } from "@/components/admin/loading-words";
+
 /** The settings page while it loads: the header and five cards, in the admin's placeholder. */
 export default function Loading() {
   return (
     <div className="flex flex-col gap-6" aria-busy="true" aria-live="polite">
-      <span className="sr-only">Loading the analytics settings</span>
+      <span className="sr-only"><LoadingWords of="analyticsSettings" /></span>
       <div className="space-y-2">
         <div className="h-8 w-56 animate-pulse rounded-lg bg-card" />
         <div className="h-4 w-full max-w-xl animate-pulse rounded-lg bg-card" />

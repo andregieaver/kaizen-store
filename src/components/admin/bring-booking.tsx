@@ -9,6 +9,8 @@ import type { OrderDelivery } from "@/lib/delivery-options";
 import { parcelLinesFromChoice } from "@/lib/parcel-form";
 import type { BringOptions } from "@/server/bring-shipping";
 import { NotifySwitchedOff } from "@/components/admin/orders/notify-off";
+import { useAdminText } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
 
 const label = "flex flex-col gap-1 text-sm font-medium";
 const input = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
@@ -46,6 +48,7 @@ export function BringBooking({
   /** The order's physical lines with what is still to send (D174), for the parcel's choice. */
   rows?: ParcelRow[];
 }) {
+  const w = useAdminText("order").booking;
   const [weight, setWeight] = useState(estimatedGrams > 0 ? (estimatedGrams / 1000).toString().replace(".", ",") : "");
   const [dims, setDims] = useState({ l: "", w: "", h: "" });
   const [options, setOptions] = useState<Extract<BringOptions, { ok: true }> | null>(null);
@@ -93,19 +96,19 @@ export function BringBooking({
     <div className="flex flex-col gap-3">
       {test && (
         <p role="status" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
-          Test environment: Bring books a test shipment. Nothing is shipped and the order is not marked as sent.
+          {w.testBring}
         </p>
       )}
       <ParcelChoice rows={rows} typed={typed} onChange={setTyped} />
       <div className="grid gap-3 sm:grid-cols-4">
         <label className={label}>
-          Weight (kg)
+          {w.weight}
           <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} className={input} />
         </label>
         {(["l", "w", "h"] as const).map((key) => (
           <label key={key} className={label}>
             <span>
-              {key === "l" ? "Length" : key === "w" ? "Width" : "Height"} (cm) <span className="font-normal text-muted">optional</span>
+              {w.sides[key]} <span className="font-normal text-muted">{w.optional}</span>
             </span>
             <input inputMode="decimal" value={dims[key]} onChange={(e) => setDims({ ...dims, [key]: e.target.value })} className={input} />
           </label>
@@ -113,25 +116,27 @@ export function BringBooking({
       </div>
       {shopperChoice && (
         <p className="text-sm">
-          The shopper chose <strong>{shopperChoice.label}</strong>
-          {shopperChoice.pickupPoint && <> with pickup at {shopperChoice.pickupPoint.name}, {shopperChoice.pickupPoint.street}, {shopperChoice.pickupPoint.city}</>}.
+          {w.shopperChose} <strong>{shopperChoice.label}</strong>
+          {shopperChoice.pickupPoint &&
+            fillWords(w.withPickup, { place: `${shopperChoice.pickupPoint.name}, ${shopperChoice.pickupPoint.street}, ${shopperChoice.pickupPoint.city}` })}
+          .
         </p>
       )}
-      {estimatedGrams === 0 && <p className="text-sm text-muted">No weight is set on these products, so enter the parcel&apos;s weight.</p>}
+      {estimatedGrams === 0 && <p className="text-sm text-muted">{w.noWeight}</p>}
       <div>
         <button type="button" onClick={load} disabled={busy || !weight.trim()} className="min-h-10 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50">
-          {busy && !options ? "Asking Bring …" : options ? "Update services" : "Show Bring's services"}
+          {busy && !options ? w.asking : options ? w.update : w.show}
         </button>
       </div>
       {options && (
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium">Service</legend>
+          <legend className="mb-1 text-sm font-medium">{w.service}</legend>
           {options.options.map((o) => (
             <label key={o.serviceId} className="flex items-start gap-2 text-sm">
               <input type="radio" name="service" value={o.serviceId} checked={service === o.serviceId} onChange={() => setService(o.serviceId)} className="mt-1 size-4" />
               <span>
-                {o.name} · {nok(o.priceMinor, o.currency)} excl. VAT
-                {o.estimate && "minDays" in o.estimate && <span className="text-muted"> · {o.estimate.minDays === 1 ? "1 working day" : `${o.estimate.minDays} working days`}</span>}
+                {fillWords(w.price, { name: o.name, price: nok(o.priceMinor, o.currency) })}
+                {o.estimate && "minDays" in o.estimate && <span className="text-muted"> · {countWords(o.estimate.minDays, w.days)}</span>}
               </span>
             </label>
           ))}
@@ -139,14 +144,14 @@ export function BringBooking({
       )}
       {options && chosen?.needsPickupPoint && (
         <label className={label}>
-          Pickup point
+          {w.pickupPoint}
           {options.pickupPoints.length === 0 ? (
-            <span className="font-normal text-muted">Bring found no pickup point near the recipient. Choose another service.</span>
+            <span className="font-normal text-muted">{w.noPoint}</span>
           ) : (
             <select value={point} onChange={(e) => setPoint(e.target.value)} className={input}>
               {shopperChoice?.pickupPoint && !options.pickupPoints.some((p) => p.id === shopperChoice.pickupPoint!.id) && (
                 <option value={shopperChoice.pickupPoint.id}>
-                  {shopperChoice.pickupPoint.name}, {shopperChoice.pickupPoint.street}, {shopperChoice.pickupPoint.city} (chosen by the shopper)
+                  {fillWords(w.chosenByShopper, { place: `${shopperChoice.pickupPoint.name}, ${shopperChoice.pickupPoint.street}, ${shopperChoice.pickupPoint.city}` })}
                 </option>
               )}
               {options.pickupPoints.map((p) => (
@@ -162,10 +167,10 @@ export function BringBooking({
       {options && hasEmail && !test && !notifyOff && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="size-4" />
-          Email the customer that it is on its way
+          {w.email}
         </label>
       )}
-      {options && hasEmail && !test && notifyOff && <NotifySwitchedOff href={notifyOff}>Email the customer that it is on its way</NotifySwitchedOff>}
+      {options && hasEmail && !test && notifyOff && <NotifySwitchedOff href={notifyOff}>{w.email}</NotifySwitchedOff>}
       {options && (
         <div>
           <button
@@ -174,7 +179,7 @@ export function BringBooking({
             disabled={busy || !service || (chosen?.needsPickupPoint && !point) || lines === "invalid"}
             className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
           >
-            {busy ? "Booking …" : test ? "Make a test booking" : "Book and mark as sent"}
+            {busy ? w.booking : test ? w.testBook : w.book}
           </button>
         </div>
       )}

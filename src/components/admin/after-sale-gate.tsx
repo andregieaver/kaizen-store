@@ -8,6 +8,9 @@ import { afterSaleIsOpen, featureOn } from "@/lib/store-features";
 import { afterSaleOf, afterSaleOpen } from "@/server/after-sale";
 
 import { FeatureOff } from "./feature-off";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { adminText } from "@/lib/admin-text";
+import { requestAdminLang } from "@/server/admin-request-lang";
 
 /**
  * The gate of an admin page of what was sold (D178 step 5, the owner's decision; `AFTER_SALE_ADMIN_PATHS`): the orders, an order, its slips
@@ -22,7 +25,6 @@ export async function requireShopOrAfterSale(
   return <FeatureOff storeSlug={member.store.slug} feature="shop" features={member.store} owner={can(member, "owner")} />;
 }
 
-const many = (count: number, one: string, other: string) => `${count} ${count === 1 ? one : other}`;
 
 /**
  * The way to what was sold while the online shop is off (D178 step 5): Orders is not in the menu of a website, so Home and the Features page
@@ -33,20 +35,20 @@ export async function AfterSaleNote({ store }: { store: { id: string; slug: stri
   const after = await afterSaleOf(store.id);
   if (!afterSaleIsOpen(after)) return null;
   const base = `/admin/${store.slug}`;
+  const w = adminText(await requestAdminLang(), "settings").afterSale;
   const parts = [
-    after.withdrawable > 0 && `${many(after.withdrawable, "order", "orders")} can still be withdrawn from or returned`,
-    after.openReturns > 0 && `${many(after.openReturns, "return is", "returns are")} still open`,
+    after.withdrawable > 0 && countWords(after.withdrawable, w.withdrawable),
+    after.openReturns > 0 && countWords(after.openReturns, w.openReturns),
   ].filter(Boolean);
   return (
     <p role="status" className="rounded-panel bg-sunken p-4 text-sm">
-      The online shop is off. {parts.join(", and ")}, so Orders and Returns stay here until they are done, and the storefront keeps its
-      withdrawal link.{" "}
+      {fillWords(w.note, { parts: parts.join(w.and) })}{" "}
       <Link href={`${base}/orders`} className="underline">
-        Orders
+        {w.orders}
       </Link>
       {" · "}
       <Link href={`${base}/returns`} className="underline">
-        Returns
+        {w.returns}
       </Link>
     </p>
   );

@@ -293,6 +293,11 @@ export const workEn = {
   },
   documentPage: {
     printOrSaveAs: "Print or save as PDF",
+    creditNote: "Credit note",
+    backToInvoice: "Back to the invoice",
+    backToReports: "Back to reports",
+    notIssued: "This invoice is not issued",
+    notIssuedText: "Only an issued invoice can be printed or saved as a PDF. A draft has no number yet, and what it says can still change. Issue the invoice first.",
   },
   estimateProgress: {
     estimated: "estimated",

@@ -182,7 +182,7 @@ export function RedirectFindings({
         </div>
       )}
       {pages > 1 && (
-        <nav aria-label="Pages" className="flex items-center justify-between text-sm">
+        <nav aria-label={f.pages} className="flex items-center justify-between text-sm">
           {page > 1 ? (
             <Link href={hrefFor({ severity, page: page - 1 })} className="underline underline-offset-2">
               {f.earlier}

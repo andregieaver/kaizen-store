@@ -145,7 +145,7 @@ export function RedirectForm({
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             onBlur={() => run(from, to)}
-            placeholder="/collections/shoes"
+            placeholder={"/collections/shoes"}
             autoComplete="off"
             spellCheck={false}
             aria-describedby={`${id}-from-findings`}
@@ -164,7 +164,7 @@ export function RedirectForm({
             value={to}
             onChange={(e) => setTo(e.target.value)}
             onBlur={() => run(from, to)}
-            placeholder="/category/shoes"
+            placeholder={"/category/shoes"}
             autoComplete="off"
             spellCheck={false}
             aria-describedby={`${id}-to-findings`}

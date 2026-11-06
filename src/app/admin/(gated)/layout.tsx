@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { AdminColorSync } from "@/components/admin/admin-colors";
+import { AdminWaiting } from "@/components/admin/admin-waiting";
 import { AdminSchemeSync } from "@/components/admin/admin-scheme";
 import { AdminLangSync, AdminTextProvider } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -9,6 +10,8 @@ import { adminTexts } from "@/lib/admin-text";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
 import { AdminServiceWorker } from "@/components/admin/push-settings";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
+import { shellEn } from "@/lib/admin-messages/shell.en";
+import { shellNb } from "@/lib/admin-messages/shell.nb";
 
 /**
  * Every signed-in admin page (D107). Each level draws its own header
@@ -17,7 +20,7 @@ import { getAccount, getAssurance, heldDestination } from "@/server/auth";
  */
 export default function GatedLayout({ children }: LayoutProps<"/admin">) {
   return (
-    <Suspense fallback={<p className="p-8 text-sm text-muted">Loading …</p>}>
+    <Suspense fallback={<AdminWaiting words={{ en: shellEn.frame.loading, nb: shellNb.frame.loading }} />}>
       <Gate>{children}</Gate>
     </Suspense>
   );
@@ -34,7 +37,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
     const held = await getAssurance();
     const destination = held ? heldDestination(held.assurance) : null;
     if (destination) redirect(destination);
-    return <SessionRecovery />;
+    return <SessionRecovery waiting={{ en: shellEn.frame.checkingSession, nb: shellNb.frame.checkingSession }} />;
   }
   // The account's language for the admin (D312 A0): its client parts read their areas' words from the provider.
   const lang = adminLangOf(account.adminLocale);

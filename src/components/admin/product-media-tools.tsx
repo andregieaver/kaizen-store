@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { embedUrl, youtubeId } from "@/lib/video-embed";
 
 import { takeStill, uploadVideoFile } from "./video-upload";
+import { useAdminText } from "@/components/admin/admin-text";
 
 type Item = ProductInput["media"][number];
 type Words = AdminAreaMessages["product"]["media"];
@@ -116,6 +117,7 @@ function PosterField({ label, onPoster, uploadPoster, w }: { label: string; onPo
 }
 
 function AddVideo({ storeSlug, onAdd, onCancel, uploadPoster, w }: { storeSlug: string; onAdd: (item: Item) => void; onCancel: () => void; uploadPoster: UploadPoster; w: Words }) {
+  const ui = useAdminText("common").ui;
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [link, setLink] = useState("");
@@ -128,6 +130,7 @@ function AddVideo({ storeSlug, onAdd, onCancel, uploadPoster, w }: { storeSlug: 
     const outcome = await uploadVideoFile((f) => startVideoUploadAction(storeSlug, f), null, file, {
       keepSound: true,
       onProgress: (progress) => setBusy(progress < 1 ? `${w.working} ${Math.round(progress * 100)} %` : w.working),
+      words: ui,
     });
     if (!outcome.ok) {
       setBusy(null);

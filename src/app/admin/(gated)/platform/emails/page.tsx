@@ -34,8 +34,8 @@ export default async function PlatformEmailsPage() {
             {!webhook && (
               <p className="text-muted">
                 {w.noWebhook}{" "}
-                <span className="font-mono text-xs">https://kaizenaflow.com/api/resend/webhook</span>
-                {w.noWebhookEnd} <span className="font-mono text-xs">RESEND_WEBHOOK_SECRET</span>.
+                <span className="font-mono text-xs">{"https://kaizenaflow.com/api/resend/webhook"}</span>
+                {w.noWebhookEnd} <span className="font-mono text-xs">{"RESEND_WEBHOOK_SECRET"}</span>.
               </p>
             )}
           </div>

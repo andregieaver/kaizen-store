@@ -481,8 +481,8 @@ function FieldInput({
             }
             className="min-h-10 rounded-md border border-line bg-card px-2 text-sm"
           >
-            <option value="youtube">YouTube</option>
-            <option value="vimeo">Vimeo</option>
+            <option value="youtube">{"YouTube"}</option>
+            <option value="vimeo">{"Vimeo"}</option>
           </select>
           <input
             id={id}

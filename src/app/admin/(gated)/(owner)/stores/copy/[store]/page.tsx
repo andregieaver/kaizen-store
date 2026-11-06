@@ -5,13 +5,14 @@ import { notFound } from "next/navigation";
 import { StoreCopyWizard } from "@/components/admin/store-copy-wizard";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { adminLangOf } from "@/lib/admin-lang";
-import { adminTexts } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { listStores } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { copyChoicesAction, startStoreCopyAction } from "../../copy-actions";
+import { fillWords } from "@/lib/admin-fill";
 
 export const metadata: Metadata = { title: "Duplicate a store" };
 
@@ -33,30 +34,25 @@ export default async function DuplicateStorePage({
   const full = !account.platformAdmin && owned >= MAX_STORES_PER_OWNER;
   const result = full ? null : await copyChoicesAction(slug);
   if (result && !result.ok) notFound();
+  const lang = adminLangOf(account.adminLocale);
+  const w = adminText(lang, "platform").copyPage;
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <p className="text-sm text-muted">
           <Link href="/admin/stores" className="underline underline-offset-2">
-            Your stores
+            {w.back}
           </Link>
         </p>
         <PageHeader
-          title={
-            <>Duplicate {result?.ok ? result.choices.source.name : "a store"}</>
-          }
-          description={
-            <>
-              Make a new store from this one. Choose what comes along; the new
-              store starts closed and you are its owner.
-            </>
-          }
+          title={result?.ok ? fillWords(w.title, { name: result.choices.source.name }) : w.titleAny}
+          description={w.description}
         />
       </div>
       {result?.ok ? (
         <AdminTextScope
-          texts={adminTexts(adminLangOf(account.adminLocale), ["platform"])}
+          texts={adminTexts(lang, ["platform"])}
         >
           <StoreCopyWizard
             choices={result.choices}
@@ -65,8 +61,7 @@ export default async function DuplicateStorePage({
         </AdminTextScope>
       ) : (
         <p role="status" className={`max-w-xl p-5 text-sm ${CARD_CLASS}`}>
-          You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizena Flow
-          for more.
+          {fillWords(w.limit, { max: MAX_STORES_PER_OWNER })}
         </p>
       )}
     </div>

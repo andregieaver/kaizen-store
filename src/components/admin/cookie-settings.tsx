@@ -47,17 +47,17 @@ export function TrackingForm({
       </div>
       <ActionForm action={action} className="flex flex-col gap-4" successMessage={w.saved}>
         <label className={label}>
-          Google Analytics 4
-          <input name="ga4" defaultValue={tracking.ga4 ?? ""} placeholder="G-XXXXXXXXXX" className={input} />
+          {"Google Analytics 4"}
+          <input name="ga4" defaultValue={tracking.ga4 ?? ""} placeholder={"G-XXXXXXXXXX"} className={input} />
           <span className={hint}>{w.ga4Hint}</span>
         </label>
         <label className={label}>
-          Google Tag Manager
-          <input name="gtm" defaultValue={tracking.gtm ?? ""} placeholder="GTM-XXXXXXX" className={input} />
+          {"Google Tag Manager"}
+          <input name="gtm" defaultValue={tracking.gtm ?? ""} placeholder={"GTM-XXXXXXX"} className={input} />
           <span className={hint}>{w.gtmHint}</span>
         </label>
         <label className={label}>
-          Meta Pixel
+          {"Meta Pixel"}
           <input name="metaPixel" defaultValue={tracking.metaPixel ?? ""} placeholder="1234567890" inputMode="numeric" className={input} />
           <span className={hint}>{w.metaHint}</span>
         </label>

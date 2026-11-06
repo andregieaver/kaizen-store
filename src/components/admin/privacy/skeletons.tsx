@@ -1,6 +1,8 @@
+import { LoadingWords } from "@/components/admin/loading-words";
+
 const block = "animate-pulse rounded-lg bg-card";
 
-function Frame({ label, children }: { label: string; children: React.ReactNode }) {
+function Frame({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">{label}</span>
@@ -18,7 +20,7 @@ function Frame({ label, children }: { label: string; children: React.ReactNode }
 /** The privacy requests list while it is read. */
 export function RequestsSkeleton() {
   return (
-    <Frame label="Loading the privacy requests…">
+    <Frame label={<LoadingWords of="privacyRequests" />}>
       <div className={`${block} h-10 w-64`} />
       <div className={`${block} h-64`} />
     </Frame>
@@ -28,7 +30,7 @@ export function RequestsSkeleton() {
 /** One request, or the form that logs one, while it is read. */
 export function RequestSkeleton() {
   return (
-    <Frame label="Loading the request…">
+    <Frame label={<LoadingWords of="privacyRequest" />}>
       <div className={`${block} h-48`} />
       <div className={`${block} h-40`} />
     </Frame>
@@ -38,7 +40,7 @@ export function RequestSkeleton() {
 /** The erase page while its preview is worked out. */
 export function EraseSkeleton() {
   return (
-    <Frame label="Working out what erasing would do…">
+    <Frame label={<LoadingWords of="erasePlan" />}>
       <div className={`${block} h-72`} />
       <div className={`${block} h-32`} />
       <div className={`${block} h-40`} />
@@ -49,7 +51,7 @@ export function EraseSkeleton() {
 /** The platform's retention page while it is read. */
 export function RetentionSkeleton() {
   return (
-    <Frame label="Loading the retention schedule…">
+    <Frame label={<LoadingWords of="retention" />}>
       {[28, 40, 40, 52, 36].map((h, i) => (
         <div key={i} className={block} style={{ height: `${h * 4}px` }} />
       ))}

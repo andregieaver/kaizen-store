@@ -112,7 +112,7 @@ async function ProductList({
   const market = store.markets[0];
   return (
     <AdminTextScope texts={adminTexts(lang, ["products"])}>
-      {!needsFilter && <NeedsContentNotice count={needing.length} href={needsHref} />}
+      {!needsFilter && <NeedsContentNotice count={needing.length} href={needsHref} words={adminText(lang, "products").unitGaps} />}
       {openImport && (
         <p className="rounded-panel bg-sunken p-3 text-sm">
           {fillWords(w.openImport, { name: openImport.inputName ?? w.aFile })}{" "}
@@ -148,7 +148,7 @@ async function ProductList({
         )}
       </nav>
       {needsFilter ? (
-        <NeedsContentList products={needing} base={base} />
+        <NeedsContentList products={needing} base={base} words={adminText(lang, "products").unitGaps} />
       ) : products.length === 0 ? (
         <div className={`p-8 text-center ${CARD_CLASS}`}>
           <p className="mb-3">{archived ? w.noArchived : w.none}</p>

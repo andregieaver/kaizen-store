@@ -1,5 +1,6 @@
 import { consentCookieName, decodeConsent } from "./cookie-consent";
 import { slugify } from "./slug";
+import { fillWords } from "./admin-fill";
 
 /**
  * Modals (D121): a row of a page with a *Modal* setting. Its columns and
@@ -210,12 +211,21 @@ export function repeatedModalKey(rows: readonly RowWithModal[]): string | null {
 // ---------------------------------------------------------------------------
 
 /** The ways a modal opens, in words: `timer 5 s, button, class .promo, exit intent`. */
-export function triggerWords(triggers: ModalTriggers): string[] {
+/** The builder's words for a modal's summary (`blocks.modal`, D312): English unless a part hands in the admin's. */
+export type ModalSummaryWords = { summary: string; opensBy: string; nothingOpens: string; triggerWords: { timer: string; button: string; className: string; exitIntent: string } };
+const SUMMARY_WORDS: ModalSummaryWords = {
+  summary: "Modal · {name} · {ways}",
+  opensBy: "opens by {ways}",
+  nothingOpens: "nothing opens it yet",
+  triggerWords: { timer: "timer {seconds} s", button: "button", className: "class .{name}", exitIntent: "exit intent" },
+};
+
+export function triggerWords(triggers: ModalTriggers, words: ModalSummaryWords["triggerWords"] = SUMMARY_WORDS.triggerWords): string[] {
   return [
-    triggers.timer && `timer ${triggers.timer.seconds} s`,
-    triggers.button && "button",
-    triggers.className && `class .${triggers.className}`,
-    triggers.exitIntent && "exit intent",
+    triggers.timer && fillWords(words.timer, { seconds: triggers.timer.seconds }),
+    triggers.button && words.button,
+    triggers.className && fillWords(words.className, { name: triggers.className }),
+    triggers.exitIntent && words.exitIntent,
   ].filter((word): word is string => Boolean(word));
 }
 
@@ -231,9 +241,12 @@ export const MODAL_LEFT_OUT_SHORT =
   "That modal is not on the site yet: nothing in its row is shown there (a form needs an address under Send to), so this link cannot open it.";
 
 /** The badge on a modal row in the builder's canvas. */
-export function modalSummary(modal: RowModal): string {
-  const ways = triggerWords(modal.triggers);
-  return `Modal · ${modal.name?.trim() || modal.key} · ${ways.length > 0 ? `opens by ${ways.join(", ")}` : "nothing opens it yet"}`;
+export function modalSummary(modal: RowModal, words: ModalSummaryWords = SUMMARY_WORDS): string {
+  const ways = triggerWords(modal.triggers, words.triggerWords);
+  return fillWords(words.summary, {
+    name: modal.name?.trim() || modal.key,
+    ways: ways.length > 0 ? fillWords(words.opensBy, { ways: ways.join(", ") }) : words.nothingOpens,
+  });
 }
 
 // ---------------------------------------------------------------------------

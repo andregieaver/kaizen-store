@@ -711,7 +711,7 @@ export function CohortTable({
         <thead>
           <tr>
             <th scope="col" className="px-2 py-1.5 text-left">
-              Cohort
+              {analyticsWords().chart.cohort}
             </th>
             <th scope="col" className="px-2 py-1.5 text-right">
               {sizeLabel}

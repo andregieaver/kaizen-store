@@ -8,21 +8,12 @@ import { requireAccount } from "@/server/auth";
 import { ownedStores } from "@/server/ai-usage";
 import { listStoreBilling, type StoreBilling } from "@/server/billing";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Billing" };
 
-const STATUS: Record<string, string> = {
-  active: "Active",
-  trialing: "Trial",
-  past_due: "Overdue",
-  unpaid: "Overdue",
-  canceled: "Cancelled",
-  incomplete: "Not finished",
-  incomplete_expired: "Not finished",
-  paused: "Paused",
-};
-
-const per = (price: NonNullable<StoreBilling["price"]>) => `${money(price.amountMinor, price.currency)} / ${price.interval}`;
 
 /** A plan's cost per month, for adding up plans of different intervals. */
 const monthly = (price: NonNullable<StoreBilling["price"]>) => Math.round(price.interval === "year" ? price.amountMinor / 12 : price.amountMinor);
@@ -35,6 +26,10 @@ const monthly = (price: NonNullable<StoreBilling["price"]>) => Math.round(price.
 export default async function OwnerBillingPage() {
   await connection();
   const account = await requireAccount();
+  const b = adminText(adminLangOf(account.adminLocale), "billing");
+  const w = b.owner;
+  const per = (price: NonNullable<StoreBilling["price"]>) =>
+    fillWords(w.per, { price: money(price.amountMinor, price.currency), interval: b.intervals[price.interval as keyof typeof b.intervals] ?? price.interval });
   const owned = await ownedStores(account.id);
   const bySlug = new Map((await listStoreBilling()).map((b) => [b.slug, b]));
   const rows = owned.flatMap((s) => bySlug.get(s.slug) ?? []);
@@ -44,35 +39,32 @@ export default async function OwnerBillingPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        title="Billing"
-        description={<>The plan of each store you own, what it costs and when it renews. Change a plan in the store&apos;s own billing.</>}
-      />
+      <PageHeader title={w.title} description={w.description} />
       {rows.length === 0 ? (
-        <p className="rounded-panel border border-line p-4 text-sm">You do not own a store yet, so there are no plans to show.</p>
+        <p className="rounded-panel border border-line p-4 text-sm">{w.none}</p>
       ) : (
         <>
           <StatGrid>
             {[...costs].map(([currency, minor]) => (
-              <Stat key={currency} label={`Plans per month (${currency})`} value={money(minor, currency)} sub="Yearly plans counted by the month" />
+              <Stat key={currency} label={fillWords(w.perMonth, { currency })} value={money(minor, currency)} sub={w.yearlyCounted} />
             ))}
-            <Stat label="Stores without a plan" value={rows.filter((r) => !r.status || ["canceled", "incomplete", "incomplete_expired"].includes(r.status)).length} />
+            <Stat label={w.withoutPlan} value={rows.filter((r) => !r.status || ["canceled", "incomplete", "incomplete_expired"].includes(r.status)).length} />
           </StatGrid>
-          <Section id="plans-heading" title="Your stores' plans">
+          <Section id="plans-heading" title={w.plans}>
             <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
               {rows.map((row) => (
                 <li key={row.slug} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
                   <span className="min-w-40 flex-1">
                     <span className="block font-medium">{row.name}</span>
-                    <span className="block text-muted">{row.planName ?? "No plan"}{row.price ? ` · ${per(row.price)}` : ""}</span>
+                    <span className="block text-muted">{row.planName ?? w.noPlan}{row.price ? ` · ${per(row.price)}` : ""}</span>
                   </span>
-                  <span className={row.status && ["past_due", "unpaid"].includes(row.status) ? "font-medium text-danger-text" : "text-muted"}>{row.status ? (STATUS[row.status] ?? row.status) : "No plan"}</span>
+                  <span className={row.status && ["past_due", "unpaid"].includes(row.status) ? "font-medium text-danger-text" : "text-muted"}>{row.status ? (b.statuses[row.status] ?? row.status) : w.noPlan}</span>
                   <span className="text-muted">
-                    {row.currentPeriodEnd ? `${row.cancelAtPeriodEnd ? "Ends" : "Renews"} ${row.currentPeriodEnd.slice(0, 10)}` : ""}
+                    {row.currentPeriodEnd ? fillWords(row.cancelAtPeriodEnd ? w.ends : w.renews, { date: row.currentPeriodEnd.slice(0, 10) }) : ""}
                   </span>
-                  <span className="text-muted">{(row.feeBps / 100).toFixed(row.feeBps % 100 === 0 ? 0 : 1)} % fee on sales</span>
+                  <span className="text-muted">{fillWords(w.fee, { fee: (row.feeBps / 100).toFixed(row.feeBps % 100 === 0 ? 0 : 1) })}</span>
                   <Link href={`/admin/${row.slug}/billing`} className="underline">
-                    Manage
+                    {w.manage}
                   </Link>
                 </li>
               ))}

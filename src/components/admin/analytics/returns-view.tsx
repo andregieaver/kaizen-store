@@ -262,7 +262,7 @@ export function ReturnsView(props: ReturnsViewProps) {
                 exportId="traffic.return_products"
                 exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }}
               />
-              {r.productCount > r.products.length ? <p className="text-xs text-muted">{fillWords(w.showing, { shown: formatCount(r.products.length), all: formatCount(r.productCount) })}</p> : null}
+              {r.products.length < r.productCount ? <p className="text-xs text-muted">{fillWords(w.showing, { shown: formatCount(r.products.length), all: formatCount(r.productCount) })}</p> : null}
             </div>
           </div>
         </>

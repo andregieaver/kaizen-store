@@ -40,7 +40,7 @@ export function BusinessDetailsFields({
           required
           autoComplete="organization"
           defaultValue={details.legalName ?? ""}
-          placeholder="Kari Nordmann AS"
+          placeholder={"Kari Nordmann AS"}
           className={control}
         />
       </label>

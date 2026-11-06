@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { card, hint } from "./ui";
+import { LoadingWords } from "@/components/admin/loading-words";
 import { PageHeader } from "@/components/admin/ui";
 
 /** The head of a data page: where it sits (a link back to the list it belongs to), its title and what it is for. Full width, like the other admin pages. */
@@ -47,7 +48,7 @@ export function DataSkeleton() {
       <div className="h-8 w-64 animate-pulse rounded-lg bg-card" />
       <SkeletonBlock height="h-16" />
       <SkeletonBlock />
-      <p className={`${hint} sr-only`}>Loading</p>
+      <p className={`${hint} sr-only`}><LoadingWords of="page" /></p>
     </div>
   );
 }

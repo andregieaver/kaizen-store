@@ -365,7 +365,7 @@ export function BreakpointFields({ value, onChange }: { value: Breakpoints; onCh
                 onChange={(event) => change(key, event.target.value)}
                 className="min-h-10 w-24 rounded-md border border-border bg-background px-3 font-normal tabular-nums aria-invalid:border-red-700"
               />
-              <span className="font-normal text-muted">px</span>
+              <span className="font-normal text-muted">{"px"}</span>
             </span>
             <span className="text-xs font-normal text-muted">{w[key].hint}</span>
           </label>

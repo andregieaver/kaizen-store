@@ -968,6 +968,14 @@ export const platformEn = {
       },
     },
   },
+  /** Duplicating one of the account's stores (D129): the page around the wizard. */
+  copyPage: {
+    back: "Your stores",
+    title: "Duplicate {name}",
+    titleAny: "Duplicate a store",
+    description: "Make a new store from this one. Choose what comes along; the new store starts closed and you are its owner.",
+    limit: "You can own up to {max} stores. Contact Kaizena Flow for more.",
+  },
 } as const;
 
 export type PlatformMessages = Widen<typeof platformEn>;

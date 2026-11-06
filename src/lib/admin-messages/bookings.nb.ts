@@ -1041,4 +1041,26 @@ export const bookingsNb: BookingsMessages = {
     later: "Senere produkter",
     pageOf: "Side {page} av {pages}",
   },
+  appearance: {
+    title: "Utseende",
+    forYou: "Hvordan adminpanelet ser ut for deg",
+    storesKeep: "Butikkene dine beholder fargene som er satt under Design",
+    every: "Alle fargeskjemaer",
+    everyText: "Hvert fargeskjema i lyst og i mørkt, med adminpanelets knapper, etiketter, kort, tall, stolper og lister. Navnene og tallene i dem er eksempler.",
+  },
+  lookFields: {
+    colours: "Farger",
+    choices: { system: "Som på denne enheten", light: "Lyst", dark: "Mørkt" },
+    scheme: "Fargeskjema",
+    schemeNames: { meadow: "Eng", indigo: "Indigo" },
+    saving: "Lagrer …",
+    kept: "Lagret på kontoen din, så adminpanelet ser likt ut på alle enhetene du logger inn på.",
+  },
+  noShow: {
+    confirm: "Belaste kundens kort med {fee}?",
+    didNotCome: "Kunden kom ikke.",
+    charge: "Belast gebyret for å ikke møte, {fee}, på det lagrede kortet",
+    saving: "Lagrer …",
+    mark: "Merk som ikke møtt",
+  },
 };

@@ -514,4 +514,16 @@ export const productsNb: ProductsMessages = {
     confirmation:
       "Produktene lagres ett om gangen; et produkt med en feil blir værende som det var. Du kan ikke angre en import som helhet; en masseendring kan angres.",
   },
+  unitGaps: {
+    notice: { one: "{n} aktivt produkt mangler fortsatt innholdet sitt for prisen per kg eller liter.", many: "{n} aktive produkter mangler fortsatt innholdet sitt for prisen per kg eller liter." },
+    show: "Vis dem",
+    none: "Ingen produkter mangler innhold for enhetsprisen.",
+    intro: "Disse produktene er til salgs uten pris per kg eller liter. De blir værende til salgs, og butikken viser ingen enhetspris for dem, til du gir hver variant som sendes innholdet sitt i produktets redigering; å lagre et av dem før det, blir avvist.",
+    caption: "Produkter som mangler innhold for enhetsprisen",
+    product: "Produkt",
+    why: "Hvorfor",
+    variants: "Varianter uten innhold",
+    byMeasure: "Selges etter mål",
+    category: "Kategori {category}",
+  },
 };

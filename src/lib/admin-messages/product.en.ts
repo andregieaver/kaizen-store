@@ -700,6 +700,28 @@ export const productEn = {
     aiFailedBecause: "The AI could not write it: {reason}",
     aiFailed: "The AI could not write it. Try again.",
   },
+  /** Write with AI beside a product's texts (D76); the claims are `CLAIM_LABELS`' (D330 F2b). */
+  aiWriter: {
+    title: "Write with AI",
+    fields: { title: "Title", description: "Description", seoTitle: "Title in search results", seoDescription: "Description in search results" },
+    write: "Write a description",
+    improve: "Improve the description",
+    seo: "Write search texts",
+    translate: "Translate from {language}",
+    writing: "Writing …",
+    written: "Written by AI ({model}). Check every fact against the product, and edit freely, before you use it.",
+    findings: {
+      green: "Generic environmental claim",
+      urgency: "Urgency or scarcity",
+      bestPrice: "Best or lowest price claim",
+      price: "An amount of money",
+      stock: "Stock level",
+      avoided: "A word the brand avoids",
+    },
+    blocked: "Take out the phrases marked above before using the text: shops may not make them without proof, and only the catalogue states prices and stock.",
+    use: "Use this",
+    discard: "Discard",
+  },
 };
 
 export type ProductMessages = Widen<typeof productEn>;

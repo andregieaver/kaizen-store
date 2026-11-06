@@ -454,6 +454,11 @@ export const platformToolsNb: PlatformToolsMessages = {
   usage: {
     title: "KI-bruk",
     platformIntro: "Hva hver butikk og Kaizena Flow selv har brukt, {period}.",
+    ownerIntro: "Hva KI-en brukte for {who}, {period}. Kaizena Flows KI er inkludert i abonnementet ditt; bruk på en egen nøkkel faktureres av den leverandøren.",
+    yourStores: "butikkene du eier",
+    allMyStores: "Alle butikkene mine",
+    storeNav: "Butikk",
+    noneOwned: "Du eier ingen butikk ennå, så det er ingen bruk å vise.",
     aiSettings: "KI-innstillinger",
     requests: "Forespørsler",
     failed: "Feilet",

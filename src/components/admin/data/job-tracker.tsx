@@ -7,6 +7,7 @@ import { isWorking } from "@/lib/data-admin";
 import type { JobKind, JobPhase, JobStatus } from "@/lib/data-job";
 
 import { JobProgressView, type JobView } from "./job-views";
+import { useAdminText } from "@/components/admin/admin-text";
 
 type Tick = { id: string; kind: string; status: JobStatus; phase: JobPhase | null; rowsDone: number | null; rowsTotal: number | null; problem: string | null };
 
@@ -16,6 +17,7 @@ type Tick = { id: string; kind: string; status: JobStatus; phase: JobPhase | nul
  * the files). If the page is closed the five-minute job takes the job up, so nothing depends on this component; it only makes it quick.
  */
 export function JobTracker({ tickUrl, initial }: { tickUrl: string; initial: JobView }) {
+  const lostWords = useAdminText("common").dataJobs.lost;
   const router = useRouter();
   const [job, setJob] = useState<JobView>(initial);
   const [lost, setLost] = useState(false);
@@ -61,7 +63,7 @@ export function JobTracker({ tickUrl, initial }: { tickUrl: string; initial: Job
   return (
     <div className="flex flex-col gap-2" aria-live="polite">
       <JobProgressView job={job} />
-      {lost && <p className="text-sm text-muted">This page lost touch with the job. It keeps going on its own: reload the page to see where it is.</p>}
+      {lost && <p className="text-sm text-muted">{lostWords}</p>}
     </div>
   );
 }

@@ -2,12 +2,13 @@
 
 import { useId, useState, useTransition } from "react";
 
-import { LAYOUT_TYPE_LABELS, layoutBlocks } from "@/lib/page-layout";
+import { layoutBlocks } from "@/lib/page-layout";
 import { SAVED_NAME_MAX, type SavedPart } from "@/lib/saved-parts";
 
 import { useAdminText } from "./admin-text";
 import { Modal } from "./modal";
 import type { PageOwnerContext } from "./page-context";
+import { countWords, fillWords } from "@/lib/admin-fill";
 
 /** A saved page layout (D127), opened from Saved: its name to change, and ways to use it, edit its rows on the canvas or delete it. */
 export function SavedLayoutDialog({
@@ -35,7 +36,10 @@ export function SavedLayoutDialog({
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, start] = useTransition();
   const layout = part.content;
-  const editWords = useAdminText("builder").savedPart.editOnCanvas;
+  const builderWords = useAdminText("builder");
+  const editWords = builderWords.savedPart.editOnCanvas;
+  const w = builderWords.savedLayout;
+  const types = builderWords.templates.layoutTypes[layout.pageType].many;
   const rows = layout.rows.length;
   const save = () =>
     start(async () => {
@@ -51,7 +55,7 @@ export function SavedLayoutDialog({
         onParts(result.parts);
         onClose();
       } catch {
-        setProblems(["It could not be saved. Try again."]);
+        setProblems([w.notSaved]);
       }
     });
   const remove = () =>
@@ -63,7 +67,7 @@ export function SavedLayoutDialog({
           onClose();
         } else setProblems(result.problems);
       } catch {
-        setProblems(["It could not be deleted. Try again."]);
+        setProblems([w.notDeleted]);
       }
     });
 
@@ -71,19 +75,17 @@ export function SavedLayoutDialog({
     <Modal
       open
       onClose={onClose}
-      title="Saved page layout"
+      title={w.title}
       footer={
         confirmDelete ? (
           <>
-            <span className="mr-auto self-center text-sm">
-              Delete “{part.name}” from Saved? Pages that used it keep their copy.
-            </span>
+            <span className="mr-auto self-center text-sm">{fillWords(w.confirmDelete, { name: part.name })}</span>
             <button
               type="button"
               onClick={() => setConfirmDelete(false)}
               className="min-h-10 rounded-pill border border-edge px-4 text-sm"
             >
-              Keep it
+              {w.keep}
             </button>
             <button
               type="button"
@@ -91,7 +93,7 @@ export function SavedLayoutDialog({
               disabled={busy}
               className="min-h-10 rounded-pill bg-danger-soft px-4 text-sm font-medium text-danger-text disabled:opacity-50"
             >
-              Delete
+              {w.delete}
             </button>
           </>
         ) : (
@@ -101,7 +103,7 @@ export function SavedLayoutDialog({
               onClick={() => setConfirmDelete(true)}
               className="mr-auto min-h-10 px-2 text-sm text-danger-text underline"
             >
-              Delete
+              {w.delete}
             </button>
             <button
               type="button"
@@ -117,7 +119,7 @@ export function SavedLayoutDialog({
               disabled={!fits}
               className="min-h-10 rounded-pill border border-edge px-4 text-sm disabled:opacity-40"
             >
-              Use on this page
+              {w.use}
             </button>
             <button
               type="button"
@@ -125,7 +127,7 @@ export function SavedLayoutDialog({
               disabled={busy || name.trim() === part.name}
               className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
             >
-              {busy ? "Saving …" : "Save name"}
+              {busy ? w.saving : w.saveName}
             </button>
           </>
         )
@@ -134,7 +136,7 @@ export function SavedLayoutDialog({
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-name`} className="text-sm font-medium">
-            Name
+            {w.name}
           </label>
           <input
             id={`${id}-name`}
@@ -148,13 +150,16 @@ export function SavedLayoutDialog({
           />
         </div>
         <p className="text-sm text-muted">
-          Made for {LAYOUT_TYPE_LABELS[layout.pageType].many}: {rows} {rows === 1 ? "row" : "rows"} and{" "}
-          {layoutBlocks(layout).length} blocks{layout.css ? ", with its own custom CSS" : ""}. Edit on the canvas to
-          change its rows with every tool, then save them back into it.
+          {fillWords(w.madeFor, {
+            types,
+            rows: countWords(rows, w.rows),
+            blocks: countWords(layoutBlocks(layout).length, w.blocks),
+            css: layout.css ? w.withCss : "",
+          })}
         </p>
         {!fits && (
           <p role="note" className="text-sm text-muted">
-            It is for {LAYOUT_TYPE_LABELS[layout.pageType].many}, so it cannot be used on this page.
+            {fillWords(w.notHere, { types })}
           </p>
         )}
         {problems.length > 0 && (

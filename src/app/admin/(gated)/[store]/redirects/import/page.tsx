@@ -71,7 +71,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
       <Notice title={i.doesTitle}>
         <ul className="list-disc pl-5">
           <li>
-            {i.does1a} <code>/collections/shoes</code> {i.does1b} <code>/category/shoes</code>
+            {i.does1a} <code>{"/collections/shoes"}</code> {i.does1b} <code>{"/category/shoes"}</code>
             {i.does1c}
           </li>
           <li>{i.does2}</li>

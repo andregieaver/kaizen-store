@@ -475,6 +475,19 @@ export const productsEn = {
   /** A job's state in words (`STATUS_WORDS`). */
   jobStatus: { ...STATUS_WORDS },
   importNotes: { compareAt: COMPARE_AT_NOTE, confirmation: IMPORT_CONFIRMATION },
+  /** The products page's part of the unit price (D160): the products that still need a content. */
+  unitGaps: {
+    notice: { one: "{n} active product still needs its content for the price per kg or litre.", many: "{n} active products still need their content for the price per kg or litre." },
+    show: "Show them",
+    none: "No product needs content for the unit price.",
+    intro: "These products are on sale without a price per kg or litre. They stay on sale and the shop shows no unit price for them, until you give each shipped variant its content in the product's editor; saving one before then is refused.",
+    caption: "Products that need content for the unit price",
+    product: "Product",
+    why: "Why",
+    variants: "Variants without content",
+    byMeasure: "Sold by measure",
+    category: "Category {category}",
+  },
 };
 
 export type ProductsMessages = Widen<typeof productsEn>;

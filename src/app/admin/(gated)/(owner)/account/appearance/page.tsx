@@ -20,35 +20,35 @@ export const metadata: Metadata = { title: "Appearance" };
  */
 export default async function AppearancePage() {
   const account = await requireAccount();
-  const previewWords = adminText(adminLangOf(account.adminLocale), "bookings").schemePreview;
+  const words = adminText(adminLangOf(account.adminLocale), "bookings");
+  const previewWords = words.schemePreview;
+  const w = words.appearance;
   const schemes = offeredSchemes();
   return (
     <div className="flex flex-col gap-10">
-      <PageHeader title="Appearance" meta={["How the admin looks for you", "Your stores keep the colours set under Design"]} />
+      <PageHeader title={w.title} meta={[w.forYou, w.storesKeep]} />
 
       <div className="grid gap-8 md:grid-cols-2">
         <section aria-labelledby="mode-heading" className="flex flex-col gap-3">
           <h2 id="mode-heading" className="text-title text-ink">
-            Light or dark
+            {words.account.mode}
           </h2>
-          <AppearanceField saved={account.colorMode ?? "system"} save={colorModeAction} />
+          <AppearanceField saved={account.colorMode ?? "system"} save={colorModeAction} words={words.lookFields} />
         </section>
         <section aria-labelledby="scheme-heading" className="flex flex-col gap-3">
           <h2 id="scheme-heading" className="text-title text-ink">
-            Colour scheme
+            {words.account.scheme}
           </h2>
-          <SchemeField saved={account.adminScheme ?? "meadow"} save={adminSchemeAction} />
+          <SchemeField saved={account.adminScheme ?? "meadow"} save={adminSchemeAction} words={words.lookFields} />
         </section>
       </div>
 
       <section aria-labelledby="every-heading" className="flex flex-col gap-6">
         <div>
           <h2 id="every-heading" className="text-title text-ink">
-            Every scheme
+            {w.every}
           </h2>
-          <p className="mt-1 text-body text-muted">
-            Each scheme in light and in dark, with the admin&apos;s buttons, labels, cards, figures, bars and lists. The names and figures in them are examples.
-          </p>
+          <p className="mt-1 text-body text-muted">{w.everyText}</p>
         </div>
         {schemes.map((scheme) => (
           <div key={scheme.id} className="grid gap-6 xl:grid-cols-2">

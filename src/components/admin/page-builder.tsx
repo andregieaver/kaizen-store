@@ -5290,7 +5290,7 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
         <input
           id={`${id}-href`}
           value={block.buttonHref}
-          placeholder="/sign-up"
+          placeholder={"/sign-up"}
           onChange={(event) => onChange({ buttonHref: event.target.value })}
           className={input}
         />
@@ -5649,7 +5649,7 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
       case "logo":
         return (
           <span className="flex items-center gap-2 font-semibold" style={block.height ? { height: block.height } : undefined}>
-            <span className="aspect-square h-full min-h-6 rounded-md bg-foreground/80" /> Logo
+            <span className="aspect-square h-full min-h-6 rounded-md bg-foreground/80" /> {"Logo"}
           </span>
         );
       case "menuButton":
@@ -5667,7 +5667,7 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
       case "cart":
         return icon("M6 7h12l-1 13H7L6 7zM9 7a3 3 0 0 1 6 0");
       case "markets":
-        return block.display === "list" ? links(["Norge", "Sverige", "Danmark"]) : <span className="text-sm">Norge ▾</span>;
+        return block.display === "list" ? links(["Norge", "Sverige", "Danmark"]) : <span className="text-sm">{"Norge ▾"}</span>;
       case "buyerSwitch":
         return <span className="rounded-full border border-border px-3 py-1 text-xs">{shop.buyer}</span>;
       case "colorMode":
@@ -5679,7 +5679,7 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
           <span className="flex flex-col gap-1 text-sm text-muted">
             <span>{shop.business}</span>
             <span>{shop.street}</span>
-            <span className="underline">hello@example.com</span>
+            <span className="underline">{"hello@example.com"}</span>
           </span>
         );
       case "cookies":
@@ -6117,7 +6117,7 @@ function ThemePanel({
               <input
                 value={newStyle}
                 onChange={(event) => setNewStyle(event.target.value.toLowerCase())}
-                placeholder="banner"
+                placeholder={"banner"}
                 className="min-h-9 w-36 rounded-md border border-border bg-background px-2 text-sm"
               />
             </label>

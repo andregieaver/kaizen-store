@@ -394,7 +394,7 @@ export function DiscountEditor({
               value={d.customerEmails}
               onChange={(event) => set("customerEmails", event.target.value)}
               rows={4}
-              placeholder="kari@example.com"
+              placeholder={"kari@example.com"}
               className="w-full rounded-md border border-line bg-card px-3 py-2 text-sm font-normal"
             />
             <span className={hint}>{w.emailsHint}</span>

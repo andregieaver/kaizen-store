@@ -198,7 +198,7 @@ export function DomainsPanel({
               <input
                 name="hostname"
                 required
-                placeholder="butikk.example.no"
+                placeholder={"butikk.example.no"}
                 autoCapitalize="off"
                 autoCorrect="off"
                 spellCheck={false}

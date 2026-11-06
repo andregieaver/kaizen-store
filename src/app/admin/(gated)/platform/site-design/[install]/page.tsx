@@ -92,7 +92,7 @@ export default async function CustomisePlatformThemePage({ params }: PageProps<"
       <Card title={d.cssTitle} description={d.cssDescription} compact>
         <ActionForm action={savePlatformInstallCssAction.bind(null, install.id)} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="sr-only">CSS</span>
+            <span className="sr-only">{"CSS"}</span>
             <textarea name="css" rows={10} defaultValue={preview.css} spellCheck={false} className="rounded-lg border border-line bg-card px-3 py-2 font-mono text-sm" />
           </label>
           <div>

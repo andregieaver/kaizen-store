@@ -75,6 +75,9 @@ export const SETTINGS_ITEMS: SectionItem[] = [
 ];
 
 /** What the platform's pages of cards say at the top (D144), shown through `navWord()` like the rest of the navigation (D312 A2). */
+/** The two hubs' titles, as the navigation names them (shown through `navWord()`, so in the account's language). */
+export const PLATFORM_HUB_TITLES = { website: "Website", settings: "Settings" } as const;
+
 export const PLATFORM_HUB_INTROS = {
   website: "Everything that makes Kaizena Flow's own site: build its pages and blog, keep its pictures, menus, header, footer and fonts.",
   settings: "How Kaizena Flow's site is found, what it sets, how it takes payment, its AI, emails and languages.",
@@ -96,7 +99,7 @@ export function platformTabs(counts: { requests?: number; support?: number } = {
   const base = PLATFORM_BASE;
   return [
     { href: base, label: "Home", exact: true, icon: "home" },
-    { href: `${base}/website`, label: "Website", icon: "monitor", also: sectionPrefixes("/website", WEBSITE_ITEMS) },
+    { href: `${base}/website`, label: PLATFORM_HUB_TITLES.website, icon: "monitor", also: sectionPrefixes("/website", WEBSITE_ITEMS) },
     // Themes (D285): a section of its own beneath Website, with no sidebar; the theme store's pages are edited from its page.
     { href: `${base}/themes`, label: "Themes", icon: "palette" },
     { href: `${base}/stores`, label: "Stores", icon: "shopping-bag" },
@@ -104,6 +107,6 @@ export function platformTabs(counts: { requests?: number; support?: number } = {
     { href: `${base}/plans`, label: "Plans", icon: "credit-card", also: sectionPrefixes(null, PLAN_ITEMS) },
     { href: `${base}/requests`, label: "Requests", icon: "bell", ...(counts.requests ? { badge: counts.requests } : {}) },
     { href: `${base}/support`, label: "Support", icon: "chat", also: sectionPrefixes(null, SUPPORT_ITEMS), ...(counts.support ? { badge: counts.support } : {}) },
-    { href: `${base}/settings`, label: "Settings", icon: "cog", also: sectionPrefixes("/settings", SETTINGS_ITEMS), foot: true },
+    { href: `${base}/settings`, label: PLATFORM_HUB_TITLES.settings, icon: "cog", also: sectionPrefixes("/settings", SETTINGS_ITEMS), foot: true },
   ];
 }

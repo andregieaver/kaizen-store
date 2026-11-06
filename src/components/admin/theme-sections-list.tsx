@@ -85,7 +85,7 @@ export function ThemeSectionsList({
               <img src={section.thumb} alt="" loading="lazy" className="aspect-[4/3] w-full rounded-panel border border-line object-cover" />
             ) : (
               <span aria-hidden="true" className="flex aspect-[4/3] w-full items-center justify-center rounded-panel border border-line bg-sunken text-caption text-muted">
-                Aa
+                {"Aa"}
               </span>
             )}
             <span className="text-xs">{busy === section.key ? w.adding : section.name}</span>

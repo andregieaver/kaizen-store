@@ -262,8 +262,8 @@ function PlanCard({
   const yearly = plan.prices.find((p) => p.active && p.currency === currency && p.interval === "year");
   const isCurrent = plan.prices.some((p) => p.id === currentPriceId);
   const saving = monthly && yearly ? Math.round((1 - yearly.amountMinor / (monthly.amountMinor * 12)) * 100) : 0;
-  const verb =
-    currentPosition === null ? w.verbs.choose : plan.position > currentPosition ? w.verbs.upgrade : plan.position < currentPosition ? w.verbs.downgrade : w.verbs.switch;
+  // Lower, the same or higher than the current plan: downgrade, switch or upgrade.
+  const verb = currentPosition === null ? w.verbs.choose : [w.verbs.downgrade, w.verbs.switch, w.verbs.upgrade][Math.sign(plan.position - currentPosition) + 1];
 
   const button = (price: typeof monthly, interval: "yearly" | "monthly") => {
     const label = w[interval];

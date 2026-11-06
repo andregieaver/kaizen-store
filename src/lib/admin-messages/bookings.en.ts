@@ -1041,6 +1041,31 @@ export const bookingsEn = {
     later: "Later products",
     pageOf: "Page {page} of {pages}",
   },
+  /** Your account's Appearance page (D99, D221, D222). */
+  appearance: {
+    title: "Appearance",
+    forYou: "How the admin looks for you",
+    storesKeep: "Your stores keep the colours set under Design",
+    every: "Every scheme",
+    everyText: "Each scheme in light and in dark, with the admin's buttons, labels, cards, figures, bars and lists. The names and figures in them are examples.",
+  },
+  /** The light-or-dark and colour scheme fields (D99, D222), on Your account and Appearance. */
+  lookFields: {
+    colours: "Colours",
+    choices: { system: "Same as this device", light: "Light", dark: "Dark" },
+    scheme: "Colour scheme",
+    schemeNames: { meadow: "Meadow", indigo: "Indigo" } as Record<string, string>,
+    saving: "Saving …",
+    kept: "Kept with your account, so the admin looks the same on every device you sign in on.",
+  },
+  /** Marking a past booking as a no-show (D66). */
+  noShow: {
+    confirm: "Charge {fee} to the customer's card?",
+    didNotCome: "The customer did not come.",
+    charge: "Charge the no-show fee, {fee}, to the saved card",
+    saving: "Saving …",
+    mark: "Mark as no-show",
+  },
 } as const;
 
 export type BookingsMessages = Widen<typeof bookingsEn>;

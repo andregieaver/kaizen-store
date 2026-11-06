@@ -13,13 +13,8 @@ import {
   type WrittenField,
   type WrittenText,
 } from "@/lib/product-writing";
-
-const FIELD_LABELS: Record<WrittenField, string> = {
-  title: "Title",
-  description: "Description",
-  seoTitle: "Title in search results",
-  seoDescription: "Description in search results",
-};
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 /**
  * Write with AI (D76), beside a product's texts in one language: asks the
@@ -50,19 +45,20 @@ export function AiWriter({
   suggest: (request: WriteRequest) => Promise<SuggestResult>;
   onUse: (written: WrittenText) => void;
 }) {
+  const w = useAdminText("product").aiWriter;
   const [pending, start] = useTransition();
   const [draft, setDraft] = useState<{ written: WrittenText; model: string; avoid: string[] } | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   const actions: { kind: WriteKind; label: string; facts: ProductFacts }[] = isPrimary
     ? [
-        { kind: "write", label: "Write a description", facts },
-        { kind: "improve", label: "Improve the description", facts },
-        { kind: "seo", label: "Write search texts", facts },
+        { kind: "write", label: w.write, facts },
+        { kind: "improve", label: w.improve, facts },
+        { kind: "seo", label: w.seo, facts },
       ]
     : [
-        { kind: "translate", label: `Translate from ${fromLanguage}`, facts: sourceFacts },
-        { kind: "seo", label: "Write search texts", facts },
+        { kind: "translate", label: fillWords(w.translate, { language: fromLanguage }), facts: sourceFacts },
+        { kind: "seo", label: w.seo, facts },
       ];
 
   const ask = (kind: WriteKind, given: ProductFacts) =>
@@ -80,7 +76,7 @@ export function AiWriter({
   return (
     <div className="flex flex-col gap-3 rounded-md border border-dashed border-line p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">Write with AI</span>
+        <span className="text-sm font-medium">{w.title}</span>
         {actions.map((action) => (
           <button
             key={action.kind}
@@ -94,7 +90,7 @@ export function AiWriter({
         ))}
         {pending && (
           <span role="status" className="text-sm text-muted">
-            Writing …
+            {w.writing}
           </span>
         )}
       </div>
@@ -105,12 +101,10 @@ export function AiWriter({
       )}
       {draft && (
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted">
-            Written by AI ({draft.model}). Check every fact against the product, and edit freely, before you use it.
-          </p>
+          <p className="text-sm text-muted">{fillWords(w.written, { model: draft.model })}</p>
           {(Object.entries(draft.written) as [WrittenField, string][]).map(([field, text]) => (
             <label key={field} className="flex flex-col gap-1 text-sm font-medium">
-              {FIELD_LABELS[field]}
+              {w.fields[field]}
               <textarea
                 value={text}
                 onChange={(e) => setDraft({ ...draft, written: { ...draft.written, [field]: e.target.value } })}
@@ -123,7 +117,7 @@ export function AiWriter({
                 <ul className="flex flex-col gap-0.5 font-normal text-danger-text">
                   {findings[field].map((finding) => (
                     <li key={`${finding.index}-${finding.phrase}`}>
-                      {findingLabel(finding.kind)}: &ldquo;{finding.phrase}&rdquo;
+                      {w.findings[finding.kind] ?? findingLabel(finding.kind)}: &ldquo;{finding.phrase}&rdquo;
                     </li>
                   ))}
                 </ul>
@@ -131,10 +125,7 @@ export function AiWriter({
             </label>
           ))}
           {blocked && (
-            <p className="text-sm">
-              Take out the phrases marked above before using the text: shops may not make them without proof, and only the
-              catalogue states prices and stock.
-            </p>
+            <p className="text-sm">{w.blocked}</p>
           )}
           <div className="flex gap-2">
             <button
@@ -146,10 +137,10 @@ export function AiWriter({
               }}
               className="min-h-10 rounded-pill button-primary px-4 text-sm font-medium disabled:opacity-50"
             >
-              Use this
+              {w.use}
             </button>
             <button type="button" onClick={() => setDraft(null)} className="min-h-10 rounded-pill border border-edge px-4 text-sm hover:bg-sunken">
-              Discard
+              {w.discard}
             </button>
           </div>
         </div>

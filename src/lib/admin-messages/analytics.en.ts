@@ -87,6 +87,7 @@ export const analyticsEn = {
     total: "Total",
     notTracked: "Not tracked",
     noCohorts: "No cohorts yet.",
+    cohort: "Cohort",
     customers: "Customers",
     noTarget: "No target set.",
     expectedByToday: "Expected by today",

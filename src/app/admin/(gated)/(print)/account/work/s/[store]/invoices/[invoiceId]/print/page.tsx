@@ -9,6 +9,7 @@ import { documentFileName, printableState } from "@/lib/work-invoice-print";
 import { invoiceDocumentData } from "@/server/work-invoices";
 import { workBase } from "@/lib/work-paths";
 import { requirePermission } from "@/server/permissions";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Print invoice", robots: { index: false, follow: false } };
 
@@ -26,10 +27,11 @@ export default async function InvoicePrintPage({
 }: PageProps<"/admin/account/work/s/[store]/invoices/[invoiceId]/print">) {
   const { store: slug, invoiceId } = await params;
   const { store } = await requirePermission(slug, "settings:read");
+  const { w } = await workWords();
   if (!store.workOn) {
     return (
       <div className="p-8">
-        <WorkOff storeSlug={store.slug} title="Invoice" />
+        <WorkOff storeSlug={store.slug} title={w.off.titles.invoice} words={w.off} />
       </div>
     );
   }
@@ -41,10 +43,10 @@ export default async function InvoicePrintPage({
   if (!state.printable) {
     return (
       <NoDocument
-        title="This invoice is not issued"
-        message="Only an issued invoice can be printed or saved as a PDF. A draft has no number yet, and what it says can still change. Issue the invoice first."
+        title={w.documentPage.notIssued}
+        message={w.documentPage.notIssuedText}
         href={back}
-        linkLabel="Back to the invoice"
+        linkLabel={w.documentPage.backToInvoice}
       />
     );
   }
@@ -52,7 +54,7 @@ export default async function InvoicePrintPage({
   return (
     <DocumentPage
       backHref={back}
-      backLabel="Back to the invoice"
+      backLabel={w.documentPage.backToInvoice}
       documentTitle={documentFileName(doc.labels.invoice, doc.documentNumber)}
       auto={auto}
     >

@@ -8,13 +8,14 @@ import { PageArticle } from "@/components/page-article";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { siteFontFamilies } from "@/lib/fonts";
 import { newPageContent } from "@/lib/page-content";
-import { LAYOUT_TYPE_LABELS } from "@/lib/page-layout";
-import { KIND_LABELS } from "@/lib/templates";
 import { themeAttributes, themeCss } from "@/lib/theme";
 import { requirePlatformAdmin } from "@/server/auth";
 import { siteFontStyle } from "@/server/fonts";
 import { getPlatformChrome } from "@/server/platform-navigation";
 import { previewKaizenTemplate } from "@/server/templates";
+import { fillWords } from "@/lib/admin-fill";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 
 export const metadata: Metadata = { title: "Template preview", robots: { index: false, follow: false } };
 
@@ -26,15 +27,16 @@ export default async function KaizenTemplatePreviewPage({
   params,
 }: PageProps<"/admin/account/templates/kaizen/[templateId]/preview">) {
   const { templateId } = await params;
-  await requirePlatformAdmin();
+  const account = await requirePlatformAdmin();
   const result = await previewKaizenTemplate(templateId);
   if (!result.ok) notFound();
   const { preview } = result;
   const chrome = await getPlatformChrome();
+  const tw = adminText(adminLangOf(account.adminLocale), "builder").templates;
   const what =
     preview.kind === "page" && preview.pageType
-      ? `${KIND_LABELS.page.one} for ${LAYOUT_TYPE_LABELS[preview.pageType].many}`
-      : KIND_LABELS[preview.kind].one;
+      ? fillWords(tw.kindFor, { kind: tw.kinds.page.one, types: tw.layoutTypes[preview.pageType].many })
+      : tw.kinds[preview.kind].one;
   const content = { ...newPageContent(), title: preview.name, rows: preview.rows, css: preview.css };
   const place = { pageId: preview.id, owner: null };
   const type = preview.pageType ?? "page";
@@ -44,10 +46,8 @@ export default async function KaizenTemplatePreviewPage({
         role="status"
         className="sticky top-0 z-50 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 bg-foreground px-4 py-2 text-xs text-background"
       >
-        <span className="font-medium">Preview — nothing is saved or copied</span>
-        <span>
-          {preview.name} · {what} · by {preview.publisher}
-        </span>
+        <span className="font-medium">{tw.previewBar}</span>
+        <span>{fillWords(tw.previewLine, { name: preview.name, what, publisher: preview.publisher })}</span>
       </p>
       {/* Nothing in the template can be clicked, focused or submitted. */}
       <div inert className="pointer-events-none min-w-0 flex-1 select-none">

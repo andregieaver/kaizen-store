@@ -992,6 +992,12 @@ export const websiteEn = {
     stagedMenuNote: "You are editing a staged change: it is saved when the staging set goes live, not now.",
     backToStaging: "Back to staging",
   },
+  /** A product layout's preview with one of the store's products (D79). */
+  layoutPreview: {
+    noProduct: "Add a product with a price to see the layout with it.",
+    shownWith: "Shown with",
+    show: "Show",
+  },
 };
 
 export type WebsiteMessages = Widen<typeof websiteEn>;

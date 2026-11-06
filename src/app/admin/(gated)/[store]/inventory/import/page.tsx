@@ -81,11 +81,11 @@ async function Body({ storeSlug }: { storeSlug: string }) {
         <ul className="list-disc pl-5">
           <li>{r.find}</li>
           <li>
-            <code>on_hand</code> {fillWords(r.onHand, { max: STOCK_MAX.toLocaleString(locale) })} <code>on_hand_was</code> {r.onHandWas}
+            <code>{"on_hand"}</code> {fillWords(r.onHand, { max: STOCK_MAX.toLocaleString(locale) })} <code>{"on_hand_was"}</code> {r.onHandWas}
           </li>
           <li>
-            <code>reason</code> {r.reason} <code>stock_policy</code> {r.policy} <code>backorder_days</code> {r.days}{" "}
-            <code>low_stock_threshold</code> {r.sameFile}
+            <code>{"reason"}</code> {r.reason} <code>{"stock_policy"}</code> {r.policy} <code>{"backorder_days"}</code> {r.days}{" "}
+            <code>{"low_stock_threshold"}</code> {r.sameFile}
           </li>
           <li>{fillWords(r.problem, { max: INVENTORY_FILE_ROWS_MAX.toLocaleString(locale) })}</li>
           <li>

@@ -96,7 +96,7 @@ export function AccessibilityForm({
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
               {w.report}
-              <input type="url" name="reportUrl" defaultValue={settings.reportUrl ?? ""} placeholder="https://" className={field} />
+              <input type="url" name="reportUrl" defaultValue={settings.reportUrl ?? ""} placeholder={"https://"} className={field} />
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium sm:col-span-2">
               {w.assessmentNote}

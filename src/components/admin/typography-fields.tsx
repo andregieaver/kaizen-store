@@ -577,7 +577,7 @@ function ShadowFields({ value, onChange, mark, muted }: { value: TextShadow | un
           }}
           className={`${fieldClass} w-20`}
         />
-        <span className="font-normal text-muted">px</span>
+        <span className="font-normal text-muted">{"px"}</span>
       </span>
       <PixelRange value={shadow[key]} min={min} max={max} disabled={!value} label={fillWords(w.shadowSlider, { label })} onChange={(next) => onChange({ ...shadow, [key]: next })} className="w-28" />
     </label>

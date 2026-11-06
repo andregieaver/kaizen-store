@@ -457,6 +457,11 @@ export const platformToolsEn = {
   usage: {
     title: "AI usage",
     platformIntro: "What every store and Kaizena Flow itself used, {period}.",
+    ownerIntro: "What the AI used for {who}, {period}. Kaizena Flow's AI is included in your plan; usage on a key of your own is billed by that provider.",
+    yourStores: "the stores you own",
+    allMyStores: "All my stores",
+    storeNav: "Store",
+    noneOwned: "You do not own a store yet, so there is no usage to show.",
     aiSettings: "AI settings",
     requests: "Requests",
     failed: "Failed",

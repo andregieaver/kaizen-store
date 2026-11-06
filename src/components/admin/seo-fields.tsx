@@ -229,7 +229,7 @@ export function ShareImageField({
                 id="share-image-link"
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                placeholder="https://…"
+                placeholder={"https://…"}
                 className={`${input} w-full max-w-64`}
               />
               <button type="button" onClick={() => setUrl(link.trim())} className="rounded-pill border border-border px-3">

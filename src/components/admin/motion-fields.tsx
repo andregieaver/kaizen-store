@@ -661,7 +661,7 @@ const GLYPHS: Record<string, ReactNode> = {
   "3D": <path d="M6 8l10-3v14L6 16zM16 5l3 2v10l-3 2" />,
   Text: (
     <text x="12" y="16" textAnchor="middle" fontSize="11" fill="currentColor" stroke="none" fontFamily="sans-serif">
-      Aa
+      {"Aa"}
     </text>
   ),
   Move: <path d="M7 17L17 7M9 7h8v8" />,

@@ -120,6 +120,22 @@ export const billingEn = {
     removed: "Code removed.",
     noCountry: "First add the country your business is registered in, under Settings, Company: it decides the VAT on your plan.",
   },
+  /** The owner's Billing (D107): the plans of every store they own. */
+  owner: {
+    title: "Billing",
+    description: "The plan of each store you own, what it costs and when it renews. Change a plan in the store's own billing.",
+    none: "You do not own a store yet, so there are no plans to show.",
+    perMonth: "Plans per month ({currency})",
+    yearlyCounted: "Yearly plans counted by the month",
+    withoutPlan: "Stores without a plan",
+    plans: "Your stores' plans",
+    noPlan: "No plan",
+    per: "{price} / {interval}",
+    ends: "Ends {date}",
+    renews: "Renews {date}",
+    fee: "{fee} % fee on sales",
+    manage: "Manage",
+  },
 };
 
 export type BillingMessages = Widen<typeof billingEn>;

@@ -110,7 +110,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           {w.mode}
         </h2>
         <p className="text-sm text-muted">{w.modeHint}</p>
-        <AppearanceField saved={account.colorMode ?? "system"} save={colorModeAction} />
+        <AppearanceField saved={account.colorMode ?? "system"} save={colorModeAction} words={adminText(lang, "bookings").lookFields} />
       </section>
 
       <section aria-labelledby="scheme-heading" className="flex max-w-md flex-col gap-3">
@@ -118,7 +118,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           {w.scheme}
         </h2>
         <p className="text-sm text-muted">{w.schemeHint}</p>
-        <SchemeField saved={account.adminScheme ?? "meadow"} save={adminSchemeAction} />
+        <SchemeField saved={account.adminScheme ?? "meadow"} save={adminSchemeAction} words={adminText(lang, "bookings").lookFields} />
         <Link href="/admin/account/appearance" className="w-fit text-sm underline underline-offset-2">
           {w.allSchemes}
         </Link>

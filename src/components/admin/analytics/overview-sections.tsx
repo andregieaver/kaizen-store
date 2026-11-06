@@ -94,7 +94,16 @@ const SKELETON_HEIGHT = { alerts: "h-32", why: "h-64", funnel: "h-72", products:
 export type OverviewSkeletonKind = keyof typeof SKELETON_HEIGHT;
 
 /** What stands in for a section while its data is read: a heading and a body of the section's usual height, in the admin's placeholder style. */
-export function SectionSkeleton({ kind, label }: { kind: OverviewSkeletonKind; label: string }) {
+export function SectionSkeleton({ kind, label }: { kind: OverviewSkeletonKind; label?: string }) {
+  // Without a label it is only a shape (a page's loading screen, whose own status already says what is loading).
+  if (label === undefined) {
+    return (
+      <div aria-hidden="true" data-skeleton={kind} className="space-y-3">
+        <div className={`${pulse} h-6 w-56`} />
+        <div className={`${pulse} ${SKELETON_HEIGHT[kind]}`} />
+      </div>
+    );
+  }
   return (
     <div role="status" aria-live="polite" aria-busy="true" data-skeleton={kind} className="space-y-3">
       <span className="sr-only">{fillWords(analyticsWords().section.loading, { label })}</span>

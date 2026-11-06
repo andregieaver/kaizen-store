@@ -292,6 +292,11 @@ export const workNb: WorkMessages = {
   },
   documentPage: {
     printOrSaveAs: "Skriv ut eller lagre som PDF",
+    creditNote: "Kreditnota",
+    backToInvoice: "Tilbake til fakturaen",
+    backToReports: "Tilbake til rapportene",
+    notIssued: "Denne fakturaen er ikke utstedt",
+    notIssuedText: "Bare en utstedt faktura kan skrives ut eller lagres som PDF. Et utkast har ikke noe nummer ennå, og innholdet kan fortsatt endres. Utsted fakturaen først.",
   },
   estimateProgress: {
     estimated: "estimert",

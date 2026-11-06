@@ -5,6 +5,8 @@ import { useEffect } from "react";
 
 import { cookiesReadable } from "@/lib/browser-access";
 import { createClient } from "@/lib/supabase/client";
+import { AdminWaiting } from "./admin-waiting";
+import type { AdminLang } from "@/lib/admin-lang";
 
 /**
  * Keeps the admin session fresh while a tab is open. The browser client
@@ -31,7 +33,7 @@ const RECOVERY_KEY = "kaizen-admin-recovery";
  * Shown when the server finds no valid staff session. If the access token
  * has merely expired, refresh it and reload; otherwise go to sign-in.
  */
-export function SessionRecovery() {
+export function SessionRecovery({ waiting }: { waiting: Record<AdminLang, string> }) {
   const router = useRouter();
   useEffect(() => {
     let cancelled = false;
@@ -64,5 +66,5 @@ export function SessionRecovery() {
       cancelled = true;
     };
   }, [router]);
-  return <p className="p-8 text-sm text-muted">Checking your session …</p>;
+  return <AdminWaiting words={waiting} />;
 }

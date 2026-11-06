@@ -6,6 +6,8 @@ import { DocumentPage, NoDocument } from "@/components/admin/work/document-page"
 import { OrderDocumentView } from "@/components/documents/order-document-view";
 import { getCreditNote } from "@/server/invoices";
 import { requirePermission } from "@/server/permissions";
+import { adminText } from "@/lib/admin-text";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Credit note", robots: { index: false, follow: false }, referrer: "no-referrer" };
 
@@ -13,6 +15,9 @@ export const metadata: Metadata = { title: "Credit note", robots: { index: false
 export default async function CreditNotePrintPage({ params, searchParams }: PageProps<"/admin/[store]/invoices/credit-notes/[creditNoteId]/print">) {
   const { store: slug, creditNoteId } = await params;
   const { store } = await requirePermission(slug, "orders:read");
+  // The print button's words are Work's (`DocumentPage`), in the account's language once `workWords()` has set it.
+  const { lang } = await workWords();
+  const w = adminText(lang, "invoices").print;
   if (!z.uuid().safeParse(creditNoteId).success) notFound();
   const doc = await getCreditNote(store.id, creditNoteId);
   if (!doc) notFound();
@@ -20,16 +25,16 @@ export default async function CreditNotePrintPage({ params, searchParams }: Page
   if (doc.anonymised) {
     return (
       <NoDocument
-        title="This credit note has been anonymised"
-        message="The retention period has passed, so the buyer's details were removed from this credit note. Its number, date and amounts are kept."
+        title={w.creditNoteGone}
+        message={w.creditNoteGoneText}
         href={back}
-        linkLabel="Back to the credit notes"
+        linkLabel={w.backCreditNotes}
       />
     );
   }
   const auto = (await searchParams).auto === "1";
   return (
-    <DocumentPage backHref={back} backLabel="Back to the credit notes" documentTitle={doc.documentNumber} auto={auto}>
+    <DocumentPage backHref={back} backLabel={w.backCreditNotes} documentTitle={doc.documentNumber} auto={auto}>
       <OrderDocumentView snapshot={doc.snapshot} />
     </DocumentPage>
   );

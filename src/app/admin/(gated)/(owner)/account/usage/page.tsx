@@ -8,6 +8,7 @@ import { ownedStores, usageByDay, usageRows } from "@/server/ai-usage";
 import { PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export const metadata: Metadata = { title: "AI usage" };
 
@@ -37,14 +38,17 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <PageHeader
-          title="AI usage"
-          description={<>What the AI used for {store ? store.name : owned.length === 1 ? owned[0].name : "the stores you own"}, {chosen.label.toLowerCase()}. Kaizena Flow&apos;s AI is included in your plan; usage on a key of your own is billed by that provider.</>}
+          title={w.title}
+          description={fillWords(w.ownerIntro, {
+            who: store ? store.name : owned.length === 1 ? owned[0].name : w.yourStores,
+            period: (w.periods[chosen.id] ?? chosen.label).toLowerCase(),
+          })}
         />
         <PeriodLinks base={base} period={chosen.id} extra={keep} words={w} />
         {owned.length > 1 && (
-          <nav aria-label="Store" className="flex flex-wrap gap-1 text-sm">
+          <nav aria-label={w.storeNav} className="flex flex-wrap gap-1 text-sm">
             <Link href={`${base}?period=${chosen.id}`} aria-current={!store ? "page" : undefined} className={`rounded-pill px-3 py-1.5 ${!store ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`}>
-              All my stores
+              {w.allMyStores}
             </Link>
             {owned.map((s) => (
               <Link
@@ -60,7 +64,7 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
         )}
       </div>
       {owned.length === 0 ? (
-        <p className="rounded-panel border border-line p-4 text-sm">You do not own a store yet, so there is no usage to show.</p>
+        <p className="rounded-panel border border-line p-4 text-sm">{w.noneOwned}</p>
       ) : (
         <UsageReport rows={rows} days={days} scope="owner" words={w} locale={ADMIN_LANG_FACTS[lang].locale} />
       )}

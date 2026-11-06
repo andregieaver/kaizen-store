@@ -1,4 +1,5 @@
 import { SectionSkeleton } from "@/components/admin/analytics/overview-sections";
+import { LoadingWords } from "@/components/admin/loading-words";
 
 /**
  * What the Overview shows while its first screen is read (the figures and charts, not the sections that stream in after it): the
@@ -9,14 +10,14 @@ export default function AnalyticsOverviewLoading() {
   const block = "animate-pulse rounded-lg bg-card";
   return (
     <div className="flex flex-col gap-8" role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading the overview…</span>
+      <span className="sr-only"><LoadingWords of="overview" /></span>
       <div className="space-y-3">
         <div className={`${block} h-8 w-40`} />
         <div className={`${block} h-4 w-full max-w-xl`} />
         <div className={`${block} h-9 w-full max-w-3xl`} />
       </div>
       <div className="flex flex-col gap-8" aria-hidden="true">
-        <SectionSkeleton kind="alerts" label="what needs you today" />
+        <SectionSkeleton kind="alerts" />
         <div className="space-y-3">
           <div className={`${block} h-6 w-56`} />
           <div className={`${block} h-24`} />
@@ -26,7 +27,7 @@ export default function AnalyticsOverviewLoading() {
             ))}
           </div>
         </div>
-        <SectionSkeleton kind="why" label="why sales changed" />
+        <SectionSkeleton kind="why" />
         <div className="grid gap-4 lg:grid-cols-2">
           <div className={`${block} h-64`} />
           <div className={`${block} h-64`} />

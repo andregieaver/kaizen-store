@@ -1,7 +1,8 @@
 import Link from "next/link";
 
-import { needsContentNotice } from "@/lib/unit-price-editor";
 import { CARD_CLASS } from "@/components/admin/ui";
+import { countWords, fillWords } from "@/lib/admin-fill";
+import { productsEn, type ProductsMessages } from "@/lib/admin-messages/products.en";
 
 /**
  * The products page's part of the unit price (D160, `docs/wave-1d-unit-price.md` 2.2): a notice with the count of active products
@@ -19,49 +20,50 @@ export type NeedsContent = {
   skus: string[];
 };
 
-export const needsReasonWords = (reason: NeedsContent["reason"]): string =>
-  reason.kind === "flag" ? "Sold by measure" : `Category ${reason.category}`;
+/** The words of these parts (`products.unitGaps`, D312): English unless the page hands in the admin's. */
+type GapWords = ProductsMessages["unitGaps"];
+const GAP_WORDS: GapWords = productsEn.unitGaps;
+
+export const needsReasonWords = (reason: NeedsContent["reason"], words: GapWords = GAP_WORDS): string =>
+  reason.kind === "flag" ? words.byMeasure : fillWords(words.category, { category: reason.category });
 
 /** The notice above the products, when any product needs a content. */
-export function NeedsContentNotice({ count, href }: { count: number; href: string }) {
+export function NeedsContentNotice({ count, href, words = GAP_WORDS }: { count: number; href: string; words?: GapWords }) {
   if (count === 0) return null;
   return (
     <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-panel bg-sunken px-4 py-3 text-sm">
-      <span>{needsContentNotice(count)}</span>
+      <span>{countWords(count, words.notice)}</span>
       <Link href={href} className="font-medium underline">
-        Show them
+        {words.show}
       </Link>
     </p>
   );
 }
 
 /** The products that need a content, each with why and which variants lack it, linking to its editor. */
-export function NeedsContentList({ products, base }: { products: NeedsContent[]; base: string }) {
+export function NeedsContentList({ products, base, words = GAP_WORDS }: { products: NeedsContent[]; base: string; words?: GapWords }) {
   if (products.length === 0) {
     return (
       <div className={`p-8 text-center ${CARD_CLASS}`}>
-        <p>No product needs content for the unit price.</p>
+        <p>{words.none}</p>
       </div>
     );
   }
   return (
     <div className="flex flex-col gap-3">
-      <p className="max-w-3xl text-sm text-muted">
-        These products are on sale without a price per kg or litre. They stay on sale and the shop shows no unit price for them, until
-        you give each shipped variant its content in the product&apos;s editor; saving one before then is refused.
-      </p>
+      <p className="max-w-3xl text-sm text-muted">{words.intro}</p>
       <table className="w-full overflow-hidden rounded-panel border border-line bg-card text-left text-sm">
-        <caption className="sr-only">Products that need content for the unit price</caption>
+        <caption className="sr-only">{words.caption}</caption>
         <thead>
           <tr className="border-b border-line">
             <th scope="col" className="px-4 py-2 font-medium">
-              Product
+              {words.product}
             </th>
             <th scope="col" className="px-4 py-2 font-medium">
-              Why
+              {words.why}
             </th>
             <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">
-              Variants without content
+              {words.variants}
             </th>
           </tr>
         </thead>
@@ -73,7 +75,7 @@ export function NeedsContentList({ products, base }: { products: NeedsContent[];
                   {product.title}
                 </Link>
               </td>
-              <td className="px-4 py-2">{needsReasonWords(product.reason)}</td>
+              <td className="px-4 py-2">{needsReasonWords(product.reason, words)}</td>
               <td className="hidden px-4 py-2 font-mono text-xs sm:table-cell">{product.skus.join(", ")}</td>
             </tr>
           ))}

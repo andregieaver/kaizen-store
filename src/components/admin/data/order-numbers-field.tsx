@@ -5,6 +5,8 @@ import { useState, useTransition } from "react";
 import { checkNumbersAction } from "@/app/admin/(gated)/[store]/orders/export/actions";
 
 import { field, hint, secondary } from "./ui";
+import { useAdminText } from "@/components/admin/admin-text";
+import { countWords, fillWords } from "@/lib/admin-fill";
 
 type Checked = { found: number; unknown: string[]; over: number } | { problem: string } | null;
 
@@ -13,6 +15,7 @@ type Checked = { found: number; unknown: string[]; over: number } | { problem: s
  * not, before a file is made; the file itself is asked for by the form, which needs no script.
  */
 export function OrderNumbersField({ slug, defaultValue, max }: { slug: string; defaultValue: string; max: number }) {
+  const w = useAdminText("orders").numbersField;
   const [text, setText] = useState(defaultValue);
   const [checked, setChecked] = useState<Checked>(null);
   const [pending, start] = useTransition();
@@ -24,7 +27,7 @@ export function OrderNumbersField({ slug, defaultValue, max }: { slug: string; d
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor="export-numbers" className="sr-only">
-        Order numbers
+        {w.label}
       </label>
       <textarea
         id="export-numbers"
@@ -35,21 +38,27 @@ export function OrderNumbersField({ slug, defaultValue, max }: { slug: string; d
           setText(e.target.value);
           setChecked(null);
         }}
-        placeholder="One order number on each line, or separated by commas"
+        placeholder={w.placeholder}
         className={`${field} py-2`}
       />
-      <p className={hint}>At most {max} order numbers. An order number is as it is shown in the orders list, without the #.</p>
+      <p className={hint}>{fillWords(w.atMost, { max })}</p>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={check} disabled={pending || text.trim() === ""} className={secondary}>
-          {pending ? "Checking …" : "Check the numbers"}
+          {pending ? w.checking : w.check}
         </button>
         <div role="status" aria-live="polite" className="text-sm">
           {checked && "problem" in checked && <span className="text-danger-text">{checked.problem}</span>}
           {checked && "found" in checked && (
             <span>
-              {checked.found} of these {checked.found === 1 ? "is an order" : "are orders"} of this store.
-              {checked.unknown.length > 0 && <> Not found: {checked.unknown.slice(0, 20).join(", ")}{checked.unknown.length > 20 ? ` and ${checked.unknown.length - 20} more` : ""}.</>}
-              {checked.over > 0 && <> {checked.over} too many: the file takes at most {max}.</>}
+              {countWords(checked.found, w.found)}
+              {checked.unknown.length > 0 &&
+                fillWords(w.notFound, {
+                  list:
+                    checked.unknown.length > 20
+                      ? fillWords(w.andMore, { list: checked.unknown.slice(0, 20).join(", "), n: checked.unknown.length - 20 })
+                      : checked.unknown.join(", "),
+                })}
+              {checked.over > 0 && fillWords(w.tooMany, { n: checked.over, max })}
             </span>
           )}
         </div>

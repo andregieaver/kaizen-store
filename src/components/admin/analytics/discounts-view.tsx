@@ -137,7 +137,7 @@ export function couponColumns(money: (minor: number) => string, w: DiscountsWord
     {
       key: "status",
       label: l.status,
-      cell: (c) => (c.active === null ? <StatusPill>{w.deleted}</StatusPill> : c.active ? <StatusPill tone="good">{w.on}</StatusPill> : <StatusPill>{w.off}</StatusPill>),
+      cell: (c) => <StatusPill tone={c.active ? "good" : "neutral"}>{c.active === null ? w.deleted : c.active ? w.on : w.off}</StatusPill>,
     },
     { key: "orders", label: l.orders, align: "right", cell: (c) => formatCount(c.orders) },
     { key: "revenue", label: l.revenue, align: "right", cell: (c) => money(c.revenueMinor) },

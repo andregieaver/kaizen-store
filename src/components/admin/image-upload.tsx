@@ -7,6 +7,8 @@ import { savingWords } from "@/lib/image-quality";
 
 import { LibraryButton } from "./media-picker";
 import { MakePictureButton, RemoveBackgroundButton, type CurrentPicture } from "./picture-maker";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
 
 export type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
 
@@ -58,6 +60,7 @@ export function ImageUploadButton({
   current?: CurrentPicture | null;
   make?: boolean;
 }) {
+  const ui = useAdminText("common").ui;
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
@@ -71,10 +74,10 @@ export function ImageUploadButton({
       const outcome = await uploadPicture(upload, file);
       if (outcome.ok) {
         onUploaded(outcome.image);
-        setSaved(savingWords(outcome.saving.before, outcome.saving.after));
+        setSaved(savingWords(outcome.saving.before, outcome.saving.after, ui.saved));
       } else setProblem(outcome.problem);
     } catch {
-      setProblem(`${file.name} could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.`);
+      setProblem(fillWords(ui.unreadable, { name: file.name }));
     } finally {
       setBusy(false);
     }
@@ -94,12 +97,12 @@ export function ImageUploadButton({
       <RemoveBackgroundButton current={current} onEdited={(picture) => onUploaded({ url: picture.url, width: picture.width, height: picture.height })} />
     </>
   );
-  if (!upload) return <div className="flex flex-col gap-2"><p className="text-sm text-muted">Uploads are not set up on this server.</p><div className="flex flex-wrap gap-2">{library}</div></div>;
+  if (!upload) return <div className="flex flex-col gap-2"><p className="text-sm text-muted">{ui.uploadsOff}</p><div className="flex flex-wrap gap-2">{library}</div></div>;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
       <label className="w-fit cursor-pointer rounded-md border border-line px-3 py-2 text-sm focus-within:outline-2">
-        {busy ? "Compressing and uploading …" : label}
+        {busy ? ui.compressingUploading : label}
         <input
           type="file"
           accept="image/png,image/jpeg,image/webp,image/avif"

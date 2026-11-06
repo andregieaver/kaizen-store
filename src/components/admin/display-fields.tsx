@@ -477,7 +477,7 @@ function ValueField({
         <div className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1 text-xs" htmlFor={`${id}-name`}>
             {w.parameter}
-            <input id={`${id}-name`} value={c.value.name} placeholder="utm_campaign" onChange={(event) => set({ ...c.value, name: event.target.value })} className={fieldClass} />
+            <input id={`${id}-name`} value={c.value.name} placeholder={"utm_campaign"} onChange={(event) => set({ ...c.value, name: event.target.value })} className={fieldClass} />
           </label>
           {needsText && (
             <label className="flex flex-col gap-1 text-xs" htmlFor={`${id}-text`}>

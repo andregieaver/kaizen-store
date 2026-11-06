@@ -178,11 +178,11 @@ export async function ResourceCalendar({
               <div className="flex flex-wrap gap-3">
                 <label className={`${field} w-40`}>
                   {w.site}
-                  <input name="name" required maxLength={80} placeholder="Airbnb" className={control} />
+                  <input name="name" required maxLength={80} placeholder={"Airbnb"} className={control} />
                 </label>
                 <label className={`${field} min-w-64 flex-1`}>
                   {w.siteAddress}
-                  <input name="url" type="url" required maxLength={2000} placeholder="https://…" className={control} />
+                  <input name="url" type="url" required maxLength={2000} placeholder={"https://…"} className={control} />
                 </label>
               </div>
               <div>

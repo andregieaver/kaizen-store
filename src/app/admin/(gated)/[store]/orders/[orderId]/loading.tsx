@@ -1,10 +1,12 @@
+import { LoadingWords } from "@/components/admin/loading-words";
+
 const block = "animate-pulse rounded-lg bg-card";
 
 /** One order while it is read: its heading, the items and the side cards. */
 export default function OrderLoading() {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading the order…</span>
+      <span className="sr-only"><LoadingWords of="order" /></span>
       <div className="space-y-2" aria-hidden="true">
         <div className={`${block} h-4 w-16`} />
         <div className={`${block} h-8 w-56`} />

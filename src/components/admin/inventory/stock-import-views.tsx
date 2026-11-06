@@ -32,7 +32,7 @@ export function StockDryRun({ counts, lang = "en" }: { counts: { toUpdate: numbe
         ))}
       </dl>
       <p className={hint}>
-        {w.hintStart} <code>on_hand_was</code> {w.hintEnd}
+        {w.hintStart} <code>{"on_hand_was"}</code> {w.hintEnd}
       </p>
     </section>
   );
@@ -91,8 +91,10 @@ export type StockItem = {
   messages: Finding[];
 };
 
+type ResultWords = Pick<InventoryMessages["import"], "will" | "done">;
+
 /** What a row's result is called: the check's advice, or what the apply did, in the words given (English unless given). */
-export function stockResultWords(item: Pick<StockItem, "outcome" | "will">, words: Pick<InventoryMessages["import"], "will" | "done"> = adminText("en", "inventory").import): string {
+export function stockResultWords(item: Pick<StockItem, "outcome" | "will">, words: ResultWords = adminText("en", "inventory").import): string {
   const will: Record<string, string | undefined> = words.will;
   const done: Record<string, string | undefined> = words.done;
   if (item.outcome === "checked") return item.will && item.will !== "checked" ? (will[item.will] ?? words.will.checked) : words.will.checked;

@@ -281,7 +281,7 @@ function GridIcon() {
 function ButtonIcon() {
   return (
     <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
-      <span className="rounded-full border-2 border-current px-2 text-[10px] leading-4 font-medium">OK</span>
+      <span className="rounded-full border-2 border-current px-2 text-[10px] leading-4 font-medium">{"OK"}</span>
     </span>
   );
 }

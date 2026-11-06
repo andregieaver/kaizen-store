@@ -9,6 +9,7 @@
  * close, so a sharp edge or a line of small text that blurred is not hidden by a large calm sky.
  */
 import { formatBytes } from "./image-size";
+import { fillWords } from "./admin-fill";
 
 /** RGBA pixels, as a canvas's `getImageData()` gives them. */
 export type Pixels = { data: Uint8ClampedArray | Uint8Array; width: number; height: number };
@@ -196,10 +197,10 @@ export async function lowestPassing<T>(
 }
 
 /** A saving as people read it: "Saved 4.2 MB (82%)", or null when there was none worth saying. */
-export function savingWords(before: number, after: number): string | null {
+export function savingWords(before: number, after: number, template = "Saved {size} ({percent}%)"): string | null {
   if (before <= 0 || after >= before) return null;
   const saved = before - after;
   const percent = Math.round((saved / before) * 100);
   if (percent < 1) return null;
-  return `Saved ${formatBytes(saved)} (${percent}%)`;
+  return fillWords(template, { size: formatBytes(saved), percent });
 }

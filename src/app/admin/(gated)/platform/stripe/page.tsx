@@ -38,9 +38,9 @@ export default async function PlatformStripePage() {
           return (
             <>
               {before}
-              <code>STRIPE_SECRET_KEY_TEST</code>, <code>STRIPE_PUBLISHABLE_KEY_TEST</code>
+              <code>{"STRIPE_SECRET_KEY_TEST"}</code>, <code>{"STRIPE_PUBLISHABLE_KEY_TEST"}</code>
               {middle}
-              <code>_LIVE</code>
+              <code>{"_LIVE"}</code>
               {after}
             </>
           );

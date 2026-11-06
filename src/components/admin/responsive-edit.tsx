@@ -396,7 +396,7 @@ export function ResponsiveBar({
           ×
         </span>
         <PixelsField label={w.height} value={view.height} min={320} max={4000} onCommit={onHeight} />
-        <span className="text-muted">px</span>
+        <span className="text-muted">{"px"}</span>
       </span>
       <span id={`${id}-range`} className="sr-only">
         {fillWords(w.range, { min: range.min, max: range.max, size: words.sizes[view.size] })}

@@ -1283,6 +1283,13 @@ export const blocksEn = {
     switchHint: "The row leaves the page and opens in a window over it: a sign-up, an offer, a video, a notice or a contact form. Build it as any row. In a footer or header it is on every page.",
     leftOut: "Not on your site yet: nothing in this row is shown there, so the modal is left out and no link or class can open it. A newsletter or email form is shown only once it has an address under Send to: add one, or put a heading or some text in the modal too.",
     leftOutShort: "That modal is not on the site yet: nothing in its row is shown there (a form needs an address under Send to), so this link cannot open it.",
+    summary: "Modal · {name} · {ways}",
+    opensBy: "opens by {ways}",
+    nothingOpens: "nothing opens it yet",
+    triggerWords: { timer: "timer {seconds} s", button: "button", className: "class .{name}", exitIntent: "exit intent" },
+    preview: "Preview",
+    shownOnSite: "Shown here on the site.",
+    nothingYet: "Nothing to show yet.",
     taken: "Another modal on this page has this address name.",
     name: "Name",
     namePlaceholder: "Newsletter sign-up",
@@ -1525,6 +1532,24 @@ export const blocksEn = {
     startHint: "Turns the items below into custom items you can edit (a snapshot with titles, texts, pictures and links). Prices are left out: a custom item has plain words in place of a price.",
     copying: "Copying …",
     copy: "Copy current items",
+  },
+  /** A theme store component in the page builder (D285): its settings and its stand-in. */
+  themeStore: {
+    heading: "Heading",
+    headingHint: "Shown only when there is something under it. Leave it empty for none.",
+    line: "Line under it",
+    lineHint: "{theme} becomes the theme's name. Leave it empty for none.",
+    editedOnThemes: "The themes, their pictures and their words are edited on Themes; a change there shows here at once.",
+    standIn: "Theme store: {name}",
+    parts: {
+      list: { name: "Themes", hint: "Every published theme as a card, with the filters by kind of store, style and what it includes. A filter chosen is in the address, so a link can open the list filtered." },
+      stage: { name: "Theme preview", hint: "The theme's name, summary and presets, a computer and a phone showing the chosen look on its own content, and Use this theme, Preview and Try it in your store." },
+      live: { name: "See it live", hint: "The published demo stores wearing one of the theme's looks, each opening the store. Nothing shows when there is none." },
+      highlights: { name: "Highlights", hint: "The pictures made from the theme's photographs, with their words. Nothing shows for a theme without them." },
+      pictures: { name: "Theme pictures", hint: "The theme's own pictures, chosen on its page in the admin. Nothing shows for a theme without them." },
+      features: { name: "What you get", hint: "What the theme includes, from its published version: its own header, footer, product page, presets and so on." },
+      details: { name: "Details", hint: "Folded away: the theme's description, what kinds of store it suits, its style, section styles and version, and its changelog." },
+    },
   },
 };
 

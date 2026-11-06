@@ -105,7 +105,7 @@ export function AiProviderForm({
             required
             spellCheck={false}
             defaultValue={settings?.baseUrl ?? ""}
-            placeholder="https://api.example.com/v1"
+            placeholder={"https://api.example.com/v1"}
             aria-describedby={`${id}-base-hint`}
             className={`${field} font-mono text-sm`}
           />
@@ -253,7 +253,7 @@ export function AiProviderForm({
               required
               spellCheck={false}
               defaultValue={settings?.imageBaseUrl ?? ""}
-              placeholder="https://api.example.com/v1"
+              placeholder={"https://api.example.com/v1"}
               className={`${field} font-mono text-sm`}
             />
             <p className="font-normal text-muted">{w.picturesAddressHint}</p>
@@ -342,7 +342,7 @@ export function AiProviderForm({
               required
               spellCheck={false}
               defaultValue={settings?.liveBaseUrl ?? ""}
-              placeholder="https://api.example.com/v1"
+              placeholder={"https://api.example.com/v1"}
               className={`${field} font-mono text-sm`}
             />
             <p className="font-normal text-muted">{w.liveAddressHint}</p>

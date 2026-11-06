@@ -77,7 +77,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
         <ActionForm action={setAiPriceAction} className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             {w.provider}
-            <input name="provider" required defaultValue={text("provider")} placeholder="openai" className={input} />
+            <input name="provider" required defaultValue={text("provider")} placeholder={"openai"} className={input} />
           </label>
           <label className="flex min-w-56 flex-col gap-1 text-sm font-medium">
             {w.model}

@@ -91,7 +91,7 @@ export function ChatAgentForm({
         <div className="flex min-w-60 flex-1 flex-col gap-4">
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">{w.name}</span>
-            <input value={value.name} maxLength={AGENT_NAME_MAX} onChange={(event) => set({ name: event.target.value })} className={field} placeholder="Ingrid" />
+            <input value={value.name} maxLength={AGENT_NAME_MAX} onChange={(event) => set({ name: event.target.value })} className={field} placeholder={"Ingrid"} />
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">{w.occupation}</span>

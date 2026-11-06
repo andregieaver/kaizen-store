@@ -996,7 +996,7 @@ function MediaSection({
                 type="url"
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                placeholder="https://…"
+                placeholder={"https://…"}
                 className={input}
               />
             </label>
@@ -3599,7 +3599,7 @@ function LegalSection({
               <input
                 value={product.taxCode}
                 onChange={(e) => update((p) => ({ ...p, taxCode: e.target.value.trim() }))}
-                placeholder="txcd_…"
+                placeholder={"txcd_…"}
                 className={`${input} max-w-xs font-mono`}
               />
             </label>

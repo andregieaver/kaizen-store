@@ -682,6 +682,7 @@ export const platformSiteNb: PlatformSiteMessages = {
     remove: "Fjern",
     pictureN: "bilde {n}",
     orAddress: "Eller en adresse",
+    addressPlaceholder: "/… eller https://…",
     addAddress: "Legg til adressen",
   },
   actions: {
@@ -813,5 +814,23 @@ export const platformSiteNb: PlatformSiteMessages = {
     previewOnPages: "Forhåndsvis på sidene",
     openPages: "Åpne sidene",
     pagesNotPlaced: "Sidene legges ut når innsendingen tas til gjennomgang.",
+  },
+  themePreview: {
+    bar: "Forhåndsvisning av «{theme}»{live} på {page}: ingenting lagres, og besøkende ser det ikke",
+    live: ", temaet som er i bruk,",
+    page: "«{title}»",
+    noPage: "ingen side",
+    back: "Tilbake til temaet",
+    pages: "Sider å forhåndsvise",
+    nothing: "Kaizena Flow har ingen publisert side å vise ennå.",
+  },
+  pagePlace: {
+    shows: "{name} viser",
+    untitled: "Uten tittel",
+    notPublished: " (ikke publisert)",
+    save: "Lagre",
+    start: "Start fra en ny side",
+    startHint: "Lager en side som standardsiden, publiserer den her og åpner den i sidebyggeren.",
+    unpublished: "Denne siden er ikke publisert, så besøkende ser {standard} til du publiserer den igjen.",
   },
 };

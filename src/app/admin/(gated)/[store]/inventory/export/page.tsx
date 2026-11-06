@@ -65,14 +65,14 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       <Notice title={w.aboutTitle}>
         <ul className="list-disc pl-5">
           <li>
-            {a.holds} <code>on_hand</code> {a.onHand} <code>committed</code> {a.committed} <code>available</code> {a.available}
+            {a.holds} <code>{"on_hand"}</code> {a.onHand} <code>{"committed"}</code> {a.committed} <code>{"available"}</code> {a.available}
           </li>
           <li>
-            {a.countStart} <code>on_hand</code> {a.countBack}{" "}
+            {a.countStart} <code>{"on_hand"}</code> {a.countBack}{" "}
             <Link className="underline underline-offset-2" href={base.import}>
               {a.importLink}
             </Link>
-            {a.conflictStart} <code>on_hand_was</code>
+            {a.conflictStart} <code>{"on_hand_was"}</code>
             {a.conflictEnd}
           </li>
           <li>{a.negative}</li>

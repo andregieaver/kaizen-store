@@ -182,7 +182,7 @@ export function ReplicatePanel({
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex min-w-72 flex-1 flex-col gap-1 text-sm font-medium" htmlFor={`${ids}-url`}>
               {w.address}
-              <input id={`${ids}-url`} type="text" inputMode="url" required value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com/landing-page" className={field} autoComplete="off" spellCheck={false} />
+              <input id={`${ids}-url`} type="text" inputMode="url" required value={url} onChange={(e) => setUrl(e.target.value)} placeholder={"https://example.com/landing-page"} className={field} autoComplete="off" spellCheck={false} />
             </label>
             <label className="flex w-40 flex-col gap-1 text-sm font-medium" htmlFor={`${ids}-passes`}>
               {w.passes}

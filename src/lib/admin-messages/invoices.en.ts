@@ -240,6 +240,15 @@ export const invoicesEn = {
     savedOff: "Saved. New orders get no invoice.",
     saved: "Saved.",
   },
+  /** A shop invoice's or credit note's print page (D159). */
+  print: {
+    invoiceGone: "This invoice has been anonymised",
+    invoiceGoneText: "The retention period has passed, so the buyer's details were removed from this invoice. Its number, date and amounts are kept.",
+    backInvoices: "Back to the invoices",
+    creditNoteGone: "This credit note has been anonymised",
+    creditNoteGoneText: "The retention period has passed, so the buyer's details were removed from this credit note. Its number, date and amounts are kept.",
+    backCreditNotes: "Back to the credit notes",
+  },
 };
 
 export type InvoicesMessages = Widen<typeof invoicesEn>;

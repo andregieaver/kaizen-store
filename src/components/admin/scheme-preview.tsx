@@ -83,17 +83,17 @@ export function SchemePreview({
           <Card title={w.open} count={2} level={3}>
             <List>
               <ListRow>
-                <RowId>INV-1042</RowId>
+                <RowId>{"INV-1042"}</RowId>
                 <RowText>{w.stoneware}</RowText>
                 <RowDate>{w.date}</RowDate>
                 <Chip signal="warning" dot>
                   {w.dueSoon}
                 </Chip>
-                <RowAmount>48 000 kr</RowAmount>
+                <RowAmount>{"48 000 kr"}</RowAmount>
               </ListRow>
               <ListRow highlight>
-                <RowId>Kari Nordmann</RowId>
-                <RowText>kari@example.com</RowText>
+                <RowId>{"Kari Nordmann"}</RowId>
+                <RowText>{"kari@example.com"}</RowText>
                 <Chip signal="positive">{w.contact}</Chip>
               </ListRow>
             </List>

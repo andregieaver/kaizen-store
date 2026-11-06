@@ -1,10 +1,12 @@
+import { LoadingWords } from "@/components/admin/loading-words";
+
 const block = "animate-pulse rounded-lg bg-card";
 
 /** The activity log while it is read: the heading, the filters and a column of entries. */
 export default function ActivityLoading() {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading the activity log…</span>
+      <span className="sr-only"><LoadingWords of="activityLog" /></span>
       <div className="space-y-3" aria-hidden="true">
         <div className={`${block} h-8 w-48`} />
         <div className={`${block} h-4 w-full max-w-xl`} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useAdminText } from "@/components/admin/admin-text";
 
 /**
  * A modal dialog on the browser's own `<dialog>`: focus stays inside,
@@ -21,6 +22,7 @@ export function Modal({
   footer?: ReactNode;
   wide?: boolean;
 }) {
+  const ui = useAdminText("common").ui;
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -56,7 +58,7 @@ export function Modal({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={ui.close}
               className="flex size-9 items-center justify-center rounded-full hover:bg-sunken"
             >
               <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">

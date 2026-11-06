@@ -3,6 +3,7 @@
 import { useEffect, useSyncExternalStore, useTransition } from "react";
 
 import { ADMIN_SCHEME_KEY, adminScheme, applyAdminScheme, DEFAULT_ADMIN_SCHEME, offeredSchemes, SCHEME_EVENT } from "@/lib/admin-schemes";
+import type { BookingsMessages } from "@/lib/admin-messages/bookings.en";
 
 /**
  * The admin's colour scheme (D221, docs/admin-style.md 7.3): each account's own choice, kept on the account so it follows them to any
@@ -40,12 +41,12 @@ export function AdminSchemeSync({ saved }: { saved: string }) {
  * Your account's choice of scheme: a card for each offered scheme with its swatch. The swatch shows the scheme's own colours (canvas,
  * rail, brand) from the registry, the one place a fixed colour belongs on an admin page: it is a picture of another scheme.
  */
-export function SchemeField({ saved, save }: { saved: string; save: SaveAdminScheme }) {
+export function SchemeField({ saved, save, words }: { saved: string; save: SaveAdminScheme; words: BookingsMessages["lookFields"] }) {
   const choice = useSyncExternalStore(subscribe, stored, () => adminScheme(saved).id);
   const [pending, start] = useTransition();
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="sr-only">Colour scheme</legend>
+      <legend className="sr-only">{words.scheme}</legend>
       <div className="flex flex-wrap gap-3">
         {offeredSchemes().map((scheme) => (
           <label
@@ -69,13 +70,13 @@ export function SchemeField({ saved, save }: { saved: string; save: SaveAdminSch
                   start(() => save(scheme.id));
                 }}
               />
-              {scheme.name}
+              {words.schemeNames[scheme.id] ?? scheme.name}
             </span>
           </label>
         ))}
       </div>
       <p className="text-xs text-muted" aria-live="polite">
-        {pending ? "Saving …" : "Kept with your account, so the admin looks the same on every device you sign in on."}
+        {pending ? words.saving : words.kept}
       </p>
     </fieldset>
   );

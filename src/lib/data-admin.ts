@@ -4,6 +4,8 @@
  * them into words, so a view test can hold them. The admin is English only. The sentences that touch the law (personal data, consent, a reduction against the
  * lowest price of 30 days) are listed in `docs/wave-2-data.md` section 8 for a person to read before real use.
  */
+import { commonEn, type CommonMessages } from "./admin-messages/common.en";
+import { fillWords } from "./admin-fill";
 import { EXPORT_KEEP_DAYS } from "./data-limits";
 import { isEnded, type JobKind, type JobPhase, type JobStatus } from "./data-job";
 
@@ -70,15 +72,20 @@ export function momentText(iso: string | null | undefined, timeZone: string, loc
   }
 }
 
-/** How long a file is kept, in words: `expires in 6 days`, `expires today`, `removed`. */
-export function expiryWords(expiresAt: string | null, now: Date): string {
+/** The data jobs' words (`common.dataJobs`, D312): English unless a page hands in the admin's. */
+export type DataJobWords = CommonMessages["dataJobs"];
+const JOB_WORDS: DataJobWords = commonEn.dataJobs;
+const counted = (n: number, words: { one: string; many: string }) => fillWords(n === 1 ? words.one : words.many, { n });
+
+/** How long a file is kept, in words: `expires in 6 days`, `expires in 3 hours`, `expired`. */
+export function expiryWords(expiresAt: string | null, now: Date, words: DataJobWords = JOB_WORDS): string {
   if (!expiresAt) return "";
   const left = new Date(expiresAt).getTime() - now.getTime();
-  if (Number.isNaN(left) || left <= 0) return "expired";
+  if (Number.isNaN(left) || left <= 0) return words.expired;
   const days = Math.floor(left / 86_400_000);
-  if (days >= 1) return `expires in ${days} ${days === 1 ? "day" : "days"}`;
+  if (days >= 1) return counted(days, words.expiresDays);
   const hours = Math.max(1, Math.floor(left / 3_600_000));
-  return `expires in ${hours} ${hours === 1 ? "hour" : "hours"}`;
+  return counted(hours, words.expiresHours);
 }
 
 const asNumber = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) ? value : 0);
@@ -136,20 +143,17 @@ export function importStage(status: JobStatus): ImportStage {
 export const isWorking = (status: JobStatus): boolean => status === "checking" || status === "queued" || status === "running";
 
 /** What the progress bar says: `Checking the file`, `Saving products`, `Preparing your file`, `Making the file`. */
-export function workingWords(kind: JobKind, status: JobStatus, phase: JobPhase | null): string {
-  if (kind === "product_import") return status === "checking" ? "Checking the file" : "Saving products";
-  if (kind === "redirect_import") return status === "checking" ? "Checking the file" : "Saving redirects";
-  if (kind === "inventory_import") return status === "checking" ? "Checking the file" : "Saving stock";
-  if (kind === "customer_import") return status === "checking" ? "Checking the file" : "Saving customers";
-  if (kind === "order_history_import") return status === "checking" ? "Checking the file" : "Saving orders";
-  if (status === "queued") return "Waiting to start";
-  return phase === "assemble" ? "Putting the file together" : "Preparing your file";
+export function workingWords(kind: JobKind, status: JobStatus, phase: JobPhase | null, words: DataJobWords = JOB_WORDS): string {
+  const saving = words.saving[kind];
+  if (saving) return status === "checking" ? words.statuses.checking : saving;
+  if (status === "queued") return words.statuses.queued;
+  return phase === "assemble" ? words.assembling : words.preparing;
 }
 
-/** `120 of 400 rows` / `120 of 400 products`. */
-export function doneOfTotal(done: number | null, total: number | null, unit: string): string {
-  if (total === null || total === undefined) return done ? `${wholeNumber(done)} ${unit}` : "";
-  return `${wholeNumber(done ?? 0)} of ${wholeNumber(total)} ${unit}`;
+/** `120 of 400 rows` / `120 of 400 products`; `locale` writes the numbers (the admin's, en-GB unless given). */
+export function doneOfTotal(done: number | null, total: number | null, unit: string, words: DataJobWords = JOB_WORDS, locale = "en-GB"): string {
+  if (total === null || total === undefined) return done ? fillWords(words.count, { n: wholeNumber(done, locale), unit }) : "";
+  return fillWords(words.doneOf, { done: wholeNumber(done ?? 0, locale), total: wholeNumber(total, locale), unit });
 }
 
 export const jobEnded = (status: JobStatus): boolean => isEnded(status);

@@ -332,6 +332,7 @@ export const redirectsNb: RedirectsMessages = {
       wholeFile: "Filen som helhet",
       nothingToNote: "Ingenting å merke seg",
       earlier: "Tidligere linjer",
+      pages: "Sider",
       later: "Senere linjer",
     },
     lines_: {

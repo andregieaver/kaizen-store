@@ -156,7 +156,7 @@ export function SendParcelForm({
           <span>
             {w.trackingLink} <span className="font-normal text-muted">{w.optional}</span>
           </span>
-          <input name="trackingUrl" type="url" placeholder="https://…" className={field} />
+          <input name="trackingUrl" type="url" placeholder={"https://…"} className={field} />
         </label>
       )}
       {hasEmail && notifyOff && <NotifySwitchedOff href={notifyOff}>{w.tell}</NotifySwitchedOff>}

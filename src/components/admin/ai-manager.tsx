@@ -504,9 +504,9 @@ export function AiManagerChat({
           )}
           {startVoice > 0 && !canTalk && !canCall && (
             <p role="status" className="text-sm">
-              Voice mode needs a speech-to-text model and a voice.{" "}
+              {w.voiceNeeds}{" "}
               <Link href={settingsHref} className="underline" onClick={onNavigate}>
-                Set them up under AI
+                {w.voiceSetUp}
               </Link>
               .
             </p>
@@ -528,7 +528,7 @@ export function AiManagerChat({
           <VoiceBar status={voice.status} level={voice.level} muted={voice.muted} onMute={voice.toggleMute} onInterrupt={voice.interrupt} onEnd={voice.stop} />
         )}
         <label htmlFor={inputId} className="sr-only">
-          Message to the AI manager
+          {w.messageLabel}
         </label>
         <textarea
           id={inputId}

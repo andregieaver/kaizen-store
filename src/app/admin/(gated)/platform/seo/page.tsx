@@ -37,7 +37,7 @@ export default async function PlatformSeoPage() {
           <>
             {t.descriptionBefore}{" "}
             <a href="/robots.txt" className="underline">
-              robots.txt
+              {"robots.txt"}
             </a>
             ,{" "}
             <a href="/sitemap.xml" className="underline">
@@ -45,7 +45,7 @@ export default async function PlatformSeoPage() {
             </a>{" "}
             {t.descriptionAnd}{" "}
             <a href="/llms.txt" className="underline">
-              llms.txt
+              {"llms.txt"}
             </a>{" "}
             {t.descriptionAfter}
           </>

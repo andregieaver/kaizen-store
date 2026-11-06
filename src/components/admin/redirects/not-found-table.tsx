@@ -157,7 +157,7 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
                   {fillWords(t.redirectPathTo, { path: row.path })}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  <input id={`${id}-to`} value={target} onChange={(e) => setTarget(e.target.value)} placeholder="/category/shoes" autoComplete="off" spellCheck={false} className={`${field} min-w-40 flex-1 font-mono`} />
+                  <input id={`${id}-to`} value={target} onChange={(e) => setTarget(e.target.value)} placeholder={"/category/shoes"} autoComplete="off" spellCheck={false} className={`${field} min-w-40 flex-1 font-mono`} />
                   <button type="submit" disabled={pending || target.trim() === ""} className={primary}>
                     {t.add}
                   </button>

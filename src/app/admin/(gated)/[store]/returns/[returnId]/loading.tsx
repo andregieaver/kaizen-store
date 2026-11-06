@@ -1,10 +1,12 @@
+import { LoadingWords } from "@/components/admin/loading-words";
+
 const block = "animate-pulse rounded-lg bg-card";
 
 /** A return's page while it is read: the header, the steps and the cards of the main column and the sidebar. */
 export default function ReturnLoading() {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading the return…</span>
+      <span className="sr-only"><LoadingWords of="return" /></span>
       <div className="space-y-3" aria-hidden="true">
         <div className={`${block} h-4 w-16`} />
         <div className={`${block} h-8 w-72`} />

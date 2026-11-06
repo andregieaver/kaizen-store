@@ -8,6 +8,7 @@ import { parseReportParams, reportFileName, reportQuery } from "@/lib/work-repor
 import { getPeriodReport } from "@/server/work-reports";
 import { workBase } from "@/lib/work-paths";
 import { requirePermission } from "@/server/permissions";
+import { workWords } from "@/server/work-words";
 
 export const metadata: Metadata = { title: "Print report", robots: { index: false, follow: false } };
 
@@ -22,10 +23,11 @@ export default async function ReportPrintPage({
   searchParams,
 }: PageProps<"/admin/account/work/s/[store]/reports/print">) {
   const { store } = await requirePermission((await params).store, "settings:read");
+  const { w: ww } = await workWords();
   if (!store.workOn) {
     return (
       <div className="p-8">
-        <WorkOff storeSlug={store.slug} title="Reports" />
+        <WorkOff storeSlug={store.slug} title={ww.off.titles.reports} words={ww.off} />
       </div>
     );
   }
@@ -41,7 +43,7 @@ export default async function ReportPrintPage({
   return (
     <DocumentPage
       backHref={`${workBase(store.slug)}/reports${reportQuery(settings)}`}
-      backLabel="Back to reports"
+      backLabel={ww.documentPage.backToReports}
       documentTitle={reportFileName(store.slug, report).replace(/\.csv$/, "")}
       auto={search.auto === "1"}
     >

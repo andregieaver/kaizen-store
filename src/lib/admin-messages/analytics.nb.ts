@@ -68,6 +68,7 @@ export const analyticsNb: AnalyticsMessages = {
     total: "Totalt",
     notTracked: "Telles ikke",
     noCohorts: "Ingen kohorter ennå.",
+    cohort: "Kohort",
     customers: "Kunder",
     noTarget: "Ikke noe mål satt.",
     expectedByToday: "Forventet innen i dag",

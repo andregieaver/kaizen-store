@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { SectionHub } from "@/components/admin/section-hub";
 import { adminLangOf } from "@/lib/admin-lang";
-import { PLATFORM_HUB_INTROS, SETTINGS_ITEMS } from "@/lib/platform-nav";
+import { PLATFORM_HUB_INTROS, PLATFORM_HUB_TITLES, SETTINGS_ITEMS } from "@/lib/platform-nav";
 import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -16,7 +16,7 @@ export default async function PlatformSettingsPage() {
   return (
     <SectionHub
       lang={adminLangOf(admin.adminLocale)}
-      title="Settings"
+      title={PLATFORM_HUB_TITLES.settings}
       intro={PLATFORM_HUB_INTROS.settings}
       items={SETTINGS_ITEMS}
     />

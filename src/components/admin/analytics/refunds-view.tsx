@@ -162,7 +162,7 @@ export function RefundsView(props: RefundsViewProps) {
               <h3 className="text-body-strong text-ink">{w.productsTitle}</h3>
               <p className="text-xs text-muted">{w.productsNote}</p>
               <DataTable caption={w.productsCaption} columns={productColumns} rows={r.products} rowKey={(p, i) => p.productId ?? `none-${i}`} exportId="traffic.refund_products" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
-              {r.productCount > r.products.length ? <p className="text-xs text-muted">{fillWords(w.showing, { shown: formatCount(r.products.length), all: formatCount(r.productCount) })}</p> : null}
+              {r.products.length < r.productCount ? <p className="text-xs text-muted">{fillWords(w.showing, { shown: formatCount(r.products.length), all: formatCount(r.productCount) })}</p> : null}
             </div>
           </div>
           <div className="grid gap-4 2xl:grid-cols-2">

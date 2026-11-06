@@ -164,7 +164,7 @@ function ModalSettings({
           {w.address}
         </label>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted">#modal-</span>
+          <span className="text-sm text-muted">{"#modal-"}</span>
           <input
             id={keyId}
             value={modal.key}
@@ -206,7 +206,7 @@ function ModalSettings({
               value={triggers.className}
               maxLength={MODAL_CLASS_MAX}
               spellCheck={false}
-              placeholder="open-newsletter"
+              placeholder={"open-newsletter"}
               aria-invalid={Boolean(classIssue)}
               aria-describedby={`${classId}-hint`}
               onChange={(event) => setTriggers({ className: event.target.value.trim() })}

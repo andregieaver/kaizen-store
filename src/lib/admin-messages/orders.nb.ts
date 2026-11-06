@@ -450,4 +450,15 @@ export const ordersNb: OrdersMessages = {
     invoices: "Fakturaer",
     reports: "rapportene for mva., OSS og IOSS",
   },
+  numbersField: {
+    label: "Bestillingsnumre",
+    placeholder: "Ett bestillingsnummer på hver linje, eller skilt med komma",
+    atMost: "Høyst {max} bestillingsnumre. Et bestillingsnummer skrives slik det vises i bestillingslisten, uten #.",
+    checking: "Sjekker …",
+    check: "Sjekk numrene",
+    found: { one: "{n} av disse er en bestilling i denne butikken.", many: "{n} av disse er bestillinger i denne butikken." },
+    notFound: " Ikke funnet: {list}.",
+    andMore: "{list} og {n} til",
+    tooMany: " {n} for mange: filen tar høyst {max}.",
+  },
 };

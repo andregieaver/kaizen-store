@@ -1,10 +1,12 @@
+import { LoadingWords } from "@/components/admin/loading-words";
+
 const block = "animate-pulse rounded-lg bg-card";
 
 /** The accessibility page while it is read. */
 export default function AccessibilityLoading() {
   return (
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
-      <span className="sr-only">Loading the accessibility page…</span>
+      <span className="sr-only"><LoadingWords of="accessibility" /></span>
       <div className="space-y-3" aria-hidden="true">
         <div className={`${block} h-8 w-48`} />
         <div className={`${block} h-4 w-full max-w-xl`} />

@@ -7,6 +7,9 @@ import { createClient } from "@/lib/supabase/client";
 import { canCompressVideo, compressVideo, VIDEO_CHOOSE_MAX_BYTES, VIDEO_MAX_BYTES } from "@/lib/video-compress";
 
 import { uploadPicture, type Saving, type Upload, type Uploaded } from "./image-upload";
+import { useAdminText } from "@/components/admin/admin-text";
+import { fillWords } from "@/lib/admin-fill";
+import type { CommonMessages } from "@/lib/admin-messages/common.en";
 
 /** Starts a video's upload: a signed upload to the public bucket and the address it will have. */
 export type StartVideo = (file: { name?: string; type: string; size: number; compressed?: boolean }) => Promise<
@@ -56,28 +59,32 @@ export function takeStill(file: File): Promise<File | null> {
  * server starts it, which keeps it in the media library, D88), with a still from it as its poster where `upload` is given.
  * A video larger than may be stored is accepted while this browser can compress it, and refused if it is still too large.
  */
+/** The words an upload says (`common.ui`), in the account's language: each caller hands in `useAdminText("common").ui`. */
+export type UploadWords = CommonMessages["ui"];
+
 export async function uploadVideoFile(
   startVideo: StartVideo,
   upload: Upload | null,
   chosen: File,
-  options: { keepSound?: boolean; onProgress?: (progress: number) => void } = {},
+  options: { keepSound?: boolean; onProgress?: (progress: number) => void; words: UploadWords },
 ): Promise<{ ok: true; video: UploadedVideo; saving: Saving } | { ok: false; problem: string }> {
-  if (!VIDEO_TYPES.includes(chosen.type)) return { ok: false, problem: "Use an MP4 or WebM video." };
+  const w = options.words;
+  if (!VIDEO_TYPES.includes(chosen.type)) return { ok: false, problem: w.videoType };
   const compressing = await canCompressVideo();
   if (chosen.size > (compressing ? VIDEO_CHOOSE_MAX_BYTES : VIDEO_MAX_BYTES)) {
-    return { ok: false, problem: `That video is too large. Use one under ${compressing ? 500 : 50} MB.` };
+    return { ok: false, problem: fillWords(w.videoTooLarge, { mb: compressing ? 500 : 50 }) };
   }
   try {
     const compressed = compressing ? await compressVideo(chosen, { keepSound: options.keepSound ?? true, onProgress: options.onProgress }) : null;
     const file = compressed?.file ?? chosen;
-    if (file.size > VIDEO_MAX_BYTES) return { ok: false, problem: "That video is too large, even compressed. Use one under 50 MB, or a shorter one." };
+    if (file.size > VIDEO_MAX_BYTES) return { ok: false, problem: w.videoTooLargeCompressed };
     const started = await startVideo({ name: chosen.name, type: file.type, size: file.size, compressed: compressed !== null });
     if (!started.ok) return { ok: false, problem: started.problem };
     const [stored, still] = await Promise.all([
       createClient().storage.from(started.bucket).uploadToSignedUrl(started.path, started.token, file, { contentType: file.type }),
       upload ? takeStill(file) : Promise.resolve(null),
     ]);
-    if (stored.error) return { ok: false, problem: `${chosen.name} could not be uploaded. Try again.` };
+    if (stored.error) return { ok: false, problem: fillWords(w.notUploaded, { name: chosen.name }) };
     const poster = still && upload ? await uploadPicture(upload, still) : null;
     return {
       ok: true,
@@ -85,7 +92,7 @@ export async function uploadVideoFile(
       saving: { before: chosen.size, after: file.size },
     };
   } catch {
-    return { ok: false, problem: `${chosen.name} could not be uploaded. Try again.` };
+    return { ok: false, problem: fillWords(w.notUploaded, { name: chosen.name }) };
   }
 }
 
@@ -100,29 +107,31 @@ export function VideoUploadButton({
   label: string;
   onUploaded: (video: UploadedVideo) => void;
 }) {
+  const ui = useAdminText("common").ui;
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
   const choose = async (file: File | undefined) => {
     if (!file || !startVideo) return;
-    if (!VIDEO_TYPES.includes(file.type)) return setProblem("Use an MP4 or WebM video.");
-    setBusy("Compressing …");
+    if (!VIDEO_TYPES.includes(file.type)) return setProblem(ui.videoType);
+    setBusy(ui.compressing);
     setProblem(null);
     setSaved(null);
     // A row's background plays without sound, so its sound is left out.
     const outcome = await uploadVideoFile(startVideo, upload, file, {
       keepSound: false,
-      onProgress: (progress) => setBusy(progress < 1 ? `Compressing … ${Math.round(progress * 100)} %` : "Uploading …"),
+      onProgress: (progress) => setBusy(progress < 1 ? fillWords(ui.compressingPercent, { percent: Math.round(progress * 100) }) : ui.uploading),
+      words: ui,
     });
     if (outcome.ok) {
       onUploaded(outcome.video);
-      setSaved(savingWords(outcome.saving.before, outcome.saving.after));
+      setSaved(savingWords(outcome.saving.before, outcome.saving.after, ui.saved));
     } else setProblem(outcome.problem);
     setBusy(null);
   };
 
-  if (!startVideo) return <p className="text-sm text-muted">Uploads are not set up on this server.</p>;
+  if (!startVideo) return <p className="text-sm text-muted">{ui.uploadsOff}</p>;
   return (
     <div className="flex flex-col gap-2">
       <label className="w-fit cursor-pointer rounded-md border border-line px-3 py-2 text-sm focus-within:outline-2">
@@ -138,7 +147,7 @@ export function VideoUploadButton({
           }}
         />
       </label>
-      <p className="text-xs text-muted">MP4 or WebM. It is made smaller in your browser before it is uploaded, and plays without sound, on a loop.</p>
+      <p className="text-xs text-muted">{ui.videoHint}</p>
       {saved && (
         <p role="status" className="text-xs text-muted">
           {saved}.

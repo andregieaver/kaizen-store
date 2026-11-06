@@ -1201,6 +1201,7 @@ type Job = { key: string; name: string; state: "waiting" | "uploading" | "done" 
  */
 function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; startVideo: StartVideo | null; onDone: () => void }) {
   const w = useAdminText("website").media;
+  const ui = useAdminText("common").ui;
   const inputId = useId();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [over, setOver] = useState(false);
@@ -1231,6 +1232,7 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
         } else if (VIDEO_TYPES.includes(file.type) && startVideo) {
           const result = await uploadVideoFile(startVideo, null, file, {
             onProgress: (progress) => set(key, { note: progress < 1 ? fillWords(w.compressingPercent, { percent: Math.round(progress * 100) }) : undefined }),
+            words: ui,
           });
           outcome = result.ok ? { ok: true, note: noted(result.saving) } : result;
         } else {

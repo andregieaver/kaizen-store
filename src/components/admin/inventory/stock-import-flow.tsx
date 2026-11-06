@@ -90,8 +90,8 @@ export function StockUpload({
         </label>
         <input id="stock-file" ref={input} type="file" accept=".csv,text/csv" className={`${field} py-2`} />
         <p className={hint}>
-          {fillWords(w.hintStart, { size: formatBytes(IMPORT_MAX_BYTES), rows: numberIn(INVENTORY_FILE_ROWS_MAX, locale) })} <strong>sku</strong> {w.hintAnd} <strong>on_hand</strong> {w.hintCounted} <strong>location</strong>,{" "}
-          <strong>on_hand_was</strong>, <strong>reason</strong>, <strong>note</strong>, <strong>stock_policy</strong>, <strong>backorder_days</strong> {w.hintAnd} <strong>low_stock_threshold</strong>. {w.hintEnd}
+          {fillWords(w.hintStart, { size: formatBytes(IMPORT_MAX_BYTES), rows: numberIn(INVENTORY_FILE_ROWS_MAX, locale) })} <strong>{"sku"}</strong> {w.hintAnd} <strong>{"on_hand"}</strong> {w.hintCounted} <strong>{"location"}</strong>,{" "}
+          <strong>{"on_hand_was"}</strong>, <strong>{"reason"}</strong>, <strong>{"note"}</strong>, <strong>{"stock_policy"}</strong>, <strong>{"backorder_days"}</strong> {w.hintAnd} <strong>{"low_stock_threshold"}</strong>. {w.hintEnd}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">

@@ -336,6 +336,7 @@ export const redirectsEn = {
       wholeFile: "The file as a whole",
       nothingToNote: "Nothing to note",
       earlier: "Earlier lines",
+      pages: "Pages",
       later: "Later lines",
     },
     lines_: {

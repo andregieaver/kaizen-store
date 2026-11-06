@@ -81,7 +81,7 @@ function InstructionFields({ defaults }: { defaults: InstructionsDefaults }) {
       <AddressFields address={defaults.address} />
       <label className={label}>
         {f.label} <span className={hint}>{f.labelHint}</span>
-        <input name="labelUrl" type="url" defaultValue={defaults.labelUrl} placeholder="https://…" className={input} />
+        <input name="labelUrl" type="url" defaultValue={defaults.labelUrl} placeholder={"https://…"} className={input} />
       </label>
     </>
   );

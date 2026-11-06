@@ -109,7 +109,7 @@ export function StoreCard({
         )}
         {store.role === "owner" && (
           <Link href={`${base}/assistant`} className="underline">
-            AI manager
+            {w.aiManager}
           </Link>
         )}
         <Link href={storeHref(store.slug, storeBase(store.slug))} className="ml-auto underline">

@@ -113,13 +113,13 @@ async function LayoutPreview({
   const products = market ? await listProducts(store.id, market) : [];
   const chosen = products.find((p) => p.handle === asked) ?? products[0];
   const product = chosen && market ? await getProduct(store.id, market, chosen.handle) : null;
-  if (!market || !product)
-    return <p className="text-sm text-muted">Add a product with a price to see the layout with it.</p>;
+  const w = adminText(await requestAdminLang(), "website").layoutPreview;
+  if (!market || !product) return <p className="text-sm text-muted">{w.noProduct}</p>;
   return (
     <>
       <form className="flex flex-wrap items-end gap-2 text-sm">
         <label className="flex flex-col gap-1 font-medium">
-          Shown with
+          {w.shownWith}
           <select
             name="product"
             defaultValue={product.handle}
@@ -133,7 +133,7 @@ async function LayoutPreview({
           </select>
         </label>
         <button type="submit" className="min-h-10 rounded-md border border-border px-4 font-medium">
-          Show
+          {w.show}
         </button>
       </form>
       <div className="rounded-lg border border-border py-8">
