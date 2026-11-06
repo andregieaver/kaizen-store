@@ -192,10 +192,35 @@ photographed; an EHF's amounts are the document's, a PDF's are read by the model
 register (organisation number, account, VAT, payment terms); due dates on Homer's home; receipts and expenses from the phone; a supplier
 invoice can be matched to a purchase order (D383). This is also what the 2030 rule asks for: e-invoices processed automatically.
 
-**B4. Bank.** The business account's transactions through a licensed account-information provider (in the EEA; for example Neonomics,
-licensed by Finanstilsynet [3P], or Tink [3P]); lines matched to invoices by KID, invoice number and amount, Stripe payouts to their
-payout (D290), supplier payments to supplier invoices; what does not match waits in *Needs you*. Paying supplier invoices from Kaizena
-Flow (payment initiation) later [U]. [U: Norwegian banks covered, consent length, price.]
+**B4. Bank.** Three ways in, built in this order, all landing in one table of bank lines so the matching is written once:
+
+1. **A statement file** (first, needs no contract): the owner uploads the bank's export (ISO 20022 camt.053, or the bank's CSV) [U: which
+   formats DNB's netbank exports for a small business]. Works for any bank in any country, and lets the matching be built and proven at
+   Human Web while the contracts below are agreed.
+2. **Open banking** (the platform's way: every bank, one contract): transactions and balances through a licensed account-information
+   provider in the EEA. Candidates: Neonomics (Oslo, licensed by Finanstilsynet [3P]), Tink [3P], Enable Banking [U], and Mastercard Open
+   Banking, the former Nordic API Gateway that DNB's own app uses to show other banks' accounts [3P]. Kaizena Flow does not seek a
+   licence of its own. The owner consents with BankID and renews the consent when asked [U: how often for business accounts in Norway;
+   the EU rule is 180 days]. To ask each provider before choosing: DNB business accounts for an ENK and for an AS (no source read
+   confirms it for any provider), whether the KID and the payer's reference come through, EU processing, price.
+3. **DNB's bank integration** (*bankintegrasjon*, the way Norwegian accounting systems read a bank; DNB first because it is the largest
+   bank and Human Web's): ordered by the business from its accounting system or in DNB's netbank (*Administrasjon → Bankintegrasjon*),
+   files in ISO 20022 (statements as camt.053 in DNB's own variant) over DNB File Gateway (SFTP) [3P]. DNB lists accounting systems
+   that offer ordering it, among them DNB Regnskap, Fiken, Cordel, Continia and Hogia [3P]. It adds what open banking may not carry:
+   the detail of incoming payments for matching and, later, paying supplier invoices from Kaizena Flow with approval in the bank [U:
+   which messages a small business gets]. Becoming an accounting system DNB offers it for is an agreement with DNB, not a public
+   sign-up; no public process was found (contact: DNB's technical integration team) [U: terms, price, lead time]. DNB sells its own
+   accounting system (DNB Regnskap), so this is a business conversation as much as a technical one. Other banks (SpareBank 1, Nordea,
+   Handelsbanken) have their own [U].
+
+Matching: lines to invoices by KID, invoice number and amount, Stripe payouts to their payout (D290), supplier payments to supplier
+invoices; what does not match waits in *Needs you*. Paying supplier invoices (through the bank integration, or payment initiation
+through the provider) later.
+
+*Pilot exit:* Human Web's DNB account read every day for a month through route 2 or 3, every line matched or explained.
+
+Not a reason to change banks: the platform must read DNB for other owners whatever Human Web does, and the pilot is the place to find
+out how well it can.
 
 **B5. Reports to the authorities, and the year.** The VAT return through Skatteetaten's API (built from B2, validated by their
 validation API, signed in by the person with ID-porten in 2026's way, a *systembruker* when Skatteetaten offers it); a corrected return
@@ -261,7 +286,9 @@ is a question for B2's design.
 
 1. **Choose a Peppol access point and sign with it** (EU processing, API, price, the countries it serves). Needed now for 1 January.
 2. **Apply to Skatteetaten for API access** (test, then production) as a supplier of an end-user system.
-3. **Choose an account-information provider** (B4) and sign.
+3. **Bank access** (B4): put B4's questions to two or three account-information providers and sign with one; ask DNB's technical
+   integration team (tci@dnb.no) how an accounting system becomes one DNB offers bank integration for, on what terms and how soon.
+   Human Web's own DNB adviser can open that door.
 4. **An authorised accountant to review** the Norway pack (chart, VAT codes, what each document posts) and B5's return before ring 1.
    The first choice is the owner's wife, Human Web's accountant from NOK 5 million (section 4.4), if willing and authorised [U].
 5. **A lawyer**: Kaizena Flow's terms as a bookkeeping system; the vendor's duties, if any, under the amended regulations; the data
@@ -276,7 +303,7 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 | Order | Sales track | Books track |
 |---|---|---|
 | Now | S1 timeline | **B1 EHF out** (deadline 1 January 2027) |
-| Next | S2 deals and pipelines, S3 activities | B2 the ledger in shadow at Human Web |
+| Next | S2 deals and pipelines, S3 activities | B2 the ledger in shadow at Human Web, with B4's statement upload |
 | Then | S4 leads, S5 email (forwarding address), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
 | Then | S6 reports; `sales` opens to every store | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |
 | Then | | B6 accountants, ready before Human Web's turnover passes NOK 5 million (the threshold watch says when it is near); then ring 2 |
@@ -288,7 +315,8 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 2. When can a *systembruker* send the VAT return, so no one signs in with ID-porten each time?
 3. What of the annual accounts and the business's tax return can be submitted by API for a small AS?
 4. Which access point serves Norway and the other EU e-invoicing mandates, with an API and EU processing, at what price?
-5. Account-information providers: Norwegian bank coverage, consent length, payment initiation, price.
+5. Account-information providers: DNB business accounts (ENK and AS), the KID in the transaction data, consent length, payment
+   initiation, price. DNB's bank integration: the terms for an accounting system, the messages a small business gets, lead time.
 6. Gmail's security assessment: cost and time.
 7. Pipedrive's and HubSpot's export and API limits for S7.
 8. Is the owner's wife an authorised accountant, and does keeping a spouse's books need the authorisation if it is unpaid?
@@ -312,7 +340,12 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 * Peppol in Norway: DFØ as Peppol authority, <https://anskaffelser.no/public-procurement/e-procurement/peppol>; country profile,
   <https://peppol.org/learn-more/country-profiles/norway/>.
 * Account information: Neonomics, <https://openbankingtracker.com/neonomics>; Neonomics and Tink compared,
-  <https://openbankingtracker.com/api-aggregators/neonomics/vs/tink> (both [3P]).
+  <https://openbankingtracker.com/api-aggregators/neonomics/vs/tink>; aggregators covering Norway,
+  <https://www.openbankingtracker.com/api-aggregators?country=NO>; DNB's app on Nordic API Gateway,
+  <https://finextra.com/pressarticle/77782/dnb-joins-nordic-api-gateway> (all [3P]).
+* DNB's bank integration (read through search summaries; the pages refused a direct fetch):
+  <https://www.dnb.no/bedrift/konto-kort-og-betaling/bankintegrasjon.html>, <https://www.dnb.no/bedrift/dagligbank/bankintegrasjon>;
+  DNB Regnskap's integrations, <https://www.dnb.no/bedrift/dagligbank/regnskap/nyttig-informasjon/integrasjoner>.
 * Bookkeeping retention: Bokføringsloven § 13, <https://lovdata.no/lov/2004-11-19-73/§13> (as read for `docs/wave-1g-gdpr.md`).
 * Human Web's entry in the Central Coordinating Register: <https://data.brreg.no/enhetsregisteret/api/enheter/915429777>.
 * Audit thresholds for an AS: Stortinget, Innst. 165 S (2025–2026),
