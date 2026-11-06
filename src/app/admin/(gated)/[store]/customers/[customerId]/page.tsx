@@ -360,7 +360,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           </section>
           {salesOn && (
             <DealsCard
-              deals={deals.map((d) => ({ id: d.id, title: d.title, status: d.status, value: d.value.minor === null ? null : formatMoney(d.value.minor, mainCurrency(store), locale) }))}
+              deals={deals.map((d) => ({ id: d.id, title: d.title, status: d.status, value: d.value.minor === null ? null : formatMoney(d.value.minor, mainCurrency(store), locale, { decimals: "hide_whole" }) }))}
               base={base}
               addHref={mayTag ? `${base}/deals/new?customer=${customer.customerId}` : null}
               words={dealWords.card}

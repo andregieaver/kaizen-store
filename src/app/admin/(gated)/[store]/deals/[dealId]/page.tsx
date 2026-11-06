@@ -41,7 +41,7 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
   const w = adminText(lang, "deals");
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const main = mainCurrency(store);
-  const money = (minor: number, currency = main) => formatMoney(minor, currency, locale);
+  const money = (minor: number, currency = main) => formatMoney(minor, currency, locale, { decimals: "hide_whole" });
   const when = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: store.timeZone });
   const canChange = memberCan(member, "customers:write");
   const [pipelines, staff, candidates] = await Promise.all([
@@ -161,7 +161,8 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
         {canChange && (mayLink(member, "order") || mayLink(member, "work_assignment")) && (
           <div className="mt-4">
             {candidates.length === 0 ? (
-              <p className="text-sm text-muted">{w.deal.linkNone}</p>
+              // With nothing linked, the card's first line already says what a link is for.
+              deal.links.length > 0 && <p className="text-sm text-muted">{w.deal.linkNone}</p>
             ) : (
               <ActionForm action={linkThingAction.bind(null, store.slug, deal.id)} className="flex flex-wrap items-end gap-3">
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium">

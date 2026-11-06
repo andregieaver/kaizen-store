@@ -35,7 +35,7 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
   const w = adminText(lang, "deals");
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const main = mainCurrency(store);
-  const money = (minor: number) => formatMoney(minor, main, locale);
+  const money = (minor: number) => formatMoney(minor, main, locale, { decimals: "hide_whole" });
   const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: "UTC" });
 
   const pipelines = await ensurePipeline(store.id, {

@@ -81,10 +81,22 @@ export function DealBoard({ columns, words, place, canChange }: { columns: Board
     <div className="flex flex-col gap-3">
       {canChange && <p className="text-sm text-muted">{w.dragHint}</p>}
       <DndContext sensors={sensors} onDragEnd={onDragEnd} accessibility={{ announcements }}>
-        <div aria-label={w.label} role="region" className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-          {shown.map((column) => (
-            <Column key={column.key} column={column} targets={columns} words={words} canChange={canChange} onChoose={choose} />
-          ))}
+        <div aria-label={w.label} role="region" className="flex flex-col gap-4">
+          {/* The open stages side by side (scrolling sideways when they do not fit); Won and Lost below, always in view and still places to drop. */}
+          <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+            {shown
+              .filter((column) => column.status === "open")
+              .map((column) => (
+                <Column key={column.key} column={column} targets={columns} words={words} canChange={canChange} onChoose={choose} />
+              ))}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {shown
+              .filter((column) => column.status !== "open")
+              .map((column) => (
+                <Column key={column.key} column={column} targets={columns} words={words} canChange={canChange} onChoose={choose} closed />
+              ))}
+          </div>
         </div>
       </DndContext>
       <p role="status" aria-live="polite" className={`text-sm ${said && !said.ok ? "text-danger-text" : "text-muted"}`}>
@@ -127,12 +139,15 @@ function Column({
   words,
   canChange,
   onChoose,
+  closed = false,
 }: {
   column: BoardColumnView;
   targets: BoardColumnView[];
   words: DealBoardWords;
   canChange: boolean;
   onChoose: (card: BoardCard, to: string) => void;
+  /** Won or Lost: as wide as half the board, under the stages. */
+  closed?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.key, disabled: !canChange });
   const headingId = `deal-column-${column.key}`;
@@ -140,7 +155,7 @@ function Column({
     <section
       ref={setNodeRef}
       aria-labelledby={headingId}
-      className={`flex w-72 shrink-0 snap-start flex-col gap-3 rounded-panel p-3 ${isOver ? "bg-brand-soft" : "bg-sunken"}`}
+      className={`flex flex-col gap-3 rounded-panel p-3 ${closed ? "min-w-0" : "w-64 shrink-0 snap-start"} ${isOver ? "bg-brand-soft" : "bg-sunken"}`}
     >
       <header className="flex flex-col gap-0.5">
         <h2 id={headingId} className="text-title text-ink">
@@ -203,15 +218,13 @@ function Card({
         </p>
       )}
       {canChange && (
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          {w.moveTo}
-          <select
-            aria-label={fillWords(w.moveLabel, { title: card.title })}
-            value=""
-            onPointerDown={(e) => e.stopPropagation()}
-            onChange={(e) => onChoose(card, e.target.value)}
-            className="min-h-9 rounded-md border border-line bg-card px-2 text-sm text-ink"
-          >
+        <select
+          aria-label={fillWords(w.moveLabel, { title: card.title })}
+          value=""
+          onPointerDown={(e) => e.stopPropagation()}
+          onChange={(e) => onChoose(card, e.target.value)}
+          className="min-h-9 rounded-md border border-line bg-card px-2 text-sm text-ink-2"
+        >
             <option value="">{w.moveTo}</option>
             {targets
               .filter((t) => t.key !== at)
@@ -220,8 +233,7 @@ function Card({
                   {t.title}
                 </option>
               ))}
-          </select>
-        </label>
+        </select>
       )}
     </li>
   );

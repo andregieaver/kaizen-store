@@ -114,7 +114,7 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
 
       {salesOn && (
         <DealsCard
-          deals={deals.map((d) => ({ id: d.id, title: d.title, status: d.status, value: d.value.minor === null ? null : formatMoney(d.value.minor, currency, locale) }))}
+          deals={deals.map((d) => ({ id: d.id, title: d.title, status: d.status, value: d.value.minor === null ? null : formatMoney(d.value.minor, currency, locale, { decimals: "hide_whole" }) }))}
           base={base}
           addHref={memberCan(current, "customers:write") ? `${base}/deals/new?company=${company.id}` : null}
           words={dealWords.card}
