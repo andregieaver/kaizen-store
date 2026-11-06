@@ -139,3 +139,57 @@ export function businessChangeWhen(startsOn: string, today: string): BusinessCha
   if (days === 0) return { kind: "today" };
   return { kind: "overdue", days: -days };
 }
+
+// The checklist (step 2) ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * What must be set up again for the new business, in the order an owner meets it. `auto` steps are known from the store itself (done
+ * when the store shows it); the rest the owner ticks when done, since they happen elsewhere (the bank, Stripe, the accounting system,
+ * the clients). `info` steps say what Kaizena Flow does on its own.
+ */
+export const BUSINESS_STEPS = ["numbers", "vat", "series", "bank", "payments", "accounting", "legal", "plan", "clients", "einvoices"] as const;
+export type BusinessStep = (typeof BUSINESS_STEPS)[number];
+/** The steps an owner ticks themselves. */
+export const TICKED_STEPS: readonly BusinessStep[] = ["bank", "payments", "accounting", "plan", "clients"];
+
+export type BusinessStepState = "done" | "todo" | "info";
+export type BusinessChecklistItem = { step: BusinessStep; state: BusinessStepState; tickable: boolean };
+
+export type BusinessChecklistFacts = {
+  change: Pick<BusinessChangeInput, "organisationNumber" | "vatRegistered" | "vatNumber">;
+  /** The steps the owner ticked. */
+  checked: readonly string[];
+  /** Work is on: its invoices carry a bank account. */
+  workOn: boolean;
+  /** The store takes payments through Stripe or another provider. */
+  takesPayments: boolean;
+  /** The accounting system the store is connected to, and the organisation number of the company it books into (when it says). */
+  accounting: { organisationNumber: string | null } | null;
+  /** The store's legal pages that still name the old business. */
+  legalPagesNamingOld: number;
+  /** The store pays Kaizena Flow for a plan (Kaizena Flow's own store does not). */
+  paysPlan: boolean;
+  /** The store invoices businesses (Work, or selling to businesses): they are told who invoices them now. */
+  invoicesBusinesses: boolean;
+};
+
+/** The checklist for a change, from what the store shows: steps that do not apply to it are left out. */
+export function businessChecklist(f: BusinessChecklistFacts): BusinessChecklistItem[] {
+  const ticked = (step: BusinessStep) => f.checked.includes(step);
+  const items: BusinessChecklistItem[] = [
+    { step: "numbers", state: f.change.organisationNumber ? "done" : "todo", tickable: false },
+    { step: "vat", state: !f.change.vatRegistered || f.change.vatNumber ? "done" : "todo", tickable: false },
+    { step: "series", state: "info", tickable: false },
+  ];
+  if (f.workOn) items.push({ step: "bank", state: ticked("bank") ? "done" : "todo", tickable: true });
+  if (f.takesPayments) items.push({ step: "payments", state: ticked("payments") ? "done" : "todo", tickable: true });
+  if (f.accounting) {
+    const same = !!f.change.organisationNumber && f.accounting.organisationNumber?.replace(/\D/g, "") === f.change.organisationNumber.replace(/\D/g, "");
+    items.push({ step: "accounting", state: same || ticked("accounting") ? "done" : "todo", tickable: !same });
+  }
+  items.push({ step: "legal", state: f.legalPagesNamingOld === 0 ? "done" : "todo", tickable: false });
+  if (f.paysPlan) items.push({ step: "plan", state: ticked("plan") ? "done" : "todo", tickable: true });
+  if (f.invoicesBusinesses) items.push({ step: "clients", state: ticked("clients") ? "done" : "todo", tickable: true });
+  items.push({ step: "einvoices", state: "info", tickable: false });
+  return items;
+}

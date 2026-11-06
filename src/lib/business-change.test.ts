@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { businessChangeMissing, businessChangeWhen, cleanBusinessChange } from "./business-change";
+import { businessChangeMissing, businessChangeWhen, businessChecklist, cleanBusinessChange } from "./business-change";
 
 const store = { country: "NO", today: "2026-11-06", organisationNumber: "915262341" };
 const base = { legalName: "Human Web AS", businessForm: "as", startsOn: "2027-01-01" };
@@ -47,5 +47,36 @@ describe("a change of the business behind a store", () => {
     expect(businessChangeWhen("2027-01-01", "2026-12-30")).toEqual({ kind: "ahead", days: 2 });
     expect(businessChangeWhen("2027-01-01", "2027-01-01")).toEqual({ kind: "today" });
     expect(businessChangeWhen("2027-01-01", "2027-01-04")).toEqual({ kind: "overdue", days: 3 });
+  });
+});
+
+describe("what must be set up again", () => {
+  const facts = {
+    change: { organisationNumber: null, vatRegistered: true, vatNumber: null },
+    checked: [] as string[],
+    workOn: false,
+    takesPayments: false,
+    accounting: null,
+    legalPagesNamingOld: 0,
+    paysPlan: false,
+    invoicesBusinesses: false,
+  };
+
+  it("is only what applies to the store, the numbers first and what Kaizena Flow does last", () => {
+    expect(businessChecklist(facts).map((i) => [i.step, i.state])).toEqual([
+      ["numbers", "todo"],
+      ["vat", "todo"],
+      ["series", "info"],
+      ["legal", "done"],
+      ["einvoices", "info"],
+    ]);
+  });
+
+  it("is done where the store shows it, and ticked by the owner where it happens elsewhere", () => {
+    const all = { ...facts, change: { organisationNumber: "923609016", vatRegistered: true, vatNumber: "NO923609016MVA" }, workOn: true, takesPayments: true, paysPlan: true, invoicesBusinesses: true, legalPagesNamingOld: 2 };
+    const states = (f: Parameters<typeof businessChecklist>[0]) => Object.fromEntries(businessChecklist(f).map((i) => [i.step, i.state]));
+    expect(states({ ...all, accounting: { organisationNumber: "915262341" } })).toMatchObject({ numbers: "done", vat: "done", bank: "todo", payments: "todo", accounting: "todo", legal: "todo", plan: "todo", clients: "todo" });
+    expect(states({ ...all, accounting: { organisationNumber: "923 609 016" }, checked: ["bank", "plan"], legalPagesNamingOld: 0 })).toMatchObject({ bank: "done", accounting: "done", legal: "done", plan: "done", payments: "todo" });
+    expect(businessChecklist({ ...all, accounting: { organisationNumber: "923609016" } }).find((i) => i.step === "accounting")?.tickable).toBe(false);
   });
 });

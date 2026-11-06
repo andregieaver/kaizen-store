@@ -17835,6 +17835,8 @@ export const storeBusinessChanges = commerce.table(
     appliedAt: timestamp("applied_at", { withTimezone: true }),
     /** When the app last drew the store again after the change (its cached details refreshed). */
     refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
+    /** The checklist's steps the owner ticked as done (`TICKED_STEPS`): what happens elsewhere, such as the bank or Stripe. */
+    checked: text("checked").array().notNull().default(sql`'{}'::text[]`),
     createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

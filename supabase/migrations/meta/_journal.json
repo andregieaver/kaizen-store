@@ -4866,6 +4866,13 @@
       "when": 1793974256475,
       "tag": "20261106141056_business_changes_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 695,
+      "version": "7",
+      "when": 1793975585114,
+      "tag": "20261106143305_business_change_ticks",
+      "breakpoints": true
     }
   ]
 }

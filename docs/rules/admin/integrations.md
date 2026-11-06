@@ -242,7 +242,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   VAT registration and Work's, and the series' prefixes in one transaction, keeping what was before and where each series stood. Every
   issuer calls it before it numbers anything, so nothing is issued on the day under the old business; a new issuer of documents calls it
   too. A sales series' prefix changes after numbers are issued only there (`sales_series_guard()`); numbers are never reset or skipped.
-  Never write the store's legal identity from a date by hand: plan a change.
+  Never write the store's legal identity from a date by hand: plan a change. Its checklist is `businessChecklist()`, drawn from the store
+  (`businessChecklistFacts()`); a step the owner does elsewhere is ticked (`tickBusinessStep()`), never assumed.
 
 ## E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)
 

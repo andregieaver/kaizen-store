@@ -53,6 +53,33 @@ describe("a change of the business behind a store", () => {
     expect(await bc.cancelBusinessChange(owner)).toEqual({ ok: false, problems: ["not_found"] });
   });
 
+  it("draws its checklist from the store, and keeps what the owner ticked off", async () => {
+    const store = await fx.makeStore(`bc-list-${run}`);
+    const owner = await fx.ownerOf(store);
+    const nextYear = `${new Date().getUTCFullYear() + 1}-01-01`;
+    expect((await bc.planBusinessChange(owner, { legalName: "Human Web AS", businessForm: "as", startsOn: nextYear, vatRegistered: true })).ok).toBe(true);
+    // A legal page that names the business as it is.
+    const terms = JSON.stringify({ blocks: [{ type: "text", text: "Fixture AS sells mugs." }] });
+    const [page] = await db().execute<Row>(sql`
+      insert into commerce.pages (store_id, slug, draft, published, published_at)
+      values (${store.storeId}::uuid, ${`terms-${run}`}, ${terms}::jsonb, ${terms}::jsonb, now()) returning id`);
+    await db().execute(sql`insert into commerce.page_roles (store_id, role, page_id) values (${store.storeId}::uuid, 'terms', ${String(page.id)}::uuid)`);
+    const { getStore } = await import("./stores");
+    const live = (await getStore(store.slug))!;
+    let [change] = await bc.businessChangesOf(store.storeId);
+    const facts = await bc.businessChecklistFacts(live, change);
+    expect(facts).toMatchObject({ legalPagesNamingOld: 1, paysPlan: true, checked: [] });
+    expect(await bc.tickBusinessStep(owner, "plan", true)).toMatchObject({ ok: true });
+    expect(await bc.tickBusinessStep(owner, "plan", true)).toMatchObject({ ok: true });
+    expect(await bc.tickBusinessStep(owner, "numbers", true)).toEqual({ ok: false, problems: ["not_found"] });
+    [change] = await bc.businessChangesOf(store.storeId);
+    expect(change.checked).toEqual(["plan"]);
+    expect(await bc.tickBusinessStep(owner, "plan", false)).toMatchObject({ ok: true });
+    [change] = await bc.businessChangesOf(store.storeId);
+    expect(change.checked).toEqual([]);
+    expect(await bc.businessSeriesNow(store.storeId)).toMatchObject({ invoice: { prefix: "F-", next: 1 } });
+  });
+
   it("makes the first invoice of its day the new business's, with its own prefix, the numbers going on", async () => {
     const store = await fx.makeStore(`bc-shop-${run}`);
     const first = await fx.paidOrder(store, [["DEMO-MUG-WHITE", 1]]);

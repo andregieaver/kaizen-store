@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."store_business_changes" ADD COLUMN "checked" text[] DEFAULT '{}'::text[] NOT NULL;

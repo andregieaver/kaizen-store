@@ -8,7 +8,7 @@ import { BusinessDetailsFields } from "@/components/admin/business-details-field
 import { FeatureOffNote } from "@/components/admin/feature-off";
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { weekSummary } from "@/lib/opening-hours";
 import { featureOn } from "@/lib/store-features";
@@ -19,6 +19,11 @@ import { PageHeader } from "@/components/admin/ui";
 import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
 
 import { saveAudienceAction, saveBusinessAction, saveOfficeAction } from "./actions";
+import { cancelBusinessChangeAction, planBusinessChangeAction, tickBusinessStepAction } from "./business-actions";
+import { BusinessChangeSection } from "@/components/admin/business-change-section";
+import { businessChecklist } from "@/lib/business-change";
+import { zonedDate } from "@/lib/booking-slots";
+import { businessChangesOf, businessChecklistFacts, businessSeriesNow } from "@/server/business-change";
 
 export const metadata: Metadata = { title: "Company" };
 
@@ -31,7 +36,11 @@ const card = "rounded-lg border border-line bg-card p-5";
 export default async function CompanyPage({ params }: PageProps<"/admin/[store]/settings/company">) {
   const member = await requirePermission((await params).store, "settings:read");
   const { store } = member;
-  const [company, countries] = await Promise.all([getCompany(store.id), listCountries()]);
+  const [company, countries, changes, series] = await Promise.all([getCompany(store.id), listCountries(), businessChangesOf(store.id), businessSeriesNow(store.id)]);
+  // Changing the business behind the store (B8, D473): the planned change with its checklist, and those that took effect.
+  const planned = changes.find((c) => c.status === "planned") ?? null;
+  const facts = planned ? await businessChecklistFacts(store, planned) : null;
+  const owner = memberCan(member, "owner");
   const base = `/admin/${store.slug}/settings/company`;
   const homeCountry = store.details.country ?? "NO";
   const lang = adminLangOf(member.account.adminLocale);
@@ -62,6 +71,33 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
         )}
       </section>
 
+      <BusinessChangeSection
+        words={adminText(lang, "business")}
+        planned={planned}
+        applied={changes.filter((c) => c.status === "applied")}
+        checklist={facts ? businessChecklist(facts) : null}
+        legalPagesNamingOld={facts?.legalPagesNamingOld ?? 0}
+        series={series}
+        current={{ legalName: store.details.legalName || store.name, postalAddress: store.details.postalAddress || "" }}
+        links={{
+          bank: `/admin/account/work/s/${store.slug}/settings`,
+          payments: `/admin/${store.slug}/settings/payments`,
+          accounting: `/admin/${store.slug}/integrations`,
+          legal: `/admin/${store.slug}/settings/legal`,
+          plan: `/admin/${store.slug}/billing`,
+        }}
+        today={zonedDate(new Date().getTime(), store.timeZone)}
+        locale={ADMIN_LANG_FACTS[lang].locale}
+        actions={
+          owner
+            ? {
+                plan: planBusinessChangeAction.bind(null, store.slug),
+                cancel: cancelBusinessChangeAction.bind(null, store.slug),
+                tick: (step, done) => tickBusinessStepAction.bind(null, store.slug, step, done),
+              }
+            : null
+        }
+      />
       <section aria-labelledby="customers" className={card}>
         <h2 id="customers" className="mb-1 text-title text-ink">{w.customers}</h2>
         <p className="mb-4 text-sm text-muted">{w.customersText}</p>

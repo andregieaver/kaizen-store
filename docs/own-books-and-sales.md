@@ -309,8 +309,9 @@ a period belongs to. B8: the business behind the store changes from a date; from
 own series; the books close for the old business and open for the new one with the balance handed over (B2); VAT returns and reports
 split at the date; and a checklist of what must be set up again (bank, Stripe, Peppol and ELMA, an accounting connection, payment
 providers, the privacy notice, Kaizena Flow's own plan), each step with its button where Kaizena Flow can do it. Homer sees "Your business
-is becoming an AS", one step at a time; Lisa sees every date and setting. *Step 1 built (D473): the change from a day, exact at
-the first document issued that day, with its own prefixes; the screen and checklist next, then reports split at the date.*
+is becoming an AS", one step at a time; Lisa sees every date and setting. *Steps 1 and 2 built (D473): the change from a day, exact at
+the first document issued that day, with its own prefixes; the owner's screen and checklist on Settings → Company. Reports split at the
+date next.*
 
 ## 5. Tripletex and Fiken from here
 
