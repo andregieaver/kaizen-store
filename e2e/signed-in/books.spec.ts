@@ -15,7 +15,8 @@ test("an owner opens the store's books, reads the trial balance and locks them t
   if (await open.isVisible()) {
     await page.getByLabel("Books from").fill("2026-01-01");
     await open.click();
-    await expect(page.getByText("The books are open.")).toBeVisible({ timeout: 30_000 });
+    // The page draws the open books in the form's place.
+    await expect(page.getByText("Books from 1 January 2026, in NOK")).toBeVisible({ timeout: 30_000 });
   }
   const trial = page.getByRole("region", { name: "Trial balance" });
   await expect(trial).toBeVisible({ timeout: 30_000 });

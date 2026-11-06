@@ -51,6 +51,7 @@ export const booksEn = {
     credit: "Credit",
     after: "After",
     total: "Total",
+    amounts: "Amounts in {currency}.",
     result: "Result for the period: {amount}",
     empty: "Nothing posted in these days yet.",
     unbalanced: "These books do not balance. Tell us: this should never happen.",

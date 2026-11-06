@@ -8,7 +8,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
 import { isDay } from "@/lib/ledger";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { formatStoreDay } from "@/lib/return-time";
 import { ledgerTrialBalance, ledgerWaiting, openBookOf } from "@/server/ledger";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -68,8 +68,11 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const from = asked(query.from) ?? (yearStart < book.openedOn ? book.openedOn : yearStart);
   const to = asked(query.to) ?? today;
   const [waiting, tb] = await Promise.all([ledgerWaiting(book.id), ledgerTrialBalance(book.id, from, to)]);
-  const money = (minor: number) => (minor === 0 ? "" : formatMoney(minor, book.currency, locale));
-  const signed = (minor: number) => formatMoney(minor, book.currency, locale);
+  // The table's amounts as numbers, the currency said once above it; the result with its currency.
+  const digits = minorUnitDigits(book.currency);
+  const number = new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const signed = (minor: number) => number.format(minor / 10 ** digits);
+  const money = (minor: number) => (minor === 0 ? "" : signed(minor));
 
   return (
     <div className="flex flex-col gap-6">
@@ -113,6 +116,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
             {w.trial.show}
           </button>
         </form>
+        {tb.rows.length > 0 && <p className="mb-2 text-sm text-muted">{fillWords(w.trial.amounts, { currency: book.currency })}</p>}
         {tb.rows.length === 0 ? (
           <p className="text-sm text-muted">{w.trial.empty}</p>
         ) : (
@@ -152,7 +156,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
             </table>
           </div>
         )}
-        {tb.rows.length > 0 && <p className="mt-3 text-sm font-medium">{fillWords(w.trial.result, { amount: signed(tb.result) })}</p>}
+        {tb.rows.length > 0 && <p className="mt-3 text-sm font-medium">{fillWords(w.trial.result, { amount: formatMoney(tb.result, book.currency, locale) })}</p>}
         {tb.totals.after !== 0 && (
           <p role="alert" className="mt-2 text-sm">
             {w.trial.unbalanced}

@@ -47,6 +47,7 @@ export const booksNb: BooksMessages = {
     credit: "Kredit",
     after: "Utgående",
     total: "Sum",
+    amounts: "Beløp i {currency}.",
     result: "Resultat for perioden: {amount}",
     empty: "Ingenting ført i disse dagene ennå.",
     unbalanced: "Regnskapet er ikke i balanse. Si fra til oss: dette skal aldri skje.",
