@@ -16,7 +16,7 @@ type CopyAction = ComponentProps<typeof ActionForm>["action"];
  * copied, a link to look at the copy in the store, and the one button that copies it again. The live site never changes from here.
  */
 export function HouseSiteCard({ lang, last, copy }: { lang: AdminLang; last: SiteCopy; copy: CopyAction }) {
-  const w = adminText(lang, "platform").houseSite;
+  const w = adminText(lang, "console").houseSite;
   const when = last.copiedAt
     ? new Date(last.copiedAt).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" })
     : null;

@@ -25,7 +25,7 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const admin = await requirePlatformAdmin();
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const w = adminText(lang, "platform").planAnalytics;
+  const w = adminText(lang, "console").planAnalytics;
   const asked = Number((await searchParams).days);
   const days = (PERIODS as readonly number[]).includes(asked) ? asked : 30;
   const a = await planAnalytics(days);

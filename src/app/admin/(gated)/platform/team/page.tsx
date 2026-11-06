@@ -21,7 +21,7 @@ export default async function PlatformTeamPage() {
   await connection();
   const admin = await requirePlatformAdmin();
   const lang = adminLangOf(admin.adminLocale);
-  const w = adminText(lang, "platform").team;
+  const w = adminText(lang, "console").team;
   const people = await listPlatformAdmins(admin);
   const date = (iso: string) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   return (
