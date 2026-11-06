@@ -1,0 +1,68 @@
+import type { BooksMessages } from "./books.en";
+
+/** Norwegian (bokmål), written by hand (D312 A7). */
+export const booksNb: BooksMessages = {
+  title: "Regnskap",
+  intro: "Ditt eget regnskap, ført her fra fakturaene og kreditnotaene dine etter hvert som du utsteder dem: hvert bilag nummerert, i balanse og aldri endret etterpå.",
+  open: {
+    title: "Før regnskapet her også",
+    text: "Vi fører hver faktura og kreditnota du utsteder i ditt eget regnskap her, på de samme kontoene som i Tripletex, så de to kan sammenlignes før du forlater Tripletex.",
+    from: "Regnskap fra",
+    fromHelp: "Dagen regnskapet starter. Med Tripletex tilkoblet: dagen Tripletex begynte å føre.",
+    button: "Åpne regnskapet",
+    ownerOnly: "Bare butikkens eier åpner regnskapet.",
+    opened: "Regnskapet er åpnet.",
+  },
+  facts: {
+    title: "{name}",
+    number: "Organisasjonsnummer {number}",
+    since: "Regnskap fra {day}, i {currency}",
+    locked: "Låst til og med {day}",
+    open: "Ingenting låst ennå",
+  },
+  waiting: {
+    title: "Venter på deg",
+    count: { one: "{n} dokument kunne ikke føres ennå", many: "{n} dokumenter kunne ikke føres ennå" },
+    kinds: { work_invoice: "Faktura", work_credit_note: "Kreditnota", shop_invoice: "Faktura fra butikken", shop_credit_note: "Kreditnota fra butikken" },
+    problems: {
+      currency: "i en annen valuta enn regnskapet (kommer snart)",
+      vat_unmapped: "en mva-type uten konto",
+      totals: "beløpene går ikke opp",
+      nothing: "ingenting å føre",
+      locked: "dagen er låst",
+      open: "dagen er utenfor regnskapet",
+      account: "en konto finnes ikke i kontoplanen",
+      unreadable: "det kunne ikke leses",
+    },
+    since: "siden {day}",
+  },
+  trial: {
+    title: "Saldobalanse",
+    from: "Fra",
+    to: "Til",
+    show: "Vis",
+    account: "Konto",
+    before: "Inngående",
+    debit: "Debet",
+    credit: "Kredit",
+    after: "Utgående",
+    total: "Sum",
+    result: "Resultat for perioden: {amount}",
+    empty: "Ingenting ført i disse dagene ennå.",
+    unbalanced: "Regnskapet er ikke i balanse. Si fra til oss: dette skal aldri skje.",
+  },
+  lock: {
+    title: "Lås regnskapet",
+    text: "Ingenting datert på eller før dagen føres etterpå, som når en mva-termin er rapportert. Dagen kan flyttes tilbake, og det blir registrert.",
+    through: "Låst til og med",
+    button: "Lås",
+    done: "Låst.",
+    invalid: "Velg en dag etter at regnskapet åpnet.",
+  },
+  problems: {
+    forbidden: "Bare butikkens eier gjør dette.",
+    open: "Regnskapet er allerede åpnet.",
+    no_pack: "Regnskap føres her først for norske virksomheter.",
+    date: "Velg en ekte dag.",
+  },
+};
