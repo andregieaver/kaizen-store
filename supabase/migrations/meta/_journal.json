@@ -4880,6 +4880,20 @@
       "when": 1793982490365,
       "tag": "20261106162810_deal_quote_stage",
       "breakpoints": true
+    },
+    {
+      "idx": 697,
+      "version": "7",
+      "when": 1793982920281,
+      "tag": "20261106163520_lead_decisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 698,
+      "version": "7",
+      "when": 1793982954323,
+      "tag": "20261106163554_lead_decisions_rules",
+      "breakpoints": true
     }
   ]
 }

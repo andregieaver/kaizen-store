@@ -17854,3 +17854,32 @@ export const storeBusinessChanges = commerce.table(
     check("store_business_changes_prefixes", sql`jsonb_typeof(${t.prefixes}) = 'object'`),
   ],
 );
+
+// A leads inbox (S4 of `docs/own-books-and-sales.md`, D475)
+
+/**
+ * What staff decided about a lead, by the person's email: dismissed, or made a deal of. The leads themselves are read where they are
+ * (quote requests, questions and forms, chats, new subscribers; `src/server/leads.ts`); a decision hides the person until they ask for
+ * something again after it. One row per person and store, the latest decision.
+ */
+export const leadDecisions = commerce.table(
+  "lead_decisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** The person's email, lowercased. */
+    email: text("email").notNull(),
+    /** `dismissed` or `deal`. */
+    decision: text("decision").notNull(),
+    dealId: uuid("deal_id"),
+    decidedBy: uuid("decided_by").references(() => accounts.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("lead_decisions_email_key").on(t.storeId, t.email),
+    foreignKey({ name: "lead_decisions_deal_fk", columns: [t.storeId, t.dealId], foreignColumns: [deals.storeId, deals.id] }),
+    index("lead_decisions_decided_by_idx").on(t.decidedBy),
+    check("lead_decisions_decision", sql`${t.decision} in ('dismissed', 'deal')`),
+    check("lead_decisions_email", sql`${t.email} = lower(btrim(${t.email})) and char_length(${t.email}) between 3 and 320`),
+  ],
+);

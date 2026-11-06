@@ -121,6 +121,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   dispatcher's `activities` job, claimed by `notified_at`). A deal's activities go with it; a person's or a company's lose the link; a merge
   moves them; an erasure deletes those about the person alone and takes the person off the rest. Audited as `activity.*` with ids only.
 
+## A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)
+
+- **A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)**: leads are read where their requests are (quote
+  requests, questions and forms, chats, new subscribers), never copied into a table of their own; only what staff decided about a person is
+  kept (`commerce.lead_decisions`, by normalised address), written by `dismissLead()` and `makeLeadDeal()` with `customers:write` while
+  Deals is on. A person who has paid for an order (restricted orders left out) or is in an open deal is no lead; a decision hides a person
+  until they ask again after it. A new kind of request a person makes of a store joins `leadRows()`.
+
 ## Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)
 
 - **Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)**: a store's creator programme (`commerce.creator_settings`,

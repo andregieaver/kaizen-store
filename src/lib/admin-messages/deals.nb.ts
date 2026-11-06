@@ -179,6 +179,19 @@ export const dealsNb: DealsMessages = {
     },
   },
 
+  leads: {
+    board: "Tavle",
+    tab: "Leads",
+    intro: "Folk som har bedt om noe, men ikke er kunder ennå. Gjør dem som er verdt å følge opp til avtaler, og avvis resten.",
+    none: "Ingen nye leads. Folk som ber om tilbud, stiller et spørsmål, chatter med deg eller abonnerer, dukker opp her.",
+    kinds: { quote: "Tilbudsforespørsel", question: "Spørsmål", chat: "Chat", subscriber: "Abonnerer" },
+    dealKinds: { quote: "tilbudsforespørsel", question: "spørsmål", chat: "chat", subscriber: "ny abonnent" },
+    makeDeal: "Lag avtale",
+    dismiss: "Avvis",
+    makeDealOf: "Lag avtale av {name}",
+    dismissOf: "Avvis {name}",
+  },
+
   today: {
     title: "I dag",
     mine: "Mine",

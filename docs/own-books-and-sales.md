@@ -122,7 +122,7 @@ person; an activity belongs to a customer or deal and is seen by the team: both 
 link's meetings on the timeline.*
 
 **S4. A leads inbox.** People who are not customers yet but asked for something: quote requests, product questions, chats, form
-answers, new subscribers. One list; *Make a deal* or *Dismiss*.
+answers, new subscribers. One list; *Make a deal* or *Dismiss*. *Built (D475): the Deals page's second view.*
 
 **S5. Email on the timeline.** The main reason people stay in Pipedrive. First, a per-store forwarding address (`bcc-{key}@` the inbound
 domain already set up for support, D332): staff copy or forward mail to it and it is filed on the matching person, company and deal by
@@ -348,7 +348,7 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 |---|---|---|
 | Now | S1 timeline (built, D462) | **B1 EHF out** (deadline 1 January 2027; built but the access point's adapter, D463) |
 | Next | S3 activities (built, D468) | B8 (built, D473) before the AS issues its first invoice; B2 the ledger in shadow on the AS's books from their opening balance, with B4's statement upload |
-| Then | S4 leads, S5 email (forwarding address), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
+| Then | S4 leads (built, D475), S5 email (forwarding address), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
 | Then | S6 reports; `sales` opens to every store | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |
 | Then | | B6 accountants, ready before Human Web's turnover passes NOK 5 million (the threshold watch says when it is near); then ring 2 |
 | Later | S5 Microsoft 365 and Gmail sync | B7 payroll partner (ring 3), a second country pack (ring 4) |

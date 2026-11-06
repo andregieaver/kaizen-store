@@ -152,6 +152,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
         (select count(*) from commerce.field_values where store_id = ${sid}::uuid and entity = 'customer' and entity_id = ${cid}::uuid)::int as field_values,
         (select count(*) from commerce.customer_sessions where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as customer_sessions,
         (select count(*) from commerce.customer_codes where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as customer_codes,
+        (select count(*) from commerce.lead_decisions where store_id = ${sid}::uuid and email = any(${addresses}))::int as lead_decisions,
         (select count(*) from commerce.customer_sign_in_links where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as customer_sign_in_links,
         (select count(*) from commerce.checkout_accounts where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as checkout_accounts
     `),
@@ -224,6 +225,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       field_values: n(c.field_values),
       customer_sessions: n(c.customer_sessions),
       customer_codes: n(c.customer_codes),
+      lead_decisions: n(c.lead_decisions),
       customer_sign_in_links: n(c.customer_sign_in_links),
       checkout_accounts: n(c.checkout_accounts),
     },
@@ -819,6 +821,7 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     await tx.execute(sql`update commerce.activities set customer_id = null, updated_at = now() where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
   }
   await tx.execute(sql`delete from commerce.customer_codes where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
+  await tx.execute(sql`delete from commerce.lead_decisions where store_id = ${sid}::uuid and email = any(${addresses})`);
   await tx.execute(sql`
     delete from commerce.company_invites where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid)
   `);

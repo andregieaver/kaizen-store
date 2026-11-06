@@ -188,6 +188,20 @@ export const dealsEn = {
     },
   },
 
+  /** The leads inbox (S4, D475), beside the board. */
+  leads: {
+    board: "Board",
+    tab: "Leads",
+    intro: "People who asked for something but are not customers yet. Make a deal of those worth following up, and dismiss the rest.",
+    none: "No new leads. People who ask for a quote or a question, chat with you or subscribe show up here.",
+    kinds: { quote: "Quote request", question: "Question", chat: "Chat", subscriber: "Subscribed" },
+    dealKinds: { quote: "quote request", question: "question", chat: "chat", subscriber: "new subscriber" },
+    makeDeal: "Make a deal",
+    dismiss: "Dismiss",
+    makeDealOf: "Make a deal of {name}",
+    dismissOf: "Dismiss {name}",
+  },
+
   /** The store's home (S3, D468): what is late, due today and done today. */
   today: {
     title: "Today",

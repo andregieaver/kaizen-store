@@ -143,6 +143,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
   // Sign-in ---------------------------------------------------------------------------------------------------------------------------
   entry("customer_sessions", "shopper", via("customer", "customer_id"), ["customer_id", "token_hash"], null, "delete", "Browsers signed in: deleted (never exported: a security record).", { until: "customer_sessions" }),
+  entry("lead_decisions", "shopper", via("email", "email"), ["email"], null, "delete", "What staff decided about a person who asked for something before they were a customer (D475): dismissed, or made a deal of; deleted."),
   entry("customer_codes", "shopper", via("email", "email"), ["email", "code_hash"], null, "delete", "Sign-in codes asked for by this address; deleted.", { until: "customer_codes" }),
   entry("customer_sign_in_links", "shopper", via("customer", "customer_id"), ["customer_id", "token_hash"], null, "delete", "Sign-in links; deleted."),
 

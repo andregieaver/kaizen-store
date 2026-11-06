@@ -18,6 +18,9 @@ import { ensurePipeline, listDeals } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 
 import { placeDealAction } from "./actions";
+import { dismissLeadAction, makeLeadDealAction } from "./lead-actions";
+import { LeadsList } from "@/components/admin/deals/leads-list";
+import { leadsOf } from "@/server/leads";
 
 export const metadata: Metadata = { title: "Deals" };
 
@@ -92,6 +95,11 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
     }),
   }));
   const canChange = memberCan(member, "customers:write");
+  // The leads inbox (S4, D475) beside the board: people who asked for something and are not customers yet.
+  const leads = await leadsOf(store.id);
+  const showLeads = query.view === "leads";
+  const viewTab = (leadsView: boolean) =>
+    `rounded-full border px-3 py-1.5 text-sm ${leadsView === showLeads ? "border-ink bg-ink text-inverse-ink" : "border-line bg-card text-ink"}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -111,6 +119,28 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
           </div>
         }
       />
+      <nav aria-label={w.leads.tab} className="flex flex-wrap gap-2">
+        <Link href={`${base}?pipeline=${pipeline.id}`} aria-current={showLeads ? undefined : "page"} className={viewTab(false)}>
+          {w.leads.board}
+        </Link>
+        <Link href={`${base}?view=leads`} aria-current={showLeads ? "page" : undefined} className={viewTab(true)}>
+          {w.leads.tab}
+          {leads.length > 0 && ` (${leads.length})`}
+        </Link>
+      </nav>
+      {showLeads ? (
+        <LeadsList
+          leads={leads}
+          words={w.leads}
+          when={(iso) => new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short", timeZone: store.timeZone })}
+          actions={
+            canChange
+              ? { make: (email) => makeLeadDealAction.bind(null, store.slug, email), dismiss: (email) => dismissLeadAction.bind(null, store.slug, email) }
+              : null
+          }
+        />
+      ) : (
+        <>
       {pipelines.length > 1 && (
         <nav aria-label={w.pipeline} className="flex flex-wrap gap-2">
           {pipelines.map((p) => (
@@ -128,6 +158,8 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
       {deals.length === 0 && <p className="text-body text-ink-2">{w.board.empty}</p>}
       <DealBoard columns={view} words={{ board: w.board, lost: w.lost, statuses: w.statuses }} place={placeDealAction.bind(null, store.slug)} canChange={canChange} />
       <p className="text-sm text-muted">{w.board.closedNote}</p>
+        </>
+      )}
     </div>
   );
 }

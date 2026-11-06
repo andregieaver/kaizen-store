@@ -94,6 +94,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   // Pålogging
   customer_sessions: "Påloggede nettlesere: slettes (eksporteres aldri: en sikkerhetsoppføring).",
   customer_codes: "Påloggingskoder denne adressen ba om; slettes.",
+  lead_decisions: "Hva ansatte bestemte om en person som ba om noe før de ble kunde (D475): avvist, eller gjort til en avtale; slettes.",
   customer_sign_in_links: "Påloggingslenker; slettes.",
 
   // Ønskelister og handlekurver
