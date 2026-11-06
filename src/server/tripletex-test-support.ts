@@ -267,7 +267,11 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
     if (voucherPath) {
       const voucher = state.vouchers.get(Number(voucherPath[1]));
       if (!voucher) return answer(404, { status: 404, code: 6000, message: "Objektet finnes ikke." });
-      if (method === "GET" && !voucherPath[2]) return answer(200, { value: voucher });
+      // Its postings' accounts with their numbers, as Tripletex answers when the fields ask for `account(number)`.
+      if (method === "GET" && !voucherPath[2]) {
+        const postings = voucher.postings.map((p) => ({ ...p, account: { id: p.account.id, number: state.accounts.find((a) => a.id === p.account.id)?.number } }));
+        return answer(200, { value: { ...voucher, postings } });
+      }
       if (method === "POST" && voucherPath[2]) {
         const file = init?.body instanceof FormData ? init.body.get("file") : null;
         if (!(file instanceof Blob)) return invalid("Fil mangler.", "file");

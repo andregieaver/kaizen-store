@@ -52,6 +52,18 @@ export const booksNb: BooksMessages = {
     empty: "Ingenting ført i disse dagene ennå.",
     unbalanced: "Regnskapet er ikke i balanse. Si fra til oss: dette skal aldri skje.",
   },
+  compare: {
+    title: "Sammenlignet med Tripletex",
+    text: "Hvert dokument ført her sammenlignes hver dag med bilaget i Tripletex, konto for konto og i mva.",
+    agree: { one: "{n} dokument stemmer", many: "{n} dokumenter stemmer" },
+    differ: { one: "{n} avviker", many: "{n} avviker" },
+    missing: { one: "{n} er borte fra Tripletex", many: "{n} er borte fra Tripletex" },
+    none: "Ingenting sammenlignet ennå: det skjer få minutter etter at et dokument er ført begge steder.",
+    all: "Alt stemmer på øret.",
+    vat: "Mva",
+    line: "{account}: her {ours}, i Tripletex {theirs}",
+    gone: "Bilaget er borte fra Tripletex.",
+  },
   lock: {
     title: "Lås regnskapet",
     text: "Ingenting datert på eller før dagen føres etterpå, som når en mva-termin er rapportert. Dagen kan flyttes tilbake, og det blir registrert.",
