@@ -38,6 +38,8 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
   // The store's full address: its own host once it has one (P7).
   const origin = storeSiteUrl(store.slug);
   const base = `${origin}${storeBase(store.slug)}`;
+  // In full: the admin is on Kaizena Flow's host, the sitemap on the store's.
+  const sitemap = `${origin}${storeSitemapPath(store.slug)}`;
   // A store template (D175) is never open to search engines.
   const open = Boolean(store.setupCompletedAt || store.isTemplate) && !store.starter;
   const findable = open && !seo.hidden;
@@ -55,7 +57,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
         </p>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <li>
-            <a href={storeSitemapPath(store.slug)} className="underline">
+            <a href={sitemap} className="underline">
               {w.sitemap}
             </a>
           </li>
@@ -239,7 +241,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
               <input name="bing" defaultValue={seo.verification.bing} spellCheck={false} className={`${input} font-mono`} />
             </label>
           </div>
-          <p className={hint}>{fillWords(w.consoleHint, { base, sitemap: `${origin}${storeSitemapPath(store.slug)}` })}</p>
+          <p className={hint}>{fillWords(w.consoleHint, { base, sitemap })}</p>
         </section>
 
         <div>
