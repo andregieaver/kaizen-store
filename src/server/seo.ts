@@ -57,6 +57,7 @@ import type { SaveResult } from "./settings";
 import { getOpenStore, type Store, storeTag } from "./stores";
 import { termsTag } from "./taxonomy";
 import { OFFERED } from "./product-conditions";
+import { siteStoreCached } from "./site-store";
 
 type Row = Record<string, unknown>;
 
@@ -150,6 +151,8 @@ export type PublicStore = {
   private: boolean;
   /** It sells online (D178 step 5: the online shop on); a website has no products, categories, tags or prices to list. */
   selling: boolean;
+  /** Kaizena Flow's own store (D466): its pages are Kaizena Flow's site once the switch is on (D474), never a store listed beside the others. */
+  house: boolean;
   updatedAt: string;
   /** Its front page (D54), shown at each market's own address rather than its page address. */
   frontPageId: string | null;
@@ -168,7 +171,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   cacheLife("hours");
   cacheTag(STORES_TAG);
   const rows = await readDb().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.seo, s.locales, s.features, s.is_template, s.starter, s.setup_completed_at, s.front_page_id, s.products_page_id,
+    select s.id, s.slug, s.name, s.seo, s.locales, s.features, s.is_template, s.starter, s.house, s.setup_completed_at, s.front_page_id, s.products_page_id,
       (s.private_mode and not (s.is_template or s.starter)) as private,
       -- The legal pages (wave 1, 1e) keep their own address and stay in the sitemap once published: only D112's roles are left out.
       (select coalesce(array_agg(r.page_id), '{}') from commerce.page_roles r where r.store_id = s.id and r.role <> all(${LEGAL_ROLE_LIST}::text[])) as role_pages,
@@ -203,6 +206,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
       indexable: !row.starter && Boolean(row.is_template || row.setup_completed_at) && !seo.hidden && !row.private && markets.length > 0,
       private: Boolean(row.private),
       selling: featureOn(features, "shop"),
+      house: row.house === true,
       updatedAt: new Date(String(row.updated_at)).toISOString(),
       frontPageId: row.front_page_id ? String(row.front_page_id) : null,
       productsPageId: row.products_page_id && featureOn(features, "shop") ? String(row.products_page_id) : null,
@@ -453,12 +457,15 @@ const PLATFORM_PRIVATE = ["/admin", "/api/", "/auth/", "/r/"];
  * under its address.
  */
 export async function siteRobots(): Promise<string> {
-  const [platform, stores, pages, articles] = await Promise.all([
+  // While Kaizena Flow's site is served from its own store (D474), the pages at its addresses are the store's.
+  const site = await siteStoreCached();
+  const [platform, all, pages, articles] = await Promise.all([
     getPlatformSeo(),
     listPublicStores(),
-    listPublishedPages(),
-    listPublishedPages(null, "article"),
+    listPublishedPages(site?.id ?? null),
+    listPublishedPages(site?.id ?? null, "article"),
   ]);
+  const stores = all.filter((store) => !store.house);
   const parsed = parseRobotsRules(platform.robots, { sitemaps: true });
   const groups = parsed.groups;
   addRules(groups, ["*"], PLATFORM_PRIVATE.map((path) => ({ allow: false, path })));
@@ -569,7 +576,7 @@ const xml = (value: string) =>
 export async function sitemapIndex(): Promise<string> {
   const origin = siteUrl();
   // A sitemap index only lists sitemaps on its own host: stores on theirs (P7) list their own in their robots.txt.
-  const stores = storeDomain() ? [] : (await listPublicStores()).filter((store) => store.indexable);
+  const stores = storeDomain() ? [] : (await listPublicStores()).filter((store) => store.indexable && !store.house);
   const entries = [
     `<sitemap><loc>${origin}/sitemap-kaizen.xml</loc></sitemap>`,
     // The docs (D442) list their own pages: here while they are on this host, in their own host's robots.txt once they have one.
@@ -585,6 +592,10 @@ export async function sitemapIndex(): Promise<string> {
 /** Kaizen's own pages: the front page, sign-up and every published page and article open to search engines (D42, D57). */
 export async function platformSitemap(): Promise<string> {
   const origin = siteUrl();
+  // While Kaizena Flow's site is served from its own store (D474), its pages are the store's: listed as the store lists them, beside the
+  // platform's own routes that stay (sign-up, the theme store).
+  const site = await siteStoreCached();
+  if (site) return platformSitemapFromStore(site.slug);
   const [all, articles, roles, themes, entries] = await Promise.all([
     listPublishedPages(),
     listPublishedPages(null, "article"),
@@ -631,16 +642,44 @@ export async function platformSitemap(): Promise<string> {
 }
 
 /**
+ * Kaizena Flow's sitemap while its site is served from its own store (D474): sign-up and the theme store in every language, as before, and
+ * every address of the store's own sitemap, which are on Kaizena Flow's host now.
+ */
+async function platformSitemapFromStore(slug: string): Promise<string> {
+  const origin = siteUrl();
+  const [langs, themes, store] = await Promise.all([getPlatformLangs(), themeStoreCards(), storeSitemapUrls(slug)]);
+  const inEvery = (path: string) => {
+    const alternates = languageAlternates(path, langs);
+    const links = alternates
+      ? Object.entries(alternates)
+          .map(([tag, href]) => `<xhtml:link rel="alternate" hreflang="${tag}" href="${xml(`${origin}${href}`)}"/>`)
+          .join("")
+      : "";
+    return langs.map((lang) => `<url><loc>${xml(`${origin}${platformPath(lang, path)}`)}</loc>${links}</url>`);
+  };
+  const urls = [...inEvery("/sign-up"), ...(themes.length > 0 && !themesHost() ? themeStoreEntries(themes, langs) : []), ...(store ?? [])];
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join("\n")}\n</urlset>\n`;
+}
+
+/**
  * A store's sitemap: each market's home and product pages, each listing its
  * versions in the other markets (hreflang) and the product's pictures.
  * Null when the store is not open to search engines.
  */
 export async function storeSitemap(slug: string): Promise<string | null> {
+  const urls = await storeSitemapUrls(slug);
+  if (!urls) return null;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`;
+}
+
+/** The `<url>` entries of a store's sitemap (`storeSitemap()`), or null when the store is not open to search engines. */
+async function storeSitemapUrls(slug: string): Promise<string[] | null> {
   const store = (await listPublicStores()).find((s) => s.slug === slug && s.indexable);
   if (!store) return null;
-  const origin = storeSiteUrl(store.slug);
-  // Addresses without the country while the store sells in one (D181), as its pages' own links are.
+  // Addresses without the country while the store sells in one (D181), as its pages' own links are; read first, so the store's origin is as
+  // it was read (Kaizena Flow's own host for its own store while its site is served from it, D474).
   const address = (await getOpenStore(slug))?.address ?? null;
+  const origin = storeSiteUrl(store.slug);
   // A website (D178 step 5: the online shop off) lists no products, categories or tags.
   const [products, terms, pages, articles, entries, blogs] = await Promise.all([
     store.selling ? listIndexedProducts(store.id) : Promise.resolve([]),
@@ -673,19 +712,25 @@ export async function storeSitemap(slug: string): Promise<string | null> {
       .filter(Boolean)
       .join("");
 
-  // Every country offered in every language it is shown in (D109, D178); a currency is not another page.
+  // Every country offered in every language it is shown in (D109, D178); a currency is not another page. Kaizena Flow's own store names its
+  // languages alone, as Kaizena Flow's site always has (D474, `houseLanguageAlternates()`).
   const views = (markets: readonly Market[]) =>
     markets.flatMap((m) =>
-      languageChoices(store, m).map((locale) => ({ locale: `${locale.split("-")[0]}-${m.code}`, slug: inView(m, { locale, currency: m.nativeCurrency }).slug })),
+      languageChoices(store, m).map((locale) => ({
+        locale: store.house ? locale.split("-")[0] : `${locale.split("-")[0]}-${m.code}`,
+        slug: inView(m, { locale, currency: m.nativeCurrency }).slug,
+      })),
     );
   const versionsOf = (markets: readonly Market[], path: string) =>
     views(markets).map((v) => ({ locale: v.locale, href: `${marketOrigin(store.slug, v.slug, address)}${marketPath(store.slug, v.slug, path, address) || "/"}` }));
+  // Kaizena Flow's own store: every page with versions names its own language's as the default (D474), as Kaizena Flow's sitemap did.
+  const houseDefault = (versions: { href: string }[]) => (store.house && versions.length > 1 ? versions[0].href : undefined);
   const homes = versionsOf(store.markets, "");
   const urls = [
     ...homes.map((home) =>
       entry(home.href, homes, {
         lastmod: store.updatedAt,
-        xDefault: store.markets.length > 1 ? base : undefined,
+        xDefault: store.markets.length > 1 ? base : houseDefault(homes),
       }),
     ),
     ...products.flatMap((product) => {
@@ -711,14 +756,14 @@ export async function storeSitemap(slug: string): Promise<string | null> {
         const versions = versionsOf(store.markets.filter((m) => pageInMarket(page.content, m.code)), `/${page.slug}`);
         // Every picture on the page (D89), its own first, so search engines tie each to the page it is on.
         const image = pageImageUrls(page.content).slice(0, 10);
-        return versions.map((version) => entry(version.href, versions, { lastmod: page.publishedAt, images: image }));
+        return versions.map((version) => entry(version.href, versions, { lastmod: page.publishedAt, images: image, xDefault: houseDefault(versions) }));
       }),
     // Its blogs (D57, D341): each one's list in every market while it has an article, and each article open to search engines at its blog's address.
     ...blogs
       .filter((blog) => articles.some((article) => inBlog(blogs, blog, article.content)))
       .flatMap((blog) => {
         const versions = versionsOf(store.markets, blogPath(blog));
-        return versions.map((version) => entry(version.href, versions));
+        return versions.map((version) => entry(version.href, versions, { xDefault: houseDefault(versions) }));
       }),
     ...articles
       .filter((article) => article.content.searchEngines)
@@ -729,29 +774,32 @@ export async function storeSitemap(slug: string): Promise<string | null> {
           blog ? articlePath(blog, article.slug) : `/blog/${article.slug}`,
         );
         const image = pageImageUrls(article.content).slice(0, 10);
-        return versions.map((version) => entry(version.href, versions, { lastmod: article.publishedAt, images: image }));
+        return versions.map((version) => entry(version.href, versions, { lastmod: article.publishedAt, images: image, xDefault: houseDefault(versions) }));
       }),
     // Its content entries' own pages (D326), published and of a type with pages, in every market.
     ...entries.filter((item) => !pages.some((page) => page.slug === item.path)).flatMap((item) => {
       const versions = versionsOf(store.markets, `/${item.path}`);
-      return versions.map((version) => entry(version.href, versions, { lastmod: item.updatedAt }));
+      return versions.map((version) => entry(version.href, versions, { lastmod: item.updatedAt, xDefault: houseDefault(versions) }));
     }),
   ];
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`;
+  return urls;
 }
 
 /** Kaizen's llms.txt: what Kaizen is, its pages open to AI assistants (D42), and where each open store's own llms.txt is. */
 export async function platformLlms(): Promise<string> {
   const origin = siteUrl();
+  // While Kaizena Flow's site is served from its own store (D474), the pages at its addresses are the store's.
+  const site = await siteStoreCached();
   const [seo, stores, all, articles, roles] = await Promise.all([
     getPlatformSeo(),
     listPublicStores(),
-    listPublishedPages(),
-    listPublishedPages(null, "article"),
+    listPublishedPages(site?.id ?? null),
+    listPublishedPages(site?.id ?? null, "article"),
     getPlatformPageRoles(),
   ]);
-  // A page chosen for a place of its own (D143) is at the place's address, not its own.
-  const placed = new Set(roles.map(([, id]) => id));
+  // A page chosen for a place of its own (D143) is at the place's address, not its own; the store's front and special pages likewise.
+  const house = stores.find((store) => store.house);
+  const placed = new Set(site && house ? [house.frontPageId, ...house.rolePageIds].filter((id): id is string => id !== null) : roles.map(([, id]) => id));
   const pages = all.filter((page) => !placed.has(page.id));
   return renderLlms({
     name: seo.title.en || PLATFORM_DEFAULTS.title,
@@ -761,7 +809,7 @@ export async function platformLlms(): Promise<string> {
       {
         heading: "Stores",
         links: stores
-          .filter((store) => store.indexable)
+          .filter((store) => store.indexable && !store.house)
           .map((store) => ({
             title: store.name,
             url: storeFileUrl(store.slug, "/llms.txt"),

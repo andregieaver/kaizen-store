@@ -51,7 +51,7 @@ export async function privatePasswordMatches(stored: string | null, password: st
   return timingSafeEqual(actual, expected);
 }
 
-export type PrivateResult = { ok: true } | { ok: false; problem: "not_allowed" | "short" | "long" | "never_private" | "trial_ended" };
+export type PrivateResult = { ok: true } | { ok: false; problem: "not_allowed" | "short" | "long" | "never_private" | "trial_ended" | "serves_site" };
 
 /** The caches a change reaches: the store as read, the lists search engines read, and this instance's facts the proxy reads. */
 function refreshAfter(slug: string): void {
@@ -65,6 +65,11 @@ export async function setPrivateMode(member: Membership, on: boolean): Promise<P
   if (!memberCan(member, "settings:write")) return { ok: false, problem: "not_allowed" };
   const { store } = member;
   if (store.isTemplate || store.starter) return { ok: false, problem: "never_private" };
+  // Kaizena Flow's own store while its site is served from it (D474): private, kaizenaflow.com would show every visitor its landing page.
+  if (on && store.house) {
+    const [served] = await db().execute<Row>(sql`select 1 from commerce.platform_settings where site_from_store`);
+    if (served) return { ok: false, problem: "serves_site" };
+  }
   // While the trial's end keeps it private (D420), only a plan makes it public again.
   if (!on) {
     const [paused] = await db().execute<Row>(sql`select 1 from commerce.store_billing where store_id = ${store.id}::uuid and trial_paused_at is not null`);

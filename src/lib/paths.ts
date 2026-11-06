@@ -47,12 +47,32 @@ export function hostOrigin(host: string): string {
   return local ? `http://${host}${local[1] ?? ""}` : `https://${host}`;
 }
 
+// ---------------------------------------------------------------------------
+// Kaizena Flow's site served from its own store (D474)
+// ---------------------------------------------------------------------------
+
+const onSite = new Set<string>();
+
 /**
- * The store's own address: its primary custom domain (P8), else
- * `{slug}.{store domain}`, e.g. `https://demo.kaizenstore.site`; null while
- * stores are under Kaizen's.
+ * Notes whether a store's pages are Kaizena Flow's own site now (D474: Kaizena Flow's own store while the switch is on). `getStore()` calls
+ * it with what it read, as it does `rememberStoreAddress()`, so links made after are on Kaizena Flow's own host.
+ */
+export function rememberSiteStore(storeSlug: string, on: boolean): void {
+  if (on) onSite.add(storeSlug);
+  else onSite.delete(storeSlug);
+}
+
+/** Whether a store's pages are Kaizena Flow's own site, as this process last read the store (D474). */
+export function servesSite(storeSlug: string): boolean {
+  return onSite.has(storeSlug);
+}
+
+/**
+ * The store's own address: Kaizena Flow's own while its pages are the site (D474), else its primary custom domain (P8), else
+ * `{slug}.{store domain}`, e.g. `https://demo.kaizenstore.site`; null while stores are under Kaizen's.
  */
 export function storeOrigin(storeSlug: string): string | null {
+  if (onSite.has(storeSlug)) return siteUrl();
   const domain = storeDomain();
   if (!domain) return null;
   const primary = storeHosts()[storeSlug]?.primary;
@@ -65,7 +85,7 @@ export function storeOrigin(storeSlug: string): string | null {
  * from anywhere else go through `storeHref()`.
  */
 export function storeBase(storeSlug: string): string {
-  return storeDomain() ? "" : `/s/${storeSlug}`;
+  return storeDomain() || onSite.has(storeSlug) ? "" : `/s/${storeSlug}`;
 }
 
 /** The store's front door (its country chooser) as a path on its own pages: never empty. */
@@ -191,8 +211,10 @@ export function storeHref(storeSlug: string, path: string): string {
 /** Every origin the store answers on in this deployment: its host on the store domain and its own domains (P7, P8). */
 export function storeOrigins(storeSlug: string): string[] {
   const domain = storeDomain();
-  if (!domain) return [];
-  return [`${storeSlug}.${domain.split(":")[0]}`, ...(storeHosts()[storeSlug]?.hosts ?? [])].map(hostOrigin);
+  // Kaizena Flow's own store while its pages are the site (D474): on Kaizena Flow's own host too.
+  const site = onSite.has(storeSlug) ? [siteUrl()] : [];
+  if (!domain) return site;
+  return [...site, ...[`${storeSlug}.${domain.split(":")[0]}`, ...(storeHosts()[storeSlug]?.hosts ?? [])].map(hostOrigin)];
 }
 
 /**

@@ -1,6 +1,6 @@
 # Kaizena Flow runs on Kaizena Flow: the plan to close the gap
 
-*Proposed and chosen 6 November 2026 (D466: "Let's go with your recommendations. execute the plan"). Built so far: step 1 (D466), step 2 (D467), steps 3 and 4 (D469); the console's plan analytics (C2, D470); the platform's team page (C1's first step, D471).*
+*Proposed and chosen 6 November 2026 (D466: "Let's go with your recommendations. execute the plan"). Built so far: step 1 (D466), step 2 (D467), steps 3 and 4 (D469), step 5's switch, built and left off (D474); the console's plan analytics (C2, D470); the platform's team page (C1's first step, D471).*
 
 The owner, 6 November 2026, comparing Platform → Settings with a store's Settings: *there still seems to be a wide gap between
 what the main store owner has on the platform and what a customer's store owner has. Make a plan to give the main store owner the
@@ -144,6 +144,19 @@ designing it:
 - **Pictures**: the media library's rows move to the store at the switch (`media.url` is unique, so they were not copied).
 - **Checked before and after**: every address in `sitemap-kaizen.xml` answers 200 with the same canonical and hreflang, at phone and
   computer widths, light and dark, in English and Norwegian (`e2e-live/` holds the axe scan; the same list).
+
+![kaizenaflow.com with the switch](platform-site-switch.svg)
+
+**Built (D474), and off until the owner switches it:** the switch is `platform_settings.site_from_store`, turned on and off from Platform →
+Website (`SiteSwitchCard`) and read by the proxy every few seconds; the platform's own first segments are `PLATFORM_ROUTES` and
+`PLATFORM_ROUTES_NB` in `src/lib/house-routing.ts`, held to the folders of `src/app` by a test; Norwegian at `/no/` is the address alias
+`HOUSE_ALIASES`; the store's pages name their languages `en` and `nb` as the site did; the sitemap, robots.txt and llms.txt read the store
+while it is on; the platform's own routes ask with the store's consent, and the store's pages keep Kaizena Flow's chat until step 6. Turning
+it on makes the store public; turning it off makes it private again and brings the platform's pages back at once. While it is on, the copy is
+not made again and the platform's own pages and articles do not save (the theme store's do). **To switch:** copy the site again, look at it
+in the store, run `node scripts/site-compare.mjs https://kaizenaflow.com > before.json`, switch, then run it again with
+`--against before.json`: it fails on any address of the old sitemap that answers with another status, redirect, canonical or hreflang. Still
+to do at the switch: the media library's rows move to the store.
 
 Step 3's copy and step 5's switch are where things can go wrong; the copy is kept side by side, compared, and the switch has its undo.
 The null rows are deleted only in step 7, weeks after the switch.

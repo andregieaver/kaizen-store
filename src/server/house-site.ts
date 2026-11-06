@@ -32,13 +32,16 @@ export async function lastSiteCopy(): Promise<SiteCopy> {
   return { copiedAt: row?.copied_at ? new Date(row.copied_at).toISOString() : null, rows: row?.rows ?? 0 };
 }
 
-export type CopyResult = { ok: true; counts: Record<string, number> } | { ok: false; problem: "no_store" | "failed" };
+export type CopyResult = { ok: true; counts: Record<string, number> } | { ok: false; problem: "no_store" | "on_site" | "failed" };
 
 /** Copies the platform's own site into Kaizena Flow's own store (a platform admin's action), then lets every cached read of the store go. */
 export async function copySiteIntoHouse(account: Account): Promise<CopyResult> {
   if (!account.platformAdmin) return { ok: false, problem: "failed" };
   const house = await houseStoreId();
   if (!house) return { ok: false, problem: "no_store" };
+  // While the site is served from the store (D474) the store's pages are the live site: a copy would put the platform's old pages over them.
+  const on = await typedRow(z.object({ on: col.bool }), sql`select site_from_store as on from commerce.platform_settings`);
+  if (on?.on) return { ok: false, problem: "on_site" };
   let counts: Record<string, number>;
   try {
     const row = await typedRow(z.object({ counts: z.record(z.string(), z.number()) }), sql`select commerce.copy_platform_site(${account.id}::uuid) as counts`);

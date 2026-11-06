@@ -210,6 +210,22 @@ async function choiceSlugsOf(storeId: string): Promise<string[]> {
   return reservedChoiceSlugs(store?.address);
 }
 
+/** What the platform's page editor says while Kaizena Flow's site is served from its own store (D474). */
+export const SITE_IN_STORE =
+  "Kaizena Flow's site is served from its own store now, so this page is not on the site. Edit it in the store: Kaizena Flow → Website → Pages.";
+
+/**
+ * Whether a page of the platform's own (`id`, null for a new one) is no longer what Kaizena Flow's site shows, the site being served from
+ * its own store (D474): every page and article but the theme store's (`THEME_STORE_ROLES`), which `/themes` still draws.
+ */
+async function platformSiteServedElsewhere(id: string | null): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    select p.site_from_store as on,
+           ${id === null ? sql`false` : sql`exists (select 1 from commerce.platform_page_roles r where r.page_id = ${id}::uuid and r.role in ('themes', 'theme'))`} as theme_store
+      from commerce.platform_settings p`);
+  return Boolean(row?.on) && !row?.theme_store;
+}
+
 /**
  * Saves the editor's page as the draft, and with `publish` also as what
  * visitors see. A page not yet published takes its draft's address at
@@ -239,6 +255,11 @@ export async function savePage(
     fonts?: (families: string[]) => Promise<{ ok: true } | { ok: false; problem: string }>;
   },
 ): Promise<PageResult> {
+  // While Kaizena Flow's site is served from its own store (D474), its pages and articles are edited there: the platform's own are on the
+  // site no longer and would be lost to a later copy. The theme store's pages, and the header and footer of the platform's own routes, stay.
+  if (owner === null && (type === "page" || type === "article") && (await platformSiteServedElsewhere(id))) {
+    return { ok: false, problems: [SITE_IN_STORE] };
+  }
   // What a page is shaped like: its own type, or the one a version of it stands in for.
   const shape: PageType = type === "variant" ? (variantOf ?? "page") : type;
   const edits = globalEditsOf(input);

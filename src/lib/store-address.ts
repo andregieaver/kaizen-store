@@ -30,7 +30,28 @@ export type StoreAddress = {
   countries: string[];
   /** Each offered country's own language, two letters (`{ no: "nb", se: "sv" }`): which language domain (D313) a market without one is on. */
   owns?: Record<string, string>;
+  /**
+   * A choice written another way, its address to the choice (`{ no: "nb" }`): Kaizena Flow's own store (D466, `HOUSE_ALIASES`) alone, whose
+   * Norwegian has been at `/no/…` since D312 and stays there when the site is served from the store (step 5 of `docs/platform-parity-plan.md`).
+   */
+  aliases?: Record<string, string>;
 };
+
+/**
+ * How Kaizena Flow's own store writes its choices: Norwegian (Bokmål, `nb`) at `/no/…`, as Kaizena Flow's site has since D312, never `/nb/…`.
+ * Only that store: for any other store in Norway `/no/…` is its own country's long address.
+ */
+export const HOUSE_ALIASES: Readonly<Record<string, string>> = { no: "nb" };
+
+/** The address a short choice is written at: its alias (`nb` → `no` for Kaizena Flow's own store), else itself. */
+export function writtenChoice(address: Pick<StoreAddress, "aliases"> | null | undefined, choice: string): string {
+  const alias = Object.entries(address?.aliases ?? {}).find(([, to]) => to === choice);
+  return alias ? alias[0] : choice;
+}
+
+/** The short choice a first part names through an alias (`no` → `nb` for Kaizena Flow's own store), or null. */
+const aliasOf = (address: StoreAddress, segment: string): string | null =>
+  Object.prototype.hasOwnProperty.call(address.aliases ?? {}, segment) ? (address.aliases ?? {})[segment] : null;
 
 const langOf = (locale: string) => locale.split("-")[0].toLowerCase();
 const unique = (list: readonly string[]) => [...new Set(list)];
@@ -39,7 +60,14 @@ const unique = (list: readonly string[]) => [...new Set(list)];
  * A store's address shape, from what `getStore()` reads: its offered countries (own first), every one it had, and what it offers in languages
  * and currencies. Null for a store with no country.
  */
-export function storeAddressOf(store: { markets: readonly Market[]; keptMarkets?: readonly Market[]; allMarkets: readonly Pick<Market, "code">[]; localization: Localization }): StoreAddress | null {
+export function storeAddressOf(store: {
+  markets: readonly Market[];
+  keptMarkets?: readonly Market[];
+  allMarkets: readonly Pick<Market, "code">[];
+  localization: Localization;
+  /** Kaizena Flow's own store (D466): its choices are written as `HOUSE_ALIASES` says. */
+  house?: boolean;
+}): StoreAddress | null {
   const own = store.markets[0];
   if (!own) return null;
   const ownLang = langOf(own.ownLocale);
@@ -63,7 +91,16 @@ export function storeAddressOf(store: { markets: readonly Market[]; keptMarkets?
     keptCurrencies: unique(keptCurrencies),
     countries: unique([home, ...(store.keptMarkets ?? []).map((m) => m.code.toLowerCase()), ...store.allMarkets.map((m) => m.code.toLowerCase())]),
     owns: Object.fromEntries(store.markets.map((m) => [m.code.toLowerCase(), langOf(m.ownLocale)])),
+    ...(store.house ? { aliases: houseAliases(home, ownLang) } : {}),
   };
+}
+
+/**
+ * The aliases Kaizena Flow's own store has (`HOUSE_ALIASES`), those that can mean nothing else: never one that is the store's own country's
+ * address together with a choice that is its own language (Norwegian is no choice where the store's own language is Norwegian).
+ */
+function houseAliases(home: string, ownLang: string): Record<string, string> {
+  return Object.fromEntries(Object.entries(HOUSE_ALIASES).filter(([written, choice]) => written === home && choice !== ownLang));
 }
 
 const SHORT = /^(?:([a-z]{2})|([a-z]{3})|([a-z]{2})-([a-z]{3}))$/;
@@ -74,6 +111,8 @@ const SHORT = /^(?:([a-z]{2})|([a-z]{3})|([a-z]{2})-([a-z]{3}))$/;
  * null (a page's address, `om-oss`).
  */
 export function shortChoiceOf(address: StoreAddress, segment: string): "offered" | "kept" | null {
+  const alias = aliasOf(address, segment);
+  if (alias !== null) return shortChoiceOf({ ...address, aliases: {} }, alias);
   const match = SHORT.exec(segment);
   if (!match) return null;
   const lang = match[1] ?? match[3] ?? null;
@@ -93,11 +132,12 @@ export function addressSegment(address: StoreAddress | null | undefined, marketS
   const parsed = parseMarketSlug(marketSlug);
   if (!parsed || parsed.country.toLowerCase() !== address.home) return marketSlug;
   const tail = marketSlug.slice(address.home.length + 1);
-  return tail === "" || shortChoiceOf(address, tail) !== null ? tail : marketSlug;
+  return tail === "" || shortChoiceOf(address, tail) !== null ? writtenChoice(address, tail) : marketSlug;
 }
 
-/** The long market slug a short first part stands for (`en` → `no-en`), for a store that sells in one country. */
-export const longMarketSlug = (address: StoreAddress, segment: string): string => (segment === "" ? address.home : `${address.home}-${segment}`);
+/** The long market slug a short first part stands for (`en` → `no-en`, and `no` → `no-nb` through Kaizena Flow's alias), for a store that sells in one country. */
+export const longMarketSlug = (address: StoreAddress, segment: string): string =>
+  segment === "" ? address.home : `${address.home}-${aliasOf(address, segment) ?? segment}`;
 
 /**
  * The page addresses a store's pages may not take while it has these languages and currencies: a first part that is a choice it keeps is read
@@ -107,7 +147,7 @@ export function reservedChoiceSlugs(address: StoreAddress | null | undefined): s
   if (!address) return [];
   const languages = [...address.languages, ...address.keptLanguages];
   const currencies = [...address.currencies, ...address.keptCurrencies];
-  return [...languages, ...currencies, ...languages.flatMap((l) => currencies.map((c) => `${l}-${c}`))];
+  return [...languages, ...currencies, ...languages.flatMap((l) => currencies.map((c) => `${l}-${c}`)), ...Object.keys(address.aliases ?? {})];
 }
 
 // ---------------------------------------------------------------------------
@@ -217,12 +257,17 @@ export function addressDecision(request: StorePathRequest, address: StoreAddress
   const market = parseMarketSlug(lower);
   if (address.marketless) {
     if (request.parts.length === 0) return { rewrite: joinStorePath(request, address.home, []) };
+    // A choice written through an alias (Kaizena Flow's `/no/x`, Norwegian) is that choice, before it is read as the store's own country.
+    const alias = aliasOf(address, lower);
+    if (alias !== null && shortChoiceOf(address, lower) !== null) return { rewrite: joinStorePath(request, longMarketSlug(address, lower), rest) };
     const view = market ? viewOf(address, lower, market.country.toLowerCase()) : null;
     if (view === "own") {
       const tail = lower.slice(address.home.length + 1);
-      return shortChoiceOf(address, tail) === "kept" ? null : { redirect: joinStorePath(request, tail, rest) };
+      return shortChoiceOf(address, tail) === "kept" ? null : { redirect: joinStorePath(request, writtenChoice(address, tail), rest) };
     }
     const choice = shortChoiceOf(address, lower);
+    // A choice that has an alias is moved to it (`/nb/x` → `/no/x`), so each page has one address.
+    if (choice !== null && writtenChoice(address, lower) !== lower) return { redirect: joinStorePath(request, writtenChoice(address, lower), rest) };
     if (choice === "offered") return { rewrite: joinStorePath(request, longMarketSlug(address, lower), rest) };
     if (view === "other") return null;
     if (choice === "kept") return { rewrite: joinStorePath(request, longMarketSlug(address, lower), rest) };
@@ -389,6 +434,7 @@ export function afterMarket(parts: readonly string[], address: StoreAddress | nu
   const [first = "", ...rest] = parts;
   const lower = first.toLowerCase().split("~")[0];
   if (address?.marketless) {
+    if (aliasOf(address, lower) !== null && shortChoiceOf(address, lower) !== null) return { market: longMarketSlug(address, lower), rest };
     const market = parseMarketSlug(lower);
     if (market && viewOf(address, lower, market.country.toLowerCase()) !== null) return { market: lower, rest };
     if (shortChoiceOf(address, lower) !== null) return { market: longMarketSlug(address, lower), rest };

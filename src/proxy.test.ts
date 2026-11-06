@@ -7,6 +7,8 @@ vi.mock("@/server/redirect-resolve", () => ({ storeRequestAnswer: (...args: unkn
 vi.mock("@/server/not-found", () => ({ recordNotFound: (...args: unknown[]) => recordNotFound(...args) }));
 vi.mock("@/server/holding", () => ({ holdingFor: async () => null }));
 vi.mock("@/server/experiments", () => ({ runningExperiments: async () => [], storeIdOfSlug: async () => null }));
+const siteStore = vi.fn(async (): Promise<string | null> => null);
+vi.mock("@/server/house-switch", () => ({ siteStore: () => siteStore() }));
 
 import { proxy } from "./proxy";
 
@@ -17,6 +19,8 @@ describe("the proxy's answer for a store's page", () => {
   beforeEach(() => {
     storeRequestAnswer.mockReset();
     recordNotFound.mockReset();
+    siteStore.mockReset();
+    siteStore.mockResolvedValue(null);
   });
 
   it.each(["GET", "HEAD"])("sends a %s request that moved there for good", async (method) => {
@@ -55,5 +59,70 @@ describe("the proxy's answer for a store's page", () => {
     const response = await call("GET");
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+  });
+});
+
+describe("Kaizena Flow's site served from its own store (D474, job 6)", () => {
+  beforeEach(() => {
+    storeRequestAnswer.mockReset();
+    recordNotFound.mockReset();
+    siteStore.mockReset();
+    vi.unstubAllEnvs();
+  });
+
+  const site = (method: string, path: string) => proxy(new NextRequest(`http://localhost${path}`, { method, headers: { host: "localhost" } }), event);
+
+  it("answers the site's pages with the store's, under /s/{store}, as the store's own host would", async () => {
+    siteStore.mockResolvedValue("kaizenaflow");
+    storeRequestAnswer.mockResolvedValue({ rewrite: "/no-nb/about-us" });
+    const response = await site("GET", "/no/about-us");
+    expect(storeRequestAnswer).toHaveBeenCalledWith("/no/about-us", "", "kaizenaflow", true, "localhost");
+    expect(response.headers.get("x-middleware-rewrite")).toBe("http://localhost/s/kaizenaflow/no-nb/about-us");
+  });
+
+  it("serves a path the decision leaves alone from the store too, the front page included", async () => {
+    siteStore.mockResolvedValue("kaizenaflow");
+    storeRequestAnswer.mockResolvedValue(null);
+    expect((await site("GET", "/agents.md")).headers.get("x-middleware-rewrite")).toBe("http://localhost/s/kaizenaflow/agents.md");
+    expect((await site("GET", "/")).headers.get("x-middleware-rewrite")).toBe("http://localhost/s/kaizenaflow");
+  });
+
+  it("moves an address on the site's own host, never to the store's", async () => {
+    siteStore.mockResolvedValue("kaizenaflow");
+    storeRequestAnswer.mockResolvedValue({ location: "/no/about-us" });
+    const response = await site("GET", "/nb/about-us");
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe("http://localhost/no/about-us");
+  });
+
+  it("leaves the platform's own routes to the platform", async () => {
+    siteStore.mockResolvedValue("kaizenaflow");
+    storeRequestAnswer.mockResolvedValue(null);
+    for (const path of ["/sign-up", "/themes/atelier", "/no/sign-up", "/status"]) {
+      const response = await site("GET", path);
+      expect(storeRequestAnswer).toHaveBeenLastCalledWith(path, "", null, true, "localhost");
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    }
+  });
+
+  it("changes nothing while the switch is off, or cannot be read", async () => {
+    storeRequestAnswer.mockResolvedValue(null);
+    siteStore.mockResolvedValue(null);
+    expect((await site("GET", "/about-us")).headers.get("x-middleware-rewrite")).toBeNull();
+    expect(storeRequestAnswer).toHaveBeenLastCalledWith("/about-us", "", null, true, "localhost");
+    siteStore.mockRejectedValue(new Error("down"));
+    expect((await site("GET", "/about-us")).headers.get("x-middleware-rewrite")).toBeNull();
+  });
+
+  it("sends the store's own host to the site while it is on (307), and leaves it be while it is off", async () => {
+    vi.stubEnv("NEXT_PUBLIC_STORE_DOMAIN", "localhost:3000");
+    storeRequestAnswer.mockResolvedValue(null);
+    const own = (path: string) => proxy(new NextRequest(`http://kaizenaflow.localhost:3000${path}`, { method: "GET", headers: { host: "kaizenaflow.localhost:3000" } }), event);
+    siteStore.mockResolvedValue("kaizenaflow");
+    const response = await own("/about-us?a=1");
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://localhost:3000/about-us?a=1");
+    siteStore.mockResolvedValue(null);
+    expect((await own("/about-us")).status).toBe(200);
   });
 });

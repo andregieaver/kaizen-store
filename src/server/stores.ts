@@ -12,7 +12,7 @@ import type { Market } from "@/lib/markets";
 import { isTermsMode, type TermsMode } from "@/lib/checkout-terms";
 import { isLegalRole, type LegalRole } from "@/lib/legal-roles";
 import { isPageRole, type PageRole } from "@/lib/page-roles";
-import { isStoreSlug } from "@/lib/paths";
+import { isStoreSlug, rememberSiteStore } from "@/lib/paths";
 import { type TrackingSettings } from "@/lib/cookie-consent";
 import { parseTracking } from "@/lib/cookie-consent-schema";
 import { type CustomCode } from "@/lib/custom-code";
@@ -45,6 +45,11 @@ export type Store = {
   sandbox: boolean;
   /** Kaizena Flow's own store (D466, docs/platform-parity-plan.md): its site and customers; never billed, limited, closed or counted as a customer. */
   house: boolean;
+  /**
+   * Its pages are Kaizena Flow's own site now (D474): Kaizena Flow's own store while the switch is on. Its addresses are then on Kaizena
+   * Flow's own host (`storeOrigin()`, remembered by `getStore()`).
+   */
+  onSite: boolean;
   setupCompletedAt: string | null;
   /** Stripe is switched on with keys for its mode, so shoppers can pay. */
   paymentsOn: boolean;
@@ -193,6 +198,8 @@ export async function getStore(slug: string): Promise<Store | null> {
   const store = isStoreSlug(slug) ? await loadStore(slug) : null;
   // Links to the store's pages are made without the country while it sells in one (D181): `marketPath()` reads what was read here.
   if (store) rememberStoreAddress(store.slug, store.address);
+  // Kaizena Flow's own store while its site is served from it (D474): its addresses are on Kaizena Flow's own host.
+  if (store) rememberSiteStore(store.slug, store.onSite);
   return store;
 }
 
@@ -223,6 +230,7 @@ async function readStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.sandbox, s.house, s.setup_completed_at,
+      (s.house and coalesce((select p.site_from_store from commerce.platform_settings p), false)) as on_site,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
       s.terms_at_checkout, s.customer_accounts, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
       s.price_decimals, s.price_words, s.quantity_picker,
@@ -281,6 +289,7 @@ async function readStore(slug: string): Promise<Store | null> {
     starter: Boolean(row.starter),
     sandbox: Boolean(row.sandbox),
     house: Boolean(row.house),
+    onSite: row.on_site === true,
     setupCompletedAt: row.setup_completed_at
       ? new Date(String(row.setup_completed_at)).toISOString()
       : null,

@@ -27,8 +27,8 @@ export type Localized = {
 /**
  * The markets and what the store offers in languages and currencies, as read from its row and switched by its features (D178): the countries
  * offered (`offeredMarkets()`), and languages and currencies beyond each country's own only while Several languages or currencies is on; and
- * the shape of its addresses (D181). The row needs `features`, `locales`, `currencies`, `markets` and `all_markets` as `loadStore()` selects
- * them (the proxy's facts read the same, `redirect-resolve.ts`). Each market carries how it shows prices (D429, `Market.priceStyle`) from the
+ * the shape of its addresses (D181). The row needs `features`, `locales`, `currencies`, `markets`, `all_markets` and `house` as `loadStore()`
+ * selects them (the proxy's facts read the same, `redirect-resolve.ts`). Each market carries how it shows prices (D429, `Market.priceStyle`) from the
  * row's `price_decimals` and `price_words` and its own `priceDecimals`; a row without them shows decimals always and no words.
  */
 export function localized(row: Row): Localized {
@@ -63,7 +63,8 @@ export function localized(row: Row): Localized {
     keptMarkets,
     allMarkets,
     localization,
-    address: storeAddressOf({ markets, keptMarkets, allMarkets, localization }),
+    // Kaizena Flow's own store writes Norwegian at `/no/…` (D466 step 5, `HOUSE_ALIASES`): the row's `house`, where it is read.
+    address: storeAddressOf({ markets, keptMarkets, allMarkets, localization, house: row.house === true }),
     ratesAuto: Boolean(row.rates_auto),
     ratesUpdatedAt: row.rates_updated_at ? new Date(String(row.rates_updated_at)).toISOString() : null,
     chosenLocales,

@@ -7,6 +7,7 @@ import { PartStyles } from "@/components/part-styles";
 import { PageEditLink } from "@/components/page-edit-link";
 import { StorePageArticle } from "@/components/store-page-article";
 import { browserText } from "@/lib/browser-text";
+import { houseLanguageAlternates } from "@/lib/house-alternates";
 import { blogPath, blogTitle, feedPath, type Blog } from "@/lib/blogs";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -94,7 +95,9 @@ export async function blogMetadata(params: ShopParams, handle: string | null = n
   const { store, market, blog } = loaded;
   const m = t(market.lang);
   const name = blogTitle(blog, market.locale, store.localization.locales[0], m.blog);
-  const alternates = { canonical: pathIn(store, market.slug, blogPath(blog)), types: feedAlternate(store, market, blog, name) };
+  // Kaizena Flow's own store names the blog's languages as Kaizena Flow's site always has (D474); other stores' lists name none.
+  const languages = houseLanguageAlternates(store, (slug) => pathIn(store, slug, blogPath(blog)));
+  const alternates = { canonical: pathIn(store, market.slug, blogPath(blog)), ...(languages && { languages }), types: feedAlternate(store, market, blog, name) };
   // The page chosen for the blog (D112) has its own title and search texts.
   const page = await listingPage(store, blog);
   if (!page) return { title: name, alternates };
@@ -201,9 +204,12 @@ export async function blogTermMetadata(kind: TermKind, params: Params, handle: s
   if (!loaded) return {};
   const { store, market, term, blog } = loaded;
   const name = blogTitle(blog, market.locale, store.localization.locales[0], t(market.lang).blog);
+  const path = `${blogPath(blog)}/${kind}/${term.slug}`;
+  // Kaizena Flow's own store names its languages as Kaizena Flow's site always has (D474).
+  const languages = houseLanguageAlternates(store, (slug) => pathIn(store, slug, path));
   return {
     title: term.name,
-    alternates: { canonical: pathIn(store, market.slug, `${blogPath(blog)}/${kind}/${term.slug}`), types: feedAlternate(store, market, blog, name) },
+    alternates: { canonical: pathIn(store, market.slug, path), ...(languages && { languages }), types: feedAlternate(store, market, blog, name) },
   };
 }
 

@@ -1859,6 +1859,16 @@ export const platformSettings = commerce.table(
     /** Kaizen's menus (D85) in its standard header and footer; null: none. */
     headerMenuId: uuid("header_menu_id"),
     footerMenuId: uuid("footer_menu_id"),
+    /**
+     * Kaizena Flow's site is served from its own store (D474, step 5 of `docs/platform-parity-plan.md`): on Kaizena Flow's own host every
+     * address that is no platform route (`PLATFORM_ROUTES`) is the store's. Off until a platform admin switches it on from Platform →
+     * Website; switching it off brings the platform's own pages back at once. Only while the store is open and not private
+     * (`platform_site_from_store()`), and the store cannot be made private while it is on.
+     */
+    siteFromStore: boolean("site_from_store").notNull().default(false),
+    /** When the switch was last turned on or off, and by whom (D474). */
+    siteFromStoreAt: timestamp("site_from_store_at", { withTimezone: true }),
+    siteFromStoreBy: uuid("site_from_store_by").references(() => accounts.id),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -1876,6 +1886,7 @@ export const platformSettings = commerce.table(
     index("platform_settings_header_menu_idx").on(t.headerMenuId),
     index("platform_settings_footer_menu_idx").on(t.footerMenuId),
     index("platform_settings_sandbox_source_idx").on(t.sandboxSource),
+    index("platform_settings_site_from_store_by_idx").on(t.siteFromStoreBy),
   ],
 );
 

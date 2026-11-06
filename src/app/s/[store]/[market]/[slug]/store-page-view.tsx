@@ -14,6 +14,7 @@ import { PAGE_ROLES, roleAddress } from "@/lib/page-roles";
 import { featureOn } from "@/lib/store-features";
 import { pageInMarket } from "@/lib/page-markets";
 import { localizePage } from "@/lib/page-translation";
+import { houseLanguageAlternates } from "@/lib/house-alternates";
 import { adminOrigin, marketHome, marketMetaPath, marketPath, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
 import { experimentOfPage } from "@/server/experiments";
@@ -91,7 +92,10 @@ export async function storePageMetadata(params: StorePageParams, variant: string
     description,
     alternates: {
       canonical: path(market),
-      languages: Object.fromEntries(store.markets.filter((m) => pageInMarket(page.content, m.code)).map((m) => [m.locale, path(m)])),
+      // Kaizena Flow's own store names its languages as Kaizena Flow's site always has (D474); every other store its countries.
+      languages:
+        houseLanguageAlternates(store, (slug) => marketMetaPath(store.slug, slug, `/${page.slug}`)) ??
+        Object.fromEntries(store.markets.filter((m) => pageInMarket(page.content, m.code)).map((m) => [m.locale, path(m)])),
     },
     ...(!c.searchEngines || variant ? { robots: { index: false } } : {}),
     ...storeShareTags(store, market, {

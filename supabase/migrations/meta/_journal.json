@@ -4873,6 +4873,20 @@
       "when": 1793975585114,
       "tag": "20261106143305_business_change_ticks",
       "breakpoints": true
+    },
+    {
+      "idx": 696,
+      "version": "7",
+      "when": 1793982861711,
+      "tag": "20261106163421_house_switch",
+      "breakpoints": true
+    },
+    {
+      "idx": 697,
+      "version": "7",
+      "when": 1793982915119,
+      "tag": "20261106163515_house_switch_rules",
+      "breakpoints": true
     }
   ]
 }

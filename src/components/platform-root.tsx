@@ -21,6 +21,9 @@ import { siteIcons } from "@/lib/site-icons";
 import { siteFontStyle } from "@/server/fonts";
 import { getPlatformChrome, getPlatformFavicon } from "@/server/platform-navigation";
 import { getPlatformSeo, PLATFORM_DEFAULTS, verificationTags } from "@/server/seo";
+import { siteStoreCached } from "@/server/site-store";
+import { getOpenStore } from "@/server/stores";
+import { liveCustomCode } from "@/lib/custom-code";
 import { siteLayoutFor } from "@/server/site-layouts";
 import { textStylesCssFor } from "@/server/text-styles";
 
@@ -53,7 +56,10 @@ export async function platformRootMetadata(lang: PlatformLang): Promise<Metadata
 export async function PlatformRoot({ lang, children }: { lang: PlatformLang; children: React.ReactNode }) {
   const facts = PLATFORM_LANG_FACTS[lang];
   // Kaizen's own header and footer built in the page builder (D80), else the standard ones.
-  const [chrome, headerLayout, footerLayout] = await Promise.all([getPlatformChrome(), siteLayoutFor(null, "header"), siteLayoutFor(null, "footer")]);
+  const [chrome, headerLayout, footerLayout, site] = await Promise.all([getPlatformChrome(), siteLayoutFor(null, "header"), siteLayoutFor(null, "footer"), siteStoreCached()]);
+  // While Kaizena Flow's site is served from its own store (D474), the platform's own routes on its host (sign-up, the theme store, status)
+  // ask with the store's consent: one host, one answer, whichever page a visitor gives it on.
+  const house = site ? await getOpenStore(site.slug) : null;
   return (
     // Kaizen's own theme (D235): its choices as attributes, its colours and sizes as variables, as a store's (D60).
     <html lang={facts.tag} className="h-full antialiased" {...themeAttributes(chrome.theme.settings)} suppressHydrationWarning={chrome.theme.settings.visitorSwitch}>
@@ -106,7 +112,18 @@ export async function PlatformRoot({ lang, children }: { lang: PlatformLang; chi
               <KaizenChat lang={lang} />
             </Suspense>
             <Suspense fallback={null}>
-              <SiteConsent storeId={null} tracking={chrome.tracking} lang={facts.messages} locale={facts.locale} cookiePage={platformPath(lang, "/cookies")} />
+              {house ? (
+                <SiteConsent
+                  storeId={house.id}
+                  tracking={house.tracking}
+                  code={liveCustomCode(house.customCode)}
+                  lang={facts.messages}
+                  locale={facts.locale}
+                  cookiePage={platformPath(lang, "/cookies")}
+                />
+              ) : (
+                <SiteConsent storeId={null} tracking={chrome.tracking} lang={facts.messages} locale={facts.locale} cookiePage={platformPath(lang, "/cookies")} />
+              )}
             </Suspense>
           </OffPayRoutes>
         </Suspense>

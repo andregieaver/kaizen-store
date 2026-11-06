@@ -4,9 +4,11 @@ import { ROLE_SEGMENT } from "@/lib/ab-site";
 import { parseStoreRequest, storeOfHost, variantPath } from "@/lib/ab-routing";
 import { dataCookieName } from "@/lib/experiments";
 import { mayBeHeld } from "@/lib/holding";
+import { HOUSE_SLUG, houseHostStore, houseServedPath, hostnameOf } from "@/lib/house-routing";
 import { storeDomain, storeHosts } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { holdingFor } from "@/server/holding";
+import { siteStore } from "@/server/house-switch";
 import { recordNotFound } from "@/server/not-found";
 import { unlockCookieName, unlocks } from "@/lib/unlock-pass";
 import { unlockSecret } from "@/server/private-secret";
@@ -37,6 +39,12 @@ import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
  * 4. Held domains (D317 8): a host that is no store's and not Kaizena Flow's own may be a domain someone holds here with no store using it; it
  *    answers with its holding page or the holder's redirect (`holdingFor()`, read at most every 30 seconds a host), never a deployment.
  *
+ * 6. Kaizena Flow's site served from its own store (D474, step 5 of `docs/platform-parity-plan.md`): while the switch is on (`siteStore()`, read
+ *    at most every few seconds), a request on Kaizena Flow's own host for an address that is no platform route (`houseHostStore()`) is the
+ *    store's, as if it came to the store's own host: jobs 1, 3 and 5 decide on it so, and what they serve is under `/s/{store}` (the host
+ *    routing of `next.config.ts` knows nothing of the switch). The store's own host sends its visitors to Kaizena Flow's (307: the switch can
+ *    go back). Off, nothing of this runs.
+ *
  * Anything unexpected leaves the request alone.
  */
 // The cookie's name and the store matcher are written out: a matcher is read at build time and cannot use a constant (`MARKER_COOKIE` and `STORE_MATCHER`, tested to agree).
@@ -52,7 +60,23 @@ export const config = {
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const host = request.headers.get("host") ?? "";
-  const hostStore = storeOfHost(host, storeDomain(), storeHosts());
+  const ownHostStore = storeOfHost(host, storeDomain(), storeHosts());
+  // Job 6: the store whose pages are Kaizena Flow's site while the switch is on, read only for Kaizena Flow's own host and the store's own.
+  const site = new URL(siteUrl()).hostname;
+  let house: string | null = null;
+  if (ownHostStore === null ? hostnameOf(host) === site : ownHostStore === HOUSE_SLUG) {
+    try {
+      const served = await siteStore();
+      if (served && ownHostStore === served && (request.method === "GET" || request.method === "HEAD")) {
+        return NextResponse.redirect(new URL(`${request.nextUrl.pathname}${request.nextUrl.search}`, siteUrl()), 307);
+      }
+      if (ownHostStore === null) house = houseHostStore({ host, pathname: request.nextUrl.pathname, site, house: served });
+    } catch (error) {
+      // The switch that cannot be read leaves the request alone: Kaizena Flow's own pages answer, as they did before it.
+      console.error("[house] proxy", error);
+    }
+  }
+  const hostStore = ownHostStore ?? house;
   if (!hostStore && mayBeHeld(host, { site: new URL(siteUrl()).hostname, storeDomain: storeDomain() })) {
     try {
       const held = await holdingFor(host);
@@ -84,18 +108,21 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   } catch (error) {
     console.error("[addresses] proxy", error);
   }
+  // On Kaizena Flow's own host the store's pages are under `/s/{store}` (job 6); on the store's own host the host routing puts them there.
+  const out = (pathname: string) => (house ? houseServedPath(house, pathname) : pathname);
   const rewrite = (pathname: string) => {
     const url = request.nextUrl.clone();
-    url.pathname = pathname;
+    url.pathname = out(pathname);
     return NextResponse.rewrite(url);
   };
-  const plain = () => (served === request.nextUrl.pathname ? NextResponse.next() : rewrite(served));
+  const plain = () => (served === request.nextUrl.pathname && !house ? NextResponse.next() : rewrite(served));
   // A private store (D339): a request without a good pass is shown the landing page, never the page asked (job 5).
   try {
-    const gate = await privateGate(served, hostStore);
+    // Kaizena Flow's store while it serves the site is never private (the database holds it, D474): its facts of a few seconds ago are not asked.
+    const gate = house ? null : await privateGate(served, hostStore);
     if (gate && !unlocks(unlockSecret(), request.cookies.get(unlockCookieName(gate.storeId))?.value, { id: gate.storeId, version: gate.version })) {
       const url = request.nextUrl.clone();
-      url.pathname = gate.landing;
+      url.pathname = out(gate.landing);
       url.search = `?to=${encodeURIComponent(`${request.nextUrl.pathname}${request.nextUrl.search}`)}`;
       const response = NextResponse.rewrite(url);
       response.headers.set("X-Robots-Tag", "noindex, nofollow");

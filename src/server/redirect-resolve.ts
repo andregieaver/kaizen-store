@@ -209,7 +209,7 @@ export const FACTS_MS = 10_000;
 async function storeFactsOf(slug: string): Promise<StoreFacts> {
   return remembered(factsKey(slug), async () => {
     const [row] = await db().execute<Row>(sql`
-      select s.id, s.slug, s.features, s.locales,
+      select s.id, s.slug, s.features, s.locales, s.house,
         case when s.private_mode and not (s.is_template or s.starter) then s.private_version end as private_version,
         (select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
            from commerce.store_currencies c where c.store_id = s.id) as currencies,

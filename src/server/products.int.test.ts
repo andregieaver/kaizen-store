@@ -47,6 +47,7 @@ async function createStore(slug: string): Promise<Store> {
     starter: false,
     sandbox: false,
     house: false,
+    onSite: false,
     setupCompletedAt: null,
     paymentsOn: false,
     paymentsTest: false,

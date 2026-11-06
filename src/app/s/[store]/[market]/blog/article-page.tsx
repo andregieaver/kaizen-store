@@ -11,6 +11,7 @@ import type { Market } from "@/lib/markets";
 import { pageExcerpt, pageSlugProblem, reservedPageSlugs } from "@/lib/page-content";
 import { pageInMarket } from "@/lib/page-markets";
 import { localizePage } from "@/lib/page-translation";
+import { houseLanguageAlternates } from "@/lib/house-alternates";
 import { adminOrigin, marketMetaPath, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import { articleJsonLd } from "@/lib/structured-data";
 import { approvedComments } from "@/server/blog-comments";
@@ -98,7 +99,10 @@ export async function articleMetadata(params: ArticleParams, handle: string | nu
     description,
     alternates: {
       canonical: path(market),
-      languages: Object.fromEntries(store.markets.filter((m) => pageInMarket(page.content, m.code)).map((m) => [m.locale, path(m)])),
+      // Kaizena Flow's own store names its languages as Kaizena Flow's site always has (D474); every other store its countries.
+      languages:
+        houseLanguageAlternates(store, (slug) => marketMetaPath(store.slug, slug, articlePath(blog, page.slug))) ??
+        Object.fromEntries(store.markets.filter((m) => pageInMarket(page.content, m.code)).map((m) => [m.locale, path(m)])),
       types: feedAlternate(store, market, blog, blogTitle(blog, market.locale, store.localization.locales[0], t(market.lang).blog)),
     },
     ...(!c.searchEngines && { robots: { index: false } }),

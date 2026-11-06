@@ -7,6 +7,7 @@ import { entryPicture, entrySeoIn, entrySummary, entryTitle } from "@/lib/conten
 import { bindPage } from "@/lib/field-binding";
 import type { Market } from "@/lib/markets";
 import { localizePage } from "@/lib/page-translation";
+import { houseLanguageAlternates } from "@/lib/house-alternates";
 import { marketMetaPath, marketPath, storeSiteUrl } from "@/lib/paths";
 import { summarize } from "@/lib/seo";
 import { pageJsonLd } from "@/lib/structured-data";
@@ -33,7 +34,13 @@ export function entryPageMetadata(store: Store, market: Market, found: EntryPage
   return {
     title: seo.title ? { absolute: seo.title } : title,
     ...(description && { description }),
-    alternates: { canonical: path(market), languages: Object.fromEntries(store.markets.map((m) => [m.locale, path(m)])) },
+    alternates: {
+      canonical: path(market),
+      // Kaizena Flow's own store names its languages as Kaizena Flow's site always has (D474); every other store its countries.
+      languages:
+        houseLanguageAlternates(store, (slug) => marketMetaPath(store.slug, slug, `/${type.slug}/${entry.slug}`)) ??
+        Object.fromEntries(store.markets.map((m) => [m.locale, path(m)])),
+    },
     ...storeShareTags(store, market, {
       title: seo.title || title,
       description,
