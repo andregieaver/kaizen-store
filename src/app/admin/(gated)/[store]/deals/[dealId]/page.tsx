@@ -70,7 +70,16 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
           : index > 0 && deal.moves[index - 1].status !== "open"
             ? fillWords(w.deal.reopened, { stage: stageName })
             : fillWords(w.deal.entered, { stage: stageName });
-    const by = move.via === "order" ? w.deal.byOrder : move.via === "work_invoice" ? w.deal.byInvoice : move.by ? fillWords(w.deal.by, { name: move.by }) : null;
+    const by =
+      move.via === "order"
+        ? w.deal.byOrder
+        : move.via === "work_invoice"
+          ? w.deal.byInvoice
+          : move.via === "platform"
+            ? w.deal.byPlatform
+            : move.by
+              ? fillWords(w.deal.by, { name: move.by })
+              : null;
     return by ? `${what} ${by}` : what;
   };
   const closedLine =
@@ -79,7 +88,9 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
         ? w.deal.wonByOrder
         : deal.closedVia === "work_invoice"
           ? w.deal.wonByInvoice
-          : fillWords(w.deal.wonOn, { date: when(deal.closedAt ?? deal.createdAt) })
+          : deal.closedVia === "platform"
+            ? w.deal.wonByPlan
+            : fillWords(w.deal.wonOn, { date: when(deal.closedAt ?? deal.createdAt) })
       : deal.status === "lost"
         ? fillWords(w.deal.lostOn, { date: when(deal.closedAt ?? deal.createdAt) })
         : null;

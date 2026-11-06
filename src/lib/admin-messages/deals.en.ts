@@ -84,6 +84,8 @@ export const dealsEn = {
     lostOn: "Lost on {date}.",
     wonByOrder: "Won when a linked order was paid.",
     wonByInvoice: "Won when an invoice for a linked assignment was issued.",
+    /** Kaizena Flow's own store (D467): a sign-up won when its store's plan was paid, lost when the request was declined. */
+    wonByPlan: "Won when the store's plan was paid.",
     reason: "Reason: {reason}",
     markWon: "Won",
     markLost: "Lost",
@@ -106,6 +108,7 @@ export const dealsEn = {
     by: "by {name}",
     byOrder: "by a paid order",
     byInvoice: "by an issued invoice",
+    byPlatform: "by Kaizena Flow's own records",
   },
 
   pipelinesPage: {

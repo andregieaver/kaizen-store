@@ -17,6 +17,7 @@ import { siteUrl } from "@/lib/site";
 import { sendEmail, type SendOutcome } from "./email";
 import { recordFormSent } from "./experiments";
 import { issueSignupCode } from "./discounts";
+import { houseStoreId } from "./house-customers";
 import { log } from "./log";
 import { joinList } from "./marketing-subscribers";
 import { tagFromForm } from "./segments";
@@ -224,8 +225,10 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
   const id = String(row.id);
   if (owner.storeId) await recordFormSent(owner.storeId, block.id);
   if (!confirm) {
-    // A store's form keeps the person on its list (D295), as unconfirmed: the owner switched the confirmation off.
-    if (owner.storeId) await keepOnList(owner.storeId, block.id, checked.email, payload, request.lang, "unconfirmed");
+    // A store's form keeps the person on its list (D295), as unconfirmed: the owner switched the confirmation off. Kaizena Flow's own forms keep
+    // them on its own store's list (D467).
+    const list = owner.storeId ?? (await houseStoreId());
+    if (list) await keepOnList(list, block.id, checked.email, payload, request.lang, "unconfirmed");
     const status = await relaySignup(found, checked.email, payload, null, request.path, id);
     await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${id}::uuid`);
     return status === "failed" ? { status: 502, body: { ok: false, error: v.form.failed } } : { status: 200, body: done };
@@ -259,7 +262,10 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
 
 type SignupPayload = { name: string; consent: string; consentedAt: string };
 
-/** A store's newsletter sign-up on the store's subscriber list (D295), with the words agreed to and when; Kaizena Flow's own forms keep none. */
+/**
+ * A newsletter sign-up on a subscriber list (D295), with the words agreed to and when: a store's form on the store's list, Kaizena Flow's own
+ * forms on the list of Kaizena Flow's own store (D467), where its broadcasts and automations reach the people who asked.
+ */
 async function keepOnList(storeId: string, blockId: string, email: string, payload: SignupPayload, locale: string, proof: "confirmed" | "unconfirmed") {
   try {
     await joinList({
@@ -371,7 +377,8 @@ export async function confirmSignup(token: string): Promise<{ location: string }
     await db().execute(sql`update commerce.form_submissions set status = 'expired', payload = null where id = ${String(row.id)}::uuid`);
     return back("expired");
   }
-  if (storeId) await keepOnList(storeId, blockId, String(row.email), row.payload as SignupPayload, String(row.locale), "confirmed");
+  const list = storeId ?? (await houseStoreId());
+  if (list) await keepOnList(list, blockId, String(row.email), row.payload as SignupPayload, String(row.locale), "confirmed");
   if (storeId && found.block.type === "newsletter") await welcomeSignup(found, String(row.email), String(row.locale), String(row.id));
   const status = await relaySignup(found, String(row.email), row.payload as SignupPayload, new Date(String(row.confirmed_at)), path, String(row.id));
   await db().execute(sql`update commerce.form_submissions set status = ${status}, payload = null where id = ${String(row.id)}::uuid`);

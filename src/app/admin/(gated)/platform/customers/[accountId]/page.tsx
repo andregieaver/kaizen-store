@@ -9,6 +9,7 @@ import { Avatar } from "@/components/avatar";
 import { InvoiceList } from "@/components/admin/plan-invoices";
 import { listStoreInvoices } from "@/server/billing";
 import { listEmails } from "@/server/email";
+import { houseCustomerOfAccount } from "@/server/house-customers";
 import { getPlatformCustomer } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
 import { requirePlatformAdmin } from "@/server/auth";
@@ -56,6 +57,8 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
   const date = (iso: string) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const kaizenEmails = emails.filter((e) => e.storeName === null);
   const twoStep = await twoStepOfAccount(accountId);
+  // The same person as a customer of Kaizena Flow's own store (D467): its tags, deals, notes and timeline are kept there.
+  const house = await houseCustomerOfAccount(accountId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,6 +72,11 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
           fillWords(w.since, { date: date(customer.createdAt) }),
           customer.platformAdmin && w.platformAdmin,
           customer.disabled && w.disabled,
+          house && (
+            <Link key="house" href={`/admin/${house.storeSlug}/customers/${house.customerId}`} className="underline">
+              {w.inHouseStore}
+            </Link>
+          ),
         ]}
       />
 

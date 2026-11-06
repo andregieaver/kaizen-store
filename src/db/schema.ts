@@ -17577,7 +17577,7 @@ export const deals = commerce.table(
     currency: char("currency", { length: 3 }).notNull(),
     expectedCloseOn: date("expected_close_on", { mode: "string" }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
-    /** `person`, `order` or `work_invoice`: who or what closed it. */
+    /** `person`, `order`, `work_invoice` or `platform` (Kaizena Flow's own records, in its own store, D467): who or what closed it. */
     closedVia: text("closed_via"),
     closeReason: text("close_reason"),
     stageEnteredAt: timestamp("stage_entered_at", { withTimezone: true }).notNull().defaultNow(),
@@ -17602,7 +17602,7 @@ export const deals = commerce.table(
     check("deals_title", sql`${t.title} = btrim(${t.title}) and char_length(${t.title}) between 1 and 200`),
     check("deals_status", sql`${t.status} in ('open', 'won', 'lost')`),
     check("deals_closed", sql`(${t.status} = 'open') = (${t.closedAt} is null) and (${t.closedAt} is null) = (${t.closedVia} is null)`),
-    check("deals_closed_via", sql`${t.closedVia} is null or ${t.closedVia} in ('person', 'order', 'work_invoice')`),
+    check("deals_closed_via", sql`${t.closedVia} is null or ${t.closedVia} in ('person', 'order', 'work_invoice', 'platform')`),
     check("deals_reason", sql`${t.closeReason} is null or (${t.status} <> 'open' and char_length(${t.closeReason}) between 1 and 200)`),
     check("deals_estimate", sql`${t.estimateMinor} is null or ${t.estimateMinor} between 0 and 1000000000000`),
     check("deals_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
@@ -17662,5 +17662,32 @@ export const dealMoves = commerce.table(
     index("deal_moves_deal_idx").on(t.storeId, t.dealId, t.at),
     index("deal_moves_moved_by_idx").on(t.movedBy),
     check("deal_moves_status", sql`${t.status} in ('open', 'won', 'lost')`),
+  ],
+);
+
+/**
+ * Kaizena Flow's own customers (D467, `docs/platform-parity-plan.md` step 2): which customer of Kaizena Flow's own store (D466) is an owner's
+ * account, which an access request, and the deal the request opened. Written only by `src/server/house-customers.ts`; a row lives in Kaizena
+ * Flow's own store alone (`house_customer_links_house()`). The account or request going sets it null; a person with neither and nothing
+ * else of their own in the store is forgotten by the next sync. Ids only: the person is the customer's own.
+ */
+export const houseCustomerLinks = commerce.table(
+  "house_customer_links",
+  {
+    storeId: storeId().references(() => stores.id),
+    customerId: uuid("customer_id").notNull(),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    requestId: uuid("request_id").references(() => accessRequests.id, { onDelete: "set null" }),
+    dealId: uuid("deal_id"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.customerId] }),
+    customerRef("house_customer_links_customer_fk", { storeId: t.storeId, customerId: t.customerId }).onDelete("cascade"),
+    foreignKey({ name: "house_customer_links_deal_fk", columns: [t.storeId, t.dealId], foreignColumns: [deals.storeId, deals.id] }),
+    uniqueIndex("house_customer_links_account_key").on(t.accountId).where(sql`${t.accountId} is not null`),
+    uniqueIndex("house_customer_links_request_key").on(t.requestId).where(sql`${t.requestId} is not null`),
+    uniqueIndex("house_customer_links_deal_key").on(t.storeId, t.dealId).where(sql`${t.dealId} is not null`),
   ],
 );

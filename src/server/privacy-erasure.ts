@@ -712,6 +712,16 @@ async function eraseDeliveries(tx: Tx, s: PrivacySubject): Promise<number> {
 }
 
 /** The subject's rows, all of it or none: the bodies of 2.4 step 3. */
+/** In Kaizena Flow's own store only: the person's applications to open a store blanked (D467). */
+async function blankApplications(tx: Tx, s: PrivacySubject): Promise<void> {
+  const [store] = await tx.execute<Row>(sql`select house from commerce.stores where id = ${s.storeId}::uuid`);
+  if (!store?.house) return;
+  await tx.execute(sql`
+    update commerce.access_requests set email = 'erased-' || id || '@erased.invalid', name = '', message = ''
+    where lower(email) = any(${textList(s.addresses.map((a) => a.toLowerCase()))})
+  `);
+}
+
 async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promise<{ counts: EraseCounts; avatar: string | null; pictures: StoredPicture[] }> {
   const sid = s.storeId;
   const cid = s.customerId;
@@ -725,6 +735,9 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   await blankAssistantTraces(tx, s);
   // What the owner's endpoints were sent, or wait to be sent, about the person (D440 review), read before their drafts and reviews go.
   await eraseDeliveries(tx, s);
+  // Kaizena Flow's own store (D467): a person who asks Kaizena Flow to erase them is not brought back by the next sync from an application;
+  // its name, address and message go now, as its period's end would take them. An owner's account is erased on its own page (D377).
+  await blankApplications(tx, s);
 
   // An order still waiting for payment is not a sale: it is cancelled first (its stock goes back, its payment is marked cancelled, a subscription that
   // never started is expired), so a payment that somehow arrives later finds a cancelled order, which `complete_order_payment()` still completes

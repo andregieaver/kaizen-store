@@ -19,7 +19,8 @@ export const DEAL_LINK_KINDS = ["order", "draft", "work_assignment"] as const;
 export type DealLinkKind = (typeof DEAL_LINK_KINDS)[number];
 
 /** How a deal was closed: by a person, or won by a paid order or an issued Work invoice linked to it. */
-export const DEAL_CLOSED_VIA = ["person", "order", "work_invoice"] as const;
+/** Who or what closed a deal; `platform` is Kaizena Flow's own records closing a sign-up in its own store (D467). */
+export const DEAL_CLOSED_VIA = ["person", "order", "work_invoice", "platform"] as const;
 export type DealClosedVia = (typeof DEAL_CLOSED_VIA)[number];
 
 export const DEAL_TITLE_MAX = 200;

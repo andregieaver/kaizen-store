@@ -289,6 +289,8 @@ export const platformEn = {
   customer: {
     customers: "Customers",
     since: "Since {date}",
+    /** Kaizena Flow's own store (D467): the same person as its customer, with their tags, deals, notes and timeline. */
+    inHouseStore: "As a customer of Kaizena Flow's store",
     platformAdmin: "Platform admin",
     disabled: "Disabled",
     stores: "Stores",

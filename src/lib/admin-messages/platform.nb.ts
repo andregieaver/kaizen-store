@@ -292,6 +292,7 @@ export const platformNb: PlatformMessages = {
   customer: {
     customers: "Kunder",
     since: "Siden {date}",
+    inHouseStore: "Som kunde i Kaizena Flows butikk",
     platformAdmin: "Plattformadministrator",
     disabled: "Deaktivert",
     stores: "Butikker",

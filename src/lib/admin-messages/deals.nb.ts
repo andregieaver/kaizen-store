@@ -79,6 +79,7 @@ export const dealsNb: DealsMessages = {
     lostOn: "Tapt {date}.",
     wonByOrder: "Vunnet da en tilkoblet bestilling ble betalt.",
     wonByInvoice: "Vunnet da det ble utstedt en faktura for et tilkoblet oppdrag.",
+    wonByPlan: "Vunnet da butikkens abonnement ble betalt.",
     reason: "Årsak: {reason}",
     markWon: "Vunnet",
     markLost: "Tapt",
@@ -101,6 +102,7 @@ export const dealsNb: DealsMessages = {
     by: "av {name}",
     byOrder: "av en betalt bestilling",
     byInvoice: "av en utstedt faktura",
+    byPlatform: "av Kaizena Flows egne opplysninger",
   },
 
   pipelinesPage: {

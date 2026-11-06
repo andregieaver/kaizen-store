@@ -143,6 +143,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   // A deal's links and its history (D464): what happened, by ids.
   deal_links: "record",
   deal_moves: "record",
+  // Kaizena Flow's own customers (D467): which of its store's customers is an account or a request, by ids; the platform's own.
+  house_customer_links: "platform",
   // A sandbox's row (D457): the hash of the pass that opens it.
   sandboxes: "secret",
   variant_cost_history: "catalogue",

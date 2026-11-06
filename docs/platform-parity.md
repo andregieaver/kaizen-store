@@ -5,7 +5,7 @@ well.* Kaizena Flow's own site and store are run from the platform admin (`/admi
 `platform_*` tables. The rule is in `CLAUDE.md` (Conventions). This file is its list: what a store's admin has, and whether the
 platform has it. Tick a row (move it to *Built for both*) in the change that brings it.
 
-**How the gap closes:** [`platform-parity-plan.md`](platform-parity-plan.md) (chosen 6 November 2026, D466; step 1 built: Kaizena Flow's store exists):
+**How the gap closes:** [`platform-parity-plan.md`](platform-parity-plan.md) (chosen 6 November 2026, D466; steps 1 and 2 built: Kaizena Flow's store exists, and its owners and applicants are its customers, D467):
 Kaizena Flow's site and its customers move into a store of its own, which gets every store page for a website by itself (*Store*, with
 the plan's step), and the platform console gets what is about running the business (*Console*, C1 to C6).
 
@@ -14,7 +14,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-39 rows.
+33 rows.
 
 ### Website
 
@@ -31,10 +31,6 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 | Store page | Kaizena Flow today | Comes by |
 |---|---|---|
 | A/B tests | None for its own pages. Settings → A/B tests only reads the stores' tests; `experiments.store_id` is not null, keyed to the page's store. (Listed as built for both until 6 November: it was not.) | Store, step 5 |
-| Subscribers | None. The newsletter block works on its pages but keeps nobody, it only emails the recipients (`src/server/forms.ts`); accounts have only a plan-reminder opt-out | Store, step 2 |
-| Segments | None | Store, step 2, with the platform's customer tags (plan, store open, trial, overdue) |
-| Broadcasts | None (`src/server/email.ts` already sends for a null store) | Store, step 2 |
-| Email automations | None | Store, step 2; onboarding series need a trigger on a tag added, built for stores |
 | Ads and conversions | Tags only: GA4, GTM and Meta Pixel; Google Ads, TikTok and Pinterest are left out for the platform (`STORE_ONLY_TOOLS`); no server-side conversions | Store, step 5; a sign-up or a paid plan as a conversion, built for stores as a form sent |
 | Campaigns | Discount codes only; no timed price on a plan | Console, C5 |
 
@@ -58,9 +54,6 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 | Store page | Kaizena Flow today | Comes by |
 |---|---|---|
-| Customers | Platform → Customers lists accounts that have a store, with their stores, plans, invoices and emails; no leads, notes, tags, timeline, import or export | Store, step 2 |
-| Deals | Requests: approve or decline an access request; no pipeline | Store, step 2 (a Sign-ups pipeline) |
-| Privacy requests | Retention rules, the record of processing, and owners erase their own account; no log of people's requests with the month's clock, no copy of a person's data | Store, step 2, covering the account too |
 | Custom fields | On content types only; none on Kaizena Flow's customers or on stores (`field_groups` needs a store) | Store, step 2 (customers); Console (fields on stores) |
 
 ### Settings
@@ -104,6 +97,10 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 | Activity log | Activity | Settings → Activity log |
 | Apps and AI assistants (D439, D441) | Settings → Apps and API | Settings → AI assistants and apps, App listings |
 | Zapier, Make and Slack (D41, D101; the platform's D465) | Integrations | Settings → Integrations: Kaizena Flow's own events (a store requested, made or opened, a plan started, changed, cancelled or not paid, a notice of illegal content) |
+| Customers, with leads, notes, tags, timeline, import and export | Customers | Kaizena Flow's store (D466, D467): every owner and applicant, linked from Platform → Customers |
+| The subscriber list, segments, broadcasts, email automations (D295 to D298) | Marketing | Kaizena Flow's store: its own pages' newsletter keeps who asks (D467); the platform's tags (plan, trial, overdue) for segments |
+| Deals (D464) | Customers → Deals | Kaizena Flow's store: a Sign-ups pipeline, a deal per application, won when its plan is paid (D467) |
+| Privacy requests (D162) | Customers → Privacy requests | Kaizena Flow's store, its erasure blanking the person's applications too (D467) |
 
 ## Store-only: cannot apply to Kaizena Flow
 

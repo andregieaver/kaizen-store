@@ -112,6 +112,12 @@ describe("Kaizena Flow's own store (D466)", () => {
     );
   });
 
+  it("lets an account be deleted outright, taking its place in the store with it", async () => {
+    const admin = await account(true);
+    await db.query("delete from commerce.accounts where id = $1", [admin]);
+    expect(await membership(admin)).toBeUndefined();
+  });
+
   it("may be left with no owner while the platform has no admin, where any other store keeps one", async () => {
     await db.query("update commerce.accounts set platform_admin = false where platform_admin");
     expect((await one<{ n: number }>("select count(*)::int as n from commerce.store_members where store_id = $1 and disabled_at is null", [house])).n).toBe(0);
@@ -124,5 +130,29 @@ describe("Kaizena Flow's own store (D466)", () => {
     await db.query("update commerce.stores set setup_completed_at = null where id = $1", [house]);
     await db.query("update commerce.stores set setup_completed_at = now() where id = $1", [house]);
     expect((await one<{ n: number }>("select count(*)::int as n from commerce.platform_integration_deliveries where subject_id = $1", [house])).n).toBe(0);
+  });
+});
+
+describe("Kaizena Flow's own customers (D467)", () => {
+  it("links a customer to an account or a request in Kaizena Flow's own store only", async () => {
+    const other = (await one<{ id: string }>("insert into commerce.stores (slug, name) values ('links-elsewhere', 'Elsewhere') returning id")).id;
+    const elsewhere = (await one<{ id: string }>("insert into commerce.customers (store_id, email) values ($1, 'a@example.com') returning id", [other])).id;
+    expect(await refused("insert into commerce.house_customer_links (store_id, customer_id) values ($1, $2)", [other, elsewhere])).toMatch(/house_customer_links\.house/);
+    const mine = (await one<{ id: string }>("insert into commerce.customers (store_id, email) values ($1, 'a@example.com') returning id", [house])).id;
+    const person = await account(false);
+    await db.query("insert into commerce.house_customer_links (store_id, customer_id, account_id) values ($1, $2, $3)", [house, mine, person]);
+    // The customer going takes the link with it.
+    await db.query("delete from commerce.customers where id = $1", [mine]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.house_customer_links where customer_id = $1", [mine])).n).toBe(0);
+  });
+
+  it("lets Kaizena Flow's own records close a deal", async () => {
+    const pipeline = (await one<{ id: string }>("insert into commerce.deal_pipelines (store_id, name) values ($1, 'Sign-ups') returning id", [house])).id;
+    const stage = (await one<{ id: string }>("insert into commerce.deal_stages (store_id, pipeline_id, name, position) values ($1, $2, 'Asked', 0) returning id", [house, pipeline])).id;
+    const deal = (
+      await one<{ id: string }>("insert into commerce.deals (store_id, title, pipeline_id, stage_id, currency) values ($1, 'Ada', $2, $3, 'NOK') returning id", [house, pipeline, stage])
+    ).id;
+    expect((await one<{ n: number }>("select commerce.deal_win($1, array[$2::uuid], 'platform') as n", [house, deal])).n).toBe(1);
+    expect(await refused("update commerce.deals set closed_via = 'magic' where id = $1", [deal])).toMatch(/deals_closed_via/);
   });
 });
