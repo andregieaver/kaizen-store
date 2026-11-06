@@ -1172,8 +1172,15 @@ export type PlansBlock = PartBase & {
   type: "plans";
   /** The currency the prices show in; none: the platform's first. */
   currency?: string;
-  /** Which price each card shows; both (the default) shows the monthly price and the yearly one under it. */
+  /**
+   * Which price each card shows; both (the default) shows the monthly price and the yearly one under it. With `switcher` it is the one
+   * the cards start on (monthly unless yearly).
+   */
   interval?: "month" | "year";
+  /** Visitors switch between monthly and yearly prices above the cards (D481). */
+  switcher?: boolean;
+  /** `hide_whole` leaves the decimals off whole amounts (€20, not €20.00); an amount with cents keeps them, so nothing is rounded (D481). */
+  decimals?: "hide_whole";
   /** The plan marked as the one to choose ("Most popular"); an id of Kaizen's plans. */
   highlightId?: string;
   /** Show the comparison table of features under the cards. */
@@ -3176,6 +3183,8 @@ const plansBlock = z.object({
   type: z.literal("plans"),
   currency: z.string().trim().regex(/^[A-Z]{3}$/, "Choose a currency such as NOK or EUR.").optional(),
   interval: z.enum(["month", "year"]).optional(),
+  switcher: z.boolean().optional(),
+  decimals: z.literal("hide_whole").optional(),
   highlightId: z.uuid().optional(),
   comparison: z.boolean().optional(),
   buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),

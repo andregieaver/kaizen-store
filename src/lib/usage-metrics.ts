@@ -4,7 +4,7 @@
  */
 
 export type MetricKind = "gauge" | "counter";
-/** `micros`: millionths of a US dollar, as `src/lib/ai-cost.ts` prices a call. */
+/** `micros`: millionths of a euro (D481): a call priced in dollars as `src/lib/ai-cost.ts` does, turned into euros at its day's ECB rate. */
 export type MetricUnit = "bytes" | "count" | "micros";
 export type MetricSource = "storage" | "database" | "traffic" | "email" | "ai";
 

@@ -148,7 +148,7 @@ The AI is the best of the showcase, so it is on, on a small allowance, through `
 
 - `ai_cost_month_micros`: the sandbox's AI on Kaizena Flow's key, for every feature at once (*Change with AI*, pictures by prompt, *Remove
   background*, motion, translation). When it is spent, `aiFor()` gives no connection and each feature says AI is not available here, with
-  *Keep this store* beside it. Its value is a platform setting (`platform_settings.sandbox_ai_micros`, 500,000 millionths of a dollar:
+  *Keep this store* beside it. Its value is a platform setting (`platform_settings.sandbox_ai_micros`, 500,000 millionths of a euro since D481:
   a few changes and three pictures' worth).
 - `storage_bytes`: the uploads a sandbox may keep, refused past it by `storageRefusal()` as in any store
   (`platform_settings.sandbox_storage_bytes`, 50 MB).

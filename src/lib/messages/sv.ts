@@ -1093,6 +1093,11 @@ export const sv: Messages = {
     notIncluded: "Ingår inte",
     choose: "Kom igång",
     yearlyPrice: (price: string): string => `eller ${price} per år`,
+    period: "Betalningsperiod",
+    monthly: "Månadsvis",
+    yearly: "Årsvis",
+    save: (percent: string): string => `Spara ${percent} %`,
+    saveUpTo: (percent: string): string => `Spara upp till ${percent} %`,
   },
   tableSection: "Avsnitt",
   icons: {

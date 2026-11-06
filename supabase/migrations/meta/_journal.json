@@ -4985,6 +4985,13 @@
       "when": 1794004209137,
       "tag": "20261106223009_ledger_comparisons_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 712,
+      "version": "7",
+      "when": 1794039488922,
+      "tag": "20261107081808_ai_allowance_in_euros",
+      "breakpoints": true
     }
   ]
 }

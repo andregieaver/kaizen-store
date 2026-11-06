@@ -1097,6 +1097,11 @@ export const nb: Messages = {
     notIncluded: "Ikke inkludert",
     choose: "Kom i gang",
     yearlyPrice: (price: string): string => `eller ${price} per år`,
+    period: "Betalingsperiode",
+    monthly: "Månedlig",
+    yearly: "Årlig",
+    save: (percent: string): string => `Spar ${percent} %`,
+    saveUpTo: (percent: string): string => `Spar opptil ${percent} %`,
   },
   tableSection: "Seksjon",
   icons: {

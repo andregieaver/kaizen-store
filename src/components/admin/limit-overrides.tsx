@@ -1,6 +1,6 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { CapacityMessages } from "@/lib/admin-messages/capacity.en";
-import { LIMIT_KEYS, type LimitKey } from "@/lib/limits";
+import { LIMIT_KEYS, limitUnit, type LimitKey } from "@/lib/limits";
 import { formatLimit } from "@/lib/usage-format";
 import type { PanelAction, RowAction } from "@/lib/usage-view";
 
@@ -73,7 +73,7 @@ export function LimitOverridesCard({
             {w.overrides.limit}
             <select name="key" className="rounded-lg border border-edge bg-card px-2 py-1">
               {LIMIT_KEYS.map((key) => (
-                <option key={key} value={key}>{w.limits[key]}</option>
+                <option key={key} value={key}>{w.limits[key]}{w.units[limitUnit(key)] ? ` (${w.units[limitUnit(key)]})` : ""}</option>
               ))}
             </select>
           </label>

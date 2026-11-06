@@ -41,10 +41,16 @@ export const emailsSql = (from: Date, to: Date, marketing: boolean, storeId?: st
     ${only(sql`e.store_id`, storeId)}
   group by e.store_id`;
 
-/** What the AI cost on Kaizena Flow's key in a time span, in millionths of a dollar; a call with no price counts nothing. */
+/**
+ * What the AI cost on Kaizena Flow's key in a time span, in millionths of a euro (D481): the models' prices are in dollars (D145), so
+ * each UTC day's cost is turned into euros at that day's ECB rate (`commerce.usd_per_euro()`). A call with no price counts nothing.
+ */
 export const aiCostSql = (from: Date, to: Date, storeId?: string) => sql`
-  select u.store_id, coalesce(sum(coalesce(${costMicrosSql}, 0)), 0)::bigint as value from commerce.ai_usage u
-  ${priceFor}
-  where u.source = 'platform' and u.created_at >= ${from.toISOString()}::timestamptz and u.created_at < ${to.toISOString()}::timestamptz
-    ${only(sql`u.store_id`, storeId)}
-  group by u.store_id`;
+  select d.store_id, coalesce(sum(round(d.usd / commerce.usd_per_euro(d.day))), 0)::bigint as value from (
+    select u.store_id, (u.created_at at time zone 'UTC')::date as day, sum(coalesce(${costMicrosSql}, 0)) as usd from commerce.ai_usage u
+    ${priceFor}
+    where u.source = 'platform' and u.created_at >= ${from.toISOString()}::timestamptz and u.created_at < ${to.toISOString()}::timestamptz
+      ${only(sql`u.store_id`, storeId)}
+    group by u.store_id, (u.created_at at time zone 'UTC')::date
+  ) d
+  group by d.store_id`;

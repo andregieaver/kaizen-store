@@ -13,6 +13,7 @@ export function plansIn(data: PublicPlans, lang: string): PublicPlans {
   if (!words) return data;
   const say = (text: string) => (Object.hasOwn(words, text) ? words[text] : text);
   return {
+    ...data,
     plans: data.plans.map((plan) => ({ ...plan, description: say(plan.description) })),
     features: data.features.map((feature) => ({
       ...feature,

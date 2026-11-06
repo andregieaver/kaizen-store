@@ -29,7 +29,7 @@ export const capacityEn = {
     egress_bytes_month: "Bandwidth a month",
     stores_owned: "Stores per owner",
   },
-  units: { gb: "GB", count: "", money: "USD" },
+  units: { gb: "GB", count: "", money: "EUR" },
   states: { ok: "", near: "Almost used", reached: "Used up", over: "Over the limit" },
   usage: {
     title: "Usage this month",
