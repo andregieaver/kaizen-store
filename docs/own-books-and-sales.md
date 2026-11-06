@@ -6,7 +6,7 @@ the end; **Human Web is the pilot**, and each step is proven there before it ope
 sole proprietorship (ENK, organisation number 915 429 777, VAT registered; Brønnøysund's register, read 2026-11-06), not an AS as
 `docs/tripletex.md`'s examples say. It runs no payroll, invoices its clients through Work and keeps its books in Tripletex today. It
 has no outside accountant **until its turnover passes NOK 5 million a year; then the owner's wife, an accountant, takes that role**
-(the owner's rule, 6 November 2026; section 4.4).
+(the owner's rule, 6 November 2026; section 4.4). The owner's goal is to **turn Human Web into an AS in 2027** (section 4.5).
 
 This is a plan, not a design: each unit below gets its own design (and decision) when it starts, as Tripletex did (`docs/tripletex.md`).
 
@@ -45,6 +45,10 @@ Sources are listed at the end.
 6. **Tripletex and Fiken stay, as the bridge.** A store keeps them until its books move to Kaizena Flow at a period boundary; during the
    pilot, Tripletex's books are the reference our ledger is compared with. No new accounting connectors (PowerOffice, Fortnox, e-conomic,
    Visma) are started: that effort goes to our own books.
+7. **Human Web becomes an AS in 2027** (the owner's goal). A tax-free conversion takes effect from 1 January of its year, so the AS's
+   books start on 1 January 2027 with what the ENK hands over. The AS brings what the ENK did not have: annual accounts, an audit
+   threshold, and payroll if the owner takes a salary. And it gives the platform a unit every growing ENK will need: changing the
+   business behind a store (B8, section 4.5).
 
 ## 1. Principles
 
@@ -71,7 +75,7 @@ Sources are listed at the end.
 
 | Ring | Who | Sales (S units) | Books (B units) | Needs first |
 |---|---|---|---|---|
-| 0 | Human Web | S1 to S7 | B1 to B5; B6 before its turnover passes NOK 5 million | the pilot's own exit criteria (sections 3 and 4) |
+| 0 | Human Web (an AS from 2027) | S1 to S7 | B1 to B5 with an AS's year-end; B6 before its turnover passes NOK 5 million; B7 if the owner takes a salary; B8 for the conversion | the pilot's own exit criteria (sections 3 and 4) |
 | 1 | Norwegian stores without employees whose owner keeps the books (Fiken's crowd) | all stores (sales opens EU-wide after ring 0) | B1 to B5 | a full year closed at Human Web; accountant's review of the Norway pack |
 | 2 | Norwegian stores with an outside accountant | | B1 to B6 | B6 proven at Human Web with its accountant (section 4.4), and accountants who agree to work in it |
 | 3 | Norwegian stores with payroll | | B1 to B7 | B7 (a payroll partner) |
@@ -226,12 +230,13 @@ out how well it can.
 validation API, signed in by the person with ID-porten in 2026's way, a *systembruker* when Skatteetaten offers it); a corrected return
 when one is needed (a new complete return). SAF-T Financial export. Year-end: closing entries, simple depreciation, accruals, the figures
 for the annual accounts and the business's tax return [U: what can be submitted by API for an AS, what is filed by hand from our
-figures]. An ENK without a duty to file annual accounts, as Human Web is today, ends its year in the business's part of the owner's own
+figures]. An ENK without a duty to file annual accounts, as Human Web is until its 2026 year-end, ends its year in the business's part of the owner's own
 tax return (*næringsspesifikasjon*) [U: confirm, and whether it goes by Skatteetaten's tax return API]; an AS also files annual
 accounts with Brønnøysund and is audited unless it may opt out (section 4.4).
 
 *Pilot exit, and the ring 0 finish line:* one VAT period computed by us and compared with the return filed from Tripletex; the next filed
-from Kaizena Flow; then a full financial year closed in Kaizena Flow. Human Web stops paying for Tripletex.
+from Kaizena Flow; then a full financial year closed in Kaizena Flow (at the earliest the AS's first year, 2027, kept beside Tripletex;
+section 4.5). Human Web stops paying for Tripletex.
 
 **B6. Accountants (proven at Human Web, then the gate for ring 2).** An accountant is a person with access to many clients' stores: a
 role template *Accountant* (today's templates are Orders, Products, Marketing, Content, Analytics, Support agent and Read-only,
@@ -265,13 +270,45 @@ outside accountant, and that is the owner's wife, an accountant. What it means f
 |---|---|---|
 | Doing bookkeeping for others *as a business* requires authorisation as an accountant (*regnskapsførerloven* § 1); the regulation's exceptions found concern groups of companies | The owner's wife keeps Human Web's books as an authorised accountant, or the arrangement is checked first | [3P] search summary of the act and Skatteetaten's notices; [U] whether she is authorised, and whether keeping a spouse's books unpaid falls under the rule |
 | A spouse is a close relation (*nærstående*) under the auditor's independence rules | The owner's wife can be the accountant but never the auditor, if Human Web ever needs one | [3P] Stortinget's committee report on the auditors' act |
-| An AS may opt out of audit with operating revenue under NOK 7 million, a balance under NOK 27 million and on average no more than ten full-time employees; the two amounts are set in a regulation | Watched for every AS on our books; matters to Human Web only if it becomes an AS | [3P] Stortinget 2025–2026, Brønnøysund 2023; [U] check the current regulation |
+| An AS may opt out of audit with operating revenue under NOK 7 million, a balance under NOK 27 million and on average no more than ten full-time employees; the two amounts are set in a regulation | Watched for every AS on our books; Human Web's from 2027 (section 4.5) | [3P] Stortinget 2025–2026, Brønnøysund 2023; [U] check the current regulation |
 | An ENK files annual accounts (and is audited) only above size limits on assets or employees | Watched for every ENK on our books; Human Web is far below them today | [U] read *regnskapsloven* § 1-2 and the auditors' act for the numbers |
 | NOK 50 000 a year: the e-invoicing and electronic bookkeeping exemptions (section 4.1) | The lowest threshold in the pack | [3P] KPMG |
 
-**If Human Web becomes an AS** as it grows [U: whether planned]: a new organisation number and a new company in the books, opening
-balances carried over (B2), annual accounts and the audit threshold joining the watch. How a store changes the legal entity behind it
-is a question for B2's design.
+### 4.5 Human Web becomes an AS in 2027, and B8
+
+**The owner's goal** (6 November 2026): Human Web goes from an ENK to an AS in 2027.
+
+**How it is done, as far as read.** A tax-free conversion (*skattefri omdanning*, skatteloven § 11-20 and FSFIN §§ 11-20-1 to
+11-20-11): the ENK's business is transferred to a newly formed AS in return for its shares, whose cost for tax is the values
+transferred; the conversion always takes tax effect from 1 January of its year, so it is planned in the autumn before; the business must
+exist when it is transferred; the ENK need not transfer its debts [docs: Skatteetaten; 3P: KPMG, Sticos, a Skatteklagenemnda decision as
+summarised]. [U: by when in 2027 the AS must be founded to keep the 1 January effect (FSFIN § 11-20-3); whether the statement on the
+contribution in kind must be confirmed by an auditor (aksjeloven § 2-6), who then could not be the owner's wife (section 4.4).] An
+adviser or accountant plans the conversion; this plan only follows it.
+
+**What changes for Human Web, and so for the pilot:**
+
+| Change | What the plan does |
+|---|---|
+| The ENK's last year is 2026, ending in the owner's tax return | Done from Tripletex, as today |
+| The AS's books open on 1 January 2027 with what the ENK handed over | B2 runs in shadow on the AS's books from their opening balance, a clean start to compare with Tripletex (where the AS is a new company) |
+| Annual accounts to Brønnøysund, the AS's tax return, the shareholder register statement, the board's and the general meeting's minutes | B5 covers an AS before the AS's first year ends; 2027 is the first full year that can be closed beside Tripletex |
+| An audit unless the AS may opt out (under NOK 7 million revenue, section 4.4), decided by the general meeting | The threshold watch adds it; the owner's NOK 5 million rule stays |
+| A salary to the owner makes the AS an employer: an a-melding every month, tax withheld, employer's contribution, holiday pay [U: occupational pension for a sole owner-employee]; dividends alone do not | The owner's choice with their adviser. A salary makes B7 (payroll through a partner) a pilot unit, ready before the first salary |
+| A new organisation number, VAT registration [U: from which date], and a bank account in the AS's name | B1 registers the AS for EHF (ELMA); B4's consent and DNB's bank integration are set up for the AS's account |
+| Invoices from the AS from the change: its name, numbers and its own number series [U: whether it may continue the ENK's] | B8 |
+| Stripe: a new legal entity [U: whether Stripe changes the connected account's business or a new account is needed] | B8's checklist |
+| Customers' and clients' data held by the AS: the privacy notice, and clients told who invoices them now [U: a lawyer on the transfer] | B8's checklist |
+
+**B8. Changing the business behind a store** (for every owner; proven at Human Web in 2027). Every ENK on the platform that grows meets
+this, so it is a unit of its own, not a one-off for the pilot. Today a store has one legal name, organisation number and VAT number
+(`stores.legal_name`, `stores.organisation_number`, `store_tax_profile.vat_number`) [repo]. Issued invoices and credit notes keep the
+seller's details they were issued with (D159), so past documents are safe, but reports by period and the ledger must know which business
+a period belongs to. B8: the business behind the store changes from a date; from that date new documents carry the new business and its
+own series; the books close for the old business and open for the new one with the balance handed over (B2); VAT returns and reports
+split at the date; and a checklist of what must be set up again (bank, Stripe, Peppol and ELMA, an accounting connection, payment
+providers, the privacy notice, Kaizena Flow's own plan), each step with its button where Kaizena Flow can do it. Homer sees "Your business
+is becoming an AS", one step at a time; Lisa sees every date and setting.
 
 ## 5. Tripletex and Fiken from here
 
@@ -294,6 +331,9 @@ is a question for B2's design.
 5. **A lawyer**: Kaizena Flow's terms as a bookkeeping system; the vendor's duties, if any, under the amended regulations; the data
    processing terms for the access point, the bank provider and, later, payroll.
 6. **For the pilot**: where Human Web's sales are kept today and access to export them (S7); Tripletex stays connected through B5.
+7. **The conversion to an AS** (section 4.5): an adviser or accountant to plan it this autumn, since its tax effect is from 1 January;
+   the choice between a salary and dividends, which decides whether payroll (B7) is a pilot unit; an independent auditor if the
+   contribution in kind needs one confirmed.
 
 ## 7. Order of work
 
@@ -303,7 +343,7 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 | Order | Sales track | Books track |
 |---|---|---|
 | Now | S1 timeline | **B1 EHF out** (deadline 1 January 2027) |
-| Next | S2 deals and pipelines, S3 activities | B2 the ledger in shadow at Human Web, with B4's statement upload |
+| Next | S2 deals and pipelines, S3 activities | B8 before the AS issues its first invoice; B2 the ledger in shadow on the AS's books from their opening balance, with B4's statement upload |
 | Then | S4 leads, S5 email (forwarding address), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
 | Then | S6 reports; `sales` opens to every store | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |
 | Then | | B6 accountants, ready before Human Web's turnover passes NOK 5 million (the threshold watch says when it is near); then ring 2 |
@@ -320,7 +360,9 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 6. Gmail's security assessment: cost and time.
 7. Pipedrive's and HubSpot's export and API limits for S7.
 8. Is the owner's wife an authorised accountant, and does keeping a spouse's books need the authorisation if it is unpaid?
-9. Does Human Web stay an ENK as it grows, or become an AS (annual accounts, the audit threshold, a new organisation number)?
+9. The conversion (section 4.5): by when in 2027 the AS must be founded to keep the 1 January effect; whether the contribution in kind
+   needs an auditor's confirmation; the AS's VAT registration date; whether the AS may continue the ENK's invoice series; what Stripe
+   requires for a new legal entity; whether a sole owner-employee brings occupational pension.
 10. The size limits above which an ENK files annual accounts and is audited, and how an ENK's year-end reaches Skatteetaten by system.
 
 ## Sources
@@ -348,6 +390,11 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
   DNB Regnskap's integrations, <https://www.dnb.no/bedrift/dagligbank/regnskap/nyttig-informasjon/integrasjoner>.
 * Bookkeeping retention: Bokføringsloven § 13, <https://lovdata.no/lov/2004-11-19-73/§13> (as read for `docs/wave-1g-gdpr.md`).
 * Human Web's entry in the Central Coordinating Register: <https://data.brreg.no/enhetsregisteret/api/enheter/915429777>.
+* Converting an ENK to an AS: Skatteetaten,
+  <https://www.skatteetaten.no/person/skatt/hjelp-til-riktig-skatt/aksjer-og-verdipapirer/om/fastsette-inngangsverdien/skattefri-omdanning-fra-enkeltpersonsforetak-eller-selskap-med-deltakerfastsetting-til-aksjeselskapa/>;
+  KPMG, <https://kpmg.com/no/nb/innsikt/skatt-regulatorisk/skattefri-omdanning-aksjeselskap.html>; Sticos,
+  <https://www.sticos.no/fagstoff/6-praktiske-tips-ved-omdanning-til-aksjeselskap>; Skatteklagenemnda,
+  <https://www.skatteetaten.no/en/rettskilder/type/vedtak/skatteklagenemnda/bfu---sporsmal-om-skattefri-omdanning-av-enkeltpersonforetak-til-aksjeselskap/>.
 * Audit thresholds for an AS: Stortinget, Innst. 165 S (2025–2026),
   <https://stortinget.no/globalassets/pdf/innstillinger/stortinget/2025-2026/inns-202526-165s.pdf>; Brønnøysund's answer of April 2023,
   <https://www.regnskapnorge.no/contentassets/9ad24c8fdd874a849914a5ea0dcfd761/230425---svar-fra-brreg---endring-av-terskelverdier-for-revisjon.pdf>;
