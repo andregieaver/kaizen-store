@@ -480,13 +480,13 @@ export const settingsEn = {
     visitorText:
       "How a visitor who has not chosen a language yet is shown one of yours. Visitors can always choose with a language switcher in your header or footer; their choice is remembered and comes first.",
     rules: {
-      own: { label: "Each country's own language", hint: "Visitors see your store in its country's language until they choose another. As before." },
+      own: { label: "Each country's own language", hint: "Visitors see your store in its country's language until they choose another." },
       location: { label: "Where the visitor is", hint: "A visitor in Sweden sees Swedish if you offer it; otherwise the country's own language." },
       "location-browser": {
         label: "Where the visitor is, unless their browser asks for another",
         hint: "A visitor in Sweden whose browser is in English sees English; one whose browser is in a language you do not offer sees Swedish.",
       },
-      browser: { label: "The visitor's browser language", hint: "Visitors see the language their browser is set to if you offer it; otherwise the country's own language." },
+      browser: { label: "The visitor's browser language", hint: "Visitors see the language their browser is set to if you offer it; otherwise the country's own language. New stores start with this." },
     },
     frontDoor:
       "This decides what your front page shows. A link to a page in one language, from search results or an advertisement, always opens in that language, as the EU's rules on geo-blocking require.",

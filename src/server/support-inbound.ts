@@ -33,6 +33,7 @@ import { CONVERSATION_MESSAGES_MAX, REOPEN_HOURS } from "@/lib/support-rules";
 
 import { takeChatTurn, type ChatSite } from "./chat-agent";
 import { chatContext, type ChatPlace } from "./chat-route";
+import { fileReceived, pruneFiledEmails, storeOfFilingKey } from "./email-filing";
 import { log } from "./log";
 import { getOpenStore } from "./stores";
 import { SupportError, addMessage, deskSettings, transition, type DeskSettings } from "./support";
@@ -115,6 +116,10 @@ export async function receiveInboundEvent(event: InboundEvent, deps: InboundDeps
   if (route?.kind === "desk") {
     const [desk] = await db().execute<Row>(sql`select store_id from commerce.support_settings where email_key = ${route.key}`);
     if (desk) [storeId, routed] = [desk.store_id ? String(desk.store_id) : null, true];
+  } else if (route?.kind === "filing") {
+    // A store's filing address (S5, D476): filed on its people by `fileReceived()`, never a conversation.
+    const filingStore = await storeOfFilingKey(route.key);
+    if (filingStore) [storeId, routed] = [filingStore, true];
   } else if (route?.kind === "reply") {
     const [conversation] = await db().execute<Row>(sql`
       select id, store_id from commerce.support_conversations where reply_key = ${route.key} and anonymised_at is null
@@ -123,10 +128,10 @@ export async function receiveInboundEvent(event: InboundEvent, deps: InboundDeps
   }
   const receivedAt = Date.parse(String(data.created_at ?? event.created_at ?? "")) || Date.now();
   const [row] = await db().execute<Row>(sql`
-    insert into commerce.support_inbound_emails (provider_id, store_id, routed, conversation_id, from_address, subject, message_id, status, reason, received_at, finished_at)
+    insert into commerce.support_inbound_emails (provider_id, store_id, routed, conversation_id, from_address, subject, message_id, status, reason, received_at, finished_at, purpose)
     values (${providerId}, ${storeId}::uuid, ${routed}, ${conversationId}::uuid, ${from}, ${cleanSubject(data.subject)}, ${messageIdOf(data.message_id)},
       ${routed ? "pending" : "refused"}, ${routed ? null : domain ? "unknown_address" : "not_set_up"}, ${new Date(receivedAt).toISOString()}::timestamptz,
-      ${routed ? null : sql`now()`})
+      ${routed ? null : sql`now()`}, ${route?.kind === "filing" ? "filing" : "support"})
     on conflict (provider_id) do nothing
     returning id, status
   `);
@@ -224,11 +229,41 @@ async function fetchEmail(providerId: string, deps: InboundDeps): Promise<Receiv
 
 const fails = (value: unknown) => String((value as { result?: unknown } | null)?.result ?? value ?? "").toLowerCase() === "fail";
 
+/** A mail to a store's filing address (S5, D476): read as every received email is, then filed on its people (`fileReceived()`). */
+async function fileOne(row: Row, storeId: string | null, deps: InboundDeps): Promise<Outcome> {
+  const env = deps.env ?? process.env;
+  if (!storeId) return refused("unknown_address");
+  const email = await fetchEmail(String(row.provider_id), deps);
+  if (email === "key_refused") return { status: "failed", reason: "key_refused" };
+  if (!email) return refused("not_set_up");
+  const headers = email.headers ?? {};
+  const machine = automated(email.from ?? String(row.from_address), headers, emailSettings(env)?.from ?? null);
+  if (machine) return refused(machine);
+  if (fails(email.authentication?.dmarc)) return refused("dmarc_fail");
+  const list = (name: string) => (headerOf(headers, name) ?? "").split(",").map((part) => part.trim()).filter(Boolean);
+  const filed = await fileReceived(
+    storeId,
+    {
+      from: email.from ?? String(row.from_address),
+      to: list("to"),
+      cc: list("cc"),
+      subject: cleanSubject(email.subject ?? (row.subject ? String(row.subject) : null)),
+      text: email.text ?? null,
+      html: email.html ?? null,
+      messageId: messageIdOf(email.message_id ?? (row.message_id ? String(row.message_id) : headerOf(headers, "message-id"))),
+      sentAt: new Date(String(row.received_at ?? new Date().toISOString())).toISOString(),
+    },
+    env,
+  );
+  return filed.status === "done" ? { status: "done" } : refused(filed.reason ?? "refused");
+}
+
 async function processOne(row: Row, deps: InboundDeps): Promise<Outcome> {
   const env = deps.env ?? process.env;
   if (!inboundDomain(env.SUPPORT_INBOUND_DOMAIN)) return refused("not_set_up");
   const storeId = row.store_id ? String(row.store_id) : null;
   const from = String(row.from_address);
+  if (row.purpose === "filing") return fileOne(row, storeId, deps);
   const desk = systemDesk(storeId);
   const settings = await deskSettings(desk);
   if (!settings || settings.mode === "off") return refused("desk_off");
@@ -391,5 +426,6 @@ export async function pruneInboundEmails(now: Date = new Date()): Promise<number
   const rows = await db().execute(sql`
     delete from commerce.support_inbound_emails where created_at < ${now.toISOString()}::timestamptz - make_interval(days => ${INBOUND_KEEP_DAYS}) returning id
   `);
-  return rows.length;
+  // Mail filed on the timeline (S5, D476) goes after the email bodies' retention rule.
+  return rows.length + (await pruneFiledEmails());
 }

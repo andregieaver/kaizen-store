@@ -19,6 +19,8 @@ import { formatPriceInput } from "@/lib/product-input";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
 import { activitiesOf } from "@/server/activities";
+import { filedEmailsOf, filingAddressOf } from "@/server/email-filing";
+import { FiledEmailsCard } from "@/components/admin/deals/filed-emails-card";
 import { getDeal, linkCandidates, mayLink, pipelinesOf, type DealLink, type DealMove } from "@/server/deals";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
@@ -54,6 +56,8 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
     canChange ? linkCandidates(member, deal) : Promise.resolve([]),
     activitiesOf(store.id, { dealId: deal.id }),
   ]);
+  // The mail filed on the deal (S5, D476), and where to send more.
+  const [emails, filing] = await Promise.all([filedEmailsOf(store.id, { dealId: deal.id }), canChange ? filingAddressOf(store.id) : Promise.resolve(null)]);
   const pipeline = pipelines.find((p) => p.id === deal.pipelineId);
   const stage = pipeline?.stages.find((s) => s.id === deal.stageId);
   const team = staff.filter((s) => !s.disabled && (!s.expiresAt || s.expiresAt > new Date().toISOString())).map((s) => ({ id: s.accountId, name: s.name || s.email }));
@@ -82,6 +86,8 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
           ? w.deal.byInvoice
           : move.via === "platform"
             ? w.deal.byPlatform
+            : move.via === "quote"
+              ? w.deal.byQuote
             : move.by
               ? fillWords(w.deal.by, { name: move.by })
               : null;
@@ -158,6 +164,8 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
         me={member.account.id}
         blank={newActivityValues({ dealId: deal.id, customerId: deal.customer?.id, companyId: deal.company?.id }, member.account.id, new Date(), store.timeZone)}
       />
+
+      <FiledEmailsCard emails={emails} words={w.emails} address={filing} when={when} />
 
       <Card title={w.deal.links} compact>
         {deal.links.length === 0 ? (

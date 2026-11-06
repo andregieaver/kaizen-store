@@ -24,6 +24,7 @@ export const TIMELINE_KIND_OF = {
   conversation_started: "conversation",
   email_sent: "email",
   email_failed: "email",
+  email_filed: "email",
   note_added: "note",
   return_opened: "return",
   withdrawal_requested: "return",

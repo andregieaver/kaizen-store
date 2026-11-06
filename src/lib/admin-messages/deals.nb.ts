@@ -105,6 +105,7 @@ export const dealsNb: DealsMessages = {
     byOrder: "av en betalt bestilling",
     byInvoice: "av en utstedt faktura",
     byPlatform: "av Kaizena Flows egne opplysninger",
+    byQuote: "da tilbudet ble sendt",
   },
 
   pipelinesPage: {
@@ -176,6 +177,29 @@ export const dealsNb: DealsMessages = {
       forbidden: "Du kan ikke endre aktiviteter.",
       not_found: "Den aktiviteten finnes ikke lenger.",
     },
+  },
+
+  emails: {
+    title: "E-post",
+    none: "Ingen e-post arkivert ennå. Kopier eller videresend e-post til {address}, så vises den her.",
+    noneNoAddress: "Ingen e-post arkivert ennå.",
+    from: "Fra {from}",
+    read: "Les e-posten",
+  },
+
+  filing: "Kopier eller videresend e-post til {address}, så blir den liggende på tidslinjen til kundene, bedriftene og avtalene den gjelder.",
+
+  leads: {
+    board: "Tavle",
+    tab: "Leads",
+    intro: "Folk som har bedt om noe, men ikke er kunder ennå. Gjør dem som er verdt å følge opp til avtaler, og avvis resten.",
+    none: "Ingen nye leads. Folk som ber om tilbud, stiller et spørsmål, chatter med deg eller abonnerer, dukker opp her.",
+    kinds: { quote: "Tilbudsforespørsel", question: "Spørsmål", chat: "Chat", subscriber: "Abonnerer" },
+    dealKinds: { quote: "tilbudsforespørsel", question: "spørsmål", chat: "chat", subscriber: "ny abonnent" },
+    makeDeal: "Lag avtale",
+    dismiss: "Avvis",
+    makeDealOf: "Lag avtale av {name}",
+    dismissOf: "Avvis {name}",
   },
 
   today: {

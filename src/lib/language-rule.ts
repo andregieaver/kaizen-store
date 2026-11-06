@@ -4,10 +4,10 @@
  *
  * A store with several languages chooses how a visitor who has not chosen is shown one (`stores.language_rule`):
  *
- * - `own`: the country's own language, at its bare address, as every store was before (the default);
- * - `location`: the language of the country the visitor is in (`x-vercel-ip-country`), where the store has it;
+ * - `browser`: the browser's language (`Accept-Language`), where the store has it (the default for a new store);
  * - `location-browser`: the browser's language where the store has one of those it asks for, else the country the visitor is in;
- * - `browser`: the browser's language (`Accept-Language`), where the store has it.
+ * - `location`: the language of the country the visitor is in (`x-vercel-ip-country`), where the store has it;
+ * - `own`: the country's own language, at its bare address, as every store made before D474 kept.
  *
  * Whatever the rule, a language the visitor chose in the language switcher (remembered in `kaizen_lang_{storeId}`) comes first. A choice
  * that finds none of the store's languages leaves the address as it is. Only the front door is decided this way (an address that names no
@@ -15,7 +15,8 @@
  * (EU 2018/302, art. 3(2)) asks of a choice made by where the visitor is, and as a search engine needs of each language's addresses.
  */
 
-export const LANGUAGE_RULES = ["own", "location", "location-browser", "browser"] as const;
+/** The rules, the default for a new store first: the order the settings page offers them in. */
+export const LANGUAGE_RULES = ["browser", "location-browser", "location", "own"] as const;
 export type LanguageRule = (typeof LANGUAGE_RULES)[number];
 
 export const isLanguageRule = (value: unknown): value is LanguageRule => typeof value === "string" && (LANGUAGE_RULES as readonly string[]).includes(value);

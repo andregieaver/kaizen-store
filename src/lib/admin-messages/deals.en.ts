@@ -112,6 +112,7 @@ export const dealsEn = {
     byOrder: "by a paid order",
     byInvoice: "by an issued invoice",
     byPlatform: "by Kaizena Flow's own records",
+    byQuote: "when its quote was sent",
   },
 
   pipelinesPage: {
@@ -185,6 +186,32 @@ export const dealsEn = {
       forbidden: "You may not change activities.",
       not_found: "That activity is gone.",
     },
+  },
+
+  /** Mail filed on a deal or a company (S5, D476). */
+  emails: {
+    title: "Emails",
+    none: "No emails filed yet. Copy or forward emails to {address} and they show here.",
+    noneNoAddress: "No emails filed yet.",
+    from: "From {from}",
+    read: "Read the email",
+  },
+
+  /** Email on the timeline (S5, D476): the store's filing address. */
+  filing: "Copy or forward emails to {address} and they are kept on the timeline of the customers, companies and deals they are about.",
+
+  /** The leads inbox (S4, D475), beside the board. */
+  leads: {
+    board: "Board",
+    tab: "Leads",
+    intro: "People who asked for something but are not customers yet. Make a deal of those worth following up, and dismiss the rest.",
+    none: "No new leads. People who ask for a quote or a question, chat with you or subscribe show up here.",
+    kinds: { quote: "Quote request", question: "Question", chat: "Chat", subscriber: "Subscribed" },
+    dealKinds: { quote: "quote request", question: "question", chat: "chat", subscriber: "new subscriber" },
+    makeDeal: "Make a deal",
+    dismiss: "Dismiss",
+    makeDealOf: "Make a deal of {name}",
+    dismissOf: "Dismiss {name}",
   },
 
   /** The store's home (S3, D468): what is late, due today and done today. */

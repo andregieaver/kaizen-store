@@ -311,6 +311,57 @@ describe("a deal won by what it is linked to", () => {
   });
 });
 
+describe("a deal moved by its quote", () => {
+  it("moves forward to its quote stage when its quote is sent, or when a sent quote is linked, and never back", async () => {
+    const s = await store(`quote-move-${counter}`);
+    const p = await pipeline(s, ["New", "Talking", "Quote sent", "Negotiating"]);
+    await db.query("update commerce.deal_stages set quote_stage = true where id = $1", [p.stages[2]]);
+    const stageOf = async (id: string) => (await one<{ stage_id: string }>("select stage_id from commerce.deals where id = $1", [id])).stage_id;
+    // Sent as the app sends a quote: the draft goes from open to sent, with the time it was sent.
+    const send = async (draft: string) => {
+      const made = await order(s, { draft });
+      await db.query("update commerce.draft_orders set status = 'sent', order_id = $2, sent_at = now(), expires_at = now() + interval '30 days' where id = $1", [draft, made]);
+    };
+
+    // Linked first, then sent: it moves when the quote goes out, and its history says the quote moved it.
+    const first = await deal(s, p);
+    const draft = await draftOrder(s);
+    await link(s, first, "draft", draft);
+    expect(await stageOf(first)).toBe(p.stages[0]);
+    await send(draft);
+    expect(await stageOf(first)).toBe(p.stages[2]);
+    expect(await one("select via, moved_by from commerce.deal_moves where deal_id = $1 order by at desc, id desc limit 1", [first])).toEqual({ via: "quote", moved_by: null });
+
+    // A quote already sent moves the deal it is linked to at once.
+    const second = await deal(s, p, { stage: p.stages[1] });
+    const sent = await draftOrder(s);
+    await send(sent);
+    await link(s, second, "draft", sent);
+    expect(await stageOf(second)).toBe(p.stages[2]);
+
+    // Further on already, or closed: it stays where it is.
+    const ahead = await deal(s, p, { stage: p.stages[3] });
+    const later = await draftOrder(s);
+    await link(s, ahead, "draft", later);
+    await send(later);
+    expect(await stageOf(ahead)).toBe(p.stages[3]);
+    const closed = await deal(s, p);
+    await db.query("update commerce.deals set status = 'lost', closed_at = now(), closed_via = 'person' where id = $1", [closed]);
+    const lostQuote = await draftOrder(s);
+    await link(s, closed, "draft", lostQuote);
+    await send(lostQuote);
+    expect(await stageOf(closed)).toBe(p.stages[0]);
+
+    // A pipeline with no quote stage moves nothing.
+    const plain = await pipeline(s, ["New", "Later"]);
+    const unmoved = await deal(s, plain);
+    const plainQuote = await draftOrder(s);
+    await link(s, unmoved, "draft", plainQuote);
+    await send(plainQuote);
+    expect(await stageOf(unmoved)).toBe(plain.stages[0]);
+  });
+});
+
 describe("where a deal's rows go", () => {
   it("is the store's own, never copied, and a person's data only on the deal itself", () => {
     expect(STORE_EXPORT_LEFT_OUT.deal_links).toBe("record");

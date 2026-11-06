@@ -71,6 +71,7 @@ import { syncDueTripletex } from "@/server/tripletex-sync";
 import { syncDueFiken } from "@/server/fiken-sync";
 import { runActivityPushes } from "@/server/activities";
 import { runBusinessChanges } from "@/server/business-change";
+import { runPipedriveMoves } from "@/server/pipedrive";
 import { runEinvoiceSending } from "@/server/einvoice-sending";
 import { sendAutopilotBudgetAlerts } from "@/server/autopilot-settings";
 import { runNightlyUiTranslations } from "@/server/ui-nightly";
@@ -154,6 +155,8 @@ async function dispatch() {
     activities: () => runActivityPushes(),
     // A change of the business behind a store (D473) taking effect on its day, and the store drawn again with its new details.
     businessChanges: () => runBusinessChanges(),
+    // Moving in from Pipedrive (D477): a check or an import the owner left goes on, page by page, within 40 seconds.
+    pipedrive: () => runPipedriveMoves(),
     // Fiken (D460): the same for stores whose Fiken connection is on, booked as sales (Annet salg), within 40 seconds.
     fiken: () => syncDueFiken(),
     storeCopies: () => runStoreCopies(),

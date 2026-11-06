@@ -100,7 +100,7 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
 - The language a visitor sees first, the language switcher and the currency with the language (D474, `src/lib/language-rule.ts`,
   `src/lib/language-switch.ts`, `LanguageLinks`): a store's rule (`stores.language_rule`: `own`, `location`, `location-browser`,
   `browser`) and the visitor's own earlier choice (`kaizen_lang_{storeId}`, set only by choosing in a switcher) decide only at the front
-  door: the proxy's 307 for a store in one country (`languageAtDoor()`, private, never cached, never for a crawler) and the chooser's links
+  door (a new store starts with `browser`; stores made before D474 kept `own`): the proxy's 307 for a store in one country (`languageAtDoor()`, private, never cached, never for a crawler) and the chooser's links
   for one in several (`firstSlug()`). Never move any other address to another language (the Geo-blocking Regulation, art. 3(2), and
   search engines): a link to a page in one language opens in it. Links that change the language are built with `languageSlug()`, which
   takes the language's currency with it while the currency follows the language (`localization.currencyByLanguage`). The switcher is the

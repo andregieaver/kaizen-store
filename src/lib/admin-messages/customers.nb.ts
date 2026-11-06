@@ -135,6 +135,7 @@ export const customersNb: CustomersMessages = {
       conversation_started: "Startet en samtale",
       email_sent: "E-post sendt",
       email_failed: "E-post kom ikke fram",
+      email_filed: "E-post arkivert",
       note_added: "Notat",
       return_opened: "Retur {label}",
       withdrawal_requested: "Angret ordre #{label}",

@@ -140,6 +140,7 @@ export const customersEn = {
       conversation_started: "Started a conversation",
       email_sent: "Email sent",
       email_failed: "Email not delivered",
+      email_filed: "Email filed",
       note_added: "Note",
       return_opened: "Return {label}",
       withdrawal_requested: "Withdrew from order #{label}",

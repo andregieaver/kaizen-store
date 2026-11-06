@@ -636,11 +636,12 @@ export const stores = commerce.table(
     /** Rates for the currencies offered are kept up to date from the ECB's daily reference rates (D109). */
     ratesAuto: boolean("rates_auto").notNull().default(false),
     /**
-     * How a visitor who has not chosen is first shown one of the store's languages (D474, `src/lib/language-rule.ts`): `own` (the country's
-     * own language, the default), `location`, `location-browser` or `browser`. Read only while Several languages is on, and only at the front
-     * door of a store in one country and the country chooser of one in several.
+     * How a visitor who has not chosen is first shown one of the store's languages (D474, `src/lib/language-rule.ts`): `browser` (the
+     * default for a new store), `location-browser`, `location` or `own` (the country's own language, which every store made before D474
+     * kept). Read only while Several languages is on, and only at the front door of a store in one country and the country chooser of one
+     * in several.
      */
-    languageRule: text("language_rule").notNull().default("own"),
+    languageRule: text("language_rule").notNull().default("browser"),
     /** Choosing a language also chooses its currency (D474): `language_currencies`, else the currency of the country its variant names. */
     currencyFollowsLanguage: boolean("currency_follows_language").notNull().default(false),
     /** The owner's currency for a language while the currency follows it (D474): `{ "en": "EUR", "de": "own" }`; a language left out takes its variant's. */
@@ -14809,6 +14810,8 @@ export const supportInboundEmails = commerce.table(
     messageId: text("message_id"),
     status: text("status").notNull().default("pending"),
     reason: text("reason"),
+    /** `support` (a desk's or a reply address) or `filing` (a store's filing address, S5, D476). */
+    purpose: text("purpose").notNull().default("support"),
     tries: smallint("tries").notNull().default(0),
     claimedUntil: timestamp("claimed_until", { withTimezone: true }),
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
@@ -17869,5 +17872,143 @@ export const storeBusinessChanges = commerce.table(
     check("store_business_changes_applied", sql`(${t.status} = 'applied') = (${t.appliedAt} is not null)`),
     check("store_business_changes_vat", sql`${t.vatNumber} is null or ${t.vatRegistered}`),
     check("store_business_changes_prefixes", sql`jsonb_typeof(${t.prefixes}) = 'object'`),
+  ],
+);
+
+// A leads inbox (S4 of `docs/own-books-and-sales.md`, D475)
+
+/**
+ * What staff decided about a lead, by the person's email: dismissed, or made a deal of. The leads themselves are read where they are
+ * (quote requests, questions and forms, chats, new subscribers; `src/server/leads.ts`); a decision hides the person until they ask for
+ * something again after it. One row per person and store, the latest decision.
+ */
+export const leadDecisions = commerce.table(
+  "lead_decisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** The person's email, lowercased. */
+    email: text("email").notNull(),
+    /** `dismissed` or `deal`. */
+    decision: text("decision").notNull(),
+    dealId: uuid("deal_id"),
+    decidedBy: uuid("decided_by").references(() => accounts.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("lead_decisions_email_key").on(t.storeId, t.email),
+    foreignKey({ name: "lead_decisions_deal_fk", columns: [t.storeId, t.dealId], foreignColumns: [deals.storeId, deals.id] }),
+    index("lead_decisions_decided_by_idx").on(t.decidedBy),
+    check("lead_decisions_decision", sql`${t.decision} in ('dismissed', 'deal')`),
+    check("lead_decisions_email", sql`${t.email} = lower(btrim(${t.email})) and char_length(${t.email}) between 3 and 320`),
+  ],
+);
+
+// Email on the timeline (S5 of `docs/own-books-and-sales.md`, D476)
+
+/** A store's filing address (`bcc-{key}@` the inbound domain): made the first time it is shown. */
+export const emailFiling = commerce.table(
+  "email_filing",
+  {
+    storeId: uuid("store_id").primaryKey().references(() => stores.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("email_filing_key").on(t.key), check("email_filing_key_shape", sql`${t.key} ~ '^[a-z0-9]{12,32}$'`)],
+);
+
+/**
+ * A mail a member of the store's team copied or forwarded to its filing address, filed on the people it is about (`addresses`, and those of
+ * them who are the store's customers), their companies and their open deals. Its words are kept whole for the email bodies' retention rule,
+ * and go with any of its people by an erasure.
+ */
+export const filedEmails = commerce.table(
+  "filed_emails",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    messageId: text("message_id"),
+    subject: text("subject"),
+    fromAddress: text("from_address").notNull(),
+    /** Everyone it is about, lower case: the addresses it went to and those its forwarded headers name, less the team's. */
+    addresses: text("addresses").array().notNull(),
+    customerIds: uuid("customer_ids").array().notNull(),
+    companyIds: uuid("company_ids").array().notNull(),
+    dealIds: uuid("deal_ids").array().notNull(),
+    body: text("body").notNull(),
+    cut: boolean("cut").notNull().default(false),
+    /** The member whose mail it was (by their address), if their account still is. */
+    filedBy: uuid("filed_by").references(() => accounts.id, { onDelete: "set null" }),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("filed_emails_message_key").on(t.storeId, t.messageId).where(sql`${t.messageId} is not null`),
+    index("filed_emails_customers_idx").using("gin", t.customerIds),
+    index("filed_emails_deals_idx").using("gin", t.dealIds),
+    index("filed_emails_companies_idx").using("gin", t.companyIds),
+    index("filed_emails_addresses_idx").using("gin", t.addresses),
+    index("filed_emails_store_idx").on(t.storeId, t.createdAt),
+    index("filed_emails_filed_by_idx").on(t.filedBy),
+    check("filed_emails_body", sql`char_length(${t.body}) between 1 and 20000`),
+    check("filed_emails_people", sql`cardinality(${t.addresses}) between 1 and 200`),
+  ],
+);
+
+// Moving in from Pipedrive (S7 of `docs/own-books-and-sales.md`, D477)
+
+/**
+ * A store's Pipedrive account while it moves in (D477): the API token, encrypted (`secret-box`) and shown only by its last four, whose
+ * account it opens, and the run, a check or an import (`PdRun` in `src/lib/pipedrive.ts`), with a short lease so two ticks never run it at
+ * once. *Disconnect* forgets the token; what came over stays.
+ */
+export const crmMoves = commerce.table(
+  "crm_moves",
+  {
+    storeId: storeId().references(() => stores.id),
+    source: text("source").notNull(),
+    tokenEncrypted: text("token_encrypted"),
+    tokenHint: text("token_hint").notNull().default(""),
+    /** The Pipedrive company the token opens (its `company_id`), and its name. */
+    account: text("account").notNull(),
+    accountName: text("account_name").notNull().default(""),
+    connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
+    connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
+    run: jsonb("run").notNull().default(sql`'{}'::jsonb`),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.source] }),
+    index("crm_moves_connected_by_idx").on(t.connectedBy),
+    check("crm_moves_source", sql`${t.source} in ('pipedrive')`),
+    check("crm_moves_run", sql`jsonb_typeof(${t.run}) = 'object'`),
+    check("crm_moves_names", sql`char_length(${t.tokenHint}) <= 12 and char_length(${t.accountName}) <= 200`),
+    check("crm_moves_account", sql`${t.account} ~ '^[0-9]{1,20}$'`),
+  ],
+);
+
+/**
+ * What came over from where (D477): a Pipedrive record's id and the row it became here, so a second run brings only what is new and never a
+ * duplicate. A row deleted here (or a person erased) keeps its link, so a second run does not bring it back.
+ */
+export const crmMoveLinks = commerce.table(
+  "crm_move_links",
+  {
+    storeId: storeId().references(() => stores.id),
+    source: text("source").notNull(),
+    /** The Pipedrive company it came from: ids are its own, never another's. */
+    account: text("account").notNull(),
+    /** `organization`, `person`, `pipeline`, `stage`, `deal`, `activity` or `note`. */
+    kind: text("kind").notNull(),
+    externalId: text("external_id").notNull(),
+    ourId: uuid("our_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.source, t.account, t.kind, t.externalId] }),
+    check("crm_move_links_source", sql`${t.source} in ('pipedrive')`),
+    check("crm_move_links_kind", sql`${t.kind} in ('organization', 'person', 'pipeline', 'stage', 'deal', 'activity', 'note')`),
+    check("crm_move_links_external", sql`${t.externalId} ~ '^[0-9]{1,20}$' and ${t.account} ~ '^[0-9]{1,20}$'`),
   ],
 );

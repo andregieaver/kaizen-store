@@ -143,6 +143,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
 
   // Sign-in ---------------------------------------------------------------------------------------------------------------------------
   entry("customer_sessions", "shopper", via("customer", "customer_id"), ["customer_id", "token_hash"], null, "delete", "Browsers signed in: deleted (never exported: a security record).", { until: "customer_sessions" }),
+  entry("lead_decisions", "shopper", via("email", "email"), ["email"], null, "delete", "What staff decided about a person who asked for something before they were a customer (D475): dismissed, or made a deal of; deleted."),
   entry("customer_codes", "shopper", via("email", "email"), ["email", "code_hash"], null, "delete", "Sign-in codes asked for by this address; deleted.", { until: "customer_codes" }),
   entry("customer_sign_in_links", "shopper", via("customer", "customer_id"), ["customer_id", "token_hash"], null, "delete", "Sign-in links; deleted."),
 
@@ -209,6 +210,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   // Support (D216, docs/support.md 3.5) -----------------------------------------------------------------------------------------------
   entry("support_conversations", "shopper", via("customer", "customer_id"), ["customer_id", "contact_name", "contact_email", "page_path", "token_hash", "email_token_hash", "summary", "brief", "rating_comment", "reply_key", "email_subject", "email_message_id"], "support", "anonymise", "A support conversation is anonymised: its messages and actions are deleted and its personal fields cleared; the dates and counts stay for the desk's reports, and go after 24 months. A conversation by email (D332) is the sender's address's and is anonymised with it on erasure; it is never exported, since an email's sender proves no one.", { until: "support_transcripts" }),
   entry("support_inbound_emails", "shopper", via("email", "from_address"), ["from_address", "subject", "message_id"], null, "delete", "Emails received for a support desk (D332): the sender and the subject, kept 30 days to count and thread them, deleted on erasure; the words are the conversation's messages."),
+  entry("filed_emails", "shopper", via("email", "addresses", "customer_ids"), ["from_address", "subject", "body", "addresses", "customer_ids"], null, "delete", "Mail the store's team copied or forwarded to its filing address about the person (D476): its words and addresses; deleted.", { until: "email_bodies" }),
   entry("support_messages", "shopper", via("none"), ["body", "data"], "support", "delete", "The messages of a support conversation are deleted with its transcript, at the desk's period (support off: a day after it ends) or on erasure; staff's notes and the partner's help are never exported.", { until: "support_transcripts" }),
   entry("support_actions", "shopper", via("none"), ["args", "summary", "details", "result"], null, "delete", "What the AI proposed or asked staff to decide for a customer is deleted with the conversation's transcript; the outcome is in the conversation's messages, which the export carries.", { until: "support_transcripts" }),
   // The docs guide (D444): a reader of the docs, never signed in for it, known only by their tab's token.
@@ -385,6 +387,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   not_found_ignored: "An address staff hid from the 404 report (D168) and the staff account that did it; never a person's data (the address passed the same filter as the report's).",
   old_shops: "The public addresses of the shop a store moved from (D445) and the staff account that read them; never a person's data.",
   shop_move_items: "What a move from Shopify made (D445 step 9): kinds and ids, a customer only as the md5 of their address; never an address or a name.",
+  crm_moves: "A store's connection to the Pipedrive account it moves in from (D477): the Pipedrive company's id and name, an encrypted token and the account that connected it, and the run's counts; never a person's data.",
   shop_moves: "A store's connection to the Shopify or WooCommerce shop it moves from (D445, D446): the shop's name and address, encrypted tokens or key and the account that connected it; never a shopper's data.",
   data_jobs: "An import or export (D165): its kind, options, counts and the staff account that ran it. The customer and order files it points to are the `storage:exports` entry; the job itself holds no shopper's data.",
   data_job_items: "A product of an import or a finding about the file (D165): a handle, a SKU, row numbers and a plain sentence that never quotes a cell.",

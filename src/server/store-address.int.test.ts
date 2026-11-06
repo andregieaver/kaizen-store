@@ -95,9 +95,13 @@ describe("the same store once it offers English and euro", () => {
     expect(await answer(`/s/${slug}/no-en-eur/cart`)).toEqual({ location: `/s/${slug}/en-eur/cart?a=1` });
   });
 
-  it("sends a visitor at its front door to their browser's language and its currency, once it says so (D474)", async () => {
+  it("sends a visitor at its front door to their browser's language, and its currency once that follows (D474)", async () => {
     const english = { bot: false, country: "NO", acceptLanguage: "en-GB,en;q=0.9", cookie: () => undefined };
-    // The country's own language, as before, until the owner chooses a rule.
+    // A new store follows the browser: English, in the country's own currency.
+    expect(await storeRequestAnswer(`/s/${slug}`, "", null, true, "", english)).toEqual({ language: `/s/${slug}/en` });
+    // A store made before D474 kept the country's own language: nothing decides at its front door.
+    await db().execute(sql`update commerce.stores set language_rule = 'own' where id = ${storeId}::uuid`);
+    forgetStoreFacts(slug);
     expect(await storeRequestAnswer(`/s/${slug}`, "", null, true, "", english)).toEqual({ rewrite: `/s/${slug}/no` });
     await db().execute(sql`
       update commerce.stores set language_rule = 'browser', currency_follows_language = true, language_currencies = '{"en": "EUR"}'::jsonb
@@ -111,7 +115,7 @@ describe("the same store once it offers English and euro", () => {
     expect(await storeRequestAnswer(`/s/${slug}`, "", null, false, "", english)).toEqual({ rewrite: `/s/${slug}/no` });
     const chose = { ...english, cookie: (name: string) => (name === `kaizen_lang_${storeId}` ? "nb" : undefined) };
     expect(await storeRequestAnswer(`/s/${slug}`, "", null, true, "", chose)).toEqual({ rewrite: `/s/${slug}/no` });
-    await db().execute(sql`update commerce.stores set language_rule = 'own', currency_follows_language = false, language_currencies = '{}'::jsonb where id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.stores set currency_follows_language = false, language_currencies = '{}'::jsonb where id = ${storeId}::uuid`);
     forgetStoreFacts(slug);
   });
 });

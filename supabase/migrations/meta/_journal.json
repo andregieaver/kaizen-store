@@ -4873,6 +4873,62 @@
       "when": 1793975585114,
       "tag": "20261106143305_business_change_ticks",
       "breakpoints": true
+    },
+    {
+      "idx": 696,
+      "version": "7",
+      "when": 1793982490365,
+      "tag": "20261106162810_deal_quote_stage",
+      "breakpoints": true
+    },
+    {
+      "idx": 697,
+      "version": "7",
+      "when": 1793982920281,
+      "tag": "20261106163520_lead_decisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 698,
+      "version": "7",
+      "when": 1793982954323,
+      "tag": "20261106163554_lead_decisions_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 699,
+      "version": "7",
+      "when": 1793986519252,
+      "tag": "20261106173519_filed_emails",
+      "breakpoints": true
+    },
+    {
+      "idx": 700,
+      "version": "7",
+      "when": 1793986553249,
+      "tag": "20261106173553_filed_emails_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 701,
+      "version": "7",
+      "when": 1793991376369,
+      "tag": "20261106185616_crm_moves",
+      "breakpoints": true
+    },
+    {
+      "idx": 702,
+      "version": "7",
+      "when": 1793991411165,
+      "tag": "20261106185651_crm_moves_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 703,
+      "version": "7",
+      "when": 1793993948961,
+      "tag": "20261106193908_language_rule",
+      "breakpoints": true
     }
   ]
 }

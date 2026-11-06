@@ -121,6 +121,31 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   dispatcher's `activities` job, claimed by `notified_at`). A deal's activities go with it; a person's or a company's lose the link; a merge
   moves them; an erasure deletes those about the person alone and takes the person off the rest. Audited as `activity.*` with ids only.
 
+## A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)
+
+- **A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)**: leads are read where their requests are (quote
+  requests, questions and forms, chats, new subscribers), never copied into a table of their own; only what staff decided about a person is
+  kept (`commerce.lead_decisions`, by normalised address), written by `dismissLead()` and `makeLeadDeal()` with `customers:write` while
+  Deals is on. A person who has paid for an order (restricted orders left out) or is in an open deal is no lead; a decision hides a person
+  until they ask again after it. A new kind of request a person makes of a store joins `leadRows()`.
+
+## Email on the timeline (S5, D476, `src/lib/filed-email.ts`, `src/server/email-filing.ts`)
+
+- **Email on the timeline (S5, D476, `src/lib/filed-email.ts`, `src/server/email-filing.ts`)**: mail to a store's filing address arrives
+  through the one inbound pipeline (`support_inbound_emails`, purpose `filing`) and is filed only by `fileReceived()`: from a team member's
+  address, while Deals is on, never automatic mail or mail failing DMARC, and only on people the store knows. Its words are a person's data and
+  untrusted text: kept for the email bodies' rule, erased with any of its people, drawn as text, and read by no AI unless the DPIA and the
+  chat's notice say so first.
+
+## Moving in from Pipedrive (S7, D477, `src/lib/pipedrive.ts`, `src/server/pipedrive.ts`, `src/server/pipedrive-client.ts`)
+
+- **Moving in from Pipedrive (S7, D477, `src/lib/pipedrive.ts`, `src/server/pipedrive.ts`, `src/server/pipedrive-client.ts`)**: the owner's,
+  on Settings → Moving in while Deals is on. The token is kept only encrypted (`crm_moves`) and goes to Pipedrive only in the `x-api-token`
+  header; nothing is ever written to Pipedrive. A check and an import follow the same rules (`skipOf()`), so the check's counts are the
+  import's; a run goes page by page under a lease, each page written and counted in one transaction. Everything brought over is linked in
+  `crm_move_links` (by the Pipedrive company), so a second run brings only what is new, and a row deleted or a person erased here is never
+  brought back. Customers follow D366 (nobody subscribed or emailed; what the store has wins); imported activities are marked told.
+
 ## Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)
 
 - **Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)**: a store's creator programme (`commerce.creator_settings`,

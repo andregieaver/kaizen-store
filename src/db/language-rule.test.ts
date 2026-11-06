@@ -24,17 +24,33 @@ afterAll(async () => {
 });
 
 describe("a store's language rule (D474)", () => {
-  it("is the country's own language, the currency apart, until the owner chooses", async () => {
+  it("is the browser's language for a new store, the currency apart; a store made before kept its country's own", async () => {
     const { rows } = await db.query<{ language_rule: string; currency_follows_language: boolean; language_currencies: unknown }>(
       "select language_rule, currency_follows_language, language_currencies from commerce.stores where id = $1",
       [storeId],
     );
-    expect(rows[0]).toEqual({ language_rule: "own", currency_follows_language: false, language_currencies: {} });
+    expect(rows[0]).toEqual({ language_rule: "browser", currency_follows_language: false, language_currencies: {} });
+    // Kaizena Flow's own store was made by a migration before D474's: it kept what every store did.
+    const house = await db.query<{ language_rule: string }>("select language_rule from commerce.stores where house");
+    expect(house.rows.map((r) => r.language_rule)).toEqual(["own"]);
   });
 
   it("takes one of the four rules", async () => {
     for (const rule of ["location", "location-browser", "browser", "own"]) await set("language_rule", rule);
     await expect(set("language_rule", "geo")).rejects.toThrow(/stores_language_rule/);
+  });
+
+  it("goes with a store's copy (D129)", async () => {
+    await db.query(
+      "update commerce.stores set language_rule = 'location', currency_follows_language = true, language_currencies = '{\"en\": \"EUR\"}' where id = $1",
+      [storeId],
+    );
+    const owner = (await db.query<{ id: string }>("insert into commerce.accounts (email) values ('lang-owner@example.com') returning id")).rows[0].id;
+    const copy = (
+      await db.query<{ id: string }>("select commerce.duplicate_store($1, 'lang-copy', 'Lang copy', $2, null::uuid[], null::uuid[], null::uuid[]) as id", [storeId, owner])
+    ).rows[0].id;
+    const { rows } = await db.query("select language_rule, currency_follows_language, language_currencies from commerce.stores where id = $1", [copy]);
+    expect(rows[0]).toEqual({ language_rule: "location", currency_follows_language: true, language_currencies: { en: "EUR" } });
   });
 
   it("keeps a currency or `own` per two-letter language, nothing else", async () => {

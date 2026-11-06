@@ -476,13 +476,13 @@ export const settingsNb: SettingsMessages = {
     visitorText:
       "Hvordan en besøkende som ikke har valgt språk ennå, får se ett av dine. Besøkende kan alltid velge selv med en språkvelger i toppteksten eller bunnteksten; valget deres huskes og går først.",
     rules: {
-      own: { label: "Hvert lands eget språk", hint: "Besøkende ser butikken på landets språk til de velger et annet. Som før." },
+      own: { label: "Hvert lands eget språk", hint: "Besøkende ser butikken på landets språk til de velger et annet." },
       location: { label: "Der den besøkende er", hint: "En besøkende i Sverige ser svensk hvis du tilbyr det; ellers landets eget språk." },
       "location-browser": {
         label: "Der den besøkende er, med mindre nettleseren ber om et annet",
         hint: "En besøkende i Sverige med nettleseren på engelsk ser engelsk; en med nettleseren på et språk du ikke tilbyr, ser svensk.",
       },
-      browser: { label: "Nettleserens språk", hint: "Besøkende ser språket nettleseren er satt til hvis du tilbyr det; ellers landets eget språk." },
+      browser: { label: "Nettleserens språk", hint: "Besøkende ser språket nettleseren er satt til hvis du tilbyr det; ellers landets eget språk. Nye butikker starter med dette." },
     },
     frontDoor:
       "Dette avgjør hva forsiden din viser. En lenke til en side på ett språk, fra søkeresultater eller en annonse, åpnes alltid på det språket, slik EUs regler om geoblokkering krever.",

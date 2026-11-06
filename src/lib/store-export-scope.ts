@@ -19,6 +19,7 @@ export type LeftOutReason = keyof typeof LEFT_OUT_REASONS;
 /** The store's tables the file leaves out on purpose. */
 export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   ad_connections: "secret",
+  email_filing: "secret",
   ad_conversions: "record",
   ai_providers: "secret",
   ai_usage: "record",
@@ -108,6 +109,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   shipping_carriers: "secret",
   carrier_labels: "people",
   shop_moves: "secret",
+  crm_moves: "secret",
+  crm_move_links: "record",
   shop_move_items: "record",
   site_staging_pages: "record",
   site_stagings: "record",

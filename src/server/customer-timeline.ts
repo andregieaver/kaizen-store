@@ -189,7 +189,7 @@ async function emails(who: Who): Promise<TimelineEvent[]> {
     order by e.created_at desc, e.id
     limit ${who.n}
   `);
-  return rows.map((r) => ({
+  const sent: TimelineEvent[] = rows.map((r) => ({
     key: `email:${r.id}`,
     what: EMAIL_NOT_DELIVERED.includes(r.status) ? "email_failed" : "email_sent",
     at: r.at,
@@ -199,6 +199,22 @@ async function emails(who: Who): Promise<TimelineEvent[]> {
     // The email's own page is the orders area's (`/emails/{id}`), as the customer page's list links it.
     href: who.orders ? `${who.base}/emails/${r.id}` : null,
   }));
+  return sent.concat(await filedEmails(who));
+}
+
+const filedRow = z.object({ id: col.uuid, subject: col.textOrNull, at: col.timestamp, body: col.text, email: col.textOrNull });
+
+/** Mail the team copied or forwarded to the store's filing address about the person (S5, D476), with the start of its words. */
+async function filedEmails(who: Who): Promise<TimelineEvent[]> {
+  const rows = await typedRows(filedRow, sql`
+    select f.id, f.subject, f.sent_at as at, left(f.body, 400) as body,
+      (select a from unnest(f.addresses) a where a = any(${textList(who.emails)}) limit 1) as email
+    from commerce.filed_emails f
+    where f.store_id = ${who.storeId}::uuid and f.addresses && ${textList(who.emails)}
+    order by f.sent_at desc, f.id
+    limit ${who.n}
+  `);
+  return rows.map((r) => ({ key: `filed:${r.id}`, what: "email_filed" as const, at: r.at, email: r.email ?? "", label: r.subject ?? "", excerpt: excerptOf(r.body), href: null }));
 }
 
 const noteRow = z.object({ id: col.uuid, body: col.text, at: col.timestamp, email: col.text, author: col.textOrNull });
