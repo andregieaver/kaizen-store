@@ -4845,6 +4845,13 @@
       "when": 1793968053712,
       "tag": "20261106122733_activities_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 692,
+      "version": "7",
+      "when": 1793973891754,
+      "tag": "20261106140451_platform_dark_navy",
+      "breakpoints": true
     }
   ]
 }
