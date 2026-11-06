@@ -71,6 +71,9 @@ per-language page texts (D55, `mapTexts()`, `localizePage()`), and `formatMoney(
   stores, and is never used for a legal page. Menus' words per language, as a store's. A page's, header's or footer's links to the site's
   own pages are written once, in English, and drawn in the page's language (`linksIn()`, `src/lib/platform-links.ts`, 2026-11-05): `/sign-up`
   is `/no/sign-up` on a Norwegian page, a full address on the site's or the theme store's host too; code (an HTML part, CSS) is as written.
+  A link into the docs takes the prefix only where the docs have the language (2026-11-06): the front page, search and the owners' track
+  (`/docs/owners/…` is `/no/docs/owners/…`, on the docs' host `/no/owners/…`); the developers' track, the reference and the changelog are
+  in English alone, so their links stay English (a Norwegian address there was a 404).
 - **The theme store's data:** listing words, highlights and launch themes' notes per language (`listing.words[lang]`), written by people;
   a theme without Norwegian words shows the English ones with `lang="en"` on them.
 - **Emails from the platform store:** access request received and decided, sign-in links, in the language the request was made in
