@@ -9,6 +9,7 @@
  * search results keep working whichever way a store switches. Links are made short by `marketPath()`, which reads the store's address from
  * `storeAddress()`: `getStore()` (and the email loader) remember each store's as they read it.
  */
+import { chosenLanguage, type LanguageRule, type Visitor } from "./language-rule";
 import { conversionFor, type Localization } from "./localization";
 import { parseMarketSlug } from "./market-slug";
 import { PRIVATE_SEGMENT } from "./private-mode";
@@ -30,6 +31,11 @@ export type StoreAddress = {
   countries: string[];
   /** Each offered country's own language, two letters (`{ no: "nb", se: "sv" }`): which language domain (D313) a market without one is on. */
   owns?: Record<string, string>;
+  /**
+   * How the front door of a store in one country chooses a visitor's language (D474, `languageAtDoor()`): the store's rule, and the
+   * currency each language takes there while the currency follows the language (lower case, only one offered there and not its own).
+   */
+  door?: { rule: LanguageRule; currencies: Record<string, string> | null };
 };
 
 const langOf = (locale: string) => locale.split("-")[0].toLowerCase();
@@ -63,7 +69,35 @@ export function storeAddressOf(store: { markets: readonly Market[]; keptMarkets?
     keptCurrencies: unique(keptCurrencies),
     countries: unique([home, ...(store.keptMarkets ?? []).map((m) => m.code.toLowerCase()), ...store.allMarkets.map((m) => m.code.toLowerCase())]),
     owns: Object.fromEntries(store.markets.map((m) => [m.code.toLowerCase(), langOf(m.ownLocale)])),
+    door: { rule: store.localization.languageRule ?? "own", currencies: doorCurrencies(store.localization.currencyByLanguage, [ownLang, ...languages], currencies) },
   };
+}
+
+/** Each language's currency at the store's own country while it follows the language: only one the country is offered in besides its own. */
+function doorCurrencies(byLanguage: Record<string, string> | null | undefined, languages: readonly string[], offered: readonly string[]): Record<string, string> | null {
+  if (!byLanguage) return null;
+  const out: Record<string, string> = {};
+  for (const lang of languages) {
+    const currency = byLanguage[lang]?.toLowerCase();
+    if (currency && offered.includes(currency)) out[lang] = currency;
+  }
+  return out;
+}
+
+/**
+ * Where the front door of a store that sells in one country sends a visitor (D474): the first part of the address of the language their
+ * own earlier choice or the store's rule picks (`en`, `en-eur`, or `eur` when only the currency changes with it), or null to show the
+ * front page as it is (the country's own, as for a store with no rule). Only the front door: every other address names its language.
+ */
+export function languageAtDoor(address: StoreAddress | null, visitor: Visitor): string | null {
+  if (!address?.marketless || !address.door) return null;
+  const own = address.owns?.[address.home] ?? null;
+  const offered = [...(own ? [own] : []), ...address.languages];
+  const lang = chosenLanguage(address.door.rule, offered, visitor);
+  if (!lang) return null;
+  const currency = address.door.currencies?.[lang] ?? null;
+  const segment = [...(lang !== own ? [lang] : []), ...(currency ? [currency] : [])].join("-");
+  return segment || null;
 }
 
 const SHORT = /^(?:([a-z]{2})|([a-z]{3})|([a-z]{2})-([a-z]{3}))$/;

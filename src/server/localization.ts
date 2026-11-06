@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { ECB_RATES_URL, parseEcbRates, type EcbRates } from "@/lib/ecb";
 import { defaultRoundTo, type StoreCurrency } from "@/lib/currency";
+import { isLanguageRule, OWN_CURRENCY, type LanguageRule } from "@/lib/language-rule";
 import { isOfferable } from "@/lib/localization";
 import { isCurrency } from "@/lib/money";
 
@@ -92,6 +93,37 @@ export async function saveLanguages(
     }
   });
   await audit(account.id, store.id, "localization.languages", { locales: unique, marketLocales });
+  refreshTag(storeTag(store.slug));
+  return { ok: true };
+}
+
+/** How a visitor is first shown a language and whether the currency goes with it (D474), as the owner chose them. */
+export type VisitorLanguageInput = { rule: LanguageRule; currencyFollows: boolean; currencies: Record<string, string> };
+
+/**
+ * Saves how a visitor who has not chosen is first shown one of the store's languages, and whether choosing a language also chooses its
+ * currency, with the owner's currency for each language (D474). A language not the store's, or a currency it cannot offer, is refused.
+ */
+export async function saveVisitorLanguage({ account, store }: Membership, input: VisitorLanguageInput): Promise<SaveResult> {
+  if (!isLanguageRule(input.rule)) return { ok: false, problems: ["Choose how a visitor's language is chosen."] };
+  const languages = new Set(store.localization.keptLocales.map(languageOf));
+  const problems: string[] = [];
+  const currencies: Record<string, string> = {};
+  for (const [lang, currency] of Object.entries(input.currencies)) {
+    if (!languages.has(lang)) continue;
+    if (currency !== OWN_CURRENCY && !isCurrency(currency)) {
+      problems.push(`${currency} is not a currency the store can offer.`);
+      continue;
+    }
+    currencies[lang] = currency;
+  }
+  if (problems.length > 0) return { ok: false, problems };
+  await db().execute(sql`
+    update commerce.stores
+    set language_rule = ${input.rule}, currency_follows_language = ${input.currencyFollows}, language_currencies = ${JSON.stringify(currencies)}::jsonb
+    where id = ${store.id}::uuid
+  `);
+  await audit(account.id, store.id, "localization.visitor_language", { rule: input.rule, currencyFollows: input.currencyFollows, currencies });
   refreshTag(storeTag(store.slug));
   return { ok: true };
 }

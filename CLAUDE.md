@@ -91,6 +91,7 @@ Each rule is in full in `docs/rules/storefront.md` under the same words; read it
 - Stores and their markets come from the database (`getStore()`, cached per store; `resolveShop()` for URL params)
 - Interface text lives in `src/lib/i18n.ts` (each hand-written language in `src/lib/messages/{lang}.ts`, D212: a visitor's client component reads…
 - Language and currency are apart from the country (D109; offered only while Several languages and Several currencies are on, D178 step 4)
+- The language a visitor sees first, the language switcher and the currency with the language (D474, `src/lib/language-rule.ts`, `src/lib/language-switch.ts`, `LanguageLinks`)
 - Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag `catalog` and `catalog:{storeId}`); stock is read per request inside…
 - Search (D72, `src/server/search.ts`, pure parts in `src/lib/search.ts`)
 - Search merchandising (wave 6 unit F, D324, `docs/wave-6-catalogue.md` Unit F)

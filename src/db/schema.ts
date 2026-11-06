@@ -635,6 +635,16 @@ export const stores = commerce.table(
     locales: text("locales").array().notNull().default(sql`'{}'::text[]`),
     /** Rates for the currencies offered are kept up to date from the ECB's daily reference rates (D109). */
     ratesAuto: boolean("rates_auto").notNull().default(false),
+    /**
+     * How a visitor who has not chosen is first shown one of the store's languages (D474, `src/lib/language-rule.ts`): `own` (the country's
+     * own language, the default), `location`, `location-browser` or `browser`. Read only while Several languages is on, and only at the front
+     * door of a store in one country and the country chooser of one in several.
+     */
+    languageRule: text("language_rule").notNull().default("own"),
+    /** Choosing a language also chooses its currency (D474): `language_currencies`, else the currency of the country its variant names. */
+    currencyFollowsLanguage: boolean("currency_follows_language").notNull().default(false),
+    /** The owner's currency for a language while the currency follows it (D474): `{ "en": "EUR", "de": "own" }`; a language left out takes its variant's. */
+    languageCurrencies: jsonb("language_currencies").notNull().default({}),
     ratesUpdatedAt: timestamp("rates_updated_at", { withTimezone: true }),
     isTemplate: boolean("is_template").notNull().default(false),
     /**
@@ -836,6 +846,13 @@ export const stores = commerce.table(
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
     check("stores_price_decimals", sql`${t.priceDecimals} in ('always', 'hide_whole')`),
     check("stores_quantity_picker", sql`${t.quantityPicker} in ('buttons', 'box', 'hidden')`),
+    check("stores_language_rule", sql`${t.languageRule} in ('own', 'location', 'location-browser', 'browser')`),
+    // A language's currency (D474): two-letter languages to a three-letter currency or `own`, at most 64 of them.
+    check(
+      "stores_language_currencies",
+      sql`jsonb_typeof(${t.languageCurrencies}) = 'object' and octet_length(${t.languageCurrencies}::text) <= 2000
+        and not jsonb_path_exists(${t.languageCurrencies}, '$.* ? (@.type() != "string" || !(@ like_regex "^([A-Z]{3}|own)$"))')`,
+    ),
     // Price words (D429): an object of languages, each an object of words of at most 24 characters with no tag, 4,000 bytes in all.
     check(
       "stores_price_words",

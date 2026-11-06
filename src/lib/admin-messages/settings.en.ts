@@ -476,8 +476,33 @@ export const settingsEn = {
     updated: "Rates last updated from the ECB {when}.",
     saveCurrencies: "Save currencies",
     fetch: "Fetch the ECB's rates now",
+    visitorTitle: "The language a visitor sees first",
+    visitorText:
+      "How a visitor who has not chosen a language yet is shown one of yours. Visitors can always choose with a language switcher in your header or footer; their choice is remembered and comes first.",
+    rules: {
+      own: { label: "Each country's own language", hint: "Visitors see your store in its country's language until they choose another. As before." },
+      location: { label: "Where the visitor is", hint: "A visitor in Sweden sees Swedish if you offer it; otherwise the country's own language." },
+      "location-browser": {
+        label: "Where the visitor is, unless their browser asks for another",
+        hint: "A visitor in Sweden whose browser is in English sees English; one whose browser is in a language you do not offer sees Swedish.",
+      },
+      browser: { label: "The visitor's browser language", hint: "Visitors see the language their browser is set to if you offer it; otherwise the country's own language." },
+    },
+    frontDoor:
+      "This decides what your front page shows. A link to a page in one language, from search results or an advertisement, always opens in that language, as the EU's rules on geo-blocking require.",
+    followTitle: "Currency with the language",
+    follow: "Change the currency when a visitor changes language",
+    followHint:
+      "A visitor who chooses a language sees prices in that language's currency below. They can still choose another currency where you show the currency choice.",
+    followOff: "Offer more than one currency to change it with the language.",
+    languageCurrency: "Currency for {language}",
+    countrysOwn: "The country's own currency",
+    eachCurrency: "Each language's currency",
+    saveVisitor: "Save",
     actions: {
       onlyOwner: "Only an owner can change this.",
+      visitorSaved: "Saved.",
+      chooseRule: "Choose how a visitor's language is chosen.",
       chooseMain: "Choose the store's main language.",
       notRate: '"{text}" is not a rate for {currency}.',
       languagesSaved: "Languages saved.",

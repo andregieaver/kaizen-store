@@ -24,7 +24,7 @@ import { returnPolicyOf, type ReturnPolicyFacts } from "@/lib/structured-data";
 import { featureOn, normaliseFeatures, type FeatureId } from "@/lib/store-features";
 import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
 import { rememberStoreAddress, type StoreAddress } from "@/lib/store-address";
-import { localized } from "@/lib/store-localized";
+import { localized, type LanguageSettings } from "@/lib/store-localized";
 import { isPriceDecimals, type PriceDecimals } from "@/lib/money";
 import { parseWordsByLocale, type WordsByLocale } from "@/lib/price-words";
 import { isQuantityPicker, type QuantityPicker } from "@/lib/quantity-stepper";
@@ -125,6 +125,8 @@ export type Store = {
   /** What the owner chose (the store's own, before the countries' are added): the settings page edits these. */
   chosenLocales: string[];
   chosenCurrencies: StoreCurrency[];
+  /** How a visitor is first shown a language and whether its currency goes with it, as the owner chose (D474); what applies is in `localization`. */
+  languageSettings: LanguageSettings;
   /** Search and sharing settings. */
   seo: StoreSeo;
   /** Logo and menus for the storefront's header and footer (D30). */
@@ -226,7 +228,7 @@ async function readStore(slug: string): Promise<Store | null> {
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
       s.terms_at_checkout, s.customer_accounts, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.private_mode, s.shopping_agents, s.private_password is not null as private_password, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
       s.price_decimals, s.price_words, s.quantity_picker,
-      s.locales, s.rates_auto, s.rates_updated_at,
+      s.locales, s.rates_auto, s.rates_updated_at, s.language_rule, s.currency_follows_language, s.language_currencies,
       (
         select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
         from commerce.store_currencies c where c.store_id = s.id

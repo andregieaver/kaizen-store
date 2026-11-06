@@ -14,8 +14,12 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { enabledLanguages } from "@/server/languages";
 import { uiCounts } from "@/server/ui-text";
 import { PageHeader } from "@/components/admin/ui";
+import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
+import type { Store } from "@/server/stores";
 
-import { fetchRatesAction, saveCurrenciesAction, saveLanguagesAction, saveStoreLanguageAction } from "./actions";
+import { LANGUAGE_RULES, OWN_CURRENCY, regionCurrency } from "@/lib/language-rule";
+
+import { fetchRatesAction, saveCurrenciesAction, saveLanguagesAction, saveStoreLanguageAction, saveVisitorLanguageAction } from "./actions";
 
 export const metadata: Metadata = { title: "Languages and currencies" };
 
@@ -180,6 +184,18 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
         )}
       </section>
 
+      {languagesOn && localization.locales.length > 1 && (
+        <VisitorLanguage
+          slug={store.slug}
+          owner={owner}
+          words={w}
+          locales={localization.locales}
+          settings={store.languageSettings}
+          currencies={currenciesOn ? localization.currencies.map((c) => c.currency) : null}
+          adminLocale={ADMIN_LANG_FACTS[lang].locale}
+        />
+      )}
+
       <section className="flex flex-col gap-4" aria-labelledby="currencies">
         <h2 id="currencies" className="text-title text-ink">{w.currencies}</h2>
         <p className="text-sm text-muted">{w.currenciesText}</p>
@@ -264,6 +280,102 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
         )}
       </section>
     </div>
+  );
+}
+
+type LocalizationWords = SettingsMessages["localization"];
+
+/**
+ * The language a visitor is first shown (D474): the store's rule, plainly worded, then whether the currency goes with the language and
+ * which currency each language takes. Only while Several languages is on and the store has more than one; the currency part only while
+ * Several currencies is on too.
+ */
+function VisitorLanguage({
+  slug,
+  owner,
+  words: w,
+  locales,
+  settings,
+  currencies,
+  adminLocale,
+}: {
+  slug: string;
+  owner: boolean;
+  words: LocalizationWords;
+  locales: string[];
+  settings: Store["languageSettings"];
+  /** The currencies offered; null with Several currencies off. */
+  currencies: string[] | null;
+  adminLocale: string;
+}) {
+  return (
+    <section className="flex flex-col gap-4" aria-labelledby="visitor-language">
+      <h2 id="visitor-language" className="text-title text-ink">{w.visitorTitle}</h2>
+      <p className="text-sm text-muted">{w.visitorText}</p>
+      <ActionForm action={saveVisitorLanguageAction.bind(null, slug)} className="flex flex-col gap-4">
+        <fieldset className="flex flex-col gap-2">
+          <legend className="sr-only">{w.visitorTitle}</legend>
+          {LANGUAGE_RULES.map((rule) => (
+            <label key={rule} className="flex items-start gap-3 rounded-md border border-line bg-card px-4 py-3 has-[:checked]:border-ink">
+              <input type="radio" name="rule" value={rule} defaultChecked={settings.rule === rule} disabled={!owner} className="mt-1" />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-ink">{w.rules[rule].label}</span>
+                <span className="text-xs text-muted">{w.rules[rule].hint}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <p className="text-xs text-muted">{w.frontDoor}</p>
+
+        <h3 className="text-body-strong text-ink">{w.followTitle}</h3>
+        {currencies && currencies.length > 1 ? (
+          <>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" name="currencyFollows" defaultChecked={settings.currencyFollows} disabled={!owner} className="mt-1" />
+              <span className="flex flex-col gap-0.5">
+                {w.follow}
+                <span className="text-xs text-muted">{w.followHint}</span>
+              </span>
+            </label>
+            {/* Homer ticks the box and gets each variant's own currency; Lisa opens the list to choose another. */}
+            <details className="rounded-md border border-line bg-card px-4 py-3">
+            <summary className="cursor-pointer text-sm font-medium">{w.eachCurrency}</summary>
+            <ul className="mt-3 flex flex-col gap-2">
+              {locales.map((locale) => {
+                const code = locale.split("-")[0];
+                const variant = regionCurrency(locale);
+                const fallback = variant && currencies.includes(variant) ? variant : null;
+                return (
+                  <li key={locale} className="flex items-center justify-between gap-3">
+                    <label htmlFor={`currency-${code}`}>{languageName(locale)}</label>
+                    <select
+                      id={`currency-${code}`}
+                      name={`currency:${code}`}
+                      defaultValue={settings.currencies[code] ?? ""}
+                      disabled={!owner}
+                      aria-label={fillWords(w.languageCurrency, { language: languageName(locale) })}
+                      className={input}
+                    >
+                      <option value="">{fallback ? currencyName(fallback, adminLocale) : w.countrysOwn}</option>
+                      {fallback && <option value={OWN_CURRENCY}>{w.countrysOwn}</option>}
+                      {currencies
+                        .filter((currency) => currency !== fallback)
+                        .map((currency) => (
+                          <option key={currency} value={currency}>{currencyName(currency, adminLocale)}</option>
+                        ))}
+                    </select>
+                  </li>
+                );
+              })}
+            </ul>
+            </details>
+          </>
+        ) : (
+          <p className="text-sm text-muted">{w.followOff}</p>
+        )}
+        {owner && <div><SubmitButton>{w.saveVisitor}</SubmitButton></div>}
+      </ActionForm>
+    </section>
   );
 }
 

@@ -95,6 +95,18 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   (`mainCurrency(store)`), and a new translatable text is added to that module's
   worklist as well as to the editor.
 
+## The language a visitor sees first, the language switcher and the currency with the language (D474, `src/lib/language-rule.ts`, `src/lib/language-switch.ts`, `LanguageLinks`)
+
+- The language a visitor sees first, the language switcher and the currency with the language (D474, `src/lib/language-rule.ts`,
+  `src/lib/language-switch.ts`, `LanguageLinks`): a store's rule (`stores.language_rule`: `own`, `location`, `location-browser`,
+  `browser`) and the visitor's own earlier choice (`kaizen_lang_{storeId}`, set only by choosing in a switcher) decide only at the front
+  door: the proxy's 307 for a store in one country (`languageAtDoor()`, private, never cached, never for a crawler) and the chooser's links
+  for one in several (`firstSlug()`). Never move any other address to another language (the Geo-blocking Regulation, art. 3(2), and
+  search engines): a link to a page in one language opens in it. Links that change the language are built with `languageSlug()`, which
+  takes the language's currency with it while the currency follows the language (`localization.currencyByLanguage`). The switcher is the
+  site part `languages`; its look by screen size is the part stylesheet's (`languageSwitchStyle()`), so draw it with the part's class and
+  never choose a layout while rendering. A new flag goes in `public/flags/` and `FLAG_COUNTRIES` (`src/lib/language-flags.ts`) together (a test holds them).
+
 ## Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag `catalog` and `catalog:{storeId}`); stock is read per request inside…
 
 - Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag

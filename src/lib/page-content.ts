@@ -487,9 +487,20 @@ export type PartSizeSettings = {
   columns?: number;
   /** A grid shown as a grid or as a carousel. */
   display?: "grid" | "carousel";
+  /** The language switcher's languages side by side, one under another or in a drop-down list (D474). */
+  switcher?: SwitcherLayout;
+  /** The language switcher's words for each language: its name, its short code, or none beside its flag (D474). */
+  langText?: SwitcherText;
+  /** The language switcher shows each language's flag (D474). */
+  langFlag?: boolean;
   /** Its typography at the size, per kind of text: what differs (D179 phase 3). */
   typography?: TypographyGroupsAt;
 };
+
+/** How the language switcher lays its languages out (D474): side by side (the default), one under another, or a drop-down list. */
+export type SwitcherLayout = "row" | "column" | "dropdown";
+/** The words the language switcher gives each language (D474): its name in itself (the default), its short code (`EN`), or none. */
+export type SwitcherText = "name" | "code" | "none";
 /** Per smaller size, what differs from the size above (D179). */
 export type SizeOverrides = Partial<Record<SmallerSize, PartSizeSettings>>;
 /** Where a part shows (D179 6): by screen size for now. */
@@ -1070,7 +1081,7 @@ export const SITE_PARTS = {
   business: "Business details",
   cookies: "Cookies link",
   withdrawal: "Withdrawal link",
-  /** Kaizena Flow's own site: a link to the page in each of its languages, where the owner places it (D312). */
+  /** A link to the page in each of the site's languages, where the owner places it (D312 for Kaizena Flow's own site, D474 for a store). */
   languages: "Languages",
 } as const;
 export type SitePart = keyof typeof SITE_PARTS;
@@ -1084,7 +1095,8 @@ export const SITE_PART_FEATURES: Partial<Record<SitePart, FeatureRequirement>> =
   cart: "shop",
 };
 const STORE_PARTS: readonly SitePart[] = ["search", "wishlist", "cart", "markets", "buyerSwitch", "colorMode", "withdrawal"];
-const KAIZEN_PARTS: readonly SitePart[] = ["signUp", "languages"];
+// The languages are every site's (D474): a store's switcher as Kaizena Flow's (D312).
+const KAIZEN_PARTS: readonly SitePart[] = ["signUp"];
 
 /** The site parts an owner's headers and footers offer: a store's (with a store id) or Kaizen's (null). */
 export const sitePartsFor = (storeId: string | null): SitePart[] =>
@@ -1109,6 +1121,13 @@ export type SiteBlock = PartBase & {
   direction?: "row" | "column";
   /** The countries: a drop-down list (the default) or links to each. */
   display?: "dropdown" | "list";
+  /**
+   * The language switcher (D474, `src/lib/language-switch.ts`): its languages side by side (the default), one under another or in a
+   * drop-down list; each by its name (the default), its short code or no words; with its flag or not. Each can differ by screen size (`at`).
+   */
+  switcher?: SwitcherLayout;
+  langText?: SwitcherText;
+  langFlag?: boolean;
 };
 
 /**
@@ -2649,6 +2668,9 @@ const sizeSettings = z.object({
   height: rowHeightVh.or(z.null()).optional(),
   columns: gridColumnCount.optional(),
   display: z.enum(["grid", "carousel"]).optional(),
+  switcher: z.enum(["row", "column", "dropdown"]).optional(),
+  langText: z.enum(["name", "code", "none"]).optional(),
+  langFlag: z.boolean().optional(),
   typography: typographyAtSchema,
 });
 /** A part's overrides by size, with sizes that set nothing left out. */
@@ -3117,6 +3139,9 @@ const siteBlock = z.object({
     .optional(),
   direction: z.enum(["row", "column"]).optional(),
   display: z.enum(["dropdown", "list"]).optional(),
+  switcher: z.enum(["row", "column", "dropdown"]).optional(),
+  langText: z.enum(["name", "code", "none"]).optional(),
+  langFlag: z.boolean().optional(),
   ...partBase,
 });
 

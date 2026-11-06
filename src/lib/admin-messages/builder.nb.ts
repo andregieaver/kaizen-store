@@ -815,12 +815,26 @@ export const builderNb: BuilderMessages = {
       cookies: "En lenke til informasjonskapselsiden, der besøkende endrer valget sitt.",
       withdrawal:
         "En lenke til angrefunksjonen, der kunder går fra et kjøp. Loven krever den på hver side, så en butikks bunntekst må ha den, og den må vises på telefoner.",
-      languages: "En lenke til denne siden på hvert av nettstedets språk, hvert med sitt eget navn. Ingenting legges til i bunnteksten av seg selv: plasser den der besøkende skal finne den.",
+      languages:
+        "Språkvelgeren: en lenke til denne siden på hvert av nettstedets språk. Vises når en besøkende har mer enn ett å velge mellom. Ingenting legges til i toppteksten eller bunnteksten av seg selv: plasser den der besøkende skal finne den.",
     },
     leftOut: "En del uten noe å vise, utelates.",
     logoHeight: "piksler, {min} til {max}; tom: vanlig størrelse",
     shownAs: "Vises som",
     dropdown: "En liste å åpne",
+    switcher: {
+      layout: "Språk",
+      row: "Side om side",
+      column: "Under hverandre",
+      dropdown: "En liste å åpne",
+      text: "Ord",
+      name: "Navn",
+      code: "Kort (EN)",
+      none: "Ingen",
+      flag: "Vis flagg",
+      flagHint: "Flagget til landet hvert språks variant er for (engelsk (Storbritannia) det britiske flagget).",
+      noneNeedsFlag: "Uten ord viser et språk flagget sitt; uten flagg viser det den korte koden.",
+    },
     phones:
       "For å utelate den på telefoner, der menyknappen og uttrekksmenyen har menyen, kontoen og landene, slå av Liten under Avansert, Synlighet.",
   },

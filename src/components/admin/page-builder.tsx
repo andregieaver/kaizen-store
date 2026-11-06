@@ -14,7 +14,8 @@ import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } fr
 import { InlineMarkupEditor } from "@/components/inline-edit/markup-editor";
 import { InlineRichEditor } from "@/components/inline-edit/rich-text-inline";
 import { inlineKindOf } from "@/lib/inline-edit";
-import { clearAt, setAt, spacingAt, stackAt, valueAt, viewAt } from "@/lib/responsive";
+import { clearAt, setAt, sizeSource, spacingAt, stackAt, valueAt, viewAt } from "@/lib/responsive";
+import { switcherAt } from "@/lib/language-switch";
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, pointerWithin, useDraggable, useDroppable, useSensor, MeasuringStrategy, useSensors, type Active, type CollisionDetection, type DragEndEvent, type DragMoveEvent, type Over } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -74,7 +75,7 @@ import { ThemeStoreFields, ThemeStoreStandIn } from "./theme-store-fields";
 import { THEME_STORE_PART_COPY, type ThemeStorePart } from "@/lib/theme-store-parts";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
 import { ScopedCss } from "@/components/custom-css";
-import { HiddenBadge, HiddenPartsToggle, ResponsiveBar, ResponsiveToggle, SizeEditContext, SizeMark, SizeSwitch, VisibilityFields, useSizeEdit, isResponsiveShortcut, typingIn, useResponsiveMode, type CanvasView, type SizeEdit } from "./responsive-edit";
+import { HiddenBadge, HiddenPartsToggle, ResponsiveBar, ResponsiveToggle, SizeEditContext, SizeMark, SizeSwitch, VisibilityFields, inheritedClass, useSizeEdit, isResponsiveShortcut, typingIn, useResponsiveMode, type CanvasView, type SizeEdit } from "./responsive-edit";
 import type { PartSharing, TemplateActions, TemplateItem, TemplateSource } from "@/lib/templates";
 import { templatePreviewPath } from "@/lib/template-paths";
 import { partFromRows, partRows } from "@/lib/saved-part-canvas";
@@ -5617,6 +5618,7 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
           onChange={(display) => onChange({ display: display === "dropdown" ? undefined : display, direction: undefined })}
         />
       )}
+      {block.part === "languages" && <LanguageSwitcherFields block={block} onChange={onChange} />}
       {lined && (
         <Choices
           legend={w.menu.linksLegend}
@@ -5633,6 +5635,54 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
         <p className="text-xs text-muted">{sw.phones}</p>
       )}
     </div>
+  );
+}
+
+/**
+ * The language switcher's look (D474): its languages side by side, one under another or in a list to open; each by its name, short code
+ * or no words; with flags or not. Each is set at the screen size edited (D179), as a grid's display is.
+ */
+function LanguageSwitcherFields({ block, onChange }: { block: SiteBlock; onChange: (patch: BlockPatch<SiteBlock>) => void }) {
+  const { size } = useSizeEdit();
+  const look = switcherAt(block, size);
+  const sw = useAdminText("builder").site.switcher;
+  const own = valueAt(block, "langText", size) ?? "name";
+  return (
+    <>
+      <Choices
+        legend={sw.layout}
+        mark={<SizeMark part={block} field="switcher" label={sw.layout} onPatch={onChange} />}
+        muted={inheritedClass(sizeSource(block, size, "switcher"), size)}
+        options={[
+          { value: "row" as const, label: sw.row },
+          { value: "column" as const, label: sw.column },
+          { value: "dropdown" as const, label: sw.dropdown },
+        ]}
+        value={look.layout}
+        onChange={(switcher) => onChange(setAt(block, size, { switcher: switcher === "row" && size === "xl" ? undefined : switcher }))}
+      />
+      <Choices
+        legend={sw.text}
+        mark={<SizeMark part={block} field="langText" label={sw.text} onPatch={onChange} />}
+        muted={inheritedClass(sizeSource(block, size, "langText"), size)}
+        options={[
+          { value: "name" as const, label: sw.name },
+          { value: "code" as const, label: sw.code },
+          { value: "none" as const, label: sw.none },
+        ]}
+        value={own}
+        onChange={(langText) => onChange(setAt(block, size, { langText: langText === "name" && size === "xl" ? undefined : langText }))}
+      />
+      <div className={`flex flex-wrap items-start gap-1 ${inheritedClass(sizeSource(block, size, "langFlag"), size)}`}>
+        <Check
+          label={sw.flag}
+          hint={own === "none" ? sw.noneNeedsFlag : sw.flagHint}
+          checked={look.flag}
+          onChange={(langFlag) => onChange(setAt(block, size, { langFlag: !langFlag && size === "xl" ? undefined : langFlag }))}
+        />
+        <SizeMark part={block} field="langFlag" label={sw.flag} onPatch={onChange} />
+      </div>
+    </>
   );
 }
 
@@ -5700,14 +5750,50 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
       case "withdrawal":
         return <span className="text-sm text-muted underline">{shop.withdraw}</span>;
       case "languages":
-        // Each language by its own name, as the site draws them (D312).
-        return links(["English", "Norsk"]);
+        // The switcher as it looks at the size edited (D474): each language by its name, code or flag; side by side, one under another, or a list to open.
+        return <LanguageStandIn block={block} />;
     }
   })();
   return (
     <span className="block">
       {body}
       {phones}
+    </span>
+  );
+}
+
+/** The language switcher on the canvas (D474), at the size edited: two sample languages as the part shows them there. */
+function LanguageStandIn({ block }: { block: SiteBlock }) {
+  const { size } = useSizeEdit();
+  const look = switcherAt(block, size);
+  const samples = [
+    { name: "English", code: "EN", flag: "/flags/gb.svg" },
+    { name: "Norsk", code: "NB", flag: "/flags/no.svg" },
+  ];
+  const face = (sample: (typeof samples)[number]) => (
+    <span className="inline-flex items-center gap-1.5">
+      {look.flag && (
+        // eslint-disable-next-line @next/next/no-img-element -- the site's own flag, a sketch on the canvas
+        <img src={sample.flag} alt="" width={20} height={15} className="h-[15px] w-5 rounded-[2px] object-cover ring-1 ring-current/15" />
+      )}
+      {look.text === "name" && sample.name}
+      {look.text === "code" && sample.code}
+    </span>
+  );
+  if (look.layout === "dropdown") {
+    return (
+      <span className="inline-flex items-center gap-1 text-sm">
+        {face(samples[0])} {"▾"}
+      </span>
+    );
+  }
+  return (
+    <span className={`flex gap-x-4 gap-y-1 text-sm ${look.layout === "column" ? "flex-col" : "flex-wrap items-center"}`}>
+      {samples.map((sample, index) => (
+        <span key={sample.code} className={index === 0 ? "font-semibold" : undefined}>
+          {face(sample)}
+        </span>
+      ))}
     </span>
   );
 }

@@ -22,7 +22,7 @@ describe("the proxy's answer for a store's page", () => {
   it.each(["GET", "HEAD"])("sends a %s request that moved there for good", async (method) => {
     storeRequestAnswer.mockResolvedValue({ location: "/s/demo/dk/category/hjem" });
     const response = await call(method);
-    expect(storeRequestAnswer).toHaveBeenCalledWith("/s/demo/collections/old", "?x=1", null, true, expect.any(String));
+    expect(storeRequestAnswer).toHaveBeenCalledWith("/s/demo/collections/old", "?x=1", null, true, expect.any(String), expect.objectContaining({ bot: false }));
     expect(response.status).toBe(308);
     expect(response.headers.get("location")).toBe("http://localhost/s/demo/dk/category/hjem");
   });
@@ -30,7 +30,7 @@ describe("the proxy's answer for a store's page", () => {
   it.each(["POST", "PUT", "PATCH", "DELETE"])("asks without moving a %s request: no redirect, no count of a missing page", async (method) => {
     storeRequestAnswer.mockResolvedValue(null);
     const response = await call(method);
-    expect(storeRequestAnswer).toHaveBeenCalledWith("/s/demo/collections/old", "?x=1", null, false, expect.any(String));
+    expect(storeRequestAnswer).toHaveBeenCalledWith("/s/demo/collections/old", "?x=1", null, false, expect.any(String), expect.objectContaining({ bot: false }));
     expect(recordNotFound).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
     expect(response.headers.get("location")).toBeNull();
@@ -48,6 +48,26 @@ describe("the proxy's answer for a store's page", () => {
     const response = await call("GET");
     expect(response.status).toBe(200);
     expect(recordNotFound).toHaveBeenCalledWith("s1", "/collections/old", false);
+  });
+
+  it("sends a visitor at the front door to their language for now, never cached (D474)", async () => {
+    storeRequestAnswer.mockResolvedValue({ language: "/s/kaiza/en?x=1" });
+    const request = new NextRequest("http://localhost/s/kaiza?x=1", {
+      headers: { "accept-language": "en-GB,en;q=0.9", "x-vercel-ip-country": "GB", cookie: "kaizen_lang_s1=en" },
+    });
+    const response = await proxy(request, event);
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://localhost/s/kaiza/en?x=1");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    const visitor = storeRequestAnswer.mock.calls[0][5] as { country: string; acceptLanguage: string; cookie: (name: string) => string | undefined };
+    expect(visitor).toMatchObject({ bot: false, country: "GB", acceptLanguage: "en-GB,en;q=0.9" });
+    expect(visitor.cookie("kaizen_lang_s1")).toBe("en");
+  });
+
+  it("tells the answer a crawler is one", async () => {
+    storeRequestAnswer.mockResolvedValue(null);
+    await proxy(new NextRequest("http://localhost/s/kaiza", { headers: { "user-agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" } }), event);
+    expect(storeRequestAnswer.mock.calls[0][5]).toMatchObject({ bot: true });
   });
 
   it("leaves the request alone when the answer fails", async () => {

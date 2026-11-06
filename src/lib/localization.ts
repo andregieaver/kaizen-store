@@ -1,4 +1,5 @@
 import { canConvert, conversionFactor, defaultRoundTo, toRates, type Rates, type StoreCurrency } from "./currency";
+import { languageCurrencies, type LanguageRule } from "./language-rule";
 import type { Market } from "./markets";
 
 /**
@@ -58,6 +59,16 @@ export type Localization = {
   languageChoice: boolean;
   /** A shopper may see a country's amounts in another currency than its own (Several currencies on, D178). */
   currencyChoice: boolean;
+  /**
+   * How a visitor who has not chosen is first shown a language (D474, `src/lib/language-rule.ts`): `own` (the country's own, as before)
+   * unless the owner chose otherwise; always `own` with Several languages off. Left out where a store is read without it.
+   */
+  languageRule?: LanguageRule;
+  /**
+   * While the currency follows the language (D474): each language (two letters) to the currency it is shown in, where the store offers
+   * it; a language not in it keeps the country's own. Null (or left out) while it does not follow, or with Several languages or currencies off.
+   */
+  currencyByLanguage?: Record<string, string> | null;
 };
 
 /** What the store's features allow (D178): the countries it keeps besides those offered, and whether languages and currencies are chosen. */
@@ -68,6 +79,10 @@ export type LocalizationOptions = {
   languages?: boolean;
   /** Several currencies is on (true when left out). */
   currencies?: boolean;
+  /** How a visitor is first shown a language (D474); `own` when left out. */
+  rule?: LanguageRule;
+  /** The currency follows the language (D474), with the owner's choice per language (two letters to a currency or `own`). */
+  currencyFollows?: { chosen: Readonly<Record<string, string>> } | null;
 };
 
 /**
@@ -86,14 +101,19 @@ export function localizationOf(
   const currencyChoice = options.currencies !== false;
   const natives = new Set(markets.map((market) => market.nativeCurrency));
   const currencies = effectiveCurrencies(currencyChoice ? chosenCurrencies : chosenCurrencies.filter((c) => natives.has(c.currency)), markets);
+  // The main language is what everything is written in first, so it stays when the others are hidden.
+  const locales = languages ? effectiveLocales(chosenLocales, markets) : mergeLocales(chosenLocales.slice(0, 1), markets.map((market) => market.ownLocale));
+  // A language to choose and a currency to go with it need both features (D178, D474).
+  const follows = languages && currencyChoice && options.currencyFollows ? options.currencyFollows : null;
   return {
-    // The main language is what everything is written in first, so it stays when the others are hidden.
-    locales: languages ? effectiveLocales(chosenLocales, markets) : mergeLocales(chosenLocales.slice(0, 1), markets.map((market) => market.ownLocale)),
+    locales,
     keptLocales: effectiveLocales(chosenLocales, kept),
     currencies,
     rates: toRates(effectiveCurrencies(chosenCurrencies, kept)),
     languageChoice: languages,
     currencyChoice,
+    languageRule: languages ? (options.rule ?? "own") : "own",
+    currencyByLanguage: follows ? languageCurrencies(locales, follows.chosen, currencies.map((c) => c.currency)) : null,
   };
 }
 

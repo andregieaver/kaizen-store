@@ -90,6 +90,7 @@ async function createStore(slug: string): Promise<Store> {
     ratesUpdatedAt: null,
     chosenLocales: [],
     chosenCurrencies: [],
+    languageSettings: { rule: "own", currencyFollows: false, currencies: {} },
     seo: parseStoreSeo({}),
     navigation: EMPTY_NAVIGATION,
     menus: [],

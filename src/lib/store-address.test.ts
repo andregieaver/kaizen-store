@@ -4,6 +4,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
+import type { LanguageRule } from "./language-rule";
 import { localizationOf } from "./localization";
 import { toMarket } from "./markets";
 import { marketHome, marketPath } from "./paths";
@@ -16,6 +17,7 @@ import {
   addressSegment,
   afterMarket,
   forgetStoreAddresses,
+  languageAtDoor,
   rememberStoreAddress,
   reservedChoiceSlugs,
   shortChoiceOf,
@@ -32,13 +34,24 @@ const EUR = { currency: "EUR", rate: 1, roundTo: 1 };
 const NOK = { currency: "NOK", rate: 11.6, roundTo: 100 };
 
 /** A store as `getStore()` reads it: countries kept and offered, languages and currencies chosen and switched on or off. */
-function shape(options: { kept?: typeof NO[]; countries?: boolean; locales?: string[]; currencies?: (typeof EUR)[]; languages?: boolean; currencyChoice?: boolean } = {}): StoreAddress {
+function shape(options: {
+  kept?: typeof NO[];
+  countries?: boolean;
+  locales?: string[];
+  currencies?: (typeof EUR)[];
+  languages?: boolean;
+  currencyChoice?: boolean;
+  rule?: LanguageRule;
+  follows?: Record<string, string>;
+} = {}): StoreAddress {
   const kept = options.kept ?? [NO];
   const markets = options.countries ? kept : kept.slice(0, 1);
   const localization = localizationOf(options.locales ?? [], options.currencies ?? [], markets, {
     kept,
     languages: options.languages ?? true,
     currencies: options.currencyChoice ?? true,
+    rule: options.rule,
+    currencyFollows: options.follows ? { chosen: options.follows } : null,
   });
   const address = storeAddressOf({ markets, keptMarkets: kept, allMarkets: kept, localization });
   if (!address) throw new Error("no address");
@@ -264,5 +277,49 @@ describe("the market's routes", () => {
     const dir = join(process.cwd(), "src/app/s/[store]/[market]");
     const folders = readdirSync(dir).filter((name) => statSync(join(dir, name)).isDirectory() && /^[a-z]/.test(name));
     expect([...MARKET_ROUTES].sort()).toEqual(folders.sort());
+  });
+});
+
+describe("a one-country store's front door chooses a visitor's language (D474)", () => {
+  const browser = shape({ locales: ["nb-NO", "en-GB", "sv-SE"], currencies: [EUR, NOK], rule: "browser" });
+
+  it("sends a visitor to the language their browser asks for, and leaves its own as it is", () => {
+    expect(languageAtDoor(browser, { acceptLanguage: "en-US,en;q=0.9" })).toBe("en");
+    expect(languageAtDoor(browser, { acceptLanguage: "nb-NO" })).toBeNull();
+    expect(languageAtDoor(browser, { acceptLanguage: "de-DE" })).toBeNull();
+  });
+
+  it("follows where the visitor is, or their browser over it", () => {
+    const location = shape({ locales: ["nb-NO", "en-GB", "sv-SE"], rule: "location" });
+    expect(languageAtDoor(location, { country: "SE", acceptLanguage: "en" })).toBe("sv");
+    const both = shape({ locales: ["nb-NO", "en-GB", "sv-SE"], rule: "location-browser" });
+    expect(languageAtDoor(both, { country: "SE", acceptLanguage: "en" })).toBe("en");
+    expect(languageAtDoor(both, { country: "SE", acceptLanguage: "fr" })).toBe("sv");
+  });
+
+  it("decides nothing with the country's own rule but the visitor's own choice", () => {
+    const own = shape({ locales: ["nb-NO", "en-GB"] });
+    expect(own.door?.rule).toBe("own");
+    expect(languageAtDoor(own, { country: "GB", acceptLanguage: "en" })).toBeNull();
+    expect(languageAtDoor(own, { remembered: "en" })).toBe("en");
+    expect(languageAtDoor(browser, { acceptLanguage: "en", remembered: "nb" })).toBeNull();
+  });
+
+  it("takes the language's currency with it while the currency follows the language", () => {
+    const follows = shape({ locales: ["nb-NO", "en-IE"], currencies: [EUR, NOK], rule: "browser", follows: {} });
+    expect(follows.door?.currencies).toEqual({ en: "eur" });
+    expect(languageAtDoor(follows, { acceptLanguage: "en" })).toBe("en-eur");
+    expect(languageAtDoor(follows, { acceptLanguage: "nb" })).toBeNull();
+    // Norwegian in euro by the owner's choice: only the currency changes.
+    const ownInEuro = shape({ locales: ["nb-NO", "en-GB"], currencies: [EUR, NOK], rule: "browser", follows: { nb: "EUR" } });
+    expect(languageAtDoor(ownInEuro, { acceptLanguage: "nb" })).toBe("eur");
+    // A currency the country cannot be shown in (no rate for its own) stays out.
+    const noRate = shape({ locales: ["nb-NO", "en-IE"], currencies: [EUR], rule: "browser", follows: {} });
+    expect(languageAtDoor(noRate, { acceptLanguage: "en" })).toBe("en");
+  });
+
+  it("is never the front door of a store in several countries, nor one with Several languages off", () => {
+    expect(languageAtDoor(shape({ kept: [NO, SE], countries: true, locales: ["nb-NO", "en-GB"], rule: "browser" }), { acceptLanguage: "en" })).toBeNull();
+    expect(languageAtDoor(shape({ locales: ["nb-NO", "en-GB"], rule: "browser", languages: false }), { acceptLanguage: "en" })).toBeNull();
   });
 });

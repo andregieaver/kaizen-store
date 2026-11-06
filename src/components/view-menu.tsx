@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { languageCookie } from "@/lib/language-rule";
+
 /**
  * A choice of language or currency (D109): each is a link to the page the
  * shopper is on, in the market address that chooses it, so the choice is in
@@ -29,6 +31,7 @@ export function ViewMenu({
   here,
   className,
   list = false,
+  remember,
 }: {
   icon: ReactNode;
   summary: string;
@@ -39,6 +42,8 @@ export function ViewMenu({
   className?: string;
   /** Shown as a row of links rather than a menu (the footer, the phone menu). */
   list?: boolean;
+  /** A store's languages (D474): the store's id, so a language chosen is kept for its front door (`kaizen_lang_{storeId}`). */
+  remember?: string;
 }) {
   const router = useRouter();
   // Read when a link is chosen, not while rendering, so pages stay prerendered.
@@ -58,6 +63,8 @@ export function ViewMenu({
         // The page the shopper is on, in the choice made, with what is asked of it kept.
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
         event.preventDefault();
+        const cookie = remember ? languageCookie(remember, item.lang, window.location.protocol === "https:") : null;
+        if (cookie) document.cookie = cookie;
         const to = `${hrefFor(item.base)}${window.location.search}${window.location.hash}`;
         // A language on a domain of its own (D313) is another site: a full page load.
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- `to` is an absolute URL on another domain here, never an internal page

@@ -94,6 +94,26 @@ describe("the same store once it offers English and euro", () => {
     expect(await answer(`/s/${slug}/en/p/${handle}`)).toEqual({ rewrite: `/s/${slug}/no-en/p/${handle}` });
     expect(await answer(`/s/${slug}/no-en-eur/cart`)).toEqual({ location: `/s/${slug}/en-eur/cart?a=1` });
   });
+
+  it("sends a visitor at its front door to their browser's language and its currency, once it says so (D474)", async () => {
+    const english = { bot: false, country: "NO", acceptLanguage: "en-GB,en;q=0.9", cookie: () => undefined };
+    // The country's own language, as before, until the owner chooses a rule.
+    expect(await storeRequestAnswer(`/s/${slug}`, "", null, true, "", english)).toEqual({ rewrite: `/s/${slug}/no` });
+    await db().execute(sql`
+      update commerce.stores set language_rule = 'browser', currency_follows_language = true, language_currencies = '{"en": "EUR"}'::jsonb
+      where id = ${storeId}::uuid
+    `);
+    forgetStoreFacts(slug);
+    expect(await storeRequestAnswer(`/s/${slug}`, "?ref=x", null, true, "", english)).toEqual({ language: `/s/${slug}/en-eur?ref=x` });
+    // A crawler, a page's own address and a server action are never sent anywhere; a visitor's own choice comes first.
+    expect(await storeRequestAnswer(`/s/${slug}`, "", null, true, "", { ...english, bot: true })).toEqual({ rewrite: `/s/${slug}/no` });
+    expect(await storeRequestAnswer(`/s/${slug}/cart`, "", null, true, "", english)).toEqual({ rewrite: `/s/${slug}/no/cart` });
+    expect(await storeRequestAnswer(`/s/${slug}`, "", null, false, "", english)).toEqual({ rewrite: `/s/${slug}/no` });
+    const chose = { ...english, cookie: (name: string) => (name === `kaizen_lang_${storeId}` ? "nb" : undefined) };
+    expect(await storeRequestAnswer(`/s/${slug}`, "", null, true, "", chose)).toEqual({ rewrite: `/s/${slug}/no` });
+    await db().execute(sql`update commerce.stores set language_rule = 'own', currency_follows_language = false, language_currencies = '{}'::jsonb where id = ${storeId}::uuid`);
+    forgetStoreFacts(slug);
+  });
 });
 
 describe("the same store once it sells in several countries", () => {

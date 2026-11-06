@@ -26,6 +26,8 @@ import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
  * 2. Addresses with no country (wave 2, D168, `docs/wave-2-redirects.md` 2.1.3, 5.3) of a store that sells in several: an old shop's
  *    `/collections/shoes` is looked up as a manual redirect source and sent, permanently (308), to its target in the store's main market; an address
  *    live in its own country (from when it sold in one) goes there; anything else is left to the routes (the 404 it was) and counted for the 404 report.
+ *    The front door of a store in one country (`/` on its host, `/s/{store}`) may send a visitor to the language they chose before or the
+ *    store's rule picks for them (D474, `languageAtDoor()`): a 307 for them alone, never for a crawler, never for any other address.
  * 3. A/B tests (D148, docs/ab-testing.md): sends a visitor who was given another version of a tested page to that version's page. It runs only for
  *    requests that carry the `kaizen_ab` cookie, which only a browser that accepted statistics cookies has; the tests are read only then. What it does
  *    is the pure decision in `variantPath()`, on the address as served (after job 1's rewrite).
@@ -73,8 +75,22 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     // Only a request that asks for a page is moved (spec 4.1 rule 8): a 308 makes a client replay a POST's body at the new address, and a POST is no
     // page request to count as missing. A server action's POST to a short address is still served from the long one.
     const page = request.method === "GET" || request.method === "HEAD";
-    const answer = await storeRequestAnswer(request.nextUrl.pathname, request.nextUrl.search, hostStore, page, host);
+    // The front door of a store in one country may show a visitor their language (D474): what is known of them, read only there.
+    const visitor = {
+      bot: userAgent(request).isBot,
+      country: request.headers.get("x-vercel-ip-country"),
+      acceptLanguage: request.headers.get("accept-language"),
+      cookie: (name: string) => request.cookies.get(name)?.value,
+    };
+    const answer = await storeRequestAnswer(request.nextUrl.pathname, request.nextUrl.search, hostStore, page, host, visitor);
     if (answer && "location" in answer) return NextResponse.redirect(new URL(answer.location, request.url), 308);
+    if (answer && "language" in answer) {
+      // For this visitor, now: never kept by a cache, as another visitor at the same door may be shown another language.
+      const response = NextResponse.redirect(new URL(answer.language, request.url), 307);
+      response.headers.set("Cache-Control", "private, no-store");
+      response.headers.set("Vary", "Accept-Language, Cookie");
+      return response;
+    }
     if (answer && "rewrite" in answer) served = answer.rewrite;
     if (answer && "miss" in answer) {
       // The 404 it was, counted after the response: the robots' flag is a boolean from the request and nothing else of it is read.

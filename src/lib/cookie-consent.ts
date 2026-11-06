@@ -129,7 +129,7 @@ export type KnownCookie = {
   modals?: boolean;
   /** Set only on Kaizen's site while its referral program is on (D131). */
   referrals?: boolean;
-  /** Set only on Kaizena Flow's own site while it is offered in more than one language (D312). */
+  /** Set only on a site offered in more than one language: Kaizena Flow's own (D312), a store with Several languages on (D474). */
   languages?: boolean;
   /** Set only in stores whose referral program (the affiliate program, D131) is on. */
   affiliate?: boolean;
@@ -168,6 +168,24 @@ export const KNOWN_COOKIES: KnownCookie[] = [
       nb: "Husker om du valgte lyse eller mørke farger for denne butikken; lagres i nettleseren til du velger på nytt.",
       sv: "Kommer ihåg om du valde ljusa eller mörka färger för den här butiken; sparas i webbläsaren tills du väljer igen.",
       da: "Husker, om du valgte lyse eller mørke farver til denne butik; gemmes i din browser, indtil du vælger igen.",
+    },
+  },
+  {
+    // A cookie, only once a visitor chooses a language in a store's language switcher (D474): the front door reads it to show them that
+    // language again. Their own choice of how the store is shown, as light or dark above.
+    name: "kaizen_lang_…",
+    pattern: /^kaizen_lang_[0-9a-f-]{36}$/,
+    provider: "Kaizena Flow",
+    category: "necessary",
+    days: 365,
+    on: "store",
+    feature: "languages",
+    languages: true,
+    purpose: {
+      en: "Remembers the language you chose for this store, so its front page opens in it next time; kept for a year or until you choose again.",
+      nb: "Husker språket du valgte for denne butikken, slik at forsiden åpnes på det neste gang; lagres i ett år eller til du velger på nytt.",
+      sv: "Kommer ihåg språket du valde för den här butiken, så att startsidan öppnas på det nästa gång; sparas i ett år eller tills du väljer igen.",
+      da: "Husker det sprog, du valgte til denne butik, så forsiden åbner på det næste gang; gemmes i et år, eller indtil du vælger igen.",
     },
   },
   {

@@ -7,7 +7,10 @@ import { mayRemember } from "@/lib/page-modal";
 import { englishPath, PLATFORM_LANG_FACTS, platformPath, suggestedLang, type PlatformLang } from "@/lib/platform-lang";
 import { LANGUAGE_HINT_KEY, LANGUAGE_HINT_TEXT } from "@/lib/platform-lang-text";
 
+import { flagOf, languageCode } from "@/lib/language-flags";
+
 import { HINT_CARD } from "./hint-card";
+import { LanguageLinks, type LanguageLink } from "./language-links";
 
 /** This page's address in another language of the site, its query kept (D312). */
 function sameIn(lang: PlatformLang, pathname: string, query: string): string {
@@ -21,11 +24,37 @@ function sameIn(lang: PlatformLang, pathname: string, query: string): string {
  * 24 px at least (WCAG 2.5.8, `e2e/target-size.spec.ts`), in a footer as anywhere; in the menu, 44 px as its other links.
  * Drawn in a `<Suspense>`: it reads the address.
  */
-export function LanguageSwitch({ lang, offered, menu = false }: { lang: PlatformLang; offered: readonly PlatformLang[]; menu?: boolean }) {
+export function LanguageSwitch({
+  lang,
+  offered,
+  menu = false,
+  className,
+}: {
+  lang: PlatformLang;
+  offered: readonly PlatformLang[];
+  menu?: boolean;
+  /**
+   * The part stylesheet's class of the *Languages* part this draws (D474, `languageSwitchStyle()`): it is then the switcher an owner
+   * shapes (side by side, one under another or a drop-down list; names, codes or flags, by screen size); without it, a row of names.
+   */
+  className?: string;
+}) {
   const pathname = usePathname();
   const query = useSearchParams().toString();
   if (offered.length < 2) return null;
   const label = LANGUAGE_HINT_TEXT[lang].switchLabel;
+  if (className !== undefined && !menu) {
+    const items: LanguageLink[] = offered.map((other) => ({
+      key: other,
+      lang: PLATFORM_LANG_FACTS[other].tag,
+      name: PLATFORM_LANG_FACTS[other].name,
+      code: languageCode(PLATFORM_LANG_FACTS[other].tag),
+      flag: flagOf(PLATFORM_LANG_FACTS[other].locale),
+      href: sameIn(other, pathname, query),
+      current: other === lang,
+    }));
+    return <LanguageLinks label={label} items={items} className={className} />;
+  }
   if (menu) {
     // As the store's menu shows its countries: a heading, then one button-like link per language, the current one marked.
     const pill = "flex min-h-11 items-center rounded-button border px-4 text-sm";

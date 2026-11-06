@@ -14,6 +14,7 @@ import {
   type PageColumn,
   type PageRow,
   type PartBase,
+  type SiteBlock,
   type Sides,
   type Spacing,
   type VerticalAlign,
@@ -23,6 +24,7 @@ import {
   withParts,
 } from "./page-content";
 import { carouselAnywhere, carouselAt, hiddenAt, neverStacks, spacingAt, stackAt, valueAt } from "./responsive";
+import { sizesWhere, type SwitcherLook } from "./language-switch";
 import { colourCss } from "./colour";
 import { brandColumns } from "./brands";
 import { galleryColumns } from "./gallery";
@@ -644,11 +646,51 @@ export function gridListStyle(block: ContentGridBlock): ElementStyle {
   return named(rules, "-l");
 }
 
+/** What a screen reader still reads, hidden from sight (as Tailwind's `sr-only`). */
+const READ_ONLY: Decl = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  padding: "0",
+  margin: "-1px",
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  "white-space": "nowrap",
+  "border-width": "0",
+};
+
+/**
+ * The language switcher (D474, `src/lib/language-switch.ts`): its list or its drop-down list, the list side by side or one under another,
+ * each language's name, short code and flag, each at the sizes that ask for it. The list and the menu are both drawn; the one a size does
+ * not use is not shown there (nor read). In the open menu each language keeps its name: only the list and the menu's button take the
+ * short code or no words. The name a size does not show is still read, so every link keeps its name.
+ */
+export function languageSwitchStyle(block: SiteBlock): ElementStyle {
+  const at = (test: (look: SwitcherLook) => boolean) => sizesWhere(block, test);
+  const only = (selector: string, sizes: Size[], decl: Decl): PartRule => ({ selector, important: false, where: false, only: sizes, decl });
+  const hide: Decl = { display: "none" };
+  const shown = ["& [data-ls-list]", "& [data-ls-menu] > summary"];
+  return named(
+    [
+      only("& [data-ls-list]", at((look) => look.layout === "dropdown"), hide),
+      only("& [data-ls-menu]", at((look) => look.layout !== "dropdown"), hide),
+      only("& [data-ls-list]", at((look) => look.layout === "column"), { "flex-direction": "column", "align-items": "flex-start" }),
+      ...shown.flatMap((where) => [
+        only(`${where} [data-ls-name]`, at((look) => look.text !== "name"), READ_ONLY),
+        only(`${where} [data-ls-code]`, at((look) => look.text !== "code"), hide),
+      ]),
+      only("& [data-ls-flag]", at((look) => !look.flag), hide),
+    ],
+    "-s",
+  );
+}
+
 /** Every rule of these blocks: their boxes, and a content grid's list. */
 export function blockRules(blocks: PageBlock[], mode: PartsMode): PartRule[] {
   return blocks.flatMap((block) => [
     ...blockStyle(block, mode).rules,
     ...(block.type === "contentGrid" ? gridListStyle(block).rules : []),
+    ...(block.type === "site" && block.part === "languages" ? languageSwitchStyle(block).rules : []),
     // A Columns component (D294): its columns laid out as a row's, and each column's own box (what they hold is in `blocks` too).
     ...(block.type === "columns" ? [...rowGridStyle(columnsAsRow(block)).rules, ...block.columns.flatMap((column) => columnStyle(column, mode).rules)] : []),
   ]);

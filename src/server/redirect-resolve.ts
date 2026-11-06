@@ -11,7 +11,8 @@ import type { Market } from "@/lib/markets";
 import { countryHosts, hasMarketHosts, hostOrigin, languageHosts, marketPath, marketUrl, storeSiteUrl } from "@/lib/paths";
 import { privateDecision } from "@/lib/private-mode";
 import { encodeAddress, firstSegment, mergeQuery, normalisePath, pathOfTarget } from "@/lib/redirect-path";
-import { MARKET_ROUTES, addressDecision, countryHostDecision, languageHostDecision, storePathOf, type StoreAddress } from "@/lib/store-address";
+import { languageCookieName } from "@/lib/language-rule";
+import { MARKET_ROUTES, addressDecision, countryHostDecision, joinStorePath, languageAtDoor, languageHostDecision, storePathOf, type StoreAddress } from "@/lib/store-address";
 import { localized } from "@/lib/store-localized";
 import { redirectsTag } from "@/lib/redirects";
 
@@ -209,7 +210,7 @@ export const FACTS_MS = 10_000;
 async function storeFactsOf(slug: string): Promise<StoreFacts> {
   return remembered(factsKey(slug), async () => {
     const [row] = await db().execute<Row>(sql`
-      select s.id, s.slug, s.features, s.locales,
+      select s.id, s.slug, s.features, s.locales, s.language_rule, s.currency_follows_language, s.language_currencies,
         case when s.private_mode and not (s.is_template or s.starter) then s.private_version end as private_version,
         (select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
            from commerce.store_currencies c where c.store_id = s.id) as currencies,
@@ -264,8 +265,14 @@ const locationBy = (facts: NonNullable<StoreFacts>, target: string): string => {
 
 export type LegacyAnswer = { location: string } | { miss: { storeId: string; path: string } } | null;
 
-/** What the proxy does with a request for a store's page (D181, D168): move it (308), serve it from another path, count it as missing, or nothing. */
-export type StoreRequestAnswer = { location: string } | { rewrite: string } | { miss: { storeId: string; path: string } } | null;
+/**
+ * What the proxy does with a request for a store's page (D181, D168): move it (308), serve it from another path, count it as missing, or
+ * nothing; or, at the front door, send the visitor to their language for now (`language`, a 307 never cached, D474).
+ */
+export type StoreRequestAnswer = { location: string } | { rewrite: string } | { miss: { storeId: string; path: string } } | { language: string } | null;
+
+/** What the proxy knows of the visitor asking for a store's front door (D474): a crawler is never sent anywhere by it. */
+export type DoorVisitor = { bot: boolean; country: string | null; acceptLanguage: string | null; cookie: (name: string) => string | undefined };
 
 /**
  * A request for a store's page, as the proxy sees it (`pathname` as the browser asked, `hostStore` the store whose host it came to): the shape
@@ -273,9 +280,18 @@ export type StoreRequestAnswer = { location: string } | { rewrite: string } | { 
  * move to the short ones; for a store that sells in several, an address with no country (`/collections/shoes`, an old shop's, or `/p/x` from
  * when it sold in one) is looked up as a manual redirect (D168), else moved to its own country when it is live there (a working page, a
  * product, a category or tag, a page or article), else left to the routes (the 404 it was) and returned as a `miss` for the caller to count.
- * A move is only made for a request that asks for a page (`page`: GET or HEAD): a 308 makes a client replay a POST's body.
+ * A move is only made for a request that asks for a page (`page`: GET or HEAD): a 308 makes a client replay a POST's body. The front door of
+ * a store in one country, asked on the store's own address by a visitor (`visitor`, not a crawler), may send them to the language their own
+ * earlier choice or the store's rule picks (`languageAtDoor()`, D474).
  */
-export async function storeRequestAnswer(pathname: string, search: string, hostStore: string | null, page: boolean, host = ""): Promise<StoreRequestAnswer> {
+export async function storeRequestAnswer(
+  pathname: string,
+  search: string,
+  hostStore: string | null,
+  page: boolean,
+  host = "",
+  visitor?: DoorVisitor,
+): Promise<StoreRequestAnswer> {
   const request = storePathOf(pathname, hostStore);
   if (!request) return null;
   const facts = await storeFactsOf(request.store);
@@ -284,6 +300,15 @@ export async function storeRequestAnswer(pathname: string, search: string, hostS
   const countries = countryHosts(request.store);
   const languages = languageHosts(request.store);
   const bare = host.toLowerCase().replace(/:\d+$/, "");
+  const onOwnAddress = !Object.values(countries).includes(bare) && !Object.values(languages).includes(bare);
+  if (page && visitor && !visitor.bot && request.parts.length === 0 && onOwnAddress) {
+    const segment = languageAtDoor(facts.address, {
+      country: visitor.country,
+      acceptLanguage: visitor.acceptLanguage,
+      remembered: visitor.cookie(languageCookieName(facts.id)),
+    });
+    if (segment) return { language: `${joinStorePath(request, segment, [])}${search}` };
+  }
   const decision =
     countryHostDecision(request, facts.address, {
       here: Object.entries(countries).find(([, name]) => name === bare)?.[0] ?? null,

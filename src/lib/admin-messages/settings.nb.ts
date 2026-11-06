@@ -472,8 +472,33 @@ export const settingsNb: SettingsMessages = {
     updated: "Kursene ble sist oppdatert fra ECB {when}.",
     saveCurrencies: "Lagre valutaer",
     fetch: "Hent ECBs kurser nå",
+    visitorTitle: "Språket en besøkende ser først",
+    visitorText:
+      "Hvordan en besøkende som ikke har valgt språk ennå, får se ett av dine. Besøkende kan alltid velge selv med en språkvelger i toppteksten eller bunnteksten; valget deres huskes og går først.",
+    rules: {
+      own: { label: "Hvert lands eget språk", hint: "Besøkende ser butikken på landets språk til de velger et annet. Som før." },
+      location: { label: "Der den besøkende er", hint: "En besøkende i Sverige ser svensk hvis du tilbyr det; ellers landets eget språk." },
+      "location-browser": {
+        label: "Der den besøkende er, med mindre nettleseren ber om et annet",
+        hint: "En besøkende i Sverige med nettleseren på engelsk ser engelsk; en med nettleseren på et språk du ikke tilbyr, ser svensk.",
+      },
+      browser: { label: "Nettleserens språk", hint: "Besøkende ser språket nettleseren er satt til hvis du tilbyr det; ellers landets eget språk." },
+    },
+    frontDoor:
+      "Dette avgjør hva forsiden din viser. En lenke til en side på ett språk, fra søkeresultater eller en annonse, åpnes alltid på det språket, slik EUs regler om geoblokkering krever.",
+    followTitle: "Valuta med språket",
+    follow: "Bytt valuta når en besøkende bytter språk",
+    followHint:
+      "En besøkende som velger et språk, ser prisene i språkets valuta nedenfor. De kan fortsatt velge en annen valuta der du viser valutavalget.",
+    followOff: "Tilby mer enn én valuta for å bytte den med språket.",
+    languageCurrency: "Valuta for {language}",
+    countrysOwn: "Landets egen valuta",
+    eachCurrency: "Hvert språks valuta",
+    saveVisitor: "Lagre",
     actions: {
       onlyOwner: "Bare en eier kan endre dette.",
+      visitorSaved: "Lagret.",
+      chooseRule: "Velg hvordan en besøkendes språk velges.",
       chooseMain: "Velg butikkens hovedspråk.",
       notRate: "«{text}» er ikke en kurs for {currency}.",
       languagesSaved: "Språkene er lagret.",

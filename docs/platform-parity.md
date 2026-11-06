@@ -14,7 +14,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-32 rows.
+33 rows.
 
 ### Website
 
@@ -71,6 +71,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 | Apps and API | Settings → AI assistants and apps and App listings oversee others' apps; no Admin API for the platform (`api_tokens` needs a store) | Console, C4 |
 | AI | Has more than a store (pause, web search, prices, the eval); lacks how long AI manager conversations are kept | Console |
 | Team (roles) | Platform → Settings → Team adds and removes platform admins (D471); every one can do everything: no roles yet | Console, C1 |
+| The language a visitor sees first (D474) | Kaizena Flow's site suggests a visitor's language and never sends them to it (D312); no choice of rule. The switcher's look (by name, code or flag, side by side, one under another or a list, by screen size) is built for both | Console: the same rule on `platform_settings`, read by the proxy at `/` (next of D474) |
 
 ### Home
 
@@ -88,6 +89,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 | Support desk and chat assistant | Support | Support (a store's handoff requests do not apply: Kaizena Flow's AI never acts on a store, `docs/support.md` 2.8) |
 | Speed | Analytics → Speed | Usage and limits → speed (`own_speed_samples`) |
 | SEO, cookies, Google reviews, emails, languages | Settings | Settings |
+| The language switcher's look by screen size (D474) | Header and footer, *Languages* | Header and footer, *Languages* |
 | Legal pages | Settings → Legal pages | Pages → *Write the legal pages* (terms, privacy, DPA, D408) |
 | Payments | Settings → Payments (Stripe Connect) | Settings → Stripe (Stripe Billing) |
 | Referrals and affiliates | Affiliates | Plans → Referrals (creators: referrers with a commission) |

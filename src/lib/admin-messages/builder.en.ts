@@ -865,12 +865,26 @@ export const builderEn = {
       cookies: "A link to the cookies page, where visitors change their choice.",
       withdrawal:
         "A link to the withdrawal function, where shoppers withdraw from a purchase. The law asks for it on every page, so a store's footer must have it, and it must show on phones.",
-      languages: "A link to this page in each of the site's languages, each by its own name. Nothing is added to the footer by itself: place it where visitors should find it.",
+      languages:
+        "The language switcher: a link to this page in each of the site's languages. Shown while a visitor has more than one to choose. Nothing is added to the header or footer by itself: place it where visitors should find it.",
     },
     leftOut: "A part with nothing to show is left out.",
     logoHeight: "pixels, {min} to {max}; empty: the usual size",
     shownAs: "Shown as",
     dropdown: "A list to open",
+    switcher: {
+      layout: "Languages",
+      row: "Side by side",
+      column: "One under another",
+      dropdown: "A list to open",
+      text: "Words",
+      name: "Name",
+      code: "Short (EN)",
+      none: "None",
+      flag: "Show flags",
+      flagHint: "The flag of the country each language's variant names (English (UK) the British flag).",
+      noneNeedsFlag: "With no words a language shows its flag; without flags it shows its short code.",
+    },
     phones:
       "To leave it out on phones, where the menu button and the slide-out menu have the menu, account and countries, switch off Small under Advanced, Visibility.",
   },

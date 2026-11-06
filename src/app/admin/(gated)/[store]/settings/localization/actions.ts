@@ -8,6 +8,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import type { SettingsMessages } from "@/lib/admin-messages/settings.en";
 import { adminText } from "@/lib/admin-text";
 import { parseRate, stepMinor } from "@/lib/currency";
+import { isLanguageRule } from "@/lib/language-rule";
 import { isOfferable, languageOptions, oneLanguageChoice } from "@/lib/localization";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
 import { featureOffText, featureOn } from "@/lib/store-features";
@@ -16,7 +17,7 @@ import { type Membership } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { enabledLanguages } from "@/server/languages";
-import { fetchRatesNow, saveCurrencies, saveLanguages, type CurrencyInput } from "@/server/localization";
+import { fetchRatesNow, saveCurrencies, saveLanguages, saveVisitorLanguage, type CurrencyInput } from "@/server/localization";
 import type { SaveResult } from "@/server/settings";
 import { STORES_TAG } from "@/server/seo";
 import { forgetStoreFacts } from "@/server/redirect-resolve";
@@ -86,6 +87,35 @@ export async function saveStoreLanguageAction(storeSlug: string, _state: FormSta
   }
   const [locales, byMarket] = oneLanguageChoice(owner.store.localization.keptLocales, main, marketLocales);
   return done(owner, await saveLanguages(owner, locales, byMarket), wordsOf(owner).actions.languageSaved);
+}
+
+/**
+ * How a visitor who has not chosen is first shown a language, and whether the currency changes with the language (D474). With Several
+ * currencies off the currency part is not on the page: what was chosen for it stays as it is.
+ */
+export async function saveVisitorLanguageAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  if (!featureOn(owner.store, "languages")) return { status: "error", messages: [featureOffText("languages", adminText(adminLangOf(owner.account.adminLocale), "common").features)] };
+  const rule = String(formData.get("rule") ?? "");
+  if (!isLanguageRule(rule)) return { status: "error", messages: [wordsOf(owner).actions.chooseRule] };
+  const kept = owner.store.languageSettings;
+  const currencyPart = featureOn(owner.store, "currencies");
+  const currencies: Record<string, string> = { ...kept.currencies };
+  if (currencyPart) {
+    for (const [key, value] of formData.entries()) {
+      if (!key.startsWith("currency:") || typeof value !== "string") continue;
+      const lang = key.slice("currency:".length);
+      // The variant's own currency is what a language left out takes: kept only where the owner chose another.
+      if (value === "") delete currencies[lang];
+      else currencies[lang] = value;
+    }
+  }
+  return done(
+    owner,
+    await saveVisitorLanguage(owner, { rule, currencyFollows: currencyPart ? formData.get("currencyFollows") === "on" : kept.currencyFollows, currencies }),
+    wordsOf(owner).actions.visitorSaved,
+  );
 }
 
 /** The currencies offered, their rates and rounding, and whether the rates follow the ECB's. */

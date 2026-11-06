@@ -1,14 +1,17 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { codeFromSearch } from "@/lib/affiliates";
+import { isBot } from "@/lib/experiments";
+import { languageCookieName, type Visitor } from "@/lib/language-rule";
+import { firstSlug } from "@/lib/language-view";
 import { t } from "@/lib/i18n";
 import { marketForCountry, type Market } from "@/lib/markets";
 import { marketPath, marketHome } from "@/lib/paths";
 import { affiliateSite } from "@/server/affiliates";
-import { getOpenStore } from "@/server/stores";
+import { getOpenStore, type Store } from "@/server/stores";
 
 /**
  * A store's front door. With one market it goes straight there (a store that sells in one country is served its country's front page here
@@ -50,22 +53,12 @@ export default async function Chooser({ params, searchParams }: PageProps<"/s/[s
           </span>
         ))}
       </p>
-      <ul className="grid gap-3 sm:grid-cols-3">
-        {store.markets.map((market) => (
-          <li key={market.slug}>
-            <Link
-              href={marketHome(store.slug, market.slug)}
-              hrefLang={market.lang}
-              lang={market.lang}
-              className="block rounded-lg border border-border px-4 py-3 font-medium hover:bg-surface"
-            >
-              {market.name}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {/* Each country in its own language as the page is drawn; for a visitor, in the language the store's rule picks (D474). */}
+      <Suspense fallback={<MarketLinks store={store} slugs={null} />}>
+        <VisitorMarketLinks store={store} />
+      </Suspense>
       <Suspense fallback={null}>
-        <Suggestion storeSlug={store.slug} markets={store.markets} />
+        <Suggestion store={store} />
       </Suspense>
     </main>
   );
@@ -78,13 +71,54 @@ async function KeepReferral({ target, searchParams }: { target: string; searchPa
   redirect(code ? `${target}?ref=${code}` : target);
 }
 
-async function Suggestion({ storeSlug, markets }: { storeSlug: string; markets: Market[] }) {
+/** What is known of the visitor at the front door (D474), or null for a crawler: it is shown each country's own view. */
+async function visitorOf(store: Store): Promise<Visitor | null> {
+  const request = await headers();
+  if (isBot(request.get("user-agent"))) return null;
+  return {
+    country: request.get("x-vercel-ip-country"),
+    acceptLanguage: request.get("accept-language"),
+    remembered: (await cookies()).get(languageCookieName(store.id))?.value ?? null,
+  };
+}
+
+/** Each country's first view for this visitor (D474): its slug by market code, null where every country is shown in its own. */
+async function visitorSlugs(store: Store): Promise<Record<string, string> | null> {
+  const visitor = await visitorOf(store);
+  return visitor ? Object.fromEntries(store.markets.map((market) => [market.code, firstSlug(market, store.localization, visitor)])) : null;
+}
+
+function MarketLinks({ store, slugs }: { store: Store; slugs: Record<string, string> | null }) {
+  return (
+    <ul className="grid gap-3 sm:grid-cols-3">
+      {store.markets.map((market) => (
+        <li key={market.slug}>
+          <Link
+            href={marketHome(store.slug, slugs?.[market.code] ?? market.slug)}
+            hrefLang={market.lang}
+            lang={market.lang}
+            className="block rounded-lg border border-border px-4 py-3 font-medium hover:bg-surface"
+          >
+            {market.name}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+async function VisitorMarketLinks({ store }: { store: Store }) {
+  return <MarketLinks store={store} slugs={await visitorSlugs(store)} />;
+}
+
+async function Suggestion({ store }: { store: Store }) {
   const country = (await headers()).get("x-vercel-ip-country");
-  const market = marketForCountry(markets, country);
+  const market: Market | null = marketForCountry(store.markets, country);
   if (!market) return null;
+  const slug = (await visitorSlugs(store))?.[market.code] ?? market.slug;
   return (
     <p lang={market.lang}>
-      <Link href={marketHome(storeSlug, market.slug)} className="underline">
+      <Link href={marketHome(store.slug, slug)} className="underline">
         {t(market.lang).products} · {market.name}
       </Link>
     </p>

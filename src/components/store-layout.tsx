@@ -5,6 +5,8 @@ import { ReportContentLink } from "@/components/report-content-link";
 import { accountsShown } from "@/lib/customer-accounts";
 import { t, type Messages } from "@/lib/i18n";
 import { currencyChoices, currencyName, languageChoices, languageName } from "@/lib/localization";
+import { flagOf, languageCode } from "@/lib/language-flags";
+import { languageSlug } from "@/lib/language-view";
 import { marketSlug } from "@/lib/market-slug";
 import type { Market } from "@/lib/markets";
 import { linkExists, menuHref, menuLabel, menuTree, shopLink, termNames, type MenuEntry, type MenuNode } from "@/lib/navigation";
@@ -23,6 +25,7 @@ import { Icon } from "./icons";
 import { LogoPicture } from "./logo-picture";
 import { StoreColorSwitch } from "./store-color-switch";
 import { ViewMenu, type ViewItem } from "./view-menu";
+import { LanguageLinks, type LanguageLink } from "./language-links";
 import type { MenuHover } from "@/lib/menu-hover";
 import { MenuTreeView, type MenuLayout, type MenuLinkNode } from "./menu-view";
 import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
@@ -134,7 +137,10 @@ export function Brand({
   );
 }
 
-/** The languages and currencies a shopper in this country can choose, as links that keep the other choice (D109). */
+/**
+ * The languages and currencies a shopper in this country can choose, as links that keep the other choice (D109); a language takes its
+ * currency with it while the currency follows the language (D474, `languageSlug()`).
+ */
 function viewChoices(store: Store, market: Market): { languages: ViewItem[]; currencies: ViewItem[] } {
   const own = { lang: market.ownLocale.split("-")[0], currency: market.nativeCurrency };
   const languages = languageChoices(store.localization, market).map((locale) => {
@@ -143,7 +149,7 @@ function viewChoices(store: Store, market: Market): { languages: ViewItem[]; cur
       key: locale,
       label: languageName(locale),
       lang,
-      slug: marketSlug(market.code, { lang, currency: market.currency }, own),
+      slug: languageSlug(market, store.localization, lang),
       current: lang === market.lang,
     };
   // Another language may be on a domain of its own (D313): the link is then a full address.
@@ -164,6 +170,30 @@ export function hasViewChoices(store: Store, market: Market): boolean {
   return languages.length > 0 || currencies.length > 0;
 }
 
+/** Whether a shopper in this country has more than one language to choose (D474: the language switcher shows only then). */
+export const hasLanguageChoice = (store: Store, market: Market): boolean => viewChoices(store, market).languages.length > 0;
+
+/**
+ * The store's language switcher (D474), the *Languages* part of its header or footer: each language this country is offered in, with its
+ * name, short code and flag, as `LanguageLinks` draws them and the part's class (`languageSwitchStyle()`) shows them at each screen size.
+ * Each goes to the page the shopper is on in that language (and its currency, while the currency follows the language), and is remembered
+ * for the store's front door.
+ */
+export function LanguageSwitcher({ store, market, m, className }: Props & { m: Messages; className: string }) {
+  const { languages } = viewChoices(store, market);
+  if (languages.length === 0) return null;
+  const items: LanguageLink[] = languages.map((item) => ({
+    key: item.key,
+    lang: item.lang ?? item.key.split("-")[0],
+    name: item.label,
+    code: languageCode(item.key),
+    flag: flagOf(item.key),
+    href: item.base,
+    current: item.current,
+  }));
+  return <LanguageLinks label={m.chooseLanguage} items={items} className={className} samePage={{ here: marketPath(store.slug, market.slug) }} remember={store.id} />;
+}
+
 /** The language and currency choices (D109): each a menu, or with `list` a row of links. */
 export function LocaleChoice({ store, market, m, className = "", list = false }: Props & { m: Messages; className?: string; list?: boolean }) {
   const { languages, currencies } = viewChoices(store, market);
@@ -172,7 +202,7 @@ export function LocaleChoice({ store, market, m, className = "", list = false }:
   return (
     <div className={`flex ${list ? "flex-col gap-3" : "items-center"} ${className}`}>
       {languages.length > 0 && (
-        <ViewMenu icon={null} summary={market.lang.toUpperCase()} srLabel={m.chooseLanguage} items={languages} here={here} list={list} />
+        <ViewMenu icon={null} summary={market.lang.toUpperCase()} srLabel={m.chooseLanguage} items={languages} here={here} list={list} remember={store.id} />
       )}
       {currencies.length > 0 && (
         <ViewMenu icon={null} summary={market.currency} srLabel={m.chooseCurrency} items={currencies} here={here} list={list} />

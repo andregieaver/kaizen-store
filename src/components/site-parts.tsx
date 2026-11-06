@@ -8,6 +8,7 @@ import { motionNeeds } from "@/lib/motion-attrs";
 import { rowShows, type PageBlock, type PageContent, type SiteBlock } from "@/lib/page-content";
 import { flowRows } from "@/lib/page-modal";
 import { localizePage } from "@/lib/page-translation";
+import { languageSwitchStyle } from "@/lib/part-css";
 import { partFeatureOn } from "@/lib/part-features";
 import { marketPath, marketHome } from "@/lib/paths";
 import { siteBlocks } from "@/lib/site-layout";
@@ -31,7 +32,7 @@ import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } fr
 import { platformText } from "@/lib/platform-text";
 import { linksIn } from "@/lib/platform-links";
 import { HidingHeader } from "./store-chrome";
-import { HEADER_BACKGROUND, Brand as StoreBrand, LocaleChoice, MarketChoice, WithdrawalLink, hasViewChoices } from "./store-layout";
+import { HEADER_BACKGROUND, Brand as StoreBrand, LanguageSwitcher, LocaleChoice, MarketChoice, WithdrawalLink, hasLanguageChoice, hasViewChoices } from "./store-layout";
 import { WishlistCount } from "./wishlist-heart";
 
 /**
@@ -66,8 +67,10 @@ export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
   if (!partFeatureOn(block, store)) return false;
   switch (block.part) {
     case "signUp":
-    case "languages":
       return false;
+    case "languages":
+      // The language switcher (D474): while a visitor here has more than one language to choose.
+      return hasLanguageChoice(store, ctx.market);
     case "account":
       // No sign-in or account while the store has customer accounts off (D365).
       return accountsShown(store);
@@ -201,8 +204,10 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
     case "withdrawal":
       // The withdrawal function, always reachable (D153).
       return <WithdrawalLink store={store} market={market} />;
-    case "signUp":
     case "languages":
+      // The language switcher (D474), shaped as the part says at each screen size.
+      return <LanguageSwitcher store={store} market={market} m={m} className={languageSwitchStyle(block).className} />;
+    case "signUp":
       return null;
   }
 }
@@ -252,10 +257,11 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
         </span>
       );
     case "languages":
-      // The page in each of the site's languages (D312), where the owner places it: nothing is added under the footer by itself.
+      // The page in each of the site's languages (D312), where the owner places it: nothing is added under the footer by itself. Shaped as
+      // the part says (D474), as a store's.
       return (
         <Suspense fallback={null}>
-          <LanguageSwitch lang={lang} offered={chrome.langs} />
+          <LanguageSwitch lang={lang} offered={chrome.langs} className={languageSwitchStyle(block).className} />
         </Suspense>
       );
     default:
