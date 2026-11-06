@@ -90,7 +90,7 @@ export async function fileReceived(storeId: string, mail: ReceivedMail, env: Rec
   return { status: "done" };
 }
 
-export type FiledEmail = { id: string; subject: string | null; from: string; sentAt: string; excerpt: string };
+export type FiledEmail = { id: string; subject: string | null; from: string; sentAt: string; excerpt: string; body: string };
 
 /** The mail filed on a person (by customer or address), a company or a deal, the newest first. */
 export async function filedEmailsOf(storeId: string, about: { customerId?: string | null; emails?: readonly string[]; companyId?: string; dealId?: string }, n = 50): Promise<FiledEmail[]> {
@@ -107,7 +107,7 @@ export async function filedEmailsOf(storeId: string, about: { customerId?: strin
        limit ${n}
     `,
   );
-  return rows.map((r) => ({ id: r.id, subject: r.subject, from: r.from_address, sentAt: r.sent_at, excerpt: r.body.replace(/\s+/g, " ").slice(0, 200) }));
+  return rows.map((r) => ({ id: r.id, subject: r.subject, from: r.from_address, sentAt: r.sent_at, excerpt: r.body.replace(/\s+/g, " ").slice(0, 200), body: r.body }));
 }
 
 /** Filed mail past the email bodies' retention rule (12 months) deleted. Never throws. */

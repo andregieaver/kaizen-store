@@ -188,6 +188,15 @@ export const dealsEn = {
     },
   },
 
+  /** Mail filed on a deal or a company (S5, D476). */
+  emails: {
+    title: "Emails",
+    none: "No emails filed yet. Copy or forward emails to {address} and they show here.",
+    noneNoAddress: "No emails filed yet.",
+    from: "From {from}",
+    read: "Read the email",
+  },
+
   /** Email on the timeline (S5, D476): the store's filing address. */
   filing: "Copy or forward emails to {address} and they are kept on the timeline of the customers, companies and deals they are about.",
 

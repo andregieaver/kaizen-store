@@ -13,6 +13,8 @@ import { DealsCard } from "@/components/admin/deals/deals-card";
 import { ActivitiesCard } from "@/components/admin/activities/activities-card";
 import { activityViews, newActivityValues } from "@/components/admin/activities/activity-view";
 import { activitiesOf } from "@/server/activities";
+import { filedEmailsOf } from "@/server/email-filing";
+import { FiledEmailsCard } from "@/components/admin/deals/filed-emails-card";
 import { activityActions, activityTeam } from "../../deals/activity-actions-of";
 import { featureOn } from "@/lib/store-features";
 import { employeePercent, getCompany, listInvites, listMembers } from "@/server/companies";
@@ -125,6 +127,15 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
           addHref={memberCan(current, "customers:write") ? `${base}/deals/new?company=${company.id}` : null}
           words={dealWords.card}
           statuses={dealWords.statuses}
+        />
+      )}
+      {/* The mail filed on the company's people (S5, D476). */}
+      {salesOn && (
+        <FiledEmailsCard
+          emails={await filedEmailsOf(store.id, { companyId: company.id })}
+          words={dealWords.emails}
+          address={null}
+          when={(iso) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: store.timeZone })}
         />
       )}
       {/* The calls, meetings and tasks about the company (S3, D468), its deals' among them. */}

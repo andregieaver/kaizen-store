@@ -179,6 +179,14 @@ export const dealsNb: DealsMessages = {
     },
   },
 
+  emails: {
+    title: "E-post",
+    none: "Ingen e-post arkivert ennå. Kopier eller videresend e-post til {address}, så vises den her.",
+    noneNoAddress: "Ingen e-post arkivert ennå.",
+    from: "Fra {from}",
+    read: "Les e-posten",
+  },
+
   filing: "Kopier eller videresend e-post til {address}, så blir den liggende på tidslinjen til kundene, bedriftene og avtalene den gjelder.",
 
   leads: {
