@@ -27,7 +27,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * - The platform's tags (`HOUSE_TAG`, a plan's `Plan: …`) are kept true on each person and taken away when they no longer hold; staff's own
  *   tags are never touched. Nobody is subscribed to anything: news goes only to those who asked for it (the newsletter on Kaizena Flow's pages).
  * - An application opens a deal on the Sign-ups pipeline (made the first time), moved forward as the application is approved and its store
- *   opened, won when the store's plan is paid and lost when the application is declined (`closed_via` `platform`). A deal a person moved to
+ *   opened, won when the store's plan is paid with real money (Stripe's live mode) and lost when the application is declined (`closed_via` `platform`). A deal a person moved to
  *   another pipeline or closed is left as it is, and a deal is never moved back.
  * - An erased account (D377) takes everything of its address in Kaizena Flow's store with it. A person who is neither an owner nor an applicant
  *   any more (an application blanked after its period, PSI REG-05) is forgotten when nothing else of theirs is kept there: no subscription,
@@ -133,7 +133,7 @@ function people(runner: Tx): Promise<Person[]> {
         select distinct on (lower(r.email)) r.id as request_id, lower(r.email) as email, coalesce(r.name, '') as name, r.locale as lang,
                r.store_name, r.status::text as status,
                coalesce((select s.setup_completed_at is not null from commerce.stores s where s.id = r.store_id), false) as store_opened,
-               coalesce((select b.status in ('active', 'past_due') from commerce.store_billing b where b.store_id = r.store_id), false) as plan_paid
+               coalesce((select b.status in ('active', 'past_due') and b.mode = 'live' from commerce.store_billing b where b.store_id = r.store_id), false) as plan_paid
         from commerce.access_requests r
         where r.email not like '%.invalid' and (not r.self_serve or r.confirmed_at is not null)
         order by lower(r.email), r.created_at desc, r.id

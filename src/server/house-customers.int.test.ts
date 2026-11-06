@@ -131,7 +131,12 @@ describe("Kaizena Flow's own customers (D467)", () => {
     await syncHouseCustomers();
     expect(await deal(email)).toMatchObject({ stage: "Store opened", status: "open" });
 
+    // A plan paid with Stripe's test cards is no sale: the deal waits for real money.
     await bill(shop, await plan(`Start ${run}`), "active");
+    await db().execute(sql`update commerce.store_billing set mode = 'test' where store_id = ${shop}::uuid`);
+    await syncHouseCustomers();
+    expect(await deal(email)).toMatchObject({ stage: "Store opened", status: "open" });
+    await db().execute(sql`update commerce.store_billing set mode = 'live' where store_id = ${shop}::uuid`);
     await syncHouseCustomers();
     expect(await deal(email)).toMatchObject({ stage: "Store opened", status: "won", via: "platform" });
   });
