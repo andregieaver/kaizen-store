@@ -73,6 +73,9 @@ describe("who reads invoices and credit notes", () => {
         // days, to ask the Peppol network whether it receives them and to send the document's UBL to that business's own e-invoice address;
         // a consumer's document is never read, and nothing of a buyer is kept (`einvoice_sends` holds the state alone).
         "src/server/einvoice-sending.ts",
+        // Our own ledger (D478): which documents of a book's days have no entry yet, by id, kind and day; each is read through
+        // `accounting-documents.ts` and posted on the same terms as the syncs (a shopper is never named on an entry, a business by its name).
+        "src/server/ledger.ts",
       ].sort(),
     );
   });

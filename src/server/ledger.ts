@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import type { BookingDoc } from "@/lib/accounting-docs";
 import {
+  BUCKET_VAT,
   LEDGER_KINDS,
   entryName,
   entryOfDoc,
@@ -13,6 +14,7 @@ import {
   isDay,
   isVatCode,
   noKindOf,
+  postingOfTripletex,
   standardAccount,
   standardOf,
   startingChart,
@@ -25,8 +27,10 @@ import {
 } from "@/lib/ledger";
 import { mainCurrency } from "@/lib/markets";
 
+import { loadDocument, type DocumentKind } from "./accounting-documents";
 import { audit, type Membership } from "./auth";
 import { log } from "./log";
+import { getTripletexConnection } from "./tripletex";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -268,3 +272,133 @@ export async function ledgerTrialBalance(bookId: string, from: string, to: strin
   if (tb.totals.after !== 0) log("error", "ledger.unbalanced", { bookId, after: tb.totals.after });
   return tb;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 2: the store's documents, posted as they are issued
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** How many documents a book posts in one go, and how long the dispatcher's job may take. */
+const DOCS_A_ROUND = 100;
+const BUDGET_MS = 40_000;
+
+/** Where a store's documents are posted: its Tripletex settings' accounts where it books there (so the two compare), else Norway's. */
+async function postingOf(storeId: string): Promise<LedgerPosting> {
+  const connection = await getTripletexConnection(storeId);
+  return postingOfTripletex(connection?.settings ?? null);
+}
+
+/** The accounts a posting needs, added to the book's chart where it lacks a standard one (a store's Tripletex settings may book to 3020). */
+async function chartFor(storeId: string, bookId: string, posting: LedgerPosting): Promise<void> {
+  const needed = new Set([posting.receivable, ...Object.values(posting.income), ...Object.values(BUCKET_VAT).flatMap((v) => (v.vatAccount ? [v.vatAccount] : []))]);
+  const have = new Set((await ledgerAccounts(bookId)).map((a) => a.number));
+  for (const number of needed) if (!have.has(number) && standardOf(number)) await addLedgerAccount(storeId, bookId, { number });
+}
+
+const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note"]), id: col.text });
+
+/**
+ * The documents of a book's days not posted yet, the oldest first, invoices before credit notes: the same as Tripletex books (Work's sent
+ * invoices, not imported ones, and credit notes; the shop's invoices and credit notes), each once. One that has an entry (even one a person
+ * reversed) is done; one that waits is tried again a day after it was last tried.
+ */
+async function dueDocuments(storeId: string, book: { id: string; opened_on: string; closed_on: string | null }, limit: number): Promise<z.infer<typeof DUE>[]> {
+  const to = book.closed_on ?? "9999-12-31";
+  return typedRows(
+    DUE,
+    sql`
+      select d.kind, d.id from (
+        select 'work_invoice' as kind, id::text as id, issued_on, 0 as rank from commerce.work_invoices
+         where store_id = ${storeId}::uuid and status <> 'draft' and not imported and length(document_number) between 1 and 50
+           and issued_on between ${book.opened_on}::date and ${to}::date
+        union all
+        select 'work_credit_note', id::text, issued_on, 1 from commerce.work_credit_notes
+         where store_id = ${storeId}::uuid and length(document_number) between 1 and 50 and issued_on between ${book.opened_on}::date and ${to}::date
+        union all
+        select 'shop_invoice', id::text, issued_on, 0 from commerce.invoices
+         where store_id = ${storeId}::uuid and length(document_number) between 1 and 50 and issued_on between ${book.opened_on}::date and ${to}::date
+        union all
+        select 'shop_credit_note', id::text, issued_on, 1 from commerce.credit_notes
+         where store_id = ${storeId}::uuid and length(document_number) between 1 and 50 and issued_on between ${book.opened_on}::date and ${to}::date
+      ) d
+      where not exists (select 1 from commerce.ledger_entries e where e.book_id = ${book.id}::uuid and e.source_kind = d.kind and e.source_id = d.id)
+        and not exists (select 1 from commerce.ledger_waiting w where w.book_id = ${book.id}::uuid and w.source_kind = d.kind and w.source_id = d.id
+                          and w.tried_at > now() - interval '1 day')
+      order by d.issued_on, d.rank, d.id
+      limit ${limit}
+    `,
+  );
+}
+
+/** What waits in a book, and why: for the books' screen. */
+export async function ledgerWaiting(bookId: string): Promise<{ kind: string; id: string; problem: string; since: string }[]> {
+  const rows = await typedRows(
+    z.object({ source_kind: col.text, source_id: col.text, problem: col.text, since: col.timestamp }),
+    sql`select source_kind, source_id, problem, since from commerce.ledger_waiting where book_id = ${bookId}::uuid order by since, source_kind, source_id`,
+  );
+  return rows.map((r) => ({ kind: r.source_kind, id: r.source_id, problem: r.problem, since: r.since }));
+}
+
+/**
+ * Posts a book's due documents (`dueDocuments()`), up to `limit` or the deadline: each posted once where `postingOf()` says; one that cannot
+ * be posted as it is waits with why (`ledger_waiting`), and stops waiting once posted.
+ */
+export async function postDueDocuments(
+  storeId: string,
+  book: { id: string; currency: string; opened_on: string; closed_on: string | null },
+  options: { limit?: number; deadline?: number } = {},
+): Promise<{ posted: number; waiting: number }> {
+  const due = await dueDocuments(storeId, book, options.limit ?? DOCS_A_ROUND);
+  if (due.length === 0) return { posted: 0, waiting: 0 };
+  const posting = await postingOf(storeId);
+  await chartFor(storeId, book.id, posting);
+  let posted = 0;
+  let waiting = 0;
+  for (const d of due) {
+    if (options.deadline && Date.now() > options.deadline) break;
+    const loaded = await loadDocument(storeId, d.kind as DocumentKind, d.id);
+    const result = loaded ? await postLedgerDoc({ id: book.id, currency: book.currency }, loaded.doc, posting) : { ok: false as const, problem: "unreadable" };
+    if (result.ok) {
+      posted += 1;
+      await db().execute(sql`delete from commerce.ledger_waiting where book_id = ${book.id}::uuid and source_kind = ${d.kind} and source_id = ${d.id}`);
+      continue;
+    }
+    waiting += 1;
+    await db().execute(sql`
+      insert into commerce.ledger_waiting (store_id, book_id, source_kind, source_id, problem)
+      values (${storeId}::uuid, ${book.id}::uuid, ${d.kind}, ${d.id}, ${result.problem})
+      on conflict (book_id, source_kind, source_id) do update set problem = excluded.problem, tried_at = now()
+    `);
+  }
+  if (waiting > 0) log("info", "ledger.documents_waiting", { storeId, bookId: book.id, waiting });
+  return { posted, waiting };
+}
+
+/**
+ * The dispatcher's `ledger` job (D478 step 2): each store's books, open or closed in the last 60 days, post the documents issued in their
+ * days, store after store within 40 seconds.
+ */
+export async function runLedgerPosting(options: { budgetMs?: number } = {}): Promise<{ books: number; posted: number; waiting: number }> {
+  const deadline = Date.now() + (options.budgetMs ?? BUDGET_MS);
+  const books = await typedRows(
+    z.object({ id: col.uuid, store_id: col.uuid, currency: col.currency, opened_on: col.text, closed_on: col.textOrNull }),
+    sql`select id, store_id, currency, opened_on::text, closed_on::text from commerce.ledger_books
+         where closed_on is null or closed_on >= current_date - 60
+         order by updated_at`,
+  );
+  let posted = 0;
+  let waiting = 0;
+  let done = 0;
+  for (const book of books) {
+    if (Date.now() > deadline) break;
+    try {
+      const r = await postDueDocuments(book.store_id, book, { deadline });
+      posted += r.posted;
+      waiting += r.waiting;
+      done += 1;
+    } catch (error) {
+      log("error", "ledger.posting_failed", { storeId: book.store_id, bookId: book.id }, error);
+    }
+  }
+  return { books: done, posted, waiting };
+}
+

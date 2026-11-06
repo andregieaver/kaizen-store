@@ -18138,3 +18138,27 @@ export const ledgerCounters = commerce.table(
     check("ledger_counters_last", sql`${t.last} >= 1`),
   ],
 );
+
+/**
+ * A document a book could not post as it is (D478 step 2), and why: another currency than the book's, a VAT bucket with no account, totals
+ * that do not add up, a locked day. Tried again once a day, and gone once it is posted; the books' screen lists what waits.
+ */
+export const ledgerWaiting = commerce.table(
+  "ledger_waiting",
+  {
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    sourceKind: text("source_kind").notNull(),
+    sourceId: text("source_id").notNull(),
+    problem: text("problem").notNull(),
+    since: timestamp("since", { withTimezone: true }).notNull().defaultNow(),
+    triedAt: timestamp("tried_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.bookId, t.sourceKind, t.sourceId] }),
+    foreignKey({ name: "ledger_waiting_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
+    index("ledger_waiting_store_book_idx").on(t.storeId, t.bookId),
+    check("ledger_waiting_source", sql`${t.sourceKind} ~ '^[a-z_]{1,40}$' and char_length(${t.sourceId}) between 1 and 80`),
+    check("ledger_waiting_problem", sql`${t.problem} ~ '^[a-z_]{1,40}$'`),
+  ],
+);
