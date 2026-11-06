@@ -4922,13 +4922,6 @@
       "when": 1793991411165,
       "tag": "20261106185651_crm_moves_rules",
       "breakpoints": true
-    },
-    {
-      "idx": 703,
-      "version": "7",
-      "when": 1793993948961,
-      "tag": "20261106193908_language_rule",
-      "breakpoints": true
     }
   ]
 }
