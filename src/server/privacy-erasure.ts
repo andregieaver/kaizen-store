@@ -797,6 +797,10 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     await tx.execute(sql`delete from commerce.checkout_accounts where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
     // Draft orders staff made for the account (D173): deleted, never matched by an address staff typed. A sent one's order was cancelled above (the order's own trigger made the draft expired), so it can go; its lines go with it.
     await tx.execute(sql`delete from commerce.draft_orders where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and status <> 'sent'`);
+    // Staff's deals with the person (D464): one with the person alone goes, its links, history and fields with it; a company's deal stays
+    // the company's and loses the person.
+    await tx.execute(sql`delete from commerce.deals where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and company_id is null`);
+    await tx.execute(sql`update commerce.deals set customer_id = null, updated_at = now() where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
   }
   await tx.execute(sql`delete from commerce.customer_codes where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
   await tx.execute(sql`

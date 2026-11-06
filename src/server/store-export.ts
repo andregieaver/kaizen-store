@@ -106,6 +106,9 @@ export const STORE_EXPORT_TABLES = [
   "autopilot_settings",
   "autopilot_effects",
   "work_settings",
+  // A store's sales pipelines and their stages (D464): its own words and order; the deals name people and leave through the privacy export.
+  "deal_pipelines",
+  "deal_stages",
 ] as const;
 
 /** A column that could open a door, never written to the file (the support inbox's channel and email-address keys among them). */

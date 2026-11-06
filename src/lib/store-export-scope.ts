@@ -140,6 +140,9 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   fiken_sync: "record",
   // Which documents went as e-invoices, and their state (D463).
   einvoice_sends: "record",
+  // A deal's links and its history (D464): what happened, by ids.
+  deal_links: "record",
+  deal_moves: "record",
   // A sandbox's row (D457): the hash of the pass that opens it.
   sandboxes: "secret",
   variant_cost_history: "catalogue",

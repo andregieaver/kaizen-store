@@ -139,6 +139,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "Velkomstkoder som påmeldingsskjemaer ga en person (D304 J3), knyttet til adressen: eksporteres med markedsføringsopplysningene og slettes når personens opplysninger slettes.",
   customer_notes:
     "De ansattes notater om en person (D366), knyttet til adressen: eksporteres med markedsføringsopplysningene (ordene og når) og slettes når personens opplysninger slettes.",
+  deals:
+    "Ansattes salgsmuligheter med en person (D464): hva de kan kjøpe, steg og verdi, og hvorfor den ble tapt; eksporteres med personens notater og slettes når personen slettes (en bedrifts salgsmulighet beholder bedriften og mister personen).",
   customer_tags: "De ansattes stikkord på en person (D296), knyttet til adressen: eksporteres med markedsføringsopplysningene og slettes når personens opplysninger slettes.",
   broadcast_recipients:
     "Adressene en utsendelse gikk til (D297), låst da sendingen startet: listes i eksporten av markedsføringsopplysninger, og slettes når personens opplysninger slettes og 90 dager etter at sendingen var ferdig (tallene beholdes).",

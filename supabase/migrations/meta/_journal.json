@@ -4740,6 +4740,20 @@
       "when": 1793947493446,
       "tag": "20261106064453_einvoice_sends",
       "breakpoints": true
+    },
+    {
+      "idx": 677,
+      "version": "7",
+      "when": 1793949086169,
+      "tag": "20261106071126_deals",
+      "breakpoints": true
+    },
+    {
+      "idx": 678,
+      "version": "7",
+      "when": 1793949142581,
+      "tag": "20261106071222_deals_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -712,6 +712,8 @@ export const stores = commerce.table(
     domainDnsAuto: boolean("domain_dns_auto").notNull().default(false),
     /** A platform admin opened buying domains for this store before it opens to all (D315 decision 9). */
     domainBuying: boolean("domain_buying").notNull().default(false),
+    /** A platform admin opened deals and pipelines (S2, D464) for this store before they open to all: the sales pilot (Human Web). */
+    salesPilot: boolean("sales_pilot").notNull().default(false),
     /**
      * What checkout says about the store's terms (wave 1, 1e): `link` (a sentence with links, the default), `checkbox`
      * (the same with a required tick) or `off` (nothing drawn, nothing recorded). A copy of a store starts with `link`.
@@ -822,7 +824,7 @@ export const stores = commerce.table(
     check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
     check(
       "stores_features",
-      sql`${t.features} <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals', 'gift_cards', 'reviews']::text[]`,
+      sql`${t.features} <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals', 'gift_cards', 'reviews', 'sales']::text[]`,
     ),
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
@@ -1784,6 +1786,8 @@ export const platformSettings = commerce.table(
     saleFeeBps: integer("sale_fee_bps").notNull().default(0),
     /** Buying domains is open to every store (D315 decision 9: once moving away is built); until then only where `stores.domain_buying` is on. */
     domainsOpen: boolean("domains_open").notNull().default(false),
+    /** Deals and pipelines (S2, D464) are offered to every store; until then only where `stores.sales_pilot` is on. */
+    salesOpen: boolean("sales_open").notNull().default(false),
     /**
      * Domains are sold to people without a store (D317, `docs/domains-standalone.md`): off until the spikes of its section 12 are answered
      * (Vercel's written yes, VAT, withdrawal), then turned on from Platform → Settings → Domains.
@@ -3402,7 +3406,7 @@ export const fieldValues = commerce.table(
     primaryKey({ columns: [t.storeId, t.entity, t.entityId, t.locale] }),
     check(
       "field_values_entity",
-      sql`${t.entity} in ('product', 'page', 'article', 'variant', 'term', 'store', 'customer', 'order')`,
+      sql`${t.entity} in ('product', 'page', 'article', 'variant', 'term', 'store', 'customer', 'order', 'deal')`,
     ),
     check("field_values_values", sql`jsonb_typeof(${t.values}) = 'object'`),
   ],
@@ -17433,5 +17437,163 @@ export const docsGuideMessages = commerce.table(
     check("docs_guide_messages_author", sql`${t.author} in ('reader', 'ai')`),
     check("docs_guide_messages_body", sql`char_length(${t.body}) between 1 and 4000`),
     check("docs_guide_messages_seq", sql`${t.seq} >= 1`),
+  ],
+);
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Deals and pipelines (S2 of `docs/own-books-and-sales.md`, D464)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** A store's sales pipelines: Homer has one (made on first visit), Lisa several. */
+export const dealPipelines = commerce.table(
+  "deal_pipelines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    sort: integer("sort").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("deal_pipelines_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("deal_pipelines_name_key").on(t.storeId, sql`lower(${t.name})`),
+    check("deal_pipelines_name", sql`${t.name} = btrim(${t.name}) and char_length(${t.name}) between 1 and 80`),
+  ],
+);
+
+/** A pipeline's stages in their order; won and lost are a deal's status, not stages. A probability is Lisa's (0 to 100), else none. */
+export const dealStages = commerce.table(
+  "deal_stages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    pipelineId: uuid("pipeline_id").notNull(),
+    name: text("name").notNull(),
+    position: integer("position").notNull(),
+    probability: integer("probability"),
+    /** The stage a deal moves to when its linked quote is sent; at most one a pipeline. */
+    quoteStage: boolean("quote_stage").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("deal_stages_store_id_key").on(t.storeId, t.id),
+    unique("deal_stages_pipeline_key").on(t.storeId, t.pipelineId, t.id),
+    foreignKey({ name: "deal_stages_pipeline_fk", columns: [t.storeId, t.pipelineId], foreignColumns: [dealPipelines.storeId, dealPipelines.id] }).onDelete("cascade"),
+    uniqueIndex("deal_stages_quote_key").on(t.storeId, t.pipelineId).where(sql`${t.quoteStage}`),
+    index("deal_stages_order_idx").on(t.storeId, t.pipelineId, t.position),
+    check("deal_stages_name", sql`${t.name} = btrim(${t.name}) and char_length(${t.name}) between 1 and 60`),
+    check("deal_stages_probability", sql`${t.probability} is null or ${t.probability} between 0 and 100`),
+  ],
+);
+
+/**
+ * A deal: what someone may buy, before any quote. Its person or company is a link that erasure and deletion set null; its value is the linked
+ * things' (`deal_links`, worked out by `dealValue()`), the estimate only while nothing is linked. Won or lost closes it, by a person or by a
+ * paid order or an issued Work invoice linked to it (the database's triggers); `stage_entered_at` is the stage's clock.
+ */
+export const deals = commerce.table(
+  "deals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    title: text("title").notNull(),
+    customerId: uuid("customer_id"),
+    companyId: uuid("company_id"),
+    ownerId: uuid("owner_id").references(() => accounts.id, { onDelete: "set null" }),
+    pipelineId: uuid("pipeline_id").notNull(),
+    stageId: uuid("stage_id").notNull(),
+    /** `open`, `won` or `lost`. */
+    status: text("status").notNull().default("open"),
+    estimateMinor: bigint("estimate_minor", { mode: "number" }),
+    currency: char("currency", { length: 3 }).notNull(),
+    expectedCloseOn: date("expected_close_on", { mode: "string" }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    /** `person`, `order` or `work_invoice`: who or what closed it. */
+    closedVia: text("closed_via"),
+    closeReason: text("close_reason"),
+    stageEnteredAt: timestamp("stage_entered_at", { withTimezone: true }).notNull().defaultNow(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    /** Who changed it last, read by the history trigger. */
+    updatedBy: uuid("updated_by"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("deals_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "deals_stage_fk", columns: [t.storeId, t.pipelineId, t.stageId], foreignColumns: [dealStages.storeId, dealStages.pipelineId, dealStages.id] }),
+    customerRef("deals_customer_fk", { storeId: t.storeId, customerId: t.customerId }),
+    foreignKey({ name: "deals_company_fk", columns: [t.storeId, t.companyId], foreignColumns: [customerCompanies.storeId, customerCompanies.id] }),
+    index("deals_board_idx").on(t.storeId, t.pipelineId, t.status, t.stageId),
+    index("deals_stage_idx").on(t.storeId, t.pipelineId, t.stageId),
+    index("deals_customer_idx").on(t.storeId, t.customerId).where(sql`${t.customerId} is not null`),
+    index("deals_company_idx").on(t.storeId, t.companyId).where(sql`${t.companyId} is not null`),
+    index("deals_closing_idx").on(t.storeId, t.status, t.expectedCloseOn),
+    index("deals_owner_idx").on(t.ownerId),
+    index("deals_created_by_idx").on(t.createdBy),
+    check("deals_title", sql`${t.title} = btrim(${t.title}) and char_length(${t.title}) between 1 and 200`),
+    check("deals_status", sql`${t.status} in ('open', 'won', 'lost')`),
+    check("deals_closed", sql`(${t.status} = 'open') = (${t.closedAt} is null) and (${t.closedAt} is null) = (${t.closedVia} is null)`),
+    check("deals_closed_via", sql`${t.closedVia} is null or ${t.closedVia} in ('person', 'order', 'work_invoice')`),
+    check("deals_reason", sql`${t.closeReason} is null or (${t.status} <> 'open' and char_length(${t.closeReason}) between 1 and 200)`),
+    check("deals_estimate", sql`${t.estimateMinor} is null or ${t.estimateMinor} between 0 and 1000000000000`),
+    check("deals_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+  ],
+);
+
+/** What a deal is linked to: an order, a quote (a draft order) or a Work assignment. One thing belongs to one deal: the value's one truth. */
+export const dealLinks = commerce.table(
+  "deal_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    dealId: uuid("deal_id").notNull(),
+    /** `order`, `draft` or `work_assignment`: which of the three ids is set. */
+    kind: text("kind").notNull(),
+    orderId: uuid("order_id"),
+    draftId: uuid("draft_id"),
+    assignmentId: uuid("assignment_id"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ name: "deal_links_deal_fk", columns: [t.storeId, t.dealId], foreignColumns: [deals.storeId, deals.id] }).onDelete("cascade"),
+    orderRef("deal_links_order_fk", { storeId: t.storeId, orderId: t.orderId }),
+    foreignKey({ name: "deal_links_draft_fk", columns: [t.storeId, t.draftId], foreignColumns: [draftOrders.storeId, draftOrders.id] }).onDelete("cascade"),
+    foreignKey({ name: "deal_links_assignment_fk", columns: [t.storeId, t.assignmentId], foreignColumns: [workAssignments.storeId, workAssignments.id] }).onDelete("cascade"),
+    uniqueIndex("deal_links_order_key").on(t.storeId, t.orderId).where(sql`${t.orderId} is not null`),
+    uniqueIndex("deal_links_draft_key").on(t.storeId, t.draftId).where(sql`${t.draftId} is not null`),
+    uniqueIndex("deal_links_assignment_key").on(t.storeId, t.assignmentId).where(sql`${t.assignmentId} is not null`),
+    index("deal_links_deal_idx").on(t.storeId, t.dealId),
+    index("deal_links_created_by_idx").on(t.createdBy),
+    check("deal_links_kind", sql`${t.kind} in ('order', 'draft', 'work_assignment')`),
+    check(
+      "deal_links_one",
+      sql`(${t.kind} = 'order' and ${t.orderId} is not null and ${t.draftId} is null and ${t.assignmentId} is null)
+        or (${t.kind} = 'draft' and ${t.draftId} is not null and ${t.orderId} is null and ${t.assignmentId} is null)
+        or (${t.kind} = 'work_assignment' and ${t.assignmentId} is not null and ${t.orderId} is null and ${t.draftId} is null)`,
+    ),
+  ],
+);
+
+/** A deal's history: each stage it entered and each close or reopen, written by a trigger only (time in stage, the timeline). */
+export const dealMoves = commerce.table(
+  "deal_moves",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: storeId().references(() => stores.id),
+    dealId: uuid("deal_id").notNull(),
+    stageId: uuid("stage_id"),
+    status: text("status").notNull(),
+    via: text("via"),
+    movedBy: uuid("moved_by").references(() => accounts.id, { onDelete: "set null" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    foreignKey({ name: "deal_moves_deal_fk", columns: [t.storeId, t.dealId], foreignColumns: [deals.storeId, deals.id] }).onDelete("cascade"),
+    index("deal_moves_deal_idx").on(t.storeId, t.dealId, t.at),
+    index("deal_moves_moved_by_idx").on(t.movedBy),
+    check("deal_moves_status", sql`${t.status} in ('open', 'won', 'lost')`),
   ],
 );

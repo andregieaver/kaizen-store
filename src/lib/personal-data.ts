@@ -180,6 +180,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("customer_addresses", "shopper", via("customer", "customer_id"), ["customer_id", "label", "address"], "addresses", "delete", "A shopper's saved addresses (D304): exported and deleted with the account."),
   entry("signup_incentives", "shopper", via("email", "email"), ["email"], "marketing", "delete", "Welcome codes sign-up forms gave a person (D304 J3), by their address: exported with the marketing data and deleted on erasure."),
   entry("customer_notes", "shopper", via("email", "email"), ["email", "body"], "marketing", "delete", "Staff's notes on a person (D366), by their address: exported with the marketing data (the words and when) and deleted on erasure."),
+  entry("deals", "shopper", via("customer", "customer_id"), ["customer_id", "title", "close_reason"], "marketing", "delete", "Staff's deals with a person (D464): what they may buy, its stage and value, and why it was lost; exported with the person's notes, deleted when they are erased (a company's deal keeps the company and loses the person)."),
   entry("customer_tags", "shopper", via("email", "email"), ["email", "label"], "marketing", "delete", "Staff's tags on a person (D296), by their address: exported with the marketing data and deleted on erasure."),
   entry("broadcast_recipients", "shopper", via("email", "email"), ["email"], "marketing", "delete", "The addresses a broadcast went to (D297), frozen when its send started: listed in the marketing export, deleted on erasure and 90 days after the send ended (its figures kept)."),
   entry("automation_sends", "shopper", via("customer", "subscriber_id"), ["subscriber_id", "order_id"], "marketing", "delete", "Which automation emails (D298) went to a subscriber and when: listed in the marketing export, deleted with the subscriber on erasure and after 90 days."),
@@ -436,6 +437,10 @@ export const NOT_PERSONAL: Record<string, string> = {
   tripletex_connections: "A store's connection to its Tripletex company (D453): the company's name and organisation number, an encrypted token, the store's account and VAT code choices and the staff account that changed them; never a shopper's data.",
   tripletex_sync: "What was sent to Tripletex (D453): ids, states, amounts and error codes of documents and customer cards; never a name, an address or a token.",
   fiken_connections: "A store's connection to its Fiken company (D460): the company's name, slug and organisation number, an encrypted grant (access and refresh token), the store's account and VAT type choices and the staff account that changed them; never a shopper's data.",
+  deal_links: "What a deal is linked to (D464): the ids of an order, a draft order or a Work assignment of the store, and who linked it; the person is the deal's and the order's own.",
+  deal_pipelines: "A store's sales pipelines (D464): their names are the store's own words, no person's.",
+  deal_stages: "A pipeline's stages (D464): names, order and probabilities, the store's own words.",
+  deal_moves: "A deal's history (D464): the stage and status it moved to, when and by which staff account; the person is the deal's own.",
   einvoice_sends:
     "Which documents went to their buyer as e-invoices through the Peppol network (D463): the document's type and id, the state, our own key for a problem, the access point's name and message id, and times; the buyer is the document's own and never copied here.",
   peppol_receivers:

@@ -411,6 +411,28 @@ describe("erasing again, and erasing across stores", () => {
     expect(after.content).toBe("[erased] ([erased], [erased]) asked about order 1001. Ola Hansen (ola@example.com) too.");
   }, 120_000);
 
+  it("deletes the person's own deals with their history, and keeps a company's deal without the person (D464)", async () => {
+    const subject = await buildSubject(store, "deals");
+    const [pipeline] = await db().execute<Row>(sql`
+      insert into commerce.deal_pipelines (store_id, name) values (${store.storeId}::uuid, ${`Sales ${subject.customerId}`}) returning id`);
+    const [stage] = await db().execute<Row>(sql`
+      insert into commerce.deal_stages (store_id, pipeline_id, name, position) values (${store.storeId}::uuid, ${String(pipeline.id)}::uuid, 'New', 0) returning id`);
+    const [company] = await db().execute<Row>(sql`
+      insert into commerce.customer_companies (store_id, name) values (${store.storeId}::uuid, ${`Kunde ${subject.customerId} AS`}) returning id`);
+    const deal = async (title: string, companyId: string | null) =>
+      String((await db().execute<Row>(sql`
+        insert into commerce.deals (store_id, title, customer_id, company_id, pipeline_id, stage_id, currency)
+        values (${store.storeId}::uuid, ${title}, ${subject.customerId}::uuid, ${companyId}::uuid, ${String(pipeline.id)}::uuid, ${String(stage.id)}::uuid, 'NOK')
+        returning id`))[0].id);
+    const own = await deal("Totes for the fair", null);
+    const firms = await deal("Office mugs", String(company.id));
+    expect(await eraseSubject(store.storeId, { customerId: subject.customerId }, { channel: "staff", accountId: store.ownerId })).toMatchObject({ ok: true, outcome: "erased" });
+    const left = await db().execute<Row>(sql`select id, customer_id, company_id from commerce.deals where id = any(${`{${own},${firms}}`}::uuid[])`);
+    expect(left).toEqual([{ id: firms, customer_id: null, company_id: String(company.id) }]);
+    const [history] = await db().execute<Row>(sql`select count(*)::int as n from commerce.deal_moves where deal_id = ${own}::uuid`);
+    expect(history.n).toBe(0);
+  }, 120_000);
+
   it("deletes the AI manager's memories that name the person, the store's and its staff's own, and keeps the rest (PSI AGT-07)", async () => {
     const subject = await buildSubject(store, "memory");
     await db().execute(sql`update commerce.customers set name = 'Mona Lysne' where id = ${subject.customerId}::uuid`);
