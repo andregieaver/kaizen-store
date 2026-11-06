@@ -119,6 +119,7 @@ describe("a plan's limits (D314)", () => {
             { key: "stores_owned", value: 1 },
             { key: "staff_seats", value: null },
             { key: "storage_bytes", value: null },
+            { key: "ai_cost_month_micros", value: 5_000_000 },
           ],
         },
       ],
@@ -129,6 +130,7 @@ describe("a plan's limits (D314)", () => {
     expect(en).toContain("1 store<");
     expect(en).toContain("1.99 % fee per sale");
     expect(en).toContain("Unlimited staff");
+    expect(en).toContain("$5.00 of AI a month");
     const nb = html(block(), limited, "nb");
     expect(nb).toContain("500 produkter");
     expect(nb).toContain("1 eget domene<");
@@ -136,6 +138,7 @@ describe("a plan's limits (D314)", () => {
     expect(nb).toMatch(/1\s000\s000 besøk i måneden/);
     expect(nb).toContain("1,99 % gebyr per salg");
     expect(nb).toContain("per måned");
+    expect(nb).toMatch(/5,00\s\$ til KI i måneden/);
     // What is counted has no ceiling in a number; what is not, in itself.
     expect(nb).toContain("Ubegrenset antall ansatte");
     expect(nb).toContain("Ubegrenset lagring");

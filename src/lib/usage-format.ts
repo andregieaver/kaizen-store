@@ -15,7 +15,8 @@ export function formatUsage(metric: UsageMetric, value: number, locale = "en-GB"
     if (value >= GIB / 10) return `${(value / GIB).toLocaleString(locale, { maximumFractionDigits: 1 })} GB`;
     return `${Math.max(0, Math.round(value / 1024 / 1024)).toLocaleString(locale)} MB`;
   }
-  if (unit === "micros") return `$${(value / 1_000_000).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  // Dollars written the language's way with the plain sign: "$5.00" in English, "5,00 $" in Norwegian, as the euro beside it is.
+  if (unit === "micros") return new Intl.NumberFormat(locale, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol" }).format(value / 1_000_000);
   return Math.round(value).toLocaleString(locale);
 }
 
