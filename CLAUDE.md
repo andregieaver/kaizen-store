@@ -351,6 +351,12 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 ## Conventions
 
 - Every screen a person uses serves two people (Homer and Lisa: System 1 and System 2). The default view is for Homer: simple, intuitive and distraction free, one clear main action, sensible defaults chosen for him, words for what he gets rather than settings, and nothing to understand before pressing the obvious button. Lisa's depth (every setting, per screen size, own CSS, versions, what changes, undo) is one deliberate step away (Customise, Advanced) and never in Homer's way. A new screen passes when Homer can finish without reading anything and Lisa can still reach every setting.
+- Whatever is built for stores and their owners is built for the platform too (the owner, 6 November 2026): Kaizena Flow's own site
+  and store, and the platform admin (`/admin/platform`; the platform's rows are `store_id is null` or `platform_*` tables), get the
+  same feature in the same change, or as its next step named in the decision. A feature stays store-only only where it cannot apply to
+  Kaizena Flow (it sells plans through Stripe, not goods: no stock, parcels or returns), and its decision says why. Before calling a
+  store feature done, check the platform has it. `docs/platform-parity.md` lists what the platform still lacks; tick a row there when a
+  change brings it.
 - The platform's name is Kaizena Flow (D240) in every string a person or an assistant reads, and its domain `kaizenaflow.com`; `Kaizen` stays in code names, cookie names, the webhook headers and Kaizen Life (another product). `src/lib/brand.scan.test.ts` fails on the old name or an old domain in any string.
 - Environment variables are validated in `src/lib/env.ts` when used, not at
   import, so builds and tests run without secrets.
