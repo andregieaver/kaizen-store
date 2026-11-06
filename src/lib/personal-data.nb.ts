@@ -182,6 +182,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   // Kundeservice (D216, docs/support.md 3.5)
   support_conversations:
     "En kundeservicesamtale anonymiseres: meldingene og handlingene slettes, og feltene med personopplysninger tømmes; datoene og tallene blir stående for kundeservicens rapporter, og slettes etter 24 måneder. En samtale på e-post (D332) hører til avsenderadressen og anonymiseres med den når personens opplysninger slettes; den eksporteres aldri, siden avsenderen av en e-post ikke beviser hvem noen er.",
+  filed_emails: "E-post teamet kopierte eller videresendte til butikkens arkivadresse om personen (D476): ordene og adressene; slettes.",
   support_inbound_emails:
     "E-poster mottatt til en kundeservice (D332): avsenderen og emnet, beholdt i 30 dager for å telle dem og samle dem i tråder, og slettes når personens opplysninger slettes; ordene er samtalens meldinger.",
   support_messages:

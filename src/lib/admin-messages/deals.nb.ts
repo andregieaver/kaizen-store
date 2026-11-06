@@ -179,6 +179,8 @@ export const dealsNb: DealsMessages = {
     },
   },
 
+  filing: "Kopier eller videresend e-post til {address}, så blir den liggende på tidslinjen til kundene, bedriftene og avtalene den gjelder.",
+
   leads: {
     board: "Tavle",
     tab: "Leads",

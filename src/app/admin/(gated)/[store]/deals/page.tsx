@@ -21,6 +21,7 @@ import { placeDealAction } from "./actions";
 import { dismissLeadAction, makeLeadDealAction } from "./lead-actions";
 import { LeadsList } from "@/components/admin/deals/leads-list";
 import { leadsOf } from "@/server/leads";
+import { filingAddressOf } from "@/server/email-filing";
 
 export const metadata: Metadata = { title: "Deals" };
 
@@ -98,6 +99,8 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
   // The leads inbox (S4, D475) beside the board: people who asked for something and are not customers yet.
   const leads = await leadsOf(store.id);
   const showLeads = query.view === "leads";
+  // The store's filing address (S5, D476), for those who may change customers: made the first time it is shown.
+  const filing = canChange ? await filingAddressOf(store.id) : null;
   const viewTab = (leadsView: boolean) =>
     `rounded-full border px-3 py-1.5 text-sm ${leadsView === showLeads ? "border-ink bg-ink text-inverse-ink" : "border-line bg-card text-ink"}`;
 
@@ -158,6 +161,7 @@ export default async function DealsPage({ params, searchParams }: PageProps<"/ad
       {deals.length === 0 && <p className="text-body text-ink-2">{w.board.empty}</p>}
       <DealBoard columns={view} words={{ board: w.board, lost: w.lost, statuses: w.statuses }} place={placeDealAction.bind(null, store.slug)} canChange={canChange} />
       <p className="text-sm text-muted">{w.board.closedNote}</p>
+      {filing && <p className="text-sm text-muted">{fillWords(w.filing, { address: filing })}</p>}
         </>
       )}
     </div>

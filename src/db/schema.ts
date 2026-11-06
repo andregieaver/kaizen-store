@@ -14792,6 +14792,8 @@ export const supportInboundEmails = commerce.table(
     messageId: text("message_id"),
     status: text("status").notNull().default("pending"),
     reason: text("reason"),
+    /** `support` (a desk's or a reply address) or `filing` (a store's filing address, S5, D476). */
+    purpose: text("purpose").notNull().default("support"),
     tries: smallint("tries").notNull().default(0),
     claimedUntil: timestamp("claimed_until", { withTimezone: true }),
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
@@ -17881,5 +17883,56 @@ export const leadDecisions = commerce.table(
     index("lead_decisions_decided_by_idx").on(t.decidedBy),
     check("lead_decisions_decision", sql`${t.decision} in ('dismissed', 'deal')`),
     check("lead_decisions_email", sql`${t.email} = lower(btrim(${t.email})) and char_length(${t.email}) between 3 and 320`),
+  ],
+);
+
+// Email on the timeline (S5 of `docs/own-books-and-sales.md`, D476)
+
+/** A store's filing address (`bcc-{key}@` the inbound domain): made the first time it is shown. */
+export const emailFiling = commerce.table(
+  "email_filing",
+  {
+    storeId: uuid("store_id").primaryKey().references(() => stores.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("email_filing_key").on(t.key), check("email_filing_key_shape", sql`${t.key} ~ '^[a-z0-9]{12,32}$'`)],
+);
+
+/**
+ * A mail a member of the store's team copied or forwarded to its filing address, filed on the people it is about (`addresses`, and those of
+ * them who are the store's customers), their companies and their open deals. Its words are kept whole for the email bodies' retention rule,
+ * and go with any of its people by an erasure.
+ */
+export const filedEmails = commerce.table(
+  "filed_emails",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    messageId: text("message_id"),
+    subject: text("subject"),
+    fromAddress: text("from_address").notNull(),
+    /** Everyone it is about, lower case: the addresses it went to and those its forwarded headers name, less the team's. */
+    addresses: text("addresses").array().notNull(),
+    customerIds: uuid("customer_ids").array().notNull(),
+    companyIds: uuid("company_ids").array().notNull(),
+    dealIds: uuid("deal_ids").array().notNull(),
+    body: text("body").notNull(),
+    cut: boolean("cut").notNull().default(false),
+    /** The member whose mail it was (by their address), if their account still is. */
+    filedBy: uuid("filed_by").references(() => accounts.id, { onDelete: "set null" }),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("filed_emails_message_key").on(t.storeId, t.messageId).where(sql`${t.messageId} is not null`),
+    index("filed_emails_customers_idx").using("gin", t.customerIds),
+    index("filed_emails_deals_idx").using("gin", t.dealIds),
+    index("filed_emails_companies_idx").using("gin", t.companyIds),
+    index("filed_emails_addresses_idx").using("gin", t.addresses),
+    index("filed_emails_store_idx").on(t.storeId, t.createdAt),
+    index("filed_emails_filed_by_idx").on(t.filedBy),
+    check("filed_emails_body", sql`char_length(${t.body}) between 1 and 20000`),
+    check("filed_emails_people", sql`cardinality(${t.addresses}) between 1 and 200`),
   ],
 );

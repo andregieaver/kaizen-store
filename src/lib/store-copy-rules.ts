@@ -195,6 +195,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   customer_notes: never("Staff's notes on the store's people (D366)."),
   deals: never("Staff's deals with the store's people and companies (D464)."),
   store_business_changes: never("The legal businesses behind the store over time (D473): a copy is a new store, whose business its owner enters."),
+  filed_emails: never("Mail filed on the store's people (D476): about the people of the store copied from."),
+  email_filing: never("The store's own filing address (D476): a copy gets its own."),
   lead_decisions: never("What staff decided about the store's leads (D475): about people of the store copied from."),
   activities: never("Staff's calls, meetings and tasks about the store's people, companies and deals (D468)."),
   deal_links: never("What the original's deals are linked to (D464): its own orders, quotes and assignments."),

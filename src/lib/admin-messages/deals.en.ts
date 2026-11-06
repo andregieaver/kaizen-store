@@ -188,6 +188,9 @@ export const dealsEn = {
     },
   },
 
+  /** Email on the timeline (S5, D476): the store's filing address. */
+  filing: "Copy or forward emails to {address} and they are kept on the timeline of the customers, companies and deals they are about.",
+
   /** The leads inbox (S4, D475), beside the board. */
   leads: {
     board: "Board",

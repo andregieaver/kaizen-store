@@ -31,6 +31,8 @@ export const ADDRESS_KEY = /^[a-z0-9]{12,32}$/;
 
 export const deskAddress = (key: string, domain: string) => `desk-${key}@${domain}`;
 export const replyAddress = (key: string, domain: string) => `reply-${key}@${domain}`;
+/** A store's filing address (S5, D476): staff copy or forward mail to it, and it is filed on the people, companies and deals it is about. */
+export const filingAddress = (key: string, domain: string) => `bcc-${key}@${domain}`;
 
 /** The receiving domain as set (lower case, no `@`), or null when receiving is not set up. */
 export function inboundDomain(raw: string | undefined): string | null {
@@ -51,17 +53,17 @@ export function displayName(raw: string): string | null {
   return name ? name.slice(0, 120) : null;
 }
 
-export type Route = { kind: "desk"; key: string } | { kind: "reply"; key: string };
+export type Route = { kind: "desk"; key: string } | { kind: "reply"; key: string } | { kind: "filing"; key: string };
 
-/** Where an email is for: the first of its addresses at the receiving domain that is a desk's or a reply address, else null. */
+/** Where an email is for: the first of its addresses at the receiving domain that is a desk's, a reply or a filing address, else null. */
 export function routeOf(addresses: readonly string[], domain: string): Route | null {
   for (const raw of addresses) {
     const address = bareAddress(raw);
     if (!address) continue;
     const [local, host] = [address.slice(0, address.lastIndexOf("@")), address.slice(address.lastIndexOf("@") + 1)];
     if (host !== domain) continue;
-    const match = local.match(/^(desk|reply)-([a-z0-9]{12,32})$/);
-    if (match) return { kind: match[1] as Route["kind"], key: match[2] };
+    const match = local.match(/^(desk|reply|bcc)-([a-z0-9]{12,32})$/);
+    if (match) return { kind: match[1] === "bcc" ? "filing" : (match[1] as "desk" | "reply"), key: match[2] };
   }
   return null;
 }

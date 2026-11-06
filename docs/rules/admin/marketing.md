@@ -129,6 +129,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Deals is on. A person who has paid for an order (restricted orders left out) or is in an open deal is no lead; a decision hides a person
   until they ask again after it. A new kind of request a person makes of a store joins `leadRows()`.
 
+## Email on the timeline (S5, D476, `src/lib/filed-email.ts`, `src/server/email-filing.ts`)
+
+- **Email on the timeline (S5, D476, `src/lib/filed-email.ts`, `src/server/email-filing.ts`)**: mail to a store's filing address arrives
+  through the one inbound pipeline (`support_inbound_emails`, purpose `filing`) and is filed only by `fileReceived()`: from a team member's
+  address, while Deals is on, never automatic mail or mail failing DMARC, and only on people the store knows. Its words are a person's data and
+  untrusted text: kept for the email bodies' rule, erased with any of its people, drawn as text, and read by no AI unless the DPIA and the
+  chat's notice say so first.
+
 ## Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)
 
 - **Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)**: a store's creator programme (`commerce.creator_settings`,

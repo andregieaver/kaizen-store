@@ -235,6 +235,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Deals and pipelines (S2, D464, `src/lib/deals.ts`, `src/server/deals.ts`, `DealBoard`)
 - Activities (S3, D468, `src/lib/activities.ts`, `src/server/activities.ts`, `ActivitiesCard`, `TodayCard`)
 - A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)
+- Email on the timeline (S5, D476, `src/lib/filed-email.ts`, `src/server/email-filing.ts`)
 - Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)
 - Moving from Shopify (D445, `docs/moving-from-shopify.md`, `src/lib/old-shop.ts`, `src/lib/shopify.ts`, `src/server/shopify-connect.ts`)
 - Tripletex (D453, `docs/tripletex.md`, `src/lib/tripletex*.ts`, `src/server/tripletex.ts`, `src/server/tripletex-client.ts`, `src/server/tripletex-sync.ts`)
