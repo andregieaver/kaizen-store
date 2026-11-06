@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ActionForm } from "@/components/admin/action-form";
 import { SignUpLooks } from "@/components/platform-routes/sign-up-looks";
 import { referralPublicSettings } from "@/server/referrals";
+import { designCardsIn } from "@/lib/design-cards-lang";
 import { designChoices } from "@/server/design-presets";
 import { selfServeShown } from "@/server/self-signup";
 
@@ -84,7 +85,7 @@ export async function SignUpRoute({ lang }: { lang: PlatformLang }) {
             content: (
               <>
                 <ThemeFromAddress />
-                <SignUpLooks cards={designs.cards} legend={w.themeLegend} words={platformText(lang).themeCards} />
+                <SignUpLooks cards={designCardsIn(designs.cards, lang, platformText(lang).themeCards)} legend={w.themeLegend} words={platformText(lang).themeCards} />
               </>
             ),
           },

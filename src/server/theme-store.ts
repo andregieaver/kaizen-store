@@ -20,6 +20,9 @@ import {
   type ThemeStoreCard,
   type ThemeVersion,
 } from "@/lib/theme-store";
+import { designNb } from "@/lib/admin-messages/design.nb";
+import type { PlatformLang } from "@/lib/platform-lang";
+import { platformText } from "@/lib/platform-text";
 import { themeHighlights } from "@/lib/theme-highlights";
 import type { LookShots } from "@/lib/theme-shots";
 import type { ThemePrice } from "@/lib/theme-prices";
@@ -123,6 +126,8 @@ export type ThemeStorePage = ThemeStoreCard & {
   /** Its section styles by their own names, for a page in another language to name the core ones in it (D312 P3). */
   sectionStyleNames: string[];
   changelog: ChangelogEntry[];
+  /** The same changelog in the site's other languages (D312 P3), each where its words are written. */
+  changelogIn: Partial<Record<PlatformLang, ChangelogEntry[]>>;
   /** The latest version's number and date, for the page and the sitemap. */
   version: number | null;
   updatedAt: string | null;
@@ -160,6 +165,7 @@ export async function themeStorePage(slug: string): Promise<ThemeStorePage | nul
     sectionStyles: themeSectionStyles(snapshot),
     sectionStyleNames: Object.keys(snapshot.theme.settings.sectionStyles ?? {}),
     changelog: themeChangelog(versions),
+    changelogIn: { nb: themeChangelog(versions, { ...platformText("nb").themeStore.changelog, whatsNew: designNb.whatsNew }) },
     version: latest?.number ?? null,
     updatedAt: latest?.publishedAt ?? (row.published_at ? new Date(String(row.published_at)).toISOString() : null),
     author: row.author_name ? String(row.author_name) : null,

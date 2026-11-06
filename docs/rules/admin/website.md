@@ -539,7 +539,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   data processing agreement (P5, `src/lib/platform-legal.ts`, texts by hand in `platform-legal/{en,nb}.ts`, the same sections in both) are
   made and published only by `writePlatformLegalPages()` from Platform → Pages (English the page, Norwegian its `nb-NO` texts; facts from
   the business details, a missing one a placeholder, never invented); a new sub-processor is named in both languages' privacy notice and
-  data processing agreement.
+  data processing agreement. What a page draws from code or data rather than its own texts follows the page's language too (the `/no` sweep
+  of 2026-11-06, every page compared with its English twin): `placeLang()` is the page's language on Kaizena Flow's pages (a modal's close
+  button, D121), a table says its icons and an untitled section in it (`TableSection`, `t(lang).icons` and `tableSection` in every
+  hand-written language, D201), a platform menu's screen-reader name is said by `platformMenuName()` (`menuNames` by the name the admin
+  gave, else "Meny"), sign-up's look cards by `designCardsIn()` (the Standard card, each theme's `listing.words`, the demo store's
+  `packDemo`), a theme page's changelog from `changelogIn` (`themeChangelog()` with `platformText(lang).themeStore.changelog`, a launch
+  theme's note by its English, and the admin's `whatsNew` words) and its structured data's genre in it, and the media library's alt texts
+  have their `nb-NO` in `media.alt_translations`. The site's default title is per language in the platform's SEO settings (`seo.title.nb`).
 
 ## The docs portal (wave 14 unit E, D442, `src/lib/docs-content.ts`, `src/lib/docs-host.ts`, `src/server/docs.ts`, `content/docs/`)
 

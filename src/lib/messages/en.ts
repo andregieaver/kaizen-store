@@ -3,6 +3,8 @@
  * languages are `nb.ts`, `sv.ts` and `da.ts`; `t()` in `src/lib/i18n.ts` chooses. A visitor's browser never loads this file
  * (D212): the texts its client components read are `en-browser.ts`, the withdrawal function's `en-returns.ts`, both spread in.
  */
+import { ICONS, type IconName } from "@/lib/icons";
+
 import { enBrowser } from "./en-browser";
 import { enReturns } from "./en-returns";
 import { enExchange, enReturnLabel } from "./en-exchange";
@@ -1125,6 +1127,10 @@ export const en = {
     choose: "Get started",
     yearlyPrice: (price: string): string => `or ${price} per year`,
   },
+  /** A table's section divider without a title, as a screen reader says it (D197). */
+  tableSection: "Section",
+  /** An icon's name where a page says it to a screen reader (a table's cell, D201): the icon list's own names in English. */
+  icons: ICONS as Record<IconName, string>,
   listing: {
     open: "Filter and sort",
     title: "Filter and sort",

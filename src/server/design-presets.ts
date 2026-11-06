@@ -45,7 +45,7 @@ import { movedOrder } from "@/lib/store-starters";
 import { TEMPLATE_MEDIA_BYTES_MAX, TEMPLATE_MEDIA_MAX, isStorageUrl, leftoverStorageUrls } from "@/lib/template-content";
 import { parseStoreTheme, templateSettings, themeSettingsSchema } from "@/lib/theme";
 import { withCoreStyles } from "@/lib/launch-themes";
-import { OWN_SLOTS, THEME_SLUG, isThemePicture, readListing, themeLooks, type OwnSlot, type ThemeListing } from "@/lib/theme-store";
+import { OWN_SLOTS, THEME_SLUG, isThemePicture, readListing, readListingWords, themeLooks, type OwnSlot, type ThemeListing } from "@/lib/theme-store";
 import { blockingLines, themeCheck, type ThemeCheckResult } from "@/lib/theme-check";
 import { coreStylesRemoved, cssFate, layoutFate, layoutFingerprintSource, mergeSettings, whatsNew, type Placed as PlacedLook, type WhatsNewWords } from "@/lib/theme-update";
 
@@ -109,18 +109,23 @@ export function designProblem(error: unknown): string {
 // Reading
 // ---------------------------------------------------------------------------
 
-const toOffered = (row: Row): OfferedDesign => ({
-  id: String(row.id),
-  title: String(row.title),
-  summary: String(row.summary ?? ""),
-  description: String(row.description ?? ""),
-  pictureUrl: row.picture_url ? String(row.picture_url) : null,
-});
+const toOffered = (row: Row): OfferedDesign => {
+  // A theme's own words in the site's other languages (D312 P3), where the query read its listing.
+  const words = readListingWords((row.listing as { words?: unknown } | null | undefined)?.words);
+  return {
+    id: String(row.id),
+    title: String(row.title),
+    summary: String(row.summary ?? ""),
+    description: String(row.description ?? ""),
+    pictureUrl: row.picture_url ? String(row.picture_url) : null,
+    ...(Object.keys(words).length > 0 && { words }),
+  };
+};
 
 /** The published design profiles whose snapshot can be read, in the platform's order: what owners and the sign-up form are offered. */
 export async function listOfferedDesigns(): Promise<OfferedDesign[]> {
   const rows = await readDb().execute<Row>(sql`
-    select id, title, summary, description, picture_url, snapshot from commerce.design_presets
+    select id, title, summary, description, picture_url, listing, snapshot from commerce.design_presets
     where published and archived_at is null order by position, lower(title), id
   `);
   return rows.flatMap((row) => {

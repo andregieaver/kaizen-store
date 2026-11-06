@@ -1,6 +1,7 @@
 import { SMALLER_SIZES } from "@/lib/breakpoints";
 import type { MenuBlock } from "@/lib/page-content";
 import { MENU_JUSTIFY_CLASS } from "@/lib/part-css";
+import { platformMenuName } from "@/lib/platform-menu-name";
 import type { GridPlace } from "@/server/content-grid";
 import { storeSlugOf } from "@/server/menus";
 import { getPlatformChrome } from "@/server/platform-navigation";
@@ -51,7 +52,7 @@ export async function MenuSection({ block, place }: { block: MenuBlock; place: G
   const menu = chrome.menus.find((m) => m.id === block.menuId);
   if (!menu || menu.items.length === 0) return null;
   return (
-    <nav aria-label={menu.name}>
+    <nav aria-label={platformMenuName(menu.name, place.lang ?? "en")}>
       <KaizenMenuLinks items={platformMenu(chrome, menu.id)} chrome={chrome} lang={place.lang} layout={layout} linkClassName={linkClassName} justify={justify} hover={block.itemHover} />
     </nav>
   );

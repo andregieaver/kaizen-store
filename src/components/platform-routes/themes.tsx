@@ -98,9 +98,10 @@ export async function ThemeRoute({ lang, slug }: { lang: PlatformLang; slug: str
     if (themesHost()) redirect(`${siteUrl()}${platformPath(lang, `/${slug}`)}`);
     notFound();
   }
-  const theme = inLanguage(found, lang);
+  // Its own words and its changelog in the page's language (D312 P3), each where written.
+  const theme = { ...inLanguage(found, lang), changelog: found.changelogIn[lang] ?? found.changelog };
   const url = themeStoreUrl(theme.slug, lang);
-  const jsonLd = <JsonLdScript data={themeJsonLd({ ...theme, pictureUrl: sharePicture(theme) }, url, "Kaizena Flow")} />;
+  const jsonLd = <JsonLdScript data={themeJsonLd({ ...theme, pictureUrl: sharePicture(theme) }, url, "Kaizena Flow", platformText(lang).themeStore.genre)} />;
   if (page) {
     return (
       <>

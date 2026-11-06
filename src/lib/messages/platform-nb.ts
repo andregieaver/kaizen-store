@@ -10,7 +10,8 @@ export const platformNb: PlatformMessages = {
       "Nettbutikker for Norge og EU: priser, merverdiavgift, produktsikkerhet og forbrukerregler på plass fra starten, og sider som lastes på under et halvt sekund.",
     orgNumber: (number) => `Org.nr. ${number}`,
   },
-  nav: { home: "Hjem", signUp: "Start nettbutikken din", signIn: "Logg inn", blog: "Blogg" },
+  nav: { home: "Hjem", signUp: "Start nettbutikken din", signIn: "Logg inn", blog: "Blogg", menu: "Meny" },
+  menuNames: { "Main menu": "Hovedmeny", "Footer menu": "Bunnmeny", "Useful links": "Nyttige lenker" },
   home: {
     lead: "Nettbutikker for Norge og EU: priser, merverdiavgift, produktsikkerhet og forbrukerregler på plass fra starten, og sider som lastes på under et halvt sekund.",
     beta: "Kaizena Flow er i en lukket beta.",
@@ -99,9 +100,38 @@ export const platformNb: PlatformMessages = {
     premiumNote: (price) => `${price} ekskl. mva., én gang. Ingenting å betale nå: det belastes når nettbutikken åpner med temaet.`,
     startsWithDemo: (name) => `Starter med demobutikken ${name}`,
     startsWithStandard: "Starter med standard demoprodukter",
+    standardSummary: "Et enkelt utseende med et demoprodukt av hvert slag. Velg et tema når som helst senere.",
+    packDemo: {
+      fashion: "en demobutikk for klær",
+      beauty: "en demobutikk for hudpleie",
+      food: "en demobutikk for mat og drikke",
+      home: "en demobutikk for hjem og interiør",
+      electronics: "en demobutikk for elektronikk",
+      services: "en demofrisørsalong som tar imot timebestillinger",
+      astronomy: "en demobutikk med trykk av nattehimmelen",
+      ceramics: "et demokeramikkverksted",
+      neon: "et demoverksted for neonskilt",
+      plants: "en demobutikk for planter",
+      sports: "en demobutikk for sportsklær",
+      consulting: "et demorådgivningsfirma",
+    },
   },
   themeStore: {
     title: "Temaer",
+    genre: "Nettstedstema",
+    changelog: {
+      firstVersion: "Den første versjonen.",
+      smallChanges: "Små endringer.",
+      versionNotes: {
+        "Three presets: Sand, warm beige with Lora headings; Ink, always dark with a blue accent; Sage, soft green-grey.":
+          "Tre varianter: Sand, varm beige med overskrifter i Lora; Ink, alltid mørk med en blå aksentfarge; Sage, myk grønngrå.",
+        "Two presets: Olive, warm white and olive green; Blush, rose and plum.": "To varianter: Olive, varm hvit og olivengrønn; Blush, rosa og plomme.",
+        "Two presets: Volt, always dark with an electric yellow-green; Cobalt, a strong blue with headings as written.":
+          "To varianter: Volt, alltid mørk med en elektrisk gulgrønn; Cobalt, en kraftig blå med overskriftene slik de er skrevet.",
+        "Two presets: Mist, pale lilac and violet with Playfair Display headings; Pine, a deep forest green.":
+          "To varianter: Mist, blek lilla og fiolett med overskrifter i Playfair Display; Pine, en dyp skoggrønn.",
+      },
+    },
     description:
       "Temaer for nettbutikken din på Kaizena Flow: forhåndsvis hvert tema på demobutikken sin i bredden til en datamaskin og en mobil, og start med det du liker.",
     intro:

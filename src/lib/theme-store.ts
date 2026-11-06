@@ -2,7 +2,7 @@ import { baseScheme } from "./color-mode";
 import type { DesignSnapshot } from "./design-presets";
 import { CORE_SECTION_STYLES, sectionStyleLabel } from "./section-styles";
 import { slugify } from "./slug";
-import { whatsNew } from "./theme-update";
+import { whatsNew, type WhatsNewWords } from "./theme-update";
 import { PACK_DEMO_WORDS, PACK_KEYS, PACK_TRADES, type PackKey } from "./content-packs";
 import { isStarterPicture } from "./store-starters";
 import { LANGUAGE_PREFIXES, PLATFORM_LANGS, platformPath, type PlatformLang } from "./platform-lang";
@@ -374,14 +374,26 @@ export const filterThemes = (cards: ThemeStoreCard[], filter: ThemeFilter): Them
 export type ThemeVersion = { number: number; publishedAt: string; notes: string | null; snapshot: DesignSnapshot };
 export type ChangelogEntry = { number: number; date: string; lines: string[] };
 
+/**
+ * What a changelog says in a language (D312 P3): the first version and a version with only small changes, a version's own note by the
+ * English it was written in (`versionNotes`, as written when it has none), and *What's new*'s words (English unless given).
+ */
+export type ChangelogWords = { firstVersion: string; smallChanges: string; versionNotes: Record<string, string>; whatsNew?: WhatsNewWords };
+
+const CHANGELOG_EN: ChangelogWords = { firstVersion: "The first version.", smallChanges: "Small changes.", versionNotes: {} };
+
 /** The changelog, newest first: each version's *What's new* against the one before (D245), the first one said as such. */
-export function themeChangelog(versions: ThemeVersion[]): ChangelogEntry[] {
+export function themeChangelog(versions: ThemeVersion[], w: ChangelogWords = CHANGELOG_EN): ChangelogEntry[] {
   const ordered = [...versions].sort((a, b) => a.number - b.number);
+  const note = (notes: string | null) => {
+    const own = notes?.trim() || null;
+    return own && Object.hasOwn(w.versionNotes, own) ? w.versionNotes[own] : own;
+  };
   return ordered
     .map((version, index) => {
       const before = ordered[index - 1];
-      const lines = before ? whatsNew(before.snapshot, version.snapshot, version.notes) : [version.notes?.trim() || "The first version."];
-      return { number: version.number, date: version.publishedAt.slice(0, 10), lines: lines.length > 0 ? lines : ["Small changes."] };
+      const lines = before ? whatsNew(before.snapshot, version.snapshot, note(version.notes), w.whatsNew) : [note(version.notes) || w.firstVersion];
+      return { number: version.number, date: version.publishedAt.slice(0, 10), lines: lines.length > 0 ? lines : [w.smallChanges] };
     })
     .reverse();
 }
@@ -391,6 +403,7 @@ export function themeJsonLd(
   theme: { title: string; summary: string; pictureUrl: string | null; prices?: readonly ThemePrice[] },
   url: string,
   publisher: string,
+  genre = "Website theme",
 ): Record<string, unknown> {
   const prices = theme.prices ?? [];
   return {
@@ -410,7 +423,7 @@ export function themeJsonLd(
         url,
       })),
     }),
-    genre: "Website theme",
+    genre,
     publisher: { "@type": "Organization", name: publisher },
   };
 }

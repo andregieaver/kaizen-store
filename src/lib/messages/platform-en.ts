@@ -10,7 +10,9 @@ export const platformEn = {
       "Online stores for Norway and the EU: prices, VAT, product safety and consumer rules handled from the start, and pages that load in under half a second.",
     orgNumber: (number: string) => `Org. ${number}`,
   },
-  nav: { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog" },
+  nav: { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog", menu: "Menu" },
+  /** The platform's menus' names (D85) in another language, by the name they were given; English says the name as given. */
+  menuNames: {} as Record<string, string>,
   home: {
     lead: "Online stores for Norway and the EU: prices, VAT, product safety and consumer rules handled from the start, and pages that load in under half a second.",
     beta: "Kaizena Flow is in a private beta.",
@@ -107,10 +109,17 @@ export const platformEn = {
     premiumNote: (price: string) => `${price} excl. VAT, once. Nothing to pay now: it is charged when your store opens with it.`,
     startsWithDemo: (name: string) => `Starts with the demo store ${name}`,
     startsWithStandard: "Starts with the standard demo products",
+    /** The Standard card's line (`keepDesignCard()`), and each content pack's demo store in a few words (`PACK_DEMO_WORDS`, English as written there). */
+    standardSummary: "A simple look with a demo product of every kind. Choose a theme any time later.",
+    packDemo: {} as Record<string, string>,
   },
   /** The theme store (D312 P3): its list, a theme's page and the full-screen preview. A client part's words are plain texts with `{name}`. */
   themeStore: {
     title: "Themes",
+    /** What a theme is in its page's structured data (schema.org `genre`). */
+    genre: "Website theme",
+    /** A theme's changelog (`themeChangelog()`): a version's own note in another language by the English it was written in. */
+    changelog: { firstVersion: "The first version.", smallChanges: "Small changes.", versionNotes: {} as Record<string, string> },
     description: "Themes for your Kaizena Flow store: preview each on its demo store at computer and phone widths, then start with the one you like.",
     intro:
       "A theme is how your store looks: colours, fonts, buttons, sections and, for some, a header, footer and product page of their own. Switching never changes your words, pictures, products or menus.",

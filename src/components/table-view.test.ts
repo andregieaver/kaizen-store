@@ -2,6 +2,8 @@ import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { t } from "@/lib/i18n";
+import { ICONS } from "@/lib/icons";
 import type { TableBlock } from "@/lib/page-content";
 
 import { TableView } from "./table-view";
@@ -100,6 +102,28 @@ describe("icons in a table's cells (D201)", () => {
   it("leaves a cell without icons as it was", () => {
     const html = draw(block());
     expect(html).not.toContain("<svg");
+  });
+
+  it("names its icons and an untitled section in the page's language when the page gives its words", () => {
+    const m = t("nb");
+    const html = renderToString(
+      createElement(TableView, {
+        block: block({ rows: [["Feature", "Free"], ["Search", "{{check}}"], ["Chat", "{{x}} No"]], sections: [null, null, ""] }),
+        words: { icons: m.icons, section: m.tableSection },
+      }),
+    );
+    expect(html).toContain('<span class="sr-only">Hake</span>');
+    expect(html).toContain('<span class="sr-only">Kryss</span>');
+    expect(html).not.toContain(">Tick<");
+  });
+
+  it("has every icon's name in every hand-written language", () => {
+    for (const lang of ["en", "nb", "sv", "da"]) {
+      const names = t(lang).icons;
+      expect(Object.keys(names).sort(), lang).toEqual(Object.keys(ICONS).sort());
+      for (const name of Object.values(names)) expect(name.trim().length, lang).toBeGreaterThan(0);
+    }
+    expect(t("en").icons).toEqual(ICONS);
   });
 });
 

@@ -30,6 +30,7 @@ import { PageBlockView } from "./page-block";
 import { PageModal } from "./lazy/blocks";
 import { DomainSearchSection } from "./domain-search-section";
 import { PlansSection } from "./plans-section";
+import { TableSection } from "./table-section";
 import { ThemeStoreSection } from "./theme-store-section";
 import { themePartDraws } from "@/lib/theme-store-parts";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelClass, rowBox, rowGrid, rowInnerClass } from "./page-parts";
@@ -353,6 +354,8 @@ function RowMarkup({
                 <SearchSection place={place} results={block.results !== false} />
               ) : block.type === "plans" ? (
                 <PlansSection block={block} place={place} />
+              ) : block.type === "table" ? (
+                <TableSection block={block} place={place} />
               ) : block.type === "domainSearch" ? (
                 <DomainSearchSection block={block} place={place} />
               ) : block.type === "themeStore" ? (

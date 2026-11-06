@@ -30,6 +30,7 @@ const theme = (extra: Partial<ThemeStorePage> = {}): ThemeStorePage => ({
   sectionStyles: ["Plain"],
   sectionStyleNames: ["plain"],
   changelog: [],
+  changelogIn: {},
   version: 1,
   updatedAt: "2026-10-19T08:00:00Z",
   author: null,

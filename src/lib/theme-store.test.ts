@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { designNb } from "./admin-messages/design.nb";
 import type { DesignSnapshot } from "./design-presets";
 import { LAUNCH_THEMES, launchVariation } from "./launch-themes";
+import { platformText } from "./platform-text";
 import {
   cardPicture,
   filterThemes,
@@ -128,13 +130,45 @@ describe("the changelog", () => {
     expect(log[0].lines).toEqual(["A deeper accent.", "New colours."]);
     expect(log[1]).toEqual({ number: 1, date: "2026-10-15", lines: ["The first version."] });
   });
+
+  it("speaks the page's language: its own words, a note by the English it was written in, and What's new's words (D312 P3)", () => {
+    const first = snap();
+    const second = snap();
+    second.theme.settings.light = { ...second.theme.settings.light, accent: "#0a0a0a" };
+    const nb = { ...platformText("nb").themeStore.changelog, whatsNew: designNb.whatsNew };
+    const note = "Two presets: Olive, warm white and olive green; Blush, rose and plum.";
+    const log = themeChangelog(
+      [
+        { number: 1, publishedAt: "2026-10-15T09:00:00Z", notes: note, snapshot: first },
+        { number: 2, publishedAt: "2026-10-16T09:00:00Z", notes: "Typed in English since.", snapshot: second },
+        { number: 3, publishedAt: "2026-10-17T09:00:00Z", notes: null, snapshot: second },
+      ],
+      nb,
+    );
+    expect(log[2].lines).toEqual(["To varianter: Olive, varm hvit og olivengrønn; Blush, rosa og plomme."]);
+    // A note written since has no Norwegian yet, and is said as written; what changed is said in Norwegian.
+    expect(log[1].lines[0]).toBe("Typed in English since.");
+    expect(log[1].lines.slice(1).join(" ")).not.toMatch(/New colours/);
+    expect(log[0].lines).toEqual(["Små endringer."]);
+    expect(themeChangelog([{ number: 1, publishedAt: "2026-10-15T09:00:00Z", notes: null, snapshot: first }], nb)[0].lines).toEqual(["Den første versjonen."]);
+  });
+
+  it("has every launch theme's note in Norwegian, so a new version's note brings its words too", () => {
+    const notes = platformText("nb").themeStore.changelog.versionNotes;
+    for (const theme of LAUNCH_THEMES) if (theme.notes) expect(notes[theme.notes], theme.key).toBeTruthy();
+  });
 });
 
 describe("structured data", () => {
   it("is a free creative work with no price", () => {
     const data = themeJsonLd({ title: "Calm", summary: "Quiet.", pictureUrl: null }, "https://kaizenaflow.com/themes/calm", "Kaizena Flow");
-    expect(data).toMatchObject({ "@type": "CreativeWork", name: "Calm", isAccessibleForFree: true });
+    expect(data).toMatchObject({ "@type": "CreativeWork", name: "Calm", isAccessibleForFree: true, genre: "Website theme" });
     expect(JSON.stringify(data)).not.toMatch(/price|offers/i);
+  });
+
+  it("names its genre in the page's language", () => {
+    const data = themeJsonLd({ title: "Calm", summary: "Rolig.", pictureUrl: null }, "https://kaizenaflow.com/no/themes/calm", "Kaizena Flow", platformText("nb").themeStore.genre);
+    expect(data.genre).toBe("Nettstedstema");
   });
 });
 

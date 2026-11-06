@@ -1,7 +1,7 @@
 import { Fragment, type CSSProperties } from "react";
 
 import { Inline } from "@/components/inline-text";
-import { ICONS } from "@/lib/icons";
+import { ICONS, type IconName } from "@/lib/icons";
 import { inlinePlain } from "@/lib/inline-text";
 import type { TableBlock } from "@/lib/page-content";
 import { cellParts, withoutIcons } from "@/lib/table-icons";
@@ -9,8 +9,13 @@ import { cellParts, withoutIcons } from "@/lib/table-icons";
 import { ListIcon } from "./list-icon";
 import { TableScroll } from "./lazy/blocks";
 
+/** What a table says to a screen reader in the page's language (`TableSection`), else English: each icon's name and an untitled section. */
+export type TableWords = { icons: Record<IconName, string>; section: string };
+
+const ENGLISH: TableWords = { icons: ICONS, section: "Section" };
+
 /** A cell's words with its icons drawn in their places (D201); an icon is named for screen readers. */
-function Cell({ text, color }: { text: string; color?: string }) {
+function Cell({ text, color, iconNames }: { text: string; color?: string; iconNames: TableWords["icons"] }) {
   const parts = cellParts(text);
   if (!parts.some((part) => "icon" in part)) return <Inline text={text} />;
   return (
@@ -19,7 +24,7 @@ function Cell({ text, color }: { text: string; color?: string }) {
         "icon" in part ? (
           <span key={index} className="inline-flex align-text-bottom" {...(color && { style: { color } })}>
             <ListIcon name={part.icon} className="size-[1.15em]" />
-            <span className="sr-only">{ICONS[part.icon]}</span>
+            <span className="sr-only">{iconNames[part.icon]}</span>
           </span>
         ) : (
           <Inline key={index} text={part.text} />
@@ -39,7 +44,7 @@ function colours(color?: string, background?: string): CSSProperties | undefined
  * value after its column's name) or scrolls sideways; from Medium (by the store's screen sizes, `BREAKPOINT_CLASSES`) it is a
  * table. The stacked table is still a table to screen readers: only the display of its parts changes.
  */
-export function TableView({ block }: { block: TableBlock }) {
+export function TableView({ block, words = ENGLISH }: { block: TableBlock; words?: TableWords }) {
   const [first, ...rest] = block.rows;
   if (!first) return null;
   const header = Boolean(block.header) && rest.length > 0 ? first : null;
@@ -59,7 +64,7 @@ export function TableView({ block }: { block: TableBlock }) {
     // Stacked, the row takes no box of its own, so its title is sticky within the whole table and not only within its own row.
     <tr key={`s${r}`} className={stack ? "contents kzb-md-table-row" : ""}>
       <th scope="colgroup" colSpan={first.length} style={sectionStyle} className={`kz-th-section border-b-2 border-t-2 border-border bg-surface px-3 py-2 text-left font-semibold ${cell}`}>
-        {title ? <Cell text={title} color={block.iconColor} /> : <span className="sr-only">Section</span>}
+        {title ? <Cell text={title} color={block.iconColor} iconNames={words.icons} /> : <span className="sr-only">{words.section}</span>}
       </th>
     </tr>
   );
@@ -74,7 +79,7 @@ export function TableView({ block }: { block: TableBlock }) {
           <tr className={stack ? "block kzb-md-table-row" : ""} style={headerStyle}>
             {header.map((text, c) => (
               <th key={c} scope="col" className={`kz-th-head border-b-2 border-border px-3 py-2 font-semibold ${cell}`}>
-                <Cell text={text} color={block.iconColor} />
+                <Cell text={text} color={block.iconColor} iconNames={words.icons} />
               </th>
             ))}
           </tr>
@@ -100,7 +105,7 @@ export function TableView({ block }: { block: TableBlock }) {
                           {label}
                         </span>
                       )}
-                      <Cell text={text} color={block.iconColor} />
+                      <Cell text={text} color={block.iconColor} iconNames={words.icons} />
                     </>
                   );
                   return block.rowHeaders && c === 0 ? (

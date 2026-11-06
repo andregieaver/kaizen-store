@@ -25,7 +25,7 @@ import {
   type ForeignStore,
   type MediaResolver,
 } from "./template-content";
-import type { ThemeListing } from "./theme-store";
+import type { ListingLanguages, ThemeListing } from "./theme-store";
 import type { ThemePrice } from "./theme-prices";
 import { THEME_TEMPLATE_KEYS, themeSettingsSchema, type ThemeSettings, type ThemeTemplate } from "./theme";
 
@@ -403,6 +403,8 @@ export type OfferedDesign = {
   pictureUrl: string | null;
   /** Its presets besides its own look, from its published version (`docs/theme-showcase-phase-1.md`); absent or empty: none. */
   presets?: { key: string; name: string }[];
+  /** Its own words in the site's other languages (D312 P3, `listing.words`), only where some are written: sign-up says them there. */
+  words?: ListingLanguages;
 };
 
 /**
@@ -475,7 +477,7 @@ export const designTabHref = (presetId: string, tab: DesignTab): string =>
   `/admin/platform/themes/${presetId}${DESIGN_TABS.find((t) => t.key === tab)?.segment ?? ""}`;
 
 /** A card to choose: a design profile, or "keep the look" (`id` empty). */
-export type DesignCard = Pick<OfferedDesign, "title" | "summary" | "description" | "pictureUrl"> & {
+export type DesignCard = Pick<OfferedDesign, "title" | "summary" | "description" | "pictureUrl" | "words"> & {
   id: string;
   /** The preview, opened in a new window; null for the Standard card. */
   previewHref: string | null;
