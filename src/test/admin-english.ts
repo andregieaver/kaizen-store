@@ -1,4 +1,5 @@
 import { settledEnglish } from "@/components/admin/admin-text-later";
+import { movingEn } from "@/lib/admin-messages/moving.en";
 import { setupEn } from "@/lib/admin-messages/setup.en";
 import { shellEn } from "@/lib/admin-messages/shell.en";
 
@@ -8,3 +9,4 @@ import { shellEn } from "@/lib/admin-messages/shell.en";
  */
 settledEnglish("setup", setupEn);
 settledEnglish("shell", shellEn);
+settledEnglish("moving", movingEn);
