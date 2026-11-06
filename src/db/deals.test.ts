@@ -320,3 +320,10 @@ describe("where a deal's rows go", () => {
     expect(PERSONAL_DATA.some((entry) => entry.table === "deals")).toBe(true);
   });
 });
+
+describe("the sales feature", () => {
+  it("needs nothing else: deals are kept by a store with no online shop too", async () => {
+    expect(await one("select commerce.feature_needs('sales') as needs")).toEqual({ needs: [] });
+    expect(await one("select commerce.features_effective(array['sales']) as on")).toEqual({ on: ["sales"] });
+  });
+});

@@ -4754,6 +4754,13 @@
       "when": 1793949142581,
       "tag": "20261106071222_deals_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 679,
+      "version": "7",
+      "when": 1793952352021,
+      "tag": "20261106080551_sales_needs_nothing",
+      "breakpoints": true
     }
   ]
 }
