@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { BookingDoc } from "./accounting-docs";
 import {
   NO_POSTING,
+  compareWithTheirs,
+  isVatAccount,
   NO_STANDARD_ACCOUNTS,
   NO_TAX_CODES,
   entryName,
@@ -142,3 +144,43 @@ describe("a trial balance", () => {
     expect(tb.result).toBe(97_000);
   });
 });
+
+describe("an entry compared with its voucher in Tripletex", () => {
+  const ours = [
+    { account: 1500, amountMinor: 137_500 },
+    { account: 3000, amountMinor: -100_000 },
+    { account: 3200, amountMinor: -12_500 },
+    { account: 2700, amountMinor: -25_000 },
+  ];
+
+  it("agrees account by account and in VAT, whether or not Tripletex lists its VAT postings apart", () => {
+    // VAT worked out of the gross on the income posting, no VAT posting listed.
+    const folded = [
+      { account: 1500, grossMinor: 137_500, netMinor: 137_500 },
+      { account: 3000, grossMinor: -125_000, netMinor: -100_000 },
+      { account: 3200, grossMinor: -12_500, netMinor: -12_500 },
+    ];
+    expect(compareWithTheirs(ours, folded)).toEqual({ agrees: true, differences: [] });
+    // The same with its VAT posting listed on 2700.
+    expect(compareWithTheirs(ours, [...folded, { account: 2700, grossMinor: -25_000, netMinor: -25_000 }])).toEqual({ agrees: true, differences: [] });
+    expect(isVatAccount(2703)).toBe(true);
+    expect(isVatAccount(3000)).toBe(false);
+  });
+
+  it("names every account that differs, and the VAT, by an øre", () => {
+    const theirs = [
+      { account: 1500, grossMinor: 137_500, netMinor: 137_500 },
+      { account: 3020, grossMinor: -125_001, netMinor: -100_001 },
+      { account: 3200, grossMinor: -12_499, netMinor: -12_499 },
+    ];
+    expect(compareWithTheirs(ours, theirs)).toEqual({
+      agrees: false,
+      differences: [
+        { account: 3000, ours: -100_000, theirs: 0 },
+        { account: 3020, ours: 0, theirs: -100_001 },
+        { account: 3200, ours: -12_500, theirs: -12_499 },
+      ],
+    });
+  });
+});
+

@@ -11,6 +11,7 @@ import { isDay } from "@/lib/ledger";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { formatStoreDay } from "@/lib/return-time";
 import { ledgerTrialBalance, ledgerWaiting, openBookOf } from "@/server/ledger";
+import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 
@@ -67,7 +68,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const asked = (value: unknown) => (typeof value === "string" && isDay(value) ? value : null);
   const from = asked(query.from) ?? (yearStart < book.openedOn ? book.openedOn : yearStart);
   const to = asked(query.to) ?? today;
-  const [waiting, tb] = await Promise.all([ledgerWaiting(book.id), ledgerTrialBalance(book.id, from, to)]);
+  const [waiting, tb, tripletex] = await Promise.all([ledgerWaiting(book.id), ledgerTrialBalance(book.id, from, to), getTripletexConnection(store.id)]);
+  const compared = tripletex ? await ledgerComparisonSummary(book.id) : null;
   // The table's amounts as numbers, the currency said once above it; the result with its currency.
   const digits = minorUnitDigits(book.currency);
   const number = new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -163,6 +165,53 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           </p>
         )}
       </Card>
+
+      {compared && (
+        <Card
+          title={w.compare.title}
+          description={w.compare.text}
+          aside={compared.differ + compared.missing > 0 ? <Chip signal="warning">{compared.differ + compared.missing}</Chip> : undefined}
+        >
+          {compared.agree + compared.differ + compared.missing === 0 ? (
+            <p className="text-sm text-muted">{w.compare.none}</p>
+          ) : (
+            <div className="flex flex-col gap-2 text-sm">
+              <p>
+                {[
+                  countWords(compared.agree, w.compare.agree, { n: compared.agree }),
+                  compared.differ > 0 ? countWords(compared.differ, w.compare.differ, { n: compared.differ }) : null,
+                  compared.missing > 0 ? countWords(compared.missing, w.compare.missing, { n: compared.missing }) : null,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
+                .
+              </p>
+              {compared.items.length === 0 ? (
+                <p className="font-medium">{w.compare.all}</p>
+              ) : (
+                <ul className="flex flex-col divide-y divide-line">
+                  {compared.items.slice(0, 20).map((item) => (
+                    <li key={`${item.kind}:${item.id}`} className="py-2">
+                      <p className="font-medium">{item.text || (w.waiting.kinds[item.kind] ?? item.kind)}</p>
+                      {item.state === "missing" ? (
+                        <p className="text-muted">{w.compare.gone}</p>
+                      ) : (
+                        <ul className="text-muted">
+                          {item.differences.map((d) => (
+                            <li key={String(d.account)}>
+                              {fillWords(w.compare.line, { account: d.account === "vat" ? w.compare.vat : String(d.account), ours: signed(d.ours), theirs: signed(d.theirs) })}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
 
       {owner && (
         <Card title={w.lock.title} description={w.lock.text}>

@@ -18193,3 +18193,30 @@ export const ledgerWaiting = commerce.table(
     check("ledger_waiting_problem", sql`${t.problem} ~ '^[a-z_]{1,40}$'`),
   ],
 );
+
+/**
+ * A document's entry in the books compared with its voucher in Tripletex (D478 step 4): whether they agree account by account and in VAT,
+ * and what differs; `missing` where the voucher is gone. Compared once a day while they differ, kept while they agree.
+ */
+export const ledgerComparisons = commerce.table(
+  "ledger_comparisons",
+  {
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    sourceKind: text("source_kind").notNull(),
+    sourceId: text("source_id").notNull(),
+    /** `agrees`, `differs` or `missing`. */
+    state: text("state").notNull(),
+    differences: jsonb("differences").notNull().default(sql`'[]'::jsonb`),
+    theirId: bigint("their_id", { mode: "number" }),
+    comparedAt: timestamp("compared_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.bookId, t.sourceKind, t.sourceId] }),
+    foreignKey({ name: "ledger_comparisons_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
+    index("ledger_comparisons_store_book_idx").on(t.storeId, t.bookId),
+    check("ledger_comparisons_state", sql`${t.state} in ('agrees', 'differs', 'missing')`),
+    check("ledger_comparisons_source", sql`${t.sourceKind} ~ '^[a-z_]{1,40}$' and char_length(${t.sourceId}) between 1 and 80`),
+    check("ledger_comparisons_differences", sql`jsonb_typeof(${t.differences}) = 'array'`),
+  ],
+);

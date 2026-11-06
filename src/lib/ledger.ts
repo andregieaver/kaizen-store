@@ -298,3 +298,41 @@ export function trialBalance(rows: readonly TrialRow[]): TrialBalance {
   const result = -out.filter((r) => r.kind === "income" || r.kind === "expense").reduce((sum, r) => sum + r.debit + r.credit, 0);
   return { rows: out, totals, result };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Step 4: compared with Tripletex
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** An account of the VAT group (27xx in NS 4102), whose postings are compared as one VAT total. */
+export const isVatAccount = (number: number): boolean => /^27\d{2,3}$/.test(String(number));
+
+/** A posting of a Tripletex voucher as read back: its account's number, and its amount with VAT and without, in minor units. */
+export type TheirPosting = { account: number; grossMinor: number; netMinor: number };
+
+export type Difference = { account: number | "vat"; ours: number; theirs: number };
+
+/**
+ * One document's entry here against its voucher in Tripletex, account by account: every account but the VAT group by its amount without
+ * VAT (the receivable's is its whole amount), and the VAT as one total (here the VAT accounts' lines, there what Tripletex worked out of
+ * each gross amount, which holds whether or not it lists its VAT postings apart). They agree when nothing differs by even an øre.
+ */
+export function compareWithTheirs(ours: readonly { account: number; amountMinor: number }[], theirs: readonly TheirPosting[]): { agrees: boolean; differences: Difference[] } {
+  const accounts = new Map<number, { ours: number; theirs: number }>();
+  const at = (account: number) => accounts.get(account) ?? accounts.set(account, { ours: 0, theirs: 0 }).get(account)!;
+  let ourVat = 0;
+  let theirVat = 0;
+  for (const line of ours) {
+    if (isVatAccount(line.account)) ourVat += line.amountMinor;
+    else at(line.account).ours += line.amountMinor;
+  }
+  for (const p of theirs) {
+    theirVat += p.grossMinor - p.netMinor;
+    if (!isVatAccount(p.account)) at(p.account).theirs += p.netMinor;
+  }
+  const differences: Difference[] = [...accounts.entries()]
+    .filter(([, v]) => v.ours !== v.theirs)
+    .sort(([a], [b]) => a - b)
+    .map(([account, v]) => ({ account, ...v }));
+  if (ourVat !== theirVat) differences.push({ account: "vat", ours: ourVat, theirs: theirVat });
+  return { agrees: differences.length === 0, differences };
+}

@@ -29,6 +29,7 @@ import {
 import { mainCurrency } from "@/lib/markets";
 
 import { loadDocument, type DocumentKind } from "./accounting-documents";
+import { compareWithTripletex } from "./ledger-compare";
 import { audit, type Membership } from "./auth";
 import { log } from "./log";
 import { getTripletexConnection } from "./tripletex";
@@ -401,10 +402,10 @@ export async function postDueDocuments(
 }
 
 /**
- * The dispatcher's `ledger` job (D478 step 2): each store's books, open or closed in the last 60 days, post the documents issued in their
- * days, store after store within 40 seconds.
+ * The dispatcher's `ledger` job (D478 steps 2 and 4): each store's books, open or closed in the last 60 days, post the documents issued in
+ * their days, and the open ones compare what is posted with Tripletex, store after store within 40 seconds.
  */
-export async function runLedgerPosting(options: { budgetMs?: number } = {}): Promise<{ books: number; posted: number; waiting: number }> {
+export async function runLedgerPosting(options: { budgetMs?: number } = {}): Promise<{ books: number; posted: number; waiting: number; compared: number }> {
   const deadline = Date.now() + (options.budgetMs ?? BUDGET_MS);
   const books = await typedRows(
     z.object({ id: col.uuid, store_id: col.uuid, currency: col.currency, opened_on: col.text, closed_on: col.textOrNull }),
@@ -414,6 +415,7 @@ export async function runLedgerPosting(options: { budgetMs?: number } = {}): Pro
   );
   let posted = 0;
   let waiting = 0;
+  let compared = 0;
   let done = 0;
   for (const book of books) {
     if (Date.now() > deadline) break;
@@ -421,11 +423,13 @@ export async function runLedgerPosting(options: { budgetMs?: number } = {}): Pro
       const r = await postDueDocuments(book.store_id, book, { deadline });
       posted += r.posted;
       waiting += r.waiting;
+      // Step 4: what is posted here, compared with what Tripletex holds for it.
+      if (book.closed_on === null) compared += (await compareWithTripletex(book.store_id, book, { deadline })).compared;
       done += 1;
     } catch (error) {
       log("error", "ledger.posting_failed", { storeId: book.store_id, bookId: book.id }, error);
     }
   }
-  return { books: done, posted, waiting };
+  return { books: done, posted, waiting, compared };
 }
 

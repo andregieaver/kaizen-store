@@ -4971,6 +4971,20 @@
       "when": 1793998247711,
       "tag": "20261106205047_language_rule",
       "breakpoints": true
+    },
+    {
+      "idx": 710,
+      "version": "7",
+      "when": 1794004172980,
+      "tag": "20261106222932_ledger_comparisons",
+      "breakpoints": true
+    },
+    {
+      "idx": 711,
+      "version": "7",
+      "when": 1794004209137,
+      "tag": "20261106223009_ledger_comparisons_rules",
+      "breakpoints": true
     }
   ]
 }

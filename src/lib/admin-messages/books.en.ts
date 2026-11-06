@@ -56,6 +56,18 @@ export const booksEn = {
     empty: "Nothing posted in these days yet.",
     unbalanced: "These books do not balance. Tell us: this should never happen.",
   },
+  compare: {
+    title: "Compared with Tripletex",
+    text: "Every document posted here is compared each day with its voucher in Tripletex, account by account and in VAT.",
+    agree: { one: "{n} document agrees", many: "{n} documents agree" },
+    differ: { one: "{n} differs", many: "{n} differ" },
+    missing: { one: "{n} is gone from Tripletex", many: "{n} are gone from Tripletex" },
+    none: "Nothing compared yet: it happens within minutes of a document being booked in both.",
+    all: "Everything agrees to the øre.",
+    vat: "VAT",
+    line: "{account}: here {ours}, in Tripletex {theirs}",
+    gone: "Its voucher is gone from Tripletex.",
+  },
   lock: {
     title: "Lock the books",
     text: "Nothing dated on or before the day is posted after it, as when a VAT term is reported. Moving the day back is possible, and recorded.",
