@@ -1018,7 +1018,7 @@ async function loadCustomerDeals(s: PrivacySubject): Promise<NonNullable<ExportI
   }));
 }
 
-/** Staff's calls, meetings and tasks about the person (D467), by their account: what, when and what was written; never who did it. */
+/** Staff's calls, meetings and tasks about the person (D468), by their account: what, when and what was written; never who did it. */
 async function loadCustomerActivities(s: PrivacySubject): Promise<NonNullable<ExportInput["customerActivities"]>> {
   if (!s.customerId) return [];
   const rows = await typedRows(

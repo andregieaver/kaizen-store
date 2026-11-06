@@ -3,7 +3,7 @@ import { z } from "zod";
 import { addDays, zonedDate, zonedTime } from "./booking-slots";
 
 /**
- * Activities (S3 of `docs/own-books-and-sales.md`, D467), pure: a call, a meeting or a task with the person who does it and when, about a
+ * Activities (S3 of `docs/own-books-and-sales.md`, D468), pure: a call, a meeting or a task with the person who does it and when, about a
  * customer, a company or a deal, seen by the team. What staff may type, when it is due in the store's own time, and the *Today* list the
  * store's home shows. A task may be for a day without a time; a meeting has a length. Nothing here knows a database.
  */

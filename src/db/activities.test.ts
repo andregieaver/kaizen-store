@@ -8,7 +8,7 @@ import { COPY_RULES } from "@/lib/store-copy-rules";
 import { createTestDatabase } from "./testing";
 
 /**
- * Activities (S3, D467): the rules the database holds, against real Postgres (PGlite) with every migration applied. An activity is a call,
+ * Activities (S3, D468): the rules the database holds, against real Postgres (PGlite) with every migration applied. An activity is a call,
  * a meeting or a task with a title; only a meeting has a length; who did it is known only once it is done; its person, company and deal are
  * its own store's; a deal's activities go with it, a person's or a company's lose the link.
  */

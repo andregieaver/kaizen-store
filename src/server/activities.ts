@@ -15,7 +15,7 @@ import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
- * Activities (S3 of `docs/own-books-and-sales.md`, D467): the one reader and writer of a store's calls, meetings and tasks. Read by
+ * Activities (S3 of `docs/own-books-and-sales.md`, D468): the one reader and writer of a store's calls, meetings and tasks. Read by
  * whoever may read customers; written by whoever may change them (`customers:write`), each about the store's own person, company or deal
  * and done by a member whose access has not ended. The dispatcher's `activities` job tells the person an activity is for when a timed one
  * is due, once (`runActivityPushes()`). Audited as `activity.*` with ids only, never a title or a note.
@@ -224,7 +224,7 @@ const DUE_WINDOW_MS = 24 * 3600_000;
 const PUSHES_PER_RUN = 200;
 
 /**
- * The dispatcher's `activities` job (D467): for each timed activity that is due (within the last day), not done and not told, its person
+ * The dispatcher's `activities` job (D468): for each timed activity that is due (within the last day), not done and not told, its person
  * is told on their devices for the store, once. Never throws. Returns how many were told.
  */
 export async function runActivityPushes(now: Date = new Date(), send: Parameters<typeof sendActivityPush>[3] = undefined): Promise<number> {

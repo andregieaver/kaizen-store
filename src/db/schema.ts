@@ -17743,3 +17743,59 @@ export const houseCustomerLinks = commerce.table(
     uniqueIndex("house_customer_links_deal_key").on(t.storeId, t.dealId).where(sql`${t.dealId} is not null`),
   ],
 );
+
+// Activities (S3 of `docs/own-books-and-sales.md`, D468)
+
+/**
+ * A call, a meeting or a task: who does it and when, about a customer, a company or a deal, seen by the team. Due at an instant (the start
+ * of the store's day when no time was given, `timed` false); a meeting has a length. A deal's activities go with it; a customer's or a
+ * company's lose the link when they are deleted. Pushed to the person who does it once it is due (`notified_at`).
+ */
+export const activities = commerce.table(
+  "activities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** `call`, `meeting` or `task`. */
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    note: text("note"),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    timed: boolean("timed").notNull().default(true),
+    durationMinutes: integer("duration_minutes"),
+    assigneeId: uuid("assignee_id").references(() => accounts.id, { onDelete: "set null" }),
+    customerId: uuid("customer_id"),
+    companyId: uuid("company_id"),
+    dealId: uuid("deal_id"),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    doneBy: uuid("done_by").references(() => accounts.id, { onDelete: "set null" }),
+    /** When the person it is for was told it is due; never twice. */
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("activities_store_id_key").on(t.storeId, t.id),
+    customerRef("activities_customer_fk", { storeId: t.storeId, customerId: t.customerId }),
+    foreignKey({ name: "activities_company_fk", columns: [t.storeId, t.companyId], foreignColumns: [customerCompanies.storeId, customerCompanies.id] }),
+    foreignKey({ name: "activities_deal_fk", columns: [t.storeId, t.dealId], foreignColumns: [deals.storeId, deals.id] }).onDelete("cascade"),
+    // Today's list: a person's (or the team's) open activities by when they are due.
+    index("activities_today_idx").on(t.storeId, t.assigneeId, t.dueAt).where(sql`${t.doneAt} is null`),
+    index("activities_store_due_idx").on(t.storeId, t.dueAt).where(sql`${t.doneAt} is null`),
+    index("activities_deal_idx").on(t.storeId, t.dealId).where(sql`${t.dealId} is not null`),
+    index("activities_customer_idx").on(t.storeId, t.customerId).where(sql`${t.customerId} is not null`),
+    index("activities_company_idx").on(t.storeId, t.companyId).where(sql`${t.companyId} is not null`),
+    // The pushes still owed: timed, not done, not told.
+    index("activities_due_push_idx").on(t.dueAt).where(sql`${t.timed} and ${t.doneAt} is null and ${t.notifiedAt} is null`),
+    index("activities_assignee_idx").on(t.assigneeId),
+    index("activities_done_by_idx").on(t.doneBy),
+    index("activities_created_by_idx").on(t.createdBy),
+    check("activities_kind", sql`${t.kind} in ('call', 'meeting', 'task')`),
+    check("activities_title", sql`${t.title} = btrim(${t.title}) and char_length(${t.title}) between 1 and 200`),
+    check("activities_note", sql`${t.note} is null or char_length(${t.note}) between 1 and 2000`),
+    check("activities_duration", sql`${t.durationMinutes} is null or (${t.kind} = 'meeting' and ${t.durationMinutes} between 1 and 720)`),
+    // Who did it is known only once it is done (and forgotten if their account goes).
+    check("activities_done", sql`${t.doneBy} is null or ${t.doneAt} is not null`),
+  ],
+);

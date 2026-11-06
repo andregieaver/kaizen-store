@@ -142,7 +142,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   deals:
     "Ansattes salgsmuligheter med en person (D464): hva de kan kjøpe, steg og verdi, og hvorfor den ble tapt; eksporteres med personens notater og slettes når personen slettes (en bedrifts salgsmulighet beholder bedriften og mister personen).",
   activities:
-    "De ansattes samtaler, møter og oppgaver om en person (D467): hva og når, og det som ble skrevet om dem; eksporteres med personens notater og slettes når personen slettes (en aktivitet om en bedrift eller en avtale beholder den og mister personen).",
+    "De ansattes samtaler, møter og oppgaver om en person (D468): hva og når, og det som ble skrevet om dem; eksporteres med personens notater og slettes når personen slettes (en aktivitet om en bedrift eller en avtale beholder den og mister personen).",
   customer_tags: "De ansattes stikkord på en person (D296), knyttet til adressen: eksporteres med markedsføringsopplysningene og slettes når personens opplysninger slettes.",
   broadcast_recipients:
     "Adressene en utsendelse gikk til (D297), låst da sendingen startet: listes i eksporten av markedsføringsopplysninger, og slettes når personens opplysninger slettes og 90 dager etter at sendingen var ferdig (tallene beholdes).",

@@ -814,7 +814,7 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     // the company's and loses the person.
     await tx.execute(sql`delete from commerce.deals where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and company_id is null`);
     await tx.execute(sql`update commerce.deals set customer_id = null, updated_at = now() where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
-    // Staff's calls, meetings and tasks about the person (D467): one about the person alone goes; one about a company or a deal loses the person.
+    // Staff's calls, meetings and tasks about the person (D468): one about the person alone goes; one about a company or a deal loses the person.
     await tx.execute(sql`delete from commerce.activities where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and company_id is null and deal_id is null`);
     await tx.execute(sql`update commerce.activities set customer_id = null, updated_at = now() where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
   }

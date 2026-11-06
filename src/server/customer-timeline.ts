@@ -375,7 +375,7 @@ async function deals(who: Who): Promise<TimelineEvent[]> {
   });
 }
 
-/** The person's or the company's calls, meetings and tasks that were done (D467): each when it was done, by its title; its kind as the status. */
+/** The person's or the company's calls, meetings and tasks that were done (D468): each when it was done, by its title; its kind as the status. */
 async function activities(who: Who): Promise<TimelineEvent[]> {
   const rows = await typedRows(
     z.object({ id: col.uuid, title: col.text, kind: col.text, done: col.timestamp, deal_id: col.uuid.nullable(), customer_id: col.uuid.nullable(), company_id: col.uuid.nullable(), email: col.textOrNull }),

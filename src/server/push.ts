@@ -158,7 +158,7 @@ export async function sendQuotePush(storeId: string, draftId: string, send: Send
 }
 
 /**
- * An activity that is due (D467), to the devices of the person it is for: what it is and the store, and the page of the deal, the person or
+ * An activity that is due (D468), to the devices of the person it is for: what it is and the store, and the page of the deal, the person or
  * the company it is about. As `sendOrderPush()`: never throws, removes devices gone.
  */
 export async function sendActivityPush(storeId: string, activityId: string, accountId: string, send: Sender = realSender): Promise<number> {
@@ -195,7 +195,7 @@ async function pushToStore(
   subject: () => Promise<((sub: Row, lang: AdminLang) => { title: string; body: string; url: string; tag: string }) | null>,
   topic: string,
   send: Sender,
-  /** One person's devices only (an activity's, D467); every member's of the store when absent. */
+  /** One person's devices only (an activity's, D468); every member's of the store when absent. */
   only: string | null = null,
 ): Promise<number> {
   const keys = (() => {

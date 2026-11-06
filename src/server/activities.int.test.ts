@@ -29,7 +29,7 @@ type TestStore = Awaited<ReturnType<typeof newStore>>;
 type Row = Record<string, unknown>;
 
 /**
- * Activities (S3, D467) through the server, against a real database: made about the store's own person or deal and for the one who made
+ * Activities (S3, D468) through the server, against a real database: made about the store's own person or deal and for the one who made
  * it unless they chose another; done and undone; on Today when late, today's or done today; a deal's next step; the person told once on
  * their devices when a timed one is due; followed into a merge, gone with an erasure, listed in the person's export and on their timeline.
  */

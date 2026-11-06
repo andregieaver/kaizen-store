@@ -4831,6 +4831,20 @@
       "when": 1793966737033,
       "tag": "20261106120537_plan_moves_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 690,
+      "version": "7",
+      "when": 1793968018065,
+      "tag": "20261106122658_activities",
+      "breakpoints": true
+    },
+    {
+      "idx": 691,
+      "version": "7",
+      "when": 1793968053712,
+      "tag": "20261106122733_activities_rules",
+      "breakpoints": true
     }
   ]
 }
