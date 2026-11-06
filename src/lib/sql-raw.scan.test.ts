@@ -30,6 +30,7 @@ const RAW_USES: Record<string, { uses: number; from: string }> = {
   "src/server/live-drills.ts": { uses: 1, from: "an order alias written in the code" },
   "src/server/owner-insights.ts": { uses: 3, from: "an interval of the tool's period (an enum) and count (an integer), both held by its schema" },
   "src/server/payment-mode-sql.ts": { uses: 1, from: "the payments row's alias, written by each caller" },
+  "src/server/pipedrive.ts": { uses: 1, from: "TABLES, the code's map of a link's kind to its table" },
   "src/server/plan-reminders.ts": { uses: 1, from: "ON_PLAN_STATUSES, the code's list" },
   "src/server/platform-customers.ts": { uses: 1, from: "ON_PLAN_STATUSES, the code's list" },
   "src/server/preview-links.ts": { uses: 2, from: "a table alias written in the code" },

@@ -18,7 +18,7 @@ function fakePipedrive(lists: Record<string, unknown[]>, o: { refuse?: boolean; 
       limited -= 1;
       return new Response("{}", { status: 429, headers: { "retry-after": "1" } });
     }
-    if (url.pathname === "/v1/users/me") return Response.json({ success: true, data: { name: "Lisa", company_name: "Human Web" } });
+    if (url.pathname === "/v1/users/me") return Response.json({ success: true, data: { name: "Lisa", company_name: "Human Web", company_id: 991 } });
     const all = lists[url.pathname] ?? [];
     if (url.pathname.startsWith("/v1/")) {
       const start = Number(url.searchParams.get("start") ?? 0);
@@ -60,7 +60,7 @@ describe("Pipedrive's API, read with a token", () => {
   it("waits out a rate limit, says a refused token is one, and says whose a token is", async () => {
     const sleeps: number[] = [];
     const limited = fakePipedrive({}, { limited: 2 });
-    expect(await pipedriveWhoAmI("tok", { fetch: limited.fetch, sleep: async (ms) => void sleeps.push(ms) })).toEqual({ name: "Lisa", company: "Human Web" });
+    expect(await pipedriveWhoAmI("tok", { fetch: limited.fetch, sleep: async (ms) => void sleeps.push(ms) })).toEqual({ name: "Lisa", company: "Human Web", companyId: "991" });
     expect(sleeps).toEqual([1000, 1000]);
     await expect(pipedriveWhoAmI("bad", { fetch: fakePipedrive({}, { refuse: true }).fetch })).rejects.toEqual(new PipedriveError("token_refused"));
   });

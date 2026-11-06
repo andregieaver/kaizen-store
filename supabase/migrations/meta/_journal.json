@@ -4908,6 +4908,20 @@
       "when": 1793986553249,
       "tag": "20261106173553_filed_emails_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 701,
+      "version": "7",
+      "when": 1793991376369,
+      "tag": "20261106185616_crm_moves",
+      "breakpoints": true
+    },
+    {
+      "idx": 702,
+      "version": "7",
+      "when": 1793991411165,
+      "tag": "20261106185651_crm_moves_rules",
+      "breakpoints": true
     }
   ]
 }

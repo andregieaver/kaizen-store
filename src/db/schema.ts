@@ -17936,3 +17936,61 @@ export const filedEmails = commerce.table(
     check("filed_emails_people", sql`cardinality(${t.addresses}) between 1 and 200`),
   ],
 );
+
+// Moving in from Pipedrive (S7 of `docs/own-books-and-sales.md`, D477)
+
+/**
+ * A store's Pipedrive account while it moves in (D477): the API token, encrypted (`secret-box`) and shown only by its last four, whose
+ * account it opens, and the run, a check or an import (`PdRun` in `src/lib/pipedrive.ts`), with a short lease so two ticks never run it at
+ * once. *Disconnect* forgets the token; what came over stays.
+ */
+export const crmMoves = commerce.table(
+  "crm_moves",
+  {
+    storeId: storeId().references(() => stores.id),
+    source: text("source").notNull(),
+    tokenEncrypted: text("token_encrypted"),
+    tokenHint: text("token_hint").notNull().default(""),
+    /** The Pipedrive company the token opens (its `company_id`), and its name. */
+    account: text("account").notNull(),
+    accountName: text("account_name").notNull().default(""),
+    connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
+    connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
+    run: jsonb("run").notNull().default(sql`'{}'::jsonb`),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.source] }),
+    index("crm_moves_connected_by_idx").on(t.connectedBy),
+    check("crm_moves_source", sql`${t.source} in ('pipedrive')`),
+    check("crm_moves_run", sql`jsonb_typeof(${t.run}) = 'object'`),
+    check("crm_moves_names", sql`char_length(${t.tokenHint}) <= 12 and char_length(${t.accountName}) <= 200`),
+    check("crm_moves_account", sql`${t.account} ~ '^[0-9]{1,20}$'`),
+  ],
+);
+
+/**
+ * What came over from where (D477): a Pipedrive record's id and the row it became here, so a second run brings only what is new and never a
+ * duplicate. A row deleted here (or a person erased) keeps its link, so a second run does not bring it back.
+ */
+export const crmMoveLinks = commerce.table(
+  "crm_move_links",
+  {
+    storeId: storeId().references(() => stores.id),
+    source: text("source").notNull(),
+    /** The Pipedrive company it came from: ids are its own, never another's. */
+    account: text("account").notNull(),
+    /** `organization`, `person`, `pipeline`, `stage`, `deal`, `activity` or `note`. */
+    kind: text("kind").notNull(),
+    externalId: text("external_id").notNull(),
+    ourId: uuid("our_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.source, t.account, t.kind, t.externalId] }),
+    check("crm_move_links_source", sql`${t.source} in ('pipedrive')`),
+    check("crm_move_links_kind", sql`${t.kind} in ('organization', 'person', 'pipeline', 'stage', 'deal', 'activity', 'note')`),
+    check("crm_move_links_external", sql`${t.externalId} ~ '^[0-9]{1,20}$' and ${t.account} ~ '^[0-9]{1,20}$'`),
+  ],
+);

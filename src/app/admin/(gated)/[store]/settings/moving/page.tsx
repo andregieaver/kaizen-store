@@ -37,10 +37,19 @@ import { shopifyConnection, shopifyOffered } from "@/server/shopify-connect";
 import { checkShopify } from "@/server/shopify-report";
 import { figureText, type ShopReport } from "@/lib/shopify-report";
 import type { MovingMessages } from "@/lib/admin-messages/moving.en";
+import { PipedriveMove } from "@/components/admin/moving/pipedrive-move";
+import { PD_FEEDS, planTotal } from "@/lib/pipedrive";
+import { featureOffered, featureOn } from "@/lib/store-features";
+import { pipedriveMove, pipedriveOffered } from "@/server/pipedrive";
+import { featureOffer } from "@/server/store-features";
 
 import {
   advanceCopyAction,
   advanceMoveAction,
+  advancePipedriveAction,
+  connectPipedriveAction,
+  disconnectPipedriveAction,
+  startPipedriveAction,
   bringItOverAction,
   cancelMoveAction,
   issueLeftCardAction,
@@ -192,7 +201,65 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           <ShopifyConnectForm kind="woocommerce" connect={connectWooAction.bind(null, store.slug)} />
         </Card>
       )}
+      <Suspense fallback={<DataSkeleton />}>
+        <PipedrivePanel storeSlug={store.slug} locale={locale} />
+      </Suspense>
     </AdminTextScope>
+  );
+}
+
+/**
+ * Moving in from Pipedrive (D477): where Deals can be on, its card; while Deals is off, the one step before it. The card's run moves on while
+ * the page is open, and by the dispatcher without it.
+ */
+async function PipedrivePanel({ storeSlug, locale }: { storeSlug: string; locale: string }) {
+  const member = await requireOwnerRole(storeSlug);
+  const { store } = member;
+  const w = adminText(adminLangOf(member.account.adminLocale), "moving").pipedrive;
+  if (!pipedriveOffered()) return null;
+  if (!featureOn(store, "sales")) {
+    if (!featureOffered("sales", await featureOffer(store.id))) return null;
+    return (
+      <Card title={w.title} description={w.intro}>
+        <p className="text-sm">
+          {w.salesOff}{" "}
+          <Link href={`/admin/${store.slug}/settings/features`} className="underline underline-offset-2">
+            {w.features}
+          </Link>
+        </p>
+      </Card>
+    );
+  }
+  const move = await pipedriveMove(store.id);
+  const run = move?.run ?? null;
+  return (
+    <Card title={w.title} description={w.intro}>
+      <PipedriveMove
+        connected={move ? { name: move.accountName || "Pipedrive", hint: move.tokenHint, when: momentText(move.connectedAt, store.timeZone, locale) } : null}
+        run={
+          run
+            ? {
+                mode: run.mode,
+                status: run.status,
+                feed: run.feed,
+                plan: run.plan,
+                already: run.already,
+                problem: run.problem,
+                total: planTotal(run.plan),
+                step: PD_FEEDS.indexOf(run.feed) + 1,
+                steps: PD_FEEDS.length,
+              }
+            : null
+        }
+        actions={{
+          connect: connectPipedriveAction.bind(null, store.slug),
+          start: startPipedriveAction.bind(null, store.slug),
+          advance: advancePipedriveAction.bind(null, store.slug),
+          disconnect: disconnectPipedriveAction.bind(null, store.slug),
+        }}
+        dealsHref={`/admin/${store.slug}/deals`}
+      />
+    </Card>
   );
 }
 

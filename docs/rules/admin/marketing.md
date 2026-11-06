@@ -137,6 +137,15 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   untrusted text: kept for the email bodies' rule, erased with any of its people, drawn as text, and read by no AI unless the DPIA and the
   chat's notice say so first.
 
+## Moving in from Pipedrive (S7, D477, `src/lib/pipedrive.ts`, `src/server/pipedrive.ts`, `src/server/pipedrive-client.ts`)
+
+- **Moving in from Pipedrive (S7, D477, `src/lib/pipedrive.ts`, `src/server/pipedrive.ts`, `src/server/pipedrive-client.ts`)**: the owner's,
+  on Settings → Moving in while Deals is on. The token is kept only encrypted (`crm_moves`) and goes to Pipedrive only in the `x-api-token`
+  header; nothing is ever written to Pipedrive. A check and an import follow the same rules (`skipOf()`), so the check's counts are the
+  import's; a run goes page by page under a lease, each page written and counted in one transaction. Everything brought over is linked in
+  `crm_move_links` (by the Pipedrive company), so a second run brings only what is new, and a row deleted or a person erased here is never
+  brought back. Customers follow D366 (nobody subscribed or emailed; what the store has wins); imported activities are marked told.
+
 ## Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)
 
 - **Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)**: a store's creator programme (`commerce.creator_settings`,

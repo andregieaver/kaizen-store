@@ -17,6 +17,7 @@ import { copyMoving, ordersSinceFor } from "@/lib/shopify-copy";
 import { disconnectMover, disconnectWoo, startMoverConnect, startWooConnect, type WooStartProblem } from "@/server/woocommerce-connect";
 import { importListExport, type ListImport } from "@/server/woocommerce-list";
 import { LIST_EXPORT_BYTES } from "@/lib/list-export";
+import { advancePipedrive, connectPipedrive, disconnectPipedrive, startPipedriveRun, type PipedriveConnectProblem } from "@/server/pipedrive";
 
 /**
  * Settings → Moving in (D445 step 2): connect the Shopify shop (the state cookie set here, then Shopify's own page), disconnect it, and the
@@ -215,3 +216,39 @@ export async function undoCopyAction(storeSlug: string): Promise<UndoResult> {
   refresh();
   return result;
 }
+
+/** *Connect Pipedrive* (D477): the pasted token checked with Pipedrive and kept encrypted. */
+export async function connectPipedriveAction(storeSlug: string, token: string): Promise<{ ok: true } | { ok: false; problem: PipedriveConnectProblem | "forbidden" }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false, problem: "forbidden" };
+  const result = await connectPipedrive(member, typeof token === "string" ? token.slice(0, 400) : "");
+  if (!result.ok) return result;
+  refresh();
+  return { ok: true };
+}
+
+/** *See what comes over* or *Bring it over* (D477): a run started, then moved on at once. */
+export async function startPipedriveAction(storeSlug: string, mode: "check" | "import"): Promise<{ ok: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member || (mode !== "check" && mode !== "import")) return { ok: false };
+  const result = await startPipedriveRun(member, mode);
+  refresh();
+  return result;
+}
+
+/** The open page's tick: the running run moved on for a while. */
+export async function advancePipedriveAction(storeSlug: string): Promise<{ moving: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { moving: false };
+  const run = await advancePipedrive(member.store.id);
+  return { moving: run?.status === "running" };
+}
+
+export async function disconnectPipedriveAction(storeSlug: string): Promise<{ ok: boolean }> {
+  const member = await checkPermission(storeSlug, "owner");
+  if (!member) return { ok: false };
+  await disconnectPipedrive(member);
+  refresh();
+  return { ok: true };
+}
+

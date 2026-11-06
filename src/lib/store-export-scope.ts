@@ -109,6 +109,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   shipping_carriers: "secret",
   carrier_labels: "people",
   shop_moves: "secret",
+  crm_moves: "secret",
+  crm_move_links: "record",
   shop_move_items: "record",
   site_staging_pages: "record",
   site_stagings: "record",
