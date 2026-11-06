@@ -26,7 +26,7 @@ export function workScreens() {
 /** A Work invoice's readiness problem in the request's language (D312), by its code; the server's own English in English, or when the code has no words. */
 export function readinessText(problem: { code: string; message: string; values?: Record<string, string> }): string {
   if (current().lang === "en") return problem.message;
-  const template = (workText().readinessProblems as Record<string, string | undefined>)[problem.code];
+  const template = (workScreens().workReadiness.problems as Record<string, string | undefined>)[problem.code];
   return template ? template.replace(/\{(\w+)\}/g, (whole, name: string) => problem.values?.[name] ?? whole) : problem.message;
 }
 

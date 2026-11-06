@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useState, useTransition, type ReactNode } from "react";
+import { use, useContext, useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 import { ADMIN_LANG_FACTS, ADMIN_LANG_KEY, ADMIN_LANGS, type AdminLang } from "@/lib/admin-lang";
@@ -55,8 +55,6 @@ import { returnsEn } from "@/lib/admin-messages/returns.en";
 import { invoicesEn } from "@/lib/admin-messages/invoices.en";
 
 import { platformLegalEn } from "@/lib/admin-messages/platform-legal.en";
-import { setupEn } from "@/lib/admin-messages/setup.en";
-import { shellEn } from "@/lib/admin-messages/shell.en";
 import { capacityEn } from "@/lib/admin-messages/capacity.en";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import { contentEn } from "@/lib/admin-messages/content.en";
@@ -66,6 +64,7 @@ import { oauthEn } from "@/lib/admin-messages/oauth.en";
 import type { AdminAreaMessages, ClientArea, HandedArea } from "@/lib/admin-text";
 
 import { AdminTextContext } from "./admin-text-context";
+import { englishLater, isLater, type LaterArea } from "./admin-text-later";
 
 /**
  * The admin's words in the browser (D312 A0, `docs/platform-admin-i18n.md` 3.3): the signed-in layout hands its client parts the account's
@@ -74,8 +73,8 @@ import { AdminTextContext } from "./admin-text-context";
  */
 
 
-/** Every area a client part may read, in English; the server-only areas (`SERVER_AREAS`) are left out. */
-const ENGLISH: Pick<AdminAreaMessages, ClientArea> = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, customReports: customReportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, capacity: capacityEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, moving: movingEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, content: contentEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, setup: setupEn, shell: shellEn, signIn: signInEn, blog: blogEn, schedules: schedulesEn, oauth: oauthEn };
+/** Every other area a client part may read, in English; the server-only areas (`SERVER_AREAS`) are left out. */
+const ENGLISH: Pick<AdminAreaMessages, Exclude<ClientArea, LaterArea>> = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, customReports: customReportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, capacity: capacityEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, moving: movingEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, content: contentEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, signIn: signInEn, blog: blogEn, schedules: schedulesEn, oauth: oauthEn };
 
 
 export { AdminTextProvider } from "./admin-text-context";
@@ -89,10 +88,15 @@ export function AdminTextScope({ texts, children }: { texts: Partial<AdminAreaMe
   return <AdminTextContext.Provider value={{ lang: parent.lang, texts: { ...parent.texts, ...texts } }}>{children}</AdminTextContext.Provider>;
 }
 
+type AreaWords<A extends ClientArea> = Pick<AdminAreaMessages, ClientArea>[A];
+
 /** An area's words in the account's language. */
-export function useAdminText<A extends ClientArea>(area: A): Pick<AdminAreaMessages, ClientArea>[A] {
+export function useAdminText<A extends ClientArea>(area: A): AreaWords<A> {
   const { texts } = useContext(AdminTextContext);
-  return (texts[area] as Pick<AdminAreaMessages, ClientArea>[A] | undefined) ?? ENGLISH[area];
+  const handed = texts[area] as AreaWords<A> | undefined;
+  if (handed) return handed;
+  const english = isLater(area) ? use(englishLater(area)) : ENGLISH[area as Exclude<ClientArea, LaterArea>];
+  return english as AreaWords<A>;
 }
 
 /**

@@ -5,7 +5,7 @@ import { countWords } from "@/lib/admin-fill";
 import { problemHref } from "@/lib/work-invoice-ui";
 
 import { Badge } from "./work-parts";
-import { readinessText, workText } from "@/lib/work-text";
+import { readinessText, workScreens, workText } from "@/lib/work-text";
 
 /**
  * What is missing before the draft can be issued, as the owner reads it (docs/work.md 4.5 6): each problem in words,
@@ -24,6 +24,7 @@ export function ReadinessList({
   checking?: boolean;
 }) {
   const tw = workText().invoiceReadiness;
+  const rw = workScreens().workReadiness;
   const errors = readiness.problems.filter((p) => p.severity === "error");
   const warnings = readiness.problems.filter((p) => p.severity !== "error");
   return (
@@ -31,7 +32,7 @@ export function ReadinessList({
       <p role="status" className="text-sm font-medium">
         {readiness.ready
           ? tw.readyToIssue
-          : countWords(errors.length, tw.toFix)}
+          : countWords(errors.length, rw.toFix)}
       </p>
       {readiness.problems.length > 0 && (
         <ul className="flex flex-col gap-2">
@@ -44,12 +45,12 @@ export function ReadinessList({
               >
                 <span className="flex flex-wrap items-center gap-2">
                   <Badge tone={problem.severity === "error" ? "bad" : "warn"}>
-                    {problem.severity === "error" ? tw.fix : tw.check}
+                    {problem.severity === "error" ? rw.fix : rw.check}
                   </Badge>
                   <span>{readinessText(problem)}</span>
                 </span>
                 <Link href={fix.href} className="self-start text-sm underline">
-                  {tw.open[problem.where]}
+                  {rw.open[problem.where]}
                 </Link>
               </li>
             );
