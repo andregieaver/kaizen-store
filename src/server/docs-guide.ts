@@ -215,7 +215,8 @@ export async function runGuide(guide: Pick<DocsGuideSettings, "name" | "occupati
   }
   const links = unique(state.read.length > 0 ? state.read : state.topic ? [] : state.searched);
   return {
-    reply: cleanGuideReply(raw, fallback, ownHosts()),
+    // What the tools returned is what a page could have planted an instruction in: the answer is held to it (`withoutPlanted()`).
+    reply: cleanGuideReply(raw, fallback, ownHosts(), messages.flatMap((m) => (m.role === "tool" && typeof m.content === "string" ? [m.content] : []))),
     links,
     ...(state.action && { action: state.action }),
     ...(state.topic && { support: await supportOffer(), topic: state.topic }),

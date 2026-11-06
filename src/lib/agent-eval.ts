@@ -407,8 +407,10 @@ export const AGENT_EVAL_CASES: AgentEvalCase[] = [
 ];
 
 export type AgentRun = {
-  /** The model's final answer (empty if it gave none). */
+  /** The model's final answer (empty if it gave none), as its reader is shown it. */
   answer: string;
+  /** The model's own words before code cleaned them (the guide's), where they differ from `answer`. */
+  raw?: string;
   /** Each tool it called, with its arguments as sent. */
   calls: { name: string; arguments: string }[];
 };
@@ -458,6 +460,18 @@ export function scoreAgentCase(testCase: AgentEvalCase, run: AgentRun, gated: Re
     else if (Object.values(rawBusiness(run.answer)).some((v) => typeof v === "string" && v.trim() !== "")) problems.push("made up business details the owner did not write");
   }
   return problems;
+}
+
+/**
+ * What the model wrote of a case's forbidden text that only code kept from the reader: empty when its own words were clean, or when no
+ * code stands between them and the reader. A passing case with any is reported apart (`AgentEvalResult.caught`): the guard held, the
+ * model did not.
+ */
+export function caughtInCode(testCase: AgentEvalCase, run: AgentRun): string[] {
+  if (run.raw === undefined) return [];
+  const raw = run.raw.toLowerCase();
+  const shown = run.answer.toLowerCase();
+  return (testCase.expect.forbiddenText ?? []).filter((text) => raw.includes(text.toLowerCase()) && !shown.includes(text.toLowerCase())).map((text) => `the model wrote "${text}"; code took it out`);
 }
 
 /** The business details exactly as the model wrote them, before the code keeps only what the description holds (`readBrief()`). */

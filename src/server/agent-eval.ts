@@ -8,6 +8,7 @@ import {
   AGENT_EVAL_CASES,
   AGENT_PASS_RATE,
   replayReplies,
+  caughtInCode,
   scoreAgentCase,
   type AgentEvalCase,
   type AgentRun,
@@ -89,6 +90,8 @@ export type AgentEvalResult = {
   ok: boolean;
   ms: number;
   failures: { id: string; problems: string[]; answer: string }[];
+  /** Cases that passed only because code took out what the model wrote (the guide's planted text): the model's own words fell for it. */
+  caught: { id: string; problems: string[]; answer: string }[];
 };
 
 /** What a case is played against: the live model, which records each answer, or a recording given back. */
@@ -166,8 +169,13 @@ async function runCase(model: EvalModel, testCase: AgentEvalCase): Promise<Agent
     const last = step === STEPS - 1;
     const reply = await model.step(messages, last ? [] : toolsNow());
     if (reply.toolCalls.length === 0) {
-      // The guide's answer is scored as its reader sees it: cleaned in code, with no secret and no verdict on Kaizena Flow (D444).
-      run.answer = testCase.agent === "guide" ? cleanGuideReply(reply.content ?? "", "", ownHosts()) : (reply.content ?? "");
+      // The guide's answer is scored as its reader sees it: cleaned in code, with no secret, no verdict on Kaizena Flow and nothing a page
+      // told it to say (D444). The model's own words are kept beside it, so what only the code caught is reported (`caughtInCode()`).
+      if (testCase.agent === "guide") {
+        const sources = messages.flatMap((m) => (m.role === "tool" && typeof m.content === "string" ? [m.content] : []));
+        run.raw = reply.content ?? "";
+        run.answer = cleanGuideReply(run.raw, "", ownHosts(), sources);
+      } else run.answer = reply.content ?? "";
       return run;
     }
     messages.push({ role: "assistant", content: reply.content, tool_calls: reply.toolCalls.map((c) => ({ id: c.id, type: "function", function: { name: c.name, arguments: c.arguments } })) });
@@ -188,6 +196,7 @@ async function runCase(model: EvalModel, testCase: AgentEvalCase): Promise<Agent
 async function playCases(modelFor: (testCase: AgentEvalCase) => EvalModel, label: string): Promise<AgentEvalResult> {
   const started = Date.now();
   const failures: AgentEvalResult["failures"] = [];
+  const caught: AgentEvalResult["caught"] = [];
   let passed = 0;
   for (let i = 0; i < AGENT_EVAL_CASES.length; i += AT_ONCE) {
     await Promise.all(
@@ -198,6 +207,8 @@ async function playCases(modelFor: (testCase: AgentEvalCase) => EvalModel, label
           const run = await runCase(modelFor(testCase), testCase);
           answer = run.answer;
           problems = scoreAgentCase(testCase, run, GATED);
+          const slipped = problems.length === 0 ? caughtInCode(testCase, run) : [];
+          if (slipped.length > 0) caught.push({ id: testCase.id, problems: slipped, answer: (run.raw ?? "").slice(0, 300) });
         } catch (error) {
           problems = [`the model failed: ${error instanceof Error ? error.message : String(error)}`.slice(0, 300)];
         }
@@ -207,7 +218,7 @@ async function playCases(modelFor: (testCase: AgentEvalCase) => EvalModel, label
     );
   }
   const total = AGENT_EVAL_CASES.length;
-  return { model: label, passed, total, ok: passed / total >= AGENT_PASS_RATE, ms: Date.now() - started, failures };
+  return { model: label, passed, total, ok: passed / total >= AGENT_PASS_RATE, ms: Date.now() - started, failures, caught };
 }
 
 /** Runs every case against the connection's text model, scores them and keeps the run with its prompt versions and its recording. */
@@ -232,7 +243,7 @@ export async function runAgentEval(connection: AiConnection, account: Pick<Accou
   try {
     await db().execute(sql`
       insert into commerce.ai_eval_runs (suite, provider, model, passed, total, failures, duration_ms, ran_by, prompt_versions, recording)
-      values ('agents', ${connection.provider}, ${result.model}, ${result.passed}, ${result.total}, ${JSON.stringify(result.failures)}::jsonb, ${result.ms},
+      values ('agents', ${connection.provider}, ${result.model}, ${result.passed}, ${result.total}, ${JSON.stringify([...result.failures, ...result.caught.map((c) => ({ ...c, caught: true }))])}::jsonb, ${result.ms},
         ${account.id}::uuid, ${JSON.stringify(prompts)}::jsonb, ${JSON.stringify(recording)}::jsonb)`);
   } catch (error) {
     log("warn", "ai_eval.record_failed", { model: result.model }, error);

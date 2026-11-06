@@ -8,7 +8,16 @@ import { useAdminText } from "./admin-text";
 
 export type AgentEvalOutcome =
   | { error: string }
-  | { model: string; passed: number; total: number; ok: boolean; ms: number; failures: { id: string; problems: string[]; answer: string }[] };
+  | {
+      model: string;
+      passed: number;
+      total: number;
+      ok: boolean;
+      ms: number;
+      failures: { id: string; problems: string[]; answer: string }[];
+      /** Passed only because code took out what the model wrote: the model's own words fell for the case. */
+      caught: { id: string; problems: string[]; answer: string }[];
+    };
 
 /** Runs the agents' safety eval (PSI 2026-10-24, AST-09) and shows what failed and why. */
 interface AgentEvalButtonProps {
@@ -46,6 +55,19 @@ export function AgentEvalButton({ action }: AgentEvalButtonProps) {
                   </li>
                 ))}
               </ul>
+            )}
+            {result.caught.length > 0 && (
+              <>
+                <p className="mt-2 text-warning-text">{w.caught}</p>
+                <ul className="mt-1 flex list-disc flex-col gap-1 pl-5">
+                  {result.caught.map((slip) => (
+                    <li key={slip.id}>
+                      <span className="font-medium">{slip.id}</span>: {slip.problems.join("; ")}
+                      {slip.answer && <code className="mt-0.5 block break-all text-xs text-muted">{fillWords(w.wrote, { answer: slip.answer })}</code>}
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </>
         )}

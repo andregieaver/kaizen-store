@@ -173,7 +173,7 @@ async function evalDrill(requestedBy: string | null): Promise<DrillResult> {
   return {
     kind: "agent_eval",
     outcome: result.ok ? "passed" : "failed",
-    detail: `${result.passed} of ${result.total} cases passed on ${result.model}${result.failures.length ? `; failed: ${result.failures.map((f) => f.id).join(", ")}` : ""}.`,
+    detail: `${result.passed} of ${result.total} cases passed on ${result.model}${result.failures.length ? `; failed: ${result.failures.map((f) => f.id).join(", ")}` : ""}${result.caught.length ? `; passed only because code took out what the model wrote: ${result.caught.map((c) => c.id).join(", ")}` : ""}.`,
   };
 }
 

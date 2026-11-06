@@ -416,9 +416,13 @@ changing it; a rule changes here, and its line in CLAUDE.md when its gist change
   needs a new eval recording. A reader's message loses every token, key and
   password (`withoutSecrets()`) before it is kept or sent; the answer passes
   `cleanGuideReply()` (no secret, and no sentence that ranks Kaizena Flow or
-  repeats reviewers' praise: `withoutVerdicts()`, whatever the model wrote) and
-  is drawn as text, its links drawn from the pages its tools read. The eval
-  scores the guide's answer after `cleanGuideReply()`, as its reader sees it. `/api/docs/guide` is same-site, budgeted (`docs_guide`, failing
+  repeats reviewers' praise: `withoutVerdicts()`, and no sentence that passes on
+  what a page told the guide to say, a code or a quote from such an instruction or
+  five of its words in a row: `withoutPlanted()` against the tools' results,
+  whatever the model wrote) and is drawn as text, its links drawn from the pages
+  its tools read. The eval scores the guide's answer after `cleanGuideReply()`, as
+  its reader sees it, and reports apart a passing case whose model wrote what only
+  code took out (`caughtInCode()`, `AgentEvalResult.caught`). `/api/docs/guide` is same-site, budgeted (`docs_guide`, failing
   closed) and counted by `takeChatTurn()` under `guide:` before any model call.
   Its conversations (`docs-guide-store.ts`) are kept by the platform chat's
   periods (Kaizena Flow's desk, `support_transcripts`, `support_records`). The

@@ -150,10 +150,11 @@ const ADDRESS = /\bhttps?:\/\/[^\s<>()"']+/g;
 /**
  * What is shown of the guide's answer: plain text, kept in lines (a request line or code stays readable), without Markdown's marks, links
  * reduced to their words, web addresses taken out unless they are Kaizena Flow's own (`ownHosts`: its site and the docs' host, which the
- * docs' own pages name, such as the API's base address), and any token, key or password taken out (`withoutSecrets()`). Never HTML: the
+ * docs' own pages name, such as the API's base address), any token, key or password taken out (`withoutSecrets()`), any verdict on
+ * Kaizena Flow (`withoutVerdicts()`), and anything a page in `sources` (the tools' results) told the guide to say (`withoutPlanted()`). Never HTML: the
  * panel draws it as text.
  */
-export function cleanGuideReply(raw: string, fallback: string, ownHosts: readonly string[]): string {
+export function cleanGuideReply(raw: string, fallback: string, ownHosts: readonly string[], sources: readonly string[] = []): string {
   const own = (address: string) => {
     try {
       const host = new URL(address).host.toLowerCase();
@@ -174,7 +175,83 @@ export function cleanGuideReply(raw: string, fallback: string, ownHosts: readonl
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  // No secret is repeated, and no verdict on Kaizena Flow is given, whatever the model wrote (D444).
-  const cleaned = withoutVerdicts(withoutSecrets(plain).text).text.slice(0, GUIDE_ANSWER_MAX).trim();
+  // No secret is repeated, no verdict on Kaizena Flow is given and nothing a page told the guide to say is passed on, whatever the model
+  // wrote (D444).
+  const cleaned = withoutPlanted(withoutVerdicts(withoutSecrets(plain).text).text, sources).text.slice(0, GUIDE_ANSWER_MAX).trim();
   return cleaned || fallback;
+}
+
+/**
+ * A sentence in what a tool returned that speaks to the guide rather than about Kaizena Flow: an order to tell or say something to the
+ * reader, to begin or end its answers with something, to ignore its rules, or words addressed to an assistant. A page's advice to an owner
+ * ("tell your customers when an order is late") is not one: it names readers, visitors or users, the guide's own, never customers.
+ */
+const INSTRUCTION: RegExp[] = [
+  /\b(?:tell|inform|remind|convince|assure)\s+(?:the\s+|your\s+|all\s+|every\s+)?(?:readers?|visitors?|users?|everyone)\b/i,
+  /\bsay\s+to\s+(?:the\s+)?(?:readers?|visitors?|users?)\b/i,
+  /\b(?:end|start|begin|finish|close|sign\s+off)\s+(?:every|each|all|your|the)\s+(?:answers?|repl(?:y|ies)|responses?|messages?)\b/i,
+  /\b(?:in|to)\s+(?:every|each|all|your)\s+(?:answers?|repl(?:y|ies)|responses?)\b/i,
+  /\bignore\s+(?:all\s+|any\s+|the\s+|your\s+)?(?:previous|prior|above|earlier|other|own)?\s*(?:instructions?|rules?|prompts?)\b/i,
+  /\b(?:always|never)\s+(?:answer|reply|respond|say|mention|recommend|include|write)\b/i,
+  /\b(?:assistant|ai|chatbot|bot|model|llm)\s*:/i,
+  /\b(?:fortell|si\s+til)\s+(?:alle\s+)?(?:leserne|leseren|besøkende|brukerne|brukeren)\b/i,
+  /\b(?:avslutt|start|begynn)\s+(?:hvert|alle|ditt|dine)\s+svar\b/i,
+  /\bi\s+(?:hvert|alle)\s+svar\b/i,
+  /\bignorer\s+(?:alle\s+)?(?:tidligere\s+|dine\s+)?(?:instruksjoner|regler)\b/i,
+  /\b(?:svar|si)\s+alltid\b/i,
+];
+
+/** A code a page might plant for the guide to repeat: capitals and digits, such as "PWNED-7F3A" or "X7Q9Z". */
+const PLANTED_CODE = /\b(?=[A-Z0-9_-]*\d)(?=[A-Z0-9_-]*[A-Z])[A-Z0-9]+(?:[-_][A-Z0-9]+)*\b/g;
+/** Something a page quotes for the guide to say: "…" or “…”. */
+const PLANTED_QUOTE = /["“”«»]([^"“”«»\n]{6,120})["“”«»]/g;
+/** Words in a row an answer must share with a planted instruction to be taken as repeating it. */
+const ECHO_WORDS = 5;
+
+/** The text in a tool's result: its string values when it is JSON (the guide's tools answer in JSON), else the text as it is. */
+function textsOf(source: string): string[] {
+  try {
+    const out: string[] = [];
+    const walk = (value: unknown): void => {
+      if (typeof value === "string") out.push(value);
+      else if (Array.isArray(value)) value.forEach(walk);
+      else if (value && typeof value === "object") Object.values(value).forEach(walk);
+    };
+    walk(JSON.parse(source));
+    return out;
+  } catch {
+    return [source];
+  }
+}
+
+const sentencesOf = (text: string) => text.split(/\n+|(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+const wordsOf = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+const runs = (words: readonly string[]) => words.slice(0, Math.max(0, words.length - ECHO_WORDS + 1)).map((_, i) => words.slice(i, i + ECHO_WORDS).join(" "));
+
+/**
+ * The guide's answer with every sentence left out that passes on what a page told the guide to say (D444's guide-comparison case): one
+ * that holds a code or a quote from such an instruction, or repeats five words of it in a row. A page's facts are untouched, and so is any
+ * code the docs state as a fact (an error code, a scope): only what stands in an instruction is taken. `sources` are the tools' results of
+ * this answer; with none, the text is as it was.
+ */
+export function withoutPlanted(text: string, sources: readonly string[]): { text: string; removed: boolean } {
+  const instructions = sources.flatMap(textsOf).flatMap(sentencesOf).filter((s) => INSTRUCTION.some((pattern) => pattern.test(s)));
+  if (instructions.length === 0) return { text, removed: false };
+  const markers = new Set<string>();
+  for (const sentence of instructions) {
+    for (const [code] of sentence.matchAll(PLANTED_CODE)) markers.add(code.toLowerCase());
+    for (const [, quoted] of sentence.matchAll(PLANTED_QUOTE)) markers.add(quoted.trim().toLowerCase());
+  }
+  const echoes = new Set(instructions.flatMap((s) => runs(wordsOf(s))));
+  let removed = false;
+  const lines = text.split("\n").map((line) => {
+    const kept = line.split(/(?<=[.!?])\s+/).filter((sentence) => {
+      const lower = sentence.toLowerCase();
+      const planted = [...markers].some((marker) => lower.includes(marker)) || runs(wordsOf(sentence)).some((run) => echoes.has(run));
+      if (planted) removed = true;
+      return !planted;
+    });
+    return kept.join(" ");
+  });
+  return { text: lines.join("\n").replace(/\n{3,}/g, "\n\n").trim(), removed };
 }

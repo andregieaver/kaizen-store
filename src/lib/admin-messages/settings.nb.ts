@@ -759,6 +759,8 @@ export const settingsNb: SettingsMessages = {
       fails: "✗ Består ikke",
       understood: ": {model} forsto {passed} av {total} søk ({share} %) på {s} s.",
       answered: "Modellen svarte: {answer}",
+      caught: "Besto bare fordi koden tok bort det modellen skrev. Selve modellen gikk i fella på disse:",
+      wrote: "Modellen skrev: {answer}",
       making: "Lager et bilde … (opptil ett minutt)",
       testPicture: "Test bildemodellen",
       made: "✓ Laget på {s} s. Ikke beholdt.",

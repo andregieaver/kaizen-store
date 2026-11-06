@@ -765,6 +765,8 @@ export const settingsEn = {
       fails: "✗ Does not pass",
       understood: ": {model} understood {passed} of {total} searches ({share} %) in {s} s.",
       answered: "The model answered: {answer}",
+      caught: "Passed only because code took out what the model wrote. The model itself fell for these:",
+      wrote: "The model wrote: {answer}",
       making: "Making a picture … (up to a minute)",
       testPicture: "Test the picture model",
       made: "✓ Made in {s} s. Not kept.",
