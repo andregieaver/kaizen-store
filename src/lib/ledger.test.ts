@@ -98,6 +98,25 @@ describe("a document, posted", () => {
     });
   });
 
+  it("posts one in another currency at the document's own rate, its VAT as the document reported it in the book's currency", () => {
+    const eur: BookingDoc = { ...invoice, currency: "EUR", totalMinor: 125_000, vatMinor: 25_000, lines: [{ key: "standard_25", text: "Design", grossMinor: 125_000, netMinor: 100_000, vatMinor: 25_000 }] };
+    expect(entryOfDoc(eur, NO_POSTING, "NOK")).toEqual({ ok: false, problem: "currency" });
+    const at = entryOfDoc(eur, NO_POSTING, "NOK", { rate: "11.5", vatHomeMinor: 287_500 });
+    expect(at.ok && at.entry.lines).toEqual([
+      { account: 1500, amountMinor: 1_437_500, vatCode: null },
+      { account: 3000, amountMinor: -1_150_000, vatCode: "3" },
+      { account: 2700, amountMinor: -287_500, vatCode: "3" },
+    ]);
+    // 25 000 × 11.4567 rounds to 286 418; the document reported 286 417, so the VAT line says that and the receivable follows.
+    const odd = entryOfDoc(eur, NO_POSTING, "NOK", { rate: "11.4567", vatHomeMinor: 286_417 });
+    expect(odd.ok && odd.entry.lines.map((l) => l.amountMinor)).toEqual([1_432_087, -1_145_670, -286_417]);
+    expect(odd.ok && entryProblems(odd.entry)).toEqual([]);
+    // A credit note turns the signs, the reported VAT still a size.
+    const credit = entryOfDoc({ ...eur, kind: "credit_note" }, NO_POSTING, "NOK", { rate: "11.5", vatHomeMinor: 287_500 });
+    expect(credit.ok && credit.entry.lines.map((l) => l.amountMinor)).toEqual([-1_437_500, 1_150_000, 287_500]);
+    expect(entryOfDoc(eur, NO_POSTING, "NOK", { rate: "0", vatHomeMinor: 0 })).toEqual({ ok: false, problem: "currency" });
+  });
+
   it("posts where the store's Tripletex settings book, so the two books agree account by account", () => {
     const posting = postingOfTripletex({ receivableAccount: 1510, bookings: { standard_25: { account: 3020 } } });
     expect(posting).toEqual({ receivable: 1510, income: { ...NO_POSTING.income, standard_25: 3020 } });

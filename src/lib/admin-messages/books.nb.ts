@@ -25,7 +25,7 @@ export const booksNb: BooksMessages = {
     count: { one: "{n} dokument kunne ikke føres ennå", many: "{n} dokumenter kunne ikke føres ennå" },
     kinds: { work_invoice: "Faktura", work_credit_note: "Kreditnota", shop_invoice: "Faktura fra butikken", shop_credit_note: "Kreditnota fra butikken" },
     problems: {
-      currency: "i en annen valuta enn regnskapet (kommer snart)",
+      currency: "i en annen valuta enn regnskapet, uten egen kurs",
       vat_unmapped: "en mva-type uten konto",
       totals: "beløpene går ikke opp",
       nothing: "ingenting å føre",

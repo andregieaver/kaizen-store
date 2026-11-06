@@ -77,38 +77,51 @@ async function openBook(storeId: string, accountId: string): Promise<{ id: strin
   return { id, currency: "NOK", opened_on: String(row.opened_on), closed_on: null };
 }
 
-const entriesOf = async (bookId: string) =>
+const entriesOf = async (bookId: string, sourceId?: string) =>
   db().execute<Row>(sql`
     select e.source_kind, l.account, l.amount_minor::int as amount, l.vat_code
       from commerce.ledger_entries e join commerce.ledger_lines l on l.entry_id = e.id
-     where e.book_id = ${bookId}::uuid order by e.number, l.line`);
+     where e.book_id = ${bookId}::uuid and (${sourceId ?? null}::text is null or e.source_id = ${sourceId ?? null}) order by e.number, l.line`);
 
 describe("a store's documents, posted to its books", () => {
-  it("posts each issued Work invoice once, lets one in another currency wait with why, and never posts again one a person reversed", async () => {
+  it("posts each issued Work invoice once, one in euro in kroner at its own rate, lets one on a locked day wait, and never posts again one a person reversed", async () => {
     const { storeId, actor } = await workStore();
     const book = await openBook(storeId, actor.account.id);
     const nok = await issued(actor, await client(storeId));
-    await issued(actor, await client(storeId, "EUR"), { fxRate: "11.5" });
+    const eur = await issued(actor, await client(storeId, "EUR"), { fxRate: "11.5" });
 
-    expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 1, waiting: 1 });
-    expect(await entriesOf(book.id)).toEqual([
+    expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 2, waiting: 0 });
+    expect(await entriesOf(book.id, nok)).toEqual([
       { source_kind: "work_invoice", account: 1500, amount: 1_500_000, vat_code: null },
       { source_kind: "work_invoice", account: 3000, amount: -1_200_000, vat_code: "3" },
       { source_kind: "work_invoice", account: 2700, amount: -300_000, vat_code: "3" },
     ]);
+    // 15 000.00 euro at 11.5: its VAT is what the invoice reported in kroner.
+    const [home] = await db().execute<Row>(sql`select vat_home_minor::int as vat from commerce.work_invoices where id = ${eur}::uuid`);
+    expect(await entriesOf(book.id, eur)).toEqual([
+      { source_kind: "work_invoice", account: 1500, amount: 17_250_000, vat_code: null },
+      { source_kind: "work_invoice", account: 3000, amount: -13_800_000, vat_code: "3" },
+      { source_kind: "work_invoice", account: 2700, amount: -Number(home.vat), vat_code: "3" },
+    ]);
+    expect(Number(home.vat)).toBe(3_450_000);
     // 3200 and 3100 were not in this chart: the job added the standard accounts the posting needs.
     expect((await ledger.ledgerAccounts(book.id)).map((a) => a.number)).toEqual(expect.arrayContaining([2701, 2703, 3100, 3200, 2900]));
-    expect(await ledger.ledgerWaiting(book.id)).toMatchObject([{ kind: "work_invoice", problem: "currency" }]);
 
-    // Again the same day: nothing is posted twice, and what waits is not tried again yet.
+    // Again the same day: nothing is posted twice.
     expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 0, waiting: 0 });
 
-    // A person reverses the posted invoice: the job leaves it be.
+    // The books locked through today: a new invoice waits with why, and is not tried again the same day.
+    await db().execute(sql`update commerce.ledger_books set locked_through = current_date where id = ${book.id}::uuid`);
+    await issued(actor, await client(storeId));
+    expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 0, waiting: 1 });
+    expect(await ledger.ledgerWaiting(book.id)).toMatchObject([{ kind: "work_invoice", problem: "locked" }]);
+    expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 0, waiting: 0 });
+
+    // A person reverses the posted NOK invoice: the job leaves it be. A day later what waits is tried again (still locked).
+    await db().execute(sql`update commerce.ledger_books set locked_through = null where id = ${book.id}::uuid`);
     const [entry] = await db().execute<Row>(sql`select id from commerce.ledger_entries where book_id = ${book.id}::uuid and source_id = ${nok}`);
     await db().execute(sql`select commerce.ledger_reverse(${String(entry.id)}::uuid, null, 'Tilbakeføring', ${actor.account.id}::uuid)`);
-    expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 0, waiting: 0 });
-
-    // A day later what waits is tried again (still another currency).
+    await db().execute(sql`update commerce.ledger_books set locked_through = current_date where id = ${book.id}::uuid`);
     await db().execute(sql`update commerce.ledger_waiting set tried_at = now() - interval '25 hours' where book_id = ${book.id}::uuid`);
     expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 0, waiting: 1 });
   });
