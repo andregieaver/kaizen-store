@@ -82,6 +82,8 @@ export default async function DealPage({ params }: PageProps<"/admin/[store]/dea
           ? w.deal.byInvoice
           : move.via === "platform"
             ? w.deal.byPlatform
+            : move.via === "quote"
+              ? w.deal.byQuote
             : move.by
               ? fillWords(w.deal.by, { name: move.by })
               : null;

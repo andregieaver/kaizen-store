@@ -113,7 +113,8 @@ filters it by kind.
 company or person, owner (a staff member), pipeline and stage, expected close date, an estimated value while nothing is linked, won or
 lost with a reason. It links to quote drafts, orders and Work assignments; once one is linked, the deal's value is theirs (one truth). A
 paid order or an issued Work invoice can win it. Homer gets one board with sensible stages (New, Talking, Quote sent, Won, Lost); Lisa
-gets several pipelines, stage probabilities, custom fields (D118) and the time a deal has sat in a stage.
+gets several pipelines, stage probabilities, custom fields (D118) and the time a deal has sat in a stage. A sent quote moves its deal
+into the quote stage (D464, 6 November).
 
 **S3. Activities.** Calls, meetings and tasks with a due time and a person; a *Today* list on the store's home; push when one is due
 (D361). "Book a meeting with me" is a booking link (D65) whose booking lands on the timeline. The AI manager's follow-ups (D318) remind a

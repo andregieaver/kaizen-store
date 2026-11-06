@@ -112,6 +112,7 @@ export const dealsEn = {
     byOrder: "by a paid order",
     byInvoice: "by an issued invoice",
     byPlatform: "by Kaizena Flow's own records",
+    byQuote: "when its quote was sent",
   },
 
   pipelinesPage: {

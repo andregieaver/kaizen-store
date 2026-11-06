@@ -105,6 +105,7 @@ export const dealsNb: DealsMessages = {
     byOrder: "av en betalt bestilling",
     byInvoice: "av en utstedt faktura",
     byPlatform: "av Kaizena Flows egne opplysninger",
+    byQuote: "da tilbudet ble sendt",
   },
 
   pipelinesPage: {
