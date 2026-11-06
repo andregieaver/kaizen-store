@@ -100,6 +100,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "pipeline.": "customers",
   // Activities (D468): ids and a kind, never a title or a note.
   "activity.": "customers",
+  "business.": "settings",
   // Marketing
   "discount.": "marketing",
   "campaign.": "marketing",

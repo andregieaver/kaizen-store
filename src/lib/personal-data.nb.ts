@@ -284,6 +284,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   store_locations: "Butikkens egne steder. " + OWN,
   store_roles: OWN,
   stores: "Selve butikken. " + OWN,
+  store_business_changes: "Virksomhetene bak butikken over tid (D473): navnet, numrene og adressen til hver fra dens dag, og hva butikken var før. " + OWN,
   domain_purchases:
     "Hva en butikk eller en person betalte Kaizena Flow for et domene (D315, D317): navnet, prisene og fakturaen, og for en kjøper uten butikk om de kjøpte som privatperson, bedriftens mva-nummer og samtykket de ga. " +
     OWN,

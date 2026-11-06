@@ -17799,3 +17799,56 @@ export const activities = commerce.table(
     check("activities_done", sql`${t.doneBy} is null or ${t.doneAt} is not null`),
   ],
 );
+
+// Changing the business behind a store (B8 of `docs/own-books-and-sales.md` section 4.5, D473)
+
+/**
+ * A change of the legal business behind a store from a day (an ENK becoming an AS): the new business's name, form, numbers and address,
+ * and a prefix of its own for each document series given. Planned by the owner, one at a time; applied by `commerce.apply_business_change()`
+ * at the start of its day in the store's time zone (the issuers call it before they number anything, and the dispatcher's job as well),
+ * which keeps what the store was before (`before`) and where each series stood (`series_start`). Never edited once applied.
+ */
+export const storeBusinessChanges = commerce.table(
+  "store_business_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** `planned`, `applied` or `cancelled`. */
+    status: text("status").notNull().default("planned"),
+    /** The first day the new business sells, in the store's time zone. */
+    startsOn: date("starts_on").notNull(),
+    legalName: text("legal_name").notNull(),
+    /** `enk`, `as`, `asa`, `nuf`, `da`, `ans`, `sa` or `other` (`BUSINESS_FORMS`). */
+    businessForm: text("business_form").notNull(),
+    /** Null until the new business is registered: the change waits for it. */
+    organisationNumber: text("organisation_number"),
+    vatRegistered: boolean("vat_registered").notNull().default(false),
+    vatNumber: text("vat_number"),
+    /** The business address from the day; null keeps the store's. */
+    postalAddress: text("postal_address"),
+    /** `{ invoice?: "AS-F-", credit_note?, work_invoice?, work_credit_note? }`: a series left out keeps its prefix. */
+    prefixes: jsonb("prefixes").notNull().default(sql`'{}'::jsonb`),
+    /** The store's business as it was, kept when the change took effect. */
+    before: jsonb("before"),
+    /** Each series' first document under the new business (`{ invoice: "AS-F-1043", … }`), kept when the change took effect. */
+    seriesStart: jsonb("series_start"),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    /** When the app last drew the store again after the change (its cached details refreshed). */
+    refreshedAt: timestamp("refreshed_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("store_business_changes_planned_key").on(t.storeId).where(sql`${t.status} = 'planned'`),
+    index("store_business_changes_store_idx").on(t.storeId, t.startsOn),
+    index("store_business_changes_due_idx").on(t.startsOn).where(sql`${t.status} = 'planned'`),
+    index("store_business_changes_created_by_idx").on(t.createdBy),
+    check("store_business_changes_status", sql`${t.status} in ('planned', 'applied', 'cancelled')`),
+    check("store_business_changes_form", sql`${t.businessForm} in ('enk', 'as', 'asa', 'nuf', 'da', 'ans', 'sa', 'other')`),
+    check("store_business_changes_legal_name", sql`${t.legalName} = btrim(${t.legalName}) and char_length(${t.legalName}) between 1 and 200`),
+    check("store_business_changes_applied", sql`(${t.status} = 'applied') = (${t.appliedAt} is not null)`),
+    check("store_business_changes_vat", sql`${t.vatNumber} is null or ${t.vatRegistered}`),
+    check("store_business_changes_prefixes", sql`jsonb_typeof(${t.prefixes}) = 'object'`),
+  ],
+);

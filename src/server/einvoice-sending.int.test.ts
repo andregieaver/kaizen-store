@@ -48,6 +48,31 @@ describe("e-invoices through Peppol (D463)", () => {
     expect(await stateOf(store.storeId, consumerInvoice.id)).toBeNull();
   });
 
+  it("looks at a Work invoice to a business too, by the organisation numbers its parties were issued with", async () => {
+    const store = await fx.makeStore("einv-work");
+    await db().execute(sql`update commerce.stores set organisation_number = '923609016', modules = array['work'] where id = ${store.storeId}::uuid`);
+    await db().execute(sql`
+      insert into commerce.work_settings (store_id, vat_registered, vat_number, default_payment_days, bank_account, bic)
+      values (${store.storeId}::uuid, true, 'NO923609016MVA', 14, 'NO9386011117947', 'DNBANOKKXXX')
+      on conflict (store_id) do update set vat_registered = true, vat_number = 'NO923609016MVA', bank_account = 'NO9386011117947', bic = 'DNBANOKKXXX'`);
+    const [client] = await db().execute<{ id: string }>(sql`
+      insert into commerce.work_clients (store_id, name, legal_name, organisation_number, country, billing_address, currency, locale, business, vat_treatment, billing_email)
+      values (${store.storeId}::uuid, 'Kunde', 'Kunde AS', ${BUYER}, 'NO', '{"line1":"Kirkeveien 1","postalCode":"0364","city":"Oslo"}'::jsonb, 'NOK', 'nb-NO', true, 'domestic', 'faktura@kunde.example')
+      returning id`);
+    const invoices = await import("./work-invoices");
+    const actor = { account: { id: store.ownerId }, store: { id: store.storeId } };
+    const draft = await invoices.createDraftInvoice(actor, { clientId: client.id });
+    if (!draft.ok) throw new Error(draft.problems.join());
+    const lines = await invoices.saveLines(actor, draft.invoiceId, [{ description: "Rådgivning", unit: "hour", quantityHundredths: 100, unitPriceMinor: 120_000, discountBp: 0, vatCategory: "standard" }]);
+    if (!lines.ok) throw new Error(lines.problems.join());
+    const issued = await invoices.issueInvoice(actor, { invoiceId: draft.invoiceId });
+    if (!issued.ok) throw new Error(issued.problems.join());
+    await db().execute(sql`delete from commerce.peppol_receivers where participant = ${`0192:${BUYER}`}`);
+    await runEinvoiceSending({ from: today, lookup: receives(true), accessPoint: null });
+    const states = await einvoiceStates(store.storeId, [{ type: "work_invoice", id: issued.invoice.invoiceId }]);
+    expect(states.get(`work_invoice:${issued.invoice.invoiceId}`)).toEqual({ state: "waiting", problem: null });
+  });
+
   it("marks a business that does not receive them, and leaves a document for later when the network could not tell", async () => {
     const { store, invoice } = await storeWithBusinessInvoice("einv-not");
     await runEinvoiceSending({ from: today, lookup: receives(false, "dns_eservfail"), accessPoint: null });

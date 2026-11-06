@@ -280,6 +280,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("store_locations", "owner", via("none"), ["name", "phone", "notes"], null, "none", "The store's own places. " + OWN),
   entry("store_roles", "staff", via("none"), ["name"], null, "none", OWN),
   entry("stores", "owner", via("none"), ["name", "legal_name", "contact_email", "postal_address"], null, "none", "The store itself. " + OWN),
+  entry("store_business_changes", "owner", via("none"), ["legal_name", "postal_address", "before"], null, "none", "The businesses behind the store over time (D473): each one's name, numbers and address from its day, and what the store was before. " + OWN),
   entry("domain_purchases", "owner", via("none"), ["vat_number", "consent_text", "buyer"], null, "none", "What a store or a person paid Kaizena Flow for a domain (D315, D317): the name, prices and invoice, and for a buyer without a store whether they bought as a private person, their business's VAT number and the consent they gave. " + OWN),
   entry("domain_registrants", "owner", via("none"), ["first_name", "last_name", "company_name", "email", "phone", "address1", "address2", "city", "postal_code"], null, "none", "Who the store's domains are registered to (D315): the owner or their company, sent to the registrar and the registry by the nature of a registration. " + OWN),
   entry("products", "host", via("none"), ["host_id"], null, "none", "A product may belong to a host. " + OWN),

@@ -319,6 +319,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   store_locations: "platform_service",
   store_roles: "platform_service",
   stores: "platform_service",
+  store_business_changes: "platform_service",
   domain_purchases: "platform_billing",
   domain_registrants: "platform_service",
   products: "platform_service",

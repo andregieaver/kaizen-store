@@ -234,6 +234,16 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   its words clipped and shown as what Fiken said. Tests run against `fakeFiken()` (`src/server/fiken-test-support.ts`), which answers as
   Fiken's spec does and never refuses a repeated sale number; nothing in CI calls Fiken.
 
+## Changing the business behind a store (B8, D473, `src/lib/business-change.ts`, `src/server/business-change.ts`)
+
+- **Changing the business behind a store (B8, D473, `src/lib/business-change.ts`, `src/server/business-change.ts`)**: a change of the legal
+  business behind a store (`commerce.store_business_changes`) is planned only by the store's owner, one at a time, for a day after today,
+  through `planBusinessChange()`, and takes effect only in `commerce.apply_business_change()`: the store's legal name, number, address, its
+  VAT registration and Work's, and the series' prefixes in one transaction, keeping what was before and where each series stood. Every
+  issuer calls it before it numbers anything, so nothing is issued on the day under the old business; a new issuer of documents calls it
+  too. A sales series' prefix changes after numbers are issued only there (`sales_series_guard()`); numbers are never reset or skipped.
+  Never write the store's legal identity from a date by hand: plan a change.
+
 ## E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)
 
 - **E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)**: a sales document to a business goes to it as EN 16931 UBL (Peppol BIS Billing 3.0, EHF in Norway) where the buyer

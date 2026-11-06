@@ -72,13 +72,13 @@ async function candidates(since: string): Promise<Candidate[]> {
          and not exists (select 1 from commerce.einvoice_sends e where e.store_id = c.store_id and e.document_type = 'credit_note' and e.document_id = c.id)
        limit ${BATCH})
       union all
-      (select 'work_invoice', w.store_id, w.id, w.buyer ->> 'country', w.buyer ->> 'organisationNumber', w.seller ->> 'country', w.seller ->> 'organisationNumber'
+      (select 'work_invoice', w.store_id, w.id, w.buyer ->> 'country', w.buyer ->> 'organisation_number', w.seller ->> 'country', w.seller ->> 'organisation_number'
        from commerce.work_invoices w
        where w.status <> 'draft' and not w.imported and w.issued_on >= ${since}::date and (w.buyer ->> 'business')::boolean is true
          and not exists (select 1 from commerce.einvoice_sends e where e.store_id = w.store_id and e.document_type = 'work_invoice' and e.document_id = w.id)
        limit ${BATCH})
       union all
-      (select 'work_credit_note', n.store_id, n.id, n.buyer ->> 'country', n.buyer ->> 'organisationNumber', n.seller ->> 'country', n.seller ->> 'organisationNumber'
+      (select 'work_credit_note', n.store_id, n.id, n.buyer ->> 'country', n.buyer ->> 'organisation_number', n.seller ->> 'country', n.seller ->> 'organisation_number'
        from commerce.work_credit_notes n
        where n.issued_on >= ${since}::date and (n.buyer ->> 'business')::boolean is true
          and not exists (select 1 from commerce.einvoice_sends e where e.store_id = n.store_id and e.document_type = 'work_credit_note' and e.document_id = n.id)
@@ -151,8 +151,9 @@ async function sendDue(accessPoint: AccessPoint, now: Date): Promise<{ sent: num
                      snapshot -> 'seller' ->> 'country' as seller_country, snapshot -> 'seller' ->> 'organisationNumber' as seller_org
               from ${row.document_type === "invoice" ? sql`commerce.invoices` : sql`commerce.credit_notes`}
               where store_id = ${row.store_id}::uuid and id = ${row.document_id}::uuid and anonymised_at is null`
-        : sql`select buyer ->> 'country' as buyer_country, buyer ->> 'organisationNumber' as buyer_org, seller ->> 'country' as seller_country,
-                     seller ->> 'organisationNumber' as seller_org
+        : // Work's documents keep their parties as they were issued, with snake_case keys (`commerce.issue_work_invoice()`).
+          sql`select buyer ->> 'country' as buyer_country, buyer ->> 'organisation_number' as buyer_org, seller ->> 'country' as seller_country,
+                     seller ->> 'organisation_number' as seller_org
               from ${row.document_type === "work_invoice" ? sql`commerce.work_invoices` : sql`commerce.work_credit_notes`}
               where store_id = ${row.store_id}::uuid and id = ${row.document_id}::uuid`,
     );
