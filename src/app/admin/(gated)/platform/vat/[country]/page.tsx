@@ -26,6 +26,8 @@ export default async function PlatformVatCountryPage({ params }: PageProps<"/adm
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").vat;
   const locale = ADMIN_LANG_FACTS[lang].locale;
+  // The standard rate standing in where no reduced rate is known (`describeRate()`), in the admin's language: the product editor's words.
+  const fallbackText = (text: string) => fillWords(adminText(lang, "product").vatCategory.fallback, { rate: /\(([^)]+)\)/.exec(text)?.[1] ?? "" });
   const code = (await params).country.toUpperCase();
   if (!/^[A-Z]{2}$/.test(code)) notFound();
   const [coverage, rates, shippingRules] = await Promise.all([vatCoverage(), listVatRates({ country: code }), listShippingVatRules()]);
@@ -58,7 +60,7 @@ export default async function PlatformVatCountryPage({ params }: PageProps<"/adm
                   {!category.active && <span className="text-muted">{w.off}</span>}
                 </span>
                 <span className={`tabular-nums ${cell?.fallback ? "text-muted" : ""}`}>
-                  {cell ? cell.text : "-"}
+                  {cell ? (cell.fallback ? fallbackText(cell.text) : cell.text) : "-"}
                   {cell && !cell.fallback && !cell.verified && <span className="text-muted">{w.unverifiedNote}</span>}
                 </span>
               </li>

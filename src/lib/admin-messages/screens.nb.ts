@@ -183,6 +183,7 @@ export const screensNb: ScreensMessages = {
     check: "Sjekk",
     open: { company: "Åpne Firma-siden", settings: "Åpne innstillingene for Arbeid", client: "Åpne kunden", invoice: "Gå til linjene" },
   },
+  workSeries: { work_invoice: "Fakturaer", work_credit_note: "Kreditnotaer" },
   workReport: {
     withoutVat: "uten mva.",
     withoutVatCredited: "uten mva., etter {amount} kreditert",

@@ -208,6 +208,8 @@ export const screensEn = {
     check: "Check",
     open: { company: "Open the Company page", settings: "Open Work settings", client: "Open the client", invoice: "Go to the lines" },
   },
+  /** Work's document series on its settings page (`SERIES_TEXT` names them in English for the server's messages). */
+  workSeries: { work_invoice: "Invoices", work_credit_note: "Credit notes" },
   /** Work's report totals: what each figure counts. */
   workReport: {
     withoutVat: "without VAT",

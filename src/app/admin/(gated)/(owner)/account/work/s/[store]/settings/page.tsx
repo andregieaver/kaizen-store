@@ -6,7 +6,7 @@ import { SeriesForm, WorkSettingsForm } from "@/components/admin/work/settings-f
 import { mainCurrency } from "@/lib/markets";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
 import { workBase } from "@/lib/work-paths";
-import { SERIES_TEXT, sellerReadiness } from "@/lib/work-settings";
+import { sellerReadiness } from "@/lib/work-settings";
 import { getWorkSeries, getWorkSettings, sellerDetails } from "@/server/work-settings";
 
 import { saveWorkSeriesAction, saveWorkSettingsAction } from "../settings-actions";
@@ -138,7 +138,7 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
             <SeriesForm
               key={name}
               action={saveWorkSeriesAction.bind(null, store.slug, name)}
-              title={SERIES_TEXT[name].title}
+              title={workScreens().workSeries[name]}
               prefix={series[name].prefix}
               nextNumber={series[name].nextNumber}
               issued={series[name].issued}
