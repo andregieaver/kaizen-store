@@ -661,6 +661,7 @@ export const notificationsNb: NotificationsMessages = {
         taken: "Dette Tripletex-selskapet er allerede koblet til en annen av butikkene dine. Koble det fra der først, eller bruk denne butikkens eget selskap.",
         no_read_access: "Nøkkelen får ikke lese kontoene i Tripletex. Lag den på nytt med alle rettigheter (eller tilgang til regnskap og kunder), og lim inn den nye.",
         other_system: "Denne butikken sender regnskapet til Fiken. Koble fra Fiken først: en butikk fører regnskapet i ett system.",
+        unreadable: "Tripletex svarte med noe vi ikke kunne lese, så ingenting ble lagret. Trykk Koble til igjen om et minutt. Skjer det igjen, kontakt kundestøtte.",
         failure: "Fikk ikke kontakt med Tripletex. Prøv igjen om litt.",
       },
       connectedTo: "Koblet til {company}",

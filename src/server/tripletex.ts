@@ -145,7 +145,29 @@ export type ConnectResult =
  * refused it, an employee token while Tripletex has not approved Kaizena Flow, the company is another store's, the token may not read
  * the accounts, the store keeps its books in Fiken (D460), or another failure (its `failureKey`).
  */
-export type ConnectProblem = "empty" | "not_a_token" | "no_key" | "refused" | "no_consumer_token" | "taken" | "no_read_access" | "other_system" | "failure";
+export type ConnectProblem =
+  | "empty"
+  | "not_a_token"
+  | "no_key"
+  | "refused"
+  | "no_consumer_token"
+  | "taken"
+  | "no_read_access"
+  | "other_system"
+  | "unreadable"
+  | "failure";
+
+/**
+ * A failure while connecting, for the page. Nothing retries a connect, so the sync's words for a passing failure ("it will be tried
+ * again by itself") are not said here: an answer we could not read is `unreadable`, and Tripletex not answering, slowing us down or
+ * failing on its side is `failure` without a key ("try again in a moment"). Only a refusal keeps its key, for its own words.
+ */
+function connectFailure(storeId: string, step: "session" | "whoAmI" | "chart", f: TripletexFailure, credential: TripletexCredential): ConnectResult {
+  log("warn", "tripletex.connect_failed", { storeId, step, key: f.key, status: f.status, requestId: f.requestId, mode: credential.mode, kind: credential.kind });
+  if (f.key === "bad_answer") return { ok: false, problem: "unreadable" };
+  if (f.class === "transient" || f.class === "rate_limit") return { ok: false, problem: "failure" };
+  return { ok: false, problem: "failure", failureKey: f.key };
+}
 
 /**
  * Connects the store to the Tripletex company the token opens: tries the token, reads the company and its chart, plans the
@@ -175,13 +197,15 @@ export async function connectTripletex(accountId: string, storeId: string, paste
     }
   }
   if (!opened.ok) {
-    log("warn", "tripletex.connect_refused", { storeId: store.id, key: opened.failure.key, mode: credential.mode, kind: credential.kind });
-    if (opened.failure.key === "no_consumer_token") return { ok: false, problem: "no_consumer_token" };
-    return opened.failure.class === "auth" ? { ok: false, problem: "refused" } : { ok: false, problem: "failure", failureKey: opened.failure.key };
+    if (opened.failure.key === "no_consumer_token" || opened.failure.class === "auth") {
+      log("warn", "tripletex.connect_refused", { storeId: store.id, key: opened.failure.key, mode: credential.mode, kind: credential.kind });
+      return { ok: false, problem: opened.failure.key === "no_consumer_token" ? "no_consumer_token" : "refused" };
+    }
+    return connectFailure(store.id, "session", opened.failure, credential);
   }
   const session = opened.session;
   const me = await whoAmI(session);
-  if (!me.ok) return { ok: false, problem: "failure", failureKey: me.failure.key };
+  if (!me.ok) return connectFailure(store.id, "whoAmI", me.failure, credential);
   const company = me.value;
 
   const taken = await typedRow(
@@ -193,7 +217,7 @@ export async function connectTripletex(accountId: string, storeId: string, paste
 
   const chart = await readChart(session);
   if (!chart.ok) {
-    return chart.failure.class === "permission" ? { ok: false, problem: "no_read_access" } : { ok: false, problem: "failure", failureKey: chart.failure.key };
+    return chart.failure.class === "permission" ? { ok: false, problem: "no_read_access" } : connectFailure(store.id, "chart", chart.failure, credential);
   }
   const needed = await neededKeys(store.id);
   const plan = planSetup(chart.chart, BOOKING_KEYS);
