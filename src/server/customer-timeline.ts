@@ -375,10 +375,35 @@ async function deals(who: Who): Promise<TimelineEvent[]> {
   });
 }
 
+/** The person's or the company's calls, meetings and tasks that were done (D467): each when it was done, by its title; its kind as the status. */
+async function activities(who: Who): Promise<TimelineEvent[]> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid, title: col.text, kind: col.text, done: col.timestamp, deal_id: col.uuid.nullable(), customer_id: col.uuid.nullable(), company_id: col.uuid.nullable(), email: col.textOrNull }),
+    sql`
+      select a.id, a.title, a.kind, a.done_at as done, a.deal_id, a.customer_id, a.company_id, lower(c.email) as email
+      from commerce.activities a left join commerce.customers c on c.store_id = a.store_id and c.id = a.customer_id
+      where a.store_id = ${who.storeId}::uuid and a.done_at is not null
+        and (a.customer_id = any(${uuidList(who.ids)}) ${who.companyId ? sql`or a.company_id = ${who.companyId}::uuid` : sql``})
+      order by a.done_at desc, a.id
+      limit ${who.n}
+    `,
+  );
+  return rows.map((r) => ({
+    key: `activity:${r.id}`,
+    what: "activity_done" as const,
+    at: r.done,
+    email: r.email,
+    label: r.title,
+    status: r.kind,
+    href: r.deal_id ? `${who.base}/deals/${r.deal_id}` : null,
+  }));
+}
+
 const READERS: Record<TimelineKind, (who: Who) => Promise<TimelineEvent[]>> = {
   order: orders,
   quote: quotes,
   deal: deals,
+  activity: activities,
   conversation: conversations,
   email: emails,
   note: notes,

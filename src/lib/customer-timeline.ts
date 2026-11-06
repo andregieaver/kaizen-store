@@ -5,7 +5,7 @@
  */
 
 /** The kinds, in the order the filter offers them. */
-export const TIMELINE_KINDS = ["order", "quote", "deal", "conversation", "email", "note", "return", "review", "booking", "work_invoice"] as const;
+export const TIMELINE_KINDS = ["order", "quote", "deal", "activity", "conversation", "email", "note", "return", "review", "booking", "work_invoice"] as const;
 export type TimelineKind = (typeof TIMELINE_KINDS)[number];
 
 export const isTimelineKind = (value: unknown): value is TimelineKind =>
@@ -20,6 +20,7 @@ export const TIMELINE_KIND_OF = {
   deal_opened: "deal",
   deal_won: "deal",
   deal_lost: "deal",
+  activity_done: "activity",
   conversation_started: "conversation",
   email_sent: "email",
   email_failed: "email",
@@ -106,6 +107,7 @@ export function visibleKinds(gates: TimelineGates): TimelineKind[] {
     booking: gates.bookings && gates.bookingsOn,
     work_invoice: gates.settings && gates.workOn,
     deal: gates.salesOn,
+    activity: gates.salesOn,
   };
   return TIMELINE_KINDS.filter((kind) => shown[kind]);
 }

@@ -335,7 +335,7 @@ export const staffEmailsEn = {
     button: "Open usage and limits",
   },
   /** A push notification of a new order (D361): its number and total only. */
-  push: { newOrderTitle: "New order {number}", newOrderBody: "{total} · {store}", quoteTitle: "Quote requested {number}", quoteBody: "{store}" },
+  push: { newOrderTitle: "New order {number}", newOrderBody: "{total} · {store}", quoteTitle: "Quote requested {number}", quoteBody: "{store}", activityTitle: "Due now: {title}", activityBody: "{store}" },
 };
 
 export type StaffEmailsMessages = Widen<typeof staffEmailsEn>;

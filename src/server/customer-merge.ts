@@ -20,7 +20,7 @@ type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 /**
  * Merging two customers of a store (wave 10 unit C, D366): staff keep one account and fold another into it. What is the person's moves to
  * the account kept: orders (copied ones are history and only lose the removed account), subscriptions, open draft orders, carts, wishlists,
- * saved addresses, support conversations, Work clients, deals (D464), the tags and notes of the other address, custom field values the kept account has
+ * saved addresses, support conversations, Work clients, deals (D464) and activities (D467), the tags and notes of the other address, custom field values the kept account has
  * none of, and the bonus balance as an entry granted to the kept account (never an edit of the ledger; the removed account's entries
  * go with it). The removed account is then deleted, which signs it out everywhere. A merge that would lose something is refused before anything changes, with a reason
  * staff read (`MergeRefusal`): a company, standing lists, reviews, the referral program, gift cards, credits still pending, or more
@@ -188,6 +188,7 @@ export async function mergeCustomers(member: Membership, keep: string, remove: s
     }
     // Staff's deals with the person (D464) follow them to the kept account.
     await tx.execute(sql`update commerce.deals set customer_id = ${keep}::uuid, updated_at = now() where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);
+    await tx.execute(sql`update commerce.activities set customer_id = ${keep}::uuid, updated_at = now() where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);
     await tx.execute(sql`delete from commerce.customers where store_id = ${storeId}::uuid and id = ${remove}::uuid`);
     return plan;
   });

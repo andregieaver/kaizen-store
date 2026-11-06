@@ -194,6 +194,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   customer_tags: never("Staff's tags on the store's people (D296)."),
   customer_notes: never("Staff's notes on the store's people (D366)."),
   deals: never("Staff's deals with the store's people and companies (D464)."),
+  activities: never("Staff's calls, meetings and tasks about the store's people, companies and deals (D467)."),
   deal_links: never("What the original's deals are linked to (D464): its own orders, quotes and assignments."),
   deal_moves: never("The original's deals' history (D464)."),
   house_customer_links: never("Kaizena Flow's own customers' accounts and requests (D467): only its own store has them."),

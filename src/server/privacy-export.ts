@@ -1018,6 +1018,20 @@ async function loadCustomerDeals(s: PrivacySubject): Promise<NonNullable<ExportI
   }));
 }
 
+/** Staff's calls, meetings and tasks about the person (D467), by their account: what, when and what was written; never who did it. */
+async function loadCustomerActivities(s: PrivacySubject): Promise<NonNullable<ExportInput["customerActivities"]>> {
+  if (!s.customerId) return [];
+  const rows = await typedRows(
+    z.object({ kind: col.text, title: col.text, note: col.textOrNull, due_at: col.timestamp, done_at: col.timestampOrNull }),
+    sql`
+      select kind, title, note, due_at, done_at from commerce.activities
+      where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid
+      order by due_at, id
+    `,
+  );
+  return rows.map((r) => ({ kind: r.kind, title: r.title, note: r.note, dueAt: r.due_at, doneAt: r.done_at }));
+}
+
 /** What staff entered in the customer's and their orders' custom fields, as label and words in the store's main language. */
 async function loadCustomFields(s: PrivacySubject, orders: OrderRow[], main: string): Promise<CustomFieldRow[]> {
   const groups = await listFieldGroups(s.storeId);
@@ -1083,7 +1097,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
@@ -1091,6 +1105,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadCustomerTags(s),
     loadCustomerNotes(s),
     loadCustomerDeals(s),
+    loadCustomerActivities(s),
     loadBroadcasts(s),
     loadAutomations(s),
     loadStockRequests(s),
@@ -1134,6 +1149,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     customerTags,
     customerNotes,
     customerDeals,
+    customerActivities,
     signupCodes,
     broadcasts,
     automations,

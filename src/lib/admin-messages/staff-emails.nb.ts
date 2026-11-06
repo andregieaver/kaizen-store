@@ -326,5 +326,5 @@ export const staffEmailsNb: StaffEmailsMessages = {
     after: "Bruk og grenser viser alle jobbene og når de sist kjørte. Det sendes én e-post hver gang en jobb begynner å feile; den neste kommer først når den har kjørt bra igjen og feilet på nytt.",
     button: "Åpne bruk og grenser",
   },
-  push: { newOrderTitle: "Ny ordre {number}", newOrderBody: "{total} · {store}", quoteTitle: "Tilbud etterspurt {number}", quoteBody: "{store}" },
+  push: { newOrderTitle: "Ny ordre {number}", newOrderBody: "{total} · {store}", quoteTitle: "Tilbud etterspurt {number}", quoteBody: "{store}", activityTitle: "Nå: {title}", activityBody: "{store}" },
 };

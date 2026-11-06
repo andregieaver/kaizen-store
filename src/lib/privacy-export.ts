@@ -382,6 +382,8 @@ export type ExportInput = {
   /** Staff's notes on the person (D366): the words and when, never who wrote them; absent is none. */
   customerNotes?: { text: string; writtenAt: string }[];
   /** Staff's deals with the person (D464): what they might buy, its stage, estimate and status, why it was lost, and when; never who owns it; absent is none. */
+  /** Staff's calls, meetings and tasks about the person (D467): what, when, done when, and what was written; never who did it; absent is none. */
+  customerActivities?: { kind: string; title: string; note: string | null; dueAt: string; doneAt: string | null }[];
   customerDeals?: { title: string; stage: string | null; status: string; estimateMinor: number | null; currency: string; expectedCloseOn: string | null; closeReason: string | null; openedAt: string; closedAt: string | null }[];
   /** Welcome codes a sign-up form gave the person (D304 J3): the discount and when; absent is none. */
   signupCodes?: { discount: string; givenAt: string }[];
@@ -773,7 +775,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     support: (input.support ?? []).length,
     reviews: (input.reviews ?? []).length,
     comments: (input.comments ?? []).length,
-    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.customerNotes ?? []).length + (input.customerDeals ?? []).length + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.signupCodes ?? []).length,
+    marketing: (input.marketing ?? []).length + ((input.customerTags ?? []).length > 0 ? 1 : 0) + (input.customerNotes ?? []).length + (input.customerDeals ?? []).length + (input.customerActivities ?? []).length + (input.broadcasts ?? []).length + (input.automations ?? []).length + (input.stockRequests ?? []).length + (input.signupCodes ?? []).length,
   };
 }
 
@@ -876,6 +878,7 @@ export function shapeExport(input: ExportInput): ExportFile {
       ...((input.customerTags ?? []).length > 0 ? [{ kind: "tags", tags: [...(input.customerTags ?? [])] }] : []),
       ...(input.customerNotes ?? []).map((n) => ({ kind: "staff_note", text: n.text, writtenAt: n.writtenAt })),
       ...(input.customerDeals ?? []).map((d) => ({ kind: "deal", ...d })),
+      ...(input.customerActivities ?? []).map((a) => ({ kind: "activity", activity: a.kind, title: a.title, note: a.note, dueAt: a.dueAt, doneAt: a.doneAt })),
       ...(input.broadcasts ?? []).map((b) => ({ kind: "broadcast", broadcast: b.broadcast, sentAt: b.sentAt })),
       ...(input.automations ?? []).map((a) => ({ kind: "automation", automation: a.automation, sentAt: a.sentAt })),
       ...(input.signupCodes ?? []).map((c) => ({ kind: "signup_code", discount: c.discount, givenAt: c.givenAt })),

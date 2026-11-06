@@ -157,12 +157,46 @@ export async function sendQuotePush(storeId: string, draftId: string, send: Send
   );
 }
 
+/**
+ * An activity that is due (D467), to the devices of the person it is for: what it is and the store, and the page of the deal, the person or
+ * the company it is about. As `sendOrderPush()`: never throws, removes devices gone.
+ */
+export async function sendActivityPush(storeId: string, activityId: string, accountId: string, send: Sender = realSender): Promise<number> {
+  return pushToStore(
+    storeId,
+    async () => {
+      const [activity] = await db().execute<Row>(sql`
+        select title, deal_id, customer_id, company_id from commerce.activities
+        where store_id = ${storeId}::uuid and id = ${activityId}::uuid and done_at is null
+      `);
+      if (!activity) return null;
+      const path = activity.deal_id
+        ? `deals/${String(activity.deal_id)}`
+        : activity.customer_id
+          ? `customers/${String(activity.customer_id)}`
+          : activity.company_id
+            ? `companies/${String(activity.company_id)}`
+            : "";
+      return (sub: Row, lang: AdminLang) => {
+        const words = adminText(lang, "staffEmails").push;
+        const fill = (text: string) => text.replaceAll("{title}", String(activity.title)).replaceAll("{store}", String(sub.name));
+        return { title: fill(words.activityTitle), body: fill(words.activityBody), url: `${siteUrl()}/admin/${String(sub.slug)}/${path}`, tag: `activity-${activityId}` };
+      };
+    },
+    `a${activityId.replaceAll("-", "").slice(0, 30)}`,
+    send,
+    accountId,
+  );
+}
+
 /** One notification to each device of the store whose person still reads its orders, in each person's language; `subject` is read once (null: nothing to say). */
 async function pushToStore(
   storeId: string,
   subject: () => Promise<((sub: Row, lang: AdminLang) => { title: string; body: string; url: string; tag: string }) | null>,
   topic: string,
   send: Sender,
+  /** One person's devices only (an activity's, D467); every member's of the store when absent. */
+  only: string | null = null,
 ): Promise<number> {
   const keys = (() => {
     try {
@@ -179,7 +213,7 @@ async function pushToStore(
       from commerce.push_subscriptions p
       join commerce.stores s on s.id = p.store_id
       join commerce.accounts a on a.id = p.account_id
-      where p.store_id = ${storeId}::uuid
+      where p.store_id = ${storeId}::uuid and (${only}::uuid is null or p.account_id = ${only}::uuid)
     `);
     if (subscriptions.length === 0) return 0;
     const payloadFor = await subject();
