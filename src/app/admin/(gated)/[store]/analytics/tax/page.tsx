@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
 import { requireFeature } from "@/components/admin/feature-off";
@@ -21,6 +22,8 @@ import { driftFor, lastExport, returnTotals, vatTotals } from "@/server/tax-repo
 import { reconciliation, taxSnapshot } from "@/server/tax-reconciliation";
 import type { Store } from "@/server/stores";
 import { returnView, vatReport } from "@/server/tax-reports";
+import { businessSplit } from "@/lib/business-change";
+import { businessChangesOf } from "@/server/business-change";
 
 import { fetchEcbRateAction, setRateOverrideAction } from "./actions";
 
@@ -145,6 +148,17 @@ export default async function AnalyticsTaxPage({ params, searchParams }: PagePro
     );
   }
 
+  // A period that spans a change of the business behind the store (D473 step 3): each business reports its own part, so the page says
+  // so and opens each part as a VAT report of its own days.
+  const shown = query.view === "vat" ? range : { from: (query.view === "oss" ? query.quarter : query.month).from, to: (query.view === "oss" ? query.quarter : query.month).to };
+  const split = businessSplit(
+    (await businessChangesOf(store.id)).filter((c) => c.status === "applied").map((c) => ({ startsOn: c.startsOn, legalName: c.legalName, beforeName: c.before?.legalName ?? null })),
+    shown.from,
+    shown.to,
+  );
+  const bw = split ? adminText(ctx.lang, "business").split : null;
+  const partHref = (part: { from: string; to: string }) => taxHref(ctx.base, { view: "vat" }, { period: "custom", from: part.from, to: addDays(part.to, -1) });
+
   return (
     <AdminTextScope texts={adminTexts(ctx.lang, ["taxReports", "analytics"])}>
     <div className="flex flex-col gap-8">
@@ -160,6 +174,19 @@ export default async function AnalyticsTaxPage({ params, searchParams }: PagePro
       >
         <TaxViewTabs current={query.view} hrefs={hrefs} words={w} />
       </AnalyticsHeader>
+      {split && bw && (
+        <p role="note" className="rounded-panel border border-line bg-card p-4 text-sm text-ink">
+          {fillWords(bw.text, { date: new Date(`${split.on}T12:00:00Z`).toLocaleDateString(ctx.lang === "nb" ? "nb-NO" : "en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) })}{" "}
+          <Link href={partHref(split.before)} className="underline">
+            {fillWords(bw.part, { name: split.before.name })}
+          </Link>
+          {" · "}
+          <Link href={partHref(split.after)} className="underline">
+            {fillWords(bw.part, { name: split.after.name })}
+          </Link>
+          {query.view !== "vat" && <span className="block text-muted">{bw.vatOnly}</span>}
+        </p>
+      )}
       {body}
     </div>
     </AdminTextScope>

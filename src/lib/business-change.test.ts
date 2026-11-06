@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { businessChangeMissing, businessChangeWhen, businessChecklist, cleanBusinessChange } from "./business-change";
+import { businessChangeMissing, businessChangeWhen, businessChecklist, businessSplit, cleanBusinessChange } from "./business-change";
 
 const store = { country: "NO", today: "2026-11-06", organisationNumber: "915262341" };
 const base = { legalName: "Human Web AS", businessForm: "as", startsOn: "2027-01-01" };
@@ -78,5 +78,20 @@ describe("what must be set up again", () => {
     expect(states({ ...all, accounting: { organisationNumber: "915262341" } })).toMatchObject({ numbers: "done", vat: "done", bank: "todo", payments: "todo", accounting: "todo", legal: "todo", plan: "todo", clients: "todo" });
     expect(states({ ...all, accounting: { organisationNumber: "923 609 016" }, checked: ["bank", "plan"], legalPagesNamingOld: 0 })).toMatchObject({ bank: "done", accounting: "done", legal: "done", plan: "done", payments: "todo" });
     expect(businessChecklist({ ...all, accounting: { organisationNumber: "923609016" } }).find((i) => i.step === "accounting")?.tickable).toBe(false);
+  });
+});
+
+describe("a report's period cut at a change of business", () => {
+  const changes = [{ startsOn: "2027-01-01", legalName: "Human Web AS", beforeName: "Human Web Andre Gieaver" }];
+
+  it("is each business's part when the change falls inside it, and nothing otherwise", () => {
+    expect(businessSplit(changes, "2026-12-01", "2027-02-01")).toEqual({
+      on: "2027-01-01",
+      before: { name: "Human Web Andre Gieaver", from: "2026-12-01", to: "2027-01-01" },
+      after: { name: "Human Web AS", from: "2027-01-01", to: "2027-02-01" },
+    });
+    // A period that starts on the day is the new business's alone, and one that ends the day before is the old one's.
+    expect(businessSplit(changes, "2027-01-01", "2027-04-01")).toBeNull();
+    expect(businessSplit(changes, "2026-10-01", "2027-01-01")).toBeNull();
   });
 });

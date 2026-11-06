@@ -65,6 +65,12 @@ export const businessEn = {
   markDone: "Mark {step} done",
   markOpen: "Mark {step} not done",
   history: "Earlier changes",
+  /** The tax reports' note when a period spans a change (step 3). */
+  split: {
+    text: "This period spans the change of business on {date}. Each business reports its own part:",
+    part: "{name}'s part",
+    vatOnly: "Open each part in the VAT report.",
+  },
   since: "{name} since {date}",
   before: "Before: {name}",
 

@@ -309,9 +309,9 @@ a period belongs to. B8: the business behind the store changes from a date; from
 own series; the books close for the old business and open for the new one with the balance handed over (B2); VAT returns and reports
 split at the date; and a checklist of what must be set up again (bank, Stripe, Peppol and ELMA, an accounting connection, payment
 providers, the privacy notice, Kaizena Flow's own plan), each step with its button where Kaizena Flow can do it. Homer sees "Your business
-is becoming an AS", one step at a time; Lisa sees every date and setting. *Steps 1 and 2 built (D473): the change from a day, exact at
-the first document issued that day, with its own prefixes; the owner's screen and checklist on Settings → Company. Reports split at the
-date next.*
+is becoming an AS", one step at a time; Lisa sees every date and setting. *Built (D473): the change from a day, exact at the first
+document issued that day, with its own prefixes; the owner's screen and checklist on Settings → Company; tax reports split at the date.
+Work's reports and the ledger split with B2.*
 
 ## 5. Tripletex and Fiken from here
 
@@ -346,7 +346,7 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 | Order | Sales track | Books track |
 |---|---|---|
 | Now | S1 timeline (built, D462) | **B1 EHF out** (deadline 1 January 2027; built but the access point's adapter, D463) |
-| Next | S3 activities (built, D468) | B8 before the AS issues its first invoice; B2 the ledger in shadow on the AS's books from their opening balance, with B4's statement upload |
+| Next | S3 activities (built, D468) | B8 (built, D473) before the AS issues its first invoice; B2 the ledger in shadow on the AS's books from their opening balance, with B4's statement upload |
 | Then | S4 leads, S5 email (forwarding address), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
 | Then | S6 reports; `sales` opens to every store | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |
 | Then | | B6 accountants, ready before Human Web's turnover passes NOK 5 million (the threshold watch says when it is near); then ring 2 |

@@ -60,6 +60,11 @@ export const businessNb: BusinessMessages = {
   markDone: "Merk {step} som utført",
   markOpen: "Merk {step} som ikke utført",
   history: "Tidligere endringer",
+  split: {
+    text: "Denne perioden går over byttet av virksomhet {date}. Hver virksomhet rapporterer sin egen del:",
+    part: "Delen til {name}",
+    vatOnly: "Åpne hver del i MVA-rapporten.",
+  },
   since: "{name} siden {date}",
   before: "Før: {name}",
 

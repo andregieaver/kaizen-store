@@ -193,3 +193,25 @@ export function businessChecklist(f: BusinessChecklistFacts): BusinessChecklistI
   items.push({ step: "einvoices", state: "info", tickable: false });
   return items;
 }
+
+// Reports split at the date (step 3) ---------------------------------------------------------------------------------------------------
+
+/** A report's period cut at a change of business inside it: each business's part, as `[from, to)` days. */
+export type BusinessSplit = {
+  /** The new business's first day. */
+  on: string;
+  before: { name: string; from: string; to: string };
+  after: { name: string; from: string; to: string };
+};
+
+/**
+ * Where a report's period (`from` inclusive, `to` exclusive, `YYYY-MM-DD`) spans a change of business that took effect, the part of each:
+ * the documents of a day are the business's that was behind the store that day (the issuers apply the change first), so a period cut at
+ * the day is a period cut by business. The latest change inside the period, or null when it holds none.
+ */
+export function businessSplit(changes: readonly { startsOn: string; legalName: string; beforeName: string | null }[], from: string, to: string): BusinessSplit | null {
+  const inside = changes.filter((c) => c.startsOn > from && c.startsOn < to).sort((a, b) => b.startsOn.localeCompare(a.startsOn));
+  const c = inside[0];
+  if (!c) return null;
+  return { on: c.startsOn, before: { name: c.beforeName ?? "—", from, to: c.startsOn }, after: { name: c.legalName, from: c.startsOn, to } };
+}
