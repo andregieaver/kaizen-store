@@ -1,3 +1,4 @@
+import { limitUnit, type LimitKey } from "@/lib/limits";
 import { formatLimit } from "@/lib/usage-format";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
@@ -82,6 +83,11 @@ export function PlansView({ block, data, lang = "en" }: { block: PlansBlock; dat
   );
 }
 
+/** A limit's name after its amount: one of a kind in the singular ("1 store"), else as the plural the names are written in. */
+function limitName(m: ReturnType<typeof t>["plans"], key: LimitKey, value: number | null): string {
+  return (value === 1 && m.limitNamesOne[key as keyof typeof m.limitNamesOne]) || m.limitNames[key];
+}
+
 function PlanCardView({
   card,
   look,
@@ -123,7 +129,7 @@ function PlanCardView({
         {card.other && <p className="mt-1 text-sm">{m.yearlyPrice(money(card.other))}</p>}
         {card.yearlySavingPercent !== null && <p className="text-sm font-medium text-accent">{m.saveYearly(String(card.yearlySavingPercent))}</p>}
       </div>
-      <p className="text-sm">{m.fee(formatBps(card.saleFeeBps))}</p>
+      <p className="text-sm">{m.fee(formatBps(card.saleFeeBps, lang))}</p>
       <a href={href} className={look.className} style={look.style} data-kz-text="button">
         {label}
         <span className="sr-only"> – {card.name}</span>
@@ -134,7 +140,7 @@ function PlanCardView({
             <li key={limit.key} className="flex gap-2">
               <Check />
               <span>
-                {limit.value === null ? m.unlimited : formatLimit(limit.key, limit.value, lang)} {m.limitNames[limit.key]}
+                {limit.value === null ? `${limitUnit(limit.key) === "count" ? m.unlimitedCounted : m.unlimited} ${m.limitNames[limit.key]}` : `${formatLimit(limit.key, limit.value, lang)} ${limitName(m, limit.key, limit.value)}`}
               </span>
             </li>
           ))}

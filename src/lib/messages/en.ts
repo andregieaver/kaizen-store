@@ -1113,7 +1113,11 @@ export const en = {
     includes: "What's included",
     /** What a plan includes of its limits (D314): the amount, then the limit's name ("10 GB storage", "Unlimited products"). */
     limitNames: { storage_bytes: "storage", products: "products", staff_seats: "staff", custom_domains: "own domains", marketing_emails_month: "marketing emails a month", ai_cost_month_micros: "of AI a month", requests_month: "visits a month", egress_bytes_month: "bandwidth a month", stores_owned: "stores" },
+    /** The names after 1, for one of a kind ("1 store", "1 own domain"); the others are said as above. */
+    limitNamesOne: { products: "product", staff_seats: "staff", custom_domains: "own domain", stores_owned: "store" },
+    /** Before a limit with no ceiling: "Unlimited storage", and for what is counted "Unlimited products" (Norwegian says "Ubegrenset antall"). */
     unlimited: "Unlimited",
+    unlimitedCounted: "Unlimited",
     compare: "Compare plans",
     feature: "Feature",
     included: "Included",

@@ -352,7 +352,7 @@ function RowMarkup({
               ) : block.type === "search" ? (
                 <SearchSection place={place} results={block.results !== false} />
               ) : block.type === "plans" ? (
-                <PlansSection block={block} />
+                <PlansSection block={block} place={place} />
               ) : block.type === "domainSearch" ? (
                 <DomainSearchSection block={block} place={place} />
               ) : block.type === "themeStore" ? (

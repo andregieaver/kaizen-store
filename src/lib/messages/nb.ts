@@ -1085,9 +1085,11 @@ export const nb: Messages = {
     popular: "Mest populær",
     includes: "Dette er inkludert",
     /** What a plan includes of its limits (D314): the amount, then the limit's name ("10 GB storage", "Unlimited products"). */
-    limitNames: { storage_bytes: "lagring", products: "produkter", staff_seats: "ansatte", custom_domains: "egne domener", marketing_emails_month: "markedsførings-e-poster i måneden", ai_cost_month_micros: "KI i måneden", requests_month: "besøk i måneden", egress_bytes_month: "båndbredde i måneden", stores_owned: "butikker" },
+    limitNames: { storage_bytes: "lagring", products: "produkter", staff_seats: "ansatte", custom_domains: "egne domener", marketing_emails_month: "markedsførings-e-poster i måneden", ai_cost_month_micros: "til KI i måneden", requests_month: "besøk i måneden", egress_bytes_month: "båndbredde i måneden", stores_owned: "butikker" },
+    limitNamesOne: { products: "produkt", staff_seats: "ansatt", custom_domains: "eget domene", stores_owned: "butikk" },
     unlimited: "Ubegrenset",
-    compare: "Sammenlign planer",
+    unlimitedCounted: "Ubegrenset antall",
+    compare: "Sammenlign abonnementene",
     feature: "Funksjon",
     included: "Inkludert",
     notIncluded: "Ikke inkludert",
