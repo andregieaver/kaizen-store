@@ -101,6 +101,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers.", { feature: "shop", icon: "users-round" }),
           item("/price-lists", "Price lists", "Prices of their own for customer groups and companies: a percentage off or fixed prices.", { feature: "shop", icon: "banknote" }),
           item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { feature: "business", icon: "building", basic: true }),
+          item("/deals", "Deals", "What each customer or company may buy, on a board from the first talk to won or lost.", { feature: "sales", icon: "handshake", basic: true }),
           item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it.", { feature: "shop", icon: "heart" }),
           item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock.", { icon: "shield-check", basic: true }),
         ],

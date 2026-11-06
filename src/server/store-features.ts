@@ -13,9 +13,11 @@ import {
   featureOn,
   missingNeeds,
   needWords,
+  featureOffered,
   normaliseFeatures,
   type FeatureFacts,
   type FeatureId,
+  type FeatureOffer,
 } from "@/lib/store-features";
 import { FEATURES_NEEDING_ACCOUNTS } from "@/lib/customer-accounts";
 import { FEATURE_WORDS_EN, featureBlockers, featureWarnings, type FeatureBlocker, type FeatureWords } from "@/lib/feature-words";
@@ -23,7 +25,7 @@ import { FEATURE_WORDS_EN, featureBlockers, featureWarnings, type FeatureBlocker
 import { forgetStoreFacts } from "./redirect-resolve";
 import { affiliateTag } from "./affiliates";
 import { afterSaleTag } from "./after-sale";
-import { audit, type Membership } from "./auth";
+import { audit, type Account, type Membership } from "./auth";
 import { catalogTag } from "./catalog";
 import { pagesTag } from "./pages";
 import { memberCan } from "./permissions";
@@ -117,7 +119,9 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
       (select count(*)::int from commerce.products p where p.store_id = ${storeId}::uuid and p.kind = 'gift_card' and p.status <> 'archived') as gift_card_products,
       (select count(*)::int from commerce.gift_cards g where g.store_id = ${storeId}::uuid and g.status = 'active' and not g.test_mode
         and commerce.gift_card_balance(g.id) > 0) as gift_cards_held,
-      (select count(*)::int from commerce.product_reviews r where r.store_id = ${storeId}::uuid and r.status = 'published') as published_reviews
+      (select count(*)::int from commerce.product_reviews r where r.store_id = ${storeId}::uuid and r.status = 'published') as published_reviews,
+      (select count(*)::int from commerce.deals d where d.store_id = ${storeId}::uuid) as deals,
+      (select count(*)::int from commerce.deals d where d.store_id = ${storeId}::uuid and d.status = 'open') as open_deals
   `);
   return {
     paidUnshipped: obligations.paidUnshipped,
@@ -155,11 +159,39 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
     giftCardProducts: n(row?.gift_card_products),
     giftCardsHeld: n(row?.gift_cards_held),
     publishedReviews: n(row?.published_reviews),
+    deals: n(row?.deals),
+    openDeals: n(row?.open_deals),
   };
 }
 
 /** How amounts in warnings are written: in the store's main language. */
 const moneyIn = (locale: string) => (minor: number, currency: string) => formatMoney(minor, currency, locale);
+
+/** What the platform offers this store of the features it opens step by step (D464): Deals while the store is a pilot or Deals is open to all. */
+export async function featureOffer(storeId: string, executor: Executor = db()): Promise<FeatureOffer> {
+  const [row] = await executor.execute<Row>(sql`
+    select coalesce((select p.sales_open from commerce.platform_settings p limit 1), false) as sales_open,
+      coalesce((select s.sales_pilot from commerce.stores s where s.id = ${storeId}::uuid), false) as sales_pilot
+  `);
+  return { salesOpen: row?.sales_open === true, salesPilot: row?.sales_pilot === true };
+}
+
+/** Opens Deals to every store, or back to the pilots alone (D464). Platform admins only (the action checks). */
+export async function setSalesOpen(account: Account, open: boolean): Promise<void> {
+  await db().execute(sql`update commerce.platform_settings set sales_open = ${open}`);
+  await audit(account.id, null, "platform.sales_open_set", { open });
+}
+
+/** Opens or closes Deals for one store, a pilot before it opens to all (D464); a store that switched it on keeps it. */
+export async function setSalesPilot(account: Account, storeId: string, on: boolean): Promise<boolean> {
+  const rows = await db().execute<Row>(sql`
+    update commerce.stores set sales_pilot = ${on} where id = ${storeId}::uuid and not (is_template or starter or sandbox) returning slug
+  `);
+  if (rows.length === 0) return false;
+  await audit(account.id, storeId, "platform.sales_pilot_set", { on });
+  refreshTag(storeTag(String(rows[0].slug)));
+  return true;
+}
 
 /** What stands in the way of switching a feature off in this store now (D178); empty: nothing. */
 export async function storeFeatureBlockers(storeId: string, id: FeatureId, executor: Executor = db()): Promise<FeatureBlocker[]> {
@@ -207,6 +239,8 @@ export async function setFeature(member: Membership, id: FeatureId, on: boolean,
     if (kept === on) return { ok: true, features: before, changed: false };
 
     if (on) {
+      // A feature the platform has not offered this store yet (Deals before it opens, D464) is not switched on.
+      if (!featureOffered(id, await featureOffer(store.id, tx))) return { ok: false, problems: [fillWords(w.s.actions.notOffered, { label })] };
       // A feature that needs customer accounts is not switched on while the store has them off (D365).
       if (row.customer_accounts === "off" && (FEATURES_NEEDING_ACCOUNTS as readonly string[]).includes(id)) {
         return { ok: false, problems: [fillWords(w.s.actions.accountsOff, { label })] };

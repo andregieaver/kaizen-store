@@ -57,6 +57,9 @@ export const NAV_NB: Record<string, string> = {
   "Prices of their own for customer groups and companies: a percentage off or fixed prices.": "Egne priser for kundegrupper og bedrifter: en prosent avslag eller faste priser.",
   Companies: "Bedrifter",
   "Company accounts with their employees and a group's discount.": "Bedriftskontoer med sine ansatte og en gruppes rabatt.",
+  Deals: "Avtaler",
+  "What each customer or company may buy, on a board from the first talk to won or lost.":
+    "Hva hver kunde eller bedrift kan kjøpe, på en tavle fra første samtale til vunnet eller tapt.",
   Wishlists: "Ønskelister",
   "What customers have saved, and what they added to the cart from it.": "Det kundene har lagret, og hva de la i handlekurven derfra.",
   "Privacy requests": "Personvernforespørsler",

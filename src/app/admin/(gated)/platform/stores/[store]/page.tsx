@@ -20,6 +20,7 @@ import { getStore } from "@/server/stores";
 import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
 import { requirePlatformAdmin } from "@/server/auth";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { featureOffer } from "@/server/store-features";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -29,7 +30,7 @@ import { storeOverrides } from "@/server/limits-admin";
 import { removeLimitOverrideAction, setLimitOverrideAction } from "./limit-actions";
 
 import { applyDesignToStoreAction, restoreDesignForStoreAction } from "../../themes/actions";
-import { closeStoreForPlatformAction, detachDryRunAction, reopenStoreForPlatformAction, suspendStoreAction } from "./actions";
+import { closeStoreForPlatformAction, detachDryRunAction, reopenStoreForPlatformAction, salesOpenAction, salesPilotAction, suspendStoreAction } from "./actions";
 
 export const metadata: Metadata = { title: "Store plan" };
 
@@ -60,6 +61,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
     storeLimits(store.id),
     storeOverrides(store.id),
   ]);
+  const offer = await featureOffer(store.id);
   const blockers = closureBlockers(obligations, adminText(lang, "settings").close);
   const owner = people.find((p) => p.role === "owner");
   const date = (iso: string) => new Date(iso).toLocaleDateString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
@@ -294,6 +296,22 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             </ActionForm>
           </>
         )}
+      </Card>
+      <Card title={w.deals} className="flex flex-col gap-3 text-sm" compact>
+        <p>{offer.salesOpen ? w.dealsAll : offer.salesPilot ? w.dealsPilot : w.dealsClosed}</p>
+        <div className="flex flex-wrap gap-3">
+          {!offer.salesOpen && (
+            <ActionForm action={salesPilotAction.bind(null, store.id)}>
+              {!offer.salesPilot && <input type="hidden" name="on" value="on" />}
+              <SubmitButton variant="secondary">{offer.salesPilot ? w.dealsCloseStore : w.dealsOpenStore}</SubmitButton>
+            </ActionForm>
+          )}
+          <ActionForm action={salesOpenAction}>
+            {!offer.salesOpen && <input type="hidden" name="open" value="on" />}
+            <SubmitButton variant="secondary">{offer.salesOpen ? w.dealsCloseAll : w.dealsOpenAll}</SubmitButton>
+          </ActionForm>
+        </div>
+        <p className="text-muted">{w.dealsKept}</p>
       </Card>
       <Card title={w.invoices} compact>
         <InvoiceList storeSlug={store.slug} invoices={invoices} date={date} words={t.invoiceList} />

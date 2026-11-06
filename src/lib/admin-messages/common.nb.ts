@@ -34,6 +34,7 @@ export const commonNb: CommonMessages = {
       bonus: "Bonusprogram",
       referrals: "Vervekampanje",
       reviews: "Produktomtaler",
+      sales: "Avtaler",
     },
     need: {
       shop: "nettbutikken",
@@ -49,6 +50,7 @@ export const commonNb: CommonMessages = {
       bonus: "bonusprogrammet",
       referrals: "vervekampanjen",
       reviews: "produktomtalene",
+      sales: "avtalene",
     },
     or: " eller ",
     off: { one: "{label} er slått av", many: "{label} er slått av" },

@@ -98,6 +98,18 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   shows more than that page would) and its words in the customers catalogue in every admin language; it leaves out what the privacy rules hide (an
   order with `restricted_at` or `anonymised_at` and what hangs on it). What someone typed is an excerpt (`excerptOf()`) shown as text.
 
+## Deals and pipelines (S2, D464, `src/lib/deals.ts`, `src/server/deals.ts`, `DealBoard`)
+
+- **Deals and pipelines (S2, D464, `src/lib/deals.ts`, `src/server/deals.ts`, `DealBoard`)**: a deal (`commerce.deals`), its pipeline and
+  stages, what it is linked to (`deal_links`: one order, quote or Work assignment, in one deal only) and its history (`deal_moves`, written by a
+  trigger only) are written only by `src/server/deals.ts`, by a member with `customers:write` while the feature `sales` is on; linking an order or
+  a quote also needs `orders:read`, a Work assignment Work on and `settings:read`. A deal's value is worked out in one place, `dealValue()`: the
+  linked things' amounts before VAT once there are any, else the estimate, in the store's main currency, naming what it could not convert. Only
+  the database wins a deal that is not a person's (`deal_win()`: a paid order, an issued Work invoice, or a link to something already paid or
+  invoiced), never a closed one and never through a copied order. The feature is offered by the platform (`featureOffered()`: a pilot's
+  `stores.sales_pilot`, or `platform_settings.sales_open`); one kept on stays on. The words are the server-only area `deals`; the board's client
+  parts get theirs as props.
+
 ## Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)
 
 - **Creators (wave 11 unit G, D386, `src/lib/creators.ts`, `src/server/creators.ts`)**: a store's creator programme (`commerce.creator_settings`,

@@ -12,6 +12,7 @@ import {
   dependentsOf,
   effectiveFeatures,
   featureCount,
+  featureOffered,
   featureInUse,
   featureKept,
   featureOn,
@@ -31,7 +32,7 @@ describe("the store features registry (D178)", () => {
     expect(STORE_FEATURES.map((f) => f.id)).toEqual([...FEATURE_IDS]);
     expect(STORE_FEATURES.filter((f) => f.group === null).map((f) => f.id)).toEqual(["shop"]);
     for (const group of FEATURE_GROUPS) expect(featuresIn(group.id).length, group.id).toBeGreaterThan(0);
-    expect(COUNTED_FEATURES).toHaveLength(12);
+    expect(COUNTED_FEATURES).toHaveLength(13);
     expect(isFeatureId("bonus")).toBe(true);
     expect(isFeatureId("work")).toBe(false);
   });
@@ -46,8 +47,10 @@ describe("the store features registry (D178)", () => {
     }
   });
 
-  it("puts the selling and customer features behind the shop, and countries and languages not", () => {
-    for (const f of [...featuresIn("selling"), ...featuresIn("customers")]) expect(f.needs, f.id).toContain("shop");
+  it("puts the selling and customer features behind the shop, and countries, languages and deals not", () => {
+    for (const f of [...featuresIn("selling"), ...featuresIn("customers")]) if (f.id !== "sales") expect(f.needs, f.id).toContain("shop");
+    // A deal exists before any quote, and a store selling its work without a shop keeps deals too (D464).
+    expect(FEATURES_BY_ID.sales.needs).toEqual([]);
     expect(FEATURES_BY_ID.countries.needs).toEqual([]);
     expect(FEATURES_BY_ID.languages.needs).toEqual([]);
     expect(FEATURES_BY_ID.currencies.needs).toEqual(["shop"]);
@@ -76,11 +79,20 @@ describe("the store features registry (D178)", () => {
     expect(requirementLabel(["appointments", "bookings"])).toBe("Appointments or Stays and rentals");
   });
 
-  it("counts the features on of the twelve", () => {
-    expect(featureCount(["shop"])).toEqual({ on: 0, total: 12 });
-    expect(featureCount(["shop", "bonus", "languages"])).toEqual({ on: 2, total: 12 });
-    expect(featureCount(["bonus", "languages"])).toEqual({ on: 1, total: 12 });
-    expect(featureCount([...FEATURE_IDS])).toEqual({ on: 12, total: 12 });
+  it("counts the features on of the thirteen, or of those shown", () => {
+    expect(featureCount(["shop"])).toEqual({ on: 0, total: 13 });
+    expect(featureCount(["shop", "bonus", "languages"])).toEqual({ on: 2, total: 13 });
+    expect(featureCount(["bonus", "languages"])).toEqual({ on: 1, total: 13 });
+    expect(featureCount([...FEATURE_IDS])).toEqual({ on: 13, total: 13 });
+    expect(featureCount(["shop", "bonus"], (id) => id !== "sales")).toEqual({ on: 1, total: 12 });
+  });
+
+  it("offers Deals only to a pilot or once it is open to all, and every other feature always (D464)", () => {
+    expect(featureOffered("sales", { salesOpen: false, salesPilot: false })).toBe(false);
+    expect(featureOffered("sales", { salesOpen: false, salesPilot: true })).toBe(true);
+    expect(featureOffered("sales", { salesOpen: true, salesPilot: false })).toBe(true);
+    expect(featureOffered("reviews", { salesOpen: false, salesPilot: false })).toBe(true);
+    expect(featureOn(["sales"], "sales")).toBe(true);
   });
 });
 

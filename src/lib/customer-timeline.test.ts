@@ -19,8 +19,8 @@ import {
 
 const event = (what: TimelineWhat, at: string, key = `${what}:${at}`): TimelineEvent => ({ key, what, at, email: "ada@example.com", label: "x", href: null });
 
-const none: TimelineGates = { orders: false, support: false, products: false, reviewsOn: false, bookings: false, bookingsOn: false, settings: false, workOn: false };
-const every: TimelineGates = { orders: true, support: true, products: true, reviewsOn: true, bookings: true, bookingsOn: true, settings: true, workOn: true };
+const none: TimelineGates = { orders: false, support: false, products: false, reviewsOn: false, bookings: false, bookingsOn: false, settings: false, workOn: false, salesOn: false };
+const every: TimelineGates = { orders: true, support: true, products: true, reviewsOn: true, bookings: true, bookingsOn: true, settings: true, workOn: true, salesOn: true };
 
 describe("the kinds", () => {
   it("gives every event a kind the filter offers, and every kind an event", () => {

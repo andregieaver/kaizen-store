@@ -92,6 +92,10 @@ export const settingsEn = {
         words: "Customers review what they bought and received; you check them before they show, and the product page shows the stars.",
         offWords: "Reviews stop showing and customers cannot write new ones, and Reviews leaves the admin. Every review is kept for when you switch it on again.",
       },
+      sales: {
+        words: "Follow what each customer or company may buy, from the first talk to won or lost, on a board in stages.",
+        offWords: "Deals leaves the admin and the customer pages. Every deal and pipeline is kept for when you switch it on again.",
+      },
     },
     /** What stops a feature being switched off (`featureBlockers()`). */
     blockers: {
@@ -166,6 +170,10 @@ export const settingsEn = {
         one: "{n} published review stops showing on your product pages. Nothing is deleted.",
         many: "{n} published reviews stop showing on your product pages. Nothing is deleted.",
       },
+      openDeals: {
+        one: "{n} deal is still open. It is kept, and is there again when you switch Deals on.",
+        many: "{n} deals are still open. They are kept, and are there again when you switch Deals on.",
+      },
       asleep: {
         one: "{labels} needs it, so it stops too. Its own switch is kept for when you switch it on again.",
         many: "{labels} need it, so they stop too. Their own switch is kept for when you switch it on again.",
@@ -185,6 +193,7 @@ export const settingsEn = {
     actions: {
       onlyOwners: "Only an owner can switch features on or off.",
       noFeature: "There is no such feature.",
+      notOffered: "{label} is not open to this store yet.",
       onlyOwnerSettings: "Only an owner can change these settings.",
       needs: { one: "{label} needs {needs}. Switch it on first.", many: "{label} needs {needs}. Switch them on first." },
       cantYet: "{label} can't be switched off yet.",

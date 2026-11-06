@@ -7,7 +7,10 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CompanyFields } from "@/components/admin/company-fields";
 import { CustomerTimeline } from "@/components/admin/customer-timeline";
-import { requirePermission } from "@/server/permissions";
+import { memberCan, requirePermission } from "@/server/permissions";
+import { listDeals } from "@/server/deals";
+import { DealsCard } from "@/components/admin/deals/deals-card";
+import { featureOn } from "@/lib/store-features";
 import { employeePercent, getCompany, listInvites, listMembers } from "@/server/companies";
 import { companyOwes } from "@/server/payment-terms";
 import { readTimeline } from "@/server/customer-timeline";
@@ -77,6 +80,10 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const employees = employeePercent(company);
+  // Deals (S2, D464): the company's, while Deals is on.
+  const salesOn = featureOn(store, "sales");
+  const deals = salesOn ? await listDeals(store, { companyId: company.id }) : [];
+  const dealWords = adminText(lang, "deals");
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["bookings"])}>
@@ -104,6 +111,16 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
         people={people}
         company
       />
+
+      {salesOn && (
+        <DealsCard
+          deals={deals.map((d) => ({ id: d.id, title: d.title, status: d.status, value: d.value.minor === null ? null : formatMoney(d.value.minor, currency, locale) }))}
+          base={base}
+          addHref={memberCan(current, "customers:write") ? `${base}/deals/new?company=${company.id}` : null}
+          words={dealWords.card}
+          statuses={dealWords.statuses}
+        />
+      )}
 
       <section aria-labelledby="settings" className={card}>
         <h2 id="settings" className="text-title text-ink">

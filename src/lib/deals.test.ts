@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { toRates } from "./currency";
-import { boardColumns, cleanDealInput, cleanReason, daysInStage, dealValue, weighted, type BoardDeal } from "./deals";
+import { boardColumns, cleanDealInput, cleanReason, daysInStage, dealValue, weighted, whoLine, type BoardDeal } from "./deals";
 
 const PIPELINE = "00000000-0000-4000-8000-0000000000a1";
 const STAGE = "00000000-0000-4000-8000-0000000000b1";
@@ -93,5 +93,13 @@ describe("the board", () => {
     expect(weighted(100_000, 140)).toBe(100_000);
     expect(daysInStage("2026-11-01T10:00:00Z", new Date("2026-11-04T09:59:59Z"))).toBe(2);
     expect(daysInStage("2026-11-05T10:00:00Z", new Date("2026-11-04T10:00:00Z"))).toBe(0);
+  });
+});
+
+describe("who a deal is with", () => {
+  it("is the company, and the person at it, in one line", () => {
+    expect(whoLine({ company: { name: "Kunde AS" }, customer: { name: "", email: "kari@example.com" } })).toBe("Kunde AS · kari@example.com");
+    expect(whoLine({ company: null, customer: { name: "Kari Nordmann", email: "kari@example.com" } })).toBe("Kari Nordmann");
+    expect(whoLine({ company: null, customer: null })).toBeNull();
   });
 });

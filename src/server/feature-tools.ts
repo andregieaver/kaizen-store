@@ -3,12 +3,12 @@ import "server-only";
 import { featureSwitchSummary, sameWarnings, type SetFeatureInput } from "@/lib/feature-tools";
 import { formatMoney } from "@/lib/money";
 import { homeMarket } from "@/lib/markets";
-import { FEATURE_IDS, FEATURES_BY_ID, featureInUse, featureKept, featureOn, missingNeeds, type FeatureId } from "@/lib/store-features";
+import { FEATURE_IDS, FEATURES_BY_ID, featureInUse, featureKept, featureOffered, featureOn, missingNeeds, type FeatureId } from "@/lib/store-features";
 import { featureBlockers, featureWarnings } from "@/lib/feature-words";
 
 import type { Account } from "./auth";
 import { OwnerToolError } from "./owner-tool-error";
-import { featureFacts, setFeature } from "./store-features";
+import { featureFacts, featureOffer, setFeature } from "./store-features";
 import type { Store } from "./stores";
 import type { PermissionHolder } from "@/lib/permissions";
 
@@ -31,9 +31,10 @@ const needWords = (id: FeatureId) => (id === "shop" ? "the online shop" : FEATUR
 
 /** Every feature of the store as the Features page shows it: on, off or asleep, in use, what it needs, where it is set up. */
 export async function listFeaturesTool({ store }: Ctx) {
-  const facts = await featureFacts(store.id);
+  const [facts, offer] = await Promise.all([featureFacts(store.id), featureOffer(store.id)]);
   return {
-    features: FEATURE_IDS.map((id) => {
+    // A feature the platform has not opened to this store (Deals, D464) is not listed unless the store already keeps it.
+    features: FEATURE_IDS.filter((id) => featureOffered(id, offer) || featureKept(store, id)).map((id) => {
       const feature = FEATURES_BY_ID[id];
       const on = featureOn(store, id);
       return {

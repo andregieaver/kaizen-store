@@ -173,3 +173,11 @@ export function boardColumns<D extends BoardDeal>(stages: readonly BoardStage[],
     column("lost", null, "lost", deals.filter((d) => d.status === "lost")),
   ];
 }
+
+/** Who a deal is with, as one line: the company, and the person at it when there is one; null for no one (both since deleted). */
+export function whoLine(deal: { customer: { name: string; email: string } | null; company: { name: string } | null }): string | null {
+  return [deal.company?.name, deal.customer ? deal.customer.name || deal.customer.email : null].filter(Boolean).join(" · ") || null;
+}
+
+/** A person or a company a deal may be with, as the form's search finds them. */
+export type WhoChoice = { kind: "customer" | "company"; id: string; label: string; detail: string | null };

@@ -41,7 +41,7 @@ const switchOf = (out: string, id: string) => {
 describe("the Features page (D178)", () => {
   it("shows an owner the shop's switch, three groups, the count and live switches", () => {
     const out = view(["shop", "bonus", "languages"], true);
-    expect(out).toContain("2 of 12 on");
+    expect(out).toContain("2 of 13 on");
     for (const group of ["Selling", "Countries and languages", "Customers"]) expect(out).toContain(group);
     expect(switchOf(out, "shop")).toContain('role="switch"');
     expect(switchOf(out, "shop")).toContain('aria-checked="true"');
@@ -66,7 +66,7 @@ describe("the Features page (D178)", () => {
 
   it("greys the shop's features while it is off, keeping their switches, and leaves countries and languages free", () => {
     const out = view(["bonus", "countries"], true);
-    expect(out).toContain("1 of 12 on");
+    expect(out).toContain("1 of 13 on");
     expect(switchOf(out, "shop")).toContain('aria-checked="false"');
     // Kept on, asleep: its switch stays up and can be put down; one that is off cannot be switched on.
     expect(switchOf(out, "bonus")).toContain('aria-checked="true"');

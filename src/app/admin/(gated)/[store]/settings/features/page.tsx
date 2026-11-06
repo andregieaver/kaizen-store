@@ -8,11 +8,11 @@ import { countWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
-import { FEATURE_GROUPS, featureCount, featuresIn } from "@/lib/store-features";
+import { FEATURE_GROUPS, featureCount, featureKept, featureOffered, featuresIn, type FeatureId } from "@/lib/store-features";
 import { featureRows } from "@/lib/feature-words";
 import { REMINDER_HOURS, storeTimeZones } from "@/server/bookings";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { featureFacts } from "@/server/store-features";
+import { featureFacts, featureOffer } from "@/server/store-features";
 
 import { saveBookingSettingsAction, switchFeatureAction } from "./actions";
 
@@ -33,8 +33,10 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
   const words = { s: all.features, c: adminText(lang, "common").features };
   const w = all.features.times;
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const facts = await featureFacts(store.id);
+  const [facts, offer] = await Promise.all([featureFacts(store.id), featureOffer(store.id)]);
   const rows = featureRows(store, facts, (minor, currency) => formatMoney(minor, currency, locale), words);
+  // A feature the platform opens step by step (Deals, D464) is shown where it is offered, or already kept on.
+  const shown = (id: FeatureId) => featureOffered(id, offer) || featureKept(store, id);
 
   return (
     <AdminTextScope texts={adminTexts(lang, ["settings"])}>
@@ -45,8 +47,8 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
         base={`/admin/${store.slug}`}
         owner={owner}
         shop={rows.shop}
-        groups={FEATURE_GROUPS.map((g) => ({ id: g.id, label: all.features.groups[g.id], rows: featuresIn(g.id).map((f) => rows[f.id]) }))}
-        count={featureCount(store)}
+        groups={FEATURE_GROUPS.map((g) => ({ id: g.id, label: all.features.groups[g.id], rows: featuresIn(g.id).filter((f) => shown(f.id)).map((f) => rows[f.id]) }))}
+        count={featureCount(store, shown)}
         onSwitch={switchFeatureAction.bind(null, store.slug)}
       />
 

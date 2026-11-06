@@ -15,6 +15,8 @@ const { deleteCompany, saveCompany } = await import("./companies");
 const { resolveSubject } = await import("./privacy-subject");
 const { gatherExport } = await import("./privacy-export");
 const { newStore, pay, place } = await import("./inventory-test-support");
+const { featureOffer, setFeature, setSalesPilot } = await import("./store-features");
+const { readTimeline } = await import("./customer-timeline");
 
 type TestStore = Awaited<ReturnType<typeof newStore>>;
 type Row = Record<string, unknown>;
@@ -181,5 +183,37 @@ describe("a deal", () => {
     expect(exported?.customerDeals).toEqual([
       expect.objectContaining({ title: "Totes for the fair", status: "open", stage: "New", estimateMinor: 100_000, currency: "NOK", closeReason: null }),
     ]);
+  });
+});
+
+describe("Deals offered to a store", () => {
+  it("is switched on only where the platform opened it, and a store that switched it on keeps it", async () => {
+    const s = await newStore("deals-offer");
+    expect(await featureOffer(s.storeId)).toMatchObject({ salesPilot: false });
+    expect(await setFeature(s.member, "sales", true)).toMatchObject({ ok: false });
+    expect(await setSalesPilot(s.member.account, s.storeId, true)).toBe(true);
+    expect(await setFeature(s.member, "sales", true)).toMatchObject({ ok: true, features: expect.arrayContaining(["sales"]) });
+    await setSalesPilot(s.member.account, s.storeId, false);
+    const [row] = await db().execute<Row>(sql`select features from commerce.stores where id = ${s.storeId}::uuid`);
+    expect(row.features).toContain("sales");
+  });
+});
+
+describe("finding and following a deal", () => {
+  it("finds who it may be with, offers their orders to link, and shows on their timeline", async () => {
+    const person = await customer(store, "find-me-deal@example.com");
+    expect(await deals.searchWho(store.storeId, "find-me-deal")).toContainEqual(expect.objectContaining({ kind: "customer", id: person }));
+    expect(await deals.searchWho(other.storeId, "find-me-deal")).toEqual([]);
+    const order = await place(store.storeId, [["DEMO-TOTE", 1]]);
+    await db().execute(sql`update commerce.orders set customer_id = ${person}::uuid where id = ${order.orderId}::uuid`);
+    const id = await newDeal(store, { customerId: person, title: "Mugs for the office" });
+    const deal = (await deals.getDeal(store.member.store, id))!;
+    expect((await deals.linkCandidates(store.member, deal)).map((c) => c.id)).toContain(order.orderId);
+
+    const selling = { ...store.member, store: { ...store.member.store, features: [...store.member.store.features, "sales" as const] } };
+    const read = await readTimeline(selling, { kind: "person", email: "find-me-deal@example.com", customerId: person });
+    expect(read.visible).toContain("deal");
+    expect(read.events.find((e) => e.what === "deal_opened")).toMatchObject({ label: "Mugs for the office", href: `/admin/${store.slug}/deals/${id}` });
+    expect((await readTimeline(store.member, { kind: "person", email: "find-me-deal@example.com", customerId: person })).visible).not.toContain("deal");
   });
 });

@@ -20,6 +20,7 @@ This document is the contract; it is built in six steps (section 7).
 | `business` | Sell to businesses | Customers | `shop` | `stores.audience` (D63, D108) |
 | `bonus` | Bonus program | Customers | `shop` | `bonus_settings.enabled` (D130) |
 | `referrals` | Referral program | Customers | `shop`, `bonus` | `affiliate_settings.enabled` (D131) |
+| `sales` | Deals | Customers | — | new (D464): offered to a pilot store (`stores.sales_pilot`) or to all (`platform_settings.sales_open`) |
 
 The registry is `src/lib/store-features.ts` (`STORE_FEATURES`: id, group, label, one line of words, what switching off
 takes away, needs, where it is set up, the legacy module). The database repeats the needs in

@@ -148,6 +148,9 @@ export function featureWarnings(
     case "reviews":
       add(f.publishedReviews, t.publishedReviews);
       break;
+    case "sales":
+      add(f.openDeals, t.openDeals);
+      break;
   }
   if (asleep.length > 0) {
     const labels = asleep.map((dep) => w.c.labels[dep]);

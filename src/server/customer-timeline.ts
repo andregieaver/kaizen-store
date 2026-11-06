@@ -28,7 +28,7 @@ import { col, typedRows } from "./typed-rows";
 
 /**
  * A customer's timeline (S1 of `docs/own-books-and-sales.md`, D462), read from what the store already keeps: orders, quote requests,
- * support conversations, emails, staff's notes, returns and withdrawals, reviews, bookings and Work invoices. One read per kind, side
+ * deals, support conversations, emails, staff's notes, returns and withdrawals, reviews, bookings and Work invoices. One read per kind, side
  * by side, each at most one row more than the page shows; `mergeTimeline()` makes them one list. Nothing is written.
  *
  * The same rules as the pages each kind comes from: an order whose personal data is restricted or anonymised (D162) and what hangs on it
@@ -53,6 +53,7 @@ export function timelineGates(member: Membership): TimelineGates {
     bookingsOn: featureOn(store, "appointments") || featureOn(store, "bookings"),
     settings: memberCan(member, "settings:read"),
     workOn: store.workOn,
+    salesOn: featureOn(store, "sales"),
   };
 }
 
@@ -353,9 +354,31 @@ async function workInvoices(who: Who): Promise<TimelineEvent[]> {
   });
 }
 
+/** The person's or the company's deals (D464): each opened, and won or lost while it stays so; its value the estimate it was given. */
+async function deals(who: Who): Promise<TimelineEvent[]> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid, title: col.text, status: col.text, opened: col.timestamp, closed: col.timestampOrNull, estimate: col.minorOrNull, currency: col.currency, email: col.textOrNull }),
+    sql`
+      select d.id, d.title, d.status, d.created_at as opened, d.closed_at as closed, d.estimate_minor as estimate, d.currency, lower(c.email) as email
+      from commerce.deals d left join commerce.customers c on c.store_id = d.store_id and c.id = d.customer_id
+      where d.store_id = ${who.storeId}::uuid
+        and (d.customer_id = any(${uuidList(who.ids)}) ${who.companyId ? sql`or d.company_id = ${who.companyId}::uuid` : sql``})
+      order by greatest(d.created_at, coalesce(d.closed_at, d.created_at)) desc, d.id
+      limit ${who.n}
+    `,
+  );
+  return rows.flatMap((r) => {
+    const base = { email: r.email, label: r.title, amount: r.estimate === null ? null : { minor: r.estimate, currency: r.currency }, status: r.status, href: `${who.base}/deals/${r.id}` };
+    const events: TimelineEvent[] = [{ ...base, key: `deal:${r.id}:opened`, what: "deal_opened", at: r.opened }];
+    if (r.closed && (r.status === "won" || r.status === "lost")) events.push({ ...base, key: `deal:${r.id}:closed`, what: r.status === "won" ? "deal_won" : "deal_lost", at: r.closed });
+    return events;
+  });
+}
+
 const READERS: Record<TimelineKind, (who: Who) => Promise<TimelineEvent[]>> = {
   order: orders,
   quote: quotes,
+  deal: deals,
   conversation: conversations,
   email: emails,
   note: notes,

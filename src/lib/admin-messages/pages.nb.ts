@@ -312,6 +312,13 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["bedrifter", "bedriftskunder", "b2b", "ansatte", "bedriftskonto", "inviter", "grossist"],
   },
   "store:b2b-company": { title: "Bedrift", keywords: ["bedrift", "bedriftskonto", "ansatte", "invitasjoner"] },
+  "store:deals": {
+    title: "Avtaler",
+    keywords: ["avtaler", "salgsløp", "pipeline", "crm", "salgsmuligheter", "leads", "tavle", "prognose"],
+  },
+  "store:deal.new": { title: "Ny avtale", keywords: ["ny avtale", "legg til avtale", "salgsmulighet"] },
+  "store:deal": { title: "Avtale", keywords: ["avtale", "koble bestilling", "tilbud", "oppdrag", "historikk"] },
+  "store:deals.pipelines": { title: "Salgsløp", keywords: ["salgsløp", "trinn", "sannsynlighet", "salgsprosess"] },
   "store:deliveries": {
     title: "Abonnementskasser",
     keywords: ["abonnementskasse", "fast bestilling", "ukentlig levering", "matkasse", "leveringsdager"],

@@ -113,6 +113,7 @@ export const customersNb: CustomersMessages = {
     kinds: {
       order: "Ordrer",
       quote: "Tilbud",
+      deal: "Avtaler",
       conversation: "Samtaler",
       email: "E-poster",
       note: "Notater",
@@ -126,6 +127,9 @@ export const customersNb: CustomersMessages = {
       quote_requested: "Ba om tilbud",
       quote_sent: "Tilbud {label} sendt",
       quote_declined: "Tilbud {label} avslått",
+      deal_opened: "Avtale {label}",
+      deal_won: "Avtale {label} vunnet",
+      deal_lost: "Avtale {label} tapt",
       conversation_started: "Startet en samtale",
       email_sent: "E-post sendt",
       email_failed: "E-post kom ikke fram",

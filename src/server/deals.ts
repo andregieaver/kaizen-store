@@ -17,6 +17,7 @@ import {
   type DealStatus,
   type DealValue,
   type LinkValue,
+  type WhoChoice,
 } from "@/lib/deals";
 import { mainCurrency } from "@/lib/markets";
 
@@ -729,4 +730,110 @@ export async function openDealsOfCompany(storeId: string, companyId: string): Pr
     sql`select count(*)::int as n from commerce.deals where store_id = ${storeId}::uuid and company_id = ${companyId}::uuid and status = 'open'`,
   );
   return row?.n ?? 0;
+}
+
+// ---------------------------------------------------------------------------
+// Choosing who and what
+// ---------------------------------------------------------------------------
+
+export type { WhoChoice };
+
+const likeOf = (text: string) => `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+/** The store's people (by name, email or company name) and companies (by name) a new deal may be with: at most eight of each. */
+export async function searchWho(storeId: string, raw: string): Promise<WhoChoice[]> {
+  const text = raw.trim().slice(0, 80);
+  if (text.length < 2) return [];
+  const like = likeOf(text);
+  const [people, companies] = await Promise.all([
+    typedRows(
+      z.object({ id: col.uuid, name: col.text, email: col.text, company_name: col.textOrNull }),
+      sql`
+        select id, name, email, company_name from commerce.customers
+        where store_id = ${storeId}::uuid and (name ilike ${like} or email ilike ${like} or company_name ilike ${like})
+        order by lower(coalesce(nullif(name, ''), email)) limit 8
+      `,
+    ),
+    typedRows(
+      z.object({ id: col.uuid, name: col.text, organisation_number: col.textOrNull }),
+      sql`
+        select id, name, organisation_number from commerce.customer_companies
+        where store_id = ${storeId}::uuid and name ilike ${like} order by lower(name) limit 8
+      `,
+    ),
+  ]);
+  return [
+    ...people.map((p): WhoChoice => ({ kind: "customer", id: p.id, label: p.name || p.email, detail: p.name ? p.email : p.company_name })),
+    ...companies.map((c): WhoChoice => ({ kind: "company", id: c.id, label: c.name, detail: c.organisation_number || null })),
+  ];
+}
+
+/** A person or a company as a deal names them, for a form that starts with one chosen (a customer's page's "New deal"). */
+export async function whoOf(storeId: string, kind: "customer" | "company", id: string): Promise<WhoChoice | null> {
+  if (!z.uuid().safeParse(id).success) return null;
+  if (kind === "customer") {
+    const row = await typedRow(
+      z.object({ name: col.text, email: col.text }),
+      sql`select name, email from commerce.customers where store_id = ${storeId}::uuid and id = ${id}::uuid`,
+    );
+    return row ? { kind, id, label: row.name || row.email, detail: row.name ? row.email : null } : null;
+  }
+  const row = await typedRow(
+    z.object({ name: col.text, organisation_number: col.textOrNull }),
+    sql`select name, organisation_number from commerce.customer_companies where store_id = ${storeId}::uuid and id = ${id}::uuid`,
+  );
+  return row ? { kind, id, label: row.name, detail: row.organisation_number || null } : null;
+}
+
+export type LinkCandidate = { kind: DealLinkKind; id: string; label: string; minor: number | null; currency: string | null; at: string };
+
+/**
+ * What a deal may be linked to: the orders and open or sent quotes of its person, or of its company's people, and the store's Work
+ * assignments not yet done, each not linked to any deal yet; the newest first, twenty of each. Only the kinds this member may link.
+ */
+export async function linkCandidates(member: Membership, deal: Pick<Deal, "customer" | "company">): Promise<LinkCandidate[]> {
+  const storeId = member.store.id;
+  const customerId = deal.customer?.id ?? null;
+  const companyId = deal.company?.id ?? null;
+  const out: LinkCandidate[] = [];
+  const whose = (alias: string) => sql`(${sql.identifier(alias)}.customer_id = ${customerId}::uuid or ${sql.identifier(alias)}.customer_id in
+    (select c.id from commerce.customers c where c.store_id = ${storeId}::uuid and c.company_id = ${companyId}::uuid))`;
+  if ((customerId || companyId) && mayLink(member, "order")) {
+    const [orders, drafts] = await Promise.all([
+      typedRows(
+        z.object({ id: col.uuid, number: col.text, minor: col.minor, currency: col.currency, at: col.timestamp }),
+        sql`
+          select o.id, o.number, (o.total_minor - o.tax_minor) as minor, o.currency, o.created_at as at from commerce.orders o
+          where o.store_id = ${storeId}::uuid and ${whose("o")} and o.copied_from is null and o.status <> 'cancelled'
+            and not exists (select 1 from commerce.deal_links l where l.store_id = o.store_id and l.order_id = o.id)
+          order by o.created_at desc limit 20
+        `,
+      ),
+      typedRows(
+        z.object({ id: col.uuid, number: col.text, currency: col.currency, at: col.timestamp }),
+        sql`
+          select d.id, d.number, d.currency, d.updated_at as at from commerce.draft_orders d
+          where d.store_id = ${storeId}::uuid and ${whose("d")} and d.status in ('open', 'sent')
+            and not exists (select 1 from commerce.deal_links l where l.store_id = d.store_id and l.draft_id = d.id)
+          order by d.updated_at desc limit 20
+        `,
+      ),
+    ]);
+    out.push(...drafts.map((d): LinkCandidate => ({ kind: "draft", id: d.id, label: d.number, minor: null, currency: d.currency, at: d.at })));
+    out.push(...orders.map((o): LinkCandidate => ({ kind: "order", id: o.id, label: o.number, minor: o.minor, currency: o.currency, at: o.at })));
+  }
+  if (mayLink(member, "work_assignment")) {
+    const assignments = await typedRows(
+      z.object({ id: col.uuid, name: col.text, client: col.text, at: col.timestamp }),
+      sql`
+        select w.id, w.name, c.name as client, w.created_at as at from commerce.work_assignments w
+        join commerce.work_clients c on c.store_id = w.store_id and c.id = w.client_id
+        where w.store_id = ${storeId}::uuid and w.status <> 'done'
+          and not exists (select 1 from commerce.deal_links l where l.store_id = w.store_id and l.assignment_id = w.id)
+        order by w.created_at desc limit 20
+      `,
+    );
+    out.push(...assignments.map((a): LinkCandidate => ({ kind: "work_assignment", id: a.id, label: `${a.name} · ${a.client}`, minor: null, currency: null, at: a.at })));
+  }
+  return out;
 }

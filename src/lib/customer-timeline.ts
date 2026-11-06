@@ -5,7 +5,7 @@
  */
 
 /** The kinds, in the order the filter offers them. */
-export const TIMELINE_KINDS = ["order", "quote", "conversation", "email", "note", "return", "review", "booking", "work_invoice"] as const;
+export const TIMELINE_KINDS = ["order", "quote", "deal", "conversation", "email", "note", "return", "review", "booking", "work_invoice"] as const;
 export type TimelineKind = (typeof TIMELINE_KINDS)[number];
 
 export const isTimelineKind = (value: unknown): value is TimelineKind =>
@@ -17,6 +17,9 @@ export const TIMELINE_KIND_OF = {
   quote_requested: "quote",
   quote_sent: "quote",
   quote_declined: "quote",
+  deal_opened: "deal",
+  deal_won: "deal",
+  deal_lost: "deal",
   conversation_started: "conversation",
   email_sent: "email",
   email_failed: "email",
@@ -86,6 +89,8 @@ export type TimelineGates = {
   /** `settings:read`, with Work on (D123): Work invoices. */
   settings: boolean;
   workOn: boolean;
+  /** Deals on (D464): the person's or company's deals, on a page that already needs `customers:read`. */
+  salesOn: boolean;
 };
 
 /** The kinds this viewer may see on this store, in the filter's order. */
@@ -100,6 +105,7 @@ export function visibleKinds(gates: TimelineGates): TimelineKind[] {
     review: gates.products && gates.reviewsOn,
     booking: gates.bookings && gates.bookingsOn,
     work_invoice: gates.settings && gates.workOn,
+    deal: gates.salesOn,
   };
   return TIMELINE_KINDS.filter((kind) => shown[kind]);
 }

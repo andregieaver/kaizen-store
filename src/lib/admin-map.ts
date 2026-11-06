@@ -561,6 +561,20 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["b2b", "business customers", "employees", "company account", "invite", "wholesale"],
     tasks: ["Make a company with a main account", "Invite or remove a company's employees"], feature: "business" }),
   store("b2b-company", "/companies/[companyId]", "Company", "Sales", "One company: settings, its accounts, invitations, and inviting or removing employees.", { feature: "business" }),
+  store("deals", "/deals", "Deals", "Sales", "The board of deals: what each customer or company may buy, in a column per stage, with Won and Lost, each column's value and the value weighted by its stage's chance.", {
+    keywords: ["deals", "pipeline", "sales pipeline", "crm", "leads", "opportunities", "prospects", "board", "forecast"],
+    tasks: ["Add a deal for a customer or company", "Move a deal to the next stage", "Mark a deal won or lost"],
+    feature: "sales",
+  }),
+  store("deal.new", "/deals/new", "New deal", "Sales", "Adds a deal: a title, the person or company, the stage, an estimate and when it may close.", { feature: "sales" }),
+  store("deal", "/deals/[dealId]", "Deal", "Sales", "One deal: its details, the orders, quotes and Work assignments linked to it, and each stage it has been in.", {
+    tasks: ["Link an order, quote or assignment to a deal", "Reopen a deal"],
+    feature: "sales",
+  }),
+  store("deals.pipelines", "/deals/pipelines", "Pipelines", "Sales", "The store's pipelines and their stages: names, order, the chance a deal in each closes, and the stage sent quotes belong in.", {
+    keywords: ["pipelines", "stages", "probability", "sales process"],
+    feature: "sales",
+  }),
   store("deliveries", "/deliveries", "Subscription boxes", "Sales", "Delivery days, the round being packed and shoppers' subscription box lists.", {
     feature: "boxes",
     tasks: ["Add a delivery day", "Send and charge this round's orders"],

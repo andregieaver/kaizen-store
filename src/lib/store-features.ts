@@ -27,6 +27,7 @@ export const FEATURE_IDS = [
   "bonus",
   "referrals",
   "reviews",
+  "sales",
 ] as const;
 
 export type FeatureId = (typeof FEATURE_IDS)[number];
@@ -181,6 +182,15 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     needs: ["shop"],
     setupPath: "/reviews",
   },
+  {
+    id: "sales",
+    group: "customers",
+    label: "Deals",
+    words: "Follow what each customer or company may buy, from the first talk to won or lost, on a board in stages.",
+    offWords: "Deals leaves the admin and the customer pages. Every deal and pipeline is kept for when you switch it on again.",
+    needs: [],
+    setupPath: "/deals",
+  },
 ];
 
 export const FEATURES_BY_ID: Record<FeatureId, StoreFeature> = Object.fromEntries(STORE_FEATURES.map((f) => [f.id, f])) as Record<FeatureId, StoreFeature>;
@@ -256,6 +266,13 @@ export function kindOffered(source: FeatureSource, kind: string): boolean {
 /** The feature a bookable resource belongs to (D178): staff take appointments, rooms and items stays and rentals. */
 export const resourceFeature = (kind: string): FeatureId => (kind === "staff" ? "appointments" : "bookings");
 
+/**
+ * Whether a store is offered a feature to switch on (D464): Deals only where the platform opened it to every store, or chose the store first
+ * (a pilot); every other feature always. One kept on stays on whatever the platform decides later.
+ */
+export type FeatureOffer = { salesOpen: boolean; salesPilot: boolean };
+export const featureOffered = (id: FeatureId, offer: FeatureOffer): boolean => id !== "sales" || offer.salesOpen || offer.salesPilot;
+
 /** The features that need this one (directly or not): switching it off puts them to sleep. */
 export const dependentsOf = (id: FeatureId): FeatureId[] => FEATURE_IDS.filter((other) => FEATURES_BY_ID[other].needs.includes(id));
 
@@ -263,8 +280,9 @@ export const dependentsOf = (id: FeatureId): FeatureId[] => FEATURE_IDS.filter((
 export const featuresIn = (group: FeatureGroupId): StoreFeature[] => STORE_FEATURES.filter((f) => f.group === group);
 
 /** How many of the counted features are on, of how many. */
-export function featureCount(source: FeatureSource): { on: number; total: number } {
-  return { on: COUNTED_FEATURES.filter((id) => featureOn(source, id)).length, total: COUNTED_FEATURES.length };
+export function featureCount(source: FeatureSource, shown: (id: FeatureId) => boolean = () => true): { on: number; total: number } {
+  const counted = COUNTED_FEATURES.filter(shown);
+  return { on: counted.filter((id) => featureOn(source, id)).length, total: counted.length };
 }
 
 /** Whether a feature can be switched on now: what it needs that is off, by label (empty: it can). */
@@ -365,6 +383,9 @@ export type FeatureFacts = {
   giftCardsHeld: number;
   /** Product reviews (D301): published ones, which stop showing while the feature is off. */
   publishedReviews: number;
+  /** Deals (D464): every deal, and those still open. */
+  deals: number;
+  openDeals: number;
 };
 
 export const NO_FACTS: FeatureFacts = {
@@ -403,6 +424,8 @@ export const NO_FACTS: FeatureFacts = {
   giftCardProducts: 0,
   giftCardsHeld: 0,
   publishedReviews: 0,
+  deals: 0,
+  openDeals: 0,
 };
 
 /** Whether there is data for a feature (the Features page's "In use"). */
@@ -434,6 +457,8 @@ export function featureInUse(id: FeatureId, f: FeatureFacts): boolean {
       return f.giftCardProducts > 0 || f.giftCardsHeld > 0;
     case "reviews":
       return f.publishedReviews > 0;
+    case "sales":
+      return f.deals > 0;
   }
 }
 

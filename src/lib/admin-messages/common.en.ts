@@ -34,6 +34,7 @@ export const commonEn = {
       bonus: "Bonus program",
       referrals: "Referral program",
       reviews: "Product reviews",
+      sales: "Deals",
     },
     /** A feature that another needs, in a sentence: "needs the online shop". */
     need: {
@@ -50,6 +51,7 @@ export const commonEn = {
       bonus: "the bonus program",
       referrals: "the referral program",
       reviews: "the product reviews",
+      sales: "the deals",
     },
     or: " or ",
     off: { one: "{label} is switched off", many: "{label} are switched off" },

@@ -8,13 +8,20 @@ areas: [api, webhooks, mcp]
 features: []
 plans: []
 order: 1000
-checked: 2026-11-05
-sources: [D438, D439, D440, D441, D458]
+checked: 2026-11-06
+sources: [D438, D439, D440, D441, D458, D464]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.10 — 2026-11-06
+
+An addition to the MCP catalogues (D464).
+
+- The owner tools that list and switch a store's features (`list_features`, `set_feature`) know Deals, as the feature `sales`. A store
+  sees it once Kaizena Flow has opened Deals to it.
 
 ## 1.9 — 2026-11-05
 

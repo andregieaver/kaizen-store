@@ -61,6 +61,8 @@ import { carriersEn, type CarriersMessages } from "./admin-messages/carriers.en"
 import { carriersNb } from "./admin-messages/carriers.nb";
 import { fikenEn, type FikenMessages } from "./admin-messages/fiken.en";
 import { fikenNb } from "./admin-messages/fiken.nb";
+import { dealsEn, type DealsMessages } from "./admin-messages/deals.en";
+import { dealsNb } from "./admin-messages/deals.nb";
 import { screensEn, type ScreensMessages } from "./admin-messages/screens.en";
 import { screensNb } from "./admin-messages/screens.nb";
 import { storePartsEn, type StorePartsMessages } from "./admin-messages/store-parts.en";
@@ -155,6 +157,7 @@ export type AdminAreaMessages = {
   shipping: ShippingMessages;
   carriers: CarriersMessages;
   fiken: FikenMessages;
+  deals: DealsMessages;
   screens: ScreensMessages;
   storeParts: StorePartsMessages;
   notifications: NotificationsMessages;
@@ -198,7 +201,7 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "screens", "storeParts"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
@@ -237,6 +240,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   shipping: { en: shippingEn, nb: shippingNb },
   carriers: { en: carriersEn, nb: carriersNb },
   fiken: { en: fikenEn, nb: fikenNb },
+  deals: { en: dealsEn, nb: dealsNb },
   screens: { en: screensEn, nb: screensNb },
   storeParts: { en: storePartsEn, nb: storePartsNb },
   notifications: { en: notificationsEn, nb: notificationsNb },

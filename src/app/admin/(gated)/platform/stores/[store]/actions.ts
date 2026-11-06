@@ -6,8 +6,11 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { cleanReason, REASON_MAX, REASON_MIN } from "@/lib/store-closure";
+import { adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
 import { requireAccount, type Account } from "@/server/auth";
 import { closeStore, reopenStore, suspendStore, type ClosureResult } from "@/server/store-closure";
+import { setSalesOpen, setSalesPilot } from "@/server/store-features";
 import { detachDryRun } from "@/server/theme-detach";
 
 async function requirePlatformAdmin(): Promise<Account> {
@@ -71,4 +74,25 @@ export async function detachDryRunAction(storeId: string): Promise<FormState> {
       ...lines,
     ],
   };
+}
+
+/** Opens or closes Deals for this store before it opens to all (D464): a pilot. */
+export async function salesPilotAction(storeId: string, _state: FormState, form: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  if (!z.uuid().safeParse(storeId).success) return unknown;
+  const on = form.get("on") === "on";
+  if (!(await setSalesPilot(admin, storeId, on))) return unknown;
+  refresh();
+  const w = adminText(adminLangOf(admin.adminLocale), "platform").store;
+  return { status: "ok", messages: [on ? w.dealsPilot : w.dealsClosed] };
+}
+
+/** Opens Deals to every store, or back to the pilots alone (D464). */
+export async function salesOpenAction(_state: FormState, form: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const open = form.get("open") === "on";
+  await setSalesOpen(admin, open);
+  refresh();
+  const w = adminText(adminLangOf(admin.adminLocale), "platform").store;
+  return { status: "ok", messages: [open ? w.dealsAll : w.dealsClosed] };
 }

@@ -18,6 +18,9 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
+import { mainCurrency } from "@/lib/markets";
+import { DealsCard } from "@/components/admin/deals/deals-card";
+import { listDeals } from "@/server/deals";
 import { TIMELINE_KINDS, askedKind } from "@/lib/customer-timeline";
 import { exportProblemOf } from "@/lib/privacy-admin";
 import { ORDER_STATUS_SIGNAL } from "@/lib/order-status";
@@ -100,6 +103,10 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const businessOn = featureOn(store, "business");
   const subscriptionsOn = featureOn(store, "subscriptions");
   const locale = store.markets[0]?.locale ?? "nb-NO";
+  // Deals (S2, D464): the person's, while Deals is on.
+  const salesOn = featureOn(store, "sales") && customer.customerId !== null;
+  const deals = salesOn && customer.customerId ? await listDeals(store, { customerId: customer.customerId }) : [];
+  const dealWords = adminText(lang, "deals");
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}`;
   const spent = moneyByCurrency(customer.spentMinor, locale);
@@ -351,6 +358,15 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               </form>
             )}
           </section>
+          {salesOn && (
+            <DealsCard
+              deals={deals.map((d) => ({ id: d.id, title: d.title, status: d.status, value: d.value.minor === null ? null : formatMoney(d.value.minor, mainCurrency(store), locale) }))}
+              base={base}
+              addHref={mayTag ? `${base}/deals/new?customer=${customer.customerId}` : null}
+              words={dealWords.card}
+              statuses={dealWords.statuses}
+            />
+          )}
           <CustomerNotes
             notes={notes}
             words={all.staff.notes}

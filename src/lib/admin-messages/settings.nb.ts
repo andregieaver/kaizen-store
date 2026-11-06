@@ -86,6 +86,10 @@ export const settingsNb: SettingsMessages = {
         words: "Kundene gir omtale av det de har kjøpt og mottatt; du sjekker omtalene før de vises, og produktsiden viser stjernene.",
         offWords: "Omtaler slutter å vises og kundene kan ikke skrive nye, og Omtaler forsvinner fra administrasjonen. Alle omtaler beholdes til du slår den på igjen.",
       },
+      sales: {
+        words: "Følg hva hver kunde eller bedrift kan kjøpe, fra første samtale til vunnet eller tapt, på en tavle i trinn.",
+        offWords: "Avtaler forsvinner fra administrasjonen og kundesidene. Alle avtaler og salgsløp beholdes til du slår den på igjen.",
+      },
     },
     blockers: {
       paidUnshipped: { one: "{n} betalt bestilling har varer som ennå skal sendes. Send eller refunder den først.", many: "{n} betalte bestillinger har varer som ennå skal sendes. Send eller refunder dem først." },
@@ -164,6 +168,10 @@ export const settingsNb: SettingsMessages = {
         one: "{n} publisert omtale slutter å vises på produktsidene dine. Ingenting slettes.",
         many: "{n} publiserte omtaler slutter å vises på produktsidene dine. Ingenting slettes.",
       },
+      openDeals: {
+        one: "{n} avtale er fortsatt åpen. Den beholdes, og er der igjen når du slår på Avtaler.",
+        many: "{n} avtaler er fortsatt åpne. De beholdes, og er der igjen når du slår på Avtaler.",
+      },
       asleep: {
         one: "{labels} trenger den, så den stopper også. Bryteren beholdes til du slår den på igjen.",
         many: "{labels} trenger den, så de stopper også. Bryterne beholdes til du slår den på igjen.",
@@ -183,6 +191,7 @@ export const settingsNb: SettingsMessages = {
     actions: {
       onlyOwners: "Bare en eier kan slå funksjoner av og på.",
       noFeature: "Den funksjonen finnes ikke.",
+      notOffered: "{label} er ikke åpnet for denne butikken ennå.",
       onlyOwnerSettings: "Bare en eier kan endre disse innstillingene.",
       needs: { one: "{label} trenger {needs}. Slå den på først.", many: "{label} trenger {needs}. Slå dem på først." },
       cantYet: "{label} kan ikke slås av ennå.",

@@ -118,6 +118,7 @@ export const customersEn = {
     kinds: {
       order: "Orders",
       quote: "Quotes",
+      deal: "Deals",
       conversation: "Conversations",
       email: "Emails",
       note: "Notes",
@@ -131,6 +132,9 @@ export const customersEn = {
       quote_requested: "Asked for a quote",
       quote_sent: "Quote {label} sent",
       quote_declined: "Quote {label} declined",
+      deal_opened: "Deal {label}",
+      deal_won: "Deal {label} won",
+      deal_lost: "Deal {label} lost",
       conversation_started: "Started a conversation",
       email_sent: "Email sent",
       email_failed: "Email not delivered",
