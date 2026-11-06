@@ -50,7 +50,7 @@ describe("the proxy's answer for a store's page", () => {
     expect(recordNotFound).toHaveBeenCalledWith("s1", "/collections/old", false);
   });
 
-  it("sends a visitor at the front door to their language for now, never cached (D474)", async () => {
+  it("sends a visitor at the front door to their language for now, never cached (D479)", async () => {
     storeRequestAnswer.mockResolvedValue({ language: "/s/kaiza/en?x=1" });
     const request = new NextRequest("http://localhost/s/kaiza?x=1", {
       headers: { "accept-language": "en-GB,en;q=0.9", "x-vercel-ip-country": "GB", cookie: "kaizen_lang_s1=en" },

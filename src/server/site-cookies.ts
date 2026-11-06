@@ -109,7 +109,7 @@ export async function siteCookies(
   // A store with a running A/B test remembers a visitor's version, as statistics, once they allow it (D148): the banner asks for it.
   const experiments = storeId === null ? false : await storeHasExperiments(storeId);
   // Kaizena Flow's own site in more than one language remembers a closed language suggestion, as a preference (D312); a store with Several
-  // languages on remembers a language a visitor chose in its switcher, for its front door (D474).
+  // languages on remembers a language a visitor chose in its switcher, for its front door (D479).
   const languages = storeId === null ? (await getPlatformLangs()).length > 1 : Boolean(features && featureOn(features, "languages"));
   // A store that counts visits and already asks about statistics keeps a visitor's first visit in 30 days once they allow it (D303 I3).
   const touch = Boolean(facts?.visitCounting) && (toolCategories(tracking).includes("statistics") || experiments);

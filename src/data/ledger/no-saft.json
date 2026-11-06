@@ -1,0 +1,3942 @@
+{
+"source": "Skatteetaten, SAF-T Financial (github.com/Skatteetaten/saf-t): General_Ledger_Standard_Accounts_4_character.csv and Standard_Tax_Codes.csv, read 6 November 2026",
+"accounts": [
+{
+"id": "1000",
+"nb": "Utvikling, ervervet",
+"en": "Development, acquired"
+},
+{
+"id": "1005",
+"nb": "Utvikling, egenutviklet",
+"en": "Development, proprietary"
+},
+{
+"id": "1020",
+"nb": "Konsesjoner, ervervet",
+"en": "Concessions, acquired"
+},
+{
+"id": "1025",
+"nb": "Konsesjoner, egenutviklet",
+"en": "Concessions, proprietary"
+},
+{
+"id": "1030",
+"nb": "Patenter, ervervet",
+"en": "Patents, acquired"
+},
+{
+"id": "1035",
+"nb": "Patenter, egenutviklet",
+"en": "Patents, proprietary"
+},
+{
+"id": "1040",
+"nb": "Lisenser, ervervet",
+"en": "Licences, acquired"
+},
+{
+"id": "1045",
+"nb": "Lisenser, egenutviklet",
+"en": "Licences, proprietary"
+},
+{
+"id": "1050",
+"nb": "Varemerker, ervervet",
+"en": "Trade marks, acquired"
+},
+{
+"id": "1055",
+"nb": "Varemerker, egenutviklet",
+"en": "Trade marks, proprietary"
+},
+{
+"id": "1060",
+"nb": "Andre rettigheter, ervervet",
+"en": "Other rights, acquired"
+},
+{
+"id": "1065",
+"nb": "Andre rettigheter, egenutviklet",
+"en": "Other rights, proprietary"
+},
+{
+"id": "1068",
+"nb": "Innenlands kjøp av rettigheter, omvendt avgiftsplikt",
+"en": "Domestic purchase of rights, reversed VAT liability"
+},
+{
+"id": "1069",
+"nb": "Innenlands kjøp av rettigheter, omvendt avgiftsplikt, motkonto",
+"en": "Domestic purchase of rights, reversed VAT liability, contra account"
+},
+{
+"id": "1070",
+"nb": "Utsatt skattefordel, brutto",
+"en": "Deferred tax asset, gross"
+},
+{
+"id": "1075",
+"nb": "Reduksjon utsatt skattefordel pga manglende realiserbarhet",
+"en": "Reduction in deferred tax asset due to unrealisibility"
+},
+{
+"id": "1079",
+"nb": "Utlignbar utsatt skattefordel",
+"en": "Deferred tax asset that can be offset"
+},
+{
+"id": "1080",
+"nb": "Goodwill",
+"en": "Goodwill"
+},
+{
+"id": "1099",
+"nb": "Andre immaterielle eiendeler",
+"en": "Other intangible assets"
+},
+{
+"id": "1100",
+"nb": "Bygninger",
+"en": "Buildings"
+},
+{
+"id": "1110",
+"nb": "Fast teknisk installasjon i bygning",
+"en": "Fixed technical installation"
+},
+{
+"id": "1117",
+"nb": "Elektronisk utrustning i kraftforetak",
+"en": "Electronic equipment in power companies"
+},
+{
+"id": "1120",
+"nb": "Bygningsmessige anlegg",
+"en": "Structural installations"
+},
+{
+"id": "1130",
+"nb": "Anlegg under utførelse",
+"en": "Plant under construction"
+},
+{
+"id": "1140",
+"nb": "Jordbrukseiendommer",
+"en": "Agricultural property"
+},
+{
+"id": "1145",
+"nb": "Skogbrukseiendommer",
+"en": "Forestry property"
+},
+{
+"id": "1150",
+"nb": "Tomter",
+"en": "Land"
+},
+{
+"id": "1155",
+"nb": "Andre grunnarealer",
+"en": "Other real property"
+},
+{
+"id": "1160",
+"nb": "Boliger inklusive tomter",
+"en": "Dwellings including land"
+},
+{
+"id": "1179",
+"nb": "Annen fast eiendom",
+"en": "Other properties"
+},
+{
+"id": "1180",
+"nb": "Investeringseiendommer",
+"en": "Investment properties"
+},
+{
+"id": "1190",
+"nb": "Grunnlag MVA innførsel av varer, høy sats",
+"en": "Basis VAT import of goods, high rate"
+},
+{
+"id": "1191",
+"nb": "Grunnlag MVA innførsel av varer, høy sats, motkonto",
+"en": "Basis VAT import of goods, high rate, contra account"
+},
+{
+"id": "1192",
+"nb": "Grunnlag MVA innførsel av varer, middels sats",
+"en": "Basis VAT import of goods, medium rate"
+},
+{
+"id": "1193",
+"nb": "Grunnlag MVA innførsel av varer, middels sats, motkonto",
+"en": "Basis VAT import of goods, medium rate, contra account"
+},
+{
+"id": "1194",
+"nb": "Grunnlag innførsel av varer med null sats",
+"en": "Basis import of goods with zero rate"
+},
+{
+"id": "1195",
+"nb": "Grunnlag innførsel av varer med  null sats, motkonto",
+"en": "Basis import of goods with zero rate, contra account"
+},
+{
+"id": "1196",
+"nb": "Grunnlag utgående MVA kjøp tjenester fra utlandet",
+"en": "Basis outgoing VAT purchase of services from abroad"
+},
+{
+"id": "1197",
+"nb": "Grunnlag utgående MVA kjøp tjenester fra utlandet, motkonto",
+"en": "Basis outgoing VAT purchase of services from abroad, contra account"
+},
+{
+"id": "1200",
+"nb": "Maskiner og anlegg",
+"en": "Machinery and plant"
+},
+{
+"id": "1210",
+"nb": "Maskiner og anlegg under utførelse",
+"en": "Machinery and plant under construction"
+},
+{
+"id": "1220",
+"nb": "Skip",
+"en": "Ships"
+},
+{
+"id": "1224",
+"nb": "Rigger",
+"en": "Rigs"
+},
+{
+"id": "1225",
+"nb": "Fly",
+"en": "Aircrafts"
+},
+{
+"id": "1230",
+"nb": "Personbiler/stasjonsvogner",
+"en": "Automobiles/estate cars"
+},
+{
+"id": "1235",
+"nb": "Varebiler, klasse 1",
+"en": "Vans, classification 1"
+},
+{
+"id": "1236",
+"nb": "Varebiler, klasse 2",
+"en": "Vans, classification 2"
+},
+{
+"id": "1237",
+"nb": "Lastebiler",
+"en": "Lorries"
+},
+{
+"id": "1238",
+"nb": "Busser",
+"en": "Buses"
+},
+{
+"id": "1239",
+"nb": "Varebiler med nullutslipp",
+"en": "Vans with zero emission"
+},
+{
+"id": "1240",
+"nb": "Traktorer",
+"en": "Tractors"
+},
+{
+"id": "1242",
+"nb": "Trucker",
+"en": "Forklifts"
+},
+{
+"id": "1249",
+"nb": "Andre transportmidler",
+"en": "Other means of transport"
+},
+{
+"id": "1250",
+"nb": "Inventar",
+"en": "Fixtures and fittings"
+},
+{
+"id": "1260",
+"nb": "Fast bygningsinventar, eget bygg",
+"en": "Permanent building fixtures and fittings, own building"
+},
+{
+"id": "1265",
+"nb": "Fast bygningsinventar, leide lokaler",
+"en": "Permanent building fixtures and fittings, leased premises"
+},
+{
+"id": "1270",
+"nb": "Verktøy o.l.",
+"en": "Tools etc."
+},
+{
+"id": "1280",
+"nb": "Kontormaskiner",
+"en": "Office machines"
+},
+{
+"id": "1289",
+"nb": "Andre varige driftsmidler",
+"en": "Other fixed assets"
+},
+{
+"id": "1290",
+"nb": "Grunnlag MVA innførsel av varer, høy sats",
+"en": "Basis VAT import of goods, high rate"
+},
+{
+"id": "1291",
+"nb": "Grunnlag MVA innførsel av varer, høy sats, motkonto",
+"en": "Basis VAT import of goods, high rate, contra account"
+},
+{
+"id": "1292",
+"nb": "Grunnlag MVA innførsel av varer, middels sats",
+"en": "Basis VAT import of goods, medium rate"
+},
+{
+"id": "1293",
+"nb": "Grunnlag MVA innførsel av varer, middels sats, motkonto",
+"en": "Basis VAT import of goods, medium rate, contra account"
+},
+{
+"id": "1294",
+"nb": "Grunnlag innførsel av varer med null sats",
+"en": "Basis import of goods with zero rate"
+},
+{
+"id": "1295",
+"nb": "Grunnlag innførsel av varer med null sats, motkonto",
+"en": "Basis import of goods with zero rate, contra account"
+},
+{
+"id": "1296",
+"nb": "Grunnlag utgående MVA kjøp tjenester fra utlandet",
+"en": "Basis outgoing VAT purchase of services from abroad"
+},
+{
+"id": "1297",
+"nb": "Grunnlag utgående MVA kjøp tjenester fra utlandet, motkonto",
+"en": "Basis outgoing VAT purchase of services from abroad, contra account"
+},
+{
+"id": "1300",
+"nb": "Aksjer i datterselskap",
+"en": "Shares in subsidiaries"
+},
+{
+"id": "1305",
+"nb": "Andeler i datterselskap",
+"en": "Units in subsidiaries"
+},
+{
+"id": "1306",
+"nb": "Aksjer/andeler i datterselskap, utenlandske, innenfor fritaksmetoden",
+"en": "Shares/units in subsidiaries, foreign, included in the exemption model"
+},
+{
+"id": "1308",
+"nb": "Aksjer/andeler i datterselskap, utenlandske, utenfor fritaksmetoden",
+"en": "Shares/units in subsidiaries, foreign, not included in the exemption model"
+},
+{
+"id": "1310",
+"nb": "Aksjer i foretak i samme konsern",
+"en": "Shares in group companies"
+},
+{
+"id": "1315",
+"nb": "Andeler i foretak i samme konsern",
+"en": "Units in group companies"
+},
+{
+"id": "1316",
+"nb": "Aksjer/andeler i foretak i samme konsern, utenlandske, innenfor fritaksmetoden",
+"en": "Shares/units in group companies, foreign, included in the exemption model"
+},
+{
+"id": "1318",
+"nb": "Aksjer/andeler i foretak i samme konsern, utenlandske, utenfor fritaksmetoden",
+"en": "Shares/units in group companies, foreign, not included in the exemption model"
+},
+{
+"id": "1320",
+"nb": "Lån til datterselskaper",
+"en": "Loans to subsidiaries"
+},
+{
+"id": "1325",
+"nb": "Lån til andre foretak i samme konsern",
+"en": "Loans to other group companies"
+},
+{
+"id": "1330",
+"nb": "Investeringer i tilknyttet selskap",
+"en": "Investments in associated companies"
+},
+{
+"id": "1340",
+"nb": "Lån til tilknyttet selskap",
+"en": "Loans to associated companies"
+},
+{
+"id": "1345",
+"nb": "Lån til felles kontrollert virksomhet",
+"en": "Loans to joint ventures"
+},
+{
+"id": "1350",
+"nb": "Andre aksjer, norske",
+"en": "Other shares, Norwegian"
+},
+{
+"id": "1355",
+"nb": "Andre andeler, norske",
+"en": "Other units, Norwegian"
+},
+{
+"id": "1356",
+"nb": "Andre aksjer/andeler, utenlandske, innenfor fritaksmetoden",
+"en": "Other shares/units, foreign, included in the exemption model"
+},
+{
+"id": "1357",
+"nb": "Andre aksjer/andeler, utenlandske, utenfor fritaksmetoden",
+"en": "Other shares/units, foreign, not included in the exemption model"
+},
+{
+"id": "1358",
+"nb": "Verdipapirfondsandeler",
+"en": "Securities fund units"
+},
+{
+"id": "1360",
+"nb": "Obligasjoner",
+"en": "Bonds"
+},
+{
+"id": "1369",
+"nb": "Andre finansielle anleggsmidler",
+"en": "Other financial fixed assets"
+},
+{
+"id": "1370",
+"nb": "Fordringer på eiere",
+"en": "Receivables from owners"
+},
+{
+"id": "1375",
+"nb": "Fordringer på styremedlemmer",
+"en": "Receivables from board members"
+},
+{
+"id": "1380",
+"nb": "Fordringer på ansatte",
+"en": "Receivables from employees"
+},
+{
+"id": "1384",
+"nb": "Fordringer på daglig leder",
+"en": "Receivables from manager"
+},
+{
+"id": "1385",
+"nb": "Fordringer på ansatte eiere",
+"en": "Receivables from employed owners"
+},
+{
+"id": "1393",
+"nb": "Innskuddsfond",
+"en": "Deposit fund"
+},
+{
+"id": "1394",
+"nb": "Overfinansiering av pensjonsforpliktelser (pensjonspremiefond)",
+"en": "Overfunding of pension liabilities (pension premium fund)"
+},
+{
+"id": "1395",
+"nb": "Leietakerinnskudd",
+"en": "Deposits from tenants"
+},
+{
+"id": "1396",
+"nb": "Depositum",
+"en": "Deposits"
+},
+{
+"id": "1397",
+"nb": "Forskuddsleasing",
+"en": "Prepaid leasing"
+},
+{
+"id": "1398",
+"nb": "Til gode merverdiavgift",
+"en": "VAT refundable"
+},
+{
+"id": "1399",
+"nb": "Andre fordringer",
+"en": "Other receivables"
+},
+{
+"id": "1400",
+"nb": "Direkte materialer/råvarer",
+"en": "Direct materials/raw materials"
+},
+{
+"id": "1405",
+"nb": "Hjelpematerialer",
+"en": "Auxiliary materials"
+},
+{
+"id": "1408",
+"nb": "Driftsmaterialer og reservedeler",
+"en": "Operating materials and spare parts"
+},
+{
+"id": "1409",
+"nb": "Beholdningsendring råvarer og innkjøpte halvfabrikater",
+"en": "Change in stocks of raw materials and semi-manufactures"
+},
+{
+"id": "1420",
+"nb": "Varer under tilvirkning",
+"en": "Work in progress"
+},
+{
+"id": "1429",
+"nb": "Beholdningsendring varer under tilvirkning",
+"en": "Change in stocks of work in progress"
+},
+{
+"id": "1440",
+"nb": "Ferdige egentilvirkede varer",
+"en": "Self-produced finished goods"
+},
+{
+"id": "1449",
+"nb": "Beholdningsendring ferdige egentilvirkede varer",
+"en": "Change in stocks of self-produced finished goods"
+},
+{
+"id": "1460",
+"nb": "Innkjøpte varer for videresalg",
+"en": "Goods purchased for resale"
+},
+{
+"id": "1465",
+"nb": "Demonstrasjonsvarer",
+"en": "Demonstration goods"
+},
+{
+"id": "1469",
+"nb": "Beholdningsendring innkjøpte varer for videresalg",
+"en": "Change in stocks of goods purchased for resale"
+},
+{
+"id": "1470",
+"nb": "Grunnlag MVA innførsel av varer, høy sats",
+"en": "Basis VAT import of goods, high rate"
+},
+{
+"id": "1471",
+"nb": "Grunnlag MVA innførsel av varer, høy sats, motkonto",
+"en": "Basis VAT import of goods, high rate, contra account"
+},
+{
+"id": "1472",
+"nb": "Grunnlag MVA innførsel av varer, middels sats",
+"en": "Basis VAT import of goods, medium rate"
+},
+{
+"id": "1473",
+"nb": "Grunnlag MVA innførsel av varer, middels sats, motkonto",
+"en": "Basis VAT import of goods, medium rate, contra account"
+},
+{
+"id": "1474",
+"nb": "Grunnlag innførsel av varer med null sats",
+"en": "Basis import of goods with zero rate"
+},
+{
+"id": "1475",
+"nb": "Grunnlag innførsel av varer med  null sats, motkonto",
+"en": "Basis import of goods with zero rate, contra account"
+},
+{
+"id": "1476",
+"nb": "Grunnlag utgående MVA kjøp tjenester fra utlandet",
+"en": "Basis outgoing VAT purchase of services from abroad"
+},
+{
+"id": "1477",
+"nb": "Grunnlag utgående MVA kjøp tjenester fra utlandet, motkonto",
+"en": "Basis outgoing VAT purchase of services from abroad, contra account"
+},
+{
+"id": "1478",
+"nb": "Innenlands kjøp av varer og tjenester, omvendt avgiftsplikt",
+"en": "Domestic purchase of goods and services, reversed VAT liability"
+},
+{
+"id": "1479",
+"nb": "Innenlands kjøp av varer og tjenester, omvendt avgiftsplikt, motkonto",
+"en": "Domestic purchase of goods and services, reversed VAT liability, contra account"
+},
+{
+"id": "1480",
+"nb": "Forskuddsbetaling til leverandører (varekontrakter/prosjekter)",
+"en": "Prepayments to suppliers (contracts for goods/projects)"
+},
+{
+"id": "1490",
+"nb": "Biologiske eiendeler",
+"en": "Biological assets"
+},
+{
+"id": "1499",
+"nb": "Andre beholdninger",
+"en": "Other inventories"
+},
+{
+"id": "1500",
+"nb": "Kundefordringer",
+"en": "Trade debtors (accounts receivable from customers)"
+},
+{
+"id": "1530",
+"nb": "Opptjent, ikke fakturert driftsinntekt",
+"en": "Accrued, uninvoiced operating income"
+},
+{
+"id": "1550",
+"nb": "Kundefordringer på selskap i samme konsern",
+"en": "Trade debtors in group companies (accounts receivable from companies in the same group)"
+},
+{
+"id": "1560",
+"nb": "Andre fordringer på selskap i samme konsern",
+"en": "Other debtors in group companies (other receivables from companies in the same group)"
+},
+{
+"id": "1570",
+"nb": "Reiseforskudd",
+"en": "Cash advances for travel"
+},
+{
+"id": "1572",
+"nb": "Lønnsforskudd (som trekkes i lønn senere)",
+"en": "Advances on wages and salaries (deducted from pay later)"
+},
+{
+"id": "1573",
+"nb": "Andre kortsiktige lån til ansatte (ikke forskudd lønn)",
+"en": "Other short-term loans to employees (not advances on wages and salaries)"
+},
+{
+"id": "1574",
+"nb": "Kortsiktig lån aksjonær/deltaker",
+"en": "Short-term loans to shareholders/partners"
+},
+{
+"id": "1575",
+"nb": "Mellomregning aksjonær/deltaker",
+"en": "Current account, shareholders/partners"
+},
+{
+"id": "1576",
+"nb": "Kortsiktig lån daglig leder",
+"en": "Short-term loans to manager"
+},
+{
+"id": "1579",
+"nb": "Andre kortsiktige fordringer",
+"en": "Other short-term receivables"
+},
+{
+"id": "1580",
+"nb": "Avsetning tap på kundefordringer",
+"en": "Provisions for losses on trade debtors"
+},
+{
+"id": "1585",
+"nb": "Avsetning tap på andre fordringer",
+"en": "Provisions for losses on other debtors"
+},
+{
+"id": "1590",
+"nb": "Andre omløpsmidler",
+"en": "Other current assets"
+},
+{
+"id": "1600",
+"nb": "Utgående merverdiavgift, høy sats",
+"en": "Output VAT, high rate"
+},
+{
+"id": "1601",
+"nb": "Utgående merverdiavgift, middels sats",
+"en": "Output VAT, middle rate"
+},
+{
+"id": "1602",
+"nb": "Utgående merverdiavgift, råfisk mv, middels sats",
+"en": "Output VAT, raw fish etc, middle rate"
+},
+{
+"id": "1603",
+"nb": "Utgående merverdiavgift, lav sats",
+"en": "Output VAT, low rate"
+},
+{
+"id": "1604",
+"nb": "Utgående merverdiavgift kjøp tjenester fra utlandet",
+"en": "Output VAT, purchases of services from abroad"
+},
+{
+"id": "1605",
+"nb": "Utgående merverdiavgift - innførsel av varer, høy sats",
+"en": "Output VAT - import of goods, high rate"
+},
+{
+"id": "1606",
+"nb": "Utgående merverdiavgift - innførsel av varer, middels sats",
+"en": "Output VAT - import of goods, medium rate"
+},
+{
+"id": "1607",
+"nb": "Utgående merverdiavgift - innenlands kjøp av varer og tjenester med omvendt avgiftsplikt, høy sats",
+"en": "Output VAT - domestic purchase of goods and services with reversed VAT liability, high rate"
+},
+{
+"id": "1610",
+"nb": "Inngående merverdiavgift, høy sats",
+"en": "Input VAT, high rate"
+},
+{
+"id": "1611",
+"nb": "Inngående merverdiavgift, middels sats",
+"en": "Input VAT, middle rate"
+},
+{
+"id": "1612",
+"nb": "Inngående merverdiavgift, middels sats, råfisk mv",
+"en": "Input VAT, middle rate, raw fish etc"
+},
+{
+"id": "1613",
+"nb": "Inngående merverdiavgift, lav sats",
+"en": "Input VAT, low rate"
+},
+{
+"id": "1614",
+"nb": "Inngående merverdiavgift kjøp tjenester fra utlandet",
+"en": "Input VAT, purchases of services from abroad"
+},
+{
+"id": "1615",
+"nb": "Inngående merverdiavgift - innførsel av varer, høy sats",
+"en": "Input VAT - import of goods, high rate"
+},
+{
+"id": "1616",
+"nb": "Inngående merverdiavgift - innførsel av varer, middels sats",
+"en": "Input VAT -  import of goods, medium rate"
+},
+{
+"id": "1617",
+"nb": "Inngående merverdiavgift - innenlands kjøp av varer og tjenester med omvendt avgiftsplikt, høy sats",
+"en": "Input VAT - domestic purchase of goods and services with reversed VAT liability, high rate"
+},
+{
+"id": "1640",
+"nb": "Oppgjørskonto merverdiavgift",
+"en": "Settlement account for VAT"
+},
+{
+"id": "1650",
+"nb": "Merverdiavgiftskompensasjon, høy sats",
+"en": "VAT compensation, high rate"
+},
+{
+"id": "1651",
+"nb": "Merverdiavgiftskompensasjon, middels sats",
+"en": "VAT compensation, middle rate"
+},
+{
+"id": "1652",
+"nb": "Merverdiavgiftskompensasjon, lav sats",
+"en": "VAT compensation, low rate"
+},
+{
+"id": "1654",
+"nb": "Oppgjørskonto kompensert merverdiavgift",
+"en": "Settlement account for VAT compensation"
+},
+{
+"id": "1655",
+"nb": "Grunnlag merverdiavgiftskompensasjon, høy sats",
+"en": "Tax value, VAT compensation, high rate"
+},
+{
+"id": "1656",
+"nb": "Grunnlag merverdiavgiftskompensasjon, middels sats",
+"en": "Tax value, VAT compensation, middle rate"
+},
+{
+"id": "1657",
+"nb": "Grunnlag merverdiavgiftskompensasjon, lav sats",
+"en": "Tax value, VAT compensation, low rate"
+},
+{
+"id": "1659",
+"nb": "Motkonto grunnlag merverdiavgiftskompensasjon",
+"en": "Basis VAT compensation contra account"
+},
+{
+"id": "1660",
+"nb": "Krav på refusjon av utenlandsk merverdiavgift",
+"en": "Claim for refund of foreign VAT"
+},
+{
+"id": "1670",
+"nb": "Krav på offentlige tilskudd",
+"en": "Entitlements to public grants"
+},
+{
+"id": "1675",
+"nb": "Skattefunn til gode, ikke fastsatt",
+"en": "SkatteFUNN Tax Incentive Scheme credit, not offset"
+},
+{
+"id": "1700",
+"nb": "Forskuddsbetalt leiekostnad",
+"en": "Prepaid rental expenses"
+},
+{
+"id": "1710",
+"nb": "Forskuddsbetalt rentekostnad",
+"en": "Prepaid interest expenses"
+},
+{
+"id": "1740",
+"nb": "Forskuddsbetalt, ikke påløpt lønn",
+"en": "Prepaid, not accrued wages and salaries"
+},
+{
+"id": "1742",
+"nb": "Forskuddsbetalt strøm, varme mv.",
+"en": "Prepaid electricity, heat etc."
+},
+{
+"id": "1743",
+"nb": "Forskuddsbetalt forsikring",
+"en": "Prepaid insurance"
+},
+{
+"id": "1744",
+"nb": "Forskuddsbetalt leasingleie",
+"en": "Prepaid leasing charges"
+},
+{
+"id": "1749",
+"nb": "Andre forskuddsbetalte driftskostnader",
+"en": "Other prepaid operating expenses"
+},
+{
+"id": "1750",
+"nb": "Påløpt leieinntekt",
+"en": "Accrued rental income"
+},
+{
+"id": "1760",
+"nb": "Påløpt renteinntekt",
+"en": "Accrued interest income"
+},
+{
+"id": "1780",
+"nb": "Krav på innbetaling av selskapskapital",
+"en": "Unpaid subscribed capital"
+},
+{
+"id": "1800",
+"nb": "Aksjer i foretak i samme konsern, norske",
+"en": "Shares in group companies, Norwegian"
+},
+{
+"id": "1805",
+"nb": "Andeler i foretak i samme konsern, norske",
+"en": "Units in group companies, Norwegian"
+},
+{
+"id": "1806",
+"nb": "Aksjer/andeler i foretak i samme konsern, utenlandske, innenfor fritaksmetoden",
+"en": "Shares/units in group companies, foreign, included in the exemption model"
+},
+{
+"id": "1808",
+"nb": "Aksjer/andeler i foretak i samme konsern, utenlandske, utenfor fritaksmetoden",
+"en": "Shares/units in group companies, foreign, not included in the exemption model"
+},
+{
+"id": "1810",
+"nb": "Børsnoterte aksjer, norske",
+"en": "Listed share investments, Norwegian"
+},
+{
+"id": "1815",
+"nb": "Børsnoterte aksjer, utenlandske, innenfor fritaksmetoden",
+"en": "Listed share investments, foreign, included in the exemption model"
+},
+{
+"id": "1816",
+"nb": "Børsnoterte aksjer, utenlandske, utenfor fritaksmetoden",
+"en": "Listed share investments, foreign, not included in the exemption model"
+},
+{
+"id": "1820",
+"nb": "Andre ikke børsnoterte aksjer, norske",
+"en": "Other unlisted share investments, Norwegian"
+},
+{
+"id": "1825",
+"nb": "Andre ikke børsnoterte aksjer, utenlandske, innenfor fritaksmetoden",
+"en": "Other unlisted share investments, foreign, included in the exemption model"
+},
+{
+"id": "1830",
+"nb": "Markedsbaserte obligasjoner, norske",
+"en": "Quoted bonds, Norwegian"
+},
+{
+"id": "1835",
+"nb": "Markedsbaserte obligasjoner, utenlandske",
+"en": "Quoted bonds, foreign"
+},
+{
+"id": "1840",
+"nb": "Ikke markedsbaserte obligasjoner, norske",
+"en": "Non-quoted bonds, Norwegian"
+},
+{
+"id": "1845",
+"nb": "Ikke markedsbaserte obligasjoner, utenlandske",
+"en": "Non-quoted bonds, foreign"
+},
+{
+"id": "1850",
+"nb": "Markedsbaserte obligasjoner med kort løpetid (sertifikater), norske",
+"en": "Quoted bonds with a short maturity (certificates), Norwegian"
+},
+{
+"id": "1855",
+"nb": "Markedsbaserte obligasjoner med kort løpetid (sertifikater), utenlandske",
+"en": "Quoted bonds with a short maturity (certificates), foreign"
+},
+{
+"id": "1860",
+"nb": "Ikke markedsbaserte obligasjoner med kort løpetid (sertifikater), norske",
+"en": "Non-quoted bonds with a short maturity (certificates), Norwegian"
+},
+{
+"id": "1865",
+"nb": "Ikke markedsbaserte obligasjoner med kort løpetid (sertifikater), utenlandske",
+"en": "Non-quoted bonds with a short maturity (certificates), foreign"
+},
+{
+"id": "1870",
+"nb": "Markedsbaserte opsjoner, norske",
+"en": "Quoted options, Norwegian"
+},
+{
+"id": "1875",
+"nb": "Markedsbaserte opsjoner, utenlandske",
+"en": "Quoted options, foreign"
+},
+{
+"id": "1880",
+"nb": "Ikke markedsbaserte opsjoner, norske",
+"en": "Non-quoted options, Norwegian"
+},
+{
+"id": "1882",
+"nb": "Ikke markedsbaserte opsjoner, utenlandske",
+"en": "Non-quoted options, foreign"
+},
+{
+"id": "1889",
+"nb": "Andre finansielle instrumenter",
+"en": "Other financial instruments"
+},
+{
+"id": "1890",
+"nb": "Andeler utenfor konsern, norske",
+"en": "Units outside group companies, Norwegian"
+},
+{
+"id": "1892",
+"nb": "Andeler utenfor konsern, utenlandske, innenfor fritaksmetoden",
+"en": "Units outside group companies, foreign, included in the exemption model"
+},
+{
+"id": "1893",
+"nb": "Andeler utenfor konsern, utenlandske, utenfor fritaksmetoden",
+"en": "Units outside group companies, foreign, not included in the exemption model"
+},
+{
+"id": "1900",
+"nb": "Kontanter, NOK",
+"en": "Cash in hand, NOK"
+},
+{
+"id": "1905",
+"nb": "Kontanter, EUR",
+"en": "Cash in hand, EUR"
+},
+{
+"id": "1908",
+"nb": "Kontanter, annen valuta",
+"en": "Cash in hand, other currencies"
+},
+{
+"id": "1909",
+"nb": "Kassedifferanse",
+"en": "Cash balance"
+},
+{
+"id": "1920",
+"nb": "Bankinnskudd",
+"en": "Bank deposits"
+},
+{
+"id": "1950",
+"nb": "Bankinnskudd for skattetrekk",
+"en": "Bank deposits for tax withholdings"
+},
+{
+"id": "1960",
+"nb": "Bankinnskudd utland",
+"en": "Bank deposits, abroad"
+},
+{
+"id": "2000",
+"nb": "Aksjekapital / Egenkapital, bundet",
+"en": "Subscribed share capital / Equity, undistributable"
+},
+{
+"id": "2010",
+"nb": "Egne aksjer / Felleseid andelskapital",
+"en": "Own shares (treasury stock) / Jointly-owned cooperative share capital"
+},
+{
+"id": "2020",
+"nb": "Overkurs",
+"en": "Share premium reserve"
+},
+{
+"id": "2030",
+"nb": "Ikke registrert kapitalforhøyelse",
+"en": "Non-authorised increase in capital"
+},
+{
+"id": "2032",
+"nb": "Ikke registrert fondsemisjon",
+"en": "Non-authorised capitalisation issue"
+},
+{
+"id": "2033",
+"nb": "Ikke registrert kapitalnedsettelse",
+"en": "Non-authorised reduction in capital"
+},
+{
+"id": "2035",
+"nb": "Annen innskutt egenkapital",
+"en": "Other paid-in capital"
+},
+{
+"id": "2036",
+"nb": "Stiftelsesutgifter",
+"en": "Incorporation expenses"
+},
+{
+"id": "2040",
+"nb": "Fond / Fond for vurderingsforskjeller i DLS",
+"en": "Reserves / Reserve for valuation variances, general partnership-companies and likewise"
+},
+{
+"id": "2042",
+"nb": "Fond for vurderingsforskjeller i andre selskaper",
+"en": "Reserve for valuation variances, other companies"
+},
+{
+"id": "2045",
+"nb": "Fond for urealiserte gevinster",
+"en": "Reserve for non-realised gains"
+},
+{
+"id": "2050",
+"nb": "Annen egenkapital",
+"en": "Other equity"
+},
+{
+"id": "2055",
+"nb": "Avsatt utbytte",
+"en": "Provisions for dividends"
+},
+{
+"id": "2060",
+"nb": "Uttak kontanter",
+"en": "Cash withdrawal"
+},
+{
+"id": "2062",
+"nb": "Innskudd kontanter",
+"en": "Cash deposit"
+},
+{
+"id": "2063",
+"nb": "Uttak av anleggsmidler/driftsmidler",
+"en": "Withdrawal of fixed assets"
+},
+{
+"id": "2064",
+"nb": "Uttak varer og tjenester",
+"en": "Withdrawal of goods and services"
+},
+{
+"id": "2065",
+"nb": "Egen bolig i næringsbygg",
+"en": "Own dwelling in commercial building"
+},
+{
+"id": "2066",
+"nb": "Motkonto egen bolig i næringsbygg",
+"en": "Contra account, own dwelling in commercial building"
+},
+{
+"id": "2067",
+"nb": "Lys og varme privat",
+"en": "Light and heat, private"
+},
+{
+"id": "2068",
+"nb": "Private kostnader til elektronisk kommunikasjon",
+"en": "Private expenses for electronic communications"
+},
+{
+"id": "2069",
+"nb": "Diverse andre privatutgifter",
+"en": "Miscellaneous other private expenses"
+},
+{
+"id": "2070",
+"nb": "Forskuddsskatt",
+"en": "Advance tax"
+},
+{
+"id": "2072",
+"nb": "Tilleggsforskudd/restskatt",
+"en": "Supplemental prepayment/tax due"
+},
+{
+"id": "2075",
+"nb": "Privat bruk av næringsbil",
+"en": "Private use of company car"
+},
+{
+"id": "2077",
+"nb": "Premie til egen syke- og ulykkesforsikring",
+"en": "Premium for own health and accident insurance"
+},
+{
+"id": "2078",
+"nb": "Premie til tilleggstrygd for sykepenger",
+"en": "Premium for supplementary national insurance for sickness benefits"
+},
+{
+"id": "2080",
+"nb": "Udekket tap",
+"en": "Uncovered loss"
+},
+{
+"id": "2099",
+"nb": "Udisponert resultat",
+"en": "Retained result"
+},
+{
+"id": "2100",
+"nb": "Pensjonsforpliktelser",
+"en": "Pension liabilities"
+},
+{
+"id": "2120",
+"nb": "Utsatt skatt, brutto",
+"en": "Deferred tax, gross"
+},
+{
+"id": "2129",
+"nb": "Utlignbar utsatt skatt",
+"en": "Deferred tax that can be offset"
+},
+{
+"id": "2160",
+"nb": "Uopptjent inntekt",
+"en": "Unearned income"
+},
+{
+"id": "2180",
+"nb": "Andre avsetninger for forpliktelser",
+"en": "Other provisions for liabilities and charges"
+},
+{
+"id": "2188",
+"nb": "Avsetning for skyldig merverdiavgift",
+"en": "Accured VAT"
+},
+{
+"id": "2200",
+"nb": "Konvertible lån",
+"en": "Convertible loans"
+},
+{
+"id": "2210",
+"nb": "Obligasjonslån",
+"en": "Bond loans"
+},
+{
+"id": "2220",
+"nb": "Gjeld til kredittinstitusjoner",
+"en": "Liabilities to financial institutions"
+},
+{
+"id": "2250",
+"nb": "Gjeld til ansatte",
+"en": "Liabilities to employees"
+},
+{
+"id": "2255",
+"nb": "Gjeld til eiere",
+"en": "Liabilities to owners"
+},
+{
+"id": "2260",
+"nb": "Gjeld til selskap i samme konsern",
+"en": "Liabilities to companies in the same group"
+},
+{
+"id": "2280",
+"nb": "Stille interessentinnskudd",
+"en": "Subscription by sleeping partner"
+},
+{
+"id": "2285",
+"nb": "Ansvarlig lånekapital",
+"en": "Subordinated loan capital"
+},
+{
+"id": "2290",
+"nb": "Gjeld til andre personer enn ansatte og eiere",
+"en": "Liabilities to persons other than employees and owners"
+},
+{
+"id": "2299",
+"nb": "Annen langsiktig gjeld",
+"en": "Other long-term liabilities"
+},
+{
+"id": "2300",
+"nb": "Konvertible lån",
+"en": "Convertible loans"
+},
+{
+"id": "2320",
+"nb": "Obligasjonslån",
+"en": "Bond loans"
+},
+{
+"id": "2330",
+"nb": "Derivater",
+"en": "Derivatives"
+},
+{
+"id": "2340",
+"nb": "Andre valutalån",
+"en": "Other foreign currency loans"
+},
+{
+"id": "2360",
+"nb": "Byggelån",
+"en": "Construction loans"
+},
+{
+"id": "2380",
+"nb": "Kassakreditt",
+"en": "Overdraft facilities"
+},
+{
+"id": "2390",
+"nb": "Annen gjeld til kredittinstitusjon",
+"en": "Other liabilities to financial institution"
+},
+{
+"id": "2400",
+"nb": "Leverandørgjeld",
+"en": "Trade creditors"
+},
+{
+"id": "2460",
+"nb": "Leverandørgjeld til selskap i samme konsern",
+"en": "Trade creditors from group companies"
+},
+{
+"id": "2500",
+"nb": "Betalbar skatt, ikke fastsatt",
+"en": "Tax payable, not offset"
+},
+{
+"id": "2510",
+"nb": "Betalbar skatt, fastsatt",
+"en": "Tax payable, offset"
+},
+{
+"id": "2540",
+"nb": "Forskuddsskatt – upersonlig skattyter",
+"en": "Corporate advance tax"
+},
+{
+"id": "2599",
+"nb": "Annen skyldig skatt",
+"en": "Other payable taxes"
+},
+{
+"id": "2600",
+"nb": "Forskuddstrekk",
+"en": "Advance tax withholding"
+},
+{
+"id": "2610",
+"nb": "Utleggstrekk",
+"en": "Attachment of earnings"
+},
+{
+"id": "2620",
+"nb": "Bidragstrekk",
+"en": "Deduction of support (child-support etc) payments"
+},
+{
+"id": "2630",
+"nb": "Trygdetrekk",
+"en": "National insurance deduction"
+},
+{
+"id": "2640",
+"nb": "Forsikringstrekk",
+"en": "Insurance deduction"
+},
+{
+"id": "2650",
+"nb": "Trukket fagforeningskontingent",
+"en": "Trade union dues deduction"
+},
+{
+"id": "2690",
+"nb": "Andre trekk",
+"en": "Other deductions"
+},
+{
+"id": "2700",
+"nb": "Utgående merverdiavgift, høy sats",
+"en": "Output VAT, high rate"
+},
+{
+"id": "2701",
+"nb": "Utgående merverdiavgift, middels sats",
+"en": "Output VAT, middle rate"
+},
+{
+"id": "2702",
+"nb": "Utgående merverdiavgift, middels sats, råfisk mv",
+"en": "Output VAT, middle rate raw fish etc"
+},
+{
+"id": "2703",
+"nb": "Utgående merverdiavgift, lav sats",
+"en": "Output VAT, low rate"
+},
+{
+"id": "2704",
+"nb": "Utgående merverdiavgift ved kjøp av tjenester fra utlandet, høy sats",
+"en": "Output VAT, purchases of services from abroad, high rate"
+},
+{
+"id": "2705",
+"nb": "Utgående merverdiavgift - innførsel av varer, høy sats",
+"en": "Output VAT - import of goods, high rate"
+},
+{
+"id": "2706",
+"nb": "Utgående merverdiavgift - innførsel av varer, middels sats",
+"en": "Output VAT - import of goods, medium rate"
+},
+{
+"id": "2707",
+"nb": "Utgående merverdiavgift - innenlands kjøp av varer og tjenester med omvendt avgiftsplikt, høy sats",
+"en": "Output VAT - domestic purchase of goods and services with reversed VAT liability, high rate"
+},
+{
+"id": "2709",
+"nb": "Utgående merverdiavgift ved kjøp av tjenester fra utlandet, lav sats",
+"en": "Output VAT purchase of services from abroad, low rate"
+},
+{
+"id": "2710",
+"nb": "Inngående merverdiavgift, høy sats",
+"en": "Input VAT, high rate"
+},
+{
+"id": "2711",
+"nb": "Inngående merverdiavgift, middels sats",
+"en": "Input VAT, middle rate"
+},
+{
+"id": "2712",
+"nb": "Inngående merverdiavgift, middels sats, råfisk mv",
+"en": "Input VAT, middle rate, raw fish etc"
+},
+{
+"id": "2713",
+"nb": "Inngående merverdiavgift, lav sats",
+"en": "Input VAT, low rate"
+},
+{
+"id": "2714",
+"nb": "Inngående merverdiavgift ved kjøp tjenester fra utlandet, høy sats",
+"en": "Input VAT, purchases of services from abroad, high rate"
+},
+{
+"id": "2715",
+"nb": "Inngående merverdiavgift - innførsel av varer, høy sats",
+"en": "Input VAT - import of goods, high rate"
+},
+{
+"id": "2716",
+"nb": "Inngående merverdiavgift - innførsel av varer, middels sats",
+"en": "Input VAT -  import of goods, medium rate"
+},
+{
+"id": "2717",
+"nb": "Inngående merverdiavgift - innenlands kjøp av varer og tjenester med omvendt avgiftsplikt, høy sats",
+"en": "Input VAT - domestic purchase of goods and services with reversed VAT liability, high rate"
+},
+{
+"id": "2718",
+"nb": "Inngående merverdiavgift ved kjøp av tjenester fra utlandet, lav sats",
+"en": "Input VAT purchase of services from abroad, low rate"
+},
+{
+"id": "2740",
+"nb": "Oppgjørskonto merverdiavgift",
+"en": "Settlement account for VAT"
+},
+{
+"id": "2770",
+"nb": "Skyldig arbeidsgiveravgift",
+"en": "Unpaid employers’ national insurance contributions"
+},
+{
+"id": "2771",
+"nb": "Betalt arbeidsgiveravgift",
+"en": "Paid employers’ national insurance contributions"
+},
+{
+"id": "2772",
+"nb": "Skyldig finansskatt av lønn",
+"en": "Unpaid finance tax payroll"
+},
+{
+"id": "2773",
+"nb": "Betalt finansskatt av lønn",
+"en": "Paid finance tax payroll"
+},
+{
+"id": "2780",
+"nb": "Påløpt arbeidsgiveravgift påløpt lønn",
+"en": "Accrued employers’ national insurance contributions on accrued wages and salaries"
+},
+{
+"id": "2781",
+"nb": "Påløpt arbeidsgiveravgift ferielønn",
+"en": "Accrued employers’ national insurance contributions on holiday pay"
+},
+{
+"id": "2782",
+"nb": "Påløpt arbeidsgiveravgift andre honorarer",
+"en": "Accrued employers’ national insurance contributions on other remuneration"
+},
+{
+"id": "2783",
+"nb": "Påløpt finansskatt påløpt lønn",
+"en": "Accrued finance tax on accrued wages and salaries"
+},
+{
+"id": "2784",
+"nb": "Påløpt finansskatt ferielønn",
+"en": "Accrued finance tax on accrued holiday pay"
+},
+{
+"id": "2785",
+"nb": "Påløpt finansskatt andre honorarer",
+"en": "Accrued finance tax on other remuneration"
+},
+{
+"id": "2790",
+"nb": "Andre offentlige avgifter",
+"en": "Other public duties payable"
+},
+{
+"id": "2800",
+"nb": "Avsatt utbytte",
+"en": "Provisions for dividends"
+},
+{
+"id": "2900",
+"nb": "Forskudd fra kunder",
+"en": "Prepayments from customers"
+},
+{
+"id": "2910",
+"nb": "Gjeld til ansatte",
+"en": "Liabilities to employees"
+},
+{
+"id": "2915",
+"nb": "Gjeld til eiere",
+"en": "Liabilities to owners"
+},
+{
+"id": "2920",
+"nb": "Gjeld til selskap i samme konsern",
+"en": "Liabilities to companies in the same group"
+},
+{
+"id": "2930",
+"nb": "Skyldig lønn",
+"en": "Unpaid wages and salaries"
+},
+{
+"id": "2940",
+"nb": "Skyldige feriepenger",
+"en": "Unpaid holiday pay"
+},
+{
+"id": "2945",
+"nb": "Utbetalte feriepenger",
+"en": "Paid holiday pay"
+},
+{
+"id": "2950",
+"nb": "Påløpt rente",
+"en": "Accrued interest"
+},
+{
+"id": "2960",
+"nb": "Annen påløpt kostnad",
+"en": "Other accrued expenses"
+},
+{
+"id": "2965",
+"nb": "Forskuddsbetalt inntekt",
+"en": "Prepaid income"
+},
+{
+"id": "2970",
+"nb": "Fremtidig garantiytelse",
+"en": "Future guarantee provision"
+},
+{
+"id": "2975",
+"nb": "Fremtidig serviceytelse",
+"en": "Future service provision"
+},
+{
+"id": "2980",
+"nb": "Avsetning styrehonorar",
+"en": "Provisions for board members’ fees"
+},
+{
+"id": "2982",
+"nb": "Avsetning revisjonshonorar",
+"en": "Provisions for auditors’ remuneration"
+},
+{
+"id": "2983",
+"nb": "Avsetning regnskapshonorar",
+"en": "Provisions for accountants’ fees"
+},
+{
+"id": "2989",
+"nb": "Avsetning for andre forpliktelser",
+"en": "Other provisions for liabilities"
+},
+{
+"id": "2990",
+"nb": "Gjeld til andre personer enn ansatte og eiere",
+"en": "Liabilities to persons other than employees and owners"
+},
+{
+"id": "2999",
+"nb": "Annen kortsiktig gjeld",
+"en": "Other current liabilities"
+},
+{
+"id": "3000",
+"nb": "Salgsinntekt handelsvarer, avgiftspliktig, høy sats",
+"en": "Sales revenue, merchandise, subject to VAT, high rate"
+},
+{
+"id": "3005",
+"nb": "Salgsinntekt handelsvarer, omvendt avgiftsplikt",
+"en": "Revenue trade goods, reversed VAT liability"
+},
+{
+"id": "3009",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3010",
+"nb": "Salgsinntekt egentilvirkede varer, avgiftspliktig, høy sats",
+"en": "Sales revenue, goods of own production, subject to VAT, high rate"
+},
+{
+"id": "3015",
+"nb": "Salgsinntekt egentilvirkede varer, omvendt avgiftsplikt",
+"en": "Revenue self-produced goods, reversed VAT liability"
+},
+{
+"id": "3019",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3020",
+"nb": "Salgsinntekt tjenester, avgiftspliktig, høy sats",
+"en": "Sales revenue, services, subject to VAT, high rate"
+},
+{
+"id": "3025",
+"nb": "Salgsinntekt tjenester, omvendt avgiftsplikt",
+"en": "Revenue services, reversed VAT liability"
+},
+{
+"id": "3029",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3030",
+"nb": "Salgsinntekt handelsvarer, avgiftspliktig, middels sats",
+"en": "Sales revenue, merchandise, subject to VAT, middle rate"
+},
+{
+"id": "3035",
+"nb": "Salgsinntekt råfisk og andre marine viltlevende ressurser, avgiftspliktig, middels sats",
+"en": "Sales revenue,raw fish and other marine wild resources ,subject to VAT, middle rate"
+},
+{
+"id": "3039",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3040",
+"nb": "Salgsinntekt egentilvirkede varer, avgiftspliktig, middels sats",
+"en": "Sales revenue, goods of own production, subject to VAT, middle rate"
+},
+{
+"id": "3049",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3050",
+"nb": "Salgsinntekt tjenester, avgiftspliktig, lav sats",
+"en": "Sales revenue, services, subject to VAT, low rate"
+},
+{
+"id": "3059",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3060",
+"nb": "Uttak av varer, avgiftspliktig, høy sats",
+"en": "Withdrawal of goods, subject to VAT, high rate"
+},
+{
+"id": "3063",
+"nb": "Uttak av varer, avgiftspliktig, middels sats",
+"en": "Withdrawal of goods, subject to VAT, middle rate"
+},
+{
+"id": "3070",
+"nb": "Uttak av tjenester, avgiftspliktig, høy sats",
+"en": "Withdrawal of services, subject to VAT, high rate"
+},
+{
+"id": "3074",
+"nb": "Uttak av tjenester, avgiftspliktig, lav sats",
+"en": "Withdrawal of services, subject to VAT, low rate"
+},
+{
+"id": "3081",
+"nb": "Kontantrabatt, avgiftspliktig salg, høy sats",
+"en": "Cash discount, sales subject to VAT, high rate"
+},
+{
+"id": "3082",
+"nb": "Kontantrabatt, avgiftspliktig salg, middel sats",
+"en": "Cash discount, sales subject to VAT, middle rate"
+},
+{
+"id": "3083",
+"nb": "Kontantrabatt, avgiftspliktig salg, lav sats",
+"en": "Cash discount, sales subject to VAT, low rate"
+},
+{
+"id": "3084",
+"nb": "Kvantumsrabatt, avgiftspliktig salg, høy sats",
+"en": "Quantity discount, sales subject to VAT, high rate"
+},
+{
+"id": "3085",
+"nb": "Kvantumsrabatt, avgiftspliktig salg, middels sats",
+"en": "Quantity discount, sales subject to VAT, middle rate"
+},
+{
+"id": "3086",
+"nb": "Kvantumsrabatt, avgiftspliktig salg, lav sats",
+"en": "Quantity discount, sales subject to VAT, low rate"
+},
+{
+"id": "3087",
+"nb": "Annen salgsinntektsreduksjon, avgiftspliktig salg, høy sats",
+"en": "Other reduction in sales revenue, sales subject to VAT, high rate"
+},
+{
+"id": "3088",
+"nb": "Annen salgsinntektsreduksjon, avgiftspliktig salg, middels sats",
+"en": "Other reduction in sales revenue, sales subject to VAT, middle rate"
+},
+{
+"id": "3089",
+"nb": "Annen salgsinntektsreduksjon, avgiftspliktig salg, lav sats",
+"en": "Other reduction in sales revenue, sales subject to VAT, low rate"
+},
+{
+"id": "3090",
+"nb": "Viderefakturering av omkostninger ved salg, høy sats",
+"en": "Re-invoicing of sales costs, high rate"
+},
+{
+"id": "3091",
+"nb": "Viderefakturering av omkostninger ved salg, middels sats",
+"en": "Re-invoicing of sales costs, middle rate"
+},
+{
+"id": "3092",
+"nb": "Viderefakturering av omkostninger ved salg, lav sats",
+"en": "Re-invoicing of sales costs, low rate"
+},
+{
+"id": "3100",
+"nb": "Salgsinntekt handelsvarer, innenlands, avgiftsfri",
+"en": "Revenue trade goods, domestic, duty free"
+},
+{
+"id": "3105",
+"nb": "Salgsinntekt handelsvarer, utførsel, avgiftsfri",
+"en": "Revenue trade goods, exportation, duty free"
+},
+{
+"id": "3109",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3110",
+"nb": "Salgsinntekt egentilvirkede varer, innenlands, avgiftsfri",
+"en": "Revenue self-produced goods, domestic, duty free"
+},
+{
+"id": "3115",
+"nb": "Salgsinntekt egentilvirkede varer, utførsel, avgiftsfri",
+"en": "Revenue self-produced goods,  exportation, duty free"
+},
+{
+"id": "3119",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3120",
+"nb": "Salgsinntekt tjenester, innenlands, avgiftsfri",
+"en": "Revenue services, domestic, duty free"
+},
+{
+"id": "3125",
+"nb": "Salgsinntekt tjenester, utførsel, avgiftsfri",
+"en": "Revenue services, exportation, duty free"
+},
+{
+"id": "3129",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3160",
+"nb": "Uttak av varer, avgiftsfritt",
+"en": "Withdrawal of goods, not subject to VAT"
+},
+{
+"id": "3170",
+"nb": "Uttak av tjenester, avgiftsfritt",
+"en": "Withdrawal of services, not subject to VAT"
+},
+{
+"id": "3181",
+"nb": "Kontantrabatt, innenlands, avgiftsfritt",
+"en": "Cash discounts, domestic, sales not subject to VAT"
+},
+{
+"id": "3182",
+"nb": "Kontantrabatt, utførsel, avgiftsfritt",
+"en": "Cash discounts, exportation, sales not subject to VAT"
+},
+{
+"id": "3185",
+"nb": "Kvantumsrabatt, innenlands, avgiftsfritt",
+"en": "Quantity discounts, domestic, sales not subject to VAT"
+},
+{
+"id": "3186",
+"nb": "Kvantumsrabatt, utførsel, avgiftsfritt",
+"en": "Quantity discounts, exportation, sales not subject to VAT"
+},
+{
+"id": "3188",
+"nb": "Annen salgsinntektsreduksjon, innenlands, avgiftsfritt",
+"en": "Other reductions in sales revenue, domestic, sales not subject to VAT"
+},
+{
+"id": "3189",
+"nb": "Annen salgsinntektsreduksjon, utførsel, avgiftsfritt",
+"en": "Other reductions in sales revenue, exportation, sales not subject to VAT"
+},
+{
+"id": "3190",
+"nb": "Viderefakturering av omkostninger ved salg, innenlands, avgiftsfritt",
+"en": "Re-invoicing of sales costs, domestic, not subject to VAT"
+},
+{
+"id": "3191",
+"nb": "Viderefakturering av omkostninger ved salg, utførsel, avgiftsfritt",
+"en": "Re-invoicing of sales costs, exportation, sales not subject to VAT"
+},
+{
+"id": "3200",
+"nb": "Salgsinntekt handelsvarer, unntatt avgiftsplikt",
+"en": "Sales revenue, merchandise, exempt from VAT"
+},
+{
+"id": "3209",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3210",
+"nb": "Salgsinntekt egentilvirkede varer, unntatt avgiftsplikt",
+"en": "Sales revenue, goods of own production, exempt from VAT"
+},
+{
+"id": "3219",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3220",
+"nb": "Salgsinntekt tjenester, unntatt avgiftsplikt",
+"en": "Sales revenue, services, exempt from VAT"
+},
+{
+"id": "3229",
+"nb": "Opptjent, ikke fakturert inntekt",
+"en": "Earned income that has not been invoiced"
+},
+{
+"id": "3260",
+"nb": "Uttak av varer, unntatt avgiftsplikt",
+"en": "Withdrawal of goods, exempt from VAT"
+},
+{
+"id": "3281",
+"nb": "Kontantrabatt, unntatt avgiftsplikt",
+"en": "Cash discounts, exempt from VAT"
+},
+{
+"id": "3285",
+"nb": "Kvantumsrabatt, unntatt avgiftsplikt",
+"en": "Quantity discounts, exempt from VAT"
+},
+{
+"id": "3289",
+"nb": "Annen salgsinntektsreduksjon, unntatt avgiftsplikt",
+"en": "Other reductions in sales revenue, exempt from VAT"
+},
+{
+"id": "3290",
+"nb": "Viderefakturering av omkostninger ved salg, unntatt avgiftsplikt",
+"en": "Re-invoicing of sales costs, exempt from VAT"
+},
+{
+"id": "3300",
+"nb": "Spesiell offentlig avgift for tilvirkede/solgte varer",
+"en": "Special government fees and taxes on goods manufactured/sold"
+},
+{
+"id": "3400",
+"nb": "Spesielt offentlig tilskudd for tilvirkede/solgte varer",
+"en": "Special public grant for manufactured/sold goods"
+},
+{
+"id": "3440",
+"nb": "Spesielt offentlig tilskudd for tjeneste",
+"en": "Special public grant for services"
+},
+{
+"id": "3500",
+"nb": "Garanti",
+"en": "Guarantees"
+},
+{
+"id": "3510",
+"nb": "Service",
+"en": "Service"
+},
+{
+"id": "3600",
+"nb": "Leieinntekt fast eiendom, unntatt avgiftsplikt",
+"en": "Rental income from real property, exempt from VAT"
+},
+{
+"id": "3605",
+"nb": "Leieinntekt fast eiendom, avgiftspliktig",
+"en": "Rental income from real property, subject to VAT"
+},
+{
+"id": "3609",
+"nb": "Opptjent, ikke fakturert leieinntekt",
+"en": "Earned rental income that has not been invoiced"
+},
+{
+"id": "3610",
+"nb": "Leieinntekt andre varige driftsmidler, avgiftspliktig",
+"en": "Rental income from other tangible fixed assets, subject to VAT"
+},
+{
+"id": "3615",
+"nb": "Leieinntekt andre varige driftsmidler, avgiftsfri",
+"en": "Rental income from other tangible fixed assets, not subject to VAT"
+},
+{
+"id": "3619",
+"nb": "Opptjent, ikke fakturert leieinntekt",
+"en": "Earned rental income that has not been invoiced"
+},
+{
+"id": "3620",
+"nb": "Annen leieinntekt",
+"en": "Other rental income"
+},
+{
+"id": "3700",
+"nb": "Provisjonsinntekt, avgiftspliktig",
+"en": "Commission income, subject to VAT"
+},
+{
+"id": "3705",
+"nb": "Provisjonsinntekt, avgiftsfri",
+"en": "Commission income, not subject to VAT"
+},
+{
+"id": "3709",
+"nb": "Opptjent, ikke fakturert provisjonsinntekt",
+"en": "Earned commission income that has not been invoiced"
+},
+{
+"id": "3710",
+"nb": "Provisjonsinntekt, unntatt avgiftsplikt",
+"en": "Commission income, exempt from VAT"
+},
+{
+"id": "3850",
+"nb": "Verdiendringer investeringseiendommer",
+"en": "Change in value of investment properties"
+},
+{
+"id": "3870",
+"nb": "Verdiendringer biologiske eiendeler",
+"en": "Change in value of biological assets"
+},
+{
+"id": "3880",
+"nb": "Gevinst ved avgang av immaterielle eiendeler og varige driftsmidler",
+"en": "Gains from selling intangible assets and fixed assets"
+},
+{
+"id": "3881",
+"nb": "Salgssum immatr. eiendeler og varige driftsmidler, avgiftspliktig salg",
+"en": "Selling price of intangible assets and tangible fixed assets, sale subject to VAT"
+},
+{
+"id": "3882",
+"nb": "Salgssum immatr. eiendeler og varige driftsmidler, avgiftsfritt salg",
+"en": "Selling price of intangible assets and tangible fixed assets, sale not subject to VAT"
+},
+{
+"id": "3883",
+"nb": "Salgssum immatr. eiendeler og varige driftsmidler, unntatt avgiftsplikt",
+"en": "Selling price of intangible assets and tangible fixed assets, exempt from VAT"
+},
+{
+"id": "3889",
+"nb": "Motkonto balanseverdi solgte immatr. eiendeler og varige driftsmidler",
+"en": "Contra account, book value of intangible assets and tangible fixed assets"
+},
+{
+"id": "3891",
+"nb": "Salgssum finansielle anleggsmidler",
+"en": "Selling price of financial assets"
+},
+{
+"id": "3899",
+"nb": "Motkonto balanseverdi finansielle anleggsmidler",
+"en": "Contra account, book value of financial assets"
+},
+{
+"id": "3900",
+"nb": "Annen driftsrelatert inntekt",
+"en": "Other operational income"
+},
+{
+"id": "3971",
+"nb": "Justering merverdiavgift fast eiendom",
+"en": "Adjustments VAT property"
+},
+{
+"id": "3972",
+"nb": "Justering merverdiavgift maskiner",
+"en": "Adjustments VAT machines"
+},
+{
+"id": "4000",
+"nb": "Innkjøp av råvarer og halvfabrikata, høy sats",
+"en": "Purchase of raw materials and semi-manufactures, high rate"
+},
+{
+"id": "4030",
+"nb": "Innkjøp av råvarer og halvfabrikata, middels sats",
+"en": "Purchase of raw materials and semi-manufactures, middle rate"
+},
+{
+"id": "4035",
+"nb": "Innkjøp av råvarer og halvfabrikata, uten MVA",
+"en": "Purchase of raw materials and semi-manufactures, without VAT"
+},
+{
+"id": "4040",
+"nb": "Utenlandsk innkjøp av råvarer og halvfabrikata, høy sats",
+"en": "Foreign purchase of raw materials and semi-manufactures, high rate"
+},
+{
+"id": "4041",
+"nb": "Utenlandsk innkjøp av råvarer og halvfabrikata, middels sats",
+"en": "Foreign purchase of raw materials and semi-manufactures, middle rate"
+},
+{
+"id": "4042",
+"nb": "Utenlandsk innkjøp av råvarer og halvfabrikata, fritatt for avgift",
+"en": "Foreign purchase of raw materials and semi-manufactures, not subject for VAT"
+},
+{
+"id": "4060",
+"nb": "Frakt, toll og spedisjon",
+"en": "Freight, customs duty and forwarding"
+},
+{
+"id": "4071",
+"nb": "Kontantrabatt, råvarer og halvfabrikata, høy sats",
+"en": "Cash discount raw materials and semi-manufactures, high rate"
+},
+{
+"id": "4072",
+"nb": "Kontantrabatt, råvarer og halvfabrikata, middels sats",
+"en": "Cash discount raw materials and semi-manufatures, middle rate"
+},
+{
+"id": "4075",
+"nb": "Kvantumsrabatt, råvarer og halvfabrikata, høy sats",
+"en": "Quantity discount raw materials and semi-manufactures, high rate"
+},
+{
+"id": "4076",
+"nb": "Kvantumsrabatt, råvarer og halvfabrikata, middels sats",
+"en": "Quantity discount raw materials and semi-manufactures, middle rate"
+},
+{
+"id": "4078",
+"nb": "Annen innkjøpsprisreduksjon, høy sats",
+"en": "Other purchase price reduction, high rate"
+},
+{
+"id": "4079",
+"nb": "Annen innkjøpsprisreduksjon, middels sats",
+"en": "Other purchase price reduction, middle rate"
+},
+{
+"id": "4080",
+"nb": "Grunnlag MVA innførsel av varer, høy sats",
+"en": "Basis VAT import of goods, high rate"
+},
+{
+"id": "4081",
+"nb": "Grunnlag MVA innførsel av varer, høy sats, motkonto",
+"en": "Basis VAT import of goods, high rate, contra account"
+},
+{
+"id": "4082",
+"nb": "Grunnlag MVA innførsel av varer, middels sats",
+"en": "Basis VAT import of goods, medium rate"
+},
+{
+"id": "4083",
+"nb": "Grunnlag MVA innførsel av varer, middels sats, motkonto",
+"en": "Basis VAT import of goods, medium rate, contra account"
+},
+{
+"id": "4084",
+"nb": "Grunnlag innførsel av varer med null sats",
+"en": "Basis import of goods with zero rate"
+},
+{
+"id": "4085",
+"nb": "Grunnlag innførsel av varer med  null sats, motkonto",
+"en": "Basis import of goods with zero rate, contra account"
+},
+{
+"id": "4086",
+"nb": "Innenlands kjøp av varer, omvendt avgiftsplikt",
+"en": "Domestic purchase of goods, reversed VAT liability"
+},
+{
+"id": "4087",
+"nb": "Innenlands kjøp av varer, omvendt avgiftsplikt, motkonto",
+"en": "Domestic purchase of goods, reversed VAT liability, contra account"
+},
+{
+"id": "4090",
+"nb": "Beholdningsendring",
+"en": "Change in stock"
+},
+{
+"id": "4100",
+"nb": "Innkjøp varer under tilvirkning, høy sats",
+"en": "Purchases of work in progress, high rate"
+},
+{
+"id": "4130",
+"nb": "Innkjøp varer under tilvirkning, middels sats",
+"en": "Purchases of work in progress, middle rate"
+},
+{
+"id": "4140",
+"nb": "Innkjøp av råvarer under tilvirkning, uten MVA",
+"en": "Purchases of work in progress, without VAT"
+},
+{
+"id": "4160",
+"nb": "Frakt, toll og spedisjon",
+"en": "Freight, customs duty and forwarding"
+},
+{
+"id": "4171",
+"nb": "Kontantrabatt, varer under tilvirkning, høy sats",
+"en": "Cash discount work in progress, high rate"
+},
+{
+"id": "4172",
+"nb": "Kontantrabatt, varer under tilvirkning, middels sats",
+"en": "Cash discount work in progress, middle rate"
+},
+{
+"id": "4175",
+"nb": "Kvantumsrabatt, varer under tilvirkning, høy sats",
+"en": "Quantity discount work in progress, high rate"
+},
+{
+"id": "4176",
+"nb": "Kvantumsrabatt, varer under tilvirkning, middels sats",
+"en": "Quantity discount work in progress, middle rate"
+},
+{
+"id": "4178",
+"nb": "Annen innkjøpsprisreduksjon, varer under tilvirkning, høy sats",
+"en": "Other purchase price reduction work in progress, high rate"
+},
+{
+"id": "4179",
+"nb": "Annen innkjøpsprisreduksjon, varer under tilvirkning, middels sats",
+"en": "Other purchase price reduction work in progress, middle rate"
+},
+{
+"id": "4190",
+"nb": "Beholdningsendring",
+"en": "Change in stock"
+},
+{
+"id": "4200",
+"nb": "Innkjøp ferdig egentilvirkede varer, høy sats",
+"en": "Purchase of self-produced finished goods, high rate"
+},
+{
+"id": "4230",
+"nb": "Innkjøp ferdig egentilvirkede varer, middels sats",
+"en": "Purchase of self-produced finished goods, middle rate"
+},
+{
+"id": "4240",
+"nb": "Innkjøp ferdig egentilvirkede varer, uten MVA",
+"en": "Purchase of self-produced finished goods, without VAT"
+},
+{
+"id": "4260",
+"nb": "Frakt, toll og spedisjon",
+"en": "Freight, customs duty and forwarding"
+},
+{
+"id": "4270",
+"nb": "Innkjøpsprisreduksjon, egentilvirkede varer, høy sats",
+"en": "Purchase price reduction self-produced finished goods, high rate"
+},
+{
+"id": "4271",
+"nb": "Innkjøpsprisreduksjon, egentilvirkede varer, middels sats",
+"en": "Purchase price reduction self-produced finished goods, middle rate"
+},
+{
+"id": "4290",
+"nb": "Beholdningsendring",
+"en": "Change in stock"
+},
+{
+"id": "4300",
+"nb": "Innkjøp av varer for videresalg, høy sats",
+"en": "Purchase of goods for resale, high rate"
+},
+{
+"id": "4330",
+"nb": "Innkjøp av varer for videresalg, middels sats",
+"en": "Purchase of goods for resale, middle rate"
+},
+{
+"id": "4335",
+"nb": "Innkjøp av varer for videresalg, uten MVA",
+"en": "Purchase of goods for resale, without VAT"
+},
+{
+"id": "4340",
+"nb": "Utenlands innkjøp av varer for videresalg, høy sats",
+"en": "Foreign purchase of goods for resale, high rate"
+},
+{
+"id": "4341",
+"nb": "Utenlands innkjøp av varer for videresalg, middels sats",
+"en": "Foreign purchase of goods for resale, middle rate"
+},
+{
+"id": "4342",
+"nb": "Utenlands innkjøp av varer for videresalg, fritatt for avgift",
+"en": "Foreign purchase of goods for resale, not subject for VAT"
+},
+{
+"id": "4350",
+"nb": "Svinn og tap",
+"en": "Losses"
+},
+{
+"id": "4360",
+"nb": "Frakt, toll og spedisjon",
+"en": "Freight, customs duty and forwarding"
+},
+{
+"id": "4371",
+"nb": "Kontantrabatt, varer for videresalg, høy sats",
+"en": "Cash discount goods for resale, high rate"
+},
+{
+"id": "4372",
+"nb": "Kontantrabatt, varer for videresalg, middels sats",
+"en": "Cash discount goods for resale, middle rate"
+},
+{
+"id": "4375",
+"nb": "Kvantumsrabatt, varer for videresalg, høy sats",
+"en": "Quantity discount goods for resale, high rate"
+},
+{
+"id": "4376",
+"nb": "Kvantumsrabatt, varer for videresalg, middels sats",
+"en": "Quantity discount goods for resale, middle rate"
+},
+{
+"id": "4378",
+"nb": "Annen innkjøpsprisreduksjon, høy sats",
+"en": "Other purchase price reduction, high rate"
+},
+{
+"id": "4379",
+"nb": "Annen innkjøpsprisreduksjon, middels sats",
+"en": "Other purchase price reduction, middle rate"
+},
+{
+"id": "4380",
+"nb": "Grunnlag MVA innførsel av varer, høy sats",
+"en": "Basis VAT import of goods, high rate"
+},
+{
+"id": "4381",
+"nb": "Grunnlag MVA innførsel av varer, høy sats, motkonto",
+"en": "Basis VAT import of goods, high rate, contra account"
+},
+{
+"id": "4382",
+"nb": "Grunnlag MVA innførsel av varer, middels sats",
+"en": "Basis VAT import of goods, medium rate"
+},
+{
+"id": "4383",
+"nb": "Grunnlag MVA innførsel av varer, middels sats, motkonto",
+"en": "Basis VAT import of goods, medium rate, contra account"
+},
+{
+"id": "4384",
+"nb": "Grunnlag innførsel av varer med nullsats",
+"en": "Basis import of goods with zero rate"
+},
+{
+"id": "4385",
+"nb": "Grunnlag innførsel av varer med nullsats, motkonto",
+"en": "Basis import of goods with zero rate, contra account"
+},
+{
+"id": "4386",
+"nb": "Innenlands kjøp av varer, omvendt avgiftsplikt",
+"en": "Domestic purchase of goods, reversed VAT liability"
+},
+{
+"id": "4387",
+"nb": "Innenlands kjøp av varer, omvendt avgiftsplikt, motkonto",
+"en": "Domestic purchase of goods, reversed VAT liability, contra account"
+},
+{
+"id": "4390",
+"nb": "Beholdningsendring",
+"en": "Change in stock"
+},
+{
+"id": "4500",
+"nb": "Fremmedytelse og underentreprise",
+"en": "External services and subcontracts"
+},
+{
+"id": "4550",
+"nb": "Fremmedytelse og underentreprise, opplysningspliktig",
+"en": "External services and subcontracts, reportable"
+},
+{
+"id": "4590",
+"nb": "Beholdningsendring",
+"en": "Change in stock"
+},
+{
+"id": "4600",
+"nb": "Emballasjematerialer",
+"en": "Packing materials"
+},
+{
+"id": "4690",
+"nb": "Beholdningsendring",
+"en": "Change in stock"
+},
+{
+"id": "4900",
+"nb": "Annen periodisering",
+"en": "Other accruals"
+},
+{
+"id": "4990",
+"nb": "Beholdningsendring, egentilvirkede anleggsmidler",
+"en": "Change in stock, fixed assets of own production"
+},
+{
+"id": "5000",
+"nb": "Lønn til ansatte",
+"en": "Wages and salaries to employees"
+},
+{
+"id": "5005",
+"nb": "Avtalte tariffgodtgjørelser",
+"en": "Contractual remuneration"
+},
+{
+"id": "5090",
+"nb": "Påløpt, ikke utbetalt lønn",
+"en": "Accrued, unpaid wages and salaries"
+},
+{
+"id": "5092",
+"nb": "Feriepenger",
+"en": "Holiday pay"
+},
+{
+"id": "5099",
+"nb": "Andre lønnsposteringer",
+"en": "Other pay items"
+},
+{
+"id": "5200",
+"nb": "Fri bil",
+"en": "Company car"
+},
+{
+"id": "5210",
+"nb": "Fri telefon",
+"en": "Company-paid telephone"
+},
+{
+"id": "5220",
+"nb": "Fri avis",
+"en": "Company-paid newspaper"
+},
+{
+"id": "5230",
+"nb": "Fri kost",
+"en": "Free board"
+},
+{
+"id": "5235",
+"nb": "Fri losji",
+"en": "Free accommodation"
+},
+{
+"id": "5236",
+"nb": "Fri bolig",
+"en": "Free housing"
+},
+{
+"id": "5240",
+"nb": "Rentefordel",
+"en": "Interest rate benefit"
+},
+{
+"id": "5250",
+"nb": "Gruppelivsforsikring",
+"en": "Group life insurance"
+},
+{
+"id": "5252",
+"nb": "Ulykkesforsikring",
+"en": "Accident insurance"
+},
+{
+"id": "5253",
+"nb": "Personavbruddsforsikring",
+"en": "Personal consequential loss insurance"
+},
+{
+"id": "5254",
+"nb": "Yrkesskadeforsikring, skattepliktig del",
+"en": "Occupational injuries insurance, taxable portion"
+},
+{
+"id": "5255",
+"nb": "Tilskudd og premie til pensjonsordning, arbeidsgiveravgiftspliktig",
+"en": "Contributions and premiums to pension schemes, subject to national insurance contributions"
+},
+{
+"id": "5280",
+"nb": "Annen fordel i arbeidsforhold",
+"en": "Other benefits of employment"
+},
+{
+"id": "5290",
+"nb": "Motkonto for gruppe 52",
+"en": "Contra account for group 52"
+},
+{
+"id": "5330",
+"nb": "Godtgjørelse til styremedlemmer",
+"en": "Remuneration to members of the board"
+},
+{
+"id": "5335",
+"nb": "Godtgjørelse til medlemmer av bedriftsforsamlingen",
+"en": "Remuneration to members of the corporate assembly"
+},
+{
+"id": "5390",
+"nb": "Annen opplysningspliktig godtgjørelse",
+"en": "Other reportable remuneration"
+},
+{
+"id": "5400",
+"nb": "Arbeidsgiveravgift",
+"en": "Employers’ national insurance contributions"
+},
+{
+"id": "5404",
+"nb": "Påløpt arbeidsgiveravgift påløpt lønn",
+"en": "Accured employers’ national insurance contributions accrued wages and salaries"
+},
+{
+"id": "5405",
+"nb": "Arbeidsgiveravgift av påløpte feriepenger",
+"en": "Employers’ national insurance contributions on accrued holiday pay"
+},
+{
+"id": "5406",
+"nb": "Påløpt arbeidsgiveravgift av påløpte andre honorarer",
+"en": "Accrued employers’ national insurance contributions on accrued other fees"
+},
+{
+"id": "5420",
+"nb": "Innberetningspliktig pensjonskostnad utbetalt over drift",
+"en": "Reportable pension costs expenced, not insured"
+},
+{
+"id": "5430",
+"nb": "Finansskatt av lønn",
+"en": "Finance tax on wages and salaries"
+},
+{
+"id": "5431",
+"nb": "Finansskatt av påløpte feriepenger",
+"en": "Finance tax on accrued holiday pay"
+},
+{
+"id": "5434",
+"nb": "Påløpt finansskatt påløpt lønn",
+"en": "Accrued finance tax on accrued wages and salaries"
+},
+{
+"id": "5435",
+"nb": "Påløpt finansskatt påløpte feriepenger",
+"en": "Accrued finance tax on accrued holiday pay"
+},
+{
+"id": "5436",
+"nb": "Påløpt finansskatt påløpte andre honorarer",
+"en": "Accrued finance tax on accrued other fees"
+},
+{
+"id": "5500",
+"nb": "Annen kostnadsgodtgjørelse",
+"en": "Other expense allowances"
+},
+{
+"id": "5600",
+"nb": "Arbeidsgodtgjørelse til eiere i DLS",
+"en": "Labour remuneration to owners of general partnership companies"
+},
+{
+"id": "5700",
+"nb": "Lærlingtilskudd",
+"en": "Apprentice grant"
+},
+{
+"id": "5750",
+"nb": "Annet lønnstilskudd",
+"en": "Other wage subsidies"
+},
+{
+"id": "5800",
+"nb": "Refusjon av sykepenger",
+"en": "Reimbursement of sickness benefits"
+},
+{
+"id": "5820",
+"nb": "Refusjon av arbeidsgiveravgift",
+"en": "Reimbursement of national insurance contributions"
+},
+{
+"id": "5830",
+"nb": "Refusjon arbeidsmarkedstiltak",
+"en": "Refund, labour market schemes"
+},
+{
+"id": "5890",
+"nb": "Annen refusjon",
+"en": "Other refunds"
+},
+{
+"id": "5899",
+"nb": "Motkonto for gruppe 58",
+"en": "Contra account for group 58"
+},
+{
+"id": "5900",
+"nb": "Gaver til ansatte, fradragsberettiget",
+"en": "Gifts to employees, deductible"
+},
+{
+"id": "5905",
+"nb": "Gaver til ansatte, ikke fradragsberettiget",
+"en": "Gifts to employees, non-deductible"
+},
+{
+"id": "5910",
+"nb": "Kantinekostnad",
+"en": "Canteen costs"
+},
+{
+"id": "5915",
+"nb": "Overtidsmat",
+"en": "Overtime meals"
+},
+{
+"id": "5919",
+"nb": "Trekk kantinekostnader ansatte",
+"en": "Deduction for canteen costs, employees"
+},
+{
+"id": "5920",
+"nb": "Yrkesskadeforsikring",
+"en": "Occupational injury insurance"
+},
+{
+"id": "5930",
+"nb": "Annen ikke arbeidsgiveravgiftspliktig forsikring",
+"en": "Other insurance not subject to national insurance contributions"
+},
+{
+"id": "5941",
+"nb": "LO/NHO-ordningen (O&U + sluttvederlag)",
+"en": "LO/NHO scheme (O&U + severance pay)"
+},
+{
+"id": "5942",
+"nb": "LO/NHO-ordningen (AFP)",
+"en": "LO/NHO scheme (AFP)"
+},
+{
+"id": "5943",
+"nb": "Pensjonsforsikring, arbeidsgiveravgiftspliktig",
+"en": "Insured pensions, with social security taxes"
+},
+{
+"id": "5944",
+"nb": "Pensjonsforsikring, ikke arbeidsgiveravgiftspliktig",
+"en": "Insured pensions, without social security taxes"
+},
+{
+"id": "5950",
+"nb": "Obligatorisk tjenestepensjon (OTP)",
+"en": "Mandatory Occupational Pension (OTP)"
+},
+{
+"id": "5990",
+"nb": "Annen personalkostnad",
+"en": "Other personnel costs"
+},
+{
+"id": "5999",
+"nb": "Motkonto for gruppe 59",
+"en": "Contra account for group 59"
+},
+{
+"id": "6000",
+"nb": "Avskrivning på bygninger og annen fast eiendom",
+"en": "Depreciation of buildings and other real property"
+},
+{
+"id": "6005",
+"nb": "Avskrivning på påkostninger, leid driftsmiddel",
+"en": "Depreciation of capitalized expenses, leased assets"
+},
+{
+"id": "6010",
+"nb": "Avskrivning på transportmidler",
+"en": "Depreciation of means of transport"
+},
+{
+"id": "6015",
+"nb": "Avskrivning på maskiner",
+"en": "Depreciation of machinery"
+},
+{
+"id": "6017",
+"nb": "Avskrivning på inventar",
+"en": "Depreciation of fixtures and fittings"
+},
+{
+"id": "6020",
+"nb": "Avskrivning på ervervet goodwill",
+"en": "Depreciation of acquired goodwill"
+},
+{
+"id": "6029",
+"nb": "Avskrivning på andre immaterielle eiendeler",
+"en": "Depreciation of other intangible assets"
+},
+{
+"id": "6030",
+"nb": "Avskrivning annet",
+"en": "Depreciation other"
+},
+{
+"id": "6050",
+"nb": "Nedskrivning av varige driftsmidler",
+"en": "Write-down on tangible fixed assets"
+},
+{
+"id": "6055",
+"nb": "Nedskrivning av immaterielle eiendeler",
+"en": "Write-down on intangible assets"
+},
+{
+"id": "6059",
+"nb": "Reversering av nedskrivning varige driftsmidler og immaterielle eiendeler",
+"en": "Reversal of write-down on tangible fixed assets and intangible assets"
+},
+{
+"id": "6060",
+"nb": "Nedskrivning annet",
+"en": "Write-down other"
+},
+{
+"id": "6061",
+"nb": "Reversering nedskrivning annet",
+"en": "Reversal of write-down other"
+},
+{
+"id": "6100",
+"nb": "Frakt, transportkostnad og forsikring ved vareforsendelse",
+"en": "Freight, transport costs and insurance for shipment of goods"
+},
+{
+"id": "6110",
+"nb": "Toll og spedisjonskostnad ved vareforsendelse",
+"en": "Customs duty and forwarding cost for shipment of goods"
+},
+{
+"id": "6190",
+"nb": "Annen frakt- og transportkostnad ved salg",
+"en": "Other freight and transport cost related to sales"
+},
+{
+"id": "6200",
+"nb": "Elektrisitet",
+"en": "Electricity"
+},
+{
+"id": "6210",
+"nb": "Gass",
+"en": "Gas"
+},
+{
+"id": "6220",
+"nb": "Fyringsolje",
+"en": "Heating oil"
+},
+{
+"id": "6230",
+"nb": "Kull, koks",
+"en": "Coal, coke"
+},
+{
+"id": "6240",
+"nb": "Ved",
+"en": "Firewood"
+},
+{
+"id": "6250",
+"nb": "Bensin, dieselolje",
+"en": "Petrol, diesel fuel"
+},
+{
+"id": "6260",
+"nb": "Vann",
+"en": "Water"
+},
+{
+"id": "6290",
+"nb": "Annet brensel",
+"en": "Other fuel"
+},
+{
+"id": "6300",
+"nb": "Leie lokale",
+"en": "Rent, premises"
+},
+{
+"id": "6320",
+"nb": "Renovasjon, vann, avløp o.l.",
+"en": "Waste disposal, water, sewage etc."
+},
+{
+"id": "6340",
+"nb": "Lys",
+"en": "Lighting"
+},
+{
+"id": "6345",
+"nb": "Varme",
+"en": "Heating"
+},
+{
+"id": "6360",
+"nb": "Renhold",
+"en": "Cleaning"
+},
+{
+"id": "6391",
+"nb": "Felles-/administrasjonskostnad senterforening",
+"en": "Joint/administrative cost, shopping centre merchants’ association"
+},
+{
+"id": "6399",
+"nb": "Annen kostnad lokaler",
+"en": "Other costs related to premises"
+},
+{
+"id": "6400",
+"nb": "Leie maskiner",
+"en": "Rental of machinery"
+},
+{
+"id": "6410",
+"nb": "Leie inventar",
+"en": "Rental of fixtures and fittings"
+},
+{
+"id": "6420",
+"nb": "Leie datasystemer",
+"en": "Rental of computer systems"
+},
+{
+"id": "6430",
+"nb": "Leie andre kontormaskiner",
+"en": "Rental of other office machines"
+},
+{
+"id": "6440",
+"nb": "Leie transportmidler",
+"en": "Rental of means of transport"
+},
+{
+"id": "6490",
+"nb": "Annen leiekostnad",
+"en": "Other rental costs"
+},
+{
+"id": "6500",
+"nb": "Motordrevet verktøy",
+"en": "Motorised tools"
+},
+{
+"id": "6510",
+"nb": "Håndverktøy",
+"en": "Hand tools"
+},
+{
+"id": "6520",
+"nb": "Hjelpeverktøy",
+"en": "Auxiliary tools"
+},
+{
+"id": "6530",
+"nb": "Spesialverktøy",
+"en": "Special tools"
+},
+{
+"id": "6540",
+"nb": "Inventar",
+"en": "Fixtures and fittings"
+},
+{
+"id": "6551",
+"nb": "Datautstyr",
+"en": "Computer equipment"
+},
+{
+"id": "6552",
+"nb": "Programvare anskaffelse",
+"en": "Software, procurement"
+},
+{
+"id": "6553",
+"nb": "Programvare årlig vedlikehold",
+"en": "Software, annual maintenance"
+},
+{
+"id": "6560",
+"nb": "Rekvisita",
+"en": "Supplies"
+},
+{
+"id": "6570",
+"nb": "Arbeidsklær, opplysningspliktig",
+"en": "Work clothing, reportable"
+},
+{
+"id": "6571",
+"nb": "Arbeidsklær, ikke opplysningspliktig",
+"en": "Work clothing, non-reportable"
+},
+{
+"id": "6575",
+"nb": "Verneutstyr",
+"en": "Protective gear"
+},
+{
+"id": "6590",
+"nb": "Annet driftsmateriale",
+"en": "Other operating materials"
+},
+{
+"id": "6600",
+"nb": "Reparasjon og vedlikehold bygninger",
+"en": "Repair and maintenance of buildings"
+},
+{
+"id": "6620",
+"nb": "Reparasjon og vedlikehold utstyr",
+"en": "Repair and maintenance of equipment"
+},
+{
+"id": "6690",
+"nb": "Reparasjon og vedlikehold annet",
+"en": "Other repair and maintenance"
+},
+{
+"id": "6700",
+"nb": "Revisjonshonorar",
+"en": "Auditors’ remuneration"
+},
+{
+"id": "6702",
+"nb": "Honorar annen bistand fra revisor",
+"en": "Auditors’ remuneration for other services"
+},
+{
+"id": "6705",
+"nb": "Regnskapshonorar",
+"en": "Accountants’ fees"
+},
+{
+"id": "6706",
+"nb": "Honorarer annen bistand fra regnskapsfører",
+"en": "Fees for other services from accountants"
+},
+{
+"id": "6720",
+"nb": "Honorar for annen økonomisk rådgivning",
+"en": "Fees for other financial advising"
+},
+{
+"id": "6725",
+"nb": "Honorar for juridisk bistand, fradragsberettiget",
+"en": "Fees for legal services, deductible"
+},
+{
+"id": "6726",
+"nb": "Honorar for juridisk bistand, ikke fradragsberettiget",
+"en": "Fees for legal services, non-deductible"
+},
+{
+"id": "6750",
+"nb": "Honorar for databistand",
+"en": "Fees for computer services"
+},
+{
+"id": "6790",
+"nb": "Annen fremmed tjeneste, opplysningspliktig",
+"en": "Other external services, reportable"
+},
+{
+"id": "6795",
+"nb": "Annen fremmed tjeneste, ikke opplysningspliktig",
+"en": "Other external services, non-reportable"
+},
+{
+"id": "6800",
+"nb": "Kontorrekvisita",
+"en": "Office supplies"
+},
+{
+"id": "6820",
+"nb": "Trykksak",
+"en": "Printed matter"
+},
+{
+"id": "6840",
+"nb": "Aviser, tidsskrifter, bøker o.l.",
+"en": "Newspapers, journals/periodicals, books etc."
+},
+{
+"id": "6860",
+"nb": "Møte, kurs, oppdatering o.l.",
+"en": "Meetings, seminars/courses, refresher courses etc."
+},
+{
+"id": "6890",
+"nb": "Annen kontorkostnad",
+"en": "Other office costs"
+},
+{
+"id": "6900",
+"nb": "Telefon",
+"en": "Telephone"
+},
+{
+"id": "6903",
+"nb": "Mobiltelefon",
+"en": "Mobile telephone"
+},
+{
+"id": "6907",
+"nb": "Datakommunikasjon",
+"en": "Data communication"
+},
+{
+"id": "6909",
+"nb": "Annen telekommunikasjon",
+"en": "Other telecommunication"
+},
+{
+"id": "6940",
+"nb": "Porto",
+"en": "Postage"
+},
+{
+"id": "7000",
+"nb": "Drivstoff transportmiddel 1",
+"en": "Fuel, means of transport 1"
+},
+{
+"id": "7020",
+"nb": "Vedlikehold transportmiddel 1",
+"en": "Maintenance, means of transport 1"
+},
+{
+"id": "7040",
+"nb": "Forsikring transportmiddel 1",
+"en": "Insurance, means of transport 1"
+},
+{
+"id": "7090",
+"nb": "Annen kostnad transportmiddel 1",
+"en": "Other costs, means of transport 1"
+},
+{
+"id": "7100",
+"nb": "Bilgodtgjørelse, opplysningspliktig",
+"en": "Car allowance, reportable"
+},
+{
+"id": "7130",
+"nb": "Reisekostnad, opplysningspliktig",
+"en": "Travel expenses, reportable"
+},
+{
+"id": "7140",
+"nb": "Reisekostnad, ikke opplysningspliktig",
+"en": "Travel expenses, non-reportable"
+},
+{
+"id": "7150",
+"nb": "Diettkostnad, opplysningspliktig",
+"en": "Subsistence expenses, reportable"
+},
+{
+"id": "7160",
+"nb": "Diettkostnad, ikke opplysningspliktig",
+"en": "Subsistence expenses, non-reportable"
+},
+{
+"id": "7190",
+"nb": "Verktøygodtgjørelse",
+"en": "Tool allowance"
+},
+{
+"id": "7195",
+"nb": "Arbeidstøygodtgjørelse",
+"en": "Work clothing allowance"
+},
+{
+"id": "7199",
+"nb": "Annen kostnadsgodtgjørelse",
+"en": "Other expense allowance"
+},
+{
+"id": "7200",
+"nb": "Provisjonskostnad, opplysningspliktig",
+"en": "Commission charges, reportable"
+},
+{
+"id": "7210",
+"nb": "Provisjonskostnad, ikke opplysningspliktig",
+"en": "Commission charges, non-reportable"
+},
+{
+"id": "7300",
+"nb": "Salgskostnad",
+"en": "Selling costs"
+},
+{
+"id": "7320",
+"nb": "Reklameannonser",
+"en": "Advertisements"
+},
+{
+"id": "7322",
+"nb": "Reklameavis/-katalog mv.",
+"en": "Advertising supplements/catalogues etc."
+},
+{
+"id": "7323",
+"nb": "Reklameartikler",
+"en": "Advertising articles"
+},
+{
+"id": "7329",
+"nb": "Annen reklamekostnad",
+"en": "Other advertising costs"
+},
+{
+"id": "7350",
+"nb": "Representasjon, fradragsberettiget",
+"en": "Entertainment expenses, deductible"
+},
+{
+"id": "7360",
+"nb": "Representasjon, ikke fradragsberettiget",
+"en": "Entertainment expenses, non-deductible"
+},
+{
+"id": "7390",
+"nb": "Annen salgskostnad, fradragsberettiget",
+"en": "Other selling costs, deductible"
+},
+{
+"id": "7395",
+"nb": "Annen salgskostnad, ikke fradragsberettiget",
+"en": "Other selling costs, non-deductible"
+},
+{
+"id": "7400",
+"nb": "Kontingent, fradragsberettiget",
+"en": "Membership dues, deductible"
+},
+{
+"id": "7410",
+"nb": "Kontingent, ikke fradragsberettiget",
+"en": "Membership dues, non-deductible"
+},
+{
+"id": "7420",
+"nb": "Gave, fradragsberettiget",
+"en": "Gifts, deductible"
+},
+{
+"id": "7430",
+"nb": "Gave, ikke fradragsberettiget",
+"en": "Gifts, non-deductible"
+},
+{
+"id": "7500",
+"nb": "Forsikringspremie",
+"en": "Insurance premiums"
+},
+{
+"id": "7530",
+"nb": "Frivillig tilleggstrygd for næringsdrivende",
+"en": "Voluntary supplemental national insurance for self-employed"
+},
+{
+"id": "7550",
+"nb": "Garantikostnad",
+"en": "Guarantee costs"
+},
+{
+"id": "7560",
+"nb": "Servicekostnad",
+"en": "Service costs"
+},
+{
+"id": "7600",
+"nb": "Lisensavgift",
+"en": "Licence fees"
+},
+{
+"id": "7605",
+"nb": "Royalties",
+"en": "Royalties"
+},
+{
+"id": "7610",
+"nb": "Patentkostnad ved egen patent",
+"en": "Patent costs for own patent"
+},
+{
+"id": "7620",
+"nb": "Kostnad ved varemerke o.l.",
+"en": "Cost related to trademarks etc."
+},
+{
+"id": "7630",
+"nb": "Kontroll-, prøve- og stempelavgifter",
+"en": "Inspection-, testing- and stamp duty fees"
+},
+{
+"id": "7710",
+"nb": "Styremøter",
+"en": "Board meetings"
+},
+{
+"id": "7715",
+"nb": "Bedriftsforsamlingsmøter",
+"en": "Corporate assembly meetings"
+},
+{
+"id": "7720",
+"nb": "Generalforsamling",
+"en": "General meeting"
+},
+{
+"id": "7730",
+"nb": "Kostnad ved egne aksjer",
+"en": "Cost of own shares (treasury stock)"
+},
+{
+"id": "7740",
+"nb": "Øresavrunding",
+"en": "Rounding"
+},
+{
+"id": "7750",
+"nb": "Eiendoms- og festeavgift",
+"en": "Property tax and ground rent"
+},
+{
+"id": "7770",
+"nb": "Bank- og kortgebyr",
+"en": "Bank charges and card fees"
+},
+{
+"id": "7775",
+"nb": "Kredittkortprovisjoner",
+"en": "Credit card commissions"
+},
+{
+"id": "7780",
+"nb": "Grunnlag MVA innførsel av varer, høy sats",
+"en": "Basis VAT import of goods, high rate"
+},
+{
+"id": "7781",
+"nb": "Grunnlag MVA innførsel av varer, høy sats, motkonto",
+"en": "Basis VAT import of goods, high rate, contra account"
+},
+{
+"id": "7782",
+"nb": "Grunnlag MVA innførsel av varer, middels sats",
+"en": "Basis VAT import of goods, medium rate"
+},
+{
+"id": "7783",
+"nb": "Grunnlag MVA innførsel av varer, middels sats, motkonto",
+"en": "Basis VAT import of goods, medium rate, contra account"
+},
+{
+"id": "7784",
+"nb": "Grunnlag innførsel av varer med null sats",
+"en": "Basis import of goods with zero rate"
+},
+{
+"id": "7785",
+"nb": "Grunnlag innførsel av varer med  null sats, motkonto",
+"en": "Basis import of goods with zero rate, contra account"
+},
+{
+"id": "7786",
+"nb": "Grunnlag utgående MVA kjøp tjenester fra utlandet",
+"en": "Basis outgoing VAT purchase of services from abroad"
+},
+{
+"id": "7787",
+"nb": "Grunnlag utgående MVA kjøp tjenester fra utlandet, motkonto",
+"en": "Basis outgoing VAT purchase of services from abroad, contra account"
+},
+{
+"id": "7788",
+"nb": "Innenlands kjøp av varer og tjenester, omvendt avgiftsplikt",
+"en": "Domestic purchase of goods and services, reversed VAT liability"
+},
+{
+"id": "7789",
+"nb": "Innenlands kjøp av varer og tjenester, omvendt avgiftsplikt, motkonto",
+"en": "Domestic purchase of goods and services, reversed VAT liability, contra account"
+},
+{
+"id": "7798",
+"nb": "Annen kostnad, fradragsberettiget",
+"en": "Other expenses, deductible"
+},
+{
+"id": "7799",
+"nb": "Annen kostnad, ikke fradragsberettiget",
+"en": "Other expenses, non-deductible"
+},
+{
+"id": "7820",
+"nb": "Innkommet på tidligere nedskrevne fordringer, skattepliktig",
+"en": "Income on bad debts previously written off, taxable"
+},
+{
+"id": "7825",
+"nb": "Innkommet på tidligere nedskrevne fordringer, ikke skattepliktig",
+"en": "Income on bad debts previously written off, non-taxable"
+},
+{
+"id": "7830",
+"nb": "Tap på fordringer, fradragsberettiget",
+"en": "Bad debts, deductible"
+},
+{
+"id": "7835",
+"nb": "Tap på fordringer, ikke fradragsberettiget",
+"en": "Bad debts, non-deductible"
+},
+{
+"id": "7839",
+"nb": "Endring i avsetning for forventet tap",
+"en": "Change in provision for expected loss"
+},
+{
+"id": "7860",
+"nb": "Tap på kontrakter",
+"en": "Losses on contracts"
+},
+{
+"id": "7880",
+"nb": "Tap ved avgang anleggsmidler",
+"en": "Losses on sale fixed assets"
+},
+{
+"id": "7881",
+"nb": "Salgssum immatr. eiendeler og varige driftsmidler, avgiftspliktig salg",
+"en": "Selling price, intangible assets and tangible fixed assets, sale subject to VAT"
+},
+{
+"id": "7882",
+"nb": "Salgssum immatr. eiendeler og varige driftsmidler, avgiftsfritt salg",
+"en": "Selling price, intangible assets and tangible fixed assets, sale not subject to VAT"
+},
+{
+"id": "7883",
+"nb": "Salgssum immatr. eiendeler og varige driftsmidler, unntatt avgiftsplikt",
+"en": "Selling price of intangible assets and tangible fixed assets, exempt from VAT"
+},
+{
+"id": "7889",
+"nb": "Motkonto, balanseverdi solgte immatr. eiendeler og varige driftsmidler",
+"en": "Contra account, book value of sold intangible assets and tangible fixed assets"
+},
+{
+"id": "7891",
+"nb": "Salgssum finansielle anleggsmidler",
+"en": "Selling price of financial assets"
+},
+{
+"id": "7899",
+"nb": "Motkonto balanseført verdi solgte finansielle driftsmidler",
+"en": "Contra account, book value of sold financial assets"
+},
+{
+"id": "7971",
+"nb": "Justering inngående merverdiavgift fast eiendom",
+"en": "Ajustment VAT  property"
+},
+{
+"id": "7972",
+"nb": "Justering inngående merverdiavgift maskiner, inventar mv",
+"en": "Ajustment VAT machinery, fixtures and fittings etc"
+},
+{
+"id": "7980",
+"nb": "Tilbakeføring av inngående merverdiavgift",
+"en": "Reversal ingoing VAT"
+},
+{
+"id": "8000",
+"nb": "Aksjeutbytte fra norsk datterselskap",
+"en": "Dividends from Norwegian subsidiaries"
+},
+{
+"id": "8003",
+"nb": "Aksjeutbytte fra utenlandsk datterselskap, innenfor fritaksmetoden",
+"en": "Dividends from foreign subsidiaries, included in the exemption model"
+},
+{
+"id": "8004",
+"nb": "Aksjeutbytte fra utenlandsk datterselskap, utenfor fritaksmetoden",
+"en": "Dividends from foreign subsidiaries, not included in the exemption model"
+},
+{
+"id": "8005",
+"nb": "Resultatandel fra datterselskap etter egenkapitalmetoden",
+"en": "Share of income from subsidiaries according to the equity method"
+},
+{
+"id": "8007",
+"nb": "Gevinst/tap ved realisasjon av aksjer/andeler i datterselskap, innenfor fritaksmetoden",
+"en": "Gain/loss on the disposal of shares/units in subsidiaries, included in the exemption model"
+},
+{
+"id": "8008",
+"nb": "Gevinst/tap ved realisasjon av aksjer/andeler i datterselskap, utenfor fritaksmetoden",
+"en": "Gain/loss on the disposal of shares/units in subsidiaries, not included in the exemption model"
+},
+{
+"id": "8010",
+"nb": "Aksjeutbytte fra norsk foretak i samme konsern",
+"en": "Dividends from Norwegian group companies"
+},
+{
+"id": "8013",
+"nb": "Aksjeutbytte fra utenlandsk foretak i samme konsern, innenfor fritaksmetoden",
+"en": "Dividends from foreign group companies, included in the exemption model"
+},
+{
+"id": "8014",
+"nb": "Aksjeutbytte fra utenlandsk foretak i samme konsern, utenfor fritaksmetoden",
+"en": "Dividends from foreign group companies, not included in the exemption model"
+},
+{
+"id": "8017",
+"nb": "Gevinst/tap ved realisasjon av aksjer/andeler i foretak i samme konsern, innenfor fritaksmodellen",
+"en": "Gain/loss on disposal of shares/units in group companies, included in the exemption model"
+},
+{
+"id": "8018",
+"nb": "Gevinst/tap ved realisasjon av aksjer/andeler i foretak i samme konsern, utenfor fritaksmetoden",
+"en": "Gain/loss on disposal of shares/units in group companies, not included in the exemption model"
+},
+{
+"id": "8020",
+"nb": "Aksjeutbytte fra norsk tilknyttet selskap",
+"en": "Dividends from Norwegian associated companies"
+},
+{
+"id": "8023",
+"nb": "Aksjeutbytte fra utenlandsk tilknyttet selskap, innenfor fritaksmetoden",
+"en": "Dividends from foreign associated companies, included in the exemption model"
+},
+{
+"id": "8024",
+"nb": "Aksjeutbytte fra utenlandsk tilknyttet selskap, utenfor fritaksmetoden",
+"en": "Dividends from foreign associated companies, not included in the exemption model"
+},
+{
+"id": "8025",
+"nb": "Resultatandel fra tilknyttet selskap etter egenkapitalmetoden",
+"en": "Share of income from associated companies according to the equity method"
+},
+{
+"id": "8027",
+"nb": "Gevinst/tap ved realisasjon av aksjer/andeler i tilknyttet selskap, innenfor fritaksmetoden",
+"en": "Gain/loss on disposal of shares/units in associated companies, included in the exemption model"
+},
+{
+"id": "8028",
+"nb": "Gevinst/tap ved realisasjon av aksjer/andeler i tilknyttet selskap, utenfor fritaksmetoden",
+"en": "Gain/loss on disposal of shares/units in associated companies, not included in the exemption model"
+},
+{
+"id": "8030",
+"nb": "Renteinntekt fra foretak i samme konsern",
+"en": "Interest income from group companies"
+},
+{
+"id": "8040",
+"nb": "Renteinntekt, skattefri",
+"en": "Interest income, tax-exempt"
+},
+{
+"id": "8050",
+"nb": "Renteinntekt bankinnskudd",
+"en": "Interest income from bank deposits"
+},
+{
+"id": "8055",
+"nb": "Renteinntekt kundefordringer",
+"en": "Interest income from trade debtors"
+},
+{
+"id": "8059",
+"nb": "Annen renteinntekt",
+"en": "Other interest income"
+},
+{
+"id": "8060",
+"nb": "Valutagevinst (agio)",
+"en": "Foreign exchange gains (agio)"
+},
+{
+"id": "8070",
+"nb": "Aksjeutbytte fra norsk foretak",
+"en": "Dividends from Norwegian companies with tax credit"
+},
+{
+"id": "8073",
+"nb": "Aksjeutbytte fra utenlandsk foretak, innenfor fritaksmetoden",
+"en": "Dividends from foreign companies, included in the exemption model"
+},
+{
+"id": "8074",
+"nb": "Aksjeutbytte fra utenlandsk foretak, utenfor fritaksmetoden",
+"en": "Dividends from foreign companies, not included in the exemption model"
+},
+{
+"id": "8077",
+"nb": "Gevinst ved realisasjon av andre aksjer/andeler, innenfor fritaksmetoden",
+"en": "Gain on disposal of other shares/units, included in the exemption model"
+},
+{
+"id": "8078",
+"nb": "Gevinst ved realisasjon av andre aksjer/andeler, utenfor fritaksmetoden",
+"en": "Gain on disposal of other shares/units, not included in the exemption model"
+},
+{
+"id": "8079",
+"nb": "Annen finansinntekt",
+"en": "Other financial income"
+},
+{
+"id": "8080",
+"nb": "Verdiøkning av finansielle instrumenter vurdert til virkelig verdi, urealisert",
+"en": "Increase in value of financial instruments valued at fair value, unrealised"
+},
+{
+"id": "8082",
+"nb": "Verdiøkning av finansielle instrumenter vurdert til virkelig verdi realisert",
+"en": "Increase in value of financial instruments valued at fair value, realised"
+},
+{
+"id": "8090",
+"nb": "Inntekt på andre investeringer",
+"en": "Income from other investments"
+},
+{
+"id": "8100",
+"nb": "Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi, urealisert",
+"en": "Reduction in value of financial instruments valued at fair value, unrealised"
+},
+{
+"id": "8105",
+"nb": "Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi, realisert",
+"en": "Reduction in value of financial instruments valued at fair value, realised"
+},
+{
+"id": "8110",
+"nb": "Nedskrivning av andre finansielle omløpsmidler",
+"en": "Write-down on other financial current assets"
+},
+{
+"id": "8120",
+"nb": "Nedskrivning av finansielle anleggsmidler",
+"en": "Write-down on long-term financial assets"
+},
+{
+"id": "8129",
+"nb": "Reversering av nedskrivning finansielle anleggsmidler",
+"en": "Reversal of write-down on long-term financial assets"
+},
+{
+"id": "8130",
+"nb": "Rentekostnad til foretak i samme konsern",
+"en": "Interest paid to group companies"
+},
+{
+"id": "8140",
+"nb": "Rentekostnad, ikke fradragsberettiget",
+"en": "Interest expenses, non-deductible"
+},
+{
+"id": "8150",
+"nb": "Rentekostnad banklån",
+"en": "Interest paid on bank loans"
+},
+{
+"id": "8154",
+"nb": "Renter/provisjon kassekreditt",
+"en": "Interest/commission paid on overdraft facility"
+},
+{
+"id": "8155",
+"nb": "Rentekostnad leverandørgjeld",
+"en": "Interest paid on accounts payable"
+},
+{
+"id": "8159",
+"nb": "Annen rentekostnad",
+"en": "Other interest paid"
+},
+{
+"id": "8160",
+"nb": "Valutatap (disagio)",
+"en": "Foreign exchange losses (disagio)"
+},
+{
+"id": "8177",
+"nb": "Tap ved realisasjon av aksjer/andeler, innenfor fritaksmetoden (jf. konto 8007, 8017 og 8027)",
+"en": "Loss on disposal of shares/units, included in the exemption model (cf. account codes 8007, 8017 and 8027)"
+},
+{
+"id": "8178",
+"nb": "Tap ved realisasjon av aksjer/andeler, utenfor fritaksmetoden (jf. konto 8008, 8018 og 8028)",
+"en": "Loss on disposal of shares/units, not included in the exemption model (cf. account codes 8008, 8018 and 8028)"
+},
+{
+"id": "8179",
+"nb": "Annen finanskostnad",
+"en": "Other financial expenses"
+},
+{
+"id": "8300",
+"nb": "Betalbar skatt",
+"en": "Tax payable"
+},
+{
+"id": "8309",
+"nb": "Betalbar skatt, for mye/lite avsatt tidligere år",
+"en": "Tax payable, too much/little allocated in previous year(s)"
+},
+{
+"id": "8320",
+"nb": "Endring i utsatt skatt/skattefordel",
+"en": "Change in deferred tax/tax assets"
+},
+{
+"id": "8800",
+"nb": "Årsresultat",
+"en": "Net profit or loss for the year"
+},
+{
+"id": "8900",
+"nb": "Overføringer fond",
+"en": "Reserve transfers"
+},
+{
+"id": "8910",
+"nb": "Overføringer felleseid andelskapital for samvirkeforetak",
+"en": "Transfers, jointly-owned cooperative share capital for cooperative society"
+},
+{
+"id": "8920",
+"nb": "Avsatt utbytte/ renter på egenkapitalbevis / etterbetaling for samvirkeforetak",
+"en": "Allocated dividend / interest on equity certificates / dividend for cooperative society"
+},
+{
+"id": "8921",
+"nb": "Avsatt tilleggsutbytte",
+"en": "Allocated additional dividend"
+},
+{
+"id": "8922",
+"nb": "Avsatt ekstraordinær utbytte",
+"en": "Allocated extraordinary dividend"
+},
+{
+"id": "8930",
+"nb": "Mottatt konsernbidrag",
+"en": "Received group contributions"
+},
+{
+"id": "8935",
+"nb": "Avsatt konsernbidrag",
+"en": "Allocated group contributions"
+},
+{
+"id": "8950",
+"nb": "Fondsemisjon",
+"en": "Bonus issues"
+},
+{
+"id": "8960",
+"nb": "Overføringer annen egenkapital",
+"en": "Transfers to other equity"
+},
+{
+"id": "8968",
+"nb": "Overføringer udisponert vinning",
+"en": "Transfers to retained profits"
+},
+{
+"id": "8969",
+"nb": "Overføringer udisponert tap",
+"en": "Transfers to unapplied loss"
+},
+{
+"id": "8980",
+"nb": "Privatuttak",
+"en": "Private withdrawals"
+},
+{
+"id": "8990",
+"nb": "Udekket tap",
+"en": "Uncovered losses"
+}
+],
+"taxCodes": [
+{
+"code": "0",
+"nb": "Ingen merverdiavgiftsbehandling (anskaffelser)",
+"en": "No VAT treatment",
+"rate": "",
+"compensation": true
+},
+{
+"code": "1",
+"nb": "Fradragsberettiget innenlands inngående merverdiavgift",
+"en": "Input VAT deductible (domestic)",
+"rate": "Regular rate",
+"compensation": true
+},
+{
+"code": "11",
+"nb": "Fradragsberettiget innenlands inngående merverdiavgift",
+"en": "Input VAT deductible (domestic)",
+"rate": "Reduced rate, middle",
+"compensation": true
+},
+{
+"code": "12",
+"nb": "Fradragsberettiget innenlands inngående merverdiavgift",
+"en": "Input VAT deductible (domestic)",
+"rate": "Reduced rate, raw fish",
+"compensation": false
+},
+{
+"code": "13",
+"nb": "Fradragsberettiget innenlands inngående merverdiavgift",
+"en": "Input VAT deductible (domestic)",
+"rate": "Reduced rate, low",
+"compensation": true
+},
+{
+"code": "14",
+"nb": "Fradragsberettiget innførselsmerverdiavgift",
+"en": "Input VAT deductible (payed on import)",
+"rate": "Regular rate",
+"compensation": true
+},
+{
+"code": "15",
+"nb": "Fradragsberettiget innførselsmerverdiavgift",
+"en": "Input VAT deductible (payed on import)",
+"rate": "Reduced rate, middle",
+"compensation": true
+},
+{
+"code": "20",
+"nb": "Kostnad ved innførsel av varer, ingen merverdiavgiftsbehandling",
+"en": "No VAT treatment",
+"rate": "",
+"compensation": true
+},
+{
+"code": "21",
+"nb": "Kostnad ved innførsel av varer",
+"en": "Basis on import of goods",
+"rate": "Regular rate",
+"compensation": true
+},
+{
+"code": "22",
+"nb": "Kostnad ved innførsel av varer",
+"en": "Basis on import of goods",
+"rate": "Reduced rate, middle",
+"compensation": true
+},
+{
+"code": "3",
+"nb": "Utgående merverdiavgift",
+"en": "Output VAT",
+"rate": "Regular rate",
+"compensation": false
+},
+{
+"code": "31",
+"nb": "Utgående merverdiavgift",
+"en": "Output VAT",
+"rate": "Reduced rate, middle",
+"compensation": false
+},
+{
+"code": "32",
+"nb": "Utgående merverdiavgift",
+"en": "Output VAT",
+"rate": "Reduced rate, raw fish",
+"compensation": false
+},
+{
+"code": "33",
+"nb": "Utgående merverdiavgift",
+"en": "Output VAT",
+"rate": "Reduced rate, low",
+"compensation": false
+},
+{
+"code": "5",
+"nb": "Innenlands omsetning og uttak fritatt for merverdiavgift",
+"en": "No output VAT",
+"rate": "Zero rate",
+"compensation": false
+},
+{
+"code": "51",
+"nb": "Innenlandsk omsetning med omvendt avgiftplikt",
+"en": "Domestic sales of reverce charge /VAT obligation",
+"rate": "Zero rate",
+"compensation": false
+},
+{
+"code": "52",
+"nb": "Utførsel av varer og tjenester",
+"en": "Export of goods and services",
+"rate": "Zero rate",
+"compensation": false
+},
+{
+"code": "6",
+"nb": "Omsetning og uttak utenfor merverdiavgiftsloven",
+"en": "Not liable to VAT treatment, turnover and withdrawals outside the scope of the VAT legislation",
+"rate": "",
+"compensation": false
+},
+{
+"code": "7",
+"nb": "Ingen merverdiavgiftsbehandling (inntekter)",
+"en": "No VAT treatment - no turnover according to the VAT legislation",
+"rate": "",
+"compensation": false
+},
+{
+"code": "81",
+"nb": "Grunnlag innførsel av varer med fradragsrett for innførselsmerverdiavgift",
+"en": "Importation of goods, VAT deductible",
+"rate": "Regular rate",
+"compensation": true
+},
+{
+"code": "82",
+"nb": "Grunnlag innførsel av varer uten fradragsrett for innførselsmerverdiavgift",
+"en": "Importation of goods, without deduction of VAT",
+"rate": "Regular rate",
+"compensation": true
+},
+{
+"code": "83",
+"nb": "Grunnlag innførsel av varer med fradragsrett for innførselsmerverdiavgift",
+"en": "Importation of goods, VAT deductible",
+"rate": "Reduced rate, middle",
+"compensation": true
+},
+{
+"code": "84",
+"nb": "Grunnlag innførsel av varer uten fradragsrett for innførselsmerverdiavgift",
+"en": "Importation of goods, without deduction of VAT",
+"rate": "Reduced rate, middle",
+"compensation": true
+},
+{
+"code": "85",
+"nb": "Grunnlag innførsel av varer som det ikke skal beregnes merverdiavgift av",
+"en": "Importation of goods, not applicable for VAT",
+"rate": "Zero rate",
+"compensation": true
+},
+{
+"code": "86",
+"nb": "Tjenester kjøpt fra utlandet med fradragsrett for merverdiavgift",
+"en": "Services purchased from abroad, VAT deductible",
+"rate": "Regular rate",
+"compensation": true
+},
+{
+"code": "87",
+"nb": "Tjenester kjøpt fra utlandet uten fradragsrett for merverdiavgift",
+"en": "Services purchased from abroad, without deduction of VAT",
+"rate": "Regular rate",
+"compensation": true
+},
+{
+"code": "88",
+"nb": "Tjenester kjøpt fra utlandet med fradragsrett for merverdiavgift",
+"en": "Services purchased from abroad, VAT deductible",
+"rate": "Reduced rate, low",
+"compensation": true
+},
+{
+"code": "89",
+"nb": "Tjenester kjøpt fra utlandet uten fradragsrett for merverdiavgift",
+"en": "Services purchased from abroad, without deduction of VAT",
+"rate": "Reduced rate, low",
+"compensation": true
+},
+{
+"code": "91",
+"nb": "Kjøp av klimakvoter eller gull med fradragsrett for merverdiavgift",
+"en": "Purchase of emissions trading or gold, VAT deductible",
+"rate": "Regular rate",
+"compensation": true
+},
+{
+"code": "92",
+"nb": "Kjøp av klimakvoter eller gull uten fradragsrett for merverdiavgift",
+"en": "Purchase of emissions trading or gold, without deduction of VAT",
+"rate": "Regular rate",
+"compensation": true
+}
+]
+}

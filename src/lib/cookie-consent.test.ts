@@ -47,7 +47,7 @@ describe("cookie consent (D58)", () => {
     const store = declaredCookies("store", {}).map((c) => c.name);
     expect(store).toEqual(["cart_…", "account_…", "wishlist_…", "consent_…"]);
     expect(declaredCookies("store", {}, { buyers: true }).map((c) => c.name)).toContain("buyer_…");
-    // A store in several languages keeps the language a visitor chose, for its front door (D474).
+    // A store in several languages keeps the language a visitor chose, for its front door (D479).
     expect(declaredCookies("store", {}, { languages: true }).map((c) => c.name)).toContain("kaizen_lang_…");
     expect(knownCookie("kaizen_lang_3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c")?.category).toBe("necessary");
     expect(knownCookie("buyer_3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c")?.category).toBe("necessary");

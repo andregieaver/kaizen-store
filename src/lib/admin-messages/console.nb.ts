@@ -4,7 +4,7 @@ export const consoleNb: ConsoleMessages = {
   houseSite: {
     title: "Kaizena Flows nettsted i sin egen butikk",
     description:
-      "Nettstedet flytter inn i Kaizena Flows egen butikk, der det får alt en butikks nettsted har. Kopier det dit for å se det ved siden av det levende nettstedet: det levende nettstedet endres ikke, og en ny kopi henter det siste.",
+      "Nettstedet flytter inn i Kaizena Flows egen butikk, der det får alt en butikks nettsted har. Kopier det dit for å se det ved siden av det levende nettstedet: det levende nettstedet endres ikke, og en ny kopi henter de siste sidene. En innstilling som er endret i butikken, som SEO eller en logo, forblir butikkens.",
     never: "Nettstedet er ikke kopiert ennå.",
     last: {
       one: "Sist kopiert {when}: én side, meny eller del.",
@@ -15,6 +15,10 @@ export const consoleNb: ConsoleMessages = {
     again: "Kopier det igjen",
     copied:
       "Kopiert: {pages} sider, topptekster og bunntekster, med menyer, deler og utseende.",
+    kept: {
+      one: "Én innstilling som var endret i butikken, ble beholdt.",
+      many: "{n} innstillinger som var endret i butikken, ble beholdt.",
+    },
     noStore: "Kaizena Flows egen butikk finnes ikke ennå.",
     failed: "Nettstedet kunne ikke kopieres. Ingenting ble endret; prøv igjen.",
   },

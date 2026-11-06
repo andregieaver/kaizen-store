@@ -38,7 +38,6 @@ import { blocksEn } from "@/lib/admin-messages/blocks.en";
 import { websiteEn } from "@/lib/admin-messages/website.en";
 import { designEn } from "@/lib/admin-messages/design.en";
 import { redirectsEn } from "@/lib/admin-messages/redirects.en";
-import { movingEn } from "@/lib/admin-messages/moving.en";
 import { experimentsEn } from "@/lib/admin-messages/experiments.en";
 
 import { productsEn } from "@/lib/admin-messages/products.en";
@@ -74,7 +73,7 @@ import { englishLater, isLater, type LaterArea } from "./admin-text-later";
 
 
 /** Every other area a client part may read, in English; the server-only areas (`SERVER_AREAS`) are left out. */
-const ENGLISH: Pick<AdminAreaMessages, Exclude<ClientArea, LaterArea>> = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, customReports: customReportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, capacity: capacityEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, moving: movingEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, content: contentEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, signIn: signInEn, blog: blogEn, schedules: schedulesEn, oauth: oauthEn };
+const ENGLISH: Pick<AdminAreaMessages, Exclude<ClientArea, LaterArea>> = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, customReports: customReportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, capacity: capacityEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, content: contentEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, signIn: signInEn, blog: blogEn, schedules: schedulesEn, oauth: oauthEn };
 
 
 export { AdminTextProvider } from "./admin-text-context";

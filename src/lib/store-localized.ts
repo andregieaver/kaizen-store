@@ -23,14 +23,14 @@ export type Localized = {
   ratesUpdatedAt: string | null;
   chosenLocales: string[];
   chosenCurrencies: StoreCurrency[];
-  /** What the owner chose of how a visitor is first shown a language and the currency with it (D474), kept while the features are off. */
+  /** What the owner chose of how a visitor is first shown a language and the currency with it (D479), kept while the features are off. */
   languageSettings: LanguageSettings;
 };
 
-/** The owner's choices of D474 as the settings page edits them: `localization.languageRule` and `.currencyByLanguage` are what applies. */
+/** The owner's choices of D479 as the settings page edits them: `localization.languageRule` and `.currencyByLanguage` are what applies. */
 export type LanguageSettings = { rule: LanguageRule; currencyFollows: boolean; currencies: Record<string, string> };
 
-/** The owner's currency per language (D474) as the row keeps it: two letters to a currency or `own`, anything else left out. */
+/** The owner's currency per language (D479) as the row keeps it: two letters to a currency or `own`, anything else left out. */
 export function languageCurrenciesOf(value: unknown): Record<string, string> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return Object.fromEntries(
@@ -46,7 +46,7 @@ export function languageCurrenciesOf(value: unknown): Record<string, string> {
  * the shape of its addresses (D181). The row needs `features`, `locales`, `currencies`, `markets` and `all_markets` as `loadStore()` selects
  * them (the proxy's facts read the same, `redirect-resolve.ts`). Each market carries how it shows prices (D429, `Market.priceStyle`) from the
  * row's `price_decimals` and `price_words` and its own `priceDecimals`; a row without them shows decimals always and no words. How a visitor
- * is first shown a language and whether the currency follows it (D474) are the row's `language_rule`, `currency_follows_language` and
+ * is first shown a language and whether the currency follows it (D479) are the row's `language_rule`, `currency_follows_language` and
  * `language_currencies`; a row without them is the country's own language, the currency apart.
  */
 export function localized(row: Row): Localized {

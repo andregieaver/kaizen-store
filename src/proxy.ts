@@ -27,7 +27,7 @@ import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
  *    `/collections/shoes` is looked up as a manual redirect source and sent, permanently (308), to its target in the store's main market; an address
  *    live in its own country (from when it sold in one) goes there; anything else is left to the routes (the 404 it was) and counted for the 404 report.
  *    The front door of a store in one country (`/` on its host, `/s/{store}`) may send a visitor to the language they chose before or the
- *    store's rule picks for them (D474, `languageAtDoor()`): a 307 for them alone, never for a crawler, never for any other address.
+ *    store's rule picks for them (D479, `languageAtDoor()`): a 307 for them alone, never for a crawler, never for any other address.
  * 3. A/B tests (D148, docs/ab-testing.md): sends a visitor who was given another version of a tested page to that version's page. It runs only for
  *    requests that carry the `kaizen_ab` cookie, which only a browser that accepted statistics cookies has; the tests are read only then. What it does
  *    is the pure decision in `variantPath()`, on the address as served (after job 1's rewrite).
@@ -75,7 +75,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     // Only a request that asks for a page is moved (spec 4.1 rule 8): a 308 makes a client replay a POST's body at the new address, and a POST is no
     // page request to count as missing. A server action's POST to a short address is still served from the long one.
     const page = request.method === "GET" || request.method === "HEAD";
-    // The front door of a store in one country may show a visitor their language (D474): what is known of them, read only there.
+    // The front door of a store in one country may show a visitor their language (D479): what is known of them, read only there.
     const visitor = {
       bot: userAgent(request).isBot,
       country: request.headers.get("x-vercel-ip-country"),

@@ -34,7 +34,7 @@ export function LanguageSwitch({
   offered: readonly PlatformLang[];
   menu?: boolean;
   /**
-   * The part stylesheet's class of the *Languages* part this draws (D474, `languageSwitchStyle()`): it is then the switcher an owner
+   * The part stylesheet's class of the *Languages* part this draws (D479, `languageSwitchStyle()`): it is then the switcher an owner
    * shapes (side by side, one under another or a drop-down list; names, codes or flags, by screen size); without it, a row of names.
    */
   className?: string;

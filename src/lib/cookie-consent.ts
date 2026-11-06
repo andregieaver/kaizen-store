@@ -129,7 +129,7 @@ export type KnownCookie = {
   modals?: boolean;
   /** Set only on Kaizen's site while its referral program is on (D131). */
   referrals?: boolean;
-  /** Set only on a site offered in more than one language: Kaizena Flow's own (D312), a store with Several languages on (D474). */
+  /** Set only on a site offered in more than one language: Kaizena Flow's own (D312), a store with Several languages on (D479). */
   languages?: boolean;
   /** Set only in stores whose referral program (the affiliate program, D131) is on. */
   affiliate?: boolean;
@@ -171,7 +171,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
-    // A cookie, only once a visitor chooses a language in a store's language switcher (D474): the front door reads it to show them that
+    // A cookie, only once a visitor chooses a language in a store's language switcher (D479): the front door reads it to show them that
     // language again. Their own choice of how the store is shown, as light or dark above.
     name: "kaizen_lang_…",
     pattern: /^kaizen_lang_[0-9a-f-]{36}$/,

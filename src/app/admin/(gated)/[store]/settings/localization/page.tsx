@@ -286,7 +286,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
 type LocalizationWords = SettingsMessages["localization"];
 
 /**
- * The language a visitor is first shown (D474): the store's rule, plainly worded, then whether the currency goes with the language and
+ * The language a visitor is first shown (D479): the store's rule, plainly worded, then whether the currency goes with the language and
  * which currency each language takes. Only while Several languages is on and the store has more than one; the currency part only while
  * Several currencies is on too.
  */

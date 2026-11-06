@@ -42,7 +42,7 @@ export function ViewMenu({
   className?: string;
   /** Shown as a row of links rather than a menu (the footer, the phone menu). */
   list?: boolean;
-  /** A store's languages (D474): the store's id, so a language chosen is kept for its front door (`kaizen_lang_{storeId}`). */
+  /** A store's languages (D479): the store's id, so a language chosen is kept for its front door (`kaizen_lang_{storeId}`). */
   remember?: string;
 }) {
   const router = useRouter();

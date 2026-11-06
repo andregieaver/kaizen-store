@@ -16,8 +16,8 @@ import { col, typedRow } from "./typed-rows";
 
 /**
  * Kaizena Flow's site copied into its own store (D469, `docs/platform-parity-plan.md` step 3): `commerce.copy_platform_site()` copies the
- * platform's own pages, header, footer, menus, saved parts, text styles, categories and content, and the site's look and SEO, into Kaizena
- * Flow's own store, where it can be looked at behind the store's private mode beside the live site. Run by a platform admin from Platform →
+ * platform's own pages, header, footer, menus, saved parts, text styles, categories and content, and the site's look and SEO (each setting
+ * only while the store has not changed it, D474), into Kaizena Flow's own store, where it can be looked at behind the store's private mode beside the live site. Run by a platform admin from Platform →
  * Website, as often as wanted: each run lands on the same copies and brings the latest. Nothing of the live site changes.
  */
 
@@ -27,7 +27,7 @@ export type SiteCopy = { copiedAt: string | null; rows: number };
 export async function lastSiteCopy(): Promise<SiteCopy> {
   const row = await typedRow(
     z.object({ copied_at: col.timestampOrNull, rows: col.int }),
-    sql`select max(copied_at) as copied_at, count(*)::int as rows from commerce.house_site_copies`,
+    sql`select max(copied_at) as copied_at, count(*)::int as rows from commerce.house_site_copies where kind <> 'settings'`,
   );
   return { copiedAt: row?.copied_at ? new Date(row.copied_at).toISOString() : null, rows: row?.rows ?? 0 };
 }

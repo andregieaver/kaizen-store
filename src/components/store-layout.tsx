@@ -139,7 +139,7 @@ export function Brand({
 
 /**
  * The languages and currencies a shopper in this country can choose, as links that keep the other choice (D109); a language takes its
- * currency with it while the currency follows the language (D474, `languageSlug()`).
+ * currency with it while the currency follows the language (D479, `languageSlug()`).
  */
 function viewChoices(store: Store, market: Market): { languages: ViewItem[]; currencies: ViewItem[] } {
   const own = { lang: market.ownLocale.split("-")[0], currency: market.nativeCurrency };
@@ -170,11 +170,11 @@ export function hasViewChoices(store: Store, market: Market): boolean {
   return languages.length > 0 || currencies.length > 0;
 }
 
-/** Whether a shopper in this country has more than one language to choose (D474: the language switcher shows only then). */
+/** Whether a shopper in this country has more than one language to choose (D479: the language switcher shows only then). */
 export const hasLanguageChoice = (store: Store, market: Market): boolean => viewChoices(store, market).languages.length > 0;
 
 /**
- * The store's language switcher (D474), the *Languages* part of its header or footer: each language this country is offered in, with its
+ * The store's language switcher (D479), the *Languages* part of its header or footer: each language this country is offered in, with its
  * name, short code and flag, as `LanguageLinks` draws them and the part's class (`languageSwitchStyle()`) shows them at each screen size.
  * Each goes to the page the shopper is on in that language (and its currency, while the currency follows the language), and is remembered
  * for the store's front door.

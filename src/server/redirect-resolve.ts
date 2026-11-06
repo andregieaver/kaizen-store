@@ -267,11 +267,11 @@ export type LegacyAnswer = { location: string } | { miss: { storeId: string; pat
 
 /**
  * What the proxy does with a request for a store's page (D181, D168): move it (308), serve it from another path, count it as missing, or
- * nothing; or, at the front door, send the visitor to their language for now (`language`, a 307 never cached, D474).
+ * nothing; or, at the front door, send the visitor to their language for now (`language`, a 307 never cached, D479).
  */
 export type StoreRequestAnswer = { location: string } | { rewrite: string } | { miss: { storeId: string; path: string } } | { language: string } | null;
 
-/** What the proxy knows of the visitor asking for a store's front door (D474): a crawler is never sent anywhere by it. */
+/** What the proxy knows of the visitor asking for a store's front door (D479): a crawler is never sent anywhere by it. */
 export type DoorVisitor = { bot: boolean; country: string | null; acceptLanguage: string | null; cookie: (name: string) => string | undefined };
 
 /**
@@ -282,7 +282,7 @@ export type DoorVisitor = { bot: boolean; country: string | null; acceptLanguage
  * product, a category or tag, a page or article), else left to the routes (the 404 it was) and returned as a `miss` for the caller to count.
  * A move is only made for a request that asks for a page (`page`: GET or HEAD): a 308 makes a client replay a POST's body. The front door of
  * a store in one country, asked on the store's own address by a visitor (`visitor`, not a crawler), may send them to the language their own
- * earlier choice or the store's rule picks (`languageAtDoor()`, D474).
+ * earlier choice or the store's rule picks (`languageAtDoor()`, D479).
  */
 export async function storeRequestAnswer(
   pathname: string,

@@ -91,7 +91,7 @@ Each rule is in full in `docs/rules/storefront.md` under the same words; read it
 - Stores and their markets come from the database (`getStore()`, cached per store; `resolveShop()` for URL params)
 - Interface text lives in `src/lib/i18n.ts` (each hand-written language in `src/lib/messages/{lang}.ts`, D212: a visitor's client component reads…
 - Language and currency are apart from the country (D109; offered only while Several languages and Several currencies are on, D178 step 4)
-- The language a visitor sees first, the language switcher and the currency with the language (D474, `src/lib/language-rule.ts`, `src/lib/language-switch.ts`, `LanguageLinks`)
+- The language a visitor sees first, the language switcher and the currency with the language (D479, `src/lib/language-rule.ts`, `src/lib/language-switch.ts`, `LanguageLinks`)
 - Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag `catalog` and `catalog:{storeId}`); stock is read per request inside…
 - Search (D72, `src/server/search.ts`, pure parts in `src/lib/search.ts`)
 - Search merchandising (wave 6 unit F, D324, `docs/wave-6-catalogue.md` Unit F)
@@ -243,6 +243,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Tripletex (D453, `docs/tripletex.md`, `src/lib/tripletex*.ts`, `src/server/tripletex.ts`, `src/server/tripletex-client.ts`, `src/server/tripletex-sync.ts`)
 - Fiken (D460, `docs/fiken.md`, `src/lib/fiken*.ts`, `src/server/fiken.ts`, `src/server/fiken-client.ts`, `src/server/fiken-sync.ts`)
 - Changing the business behind a store (B8, D473, `src/lib/business-change.ts`, `src/server/business-change.ts`)
+- Our own ledger (B2, D478, `src/lib/ledger.ts`, `src/server/ledger.ts`, `src/data/ledger/no-saft.json`)
 - E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)
 - Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…
 - Sign in with Google (wave 10 unit L, D375, `src/lib/google-sign-in.ts`, `src/server/google-sign-in.ts`)

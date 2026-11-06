@@ -10,7 +10,7 @@ const EUR = { currency: "EUR", rate: 1, roundTo: 1 };
 const NOK = { currency: "NOK", rate: 11.6, roundTo: 100 };
 const SEK = { currency: "SEK", rate: 11.2, roundTo: 100 };
 
-describe("the view a language leads to (D474)", () => {
+describe("the view a language leads to (D479)", () => {
   const apart = localizationOf(["nb-NO", "en-IE", "sv-SE"], [EUR, NOK, SEK], [NO, SE]);
   const follows = localizationOf(["nb-NO", "en-IE", "sv-SE"], [EUR, NOK, SEK], [NO, SE], { currencyFollows: { chosen: {} } });
 
@@ -36,7 +36,7 @@ describe("the view a language leads to (D474)", () => {
   });
 });
 
-describe("the view a visitor is first shown at the country chooser (D474)", () => {
+describe("the view a visitor is first shown at the country chooser (D479)", () => {
   it("is each country's own until the rule or the visitor picks a language", () => {
     const own = localizationOf(["nb-NO", "en-GB"], [], [NO, SE]);
     expect(firstSlug(NO, own, { acceptLanguage: "en" })).toBe("no");

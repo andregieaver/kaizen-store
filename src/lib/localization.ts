@@ -60,12 +60,12 @@ export type Localization = {
   /** A shopper may see a country's amounts in another currency than its own (Several currencies on, D178). */
   currencyChoice: boolean;
   /**
-   * How a visitor who has not chosen is first shown a language (D474, `src/lib/language-rule.ts`): `own` (the country's own, as before)
+   * How a visitor who has not chosen is first shown a language (D479, `src/lib/language-rule.ts`): `own` (the country's own, as before)
    * unless the owner chose otherwise; always `own` with Several languages off. Left out where a store is read without it.
    */
   languageRule?: LanguageRule;
   /**
-   * While the currency follows the language (D474): each language (two letters) to the currency it is shown in, where the store offers
+   * While the currency follows the language (D479): each language (two letters) to the currency it is shown in, where the store offers
    * it; a language not in it keeps the country's own. Null (or left out) while it does not follow, or with Several languages or currencies off.
    */
   currencyByLanguage?: Record<string, string> | null;
@@ -79,9 +79,9 @@ export type LocalizationOptions = {
   languages?: boolean;
   /** Several currencies is on (true when left out). */
   currencies?: boolean;
-  /** How a visitor is first shown a language (D474); `own` when left out. */
+  /** How a visitor is first shown a language (D479); `own` when left out. */
   rule?: LanguageRule;
-  /** The currency follows the language (D474), with the owner's choice per language (two letters to a currency or `own`). */
+  /** The currency follows the language (D479), with the owner's choice per language (two letters to a currency or `own`). */
   currencyFollows?: { chosen: Readonly<Record<string, string>> } | null;
 };
 
@@ -103,7 +103,7 @@ export function localizationOf(
   const currencies = effectiveCurrencies(currencyChoice ? chosenCurrencies : chosenCurrencies.filter((c) => natives.has(c.currency)), markets);
   // The main language is what everything is written in first, so it stays when the others are hidden.
   const locales = languages ? effectiveLocales(chosenLocales, markets) : mergeLocales(chosenLocales.slice(0, 1), markets.map((market) => market.ownLocale));
-  // A language to choose and a currency to go with it need both features (D178, D474).
+  // A language to choose and a currency to go with it need both features (D178, D479).
   const follows = languages && currencyChoice && options.currencyFollows ? options.currencyFollows : null;
   return {
     locales,

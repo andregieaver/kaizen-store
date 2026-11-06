@@ -53,7 +53,7 @@ export default async function Chooser({ params, searchParams }: PageProps<"/s/[s
           </span>
         ))}
       </p>
-      {/* Each country in its own language as the page is drawn; for a visitor, in the language the store's rule picks (D474). */}
+      {/* Each country in its own language as the page is drawn; for a visitor, in the language the store's rule picks (D479). */}
       <Suspense fallback={<MarketLinks store={store} slugs={null} />}>
         <VisitorMarketLinks store={store} />
       </Suspense>
@@ -71,7 +71,7 @@ async function KeepReferral({ target, searchParams }: { target: string; searchPa
   redirect(code ? `${target}?ref=${code}` : target);
 }
 
-/** What is known of the visitor at the front door (D474), or null for a crawler: it is shown each country's own view. */
+/** What is known of the visitor at the front door (D479), or null for a crawler: it is shown each country's own view. */
 async function visitorOf(store: Store): Promise<Visitor | null> {
   const request = await headers();
   if (isBot(request.get("user-agent"))) return null;
@@ -82,7 +82,7 @@ async function visitorOf(store: Store): Promise<Visitor | null> {
   };
 }
 
-/** Each country's first view for this visitor (D474): its slug by market code, null where every country is shown in its own. */
+/** Each country's first view for this visitor (D479): its slug by market code, null where every country is shown in its own. */
 async function visitorSlugs(store: Store): Promise<Record<string, string> | null> {
   const visitor = await visitorOf(store);
   return visitor ? Object.fromEntries(store.markets.map((market) => [market.code, firstSlug(market, store.localization, visitor)])) : null;

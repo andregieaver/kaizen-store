@@ -142,6 +142,9 @@ designing it:
 - **The theme store's pages** (`platform_page_roles` `themes`, `theme`) stay the platform's and are drawn by `/themes` as now; the copy
   leaves them out of the store's front and special pages.
 - **Pictures**: the media library's rows move to the store at the switch (`media.url` is unique, so they were not copied).
+- **Pages from the live site, settings from the store** (D474): until the switch, *Copy it again* brings the live site's pages, menus and
+  parts over their copies, and the live site's settings only where the store has not changed them; the store's own SEO, logos and look
+  stay. So pages are edited on the live site (Platform → Website) and settings in the store (Kaizena Flow → Settings).
 - **Checked before and after**: every address in `sitemap-kaizen.xml` answers 200 with the same canonical and hreflang, at phone and
   computer widths, light and dark, in English and Norwegian (`e2e-live/` holds the axe scan; the same list).
 

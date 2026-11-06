@@ -280,7 +280,7 @@ describe("the market's routes", () => {
   });
 });
 
-describe("a one-country store's front door chooses a visitor's language (D474)", () => {
+describe("a one-country store's front door chooses a visitor's language (D479)", () => {
   const browser = shape({ locales: ["nb-NO", "en-GB", "sv-SE"], currencies: [EUR, NOK], rule: "browser" });
 
   it("sends a visitor to the language their browser asks for, and leaves its own as it is", () => {

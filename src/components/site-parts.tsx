@@ -69,7 +69,7 @@ export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
     case "signUp":
       return false;
     case "languages":
-      // The language switcher (D474): while a visitor here has more than one language to choose.
+      // The language switcher (D479): while a visitor here has more than one language to choose.
       return hasLanguageChoice(store, ctx.market);
     case "account":
       // No sign-in or account while the store has customer accounts off (D365).
@@ -205,7 +205,7 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
       // The withdrawal function, always reachable (D153).
       return <WithdrawalLink store={store} market={market} />;
     case "languages":
-      // The language switcher (D474), shaped as the part says at each screen size.
+      // The language switcher (D479), shaped as the part says at each screen size.
       return <LanguageSwitcher store={store} market={market} m={m} className={languageSwitchStyle(block).className} />;
     case "signUp":
       return null;
@@ -258,7 +258,7 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
       );
     case "languages":
       // The page in each of the site's languages (D312), where the owner places it: nothing is added under the footer by itself. Shaped as
-      // the part says (D474), as a store's.
+      // the part says (D479), as a store's.
       return (
         <Suspense fallback={null}>
           <LanguageSwitch lang={lang} offered={chrome.langs} className={languageSwitchStyle(block).className} />

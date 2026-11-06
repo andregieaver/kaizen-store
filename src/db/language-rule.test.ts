@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDatabase } from "./testing";
 
 /**
- * How a visitor is first shown a store's language and whether the currency goes with it (D474): the rules the database holds on
+ * How a visitor is first shown a store's language and whether the currency goes with it (D479): the rules the database holds on
  * `stores.language_rule`, `currency_follows_language` and `language_currencies`, with every migration applied (PGlite).
  */
 
@@ -23,14 +23,14 @@ afterAll(async () => {
   await db?.close();
 });
 
-describe("a store's language rule (D474)", () => {
+describe("a store's language rule (D479)", () => {
   it("is the browser's language for a new store, the currency apart; a store made before kept its country's own", async () => {
     const { rows } = await db.query<{ language_rule: string; currency_follows_language: boolean; language_currencies: unknown }>(
       "select language_rule, currency_follows_language, language_currencies from commerce.stores where id = $1",
       [storeId],
     );
     expect(rows[0]).toEqual({ language_rule: "browser", currency_follows_language: false, language_currencies: {} });
-    // Kaizena Flow's own store was made by a migration before D474's: it kept what every store did.
+    // Kaizena Flow's own store was made by a migration before D479's: it kept what every store did.
     const house = await db.query<{ language_rule: string }>("select language_rule from commerce.stores where house");
     expect(house.rows.map((r) => r.language_rule)).toEqual(["own"]);
   });

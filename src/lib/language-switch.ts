@@ -3,7 +3,7 @@ import type { SiteBlock, SwitcherLayout, SwitcherText } from "./page-content";
 import { valueAt } from "./responsive";
 
 /**
- * The language switcher (D474): the site part *Languages* in a store's header or footer, as in Kaizena Flow's own (D312). Each language is
+ * The language switcher (D479): the site part *Languages* in a store's header or footer, as in Kaizena Flow's own (D312). Each language is
  * a link to the page the visitor is on in that language; how they are laid out (side by side, one under another, a drop-down list), with
  * which words (the language's name, its short code, none) and whether with a flag can each differ by screen size (`at`, D179). The page
  * is drawn once with all of it, and the part stylesheet shows what each size asks (`languageSwitchStyle()` in `part-css.ts`). Pure.

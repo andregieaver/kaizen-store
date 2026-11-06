@@ -90,7 +90,7 @@ export async function saveStoreLanguageAction(storeSlug: string, _state: FormSta
 }
 
 /**
- * How a visitor who has not chosen is first shown a language, and whether the currency changes with the language (D474). With Several
+ * How a visitor who has not chosen is first shown a language, and whether the currency changes with the language (D479). With Several
  * currencies off the currency part is not on the page: what was chosen for it stays as it is.
  */
 export async function saveVisitorLanguageAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {

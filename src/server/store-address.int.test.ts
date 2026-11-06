@@ -95,11 +95,11 @@ describe("the same store once it offers English and euro", () => {
     expect(await answer(`/s/${slug}/no-en-eur/cart`)).toEqual({ location: `/s/${slug}/en-eur/cart?a=1` });
   });
 
-  it("sends a visitor at its front door to their browser's language, and its currency once that follows (D474)", async () => {
+  it("sends a visitor at its front door to their browser's language, and its currency once that follows (D479)", async () => {
     const english = { bot: false, country: "NO", acceptLanguage: "en-GB,en;q=0.9", cookie: () => undefined };
     // A new store follows the browser: English, in the country's own currency.
     expect(await storeRequestAnswer(`/s/${slug}`, "", null, true, "", english)).toEqual({ language: `/s/${slug}/en` });
-    // A store made before D474 kept the country's own language: nothing decides at its front door.
+    // A store made before D479 kept the country's own language: nothing decides at its front door.
     await db().execute(sql`update commerce.stores set language_rule = 'own' where id = ${storeId}::uuid`);
     forgetStoreFacts(slug);
     expect(await storeRequestAnswer(`/s/${slug}`, "", null, true, "", english)).toEqual({ rewrite: `/s/${slug}/no` });

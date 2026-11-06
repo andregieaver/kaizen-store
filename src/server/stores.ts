@@ -125,7 +125,7 @@ export type Store = {
   /** What the owner chose (the store's own, before the countries' are added): the settings page edits these. */
   chosenLocales: string[];
   chosenCurrencies: StoreCurrency[];
-  /** How a visitor is first shown a language and whether its currency goes with it, as the owner chose (D474); what applies is in `localization`. */
+  /** How a visitor is first shown a language and whether its currency goes with it, as the owner chose (D479); what applies is in `localization`. */
   languageSettings: LanguageSettings;
   /** Search and sharing settings. */
   seo: StoreSeo;

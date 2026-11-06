@@ -3,7 +3,7 @@ import { expect, test, type Browser } from "@playwright/test";
 import { testDb } from "./db";
 
 /**
- * The language a visitor sees first and the language switcher (D474). A store in one country with Norwegian, English and Swedish, its
+ * The language a visitor sees first and the language switcher (D479). A store in one country with Norwegian, English and Swedish, its
  * header's *Languages* part side by side with names on a computer and a list to open with flags and codes on a phone, and the rule
  * `browser`: the front door sends an English browser to English (a 307, for that visitor alone), a page's own address never moves, and a
  * language chosen in the switcher is remembered for the front door.

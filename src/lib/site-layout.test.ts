@@ -44,7 +44,7 @@ describe("headers and footers (D80)", () => {
     expect(sitePartsFor("store")).not.toContain("signUp");
     expect(sitePartsFor(null)).toContain("signUp");
     expect(sitePartsFor(null)).not.toContain("wishlist");
-    // The language switcher is every site's (D474).
+    // The language switcher is every site's (D479).
     expect(sitePartsFor("store")).toContain("languages");
     expect(sitePartsFor(null)).toContain("languages");
   });

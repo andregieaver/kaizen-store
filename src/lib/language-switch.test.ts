@@ -10,7 +10,7 @@ import { join } from "node:path";
 
 const block = (extra: Partial<SiteBlock> = {}): SiteBlock => ({ id: "ls1", type: "site", part: "languages", ...extra });
 
-describe("the language switcher's look by screen size (D474)", () => {
+describe("the language switcher's look by screen size (D479)", () => {
   it("is side by side, by name, without flags until set", () => {
     expect(switcherAt(block(), "xl")).toEqual({ layout: "row", text: "name", flag: false });
     expect(switcherAt(block(), "sm")).toEqual({ layout: "row", text: "name", flag: false });
@@ -37,7 +37,7 @@ describe("the language switcher's look by screen size (D474)", () => {
   });
 });
 
-describe("the language switcher's stylesheet (D474)", () => {
+describe("the language switcher's stylesheet (D479)", () => {
   it("shows the list at every size until a drop-down list is asked for", () => {
     const style = languageSwitchStyle(block());
     const css = renderPartCss(style.rules, DEFAULT_BREAKPOINTS);
@@ -67,7 +67,7 @@ describe("the language switcher's stylesheet (D474)", () => {
   });
 });
 
-describe("a language's flag and code (D474)", () => {
+describe("a language's flag and code (D479)", () => {
   it("is the country its variant names, else where most of its readers are", () => {
     expect(flagOf("en-IE")).toBe("/flags/ie.svg");
     expect(flagOf("en-GB")).toBe("/flags/gb.svg");

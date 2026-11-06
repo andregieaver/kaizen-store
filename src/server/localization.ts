@@ -97,12 +97,12 @@ export async function saveLanguages(
   return { ok: true };
 }
 
-/** How a visitor is first shown a language and whether the currency goes with it (D474), as the owner chose them. */
+/** How a visitor is first shown a language and whether the currency goes with it (D479), as the owner chose them. */
 export type VisitorLanguageInput = { rule: LanguageRule; currencyFollows: boolean; currencies: Record<string, string> };
 
 /**
  * Saves how a visitor who has not chosen is first shown one of the store's languages, and whether choosing a language also chooses its
- * currency, with the owner's currency for each language (D474). A language not the store's, or a currency it cannot offer, is refused.
+ * currency, with the owner's currency for each language (D479). A language not the store's, or a currency it cannot offer, is refused.
  */
 export async function saveVisitorLanguage({ account, store }: Membership, input: VisitorLanguageInput): Promise<SaveResult> {
   if (!isLanguageRule(input.rule)) return { ok: false, problems: ["Choose how a visitor's language is chosen."] };

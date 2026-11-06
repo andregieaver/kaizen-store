@@ -72,6 +72,7 @@ import { syncDueFiken } from "@/server/fiken-sync";
 import { runActivityPushes } from "@/server/activities";
 import { runBusinessChanges } from "@/server/business-change";
 import { runPipedriveMoves } from "@/server/pipedrive";
+import { runLedgerPosting } from "@/server/ledger";
 import { runEinvoiceSending } from "@/server/einvoice-sending";
 import { sendAutopilotBudgetAlerts } from "@/server/autopilot-settings";
 import { runNightlyUiTranslations } from "@/server/ui-nightly";
@@ -157,6 +158,8 @@ async function dispatch() {
     businessChanges: () => runBusinessChanges(),
     // Moving in from Pipedrive (D477): a check or an import the owner left goes on, page by page, within 40 seconds.
     pipedrive: () => runPipedriveMoves(),
+    // Our own ledger (D478): the documents each store issued since its books opened, posted once, within 40 seconds.
+    ledger: () => runLedgerPosting(),
     // Fiken (D460): the same for stores whose Fiken connection is on, booked as sales (Annet salg), within 40 seconds.
     fiken: () => syncDueFiken(),
     storeCopies: () => runStoreCopies(),

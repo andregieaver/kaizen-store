@@ -318,3 +318,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   in `platformSlackMessage()`, its words in the `platform` catalogues (`integrations.events`, every language) and a case in
   `src/db/platform-integrations.test.ts`. Own endpoints (D354), *Add to Slack* and accounting are not on the platform yet
   (`docs/platform-parity.md`).
+
+## Our own ledger (B2, D478, `src/lib/ledger.ts`, `src/server/ledger.ts`, `src/data/ledger/no-saft.json`)
+
+- **Our own ledger (B2, D478, `src/lib/ledger.ts`, `src/server/ledger.ts`, `src/data/ledger/no-saft.json`)**: a book is one legal entity's
+  (`commerce.ledger_books`, one open a store; a change of the business behind the store closes one and opens the next). Entries are written
+  only by `commerce.ledger_post()`: balanced to the øre, on active accounts of their own book, within its days and after its lock, numbered
+  in their series and year without gaps, and posted once for what they were posted from (`source_kind`, `source_id`). Nothing posted is
+  ever changed or deleted: a mistake is put right by `commerce.ledger_reverse()`, once. Amounts are the book's currency's minor units, a
+  debit positive. Norway's chart and VAT codes are Skatteetaten's published SAF-T files, kept as they are; an account reports as a standard
+  account (or a sub-account of one). A document is posted where the store's Tripletex settings book it (`postingOfTripletex()`), so the
+  books can be compared account by account. Never post around the function, and never post a document's amounts but through `entryOfDoc()`.

@@ -1,5 +1,5 @@
 /**
- * A language's flag and short code in the language switcher (D474). Kept apart from `language-switch.ts` (which reads the page model):
+ * A language's flag and short code in the language switcher (D479). Kept apart from `language-switch.ts` (which reads the page model):
  * the visitor's scripts draw Kaizena Flow's own switcher with them, and must not carry the model (`storefront-bundle.scan.test.ts`).
  */
 

@@ -133,7 +133,9 @@ export function PipedriveMove({
       )}
 
       <GoodToKnow />
-      <ShopifyDisconnect disconnect={actions.disconnect} label={w.disconnect} ask={w.disconnectAsk} />
+      <div>
+        <ShopifyDisconnect disconnect={actions.disconnect} label={w.disconnect} ask={w.disconnectAsk} />
+      </div>
     </div>
   );
 }
@@ -233,9 +235,12 @@ function Counts({ plan }: { plan: PdPlan }) {
   );
 }
 
+/** Why records are left out, in the order a run reads them. */
+const SKIPS: readonly PdSkip[] = ["person_no_email", "deal_no_one", "deal_no_stage", "activity_no_day", "activity_no_one", "note_no_one"];
+
 function Plan({ title, plan, total, already }: { title: string; plan: PdPlan; total: number; already: number }) {
   const w = useAdminText("moving").pipedrive;
-  const skipped = (Object.entries(plan.skipped) as [PdSkip, number][]).filter(([, n]) => n > 0);
+  const skipped = SKIPS.map((why) => [why, plan.skipped[why] ?? 0] as const).filter(([, n]) => n > 0);
   return (
     <section className="flex flex-col gap-2 rounded-panel bg-sunken p-4" aria-label={title}>
       <h3 className="text-base font-medium">{title}</h3>

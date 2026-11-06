@@ -660,7 +660,7 @@ const READ_ONLY: Decl = {
 };
 
 /**
- * The language switcher (D474, `src/lib/language-switch.ts`): its list or its drop-down list, the list side by side or one under another,
+ * The language switcher (D479, `src/lib/language-switch.ts`): its list or its drop-down list, the list side by side or one under another,
  * each language's name, short code and flag, each at the sizes that ask for it. The list and the menu are both drawn; the one a size does
  * not use is not shown there (nor read). In the open menu each language keeps its name: only the list and the menu's button take the
  * short code or no words. The name a size does not show is still read, so every link keeps its name.

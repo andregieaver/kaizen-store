@@ -237,6 +237,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("work_credit_notes", "business", via("none"), ["lines"], null, "none", "The owner's own accounting (D122); " + OWN),
   entry("work_events", "business", via("none"), ["data"], null, "none", "The owner's own accounting (D122); " + OWN),
   entry("work_invoices", "business", via("none"), ["notes"], null, "none", "The owner's own accounting (D122); " + OWN),
+  entry("ledger_entries", "business", via("none"), ["text"], null, "none", "The store's own books (D478): an entry's words may name a Work client, kept under the bookkeeping duty; " + OWN),
+  entry("ledger_lines", "business", via("none"), ["text"], null, "none", "The store's own books (D478): a line's words, kept under the bookkeeping duty; " + OWN),
   entry("work_recurring_invoices", "business", via("none"), ["name"], null, "none", "The owner's own accounting (D122); " + OWN),
   entry("work_time_entries", "business", via("none"), ["note"], null, "none", "The owner's own accounting (D122); " + OWN),
 
@@ -387,6 +389,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   not_found_ignored: "An address staff hid from the 404 report (D168) and the staff account that did it; never a person's data (the address passed the same filter as the report's).",
   old_shops: "The public addresses of the shop a store moved from (D445) and the staff account that read them; never a person's data.",
   shop_move_items: "What a move from Shopify made (D445 step 9): kinds and ids, a customer only as the md5 of their address; never an address or a name.",
+  ledger_books: "A store's books (D478): the legal entity's name and organisation number, its country, currency and days; the business's, never a person's.",
+  ledger_accounts: "A book's chart of accounts (D478): numbers, names and kinds; never a person's data.",
   crm_moves: "A store's connection to the Pipedrive account it moves in from (D477): the Pipedrive company's id and name, an encrypted token and the account that connected it, and the run's counts; never a person's data.",
   shop_moves: "A store's connection to the Shopify or WooCommerce shop it moves from (D445, D446): the shop's name and address, encrypted tokens or key and the account that connected it; never a shopper's data.",
   data_jobs: "An import or export (D165): its kind, options, counts and the staff account that ran it. The customer and order files it points to are the `storage:exports` entry; the job itself holds no shopper's data.",

@@ -220,6 +220,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   work_credit_notes: WORK + OWN,
   work_events: WORK + OWN,
   work_invoices: WORK + OWN,
+  ledger_entries: "Butikkens eget regnskap (D478): et bilags tekst kan nevne en klient i Arbeid, og oppbevares etter bokføringsplikten. " + OWN,
+  ledger_lines: "Butikkens eget regnskap (D478): en posterings tekst, som oppbevares etter bokføringsplikten. " + OWN,
   work_recurring_invoices: WORK + OWN,
   work_time_entries: WORK + OWN,
 

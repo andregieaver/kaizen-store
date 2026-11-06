@@ -4922,6 +4922,55 @@
       "when": 1793991411165,
       "tag": "20261106185651_crm_moves_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 703,
+      "version": "7",
+      "when": 1793994679644,
+      "tag": "20261106195119_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 704,
+      "version": "7",
+      "when": 1793994713142,
+      "tag": "20261106195153_ledger_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 705,
+      "version": "7",
+      "when": 1793996068093,
+      "tag": "20261106201428_ledger_waiting",
+      "breakpoints": true
+    },
+    {
+      "idx": 706,
+      "version": "7",
+      "when": 1793996103315,
+      "tag": "20261106201503_ledger_waiting_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 707,
+      "version": "7",
+      "when": 1793997895666,
+      "tag": "20261106204455_house_site_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 708,
+      "version": "7",
+      "when": 1793997925137,
+      "tag": "20261106204525_house_site_settings_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 709,
+      "version": "7",
+      "when": 1793998247711,
+      "tag": "20261106205047_language_rule",
+      "breakpoints": true
     }
   ]
 }

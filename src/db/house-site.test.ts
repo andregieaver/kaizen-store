@@ -6,8 +6,8 @@ import { createTestDatabase } from "./testing";
 /**
  * Kaizena Flow's site copied into its own store (D469, `docs/platform-parity-plan.md` step 3), against real Postgres (PGlite) with every
  * migration applied: pages, header, footer, menus, saved parts, text styles, categories and the site's look land in Kaizena Flow's store
- * with every id inside them the copies'; a second run lands on the same copies and brings changes; a copy whose source is gone goes; the
- * platform's own site is never changed.
+ * with every id inside them the copies'; a second run lands on the same copies and brings changes, but never over a setting changed in the
+ * store (D474); a copy whose source is gone goes; the platform's own site is never changed.
  */
 
 let db: PGlite;
@@ -106,6 +106,36 @@ describe("Kaizena Flow's site copied into its own store (D469)", () => {
     expect((await one<{ published: { title: string } }>("select published from commerce.pages where id = $1", [before])).published.title).toBe("Home, new");
     expect((await one<{ n: number }>("select count(*)::int as n from commerce.pages where id = $1", [goneCopy])).n).toBe(0);
     expect(await copyOf(ids.gone)).toBeUndefined();
+  });
+
+  it("keeps a setting changed in the store, and brings the live site's where the store has not changed it (D474)", async () => {
+    // The store's own Settings give it an SEO title; the live site then changes its CSS and its SEO.
+    await db.query(`update commerce.stores set seo = '{"title":{"en-GB":"The store own"}}'::jsonb where id = $1`, [house]);
+    await db.query(`update commerce.platform_settings set custom_css = '.y{}', seo = '{"title":{"en":"The live site"}}'::jsonb`);
+    const counts = await one<{ counts: Record<string, number> }>("select commerce.copy_platform_site(null) as counts");
+    const store = await one<{ seo: unknown; custom_css: string; header_id: string }>("select seo, custom_css, header_id from commerce.stores where id = $1", [house]);
+    expect(store.seo).toEqual({ title: { "en-GB": "The store own" } });
+    expect(store.custom_css).toBe(".y{}");
+    expect(store.header_id).toBe(await copyOf(ids.header));
+    expect(counts.counts.settings_kept).toBe(1);
+    // Kept for good: a later change of the live site's SEO does not reach it either.
+    await db.query(`update commerce.platform_settings set seo = '{"title":{"en":"Again"}}'::jsonb`);
+    await db.query("select commerce.copy_platform_site(null)");
+    expect((await one<{ seo: unknown }>("select seo from commerce.stores where id = $1", [house])).seo).toEqual({ title: { "en-GB": "The store own" } });
+    // The settings' row is not a page: the admin's count leaves it out.
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.house_site_copies where kind = 'settings' and copy_id = $1", [house])).n).toBe(1);
+  });
+
+  it("leaves every setting of a store copied before D474 as it is, until a copy has noted the live site's", async () => {
+    await db.query("delete from commerce.house_site_copies where kind = 'settings'");
+    await db.query(`update commerce.platform_settings set custom_css = '.z{}'`);
+    const counts = await one<{ counts: Record<string, number> }>("select commerce.copy_platform_site(null) as counts");
+    expect((await one<{ custom_css: string }>("select custom_css from commerce.stores where id = $1", [house])).custom_css).toBe(".y{}");
+    expect(counts.counts.settings_kept).toBe(2);
+    // Noted now: a setting both had alike (the look) follows the live site's next change; the CSS that differed stays the store's.
+    await db.query(`update commerce.platform_settings set custom_css = '.w{}', theme = '{"base":"v"}'::jsonb`);
+    await db.query("select commerce.copy_platform_site(null)");
+    expect(await one("select custom_css, theme from commerce.stores where id = $1", [house])).toEqual({ custom_css: ".y{}", theme: { base: "v" } });
   });
 
   it("never changes the platform's own site", async () => {

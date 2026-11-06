@@ -117,7 +117,7 @@ function fallbackAt(part: object, key: SizeKey, size: Size): unknown {
   if (key === "stack") return (part as { type?: string }).type === "row" && size === "sm";
   if (key === "reverse") return false;
   if (key === "display") return "grid";
-  // The language switcher (D474): side by side, each by its name, without flags.
+  // The language switcher (D479): side by side, each by its name, without flags.
   if (key === "switcher") return "row";
   if (key === "langText") return "name";
   if (key === "langFlag") return false;

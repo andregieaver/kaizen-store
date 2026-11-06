@@ -7,7 +7,7 @@ import { languageCookie } from "@/lib/language-rule";
 
 import { Icon } from "./icons";
 
-/** One language in the switcher (D474): where its link goes and how it is shown. */
+/** One language in the switcher (D479): where its link goes and how it is shown. */
 export type LanguageLink = {
   key: string;
   /** The language, two letters, for `lang` and `hreflang`. */
@@ -24,7 +24,7 @@ export type LanguageLink = {
 };
 
 /**
- * The language switcher (D474): every language as a link, in a list and in a drop-down list, both drawn; the part stylesheet shows the one
+ * The language switcher (D479): every language as a link, in a list and in a drop-down list, both drawn; the part stylesheet shows the one
  * each screen size asks for, side by side or one under another, and each language's name, short code or flag as it asks
  * (`languageSwitchStyle()`, `className`). Each link is a target of 24 px at least (WCAG 2.5.8). Kaizena Flow's site draws each link to the
  * page in that language (D312); a store's links are to each language's front page and go to the page the visitor is on when chosen

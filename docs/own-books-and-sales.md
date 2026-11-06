@@ -192,7 +192,7 @@ For the pilot it runs beside Tripletex: a daily comparison, per account and peri
 client we have (`GET /ledger/posting` [docs, Tripletex's spec]); a difference is a line in *Needs you* with both sides. Opening balances
 for a store moving off Tripletex or Fiken are read from their APIs at the switch; from anywhere else, a SAF-T import [U].
 
-*Pilot exit:* three consecutive months where our ledger and Tripletex agree to the øre on every account Kaizena Flow posts to.
+*Pilot exit:* three consecutive months where our ledger and Tripletex agree to the øre on every account Kaizena Flow posts to. *The journal, its chart and its rules are built (D478, step 1): posting the store's documents as they happen, the screens and the comparison follow.*
 
 **B3. Purchases.** Supplier invoices in by Peppol (B1's connection), by email to a per-store address (D332's inbound), or uploaded or
 photographed; an EHF's amounts are the document's, a PDF's are read by the model (D163) into a draft a person approves. A supplier
@@ -348,7 +348,7 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 | Order | Sales track | Books track |
 |---|---|---|
 | Now | S1 timeline (built, D462) | **B1 EHF out** (deadline 1 January 2027; built but the access point's adapter, D463) |
-| Next | S3 activities (built, D468) | B8 (built, D473) before the AS issues its first invoice; B2 the ledger in shadow on the AS's books from their opening balance, with B4's statement upload |
+| Next | S3 activities (built, D468) | B8 (built, D473) before the AS issues its first invoice; B2 the ledger in shadow (its journal built, D478) on the AS's books from their opening balance, with B4's statement upload |
 | Then | S4 leads (built, D475), S5 email (forwarding address built, D476), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
 | Then | S6 reports; `sales` opens to every store | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |
 | Then | | B6 accountants, ready before Human Web's turnover passes NOK 5 million (the threshold watch says when it is near); then ring 2 |

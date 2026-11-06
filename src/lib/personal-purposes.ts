@@ -278,6 +278,8 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   work_credit_notes: "bookkeeping",
   work_events: "business_customers",
   work_invoices: "bookkeeping",
+  ledger_entries: "bookkeeping",
+  ledger_lines: "bookkeeping",
   work_recurring_invoices: "business_customers",
   work_time_entries: "business_customers",
   accounts: "platform_service",

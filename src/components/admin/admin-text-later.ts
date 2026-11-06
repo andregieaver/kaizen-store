@@ -3,14 +3,16 @@
 import type { AdminAreaMessages, ClientArea } from "@/lib/admin-text";
 
 /**
- * Areas the layouts always hand down (the signed-in layout `setup` and `shell`, the sandbox's `shell`), so their English is not in every
- * screen's first scripts (`e2e/signed-in/admin-scripts.spec.ts`): a part that reads one where no layout handed it down fetches the English
- * then, a chunk of its own, and waits for it (`use()`). `common` and `signIn` are read outside the admin too (`useCommonText()`), so they stay.
+ * Areas the layouts always hand down (the signed-in layout `setup` and `shell`, the sandbox's `shell`), and areas only one screen reads,
+ * which hands them down itself (`moving`, Settings → Moving in), so their English is not in every screen's first scripts
+ * (`e2e/signed-in/admin-scripts.spec.ts`): a part that reads one where nothing handed it down fetches the English then, a chunk of its own,
+ * and waits for it (`use()`). `common` and `signIn` are read outside the admin too (`useCommonText()`), so they stay.
  */
-export type LaterArea = "setup" | "shell";
+export type LaterArea = "setup" | "shell" | "moving";
 const LATER: { [A in LaterArea]: () => Promise<AdminAreaMessages[A]> } = {
   setup: () => import("@/lib/admin-messages/setup.en").then((m) => m.setupEn),
   shell: () => import("@/lib/admin-messages/shell.en").then((m) => m.shellEn),
+  moving: () => import("@/lib/admin-messages/moving.en").then((m) => m.movingEn),
 };
 export const isLater = (area: ClientArea): area is LaterArea => area in LATER;
 

@@ -32,7 +32,7 @@ export type StoreAddress = {
   /** Each offered country's own language, two letters (`{ no: "nb", se: "sv" }`): which language domain (D313) a market without one is on. */
   owns?: Record<string, string>;
   /**
-   * How the front door of a store in one country chooses a visitor's language (D474, `languageAtDoor()`): the store's rule, and the
+   * How the front door of a store in one country chooses a visitor's language (D479, `languageAtDoor()`): the store's rule, and the
    * currency each language takes there while the currency follows the language (lower case, only one offered there and not its own).
    */
   door?: { rule: LanguageRule; currencies: Record<string, string> | null };
@@ -85,7 +85,7 @@ function doorCurrencies(byLanguage: Record<string, string> | null | undefined, l
 }
 
 /**
- * Where the front door of a store that sells in one country sends a visitor (D474): the first part of the address of the language their
+ * Where the front door of a store that sells in one country sends a visitor (D479): the first part of the address of the language their
  * own earlier choice or the store's rule picks (`en`, `en-eur`, or `eur` when only the currency changes with it), or null to show the
  * front page as it is (the country's own, as for a store with no rule). Only the front door: every other address names its language.
  */

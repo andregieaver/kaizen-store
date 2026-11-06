@@ -1,0 +1,4 @@
+ALTER TABLE "commerce"."house_site_copies" DROP CONSTRAINT "house_site_copies_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."house_site_copies" ADD COLUMN "settings" jsonb;--> statement-breakpoint
+ALTER TABLE "commerce"."house_site_copies" ADD CONSTRAINT "house_site_copies_settings" CHECK (("commerce"."house_site_copies"."kind" = 'settings') = ("commerce"."house_site_copies"."settings" is not null));--> statement-breakpoint
+ALTER TABLE "commerce"."house_site_copies" ADD CONSTRAINT "house_site_copies_kind" CHECK ("commerce"."house_site_copies"."kind" in ('page', 'menu', 'saved_part', 'text_style', 'term', 'content_type', 'content_entry', 'settings'));

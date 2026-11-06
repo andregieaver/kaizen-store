@@ -20,4 +20,4 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-The flags in this folder are from flag-icons 7.2.3 (https://github.com/lipis/flag-icons), minified; used by the language switcher (D474, src/lib/language-switch.ts).
+The flags in this folder are from flag-icons 7.2.3 (https://github.com/lipis/flag-icons), minified; used by the language switcher (D479, src/lib/language-switch.ts).

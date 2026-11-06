@@ -5639,7 +5639,7 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
 }
 
 /**
- * The language switcher's look (D474): its languages side by side, one under another or in a list to open; each by its name, short code
+ * The language switcher's look (D479): its languages side by side, one under another or in a list to open; each by its name, short code
  * or no words; with flags or not. Each is set at the screen size edited (D179), as a grid's display is.
  */
 function LanguageSwitcherFields({ block, onChange }: { block: SiteBlock; onChange: (patch: BlockPatch<SiteBlock>) => void }) {
@@ -5750,7 +5750,7 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
       case "withdrawal":
         return <span className="text-sm text-muted underline">{shop.withdraw}</span>;
       case "languages":
-        // The switcher as it looks at the size edited (D474): each language by its name, code or flag; side by side, one under another, or a list to open.
+        // The switcher as it looks at the size edited (D479): each language by its name, code or flag; side by side, one under another, or a list to open.
         return <LanguageStandIn block={block} />;
     }
   })();
@@ -5762,7 +5762,7 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
   );
 }
 
-/** The language switcher on the canvas (D474), at the size edited: two sample languages as the part shows them there. */
+/** The language switcher on the canvas (D479), at the size edited: two sample languages as the part shows them there. */
 function LanguageStandIn({ block }: { block: SiteBlock }) {
   const { size } = useSizeEdit();
   const look = switcherAt(block, size);

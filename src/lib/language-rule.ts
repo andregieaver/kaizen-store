@@ -1,5 +1,5 @@
 /**
- * Which of a store's languages a visitor is first shown (D474), and the currency that goes with a language. Pure: the proxy, the store's
+ * Which of a store's languages a visitor is first shown (D479), and the currency that goes with a language. Pure: the proxy, the store's
  * front door, the language switcher and the tests share it.
  *
  * A store with several languages chooses how a visitor who has not chosen is shown one (`stores.language_rule`):
@@ -7,7 +7,7 @@
  * - `browser`: the browser's language (`Accept-Language`), where the store has it (the default for a new store);
  * - `location-browser`: the browser's language where the store has one of those it asks for, else the country the visitor is in;
  * - `location`: the language of the country the visitor is in (`x-vercel-ip-country`), where the store has it;
- * - `own`: the country's own language, at its bare address, as every store made before D474 kept.
+ * - `own`: the country's own language, at its bare address, as every store made before D479 kept.
  *
  * Whatever the rule, a language the visitor chose in the language switcher (remembered in `kaizen_lang_{storeId}`) comes first. A choice
  * that finds none of the store's languages leaves the address as it is. Only the front door is decided this way (an address that names no
@@ -21,7 +21,7 @@ export type LanguageRule = (typeof LANGUAGE_RULES)[number];
 
 export const isLanguageRule = (value: unknown): value is LanguageRule => typeof value === "string" && (LANGUAGE_RULES as readonly string[]).includes(value);
 
-/** The cookie that keeps a visitor's own choice of language for a store (D474): set only when they choose one in the switcher. */
+/** The cookie that keeps a visitor's own choice of language for a store (D479): set only when they choose one in the switcher. */
 export const languageCookieName = (storeId: string): string => `kaizen_lang_${storeId}`;
 /** How long the choice is kept. */
 export const LANGUAGE_COOKIE_DAYS = 365;
@@ -164,7 +164,7 @@ export function regionCurrency(locale: string): string | null {
 export const OWN_CURRENCY = "own";
 
 /**
- * The currency each of the store's languages is shown in while the currency follows the language (D474), two-letter language to currency:
+ * The currency each of the store's languages is shown in while the currency follows the language (D479), two-letter language to currency:
  * the owner's choice for it, else the currency of the country its variant names, where the store offers that currency. A language without
  * one (or chosen `own`) keeps the country's own currency.
  */
