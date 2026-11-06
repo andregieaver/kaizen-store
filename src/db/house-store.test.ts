@@ -156,3 +156,30 @@ describe("Kaizena Flow's own customers (D467)", () => {
     expect(await refused("update commerce.deals set closed_via = 'magic' where id = $1", [deal])).toMatch(/deals_closed_via/);
   });
 });
+
+describe("Kaizena Flow's plans as they moved (D470)", () => {
+  it("keeps a move each time what a store pays every month changes", async () => {
+    const shop = (await one<{ id: string }>("insert into commerce.stores (slug, name) values ('moves-shop', 'Moves') returning id")).id;
+    const plan = (await one<{ id: string }>("insert into commerce.plans (name) values ('Growth') returning id")).id;
+    const monthly = (await one<{ id: string }>("insert into commerce.plan_prices (plan_id, currency, interval, amount_minor) values ($1, 'NOK', 'month', 49900) returning id", [plan])).id;
+    const yearly = (await one<{ id: string }>("insert into commerce.plan_prices (plan_id, currency, interval, amount_minor) values ($1, 'NOK', 'year', 720000) returning id", [plan])).id;
+    await db.query("insert into commerce.store_billing (store_id, plan_id, price_id, status, mode) values ($1, $2, $3, 'trialing', 'live')", [shop, plan, monthly]);
+    await db.query("update commerce.store_billing set status = 'active' where store_id = $1", [shop]);
+    await db.query("update commerce.store_billing set price_id = $2 where store_id = $1", [shop, yearly]);
+    await db.query("update commerce.store_billing set status = 'unpaid' where store_id = $1", [shop]);
+    await db.query("update commerce.store_billing set status = 'active' where store_id = $1", [shop]);
+    await db.query("update commerce.store_billing set status = 'canceled' where store_id = $1", [shop]);
+    const { rows } = await db.query<{ kind: string; before: number; after: number; mode: string }>(
+      "select kind, mrr_before_minor::int as before, mrr_after_minor::int as after, mode from commerce.plan_moves where store_id = $1 order by id",
+      [shop],
+    );
+    expect(rows.map((r) => [r.kind, r.before, r.after])).toEqual([
+      ["started", 0, 49900],
+      ["upgraded", 49900, 60000],
+      ["paused", 60000, 0],
+      ["resumed", 0, 60000],
+      ["cancelled", 60000, 0],
+    ]);
+    expect(rows.every((r) => r.mode === "live")).toBe(true);
+  });
+});

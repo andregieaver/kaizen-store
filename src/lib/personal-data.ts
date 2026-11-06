@@ -443,6 +443,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   deal_pipelines: "A store's sales pipelines (D464): their names are the store's own words, no person's.",
   deal_stages: "A pipeline's stages (D464): names, order and probabilities, the store's own words.",
   deal_moves: "A deal's history (D464): the stage and status it moved to, when and by which staff account; the person is the deal's own.",
+  plan_moves: "How a store's plan with Kaizena Flow moved (D470): when, the plan, the mode, the currency and what it paid a month before and after; no person.",
+  house_site_copies: "Kaizena Flow's site copied into its own store (D469): which copy each of the platform's own pages, menus and parts became, by ids.",
   house_customer_links:
     "Kaizena Flow's own customers (D467): which customer of its own store is an owner's account or an access request, and the deal the request opened, by ids; the person is the customer's own.",
   einvoice_sends:

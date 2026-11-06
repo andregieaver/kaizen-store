@@ -197,6 +197,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   activities: never("Staff's calls, meetings and tasks about the store's people, companies and deals (D467)."),
   deal_links: never("What the original's deals are linked to (D464): its own orders, quotes and assignments."),
   deal_moves: never("The original's deals' history (D464)."),
+  plan_moves: never("Kaizena Flow's record of the original's plan (D470): a copy has its own plan, if any."),
+  house_site_copies: never("Which copy each of Kaizena Flow's own rows became (D469): only its own store has them."),
   house_customer_links: never("Kaizena Flow's own customers' accounts and requests (D467): only its own store has them."),
   deal_pipelines: never("The original's sales pipelines (D464): a copy starts with its own when Deals is first opened."),
   deal_stages: never("The original's pipelines' stages (D464)."),

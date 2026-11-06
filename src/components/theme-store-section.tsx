@@ -4,6 +4,7 @@ import type { ThemeStoreBlock } from "@/lib/page-content";
 import type { PlatformLang } from "@/lib/platform-lang";
 import { inLanguage, parseThemeFilter, type ThemeFilter, type ThemeStoreCard } from "@/lib/theme-store";
 import type { GridPlace } from "@/server/content-grid";
+import { houseStoreId } from "@/server/house-customers";
 import { themePageIn, themeStoreCards, themeStorePage } from "@/server/theme-store";
 
 import { ThemeDetailsPart, ThemeFeaturesPart, ThemeHighlightsPart, ThemeLivePart, ThemePicturesPart, ThemeStagePart } from "./theme-page-parts";
@@ -14,10 +15,11 @@ const NO_FILTER: ThemeFilter = { kind: null, style: null, feature: null };
 /**
  * A theme store component on one of Kaizena Flow's pages (D285): the themes, read where the page is shown (cached, refreshed when a
  * theme is published), or a part of a theme's page for the theme the address names (`GridPlace.themeSlug`, given only by the route of a
- * theme's page). Anywhere else a theme's part draws nothing, as does any part on a store's page.
+ * theme's page). Anywhere else a theme's part draws nothing, as does any part on a store's page but Kaizena Flow's own store's (D469).
  */
 export async function ThemeStoreSection({ block, place }: { block: ThemeStoreBlock; place: GridPlace }) {
-  if (place.owner !== null) return null;
+  // Kaizena Flow's pages, and its own store's (D469, step 4 of the plan), where its site moves.
+  if (place.owner !== null && place.owner !== (await houseStoreId())) return null;
   // The page's language (D312 P3): the cards and parts in it, the theme's own words where it has them in it.
   const lang = place.lang ?? "en";
   if (block.part === "list") {

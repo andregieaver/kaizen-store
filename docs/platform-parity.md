@@ -14,7 +14,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-33 rows.
+32 rows.
 
 ### Website
 
@@ -39,7 +39,6 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 | Store page | Kaizena Flow today | Comes by |
 |---|---|---|
 | Overview | The platform home counts stores, paying, overdue, without a plan, new this week, requests; no revenue, no comparison with a period, no funnel | Console, C2 |
-| Subscriptions (for Kaizena Flow: its plans) | None: no monthly recurring revenue, churn or failed renewals. The largest gap for a business that sells plans | Console, C2 |
 | Customers | None: no cohorts of owners, no lifetime value | Console, C2 |
 | Marketing | Referral totals, recovered plan checkouts; no channels or cost per new owner | Console, C2 |
 | Reports | None | Console, C2 (later) |
@@ -101,6 +100,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 | The subscriber list, segments, broadcasts, email automations (D295 to D298) | Marketing | Kaizena Flow's store: its own pages' newsletter keeps who asks (D467); the platform's tags (plan, trial, overdue) for segments |
 | Deals (D464) | Customers → Deals | Kaizena Flow's store: a Sign-ups pipeline, a deal per application, won when its plan is paid (D467) |
 | Privacy requests (D162) | Customers → Privacy requests | Kaizena Flow's store, its erasure blanking the person's applications too (D467) |
+| Subscriptions analytics (for Kaizena Flow: its plans) | Analytics → Subscriptions | Plans → Analytics (D470): monthly revenue, paying, late, trying and leaving stores, each plan, how revenue moved, and the way from asking to paying |
 
 ## Store-only: cannot apply to Kaizena Flow
 

@@ -64,6 +64,8 @@ import { blogPath, blogTitle } from "@/lib/blogs";
 import { storeCssVersionAction, storeCssVersionsAction, storePageVersionAction, storePageVersionsAction } from "./version-actions";
 import { planMotionAction } from "./motion-action";
 import { signupCodeChoices } from "@/server/discounts";
+import { planChoices } from "@/lib/plan-offer";
+import { getPublicPlans } from "@/server/public-plans";
 
 /** Where a store's pages (or articles, D57) are edited. */
 export const storePagesBase = (store: Pick<Store, "slug">, type: PageType = "page") =>
@@ -173,7 +175,9 @@ export async function storePageContext(
     menus,
     standardMenus: { header: store.headerMenuId, footer: store.footerMenuId },
     menusHref: `/admin/${store.slug}/menus`,
-    plans: null,
+    // Kaizena Flow's own store (D469, step 4 of the plan) has Kaizena Flow's own parts: its plans, a domain search and the list of themes.
+    plans: store.house ? planChoices(await getPublicPlans()) : null,
+    ...(store.house && type === "page" ? { themeStore: { parts: ["list"] as const } } : {}),
     theme: {
       css: themeCss(store.theme.settings, "[data-theme-canvas]"),
       attributes: themeAttributes(store.theme.settings),

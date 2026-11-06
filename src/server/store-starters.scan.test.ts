@@ -24,6 +24,8 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/ai-usage.ts": "real",
   // Kaizena Flow's own customers (D467): the owners of real stores, never a template's, a demo store's or Kaizena Flow's own.
   "src/server/house-customers.ts": "real",
+  // Analytics of Kaizena Flow's plans (D470): customers' stores only.
+  "src/server/plan-analytics.ts": "real",
   // Kaizena Flow's own integrations (D465): a test sends the newest real store.
   "src/server/platform-integrations.ts": "real",
   // An Admin API token (D355) answers for a real store only.

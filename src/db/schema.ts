@@ -17666,6 +17666,58 @@ export const dealMoves = commerce.table(
 );
 
 /**
+ * Kaizena Flow's plans as they moved (C2 of `docs/platform-parity-plan.md`, D470): each time a store's plan starts, grows, shrinks, is paused
+ * for an unpaid invoice, resumes or ends, with what the store paid every month before and after (a yearly price as a twelfth) in the
+ * price's currency, and whether it was in Stripe's live or test mode. Written only by `commerce.plan_moves_track()` on `store_billing`;
+ * kept as the record of Kaizena Flow's own revenue. No person's data.
+ */
+export const planMoves = commerce.table(
+  "plan_moves",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    /** `started`, `upgraded`, `downgraded`, `paused`, `resumed` or `cancelled`. */
+    kind: text("kind").notNull(),
+    planId: uuid("plan_id").references(() => plans.id, { onDelete: "set null" }),
+    mode: text("mode"),
+    currency: char("currency", { length: 3 }),
+    mrrBeforeMinor: bigint("mrr_before_minor", { mode: "number" }).notNull().default(0),
+    mrrAfterMinor: bigint("mrr_after_minor", { mode: "number" }).notNull().default(0),
+  },
+  (t) => [
+    index("plan_moves_at_idx").on(t.at),
+    index("plan_moves_store_idx").on(t.storeId, t.at),
+    index("plan_moves_plan_idx").on(t.planId),
+    check("plan_moves_kind", sql`${t.kind} in ('started', 'upgraded', 'downgraded', 'paused', 'resumed', 'cancelled')`),
+    check("plan_moves_amounts", sql`${t.mrrBeforeMinor} >= 0 and ${t.mrrAfterMinor} >= 0`),
+  ],
+);
+
+/**
+ * Kaizena Flow's site copied into its own store (D469, `docs/platform-parity-plan.md` step 3): each of the platform's own rows (a page, a
+ * header or footer, a menu, a saved part, a text style, a category or tag, a content type or entry) and the id of its
+ * copy in Kaizena Flow's own store, so `commerce.copy_platform_site()` copies the same row onto the same copy each time it runs and removes
+ * the copy of one that is gone. Written only by that function; ids only.
+ */
+export const houseSiteCopies = commerce.table(
+  "house_site_copies",
+  {
+    storeId: storeId().references(() => stores.id),
+    sourceId: uuid("source_id").notNull(),
+    copyId: uuid("copy_id").notNull(),
+    /** `page`, `menu`, `saved_part`, `text_style`, `term`, `content_type` or `content_entry`. */
+    kind: text("kind").notNull(),
+    copiedAt: timestamp("copied_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.sourceId] }),
+    unique("house_site_copies_copy_key").on(t.storeId, t.copyId),
+    check("house_site_copies_kind", sql`${t.kind} in ('page', 'menu', 'saved_part', 'text_style', 'term', 'content_type', 'content_entry')`),
+  ],
+);
+
+/**
  * Kaizena Flow's own customers (D467, `docs/platform-parity-plan.md` step 2): which customer of Kaizena Flow's own store (D466) is an owner's
  * account, which an access request, and the deal the request opened. Written only by `src/server/house-customers.ts`; a row lives in Kaizena
  * Flow's own store alone (`house_customer_links_house()`). The account or request going sets it null; a person with neither and nothing

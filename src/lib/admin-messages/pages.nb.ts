@@ -780,6 +780,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Funksjoner i planene",
     keywords: ["sammenlign planer", "funksjoner", "hva er inkludert", "prisnivåer"],
   },
+  "platform:plan-analytics": {
+    title: "Abonnementsanalyse",
+    keywords: ["mrr", "månedlige inntekter", "frafall", "inntekter", "trakt", "konvertering", "prøveperioder"],
+  },
   "platform:discounts": { title: "Rabatter", keywords: ["rabatter", "rabattkoder", "rabattkode", "kupong"] },
   "platform:discount": { title: "Rabatt", keywords: ["rabatt", "rabattkode", "kupong"] },
   "platform:plan-reminders": { title: "Påminnelser om plan", keywords: ["påminnelser", "forlatt kasse", "plan", "e-post"] },

@@ -4803,6 +4803,34 @@
       "when": 1793964651171,
       "tag": "20261106113051_house_customers_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 686,
+      "version": "7",
+      "when": 1793966060904,
+      "tag": "20261106115420_house_site",
+      "breakpoints": true
+    },
+    {
+      "idx": 687,
+      "version": "7",
+      "when": 1793966087447,
+      "tag": "20261106115447_house_site_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 688,
+      "version": "7",
+      "when": 1793966704015,
+      "tag": "20261106120503_plan_moves",
+      "breakpoints": true
+    },
+    {
+      "idx": 689,
+      "version": "7",
+      "when": 1793966737033,
+      "tag": "20261106120537_plan_moves_rules",
+      "breakpoints": true
     }
   ]
 }

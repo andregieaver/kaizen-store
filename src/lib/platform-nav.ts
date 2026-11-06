@@ -48,6 +48,7 @@ export const PLAN_ITEMS: SectionItem[] = [
   item("/plans", "Editor", "Kaizena Flow's plans, their prices and fees, synced to Stripe.", "credit-card", true),
   item("/plans/limits", "Limits", "What each plan includes of storage, products, staff, domains, emails, AI and traffic, and the default for stores without a plan.", "gauge"),
   item("/plans/features", "Features", "Every feature with a tick for each plan that includes it: the comparison stores see.", "toggle"),
+  item("/plans/analytics", "Analytics", "What the stores' plans earn every month, how that moved, and how many who ask for a store end up paying.", "chart-column"),
   item("/plan-reminders", "Reminders", "Emails to owners who left a plan checkout.", "bell"),
   item("/discounts", "Discounts", "Discount codes for stores' plans.", "ticket"),
   item("/referrals", "Referrals", "Kaizena Flow's referral program: commission, referrers, referred stores.", "share"),
