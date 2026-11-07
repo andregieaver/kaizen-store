@@ -302,6 +302,39 @@ describe("a store's documents, posted to its books", () => {
     expect(await sumOf(1579)).toBe(0);
   });
 
+  it("opens the receivable again when a dispute takes a card payment back, and leaves nothing on the provider's balance", async () => {
+    const shop = await fx.makeStore(`ldg-dsp-${run}`);
+    const book = await openBook(shop.storeId, shop.ownerId);
+    const order = await fx.paidOrder(shop, [["DEMO-MUG-WHITE", 1]]);
+    await ledger.runLedgerPosting();
+    const [payment] = await db().execute<Row>(sql`select id from commerce.payments where store_id = ${shop.storeId}::uuid and order_id = ${order.orderId}::uuid`);
+    // The customer disputes the charge: Stripe takes it back with its 15.00 fee, and the payout takes what is short from the bank.
+    const amount = order.total - 300 - order.total - 1_500;
+    const [payout] = await db().execute<Row>(sql`
+      insert into commerce.payouts (store_id, provider, provider_reference, provider_account, amount_minor, currency, status, automatic, arrival_on, provider_created_at, lines_read_at, lines_complete)
+      values (${shop.storeId}::uuid, 'stripe', ${`po_dsp_${run}`}, ${shop.account}, ${amount}, 'NOK', 'paid', true, current_date, now(), now(), true) returning id`);
+    const [dispute] = await db().execute<Row>(sql`
+      insert into commerce.payout_lines (store_id, payout_id, provider_reference, kind, provider_type, amount_minor, fee_minor, net_minor, currency, provider_created_at, payment_id, order_id)
+      values (${shop.storeId}::uuid, ${String(payout.id)}::uuid, ${`txn_dsp_c_${run}`}, 'charge', 'charge', ${order.total}, 300, ${order.total - 300}, 'NOK', now(), ${String(payment.id)}::uuid, ${order.orderId}::uuid),
+             (${shop.storeId}::uuid, ${String(payout.id)}::uuid, ${`txn_dsp_d_${run}`}, 'dispute', 'adjustment', ${-order.total}, 1500, ${-order.total - 1500}, 'NOK', now(), ${String(payment.id)}::uuid, ${order.orderId}::uuid)
+      returning id`);
+    expect(await ledger.postDueDocuments(shop.storeId, book)).toEqual({ posted: 2, waiting: 0 });
+    // The dispute's own entry, then the payout: the fees as costs, the bank paying what was short.
+    const disputeId = String((await db().execute<Row>(sql`select id from commerce.payout_lines where payout_id = ${String(payout.id)}::uuid and kind = 'dispute'`))[0].id);
+    expect(dispute).toBeTruthy();
+    expect((await entriesOf(book.id, disputeId)).map((r) => [r.source_kind, r.account, Number(r.amount)])).toEqual([
+      ["dispute", 1579, -order.total],
+      ["dispute", 1500, order.total],
+    ]);
+    const sumOf = async (account: number) =>
+      Number((await db().execute<Row>(sql`select coalesce(sum(amount_minor), 0)::bigint::text as s from commerce.ledger_lines where book_id = ${book.id}::uuid and account = ${account}`))[0].s);
+    expect(await sumOf(1579)).toBe(0);
+    expect(await sumOf(7770)).toBe(1_800);
+    expect(await sumOf(1920)).toBe(amount);
+    // Lost, the order's receivable stays open, for the owner to write off with the accountant.
+    expect(await sumOf(1500)).toBe(order.total);
+  });
+
   it("owes a refund to store credit on 2900 and takes the credit off as it is spent on a new order, leaving what the card still holds", async () => {
     const { refundOrder } = await import("./order-admin");
     const { placeOrder, completeOrderPayment } = await import("./checkout");

@@ -18,6 +18,7 @@ import {
   NO_TAX_CODES,
   entryName,
   entryOfDoc,
+  entryOfDisputeLine,
   entryOfPayment,
   entryOfPayout,
   entryOfPaymentReversal,
@@ -495,6 +496,24 @@ describe("a shop's money, and the payment provider's payouts", () => {
       "NOK",
     );
     expect(spent.ok && spent.entry.lines.map((l) => [l.account, l.amountMinor])).toEqual([[2900, 20_000], [1500, -20_000]]);
+  });
+
+  it("opens the receivable again when a dispute takes money back from the provider's balance, and clears it when the dispute is won", () => {
+    const taken = entryOfDisputeLine({ id: "dl1", day: "2027-02-03", amountMinor: -49_900, orderNumber: "1042" }, NO_POSTING);
+    expect(taken.ok && taken.entry).toEqual({
+      series: "B",
+      date: "2027-02-03",
+      text: "Tilbakeført ved innsigelse, ordre 1042",
+      source: { kind: "dispute", id: "dl1" },
+      lines: [
+        { account: 1579, amountMinor: -49_900, vatCode: null },
+        { account: 1500, amountMinor: 49_900, vatCode: null },
+      ],
+    });
+    const won = entryOfDisputeLine({ id: "dl2", day: "2027-03-10", amountMinor: 49_900, orderNumber: null }, { receivable: 1510 });
+    expect(won.ok && won.entry.text).toBe("Innsigelse vunnet, tilbakebetalt");
+    expect(won.ok && won.entry.lines.map((l) => [l.account, l.amountMinor])).toEqual([[1579, 49_900], [1510, -49_900]]);
+    expect(entryOfDisputeLine({ id: "dl3", day: "2027-03-10", amountMinor: 0, orderNumber: null }, NO_POSTING)).toEqual({ ok: false, problem: "nothing" });
   });
 
   it("posts a payout as what reached the bank and the provider's fee, against the gross out of the provider's balance", () => {

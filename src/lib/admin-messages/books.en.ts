@@ -27,7 +27,7 @@ export const booksEn = {
   waiting: {
     title: "Waiting for you",
     count: { one: "{n} document could not be posted yet", many: "{n} documents could not be posted yet" },
-    kinds: { work_invoice: "Invoice", work_credit_note: "Credit note", shop_invoice: "Shop invoice", shop_credit_note: "Shop credit note", work_payment: "Payment", shop_payment: "Shop payment", shop_refund: "Shop refund", payout: "Payout" } as Record<string, string>,
+    kinds: { work_invoice: "Invoice", work_credit_note: "Credit note", shop_invoice: "Shop invoice", shop_credit_note: "Shop credit note", work_payment: "Payment", shop_payment: "Shop payment", shop_refund: "Shop refund", payout: "Payout", dispute: "Dispute" } as Record<string, string>,
     problems: {
       currency: "in another currency than the books, with no rate of its own",
       vat_unmapped: "a VAT kind with no account",
@@ -127,6 +127,7 @@ export const booksEn = {
       shop_refund: "Shop refund",
       payout: "Payout",
       opening_balance: "Opening balance from Tripletex",
+      dispute: "Dispute",
       hand: "By hand",
     } as Record<string, string>,
     problems: {

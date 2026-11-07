@@ -19,6 +19,7 @@ import {
   entryOfDoc,
   entryOfPayment,
   entryOfPaymentReversal,
+  entryOfDisputeLine,
   entryOfPayout,
   entryProblems,
   handEntryOf,
@@ -455,7 +456,7 @@ const SHOP_PAYMENT_DAY = sql`coalesce(p.received_on,
   (select min(i.issued_on) from commerce.invoices i where i.store_id = p.store_id and i.order_id = p.order_id),
   (p.created_at at time zone s.time_zone)::date)`;
 
-const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note", "work_payment", "shop_payment", "shop_refund", "payout"]), id: col.text });
+const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note", "work_payment", "shop_payment", "shop_refund", "payout", "dispute"]), id: col.text });
 
 /**
  * The documents of a book's days not posted yet, the oldest first, invoices before credit notes: the same as Tripletex books (Work's sent
@@ -502,6 +503,12 @@ async function dueDocuments(storeId: string, book: { id: string; opened_on: stri
           select 'payout', po.id::text, coalesce(po.arrival_on, (po.provider_created_at at time zone s.time_zone)::date), 6
             from commerce.payouts po join commerce.stores s on s.id = po.store_id
            where po.store_id = ${storeId}::uuid and po.status = 'paid' and not po.test_mode
+          union all
+          select 'dispute', l.id::text, (l.provider_created_at at time zone s.time_zone)::date, 7
+            from commerce.payout_lines l
+            join commerce.payouts po on po.store_id = l.store_id and po.id = l.payout_id
+            join commerce.stores s on s.id = l.store_id
+           where l.store_id = ${storeId}::uuid and l.kind = 'dispute' and l.amount_minor <> 0 and po.status = 'paid' and not po.test_mode
         ) m
          where m.day between ${book.opened_on}::date and ${to}::date
       ) d
@@ -723,6 +730,34 @@ async function postShopMoney(
 }
 
 /**
+ * Posts a dispute's money as a paid payout's line shows it (step 2c, `entryOfDisputeLine()`): taken back from the provider's balance, the
+ * order's receivable open again; given back, cleared again. Only in the book's currency for now: another waits.
+ */
+async function postDisputeLine(
+  storeId: string,
+  book: { id: string; currency: string },
+  posting: LedgerPosting,
+  id: string,
+): Promise<{ ok: true; id: string } | { ok: false; problem: PaymentProblem | PostProblem | "unreadable" }> {
+  const line = await typedRow(
+    z.object({ id: col.uuid, amount_minor: col.minor, currency: col.currency, day: col.text, order_number: col.textOrNull }),
+    sql`
+      select l.id, l.amount_minor, l.currency, ((l.provider_created_at at time zone s.time_zone)::date)::text as day, o.number as order_number
+        from commerce.payout_lines l
+        join commerce.stores s on s.id = l.store_id
+        left join commerce.orders o on o.store_id = l.store_id and o.id = l.order_id
+       where l.store_id = ${storeId}::uuid and l.id = ${id}::uuid and l.kind = 'dispute'
+    `,
+  );
+  if (!line) return { ok: false, problem: "unreadable" };
+  if (line.currency !== book.currency) return { ok: false, problem: "currency" };
+  const made = entryOfDisputeLine({ id: line.id, day: line.day, amountMinor: line.amount_minor, orderNumber: line.order_number }, posting);
+  if (!made.ok) return made;
+  const posted = await postLedgerEntry(book.id, made.entry, null);
+  return posted.ok ? posted : { ok: false, problem: posted.problems[0] };
+}
+
+/**
  * Posts a paid payout (step 2c, `entryOfPayout()`): its fees are what its lines say Stripe kept (each line's fee, and a fee of its own as a
  * line), so one whose lines are not read yet waits (`lines`); a manual payout lists none and is posted at its amount alone.
  */
@@ -781,6 +816,7 @@ export async function postDueDocuments(
     if (d.kind === "work_payment") result = await postPayment(storeId, book, posting, d.id);
     else if (d.kind === "shop_payment" || d.kind === "shop_refund") result = await postShopMoney(storeId, book, posting, d.kind, d.id);
     else if (d.kind === "payout") result = await postPayout(storeId, book, d.id);
+    else if (d.kind === "dispute") result = await postDisputeLine(storeId, book, posting, d.id);
     else {
       const loaded = await loadDocument(storeId, d.kind as DocumentKind, d.id);
       const fx = loaded && loaded.doc.currency !== book.currency ? await docRateOf(storeId, d.kind as DocumentKind, d.id, book.currency) : null;

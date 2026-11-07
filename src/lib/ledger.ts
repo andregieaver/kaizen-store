@@ -393,6 +393,33 @@ export function shopMoneyAccount(
 export const CARD_FEE_ACCOUNT = 7770;
 
 /**
+ * A dispute's money as the provider moved it (step 2c, D288): taken back from the provider's balance when a customer disputes a payment
+ * (a negative payout line), the order's receivable open again as the customer has not paid after all; given back when the dispute is won
+ * (a positive one), the receivable cleared again. The dispute's fee is the payout's, with its other fees (7770). A dispute lost leaves the
+ * receivable open: writing it off as a loss is the owner's, with the accountant.
+ */
+export function entryOfDisputeLine(
+  line: { id: string; day: string; amountMinor: number; orderNumber: string | null },
+  posting: Pick<LedgerPosting, "receivable">,
+): { ok: true; entry: LedgerEntryInput } | { ok: false; problem: PaymentProblem } {
+  if (!Number.isSafeInteger(line.amountMinor) || line.amountMinor === 0) return { ok: false, problem: "nothing" };
+  const order = line.orderNumber ? `, ordre ${line.orderNumber}` : "";
+  return {
+    ok: true,
+    entry: {
+      series: LEDGER_SERIES.bank,
+      date: line.day,
+      text: clipText(`${line.amountMinor < 0 ? "Tilbakeført ved innsigelse" : "Innsigelse vunnet, tilbakebetalt"}${order}`, 200),
+      source: { kind: "dispute", id: line.id },
+      lines: [
+        { account: SHOP_PAYMENT_ACCOUNTS.stripe, amountMinor: line.amountMinor, vatCode: null },
+        { account: posting.receivable, amountMinor: -line.amountMinor, vatCode: null },
+      ],
+    },
+  };
+}
+
+/**
  * A payout from the payment provider to the bank (step 2c, D290): what reached the bank, what the provider kept as its fees, and the gross
  * that left the provider's balance (1579). A payout taking money back from the bank (negative) is the same with the signs turned.
  */
