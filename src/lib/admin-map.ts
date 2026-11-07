@@ -922,10 +922,9 @@ const PAGES: readonly AdminPage[] = [
   store("integrations.tripletex", "/integrations/tripletex", "Tripletex", "Store", "Connects the store's Tripletex company with one pasted token and books its invoices and credit notes there; where they are booked, what needs the owner, Try again.", {
     keywords: ["tripletex", "accounting", "bookkeeping", "regnskap", "bokføring", "vouchers", "bilag", "accountant"],
   }),
-  store("books", "/settings/books", "Books", "Store", "The store's own books (D478): opened from a day by the owner, every invoice and credit note posted to them as it is issued, on the same accounts as Tripletex; what waits and why, the trial balance of any days with its result, and locking the books through a day.", {
-    keywords: ["books", "ledger", "accounting", "bookkeeping", "regnskap", "hovedbok", "saldobalanse", "trial balance", "bilag", "lock period"],
-    // The pilot's (D478): offered where the owner keeps Work, as Human Web does; so the AI manager's fixed drawing, and its eval, are as recorded.
-    needs: "work",
+  store("books", "/settings/books", "Books", "Store", "The store's own books (D478): opened from a day by the owner; every invoice, credit note and Work payment posted to them as it happens, on the same accounts as Tripletex; what waits and why; the trial balance, profit and loss, balance sheet and VAT by code of any days; locking the books through a day.", {
+    keywords: ["books", "ledger", "accounting", "bookkeeping", "regnskap", "hovedbok", "saldobalanse", "trial balance", "bilag", "lock period", "profit and loss", "resultatregnskap", "balance sheet", "balanse", "VAT report", "mva"],
+    tasks: ["See the profit and loss", "See the balance sheet", "See VAT by code for a term"],
   }),
   store("integrations.fiken", "/integrations/fiken", "Fiken", "Store", "Connects the store's Fiken company through Fiken's own page and books its invoices and credit notes there as sales; where they are booked, what needs the owner, Try again.", {
     keywords: ["fiken", "accounting", "bookkeeping", "regnskap", "bokføring", "annet salg", "bilag", "accountant"],
