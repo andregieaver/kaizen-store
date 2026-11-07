@@ -5034,6 +5034,20 @@
       "when": 1794082295086,
       "tag": "20261107201135_store_menu_page_links",
       "breakpoints": true
+    },
+    {
+      "idx": 719,
+      "version": "7",
+      "when": 1794085453597,
+      "tag": "20261107210413_ledger_vouchers",
+      "breakpoints": true
+    },
+    {
+      "idx": 720,
+      "version": "7",
+      "when": 1794085487639,
+      "tag": "20261107210447_ledger_vouchers_rules",
+      "breakpoints": true
     }
   ]
 }

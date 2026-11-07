@@ -14,7 +14,9 @@ import type { Membership } from "@/server/auth";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { lockLedgerThrough, openLedgerBook, postDueDocuments, openBookOf, postHandEntry, reverseLedgerEntry } from "@/server/ledger";
 import { postOpeningFromTripletex } from "@/server/ledger-opening";
+import { isPurchaseKind, isPurchaseVatRate, PURCHASE_KINDS } from "@/lib/purchases";
 import { payCertainInvoices, payInvoiceFromBank, postBankOwnLine } from "@/server/bank-payments";
+import { postPurchaseFromBank, VOUCHER_BYTES } from "@/server/purchases";
 import { importBankStatement, STATEMENT_BYTES } from "@/server/bank-statements";
 import { checkOwnerRole } from "@/server/permissions";
 
@@ -136,6 +138,30 @@ export async function payFromBankAction(storeSlug: string, _state: FormState, fo
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  // *Post the purchase* (D490): the line's receipt, what it was and its VAT rate, in the fields named after the line.
+  const bought = form.get("buy");
+  if (bought !== null) {
+    const lineId = String(bought);
+    if (!uuid.test(lineId)) return { status: "error", messages: [w.bank.payProblems.line] };
+    const kind = form.get(`kind-${lineId}`);
+    const rate = form.get(`vat-${lineId}`);
+    const file = form.get(`receipt-${lineId}`);
+    const field = (name: string, words: string): FormState => ({ status: "error", messages: [words], fields: { [`${name}-${lineId}`]: words } });
+    if (!isPurchaseKind(kind)) return field("kind", w.bank.purchaseProblems.kind);
+    // The kind's usual rate unless the owner chose one.
+    const vatRate = rate === "usual" ? PURCHASE_KINDS[kind].vat : isPurchaseVatRate(rate) ? (Number(rate) as 25 | 15 | 12 | 0) : null;
+    if (vatRate === null) return field("vat", w.bank.purchaseProblems.kind);
+    if (!(file instanceof File) || file.size === 0) return field("receipt", w.bank.purchaseProblems.file);
+    if (file.size > VOUCHER_BYTES) return field("receipt", w.bank.purchaseProblems.too_big);
+    const text = String(form.get(`text-${lineId}`) ?? "").trim().slice(0, 200) || null;
+    const posted = await postPurchaseFromBank(member, lineId, { kind, vatRate, text }, { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+    if (!posted.ok) {
+      const words = w.bank.purchaseProblems[posted.problem] ?? w.hand.problems[posted.problem] ?? w.hand.problems.other;
+      return posted.problem === "file" || posted.problem === "type" || posted.problem === "too_big" ? field("receipt", words) : { status: "error", messages: [words] };
+    }
+    refresh();
+    return { status: "ok", messages: [fillWords(w.bank.purchased, { account: posted.account })] };
+  }
   const own = form.get("post");
   if (own !== null) {
     if (!uuid.test(String(own))) return { status: "error", messages: [w.bank.payProblems.line] };

@@ -356,4 +356,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   the owner uploads the statement; every other is offered on the Books screen for one press. Never record a payment from the ledger's job.
   The bank's own fees and interest (D488) are posted only through `postBankOwnLine()`, which posts `entryOfBankOwnLine()` (`src/lib/bank-own-lines.ts`:
   7770, 8050 or 8150 against 1920, no VAT, source `bank_line`) for a line `bankOwnKind()` names, with the owner's press; any other cost from a
-  bank line waits for its receipt (B3), never posted from the line alone.
+  bank line waits for its receipt (B3), never posted from the line alone. A purchase from a bank line is posted only through
+  `postPurchaseFromBank()` (`src/server/purchases.ts`, D490): `entryOfPurchase()` (`src/lib/purchases.ts`: the kind's account, the VAT
+  worked out in code, SAF-T's input codes, never VAT back on entertainment) with its receipt kept first as the entry's voucher
+  (`commerce.ledger_vouchers`, the private `documents` bucket, type by the file's first bytes, never changed or deleted); nothing is posted
+  without a place to keep it. A voucher is read only through `readVoucher()`, for a member who may read the books.

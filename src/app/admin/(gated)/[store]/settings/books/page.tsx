@@ -14,7 +14,9 @@ import { ledgerAccounts, ledgerJournal, ledgerTrialBalance, ledgerVatByCode, led
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { hasOpeningBalance } from "@/server/ledger-opening";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
+import { PURCHASE_KINDS, PURCHASE_VAT_RATES, type PurchaseKind } from "@/lib/purchases";
 import { invoiceOffers } from "@/server/bank-payments";
+import { vouchersOf } from "@/server/purchases";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
@@ -97,6 +99,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const bank = await bankSummary(book.id);
   // A client's payment in the bank, and the Work invoice it most likely pays (D487).
   const offers = await invoiceOffers(store.id, book.id);
+  // The journal's vouchers, such as a purchase's receipt (D490), by entry.
+  const vouchers = await vouchersOf(store.id, journal.map((e) => e.id));
   const amount = (minor: number) => formatMoney(minor, book.currency, locale);
   // The table's amounts as numbers, the currency said once above it; the result with its currency.
   const digits = minorUnitDigits(book.currency);
@@ -182,6 +186,51 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                               {w.bank.post}
                             </SubmitButton>
                           </div>
+                        )}
+                        {/* A purchase: its receipt, what it was and its VAT, posted with one press (D490). */}
+                        {!offer && !own && owner && l.amountMinor < 0 && (
+                          <details className="text-sm">
+                            <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{w.bank.receipt}</summary>
+                            <div className="mt-2 flex flex-col gap-3">
+                              <p className="text-muted">{w.bank.receiptLead}</p>
+                              <div className="flex flex-wrap gap-3">
+                                <label className="flex min-w-56 flex-1 flex-col gap-1 font-medium">
+                                  {w.bank.what}
+                                  <select name={`kind-${l.id}`} defaultValue="office" className={field}>
+                                    {(Object.keys(PURCHASE_KINDS) as PurchaseKind[]).map((kind) => (
+                                      <option key={kind} value={kind}>
+                                        {w.bank.kinds[kind]}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className="flex w-44 flex-col gap-1 font-medium">
+                                  {w.bank.vatRate}
+                                  <select name={`vat-${l.id}`} defaultValue="usual" className={field}>
+                                    <option value="usual">{w.bank.vatUsual}</option>
+                                    {PURCHASE_VAT_RATES.map((rate) => (
+                                      <option key={rate} value={rate}>
+                                        {rate === 0 ? w.bank.vatNone : `${rate} %`}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </div>
+                              <label className="flex max-w-md flex-col gap-1 font-medium">
+                                {w.bank.words}
+                                <input name={`text-${l.id}`} maxLength={200} defaultValue={l.text} className={field} />
+                              </label>
+                              <label className="flex max-w-md flex-col gap-1 font-medium">
+                                {w.bank.receiptFile}
+                                <input name={`receipt-${l.id}`} type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" className={`${field} py-2`} />
+                              </label>
+                              <div>
+                                <SubmitButton name="buy" value={l.id}>
+                                  {w.bank.postPurchase}
+                                </SubmitButton>
+                              </div>
+                            </div>
+                          </details>
                         )}
                       </li>
                     );
@@ -405,6 +454,11 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                   <Chip>{w.journal.kinds[e.sourceKind ?? "hand"] ?? w.journal.kinds.hand}</Chip>
                   {e.reversedBy && <Chip signal="warning">{fillWords(w.journal.reversedBy, { name: e.reversedBy })}</Chip>}
                   {e.reverses && <Chip>{fillWords(w.journal.reverses, { name: e.reverses })}</Chip>}
+                  {vouchers.has(e.id) && (
+                    <a href={`/admin/${store.slug}/settings/books/vouchers/${vouchers.get(e.id)!.id}`} target="_blank" rel="noopener" className="underline underline-offset-2">
+                      {w.bank.voucher}
+                    </a>
+                  )}
                 </div>
                 <table className="w-full max-w-2xl table-fixed text-sm">
                   {/* The same columns in every entry, so the amounts line up down the journal. */}

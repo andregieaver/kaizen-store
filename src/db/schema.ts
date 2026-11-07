@@ -18299,6 +18299,7 @@ export const bankLines = commerce.table(
   },
   (t) => [
     unique("bank_lines_key").on(t.bookId, t.ledgerAccount, t.lineKey),
+    unique("bank_lines_store_id_key").on(t.storeId, t.id),
     uniqueIndex("bank_lines_entry_once").on(t.bookId, t.entryId).where(sql`${t.entryId} is not null`),
     foreignKey({ name: "bank_lines_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
     foreignKey({ name: "bank_lines_statement_fk", columns: [t.storeId, t.statementId], foreignColumns: [bankStatements.storeId, bankStatements.id] }),
@@ -18313,5 +18314,44 @@ export const bankLines = commerce.table(
     check("bank_lines_counterparty", sql`${t.counterparty} is null or char_length(${t.counterparty}) between 1 and 140`),
     check("bank_lines_matched", sql`(${t.entryId} is null) = (${t.matchedAt} is null)`),
     check("bank_lines_account", sql`${t.ledgerAccount} between 1000 and 99999`),
+  ],
+);
+
+/**
+ * A voucher of the books (B3, D490): the file that documents an entry, such as the receipt of a card purchase the bank's statement shows,
+ * kept in the private `documents` bucket (`{store}/vouchers/{id}.{ext}`) for as long as the bookkeeping duty asks. Written with the entry
+ * it documents; the bank line it was posted from, when it was one. Never changed; gone only with the store's books.
+ */
+export const ledgerVouchers = commerce.table(
+  "ledger_vouchers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    entryId: uuid("entry_id").notNull(),
+    bankLineId: uuid("bank_line_id"),
+    filePath: text("file_path").notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256: text("sha256").notNull(),
+    uploadedBy: uuid("uploaded_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("ledger_vouchers_store_id_key").on(t.storeId, t.id),
+    unique("ledger_vouchers_file_path_key").on(t.filePath),
+    foreignKey({ name: "ledger_vouchers_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
+    foreignKey({ name: "ledger_vouchers_entry_fk", columns: [t.storeId, t.entryId], foreignColumns: [ledgerEntries.storeId, ledgerEntries.id] }),
+    foreignKey({ name: "ledger_vouchers_bank_line_fk", columns: [t.storeId, t.bankLineId], foreignColumns: [bankLines.storeId, bankLines.id] }),
+    index("ledger_vouchers_entry_idx").on(t.storeId, t.entryId),
+    index("ledger_vouchers_book_idx").on(t.storeId, t.bookId),
+    index("ledger_vouchers_bank_line_idx").on(t.storeId, t.bankLineId),
+    index("ledger_vouchers_uploaded_by_idx").on(t.uploadedBy),
+    check("ledger_vouchers_content_type", sql`${t.contentType} in ('application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic')`),
+    check("ledger_vouchers_file_name", sql`char_length(${t.fileName}) between 1 and 200`),
+    check("ledger_vouchers_size", sql`${t.sizeBytes} between 1 and 10485760`),
+    check("ledger_vouchers_sha256", sql`${t.sha256} ~ '^[0-9a-f]{64}$'`),
+    check("ledger_vouchers_path", sql`${t.filePath} = ${t.storeId}::text || '/vouchers/' || ${t.id}::text || '.' || split_part(${t.filePath}, '.', 2) and split_part(${t.filePath}, '.', 2) in ('pdf', 'jpg', 'png', 'webp', 'heic')`),
   ],
 );
