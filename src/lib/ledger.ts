@@ -703,3 +703,68 @@ export function compareWithTheirs(ours: readonly { account: number; amountMinor:
   if (ourVat !== theirVat) differences.push({ account: "vat", ours: ourVat, theirs: theirVat });
   return { agrees: differences.length === 0, differences };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The opening balance, read from the system the store kept its books in (step 2d)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * An account as another system reads it at the switch (Tripletex's balance sheet), in minor units with debit positive: what it held at the
+ * end of the day before the books open (`atOpeningMinor`), and what it moved from 1 January of that year to then (`yearToDateMinor`, read for
+ * the profit and loss accounts, whose year starts again each 1 January).
+ */
+export type TheirBalance = { number: number; name: string; atOpeningMinor: number; yearToDateMinor: number };
+
+/** Where the result of years before goes when it was never carried to equity there: other equity (NS 4102's 2050). */
+export const UNCARRIED_RESULT_ACCOUNT = 2050;
+
+export type OpeningProblem = "empty" | "unbalanced";
+
+/** Whether an account is on the balance sheet (classes 1 and 2), whose balance carries over from year to year. */
+const onBalanceSheet = (number: number) => String(number)[0] === "1" || String(number)[0] === "2";
+
+/**
+ * The opening balance from what another system holds (step 2d): each balance sheet account at what it held the day before the books open,
+ * and, when they open during a year, each profit and loss account at what it moved since 1 January, so the year's result goes on. Their
+ * trial balance must balance to the øre, else nothing is made (`unbalanced`, with by how much). A result of earlier years never carried to
+ * equity there is what is left, and goes on other equity (`UNCARRIED_RESULT_ACCOUNT`) as a line of its own, said (`carriedMinor`).
+ */
+export function openingBalanceOf(
+  theirs: readonly TheirBalance[],
+): { ok: true; lines: (LedgerLineInput & { name: string })[]; carriedMinor: number } | { ok: false; problem: OpeningProblem; differenceMinor: number } {
+  const total = theirs.reduce((sum, a) => sum + a.atOpeningMinor, 0);
+  if (total !== 0) return { ok: false, problem: "unbalanced", differenceMinor: total };
+  const byAccount = new Map<number, { name: string; amountMinor: number }>();
+  for (const a of theirs) {
+    const amount = onBalanceSheet(a.number) ? a.atOpeningMinor : a.yearToDateMinor;
+    const held = byAccount.get(a.number);
+    byAccount.set(a.number, { name: held?.name ?? a.name, amountMinor: (held?.amountMinor ?? 0) + amount });
+  }
+  const lines: (LedgerLineInput & { name: string })[] = [...byAccount.entries()]
+    .filter(([, v]) => v.amountMinor !== 0)
+    .sort(([a], [b]) => a - b)
+    .map(([account, v]) => ({ account, name: v.name, amountMinor: v.amountMinor, vatCode: null }));
+  const sum = lines.reduce((total, l) => total + l.amountMinor, 0);
+  const carriedMinor = sum === 0 ? 0 : -sum;
+  if (carriedMinor !== 0) {
+    lines.push({ account: UNCARRIED_RESULT_ACCOUNT, name: "Annen egenkapital", amountMinor: carriedMinor, vatCode: null, text: "Resultat fra tidligere år, ikke overført til egenkapital" });
+  }
+  if (lines.length < 2) return { ok: false, problem: "empty", differenceMinor: 0 };
+  return { ok: true, lines, carriedMinor };
+}
+
+/**
+ * The standard account a number of the company's own reports as, for one that is not a standard account or a longer sub-account of one
+ * (`standardOf()`): the nearest standard account at or below it in its ten, then in its hundred (Tripletex's 1921, a second bank account,
+ * reports as 1920). Null for one in no standard account's hundred.
+ */
+export function nearestStandard(number: number): string | null {
+  const own = standardOf(number);
+  if (own) return own;
+  if (!Number.isInteger(number) || number < 1000 || number > 9999) return null;
+  for (const step of [10, 100]) {
+    const base = Math.floor(number / step) * step;
+    for (let n = number; n >= base; n -= 1) if (standardAccount(String(n))) return String(n);
+  }
+  return null;
+}

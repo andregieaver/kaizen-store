@@ -12,10 +12,11 @@ import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { formatStoreDay } from "@/lib/return-time";
 import { ledgerAccounts, ledgerJournal, ledgerTrialBalance, ledgerVatByCode, ledgerWaiting, openBookOf } from "@/server/ledger";
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
+import { hasOpeningBalance } from "@/server/ledger-opening";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 
-import { lockBooksAction, openBooksAction, postEntryAction, reverseEntryAction } from "./actions";
+import { lockBooksAction, openBooksAction, openingFromTripletexAction, postEntryAction, reverseEntryAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -87,6 +88,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
     return known ? (lang === "nb" ? known.nb : known.en) : "";
   };
   const compared = tripletex ? await ledgerComparisonSummary(book.id) : null;
+  // The opening balance from Tripletex (step 2d): offered to the owner while the books have none.
+  const offerOpening = owner && tripletex !== null && !(await hasOpeningBalance(book.id));
   // The table's amounts as numbers, the currency said once above it; the result with its currency.
   const digits = minorUnitDigits(book.currency);
   const number = new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -104,6 +107,14 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           <li className="text-muted">{book.lockedThrough ? fillWords(w.facts.locked, { day: day(book.lockedThrough) }) : w.facts.open}</li>
         </ul>
       </Card>
+
+      {offerOpening && (
+        <Card title={w.opening.title} description={w.opening.lead}>
+          <ActionForm action={openingFromTripletexAction.bind(null, store.slug)} className="flex flex-col items-start gap-3">
+            <SubmitButton>{w.opening.button}</SubmitButton>
+          </ActionForm>
+        </Card>
+      )}
 
       {waiting.length > 0 && (
         <Card title={w.waiting.title} aside={<Chip signal="warning">{waiting.length}</Chip>}>

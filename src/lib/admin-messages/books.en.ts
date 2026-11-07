@@ -126,6 +126,7 @@ export const booksEn = {
       shop_payment: "Shop payment",
       shop_refund: "Shop refund",
       payout: "Payout",
+      opening_balance: "Opening balance from Tripletex",
       hand: "By hand",
     } as Record<string, string>,
     problems: {
@@ -134,6 +135,24 @@ export const booksEn = {
       locked: "Its day is locked, and today is too.",
       open: "Its day is outside the books.",
       date: "Choose a real day.",
+    } as Record<string, string>,
+  },
+  opening: {
+    title: "Opening balance",
+    lead: "Bring in what each account held in Tripletex the day before your books here opened, so both start from the same place. You can reverse it in the journal and bring it in again.",
+    button: "Bring in the opening balance",
+    posted: "The opening balance is posted, {n} accounts. It is first in the journal.",
+    carried: "The result of earlier years was never moved to equity in Tripletex, so {amount} is on account 2050, other equity. Check it with your accountant.",
+    problems: {
+      book: "Open the books first.",
+      posted: "The books already have an opening balance from Tripletex. Reverse it in the journal to bring it in again.",
+      connection: "Connect Tripletex first, under Integrations.",
+      session: "Tripletex did not let us in. Check the connection under Integrations, then try again.",
+      read: "Tripletex's balance sheet could not be read. Try again in a while.",
+      account: "An account in Tripletex has no standard account to report as. Add it by hand, then try again.",
+      unbalanced: "Tripletex's balances do not add up: they are {amount} off. Nothing was posted.",
+      empty: "Tripletex holds no balances for the day before your books opened.",
+      locked: "The day your books opened is locked.",
     } as Record<string, string>,
   },
   hand: {

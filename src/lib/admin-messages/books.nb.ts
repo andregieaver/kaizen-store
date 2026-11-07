@@ -122,6 +122,7 @@ export const booksNb: BooksMessages = {
       shop_payment: "Innbetaling fra butikken",
       shop_refund: "Tilbakebetaling fra butikken",
       payout: "Utbetaling",
+      opening_balance: "Inngående balanse fra Tripletex",
       hand: "Manuelt",
     },
     problems: {
@@ -131,6 +132,24 @@ export const booksNb: BooksMessages = {
       open: "Dagen er utenfor regnskapet.",
       date: "Velg en ekte dag.",
     },
+  },
+  opening: {
+    title: "Inngående balanse",
+    lead: "Hent det hver konto hadde i Tripletex dagen før regnskapet her ble åpnet, så begge starter likt. Du kan tilbakeføre den i journalen og hente den på nytt.",
+    button: "Hent inngående balanse",
+    posted: "Den inngående balansen er bokført, {n} kontoer. Den står først i journalen.",
+    carried: "Resultatet fra tidligere år ble aldri overført til egenkapitalen i Tripletex, så {amount} står på konto 2050, annen egenkapital. Sjekk det med regnskapsføreren din.",
+    problems: {
+      book: "Åpne regnskapet først.",
+      posted: "Regnskapet har allerede en inngående balanse fra Tripletex. Tilbakefør den i journalen for å hente den på nytt.",
+      connection: "Koble til Tripletex først, under Integrasjoner.",
+      session: "Tripletex slapp oss ikke inn. Sjekk koblingen under Integrasjoner, og prøv igjen.",
+      read: "Balansen i Tripletex kunne ikke leses. Prøv igjen om litt.",
+      account: "En konto i Tripletex har ingen standardkonto å rapportere som. Legg den til for hånd, og prøv igjen.",
+      unbalanced: "Saldoene i Tripletex går ikke opp: de avviker med {amount}. Ingenting ble bokført.",
+      empty: "Tripletex har ingen saldoer for dagen før regnskapet ble åpnet.",
+      locked: "Dagen regnskapet ble åpnet, er låst.",
+    } as Record<string, string>,
   },
   hand: {
     title: "Før et bilag manuelt",

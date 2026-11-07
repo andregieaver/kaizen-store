@@ -165,9 +165,12 @@ export type AddAccountProblem = "not_standard" | "taken" | "vat_code" | "name";
 export async function addLedgerAccount(
   storeId: string,
   bookId: string,
-  input: { number: number; name?: string; vatCode?: string | null },
+  input: { number: number; name?: string; vatCode?: string | null; standard?: string | null },
 ): Promise<{ ok: true } | { ok: false; problem: AddAccountProblem }> {
-  const standard = Number.isInteger(input.number) && input.number >= 1000 && input.number <= 99999 ? standardOf(input.number) : null;
+  // The standard account it reports as: its own number's (`standardOf()`), else one given for a number of the company's own (an opening
+  // balance read from Tripletex, `nearestStandard()`), in the same class.
+  const given = input.standard && standardAccount(input.standard) && input.standard[0] === String(input.number)[0] ? input.standard : null;
+  const standard = Number.isInteger(input.number) && input.number >= 1000 && input.number <= 99999 ? (standardOf(input.number) ?? given) : null;
   if (!standard) return { ok: false, problem: "not_standard" };
   const name = (input.name ?? standardAccount(standard)!.nb).replace(/\s+/g, " ").trim();
   if (name.length < 1 || name.length > 120) return { ok: false, problem: "name" };

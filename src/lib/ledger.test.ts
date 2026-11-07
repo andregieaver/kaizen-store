@@ -24,6 +24,8 @@ import {
   entryProblems,
   handEntryOf,
   isVatCode,
+  nearestStandard,
+  openingBalanceOf,
   noKindOf,
   postingOfTripletex,
   profitAndLoss,
@@ -495,5 +497,50 @@ describe("a shop's money, and the payment provider's payouts", () => {
     const back = entryOfPayout({ id: "po3", day: "2027-01-18", amountMinor: -20_000, feeMinor: 0, provider: "stripe" });
     expect(back.ok && back.entry.lines.map((l) => l.amountMinor)).toEqual([-20_000, 20_000]);
     expect(entryOfPayout({ id: "po4", day: "2027-01-18", amountMinor: 0, feeMinor: 0, provider: "stripe" })).toEqual({ ok: false, problem: "nothing" });
+  });
+});
+
+describe("the opening balance read from another system (step 2d)", () => {
+  const acc = (number: number, atOpeningMinor: number, yearToDateMinor = 0) => ({ number, name: `Konto ${number}`, atOpeningMinor, yearToDateMinor });
+
+  it("carries the balance sheet on 1 January, and the year's result in the profit and loss accounts during a year", () => {
+    // On 1 January: the bank and the receivable against equity; last year's sales are closed, so they carry nothing.
+    const january = openingBalanceOf([acc(1920, 150_000_00), acc(1500, 20_000_00), acc(2050, -170_000_00), acc(3000, 0)]);
+    expect(january).toEqual({
+      ok: true,
+      carriedMinor: 0,
+      lines: [
+        { account: 1500, name: "Konto 1500", amountMinor: 20_000_00, vatCode: null },
+        { account: 1920, name: "Konto 1920", amountMinor: 150_000_00, vatCode: null },
+        { account: 2050, name: "Konto 2050", amountMinor: -170_000_00, vatCode: null },
+      ],
+    });
+    // On 1 July: this year's sales and costs so far come with it, so the year's result goes on in the new books.
+    const july = openingBalanceOf([acc(1920, 180_000_00), acc(2050, -150_000_00), acc(3000, -40_000_00, -40_000_00), acc(6800, 10_000_00, 10_000_00)]);
+    expect(july.ok && july.lines.map((l) => [l.account, l.amountMinor])).toEqual([[1920, 180_000_00], [2050, -150_000_00], [3000, -40_000_00], [6800, 10_000_00]]);
+    expect(july.ok && july.carriedMinor).toBe(0);
+  });
+
+  it("puts a result of earlier years never carried to equity there on other equity, as a line of its own, and says so", () => {
+    // Last year's result (a profit of 30 000) was never closed into equity: the sales account still holds it on 1 January.
+    const opened = openingBalanceOf([acc(1920, 80_000_00), acc(2050, -50_000_00), acc(3000, -30_000_00)]);
+    expect(opened.ok && opened.carriedMinor).toBe(-30_000_00);
+    expect(opened.ok && opened.lines.at(-1)).toEqual({ account: 2050, name: "Annen egenkapital", amountMinor: -30_000_00, vatCode: null, text: "Resultat fra tidligere år, ikke overført til egenkapital" });
+    expect(opened.ok && opened.lines.reduce((sum, l) => sum + l.amountMinor, 0)).toBe(0);
+  });
+
+  it("makes nothing from a trial balance that does not balance, or from nothing at all", () => {
+    expect(openingBalanceOf([acc(1920, 100_00), acc(2050, -99_00)])).toEqual({ ok: false, problem: "unbalanced", differenceMinor: 1_00 });
+    expect(openingBalanceOf([])).toEqual({ ok: false, problem: "empty", differenceMinor: 0 });
+    expect(openingBalanceOf([acc(1920, 0), acc(3000, 0, 0)])).toEqual({ ok: false, problem: "empty", differenceMinor: 0 });
+  });
+
+  it("reads an account of the company's own as the standard account nearest below it", () => {
+    expect(nearestStandard(1920)).toBe("1920");
+    expect(nearestStandard(19201)).toBe("1920");
+    expect(nearestStandard(1921)).toBe("1920");
+    expect(nearestStandard(7771)).toBe("7770");
+    expect(nearestStandard(99)).toBeNull();
+    expect(nearestStandard(123456)).toBeNull();
   });
 });

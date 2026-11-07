@@ -118,6 +118,11 @@ export type FakeTripletex = {
   revokeAll(): void;
   /** The VAT Tripletex worked out on a voucher, in øre (positive for an invoice). */
   vatOf(voucher: FakeVoucher): number;
+  /**
+   * What `GET /balanceSheet` answers for a period (`dateFrom`, `dateTo` exclusive), as Tripletex's balance sheet: each account with its
+   * balance as the period began, its movement in it and its balance as it ended, in kroner (debit positive). Empty unless a test sets it.
+   */
+  balanceSheet: (period: { dateFrom: string; dateTo: string }) => { account: { number: number; name: string }; balanceIn: number; balanceChange: number; balanceOut: number }[];
 };
 
 export function fakeTripletex(options: { companyId?: number; companyName?: string; organizationNumber?: string | null } = {}): FakeTripletex {
@@ -140,6 +145,7 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
     calls: [],
     closedBefore: null,
     shapes: { session: "spec", whoAmI: "spec" },
+    balanceSheet: () => [],
     failNext(method, path, status, body, headers, times = 1) {
       failures.push({ method, path, status, body, headers, times });
     },
@@ -239,6 +245,12 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
     if (method === "GET" && path === "/ledger/account") {
       const number = url.searchParams.get("number");
       return list(state.accounts.filter((a) => !number || String(a.number) === number), url);
+    }
+    if (method === "GET" && path === "/balanceSheet") {
+      const dateFrom = url.searchParams.get("dateFrom") ?? "";
+      const dateTo = url.searchParams.get("dateTo") ?? "";
+      if (!dateFrom || !dateTo || dateTo <= dateFrom) return answer(422, { status: 422, message: "dateTo must be after dateFrom" });
+      return list(state.balanceSheet({ dateFrom, dateTo }), url);
     }
     if (method === "GET" && path === "/ledger/vatType") return list(state.vatTypes, url);
     if (method === "GET" && path === "/ledger/voucherType") return list([{ id: 9, name: "Utgående faktura" }], url);

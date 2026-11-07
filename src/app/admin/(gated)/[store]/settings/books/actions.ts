@@ -3,14 +3,17 @@
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import { adminLangOf } from "@/lib/admin-lang";
+import { fillWords } from "@/lib/admin-fill";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { BooksMessages } from "@/lib/admin-messages/books.en";
 import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
+import { formatMoney } from "@/lib/money";
 import { HAND_ROWS } from "@/lib/ledger";
 import type { Membership } from "@/server/auth";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { lockLedgerThrough, openLedgerBook, postDueDocuments, openBookOf, postHandEntry, reverseLedgerEntry } from "@/server/ledger";
+import { postOpeningFromTripletex } from "@/server/ledger-opening";
 import { checkOwnerRole } from "@/server/permissions";
 
 /**
@@ -80,4 +83,23 @@ export async function reverseEntryAction(storeSlug: string, entryId: string): Pr
   if (!reversed.ok) return { status: "error", messages: [w.journal.problems[reversed.problem] ?? w.hand.problems.other] };
   refresh();
   return { status: "ok", messages: [w.journal.reversed] };
+}
+
+/** *Bring in the opening balance*: what each account held in Tripletex the day before the books opened (step 2d), posted once. */
+export async function openingFromTripletexAction(storeSlug: string): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const result = await postOpeningFromTripletex(member);
+  const book = await openBookOf(member.store.id);
+  const locale = ADMIN_LANG_FACTS[adminLangOf(member.account.adminLocale)].locale;
+  const amount = (minor: number) => formatMoney(Math.abs(minor), book?.currency ?? "NOK", locale);
+  if (!result.ok) {
+    const words = w.opening.problems[result.problem] ?? w.hand.problems.other;
+    return { status: "error", messages: [fillWords(words, { amount: amount(result.differenceMinor ?? 0) })] };
+  }
+  refresh();
+  const messages = [fillWords(w.opening.posted, { n: result.accounts })];
+  if (result.carriedMinor !== 0) messages.push(fillWords(w.opening.carried, { amount: amount(result.carriedMinor) }));
+  return { status: "ok", messages };
 }
