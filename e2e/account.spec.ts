@@ -44,16 +44,20 @@ test("a shopper signs in with an emailed code, keeps their details and signs out
   await expect(page.getByRole("tabpanel").getByText("Du har ingen bestillinger ennå.")).toBeVisible();
 
   // The details are under Profile, which opens at once and puts itself in the address, so a reload keeps it.
+  // Pressed before the page has woken up, a tab is a plain link and the page loads again: while it streams in, its parts wait hidden
+  // in the document, so the fields are found in the open tab alone.
+  const profile = page.getByRole("tabpanel", { name: "Profil" });
   await page.getByRole("tab", { name: "Profil" }).click();
   await expect(page).toHaveURL(/\/account\?tab=profile$/);
-  await page.getByLabel("Navn").fill("Kari Nordmann");
-  await page.getByLabel("Postnummer").fill("0155");
-  await page.getByRole("button", { name: "Lagre", exact: true }).click();
+  await expect(profile).toBeVisible();
+  await profile.getByLabel("Navn").fill("Kari Nordmann");
+  await profile.getByLabel("Postnummer").fill("0155");
+  await profile.getByRole("button", { name: "Lagre", exact: true }).click();
   await expect(page.getByText("Lagret.")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Hei, Kari!" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Profil" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByLabel("Navn")).toHaveValue("Kari Nordmann");
+  await expect(profile.getByLabel("Navn")).toHaveValue("Kari Nordmann");
 
   // Back goes to the tab before, and the arrow keys move along the row.
   await page.goBack();
