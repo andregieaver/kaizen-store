@@ -242,6 +242,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("bank_lines", "business", via("none"), ["text", "reference", "counterparty"], null, "none", "The store's own bank statement in its books (D486): a line names who paid or was paid, as the bank wrote it, kept under the bookkeeping duty; " + OWN),
   entry("bank_statements", "business", via("none"), ["file_name"], null, "none", "The store's own bank statements (D486): the file's name as uploaded, kept with its lines; " + OWN),
   entry("ledger_vouchers", "business", via("none"), ["file_name"], null, "none", "The vouchers of the store's own books (D490), such as a purchase's receipt: the file's name as uploaded, and the file in the private documents bucket, kept for the bookkeeping duty with the entry it documents; " + OWN),
+  entry("suppliers", "business", via("none"), ["name", "organisation_number"], null, "none", "The store's own suppliers (D492): who sends it bills, by name and organisation number (a sole trader's is a person's name), kept with the bills under the bookkeeping duty; " + OWN),
+  entry("supplier_invoices", "business", via("none"), ["text"], null, "none", "The store's own bills (D492): what each was, as the owner wrote it or the supplier's name and number, posted in its books under the bookkeeping duty; " + OWN),
   entry("work_recurring_invoices", "business", via("none"), ["name"], null, "none", "The owner's own accounting (D122); " + OWN),
   entry("work_time_entries", "business", via("none"), ["note"], null, "none", "The owner's own accounting (D122); " + OWN),
 

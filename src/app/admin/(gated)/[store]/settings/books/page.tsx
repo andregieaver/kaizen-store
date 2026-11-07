@@ -14,14 +14,16 @@ import { ledgerAccounts, ledgerJournal, ledgerTrialBalance, ledgerVatByCode, led
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { hasOpeningBalance } from "@/server/ledger-opening";
 import { ReceiptFields, type ReceiptFieldWords } from "@/components/admin/receipt-fields";
+import { PURCHASE_KINDS, PURCHASE_VAT_RATES, type PurchaseKind } from "@/lib/purchases";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
 import { invoiceOffers } from "@/server/bank-payments";
 import { vouchersOf } from "@/server/purchases";
+import { billOffers, unpaidBills } from "@/server/supplier-invoices";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 
-import { lockBooksAction, openBooksAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readReceiptAction, reverseEntryAction, uploadBankStatementAction } from "./actions";
+import { addBillAction, lockBooksAction, openBooksAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readReceiptAction, reverseEntryAction, uploadBankStatementAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -99,8 +101,10 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const bank = await bankSummary(book.id);
   // A client's payment in the bank, and the Work invoice it most likely pays (D487).
   const offers = await invoiceOffers(store.id, book.id);
-  // The journal's vouchers, such as a purchase's receipt (D490), by entry.
-  const vouchers = await vouchersOf(store.id, journal.map((e) => e.id));
+  // The bills waiting to be paid, and the bank lines that most likely pay them (D492).
+  const [bills, billFor] = await Promise.all([unpaidBills(store.id, book.id), billOffers(store.id, book.id)]);
+  // The vouchers of the journal's entries and of the bills, such as a purchase's receipt (D490), by entry.
+  const vouchers = await vouchersOf(store.id, [...journal.map((e) => e.id), ...bills.map((b) => b.entryId)]);
   // The receipt's fields' words, for the part of them that reads a photo in the browser (D491).
   const receiptWords: ReceiptFieldWords = {
     what: w.bank.what,
@@ -168,8 +172,10 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                 <ul className="mt-2 flex flex-col divide-y divide-line">
                   {bank.bankOnly.map((l) => {
                     const offer = offers.get(l.id);
+                    // Money out: the bill it most likely pays (D492), before the bank's own fees and the purchases.
+                    const billOffer = offer ? undefined : billFor.get(l.id);
                     // The bank's own fee or interest, posted with one press (D488).
-                    const own = offer ? null : bankOwnKind({ amountMinor: l.amountMinor, text: l.text });
+                    const own = offer || billOffer ? null : bankOwnKind({ amountMinor: l.amountMinor, text: l.text });
                     const ownAccount = own ? BANK_OWN_ACCOUNTS[own] : null;
                     const ownName = ownAccount ? `${ownAccount} ${chart.find((a) => a.number === ownAccount)?.name ?? ""}`.trim() : "";
                     return (
@@ -194,6 +200,20 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                             )}
                           </div>
                         )}
+                        {billOffer && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <span className="text-muted">
+                              {billOffer.number
+                                ? fillWords(w.bank.offerBill, { number: billOffer.number, supplier: billOffer.supplier })
+                                : fillWords(w.bank.offerBillNoNumber, { supplier: billOffer.supplier })}
+                            </span>
+                            {owner && (
+                              <SubmitButton variant="secondary" name="bill" value={`${l.id}:${billOffer.billId}`}>
+                                {w.bank.pay}
+                              </SubmitButton>
+                            )}
+                          </div>
+                        )}
                         {own && owner && (
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                             <span className="text-muted">{fillWords(w.bank.own[own], { account: ownName })}</span>
@@ -203,7 +223,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                           </div>
                         )}
                         {/* A purchase: its receipt, what it was and its VAT, posted with one press (D490). */}
-                        {!offer && !own && owner && l.amountMinor < 0 && (
+                        {!offer && !billOffer && !own && owner && l.amountMinor < 0 && (
                           <details className="text-sm">
                             <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{w.bank.receipt}</summary>
                             <div className="mt-2 flex flex-col gap-3">
@@ -266,6 +286,122 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
               </label>
               <SubmitButton>{w.bank.upload}</SubmitButton>
             </ActionForm>
+          )}
+        </div>
+      </Card>
+
+      {/* The bills to pay (B3, D492): posted as they come, waiting until the bank shows them paid. */}
+      <Card
+        title={w.bills.title}
+        description={w.bills.lead}
+        aside={bills.length > 0 ? <Chip signal={bills.some((b) => b.dueOn !== null && b.dueOn < today) ? "warning" : "neutral"}>{String(bills.length)}</Chip> : undefined}
+      >
+        <div className="flex flex-col gap-4 text-sm">
+          {bills.length === 0 ? (
+            <p className="text-muted">{w.bills.none}</p>
+          ) : (
+            <>
+              <p>{countWords(bills.length, w.bills.total, { amount: amount(bills.reduce((sum, b) => sum + b.totalMinor, 0)) })}</p>
+              <ul className="flex flex-col divide-y divide-line">
+                {bills.map((b) => (
+                  <li key={b.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
+                    <span className="min-w-0 flex-1">
+                      {b.dueOn === null ? (
+                        <span className="text-muted">{w.bills.noDue}</span>
+                      ) : b.dueOn < today ? (
+                        <Chip signal="warning">{fillWords(w.bills.overdue, { day: day(b.dueOn) })}</Chip>
+                      ) : (
+                        <span className="text-muted">{fillWords(w.bills.due, { day: day(b.dueOn) })}</span>
+                      )}{" "}
+                      {[b.supplier, b.number].filter(Boolean).join(" · ")}
+                      {vouchers.has(b.entryId) && (
+                        <>
+                          {" · "}
+                          <a href={`/admin/${store.slug}/settings/books/vouchers/${vouchers.get(b.entryId)!.id}`} target="_blank" rel="noopener" className="underline underline-offset-2">
+                            {w.bank.voucher}
+                          </a>
+                        </>
+                      )}
+                    </span>
+                    <span className="tabular-nums">{amount(b.totalMinor)}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {owner && (
+            <details>
+              <summary className="w-fit cursor-pointer font-medium underline underline-offset-2">{w.bills.add}</summary>
+              <ActionForm action={addBillAction.bind(null, store.slug)} className="mt-3 flex flex-col gap-3">
+                <div className="flex flex-wrap gap-3">
+                  <label className="flex min-w-56 flex-1 flex-col gap-1 font-medium">
+                    {w.bills.supplier}
+                    <input name="supplier" required maxLength={120} className={field} />
+                  </label>
+                  <label className="flex w-48 flex-col gap-1 font-medium">
+                    {w.bills.number}
+                    <input name="number" maxLength={60} className={field} />
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <label className="flex w-44 flex-col gap-1 font-medium">
+                    {w.bills.issuedOn}
+                    <input type="date" name="issuedOn" required defaultValue={today} min={book.openedOn} className={field} />
+                  </label>
+                  <label className="flex w-44 flex-col gap-1 font-medium">
+                    {w.bills.dueOn}
+                    <input type="date" name="dueOn" className={field} />
+                  </label>
+                  <label className="flex w-56 flex-col gap-1 font-medium">
+                    {w.bills.amount}
+                    <input name="amount" required inputMode="decimal" className={field} />
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <label className="flex min-w-56 flex-1 flex-col gap-1 font-medium">
+                    {w.bank.what}
+                    <select name="kind" defaultValue="office" className={field}>
+                      {(Object.keys(PURCHASE_KINDS) as PurchaseKind[]).map((kind) => (
+                        <option key={kind} value={kind}>
+                          {w.bank.kinds[kind]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex w-44 flex-col gap-1 font-medium">
+                    {w.bank.vatRate}
+                    <select name="vat" defaultValue="usual" className={field}>
+                      <option value="usual">{w.bank.vatUsual}</option>
+                      {PURCHASE_VAT_RATES.map((rate) => (
+                        <option key={rate} value={rate}>
+                          {rate === 0 ? w.bank.vatNone : `${rate} %`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <label className="flex max-w-md flex-col gap-1 font-medium">
+                  {w.bills.file}
+                  <input name="bill" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/heic" className={`${field} py-2`} />
+                </label>
+                <details>
+                  <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{w.bills.more}</summary>
+                  <div className="mt-2 flex flex-col gap-3">
+                    <label className="flex max-w-md flex-col gap-1 font-medium">
+                      {w.bills.organisationNumber}
+                      <input name="organisationNumber" maxLength={30} className={field} />
+                    </label>
+                    <label className="flex max-w-md flex-col gap-1 font-medium">
+                      {w.bank.words}
+                      <input name="text" maxLength={200} className={field} />
+                    </label>
+                  </div>
+                </details>
+                <div>
+                  <SubmitButton>{w.bills.save}</SubmitButton>
+                </div>
+              </ActionForm>
+            </details>
           )}
         </div>
       </Card>

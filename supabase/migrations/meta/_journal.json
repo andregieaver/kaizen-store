@@ -5048,6 +5048,20 @@
       "when": 1794085487639,
       "tag": "20261107210447_ledger_vouchers_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 721,
+      "version": "7",
+      "when": 1794090821172,
+      "tag": "20261107223341_supplier_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 722,
+      "version": "7",
+      "when": 1794090856475,
+      "tag": "20261107223416_supplier_invoices_rules",
+      "breakpoints": true
     }
   ]
 }

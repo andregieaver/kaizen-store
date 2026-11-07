@@ -225,6 +225,8 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   bank_lines: "Butikkens egen kontoutskrift i regnskapet (D486): en linje navngir hvem som betalte eller fikk betalt, slik banken skrev det, og oppbevares etter bokføringsplikten. " + OWN,
   bank_statements: "Butikkens egne kontoutskrifter (D486): filens navn slik den ble lastet opp, oppbevart med linjene. " + OWN,
   ledger_vouchers: "Bilagene i butikkens eget regnskap (D490), som kvitteringen for et kjøp: filens navn slik den ble lastet opp, og filen i det private dokumentlageret, oppbevart for bokføringsplikten med posteringen den dokumenterer. " + OWN,
+  suppliers: "Butikkens egne leverandører (D492): hvem som sender den regninger, med navn og organisasjonsnummer (et enkeltpersonforetaks navn er en persons), oppbevart med regningene under bokføringsplikten. " + OWN,
+  supplier_invoices: "Butikkens egne regninger (D492): hva hver var, slik eieren skrev det eller leverandørens navn og nummer, ført i regnskapet under bokføringsplikten. " + OWN,
   work_recurring_invoices: WORK + OWN,
   work_time_entries: WORK + OWN,
 

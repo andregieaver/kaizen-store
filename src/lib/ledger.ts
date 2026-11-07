@@ -78,7 +78,7 @@ export function startingChart(): LedgerAccountSeed[] {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /** The series: `S` sales documents, `B` bank and payouts, `M` made by hand, `IB` opening balances. Others may be added (one to three capitals). */
-export const LEDGER_SERIES = { sales: "S", bank: "B", manual: "M", opening: "IB" } as const;
+export const LEDGER_SERIES = { sales: "S", bank: "B", manual: "M", opening: "IB", purchases: "L" } as const;
 
 export type LedgerLineInput = { account: number; amountMinor: number; vatCode?: string | null; text?: string | null };
 export type LedgerEntryInput = {

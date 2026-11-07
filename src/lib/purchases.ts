@@ -58,24 +58,33 @@ export const vatRateOf = (kind: PurchaseKind, rate: PurchaseVatRate): PurchaseVa
  * The entry of a purchase paid from the bank (money out, a negative amount): its cost account without VAT and the deductible VAT on its
  * account, both with the VAT code, against the bank, in the bank's series on the bank's day, posted once for the line. Null for money in.
  */
+/** A purchase's cost lines for an amount with VAT: the cost without VAT and the deductible VAT apart, both with the VAT code (debits). */
+export function costLinesOf(grossMinor: number, kind: PurchaseKind, vatRate: PurchaseVatRate): LedgerEntryInput["lines"] {
+  const rate = vatRateOf(kind, vatRate);
+  const vat = vatInside(grossMinor, rate);
+  const cost = PURCHASE_KINDS[kind].account;
+  return rate === 0
+    ? [{ account: cost, amountMinor: grossMinor, vatCode: null }]
+    : [
+        { account: cost, amountMinor: grossMinor - vat, vatCode: INPUT_VAT[rate].code },
+        { account: INPUT_VAT[rate].account, amountMinor: vat, vatCode: INPUT_VAT[rate].code },
+      ];
+}
+
 export function entryOfPurchase(
   line: { id: string; day: string; amountMinor: number; text: string },
   input: { kind: PurchaseKind; vatRate: PurchaseVatRate; text?: string | null },
 ): LedgerEntryInput | null {
   if (line.amountMinor >= 0) return null;
   const paid = -line.amountMinor;
-  const rate = vatRateOf(input.kind, input.vatRate);
-  const vat = vatInside(paid, rate);
-  const cost = PURCHASE_KINDS[input.kind].account;
   const text = (input.text?.trim() || line.text.trim() || "Kjøp").slice(0, 200);
-  const lines: LedgerEntryInput["lines"] =
-    rate === 0
-      ? [{ account: cost, amountMinor: paid, vatCode: null }]
-      : [
-          { account: cost, amountMinor: paid - vat, vatCode: INPUT_VAT[rate].code },
-          { account: INPUT_VAT[rate].account, amountMinor: vat, vatCode: INPUT_VAT[rate].code },
-        ];
-  return { series: "B", date: line.day, text, source: { kind: "bank_line", id: line.id }, lines: [...lines, { account: BANK, amountMinor: -paid, vatCode: null }] };
+  return {
+    series: "B",
+    date: line.day,
+    text,
+    source: { kind: "bank_line", id: line.id },
+    lines: [...costLinesOf(paid, input.kind, input.vatRate), { account: BANK, amountMinor: -paid, vatCode: null }],
+  };
 }
 
 /** The pictures of receipts the model reads (D491; a PDF or a HEIC photo is not read: the owner chooses, as before). */

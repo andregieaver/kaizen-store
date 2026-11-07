@@ -18,6 +18,8 @@ import { isPurchaseKind, isPurchaseVatRate, PURCHASE_KINDS } from "@/lib/purchas
 import { payCertainInvoices, payInvoiceFromBank, postBankOwnLine } from "@/server/bank-payments";
 import { postPurchaseFromBank, purchaseLine, VOUCHER_BYTES } from "@/server/purchases";
 import { readReceipt } from "@/server/receipt-reading";
+import { addBill, payBillFromBank, payCertainBills } from "@/server/supplier-invoices";
+import { bankAmount } from "@/lib/bank-statement";
 import { receiptAgrees } from "@/lib/receipt-reading";
 import type { PurchaseKind, PurchaseVatRate } from "@/lib/purchases";
 import { importBankStatement, STATEMENT_BYTES } from "@/server/bank-statements";
@@ -126,10 +128,14 @@ export async function uploadBankStatementAction(storeSlug: string, _state: FormS
   }
   // A client's payment that names its invoice and pays exactly what is outstanding records the payment (D487).
   const paid = await payCertainInvoices(member);
+  // A bill named in a line and paid whole is paid too (D492).
+  const billsPaid = await payCertainBills(member);
   refresh();
   // One message: a form shows the first.
-  const read = countWords(result.lines, w.bank.imported, { new: result.newLines, matched: result.matched });
-  return { status: "ok", messages: [paid.length > 0 ? `${read} ${countWords(paid.length, w.bank.autoPaid, { numbers: paid.join(", ") })}` : read] };
+  const said = [countWords(result.lines, w.bank.imported, { new: result.newLines, matched: result.matched })];
+  if (paid.length > 0) said.push(countWords(paid.length, w.bank.autoPaid, { numbers: paid.join(", ") }));
+  if (billsPaid.length > 0) said.push(countWords(billsPaid.length, w.bank.autoBills, { suppliers: [...new Set(billsPaid)].join(", ") }));
+  return { status: "ok", messages: [said.join(" ")] };
 }
 
 /**
@@ -164,6 +170,16 @@ export async function payFromBankAction(storeSlug: string, _state: FormState, fo
     }
     refresh();
     return { status: "ok", messages: [fillWords(w.bank.purchased, { account: posted.account })] };
+  }
+  // *Mark it paid* for a bill (D492): the button says which, `line:bill`.
+  const billed = form.get("bill");
+  if (billed !== null) {
+    const [lineId, billId] = String(billed).split(":");
+    if (!uuid.test(lineId ?? "") || !uuid.test(billId ?? "")) return { status: "error", messages: [w.bank.payProblems.line] };
+    const done = await payBillFromBank(member, lineId, billId);
+    if (!done.ok) return { status: "error", messages: [done.problem === "line" ? w.bank.payProblems.line : (w.hand.problems[done.problem] ?? w.bank.billProblem)] };
+    refresh();
+    return { status: "ok", messages: [fillWords(w.bank.billPaid, { supplier: done.supplier })] };
   }
   const own = form.get("post");
   if (own !== null) {
@@ -205,4 +221,49 @@ export async function readReceiptAction(storeSlug: string, form: FormData): Prom
   if (!read.ok) return read;
   const { kind, vatRate, supplier, totalMinor } = read.reading;
   return { ok: true, kind, vatRate, supplier, totalMinor, agrees: receiptAgrees(read.reading, line.amountMinor, line.currency) };
+}
+
+/** *Add the bill* (D492): a supplier's invoice with its file, posted against what the store owes, waiting until the bank shows it paid. */
+export async function addBillAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const p = w.bills.problems;
+  const field = (name: string, words: string): FormState => ({ status: "error", messages: [words], fields: { [name]: words } });
+  const supplier = String(form.get("supplier") ?? "").trim();
+  if (!supplier) return field("supplier", p.supplier);
+  const kind = form.get("kind");
+  if (!isPurchaseKind(kind)) return field("kind", p.kind);
+  const rate = form.get("vat");
+  const vatRate = rate === "usual" ? PURCHASE_KINDS[kind].vat : isPurchaseVatRate(rate) ? (Number(rate) as 25 | 15 | 12 | 0) : null;
+  if (vatRate === null) return field("vat", p.kind);
+  const book = await openBookOf(member.store.id);
+  if (!book) return { status: "error", messages: [p.book] };
+  const totalMinor = bankAmount(String(form.get("amount") ?? ""), book.currency);
+  if (totalMinor === null || totalMinor <= 0) return field("amount", p.amount);
+  const file = form.get("bill");
+  if (!(file instanceof File) || file.size === 0) return field("bill", p.file);
+  if (file.size > VOUCHER_BYTES) return field("bill", p.too_big);
+  const added = await addBill(
+    member,
+    {
+      supplier,
+      organisationNumber: String(form.get("organisationNumber") ?? "").trim() || null,
+      number: String(form.get("number") ?? "").trim() || null,
+      issuedOn: String(form.get("issuedOn") ?? ""),
+      dueOn: String(form.get("dueOn") ?? "").trim() || null,
+      totalMinor,
+      kind,
+      vatRate,
+      text: String(form.get("text") ?? "").trim() || null,
+    },
+    { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) },
+  );
+  if (!added.ok) {
+    const words = p[added.problem] ?? w.hand.problems[added.problem] ?? w.hand.problems.other;
+    const at: Record<string, string> = { file: "bill", type: "bill", too_big: "bill", days: "dueOn", duplicate: "number", amount: "amount" };
+    return at[added.problem] ? field(at[added.problem], words) : { status: "error", messages: [words] };
+  }
+  refresh();
+  return { status: "ok", messages: [fillWords(w.bills.added, { supplier })] };
 }

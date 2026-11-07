@@ -18355,3 +18355,76 @@ export const ledgerVouchers = commerce.table(
     check("ledger_vouchers_path", sql`${t.filePath} = ${t.storeId}::text || '/vouchers/' || ${t.id}::text || '.' || split_part(${t.filePath}, '.', 2) and split_part(${t.filePath}, '.', 2) in ('pdf', 'jpg', 'png', 'webp', 'heic')`),
   ],
 );
+
+/**
+ * A store's suppliers (B3, D492): who sends it bills, by the name it pays them under, their organisation number when known and what they
+ * most often sell (a purchase kind, `src/lib/purchases.ts`), so the next bill from them starts from it. Made as a bill names a new one.
+ */
+export const suppliers = commerce.table(
+  "suppliers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    organisationNumber: text("organisation_number"),
+    usualKind: text("usual_kind"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("suppliers_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("suppliers_store_name_key").on(t.storeId, sql`lower(${t.name})`),
+    check("suppliers_name", sql`char_length(trim(${t.name})) between 1 and 120`),
+    check("suppliers_organisation_number", sql`${t.organisationNumber} is null or ${t.organisationNumber} ~ '^[0-9A-Za-z -]{4,30}$'`),
+    check("suppliers_usual_kind", sql`${t.usualKind} is null or ${t.usualKind} ~ '^[a-z_]{2,30}$'`),
+  ],
+);
+
+/**
+ * A supplier's invoice, a bill (B3, D492): posted when it comes (the cost and its deductible VAT against what the store owes, 2400, on the
+ * bill's day, `entry_id`), its PDF or photo the entry's voucher, and paid when the bank's statement shows it (`paid_entry_id`: what is
+ * owed against the bank, on the bank's day). Never changed but by its payment.
+ */
+export const supplierInvoices = commerce.table(
+  "supplier_invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    supplierId: uuid("supplier_id").notNull(),
+    number: text("number"),
+    issuedOn: date("issued_on").notNull(),
+    dueOn: date("due_on"),
+    totalMinor: bigint("total_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    kind: text("kind").notNull(),
+    vatRate: integer("vat_rate").notNull(),
+    text: text("text").notNull(),
+    entryId: uuid("entry_id").notNull(),
+    paidEntryId: uuid("paid_entry_id"),
+    paidOn: date("paid_on"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("supplier_invoices_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("supplier_invoices_number_key").on(t.storeId, t.supplierId, t.number).where(sql`${t.number} is not null`),
+    foreignKey({ name: "supplier_invoices_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
+    foreignKey({ name: "supplier_invoices_supplier_fk", columns: [t.storeId, t.supplierId], foreignColumns: [suppliers.storeId, suppliers.id] }),
+    foreignKey({ name: "supplier_invoices_entry_fk", columns: [t.storeId, t.entryId], foreignColumns: [ledgerEntries.storeId, ledgerEntries.id] }),
+    foreignKey({ name: "supplier_invoices_paid_entry_fk", columns: [t.storeId, t.paidEntryId], foreignColumns: [ledgerEntries.storeId, ledgerEntries.id] }),
+    index("supplier_invoices_store_book_idx").on(t.storeId, t.bookId),
+    index("supplier_invoices_supplier_idx").on(t.storeId, t.supplierId),
+    index("supplier_invoices_entry_idx").on(t.storeId, t.entryId),
+    index("supplier_invoices_paid_entry_idx").on(t.storeId, t.paidEntryId),
+    index("supplier_invoices_created_by_idx").on(t.createdBy),
+    index("supplier_invoices_unpaid_idx").on(t.storeId, t.dueOn).where(sql`${t.paidEntryId} is null`),
+    check("supplier_invoices_number", sql`${t.number} is null or char_length(trim(${t.number})) between 1 and 60`),
+    check("supplier_invoices_total", sql`${t.totalMinor} > 0`),
+    check("supplier_invoices_days", sql`${t.dueOn} is null or ${t.dueOn} >= ${t.issuedOn}`),
+    check("supplier_invoices_kind", sql`${t.kind} ~ '^[a-z_]{2,30}$'`),
+    check("supplier_invoices_vat_rate", sql`${t.vatRate} in (0, 12, 15, 25)`),
+    check("supplier_invoices_text", sql`char_length(${t.text}) between 1 and 200`),
+    check("supplier_invoices_paid", sql`(${t.paidEntryId} is null) = (${t.paidOn} is null)`),
+  ],
+);
