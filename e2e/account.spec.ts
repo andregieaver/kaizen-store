@@ -62,8 +62,8 @@ test("a shopper signs in with an emailed code, keeps their details and signs out
   // Back goes to the tab before, and the arrow keys move along the row.
   await page.goBack();
   await expect(page.getByRole("tab", { name: "Oversikt" })).toHaveAttribute("aria-selected", "true");
-  // Safari may draw the row again just after Back, taking the focus from the tab the test focused: focus it and press End until
-  // the last tab has the focus (End always moves to the last, so pressing it again changes nothing else).
+  // Safari loads the page afresh on Back, and until it has woken up each tab is a plain link that no key moves (WebKit's trace, CI run
+  // 1077): focus the tab and press End until the last tab has the focus (End always moves to the last, so pressing it again changes nothing).
   await expect(async () => {
     await page.getByRole("tab", { name: "Oversikt" }).focus();
     await page.keyboard.press("End");
