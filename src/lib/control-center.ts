@@ -100,6 +100,11 @@ export type StoreFigures = {
   termsOverdue?: number;
   /** Reviews waiting to be checked (D301 G3), only when some do, the feature is on and the member may read products. A count only. */
   reviewsWaiting?: number;
+  /**
+   * The store's own books (D478), only for its owner and only when some of their documents differ from Tripletex (an entry that stands, not
+   * one reversed) or have waited more than a week to be posted (a payment waiting for its payout is posted within days). Counts only.
+   */
+  books?: { differ: number; waiting: number };
 };
 
 /** Orders to hand over (D237): to be collected (and when the oldest was placed), and local deliveries not delivered yet. */
@@ -197,6 +202,13 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
     // Reviews waiting to be checked (D301 G3): not urgent, but a buyer is waiting to see theirs shown.
     if (s.reviewsWaiting && s.reviewsWaiting > 0) {
       items.push({ text: count(s.reviewsWaiting, w.reviewsWaiting), href: `${base}/reviews?state=pending`, action: a.check });
+    }
+    // The store's own books (D478): what differs from Tripletex, or waits long to be posted, is the owner's to look at with the accountant.
+    if (owner && s.books && s.books.differ > 0) {
+      items.push({ text: count(s.books.differ, w.booksDiffer), href: `${base}/settings/books`, action: a.openBooks });
+    }
+    if (owner && s.books && s.books.waiting > 0) {
+      items.push({ text: count(s.books.waiting, w.booksWaiting), href: `${base}/settings/books`, action: a.openBooks });
     }
     if (returns && returns.requested > 0) {
       items.push({ text: count(returns.requested, w.returnRequests), href: `${base}/returns?status=requested`, action: a.answer });

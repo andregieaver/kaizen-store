@@ -119,6 +119,39 @@ describe("the control center (D107)", () => {
     expect(JSON.stringify(view)).not.toContain(`p1-${run}`);
   });
 
+  it("counts the books' documents that differ from Tripletex while their entry stands, and those waiting more than a week (D478)", async () => {
+    const [book] = await db().execute<Row>(sql`
+      insert into commerce.ledger_books (store_id, legal_name, country, currency, opened_on, opened_by)
+      values (${storeId}::uuid, 'Kaffe AS', 'NO', 'NOK', current_date - 40, ${account.id}::uuid) returning id`);
+    const bookId = String(book.id);
+    await db().execute(sql`
+      insert into commerce.ledger_accounts (store_id, book_id, number, name, standard, kind)
+      select ${storeId}::uuid, ${bookId}::uuid, n, 'Account ' || n, n::text, k from (values (1500, 'asset'), (3000, 'income')) as a(n, k)`);
+    const post = async (source: string) =>
+      String((await db().execute<Row>(sql`
+        select commerce.ledger_post(${bookId}::uuid, 'S', current_date - 30, 'Faktura', 'shop_invoice', ${source},
+          '[{"account": 1500, "amount": 10000}, {"account": 3000, "amount": -10000}]'::jsonb, null) as id`))[0].id);
+    const standing = await post(`a-${run}`);
+    const reversed = await post(`b-${run}`);
+    await db().execute(sql`select commerce.ledger_reverse(${reversed}::uuid, current_date - 29, 'Reversert', ${account.id}::uuid)`);
+    expect(standing).toBeTruthy();
+    // Two that differ, one of them reversed since; one waiting for ten days and one since today.
+    await db().execute(sql`
+      insert into commerce.ledger_comparisons (store_id, book_id, source_kind, source_id, state, differences, their_id, compared_at)
+      values (${storeId}::uuid, ${bookId}::uuid, 'shop_invoice', ${`a-${run}`}, 'differs', '[]'::jsonb, 1, now()),
+             (${storeId}::uuid, ${bookId}::uuid, 'shop_invoice', ${`b-${run}`}, 'differs', '[]'::jsonb, 2, now())`);
+    await db().execute(sql`
+      insert into commerce.ledger_waiting (store_id, book_id, source_kind, source_id, problem, since)
+      values (${storeId}::uuid, ${bookId}::uuid, 'shop_payment', ${`p1-${run}`}, 'lines', now() - interval '10 days'),
+             (${storeId}::uuid, ${bookId}::uuid, 'shop_payment', ${`p2-${run}`}, 'lines', now())`);
+    const view = await center.controlCenter(account, `center-${run}`);
+    expect(view.stores[0].books).toEqual({ differ: 1, waiting: 1 });
+    expect(attentionFor(view.stores).filter((i) => i.href.endsWith("/settings/books")).map((i) => i.text)).toEqual([
+      "Kaffe: 1 document in the books differs from Tripletex.",
+      "Kaffe: 1 document has waited more than a week to be posted to the books.",
+    ]);
+  });
+
   it("asks for no figures when there is no store, or for one the account has no request in", async () => {
     const { privacyAttention } = await import("./privacy-attention");
     expect((await privacyAttention([])).size).toBe(0);

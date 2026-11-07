@@ -92,7 +92,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const supportIds = idsWith(storeRows, "support:read");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows, owedEditRows] = await Promise.all([
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows, termsRows, reviewRows, owedEditRows, booksRows] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -236,6 +236,16 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         and ${EDIT_REFUND_OWED_SQL} > 0
       group by e.store_id
     `),
+    // The store's own books (D478): documents that differ from Tripletex while their entry stands, and documents waiting more than a week.
+    ownerIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+      select b.store_id,
+        (select count(*) from commerce.ledger_comparisons c
+          join commerce.ledger_entries e on e.book_id = c.book_id and e.source_kind = c.source_kind and e.source_id = c.source_id and e.reverses is null
+          where c.book_id = b.id and c.state <> 'agrees' and not exists (select 1 from commerce.ledger_entries r where r.reverses = e.id))::int as differ,
+        (select count(*) from commerce.ledger_waiting w where w.book_id = b.id and w.since < now() - interval '7 days')::int as waiting
+      from commerce.ledger_books b
+      where b.store_id in (${idList(ownerIds)}) and b.closed_on is null
+    `),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -255,6 +265,9 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const handBy = new Map(handRows.filter((r) => Number(r.pickup) > 0 || Number(r.local) > 0).map((r) => [String(r.store_id), r]));
   const reviewsBy = new Map(reviewRows.filter((r) => Number(r.waiting) > 0).map((r) => [String(r.store_id), Number(r.waiting)]));
   const termsBy = new Map(termsRows.filter((r) => Number(r.overdue) > 0).map((r) => [String(r.store_id), Number(r.overdue)]));
+  const booksBy = new Map(
+    booksRows.filter((r) => Number(r.differ) > 0 || Number(r.waiting) > 0).map((r) => [String(r.store_id), { differ: Number(r.differ), waiting: Number(r.waiting) }]),
+  );
   // Limits of the plan used up (D314), where the member may read the plan; nothing is read for a store whose plan sets none.
   const limitsBy = new Map(await Promise.all([...billingIds].map(async (id) => [id, await limitsReachedCount(id).catch(() => 0)] as const)));
 
@@ -310,6 +323,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       ...(owedEditsBy.has(id) ? { editRefundsOwed: owedEditsBy.get(id)! } : {}),
       ...(termsBy.has(id) ? { termsOverdue: termsBy.get(id) } : {}),
       ...(reviewsBy.has(id) ? { reviewsWaiting: reviewsBy.get(id) } : {}),
+      ...(booksBy.has(id) ? { books: booksBy.get(id) } : {}),
       ...((limitsBy.get(id) ?? 0) > 0 ? { limitsReached: limitsBy.get(id) } : {}),
     };
   });

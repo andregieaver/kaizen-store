@@ -108,6 +108,8 @@ export const homeEn = {
       one: "{store}: {n} review is waiting to be checked.",
       many: "{store}: {n} reviews are waiting to be checked.",
     },
+    booksDiffer: { one: "{store}: {n} document in the books differs from Tripletex.", many: "{store}: {n} documents in the books differ from Tripletex." },
+    booksWaiting: { one: "{store}: {n} document has waited more than a week to be posted to the books.", many: "{store}: {n} documents have waited more than a week to be posted to the books." },
     drafts: {
       one: "{store}: {n} draft order is waiting for payment{late}.",
       many: "{store}: {n} draft orders are waiting for payment{late}.",
@@ -158,6 +160,7 @@ export const homeEn = {
       many: "{store}: {n} units are owed on backorder, on orders that are paid and not sent.",
     },
     actions: {
+      openBooks: "Open the books",
       open: "Open",
       finishSetup: "Finish setup",
       openBilling: "Open billing",

@@ -55,6 +55,23 @@ describe("the control center and stock (D172)", () => {
   });
 });
 
+describe("the control center and the store's own books (D478)", () => {
+  const texts = (figures: Partial<StoreFigures>) => attentionFor([store(figures)]).map((i) => `${i.text} -> ${i.href} [${i.action}]`);
+
+  it("tells the owner what differs from Tripletex and what has waited long to be posted, with the books one press away", () => {
+    expect(texts({ books: { differ: 2, waiting: 1 } })).toEqual([
+      "Kaffe: 2 documents in the books differ from Tripletex. -> /admin/kaffe/settings/books [Open the books]",
+      "Kaffe: 1 document has waited more than a week to be posted to the books. -> /admin/kaffe/settings/books [Open the books]",
+    ]);
+    expect(texts({ books: { differ: 1, waiting: 0 } })).toEqual(["Kaffe: 1 document in the books differs from Tripletex. -> /admin/kaffe/settings/books [Open the books]"]);
+  });
+
+  it("says it only to the owner, in their language", () => {
+    expect(texts({ role: "admin", books: { differ: 2, waiting: 1 } })).toEqual([]);
+    expect(attentionFor([store({ books: { differ: 3, waiting: 0 } })], Date.now(), homeNb.attention).map((i) => i.text)).toEqual(["Kaffe: 3 bilag i regnskapet avviker fra Tripletex."]);
+  });
+});
+
 describe("the control center (D107)", () => {
   it("says nothing when everything is well", () => {
     expect(attentionFor([store()])).toEqual([]);
