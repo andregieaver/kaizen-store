@@ -1,20 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/server/menus", () => ({ storeSlugOf: async () => null }));
-vi.mock("@/server/stores", () => ({ getOpenStore: async () => null }));
-vi.mock("@/server/shop", () => ({ marketIn: () => undefined }));
+vi.mock("@/server/menus", () => ({ storeSlugOf: async (id: string) => (id === "house" ? "kaizenaflow" : null) }));
+vi.mock("@/server/stores", () => ({ getOpenStore: async (slug: string) => (slug === "kaizenaflow" ? { slug, markets: [] } : null) }));
+vi.mock("@/server/shop", () => ({ marketIn: (_store: unknown, market: string | null) => (market === "no-nb" ? { lang: "nb" } : market === "no" ? { lang: "en" } : undefined) }));
 
-const { placeLang } = await import("./place-lang");
+const { sitePlaceLang } = await import("./place-lang");
 
-describe("the language a page is shown in at its place", () => {
-  it("is the language of Kaizena Flow's own page: Norwegian under /no, English otherwise (D312)", async () => {
-    expect(await placeLang({ pageId: null, owner: null, lang: "nb" })).toBe("nb");
-    expect(await placeLang({ pageId: null, owner: null, lang: "en" })).toBe("en");
-    expect(await placeLang({ pageId: null, owner: null })).toBe("en");
+describe("the language of Kaizena Flow's own parts at their place (D312, D484)", () => {
+  it("is Kaizena Flow's own page's, English unless said", async () => {
+    expect(await sitePlaceLang({ owner: null, pageId: null, lang: "nb" })).toBe("nb");
+    expect(await sitePlaceLang({ owner: null, pageId: null })).toBe("en");
   });
 
-  it("is English for a store that cannot be found", async () => {
-    expect(await placeLang({ pageId: null, owner: "00000000-0000-4000-8000-000000000001" })).toBe("en");
+  it("is its own store's market's while the store serves the site, whose pages say no language", async () => {
+    expect(await sitePlaceLang({ owner: "house", pageId: "p", market: "no-nb" })).toBe("nb");
+    expect(await sitePlaceLang({ owner: "house", pageId: "p", market: "no" })).toBe("en");
+    // A market in a language Kaizena Flow's site does not have, or none: English.
+    expect(await sitePlaceLang({ owner: "other", pageId: "p", market: "se" })).toBe("en");
   });
 });

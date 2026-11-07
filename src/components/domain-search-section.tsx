@@ -3,6 +3,7 @@ import { platformPath } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { SUGGESTED_TLDS } from "@/lib/domain-search";
 import type { GridPlace } from "@/server/content-grid";
+import { sitePlaceLang } from "@/server/place-lang";
 
 import { buttonLook } from "./button-look";
 import { DomainSearchBox } from "./lazy/blocks";
@@ -12,8 +13,9 @@ import { DomainSearchBox } from "./lazy/blocks";
  * (`platformText(lang).domainSearch`), prices in the block's currency, else NOK in Norwegian and EUR otherwise, and each free name's button
  * to the email step of buying it (`/get-domain`, which leads to sign-up while domains aren't sold on their own, D317) with the name kept.
  */
-export function DomainSearchSection({ block, place }: { block: DomainSearchBlock; place: GridPlace }) {
-  const lang = place.lang ?? "en";
+export async function DomainSearchSection({ block, place }: { block: DomainSearchBlock; place: GridPlace }) {
+  // Kaizena Flow's own page's language, or its own store's market's (D484).
+  const lang = await sitePlaceLang(place);
   const w = platformText(lang).domainSearch;
   const look = buttonLook(undefined);
   return (

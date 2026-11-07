@@ -5,6 +5,7 @@ import type { PlatformLang } from "@/lib/platform-lang";
 import { inLanguage, parseThemeFilter, type ThemeFilter, type ThemeStoreCard } from "@/lib/theme-store";
 import type { GridPlace } from "@/server/content-grid";
 import { houseStoreIdCached } from "@/server/house-customers";
+import { sitePlaceLang } from "@/server/place-lang";
 import { themePageIn, themeStoreCards, themeStorePage } from "@/server/theme-store";
 
 import { ThemeDetailsPart, ThemeFeaturesPart, ThemeHighlightsPart, ThemeLivePart, ThemePicturesPart, ThemeStagePart } from "./theme-page-parts";
@@ -22,7 +23,7 @@ export async function ThemeStoreSection({ block, place }: { block: ThemeStoreBlo
   // prerendered and an uncached read stops it drawing (the theme store answered 500 once the site was served from the store, D484).
   if (place.owner !== null && place.owner !== (await houseStoreIdCached())) return null;
   // The page's language (D312 P3): the cards and parts in it, the theme's own words where it has them in it.
-  const lang = place.lang ?? "en";
+  const lang = await sitePlaceLang(place);
   if (block.part === "list") {
     const cards = (await themeStoreCards()).map((card) => inLanguage(card, lang));
     // Outside the theme store's own route (Kaizena Flow's /theme-store page, its store's copy) its links are the theme store's full address.

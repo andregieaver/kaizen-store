@@ -1,6 +1,7 @@
 import type { PlansBlock } from "@/lib/page-content";
 import { plansIn } from "@/lib/plan-words";
 import type { GridPlace } from "@/server/content-grid";
+import { sitePlaceLang } from "@/server/place-lang";
 import { getPublicPlans } from "@/server/public-plans";
 
 import { PlansView } from "./plans-view";
@@ -11,6 +12,7 @@ import { PlansView } from "./plans-view";
  * lines and features where they are written in it, `plansIn()`). Draws nothing when no plan has a price.
  */
 export async function PlansSection({ block, place }: { block: PlansBlock; place: GridPlace }) {
-  const lang = place.lang ?? "en";
+  // Kaizena Flow's own page's language, or its own store's market's (D484).
+  const lang = await sitePlaceLang(place);
   return <PlansView block={block} data={plansIn(await getPublicPlans(), lang)} lang={lang} />;
 }

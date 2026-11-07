@@ -1,5 +1,6 @@
 import "server-only";
 
+import { langOfLocale, type PlatformLang } from "@/lib/platform-lang";
 import type { GridPlace } from "@/server/content-grid";
 import { storeSlugOf } from "@/server/menus";
 import { marketIn } from "@/server/shop";
@@ -17,4 +18,12 @@ export async function placeLang(place: GridPlace): Promise<string> {
   const store = slug ? await getOpenStore(slug) : null;
   const market = store ? marketIn(store, place.market) : undefined;
   return market?.lang ?? "en";
+}
+
+/**
+ * The language of Kaizena Flow's own site a page is shown in (D312), for Kaizena Flow's own parts (its plans, domain search and list of
+ * themes): its own page's, or its own store's market's while the store serves the site (D484), whose pages carry no `lang`; else English.
+ */
+export async function sitePlaceLang(place: GridPlace): Promise<PlatformLang> {
+  return langOfLocale(await placeLang(place)) ?? "en";
 }
