@@ -176,6 +176,7 @@ export const booksNb: BooksMessages = {
     postPurchase: "Før kjøpet",
     purchased: "Ført på konto {account}, med kvitteringen.",
     voucher: "Kvittering",
+    voucherBill: "Faktura",
     reading: "Leser kvitteringen …",
     readFrom: "Lest fra kvitteringen: {details}. Sjekk hva det var, og før det.",
     readBare: "Kvitteringen er lest. Sjekk hva det var, og før det.",

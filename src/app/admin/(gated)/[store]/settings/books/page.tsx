@@ -318,7 +318,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                         <>
                           {" · "}
                           <a href={`/admin/${store.slug}/settings/books/vouchers/${vouchers.get(b.entryId)!.id}`} target="_blank" rel="noopener" className="underline underline-offset-2">
-                            {w.bank.voucher}
+                            {w.bank.voucherBill}
                           </a>
                         </>
                       )}
@@ -587,7 +587,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                   {e.reverses && <Chip>{fillWords(w.journal.reverses, { name: e.reverses })}</Chip>}
                   {vouchers.has(e.id) && (
                     <a href={`/admin/${store.slug}/settings/books/vouchers/${vouchers.get(e.id)!.id}`} target="_blank" rel="noopener" className="underline underline-offset-2">
-                      {w.bank.voucher}
+                      {e.sourceKind === "supplier_invoice" ? w.bank.voucherBill : w.bank.voucher}
                     </a>
                   )}
                 </div>

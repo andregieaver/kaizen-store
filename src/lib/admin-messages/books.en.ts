@@ -180,6 +180,7 @@ export const booksEn = {
     postPurchase: "Post the purchase",
     purchased: "Posted to account {account}, with the receipt.",
     voucher: "Receipt",
+    voucherBill: "Bill",
     reading: "Reading the receipt…",
     readFrom: "Read from the receipt: {details}. Check what it was, then post.",
     readBare: "The receipt was read. Check what it was, then post.",
