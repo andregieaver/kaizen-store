@@ -78,7 +78,7 @@ export function limitUnit(key: LimitKey): "gb" | "count" | "money" {
   return "count";
 }
 
-/** A typed value in its unit to the stored integer (GB to bytes, dollars to micros); null when not a number at least 0. */
+/** A typed value in its unit to the stored integer (GB to bytes, euros to micros, D481); null when not a number at least 0. */
 export function fromTyped(key: LimitKey, typed: string): number | null {
   const text = typed.trim().replace(",", ".");
   if (!/^\d+(\.\d+)?$/.test(text)) return null;

@@ -15,6 +15,7 @@ import { LineUnitPrice } from "@/components/price";
 import { OwnBookings } from "@/components/own-bookings";
 import { StaffDiscountRow } from "@/components/staff-discount-row";
 import { OrderReturns } from "@/components/withdraw/order-returns";
+import { accountTabHref } from "@/lib/account-tabs";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
@@ -96,7 +97,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
 
   return (
     <>
-      <Link href={`${base}/account`} className="text-sm underline">
+      <Link href={accountTabHref(`${base}/account`, "orders")} className="text-sm underline">
         {a.backToAccount}
       </Link>
       <div>

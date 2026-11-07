@@ -15,6 +15,10 @@ const PATHS = {
   check: "M5 12.5l4.5 4.5L19 7.5",
   sun: "M12 16a4 4 0 100-8 4 4 0 000 8zM12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4",
   moon: "M12 3a6 6 0 009 9 9 9 0 11-9-9z",
+  // My account's tabs (D480): the overview, orders and settings.
+  grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+  box: "M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zm-8 4.5l8 4.5 8-4.5M12 12v9",
+  sliders: "M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4",
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -9,8 +9,8 @@ features: []
 plans: []
 admin: /admin/{store}/privacy
 order: 30
-checked: 2026-11-04
-sources: [D58, D162]
+checked: 2026-11-05
+sources: [D58, D162, D480]
 ---
 
 ## Når noen spør
@@ -23,7 +23,7 @@ kom inn. Kaizena Flow holder hver forespørsel med sin frist under **Kunder**, [
 
 ### En kunde med konto gjør det selv
 
-Under **Min konto**, **Dine data**, kan en innlogget kunde trykke **Last ned dataene mine** eller **Gå videre til sletting**. Begge deler
+Under **Min konto**, **Innstillinger**, **Dine data**, kan en innlogget kunde trykke **Last ned dataene mine** eller **Gå videre til sletting**. Begge deler
 krever at de har logget inn de siste ti minuttene, med en kode sendt til e-posten eller med passordet. Forespørselen vises i loggen din
 som *Spurt på nettstedet*, allerede besvart.
 

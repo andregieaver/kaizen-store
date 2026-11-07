@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { accountTabHref } from "@/lib/account-tabs";
 import { accountsShown } from "@/lib/customer-accounts";
 import { addressLine, type SavedAddress } from "@/lib/customer-addresses";
 import { t } from "@/lib/i18n";
@@ -55,7 +56,7 @@ async function Addresses({ params, searchParams }: Pick<Props, "params" | "searc
   return (
     <>
       <div>
-        <Link href={account} className="text-sm underline">
+        <Link href={accountTabHref(account, "profile")} className="text-sm underline">
           ← {texts.account.title}
         </Link>
         <h1 className="mt-2 text-3xl font-heading tracking-tight">{m.title}</h1>

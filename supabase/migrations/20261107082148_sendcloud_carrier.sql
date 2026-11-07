@@ -1,0 +1,11 @@
+ALTER TABLE "commerce"."carrier_labels" DROP CONSTRAINT "carrier_labels_carrier";--> statement-breakpoint
+ALTER TABLE "commerce"."return_settings" DROP CONSTRAINT "return_settings_label_carrier";--> statement-breakpoint
+ALTER TABLE "commerce"."returns" DROP CONSTRAINT "returns_label_carrier";--> statement-breakpoint
+ALTER TABLE "commerce"."shipping_carriers" DROP CONSTRAINT "shipping_carriers_carrier";--> statement-breakpoint
+ALTER TABLE "commerce"."carrier_labels" ADD CONSTRAINT "carrier_labels_carrier" CHECK ("commerce"."carrier_labels"."carrier" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups', 'dhl_paket', 'nshift', 'sendcloud'));--> statement-breakpoint
+ALTER TABLE "commerce"."return_settings" ADD CONSTRAINT "return_settings_label_carrier" CHECK ("commerce"."return_settings"."label_carrier" is null or "commerce"."return_settings"."label_carrier" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups', 'dhl_paket', 'nshift', 'sendcloud'));--> statement-breakpoint
+ALTER TABLE "commerce"."returns" ADD CONSTRAINT "returns_label_carrier" CHECK (("commerce"."returns"."label_source" is not distinct from 'carrier') = ("commerce"."returns"."label_carrier_id" is not null and "commerce"."returns"."label_booked_at" is not null)
+        and ("commerce"."returns"."label_carrier_id" is null or "commerce"."returns"."label_carrier_id" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups', 'dhl_paket', 'nshift', 'sendcloud'))
+        and ("commerce"."returns"."label_source" is not distinct from 'carrier' or ("commerce"."returns"."label_service" is null and "commerce"."returns"."label_consignment_number" is null and "commerce"."returns"."label_tracking_number" is null
+             and "commerce"."returns"."label_tracking_url" is null and "commerce"."returns"."label_carrier_url" is null and "commerce"."returns"."label_cost_minor" is null and "commerce"."returns"."label_cost_carrier" is null and not "commerce"."returns"."label_test")));--> statement-breakpoint
+ALTER TABLE "commerce"."shipping_carriers" ADD CONSTRAINT "shipping_carriers_carrier" CHECK ("commerce"."shipping_carriers"."carrier" in ('bring', 'postnord', 'porterbuddy', 'helthjem', 'instabox', 'dhl', 'ups', 'dhl_paket', 'nshift', 'sendcloud'));

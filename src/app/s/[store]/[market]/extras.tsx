@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { BuyerQuestion } from "@/components/buyer";
 import { SiteConsent } from "@/components/consent/site-consent";
 import { StoreAffiliate } from "@/components/store-affiliate";
-import { StoreChat } from "@/components/site-chat";
+import { KaizenChat, StoreChat } from "@/components/site-chat";
 import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -21,9 +21,10 @@ export function MarketExtras({ store, market }: { store: Store; market: Market }
   return (
     <>
       {store.businessPopup && <BuyerQuestion storeId={store.id} labels={m.buyer} />}
-      {/* The store's AI assistant (D81), while it is on. */}
+      {/* The store's AI assistant (D81), while it is on. Kaizena Flow's own store keeps Kaizena Flow's chat on its pages (D484) until step 6 of
+          `docs/platform-parity-plan.md` makes one desk of the two: its site's visitors find the chat they had. */}
       <Suspense fallback={null}>
-        <StoreChat store={store} market={market} />
+        {store.house ? <KaizenChat lang={market.lang === "nb" ? "nb" : "en"} /> : <StoreChat store={store} market={market} />}
       </Suspense>
       {/* A friend's referral link (D131): read in the browser, kept in memory and, once allowed, in a cookie. */}
       <Suspense fallback={null}>

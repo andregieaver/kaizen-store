@@ -1,21 +1,24 @@
 import Link from "next/link";
 
 import { AccountAccess } from "@/components/account-sign-in";
-import { AvatarPicker, DetailsForm, PasswordForm, SignOutButton } from "@/components/lazy/shop";
+import { AccountTabs, AvatarPicker, DetailsForm, PasswordForm, SignOutButton } from "@/components/lazy/shop";
 import { Avatar } from "@/components/avatar";
+import type { IconName } from "@/components/icons";
 import { BonusCard } from "@/components/bonus-account-view";
 import { PrivacyCard } from "@/components/privacy-account-view";
 import { ReferralCard } from "@/components/referrals-account-view";
+import { accountTab, accountTabHref, type AccountTabId } from "@/lib/account-tabs";
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";
 import { formatMoney } from "@/lib/money";
-import { marketPath } from "@/lib/paths";
+import { marketHome, marketPath } from "@/lib/paths";
 import { shopperPrivacyText } from "@/lib/privacy-text";
 import { renewalState, type PlanInterval } from "@/lib/subscriptions";
 import { avatarFor } from "@/server/avatars";
 import {
   getCustomer,
+  type CustomerOrder,
   type CustomerSubscription,
   lastShippingAddress,
   listCustomerOrders,
@@ -35,9 +38,9 @@ import { avatarAction, newsAction } from "./actions";
 import { featureOn } from "@/lib/store-features";
 
 /**
- * My account (D28): signing in, then the customer's orders, subscriptions,
- * details and password in one place. The account page shows it, and so does a
- * store's own page for it (D113).
+ * My account (D28): signing in, then the customer's account in four tabs (D480): the overview (recent orders, what runs now and what
+ * else they have here), the orders, their own details and their settings. The account page shows it, and so does a store's own page
+ * for it (D113).
  */
 export function AccountSection(props: { store: Store; market: Market; query: Promise<StoreQuery> }) {
   return (
@@ -61,7 +64,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     );
   }
 
-  const [orders, subscriptions, lastAddress, mine, bonus, referrals, news, catalogue, creators] = await Promise.all([
+  const [orders, subscriptions, lastAddress, mine, bonus, referrals, news, catalogue, creators, q] = await Promise.all([
     listCustomerOrders(store.id, customer.id),
     // Subscriptions (D178): the list is there while the feature is on; switching it off waits until none runs, and each one's own link
     // from its emails keeps working.
@@ -75,140 +78,94 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     hasBuyerCatalogue(store.id, customer.id),
     // The creator programme (D386): a card to apply or to one's own page while it works.
     creatorProgramOn(store.id),
+    query,
   ]);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
   const base = marketPath(store.slug, market.slug);
+  const account = marketPath(store.slug, market.slug, "/account");
+  const tabHref = (tab: AccountTabId) => accountTabHref(account, tab);
   // Until the customer saves their own, the address their last order went to.
   const address = lastAddress ?? customer.address;
   const avatar = avatarFor(customer);
   const avatarColours = "bg-accent text-accent-foreground";
+  const shopOn = featureOn(store, "shop");
 
-  return (
-    <>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <Avatar avatar={avatar} size={56} className={avatarColours} />
-          <div className="min-w-0">
-            <h1 className="text-3xl font-heading tracking-tight">{a.hello(customer.name.split(" ")[0] ?? "")}</h1>
-            <p className="break-words text-sm text-muted">{a.signedInAs(customer.email)}</p>
-          </div>
-        </div>
-        <SignOutButton store={store.slug} market={market.slug} label={a.signOut} />
-      </div>
+  // What else the customer has here, each a card on the overview: only what this store and this customer have.
+  const shortcuts = [
+    // A company account is part of selling to businesses (D178): its card is there only while that is on.
+    mine && featureOn(store, "business") && (
+      <Shortcut
+        key="company"
+        href={`${base}/account/company`}
+        title={`${m.companyAccount.title}: ${mine.company.name}`}
+        text={mine.role === "owner" ? m.companyAccount.cardIntroOwner : m.companyAccount.cardIntroEmployee}
+      />
+    ),
+    catalogue && shopOn && <Shortcut key="catalogue" href={`${base}/account/catalogue`} title={m.buyerCatalogue.title} text={m.buyerCatalogue.card} />,
+    store.deliveriesOn && <Shortcut key="deliveries" href={`${base}/deliveries`} title={m.deliveries.title} text={m.deliveries.accountCard} />,
+    // Product reviews (D301): the buyer's own, from what they received; only while the store has reviews on.
+    featureOn(store, "reviews") && <Shortcut key="reviews" href={`${base}/account/reviews`} title={m.reviews.cardTitle} text={m.reviews.cardIntro} />,
+    bonus.enabled && <BonusCard key="bonus" bonus={bonus} m={m} locale={market.locale} base={base} decimals={market.priceStyle?.decimals} />,
+    referrals.on && <ReferralCard key="referrals" enabled m={m} base={base} />,
+    creators && <Shortcut key="creator" href={`${base}/account/creator`} title={m.creator.title} text={m.creator.card} />,
+  ].filter(Boolean);
 
-      {/* A company account is part of selling to businesses (D178): its card is there only while that is on. */}
-      {mine && featureOn(store, "business") && (
-        <Link
-          href={`${base}/account/company`}
-          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
-        >
-          <span>
-            <span className="font-medium">
-              {m.companyAccount.title}: {mine.company.name}
+  const orderRows = (shown: CustomerOrder[]) => (
+    <ul className="divide-y divide-border rounded-lg border border-border">
+      {shown.map((order) => (
+        <li key={order.id}>
+          <Link
+            href={`${base}/account/orders/${order.id}`}
+            className="flex items-center justify-between gap-4 p-4 hover:bg-surface"
+          >
+            {/* A long order number wraps; the total and the state keep to the right. */}
+            <span className="min-w-0 break-words">
+              <span className="font-medium">{a.order(order.number)}</span>
+              <span className="block text-sm text-muted">
+                {date(order.placedAt)} · {a.items(order.items)}
+              </span>
             </span>
-            <span className="block text-sm text-muted">
-              {mine.role === "owner" ? m.companyAccount.cardIntroOwner : m.companyAccount.cardIntroEmployee}
+            <span className="flex shrink-0 flex-col items-end gap-1 text-right">
+              <span className="font-medium">{formatMoney(order.totalMinor, order.currency, market.locale, market.priceStyle)}</span>
+              <span className="rounded-full border border-border px-2.5 py-0.5 text-xs">{a.status[order.status] ?? order.status}</span>
             </span>
-          </span>
-          <span aria-hidden="true">→</span>
-        </Link>
-      )}
-
-      {catalogue && featureOn(store, "shop") && (
-        <Link
-          href={`${base}/account/catalogue`}
-          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
-        >
-          <span>
-            <span className="font-medium">{m.buyerCatalogue.title}</span>
-            <span className="block text-sm text-muted">{m.buyerCatalogue.card}</span>
-          </span>
-          <span aria-hidden="true">→</span>
-        </Link>
-      )}
-
-      {store.deliveriesOn && (
-        <Link
-          href={`${base}/deliveries`}
-          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
-        >
-          <span>
-            <span className="font-medium">{m.deliveries.title}</span>
-            <span className="block text-sm text-muted">{m.deliveries.intro}</span>
-          </span>
-          <span aria-hidden="true">→</span>
-        </Link>
-      )}
-
-      {/* Product reviews (D301): the buyer's own, from what they received; only while the store has reviews on. */}
-      {featureOn(store, "reviews") && (
-        <Link
-          href={`${base}/account/reviews`}
-          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
-        >
-          <span>
-            <span className="font-medium">{m.reviews.cardTitle}</span>
-            <span className="block text-sm text-muted">{m.reviews.cardIntro}</span>
-          </span>
-          <span aria-hidden="true">→</span>
-        </Link>
-      )}
-
-      <BonusCard bonus={bonus} m={m} locale={market.locale} base={base} decimals={market.priceStyle?.decimals} />
-      <ReferralCard enabled={referrals.on} m={m} base={base} />
-      {creators && (
-        <Link
-          href={`${base}/account/creator`}
-          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
-        >
-          <span>
-            <span className="font-medium">{m.creator.title}</span>
-            <span className="block text-sm text-muted">{m.creator.card}</span>
-          </span>
-          <span aria-hidden="true">→</span>
-        </Link>
-      )}
-
-      <section aria-labelledby="orders-heading" className="flex flex-col gap-3">
-        <h2 id="orders-heading" className="text-xl font-heading">{a.orders}</h2>
-        {orders.length === 0 ? (
-          <p className="text-muted">{a.noOrders}</p>
-        ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border">
-            {orders.slice(0, 5).map((order) => (
-              <li key={order.id}>
-                <Link
-                  href={`${base}/account/orders/${order.id}`}
-                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 p-4 hover:bg-surface"
-                >
-                  <span>
-                    <span className="font-medium">{a.order(order.number)}</span>
-                    <span className="block text-sm text-muted">
-                      {date(order.placedAt)} · {a.items(order.items)}
-                    </span>
-                  </span>
-                  <span className="text-right">
-                    <span className="block">{formatMoney(order.totalMinor, order.currency, market.locale, market.priceStyle)}</span>
-                    <span className="block text-sm text-muted">{a.status[order.status] ?? order.status}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        {orders.length > 0 && (
-          <Link href={`${base}/account/orders`} className="self-start text-sm underline">
-            {a.orderList.seeAll}
           </Link>
+        </li>
+      ))}
+    </ul>
+  );
+
+  // No orders yet: say so, and where to begin.
+  const noOrders = (
+    <div className="flex flex-col items-start gap-4 rounded-lg border border-border p-4">
+      <p className="text-muted">{a.noOrders}</p>
+      {shopOn && (
+        <Link href={marketHome(store.slug, market.slug)} className="inline-flex min-h-11 items-center button-primary px-5 font-medium">
+          {a.toShop}
+        </Link>
+      )}
+    </div>
+  );
+
+  const overview = (
+    <>
+      <section aria-labelledby="recent-orders-heading" className="flex flex-col gap-3">
+        <h2 id="recent-orders-heading" className="text-xl font-heading">
+          {orders.length === 0 ? a.orders : a.recentOrders}
+        </h2>
+        {orders.length === 0 ? noOrders : orderRows(orders.slice(0, 3))}
+        {orders.length > 3 && (
+          // Opens the Orders tab: a plain link, which the tabs open at once (`data-account-tab`), and which works without them too.
+          <a href={tabHref("orders")} data-account-tab="orders" className="self-start text-sm underline">
+            {a.orderList.seeAll}
+          </a>
         )}
       </section>
 
-      {subscriptions && (
-      <section aria-labelledby="subscriptions-heading" className="flex flex-col gap-3">
-        <h2 id="subscriptions-heading" className="text-xl font-heading">{a.subscriptions}</h2>
-        {subscriptions.length === 0 ? (
-          <p className="text-muted">{a.noSubscriptions}</p>
-        ) : (
+      {/* Subscriptions (D29): what runs now is part of the overview; nothing is said here of none. */}
+      {subscriptions && subscriptions.length > 0 && (
+        <section aria-labelledby="subscriptions-heading" className="flex flex-col gap-3">
+          <h2 id="subscriptions-heading" className="text-xl font-heading">{a.subscriptions}</h2>
           <ul className="divide-y divide-border rounded-lg border border-border">
             {subscriptions.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
@@ -229,15 +186,36 @@ async function Account({ store, market, query }: { store: Store; market: Market;
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
       )}
 
+      {shortcuts.length > 0 && <div className="grid gap-3 sm:grid-cols-2">{shortcuts}</div>}
+    </>
+  );
+
+  const ordersTab = (
+    <section aria-labelledby="orders-heading" className="flex flex-col gap-3">
+      <h2 id="orders-heading" className="text-xl font-heading">{a.orders}</h2>
+      {orders.length === 0 ? noOrders : orderRows(orders.slice(0, ORDERS_SHOWN))}
+      {/* The order list of its own (D304 J2) searches and filters them all, and pages through the older ones. */}
+      {orders.length > ORDERS_SHOWN ? (
+        <Link href={`${base}/account/orders`} className="self-start text-sm underline">
+          {a.orderList.more}
+        </Link>
+      ) : (
+        orders.length > 3 && (
+          <Link href={`${base}/account/orders`} className="self-start text-sm underline">
+            {a.orderList.search}
+          </Link>
+        )
+      )}
+    </section>
+  );
+
+  const profile = (
+    <>
       <section aria-labelledby="details-heading" className="flex flex-col gap-3">
         <h2 id="details-heading" className="text-xl font-heading">{a.details}</h2>
-        <Link href={`${base}/account/addresses`} className="self-start text-sm underline">
-          {a.addresses.manage}
-        </Link>
         <DetailsForm
           store={store.slug}
           market={market.slug}
@@ -267,6 +245,9 @@ async function Account({ store, market, query }: { store: Store; market: Market;
         />
       </section>
 
+      {/* Saved addresses (D304): the places they send to, on a page of their own. */}
+      <Shortcut href={`${base}/account/addresses`} title={a.addresses.manage} text={a.addresses.intro} />
+
       <section aria-labelledby="picture-heading" className="flex flex-col gap-3">
         <h2 id="picture-heading" className="text-xl font-heading">{a.pictureTitle}</h2>
         <AvatarPicker
@@ -285,7 +266,11 @@ async function Account({ store, market, query }: { store: Store; market: Market;
           }}
         />
       </section>
+    </>
+  );
 
+  const settings = (
+    <>
       <section aria-labelledby="password-heading" className="flex flex-col gap-3">
         <h2 id="password-heading" className="text-xl font-heading">{a.security}</h2>
         <p className="text-sm text-muted">{customer.hasPassword ? a.passwordSet : a.passwordNone}</p>
@@ -314,6 +299,52 @@ async function Account({ store, market, query }: { store: Store; market: Market;
 
       <PrivacyCard text={shopperPrivacyText(market.lang)} storeName={store.name} href={`${base}/account/privacy`} />
     </>
+  );
+
+  const tabs: { id: AccountTabId; icon: IconName }[] = [
+    { id: "overview", icon: "grid" },
+    { id: "orders", icon: "box" },
+    { id: "profile", icon: "user" },
+    { id: "settings", icon: "sliders" },
+  ];
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <Avatar avatar={avatar} size={56} className={avatarColours} />
+          <div className="min-w-0">
+            <h1 className="text-3xl font-heading tracking-tight">{a.hello(customer.name.split(" ")[0] ?? "")}</h1>
+            <p className="break-words text-sm text-muted">{a.signedInAs(customer.email)}</p>
+          </div>
+        </div>
+        <SignOutButton store={store.slug} market={market.slug} label={a.signOut} />
+      </div>
+
+      {/* My account in four tabs (D480): what is going on first, the rest one press away, each tab in the address. */}
+      <AccountTabs
+        label={a.title}
+        initial={accountTab(q.tab)}
+        tabs={tabs.map(({ id, icon }) => ({ id, icon, label: a.tabs[id], href: tabHref(id) }))}
+        panels={{ overview, orders: ordersTab, profile, settings }}
+      />
+    </>
+  );
+}
+
+/** How many orders the Orders tab lists; the order list of its own (`/account/orders`) has the rest. */
+const ORDERS_SHOWN = 20;
+
+/** A card in My account that leads to a page of its own: its name, a line on what is there, and an arrow. */
+function Shortcut({ href, title, text }: { href: string; title: string; text: string }) {
+  return (
+    <Link href={href} className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface">
+      <span className="min-w-0">
+        <span className="font-medium">{title}</span>
+        <span className="block text-sm text-muted">{text}</span>
+      </span>
+      <span aria-hidden="true">→</span>
+    </Link>
   );
 }
 

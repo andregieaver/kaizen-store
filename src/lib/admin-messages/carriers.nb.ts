@@ -201,4 +201,22 @@ export const carriersNb: CarriersMessages = {
       collectionHours: { label: "Hentetider", help: "Når en sjåfør kan hente pakkene dine, skrevet 10:00-17:00, for å be om henting når du booker. La det stå tomt hvis du leverer dem inn selv eller har fast henting.", placeholder: "10:00-17:00" },
     },
   },
+  sendcloud: {
+    summary: "Etiketter fra DHL, DPD, UPS, GLS og mange andre transportører til Sendclouds egne priser, uten egen transportøravtale, for butikker som sender fra Vest-Europa.",
+    steps: [
+      "Ha en Sendcloud-konto for en butikk som sender fra Tyskland, Frankrike, Nederland, Belgia, Østerrike, Italia, Spania eller Storbritannia. Sendcloud tilbys ikke butikker som sender fra Norge eller Finland.",
+      "I Sendcloud åpner du Innstillinger og deretter Integrasjoner, og legger til en Sendcloud API-integrasjon med Service Points slått på. Kopier den offentlige og den hemmelige nøkkelen til skjemaet.",
+      "Lagre, velg avsenderadressen pakkene sendes fra, og sjekk tilkoblingen.",
+      "Sendcloud har ikke noe testsystem: testmiljøet vil bare lage Sendclouds gratis testetiketter, så ingenting sendes eller faktureres.",
+    ],
+    fields: {
+      publicKey: { label: "Offentlig nøkkel", help: "Den offentlige nøkkelen til Sendcloud API-integrasjonen du legger til for denne butikken.", placeholder: "" },
+      secretKey: { label: "Hemmelig nøkkel", help: "Vises av Sendcloud sammen med den offentlige nøkkelen.", placeholder: "" },
+      senderAddressId: {
+        label: "Avsenderadresse",
+        help: "Hvor pakkene sendes fra: en av avsenderadressene i Sendcloud-kontoen din. Lagre nøklene først, og velg den her.",
+        placeholder: "",
+      },
+    },
+  },
 };

@@ -46,6 +46,24 @@ draft is the published page). The generator checked it (no issues, no claims). *
 the draft.** No other platform's *better fit* names labels or carriers. The Kaizena Flow column's carrier line is unchanged (it rests on
 `orders.shipping-label-purchase-and-printing`, Partial until each carrier is verified against its production service).
 
+## The owner's design rules, and two Shopify lines (5 November 2026, afternoon)
+
+- **The design rules of `docs/site-design.md` 6.0** are the generator's now, as the owner applied them in the builder to the Shopify and
+  WooCommerce pages before publishing them: every gradient at 35 degrees, the six reasons in white boxes at 50 % (radius 6, shadow md),
+  the table and the questions in solid white boxes (radius 6, shadow md), the questions row on a slow sand-to-white gradient. The four
+  unpublished drafts (Wix, BigCommerce, Shopware, Squarespace) were changed in the database to exactly what the generator now builds
+  (compared with every `id` left out); the Shopify and WooCommerce drafts kept the owner's own edits and took only the angle left at
+  240 or 215 and the lines below.
+- **Flow's AI line** now says *on every admin page, by text or voice*: the AI Store Manager is on every admin page and talks by voice
+  (D104, D105; the platform's live voice model serves every store without its own). So Shopify's *an AI assistant across the whole
+  admin, by text, voice or screen sharing* is no longer a reason to choose Shopify and was taken out of its *better fit*; screen sharing
+  alone is not claimed either way.
+- **Shopify's app line** says *You want a ready-made tool today: the App Store has over 16,000 apps*. Flow's answer, building what a
+  shop needs (`/custom-extensions`), takes time and has no stated terms yet, so a ready-made app today stays a fair reason.
+- **Shopify's labels line** is the owner's wording from the builder (*You want to buy labels from Shopify itself, with no carrier
+  agreement of your own, …*), now in `data/shopify.json` too. It stays true until Flow sells labels without the merchant's own carrier
+  agreement.
+
 ## How the pages are made
 
 One generator, `docs/comparison-evidence/pages/compare.test.ts`, and one data file per platform, `docs/comparison-evidence/pages/data/{platform}.json`.

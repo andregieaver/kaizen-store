@@ -6,7 +6,7 @@ import { usageMonth } from "@/lib/usage-month";
 import { getAccount } from "@/server/auth";
 import { platformUsage } from "@/server/usage";
 
-/** The platform's month of usage as CSV (D314): one row per store, raw numbers in each metric's unit (bytes, counts, micro-dollars). */
+/** The platform's month of usage as CSV (D314): one row per store, raw numbers in each metric's unit (bytes, counts, millionths of a euro). */
 export async function GET(request: Request) {
   const account = await getAccount();
   if (!account?.platformAdmin) notFound();

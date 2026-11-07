@@ -1828,7 +1828,7 @@ export const platformSettings = commerce.table(
     sandboxDailyCap: integer("sandbox_daily_cap").notNull().default(300),
     /** The store template a sandbox is copied from (D457): a published starting content or demo store; null, the Standard store. */
     sandboxSource: uuid("sandbox_source").references((): AnyPgColumn => storeStarters.id, { onDelete: "set null" }),
-    /** What one sandbox's AI may cost on Kaizena Flow's key (D457 S3), in millionths of a dollar: its `ai_cost_month_micros` when it is made. */
+    /** What one sandbox's AI may cost on Kaizena Flow's key (D457 S3), in millionths of a euro (D481): its `ai_cost_month_micros` when it is made. */
     sandboxAiMicros: bigint("sandbox_ai_micros", { mode: "number" }).notNull().default(500_000),
     /** What one sandbox may keep of uploads and AI pictures (D457 S3), in bytes: its `storage_bytes` when it is made. */
     sandboxStorageBytes: bigint("sandbox_storage_bytes", { mode: "number" }).notNull().default(50_000_000),
@@ -1877,6 +1877,16 @@ export const platformSettings = commerce.table(
     /** Kaizen's menus (D85) in its standard header and footer; null: none. */
     headerMenuId: uuid("header_menu_id"),
     footerMenuId: uuid("footer_menu_id"),
+    /**
+     * Kaizena Flow's site is served from its own store (D484, step 5 of `docs/platform-parity-plan.md`): on Kaizena Flow's own host every
+     * address that is no platform route (`PLATFORM_ROUTES`) is the store's. Off until a platform admin switches it on from Platform →
+     * Website; switching it off brings the platform's own pages back at once. Only while the store is open and not private
+     * (`platform_site_from_store()`), and the store cannot be made private while it is on.
+     */
+    siteFromStore: boolean("site_from_store").notNull().default(false),
+    /** When the switch was last turned on or off, and by whom (D484). */
+    siteFromStoreAt: timestamp("site_from_store_at", { withTimezone: true }),
+    siteFromStoreBy: uuid("site_from_store_by").references(() => accounts.id),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -1894,6 +1904,7 @@ export const platformSettings = commerce.table(
     index("platform_settings_header_menu_idx").on(t.headerMenuId),
     index("platform_settings_footer_menu_idx").on(t.footerMenuId),
     index("platform_settings_sandbox_source_idx").on(t.sandboxSource),
+    index("platform_settings_site_from_store_by_idx").on(t.siteFromStoreBy),
   ],
 );
 

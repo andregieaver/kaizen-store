@@ -22,6 +22,7 @@ import { t } from "@/lib/i18n";
 import { languageChoices } from "@/lib/localization";
 import { inView } from "@/lib/markets";
 import { looksLikeMarket } from "@/lib/redirect-path";
+import { houseLanguageAlternates } from "@/lib/house-alternates";
 import { adminOrigin, marketHome, marketMetaPath, marketOrigin, storeHome } from "@/lib/paths";
 import { siteIcons } from "@/lib/site-icons";
 import { footerHasWithdrawal } from "@/lib/site-layout";
@@ -73,7 +74,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ...(!(store.setupCompletedAt || store.isTemplate) || store.starter || store.seo.hidden || store.privateMode || Object.keys(ab).length > 0 ? { robots: { index: false } } : {}),
     alternates: {
       canonical,
-      languages: {
+      // Kaizena Flow's own store names its languages as Kaizena Flow's site always has (D484).
+      languages: houseLanguageAlternates(store, (slug) => marketMetaPath(store.slug, slug)) ?? {
         // Every country offered in every language a shopper can see it in (D109; D178: its own only with Several languages off).
         ...Object.fromEntries(
           store.markets.flatMap((m) =>

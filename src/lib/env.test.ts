@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { publicEnv, serverEnv } from "./env";
+import { publicEnv, sendcloudPartnerId, serverEnv } from "./env";
 
 describe("publicEnv", () => {
   it("returns the Supabase settings when both are present", () => {
@@ -30,5 +30,14 @@ describe("serverEnv", () => {
 
   it("names a missing DATABASE_URL", () => {
     expect(() => serverEnv({})).toThrow(/DATABASE_URL/);
+  });
+});
+
+describe("sendcloudPartnerId (D483)", () => {
+  it("is null until Sendcloud has given Kaizena Flow its partner id, then that UUID", () => {
+    expect(sendcloudPartnerId({})).toBeNull();
+    expect(sendcloudPartnerId({ SENDCLOUD_PARTNER_ID: " " })).toBeNull();
+    expect(sendcloudPartnerId({ SENDCLOUD_PARTNER_ID: " 0F0F0F0F-0000-4000-8000-000000000000 " })).toBe("0F0F0F0F-0000-4000-8000-000000000000");
+    expect(() => sendcloudPartnerId({ SENDCLOUD_PARTNER_ID: "flow" })).toThrow(/partner UUID/);
   });
 });

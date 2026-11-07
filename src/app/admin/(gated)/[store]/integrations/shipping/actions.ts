@@ -8,7 +8,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { CHECKOUT_COUNTRIES, CHECKOUT_PRICING, parseCheckoutSettings } from "@/lib/delivery-options";
-import { CARRIERS, isCarrierId } from "@/lib/shipping-carriers";
+import { canCheck, CARRIERS, isCarrierId } from "@/lib/shipping-carriers";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkOwnerRole } from "@/server/permissions";
 import { checkCarrier } from "@/server/bring-shipping";
@@ -34,7 +34,7 @@ export async function saveCarrierAction(storeSlug: string, carrier: string, _sta
   });
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: [info.available.length > 0 ? w.savedCheck : w.savedWaiting] };
+  return { status: "ok", messages: [canCheck(info) ? w.savedCheck : w.savedWaiting] };
 }
 
 export async function removeCarrierAction(storeSlug: string, carrier: string): Promise<void> {
@@ -45,14 +45,14 @@ export async function removeCarrierAction(storeSlug: string, carrier: string): P
   redirect(`/admin/${store.slug}/integrations`);
 }
 
-/** Asks the carrier whether the store's agreement works (D134, D136). Posten / Bring and PostNord have connections so far. */
+/** Asks the carrier whether the store's agreement works (D134, D136): every carrier with a connection, Sendcloud's first step too (D483). */
 export async function checkCarrierAction(storeSlug: string, carrier: string): Promise<FormState> {
   const held = await checkOwnerRole(storeSlug);
   if (!held) return { status: "error", messages: [(await requestWords()).ownerCheck] };
   const { store, account } = held;
   const w = wordsOf(held);
   const info = CARRIERS.find((c) => c.id === carrier);
-  if (!info || info.available.length === 0) return { status: "error", messages: [w.notBuilt] };
+  if (!info || !canCheck(info)) return { status: "error", messages: [w.notBuilt] };
   const result = await checkCarrier(account.id, store.id, info.id);
   refresh();
   return result.ok

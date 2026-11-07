@@ -6,6 +6,7 @@
  */
 
 import type { NavIconName } from "@/components/admin/nav-icons";
+import { HOUSE_SLUG } from "@/lib/house-routing";
 
 export const PLATFORM_BASE = "/admin/platform";
 
@@ -29,8 +30,8 @@ export const WEBSITE_ITEMS: SectionItem[] = [
   item("/docs/guide", "Docs guide", "The AI guide that answers readers in the docs from the docs alone: on or off, its name, picture, greeting and daily limit.", "bot"),
 ];
 
-/** Kaizena Flow's own store (D466, `docs/platform-parity-plan.md`): made by its migration at this address, never moved. */
-export const HOUSE_STORE_SLUG = "kaizenaflow";
+/** Kaizena Flow's own store (D466, `docs/platform-parity-plan.md`): made by its migration at this address, never moved (`HOUSE_SLUG`). */
+export const HOUSE_STORE_SLUG = HOUSE_SLUG;
 
 /**
  * Kaizena Flow's own store as the first card of the Website hub (D466): a store's admin of its own, where its customers, subscribers and

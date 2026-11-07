@@ -9,14 +9,15 @@ features: []
 plans: []
 admin: /admin/{store}/customers
 order: 10
-checked: 2026-11-04
-sources: [D32, D296, D304, D364, D365, D366, D375]
+checked: 2026-11-05
+sources: [D32, D296, D304, D364, D365, D366, D375, D480]
 ---
 
 ## Choose how accounts work
 
-Shoppers can open an account in your store, or tick to make one when they check out. Under **My account** they find their orders,
-their saved addresses and their data. You choose whether an account is optional, required or not offered at all.
+Shoppers can open an account in your store, or tick to make one when they check out. **My account** opens on an overview of their
+latest orders and what runs now, with tabs for **Orders**, **Profile** (their details and saved addresses) and **Settings** (password,
+your emails and their data). You choose whether an account is optional, required or not offered at all.
 
 1. Open **Settings** and choose [Checkout rules](/admin/{store}/settings/checkout), under Selling.
 2. Under **Customer accounts**, choose one:
@@ -97,7 +98,7 @@ card of your store, emailed to the order's address, and the code is shown to you
 
 ### Saved addresses
 
-Signed-in shoppers keep up to 20 addresses under **My account**, **Saved addresses**, with one for delivery and one for billing that
+Signed-in shoppers keep up to 20 addresses under **My account**, **Profile**, **Saved addresses**, with one for delivery and one for billing that
 checkout starts with. Checkout offers them when it asks for the address itself; Stripe's payment page asks for its own. The address you
 type under **Edit details** is the customer's default.
 

@@ -9,14 +9,15 @@ features: []
 plans: []
 admin: /admin/{store}/customers
 order: 10
-checked: 2026-11-04
-sources: [D32, D296, D304, D364, D365, D366, D375]
+checked: 2026-11-05
+sources: [D32, D296, D304, D364, D365, D366, D375, D480]
 ---
 
 ## Velg hvordan kontoer fungerer
 
-Kundene kan opprette en konto i butikken, eller krysse av for å lage en når de går til kassen. Under **Min konto** finner de
-bestillingene sine, de lagrede adressene og opplysningene butikken har om dem. Du velger om en konto skal være valgfri, påkrevd eller
+Kundene kan opprette en konto i butikken, eller krysse av for å lage en når de går til kassen. **Min konto** åpner med en oversikt
+over de siste bestillingene og det som går nå, med faner for **Bestillinger**, **Profil** (opplysningene og de lagrede adressene) og
+**Innstillinger** (passord, e-post fra deg og opplysningene butikken har om dem). Du velger om en konto skal være valgfri, påkrevd eller
 ikke tilbys i det hele tatt.
 
 1. Åpne **Innstillinger** og velg [Regler i kassen](/admin/{store}/settings/checkout), under Salg.
@@ -99,7 +100,7 @@ betalingen. Beløpet blir et gavekort i butikken, sendt til bestillingens e-post
 
 ### Lagrede adresser
 
-Innloggede kunder kan ha opptil 20 adresser under **Min konto**, **Lagrede adresser**, med én for levering og én for faktura som kassen
+Innloggede kunder kan ha opptil 20 adresser under **Min konto**, **Profil**, **Lagrede adresser**, med én for levering og én for faktura som kassen
 starter med. Kassen tilbyr dem når den spør etter adressen selv; Stripes betalingsside spør etter sin egen. Adressen du skriver under
 **Endre opplysninger**, er kundens standardadresse.
 

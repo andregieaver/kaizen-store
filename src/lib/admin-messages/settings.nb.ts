@@ -799,6 +799,7 @@ export const settingsNb: SettingsMessages = {
     statePublic: "Offentlig: alle kan se butikken.",
     stateNever: "En demobutikk eller startinnhold er aldri privat.",
     trialEnded: "Butikken ble gjort privat da prøveperioden eller abonnementet sluttet: velg et abonnement for å gjøre den offentlig igjen.",
+    servesSite: "Denne butikken er Kaizena Flows levende nettsted nå. Bytt nettstedet tilbake til plattformens sider (Plattform → Nettsted) før du gjør den privat.",
     chipPrivate: "Privat",
     chipPublic: "Offentlig",
     makePrivate: "Gjør butikken privat",

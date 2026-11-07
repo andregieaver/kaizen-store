@@ -126,8 +126,8 @@ describe("the proxy", () => {
     const imports = [...source.matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1]).sort();
     expect(imports).toEqual(
       // Held domains (D317 8) answer from the proxy too: `holdingFor()`, read for a host that is no one else's. Private mode (D339) reads
-      // the visitor's pass with the key it was signed with.
-      ["@/lib/ab-routing", "@/lib/ab-site", "@/lib/experiments", "@/lib/holding", "@/lib/paths", "@/lib/site", "@/lib/unlock-pass", "@/server/experiments", "@/server/holding", "@/server/not-found", "@/server/private-secret", "@/server/redirect-resolve", "next/server"].sort(),
+      // the visitor's pass with the key it was signed with. Kaizena Flow's site served from its own store (D484) reads the switch.
+      ["@/lib/ab-routing", "@/lib/ab-site", "@/lib/experiments", "@/lib/holding", "@/lib/house-routing", "@/lib/paths", "@/lib/site", "@/lib/unlock-pass", "@/server/experiments", "@/server/holding", "@/server/house-switch", "@/server/not-found", "@/server/private-secret", "@/server/redirect-resolve", "next/server"].sort(),
     );
   });
 

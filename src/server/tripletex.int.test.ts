@@ -85,6 +85,29 @@ describe("connecting a store to Tripletex with one paste (D453)", () => {
     expect(await getTripletexConnection(store.id)).toBeNull();
   });
 
+  it("connects whether Tripletex wraps the session token or not, and says plainly when an answer cannot be read or Tripletex is down", async () => {
+    const store = await makeStore();
+    const tx = company(BASE + 12);
+    tx.shapes = { session: "bare", whoAmI: "id_only" };
+    expect(await connectTripletex(accountId, store.id, token(String(BASE + 12)), { fetch: tx.fetch })).toMatchObject({
+      ok: true,
+      company: { id: BASE + 12, name: "Human Web AS" },
+    });
+
+    const other = await makeStore();
+    const down = company(BASE + 13);
+    down.failNext("GET", /^\/token\/session\/>whoAmI$/, 503);
+    // Nothing retries a connect, so it is not said that it will be tried again.
+    expect(await connectTripletex(accountId, other.id, token(String(BASE + 13)), { fetch: down.fetch })).toEqual({ ok: false, problem: "failure" });
+    down.shapes.whoAmI = "id_only";
+    down.failNext("GET", /^\/company\/\d+$/, 403);
+    expect(await connectTripletex(accountId, other.id, token(String(BASE + 13)), { fetch: down.fetch })).toEqual({ ok: false, problem: "unreadable" });
+    down.failNext("GET", /^\/ledger\/account$/, 400, { status: 400, code: 4000, message: "Ugyldig forespørsel." });
+    down.shapes.whoAmI = "spec";
+    expect(await connectTripletex(accountId, other.id, token(String(BASE + 13)), { fetch: down.fetch })).toMatchObject({ ok: false, problem: "failure", failureKey: "http_400" });
+    expect(await getTripletexConnection(other.id)).toBeNull();
+  });
+
   it("finds a test company's token without the test prefix in Tripletex's test environment", async () => {
     const store = await makeStore();
     const tx = fakeTripletex({ companyId: BASE + 3 });

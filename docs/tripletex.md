@@ -96,7 +96,14 @@ the start day, "send the client's email", "attach PDFs", Pause, Disconnect, and 
 
 ### Still to find out in Tripletex's sandbox (Appendix A, plus)
 
-* Whether Tripletex accepts `%3E` for `>` in paths (`/token/session/%3EwhoAmI`): the client sends what `URL` encodes.
+* Whether Tripletex accepts `%3E` for `>` in paths (`/token/session/%3EwhoAmI`): the client sends what `URL` encodes. Probed
+  2026-11-06 without a login: a raw `>` is refused by Tripletex's web server (400, HTML), `%3E` reaches the API (401, its JSON).
+* The exact answers to a company API token. An owner's first real connect (2026-11-06) ended in `bad_answer`: a 2xx answer without a
+  session token, or a `>whoAmI` without the company's name. The spec wraps the session token in `value`; Tripletex's guide says only
+  that "the response contains a `token` field". So the client reads `token` with or without the wrapper, reads the company on its own
+  (`GET /company/{id}`) when `>whoAmI` gives only its id, and logs an answer it cannot read as `tripletex.bad_answer` (the step and the
+  answer's keys, never a value) and a 2xx answer that is not JSON as `tripletex.not_json`; a failed connect is `tripletex.connect_failed`.
+  A connect's passing failures no longer say "it will be tried again" (nothing retries a connect): `unreadable` or `failure`.
 * Whether a test environment API token carries the `test-` prefix like other test tokens (else the owner is asked once).
 * Whether an account with an empty `legalVatTypes` takes any code (the setup treats it as open; a refusal is caught).
 * The rest of Appendix A, items 3 to 15.

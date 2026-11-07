@@ -169,12 +169,23 @@ A brands block for platforms and partners: `columns: 6`, `gap: 30`, `greyscale: 
 
 Each recipe is the settings the owner's pages use; copy them as they are. Ids are new UUIDs for every row, column and block.
 
+### 6.0 The owner's two rules (5 November 2026)
+
+They hold for every new page and win over any older value below or on the pages made before them:
+
+- **A column with a background** is always the *column box*: `background: { "type": "color", "color": "#ffffff", "opacity": 50 }`,
+  `radius: 6`, `shadow: "md"` (cards, the highlighted card, the white card round a table). Its text keeps `#171717` (8).
+- **A gradient background** is always at **35°** (`"angle": 35`): the hero, the section turns, the closing row.
+
+Pages made before 5 November 2026 (the front page, *Move your store*, the move and comparison pages, Selling Products and Selling
+Subscriptions) still have the older values (sand at 6 % with `radius: 20` cards, gradients at 215° and 240°) until they are made again.
+
 ### 6.1 The hero (every page starts with one)
 
 ```json
 { "type": "row", "layout": "1", "align": "middle", "height": 50,
   "style": { "padding": { "top": 150, "left": 20, "right": 20, "bottom": 100 } },
-  "background": { "type": "gradient", "style": "shift", "flow": "still", "angle": 215, "colors": ["#908064", "#ffffff"], "opacity": 80 },
+  "background": { "type": "gradient", "style": "shift", "flow": "still", "angle": 35, "colors": ["#908064", "#ffffff"], "opacity": 80 },
   "backgroundFixed": true, "contentMax": 968, "typography": { "text": { "align": "center" } },
   "at": { "sm": { "height": 100, "style": { "padding": { "top": 0, "left": 20, "right": 20, "bottom": 0 } } } } }
 ```
@@ -188,8 +199,8 @@ Every row after the hero has a fixed (`backgroundFixed: true`), still, `shift` g
 
 | Turn | Background |
 |---|---|
-| A | `{ "type": "gradient", "style": "shift", "flow": "still", "colors": ["#908064", "#ededed"] }` (no angle) |
-| B | `{ "type": "gradient", "style": "shift", "flow": "still", "angle": 240, "colors": ["#908064", "#ffffff"] }` |
+| A | `{ "type": "gradient", "style": "shift", "flow": "still", "angle": 35, "colors": ["#908064", "#ededed"] }` |
+| B | `{ "type": "gradient", "style": "shift", "flow": "still", "angle": 35, "colors": ["#908064", "#ffffff"] }` |
 | C, a plain band | `{ "type": "color", "color": "#908064", "opacity": 9 }` (26 behind the logos on *Move your store*) |
 
 ### 6.3 A feature row: text beside a screenshot
@@ -209,7 +220,7 @@ On a phone the picture column moves up 40 px (`at.sm.style.margin.top: -40`).
 
 A row of `layout: "2"` with `moreLines: ["2", "2"]` (six cards in three lines of two, the front page's last row) or `"3"` for three, `gap`
 70, `contentMax` 1000, each column `radius: 20` holding a dual heading (eyebrow 18 px, title, text `#171717`) and its text. For cards with
-their own box, the column takes `background: { "type": "color", "color": "#908064", "opacity": 6 }` and padding 40 / 0 / 46 (*What is Kaizena
+their own box, the column takes the column box of 6.0 (white at 50 %, `radius: 6`, `shadow: "md"`) and padding 40 / 0 / 46 (*What is Kaizena
 Flow?*), and the row `equalHeight: true`.
 
 ### 6.5 A highlighted card: the one thing to notice
@@ -217,8 +228,8 @@ Flow?*), and the row `equalHeight: true`.
 One centred column with its own line, as *Do you need assistance?* on *Move your store*:
 
 ```json
-{ "border": { "style": "solid", "color": "#c4bcad", "width": { "top": 5, "left": 1, "right": 1, "bottom": 1 } }, "radius": 10,
-  "background": { "type": "color", "color": "#ffffff", "opacity": 24 },
+{ "border": { "style": "solid", "color": "#c4bcad", "width": { "top": 5, "left": 1, "right": 1, "bottom": 1 } }, "radius": 6, "shadow": "md",
+  "background": { "type": "color", "color": "#ffffff", "opacity": 50 },
   "style": { "padding": { "top": 20, "left": 30, "right": 30, "bottom": 30 } }, "typography": { "text": { "align": "center" } } }
 ```
 
@@ -255,7 +266,7 @@ Every page is checked at phone width in the builder. The owner's habits:
 ### 6.10 A comparison table (the comparison pages, 5 November 2026)
 
 A table block (D194) in a **white card** on a sand row, so its words read the same in both colour modes: the row is turn B, its second line
-one column with `background: { "type": "color", "color": "#ffffff" }`, `radius: 20`, padding 24 (12 / 8 on a phone) and the text colour
+one column with the column box of 6.0 (white at 50 %, `radius: 6`, `shadow: "md"`), padding 24 (12 / 8 on a phone) and the text colour
 `#171717`. The table:
 
 ```json
@@ -268,6 +279,22 @@ one column with `background: { "type": "color", "color": "#ffffff" }`, `radius: 
 Section rows set their own colours: left to the theme they would be the dark surface in dark mode under dark text. Cells start with
 `{{check}}` where the thing is built in; on a phone each row stacks with its column names. Every page with a table says where each line
 comes from (an accordion, `look: "boxed"`, at the foot).
+
+### 6.11 A feature page (the owner's, 5 November 2026)
+
+The feature pages published on 5 November (Selling Products, Campaigns, Discounts, Customer Care, Bonus Program and the others under
+*Explore*) share one shape, read from production that day:
+
+- **Gradients at 35°**, the hero's too (`angle: 35`, opacity 80), turns A and B taking turns, C (9 %) for a band of highlighted cards.
+- **The hero** (6.1) with the main action, a text link to the first section (*See how it works* → `#{id}`) and three side-by-side checks.
+- **Three cards under a heading**: one row of `layout: "1"` with `moreLines: ["3"]`, `contentMax` 1100, `equalHeight`; the first line the
+  section's dual heading and lead, each card `radius: 6`, `shadow: "md"`, white at 50 % (`{ "type": "color", "color": "#ffffff", "opacity":
+  50 }`), padding 40 / 24 / 46, an `h3` (5.1), a lead and three checks at 17 px, left-aligned.
+- **Feature rows** (6.3) with a list of checks beside the words instead of a screenshot, taking turns side.
+- **Highlighted cards**: a row of `layout: "3"` on turn C, each card as above with the line of 6.5 and an `h2` dual heading; one links on.
+- **Questions** in one white card (`radius: 6`, `shadow: "md"`, padding 30 / 30 / 40), a `faq` block `look: "boxed"`, `single: true`, each
+  answer a bold first sentence.
+- **The end** (6.7) with the main action and *Compare us to others* → `/compare`.
 
 ## 7. A page's own settings
 
@@ -304,11 +331,29 @@ comes from (an accordion, `look: "boxed"`, at the foot).
 
 | Page | Address | Made | State |
 |---|---|---|---|
-| Move from Shopify | `/move-your-store/move-from-shopify` | 4 November 2026, for Homer: three steps, what comes with you, no stress, the free move, six questions, the main action. Claims from `docs/moving-from-shopify.md` 17 | draft, for the owner to publish |
-| Move from WooCommerce | `/move-your-store/move-from-woocommerce` | 4 November 2026, the Shopify page's twin, plus *Keep WordPress, or move everything* (two cards) and what comes *straight from WooCommerce* beside what *our free WordPress plugin* adds. Claims from `docs/moving-from-woocommerce.md` 17 | draft, for the owner to publish |
+| Move from Shopify | `/move-your-store/move-from-shopify` | 4 November 2026, for Homer: three steps, what comes with you, no stress, the free move, six questions, the main action. Claims from `docs/moving-from-shopify.md` 17 Published by the owner the same day with the owner's two rules (6.0) applied in the builder; the last gradient left (the hero, 215) set to 35 as a draft on 5 November 2026. | draft, for the owner to publish |
+| Move from WooCommerce | `/move-your-store/move-from-woocommerce` | 4 November 2026, the Shopify page's twin, plus *Keep WordPress, or move everything* (two cards) and what comes *straight from WooCommerce* beside what *our free WordPress plugin* adds. Claims from `docs/moving-from-woocommerce.md` 17 Published by the owner the same day with the owner's two rules (6.0) applied in the builder; the last gradient left (215) set to 35 as a draft on 5 November 2026. | draft, for the owner to publish |
 
 | Try the page builder | `/try-the-page-builder` | 5 November 2026, for the builder's sandbox (D457 S4): the hero with *Start building* (`/admin/try`) and signing up as the text link, three cards (start, change, keep), the real builder beside a list, five questions, the main action again. Built by `docs/site-pages/try-the-page-builder.test.ts` (no issues, no claims). Its button works once the owner turns the sandbox on | draft, for the owner to publish; then a link from the front page and the plans |
-| The six comparison pages | `/kaizen-vs-{platform}` | 4 and 5 November 2026, made again by one generator (`docs/comparison-pages.md`): the hero, six reasons, the table (6.10), where the other is the better fit, moving over, questions, the main action, how we compared. `/compare` left as the owner made it | drafts over the live pages, for the owner to publish |
+| The six comparison pages | `/kaizen-vs-{platform}` | 4 and 5 November 2026, made again by one generator (`docs/comparison-pages.md`): the hero, six reasons, the table (6.10), where the other is the better fit, moving over, questions, the main action, how we compared. `/compare` left as the owner made it The owner's two rules (6.0), as the owner applied them to the Shopify and WooCommerce pages, are now the generator's and were applied to all six on 5 November 2026: gradients at 35, cards in the white box at 50 %, the table and the questions in solid white boxes (radius 6, shadow md), the questions row on a slow sand-to-white gradient. Shopify and WooCommerce had been published by the owner; their new drafts wait for the owner. | drafts over the live pages, for the owner to publish |
+| Store Manager | `/store-manager` | 5 November 2026, by `docs/site-pages/store-manager.test.ts` (`docs/site-pages/README.md`): what the AI Store Manager does for an owner, in the feature pages' shape (6.11) with *You stay in charge* (the three levels) and three highlighted cards | published by the owner, 5 November |
+| Languages and Currencies | `/languages-and-currencies` | 5 November 2026, by `docs/site-pages/languages-and-currencies.test.ts`: selling across borders (languages, currencies, payments, VAT, EU rules, shipping and customs, country by country), in the feature pages' shape (6.11) | draft over the live page, for the owner to publish |
+
+| Selling Products | `/selling-products` | 5 November 2026, for physical and digital products: two cards (ship it or send it), three feature rows without pictures (catalogue, stock and shipping, downloads), four cards (prices, checkout, being found, the EU's rules), questions, the main action. Each claim a Full row of `docs/parity/rows` (backorders, a Partial row, left out) The owner applied the two rules (6.0) in the builder and published it; nothing left to change. | draft over the live page, for the owner to publish |
+
+| Selling Bookings | `/selling-bookings` | 5 November 2026, the first page with the owner's two rules (6.0): stays and rentals (the menu's *Bookings and rentals*; appointments have their own page), two cards, four feature rows (prices and seasons, calendars with Airbnb and Booking.com, payment, hosts), questions, the main action. Claims from D65 to D71 and `international.dac7-reporting` | draft over the live page, for the owner to publish |
+| Selling Appointments | `/selling-appointments` | 5 November 2026, with the owner's two rules (6.0): one-to-one appointments and classes as two cards, three feature rows (your time, payment, no-shows), questions, the main action. Claims from D65, D66 and `docs/bookings.md` (B1, B2); gift cards in the same checkout not claimed | draft over the live page, for the owner to publish |
+| Selling Drop Shipping | `/selling-drop-shipping` | 5 November 2026, with the owner's two rules (6.0): drop shipping as planned in `docs/drop-shipping.md` (D482), not built, so it is marked *Coming to Flow* and every line says how it **will** work: four steps as cards, your brand, staying in control, two bordered notes (you stay the seller; a warehouse connects today, linking the Admin API quickstart), questions, the main action. Correct it as each step of the plan is built | draft over the live page, for the owner to publish |
+| Customer Accounts | `/customer-accounts` | 5 November 2026, with the owner's two rules (6.0), keeping the owner's own start (published 11:49 UTC: the eyebrow, spelled *Self-service*, the title and the bold line): two sides as cards, three feature rows (My account, your choice of accounts, your customers), two bordered notes (privacy; selling to companies, linking `/b2b-b2c`), questions, the main action. Sign in with Google (D375, not live) not claimed | draft over the live page, for the owner to publish |
+| B2B // B2C | `/b2b-b2c` | 5 November 2026, with the owner's two rules (6.0), keeping the owner's opening words: private and business customers as two cards, four feature rows (what each buyer sees, company accounts, prices and catalogue, payment and VAT), two bordered notes (quotes, with the AI Store Manager sending only on the owner's yes; accounts, linking `/customer-accounts`), questions, the main action. Claims from D63, D108, D321, D323, D431, D437 | draft over the live page, for the owner to publish |
+| Campaigns | `/campaigns` | 5 November 2026, with the owner's two rules (6.0), keeping the owner's eyebrow and title (*Growth*, *Advertisements and Campaigns*; the old bold line was the subscriptions page's): offers, email and ads as three cards, four feature rows (offers without a code, email, ads, results), three bordered notes (the AI Store Manager on the owner's yes; pages by the clock; links to `/discounts`, `/bonus-program`, `/affiliate-program`), questions, the main action. Claims from D114 to D116, D295 to D299, D302 (the built part), D303, D340, D352, D367, D380; Google Ads purchase conversions by API not claimed | draft over the live page, for the owner to publish |
+| Discounts | `/discounts` | 5 November 2026, with the owner's two rules (6.0), keeping the owner's eyebrow and title (*Marketing*, *Discounts*; the old bold line was the subscriptions page's): codes, sale prices and quantity prices as three cards, four feature rows (codes, several codes together, single-use codes, prices), three bordered notes (the AI Store Manager on the owner's yes; the code report; offers without a code, linking `/campaigns`), questions, the main action. Claims from D31, D108, D299, D321, D323, D367, D380 and `customers.omnibus-30-day-lowest-price-reference`; gift cards (Partial) not claimed | draft over the live page, for the owner to publish |
+| Bonus Program | `/bonus-program` | 5 November 2026, with the owner's two rules (6.0), keeping the owner's eyebrow and title (*Flexible*, *Bonus Programs*; the old bold line was the About page's): earn, use and levels as three cards, four feature rows (credits, levels, rewards, what customers see), three bordered notes (the AI Store Manager on the owner's yes; what the store owes; refer a friend, linking `/affiliate-program`), questions, the main action. Claims from D130, D392, D401, D381 and D131 (store level) | draft over the live page, for the owner to publish |
+| Affiliate Program | `/affiliate-program` | 5 November 2026, with the owner's two rules (6.0), keeping the owner's eyebrow and title (*Valuable*, *Affiliate Program*; the old bold line was the About page's): refer a friend and creators as two cards, three feature rows (refer a friend, creators, what each side sees), three bordered notes (the AI Store Manager on the owner's yes; credits, linking `/bonus-program`; Kaizena Flow's own program for shop owners, on in production that day, without its rate), questions, the main action. Claims from D131 (store and platform levels) and D386 | draft over the live page, for the owner to publish |
+| Customer Care | `/customer-care` | 5 November 2026, with the owner's two rules (6.0), keeping the owner's eyebrow and title (*Customer Care*, *Built-in Support Platform*; the old bold line was the subscriptions page's): chat, inbox and AI as three cards, four feature rows (who answers, self-service, the team's inbox, after the sale), three bordered notes (the AI Store Manager, reply words approved; privacy; accounts, linking `/customer-accounts`), questions, the main action. Claims from D216 (built; `ai.ai-customer-support-chat-agent` stays Partial until the consumer texts of `docs/support.md` section 8 are reviewed), D382, D153, D417 and the Full rows for tracking and editable emails; return labels and exchanges (Partial) not claimed | draft over the live page, for the owner to publish |
+| Get started fast | `/get-started-fast` | 5 November 2026, with the owner's two rules (6.0), keeping the owner's eyebrow, title (its green italic *fast*) and bold line: a theme, the Dream Factory and moving as three cards, three feature rows (from request to an open shop, the Dream Factory, moving), three bordered notes (the AI Store Manager, opening on the owner's yes; themes, linking `/theme-store`; moves, linking `/move-your-store`), questions, the main action. Says Kaizena Flow is in a private beta, as the sign-up page does, because self-serve sign-up was off in production that day: change it when the switch is turned on. Claims from D175, D260, D339, D409, D419, D445, D384 and `setupStatus()` | draft over the live page, for the owner to publish |
+| Custom Extensions | `/custom-extensions` | 5 November 2026, a new page (the owner: any feature a shop needs can be met, in place of an app store or plugins): ask us, build it yourself and set it up as three cards, four feature rows (what is built in, asking for a feature, developers, no code), three bordered notes (built with AI and checked by thousands of automated tests; the developer docs on `docs.kaizenaflow.com`; `/compare`), questions, the main action. Claims from the Full rows of `docs/comparison-pages.md`, D216 (asking from the admin), D355, D354, D362, D439, D441 (private apps; the directory at `/apps` waits for the legal texts, so it is called planned), D356, D118, D357, D100. The offer's terms (price, who gets the feature) are not stated: the owner's to add. When the app directory opens at `/apps` (the owner's choice, not a subdomain), link it here and change *Is there an app store?* | new, unpublished: the owner adds it to a menu and publishes |
+| Selling Subscriptions | `/selling-subscriptions` | 5 November 2026: subscriptions and subscription boxes as two cards, then three feature rows (customers in charge, billing, the numbers), questions, the main action. Claims from D25, D29, D102 and `analytics.subscription-analytics`; payment retries and subscriptions of downloads or services not claimed The owner applied the two rules (6.0) in the builder and published it; nothing left to change. | draft over the live page, for the owner to publish |
 
 A page for another platform (`move-from-{platform}`) is the same eight-part shape: the hero, the three steps, what is particular to that
 platform (as WordPress's choice), what comes with you, no stress, the free move, its questions, the main action ending on *Compare us to
@@ -323,3 +368,9 @@ For the owner, not to copy:
   more*), with the old name: the page began as a copy of `/compare`.
 - The Shopify logo on *Move your store* links nowhere; it can lead to `move-your-store/move-from-shopify` (brands' `href`, D205).
 - *As your business grows - so does your Kaizena FLow.* (front page) and *KainzenaLabs* (the draft *Switch to Kaizena Flow*) are typos.
+- (5 November) A second, published page at `/kaizena-store-manager` (*Kaizena Store Manager*) holds a copy of *About us* (*Products and
+  Services*, *KaizenaLabs*, *Kaizen Life*) with no search texts, beside `/store-manager`; once the new Store Manager page is published it can
+  be unpublished, or point to `/store-manager`.
+- (5 November) The shop's interface words are hand-written in Norwegian, Swedish, Danish and English only: `commerce.ui_translations` is
+  empty, so a store in any of the other 23 languages shows its buttons, checkout and emails in English until a platform admin presses
+  *Translate and review* at Platform → Languages. Pages say *27 languages* only of a store's own words until then (`docs/site-pages/README.md`).

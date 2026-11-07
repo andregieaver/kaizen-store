@@ -29,7 +29,7 @@ export default async function OwnerLimitsPage() {
       ) : (
         stores.map((store) => (
           <Card key={store.id} title={store.name} description={w.usage.month} compact>
-            <UsageLines lines={store.lines} words={w} locale={locale} plansHref={`/admin/${store.slug}/billing`} />
+            <UsageLines lines={store.lines} words={w} locale={locale} plansHref={`/admin/${store.slug}/billing`} money={store.aiMoney} />
           </Card>
         ))
       )}

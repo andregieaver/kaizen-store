@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { describeFindings, violationsOn } from "./a11y";
 import { testDb } from "./db";
 
 /** The latest code emailed to an address (emails are recorded when Resend is not set up). */
@@ -38,14 +39,29 @@ test("a shopper signs in with an emailed code, keeps their details and signs out
   await page.getByRole("button", { name: "Logg inn", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Hei!" })).toBeVisible();
   await expect(page.getByText(`Logget inn som ${email}`)).toBeVisible();
-  await expect(page.getByText("Du har ingen bestillinger ennå.")).toBeVisible();
+  // My account opens on its overview (D480); each tab's content is in the page, the open one alone shown.
+  await expect(page.getByRole("tab", { name: "Oversikt" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel").getByText("Du har ingen bestillinger ennå.")).toBeVisible();
 
+  // The details are under Profile, which opens at once and puts itself in the address, so a reload keeps it.
+  await page.getByRole("tab", { name: "Profil" }).click();
+  await expect(page).toHaveURL(/\/account\?tab=profile$/);
   await page.getByLabel("Navn").fill("Kari Nordmann");
   await page.getByLabel("Postnummer").fill("0155");
   await page.getByRole("button", { name: "Lagre", exact: true }).click();
   await expect(page.getByText("Lagret.")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { level: 1, name: "Hei, Kari!" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Profil" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByLabel("Navn")).toHaveValue("Kari Nordmann");
+
+  // Back goes to the tab before, and the arrow keys move along the row.
+  await page.goBack();
+  await expect(page.getByRole("tab", { name: "Oversikt" })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "Oversikt" }).focus();
+  await page.keyboard.press("End");
+  await expect(page.getByRole("tab", { name: "Innstillinger" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Passord" })).toBeVisible();
 
   await page.getByRole("button", { name: "Logg ut" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Min konto" })).toBeVisible();
@@ -113,5 +129,26 @@ test("an email that has shopped before chooses a new password, and sees its orde
   await page.getByLabel("Nytt passord").fill("grønn elg danser sakte");
   await page.getByRole("button", { name: "Lagre og logg inn" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Hei!" })).toBeVisible();
-  await expect(page.getByText(`Ordre ${number}`)).toBeVisible();
+  await expect(page.getByRole("tabpanel").getByText(`Ordre ${number}`)).toBeVisible();
+});
+
+test("every tab of My account passes the accessibility scan, on a phone too (D480)", async ({ page }) => {
+  const email = `faner-${Date.now().toString(36)}@example.com`;
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("/s/demo/no/account");
+  await page.getByLabel("E-post").fill(email);
+  await page.getByRole("button", { name: "Send kode" }).click();
+  await expect(page.getByText(`Vi har sendt en kode til ${email}`)).toBeVisible();
+  await page.getByLabel("Kode").fill(await latestCode(email));
+  await page.getByRole("button", { name: "Logg inn", exact: true }).click();
+  await expect(page.getByRole("tab", { name: "Oversikt" })).toHaveAttribute("aria-selected", "true");
+
+  for (const tab of ["Oversikt", "Bestillinger", "Profil", "Innstillinger"]) {
+    await page.getByRole("tab", { name: tab }).click();
+    await expect(page.getByRole("tabpanel", { name: tab })).toBeVisible();
+    // The four tabs fit a narrow phone: nothing reaches past the screen's edge.
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), tab).toBe(true);
+    // The store's phone bar is every page's, not My account's: its menu button says Meny but is named Åpne menyen (a separate fix).
+    expect(describeFindings(await violationsOn(page, { exclude: ["[data-open-menu]"] })), tab).toEqual([]);
+  }
 });

@@ -24,7 +24,12 @@ export type PublicPlan = {
   limits?: { key: LimitKey; value: number | null }[];
 };
 
-export type PublicPlans = { plans: PublicPlan[]; features: Omit<PlanFeature, "planIds">[] };
+export type PublicPlans = {
+  plans: PublicPlan[];
+  features: Omit<PlanFeature, "planIds">[];
+  /** The ECB's latest rate of each currency, units per euro (D481): the AI a plan includes is in euros, and shown in the page's currency. */
+  euroRates?: Record<string, number>;
+};
 
 export type PlanCardPrice = { amountMinor: number; currency: string; interval: PlanInterval };
 
@@ -36,7 +41,7 @@ export type PlanCard = {
   /** The price each card leads with, and the other one under it when the block shows both. */
   main: PlanCardPrice;
   other: PlanCardPrice | null;
-  /** Whole percent a year's price saves against twelve months, when both exist and it is at least 1. */
+  /** Whole percent a year's price saves against twelve months, when both exist, it is at least 1, and the yearly price is shown. */
   yearlySavingPercent: number | null;
   features: { id: string; name: string; description: string }[];
   /** What the plan includes of its limits (D314). */
@@ -92,7 +97,8 @@ export function planCards(
       saleFeeBps: plan.saleFeeBps,
       main: first,
       other,
-      yearlySavingPercent: monthly && yearly && !options.interval ? yearlySaving(monthly.amountMinor, yearly.amountMinor) : null,
+      // Said where the yearly price shows: under the monthly one, or leading the card.
+      yearlySavingPercent: monthly && yearly && (!options.interval || first === yearly) ? yearlySaving(monthly.amountMinor, yearly.amountMinor) : null,
       features: plan.featureIds
         .map((id) => featuresById.get(id))
         .filter((f): f is NonNullable<typeof f> => Boolean(f))
@@ -103,6 +109,12 @@ export function planCards(
     });
   }
   return { currency, cards };
+}
+
+/** The most a yearly price saves among the cards, for the switch between monthly and yearly; null when none saves. */
+export function bestYearlySaving(cards: readonly PlanCard[]): number | null {
+  const savings = cards.map((card) => card.yearlySavingPercent).filter((p): p is number => p !== null);
+  return savings.length > 0 ? Math.max(...savings) : null;
 }
 
 /** The comparison table: the features by category, and for each whether each shown card's plan includes it. */
