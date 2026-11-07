@@ -7,9 +7,14 @@ import { db } from "@/db/client";
 import type { BookingDoc } from "@/lib/accounting-docs";
 import {
   BUCKET_VAT,
+  FX_GAIN_ACCOUNT,
+  FX_LOSS_ACCOUNT,
   LEDGER_KINDS,
+  PAYMENT_ACCOUNTS,
   entryName,
   entryOfDoc,
+  entryOfPayment,
+  entryOfPaymentReversal,
   entryProblems,
   isDay,
   isVatCode,
@@ -24,6 +29,8 @@ import {
   type EntryProblem,
   type LedgerEntryInput,
   type LedgerPosting,
+  type PaymentMethod,
+  type PaymentProblem,
   type TrialBalance,
 } from "@/lib/ledger";
 import { mainCurrency } from "@/lib/markets";
@@ -294,7 +301,14 @@ async function postingOf(storeId: string): Promise<LedgerPosting> {
 
 /** The accounts a posting needs, added to the book's chart where it lacks a standard one (a store's Tripletex settings may book to 3020). */
 async function chartFor(storeId: string, bookId: string, posting: LedgerPosting): Promise<void> {
-  const needed = new Set([posting.receivable, ...Object.values(posting.income), ...Object.values(BUCKET_VAT).flatMap((v) => (v.vatAccount ? [v.vatAccount] : []))]);
+  const needed = new Set([
+    posting.receivable,
+    ...Object.values(posting.income),
+    ...Object.values(BUCKET_VAT).flatMap((v) => (v.vatAccount ? [v.vatAccount] : [])),
+    ...Object.values(PAYMENT_ACCOUNTS),
+    FX_GAIN_ACCOUNT,
+    FX_LOSS_ACCOUNT,
+  ]);
   const have = new Set((await ledgerAccounts(bookId)).map((a) => a.number));
   for (const number of needed) if (!have.has(number) && standardOf(number)) await addLedgerAccount(storeId, bookId, { number });
 }
@@ -321,11 +335,12 @@ async function docRateOf(storeId: string, kind: DocumentKind, id: string, bookCu
   return Number.isSafeInteger(vatHomeMinor) ? { rate: row.fx_rate, vatHomeMinor } : null;
 }
 
-const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note"]), id: col.text });
+const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note", "work_payment"]), id: col.text });
 
 /**
  * The documents of a book's days not posted yet, the oldest first, invoices before credit notes: the same as Tripletex books (Work's sent
- * invoices, not imported ones, and credit notes; the shop's invoices and credit notes), each once. One that has an entry (even one a person
+ * invoices, not imported ones, and credit notes; the shop's invoices and credit notes), each once; and the payments for Work's invoices
+ * received in those days (step 2c), an imported invoice's too (its receivable is in the opening balance), a reversal after what it reverses. One that has an entry (even one a person
  * reversed) is done; one that waits is tried again a day after it was last tried.
  */
 async function dueDocuments(storeId: string, book: { id: string; opened_on: string; closed_on: string | null }, limit: number): Promise<z.infer<typeof DUE>[]> {
@@ -346,6 +361,10 @@ async function dueDocuments(storeId: string, book: { id: string; opened_on: stri
         union all
         select 'shop_credit_note', id::text, issued_on, 1 from commerce.credit_notes
          where store_id = ${storeId}::uuid and length(document_number) between 1 and 50 and issued_on between ${book.opened_on}::date and ${to}::date
+        union all
+        select 'work_payment', p.id::text, p.received_on, case when p.reverses is null then 2 else 3 end from commerce.work_invoice_payments p
+          join commerce.work_invoices i on i.store_id = p.store_id and i.id = p.invoice_id
+         where p.store_id = ${storeId}::uuid and i.status <> 'draft' and p.received_on between ${book.opened_on}::date and ${to}::date
       ) d
       where not exists (select 1 from commerce.ledger_entries e where e.book_id = ${book.id}::uuid and e.source_kind = d.kind and e.source_id = d.id)
         and not exists (select 1 from commerce.ledger_waiting w where w.book_id = ${book.id}::uuid and w.source_kind = d.kind and w.source_id = d.id
@@ -354,6 +373,88 @@ async function dueDocuments(storeId: string, book: { id: string; opened_on: stri
       limit ${limit}
     `,
   );
+}
+
+const PAYMENT = z.object({
+  id: col.uuid,
+  amount_minor: col.minor,
+  currency: col.currency,
+  received_on: col.text,
+  method: z.enum(["bank", "card", "cash", "other", "stripe", "prepaid"]),
+  reverses: col.textOrNull,
+  document_number: col.text,
+  buyer_name: col.textOrNull,
+  invoice_currency: col.currency,
+  invoice_rate: col.textOrNull,
+});
+
+/** Units of the book's currency for one of another on a day: the ECB's rates of that day, or of the last day they were published before it. */
+async function rateOnDay(bookCurrency: string, currency: string, day: string): Promise<string | null> {
+  const row = await typedRow(
+    z.object({ rate: col.textOrNull }),
+    sql`
+      select (
+        (case when ${bookCurrency} = 'EUR' then 1::numeric
+              else (select r.rate from commerce.ecb_reference_rates r where r.currency = ${bookCurrency} and r.rate_date <= ${day}::date order by r.rate_date desc limit 1) end)
+        / nullif(case when ${currency} = 'EUR' then 1::numeric
+              else (select r.rate from commerce.ecb_reference_rates r where r.currency = ${currency} and r.rate_date <= ${day}::date order by r.rate_date desc limit 1) end, 0)
+      )::text as rate
+    `,
+  );
+  return row?.rate ?? null;
+}
+
+/**
+ * Posts a payment for a Work invoice (step 2c, `entryOfPayment()`): the money where its method says against the receivable, in the bank
+ * series on its day; in another currency at the invoice's rate and the day's, the difference a gain or a loss. A reversal turns the entry of
+ * the payment it takes back, and waits until that one is posted.
+ */
+async function postPayment(
+  storeId: string,
+  book: { id: string; currency: string },
+  posting: LedgerPosting,
+  id: string,
+): Promise<{ ok: true; id: string } | { ok: false; problem: PaymentProblem | PostProblem | "original" | "unreadable" }> {
+  const payment = await typedRow(
+    PAYMENT,
+    sql`
+      select p.id, p.amount_minor, p.currency, p.received_on::text, p.method, p.reverses::text,
+             i.document_number, i.buyer ->> 'name' as buyer_name, i.currency as invoice_currency, i.fx_rate::text as invoice_rate
+        from commerce.work_invoice_payments p
+        join commerce.work_invoices i on i.store_id = p.store_id and i.id = p.invoice_id
+       where p.store_id = ${storeId}::uuid and p.id = ${id}::uuid
+    `,
+  );
+  if (!payment) return { ok: false, problem: "unreadable" };
+  const facts = { id: payment.id, invoiceNumber: payment.document_number, counterparty: payment.buyer_name, receivedOn: payment.received_on };
+  let made: ReturnType<typeof entryOfPayment>;
+  if (payment.reverses) {
+    const original = await typedRows(
+      z.object({ account: col.int, amount_minor: col.minor }),
+      sql`
+        select l.account, l.amount_minor from commerce.ledger_lines l
+          join commerce.ledger_entries e on e.id = l.entry_id
+         where e.book_id = ${book.id}::uuid and e.source_kind = 'work_payment' and e.source_id = ${payment.reverses}
+         order by l.line
+      `,
+    );
+    if (original.length === 0) return { ok: false, problem: "original" };
+    made = entryOfPaymentReversal(facts, original.map((l) => ({ account: l.account, amountMinor: l.amount_minor })));
+  } else {
+    const foreign = payment.currency !== book.currency;
+    if (foreign && payment.invoice_currency !== payment.currency) return { ok: false, problem: "currency" };
+    const day = foreign ? await rateOnDay(book.currency, payment.currency, payment.received_on) : null;
+    const rates = foreign && payment.invoice_rate && day ? { invoice: payment.invoice_rate, day } : null;
+    made = entryOfPayment(
+      { ...facts, amountMinor: payment.amount_minor, currency: payment.currency, method: payment.method as PaymentMethod },
+      posting,
+      book.currency,
+      rates,
+    );
+  }
+  if (!made.ok) return made;
+  const posted = await postLedgerEntry(book.id, made.entry, null);
+  return posted.ok ? posted : { ok: false, problem: posted.problems[0] };
 }
 
 /** What waits in a book, and why: for the books' screen. */
@@ -382,9 +483,13 @@ export async function postDueDocuments(
   let waiting = 0;
   for (const d of due) {
     if (options.deadline && Date.now() > options.deadline) break;
-    const loaded = await loadDocument(storeId, d.kind as DocumentKind, d.id);
-    const fx = loaded && loaded.doc.currency !== book.currency ? await docRateOf(storeId, d.kind as DocumentKind, d.id, book.currency) : null;
-    const result = loaded ? await postLedgerDoc({ id: book.id, currency: book.currency }, loaded.doc, posting, null, fx) : { ok: false as const, problem: "unreadable" };
+    let result: { ok: true; id: string } | { ok: false; problem: string };
+    if (d.kind === "work_payment") result = await postPayment(storeId, book, posting, d.id);
+    else {
+      const loaded = await loadDocument(storeId, d.kind as DocumentKind, d.id);
+      const fx = loaded && loaded.doc.currency !== book.currency ? await docRateOf(storeId, d.kind as DocumentKind, d.id, book.currency) : null;
+      result = loaded ? await postLedgerDoc({ id: book.id, currency: book.currency }, loaded.doc, posting, null, fx) : { ok: false as const, problem: "unreadable" };
+    }
     if (result.ok) {
       posted += 1;
       await db().execute(sql`delete from commerce.ledger_waiting where book_id = ${book.id}::uuid and source_kind = ${d.kind} and source_id = ${d.id}`);

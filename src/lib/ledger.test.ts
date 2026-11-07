@@ -2,13 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import type { BookingDoc } from "./accounting-docs";
 import {
+  FX_GAIN_ACCOUNT,
+  FX_LOSS_ACCOUNT,
   NO_POSTING,
+  PAYMENT_ACCOUNTS,
   compareWithTheirs,
   isVatAccount,
   NO_STANDARD_ACCOUNTS,
   NO_TAX_CODES,
   entryName,
   entryOfDoc,
+  entryOfPayment,
+  entryOfPaymentReversal,
   entryProblems,
   isVatCode,
   noKindOf,
@@ -184,3 +189,81 @@ describe("an entry compared with its voucher in Tripletex", () => {
   });
 });
 
+describe("a payment for an invoice, posted", () => {
+  const paid = { id: "pay-1", invoiceNumber: "1042", counterparty: "Kunde AS", receivedOn: "2027-01-20", amountMinor: 137_500, currency: "NOK", method: "bank" as const };
+
+  it("puts the money in the bank against the receivable, in the bank series on its day", () => {
+    const posted = entryOfPayment(paid, NO_POSTING, "NOK");
+    expect(posted).toEqual({
+      ok: true,
+      entry: {
+        series: "B",
+        date: "2027-01-20",
+        text: "Innbetaling faktura 1042, Kunde AS",
+        source: { kind: "work_payment", id: "pay-1" },
+        lines: [
+          { account: 1920, amountMinor: 137_500, vatCode: null },
+          { account: 1500, amountMinor: -137_500, vatCode: null },
+        ],
+      },
+    });
+    expect(posted.ok && entryProblems(posted.entry)).toEqual([]);
+  });
+
+  it("knows where each way of paying puts the money, and turns the signs for money paid back", () => {
+    expect(PAYMENT_ACCOUNTS).toEqual({ bank: 1920, other: 1920, cash: 1900, card: 1579, stripe: 1579, prepaid: 2900 });
+    const stripe = entryOfPayment({ ...paid, method: "stripe" }, { receivable: 1510 }, "NOK");
+    expect(stripe.ok && stripe.entry.lines.map((l) => [l.account, l.amountMinor])).toEqual([[1579, 137_500], [1510, -137_500]]);
+    const back = entryOfPayment({ ...paid, amountMinor: -20_000 }, NO_POSTING, "NOK");
+    expect(back.ok && back.entry.text).toBe("Tilbakebetaling faktura 1042, Kunde AS");
+    expect(back.ok && back.entry.lines.map((l) => l.amountMinor)).toEqual([-20_000, 20_000]);
+    expect(entryOfPayment({ ...paid, amountMinor: 0 }, NO_POSTING, "NOK")).toEqual({ ok: false, problem: "nothing" });
+  });
+
+  it("in another currency: the receivable at the invoice's rate, the money at the day's, and the difference a gain or a loss", () => {
+    const eur = { ...paid, amountMinor: 100_000, currency: "EUR" };
+    expect(entryOfPayment(eur, NO_POSTING, "NOK")).toEqual({ ok: false, problem: "currency" });
+    // Invoiced at 11.50, paid when a euro was 11.62: 11 500 kroner owed, 11 620 received, 120 gained.
+    const gained = entryOfPayment(eur, NO_POSTING, "NOK", { invoice: "11.5", day: "11.62" });
+    expect(gained.ok && gained.entry.lines).toEqual([
+      { account: 1920, amountMinor: 1_162_000, vatCode: null },
+      { account: 1500, amountMinor: -1_150_000, vatCode: null },
+      { account: FX_GAIN_ACCOUNT, amountMinor: -12_000, vatCode: null },
+    ]);
+    expect(gained.ok && entryProblems(gained.entry)).toEqual([]);
+    const lost = entryOfPayment(eur, NO_POSTING, "NOK", { invoice: "11.5", day: "11.4321" });
+    expect(lost.ok && lost.entry.lines).toEqual([
+      { account: 1920, amountMinor: 1_143_210, vatCode: null },
+      { account: 1500, amountMinor: -1_150_000, vatCode: null },
+      { account: FX_LOSS_ACCOUNT, amountMinor: 6_790, vatCode: null },
+    ]);
+    // The same rate both days: no difference to post.
+    const same = entryOfPayment(eur, NO_POSTING, "NOK", { invoice: "11.5", day: "11.5" });
+    expect(same.ok && same.entry.lines).toHaveLength(2);
+    expect(entryOfPayment(eur, NO_POSTING, "NOK", { invoice: "0", day: "11.5" })).toEqual({ ok: false, problem: "currency" });
+  });
+
+  it("reverses a mistaken payment by turning its own entry, exchange difference and all", () => {
+    const original = [
+      { account: 1920, amountMinor: 1_162_000 },
+      { account: 1500, amountMinor: -1_150_000 },
+      { account: 8060, amountMinor: -12_000 },
+    ];
+    const reversed = entryOfPaymentReversal({ id: "pay-2", invoiceNumber: "1042", counterparty: null, receivedOn: "2027-01-22" }, original);
+    expect(reversed).toEqual({
+      ok: true,
+      entry: {
+        series: "B",
+        date: "2027-01-22",
+        text: "Reversert innbetaling faktura 1042",
+        source: { kind: "work_payment", id: "pay-2" },
+        lines: [
+          { account: 1920, amountMinor: -1_162_000, vatCode: null },
+          { account: 1500, amountMinor: 1_150_000, vatCode: null },
+          { account: 8060, amountMinor: 12_000, vatCode: null },
+        ],
+      },
+    });
+    expect(entryOfPaymentReversal({ id: "x", invoiceNumber: "1", counterparty: null, receivedOn: "2027-01-22" }, [])).toEqual({ ok: false, problem: "nothing" });
+  });
+});

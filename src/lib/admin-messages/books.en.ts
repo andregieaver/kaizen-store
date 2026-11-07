@@ -27,7 +27,7 @@ export const booksEn = {
   waiting: {
     title: "Waiting for you",
     count: { one: "{n} document could not be posted yet", many: "{n} documents could not be posted yet" },
-    kinds: { work_invoice: "Invoice", work_credit_note: "Credit note", shop_invoice: "Shop invoice", shop_credit_note: "Shop credit note" } as Record<string, string>,
+    kinds: { work_invoice: "Invoice", work_credit_note: "Credit note", shop_invoice: "Shop invoice", shop_credit_note: "Shop credit note", work_payment: "Payment" } as Record<string, string>,
     problems: {
       currency: "in another currency than the books, with no rate of its own",
       vat_unmapped: "a VAT kind with no account",
@@ -37,6 +37,7 @@ export const booksEn = {
       open: "its day is outside the books",
       account: "an account is not in the chart",
       unreadable: "it could not be read",
+      original: "the payment it takes back is not posted yet",
     } as Record<string, string>,
     since: "since {day}",
   },

@@ -126,6 +126,51 @@ describe("a store's documents, posted to its books", () => {
     expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 0, waiting: 1 });
   });
 
+  it("posts a Work invoice's payments: the money against the receivable, a reversal turning it back, and one in euro with its difference of exchange", async () => {
+    const { storeId, actor } = await workStore();
+    const book = await openBook(storeId, actor.account.id);
+    const nok = await issued(actor, await client(storeId));
+    const [{ d: today }] = await db().execute<Row>(sql`select current_date::text as d`);
+    const paid = ok(await invoices.recordPayment(actor, { invoiceId: nok, amountMinor: 1_000_000, receivedOn: String(today), method: "bank" })).paymentId;
+    const reversal = ok(await invoices.reversePayment(actor, { paymentId: paid })).reversalId;
+    const card = ok(await invoices.recordPayment(actor, { invoiceId: nok, amountMinor: 500_000, receivedOn: String(today), method: "card" })).paymentId;
+
+    // The invoice, then its payments, the reversal after the payment it takes back.
+    expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 4, waiting: 0 });
+    expect(await entriesOf(book.id, paid)).toEqual([
+      { source_kind: "work_payment", account: 1920, amount: 1_000_000, vat_code: null },
+      { source_kind: "work_payment", account: 1500, amount: -1_000_000, vat_code: null },
+    ]);
+    expect(await entriesOf(book.id, reversal)).toEqual([
+      { source_kind: "work_payment", account: 1920, amount: -1_000_000, vat_code: null },
+      { source_kind: "work_payment", account: 1500, amount: 1_000_000, vat_code: null },
+    ]);
+    // A card payment is with the payment provider until its payout reaches the bank.
+    expect(await entriesOf(book.id, card)).toEqual([
+      { source_kind: "work_payment", account: 1579, amount: 500_000, vat_code: null },
+      { source_kind: "work_payment", account: 1500, amount: -500_000, vat_code: null },
+    ]);
+    const [series] = await db().execute<Row>(sql`select array_agg(distinct series order by series) as s from commerce.ledger_entries where book_id = ${book.id}::uuid`);
+    expect(series.s).toEqual(["B", "S"]);
+
+    // In euro: the receivable at the invoice's 11.5, the money at the ECB's rate of the day, the difference a gain or a loss.
+    const eur = await issued(actor, await client(storeId, "EUR"), { fxRate: "11.5" });
+    await db().execute(sql`insert into commerce.ecb_reference_rates (rate_date, currency, rate) values (current_date, 'NOK', 11.62) on conflict do nothing`);
+    const [{ rate }] = await db().execute<Row>(sql`select rate::text as rate from commerce.ecb_reference_rates where currency = 'NOK' and rate_date <= current_date order by rate_date desc limit 1`);
+    const eurPaid = ok(await invoices.recordPayment(actor, { invoiceId: eur, amountMinor: 1_500_000, receivedOn: String(today), method: "bank" })).paymentId;
+    expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 2, waiting: 0 });
+    const money = Math.round(1_500_000 * Number(rate));
+    const difference = money - 17_250_000;
+    expect(await entriesOf(book.id, eurPaid)).toEqual([
+      { source_kind: "work_payment", account: 1920, amount: money, vat_code: null },
+      { source_kind: "work_payment", account: 1500, amount: -17_250_000, vat_code: null },
+      ...(difference === 0 ? [] : [{ source_kind: "work_payment", account: difference > 0 ? 8060 : 8160, amount: -difference, vat_code: null }]),
+    ]);
+    // Every entry balances, and the books with it.
+    const [sum] = await db().execute<Row>(sql`select coalesce(sum(amount_minor), 0)::bigint::text as s from commerce.ledger_lines where book_id = ${book.id}::uuid`);
+    expect(sum.s).toBe("0");
+  });
+
   it("posts a shop order's invoice, by the dispatcher's job", async () => {
     const shop = await fx.makeStore(`ldg-shop-${run}`);
     const book = await openBook(shop.storeId, shop.ownerId);

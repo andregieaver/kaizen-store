@@ -328,4 +328,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   ever changed or deleted: a mistake is put right by `commerce.ledger_reverse()`, once. Amounts are the book's currency's minor units, a
   debit positive. Norway's chart and VAT codes are Skatteetaten's published SAF-T files, kept as they are; an account reports as a standard
   account (or a sub-account of one). A document is posted where the store's Tripletex settings book it (`postingOfTripletex()`), so the
-  books can be compared account by account. Never post around the function, and never post a document's amounts but through `entryOfDoc()`.
+  books can be compared account by account. Never post around the function, and never post a document's amounts but through `entryOfDoc()`,
+  a Work invoice's payment but through `entryOfPayment()` (the money where its method puts it, `PAYMENT_ACCOUNTS`, against the receivable;
+  in another currency at the invoice's rate and the day's, the difference on 8060 or 8160), or a payment's reversal but through
+  `entryOfPaymentReversal()`, which turns the payment's own entry.

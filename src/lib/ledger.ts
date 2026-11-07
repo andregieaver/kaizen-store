@@ -266,6 +266,116 @@ function convertLines(
   return { incomeLines: income, vatLines: vat, total };
 }
 
+/** How money for a Work invoice came in (`work_invoice_payments.method`). */
+export type PaymentMethod = "bank" | "card" | "cash" | "other" | "stripe" | "prepaid";
+
+/**
+ * Where money received for an invoice is (D478 step 2c): the bank; the till; a card or Stripe payment with the payment provider until its
+ * payout reaches the bank (other short-term receivables, which the payout clears, step 2c's payouts); a prepayment the client made earlier.
+ */
+export const PAYMENT_ACCOUNTS: Record<PaymentMethod, number> = { bank: 1920, other: 1920, cash: 1900, card: 1579, stripe: 1579, prepaid: 2900 };
+
+/** Where the difference of exchange between an invoice's day and its payment's goes: a gain (agio) or a loss (disagio). */
+export const FX_GAIN_ACCOUNT = 8060;
+export const FX_LOSS_ACCOUNT = 8160;
+
+/** A payment for a Work invoice, as posted: received (positive) or paid back (negative), in the invoice's currency. */
+export type PaymentDoc = {
+  id: string;
+  invoiceNumber: string;
+  counterparty: string | null;
+  receivedOn: string;
+  amountMinor: number;
+  currency: string;
+  method: PaymentMethod;
+};
+
+/**
+ * A payment in another currency than the book's: units of the book's currency for one of the payment's, at the invoice's own rate (as its
+ * receivable was posted) and on the payment's day (the ECB's, what the money was worth when it came).
+ */
+export type PaymentRates = { invoice: string; day: string };
+
+export type PaymentProblem = "currency" | "nothing";
+
+/**
+ * A payment as an entry in the bank series on its day: the money where it is (`PAYMENT_ACCOUNTS`) against the receivable; a payment paid
+ * back the same with the signs turned. In another currency, the money is worth what it was on the payment's day and the receivable what it
+ * was posted at, and the difference is an exchange gain or loss. A reversal of a payment is not this: it turns the payment's own entry.
+ */
+export function entryOfPayment(
+  payment: PaymentDoc,
+  posting: Pick<LedgerPosting, "receivable">,
+  bookCurrency: string,
+  rates: PaymentRates | null = null,
+): { ok: true; entry: LedgerEntryInput } | { ok: false; problem: PaymentProblem } {
+  if (!Number.isSafeInteger(payment.amountMinor) || payment.amountMinor === 0) return { ok: false, problem: "nothing" };
+  const foreign = payment.currency.toUpperCase() !== bookCurrency.toUpperCase();
+  let money = payment.amountMinor;
+  let receivable = payment.amountMinor;
+  if (foreign) {
+    if (!rates) return { ok: false, problem: "currency" };
+    const atInvoice = inBook(payment.amountMinor, payment.currency, bookCurrency, rates.invoice);
+    const atDay = inBook(payment.amountMinor, payment.currency, bookCurrency, rates.day);
+    if (atInvoice === null || atDay === null) return { ok: false, problem: "currency" };
+    receivable = atInvoice;
+    money = atDay;
+  }
+  const difference = money - receivable;
+  const lines: LedgerLineInput[] = [
+    { account: PAYMENT_ACCOUNTS[payment.method], amountMinor: money, vatCode: null },
+    { account: posting.receivable, amountMinor: -receivable, vatCode: null },
+    ...(difference > 0 ? [{ account: FX_GAIN_ACCOUNT, amountMinor: -difference, vatCode: null }] : []),
+    ...(difference < 0 ? [{ account: FX_LOSS_ACCOUNT, amountMinor: -difference, vatCode: null }] : []),
+  ].filter((l) => l.amountMinor !== 0);
+  if (lines.length < 2) return { ok: false, problem: "nothing" };
+  const word = payment.amountMinor > 0 ? "Innbetaling" : "Tilbakebetaling";
+  return {
+    ok: true,
+    entry: {
+      series: LEDGER_SERIES.bank,
+      date: payment.receivedOn,
+      text: clipText(`${word} faktura ${payment.invoiceNumber}${payment.counterparty ? `, ${payment.counterparty}` : ""}`, 200),
+      source: { kind: "work_payment", id: payment.id },
+      lines,
+    },
+  };
+}
+
+/** An amount in another currency in the book's, at a rate (book units for one of the other), rounded to the book's minor unit; null for a rate that is not a positive number. */
+function inBook(amountMinor: number, from: string, to: string, rate: string): number | null {
+  const r = Number(rate);
+  if (!Number.isFinite(r) || r <= 0) return null;
+  try {
+    const converted = Math.round(amountMinor * r * 10 ** (minorUnitDigits(to) - minorUnitDigits(from)));
+    return Number.isSafeInteger(converted) && converted !== 0 ? converted : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The reversal of a payment (`work_invoice_payments.reverses`): the payment's own entry with every line turned, on the reversal's day, so
+ * what a mistaken payment moved is moved back to the øre, its exchange difference too.
+ */
+export function entryOfPaymentReversal(
+  reversal: { id: string; invoiceNumber: string; counterparty: string | null; receivedOn: string },
+  original: readonly { account: number; amountMinor: number }[],
+): { ok: true; entry: LedgerEntryInput } | { ok: false; problem: PaymentProblem } {
+  const lines = original.filter((l) => l.amountMinor !== 0).map((l) => ({ account: l.account, amountMinor: -l.amountMinor, vatCode: null }));
+  if (lines.length < 2) return { ok: false, problem: "nothing" };
+  return {
+    ok: true,
+    entry: {
+      series: LEDGER_SERIES.bank,
+      date: reversal.receivedOn,
+      text: clipText(`Reversert innbetaling faktura ${reversal.invoiceNumber}${reversal.counterparty ? `, ${reversal.counterparty}` : ""}`, 200),
+      source: { kind: "work_payment", id: reversal.id },
+      lines,
+    },
+  };
+}
+
 /** The posting a store's Tripletex settings make (its receivable and each bucket's account), over Norway's defaults. */
 export function postingOfTripletex(settings: { receivableAccount: number; bookings: Partial<Record<BookingKey, { account: number }>> } | null): LedgerPosting {
   if (!settings) return NO_POSTING;
