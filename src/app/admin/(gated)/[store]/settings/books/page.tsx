@@ -240,6 +240,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
             );
             return owner ? (
               <ActionForm action={payFromBankAction.bind(null, store.slug)} className="flex flex-col gap-2">
+                {/* Enter in a field presses the form's first button: a disabled one first, so it presses none (only a button pressed acts). */}
+                <button type="submit" disabled hidden aria-hidden="true" tabIndex={-1} />
                 {list}
               </ActionForm>
             ) : (
