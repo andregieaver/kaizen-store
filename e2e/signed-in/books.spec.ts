@@ -54,7 +54,10 @@ test("an owner posts an entry by hand, finds it in the journal and reverses it",
   const journal = page.getByRole("region", { name: "Journal" });
   const entry = journal.getByRole("listitem").filter({ hasText: words });
   await expect(entry).toBeVisible({ timeout: 30_000 });
-  await entry.getByText("Reverse", { exact: true }).click();
+  await entry.locator("summary", { hasText: "Reverse" }).click();
   await entry.getByRole("button", { name: "Reverse" }).click();
-  await expect(journal.getByRole("listitem").filter({ hasText: words }).first().getByText(/Reversed by M\d{4}-\d+/)).toBeVisible({ timeout: 30_000 });
+  // The entry says which reversed it, and the reversal (newest, its words naming the entry) which it reverses.
+  const withWords = journal.getByRole("listitem").filter({ hasText: words });
+  await expect(withWords.filter({ hasText: /Reversed by M\d{4}-\d+/ })).toHaveCount(1, { timeout: 30_000 });
+  await expect(withWords.filter({ hasText: /Reverses M\d{4}-\d+/ })).toHaveCount(1);
 });
