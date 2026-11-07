@@ -359,7 +359,7 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 1. Do the amended Bookkeeping Regulations (29 September 2026) put duties on the vendor of an accounting system?
 2. When can a *systembruker* send the VAT return, so no one signs in with ID-porten each time?
 3. What of the annual accounts and the business's tax return can be submitted by API for a small AS?
-4. Which access point serves Norway and the other EU e-invoicing mandates, with an API and EU processing, at what price?
+4. Which access point serves Norway and the other EU e-invoicing mandates, with an API and EU processing, at what price? *Compared 7 November 2026 in `docs/peppol-access-points.md`: Recommand first, Storecove as the fallback, with the questions to ask before signing; the owner chooses and signs (section 6, item 1).*
 5. Account-information providers: DNB business accounts (ENK and AS), the KID in the transaction data, consent length, payment
    initiation, price. DNB's bank integration: the terms for an accounting system, the messages a small business gets, lead time.
 6. Gmail's security assessment: cost and time.
