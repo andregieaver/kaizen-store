@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import { db } from "@/db/client";
@@ -64,6 +65,17 @@ export async function houseStoreId(runner?: Tx): Promise<string | null> {
     runner,
   );
   return row?.id ?? null;
+}
+
+/**
+ * Kaizena Flow's own store, for what a page draws (`ThemeStoreSection` on its store's pages, D484): cached, as the store is made once by
+ * its migration (D466) and never changes. An uncached read there stops a store's prerendered page from drawing at all.
+ */
+export async function houseStoreIdCached(): Promise<string | null> {
+  "use cache";
+  cacheLife("days");
+  cacheTag("house-store");
+  return houseStoreId();
 }
 
 /** The house customer of an account (an owner), for the platform's Customers page: null when there is none yet. */

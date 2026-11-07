@@ -4,7 +4,7 @@ import type { ThemeStoreBlock } from "@/lib/page-content";
 import type { PlatformLang } from "@/lib/platform-lang";
 import { inLanguage, parseThemeFilter, type ThemeFilter, type ThemeStoreCard } from "@/lib/theme-store";
 import type { GridPlace } from "@/server/content-grid";
-import { houseStoreId } from "@/server/house-customers";
+import { houseStoreIdCached } from "@/server/house-customers";
 import { themePageIn, themeStoreCards, themeStorePage } from "@/server/theme-store";
 
 import { ThemeDetailsPart, ThemeFeaturesPart, ThemeHighlightsPart, ThemeLivePart, ThemePicturesPart, ThemeStagePart } from "./theme-page-parts";
@@ -18,8 +18,9 @@ const NO_FILTER: ThemeFilter = { kind: null, style: null, feature: null };
  * theme's page). Anywhere else a theme's part draws nothing, as does any part on a store's page but Kaizena Flow's own store's (D469).
  */
 export async function ThemeStoreSection({ block, place }: { block: ThemeStoreBlock; place: GridPlace }) {
-  // Kaizena Flow's pages, and its own store's (D469, step 4 of the plan), where its site moves.
-  if (place.owner !== null && place.owner !== (await houseStoreId())) return null;
+  // Kaizena Flow's pages, and its own store's (D469, step 4 of the plan), where its site moves: read cached, as a store's page is
+  // prerendered and an uncached read stops it drawing (the theme store answered 500 once the site was served from the store, D484).
+  if (place.owner !== null && place.owner !== (await houseStoreIdCached())) return null;
   // The page's language (D312 P3): the cards and parts in it, the theme's own words where it has them in it.
   const lang = place.lang ?? "en";
   if (block.part === "list") {
