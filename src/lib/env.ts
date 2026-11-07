@@ -164,7 +164,7 @@ export function shopifyEnv(
 }
 
 /**
- * Kaizena Flow's Sendcloud Tech Partner id (D454, `docs/sendcloud-labels.md`), sent as `Sendcloud-Partner-Id` on every call once
+ * Kaizena Flow's Sendcloud Tech Partner id (D483, `docs/sendcloud-labels.md`), sent as `Sendcloud-Partner-Id` on every call once
  * Sendcloud has approved the integration; Sendcloud refuses an id it does not know, so it stays unset until then. Null without it.
  */
 export function sendcloudPartnerId(source: Record<string, string | undefined> = { SENDCLOUD_PARTNER_ID: process.env.SENDCLOUD_PARTNER_ID }): string | null {

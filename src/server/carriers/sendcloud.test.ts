@@ -26,7 +26,7 @@ function sendcloud(answers: Response[]) {
 
 afterEach(() => vi.unstubAllEnvs());
 
-describe("Sendcloud's connection (D454 step 1)", () => {
+describe("Sendcloud's connection (D483 step 1)", () => {
   it("checks the keys with a harmless read of the sender addresses, on API v3 with Basic auth", async () => {
     const s = sendcloud([json({ data: [address(1, "Berlin")] })]);
     expect(await createSendcloudAdapter(s.fetcher).check(context())).toEqual({ ok: true });

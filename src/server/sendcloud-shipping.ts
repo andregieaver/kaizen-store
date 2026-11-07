@@ -6,7 +6,7 @@ import { readSenders } from "./carriers/sendcloud";
 import { carrierContext } from "./shipping-carriers";
 
 /**
- * What the Sendcloud page offers as sender addresses (D454 step 1): the shop's own addresses, read from its Sendcloud account with
+ * What the Sendcloud page offers as sender addresses (D483 step 1): the shop's own addresses, read from its Sendcloud account with
  * its saved keys when the page is drawn, so the owner chooses one rather than typing an id. Null before the keys are saved; the
  * sentence to show when Sendcloud does not answer or refuses. The page never sees the keys.
  */

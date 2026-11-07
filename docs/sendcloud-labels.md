@@ -1,4 +1,4 @@
-# Labels without a carrier agreement: Sendcloud (D454)
+# Labels without a carrier agreement: Sendcloud (D483)
 
 The owner (5 November 2026), on the Shopify comparison's *Where Shopify is the better fit*: "You want to buy labels from Shopify itself, with
 no carrier agreement of your own, shipping from a country such as Germany or France ... we should be able to solve easily", then "Write the

@@ -5,7 +5,7 @@ import { nextPage, parseSenders, SENDCLOUD_API, sendcloudHeaders, sendcloudProbl
 import type { CarrierContext, ShippingCarrierAdapter } from "@/lib/shipping-carriers";
 
 /**
- * Sendcloud's connection (D454, `docs/sendcloud-labels.md`), on the shop's own Sendcloud account: the public and secret key of a
+ * Sendcloud's connection (D483, `docs/sendcloud-labels.md`), on the shop's own Sendcloud account: the public and secret key of a
  * Sendcloud API integration, sent as Basic auth to API v3. Step 1 is the connection: *Check connection* and the shop's sender
  * addresses, read with a harmless `GET /addresses/sender-addresses`. Labels, checkout options, tracking and return labels follow
  * in steps 2 to 5. Sendcloud has no test system, so the store's environment changes no host: from step 2 the test environment

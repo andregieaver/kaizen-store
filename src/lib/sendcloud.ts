@@ -1,5 +1,5 @@
 /**
- * Sendcloud (D454, `docs/sendcloud-labels.md`): the pure parts of its connection, read against Sendcloud's API v3 documentation on
+ * Sendcloud (D483, `docs/sendcloud-labels.md`): the pure parts of its connection, read against Sendcloud's API v3 documentation on
  * 5 November 2026 (`sendcloud.dev`). Each shop connects its own Sendcloud account with the public and secret key of a Sendcloud API
  * integration, sent as Basic auth; v2 is not used (it is closed to accounts made after 13 April 2026). No database, no network: the
  * calls are `src/server/carriers/sendcloud.ts`.

@@ -1,4 +1,4 @@
-# Drop shipping: a supplier ships it for you (D453 proposed)
+# Drop shipping: a supplier ships it for you (D482 proposed)
 
 The owner (5 November 2026): "We haven't made a plan for how drop shipping should work. Do that as part of this [the
 `/selling-drop-shipping` page], but explain to me how this would work first." The plan below was explained first, and the owner chose the

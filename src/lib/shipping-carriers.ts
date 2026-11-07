@@ -60,7 +60,7 @@ export type CarrierField = {
   format?: "country";
   /**
    * Chosen from a list the carrier gives once the store's keys are saved, never typed: `sender_address` is one of the sender
-   * addresses of the store's own Sendcloud account (D454), kept as its id.
+   * addresses of the store's own Sendcloud account (D483), kept as its id.
    */
   pick?: "sender_address";
 };
@@ -77,7 +77,7 @@ export type CarrierInfo = {
   /** What works now: a carrier without any is still being prepared. */
   available: CarrierFeature[];
   /**
-   * Its connection can be checked before any feature works (Sendcloud's first step, D454): the store saves its keys, checks them
+   * Its connection can be checked before any feature works (Sendcloud's first step, D483): the store saves its keys, checks them
    * and finishes its setup while labels, checkout and tracking are still being built.
    */
   checkable?: true;
@@ -353,7 +353,7 @@ export const CARRIERS: CarrierInfo[] = [
     id: "sendcloud",
     name: "Sendcloud",
     summary: "Labels from DHL, DPD, UPS, GLS and many other carriers at Sendcloud's own rates, with no carrier agreement of your own, for shops shipping from western Europe.",
-    // Where its carriers deliver for a shop of Flow's: the EU, the EEA's Norway, Switzerland and the UK (D454; read 5 November 2026).
+    // Where its carriers deliver for a shop of Flow's: the EU, the EEA's Norway, Switzerland and the UK (D483; read 5 November 2026).
     countries: ["AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GB", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "NO", "PL", "PT", "RO", "SE", "SI", "SK"],
     features: ["rates", "pickup_points", "labels", "tracking", "return_labels"],
     available: [],

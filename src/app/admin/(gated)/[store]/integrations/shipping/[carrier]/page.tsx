@@ -41,9 +41,9 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
   const saved = await getCarrier(store.id, info.id);
   const owner = memberCan(current, "owner");
   const live = info.available.length > 0;
-  // A carrier whose connection can be checked before anything else works (Sendcloud's first step, D454).
+  // A carrier whose connection can be checked before anything else works (Sendcloud's first step, D483).
   const checkable = canCheck(info);
-  // Sendcloud's sender addresses (D454): read from the shop's own account once its keys are saved, to choose one from.
+  // Sendcloud's sender addresses (D483): read from the shop's own account once its keys are saved, to choose one from.
   const senders = info.id === "sendcloud" && saved?.complete ? await sendcloudSenders(store.id) : null;
   const marketCountries = [...new Set(store.markets.map((m) => m.code.toUpperCase()))];
   // Markets the store sells to, the carrier's first: the carrier can only deliver where it delivers.

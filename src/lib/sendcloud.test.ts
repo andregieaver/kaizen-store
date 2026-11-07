@@ -26,7 +26,7 @@ const answer = {
   ],
 };
 
-describe("Sendcloud's connection, the pure parts (D454)", () => {
+describe("Sendcloud's connection, the pure parts (D483)", () => {
   it("talks to API v3 with the shop's keys as Basic auth, and Flow's partner id only when there is one", () => {
     expect(SENDCLOUD_API).toBe("https://panel.sendcloud.sc/api/v3");
     expect(sendcloudAuthorization("pub", "sec")).toBe(`Basic ${Buffer.from("pub:sec").toString("base64")}`);

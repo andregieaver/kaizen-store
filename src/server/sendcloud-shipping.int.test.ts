@@ -48,7 +48,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-describe("Sendcloud's connection (D454 step 1)", () => {
+describe("Sendcloud's connection (D483 step 1)", () => {
   it("is saved with its two keys, the secret encrypted, before a sender address is chosen", async () => {
     expect(await sendcloudSenders(storeId)).toBeNull();
     expect(await saveCarrier(accountId, storeId, "sendcloud", form({ publicKey: "pub-key", secretKey: "secret-key-9876" }))).toEqual({ ok: true });

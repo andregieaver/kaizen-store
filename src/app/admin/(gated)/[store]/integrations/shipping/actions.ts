@@ -45,7 +45,7 @@ export async function removeCarrierAction(storeSlug: string, carrier: string): P
   redirect(`/admin/${store.slug}/integrations`);
 }
 
-/** Asks the carrier whether the store's agreement works (D134, D136): every carrier with a connection, Sendcloud's first step too (D454). */
+/** Asks the carrier whether the store's agreement works (D134, D136): every carrier with a connection, Sendcloud's first step too (D483). */
 export async function checkCarrierAction(storeSlug: string, carrier: string): Promise<FormState> {
   const held = await checkOwnerRole(storeSlug);
   if (!held) return { status: "error", messages: [(await requestWords()).ownerCheck] };

@@ -33,7 +33,7 @@ describe("serverEnv", () => {
   });
 });
 
-describe("sendcloudPartnerId (D454)", () => {
+describe("sendcloudPartnerId (D483)", () => {
   it("is null until Sendcloud has given Kaizena Flow its partner id, then that UUID", () => {
     expect(sendcloudPartnerId({})).toBeNull();
     expect(sendcloudPartnerId({ SENDCLOUD_PARTNER_ID: " " })).toBeNull();
