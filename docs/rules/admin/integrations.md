@@ -349,8 +349,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   when the books' screen reverses it); a database index keeps an entry matched once.
   Matching runs at upload and again after the ledger's job posts (`matchAllBankStatements()`). Nothing is posted from a bank line, and
   nothing is sent to the bank. Each upload is audited (`work.bank_statement_imported`, counts only). A line of money in pays a Work
-  invoice only through `payInvoiceFromBank()` (`src/server/bank-payments.ts`, D487): recorded by `recordPayment()` as paid by bank on the
-  bank's day, never more than is outstanding, posted at once (`postWorkPaymentNow()`) and matched to its line, audited
+  invoice or a shop's order on terms only through `payInvoiceFromBank()` (`src/server/bank-payments.ts`, D487): recorded by `recordPayment()`
+  or `recordTermsPaidOutside()` (bank transfer) as paid on the bank's day, never more than is outstanding, posted at once (`postWorkPaymentNow()`, `postShopPaymentNow()`) and matched to its line, audited
   (`work.bank_payment_recorded`). Which invoice a line pays is `matchInvoices()` alone (`src/lib/bank-invoices.ts`): only a `certain` match
   (the invoice's printed number in the line, exactly what is outstanding, no other number) is recorded without the owner, and only when
   the owner uploads the statement; every other is offered on the Books screen for one press. Never record a payment from the ledger's job.

@@ -63,6 +63,10 @@ const READERS: Record<string, { count: number; reason: string }> = {
     count: 2,
     reason: "the order page's key in the confirmation email's order link: stripe, venue, manual and an exchange order's exchange payment (D239); what an exchange order's customer paid on top of the credit (stripe and manual)",
   },
+  "src/server/bank-payments.ts": {
+    count: 1,
+    reason: "finds the manual bank transfer `recordTermsPaidOutside()` just wrote for a balance on terms paid from the bank's statement (D487), to post it and match its line",
+  },
   "src/server/checkout-terms.ts": { count: 1, reason: "the order page's key for the terms the order was placed under: stripe, venue and manual" },
   "src/db/schema.ts": { count: 1, reason: "a comment on the column naming the manual provider" },
   "src/server/payment-terms.ts": {

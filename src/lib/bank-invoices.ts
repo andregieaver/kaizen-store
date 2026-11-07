@@ -11,7 +11,7 @@
  * - `amount`: the line pays exactly what is outstanding on one open invoice and on no other.
  *
  * The last three are offered to the owner, one press each. A line is never offered an invoice issued after the money came, nor one in
- * another currency, nor more than is outstanding; lines are taken in the order the money came, each taking what it pays off the invoice
+ * another currency, nor more than is outstanding, nor one that takes no money of its day (`paidFrom`); lines are taken in the order the money came, each taking what it pays off the invoice
  * before the next is looked at.
  */
 
@@ -23,6 +23,10 @@ export type OpenInvoice = {
   printedNumber: string;
   /** Its number in the series, without the prefix, when it has one. */
   number: number | null;
+  /** Other numbers it goes by, as printed (a shop's invoice is also its order's number). */
+  alsoNamed?: readonly string[];
+  /** The first day money may be recorded for it, when there is one (a shop's balance on terms takes money of the last 31 days). */
+  paidFrom?: string;
   client: string;
   currency: string;
   issuedOn: string;
@@ -49,13 +53,16 @@ function tokensOf(...texts: (string | null)[]): Set<string> {
 }
 
 /** Whether the line names the invoice: its printed number as a word, or its number in the series as a run of digits of its own. */
-export function namesInvoice(line: Pick<BankMoneyIn, "text" | "reference">, invoice: Pick<OpenInvoice, "printedNumber" | "number">): boolean {
+export function namesInvoice(line: Pick<BankMoneyIn, "text" | "reference">, invoice: Pick<OpenInvoice, "printedNumber" | "number" | "alsoNamed">): boolean {
   const tokens = tokensOf(line.reference, line.text);
-  const printed = invoice.printedNumber.trim().toLowerCase();
-  if (printed && tokens.has(printed)) return true;
   if (invoice.number !== null && invoice.number > 0 && tokens.has(String(invoice.number))) return true;
-  // An imported invoice's number that is all digits, written with leading zeros or without.
-  return /^\d+$/.test(printed) && tokens.has(printed.replace(/^0+(?=\d)/, ""));
+  for (const name of [invoice.printedNumber, ...(invoice.alsoNamed ?? [])]) {
+    const printed = name.trim().toLowerCase();
+    if (printed && tokens.has(printed)) return true;
+    // A number that is all digits, written with leading zeros or without (an imported invoice's, an order's).
+    if (/^\d+$/.test(printed) && tokens.has(printed.replace(/^0+(?=\d)/, ""))) return true;
+  }
+  return false;
 }
 
 const LEGAL_FORMS = new Set(["as", "asa", "enk", "da", "ans", "sa", "nuf", "ab", "aps", "a/s", "oy", "gmbh", "ag", "bv", "nv", "ltd", "limited", "inc", "llc", "plc", "sarl", "srl", "spa"]);
@@ -89,7 +96,7 @@ export function matchInvoices(lines: readonly BankMoneyIn[], invoices: readonly 
   const out: InvoiceMatch[] = [];
   const ordered = [...lines].filter((l) => l.amountMinor > 0).sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : a.id < b.id ? -1 : 1));
   for (const line of ordered) {
-    const open = invoices.filter((i) => i.currency === line.currency && i.issuedOn <= line.day && (left.get(i.id) ?? 0) > 0);
+    const open = invoices.filter((i) => i.currency === line.currency && i.issuedOn <= line.day && (!i.paidFrom || i.paidFrom <= line.day) && (left.get(i.id) ?? 0) > 0);
     const exact = (i: OpenInvoice) => left.get(i.id) === line.amountMinor;
     const fits = (i: OpenInvoice) => line.amountMinor <= (left.get(i.id) ?? 0);
     const named = open.filter((i) => namesInvoice(line, i));

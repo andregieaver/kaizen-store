@@ -35,6 +35,9 @@ describe("which invoice a client's payment on the statement pays (B4, D487)", ()
     // An imported invoice keeps the number it had, all digits or not.
     expect(namesInvoice({ text: "Fakt. 2023-117", reference: null }, { printedNumber: "2023-117", number: null })).toBe(true);
     expect(namesInvoice({ text: "Fakt. 117", reference: null }, { printedNumber: "2023-117", number: null })).toBe(false);
+    // A shop's invoice goes by its order's number too.
+    expect(namesInvoice({ text: "Ordre 1001", reference: null }, { printedNumber: "F-4", number: 4, alsoNamed: ["1001"] })).toBe(true);
+    expect(namesInvoice({ text: "Ordre 10011", reference: null }, { printedNumber: "F-4", number: 4, alsoNamed: ["1001"] })).toBe(false);
   });
 
   it("knows the client by a word of its name, not by its legal form", () => {
@@ -70,6 +73,8 @@ describe("which invoice a client's payment on the statement pays (B4, D487)", ()
     expect(matchInvoices([line("1", "2027-01-20", -150_000, "Faktura 1042")], invoices)).toEqual([]);
     expect(matchInvoices([line("1", "2027-01-20", 70_000, "Faktura 1050")], invoices)).toEqual([]);
     expect(matchInvoices([line("1", "2027-01-20", 30_000, "Faktura 1060")], invoices)).toEqual([]);
+    // Nor one that takes no money of the line's day.
+    expect(matchInvoices([line("1", "2027-01-20", 150_000, "Faktura 1042")], [invoice("a", "F-1042", 1042, 150_000, { paidFrom: "2027-01-21" })])).toEqual([]);
     // Two lines naming the same invoice: the first pays it off, the second has nothing left to pay.
     expect(
       matchInvoices([line("2", "2027-01-21", 150_000, "Faktura 1042"), line("1", "2027-01-20", 150_000, "Faktura 1042")], invoices),

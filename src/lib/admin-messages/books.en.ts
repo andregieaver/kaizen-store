@@ -154,6 +154,7 @@ export const booksEn = {
     booksOnlyLead: "Money the books say came in or went out in the statements' days that the bank does not show.",
     none: "Every line matches.",
     offer: "Pays invoice {number} to {client}? {amount} is outstanding.",
+    offerOrder: "Pays invoice {number} for order {order}? {amount} is outstanding.",
     pay: "Mark it paid",
     paid: "Invoice {number} is marked paid, and the payment is in the books.",
     autoPaid: { one: "Invoice {numbers} was marked paid from the statement.", many: "Invoices {numbers} were marked paid from the statement." },

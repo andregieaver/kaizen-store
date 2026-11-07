@@ -159,7 +159,9 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                         {offer && (
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                             <span className="text-muted">
-                              {fillWords(w.bank.offer, { number: offer.printedNumber, client: offer.client, amount: amount(offer.outstandingMinor) })}
+                              {offer.source === "shop"
+                                ? fillWords(w.bank.offerOrder, { number: offer.printedNumber, order: offer.orderNumber ?? "", amount: amount(offer.outstandingMinor) })
+                                : fillWords(w.bank.offer, { number: offer.printedNumber, client: offer.client, amount: amount(offer.outstandingMinor) })}
                             </span>
                             {owner && (
                               <SubmitButton variant="secondary" name="pay" value={`${l.id}:${offer.invoiceId}`}>

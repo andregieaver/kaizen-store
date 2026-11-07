@@ -76,6 +76,9 @@ describe("who reads invoices and credit notes", () => {
         // Our own ledger (D478): which documents of a book's days have no entry yet, by id, kind and day; each is read through
         // `accounting-documents.ts` and posted on the same terms as the syncs (a shopper is never named on an entry, a business by its name).
         "src/server/ledger.ts",
+        // A balance on terms paid from the bank's statement (D487): an open order's invoice number and day, to know the payment that
+        // names it; nothing of a buyer but a company's name, shown to the owner beside the line.
+        "src/server/bank-payments.ts",
       ].sort(),
     );
   });

@@ -6,6 +6,7 @@ import { toMarket } from "@/lib/markets";
 
 import { randomBytes } from "node:crypto";
 
+import type { Membership } from "./auth";
 import type { Store } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -112,6 +113,8 @@ const { handleMollieWebhook } = await import("./payment-providers/mollie");
 const { periodTotals } = await import("./analytics-totals");
 const { getStore } = await import("./stores");
 const { customPeriod, todayIn } = await import("@/lib/analytics-period");
+const { importBankStatement } = await import("./bank-statements");
+const bankPay = await import("./bank-payments");
 
 /** Today's paid orders in the store's figures (Finance's `periodTotals()`). */
 async function ordersToday(): Promise<number> {
@@ -257,5 +260,54 @@ describe("a store whose checkout is Mollie's", () => {
     } finally {
       await db().execute(sql`delete from commerce.checkout_providers where store_id = ${storeId}::uuid`);
     }
+  });
+});
+
+describe("a balance on terms paid by bank, read from the statement (B4, D487)", () => {
+  it("pays the order whose invoice the payment names in full when the statement is read, and offers a part payment that names the order", async () => {
+    const member = { account: { id: ownerId }, store: { id: storeId } } as unknown as Membership;
+    const [book] = await db().execute<Row>(sql`
+      insert into commerce.ledger_books (store_id, legal_name, country, currency, opened_on, opened_by)
+      values (${storeId}::uuid, 'Terms AS', 'NO', 'NOK', current_date - 30, ${ownerId}::uuid) returning id`);
+    const bookId = String(book.id);
+    const full = await placeOnTerms(await buyer());
+    const part = await placeOnTerms(await buyer());
+    const [invoice] = await db().execute<Row>(sql`select document_number from commerce.invoices where order_id = ${full.orderId}::uuid and kind = 'order'`);
+    const [today] = await db().execute<Row>(sql`select commerce.store_day(${storeId}::uuid, now())::text as day`);
+    const kroner = (minor: number) => (minor / 100).toFixed(2);
+    const third = Math.floor(part.order.balanceMinor / 3);
+    const entry = (ref: string, minor: number, words: string) =>
+      `<Ntry><Amt Ccy="NOK">${kroner(minor)}</Amt><CdtDbtInd>CRDT</CdtDbtInd><Sts>BOOK</Sts><BookgDt><Dt>${String(today.day)}</Dt></BookgDt><AcctSvcrRef>${run}-${ref}</AcctSvcrRef>
+        <NtryDtls><TxDtls><RltdPties><Dbtr><Nm>FJORD AS</Nm></Dbtr></RltdPties><RmtInf><Ustrd>${words}</Ustrd></RmtInf></TxDtls></NtryDtls></Ntry>`;
+    const camt = `<?xml version="1.0" encoding="UTF-8"?><Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><BkToCstmrStmt><Stmt>
+      <Acct><Id><IBAN>NO9386011117947</IBAN></Id><Ccy>NOK</Ccy></Acct>
+      ${entry("full", full.order.balanceMinor, `Faktura ${String(invoice.document_number)}`)}
+      ${entry("part", third, `Ordre ${part.order.number}`)}
+    </Stmt></BkToCstmrStmt></Document>`;
+    expect(await importBankStatement(member, { name: "konto.xml", bytes: new TextEncoder().encode(camt) })).toMatchObject({ ok: true, newLines: 2 });
+
+    // The whole balance, naming the order's invoice: paid when the statement is read, by bank transfer on the bank's day, posted and matched.
+    expect(await bankPay.payCertainInvoices(member)).toEqual([String(invoice.document_number)]);
+    const paid = await getOrder(storeId, full.orderId);
+    expect(paid?.balanceMinor).toBe(0);
+    expect(paid?.paymentTerms?.state).toBe("paid");
+    const [money] = await db().execute<Row>(sql`
+      select p.method, p.received_on::text as day, e.source_kind
+        from commerce.payments p
+        join commerce.ledger_entries e on e.source_kind = 'shop_payment' and e.source_id = p.id::text
+        join commerce.bank_lines b on b.entry_id = e.id
+       where p.order_id = ${full.orderId}::uuid and p.provider = 'manual' and b.line_key = ${`ref:${run}-full`}`);
+    expect(money).toEqual({ method: "bank_transfer", day: String(today.day), source_kind: "shop_payment" });
+
+    // A third of the other, naming the order: offered, and paid with one press; what is left stays owed.
+    const offers = await bankPay.invoiceOffers(storeId, bookId);
+    const [line] = await db().execute<Row>(sql`select id from commerce.bank_lines where book_id = ${bookId}::uuid and line_key = ${`ref:${run}-part`}`);
+    expect(offers.get(String(line.id))).toMatchObject({ invoiceId: part.orderId, source: "shop", orderNumber: part.order.number, kind: "number", outstandingMinor: part.order.balanceMinor });
+    expect(await bankPay.payInvoiceFromBank(member, String(line.id), part.orderId)).toMatchObject({ ok: true });
+    const left = await getOrder(storeId, part.orderId);
+    expect(left?.balanceMinor).toBe(part.order.balanceMinor - third);
+    expect(left?.paymentTerms?.state).not.toBe("paid");
+    const [matched] = await db().execute<Row>(sql`select entry_id is not null as matched from commerce.bank_lines where id = ${String(line.id)}::uuid`);
+    expect(matched.matched).toBe(true);
   });
 });

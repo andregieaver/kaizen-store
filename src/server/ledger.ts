@@ -624,6 +624,21 @@ export async function postWorkPaymentNow(storeId: string, paymentId: string): Pr
   return result.id;
 }
 
+/** A shop's payment posted at once (a balance on terms paid from the bank's statement, D487), as `postWorkPaymentNow()`. */
+export async function postShopPaymentNow(storeId: string, paymentId: string): Promise<string | null> {
+  const book = await typedRow(
+    z.object({ id: col.uuid, currency: col.currency }),
+    sql`select id, currency from commerce.ledger_books where store_id = ${storeId}::uuid and closed_on is null`,
+  );
+  if (!book) return null;
+  const posting = await postingOf(storeId);
+  await chartFor(storeId, book.id, posting);
+  const result = await postShopMoney(storeId, book, posting, "shop_payment", paymentId);
+  if (!result.ok) return null;
+  await db().execute(sql`delete from commerce.ledger_waiting where book_id = ${book.id}::uuid and source_kind = 'shop_payment' and source_id = ${paymentId}`);
+  return result.id;
+}
+
 const SHOP_MONEY = z.object({
   id: col.uuid,
   amount_minor: col.minor,

@@ -114,7 +114,7 @@ describe("a client's payment on the statement, paying the invoice it names (B4, 
     // The part payment is offered for invoice B; the interest names nothing and is offered nothing.
     const offers = await invoiceOffers(storeId, bookId);
     const [lineB] = await db().execute<Row>(sql`select id from commerce.bank_lines where book_id = ${bookId}::uuid and line_key = ${`ref:${run}-b`}`);
-    expect([...offers.entries()]).toEqual([[String(lineB.id), { invoiceId: b.id, printedNumber: b.printed, client: "Acme AS", outstandingMinor: 1_500_000, kind: "number" }]]);
+    expect([...offers.entries()]).toEqual([[String(lineB.id), { invoiceId: b.id, source: "work", printedNumber: b.printed, orderNumber: null, client: "Acme AS", outstandingMinor: 1_500_000, kind: "number" }]]);
 
     expect(await payInvoiceFromBank(member, String(lineB.id), b.id)).toEqual({ ok: true, printedNumber: b.printed });
     const [amountsB] = await db().execute<Row>(sql`select outstanding_minor::int as left from commerce.work_invoice_amounts(${storeId}::uuid, ${b.id}::uuid)`);

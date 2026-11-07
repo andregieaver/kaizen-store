@@ -220,7 +220,7 @@ invoice can be matched to a purchase order (D383). This is also what the 2030 ru
    accounting system (DNB Regnskap), so this is a business conversation as much as a technical one. Other banks (SpareBank 1, Nordea,
    Handelsbanken) have their own [U].
 
-Matching (by invoice number and amount built for Work invoices, D487): lines to invoices by KID, invoice number and amount, Stripe payouts to their payout (D290), supplier payments to supplier
+Matching (by invoice number and amount built for Work invoices and a shop's orders on terms, D487): lines to invoices by KID, invoice number and amount, Stripe payouts to their payout (D290), supplier payments to supplier
 invoices; what does not match waits in *Needs you*. Paying supplier invoices (through the bank integration, or payment initiation
 through the provider) later.
 

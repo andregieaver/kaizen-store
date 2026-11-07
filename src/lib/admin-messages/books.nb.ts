@@ -150,6 +150,7 @@ export const booksNb: BooksMessages = {
     booksOnlyLead: "Penger regnskapet sier kom inn eller gikk ut i kontoutskriftenes dager, som banken ikke viser.",
     none: "Alle linjer stemmer.",
     offer: "Betaler faktura {number} til {client}? {amount} er utestående.",
+    offerOrder: "Betaler faktura {number} for ordre {order}? {amount} er utestående.",
     pay: "Merk som betalt",
     paid: "Faktura {number} er merket som betalt, og betalingen er ført.",
     autoPaid: { one: "Faktura {numbers} ble merket som betalt fra kontoutskriften.", many: "Fakturaene {numbers} ble merket som betalt fra kontoutskriften." },
