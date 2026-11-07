@@ -78,6 +78,9 @@ export function entryOfPurchase(
   return { series: "B", date: line.day, text, source: { kind: "bank_line", id: line.id }, lines: [...lines, { account: BANK, amountMinor: -paid, vatCode: null }] };
 }
 
+/** The pictures of receipts the model reads (D491; a PDF or a HEIC photo is not read: the owner chooses, as before). */
+export const READABLE_RECEIPTS = ["image/jpeg", "image/png", "image/webp"] as const;
+
 /** The file types a voucher may be, by their first bytes (never by the name or the browser's word): its MIME type and extension. */
 export function voucherTypeOf(bytes: Uint8Array): { contentType: "application/pdf" | "image/jpeg" | "image/png" | "image/webp" | "image/heic"; ext: string } | null {
   const ascii = (from: number, to: number) => String.fromCharCode(...bytes.subarray(from, to));

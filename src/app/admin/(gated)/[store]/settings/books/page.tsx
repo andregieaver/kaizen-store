@@ -13,15 +13,15 @@ import { formatStoreDay } from "@/lib/return-time";
 import { ledgerAccounts, ledgerJournal, ledgerTrialBalance, ledgerVatByCode, ledgerWaiting, openBookOf } from "@/server/ledger";
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { hasOpeningBalance } from "@/server/ledger-opening";
+import { ReceiptFields, type ReceiptFieldWords } from "@/components/admin/receipt-fields";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
-import { PURCHASE_KINDS, PURCHASE_VAT_RATES, type PurchaseKind } from "@/lib/purchases";
 import { invoiceOffers } from "@/server/bank-payments";
 import { vouchersOf } from "@/server/purchases";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 
-import { lockBooksAction, openBooksAction, openingFromTripletexAction, payFromBankAction, postEntryAction, reverseEntryAction, uploadBankStatementAction } from "./actions";
+import { lockBooksAction, openBooksAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readReceiptAction, reverseEntryAction, uploadBankStatementAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -101,6 +101,21 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const offers = await invoiceOffers(store.id, book.id);
   // The journal's vouchers, such as a purchase's receipt (D490), by entry.
   const vouchers = await vouchersOf(store.id, journal.map((e) => e.id));
+  // The receipt's fields' words, for the part of them that reads a photo in the browser (D491).
+  const receiptWords: ReceiptFieldWords = {
+    what: w.bank.what,
+    vatRate: w.bank.vatRate,
+    vatUsual: w.bank.vatUsual,
+    vatNone: w.bank.vatNone,
+    words: w.bank.words,
+    receiptFile: w.bank.receiptFile,
+    kinds: w.bank.kinds,
+    reading: w.bank.reading,
+    readFrom: w.bank.readFrom,
+    readBare: w.bank.readBare,
+    differs: w.bank.differs,
+    unread: w.bank.unread,
+  };
   const amount = (minor: number) => formatMoney(minor, book.currency, locale);
   // The table's amounts as numbers, the currency said once above it; the result with its currency.
   const digits = minorUnitDigits(book.currency);
@@ -193,37 +208,15 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                             <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{w.bank.receipt}</summary>
                             <div className="mt-2 flex flex-col gap-3">
                               <p className="text-muted">{w.bank.receiptLead}</p>
-                              <div className="flex flex-wrap gap-3">
-                                <label className="flex min-w-56 flex-1 flex-col gap-1 font-medium">
-                                  {w.bank.what}
-                                  <select name={`kind-${l.id}`} defaultValue="office" className={field}>
-                                    {(Object.keys(PURCHASE_KINDS) as PurchaseKind[]).map((kind) => (
-                                      <option key={kind} value={kind}>
-                                        {w.bank.kinds[kind]}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <label className="flex w-44 flex-col gap-1 font-medium">
-                                  {w.bank.vatRate}
-                                  <select name={`vat-${l.id}`} defaultValue="usual" className={field}>
-                                    <option value="usual">{w.bank.vatUsual}</option>
-                                    {PURCHASE_VAT_RATES.map((rate) => (
-                                      <option key={rate} value={rate}>
-                                        {rate === 0 ? w.bank.vatNone : `${rate} %`}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                              </div>
-                              <label className="flex max-w-md flex-col gap-1 font-medium">
-                                {w.bank.words}
-                                <input name={`text-${l.id}`} maxLength={200} defaultValue={l.text} className={field} />
-                              </label>
-                              <label className="flex max-w-md flex-col gap-1 font-medium">
-                                {w.bank.receiptFile}
-                                <input name={`receipt-${l.id}`} type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" className={`${field} py-2`} />
-                              </label>
+                              <ReceiptFields
+                                lineId={l.id}
+                                defaultText={l.text}
+                                bankMinor={l.amountMinor}
+                                currency={book.currency}
+                                locale={locale}
+                                words={receiptWords}
+                                read={readReceiptAction.bind(null, store.slug)}
+                              />
                               <div>
                                 <SubmitButton name="buy" value={l.id}>
                                   {w.bank.postPurchase}

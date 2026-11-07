@@ -361,3 +361,6 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   worked out in code, SAF-T's input codes, never VAT back on entertainment) with its receipt kept first as the entry's voucher
   (`commerce.ledger_vouchers`, the private `documents` bucket, type by the file's first bytes, never changed or deleted); nothing is posted
   without a place to keep it. A voucher is read only through `readVoucher()`, for a member who may read the books.
+  A receipt is read by a model only through `readReceipt()` (`src/server/receipt-reading.ts`, D491) with the prompt `receiptPrompt()`
+  writes and the answer `parseReceiptReading()` reads: it only fills the form's choices for the owner to post, and nothing it read is
+  posted (the amount is the bank's, the VAT worked out in code).

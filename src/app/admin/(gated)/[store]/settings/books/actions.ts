@@ -16,7 +16,10 @@ import { lockLedgerThrough, openLedgerBook, postDueDocuments, openBookOf, postHa
 import { postOpeningFromTripletex } from "@/server/ledger-opening";
 import { isPurchaseKind, isPurchaseVatRate, PURCHASE_KINDS } from "@/lib/purchases";
 import { payCertainInvoices, payInvoiceFromBank, postBankOwnLine } from "@/server/bank-payments";
-import { postPurchaseFromBank, VOUCHER_BYTES } from "@/server/purchases";
+import { postPurchaseFromBank, purchaseLine, VOUCHER_BYTES } from "@/server/purchases";
+import { readReceipt } from "@/server/receipt-reading";
+import { receiptAgrees } from "@/lib/receipt-reading";
+import type { PurchaseKind, PurchaseVatRate } from "@/lib/purchases";
 import { importBankStatement, STATEMENT_BYTES } from "@/server/bank-statements";
 import { checkOwnerRole } from "@/server/permissions";
 
@@ -179,4 +182,27 @@ export async function payFromBankAction(storeSlug: string, _state: FormState, fo
   if (!paid.ok) return { status: "error", messages: [w.bank.payProblems[paid.problem]] };
   refresh();
   return { status: "ok", messages: [fillWords(w.bank.paid, { number: paid.printedNumber })] };
+}
+
+export type ReceiptReadResult =
+  | { ok: true; kind: PurchaseKind | null; vatRate: PurchaseVatRate | null; supplier: string | null; totalMinor: number | null; agrees: "same" | "differs" | "unknown" }
+  | { ok: false; reason: "no_ai" | "not_a_picture" | "unread" | "refused" };
+
+/**
+ * A purchase's receipt read by the store's model as the owner chooses it (D491): what it most likely was, its VAT rate, the supplier and
+ * whether its total is the bank's amount, for the form to show. Nothing is kept or posted here; the owner posts.
+ */
+export async function readReceiptAction(storeSlug: string, form: FormData): Promise<ReceiptReadResult> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { ok: false, reason: "refused" };
+  const { member } = who;
+  const lineId = String(form.get("line") ?? "");
+  const file = form.get("receipt");
+  if (!/^[0-9a-f-]{36}$/i.test(lineId) || !(file instanceof File) || file.size === 0 || file.size > VOUCHER_BYTES) return { ok: false, reason: "unread" };
+  const line = await purchaseLine(member.store.id, lineId);
+  if (!line) return { ok: false, reason: "unread" };
+  const read = await readReceipt(member.store.id, member.account.id, new Uint8Array(await file.arrayBuffer()), line.currency);
+  if (!read.ok) return read;
+  const { kind, vatRate, supplier, totalMinor } = read.reading;
+  return { ok: true, kind, vatRate, supplier, totalMinor, agrees: receiptAgrees(read.reading, line.amountMinor, line.currency) };
 }

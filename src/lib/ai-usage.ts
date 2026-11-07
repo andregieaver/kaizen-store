@@ -57,6 +57,7 @@ export const AI_FEATURES = {
   support_summary: "Support summaries",
   content_moderation: "Notices of illegal content",
   support_partner: "Support partner",
+  receipt_reading: "Reading receipts",
   ai_test: "Settings tests",
   other: "Other",
 } as const;

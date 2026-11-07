@@ -82,6 +82,16 @@ export async function postPurchaseFromBank(
   return { ok: true, entryId: posted.id, voucherId, account: PURCHASE_KINDS[input.kind].account };
 }
 
+/** A line of money out a purchase may be posted from (open, not matched): its amount and the book's currency, for reading its receipt. */
+export async function purchaseLine(storeId: string, lineId: string): Promise<{ amountMinor: number; currency: string } | null> {
+  const row = await typedRow(
+    z.object({ amount_minor: col.minor, currency: col.currency }),
+    sql`select b.amount_minor, k.currency from commerce.bank_lines b join commerce.ledger_books k on k.id = b.book_id
+         where b.id = ${lineId}::uuid and b.store_id = ${storeId}::uuid and b.entry_id is null and b.amount_minor < 0 and k.closed_on is null`,
+  );
+  return row ? { amountMinor: row.amount_minor, currency: row.currency } : null;
+}
+
 export type VoucherView = { id: string; entryId: string; fileName: string; contentType: string };
 
 /** The vouchers of entries of a book, by entry (the journal's *Receipt* links). */
