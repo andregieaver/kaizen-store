@@ -88,9 +88,9 @@ describe("Sendcloud's connection (D483 step 1)", () => {
     });
   });
 
-  it("is a carrier the database accepts, and only the five", async () => {
+  it("is a carrier the database accepts, and one it does not know is refused", async () => {
     const [row] = await db().execute<Row>(sql`select count(*)::int as n from commerce.shipping_carriers where store_id = ${storeId}::uuid and carrier = 'sendcloud'`);
     expect(row.n).toBe(1);
-    await expect(db().execute(sql`insert into commerce.shipping_carriers (store_id, carrier) values (${storeId}::uuid, 'dhl')`)).rejects.toThrow();
+    await expect(db().execute(sql`insert into commerce.shipping_carriers (store_id, carrier) values (${storeId}::uuid, 'budbee')`)).rejects.toThrow();
   });
 });
