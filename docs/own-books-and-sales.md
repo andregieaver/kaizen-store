@@ -201,7 +201,7 @@ invoice can be matched to a purchase order (D383). This is also what the 2030 ru
 
 **B4. Bank.** Three ways in, built in this order, all landing in one table of bank lines so the matching is written once:
 
-1. **A statement file** (first, needs no contract): the owner uploads the bank's export (ISO 20022 camt.053, or the bank's CSV) [U: which
+1. **A statement file** (first, needs no contract; built, D486): the owner uploads the bank's export (ISO 20022 camt.053, or the bank's CSV) [U: which
    formats DNB's netbank exports for a small business]. Works for any bank in any country, and lets the matching be built and proven at
    Human Web while the contracts below are agreed.
 2. **Open banking** (the platform's way: every bank, one contract): transactions and balances through a licensed account-information

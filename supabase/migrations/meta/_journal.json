@@ -5013,6 +5013,20 @@
       "when": 1794040022717,
       "tag": "20261107082702_house_switch_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 716,
+      "version": "7",
+      "when": 1794073178722,
+      "tag": "20261107173938_bank_statements",
+      "breakpoints": true
+    },
+    {
+      "idx": 717,
+      "version": "7",
+      "when": 1794073205891,
+      "tag": "20261107174005_bank_statements_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -304,6 +304,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   ledger_counters: never("The numbering of the original's books (D478)."),
   ledger_comparisons: never("The original's books compared with its Tripletex (D478): its own documents and vouchers."),
   ledger_waiting: never("What the original's books could not post yet (D478): its own documents."),
+  bank_statements: never("The original's bank statements (D486): its own bank account's, in its own books."),
+  bank_lines: never("The lines of the original's bank statements (D486), matched to its own books."),
   crm_moves: never("The original's connection to the Pipedrive account it moved in from (D477): a token, never copied."),
   crm_move_links: never("What the original brought over from Pipedrive (D477), linked to its own rows: never the copy's."),
   shop_moves: never("The original's connection to the shop it moves from (D445): a token, never copied."),

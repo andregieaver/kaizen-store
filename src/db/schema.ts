@@ -18231,3 +18231,87 @@ export const ledgerComparisons = commerce.table(
     check("ledger_comparisons_differences", sql`jsonb_typeof(${t.differences}) = 'array'`),
   ],
 );
+
+/**
+ * A bank statement the owner uploaded to the store's books (B4 route 1, D486): the file's name and kind (camt.053 or a netbank's CSV), the
+ * account it names, the days it covers, the bank's opening and closing balances where it gives them, and how many lines it held and how
+ * many were new. Its lines are `bank_lines`.
+ */
+export const bankStatements = commerce.table(
+  "bank_statements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    /** The books' account the money is on: the bank (1920) unless said. */
+    ledgerAccount: integer("ledger_account").notNull().default(1920),
+    fileName: text("file_name").notNull(),
+    format: text("format").notNull(),
+    accountRef: text("account_ref"),
+    currency: char("currency", { length: 3 }).notNull(),
+    fromDay: date("from_day").notNull(),
+    toDay: date("to_day").notNull(),
+    openingMinor: bigint("opening_minor", { mode: "number" }),
+    closingMinor: bigint("closing_minor", { mode: "number" }),
+    lines: integer("lines").notNull(),
+    newLines: integer("new_lines").notNull(),
+    importedBy: uuid("imported_by").references(() => accounts.id, { onDelete: "set null" }),
+    importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("bank_statements_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "bank_statements_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
+    index("bank_statements_store_book_idx").on(t.storeId, t.bookId),
+    index("bank_statements_imported_by_idx").on(t.importedBy),
+    check("bank_statements_format", sql`${t.format} in ('camt053', 'csv')`),
+    check("bank_statements_file_name", sql`char_length(${t.fileName}) between 1 and 200`),
+    check("bank_statements_account_ref", sql`${t.accountRef} is null or char_length(${t.accountRef}) between 1 and 64`),
+    check("bank_statements_days", sql`${t.fromDay} <= ${t.toDay}`),
+    check("bank_statements_counts", sql`${t.lines} >= 0 and ${t.newLines} between 0 and ${t.lines}`),
+    check("bank_statements_account", sql`${t.ledgerAccount} between 1000 and 99999`),
+  ],
+);
+
+/**
+ * A line of a bank statement (B4, D486): the money as the bank booked it on the account (in positive, out negative), its day, its words,
+ * its reference (a KID or the payer's) and the other party's name, as the bank gave them. Kept once per account by its key, so a statement
+ * uploaded twice, or two that overlap, add each line once. Matched to the entry of the books that moved the same money (`entry_id`), one to
+ * one; one unmatched is money the books do not have yet.
+ */
+export const bankLines = commerce.table(
+  "bank_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    statementId: uuid("statement_id").notNull(),
+    ledgerAccount: integer("ledger_account").notNull(),
+    lineKey: text("line_key").notNull(),
+    bookedOn: date("booked_on").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    text: text("text").notNull().default(""),
+    reference: text("reference"),
+    counterparty: text("counterparty"),
+    entryId: uuid("entry_id"),
+    matchedAt: timestamp("matched_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("bank_lines_key").on(t.bookId, t.ledgerAccount, t.lineKey),
+    uniqueIndex("bank_lines_entry_once").on(t.bookId, t.entryId).where(sql`${t.entryId} is not null`),
+    foreignKey({ name: "bank_lines_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
+    foreignKey({ name: "bank_lines_statement_fk", columns: [t.storeId, t.statementId], foreignColumns: [bankStatements.storeId, bankStatements.id] }),
+    foreignKey({ name: "bank_lines_entry_fk", columns: [t.storeId, t.entryId], foreignColumns: [ledgerEntries.storeId, ledgerEntries.id] }),
+    index("bank_lines_store_book_idx").on(t.storeId, t.bookId),
+    index("bank_lines_statement_idx").on(t.storeId, t.statementId),
+    index("bank_lines_store_entry_idx").on(t.storeId, t.entryId),
+    check("bank_lines_amount", sql`${t.amountMinor} <> 0`),
+    check("bank_lines_key_length", sql`char_length(${t.lineKey}) between 1 and 200`),
+    check("bank_lines_text", sql`char_length(${t.text}) <= 500`),
+    check("bank_lines_reference", sql`${t.reference} is null or char_length(${t.reference}) between 1 and 140`),
+    check("bank_lines_counterparty", sql`${t.counterparty} is null or char_length(${t.counterparty}) between 1 and 140`),
+    check("bank_lines_matched", sql`(${t.entryId} is null) = (${t.matchedAt} is null)`),
+    check("bank_lines_account", sql`${t.ledgerAccount} between 1000 and 99999`),
+  ],
+);

@@ -117,6 +117,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   ledger_counters: "record",
   ledger_waiting: "record",
   ledger_comparisons: "record",
+  bank_statements: "record",
+  bank_lines: "record",
   crm_move_links: "record",
   shop_move_items: "record",
   site_staging_pages: "record",

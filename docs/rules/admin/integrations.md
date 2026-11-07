@@ -334,3 +334,18 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `entryOfPaymentReversal()`, which turns the payment's own entry; a shop's payment or refund through `entryOfPayment()` with its own source kind and
   account (`SHOP_PAYMENT_ACCOUNTS`, store credit 2900), and a payout only through `entryOfPayout()`. An entry typed by hand goes through `handEntryOf()` and `postHandEntry()` (the
   owner's, series `M` or `IB` only, audited); the books' screen reverses an entry only through `reverseLedgerEntry()`.
+
+## Bank statements in the books (B4, D486, `src/lib/bank-statement.ts`, `src/lib/xml-read.ts`, `src/server/bank-statements.ts`)
+
+- **Bank statements in the books (B4, D486, `src/lib/bank-statement.ts`, `src/lib/xml-read.ts`, `src/server/bank-statements.ts`)**: the
+  owner uploads the bank's statement on Settings → Books (owner only, at most 3 MB, the admin form's 4 MB request in mind): ISO 20022
+  camt.053, or a netbank's CSV whose columns are found by their names (`CSV_COLUMNS`). A file is read whole or refused whole
+  (`readStatement()`): never in part, never in another currency than the book's. XML is read only by `parseXml()`, which reads no DTD and
+  expands no entity but XML's five and character references; never parse a file people upload with anything else. Only booked entries
+  (`BOOK`) are read. A line is kept once per book and account (`commerce.bank_lines`, unique on its key: the bank's own reference, else what
+  the line says and how many identical lines came before it in the file), so an upload twice or two statements that overlap add nothing.
+  A line is matched to the books only by `matchBankLines()`: one to one, the same amount to the øre on the bank's account (1920), at most
+  `MATCH_DAYS` apart, nearest first, an entry that stands (neither reversed nor a reversal; a line matched to an entry later reversed is released by `matchBankStatement()`, also
+  when the books' screen reverses it); a database index keeps an entry matched once.
+  Matching runs at upload and again after the ledger's job posts (`matchAllBankStatements()`). Nothing is posted from a bank line, and
+  nothing is sent to the bank. Each upload is audited (`work.bank_statement_imported`, counts only).

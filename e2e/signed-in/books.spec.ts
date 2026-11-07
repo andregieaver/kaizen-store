@@ -61,3 +61,23 @@ test("an owner posts an entry by hand, finds it in the journal and reverses it",
   await expect(withWords.filter({ hasText: /Reversed by M\d{4}-\d+/ })).toHaveCount(1, { timeout: 30_000 });
   await expect(withWords.filter({ hasText: /Reverses M\d{4}-\d+/ })).toHaveCount(1);
 });
+
+/**
+ * A bank statement uploaded to the books (B4, D486): a netbank's CSV in the Bank card, its line read and, with nothing in the books that
+ * moved the same money, listed as in the bank and not in the books. Each run's line says something new, so it is a new line each time.
+ */
+test("an owner uploads the bank's statement and sees its line waiting for the books", async ({ page }) => {
+  await page.goto(`/admin/${E2E_STORE}/settings/books`);
+  const bank = page.getByRole("region", { name: "Bank", exact: true });
+  await expect(bank).toBeVisible({ timeout: 30_000 });
+  const words = `Kontorrekvisita e2e ${Date.now().toString(36)}`;
+  await bank.getByLabel("Statement file").setInputFiles({
+    name: "kontoutskrift.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(`Dato;Forklaring;Ut fra konto;Inn på konto\n15.03.2026;${words};123,45;\n`, "utf-8"),
+  });
+  await bank.getByRole("button", { name: "Upload the statement" }).click();
+  await expect(bank.getByText("1 line read, 1 new, 0 matched to the books.")).toBeVisible({ timeout: 30_000 });
+  await expect(bank.locator("summary", { hasText: "In the bank, not in the books" })).toBeVisible();
+  await expect(bank.getByText(words)).toBeVisible();
+});

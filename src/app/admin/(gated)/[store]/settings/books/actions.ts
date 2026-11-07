@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import type { BooksMessages } from "@/lib/admin-messages/books.en";
 import { adminText } from "@/lib/admin-text";
@@ -14,6 +14,7 @@ import type { Membership } from "@/server/auth";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { lockLedgerThrough, openLedgerBook, postDueDocuments, openBookOf, postHandEntry, reverseLedgerEntry } from "@/server/ledger";
 import { postOpeningFromTripletex } from "@/server/ledger-opening";
+import { importBankStatement, STATEMENT_BYTES } from "@/server/bank-statements";
 import { checkOwnerRole } from "@/server/permissions";
 
 /**
@@ -102,4 +103,21 @@ export async function openingFromTripletexAction(storeSlug: string): Promise<For
   const messages = [fillWords(w.opening.posted, { n: result.accounts })];
   if (result.carriedMinor !== 0) messages.push(fillWords(w.opening.carried, { amount: amount(result.carriedMinor) }));
   return { status: "ok", messages };
+}
+
+/** *Upload the statement*: the bank's file read into the books (B4, D486), its lines kept once and matched to the books. */
+export async function uploadBankStatementAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const file = form.get("file");
+  if (!(file instanceof File) || file.size === 0) return { status: "error", messages: [w.bank.problems.empty], fields: { file: w.bank.problems.empty } };
+  if (file.size > STATEMENT_BYTES) return { status: "error", messages: [w.bank.problems.too_big], fields: { file: w.bank.problems.too_big } };
+  const result = await importBankStatement(member, { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+  if (!result.ok) {
+    const words = fillWords(w.bank.problems[result.problem] ?? w.hand.problems.other, { currency: result.currency ?? "" });
+    return { status: "error", messages: [words], fields: { file: words } };
+  }
+  refresh();
+  return { status: "ok", messages: [countWords(result.lines, w.bank.imported, { new: result.newLines, matched: result.matched })] };
 }

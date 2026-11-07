@@ -239,6 +239,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("work_invoices", "business", via("none"), ["notes"], null, "none", "The owner's own accounting (D122); " + OWN),
   entry("ledger_entries", "business", via("none"), ["text"], null, "none", "The store's own books (D478): an entry's words may name a Work client, kept under the bookkeeping duty; " + OWN),
   entry("ledger_lines", "business", via("none"), ["text"], null, "none", "The store's own books (D478): a line's words, kept under the bookkeeping duty; " + OWN),
+  entry("bank_lines", "business", via("none"), ["text", "reference", "counterparty"], null, "none", "The store's own bank statement in its books (D486): a line names who paid or was paid, as the bank wrote it, kept under the bookkeeping duty; " + OWN),
+  entry("bank_statements", "business", via("none"), ["file_name"], null, "none", "The store's own bank statements (D486): the file's name as uploaded, kept with its lines; " + OWN),
   entry("work_recurring_invoices", "business", via("none"), ["name"], null, "none", "The owner's own accounting (D122); " + OWN),
   entry("work_time_entries", "business", via("none"), ["note"], null, "none", "The owner's own accounting (D122); " + OWN),
 

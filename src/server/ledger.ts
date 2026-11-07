@@ -50,6 +50,7 @@ import { mainCurrency } from "@/lib/markets";
 
 import { loadDocument, type DocumentKind } from "./accounting-documents";
 import { compareWithTripletex } from "./ledger-compare";
+import { matchAllBankStatements, matchBankStatement } from "./bank-statements";
 import { audit, type Membership } from "./auth";
 import { log } from "./log";
 import { getTripletexConnection } from "./tripletex";
@@ -333,6 +334,8 @@ export async function reverseLedgerEntry(member: Membership, entryId: string, da
   try {
     const [row] = await db().execute<{ id: string }>(sql`select commerce.ledger_reverse(${entryId}::uuid, ${on}::date, ${text}, ${member.account.id}::uuid) as id`);
     await audit(member.account.id, member.store.id, "work.ledger_entry_reversed", { entryId, reversalId: String(row.id) });
+    // A bank line matched to the entry waits again, and may match another entry of the same money.
+    await matchBankStatement(member.store.id, entry.book_id);
     return { ok: true, id: String(row.id) };
   } catch (error) {
     const problem = refusal(error);
@@ -865,6 +868,14 @@ export async function runLedgerPosting(options: { budgetMs?: number } = {}): Pro
       done += 1;
     } catch (error) {
       log("error", "ledger.posting_failed", { storeId: book.store_id, bookId: book.id }, error);
+    }
+  }
+  // B4: bank lines matched to what was just posted (a payout's entry may come after the statement that shows it).
+  if (Date.now() < deadline) {
+    try {
+      await matchAllBankStatements(deadline);
+    } catch (error) {
+      log("error", "bank.matching_failed", {}, error);
     }
   }
   return { books: done, posted, waiting, compared };
