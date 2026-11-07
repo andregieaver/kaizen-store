@@ -606,6 +606,24 @@ async function postPayment(
   return posted.ok ? posted : { ok: false, problem: posted.problems[0] };
 }
 
+/**
+ * Posts one Work invoice's payment at once in the store's open book (one recorded from the bank's statement, B4, D487), as the job would:
+ * the entry's id, or null when the store keeps no books here or the payment cannot be posted yet, when it waits for the job as any other.
+ */
+export async function postWorkPaymentNow(storeId: string, paymentId: string): Promise<string | null> {
+  const book = await typedRow(
+    z.object({ id: col.uuid, currency: col.currency }),
+    sql`select id, currency from commerce.ledger_books where store_id = ${storeId}::uuid and closed_on is null`,
+  );
+  if (!book) return null;
+  const posting = await postingOf(storeId);
+  await chartFor(storeId, book.id, posting);
+  const result = await postPayment(storeId, book, posting, paymentId);
+  if (!result.ok) return null;
+  await db().execute(sql`delete from commerce.ledger_waiting where book_id = ${book.id}::uuid and source_kind = 'work_payment' and source_id = ${paymentId}`);
+  return result.id;
+}
+
 const SHOP_MONEY = z.object({
   id: col.uuid,
   amount_minor: col.minor,

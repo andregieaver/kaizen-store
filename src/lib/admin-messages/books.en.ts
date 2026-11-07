@@ -153,6 +153,14 @@ export const booksEn = {
     booksOnly: "In the books, not in the bank",
     booksOnlyLead: "Money the books say came in or went out in the statements' days that the bank does not show.",
     none: "Every line matches.",
+    offer: "Pays invoice {number} to {client}? {amount} is outstanding.",
+    pay: "Mark it paid",
+    paid: "Invoice {number} is marked paid, and the payment is in the books.",
+    autoPaid: { one: "Invoice {numbers} was marked paid from the statement.", many: "Invoices {numbers} were marked paid from the statement." },
+    payProblems: {
+      line: "This line is already matched to the books.",
+      invoice: "The invoice could not be marked paid: it may be paid already, or the line is more than is outstanding. Open it in Work.",
+    } as Record<string, string>,
     problems: {
       empty: "The file holds no lines.",
       too_big: "The file is larger than 3 MB.",

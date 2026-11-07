@@ -149,6 +149,14 @@ export const booksNb: BooksMessages = {
     booksOnly: "I regnskapet, ikke i banken",
     booksOnlyLead: "Penger regnskapet sier kom inn eller gikk ut i kontoutskriftenes dager, som banken ikke viser.",
     none: "Alle linjer stemmer.",
+    offer: "Betaler faktura {number} til {client}? {amount} er utestående.",
+    pay: "Merk som betalt",
+    paid: "Faktura {number} er merket som betalt, og betalingen er ført.",
+    autoPaid: { one: "Faktura {numbers} ble merket som betalt fra kontoutskriften.", many: "Fakturaene {numbers} ble merket som betalt fra kontoutskriften." },
+    payProblems: {
+      line: "Denne linjen er allerede avstemt mot regnskapet.",
+      invoice: "Fakturaen kunne ikke merkes som betalt: den kan allerede være betalt, eller linjen er mer enn det utestående. Åpne den i Arbeid.",
+    } as Record<string, string>,
     problems: {
       empty: "Filen har ingen linjer.",
       too_big: "Filen er større enn 3 MB.",

@@ -14,6 +14,7 @@ import type { Membership } from "@/server/auth";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { lockLedgerThrough, openLedgerBook, postDueDocuments, openBookOf, postHandEntry, reverseLedgerEntry } from "@/server/ledger";
 import { postOpeningFromTripletex } from "@/server/ledger-opening";
+import { payCertainInvoices, payInvoiceFromBank } from "@/server/bank-payments";
 import { importBankStatement, STATEMENT_BYTES } from "@/server/bank-statements";
 import { checkOwnerRole } from "@/server/permissions";
 
@@ -118,6 +119,21 @@ export async function uploadBankStatementAction(storeSlug: string, _state: FormS
     const words = fillWords(w.bank.problems[result.problem] ?? w.hand.problems.other, { currency: result.currency ?? "" });
     return { status: "error", messages: [words], fields: { file: words } };
   }
+  // A client's payment that names its invoice and pays exactly what is outstanding records the payment (D487).
+  const paid = await payCertainInvoices(member);
   refresh();
-  return { status: "ok", messages: [countWords(result.lines, w.bank.imported, { new: result.newLines, matched: result.matched })] };
+  const messages = [countWords(result.lines, w.bank.imported, { new: result.newLines, matched: result.matched })];
+  if (paid.length > 0) messages.push(countWords(paid.length, w.bank.autoPaid, { numbers: paid.join(", ") }));
+  return { status: "ok", messages };
+}
+
+/** *Mark it paid*: a line of the statement recorded as the payment of the Work invoice it was offered (D487). */
+export async function payFromBankAction(storeSlug: string, lineId: string, invoiceId: string): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const paid = await payInvoiceFromBank(member, lineId, invoiceId);
+  if (!paid.ok) return { status: "error", messages: [w.bank.payProblems[paid.problem]] };
+  refresh();
+  return { status: "ok", messages: [fillWords(w.bank.paid, { number: paid.printedNumber })] };
 }

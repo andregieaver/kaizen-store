@@ -13,11 +13,12 @@ import { formatStoreDay } from "@/lib/return-time";
 import { ledgerAccounts, ledgerJournal, ledgerTrialBalance, ledgerVatByCode, ledgerWaiting, openBookOf } from "@/server/ledger";
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { hasOpeningBalance } from "@/server/ledger-opening";
+import { invoiceOffers } from "@/server/bank-payments";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 
-import { lockBooksAction, openBooksAction, openingFromTripletexAction, postEntryAction, reverseEntryAction, uploadBankStatementAction } from "./actions";
+import { lockBooksAction, openBooksAction, openingFromTripletexAction, payFromBankAction, postEntryAction, reverseEntryAction, uploadBankStatementAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -93,6 +94,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const offerOpening = owner && tripletex !== null && !(await hasOpeningBalance(book.id));
   // The bank (B4, D486): the statements uploaded, matched to the books, and what is left on either side.
   const bank = await bankSummary(book.id);
+  // A client's payment in the bank, and the Work invoice it most likely pays (D487).
+  const offers = await invoiceOffers(store.id, book.id);
   const amount = (minor: number) => formatMoney(minor, book.currency, locale);
   // The table's amounts as numbers, the currency said once above it; the result with its currency.
   const digits = minorUnitDigits(book.currency);
@@ -140,14 +143,33 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
               <summary className="cursor-pointer font-medium">{`${w.bank.bankOnly} (${bank.lines - bank.matched})`}</summary>
               <p className="mt-1 text-muted">{w.bank.bankOnlyLead}</p>
               <ul className="mt-2 flex flex-col divide-y divide-line">
-                {bank.bankOnly.map((l) => (
-                  <li key={l.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
-                    <span className="min-w-0 flex-1">
-                      <span className="text-muted">{day(l.day)}</span> {[l.counterparty, l.text, l.reference].filter(Boolean).join(" · ")}
-                    </span>
-                    <span className="tabular-nums">{amount(l.amountMinor)}</span>
-                  </li>
-                ))}
+                {bank.bankOnly.map((l) => {
+                  const offer = offers.get(l.id);
+                  return (
+                    <li key={l.id} className="flex flex-col gap-2 py-2">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                        <span className="min-w-0 flex-1">
+                          <span className="text-muted">{day(l.day)}</span> {[l.counterparty, l.text, l.reference].filter(Boolean).join(" · ")}
+                        </span>
+                        <span className="tabular-nums">{amount(l.amountMinor)}</span>
+                      </div>
+                      {offer && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                          <span className="text-muted">
+                            {fillWords(w.bank.offer, { number: offer.printedNumber, client: offer.client, amount: amount(offer.outstandingMinor) })}
+                          </span>
+                          {owner && (
+                            <ActionForm action={payFromBankAction.bind(null, store.slug, l.id, offer.invoiceId)} className="flex flex-col gap-1">
+                              <div>
+                                <SubmitButton variant="secondary">{w.bank.pay}</SubmitButton>
+                              </div>
+                            </ActionForm>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </details>
           )}
