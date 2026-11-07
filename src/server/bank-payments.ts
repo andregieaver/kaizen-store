@@ -5,11 +5,12 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { matchInvoices, type InvoiceMatchKind, type OpenInvoice } from "@/lib/bank-invoices";
+import { BANK_OWN_ACCOUNTS, bankOwnKind, entryOfBankOwnLine, type BankOwnKind } from "@/lib/bank-own-lines";
 import { MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
 
 import { audit, type Membership } from "./auth";
 import { BANK_ACCOUNT } from "./bank-statements";
-import { postShopPaymentNow, postWorkPaymentNow } from "./ledger";
+import { addLedgerAccount, ledgerAccounts, postLedgerEntry, postShopPaymentNow, postWorkPaymentNow, type PostProblem } from "./ledger";
 import { log } from "./log";
 import { recordTermsPaidOutside } from "./payment-terms";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -226,4 +227,39 @@ export async function payCertainInvoices(member: Membership): Promise<string[]> 
     if (done.ok) paid.push(done.printedNumber);
   }
   return paid;
+}
+
+/**
+ * Posts one of the bank's own lines, a fee or interest (D488, `bankOwnKind()`), against the bank's account in the bank's series on its day,
+ * no VAT, once for the line, and matches the line to it (the owner's press). The account is added to the chart when the book has not got it.
+ * Audited.
+ */
+export async function postBankOwnLine(
+  member: Membership,
+  lineId: string,
+): Promise<{ ok: true; kind: BankOwnKind; account: number } | { ok: false; problem: "line" | "kind" | PostProblem }> {
+  const storeId = member.store.id;
+  const line = await typedRow(
+    z.object({ id: col.uuid, book_id: col.uuid, day: col.text, amount_minor: col.minor, text: col.text }),
+    sql`select b.id, b.book_id, b.booked_on::text as day, b.amount_minor, b.text
+          from commerce.bank_lines b join commerce.ledger_books k on k.id = b.book_id
+         where b.id = ${lineId}::uuid and b.store_id = ${storeId}::uuid and b.ledger_account = ${BANK_ACCOUNT}
+           and b.entry_id is null and k.closed_on is null`,
+  );
+  if (!line) return { ok: false, problem: "line" };
+  const kind = bankOwnKind({ amountMinor: line.amount_minor, text: line.text });
+  if (!kind) return { ok: false, problem: "kind" };
+  const account = BANK_OWN_ACCOUNTS[kind];
+  if (!(await ledgerAccounts(line.book_id)).some((a) => a.number === account)) await addLedgerAccount(storeId, line.book_id, { number: account });
+  const posted = await postLedgerEntry(line.book_id, entryOfBankOwnLine({ id: line.id, day: line.day, amountMinor: line.amount_minor, text: line.text }, kind), member.account.id);
+  if (!posted.ok) return { ok: false, problem: posted.problems[0] };
+  try {
+    await db().execute(sql`
+      update commerce.bank_lines set entry_id = ${posted.id}::uuid, matched_at = now()
+       where id = ${lineId}::uuid and store_id = ${storeId}::uuid and entry_id is null`);
+  } catch (error) {
+    log("info", "bank.own_line_match_taken", { storeId, lineId }, error);
+  }
+  await audit(member.account.id, storeId, "work.bank_line_posted", { lineId, kind, account, entryId: posted.id });
+  return { ok: true, kind, account };
 }

@@ -8,7 +8,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 
 const invoices = await import("./work-invoices");
 const { importBankStatement } = await import("./bank-statements");
-const { invoiceOffers, payCertainInvoices, payInvoiceFromBank } = await import("./bank-payments");
+const { invoiceOffers, payCertainInvoices, payInvoiceFromBank, postBankOwnLine } = await import("./bank-payments");
 
 import type { Membership } from "./auth";
 import type { InvoiceResult, WorkActor } from "./work-invoices";
@@ -32,14 +32,14 @@ const ok = <T extends object>(r: InvoiceResult<T>) => {
   return r as Extract<typeof r, { ok: true }>;
 };
 
-async function workBooks(): Promise<{ storeId: string; bookId: string; member: Membership; actor: WorkActor }> {
-  const name = `bpay-${run}`;
+async function workBooks(label = "a"): Promise<{ storeId: string; bookId: string; member: Membership; actor: WorkActor }> {
+  const name = `bpay-${run}-${label}`;
   const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${name}@example.com`}, 'W', 'Arbeid') returning id`);
   await db().execute(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${name}, 'Arbeid', null)`);
   const [owner] = await db().execute<Row>(sql`select id from commerce.accounts where email = ${`${name}@example.com`}`);
   const [store] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${name}`);
   const storeId = String(store.id);
-  const org = `9${String(Date.now()).slice(-8)}`;
+  const org = `9${String(Math.floor(Math.random() * 100_000_000)).padStart(8, "0")}`;
   await db().execute(sql`
     update commerce.stores set legal_name = 'Konsulent AS', organisation_number = ${org}, postal_address = 'Storgata 1, 0150 Oslo', country = 'NO',
       contact_email = 'post@konsulent.no', modules = array['work']
@@ -68,12 +68,12 @@ async function issued(actor: WorkActor, clientId: string, on: string): Promise<{
   return { id, printed: String(row.document_number), number: Number(row.number) };
 }
 
-const camt = (day: string, entries: { ref: string; amount: string; payer: string; words: string }[]) => `<?xml version="1.0" encoding="UTF-8"?>
+const camt = (day: string, entries: { ref: string; amount: string; payer: string; words: string; side?: "CRDT" | "DBIT" }[]) => `<?xml version="1.0" encoding="UTF-8"?>
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><BkToCstmrStmt><Stmt>
   <Acct><Id><IBAN>NO9386011117947</IBAN></Id><Ccy>NOK</Ccy></Acct>
   ${entries
     .map(
-      (e) => `<Ntry><Amt Ccy="NOK">${e.amount}</Amt><CdtDbtInd>CRDT</CdtDbtInd><Sts>BOOK</Sts><BookgDt><Dt>${day}</Dt></BookgDt><AcctSvcrRef>${e.ref}</AcctSvcrRef>
+      (e) => `<Ntry><Amt Ccy="NOK">${e.amount}</Amt><CdtDbtInd>${e.side ?? "CRDT"}</CdtDbtInd><Sts>BOOK</Sts><BookgDt><Dt>${day}</Dt></BookgDt><AcctSvcrRef>${e.ref}</AcctSvcrRef>
     <NtryDtls><TxDtls><RltdPties><Dbtr><Nm>${e.payer}</Nm></Dbtr></RltdPties><RmtInf><Ustrd>${e.words}</Ustrd></RmtInf></TxDtls></NtryDtls></Ntry>`,
     )
     .join("\n  ")}
@@ -124,6 +124,39 @@ describe("a client's payment on the statement, paying the invoice it names (B4, 
     expect(await payInvoiceFromBank(member, String(lineB.id), b.id)).toEqual({ ok: false, problem: "line" });
 
     const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action = 'work.bank_payment_recorded'`);
+    expect(audited.n).toBe(2);
+  });
+});
+
+describe("the bank's own fees and interest, posted with a press (B4, D488)", () => {
+  it("posts a fee to 7770 and interest to 8050 against the bank, matched to their lines, once, and refuses a purchase", async () => {
+    const { storeId, bookId, member } = await workBooks("own");
+    const [days] = await db().execute<Row>(sql`select (current_date - 3)::text as day`);
+    const file = camt(String(days.day), [
+      { ref: `${run}-fee`, amount: "65.00", payer: "DNB", words: "Kontoholdsgebyr", side: "DBIT" },
+      { ref: `${run}-int`, amount: "7.70", payer: "DNB", words: "Kreditrenter" },
+      { ref: `${run}-buy`, amount: "1000.00", payer: "Kontorbutikken", words: "Varekjøp", side: "DBIT" },
+    ]);
+    expect(await importBankStatement(member, { name: "konto.xml", bytes: new TextEncoder().encode(file) })).toMatchObject({ ok: true, newLines: 3 });
+    const lineOf = async (ref: string) =>
+      String((await db().execute<Row>(sql`select id from commerce.bank_lines where book_id = ${bookId}::uuid and line_key = ${`ref:${run}-${ref}`}`))[0].id);
+
+    expect(await postBankOwnLine(member, await lineOf("fee"))).toEqual({ ok: true, kind: "fee", account: 7770 });
+    expect(await postBankOwnLine(member, await lineOf("int"))).toEqual({ ok: true, kind: "interest_in", account: 8050 });
+    const posted = await db().execute<Row>(sql`
+      select e.series, e.entry_date::text as day, e.source_kind, l.account, l.amount_minor::int as amount, l.vat_code
+        from commerce.bank_lines b join commerce.ledger_entries e on e.id = b.entry_id join commerce.ledger_lines l on l.entry_id = e.id
+       where b.book_id = ${bookId}::uuid order by b.amount_minor, l.account`);
+    expect(posted.map((r) => [r.series, r.day, r.source_kind, r.account, r.amount, r.vat_code])).toEqual([
+      ["B", String(days.day), "bank_line", 1920, -6_500, null],
+      ["B", String(days.day), "bank_line", 7770, 6_500, null],
+      ["B", String(days.day), "bank_line", 1920, 770, null],
+      ["B", String(days.day), "bank_line", 8050, -770, null],
+    ]);
+    // Pressed again: the line is matched already. A purchase is not the bank's own: it needs its receipt.
+    expect(await postBankOwnLine(member, await lineOf("fee"))).toEqual({ ok: false, problem: "line" });
+    expect(await postBankOwnLine(member, await lineOf("buy"))).toEqual({ ok: false, problem: "kind" });
+    const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action = 'work.bank_line_posted'`);
     expect(audited.n).toBe(2);
   });
 });

@@ -155,6 +155,13 @@ export const booksEn = {
     none: "Every line matches.",
     offer: "Pays invoice {number} to {client}? {amount} is outstanding.",
     offerOrder: "Pays invoice {number} for order {order}? {amount} is outstanding.",
+    own: {
+      fee: "A bank fee. Post it to {account}?",
+      interest_in: "Interest from the bank. Post it to {account}?",
+      interest_out: "Interest paid to the bank. Post it to {account}?",
+    } as Record<string, string>,
+    post: "Post it",
+    posted: "Posted to account {account}, and matched to the line.",
     pay: "Mark it paid",
     paid: "Invoice {number} is marked paid, and the payment is in the books.",
     autoPaid: { one: "Invoice {numbers} was marked paid from the statement.", many: "Invoices {numbers} were marked paid from the statement." },

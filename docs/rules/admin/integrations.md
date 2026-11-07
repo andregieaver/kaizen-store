@@ -354,3 +354,6 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`work.bank_payment_recorded`). Which invoice a line pays is `matchInvoices()` alone (`src/lib/bank-invoices.ts`): only a `certain` match
   (the invoice's printed number in the line, exactly what is outstanding, no other number) is recorded without the owner, and only when
   the owner uploads the statement; every other is offered on the Books screen for one press. Never record a payment from the ledger's job.
+  The bank's own fees and interest (D488) are posted only through `postBankOwnLine()`, which posts `entryOfBankOwnLine()` (`src/lib/bank-own-lines.ts`:
+  7770, 8050 or 8150 against 1920, no VAT, source `bank_line`) for a line `bankOwnKind()` names, with the owner's press; any other cost from a
+  bank line waits for its receipt (B3), never posted from the line alone.

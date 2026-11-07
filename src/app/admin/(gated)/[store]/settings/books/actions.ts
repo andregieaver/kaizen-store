@@ -14,7 +14,7 @@ import type { Membership } from "@/server/auth";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { lockLedgerThrough, openLedgerBook, postDueDocuments, openBookOf, postHandEntry, reverseLedgerEntry } from "@/server/ledger";
 import { postOpeningFromTripletex } from "@/server/ledger-opening";
-import { payCertainInvoices, payInvoiceFromBank } from "@/server/bank-payments";
+import { payCertainInvoices, payInvoiceFromBank, postBankOwnLine } from "@/server/bank-payments";
 import { importBankStatement, STATEMENT_BYTES } from "@/server/bank-statements";
 import { checkOwnerRole } from "@/server/permissions";
 
@@ -127,13 +127,27 @@ export async function uploadBankStatementAction(storeSlug: string, _state: FormS
   return { status: "ok", messages: [paid.length > 0 ? `${read} ${countWords(paid.length, w.bank.autoPaid, { numbers: paid.join(", ") })}` : read] };
 }
 
-/** *Mark it paid*: a line of the statement recorded as the payment of the Work invoice it was offered (D487); the button says which, `line:invoice`. */
+/**
+ * A line of the statement the books do not have, done with one press: *Mark it paid* records it as the payment of the invoice it was offered
+ * (D487; the button says which, `line:invoice`), *Post it* posts the bank's own fee or interest (D488; the button names the line).
+ */
 export async function payFromBankAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const who = await owner(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
-  const [lineId, invoiceId] = String(form.get("pay") ?? "").split(":");
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const own = form.get("post");
+  if (own !== null) {
+    if (!uuid.test(String(own))) return { status: "error", messages: [w.bank.payProblems.line] };
+    const posted = await postBankOwnLine(member, String(own));
+    if (!posted.ok) {
+      const words = posted.problem === "line" || posted.problem === "kind" ? w.bank.payProblems.line : (w.hand.problems[posted.problem] ?? w.hand.problems.other);
+      return { status: "error", messages: [words] };
+    }
+    refresh();
+    return { status: "ok", messages: [fillWords(w.bank.posted, { account: posted.account })] };
+  }
+  const [lineId, invoiceId] = String(form.get("pay") ?? "").split(":");
   if (!uuid.test(lineId ?? "") || !uuid.test(invoiceId ?? "")) return { status: "error", messages: [w.bank.payProblems.line] };
   const paid = await payInvoiceFromBank(member, lineId, invoiceId);
   if (!paid.ok) return { status: "error", messages: [w.bank.payProblems[paid.problem]] };

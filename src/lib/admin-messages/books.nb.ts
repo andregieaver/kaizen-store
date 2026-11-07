@@ -151,6 +151,13 @@ export const booksNb: BooksMessages = {
     none: "Alle linjer stemmer.",
     offer: "Betaler faktura {number} til {client}? {amount} er utestående.",
     offerOrder: "Betaler faktura {number} for ordre {order}? {amount} er utestående.",
+    own: {
+      fee: "Et bankgebyr. Før det på {account}?",
+      interest_in: "Renter fra banken. Før dem på {account}?",
+      interest_out: "Renter betalt til banken. Før dem på {account}?",
+    } as Record<string, string>,
+    post: "Før det",
+    posted: "Ført på konto {account}, og avstemt mot linjen.",
     pay: "Merk som betalt",
     paid: "Faktura {number} er merket som betalt, og betalingen er ført.",
     autoPaid: { one: "Faktura {numbers} ble merket som betalt fra kontoutskriften.", many: "Fakturaene {numbers} ble merket som betalt fra kontoutskriften." },

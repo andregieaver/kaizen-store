@@ -13,6 +13,7 @@ import { formatStoreDay } from "@/lib/return-time";
 import { ledgerAccounts, ledgerJournal, ledgerTrialBalance, ledgerVatByCode, ledgerWaiting, openBookOf } from "@/server/ledger";
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { hasOpeningBalance } from "@/server/ledger-opening";
+import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
 import { invoiceOffers } from "@/server/bank-payments";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -148,6 +149,10 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                 <ul className="mt-2 flex flex-col divide-y divide-line">
                   {bank.bankOnly.map((l) => {
                     const offer = offers.get(l.id);
+                    // The bank's own fee or interest, posted with one press (D488).
+                    const own = offer ? null : bankOwnKind({ amountMinor: l.amountMinor, text: l.text });
+                    const ownAccount = own ? BANK_OWN_ACCOUNTS[own] : null;
+                    const ownName = ownAccount ? `${ownAccount} ${chart.find((a) => a.number === ownAccount)?.name ?? ""}`.trim() : "";
                     return (
                       <li key={l.id} className="flex flex-col gap-2 py-2">
                         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -168,6 +173,14 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                                 {w.bank.pay}
                               </SubmitButton>
                             )}
+                          </div>
+                        )}
+                        {own && owner && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <span className="text-muted">{fillWords(w.bank.own[own], { account: ownName })}</span>
+                            <SubmitButton variant="secondary" name="post" value={l.id}>
+                              {w.bank.post}
+                            </SubmitButton>
                           </div>
                         )}
                       </li>
