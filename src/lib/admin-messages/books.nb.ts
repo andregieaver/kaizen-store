@@ -23,7 +23,7 @@ export const booksNb: BooksMessages = {
   waiting: {
     title: "Venter på deg",
     count: { one: "{n} dokument kunne ikke føres ennå", many: "{n} dokumenter kunne ikke føres ennå" },
-    kinds: { work_invoice: "Faktura", work_credit_note: "Kreditnota", shop_invoice: "Faktura fra butikken", shop_credit_note: "Kreditnota fra butikken", work_payment: "Innbetaling" },
+    kinds: { work_invoice: "Faktura", work_credit_note: "Kreditnota", shop_invoice: "Faktura fra butikken", shop_credit_note: "Kreditnota fra butikken", work_payment: "Innbetaling", shop_payment: "Innbetaling fra butikken", shop_refund: "Tilbakebetaling fra butikken", payout: "Utbetaling" },
     problems: {
       currency: "i en annen valuta enn regnskapet, uten egen kurs",
       vat_unmapped: "en mva-type uten konto",
@@ -34,6 +34,7 @@ export const booksNb: BooksMessages = {
       account: "en konto finnes ikke i kontoplanen",
       unreadable: "det kunne ikke leses",
       original: "innbetalingen den tar tilbake er ikke bokført ennå",
+      lines: "linjene i utbetalingen er ikke lest fra Stripe ennå",
     },
     since: "siden {day}",
   },
@@ -117,6 +118,9 @@ export const booksNb: BooksMessages = {
       shop_invoice: "Faktura fra butikken",
       shop_credit_note: "Kreditnota fra butikken",
       work_payment: "Innbetaling",
+      shop_payment: "Innbetaling fra butikken",
+      shop_refund: "Tilbakebetaling fra butikken",
+      payout: "Utbetaling",
       hand: "Manuelt",
     },
     problems: {

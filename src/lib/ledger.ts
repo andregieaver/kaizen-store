@@ -288,6 +288,12 @@ export type PaymentDoc = {
   amountMinor: number;
   currency: string;
   method: PaymentMethod;
+  /** What it was posted from, when not a Work invoice's payment (`shop_payment`, `shop_refund`, step 2c). */
+  sourceKind?: string;
+  /** What the words name, when not "faktura {invoiceNumber}" (`ordre 1042`). */
+  what?: string;
+  /** Where the money is, when the method's account is not it (a refund to store credit is owed to the customer, 2900). */
+  account?: number;
 };
 
 /**
@@ -323,7 +329,7 @@ export function entryOfPayment(
   }
   const difference = money - receivable;
   const lines: LedgerLineInput[] = [
-    { account: PAYMENT_ACCOUNTS[payment.method], amountMinor: money, vatCode: null },
+    { account: payment.account ?? PAYMENT_ACCOUNTS[payment.method], amountMinor: money, vatCode: null },
     { account: posting.receivable, amountMinor: -receivable, vatCode: null },
     ...(difference > 0 ? [{ account: FX_GAIN_ACCOUNT, amountMinor: -difference, vatCode: null }] : []),
     ...(difference < 0 ? [{ account: FX_LOSS_ACCOUNT, amountMinor: -difference, vatCode: null }] : []),
@@ -335,10 +341,39 @@ export function entryOfPayment(
     entry: {
       series: LEDGER_SERIES.bank,
       date: payment.receivedOn,
-      text: clipText(`${word} faktura ${payment.invoiceNumber}${payment.counterparty ? `, ${payment.counterparty}` : ""}`, 200),
-      source: { kind: "work_payment", id: payment.id },
+      text: clipText(`${word} ${payment.what ?? `faktura ${payment.invoiceNumber}`}${payment.counterparty ? `, ${payment.counterparty}` : ""}`, 200),
+      source: { kind: payment.sourceKind ?? "work_payment", id: payment.id },
       lines,
     },
+  };
+}
+
+/** Where a shop's payment is (step 2c): with the payment provider until its payout (Stripe), or where staff took it by hand (D173). */
+export const SHOP_PAYMENT_ACCOUNTS: Record<string, number> = { stripe: 1579, cash: 1900, bank_transfer: 1920, other: 1920 };
+
+/** What a refund to store credit is: owed to the customer until it is spent (D381). */
+export const STORE_CREDIT_ACCOUNT = 2900;
+
+/** Where Stripe's fees are posted: bank and card charges. */
+export const CARD_FEE_ACCOUNT = 7770;
+
+/**
+ * A payout from the payment provider to the bank (step 2c, D290): what reached the bank, what the provider kept as its fees, and the gross
+ * that left the provider's balance (1579). A payout taking money back from the bank (negative) is the same with the signs turned.
+ */
+export function entryOfPayout(payout: { id: string; day: string; amountMinor: number; feeMinor: number; provider: string }): { ok: true; entry: LedgerEntryInput } | { ok: false; problem: PaymentProblem } {
+  if (!Number.isSafeInteger(payout.amountMinor) || !Number.isSafeInteger(payout.feeMinor)) return { ok: false, problem: "nothing" };
+  const gross = payout.amountMinor + payout.feeMinor;
+  const lines: LedgerLineInput[] = [
+    { account: PAYMENT_ACCOUNTS.bank, amountMinor: payout.amountMinor, vatCode: null },
+    { account: CARD_FEE_ACCOUNT, amountMinor: payout.feeMinor, vatCode: null },
+    { account: SHOP_PAYMENT_ACCOUNTS.stripe, amountMinor: -gross, vatCode: null },
+  ].filter((l) => l.amountMinor !== 0);
+  if (lines.length < 2) return { ok: false, problem: "nothing" };
+  const name = payout.provider === "stripe" ? "Stripe" : payout.provider;
+  return {
+    ok: true,
+    entry: { series: LEDGER_SERIES.bank, date: payout.day, text: clipText(`Utbetaling fra ${name}`, 200), source: { kind: "payout", id: payout.id }, lines },
   };
 }
 

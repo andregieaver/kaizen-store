@@ -27,7 +27,7 @@ export const booksEn = {
   waiting: {
     title: "Waiting for you",
     count: { one: "{n} document could not be posted yet", many: "{n} documents could not be posted yet" },
-    kinds: { work_invoice: "Invoice", work_credit_note: "Credit note", shop_invoice: "Shop invoice", shop_credit_note: "Shop credit note", work_payment: "Payment" } as Record<string, string>,
+    kinds: { work_invoice: "Invoice", work_credit_note: "Credit note", shop_invoice: "Shop invoice", shop_credit_note: "Shop credit note", work_payment: "Payment", shop_payment: "Shop payment", shop_refund: "Shop refund", payout: "Payout" } as Record<string, string>,
     problems: {
       currency: "in another currency than the books, with no rate of its own",
       vat_unmapped: "a VAT kind with no account",
@@ -38,6 +38,7 @@ export const booksEn = {
       account: "an account is not in the chart",
       unreadable: "it could not be read",
       original: "the payment it takes back is not posted yet",
+      lines: "its payout's lines are not read from Stripe yet",
     } as Record<string, string>,
     since: "since {day}",
   },
@@ -121,6 +122,9 @@ export const booksEn = {
       shop_invoice: "Shop invoice",
       shop_credit_note: "Shop credit note",
       work_payment: "Payment",
+      shop_payment: "Shop payment",
+      shop_refund: "Shop refund",
+      payout: "Payout",
       hand: "By hand",
     } as Record<string, string>,
     problems: {

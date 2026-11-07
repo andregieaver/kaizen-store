@@ -7,6 +7,8 @@ import {
   FX_LOSS_ACCOUNT,
   NO_POSTING,
   PAYMENT_ACCOUNTS,
+  SHOP_PAYMENT_ACCOUNTS,
+  STORE_CREDIT_ACCOUNT,
   balanceSheet,
   compareWithTheirs,
   isVatAccount,
@@ -15,6 +17,7 @@ import {
   entryName,
   entryOfDoc,
   entryOfPayment,
+  entryOfPayout,
   entryOfPaymentReversal,
   entryProblems,
   handEntryOf,
@@ -416,5 +419,58 @@ describe("an entry by hand", () => {
     // Rows that read well, but do not balance, or lack words.
     expect(handEntryOf({ ...opening, rows: opening.rows.slice(0, 3) }, "NOK", parseAmount)).toEqual({ ok: false, problems: ["balance"], rows: [] });
     expect(handEntryOf({ ...opening, text: "  " }, "NOK", parseAmount)).toEqual({ ok: false, problems: ["text"], rows: [] });
+  });
+});
+
+describe("a shop's money, and the payment provider's payouts", () => {
+  it("moves a shop order's receivable to where its money is, and back for a refund, in the shop's words", () => {
+    const paid = entryOfPayment(
+      { id: "p1", invoiceNumber: "", what: "ordre 1042", counterparty: null, receivedOn: "2027-01-14", amountMinor: 49_900, currency: "NOK", method: "stripe", sourceKind: "shop_payment", account: SHOP_PAYMENT_ACCOUNTS.stripe },
+      NO_POSTING,
+      "NOK",
+    );
+    expect(paid.ok && paid.entry).toEqual({
+      series: "B",
+      date: "2027-01-14",
+      text: "Innbetaling ordre 1042",
+      source: { kind: "shop_payment", id: "p1" },
+      lines: [
+        { account: 1579, amountMinor: 49_900, vatCode: null },
+        { account: 1500, amountMinor: -49_900, vatCode: null },
+      ],
+    });
+    // Paid back to store credit: owed to the customer, not money out of the provider.
+    const credited = entryOfPayment(
+      { id: "r1", invoiceNumber: "", what: "ordre 1042", counterparty: null, receivedOn: "2027-01-20", amountMinor: -10_000, currency: "NOK", method: "other", sourceKind: "shop_refund", account: STORE_CREDIT_ACCOUNT },
+      NO_POSTING,
+      "NOK",
+    );
+    expect(credited.ok && credited.entry.text).toBe("Tilbakebetaling ordre 1042");
+    expect(credited.ok && credited.entry.lines.map((l) => [l.account, l.amountMinor])).toEqual([[2900, -10_000], [1500, 10_000]]);
+    expect(SHOP_PAYMENT_ACCOUNTS).toEqual({ stripe: 1579, cash: 1900, bank_transfer: 1920, other: 1920 });
+  });
+
+  it("posts a payout as what reached the bank and the provider's fee, against the gross out of the provider's balance", () => {
+    expect(entryOfPayout({ id: "po1", day: "2027-01-16", amountMinor: 96_500, feeMinor: 3_500, provider: "stripe" })).toEqual({
+      ok: true,
+      entry: {
+        series: "B",
+        date: "2027-01-16",
+        text: "Utbetaling fra Stripe",
+        source: { kind: "payout", id: "po1" },
+        lines: [
+          { account: 1920, amountMinor: 96_500, vatCode: null },
+          { account: 7770, amountMinor: 3_500, vatCode: null },
+          { account: 1579, amountMinor: -100_000, vatCode: null },
+        ],
+      },
+    });
+    // A manual payout with no fee read: the bank against the balance only.
+    const manual = entryOfPayout({ id: "po2", day: "2027-01-17", amountMinor: 50_000, feeMinor: 0, provider: "stripe" });
+    expect(manual.ok && manual.entry.lines.map((l) => l.account)).toEqual([1920, 1579]);
+    // A negative balance taken from the bank: the signs turned.
+    const back = entryOfPayout({ id: "po3", day: "2027-01-18", amountMinor: -20_000, feeMinor: 0, provider: "stripe" });
+    expect(back.ok && back.entry.lines.map((l) => l.amountMinor)).toEqual([-20_000, 20_000]);
+    expect(entryOfPayout({ id: "po4", day: "2027-01-18", amountMinor: 0, feeMinor: 0, provider: "stripe" })).toEqual({ ok: false, problem: "nothing" });
   });
 });

@@ -331,5 +331,6 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   books can be compared account by account. Never post around the function, and never post a document's amounts but through `entryOfDoc()`,
   a Work invoice's payment but through `entryOfPayment()` (the money where its method puts it, `PAYMENT_ACCOUNTS`, against the receivable;
   in another currency at the invoice's rate and the day's, the difference on 8060 or 8160), or a payment's reversal but through
-  `entryOfPaymentReversal()`, which turns the payment's own entry. An entry typed by hand goes through `handEntryOf()` and `postHandEntry()` (the
+  `entryOfPaymentReversal()`, which turns the payment's own entry; a shop's payment or refund through `entryOfPayment()` with its own source kind and
+  account (`SHOP_PAYMENT_ACCOUNTS`, store credit 2900), and a payout only through `entryOfPayout()`. An entry typed by hand goes through `handEntryOf()` and `postHandEntry()` (the
   owner's, series `M` or `IB` only, audited); the books' screen reverses an entry only through `reverseLedgerEntry()`.

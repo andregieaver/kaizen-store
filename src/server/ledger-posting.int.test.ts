@@ -214,16 +214,51 @@ describe("a store's documents, posted to its books", () => {
     expect(await ledger.reverseLedgerEntry(member, opened.id, String(today))).toEqual({ ok: false, problem: "reversed" });
   });
 
-  it("posts a shop order's invoice, by the dispatcher's job", async () => {
+  it("posts a shop order's invoice and its card payment by the job, then a refund and the payout that settles them, the provider's balance back to nothing", async () => {
     const shop = await fx.makeStore(`ldg-shop-${run}`);
     const book = await openBook(shop.storeId, shop.ownerId);
-    await fx.paidOrder(shop, [["DEMO-MUG-WHITE", 2]]);
+    const order = await fx.paidOrder(shop, [["DEMO-MUG-WHITE", 2]]);
     const result = await ledger.runLedgerPosting();
-    expect(result.posted).toBeGreaterThanOrEqual(1);
+    expect(result.posted).toBeGreaterThanOrEqual(2);
     const rows = await entriesOf(book.id);
-    expect(rows.every((r) => r.source_kind === "shop_invoice")).toBe(true);
-    expect(rows.reduce((sum, r) => sum + Number(r.amount), 0)).toBe(0);
-    expect(rows.find((r) => r.account === 1500 && Number(r.amount) > 0)).toBeTruthy();
-    expect(rows.find((r) => r.account === 2700 && Number(r.amount) < 0)).toBeTruthy();
+    const invoice = rows.filter((r) => r.source_kind === "shop_invoice");
+    expect(invoice.reduce((sum, r) => sum + Number(r.amount), 0)).toBe(0);
+    expect(invoice.find((r) => r.account === 1500 && Number(r.amount) > 0)).toBeTruthy();
+    expect(invoice.find((r) => r.account === 2700 && Number(r.amount) < 0)).toBeTruthy();
+    // The card payment moves the receivable to the payment provider until its payout.
+    expect(rows.filter((r) => r.source_kind === "shop_payment").map((r) => [r.account, Number(r.amount)])).toEqual([
+      [1579, order.total],
+      [1500, -order.total],
+    ]);
+
+    // A refund of 10.00 back to the card, and the payout of the charge less Stripe's 3.00 fee and the refund.
+    const [payment] = await db().execute<Row>(sql`select id from commerce.payments where store_id = ${shop.storeId}::uuid and order_id = ${order.orderId}::uuid`);
+    const [refund] = await db().execute<Row>(sql`
+      insert into commerce.refunds (store_id, payment_id, amount_minor, reason, status, kind)
+      values (${shop.storeId}::uuid, ${String(payment.id)}::uuid, 1000, 'requested_by_customer', 'succeeded', 'money') returning id`);
+    const amount = order.total - 300 - 1000;
+    const [payout] = await db().execute<Row>(sql`
+      insert into commerce.payouts (store_id, provider, provider_reference, provider_account, amount_minor, currency, status, automatic, arrival_on, provider_created_at, lines_read_at, lines_complete)
+      values (${shop.storeId}::uuid, 'stripe', ${`po_${run}`}, ${shop.account}, ${amount}, 'NOK', 'paid', true, current_date, now(), now(), true) returning id`);
+    await db().execute(sql`
+      insert into commerce.payout_lines (store_id, payout_id, provider_reference, kind, provider_type, amount_minor, fee_minor, net_minor, currency, provider_created_at)
+      values (${shop.storeId}::uuid, ${String(payout.id)}::uuid, ${`txn_c_${run}`}, 'charge', 'charge', ${order.total}, 300, ${order.total - 300}, 'NOK', now()),
+             (${shop.storeId}::uuid, ${String(payout.id)}::uuid, ${`txn_r_${run}`}, 'refund', 'refund', -1000, 0, -1000, 'NOK', now()),
+             (${shop.storeId}::uuid, ${String(payout.id)}::uuid, ${`txn_p_${run}`}, 'payout', 'payout', ${-amount}, 0, ${-amount}, 'NOK', now())`);
+    // The refund, the payout, and the credit note the refund was given as it was made.
+    expect(await ledger.postDueDocuments(shop.storeId, book)).toEqual({ posted: 3, waiting: 0 });
+    const [credit] = await db().execute<Row>(sql`select count(*)::int as n from commerce.ledger_entries where book_id = ${book.id}::uuid and source_kind = 'shop_credit_note'`);
+    expect(credit.n).toBe(1);
+    expect((await entriesOf(book.id, String(refund.id))).map((r) => [r.account, Number(r.amount)])).toEqual([
+      [1579, -1000],
+      [1500, 1000],
+    ]);
+    expect((await entriesOf(book.id, String(payout.id))).map((r) => [r.account, Number(r.amount)])).toEqual([
+      [1920, amount],
+      [7770, 300],
+      [1579, -(amount + 300)],
+    ]);
+    const [held] = await db().execute<Row>(sql`select coalesce(sum(amount_minor), 0)::bigint::text as s from commerce.ledger_lines where book_id = ${book.id}::uuid and account = 1579`);
+    expect(held.s).toBe("0");
   });
 });

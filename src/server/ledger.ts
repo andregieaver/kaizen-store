@@ -11,10 +11,14 @@ import {
   FX_LOSS_ACCOUNT,
   LEDGER_KINDS,
   PAYMENT_ACCOUNTS,
+  SHOP_PAYMENT_ACCOUNTS,
+  STORE_CREDIT_ACCOUNT,
+  CARD_FEE_ACCOUNT,
   entryName,
   entryOfDoc,
   entryOfPayment,
   entryOfPaymentReversal,
+  entryOfPayout,
   entryProblems,
   handEntryOf,
   isDay,
@@ -406,6 +410,9 @@ async function chartFor(storeId: string, bookId: string, posting: LedgerPosting)
     ...Object.values(posting.income),
     ...Object.values(BUCKET_VAT).flatMap((v) => (v.vatAccount ? [v.vatAccount] : [])),
     ...Object.values(PAYMENT_ACCOUNTS),
+    ...Object.values(SHOP_PAYMENT_ACCOUNTS),
+    STORE_CREDIT_ACCOUNT,
+    CARD_FEE_ACCOUNT,
     FX_GAIN_ACCOUNT,
     FX_LOSS_ACCOUNT,
   ]);
@@ -435,12 +442,21 @@ async function docRateOf(storeId: string, kind: DocumentKind, id: string, bookCu
   return Number.isSafeInteger(vatHomeMinor) ? { rate: row.fx_rate, vatHomeMinor } : null;
 }
 
-const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note", "work_payment"]), id: col.text });
+/**
+ * A shop payment's day: when staff said the money came (a payment by hand), else the day its order's invoice was issued (a card payment is
+ * captured as the invoice is issued, D159), else the day it was made, in the store's days.
+ */
+const SHOP_PAYMENT_DAY = sql`coalesce(p.received_on,
+  (select min(i.issued_on) from commerce.invoices i where i.store_id = p.store_id and i.order_id = p.order_id),
+  (p.created_at at time zone s.time_zone)::date)`;
+
+const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note", "work_payment", "shop_payment", "shop_refund", "payout"]), id: col.text });
 
 /**
  * The documents of a book's days not posted yet, the oldest first, invoices before credit notes: the same as Tripletex books (Work's sent
  * invoices, not imported ones, and credit notes; the shop's invoices and credit notes), each once; and the payments for Work's invoices
- * received in those days (step 2c), an imported invoice's too (its receivable is in the opening balance), a reversal after what it reverses. One that has an entry (even one a person
+ * received in those days (step 2c), an imported invoice's too (its receivable is in the opening balance), a reversal after what it reverses;
+ * and the shop's captured payments, its refunds that move money or owe it as store credit, and the payment provider's paid payouts. One that has an entry (even one a person
  * reversed) is done; one that waits is tried again a day after it was last tried.
  */
 async function dueDocuments(storeId: string, book: { id: string; opened_on: string; closed_on: string | null }, limit: number): Promise<z.infer<typeof DUE>[]> {
@@ -465,6 +481,24 @@ async function dueDocuments(storeId: string, book: { id: string; opened_on: stri
         select 'work_payment', p.id::text, p.received_on, case when p.reverses is null then 2 else 3 end from commerce.work_invoice_payments p
           join commerce.work_invoices i on i.store_id = p.store_id and i.id = p.invoice_id
          where p.store_id = ${storeId}::uuid and i.status <> 'draft' and p.received_on between ${book.opened_on}::date and ${to}::date
+        union all
+        select m.kind, m.id, m.day, m.rank from (
+          select 'shop_payment' as kind, p.id::text as id, ${SHOP_PAYMENT_DAY} as day, 4 as rank
+            from commerce.payments p join commerce.stores s on s.id = p.store_id
+           where p.store_id = ${storeId}::uuid and p.status = 'captured' and not p.test_mode and p.amount_minor > 0
+          union all
+          select 'shop_refund', r.id::text, (r.created_at at time zone s.time_zone)::date, 5
+            from commerce.refunds r
+            join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
+            join commerce.stores s on s.id = r.store_id
+           where r.store_id = ${storeId}::uuid and r.status = 'succeeded' and r.kind in ('money', 'release', 'store_credit')
+             and p.status = 'captured' and not p.test_mode and r.amount_minor > 0
+          union all
+          select 'payout', po.id::text, coalesce(po.arrival_on, (po.provider_created_at at time zone s.time_zone)::date), 6
+            from commerce.payouts po join commerce.stores s on s.id = po.store_id
+           where po.store_id = ${storeId}::uuid and po.status = 'paid' and not po.test_mode
+        ) m
+         where m.day between ${book.opened_on}::date and ${to}::date
       ) d
       where not exists (select 1 from commerce.ledger_entries e where e.book_id = ${book.id}::uuid and e.source_kind = d.kind and e.source_id = d.id)
         and not exists (select 1 from commerce.ledger_waiting w where w.book_id = ${book.id}::uuid and w.source_kind = d.kind and w.source_id = d.id
@@ -557,6 +591,98 @@ async function postPayment(
   return posted.ok ? posted : { ok: false, problem: posted.problems[0] };
 }
 
+const SHOP_MONEY = z.object({
+  id: col.uuid,
+  amount_minor: col.minor,
+  currency: col.currency,
+  day: col.text,
+  provider: col.text,
+  method: col.textOrNull,
+  kind: col.textOrNull,
+  order_number: col.text,
+});
+
+/**
+ * Posts a shop's captured payment or its refund (step 2c): the order's receivable against where the money is (`SHOP_PAYMENT_ACCOUNTS`), a
+ * refund to store credit against what the store owes the customer (2900), in the bank series on its day. Only in the book's currency for
+ * now: a payment in another waits.
+ */
+async function postShopMoney(
+  storeId: string,
+  book: { id: string; currency: string },
+  posting: LedgerPosting,
+  kind: "shop_payment" | "shop_refund",
+  id: string,
+): Promise<{ ok: true; id: string } | { ok: false; problem: PaymentProblem | PostProblem | "unreadable" }> {
+  const row = await typedRow(
+    SHOP_MONEY,
+    kind === "shop_payment"
+      ? sql`
+          select p.id, p.amount_minor, p.currency, (${SHOP_PAYMENT_DAY})::text as day, p.provider, p.method, null::text as kind, o.number as order_number
+            from commerce.payments p
+            join commerce.stores s on s.id = p.store_id
+            join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
+           where p.store_id = ${storeId}::uuid and p.id = ${id}::uuid`
+      : sql`
+          select r.id, r.amount_minor, p.currency, ((r.created_at at time zone s.time_zone)::date)::text as day, p.provider, p.method, r.kind, o.number as order_number
+            from commerce.refunds r
+            join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
+            join commerce.stores s on s.id = r.store_id
+            join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
+           where r.store_id = ${storeId}::uuid and r.id = ${id}::uuid`,
+  );
+  if (!row) return { ok: false, problem: "unreadable" };
+  const money = row.provider === "stripe" ? SHOP_PAYMENT_ACCOUNTS.stripe : (SHOP_PAYMENT_ACCOUNTS[row.method ?? "other"] ?? SHOP_PAYMENT_ACCOUNTS.other);
+  const made = entryOfPayment(
+    {
+      id: row.id,
+      invoiceNumber: "",
+      what: `ordre ${row.order_number}`,
+      counterparty: null,
+      receivedOn: row.day,
+      amountMinor: kind === "shop_payment" ? row.amount_minor : -row.amount_minor,
+      currency: row.currency,
+      method: "other",
+      sourceKind: kind,
+      account: row.kind === "store_credit" ? STORE_CREDIT_ACCOUNT : money,
+    },
+    posting,
+    book.currency,
+  );
+  if (!made.ok) return made;
+  const posted = await postLedgerEntry(book.id, made.entry, null);
+  return posted.ok ? posted : { ok: false, problem: posted.problems[0] };
+}
+
+/**
+ * Posts a paid payout (step 2c, `entryOfPayout()`): its fees are what its lines say Stripe kept (each line's fee, and a fee of its own as a
+ * line), so one whose lines are not read yet waits (`lines`); a manual payout lists none and is posted at its amount alone.
+ */
+async function postPayout(
+  storeId: string,
+  book: { id: string; currency: string },
+  id: string,
+): Promise<{ ok: true; id: string } | { ok: false; problem: PaymentProblem | PostProblem | "unreadable" | "lines" }> {
+  const payout = await typedRow(
+    z.object({ id: col.uuid, provider: col.text, amount_minor: col.minor, currency: col.currency, automatic: col.bool, lines_complete: col.bool, day: col.text, fees: col.minor }),
+    sql`
+      select po.id, po.provider, po.amount_minor, po.currency, po.automatic, po.lines_complete,
+             coalesce(po.arrival_on, (po.provider_created_at at time zone s.time_zone)::date)::text as day,
+             coalesce((select sum(l.fee_minor) + sum(case when l.kind = 'fee' then -l.amount_minor else 0 end)
+                         from commerce.payout_lines l where l.store_id = po.store_id and l.payout_id = po.id), 0) as fees
+        from commerce.payouts po join commerce.stores s on s.id = po.store_id
+       where po.store_id = ${storeId}::uuid and po.id = ${id}::uuid
+    `,
+  );
+  if (!payout) return { ok: false, problem: "unreadable" };
+  if (payout.currency !== book.currency) return { ok: false, problem: "currency" };
+  if (payout.automatic && !payout.lines_complete) return { ok: false, problem: "lines" };
+  const made = entryOfPayout({ id: payout.id, day: payout.day, amountMinor: payout.amount_minor, feeMinor: payout.fees, provider: payout.provider });
+  if (!made.ok) return made;
+  const posted = await postLedgerEntry(book.id, made.entry, null);
+  return posted.ok ? posted : { ok: false, problem: posted.problems[0] };
+}
+
 /** What waits in a book, and why: for the books' screen. */
 export async function ledgerWaiting(bookId: string): Promise<{ kind: string; id: string; problem: string; since: string }[]> {
   const rows = await typedRows(
@@ -585,6 +711,8 @@ export async function postDueDocuments(
     if (options.deadline && Date.now() > options.deadline) break;
     let result: { ok: true; id: string } | { ok: false; problem: string };
     if (d.kind === "work_payment") result = await postPayment(storeId, book, posting, d.id);
+    else if (d.kind === "shop_payment" || d.kind === "shop_refund") result = await postShopMoney(storeId, book, posting, d.kind, d.id);
+    else if (d.kind === "payout") result = await postPayout(storeId, book, d.id);
     else {
       const loaded = await loadDocument(storeId, d.kind as DocumentKind, d.id);
       const fx = loaded && loaded.doc.currency !== book.currency ? await docRateOf(storeId, d.kind as DocumentKind, d.id, book.currency) : null;
