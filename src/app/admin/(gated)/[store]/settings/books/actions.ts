@@ -122,9 +122,9 @@ export async function uploadBankStatementAction(storeSlug: string, _state: FormS
   // A client's payment that names its invoice and pays exactly what is outstanding records the payment (D487).
   const paid = await payCertainInvoices(member);
   refresh();
-  const messages = [countWords(result.lines, w.bank.imported, { new: result.newLines, matched: result.matched })];
-  if (paid.length > 0) messages.push(countWords(paid.length, w.bank.autoPaid, { numbers: paid.join(", ") }));
-  return { status: "ok", messages };
+  // One message: a form shows the first.
+  const read = countWords(result.lines, w.bank.imported, { new: result.newLines, matched: result.matched });
+  return { status: "ok", messages: [paid.length > 0 ? `${read} ${countWords(paid.length, w.bank.autoPaid, { numbers: paid.join(", ") })}` : read] };
 }
 
 /** *Mark it paid*: a line of the statement recorded as the payment of the Work invoice it was offered (D487). */
