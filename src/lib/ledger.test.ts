@@ -454,6 +454,28 @@ describe("a shop's money, and the payment provider's payouts", () => {
     expect(SHOP_PAYMENT_ACCOUNTS).toEqual({ stripe: 1579, cash: 1900, bank_transfer: 1920, other: 1920 });
   });
 
+  it("posts money in another currency at what the provider settled it for, the receivable at the invoice's rate, the rest a gain or a loss", () => {
+    // 100.00 euro invoiced at 11.50: 1 150.00 kroner owed; Stripe settled it for 1 162.40, a gain of 12.40.
+    const paid = entryOfPayment(
+      { id: "e1", invoiceNumber: "", what: "ordre 2001", counterparty: null, receivedOn: "2027-03-02", amountMinor: 10_000, currency: "EUR", method: "other", sourceKind: "shop_payment", account: 1579 },
+      NO_POSTING,
+      "NOK",
+      { invoice: "11.5", moneyMinor: 116_240 },
+    );
+    expect(paid.ok && paid.entry.lines.map((l) => [l.account, l.amountMinor])).toEqual([[1579, 116_240], [1500, -115_000], [8060, -1_240]]);
+    // A refund settled for less than it was owed at: a loss.
+    const back = entryOfPayment(
+      { id: "e2", invoiceNumber: "", what: "ordre 2001", counterparty: null, receivedOn: "2027-03-09", amountMinor: -2_000, currency: "EUR", method: "other", sourceKind: "shop_refund", account: 1579 },
+      NO_POSTING,
+      "NOK",
+      { invoice: "11.5", moneyMinor: -23_500 },
+    );
+    expect(back.ok && back.entry.lines.map((l) => [l.account, l.amountMinor])).toEqual([[1579, -23_500], [1500, 23_000], [8160, 500]]);
+    // A settled amount of the wrong sign, or none and no day's rate, is nothing to post from.
+    expect(entryOfPayment({ id: "e3", invoiceNumber: "", what: "x", counterparty: null, receivedOn: "2027-03-02", amountMinor: 10_000, currency: "EUR", method: "other", account: 1579 }, NO_POSTING, "NOK", { invoice: "11.5", moneyMinor: -1 })).toEqual({ ok: false, problem: "currency" });
+    expect(entryOfPayment({ id: "e4", invoiceNumber: "", what: "x", counterparty: null, receivedOn: "2027-03-02", amountMinor: 10_000, currency: "EUR", method: "other", account: 1579 }, NO_POSTING, "NOK", { invoice: "11.5" })).toEqual({ ok: false, problem: "currency" });
+  });
+
   it("knows where each way of paying puts the money: a gift card or store credit spent comes off what cards owe", () => {
     expect(shopMoneyAccount({ provider: "stripe", method: null })).toEqual({ account: 1579 });
     expect(shopMoneyAccount({ provider: "manual", method: "cash" })).toEqual({ account: 1900 });

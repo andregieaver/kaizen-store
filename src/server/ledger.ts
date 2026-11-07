@@ -39,6 +39,7 @@ import {
   type LedgerPosting,
   type PaymentMethod,
   type PaymentProblem,
+  type PaymentRates,
   type TrialBalance,
   type VatRow,
   vatByCode,
@@ -607,6 +608,57 @@ const SHOP_MONEY = z.object({
 });
 
 /**
+ * What a shop payment or refund in another currency is worth in the book's (step 2c): the receivable at its document's own rate (the
+ * order's invoice, a refund's credit note, both in the book's currency for VAT), and the money at what Stripe settled it for (its payout's
+ * line, so it waits until that payout is read, `lines`), or at the ECB's rate of its day when staff took it by hand. A gift card or store
+ * credit in another currency waits (`currency`): what cards owe is kept at the rate they were sold at, which this step does not follow.
+ */
+async function shopMoneyRates(
+  storeId: string,
+  bookCurrency: string,
+  kind: "shop_payment" | "shop_refund",
+  id: string,
+  provider: string,
+  day: string,
+): Promise<{ rates: PaymentRates } | { problem: "currency" | "lines" }> {
+  if (provider !== "stripe" && provider !== "manual") return { problem: "currency" };
+  const row = await typedRow(
+    z.object({ invoice_rate: col.textOrNull, settled: col.minorOrNull }),
+    kind === "shop_payment"
+      ? sql`
+          select (select i.fx_rate::text from commerce.invoices i
+                   where i.store_id = p.store_id and i.order_id = p.order_id and i.vat_home_currency = ${bookCurrency} and i.fx_rate is not null
+                   order by i.issued_on, i.id limit 1) as invoice_rate,
+                 (select sum(l.amount_minor) from commerce.payout_lines l
+                   where l.store_id = p.store_id and l.payment_id = p.id and l.kind = 'charge' and l.currency = ${bookCurrency}) as settled
+            from commerce.payments p where p.store_id = ${storeId}::uuid and p.id = ${id}::uuid`
+      : sql`
+          select coalesce(
+                   (select c.fx_rate::text from commerce.credit_notes c
+                     where c.store_id = r.store_id and c.refund_id = r.id and c.vat_home_currency = ${bookCurrency} and c.fx_rate is not null limit 1),
+                   (select i.fx_rate::text from commerce.invoices i
+                     where i.store_id = p.store_id and i.order_id = p.order_id and i.vat_home_currency = ${bookCurrency} and i.fx_rate is not null
+                     order by i.issued_on, i.id limit 1)) as invoice_rate,
+                 (select sum(l.amount_minor) from commerce.payout_lines l
+                   where l.store_id = r.store_id and l.refund_id = r.id and l.kind = 'refund' and l.currency = ${bookCurrency}) as settled
+            from commerce.refunds r join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
+           where r.store_id = ${storeId}::uuid and r.id = ${id}::uuid`,
+  );
+  if (!row?.invoice_rate) return { problem: "currency" };
+  if (provider === "stripe") return row.settled === null ? { problem: "lines" } : { rates: { invoice: row.invoice_rate, moneyMinor: row.settled } };
+  const currency = (
+    await typedRow(
+      z.object({ currency: col.currency }),
+      kind === "shop_payment"
+        ? sql`select currency from commerce.payments where store_id = ${storeId}::uuid and id = ${id}::uuid`
+        : sql`select p.currency from commerce.refunds r join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id where r.store_id = ${storeId}::uuid and r.id = ${id}::uuid`,
+    )
+  )?.currency;
+  const dayRate = currency ? await rateOnDay(bookCurrency, currency, day) : null;
+  return dayRate ? { rates: { invoice: row.invoice_rate, day: dayRate } } : { problem: "currency" };
+}
+
+/**
  * Posts a shop's captured payment or its refund (step 2c): the order's receivable against where the money is (`shopMoneyAccount()`): the
  * provider's balance, the till or the bank, what gift cards owe for a card or store credit spent (2900), what the store owes the customer for
  * a refund to store credit, in the bank series on its day. A way of paying the books do not follow yet (Mollie, at a venue, on terms) waits
@@ -618,7 +670,7 @@ async function postShopMoney(
   posting: LedgerPosting,
   kind: "shop_payment" | "shop_refund",
   id: string,
-): Promise<{ ok: true; id: string } | { ok: false; problem: PaymentProblem | PostProblem | "unreadable" | "provider" }> {
+): Promise<{ ok: true; id: string } | { ok: false; problem: PaymentProblem | PostProblem | "unreadable" | "provider" | "lines" }> {
   const row = await typedRow(
     SHOP_MONEY,
     kind === "shop_payment"
@@ -641,6 +693,13 @@ async function postShopMoney(
   const place = shopMoneyAccount({ provider: row.provider, method: row.method, refundKind: row.kind });
   if ("wait" in place) return { ok: false, problem: place.wait };
   if ("skip" in place) return { ok: false, problem: "nothing" };
+  // In another currency: the receivable at its document's own rate, the money at what it was worth in the book's currency.
+  let rates: PaymentRates | null = null;
+  if (row.currency !== book.currency) {
+    const priced = await shopMoneyRates(storeId, book.currency, kind, id, row.provider, row.day);
+    if ("problem" in priced) return { ok: false, problem: priced.problem };
+    rates = priced.rates;
+  }
   const made = entryOfPayment(
     {
       id: row.id,
@@ -656,6 +715,7 @@ async function postShopMoney(
     },
     posting,
     book.currency,
+    rates,
   );
   if (!made.ok) return made;
   const posted = await postLedgerEntry(book.id, made.entry, null);

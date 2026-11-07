@@ -267,6 +267,41 @@ describe("a store's documents, posted to its books", () => {
     expect(held.s).toBe("0");
   });
 
+  it("posts a euro order's card payment once its payout says what it was worth in kroner, the difference from the invoice's rate a gain", async () => {
+    const shop = await fx.makeStore(`ldg-eur-${run}`, { rates: true });
+    const book = await openBook(shop.storeId, shop.ownerId);
+    const order = await fx.paidOrder(shop, [["DEMO-MUG-WHITE", 2]], { market: fx.noInEuro });
+    await ledger.runLedgerPosting();
+    // The invoice is posted in kroner at its own rate; the payment waits until Stripe's payout says what it settled for.
+    const owed = (await entriesOf(book.id)).filter((r) => r.source_kind === "shop_invoice" && r.account === 1500).reduce((sum, r) => sum + Number(r.amount), 0);
+    expect(owed).toBeGreaterThan(order.total);
+    const [payment] = await db().execute<Row>(sql`select id from commerce.payments where store_id = ${shop.storeId}::uuid and order_id = ${order.orderId}::uuid`);
+    const [waiting] = await db().execute<Row>(sql`select problem from commerce.ledger_waiting where book_id = ${book.id}::uuid and source_id = ${String(payment.id)}`);
+    expect(waiting.problem).toBe("lines");
+
+    // Stripe settled the charge for 25.00 kroner more than it was invoiced at, kept 3.00 and paid out the rest.
+    const settled = owed + 2_500;
+    const [payout] = await db().execute<Row>(sql`
+      insert into commerce.payouts (store_id, provider, provider_reference, provider_account, amount_minor, currency, status, automatic, arrival_on, provider_created_at, lines_read_at, lines_complete)
+      values (${shop.storeId}::uuid, 'stripe', ${`po_eur_${run}`}, ${shop.account}, ${settled - 300}, 'NOK', 'paid', true, current_date, now(), now(), true) returning id`);
+    await db().execute(sql`
+      insert into commerce.payout_lines (store_id, payout_id, provider_reference, kind, provider_type, amount_minor, fee_minor, net_minor, currency, provider_created_at, payment_id, order_id)
+      values (${shop.storeId}::uuid, ${String(payout.id)}::uuid, ${`txn_eur_${run}`}, 'charge', 'charge', ${settled}, 300, ${settled - 300}, 'NOK', now(), ${String(payment.id)}::uuid, ${order.orderId}::uuid),
+             (${shop.storeId}::uuid, ${String(payout.id)}::uuid, ${`txn_eur_p_${run}`}, 'payout', 'payout', ${-(settled - 300)}, 0, ${-(settled - 300)}, 'NOK', now(), null, null)`);
+    await db().execute(sql`update commerce.ledger_waiting set tried_at = now() - interval '2 days' where book_id = ${book.id}::uuid`);
+    await ledger.postDueDocuments(shop.storeId, book);
+    expect((await entriesOf(book.id, String(payment.id))).map((r) => [r.account, Number(r.amount)])).toEqual([
+      [1579, settled],
+      [1500, -owed],
+      [8060, -2_500],
+    ]);
+    // The receivable is cleared, and the payout leaves nothing on the provider's balance.
+    const sumOf = async (account: number) =>
+      Number((await db().execute<Row>(sql`select coalesce(sum(amount_minor), 0)::bigint::text as s from commerce.ledger_lines where book_id = ${book.id}::uuid and account = ${account}`))[0].s);
+    expect(await sumOf(1500)).toBe(0);
+    expect(await sumOf(1579)).toBe(0);
+  });
+
   it("owes a refund to store credit on 2900 and takes the credit off as it is spent on a new order, leaving what the card still holds", async () => {
     const { refundOrder } = await import("./order-admin");
     const { placeOrder, completeOrderPayment } = await import("./checkout");

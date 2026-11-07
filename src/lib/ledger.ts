@@ -300,7 +300,11 @@ export type PaymentDoc = {
  * A payment in another currency than the book's: units of the book's currency for one of the payment's, at the invoice's own rate (as its
  * receivable was posted) and on the payment's day (the ECB's, what the money was worth when it came).
  */
-export type PaymentRates = { invoice: string; day: string };
+/**
+ * What a payment in another currency is worth in the book's: the receivable at the invoice's own rate (`invoice`), the money at the day's
+ * (`day`, the ECB's), or at what the payment provider settled it for in the book's currency (`moneyMinor`, a Stripe payout's line), which wins.
+ */
+export type PaymentRates = { invoice: string; day?: string; moneyMinor?: number };
 
 export type PaymentProblem = "currency" | "nothing";
 
@@ -322,7 +326,15 @@ export function entryOfPayment(
   if (foreign) {
     if (!rates) return { ok: false, problem: "currency" };
     const atInvoice = inBook(payment.amountMinor, payment.currency, bookCurrency, rates.invoice);
-    const atDay = inBook(payment.amountMinor, payment.currency, bookCurrency, rates.day);
+    const settled = rates.moneyMinor;
+    const atDay =
+      settled !== undefined
+        ? Number.isSafeInteger(settled) && settled !== 0 && Math.sign(settled) === Math.sign(payment.amountMinor)
+          ? settled
+          : null
+        : rates.day
+          ? inBook(payment.amountMinor, payment.currency, bookCurrency, rates.day)
+          : null;
     if (atInvoice === null || atDay === null) return { ok: false, problem: "currency" };
     receivable = atInvoice;
     money = atDay;
