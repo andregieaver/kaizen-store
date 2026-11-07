@@ -285,7 +285,13 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                   {e.reversedBy && <Chip signal="warning">{fillWords(w.journal.reversedBy, { name: e.reversedBy })}</Chip>}
                   {e.reverses && <Chip>{fillWords(w.journal.reverses, { name: e.reverses })}</Chip>}
                 </div>
-                <table className="w-full max-w-2xl text-sm">
+                <table className="w-full max-w-2xl table-fixed text-sm">
+                  {/* The same columns in every entry, so the amounts line up down the journal. */}
+                  <colgroup>
+                    <col />
+                    <col className="w-32" />
+                    <col className="w-32" />
+                  </colgroup>
                   <thead className="sr-only">
                     <tr>
                       <th>{w.hand.account}</th>
@@ -296,7 +302,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                   <tbody>
                     {e.lines.map((l, i) => (
                       <tr key={i} className="text-muted">
-                        <td className="py-0.5 pr-3">
+                        <td className="truncate py-0.5 pr-3">
                           <span className="tabular-nums">{l.account}</span> {l.name}
                           {l.vatCode && <span className="ml-2 text-xs">({w.hand.vat} {l.vatCode})</span>}
                         </td>
