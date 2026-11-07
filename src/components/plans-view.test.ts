@@ -65,6 +65,14 @@ describe("the plans component (D142)", () => {
     expect(own).toContain("Talk to us<span class=\"sr-only\"> – Start</span>");
   });
 
+  it("leads to the site's own page in the page's language, as on Kaizena Flow's own store's pages (D484)", () => {
+    expect(html(block({ buttonHref: "/sign-up" }), data, "nb")).toContain('href="/no/sign-up"');
+    // Already in the language, another site, or the admin: as written.
+    expect(html(block({ buttonHref: "/no/sign-up" }), data, "nb")).toContain('href="/no/sign-up"');
+    expect(html(block({ buttonHref: "https://example.com/x" }), data, "nb")).toContain('href="https://example.com/x"');
+    expect(html(block({ buttonHref: "/admin" }), data, "nb")).toContain('href="/admin"');
+  });
+
   it("marks the recommended plan, once", () => {
     const out = html(block({ highlightId: "00000000-0000-4000-8000-0000000000a2" }));
     expect(out.match(/Most popular/g)).toHaveLength(1);

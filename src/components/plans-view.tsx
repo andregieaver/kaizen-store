@@ -2,6 +2,7 @@ import { limitUnit, type LimitKey } from "@/lib/limits";
 import { EURO_MONEY, formatLimit, type AiMoney } from "@/lib/usage-format";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
+import { langOfLocale, platformPath } from "@/lib/platform-lang";
 import type { PlansBlock } from "@/lib/page-content";
 import { bestYearlySaving, comparisonTable, planCards, type PlanCard, type PlanCardPrice, type PublicPlans } from "@/lib/plan-offer";
 import { formatBps, type PlanInterval } from "@/lib/plans";
@@ -39,7 +40,8 @@ export function PlansView({ block, data, lang = "en" }: { block: PlansBlock; dat
   const options = { currency: block.currency, highlightId: block.highlightId };
   const { currency, cards } = planCards(data, { ...options, interval: block.switcher ? "month" : block.interval });
   if (!currency || cards.length === 0) return null;
-  const href = block.buttonHref || "/sign-up";
+  // The site's own address in the page's language (`/no/sign-up`): Kaizena Flow's own pages had it from `linksIn()`, its store's (D484) not.
+  const href = platformPath(langOfLocale(lang) ?? "en", block.buttonHref || "/sign-up");
   const label = block.buttonLabel || m.choose;
   const style = { decimals: block.decimals };
   const money = (price: PlanCardPrice) => formatMoney(price.amountMinor, price.currency, lang, style);
