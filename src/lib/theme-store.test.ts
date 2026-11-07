@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { designNb } from "./admin-messages/design.nb";
 import type { DesignSnapshot } from "./design-presets";
@@ -114,6 +114,19 @@ describe("the list's filters", () => {
     const filter = { kind: "food" as const, style: null, feature: null };
     expect(themeFilterHref(filter, { style: "warm" })).toBe("/themes?kind=food&style=warm");
     expect(themeFilterHref(filter, { kind: null })).toBe("/themes");
+  });
+
+  it("gives the theme store's full address to a list drawn outside it, on its own host where it has one", () => {
+    const filter = { kind: "food" as const, style: null, feature: null };
+    vi.stubEnv("NEXT_PUBLIC_THEMES_HOST", "themes.kaizenaflow.com");
+    try {
+      // In the theme store, on its own host, a path from its root; on Kaizena Flow's /theme-store page that path would lead nowhere.
+      expect(themeFilterHref(filter, { style: "warm" })).toBe("/?kind=food&style=warm");
+      expect(themeFilterHref(filter, { style: "warm" }, "en", true)).toBe("https://themes.kaizenaflow.com/?kind=food&style=warm");
+      expect(themeFilterHref(filter, { kind: null }, "nb", true)).toBe("https://themes.kaizenaflow.com/no");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 

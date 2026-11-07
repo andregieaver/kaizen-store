@@ -40,7 +40,7 @@ export async function themesMetadata(lang: PlatformLang): Promise<Metadata> {
  */
 export async function ThemesRoute({ lang, searchParams }: { lang: PlatformLang; searchParams: Query }) {
   const page = await platformPageForRole("themes");
-  if (page) return <PlatformPageView page={page} url="/themes" query={searchParams} lang={lang} />;
+  if (page) return <PlatformPageView page={page} url="/themes" query={searchParams} lang={lang} inThemeStore />;
   const w = platformText(lang).themeStore;
   const cards = (await themeStoreCards()).map((card) => inLanguage(card, lang));
   return (

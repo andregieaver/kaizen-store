@@ -25,11 +25,13 @@ export async function ThemeStoreSection({ block, place }: { block: ThemeStoreBlo
   const lang = place.lang ?? "en";
   if (block.part === "list") {
     const cards = (await themeStoreCards()).map((card) => inLanguage(card, lang));
+    // Outside the theme store's own route (Kaizena Flow's /theme-store page, its store's copy) its links are the theme store's full address.
+    const absolute = !place.inThemeStore && !place.themeSlug;
     // The unfiltered list is the fallback, so search engines and a first visit read every theme at once; the filters are the address's.
-    if (!place.query) return <ThemeStoreList cards={cards} filter={NO_FILTER} lang={lang} />;
+    if (!place.query) return <ThemeStoreList cards={cards} filter={NO_FILTER} lang={lang} absolute={absolute} />;
     return (
-      <Suspense fallback={<ThemeStoreList cards={cards} filter={NO_FILTER} lang={lang} />}>
-        <Filtered cards={cards} query={place.query} lang={lang} />
+      <Suspense fallback={<ThemeStoreList cards={cards} filter={NO_FILTER} lang={lang} absolute={absolute} />}>
+        <Filtered cards={cards} query={place.query} lang={lang} absolute={absolute} />
       </Suspense>
     );
   }
@@ -54,6 +56,6 @@ export async function ThemeStoreSection({ block, place }: { block: ThemeStoreBlo
   }
 }
 
-async function Filtered({ cards, query, lang }: { cards: ThemeStoreCard[]; query: NonNullable<GridPlace["query"]>; lang: PlatformLang }) {
-  return <ThemeStoreList cards={cards} filter={parseThemeFilter(await query)} lang={lang} />;
+async function Filtered({ cards, query, lang, absolute }: { cards: ThemeStoreCard[]; query: NonNullable<GridPlace["query"]>; lang: PlatformLang; absolute: boolean }) {
+  return <ThemeStoreList cards={cards} filter={parseThemeFilter(await query)} lang={lang} absolute={absolute} />;
 }

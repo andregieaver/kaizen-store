@@ -6,7 +6,7 @@ import { whatsNew, type WhatsNewWords } from "./theme-update";
 import { PACK_DEMO_WORDS, PACK_KEYS, PACK_TRADES, type PackKey } from "./content-packs";
 import { isStarterPicture } from "./store-starters";
 import { LANGUAGE_PREFIXES, PLATFORM_LANGS, platformPath, type PlatformLang } from "./platform-lang";
-import { themeStorePath } from "./theme-host";
+import { themeStorePath, themeStoreUrl } from "./theme-host";
 import { readHighlightWords, type HighlightWords, type ThemeHighlight } from "./theme-highlights";
 import type { LookShots } from "./theme-shots";
 import { minorUnitDigits } from "./money";
@@ -350,15 +350,18 @@ export function parseThemeFilter(query: Record<string, string | string[] | undef
   };
 }
 
-/** The list's address with a filter changed (null: that filter off), in the list's language. */
-export function themeFilterHref(filter: ThemeFilter, change: Partial<ThemeFilter>, lang: PlatformLang = "en"): string {
+/**
+ * The list's address with a filter changed (null: that filter off), in the list's language: a path in the theme store, or with `absolute`
+ * its full address, for a list drawn on another host's page (Kaizena Flow's own /theme-store page).
+ */
+export function themeFilterHref(filter: ThemeFilter, change: Partial<ThemeFilter>, lang: PlatformLang = "en", absolute = false): string {
   const next = { ...filter, ...change };
   const query = new URLSearchParams();
   if (next.kind) query.set("kind", next.kind);
   if (next.style) query.set("style", next.style);
   if (next.feature) query.set("feature", next.feature);
   const text = query.toString();
-  return themeStorePath(text ? `?${text}` : "", lang);
+  return (absolute ? themeStoreUrl : themeStorePath)(text ? `?${text}` : "", lang);
 }
 
 /** The cards a filter keeps, in the platform's order. A theme listed for no kind of store suits any. */

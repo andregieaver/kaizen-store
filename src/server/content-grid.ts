@@ -74,6 +74,11 @@ export type GridPlace = {
   lang?: PlatformLang;
   /** On the page chosen for a theme's page in the theme store (D285): the theme its address names, which the theme store's parts draw. */
   themeSlug?: string;
+  /**
+   * Drawn by the theme store's own route (its list, `ThemesRoute`; a theme's page has `themeSlug`), whose links are paths in it. Anywhere
+   * else a theme store component links to the theme store's full address, as the theme store may be on a host of its own.
+   */
+  inThemeStore?: boolean;
   /** With it, the parts that have something for that theme (`themePartsWith()`): the others and rows of nothing else are left out. */
   themeParts?: readonly ThemeStorePart[];
   /**

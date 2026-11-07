@@ -60,6 +60,7 @@ export async function PlatformPageView({
   query,
   themeSlug,
   themeParts,
+  inThemeStore = false,
   jsonLd = true,
   lang = "en",
 }: {
@@ -74,6 +75,8 @@ export async function PlatformPageView({
   themeSlug?: string;
   /** With it, the parts that have something for that theme (`themePartsWith()`). */
   themeParts?: readonly ThemeStorePart[];
+  /** Drawn by the theme store's own route (`GridPlace.inThemeStore`), whose links are paths in it. */
+  inThemeStore?: boolean;
   /** The page's own structured data; off where the route writes its own (a theme's page describes the theme). */
   jsonLd?: boolean;
 }) {
@@ -99,7 +102,7 @@ export async function PlatformPageView({
         />
       )}
       {/* Words are edited in place only in English, the page as written (D192): another language's are the builder's translate mode's. */}
-      <PageArticle content={c} place={{ pageId: page.id, owner: null, query, lang, ...(themeSlug && { themeSlug, themeParts }) }} editable={lang === "en"} />
+      <PageArticle content={c} place={{ pageId: page.id, owner: null, query, lang, ...(themeSlug && { themeSlug, themeParts }), ...(inThemeStore && { inThemeStore }) }} editable={lang === "en"} />
       <PageEditLink pageId={page.id} textEditable={lang === "en"} />
     </main>
   );

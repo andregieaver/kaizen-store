@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PLATFORM_LANG_FACTS, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { cardPicture, filterThemes, themeFilterHref, type ThemeFilter, type ThemeLook, type ThemeStoreCard } from "@/lib/theme-store";
-import { themeStorePath } from "@/lib/theme-host";
+import { themeStorePath, themeStoreUrl } from "@/lib/theme-host";
 import { isPremium, priceText } from "@/lib/theme-prices";
 
 import { SwatchDot } from "./theme-swatch";
@@ -42,7 +42,7 @@ function Swatch({ card }: { card: ThemeStoreCard }) {
 }
 
 /** A theme's card: the admin's picture, else a photograph of it on its demo store (`cardPicture()`), else its colours. */
-export function ThemeCard({ card, lang = "en" }: { card: ThemeStoreCard; lang?: PlatformLang }) {
+export function ThemeCard({ card, lang = "en", absolute = false }: { card: ThemeStoreCard; lang?: PlatformLang; absolute?: boolean }) {
   const w = platformText(lang).themeStore;
   const picture = cardPicture(card);
   // The trades its looks are shown on (`docs/theme-showcase-phase-1.md` step 3), only those whose demo store is published.
@@ -57,7 +57,7 @@ export function ThemeCard({ card, lang = "en" }: { card: ThemeStoreCard; lang?: 
       )}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h2 className="text-lg font-semibold">
-          <Link href={themeStorePath(card.slug, lang)} className="after:absolute after:inset-0 hover:underline">
+          <Link href={(absolute ? themeStoreUrl : themeStorePath)(card.slug, lang)} className="after:absolute after:inset-0 hover:underline">
             {card.title}
           </Link>
         </h2>
@@ -130,13 +130,14 @@ function FilterMenu<K extends string>({
 
 /**
  * The themes first, the filters as one bar above them: three small menus, the count and a way to clear them (the theme showcase plan's
- * quick fixes). Every filtered list keeps its own address.
+ * quick fixes). Every filtered list keeps its own address. With `absolute` (drawn on a page outside the theme store, as Kaizena Flow's own
+ * /theme-store page while the theme store has a host of its own) every link is the theme store's full address, so none leads nowhere.
  */
-export function ThemeStoreList({ cards, filter, lang = "en" }: { cards: ThemeStoreCard[]; filter: ThemeFilter; lang?: PlatformLang }) {
+export function ThemeStoreList({ cards, filter, lang = "en", absolute = false }: { cards: ThemeStoreCard[]; filter: ThemeFilter; lang?: PlatformLang; absolute?: boolean }) {
   const w = platformText(lang).themeStore;
   const shown = filterThemes(cards, filter);
   const filtered = Boolean(filter.kind || filter.style || filter.feature);
-  const href = (change: Partial<ThemeFilter>) => themeFilterHref(filter, change, lang);
+  const href = (change: Partial<ThemeFilter>) => themeFilterHref(filter, change, lang, absolute);
   return (
     <div className="flex flex-col gap-6">
       <nav aria-label={w.filters} className="flex flex-wrap items-center gap-2">
@@ -155,7 +156,7 @@ export function ThemeStoreList({ cards, filter, lang = "en" }: { cards: ThemeSto
       {shown.length > 0 && (
         <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((card) => (
-            <ThemeCard key={card.id} card={card} lang={lang} />
+            <ThemeCard key={card.id} card={card} lang={lang} absolute={absolute} />
           ))}
         </ul>
       )}
