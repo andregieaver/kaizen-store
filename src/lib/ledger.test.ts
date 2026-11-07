@@ -7,8 +7,10 @@ import {
   FX_LOSS_ACCOUNT,
   NO_POSTING,
   PAYMENT_ACCOUNTS,
+  GIFT_CARD_ACCOUNT,
   SHOP_PAYMENT_ACCOUNTS,
   STORE_CREDIT_ACCOUNT,
+  shopMoneyAccount,
   balanceSheet,
   compareWithTheirs,
   isVatAccount,
@@ -448,6 +450,27 @@ describe("a shop's money, and the payment provider's payouts", () => {
     expect(credited.ok && credited.entry.text).toBe("Tilbakebetaling ordre 1042");
     expect(credited.ok && credited.entry.lines.map((l) => [l.account, l.amountMinor])).toEqual([[2900, -10_000], [1500, 10_000]]);
     expect(SHOP_PAYMENT_ACCOUNTS).toEqual({ stripe: 1579, cash: 1900, bank_transfer: 1920, other: 1920 });
+  });
+
+  it("knows where each way of paying puts the money: a gift card or store credit spent comes off what cards owe", () => {
+    expect(shopMoneyAccount({ provider: "stripe", method: null })).toEqual({ account: 1579 });
+    expect(shopMoneyAccount({ provider: "manual", method: "cash" })).toEqual({ account: 1900 });
+    expect(shopMoneyAccount({ provider: "manual", method: "bank_transfer" })).toEqual({ account: 1920 });
+    expect(shopMoneyAccount({ provider: "manual", method: null })).toEqual({ account: 1920 });
+    // A card sold is a debt (the invoice's voucher line, 2900); spending it, or store credit (itself a card), pays it off; a refund puts it back.
+    expect(GIFT_CARD_ACCOUNT).toBe(2900);
+    expect(shopMoneyAccount({ provider: "gift_card", method: null })).toEqual({ account: 2900 });
+    expect(shopMoneyAccount({ provider: "gift_card", method: null, refundKind: "money" })).toEqual({ account: 2900 });
+    expect(shopMoneyAccount({ provider: "stripe", method: null, refundKind: "store_credit" })).toEqual({ account: 2900 });
+    // An exchange moves no money; ways of paying the books do not follow yet wait, never guessed into the bank.
+    expect(shopMoneyAccount({ provider: "exchange", method: null })).toEqual({ skip: true });
+    for (const provider of ["mollie", "venue", "terms", "something_new"]) expect(shopMoneyAccount({ provider, method: null }), provider).toEqual({ wait: "provider" });
+    const spent = entryOfPayment(
+      { id: "g1", invoiceNumber: "", what: "ordre 1043", counterparty: null, receivedOn: "2027-01-15", amountMinor: 20_000, currency: "NOK", method: "other", sourceKind: "shop_payment", account: GIFT_CARD_ACCOUNT },
+      NO_POSTING,
+      "NOK",
+    );
+    expect(spent.ok && spent.entry.lines.map((l) => [l.account, l.amountMinor])).toEqual([[2900, 20_000], [1500, -20_000]]);
   });
 
   it("posts a payout as what reached the bank and the provider's fee, against the gross out of the provider's balance", () => {

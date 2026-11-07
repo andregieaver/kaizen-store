@@ -35,6 +35,7 @@ export const booksNb: BooksMessages = {
       unreadable: "det kunne ikke leses",
       original: "innbetalingen den tar tilbake er ikke bokført ennå",
       lines: "linjene i utbetalingen er ikke lest fra Stripe ennå",
+      provider: "regnskapet følger ikke denne betalingsmåten ennå (Mollie, på stedet eller på kreditt)",
     },
     since: "siden {day}",
   },

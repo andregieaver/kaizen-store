@@ -39,6 +39,7 @@ export const booksEn = {
       unreadable: "it could not be read",
       original: "the payment it takes back is not posted yet",
       lines: "its payout's lines are not read from Stripe yet",
+      provider: "the books do not follow this way of paying yet (Mollie, at a venue or on terms)",
     } as Record<string, string>,
     since: "since {day}",
   },

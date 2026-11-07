@@ -1,7 +1,12 @@
+import { randomBytes } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+
+// A gift card's code is hashed with the settings key (store credit is a card, D364).
+process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 
@@ -260,5 +265,48 @@ describe("a store's documents, posted to its books", () => {
     ]);
     const [held] = await db().execute<Row>(sql`select coalesce(sum(amount_minor), 0)::bigint::text as s from commerce.ledger_lines where book_id = ${book.id}::uuid and account = 1579`);
     expect(held.s).toBe("0");
+  });
+
+  it("owes a refund to store credit on 2900 and takes the credit off as it is spent on a new order, leaving what the card still holds", async () => {
+    const { refundOrder } = await import("./order-admin");
+    const { placeOrder, completeOrderPayment } = await import("./checkout");
+    const shop = await fx.makeStore(`ldg-gift-${run}`);
+    await db().execute(sql`update commerce.stores set features = features || array['gift_cards'] where id = ${shop.storeId}::uuid`);
+    const book = await openBook(shop.storeId, shop.ownerId);
+    const first = await fx.paidOrder(shop, [["DEMO-MUG-WHITE", 2]]);
+    // The whole first order back as store credit: a gift card of the order's amount (D364), and a credit note.
+    const credited = await refundOrder(shop.storeId, first.orderId, { amountMinor: first.total, reason: "Goodwill", restock: [], toCredit: true }, shop.ownerId);
+    if (!credited.ok || !credited.credit) throw new Error(`no credit: ${JSON.stringify(credited)}`);
+
+    // The credit spent on a second, smaller order, which it pays in full.
+    const [cart] = await db().execute<Row>(sql`
+      insert into commerce.carts (store_id, market_code, currency, locale, expires_at) values (${shop.storeId}::uuid, 'NO', 'NOK', 'nb-NO', now() + interval '1 day') returning id`);
+    await db().execute(sql`
+      insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity)
+      select ${shop.storeId}::uuid, ${String(cart.id)}::uuid, id, 1 from commerce.product_variants where store_id = ${shop.storeId}::uuid and sku = 'DEMO-MUG-WHITE'`);
+    await db().execute(sql`insert into commerce.cart_gift_cards (store_id, cart_id, card_id) values (${shop.storeId}::uuid, ${String(cart.id)}::uuid, ${credited.credit.cardId}::uuid)`);
+    const placed = await placeOrder({ storeId: shop.storeId, market: fx.no }, String(cart.id), {}, { customerId: null });
+    if (!placed.ok) throw new Error(`placeOrder: ${placed.problem}`);
+    await db().execute(sql`
+      update commerce.orders set email = 'kari@example.com',
+        billing_address = '{"name": "Kari Nordmann", "line1": "Kirkeveien 5", "postalCode": "0368", "city": "Oslo", "country": "NO"}'::jsonb,
+        shipping_address = '{"name": "Kari Nordmann", "line1": "Kirkeveien 5", "postalCode": "0368", "city": "Oslo", "country": "NO"}'::jsonb
+      where id = ${placed.order.orderId}::uuid`);
+    const [token] = await db().execute<Row>(sql`
+      select id, provider_reference from commerce.payments where store_id = ${shop.storeId}::uuid and order_id = ${placed.order.orderId}::uuid and provider = 'gift_card'`);
+    await completeOrderPayment(placed.order.orderId, String(token.provider_reference));
+    const spent = placed.order.totalMinor;
+    expect(spent).toBeLessThan(first.total);
+
+    await ledger.runLedgerPosting();
+    // The refund owes the customer; the card's payment comes off what is owed, never off the bank or the provider's balance.
+    expect((await entriesOf(book.id, credited.refundId)).map((r) => [r.account, Number(r.amount)])).toEqual([[2900, -first.total], [1500, first.total]]);
+    expect((await entriesOf(book.id, String(token.id))).map((r) => [r.account, Number(r.amount)])).toEqual([[2900, spent], [1500, -spent]]);
+    const [owed] = await db().execute<Row>(sql`select coalesce(sum(amount_minor), 0)::bigint::text as s from commerce.ledger_lines where book_id = ${book.id}::uuid and account = 2900`);
+    const [card] = await db().execute<Row>(sql`select commerce.gift_card_balance(${credited.credit.cardId}::uuid)::bigint::text as b`);
+    expect(Number(owed.s)).toBe(-Number(card.b));
+    expect(Number(card.b)).toBe(first.total - spent);
+    const [bank] = await db().execute<Row>(sql`select count(*)::int as n from commerce.ledger_lines where book_id = ${book.id}::uuid and account in (1900, 1920)`);
+    expect(bank.n).toBe(0);
   });
 });

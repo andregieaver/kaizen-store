@@ -354,6 +354,29 @@ export const SHOP_PAYMENT_ACCOUNTS: Record<string, number> = { stripe: 1579, cas
 /** What a refund to store credit is: owed to the customer until it is spent (D381). */
 export const STORE_CREDIT_ACCOUNT = 2900;
 
+/**
+ * What gift cards owe their holders (D300): a card sold is posted here by its invoice's `voucher` line (`gift_card`, 2900), a refund to store
+ * credit too (it is a card, D364), and a card spent at checkout takes it off again. One account, so what is left on it is what cards still owe.
+ */
+export const GIFT_CARD_ACCOUNT = STORE_CREDIT_ACCOUNT;
+
+/**
+ * Where a shop payment's money is, or a refund's goes (step 2c): Stripe's on the provider's balance until its payout; one taken by hand where
+ * staff said (D173); a gift card's, store credit's too, off what cards owe (D300, D364); a refund to store credit owes it to the customer. An
+ * exchange's payment and the refund it is paid from move no money (the old order's credit note and the new order's invoice meet on the
+ * receivable), so nothing is posted (`skip`). A way of paying the books do not follow yet waits (`provider`), never guessed into the bank.
+ */
+export function shopMoneyAccount(
+  input: { provider: string; method: string | null; refundKind?: string | null },
+): { account: number } | { skip: true } | { wait: "provider" } {
+  if (input.refundKind === "store_credit") return { account: STORE_CREDIT_ACCOUNT };
+  if (input.provider === "exchange") return { skip: true };
+  if (input.provider === "stripe") return { account: SHOP_PAYMENT_ACCOUNTS.stripe };
+  if (input.provider === "gift_card") return { account: GIFT_CARD_ACCOUNT };
+  if (input.provider === "manual") return { account: SHOP_PAYMENT_ACCOUNTS[input.method ?? "other"] ?? SHOP_PAYMENT_ACCOUNTS.other };
+  return { wait: "provider" };
+}
+
 /** Where Stripe's fees are posted: bank and card charges. */
 export const CARD_FEE_ACCOUNT = 7770;
 

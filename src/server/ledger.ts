@@ -13,6 +13,7 @@ import {
   PAYMENT_ACCOUNTS,
   SHOP_PAYMENT_ACCOUNTS,
   STORE_CREDIT_ACCOUNT,
+  shopMoneyAccount,
   CARD_FEE_ACCOUNT,
   entryName,
   entryOfDoc,
@@ -485,14 +486,14 @@ async function dueDocuments(storeId: string, book: { id: string; opened_on: stri
         select m.kind, m.id, m.day, m.rank from (
           select 'shop_payment' as kind, p.id::text as id, ${SHOP_PAYMENT_DAY} as day, 4 as rank
             from commerce.payments p join commerce.stores s on s.id = p.store_id
-           where p.store_id = ${storeId}::uuid and p.status = 'captured' and not p.test_mode and p.amount_minor > 0
+           where p.store_id = ${storeId}::uuid and p.status = 'captured' and not p.test_mode and p.amount_minor > 0 and p.provider <> 'exchange'
           union all
           select 'shop_refund', r.id::text, (r.created_at at time zone s.time_zone)::date, 5
             from commerce.refunds r
             join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
             join commerce.stores s on s.id = r.store_id
            where r.store_id = ${storeId}::uuid and r.status = 'succeeded' and r.kind in ('money', 'release', 'store_credit')
-             and p.status = 'captured' and not p.test_mode and r.amount_minor > 0
+             and p.status = 'captured' and not p.test_mode and r.amount_minor > 0 and p.provider <> 'exchange'
           union all
           select 'payout', po.id::text, coalesce(po.arrival_on, (po.provider_created_at at time zone s.time_zone)::date), 6
             from commerce.payouts po join commerce.stores s on s.id = po.store_id
@@ -603,9 +604,10 @@ const SHOP_MONEY = z.object({
 });
 
 /**
- * Posts a shop's captured payment or its refund (step 2c): the order's receivable against where the money is (`SHOP_PAYMENT_ACCOUNTS`), a
- * refund to store credit against what the store owes the customer (2900), in the bank series on its day. Only in the book's currency for
- * now: a payment in another waits.
+ * Posts a shop's captured payment or its refund (step 2c): the order's receivable against where the money is (`shopMoneyAccount()`): the
+ * provider's balance, the till or the bank, what gift cards owe for a card or store credit spent (2900), what the store owes the customer for
+ * a refund to store credit, in the bank series on its day. A way of paying the books do not follow yet (Mollie, at a venue, on terms) waits
+ * (`provider`); an exchange's payment moves no money and is never due. Only in the book's currency for now: a payment in another waits.
  */
 async function postShopMoney(
   storeId: string,
@@ -613,7 +615,7 @@ async function postShopMoney(
   posting: LedgerPosting,
   kind: "shop_payment" | "shop_refund",
   id: string,
-): Promise<{ ok: true; id: string } | { ok: false; problem: PaymentProblem | PostProblem | "unreadable" }> {
+): Promise<{ ok: true; id: string } | { ok: false; problem: PaymentProblem | PostProblem | "unreadable" | "provider" }> {
   const row = await typedRow(
     SHOP_MONEY,
     kind === "shop_payment"
@@ -632,7 +634,10 @@ async function postShopMoney(
            where r.store_id = ${storeId}::uuid and r.id = ${id}::uuid`,
   );
   if (!row) return { ok: false, problem: "unreadable" };
-  const money = row.provider === "stripe" ? SHOP_PAYMENT_ACCOUNTS.stripe : (SHOP_PAYMENT_ACCOUNTS[row.method ?? "other"] ?? SHOP_PAYMENT_ACCOUNTS.other);
+  // Where the money is (`shopMoneyAccount()`): a gift card's and store credit's off what cards owe, a way of paying not followed yet waits.
+  const place = shopMoneyAccount({ provider: row.provider, method: row.method, refundKind: row.kind });
+  if ("wait" in place) return { ok: false, problem: place.wait };
+  if ("skip" in place) return { ok: false, problem: "nothing" };
   const made = entryOfPayment(
     {
       id: row.id,
@@ -644,7 +649,7 @@ async function postShopMoney(
       currency: row.currency,
       method: "other",
       sourceKind: kind,
-      account: row.kind === "store_credit" ? STORE_CREDIT_ACCOUNT : money,
+      account: place.account,
     },
     posting,
     book.currency,
