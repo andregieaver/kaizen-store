@@ -138,41 +138,50 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
               {bank.matched === bank.lines && bank.booksOnly.length === 0 && <p className="text-muted">{w.bank.none}</p>}
             </div>
           )}
-          {bank.bankOnly.length > 0 && (
-            <details open>
-              <summary className="cursor-pointer font-medium">{`${w.bank.bankOnly} (${bank.lines - bank.matched})`}</summary>
-              <p className="mt-1 text-muted">{w.bank.bankOnlyLead}</p>
-              <ul className="mt-2 flex flex-col divide-y divide-line">
-                {bank.bankOnly.map((l) => {
-                  const offer = offers.get(l.id);
-                  return (
-                    <li key={l.id} className="flex flex-col gap-2 py-2">
-                      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                        <span className="min-w-0 flex-1">
-                          <span className="text-muted">{day(l.day)}</span> {[l.counterparty, l.text, l.reference].filter(Boolean).join(" · ")}
-                        </span>
-                        <span className="tabular-nums">{amount(l.amountMinor)}</span>
-                      </div>
-                      {offer && (
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                          <span className="text-muted">
-                            {fillWords(w.bank.offer, { number: offer.printedNumber, client: offer.client, amount: amount(offer.outstandingMinor) })}
+          {(() => {
+            // In the bank, not in the books; an offer to mark an invoice paid beside a client's payment (D487). One form holds every
+            // offer, so its message stays once the line it paid has left the list.
+            const list = bank.bankOnly.length > 0 && (
+              <details open>
+                <summary className="cursor-pointer font-medium">{`${w.bank.bankOnly} (${bank.lines - bank.matched})`}</summary>
+                <p className="mt-1 text-muted">{w.bank.bankOnlyLead}</p>
+                <ul className="mt-2 flex flex-col divide-y divide-line">
+                  {bank.bankOnly.map((l) => {
+                    const offer = offers.get(l.id);
+                    return (
+                      <li key={l.id} className="flex flex-col gap-2 py-2">
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                          <span className="min-w-0 flex-1">
+                            <span className="text-muted">{day(l.day)}</span> {[l.counterparty, l.text, l.reference].filter(Boolean).join(" · ")}
                           </span>
-                          {owner && (
-                            <ActionForm action={payFromBankAction.bind(null, store.slug, l.id, offer.invoiceId)} className="flex flex-col gap-1">
-                              <div>
-                                <SubmitButton variant="secondary">{w.bank.pay}</SubmitButton>
-                              </div>
-                            </ActionForm>
-                          )}
+                          <span className="tabular-nums">{amount(l.amountMinor)}</span>
                         </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </details>
-          )}
+                        {offer && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <span className="text-muted">
+                              {fillWords(w.bank.offer, { number: offer.printedNumber, client: offer.client, amount: amount(offer.outstandingMinor) })}
+                            </span>
+                            {owner && (
+                              <SubmitButton variant="secondary" name="pay" value={`${l.id}:${offer.invoiceId}`}>
+                                {w.bank.pay}
+                              </SubmitButton>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </details>
+            );
+            return owner ? (
+              <ActionForm action={payFromBankAction.bind(null, store.slug)} className="flex flex-col gap-2">
+                {list}
+              </ActionForm>
+            ) : (
+              list
+            );
+          })()}
           {bank.booksOnly.length > 0 && (
             <details>
               <summary className="cursor-pointer font-medium">{`${w.bank.booksOnly} (${bank.booksOnly.length})`}</summary>

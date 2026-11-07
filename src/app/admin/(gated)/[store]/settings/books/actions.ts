@@ -127,11 +127,14 @@ export async function uploadBankStatementAction(storeSlug: string, _state: FormS
   return { status: "ok", messages: [paid.length > 0 ? `${read} ${countWords(paid.length, w.bank.autoPaid, { numbers: paid.join(", ") })}` : read] };
 }
 
-/** *Mark it paid*: a line of the statement recorded as the payment of the Work invoice it was offered (D487). */
-export async function payFromBankAction(storeSlug: string, lineId: string, invoiceId: string): Promise<FormState> {
+/** *Mark it paid*: a line of the statement recorded as the payment of the Work invoice it was offered (D487); the button says which, `line:invoice`. */
+export async function payFromBankAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
   const who = await owner(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
+  const [lineId, invoiceId] = String(form.get("pay") ?? "").split(":");
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuid.test(lineId ?? "") || !uuid.test(invoiceId ?? "")) return { status: "error", messages: [w.bank.payProblems.line] };
   const paid = await payInvoiceFromBank(member, lineId, invoiceId);
   if (!paid.ok) return { status: "error", messages: [w.bank.payProblems[paid.problem]] };
   refresh();
