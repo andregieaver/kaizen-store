@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { BookingDoc } from "./accounting-docs";
+import { parseAmount } from "./field-money";
 import {
   FX_GAIN_ACCOUNT,
   FX_LOSS_ACCOUNT,
@@ -16,6 +17,7 @@ import {
   entryOfPayment,
   entryOfPaymentReversal,
   entryProblems,
+  handEntryOf,
   isVatCode,
   noKindOf,
   postingOfTripletex,
@@ -344,5 +346,75 @@ describe("the reports", () => {
     expect(vatTermOf("2028-02-29")).toEqual({ term: 1, from: "2028-01-01", to: "2028-02-29" });
     expect(vatTermOf("2027-12-31")).toEqual({ term: 6, from: "2027-11-01", to: "2027-12-31" });
     expect(vatTermOf("2027-08-01")).toEqual({ term: 4, from: "2027-07-01", to: "2027-08-31" });
+  });
+});
+
+describe("an entry by hand", () => {
+  const empty = { account: "", debit: "", credit: "", vatCode: "" };
+  const opening = {
+    series: "IB",
+    date: "2027-01-01",
+    text: "Inngående balanse",
+    rows: [
+      { account: "1920", debit: "250000", credit: "", vatCode: "" },
+      { account: "1500", debit: "37 500".replace(" ", ""), credit: "", vatCode: "" },
+      { account: "2000", debit: "", credit: "30000", vatCode: "" },
+      { account: "2050", debit: "", credit: "257500,00", vatCode: "" },
+      empty,
+      empty,
+    ],
+  };
+
+  it("reads the form's rows into a balanced entry, an empty row left out, a debit positive and a credit negative", () => {
+    expect(handEntryOf(opening, "NOK", parseAmount)).toEqual({
+      ok: true,
+      entry: {
+        series: "IB",
+        date: "2027-01-01",
+        text: "Inngående balanse",
+        source: null,
+        lines: [
+          { account: 1920, amountMinor: 25_000_000, vatCode: null },
+          { account: 1500, amountMinor: 3_750_000, vatCode: null },
+          { account: 2000, amountMinor: -3_000_000, vatCode: null },
+          { account: 2050, amountMinor: -25_750_000, vatCode: null },
+        ],
+      },
+    });
+  });
+
+  it("keeps a VAT code where one is given", () => {
+    const bought = handEntryOf(
+      {
+        series: "M",
+        date: "2027-01-10",
+        text: "Programvare",
+        rows: [
+          { account: "6800", debit: "2400", credit: "", vatCode: "1" },
+          { account: "2710", debit: "600", credit: "", vatCode: "1" },
+          { account: "1920", debit: "", credit: "3000", vatCode: "" },
+        ],
+      },
+      "NOK",
+      parseAmount,
+    );
+    expect(bought.ok && bought.entry.lines.map((l) => l.vatCode)).toEqual(["1", "1", null]);
+  });
+
+  it("says what a row cannot be, and which rows, before the entry's own rules", () => {
+    expect(
+      handEntryOf(
+        { ...opening, rows: [{ account: "19", debit: "1", credit: "", vatCode: "" }, { account: "1920", debit: "1", credit: "1", vatCode: "" }, { account: "3000", debit: "abc", credit: "", vatCode: "4" }] },
+        "NOK",
+        parseAmount,
+      ),
+    ).toEqual({ ok: false, problems: ["account", "both", "amount", "vat_code"], rows: [0, 1, 2] });
+    // A row with an account and nothing in either column.
+    expect(handEntryOf({ ...opening, rows: [{ account: "1920", debit: "", credit: "", vatCode: "" }] }, "NOK", parseAmount)).toMatchObject({ ok: false, problems: ["zero"] });
+    // Only the series of entries by hand: never the sales or bank series the documents are posted in.
+    expect(handEntryOf({ ...opening, series: "S" }, "NOK", parseAmount)).toMatchObject({ ok: false, problems: ["series"] });
+    // Rows that read well, but do not balance, or lack words.
+    expect(handEntryOf({ ...opening, rows: opening.rows.slice(0, 3) }, "NOK", parseAmount)).toEqual({ ok: false, problems: ["balance"], rows: [] });
+    expect(handEntryOf({ ...opening, text: "  " }, "NOK", parseAmount)).toEqual({ ok: false, problems: ["text"], rows: [] });
   });
 });

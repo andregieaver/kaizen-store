@@ -32,3 +32,29 @@ test("an owner opens the store's books, reads the trial balance and the reports,
   await expect(lock.getByText("Locked.")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/Locked through/).first()).toBeVisible();
 });
+
+test("an owner posts an entry by hand, finds it in the journal and reverses it", async ({ page }) => {
+  await page.goto(`/admin/${E2E_STORE}/settings/books`);
+  const hand = page.getByRole("region", { name: "Post an entry by hand" });
+  await expect(hand).toBeVisible({ timeout: 30_000 });
+  await hand.getByText("Post an entry", { exact: true }).click();
+  const words = `Innskudd e2e ${Date.now().toString(36)}`;
+  await hand.getByLabel("What it is").fill(words);
+  await hand.getByLabel("Account 1").selectOption("1920");
+  await hand.getByLabel("Debit 1").fill("100");
+  await hand.getByLabel("Account 2").selectOption("2050");
+  // Not balanced yet: the owner is told, and nothing is posted.
+  await hand.getByLabel("Credit 2").fill("90");
+  await hand.getByRole("button", { name: "Post the entry" }).click();
+  await expect(hand.getByText("The debits and the credits do not add up to the same.")).toBeVisible({ timeout: 30_000 });
+  await hand.getByLabel("Credit 2").fill("100");
+  await hand.getByRole("button", { name: "Post the entry" }).click();
+  await expect(hand.getByText("Posted.")).toBeVisible({ timeout: 30_000 });
+
+  const journal = page.getByRole("region", { name: "Journal" });
+  const entry = journal.getByRole("listitem").filter({ hasText: words });
+  await expect(entry).toBeVisible({ timeout: 30_000 });
+  await entry.getByText("Reverse", { exact: true }).click();
+  await entry.getByRole("button", { name: "Reverse" }).click();
+  await expect(journal.getByRole("listitem").filter({ hasText: words }).first().getByText(/Reversed by M\d{4}-\d+/)).toBeVisible({ timeout: 30_000 });
+});

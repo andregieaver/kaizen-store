@@ -16,6 +16,7 @@ import {
   entryOfPayment,
   entryOfPaymentReversal,
   entryProblems,
+  handEntryOf,
   isDay,
   isVatCode,
   noKindOf,
@@ -27,6 +28,8 @@ import {
   type DocProblem,
   type DocRate,
   type EntryProblem,
+  type HandProblem,
+  type HandRow,
   type LedgerEntryInput,
   type LedgerPosting,
   type PaymentMethod,
@@ -35,6 +38,7 @@ import {
   type VatRow,
   vatByCode,
 } from "@/lib/ledger";
+import { parseAmount } from "@/lib/field-money";
 import { mainCurrency } from "@/lib/markets";
 
 import { loadDocument, type DocumentKind } from "./accounting-documents";
@@ -218,6 +222,85 @@ export async function postLedgerDoc(
   if (!made.ok) return made;
   const posted = await postLedgerEntry(book.id, made.entry, by);
   return posted.ok ? posted : { ok: false, problem: posted.problems[0] };
+}
+
+/**
+ * Posts an entry typed by hand to the store's open book (step 3b, the owner's): its rows read by `handEntryOf()`, then posted as every
+ * entry is, by the database, which numbers it, and kept in the audit log. What cannot be posted says why, and which rows.
+ */
+export async function postHandEntry(
+  member: Membership,
+  input: { series: string; date: string; text: string; rows: readonly HandRow[] },
+): Promise<{ ok: true; id: string } | { ok: false; problems: (HandProblem | PostProblem | "no_book")[]; rows: number[] }> {
+  const book = await openBookOf(member.store.id);
+  if (!book) return { ok: false, problems: ["no_book"], rows: [] };
+  const made = handEntryOf(input, book.currency, parseAmount);
+  if (!made.ok) return made;
+  const posted = await postLedgerEntry(book.id, made.entry, member.account.id);
+  if (!posted.ok) return { ok: false, problems: posted.problems, rows: [] };
+  await audit(member.account.id, member.store.id, "work.ledger_entry_posted", { bookId: book.id, entryId: posted.id, series: made.entry.series, lines: made.entry.lines.length });
+  return posted;
+}
+
+export type JournalEntry = {
+  id: string;
+  name: string;
+  date: string;
+  text: string;
+  sourceKind: string | null;
+  /** The entry this one turns back, by its name. */
+  reverses: string | null;
+  /** The entry that turned this one back, by its name. */
+  reversedBy: string | null;
+  lines: { account: number; name: string; amount: number; vatCode: string | null }[];
+};
+
+/** The book's latest entries, newest first, each with its lines and what reversed it or what it reverses: the journal on the books' screen. */
+export async function ledgerJournal(bookId: string, limit = 30): Promise<JournalEntry[]> {
+  const entries = await typedRows(
+    z.object({
+      id: col.uuid,
+      series: col.text,
+      year: col.int,
+      number: col.int,
+      entry_date: col.text,
+      text: col.text,
+      source_kind: col.textOrNull,
+      reverses: col.textOrNull,
+      reversed_by: col.textOrNull,
+    }),
+    sql`
+      select e.id, e.series, e.year, e.number, e.entry_date::text, e.text, e.source_kind,
+             (select o.series || o.year || '-' || o.number from commerce.ledger_entries o where o.id = e.reverses) as reverses,
+             (select r.series || r.year || '-' || r.number from commerce.ledger_entries r where r.reverses = e.id limit 1) as reversed_by
+        from commerce.ledger_entries e
+       where e.book_id = ${bookId}::uuid
+       order by e.posted_at desc, e.entry_date desc, e.number desc
+       limit ${limit}
+    `,
+  );
+  if (entries.length === 0) return [];
+  const ids = sql.join(entries.map((e) => sql`${e.id}::uuid`), sql`, `);
+  const lines = await typedRows(
+    z.object({ entry_id: col.uuid, account: col.int, name: col.textOrNull, amount_minor: col.minor, vat_code: col.textOrNull }),
+    sql`
+      select l.entry_id, l.account, a.name, l.amount_minor, l.vat_code
+        from commerce.ledger_lines l
+        left join commerce.ledger_accounts a on a.book_id = l.book_id and a.number = l.account
+       where l.entry_id in (${ids})
+       order by l.entry_id, l.line
+    `,
+  );
+  return entries.map((e) => ({
+    id: e.id,
+    name: entryName(e.series, e.year, e.number),
+    date: e.entry_date,
+    text: e.text,
+    sourceKind: e.source_kind,
+    reverses: e.reverses,
+    reversedBy: e.reversed_by,
+    lines: lines.filter((l) => l.entry_id === e.id).map((l) => ({ account: l.account, name: l.name ?? "", amount: l.amount_minor, vatCode: l.vat_code })),
+  }));
 }
 
 const ENTRY = z.object({ id: col.uuid, book_id: col.uuid, series: col.text, year: col.int, number: col.int, entry_date: col.text, text: col.text, locked_through: col.textOrNull });

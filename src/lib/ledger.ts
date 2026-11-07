@@ -555,6 +555,59 @@ export function vatTermOf(day: string): { term: number; from: string; to: string
   return { term, from: `${year}-${pad(first)}-01`, to: `${year}-${pad(first + 1)}-${pad(last)}` };
 }
 
+/** How many rows the form for an entry by hand has. */
+export const HAND_ROWS = 8;
+
+/** The series an entry made by hand is posted in: one by hand, or the opening balance of a book. */
+export const HAND_SERIES = [LEDGER_SERIES.manual, LEDGER_SERIES.opening] as const;
+
+/** A row of the form for an entry by hand, as typed: an account's number, a debit or a credit, and a VAT code where it has one. */
+export type HandRow = { account: string; debit: string; credit: string; vatCode: string };
+
+export type HandProblem = EntryProblem | "amount" | "both";
+
+/**
+ * An entry typed by hand (step 3b, for Lisa): its rows read as the form sent them, an empty row left out, each row a debit or a credit in
+ * the book's currency (never both), its VAT code a standard one where given. What the form cannot be is said, row by row where it is a
+ * row's; the entry's own rules (`entryProblems()`: balanced, two lines or more, a day, words) after.
+ */
+export function handEntryOf(
+  input: { series: string; date: string; text: string; rows: readonly HandRow[] },
+  currency: string,
+  parse: (text: string, currency: string) => number | null,
+): { ok: true; entry: LedgerEntryInput } | { ok: false; problems: HandProblem[]; rows: number[] } {
+  const problems = new Set<HandProblem>();
+  const badRows: number[] = [];
+  const lines: LedgerLineInput[] = [];
+  input.rows.forEach((row, i) => {
+    const account = row.account.trim();
+    const debit = row.debit.trim();
+    const credit = row.credit.trim();
+    if (!account && !debit && !credit) return;
+    const number = Number(account);
+    const debitMinor = debit ? parse(debit, currency) : 0;
+    const creditMinor = credit ? parse(credit, currency) : 0;
+    const vatCode = row.vatCode.trim();
+    const found: HandProblem[] = [];
+    if (!/^\d{4,6}$/.test(account)) found.push("account");
+    if (debitMinor === null || creditMinor === null) found.push("amount");
+    else if (debitMinor !== 0 && creditMinor !== 0) found.push("both");
+    else if (debitMinor === 0 && creditMinor === 0) found.push("zero");
+    if (vatCode && !isVatCode(vatCode)) found.push("vat_code");
+    if (found.length > 0) {
+      for (const f of found) problems.add(f);
+      badRows.push(i);
+      return;
+    }
+    lines.push({ account: number, amountMinor: (debitMinor ?? 0) - (creditMinor ?? 0), vatCode: vatCode || null });
+  });
+  if (!(HAND_SERIES as readonly string[]).includes(input.series)) problems.add("series");
+  if (problems.size > 0) return { ok: false, problems: [...problems], rows: badRows };
+  const entry: LedgerEntryInput = { series: input.series, date: input.date.trim(), text: input.text.trim(), source: null, lines };
+  const ruled = entryProblems(entry);
+  return ruled.length > 0 ? { ok: false, problems: ruled, rows: [] } : { ok: true, entry };
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Step 4: compared with Tripletex
 // ---------------------------------------------------------------------------------------------------------------------

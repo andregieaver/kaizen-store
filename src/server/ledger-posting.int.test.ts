@@ -9,6 +9,7 @@ const invoices = await import("./work-invoices");
 const fx = await import("./invoice-test-fixture");
 const ledger = await import("./ledger");
 
+import type { Membership } from "./auth";
 import type { InvoiceResult, WorkActor } from "./work-invoices";
 
 type Row = Record<string, unknown>;
@@ -172,6 +173,45 @@ describe("a store's documents, posted to its books", () => {
 
     // VAT by code (step 3b): both invoices' 25 % sales, the euro one in kroner at its own rate; payments carry no VAT.
     expect(await ledger.ledgerVatByCode(book.id, book.opened_on, String(today))).toEqual([{ code: "3", base: 1_200_000 + 13_800_000, vat: 300_000 + 3_450_000 }]);
+  });
+
+  it("posts an entry by hand, the opening balance among them, lists it in the journal and reverses it once", async () => {
+    const { storeId, actor } = await workStore();
+    const book = await openBook(storeId, actor.account.id);
+    await db().execute(sql`
+      insert into commerce.ledger_accounts (store_id, book_id, number, name, standard, kind)
+      select ${storeId}::uuid, ${book.id}::uuid, n, 'Account ' || n, n::text, k from (values (2000, 'equity'), (2050, 'equity')) as a(n, k)`);
+    const member = { account: { id: actor.account.id }, store: { id: storeId, timeZone: "Europe/Oslo" } } as unknown as Membership;
+    const row = (account: string, debit: string, credit: string) => ({ account, debit, credit, vatCode: "" });
+    const [{ d: today }] = await db().execute<Row>(sql`select current_date::text as d`);
+
+    // Rows that do not balance: nothing is posted, and the owner is told why.
+    expect(await ledger.postHandEntry(member, { series: "IB", date: String(today), text: "Inngående balanse", rows: [row("1920", "100", ""), row("2000", "", "90")] })).toEqual({
+      ok: false,
+      problems: ["balance"],
+      rows: [],
+    });
+    const opened = await ledger.postHandEntry(member, {
+      series: "IB",
+      date: String(today),
+      text: "Inngående balanse",
+      rows: [row("1920", "250000", ""), row("2000", "", "30000"), row("2050", "", "220000"), row("", "", "")],
+    });
+    if (!opened.ok) throw new Error(opened.problems.join(","));
+
+    const journal = await ledger.ledgerJournal(book.id);
+    expect(journal[0]).toMatchObject({ name: `IB${String(today).slice(0, 4)}-1`, text: "Inngående balanse", sourceKind: null, reverses: null, reversedBy: null });
+    expect(journal[0].lines.map((l) => [l.account, l.amount])).toEqual([[1920, 25_000_000], [2000, -3_000_000], [2050, -22_000_000]]);
+    const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action = 'work.ledger_entry_posted'`);
+    expect(audited.n).toBe(1);
+
+    // Reversed once: the journal says which turned back which, and a second reversal is refused.
+    const reversed = await ledger.reverseLedgerEntry(member, opened.id, String(today));
+    expect(reversed.ok).toBe(true);
+    const after = await ledger.ledgerJournal(book.id);
+    expect(after.find((e) => e.id === opened.id)?.reversedBy).toMatch(/^IB\d{4}-2$/);
+    expect(after.find((e) => e.reverses !== null)?.lines.map((l) => l.amount)).toEqual([-25_000_000, 3_000_000, 22_000_000]);
+    expect(await ledger.reverseLedgerEntry(member, opened.id, String(today))).toEqual({ ok: false, problem: "reversed" });
   });
 
   it("posts a shop order's invoice, by the dispatcher's job", async () => {

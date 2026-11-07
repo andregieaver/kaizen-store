@@ -7,15 +7,15 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
-import { NO_TAX_CODES, balanceSheet, isDay, profitAndLoss, vatTermOf, type ReportRow } from "@/lib/ledger";
+import { HAND_ROWS, LEDGER_SERIES, NO_TAX_CODES, balanceSheet, isDay, profitAndLoss, vatTermOf, type ReportRow } from "@/lib/ledger";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { formatStoreDay } from "@/lib/return-time";
-import { ledgerTrialBalance, ledgerVatByCode, ledgerWaiting, openBookOf } from "@/server/ledger";
+import { ledgerAccounts, ledgerJournal, ledgerTrialBalance, ledgerVatByCode, ledgerWaiting, openBookOf } from "@/server/ledger";
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 
-import { lockBooksAction, openBooksAction } from "./actions";
+import { lockBooksAction, openBooksAction, postEntryAction, reverseEntryAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -24,8 +24,8 @@ const cell = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
 /**
  * Settings → Books (B2, D478): the store's own books. Homer opens them (the owner, from the day Tripletex started booking), then reads what
  * waits for him, the trial balance of this year with its result, the profit and loss, the balance sheet on the last day and VAT by code
- * (step 3b); Lisa chooses the days (or the VAT term) and locks the books through a day. Members who may read settings see them; only the
- * owner opens and locks.
+ * (step 3b), and the journal of the latest entries; Lisa chooses the days (or the VAT term), posts an entry by hand (the opening balance among
+ * them), reverses one and locks the books through a day. Members who may read settings see them; only the owner opens, posts, reverses and locks.
  */
 export default async function BooksPage({ params, searchParams }: PageProps<"/admin/[store]/settings/books">) {
   const member = await requirePermission((await params).store, "settings:read");
@@ -69,11 +69,13 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const asked = (value: unknown) => (typeof value === "string" && isDay(value) ? value : null);
   const from = asked(query.from) ?? (yearStart < book.openedOn ? book.openedOn : yearStart);
   const to = asked(query.to) ?? today;
-  const [waiting, tb, vat, tripletex] = await Promise.all([
+  const [waiting, tb, vat, tripletex, journal, chart] = await Promise.all([
     ledgerWaiting(book.id),
     ledgerTrialBalance(book.id, from, to),
     ledgerVatByCode(book.id, from, to),
     getTripletexConnection(store.id),
+    ledgerJournal(book.id),
+    owner ? ledgerAccounts(book.id) : Promise.resolve([]),
   ]);
   const pl = profitAndLoss(tb.rows);
   const bs = balanceSheet(tb.rows);
@@ -268,6 +270,59 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         )}
       </Card>
 
+      <Card title={w.journal.title} description={w.journal.lead}>
+        {journal.length === 0 ? (
+          <p className="text-sm text-muted">{w.journal.empty}</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-line">
+            {journal.map((e) => (
+              <li key={e.id} className="flex flex-col gap-2 py-3">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+                  <span className="font-medium tabular-nums">{e.name}</span>
+                  <span className="text-muted">{day(e.date)}</span>
+                  <span>{e.text}</span>
+                  <Chip>{w.journal.kinds[e.sourceKind ?? "hand"] ?? w.journal.kinds.hand}</Chip>
+                  {e.reversedBy && <Chip signal="warning">{fillWords(w.journal.reversedBy, { name: e.reversedBy })}</Chip>}
+                  {e.reverses && <Chip>{fillWords(w.journal.reverses, { name: e.reverses })}</Chip>}
+                </div>
+                <table className="w-full max-w-2xl text-sm">
+                  <thead className="sr-only">
+                    <tr>
+                      <th>{w.hand.account}</th>
+                      <th>{w.journal.debit}</th>
+                      <th>{w.journal.credit}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {e.lines.map((l, i) => (
+                      <tr key={i} className="text-muted">
+                        <td className="py-0.5 pr-3">
+                          <span className="tabular-nums">{l.account}</span> {l.name}
+                          {l.vatCode && <span className="ml-2 text-xs">({w.hand.vat} {l.vatCode})</span>}
+                        </td>
+                        <td className={`${cell} py-0.5`}>{l.amount > 0 ? signed(l.amount) : ""}</td>
+                        <td className={`${cell} py-0.5`}>{l.amount < 0 ? signed(-l.amount) : ""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {owner && !e.reversedBy && !e.reverses && (
+                  <details className="text-sm">
+                    <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{w.journal.reverse}</summary>
+                    <ActionForm action={reverseEntryAction.bind(null, store.slug, e.id)} className="mt-2 flex flex-col gap-2">
+                      <p className="text-muted">{fillWords(w.journal.reverseConfirm, { name: e.name })}</p>
+                      <div>
+                        <SubmitButton variant="secondary">{w.journal.reverse}</SubmitButton>
+                      </div>
+                    </ActionForm>
+                  </details>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       {compared && (
         <Card
           title={w.compare.title}
@@ -312,6 +367,82 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
               )}
             </div>
           )}
+        </Card>
+      )}
+
+      {owner && (
+        <Card title={w.hand.title} description={w.hand.lead}>
+          <details>
+            <summary className="w-fit cursor-pointer rounded-full border border-edge bg-card px-4 py-2 text-sm hover:bg-sunken">{w.hand.open}</summary>
+            <ActionForm action={postEntryAction.bind(null, store.slug)} className="mt-4 flex flex-col gap-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                  {w.hand.series}
+                  <select name="series" defaultValue={LEDGER_SERIES.manual} className={field}>
+                    <option value={LEDGER_SERIES.manual}>{w.hand.seriesManual}</option>
+                    <option value={LEDGER_SERIES.opening}>{w.hand.seriesOpening}</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                  {w.hand.date}
+                  <input type="date" name="date" required defaultValue={today} min={book.lockedThrough ?? book.openedOn} className={field} />
+                </label>
+                <label className="flex min-w-64 flex-1 flex-col gap-1 text-sm font-medium">
+                  {w.hand.text}
+                  <input name="text" required maxLength={200} className={field} />
+                </label>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-muted">
+                    <tr>
+                      <th className="px-1 py-1 text-left font-medium">{w.hand.account}</th>
+                      <th className="px-1 py-1 text-left font-medium">{w.hand.debit}</th>
+                      <th className="px-1 py-1 text-left font-medium">{w.hand.credit}</th>
+                      <th className="px-1 py-1 text-left font-medium">{w.hand.vat}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: HAND_ROWS }, (_, i) => (
+                      <tr key={i}>
+                        <td className="px-1 py-1">
+                          <select name={`account_${i}`} defaultValue="" aria-label={`${w.hand.account} ${i + 1}`} className={`${field} w-full min-w-56`}>
+                            <option value="">{w.hand.choose}</option>
+                            {chart
+                              .filter((a) => a.active)
+                              .map((a) => (
+                                <option key={a.number} value={a.number}>
+                                  {a.number} {a.name}
+                                </option>
+                              ))}
+                          </select>
+                        </td>
+                        <td className="px-1 py-1">
+                          <input name={`debit_${i}`} inputMode="decimal" aria-label={`${w.hand.debit} ${i + 1}`} className={`${field} w-32 text-right tabular-nums`} />
+                        </td>
+                        <td className="px-1 py-1">
+                          <input name={`credit_${i}`} inputMode="decimal" aria-label={`${w.hand.credit} ${i + 1}`} className={`${field} w-32 text-right tabular-nums`} />
+                        </td>
+                        <td className="px-1 py-1">
+                          <select name={`vat_${i}`} defaultValue="" aria-label={`${w.hand.vat} ${i + 1}`} className={field}>
+                            <option value="">{w.hand.none}</option>
+                            {NO_TAX_CODES.map((c) => (
+                              <option key={c.code} value={c.code}>
+                                {c.code} {lang === "nb" ? c.nb : c.en}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <SubmitButton>{w.hand.button}</SubmitButton>
+              </div>
+            </ActionForm>
+          </details>
         </Card>
       )}
 
