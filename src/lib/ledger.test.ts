@@ -6,6 +6,7 @@ import {
   FX_LOSS_ACCOUNT,
   NO_POSTING,
   PAYMENT_ACCOUNTS,
+  balanceSheet,
   compareWithTheirs,
   isVatAccount,
   NO_STANDARD_ACCOUNTS,
@@ -18,9 +19,13 @@ import {
   isVatCode,
   noKindOf,
   postingOfTripletex,
+  profitAndLoss,
+  resultGroupOf,
   standardOf,
   startingChart,
   trialBalance,
+  vatByCode,
+  vatTermOf,
 } from "./ledger";
 
 const invoice: BookingDoc = {
@@ -265,5 +270,79 @@ describe("a payment for an invoice, posted", () => {
       },
     });
     expect(entryOfPaymentReversal({ id: "x", invoiceNumber: "1", counterparty: null, receivedOn: "2027-01-22" }, [])).toEqual({ ok: false, problem: "nothing" });
+  });
+});
+
+describe("the reports", () => {
+  // Opening equity of 50 000, a sale of 100 000 + 25 000 VAT paid by card, its card fee 3 000, an exchange gain of 120.
+  const rows = trialBalance([
+    { account: 1920, name: "Bank", kind: "asset", before: 5_000_000, debit: 0, credit: -300_000 },
+    { account: 1579, name: "Card provider", kind: "asset", before: 0, debit: 12_512_000, credit: 0 },
+    { account: 1500, name: "Receivable", kind: "asset", before: 0, debit: 12_500_000, credit: -12_500_000 },
+    { account: 2050, name: "Equity", kind: "equity", before: -5_000_000, debit: 0, credit: 0 },
+    { account: 2700, name: "Output VAT", kind: "liability", before: 0, debit: 0, credit: -2_500_000 },
+    { account: 3000, name: "Sales", kind: "income", before: 0, debit: 0, credit: -10_000_000 },
+    { account: 7770, name: "Card fees", kind: "expense", before: 0, debit: 300_000, credit: 0 },
+    { account: 8060, name: "Agio", kind: "income", before: 0, debit: 0, credit: -12_000 },
+  ]).rows;
+
+  it("reads an account's line of the profit and loss off its NS 4102 class", () => {
+    expect([3000, 3600, 4300, 5000, 6010, 6300, 7770, 8060, 8160, 8300, 8800, 1920, 30001].map(resultGroupOf)).toEqual([
+      "sales", "other_income", "goods", "payroll", "depreciation", "other_costs", "other_costs", "financial_income", "financial_costs", "tax", null, null, "sales",
+    ]);
+  });
+
+  it("puts the profit and loss in its groups, income and costs both positive, with each result", () => {
+    const pl = profitAndLoss(rows);
+    expect(pl.groups).toEqual([
+      { group: "sales", rows: [{ account: 3000, name: "Sales", amount: 10_000_000 }], total: 10_000_000 },
+      { group: "other_costs", rows: [{ account: 7770, name: "Card fees", amount: 300_000 }], total: 300_000 },
+      { group: "financial_income", rows: [{ account: 8060, name: "Agio", amount: 12_000 }], total: 12_000 },
+    ]);
+    expect(pl).toMatchObject({ operating: 9_700_000, financial: 12_000, beforeTax: 9_712_000, result: 9_712_000 });
+    // The same result as the trial balance reads off it.
+    expect(pl.result).toBe(trialBalance(rows).result);
+  });
+
+  it("balances the balance sheet with the result not yet carried to equity", () => {
+    expect(trialBalance(rows).totals.after).toBe(0);
+    const bs = balanceSheet(rows);
+    expect(bs.groups.map((g) => [g.group, g.total])).toEqual([
+      ["current_assets", 17_212_000],
+      ["equity", 5_000_000],
+      ["short_term", 2_500_000],
+    ]);
+    // The receivable is cleared: no line of nothing.
+    expect(bs.groups[0].rows.map((r) => r.account)).toEqual([1579, 1920]);
+    expect(bs.unallocated).toBe(9_712_000);
+    expect(bs.assets).toBe(bs.equityAndLiabilities);
+  });
+
+  it("sums VAT by code, the base from the income lines and the VAT from the VAT accounts, sales positive", () => {
+    expect(
+      vatByCode([
+        { account: 3000, vatCode: "3", amountMinor: -100_000 },
+        { account: 2700, vatCode: "3", amountMinor: -25_000 },
+        { account: 3000, vatCode: "3", amountMinor: 40_000 },
+        { account: 2700, vatCode: "3", amountMinor: 10_000 },
+        { account: 3200, vatCode: "6", amountMinor: -12_500 },
+        { account: 3030, vatCode: "31", amountMinor: -20_000 },
+        { account: 2701, vatCode: "31", amountMinor: -3_000 },
+        { account: 6800, vatCode: "1", amountMinor: 8_000 },
+        { account: 2710, vatCode: "1", amountMinor: 2_000 },
+      ]),
+    ).toEqual([
+      { code: "1", base: -8_000, vat: -2_000 },
+      { code: "3", base: 60_000, vat: 15_000 },
+      { code: "6", base: 12_500, vat: 0 },
+      { code: "31", base: 20_000, vat: 3_000 },
+    ]);
+  });
+
+  it("knows the VAT term a day is in", () => {
+    expect(vatTermOf("2027-01-14")).toEqual({ term: 1, from: "2027-01-01", to: "2027-02-28" });
+    expect(vatTermOf("2028-02-29")).toEqual({ term: 1, from: "2028-01-01", to: "2028-02-29" });
+    expect(vatTermOf("2027-12-31")).toEqual({ term: 6, from: "2027-11-01", to: "2027-12-31" });
+    expect(vatTermOf("2027-08-01")).toEqual({ term: 4, from: "2027-07-01", to: "2027-08-31" });
   });
 });

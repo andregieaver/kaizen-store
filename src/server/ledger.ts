@@ -32,6 +32,8 @@ import {
   type PaymentMethod,
   type PaymentProblem,
   type TrialBalance,
+  type VatRow,
+  vatByCode,
 } from "@/lib/ledger";
 import { mainCurrency } from "@/lib/markets";
 
@@ -283,6 +285,21 @@ export async function ledgerTrialBalance(bookId: string, from: string, to: strin
   const tb = trialBalance(rows);
   if (tb.totals.after !== 0) log("error", "ledger.unbalanced", { bookId, after: tb.totals.after });
   return tb;
+}
+
+/** VAT by code for the days `from` through `to` (step 3b, `vatByCode()`): each standard VAT code's base and VAT, from the lines that carry it. */
+export async function ledgerVatByCode(bookId: string, from: string, to: string): Promise<VatRow[]> {
+  const lines = await typedRows(
+    z.object({ account: col.int, vat_code: col.text, amount_minor: col.minor }),
+    sql`
+      select l.account, l.vat_code, sum(l.amount_minor) as amount_minor
+        from commerce.ledger_lines l
+        join commerce.ledger_entries e on e.id = l.entry_id
+       where l.book_id = ${bookId}::uuid and l.vat_code is not null and e.entry_date between ${from}::date and ${to}::date
+       group by l.account, l.vat_code
+    `,
+  );
+  return vatByCode(lines.map((l) => ({ account: l.account, vatCode: l.vat_code, amountMinor: l.amount_minor })));
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

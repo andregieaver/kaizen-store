@@ -169,6 +169,9 @@ describe("a store's documents, posted to its books", () => {
     // Every entry balances, and the books with it.
     const [sum] = await db().execute<Row>(sql`select coalesce(sum(amount_minor), 0)::bigint::text as s from commerce.ledger_lines where book_id = ${book.id}::uuid`);
     expect(sum.s).toBe("0");
+
+    // VAT by code (step 3b): both invoices' 25 % sales, the euro one in kroner at its own rate; payments carry no VAT.
+    expect(await ledger.ledgerVatByCode(book.id, book.opened_on, String(today))).toEqual([{ code: "3", base: 1_200_000 + 13_800_000, vat: 300_000 + 3_450_000 }]);
   });
 
   it("posts a shop order's invoice, by the dispatcher's job", async () => {

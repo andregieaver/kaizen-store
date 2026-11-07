@@ -7,10 +7,10 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
-import { isDay } from "@/lib/ledger";
+import { NO_TAX_CODES, balanceSheet, isDay, profitAndLoss, vatTermOf, type ReportRow } from "@/lib/ledger";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { formatStoreDay } from "@/lib/return-time";
-import { ledgerTrialBalance, ledgerWaiting, openBookOf } from "@/server/ledger";
+import { ledgerTrialBalance, ledgerVatByCode, ledgerWaiting, openBookOf } from "@/server/ledger";
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
@@ -23,8 +23,9 @@ const cell = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
 
 /**
  * Settings → Books (B2, D478): the store's own books. Homer opens them (the owner, from the day Tripletex started booking), then reads what
- * waits for him and the trial balance of this year, with its result; Lisa chooses the days and locks the books through a day. Members who may
- * read settings see them; only the owner opens and locks.
+ * waits for him, the trial balance of this year with its result, the profit and loss, the balance sheet on the last day and VAT by code
+ * (step 3b); Lisa chooses the days (or the VAT term) and locks the books through a day. Members who may read settings see them; only the
+ * owner opens and locks.
  */
 export default async function BooksPage({ params, searchParams }: PageProps<"/admin/[store]/settings/books">) {
   const member = await requirePermission((await params).store, "settings:read");
@@ -68,7 +69,21 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const asked = (value: unknown) => (typeof value === "string" && isDay(value) ? value : null);
   const from = asked(query.from) ?? (yearStart < book.openedOn ? book.openedOn : yearStart);
   const to = asked(query.to) ?? today;
-  const [waiting, tb, tripletex] = await Promise.all([ledgerWaiting(book.id), ledgerTrialBalance(book.id, from, to), getTripletexConnection(store.id)]);
+  const [waiting, tb, vat, tripletex] = await Promise.all([
+    ledgerWaiting(book.id),
+    ledgerTrialBalance(book.id, from, to),
+    ledgerVatByCode(book.id, from, to),
+    getTripletexConnection(store.id),
+  ]);
+  const pl = profitAndLoss(tb.rows);
+  const bs = balanceSheet(tb.rows);
+  const term = vatTermOf(to);
+  const termFrom = term.from < book.openedOn ? book.openedOn : term.from;
+  const vatToPay = vat.reduce((sum, r) => sum + r.vat, 0);
+  const codeName = (code: string) => {
+    const known = NO_TAX_CODES.find((c) => c.code === code);
+    return known ? (lang === "nb" ? known.nb : known.en) : "";
+  };
   const compared = tripletex ? await ledgerComparisonSummary(book.id) : null;
   // The table's amounts as numbers, the currency said once above it; the result with its currency.
   const digits = minorUnitDigits(book.currency);
@@ -166,6 +181,93 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         )}
       </Card>
 
+      <Card title={w.pl.title} description={w.pl.lead}>
+        {pl.groups.length === 0 ? (
+          <p className="text-sm text-muted">{w.pl.empty}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <ReportGroups groups={pl.groups} names={w.pl.groups} amount={money} total={signed} />
+              <tfoot>
+                <ReportLine label={w.pl.operating} value={signed(pl.operating)} />
+                <ReportLine label={w.pl.financial} value={signed(pl.financial)} />
+                <ReportLine label={w.pl.beforeTax} value={signed(pl.beforeTax)} />
+                <ReportLine label={w.pl.result} value={formatMoney(pl.result, book.currency, locale)} strong />
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Card title={w.balance.title} description={fillWords(w.balance.lead, { day: day(to) })}>
+        {bs.groups.length === 0 && bs.unallocated === 0 ? (
+          <p className="text-sm text-muted">{w.balance.empty}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <ReportGroups groups={bs.groups.filter((g) => g.group === "fixed_assets" || g.group === "current_assets")} names={w.balance.groups} amount={money} total={signed} />
+              <tbody>
+                <ReportLine label={w.balance.assets} value={signed(bs.assets)} strong />
+              </tbody>
+              <ReportGroups groups={bs.groups.filter((g) => g.group !== "fixed_assets" && g.group !== "current_assets")} names={w.balance.groups} amount={money} total={signed} />
+              <tbody>
+                {bs.unallocated !== 0 && <ReportLine label={w.balance.unallocated} value={signed(bs.unallocated)} />}
+                <ReportLine label={w.balance.equityAndLiabilities} value={signed(bs.equityAndLiabilities)} strong />
+              </tbody>
+            </table>
+          </div>
+        )}
+        {bs.assets !== bs.equityAndLiabilities && (
+          <p role="alert" className="mt-2 text-sm">
+            {w.balance.unbalanced}
+          </p>
+        )}
+      </Card>
+
+      <Card title={w.vat.title} description={w.vat.lead}>
+        <p className="mb-3 text-sm text-muted">
+          {fillWords(w.vat.term, { to: day(to), term: String(term.term) })}{" "}
+          {(from !== termFrom || to !== term.to) && (
+            <a href={`?from=${termFrom}&to=${term.to}`} className="underline underline-offset-2">
+              {fillWords(w.vat.showTerm, { term: String(term.term) })}
+            </a>
+          )}
+        </p>
+        {vat.length === 0 ? (
+          <p className="text-sm text-muted">{w.vat.empty}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-muted">
+                <tr className="border-b border-line">
+                  <th className="px-3 py-2 text-left font-medium">{w.vat.code}</th>
+                  <th className={`${cell} font-medium`}>{w.vat.base}</th>
+                  <th className={`${cell} font-medium`}>{w.vat.amount}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vat.map((r) => (
+                  <tr key={r.code} className="border-b border-line last:border-0">
+                    <td className="px-3 py-2">
+                      <span className="tabular-nums">{r.code}</span> {codeName(r.code)}
+                    </td>
+                    <td className={cell}>{signed(r.base)}</td>
+                    <td className={cell}>{signed(r.vat)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="font-medium">
+                <tr className="border-t border-edge">
+                  <td className="px-3 py-2">{w.vat.total}</td>
+                  <td className={cell} />
+                  <td className={cell}>{formatMoney(vatToPay, book.currency, locale)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </Card>
+
       {compared && (
         <Card
           title={w.compare.title}
@@ -225,5 +327,47 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         </Card>
       )}
     </div>
+  );
+}
+
+/** A report's groups (the profit and loss's, the balance sheet's): each group's name and total, its accounts under it. */
+function ReportGroups({
+  groups,
+  names,
+  amount,
+  total,
+}: {
+  groups: { group: string; rows: ReportRow[]; total: number }[];
+  names: Record<string, string>;
+  amount: (minor: number) => string;
+  total: (minor: number) => string;
+}) {
+  return groups.map((g) => (
+    <tbody key={g.group}>
+      <tr className="border-b border-line">
+        <th scope="rowgroup" className="px-3 pb-1 pt-4 text-left font-medium">
+          {names[g.group] ?? g.group}
+        </th>
+        <td className={`${cell} pb-1 pt-4 font-medium`}>{total(g.total)}</td>
+      </tr>
+      {g.rows.map((r) => (
+        <tr key={r.account}>
+          <td className="px-3 py-1 pl-6 text-muted">
+            <span className="tabular-nums">{r.account}</span> {r.name}
+          </td>
+          <td className={`${cell} py-1 text-muted`}>{amount(r.amount)}</td>
+        </tr>
+      ))}
+    </tbody>
+  ));
+}
+
+/** A report's summing line: a label and its amount, the last one stronger. */
+function ReportLine({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <tr className={`border-t font-medium ${strong ? "border-edge text-base" : "border-line"}`}>
+      <td className="px-3 py-2">{label}</td>
+      <td className={cell}>{value}</td>
+    </tr>
   );
 }

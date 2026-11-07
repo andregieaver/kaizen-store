@@ -410,6 +410,152 @@ export function trialBalance(rows: readonly TrialRow[]): TrialBalance {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Step 3b: the profit and loss, the balance sheet and VAT by code
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The lines of the profit and loss in NS 4102's classes, in their order (Norway's accounting act's form, regnskapsloven § 6-1, simplified). */
+export const RESULT_GROUPS = ["sales", "other_income", "goods", "payroll", "depreciation", "other_costs", "financial_income", "financial_costs", "tax"] as const;
+export type ResultGroup = (typeof RESULT_GROUPS)[number];
+
+/**
+ * Where an account of the profit and loss side is shown, by its NS 4102 class: 30–35 sales, 36–39 other operating income, 4 goods, 5 payroll,
+ * 60 depreciation, 61–79 other operating costs, 80 financial income, 81 financial costs, 83–84 tax. 85–89 (the year's result carried and
+ * what it is used for) is no line of it; neither is an account of the balance sheet. A sub-account (15001) is read by its first four digits.
+ */
+export function resultGroupOf(number: number): ResultGroup | null {
+  const head = Number(String(number).slice(0, 4));
+  if (head >= 3000 && head <= 3599) return "sales";
+  if (head >= 3600 && head <= 3999) return "other_income";
+  if (head >= 4000 && head <= 4999) return "goods";
+  if (head >= 5000 && head <= 5999) return "payroll";
+  if (head >= 6000 && head <= 6099) return "depreciation";
+  if (head >= 6100 && head <= 7999) return "other_costs";
+  if (head >= 8000 && head <= 8099) return "financial_income";
+  if (head >= 8100 && head <= 8299) return "financial_costs";
+  if (head >= 8300 && head <= 8499) return "tax";
+  return null;
+}
+
+/** A line of a report: an account and its amount, income and what is owed shown as positive. */
+export type ReportRow = { account: number; name: string; amount: number };
+
+export type ProfitAndLoss = {
+  groups: { group: ResultGroup; rows: ReportRow[]; total: number }[];
+  /** Operating income less operating costs. */
+  operating: number;
+  /** Financial income less financial costs. */
+  financial: number;
+  beforeTax: number;
+  /** The period's result after tax: a profit positive. */
+  result: number;
+};
+
+const INCOME_GROUPS: ReadonlySet<ResultGroup> = new Set(["sales", "other_income", "financial_income"]);
+
+/**
+ * The profit and loss of a period from the trial balance's rows (what each account moved in the days): each group's accounts with their
+ * amounts as a reader reads them (income and costs both positive), the operating and financial results, and the result after tax.
+ */
+export function profitAndLoss(rows: readonly (TrialRow & { after?: number })[]): ProfitAndLoss {
+  const byGroup = new Map<ResultGroup, ReportRow[]>();
+  for (const r of rows) {
+    const group = resultGroupOf(r.account);
+    const moved = r.debit + r.credit;
+    if (!group || moved === 0) continue;
+    const amount = INCOME_GROUPS.has(group) ? -moved : moved;
+    byGroup.set(group, [...(byGroup.get(group) ?? []), { account: r.account, name: r.name, amount }]);
+  }
+  const groups = RESULT_GROUPS.flatMap((group) => {
+    const groupRows = (byGroup.get(group) ?? []).sort((a, b) => a.account - b.account);
+    return groupRows.length > 0 ? [{ group, rows: groupRows, total: groupRows.reduce((sum, r) => sum + r.amount, 0) }] : [];
+  });
+  const total = (group: ResultGroup) => groups.find((g) => g.group === group)?.total ?? 0;
+  const operating = total("sales") + total("other_income") - total("goods") - total("payroll") - total("depreciation") - total("other_costs");
+  const financial = total("financial_income") - total("financial_costs");
+  const beforeTax = operating + financial;
+  return { groups, operating, financial, beforeTax, result: beforeTax - total("tax") };
+}
+
+/** The groups of the balance sheet in NS 4102's classes (10–13 fixed assets, 14–19 current assets, 20 equity, 21–22 long-term, 23–29 short-term). */
+export const BALANCE_GROUPS = ["fixed_assets", "current_assets", "equity", "long_term", "short_term"] as const;
+export type BalanceGroup = (typeof BALANCE_GROUPS)[number];
+
+export function balanceGroupOf(number: number): BalanceGroup | null {
+  const head = Number(String(number).slice(0, 4));
+  if (head >= 1000 && head <= 1399) return "fixed_assets";
+  if (head >= 1400 && head <= 1999) return "current_assets";
+  if (head >= 2000 && head <= 2099) return "equity";
+  if (head >= 2100 && head <= 2299) return "long_term";
+  if (head >= 2300 && head <= 2999) return "short_term";
+  return null;
+}
+
+export type BalanceSheet = {
+  groups: { group: BalanceGroup; rows: ReportRow[]; total: number }[];
+  assets: number;
+  /** The result not yet carried to equity: every profit and loss account's balance on the day, a profit positive. */
+  unallocated: number;
+  /** Equity, the result not yet carried and the debt: equal to the assets in a sound book. */
+  equityAndLiabilities: number;
+};
+
+/**
+ * The balance sheet on a day from the trial balance's rows (what each account holds after): the assets as they stand, equity and debt as
+ * a reader reads them (positive), and the result of every day so far not yet carried to equity as a line of its own, so the two sides agree.
+ */
+export function balanceSheet(rows: readonly (TrialRow & { after: number })[]): BalanceSheet {
+  const byGroup = new Map<BalanceGroup, ReportRow[]>();
+  let unallocated = 0;
+  for (const r of rows) {
+    const group = balanceGroupOf(r.account);
+    if (!group) {
+      if (resultGroupOf(r.account) || Number(String(r.account).slice(0, 4)) >= 8500) unallocated -= r.after;
+      continue;
+    }
+    if (r.after === 0) continue;
+    const amount = group === "fixed_assets" || group === "current_assets" ? r.after : -r.after;
+    byGroup.set(group, [...(byGroup.get(group) ?? []), { account: r.account, name: r.name, amount }]);
+  }
+  const groups = BALANCE_GROUPS.flatMap((group) => {
+    const groupRows = (byGroup.get(group) ?? []).sort((a, b) => a.account - b.account);
+    return groupRows.length > 0 ? [{ group, rows: groupRows, total: groupRows.reduce((sum, r) => sum + r.amount, 0) }] : [];
+  });
+  const sum = (names: readonly BalanceGroup[]) => groups.filter((g) => names.includes(g.group)).reduce((s, g) => s + g.total, 0);
+  return { groups, assets: sum(["fixed_assets", "current_assets"]), unallocated, equityAndLiabilities: sum(["equity", "long_term", "short_term"]) + unallocated };
+}
+
+/** A posted line with its VAT code, for the VAT report. */
+export type VatLine = { account: number; vatCode: string; amountMinor: number };
+
+/** One VAT code in a period: what it was charged on (the base) and the VAT, output VAT and sales positive. */
+export type VatRow = { code: string; base: number; vat: number };
+
+/**
+ * VAT by code for a period (the VAT return's lines, by SAF-T's standard codes): each code's base, from its lines on income and cost
+ * accounts, and its VAT, from its lines on the VAT accounts (27xx). Sales and output VAT are shown positive, purchases and input VAT negative.
+ */
+export function vatByCode(lines: readonly VatLine[]): VatRow[] {
+  const byCode = new Map<string, VatRow>();
+  for (const l of lines) {
+    const row = byCode.get(l.vatCode) ?? { code: l.vatCode, base: 0, vat: 0 };
+    if (isVatAccount(l.account)) row.vat -= l.amountMinor;
+    else row.base -= l.amountMinor;
+    byCode.set(l.vatCode, row);
+  }
+  return [...byCode.values()].filter((r) => r.base !== 0 || r.vat !== 0).sort((a, b) => Number(a.code) - Number(b.code) || a.code.localeCompare(b.code));
+}
+
+/** Norway's VAT terms are two months each: the term a day is in, its first and last day (1: January–February, …, 6: November–December). */
+export function vatTermOf(day: string): { term: number; from: string; to: string } {
+  const [year, month] = day.split("-").map(Number);
+  const term = Math.ceil(month / 2);
+  const first = term * 2 - 1;
+  const last = new Date(Date.UTC(year, first + 1, 0)).getUTCDate();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return { term, from: `${year}-${pad(first)}-01`, to: `${year}-${pad(first + 1)}-${pad(last)}` };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // Step 4: compared with Tripletex
 // ---------------------------------------------------------------------------------------------------------------------
 
