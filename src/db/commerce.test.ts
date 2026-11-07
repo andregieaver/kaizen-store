@@ -3217,6 +3217,39 @@ describe("the All products page (D83)", () => {
 });
 
 describe("menus (D85)", () => {
+  it("are written with a page's or an article's slug in a store's, whatever wrote them, and keep the ids in Kaizena Flow's own", async () => {
+    const storeId = await createStore("menus-links", ["NO"]);
+    const page = (owner: string | null, slug: string, type = "page") =>
+      one<{ id: string }>("insert into commerce.pages (store_id, slug, draft, type) values ($1, $2, '{}', $3) returning id", [owner, slug, type]);
+    const { id: about } = await page(storeId, "about-us");
+    const { id: news } = await page(storeId, "news", "article");
+    const { id: elsewhere } = await page(null, "pricing-menus-links");
+    const items = [
+      { label: {}, link: { kind: "url", url: "#" }, depth: 0 },
+      { label: { en: "About" }, link: { kind: "page", pageId: about }, depth: 1 },
+      { label: {}, link: { kind: "article", pageId: news }, depth: 1 },
+      { label: {}, link: { kind: "page", pageId: elsewhere }, depth: 0 },
+      { label: {}, link: { kind: "page", slug: "contact" }, depth: 0 },
+    ];
+    const { id } = await one<{ id: string }>("insert into commerce.menus (store_id, name, items) values ($1, 'Linked', $2::jsonb) returning id", [storeId, JSON.stringify(items)]);
+    const stored = await one<{ items: unknown[] }>("select items from commerce.menus where id = $1", [id]);
+    expect(stored.items).toEqual([
+      { label: {}, link: { kind: "url", url: "#" }, depth: 0 },
+      { label: { en: "About" }, link: { kind: "page", slug: "about-us" }, depth: 1 },
+      { label: {}, link: { kind: "article", slug: "news" }, depth: 1 },
+      // Another owner's page is not the store's: it stays as it was.
+      { label: {}, link: { kind: "page", pageId: elsewhere }, depth: 0 },
+      { label: {}, link: { kind: "page", slug: "contact" }, depth: 0 },
+    ]);
+    // Kaizena Flow's own menus keep their links by id.
+    const { id: own } = await one<{ id: string }>("insert into commerce.menus (store_id, name, items) values (null, 'Linked by id', $1::jsonb) returning id", [
+      JSON.stringify([{ label: {}, link: { kind: "page", pageId: elsewhere }, depth: 0 }]),
+    ]);
+    expect((await one<{ items: unknown[] }>("select items from commerce.menus where id = $1", [own])).items).toEqual([{ label: {}, link: { kind: "page", pageId: elsewhere }, depth: 0 }]);
+    await db.query("delete from commerce.menus where id in ($1, $2)", [id, own]);
+    await db.query("delete from commerce.pages where id in ($1, $2, $3)", [about, news, elsewhere]);
+  });
+
   it("are the owner's own, let go of when deleted, and copied to new stores with the pages using them", async () => {
     const template = await createStore("menus-template", ["NO"]);
     const other = await createStore("menus-other", ["NO"]);

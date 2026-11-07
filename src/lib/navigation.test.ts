@@ -48,6 +48,15 @@ describe("menuLabel", () => {
     expect(menuLabel({ label: {}, link: { kind: "cart" } }, "nb-NO", builtIn)).toBe("Handlekurv");
     expect(menuLabel({ label: { "sv-SE": "Om oss" }, link: { kind: "url", url: "/om" } }, "nb-NO", builtIn)).toBe("Om oss");
   });
+
+  it("uses the owner's text for the language in each of its locales before a page's title (Kaizena Flow's menus are written by language)", () => {
+    const names = { page: new Map([["compare", { title: "Kaizena Flow compared with other platforms" }]]) } as unknown as Parameters<typeof menuLabel>[3];
+    const item = { label: { en: "Compare", "nb-NO": "Sammenligne" }, link: { kind: "page", slug: "compare" } } as const;
+    expect(menuLabel(item, "en-GB", builtIn, names)).toBe("Compare");
+    expect(menuLabel(item, "nb-NO", builtIn, names)).toBe("Sammenligne");
+    // The locale's own text wins over the language's.
+    expect(menuLabel({ ...item, label: { en: "Compare", "en-GB": "Compare us" } }, "en-GB", builtIn, names)).toBe("Compare us");
+  });
 });
 
 describe("addresses and stored values", () => {

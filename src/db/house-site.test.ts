@@ -77,8 +77,10 @@ describe("Kaizena Flow's site copied into its own store (D469)", () => {
     expect(home.published.styleId).toBe(await copyOf(ids.style));
     expect(home.published.aboutId).toBe(await copyOf(ids.about));
 
-    const menu = await one<{ items: { link: { pageId: string } }[] }>("select items from commerce.menus where id = $1", [await copyOf(ids.menu)]);
-    expect(menu.items[0].link.pageId).toBe(await copyOf(ids.about));
+    // The store's copy of the menu links the store's copy of the page by its slug, as a store's menus do (D489).
+    const menu = await one<{ items: { link: unknown }[] }>("select items from commerce.menus where id = $1", [await copyOf(ids.menu)]);
+    expect(menu.items[0].link).toEqual({ kind: "page", slug: "about-us" });
+    expect(await one("select store_id from commerce.pages where id = $1", [await copyOf(ids.about)])).toEqual({ store_id: house });
     expect((await one<{ sharing: string }>("select sharing from commerce.saved_parts where id = $1", [await copyOf(ids.part)])).sharing).toBe("private");
 
     const store = await one<Record<string, unknown>>("select header_id, footer_id, header_menu_id, front_page_id, custom_css, theme from commerce.stores where id = $1", [house]);

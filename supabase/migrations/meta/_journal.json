@@ -5027,6 +5027,13 @@
       "when": 1794073205891,
       "tag": "20261107174005_bank_statements_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 718,
+      "version": "7",
+      "when": 1794082295086,
+      "tag": "20261107201135_store_menu_page_links",
+      "breakpoints": true
     }
   ]
 }

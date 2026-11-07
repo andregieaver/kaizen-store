@@ -264,7 +264,8 @@ export function menuLabel(
 ): string {
   const forCountry = country ? item.label[countryLabelKey(locale, country)] : undefined;
   if (forCountry) return forCountry;
-  const own = item.label[locale];
+  // The owner's text in the shopper's locale, else in their language (`en` for `en-GB`: Kaizena Flow's own menus are written by language).
+  const own = item.label[locale] || item.label[locale.split("-")[0]];
   if (own) return own;
   if (item.link.kind === "home" || item.link.kind === "account" || item.link.kind === "cart") {
     return builtIn[item.link.kind];
