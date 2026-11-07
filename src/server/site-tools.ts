@@ -946,7 +946,7 @@ export async function draftHeaderFooterTool(ctx: SiteToolContext, args: DraftHea
   const standard = await headerFooterChange(ctx, {});
   const menuId = args.menu ? (await findMenu(ctx, args.menu)).id : args.kind === "header" ? standard.headerMenuId : standard.footerMenuId;
   const content = draftedLayout(ownerOf(ctx), args.kind, { look: args.look, menuId, sectionStyle: args.section_style, title: args.title });
-  const problem = siteLayoutProblem(ownerOf(ctx), args.kind, content);
+  const problem = siteLayoutProblem(ownerOf(ctx), args.kind, content, ctx.store?.house === true);
   if (problem) return fail(problem);
   const saved = await savePage(ctx.account, ownerOf(ctx), null, content, { publish: false, type: args.kind });
   if (!saved.ok) return fail(`The ${args.kind} could not be saved: ${saved.problems.join(" ")}`);
@@ -977,7 +977,7 @@ export async function chooseHeaderFooterTool(ctx: SiteToolContext, args: UseHead
   if (page) {
     const held = await getPageForEdit(ownerOf(ctx), page.id, args.kind);
     if (!held) return fail(`That ${args.kind} is gone.`);
-    const problem = siteLayoutProblem(ownerOf(ctx), args.kind, held.draft);
+    const problem = siteLayoutProblem(ownerOf(ctx), args.kind, held.draft, ctx.store?.house === true);
     if (problem) return fail(problem);
     const saved = await savePage(ctx.account, ownerOf(ctx), page.id, held.draft, { publish: true, type: args.kind });
     if (!saved.ok) return fail(`The ${args.kind} could not be published: ${saved.problems.join(" ")}`);

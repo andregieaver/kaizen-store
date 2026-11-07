@@ -16,6 +16,7 @@ import {
 import { pageInput, type PageContent, type PageType } from "@/lib/page-content";
 
 import { pageRulesProblem, payPageProblem } from "./page-rules";
+import { houseStoreId } from "./house-customers";
 
 /**
  * Global rows, columns and components (D98) on the server: when a global
@@ -140,6 +141,8 @@ export async function spreadGlobals(
     for update
   `);
   const problems: string[] = [];
+  // Kaizena Flow's own store (D484) may hold Kaizena Flow's own parts (`pageRulesProblem()`).
+  const house = owner !== null && owner === (await houseStoreId(tx));
   let count = 0;
   for (const page of pages) {
     const id = String(page.id);
@@ -150,7 +153,7 @@ export async function spreadGlobals(
       if (sameJson(next, content)) return null;
       const parsed = pageInput.safeParse(next);
       const problem = parsed.success
-        ? (pageRulesProblem(owner, type, parsed.data) ?? (page.checkout ? payPageProblem(parsed.data) : null))
+        ? (pageRulesProblem(owner, type, parsed.data, null, house) ?? (page.checkout ? payPageProblem(parsed.data) : null))
         : [...new Set(parsed.error.issues.map((i) => i.message))].join(" ");
       if (problem) problems.push(`It is also on “${content.title}”, which could then not be saved: ${problem}`);
       return next;

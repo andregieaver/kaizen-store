@@ -125,9 +125,10 @@ export const footerHasWithdrawal = (content: Pick<PageContent, "rows">): boolean
  * null: they belong only in headers and footers, only the owner's own parts
  * (a store's cart, Kaizen's sign-up button), and a footer shows who runs the
  * site and links to the cookies page. Headers and footers have no
- * categories or tags.
+ * categories or tags. Kaizena Flow's own store (`house`, D484) serves
+ * Kaizena Flow's site, so its own may hold both owners' parts.
  */
-export function siteLayoutProblem(storeId: string | null, type: PageType, content: PageContent): string | null {
+export function siteLayoutProblem(storeId: string | null, type: PageType, content: PageContent, house = false): string | null {
   const parts = siteBlocks(content);
   if (content.overlay && type !== "header") return "Only a header lies over the page.";
   if (content.overlay?.where === "terms" && content.overlay.categories.length === 0 && content.overlay.tags.length === 0) {
@@ -137,7 +138,7 @@ export function siteLayoutProblem(storeId: string | null, type: PageType, conten
     return parts.length > 0 ? "Site components belong in headers and footers." : null;
   }
   if (content.categories.length > 0 || content.tags.length > 0) return `A ${type} has no categories or tags.`;
-  const offered = sitePartsFor(storeId);
+  const offered = sitePartsFor(storeId, house);
   const foreign = parts.find((block) => !offered.includes(block.part));
   if (foreign) return storeId === null ? "Kaizena Flow's site has no cart, wishlist, search, countries or buyer switch." : "A store's site has no Start your store button.";
   // What the law asks of a footer (business details, cookies link, withdrawal link) is a warning in the page checker, never a reason not to save.

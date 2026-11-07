@@ -28,7 +28,7 @@ import { Icon } from "./icons";
 import { PageRowView } from "./page-article";
 import { MotionSupport } from "./motion-support";
 import { builtIn, Brand as KaizenBrand, legalPages } from "./platform-layout";
-import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
+import { PLATFORM_LANG_FACTS, langOfLocale, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { platformText } from "@/lib/platform-text";
 import { linksIn } from "@/lib/platform-links";
 import { HidingHeader } from "./store-chrome";
@@ -67,7 +67,8 @@ export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
   if (!partFeatureOn(block, store)) return false;
   switch (block.part) {
     case "signUp":
-      return false;
+      // Kaizena Flow's *Start your store*: only on Kaizena Flow's own store, which serves its site (D484).
+      return store.house;
     case "languages":
       // The language switcher (D479): while a visitor here has more than one language to choose.
       return hasLanguageChoice(store, ctx.market);
@@ -207,8 +208,15 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
     case "languages":
       // The language switcher (D479), shaped as the part says at each screen size.
       return <LanguageSwitcher store={store} market={market} m={m} className={languageSwitchStyle(block).className} />;
-    case "signUp":
-      return null;
+    case "signUp": {
+      // Kaizena Flow's own store (D484): its sign-up, in the visitor's language where Kaizena Flow's site has it.
+      const lang = langOfLocale(market.lang) ?? "en";
+      return (
+        <Link href={platformPath(lang, "/sign-up")} className="flex min-h-10 items-center rounded-full bg-foreground px-4 text-sm font-medium text-background">
+          {builtIn(lang).signUp}
+        </Link>
+      );
+    }
   }
 }
 

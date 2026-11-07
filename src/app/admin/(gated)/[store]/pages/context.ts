@@ -177,6 +177,7 @@ export async function storePageContext(
     menusHref: `/admin/${store.slug}/menus`,
     // Kaizena Flow's own store (D469, step 4 of the plan) has Kaizena Flow's own parts: its plans, a domain search and the list of themes.
     plans: store.house ? planChoices(await getPublicPlans()) : null,
+    house: store.house,
     ...(store.house && type === "page" ? { themeStore: { parts: ["list"] as const } } : {}),
     theme: {
       css: themeCss(store.theme.settings, "[data-theme-canvas]"),

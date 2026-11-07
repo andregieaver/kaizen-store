@@ -13,18 +13,21 @@ type PageOwner = string | null;
  * the browser before a part is dropped on the other page of a dual page
  * (D412), so both ask the same question.
  */
-export function pageRulesProblem(owner: PageOwner, kind: PageType, content: PageContent, variantOf: PageType | null = null): string | null {
+export function pageRulesProblem(owner: PageOwner, kind: PageType, content: PageContent, variantOf: PageType | null = null, house = false): string | null {
   // A version made for an A/B test (D148) holds what the page it is a version of may hold: a page, a product layout, a header or a footer.
   const type: PageType = kind === "variant" ? (variantOf ?? "page") : kind;
+  // Kaizena Flow's own store (D466) serves Kaizena Flow's site (D484): its pages may hold Kaizena Flow's own parts too, as the builder
+  // offers them there (D469 step 4), its plans, the domain search, the list of themes and *Start your store*.
+  const kaizen: PageOwner = house ? null : owner;
   return (
     ownerGridProblem(owner, content.rows) ??
     productLayoutProblem(owner, type, content) ??
     entryLayoutProblem(type, content) ??
-    siteLayoutProblem(owner, type, content) ??
+    siteLayoutProblem(owner, type, content, house) ??
     searchProblem(owner, type, content) ??
-    plansProblem(owner, content) ??
-    domainSearchProblem(owner, content) ??
-    themeStoreProblem(owner, type, content) ??
+    plansProblem(kaizen, content) ??
+    domainSearchProblem(kaizen, content) ??
+    themeStoreProblem(kaizen, type, content) ??
     customFieldProblem(owner, type, content) ??
     storePartProblem(owner, type, content) ??
     // Who sees a part (D179 phase 4): Kaizen's pages ask only what exists there, a header or footer no address parameters.

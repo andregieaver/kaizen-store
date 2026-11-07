@@ -752,7 +752,7 @@ export function PageEditor({
             : { count: 0, panel: <p className="text-sm text-muted">{ew.checksUnavailable}</p> }
         }
         shopParts={shape === "page" && context.owner !== null}
-        siteParts={shape === "header" || shape === "footer" ? sitePartsFor(context.owner) : null}
+        siteParts={shape === "header" || shape === "footer" ? sitePartsFor(context.owner, context.house === true) : null}
         upload={upload}
         startVideo={context.startVideo}
         fonts={{ ...context.fonts, install: context.actions.installFont, theme: context.theme }}

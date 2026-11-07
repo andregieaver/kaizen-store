@@ -35,6 +35,7 @@ import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals } from "./glob
 import { log } from "./log";
 import { withPageAlts } from "./media-alts";
 import { pageRulesProblem, payPageProblem } from "./page-rules";
+import { houseStoreId } from "./house-customers";
 import { keepVersion } from "./page-versions";
 import { listTextStyles } from "./text-styles";
 import { scopedTermIds } from "./taxonomy";
@@ -272,7 +273,9 @@ export async function savePage(
     (type !== "page" && parsed.data.slug.includes("/") ? "Only pages can be nested under another page." : null) ??
     (choices.includes(parsed.data.slug.split("/")[0]) ? `The address ${parsed.data.slug} is a language or currency of the store's own addresses. Choose another.` : null);
   if (slugProblem) return { ok: false, problems: [slugProblem] };
-  const ruleProblem = pageRulesProblem(owner, type, parsed.data, variantOf);
+  // Kaizena Flow's own store (D466) serves Kaizena Flow's site (D484): its pages may hold Kaizena Flow's own parts.
+  const house = owner !== null && owner === (await houseStoreId());
+  const ruleProblem = pageRulesProblem(owner, type, parsed.data, variantOf, house);
   if (ruleProblem) return { ok: false, problems: [ruleProblem] };
   // Blocks' own fonts (D59) come from Google Fonts and must be on Kaizen before the page shows them.
   const families = pageFonts(parsed.data);
@@ -349,7 +352,7 @@ export async function savePage(
       content = refreshUses(content, spread.globals, (globalId) => !spread.globals.has(globalId));
       const again = pageInput.safeParse(content);
       const problem = again.success
-        ? pageRulesProblem(owner, type, again.data, variantOf)
+        ? pageRulesProblem(owner, type, again.data, variantOf, house)
         : [...new Set(again.error.issues.map((i) => i.message))].join(" ");
       if (problem) throw new GlobalsRefused([problem]);
       const json = JSON.stringify(content);

@@ -47,6 +47,8 @@ describe("headers and footers (D80)", () => {
     // The language switcher is every site's (D479).
     expect(sitePartsFor("store")).toContain("languages");
     expect(sitePartsFor(null)).toContain("languages");
+    // Kaizena Flow's own store serves its site (D484): both owners' parts.
+    expect(sitePartsFor("store", true)).toEqual(expect.arrayContaining(["signUp", "cart", "wishlist", "withdrawal"]));
   });
 
   it("keeps site components in headers and footers, the owner's own, with no categories or tags", () => {

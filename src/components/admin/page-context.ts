@@ -162,6 +162,8 @@ export type PageOwnerContext = {
   features?: readonly string[];
   /** Kaizen's plans for the Plans component (D142), on Kaizen's own pages; null for a store, which does not sell Kaizen's plans. */
   plans: PlanChoice[] | null;
+  /** Kaizena Flow's own store (D466), which serves Kaizena Flow's site (D484): its headers offer *Start your store* too. */
+  house?: boolean;
   /**
    * The theme store's components the page may hold (D285): the list of themes on Kaizena Flow's own pages, and a theme's parts too on the
    * page chosen for a theme's page; absent or null on a store's pages and Kaizena Flow's articles, headers and footers.

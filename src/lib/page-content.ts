@@ -1098,9 +1098,12 @@ const STORE_PARTS: readonly SitePart[] = ["search", "wishlist", "cart", "markets
 // The languages are every site's (D479): a store's switcher as Kaizena Flow's (D312).
 const KAIZEN_PARTS: readonly SitePart[] = ["signUp"];
 
-/** The site parts an owner's headers and footers offer: a store's (with a store id) or Kaizen's (null). */
-export const sitePartsFor = (storeId: string | null): SitePart[] =>
-  (Object.keys(SITE_PARTS) as SitePart[]).filter((part) => !(storeId === null ? STORE_PARTS : KAIZEN_PARTS).includes(part));
+/**
+ * The site parts an owner's headers and footers offer: a store's (with a store id) or Kaizen's (null). Kaizena Flow's own store (D466,
+ * `house`) serves Kaizena Flow's site (D484), so it offers both: a store's parts and Kaizena Flow's *Start your store*.
+ */
+export const sitePartsFor = (storeId: string | null, house = false): SitePart[] =>
+  (Object.keys(SITE_PARTS) as SitePart[]).filter((part) => house || !(storeId === null ? STORE_PARTS : KAIZEN_PARTS).includes(part));
 
 export const LOGO_HEIGHT = { min: 16, max: 160, header: 40, footer: 32 } as const;
 

@@ -94,7 +94,8 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
     paymentsOn: payments.stripe.enabled,
     shipping: Number(shippingRow?.priced ?? 0) >= store.keptMarkets.length && store.keptMarkets.length > 0,
     products: ownProducts > 0 || demoProducts === 0,
-    plan: Boolean(planRow?.on_plan),
+    // Kaizena Flow's own store needs no plan (D466): its Billing says so.
+    plan: store.house || Boolean(planRow?.on_plan),
     trialOver: Boolean(planRow?.trial_over) && !planRow?.on_plan,
     readyToOpen: details && countries,
     counts: { demoProducts, ownProducts, staff: Number(facts?.staff ?? 0), units: Number(facts?.units ?? 0) },

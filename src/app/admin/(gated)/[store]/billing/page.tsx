@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PlanDiscount } from "@/components/admin/plan-discount";
@@ -43,8 +42,23 @@ export const metadata: Metadata = { title: "Billing" };
 export default async function BillingPage({ params, searchParams }: PageProps<"/admin/[store]/billing">) {
   const staffer = await requireOwnerRole((await params).store);
   const { store, account } = staffer;
-  // Kaizena Flow's own store has no plan (D466): the platform is what bills.
-  if (store.house) notFound();
+  // Kaizena Flow's own store has no plan (D466): the platform is what bills. Said, not a 404, as a link here may still reach it.
+  if (store.house) {
+    const w = adminText(adminLangOf(account.adminLocale), "billing").page;
+    return (
+      <div className="flex flex-col gap-8">
+        <PageHeader title={w.title} description={fillWords(w.description, { store: store.name })} />
+        <Card title={w.houseTitle} className="text-sm" compact>
+          <p>
+            {w.house}{" "}
+            <Link href="/admin/platform/plans" className="font-medium underline underline-offset-2">
+              {w.houseLink}
+            </Link>
+          </p>
+        </Card>
+      </div>
+    );
+  }
   const { checkout } = await searchParams;
   // Back from Stripe Checkout: record the new plan now rather than waiting for the webhook.
   if (typeof checkout === "string") await completePlanCheckout(store.id, checkout);

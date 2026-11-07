@@ -77,3 +77,25 @@ describe("where a plans component may be (D142)", () => {
     expect(pageRulesProblem(store, "page", withBlock(plans))).toMatch(/Kaizena Flow's own pages/);
   });
 });
+
+describe("Kaizena Flow's own store, which serves its site (D484)", () => {
+  const plans: PageBlock = { id: "pl", type: "plans", buttonLabel: "", buttonHref: "/sign-up" };
+  const themes: PageBlock = { id: "ts", type: "themeStore", part: "list" };
+  const domains = { id: "ds", type: "domainSearch" } as PageBlock;
+  const signUp = { id: "su", type: "site", part: "signUp" } as PageBlock;
+
+  it("may keep Kaizena Flow's own parts in the pages copied from its site: plans, the domain search, the list of themes", () => {
+    for (const block of [plans, themes, domains]) expect(pageRulesProblem(store, "page", withBlock(block), null, true), block.type).toBeNull();
+    // Its articles, header and footer take no list of themes, as Kaizena Flow's own did not.
+    expect(pageRulesProblem(store, "article", withBlock(themes), null, true)).toMatch(/Kaizena Flow's pages/);
+    // Any other store still may not.
+    for (const block of [plans, themes, domains]) expect(pageRulesProblem(store, "page", withBlock(block)), block.type).not.toBeNull();
+  });
+
+  it("may keep Start your store in its header, beside a store's own parts", () => {
+    const cart = { id: "ca", type: "site", part: "cart" } as PageBlock;
+    expect(pageRulesProblem(store, "header", withBlock(signUp), null, true)).toBeNull();
+    expect(pageRulesProblem(store, "header", withBlock(cart), null, true)).toBeNull();
+    expect(pageRulesProblem(store, "header", withBlock(signUp))).toBe("A store's site has no Start your store button.");
+  });
+});
