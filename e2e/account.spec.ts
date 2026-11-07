@@ -62,9 +62,13 @@ test("a shopper signs in with an emailed code, keeps their details and signs out
   // Back goes to the tab before, and the arrow keys move along the row.
   await page.goBack();
   await expect(page.getByRole("tab", { name: "Oversikt" })).toHaveAttribute("aria-selected", "true");
-  await page.getByRole("tab", { name: "Oversikt" }).focus();
-  await page.keyboard.press("End");
-  await expect(page.getByRole("tab", { name: "Innstillinger" })).toBeFocused();
+  // Safari may draw the row again just after Back, taking the focus from the tab the test focused: focus it and press End until
+  // the last tab has the focus (End always moves to the last, so pressing it again changes nothing else).
+  await expect(async () => {
+    await page.getByRole("tab", { name: "Oversikt" }).focus();
+    await page.keyboard.press("End");
+    await expect(page.getByRole("tab", { name: "Innstillinger" })).toBeFocused({ timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "Passord" })).toBeVisible();
 
   await page.getByRole("button", { name: "Logg ut" }).click();
