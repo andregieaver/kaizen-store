@@ -29,6 +29,7 @@ import {
   type InvoiceResult,
   type IssueInvoiceRequest,
 } from "@/server/work-invoices";
+import { deleteImportedInvoice, mergeImportedInvoice, type TidyProblem } from "@/server/work-imported-invoices";
 import { inWorkLang } from "@/lib/work-text";
 import { actionAdminLang } from "@/server/admin-request-lang";
 
@@ -246,6 +247,26 @@ export async function creditInvoiceAction(storeSlug: string, input: CreditInvoic
 })(),
     lang,
   );
+}
+
+// --- Invoices brought in from elsewhere, tidied (D501) -------------------------------------------------------
+
+/** Deletes an imported invoice nothing hangs on (its entry in the books reversed): owners only. */
+export async function deleteImportedAction(storeSlug: string, invoiceId: string): Promise<{ ok: true } | { ok: false; problem: TidyProblem | "forbidden" }> {
+  const member = await workMember(storeSlug);
+  if (!member || !memberCan(member, "owner")) return { ok: false, problem: "forbidden" };
+  const result = await deleteImportedInvoice(member, invoiceId);
+  if (result.ok) refresh();
+  return result.ok ? { ok: true } : result;
+}
+
+/** Merges an imported invoice into the one it is the same as: owners only. */
+export async function mergeImportedAction(storeSlug: string, invoiceId: string, intoId: string): Promise<{ ok: true } | { ok: false; problem: TidyProblem | "forbidden" }> {
+  const member = await workMember(storeSlug);
+  if (!member || !memberCan(member, "owner")) return { ok: false, problem: "forbidden" };
+  const result = await mergeImportedInvoice(member, invoiceId, intoId);
+  if (result.ok) refresh();
+  return result.ok ? { ok: true } : result;
 }
 
 // --- Lost invoices (D500) ---------------------------------------------------------------------------------

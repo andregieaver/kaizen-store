@@ -15,6 +15,7 @@ import {
   invoiceVatBasis,
 } from "@/server/work-invoice-screens";
 import { getWorkInvoiceDetail, nextInvoiceNumberPreview } from "@/server/work-invoices";
+import { tidyOptions } from "@/server/work-imported-invoices";
 import { workBase } from "@/lib/work-paths";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { Card, PageHeader } from "@/components/admin/ui";
@@ -100,6 +101,7 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
           detail={detail}
           isOwner={memberCan(viewer, "owner")}
           homeCurrency={homeCurrency}
+          tidy={invoice.imported && memberCan(viewer, "owner") ? await tidyOptions(store.id, invoice.id) : null}
         />
         {einvoice && (
           <Card title={pw.einvoiceTitle} compact>

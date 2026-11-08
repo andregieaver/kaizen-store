@@ -13,6 +13,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 const invoices = await import("./work-invoices");
 const fx = await import("./invoice-test-fixture");
 const ledger = await import("./ledger");
+const tidy = await import("./work-imported-invoices");
 
 import type { Membership } from "./auth";
 import type { InvoiceResult, WorkActor } from "./work-invoices";
@@ -296,6 +297,52 @@ describe("a store's documents, posted to its books", () => {
       select count(*)::int as n from commerce.ledger_lines l join commerce.ledger_entries e on e.id = l.entry_id
        where e.book_id = ${book.id}::uuid and e.source_kind = 'work_invoice_loss' and e.source_id = ${back.reversalId} and l.vat_code = '1'`);
     expect(turned.n).toBe(2);
+  });
+
+  it("deletes an imported invoice nothing hangs on, and merges one into the invoice it is the same as, its entry reversed (D501)", async () => {
+    const { storeId, actor } = await workStore();
+    const book = await openBook(storeId, actor.account.id);
+    const clientId = await client(storeId);
+    const member = { account: { id: actor.account.id }, store: { id: storeId, timeZone: "Europe/Oslo" } } as unknown as Membership;
+    const [{ before }] = await db().execute<Row>(sql`select (commerce.store_day(${storeId}::uuid, now()) - 3)::text as before`);
+    const elsewhere = async (number: string) => {
+      const draft = ok(await invoices.createDraftInvoice(actor, { clientId })).invoiceId;
+      ok(await invoices.saveLines(actor, draft, [{ description: "Rådgivning", unit: "hour", quantityHundredths: 100, unitPriceMinor: 100_000, discountBp: 0, vatCategory: "standard" }]));
+      return ok(await invoices.recordIssuedElsewhere(actor, { invoiceId: draft, number, issuedOn: String(before) })).invoiceId;
+    };
+    const copy = await elsewhere("T-10");
+    // Life's copy of the same invoice, without a number of its own.
+    const life = await db().transaction(async (t) => {
+      await t.execute(sql`select set_config('commerce.work_importing', 'on', true)`);
+      const [row] = await t.execute<Row>(sql`
+        insert into commerce.work_invoices (store_id, client_id, status, document_number, imported, issued_on, due_on, sent_at, currency, locale, payment_days,
+          subtotal_minor, vat_minor, total_minor, seller, buyer)
+        values (${storeId}::uuid, ${clientId}::uuid, 'sent', 'Imported', true, ${String(before)}::date, ${String(before)}::date + 14, now(), 'NOK', 'nb-NO', 14,
+          100000, 25000, 125000, '{}'::jsonb, '{"name":"Acme AS"}'::jsonb)
+        returning id`);
+      return String(row.id);
+    });
+    await ledger.postDueDocuments(storeId, book);
+
+    // The copy is offered Life's invoice to merge into; merged, it goes, its entry is reversed, and Life's takes its number.
+    expect((await tidy.tidyOptions(storeId, copy)).candidates.map((c) => c.id)).toContain(life);
+    expect(await tidy.mergeImportedInvoice(member, copy, life)).toEqual({ ok: true, number: "T-10" });
+    const [kept] = await db().execute<Row>(sql`select legacy_number, document_number, (select count(*)::int from commerce.work_invoices where id = ${copy}::uuid) as gone from commerce.work_invoices where id = ${life}::uuid`);
+    expect(kept).toEqual({ legacy_number: "T-10", document_number: "T-10", gone: 0 });
+    const [entries] = await db().execute<Row>(sql`
+      select count(*)::int as posted, count(*) filter (where exists (select 1 from commerce.ledger_entries r where r.reverses = e.id))::int as reversed
+        from commerce.ledger_entries e where e.book_id = ${book.id}::uuid and e.source_kind = 'work_invoice' and e.source_id = ${copy}`);
+    expect(entries).toEqual({ posted: 1, reversed: 1 });
+
+    // One with a payment stays; one with nothing on it can go; an invoice issued here is never deleted.
+    const paid = await elsewhere("T-11");
+    ok(await invoices.recordPayment(actor, { invoiceId: paid, amountMinor: 125_000, receivedOn: String(before), method: "bank" }));
+    expect(await tidy.deleteImportedInvoice(member, paid)).toEqual({ ok: false, problem: "hanging" });
+    const stray = await elsewhere("T-12");
+    expect(await tidy.deleteImportedInvoice(member, stray)).toEqual({ ok: true, number: "T-12" });
+    const own = await issued(actor, clientId);
+    expect(await tidy.deleteImportedInvoice(member, own)).toEqual({ ok: false, problem: "not_imported" });
+    expect(await tidy.mergeImportedInvoice(member, life, own)).toEqual({ ok: false, problem: "different" });
   });
 
   it("posts an entry by hand, the opening balance among them, lists it in the journal and reverses it once", async () => {

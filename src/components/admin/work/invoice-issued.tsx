@@ -11,6 +11,7 @@ import type { InvoiceDetail, InvoiceLine } from "@/server/work-invoices";
 
 import { CreditInvoiceButton } from "./invoice-credit-dialog";
 import { MarkLostButton, TakeBackLossButton } from "./invoice-losses";
+import { InvoiceTidy } from "./invoice-tidy";
 import { RecordPaymentButton, ReversePaymentButton } from "./invoice-payments";
 import { SendCreditNoteButton, SendInvoiceSlot } from "./invoice-send-slot";
 import { InvoiceStatusChip } from "./invoice-status";
@@ -29,6 +30,8 @@ export type IssuedViewProps = {
   isOwner: boolean;
   /** The currency of the seller's country, for the VAT stated in it. */
   homeCurrency: string | null;
+  /** For an imported invoice an owner may tidy (D501): whether it may be deleted, and the invoices it may be merged into. */
+  tidy?: { deletable: boolean; candidates: { id: string; number: string; issuedOn: string | null }[] } | null;
 };
 
 const th = "px-3 py-2 text-left text-eyebrow text-muted uppercase";
@@ -39,7 +42,7 @@ const th = "px-3 py-2 text-left text-eyebrow text-muted uppercase";
  * history. The lines and the header cannot be edited; a mistake is a credit note and a new invoice. Actions:
  * record a payment (and reverse one), credit (owners), preview or print the document, and send it (later).
  */
-export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner, homeCurrency }: IssuedViewProps) {
+export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner, homeCurrency, tidy = null }: IssuedViewProps) {
   const tw = workText().invoiceIssued;
   const pw = workScreens().workInvoicePage;
   const { invoice, amounts, seller, buyer, lines, totals } = detail;
@@ -408,6 +411,16 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
           </ul>
         )}
       </section>
+
+      {isOwner && invoice.imported && tidy?.deletable && (
+        <InvoiceTidy
+          storeSlug={storeSlug}
+          invoiceId={invoice.id}
+          list={`${workBase(storeSlug)}/invoices`}
+          number={invoice.documentNumber ?? ""}
+          candidates={tidy.candidates}
+        />
+      )}
 
       <section aria-labelledby="history-heading" className={card}>
         <h2 id="history-heading" className="mb-3 text-title text-ink">
