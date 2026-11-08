@@ -305,6 +305,15 @@ export const issueInvoiceInput = z.object({
 });
 export type IssueInvoiceInput = z.infer<typeof issueInvoiceInput>;
 
+/** A draft recorded as an invoice issued elsewhere before (D499): the number and the days it had there, never numbered from the store's series. */
+export const recordElsewhereInput = z.object({
+  invoiceId: uuid,
+  number: z.string().trim().min(1, "Give the invoice's number as it was issued.").max(50, "The number can be at most 50 characters."),
+  issuedOn: day("Give the date it was issued."),
+  dueOn: optionalDay("Give the due date as a date."),
+});
+export type RecordElsewhereInput = z.infer<typeof recordElsewhereInput>;
+
 // --- Recurring templates ----------------------------------------------------------
 
 export const recurringInvoiceInput = z

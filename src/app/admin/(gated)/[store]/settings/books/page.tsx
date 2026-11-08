@@ -840,7 +840,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           <ActionForm action={openBooksEarlierAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium">
               {w.earlier.from}
-              <input type="date" name="from" required defaultValue={`${book.openedOn.slice(0, 4)}-01-01`} max={book.openedOn} className={field} />
+              <input type="date" name="from" required defaultValue={book.openedOn.endsWith("-01-01") ? `${Number(book.openedOn.slice(0, 4)) - 1}-01-01` : `${book.openedOn.slice(0, 4)}-01-01`} max={book.openedOn} className={field} />
             </label>
             <SubmitButton variant="secondary">{w.earlier.button}</SubmitButton>
           </ActionForm>

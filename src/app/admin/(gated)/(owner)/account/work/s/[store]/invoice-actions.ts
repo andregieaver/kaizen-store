@@ -15,6 +15,7 @@ import {
   generateLinesFromTime,
   invoiceReadiness,
   issueInvoice,
+  recordIssuedElsewhere,
   recordPayment,
   releaseTimeFromDrafts,
   reversePayment,
@@ -196,6 +197,23 @@ export async function issueInvoiceAction(storeSlug: string, input: IssueInvoiceR
         totalMinor: result.invoice.totalMinor,
         currency: result.invoice.currency,
       });
+    }
+    return result;
+  });
+})(),
+    lang,
+  );
+}
+
+/** Records a draft as an invoice issued elsewhere before (D499): its own number and days, never numbered from the series, never sent. */
+export async function recordElsewhereAction(storeSlug: string, input: { invoiceId: string; number: string; issuedOn: string; dueOn?: string }) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
+  return change(storeSlug, async (member) => {
+    const result = await recordIssuedElsewhere(member, input);
+    if (result.ok) {
+      await audit(member.account.id, member.store.id, "work.invoice.recorded_elsewhere", { invoiceId: result.invoiceId, documentNumber: result.documentNumber });
     }
     return result;
   });

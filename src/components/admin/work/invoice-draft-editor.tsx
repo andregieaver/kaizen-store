@@ -37,6 +37,7 @@ import type { InvoiceDetail, InvoiceReadiness } from "@/server/work-invoices";
 import type { LineTime } from "@/server/work-invoice-screens";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
 
+import { InvoiceElsewhere } from "./invoice-elsewhere";
 import { IssueDialog } from "./invoice-issue-dialog";
 import { InvoiceLinesEditor } from "./invoice-lines-editor";
 import { ReadinessList } from "./invoice-readiness";
@@ -677,6 +678,8 @@ export function DraftEditor(props: DraftEditorProps) {
           <p className="text-sm text-muted">{tw.checking}</p>
         )}
       </section>
+
+      <InvoiceElsewhere storeSlug={storeSlug} invoiceId={invoice.id} list={list} today={detail.today} blocked={blocked} />
 
       <IssueDialog
         open={issueOpen}

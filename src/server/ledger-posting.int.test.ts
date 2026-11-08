@@ -216,6 +216,41 @@ describe("a store's documents, posted to its books", () => {
     expect(sale.series).toBe("S");
   });
 
+  it("records a draft as an invoice issued elsewhere, with its own number and day, and posts it (D499)", async () => {
+    const { storeId, actor } = await workStore();
+    const book = await openBook(storeId, actor.account.id);
+    const clientId = await client(storeId);
+    const [{ d: today, before }] = await db().execute<Row>(sql`select commerce.store_day(${storeId}::uuid, now())::text as d, (commerce.store_day(${storeId}::uuid, now()) - 3)::text as before`);
+    const draft = ok(await invoices.createDraftInvoice(actor, { clientId })).invoiceId;
+    ok(await invoices.saveLines(actor, draft, [{ description: "Rådgivning", unit: "hour", quantityHundredths: 200, unitPriceMinor: 100_000, discountBp: 0, vatCategory: "standard" }]));
+
+    // A day after today, and a due day before the issue day, are refused; nothing changes.
+    const tomorrow = new Date(Date.parse(`${String(today)}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+    expect(await invoices.recordIssuedElsewhere(actor, { invoiceId: draft, number: "E-77", issuedOn: tomorrow })).toMatchObject({ ok: false });
+    expect(await invoices.recordIssuedElsewhere(actor, { invoiceId: draft, number: "E-77", issuedOn: String(before), dueOn: "2000-01-01" })).toMatchObject({ ok: false });
+
+    const recorded = ok(await invoices.recordIssuedElsewhere(actor, { invoiceId: draft, number: "E-77", issuedOn: String(before) }));
+    const [row] = await db().execute<Row>(sql`
+      select status, imported, legacy_number, document_number, number, issued_on::text as issued, due_on::text as due, total_minor::int as total,
+             (select count(*)::int from commerce.work_invoice_lines l where l.invoice_id = i.id) as lines,
+             (select count(*)::int from commerce.work_invoices d where d.id = ${draft}::uuid) as drafts
+        from commerce.work_invoices i where i.id = ${recorded.invoiceId}::uuid`);
+    expect(row).toMatchObject({ status: "sent", imported: true, legacy_number: "E-77", document_number: "E-77", number: null, issued: String(before), total: 250_000, lines: 1, drafts: 0 });
+    expect(String(row.due) > String(before)).toBe(true);
+
+    // The same number again is refused.
+    const second = ok(await invoices.createDraftInvoice(actor, { clientId })).invoiceId;
+    ok(await invoices.saveLines(actor, second, [{ description: "Mer", unit: "unit", quantityHundredths: 100, unitPriceMinor: 10_000, discountBp: 0, vatCategory: "standard" }]));
+    expect(await invoices.recordIssuedElsewhere(actor, { invoiceId: second, number: "E-77", issuedOn: String(before) })).toEqual({ ok: false, problems: ["An invoice numbered E-77 is here already."] });
+
+    // It posts as any invoice of the book's days.
+    await ledger.postDueDocuments(storeId, book);
+    const [sale] = await db().execute<Row>(sql`
+      select e.series, e.entry_date::text as day, (select sum(l.amount_minor)::int from commerce.ledger_lines l where l.entry_id = e.id and l.account = 1500) as receivable
+        from commerce.ledger_entries e where e.book_id = ${book.id}::uuid and e.source_kind = 'work_invoice' and e.source_id = ${recorded.invoiceId}`);
+    expect(sale).toEqual({ series: "S", day: String(before), receivable: 250_000 });
+  });
+
   it("posts an entry by hand, the opening balance among them, lists it in the journal and reverses it once", async () => {
     const { storeId, actor } = await workStore();
     const book = await openBook(storeId, actor.account.id);

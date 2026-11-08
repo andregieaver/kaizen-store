@@ -30,6 +30,7 @@ import {
   issueInvoiceInput,
   MANUAL_PAYMENT_METHODS,
   MAX_INVOICE_LINES,
+  recordElsewhereInput,
   recordPaymentInput,
   reversePaymentInput,
   invoiceDraftInput,
@@ -1868,6 +1869,79 @@ export async function issueInvoice(actor: WorkActor, raw: unknown): Promise<Invo
       }
       return null;
     },
+  );
+}
+
+/**
+ * Records a draft as an invoice issued elsewhere before (D499): one the business sent from another system, by hand or from a program
+ * Kaizena Flow did not bring in, so its books hold all of the year's sales. The draft's client and lines, priced as Work prices them,
+ * become an imported invoice with the number and the days it had (never numbered from the store's series, never sent, its PDF not
+ * made), and the draft goes. Refused for a draft with time logged here on it (that is Work's own invoice: issue it), a number already
+ * here, a day after today or a due day before it. It posts to the books as any invoice of their days does.
+ */
+export async function recordIssuedElsewhere(actor: WorkActor, raw: unknown): Promise<InvoiceResult<{ invoiceId: string; documentNumber: string }>> {
+  const storeId = actor.store.id;
+  const parsed = recordElsewhereInput.safeParse(raw);
+  if (!parsed.success) return problem(...zodProblems(parsed.error));
+  const input = parsed.data;
+  if (input.dueOn && input.dueOn < input.issuedOn) return problem("The due date cannot be before the issue date.");
+  return guarded(() =>
+    db().transaction(async (tx): Promise<InvoiceResult<{ invoiceId: string; documentNumber: string }>> => {
+      const invoice = await lockDraft(tx, storeId, input.invoiceId);
+      if (input.issuedOn > (await today(tx, storeId))) return problem("An invoice issued elsewhere cannot be dated after today.");
+      const { preview } = await refreshDraft(tx, storeId, invoice.id, invoice.clientId);
+      if (preview.lines.length === 0) return problem("Add the invoice's lines first.");
+      const [timed] = await tx.execute<Row>(sql`
+        select 1 from commerce.work_time_entries e
+          join commerce.work_invoice_lines l on l.store_id = e.store_id and l.id = e.invoice_line_id
+         where l.store_id = ${storeId}::uuid and l.invoice_id = ${invoice.id}::uuid
+         limit 1`);
+      if (timed) return problem("Time logged here is on this draft: issue it instead, or take the time off it first.");
+      const [taken] = await tx.execute<Row>(sql`
+        select 1 from commerce.work_invoices
+         where store_id = ${storeId}::uuid and (document_number = ${input.number} or legacy_number = ${input.number}) limit 1`);
+      if (taken) return problem(`An invoice numbered ${input.number} is here already.`);
+      await tx.execute(sql`select set_config('commerce.work_importing', 'on', true)`);
+      const id = randomUUID();
+      const notes = [...new Set(preview.lines.filter((l) => l.vatCategory !== "standard").map((l) => l.vatCategory))].sort();
+      await tx.execute(sql`
+        insert into commerce.work_invoices (id, store_id, client_id, assignment_id, status, series, number, document_number, imported, legacy_number, issued_on, due_on,
+          sent_at, currency, locale, payment_days, notes, subtotal_minor, vat_minor, total_minor, vat_notes, seller, buyer, created_by)
+        select ${id}::uuid, s.id, c.id, d.assignment_id, 'sent', 'work_invoice', null, ${input.number}, true, ${input.number}, ${input.issuedOn}::date,
+               coalesce(${input.dueOn ?? null}::date, ${input.issuedOn}::date + coalesce(d.payment_days, c.payment_days, ws.default_payment_days, 14)),
+               ((${input.issuedOn}::date + time '12:00') at time zone s.time_zone), d.currency, coalesce(d.locale, c.locale, 'nb-NO'),
+               coalesce(d.payment_days, c.payment_days, ws.default_payment_days, 14), d.notes,
+               ${preview.totals.subtotalMinor}::bigint, ${preview.totals.vatMinor}::bigint, ${preview.totals.totalMinor}::bigint, ${JSON.stringify(notes)}::jsonb,
+               jsonb_build_object(
+                 'legal_name', s.legal_name, 'organisation_number', s.organisation_number,
+                 'vat_registered', coalesce(ws.vat_registered, true),
+                 'vat_number', case when coalesce(ws.vat_registered, true) then ws.vat_number end,
+                 'address', s.postal_address, 'country', s.country, 'email', s.contact_email,
+                 'bank_account', ws.bank_account, 'bic', ws.bic, 'payment_note', ws.payment_note,
+                 'invoice_footer', ws.invoice_footer, 'late_payment_note', ws.late_payment_note),
+               jsonb_build_object('name', coalesce(nullif(trim(c.legal_name), ''), c.name), 'client_name', c.name,
+                 'organisation_number', c.organisation_number, 'vat_number', c.vat_number, 'address', c.billing_address,
+                 'country', c.country, 'email', c.billing_email, 'contact_name', c.contact_name, 'business', c.business,
+                 'vat_treatment', c.vat_treatment),
+               ${actor.account?.id ?? null}::uuid
+          from commerce.work_invoices d
+          join commerce.stores s on s.id = d.store_id
+          join commerce.work_clients c on c.store_id = d.store_id and c.id = d.client_id
+          left join commerce.work_settings ws on ws.store_id = d.store_id
+         where d.store_id = ${storeId}::uuid and d.id = ${invoice.id}::uuid`);
+      await tx.execute(sql`
+        insert into commerce.work_invoice_lines (store_id, invoice_id, position, description, unit, quantity_hundredths, unit_price_minor, discount_bp,
+          vat_category, vat_rate, excl_minor, vat_minor, incl_minor, quantity_manual)
+        select store_id, ${id}::uuid, position, description, unit, quantity_hundredths, unit_price_minor, discount_bp,
+               vat_category, vat_rate, excl_minor, vat_minor, incl_minor, true
+          from commerce.work_invoice_lines
+         where store_id = ${storeId}::uuid and invoice_id = ${invoice.id}::uuid`);
+      await tx.execute(sql`delete from commerce.work_invoices where store_id = ${storeId}::uuid and id = ${invoice.id}::uuid and status = 'draft'`);
+      await tx.execute(sql`
+        select commerce.work_event(${storeId}::uuid, 'invoice', ${id}::uuid, 'invoice.imported',
+          ${JSON.stringify({ import: "by_hand", legacy_number: input.number, total_minor: preview.totals.totalMinor })}::jsonb, ${actor.account?.id ?? null}::uuid)`);
+      return { ok: true, invoiceId: id, documentNumber: input.number };
+    }),
   );
 }
 
