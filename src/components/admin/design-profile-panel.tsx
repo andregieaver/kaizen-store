@@ -1,6 +1,8 @@
 import type { FormState } from "@/components/admin/action-form";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { OfferedDesign } from "@/lib/design-presets";
+import type { ThemeSwatch } from "@/lib/theme-store";
+import type { LookThumb } from "@/server/theme-store";
 
 import { DesignPreviewLink } from "./design-cards";
 import { Card, Chip } from "@/components/admin/ui";
@@ -11,11 +13,37 @@ import { platformText } from "@/lib/platform-text";
 import { themeStoreUrl } from "@/lib/theme-host";
 import { chargeButton, chargeLine, chargeToken, type ChargeWords, type ThemeCharge } from "@/lib/theme-prices";
 
-/** A design profile offered to a store, with where its preview is, and what making it live costs the store (D286; none: free). */
-export type PanelDesign = OfferedDesign & { previewHref: string; published?: boolean; charge?: ThemeCharge };
+/**
+ * A design profile offered to a store, with where its preview is, what making it live costs the store (D286; none: free), and its looks'
+ * thumbnails as the theme store shows them (`themeLookThumbs()`), where it is published there.
+ */
+export type PanelDesign = OfferedDesign & { previewHref: string; published?: boolean; charge?: ThemeCharge; thumbs?: readonly LookThumb[] };
 
 /** One card: a theme's own look or one of its presets (`docs/theme-showcase-phase-1.md`), each added or applied on its own. */
 type PanelLook = PanelDesign & { preset: { key: string; name: string } | null };
+
+/** A card's thumbnail: the profile's own picture for its own look, else the look's photograph on its demo store, else its colours. */
+export function lookThumb(look: Pick<PanelLook, "pictureUrl" | "preset" | "thumbs">): { picture: string | null; swatch: ThemeSwatch | null } {
+  const thumb = look.thumbs?.find((t) => t.key === (look.preset?.key ?? null)) ?? null;
+  const own = look.preset ? null : look.pictureUrl;
+  return { picture: own ?? thumb?.picture ?? null, swatch: thumb?.swatch ?? null };
+}
+
+/** A look drawn in its own colours and heading font, for one not photographed yet (as the theme store's card, `ThemeCard`). */
+function SwatchThumb({ swatch, name }: { swatch: ThemeSwatch; name: string }) {
+  return (
+    <div aria-hidden="true" className="flex aspect-[4/3] w-full flex-col justify-between rounded-md border border-line p-4" style={{ background: swatch.background, color: swatch.text }}>
+      <span className="text-xl" style={swatch.heading ? { fontFamily: `"${swatch.heading}", serif` } : undefined}>
+        {name}
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="h-6 w-16 rounded-full" style={{ background: swatch.accent }} />
+        <span className="h-6 w-6 rounded-full" style={{ background: swatch.surface }} />
+        <span className="h-6 w-6 rounded-full" style={{ background: swatch.text }} />
+      </span>
+    </div>
+  );
+}
 
 /** A preview address for one of the theme's presets (`preset={key}`), kept relative as the page gave it. */
 function presetHref(href: string, key: string): string {
@@ -91,10 +119,14 @@ export function DesignProfilePanel({
             return (
               <li key={`${design.id}:${design.preset?.key ?? ""}`} className="flex flex-col overflow-hidden rounded-panel border border-line">
                 <div className="flex flex-1 flex-col gap-2 p-3 text-sm">
-                  {design.pictureUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element -- a profile's picture from Kaizen's media library
-                    <img src={design.pictureUrl} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-line object-cover" />
-                  )}
+                  {(() => {
+                    const thumb = lookThumb(design);
+                    if (thumb.picture) {
+                      // eslint-disable-next-line @next/next/no-img-element -- a theme's picture or photograph from the platform's media
+                      return <img src={thumb.picture} alt="" width={800} height={600} loading="lazy" className="aspect-[4/3] w-full rounded-md border border-line object-cover object-top" />;
+                    }
+                    return thumb.swatch ? <SwatchThumb swatch={thumb.swatch} name={name} /> : null;
+                  })()}
                   <h3 className="text-body-strong text-ink">
                     {name}
                     {design.published === false && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">{w.notPublished}</span>}

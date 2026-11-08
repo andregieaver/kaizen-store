@@ -14,6 +14,7 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { designPreviewPath } from "@/lib/design-presets";
 import { THEME_UPDATE_KEEP_DAYS, latestDesignUse, listOfferedDesigns, themeUpdates } from "@/server/design-presets";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { themeLookThumbs } from "@/server/theme-store";
 import { THEME_DETACH_KEEP_DAYS, listDetachRuns } from "@/server/theme-detach";
 import { listInstalls } from "@/server/theme-installs";
 import { listSavedThemes } from "@/server/themes";
@@ -50,7 +51,14 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   const lang = adminLangOf(member.account.adminLocale);
   const all = adminText(lang, "design");
   const w = all.page;
-  const [saved, designs, latest, installs, runs] = await Promise.all([listSavedThemes(store.id), listOfferedDesigns(), latestDesignUse(store.id), listInstalls(store.id), listDetachRuns(store.id)]);
+  const [saved, designs, latest, installs, runs, thumbs] = await Promise.all([
+    listSavedThemes(store.id),
+    listOfferedDesigns(),
+    latestDesignUse(store.id),
+    listInstalls(store.id),
+    listDetachRuns(store.id),
+    themeLookThumbs(),
+  ]);
   // What making each theme live costs this store (D286): free, already the store's, or its price, now or when the store opens.
   // What is planned for the store's themes and what did not happen (D340), on the store's clock.
   const clock = new Intl.DateTimeFormat(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
@@ -107,7 +115,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         lang={lang}
       />
       <DesignProfilePanel
-        designs={designs.map((d) => ({ ...d, previewHref: designPreviewPath(d.id), charge: charges.get(d.id) }))}
+        designs={designs.map((d) => ({ ...d, previewHref: designPreviewPath(d.id), charge: charges.get(d.id), thumbs: thumbs.get(d.id) }))}
         latest={latest}
         apply={canChange ? applyDesignAction.bind(null, store.slug) : null}
         install={canChange ? installThemeAction.bind(null, store.slug) : null}

@@ -7,6 +7,7 @@ import { CustomerBar } from "@/components/admin/customer-bar";
 import { DesignProfilePanel } from "@/components/admin/design-profile-panel";
 import { designPreviewPath } from "@/lib/design-presets";
 import { latestDesignUse, listDesigns } from "@/server/design-presets";
+import { themeLookThumbs } from "@/server/theme-store";
 import { InvoiceList } from "@/components/admin/plan-invoices";
 import { PlanDiscount } from "@/components/admin/plan-discount";
 import { formatBps, isOnPlan, priceLabel } from "@/lib/plans";
@@ -53,13 +54,14 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
     listStorePeople(store.id),
     listStoreInvoices(store.id, 12),
   ]);
-  const [state, obligations, designs, latestDesign, limits, overrides] = await Promise.all([
+  const [state, obligations, designs, latestDesign, limits, overrides, thumbs] = await Promise.all([
     storeState(store.id),
     storeObligations(store.id),
     listDesigns(),
     latestDesignUse(store.id),
     storeLimits(store.id),
     storeOverrides(store.id),
+    themeLookThumbs(),
   ]);
   const offer = await featureOffer(store.id);
   const blockers = closureBlockers(obligations, adminText(lang, "settings").close);
@@ -321,7 +323,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
       <DesignProfilePanel
         designs={designs
           .filter((d) => d.readable && (d.published || store.starter))
-          .map((d) => ({ ...d, previewHref: designPreviewPath(d.id, null, true) }))}
+          .map((d) => ({ ...d, previewHref: designPreviewPath(d.id, null, true), thumbs: thumbs.get(d.id) }))}
         latest={latestDesign}
         apply={applyDesignToStoreAction.bind(null, store.slug)}
         restore={restoreDesignForStoreAction.bind(null, store.slug)}

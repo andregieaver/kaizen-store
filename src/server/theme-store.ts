@@ -7,6 +7,7 @@ import { readDb } from "@/db/client";
 import { parseDesignSnapshot, type DesignSnapshot } from "@/lib/design-presets";
 import { variationSnapshot, variationsOf } from "@/lib/design-variations";
 import {
+  cardPicture,
   inLanguage,
   readListing,
   shownLooks,
@@ -19,6 +20,7 @@ import {
   type ThemeContent,
   previewNeighbours,
   type ThemeStoreCard,
+  type ThemeSwatch,
   type ThemeVersion,
 } from "@/lib/theme-store";
 import { designNb } from "@/lib/admin-messages/design.nb";
@@ -96,6 +98,29 @@ export async function themePreviewNeighbours(slug: string): Promise<{ previous: 
   cacheTag(DESIGNS_TAG, STARTERS_TAG);
   const around = previewNeighbours(await loadCards(), slug);
   return around && { previous: { slug: around.previous.slug, title: around.previous.title }, next: { slug: around.next.slug, title: around.next.title } };
+}
+
+/** A look's thumbnail where a store chooses a theme (the store's Design, the platform's store page): its photograph, else its colours. */
+export type LookThumb = { key: string | null; picture: string | null; swatch: ThemeSwatch };
+
+/**
+ * Each published theme's looks as thumbnails, by the theme's id: its own look's card picture (the admin's picture, else the one made from
+ * its photograph, `cardPicture()`), each preset's photograph on its demo store where made, and every look's colours for one without.
+ */
+export async function themeLookThumbs(): Promise<Map<string, LookThumb[]>> {
+  const cards = await themeStoreCards();
+  return new Map(
+    cards.map((card) => [
+      card.id,
+      [
+        { key: null, picture: cardPicture(card), swatch: card.swatch },
+        ...card.presets.map((preset) => {
+          const look = card.looks.find((l) => l.key === preset.key);
+          return { key: preset.key, picture: look?.shots?.computer?.card?.url ?? null, swatch: look?.swatch ?? card.swatch };
+        }),
+      ],
+    ]),
+  );
 }
 
 /**
