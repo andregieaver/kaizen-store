@@ -115,7 +115,9 @@ async function partyLinesOf(storeId: string, bookId: string, to: string) {
            and (left(l.account::text, 4)::int between 1500 and 1529 or left(l.account::text, 4)::int between 2400 and 2459)
       )
       select l.entry_id, l.line, l.account, l.amount_minor, l.day, l.kind,
+             -- Only an id that is one is read as one (an entry of another making names its source otherwise).
              case
+               when l.source_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then null
                when l.kind = 'work_invoice' then
                  (select i.client_id from commerce.work_invoices i where i.store_id = ${storeId}::uuid and i.id = l.source_id::uuid)
                when l.kind = 'work_credit_note' then
