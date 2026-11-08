@@ -421,6 +421,21 @@ export const booksEn = {
     done: "Locked.",
     invalid: "Choose a day after the books open.",
   },
+  earlier: {
+    title: "Open the books earlier",
+    text: "Your books start on {day}. Move their first day back to hold more of the year, such as 1 January: the invoices, payments and bank lines of the days added come into them.",
+    from: "New first day",
+    button: "Open earlier",
+    done: "Your books now start on {day}.",
+    problems: {
+      date: "Choose a real day.",
+      no_book: "Open the books first.",
+      later: "Choose a day before your books start.",
+      locked: "Unlock the books first: the days added are before the lock.",
+      opening: "Reverse the opening balance first: it is on the old first day. Read it again for the new day afterwards.",
+      earlier_book: "The store's earlier books end on or after that day. Choose a later day.",
+    },
+  },
   problems: {
     forbidden: "Only the store's owner does this.",
     open: "The books are open already.",

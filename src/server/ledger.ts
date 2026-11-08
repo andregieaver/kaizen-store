@@ -10,6 +10,7 @@ import {
   FX_GAIN_ACCOUNT,
   FX_LOSS_ACCOUNT,
   LEDGER_KINDS,
+  LEDGER_SERIES,
   PAYMENT_ACCOUNTS,
   SHOP_PAYMENT_ACCOUNTS,
   STORE_CREDIT_ACCOUNT,
@@ -149,6 +150,52 @@ export async function openLedgerBook(member: Membership, openedOn: string): Prom
   });
   if (!book) return { ok: false, problem: "open" };
   await audit(member.account.id, member.store.id, "work.ledger_book_opened", { bookId: book, openedOn, country, currency });
+  return { ok: true, book: (await openBookOf(member.store.id))! };
+}
+
+export type EarlierProblem = "date" | "no_book" | "later" | "locked" | "opening" | "earlier_book";
+
+/**
+ * Opens the store's books earlier (D498): the open book's first day moved back, so they hold the whole year (the owner opened them on 1
+ * November and keeps all of 2026 here). Never forward, never past the store's earlier book, not while the books are locked, and not once an
+ * opening balance stands (it is on the old first day, and would count twice beside the days before it; reversing it lets the books open
+ * earlier, and the opening balance is read again for the new day). The documents of the days added post as the job finds them, and a bank
+ * line in those days that paid an invoice before (settled with no entry, D495) waits again, to be matched to its payment's entry.
+ */
+export async function openLedgerBookEarlier(member: Membership, openedOn: string): Promise<{ ok: true; book: LedgerBook } | { ok: false; problem: EarlierProblem }> {
+  if (!isDay(openedOn) || openedOn < "2000-01-01") return { ok: false, problem: "date" };
+  const book = await openBookOf(member.store.id);
+  if (!book) return { ok: false, problem: "no_book" };
+  if (openedOn >= book.openedOn) return { ok: false, problem: "later" };
+  if (book.lockedThrough) return { ok: false, problem: "locked" };
+  const opening = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`select e.id from commerce.ledger_entries e
+         where e.book_id = ${book.id}::uuid and (e.series = ${LEDGER_SERIES.opening} or e.source_kind = 'opening_balance') and e.reverses is null
+           and not exists (select 1 from commerce.ledger_entries r where r.reverses = e.id)
+         limit 1`,
+  );
+  if (opening) return { ok: false, problem: "opening" };
+  try {
+    const moved = await db().transaction(async (tx) => {
+      const rows = await tx.execute(sql`
+        update commerce.ledger_books set opened_on = ${openedOn}::date, updated_at = now()
+         where id = ${book.id}::uuid and store_id = ${member.store.id}::uuid and closed_on is null and opened_on = ${book.openedOn}::date
+           and locked_through is null
+        returning id`);
+      if (rows.length === 0) return false;
+      await tx.execute(sql`
+        update commerce.bank_lines set payment_ref = null
+         where book_id = ${book.id}::uuid and store_id = ${member.store.id}::uuid and entry_id is null and payment_ref is not null
+           and booked_on >= ${openedOn}::date`);
+      return true;
+    });
+    if (!moved) return { ok: false, problem: "later" };
+  } catch (error) {
+    if (error instanceof Error && /ledger_books\.earlier/.test(`${error.message} ${String((error as { cause?: unknown }).cause ?? "")}`)) return { ok: false, problem: "earlier_book" };
+    throw error;
+  }
+  await audit(member.account.id, member.store.id, "work.ledger_book_opened_earlier", { bookId: book.id, from: book.openedOn, to: openedOn });
   return { ok: true, book: (await openBookOf(member.store.id))! };
 }
 
@@ -466,11 +513,10 @@ const SHOP_PAYMENT_DAY = sql`coalesce(p.received_on,
 const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note", "work_payment", "shop_payment", "shop_refund", "payout", "dispute"]), id: col.text });
 
 /**
- * The documents of a book's days not posted yet, the oldest first, invoices before credit notes: the same as Tripletex books (Work's sent
- * invoices, not imported ones, and credit notes; the shop's invoices and credit notes), each once; and the payments for Work's invoices
- * received in those days (step 2c), an imported invoice's too when it was issued before the book opened (its receivable is in the opening
- * balance; one issued later, brought in from Tripletex, D494, is in Tripletex's books and not in these, nor is its payment), a reversal
- * after what it reverses;
+ * The documents of a book's days not posted yet, the oldest first, invoices before credit notes: Work's sent invoices and credit notes,
+ * an invoice brought in from elsewhere too when it was issued in the book's days (D498: the books are the business's, so they hold every
+ * invoice of their days, whichever system issued it; one issued before the book opened is in its opening balance), the shop's invoices and
+ * credit notes, each once; and the payments for Work's invoices received in those days (step 2c), a reversal after what it reverses;
  * and the shop's captured payments, its refunds that move money or owe it as store credit, and the payment provider's paid payouts. One that has an entry (even one a person
  * reversed) is done; one that waits is tried again a day after it was last tried.
  */
@@ -481,7 +527,7 @@ async function dueDocuments(storeId: string, book: { id: string; opened_on: stri
     sql`
       select d.kind, d.id from (
         select 'work_invoice' as kind, id::text as id, issued_on, 0 as rank from commerce.work_invoices
-         where store_id = ${storeId}::uuid and status <> 'draft' and not imported and length(document_number) between 1 and 50
+         where store_id = ${storeId}::uuid and status <> 'draft' and length(document_number) between 1 and 50
            and issued_on between ${book.opened_on}::date and ${to}::date
         union all
         select 'work_credit_note', id::text, issued_on, 1 from commerce.work_credit_notes
@@ -496,7 +542,6 @@ async function dueDocuments(storeId: string, book: { id: string; opened_on: stri
         select 'work_payment', p.id::text, p.received_on, case when p.reverses is null then 2 else 3 end from commerce.work_invoice_payments p
           join commerce.work_invoices i on i.store_id = p.store_id and i.id = p.invoice_id
          where p.store_id = ${storeId}::uuid and i.status <> 'draft' and p.received_on between ${book.opened_on}::date and ${to}::date
-           and (not i.imported or i.issued_on < ${book.opened_on}::date)
         union all
         select m.kind, m.id, m.day, m.rank from (
           select 'shop_payment' as kind, p.id::text as id, ${SHOP_PAYMENT_DAY} as day, 4 as rank
@@ -623,11 +668,9 @@ export async function postWorkPaymentNow(storeId: string, paymentId: string): Pr
     sql`
       select b.id, b.currency from commerce.ledger_books b
        where b.store_id = ${storeId}::uuid and b.closed_on is null
-         -- An imported invoice issued after the book opened is not in it, so neither is its payment (as dueDocuments() does); and money
-         -- received before the book opened is in its opening balance (D495).
-         and not exists (select 1 from commerce.work_invoice_payments p join commerce.work_invoices i on i.store_id = p.store_id and i.id = p.invoice_id
-                          where p.store_id = b.store_id and p.id = ${paymentId}::uuid
-                            and ((i.imported and i.issued_on >= b.opened_on) or p.received_on < b.opened_on))`,
+         -- Money received before the book opened is in its opening balance (D495).
+         and not exists (select 1 from commerce.work_invoice_payments p
+                          where p.store_id = b.store_id and p.id = ${paymentId}::uuid and p.received_on < b.opened_on)`,
   );
   if (!book) return null;
   const posting = await postingOf(storeId);

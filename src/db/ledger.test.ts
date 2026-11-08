@@ -170,6 +170,22 @@ describe("a book", () => {
     await rejects("select commerce.ledger_post($1, 'S', '2028-01-01', 'x', null, null, $2::jsonb, null)", [closing, sale], /ledger\.open/);
   });
 
+  it("opens earlier, never later, never past the store's earlier book, and not while locked (D498)", async () => {
+    const shop2 = await store("ledger-earlier");
+    const old = await openBook(shop2, "2025-01-01");
+    await db.query("update commerce.ledger_books set closed_on = '2025-12-31' where id = $1", [old]);
+    const open = await openBook(shop2, "2026-11-01");
+    await post(open, "2026-11-05", sale);
+    await rejects("update commerce.ledger_books set opened_on = '2026-11-06' where id = $1", [open], /ledger_books\.fixed/);
+    await rejects("update commerce.ledger_books set opened_on = '2025-12-31' where id = $1", [open], /ledger_books\.earlier/);
+    await db.query("update commerce.ledger_books set locked_through = '2026-11-30' where id = $1", [open]);
+    await rejects("update commerce.ledger_books set opened_on = '2026-01-01' where id = $1", [open], /ledger_books\.fixed/);
+    await db.query("update commerce.ledger_books set locked_through = null where id = $1", [open]);
+    await db.query("update commerce.ledger_books set opened_on = '2026-01-01' where id = $1", [open]);
+    expect((await post(open, "2026-01-02", sale)).id).toBeTruthy();
+    await rejects("update commerce.ledger_books set opened_on = '2025-06-01' where id = $1", [old], /ledger_books\.fixed/);
+  });
+
   it("keeps an account's kind once it has postings, and its lines keep it from being deleted", async () => {
     await rejects("update commerce.ledger_accounts set kind = 'expense' where book_id = $1 and number = 3000", [book], /ledger_accounts\.kind/);
     await rejects("delete from commerce.ledger_accounts where book_id = $1 and number = 3000", [book], /ledger_lines_account_fk/);

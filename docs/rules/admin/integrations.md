@@ -212,7 +212,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   speaks only when something needs the owner; every account, code, the start day and the switches are under Customise. Invoices made in
   Tripletex come into Work only through `importTripletexInvoices()` (D494, the page's *Your invoices in Tripletex*, owners, audited), planned
   by `planTripletexInvoices()`: as imported invoices in a transaction that says it is importing, never numbered from the store's series,
-  never sent back or posted; one already here (by Tripletex's number, or Life's unnumbered one for the same client and amount within a
+  never sent back; posted to the books only when issued in their days (D498); one already here (by Tripletex's number, or Life's unnumbered one for the same client and amount within a
   week, or within two months with as many lines) is never doubled, and one here twice is kept once (D495: Life's copy takes the number,
   the import's copy is taken back, only while importing and only when nothing hangs on it); a found client is only filled where empty;
   every client is linked to its Tripletex card by `adoptTripletexCustomers()`. Tests run against `fakeTripletex()`
@@ -329,7 +329,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - **Our own ledger (B2, D478, `src/lib/ledger.ts`, `src/server/ledger.ts`, `src/data/ledger/no-saft.json`)**: a book is one legal entity's
   (`commerce.ledger_books`, one open a store; a change of the business behind the store closes one and opens the next). Entries are written
-  only by `commerce.ledger_post()`: balanced to the øre, on active accounts of their own book, within its days and after its lock, numbered
+  only by `commerce.ledger_post()`: balanced to the øre, on active accounts of their own book, within its days and after its lock (a book's
+  first day moves only back, by the owner, through `openLedgerBookEarlier()`, D498: not while locked, past an earlier book, or once an
+  opening balance stands; never forward), numbered
   in their series and year without gaps, and posted once for what they were posted from (`source_kind`, `source_id`). Nothing posted is
   ever changed or deleted: a mistake is put right by `commerce.ledger_reverse()`, once. Amounts are the book's currency's minor units, a
   debit positive. Norway's chart and VAT codes are Skatteetaten's published SAF-T files, kept as they are; an account reports as a standard
@@ -385,7 +387,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (the invoice's printed number in the line, exactly what is outstanding, no other number) is recorded without the owner, and only when
   the owner uploads the statement; every other is offered on the Books screen for one press. Never record a payment from the ledger's job.
   A line is settled when it has an entry (`entry_id`) or paid something the books hold no entry for (`payment_ref`, D495: a payment before
-  the books opened, in the opening balance, or for an imported invoice not in these books); every reader of what waits or what may be
+  the books opened, in the opening balance; cleared when the books open earlier and hold its day, D498); every reader of what waits or what may be
   offered asks both. A line dated before the books opened never waits for an entry and is shown apart (*Before your books opened*); the
   bank's balance is compared only from a statement ending on or after the opening day.
   The bank's own fees and interest (D488) are posted only through `postBankOwnLine()`, which posts `entryOfBankOwnLine()` (`src/lib/bank-own-lines.ts`:

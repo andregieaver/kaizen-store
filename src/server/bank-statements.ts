@@ -169,7 +169,7 @@ export type BankSummary = {
   lines: number;
   /** Lines with an entry in the books. */
   matched: number;
-  /** Lines that paid an invoice with no entry of their own (D495): before the books opened, or an invoice not in these books. */
+  /** Lines that paid an invoice with no entry of their own (D495): money received before the books opened. */
   settled: number;
   /** Lines after the books opened with neither: what waits for the books. */
   waiting: number;

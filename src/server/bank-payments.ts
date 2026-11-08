@@ -208,8 +208,8 @@ export async function payInvoiceFromBank(
       log("info", "bank.payment_match_taken", { storeId, lineId }, error);
     }
   } else if (paymentId) {
-    // Paid with no entry in the books (D495): money before the books opened (in the opening balance), or an invoice that is not in these
-    // books. The line has done its work: it is never offered again, nor left waiting for an entry.
+    // Paid with no entry in the books (D495): money before the books opened (in the opening balance). The line has done its work: it is
+    // never offered again, nor left waiting for an entry (until the books open earlier and hold its day, D498).
     await db().execute(sql`
       update commerce.bank_lines set payment_ref = ${`${open.source}_payment:${paymentId}`}
        where id = ${lineId}::uuid and store_id = ${storeId}::uuid and entry_id is null and payment_ref is null`);

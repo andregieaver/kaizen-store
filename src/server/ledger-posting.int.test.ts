@@ -181,7 +181,7 @@ describe("a store's documents, posted to its books", () => {
     expect(await ledger.ledgerVatByCode(book.id, book.opened_on, String(today))).toEqual([{ code: "3", base: 1_200_000 + 13_800_000, vat: 300_000 + 3_450_000 }]);
   });
 
-  it("posts the payment of an imported invoice issued before the book opened, and not of one issued after (D494)", async () => {
+  it("posts an imported invoice issued in the book's days and its payment, and only the payment of one issued before (D494, D498)", async () => {
     const { storeId, actor } = await workStore();
     const book = await openBook(storeId, actor.account.id);
     const clientId = await client(storeId);
@@ -196,6 +196,10 @@ describe("a store's documents, posted to its books", () => {
           values (${storeId}::uuid, ${clientId}::uuid, 'sent', ${label}, ${label}, true, ${issuedOn}::date, ${issuedOn}::date + 14, now(), 'NOK', 'nb-NO', 14,
             100000, 25000, 125000, '{}'::jsonb, '{"name":"Acme AS"}'::jsonb)
           returning id`);
+        await t.execute(sql`
+          insert into commerce.work_invoice_lines (store_id, invoice_id, position, description, unit, quantity_hundredths, unit_price_minor, discount_bp,
+            vat_category, vat_rate, excl_minor, vat_minor, incl_minor, quantity_manual)
+          values (${storeId}::uuid, ${String(row.id)}::uuid, 1, 'Rådgivning', 'hour', 100, 100000, 0, 'standard', 0.25, 100000, 25000, 125000, true)`);
         return String(row.id);
       });
     const before = await imported("2020-01-01", "T-1");
@@ -203,12 +207,13 @@ describe("a store's documents, posted to its books", () => {
     const paidBefore = ok(await invoices.recordPayment(actor, { invoiceId: before, amountMinor: 125_000, receivedOn: String(today), method: "bank" })).paymentId;
     const paidAfter = ok(await invoices.recordPayment(actor, { invoiceId: after, amountMinor: 125_000, receivedOn: String(today), method: "bank" })).paymentId;
 
-    // The first's receivable is in the opening balance; the second is in Tripletex's books, not these, and so is its money.
-    expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 1, waiting: 0 });
+    // The first's receivable is in the opening balance: only its payment posts. The second was issued in the book's days: the books are
+    // the business's, so it posts as any invoice does, and its payment with it (D498).
+    expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 3, waiting: 0 });
     expect(await entriesOf(book.id, paidBefore)).toHaveLength(2);
-    expect(await entriesOf(book.id, paidAfter)).toEqual([]);
-    expect(await ledger.postWorkPaymentNow(storeId, paidAfter)).toBeNull();
-    expect(await entriesOf(book.id, paidAfter)).toEqual([]);
+    expect(await entriesOf(book.id, paidAfter)).toHaveLength(2);
+    const [sale] = await db().execute<Row>(sql`select series from commerce.ledger_entries where book_id = ${book.id}::uuid and source_kind = 'work_invoice' and source_id = ${after}`);
+    expect(sale.series).toBe("S");
   });
 
   it("posts an entry by hand, the opening balance among them, lists it in the journal and reverses it once", async () => {

@@ -417,6 +417,21 @@ export const booksNb: BooksMessages = {
     done: "Låst.",
     invalid: "Velg en dag etter at regnskapet åpnet.",
   },
+  earlier: {
+    title: "Åpne regnskapet tidligere",
+    text: "Regnskapet ditt starter {day}. Flytt første dag bakover så det rommer mer av året, for eksempel 1. januar: fakturaene, betalingene og banklinjene fra dagene som legges til, kommer inn i det.",
+    from: "Ny første dag",
+    button: "Åpne tidligere",
+    done: "Regnskapet ditt starter nå {day}.",
+    problems: {
+      date: "Velg en dag som finnes.",
+      no_book: "Åpne regnskapet først.",
+      later: "Velg en dag før regnskapet starter.",
+      locked: "Lås opp regnskapet først: dagene som legges til, er før låsen.",
+      opening: "Tilbakefør inngående balanse først: den står på den gamle første dagen. Les den inn igjen for den nye dagen etterpå.",
+      earlier_book: "Butikkens tidligere regnskap slutter på eller etter den dagen. Velg en senere dag.",
+    },
+  },
   problems: {
     forbidden: "Bare butikkens eier gjør dette.",
     open: "Regnskapet er allerede åpnet.",

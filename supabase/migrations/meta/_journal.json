@@ -5090,6 +5090,13 @@
       "when": 1794161097057,
       "tag": "20261108180457_ledger_books_vat_term",
       "breakpoints": true
+    },
+    {
+      "idx": 727,
+      "version": "7",
+      "when": 1794170205377,
+      "tag": "20261108203645_ledger_books_open_earlier",
+      "breakpoints": true
     }
   ]
 }

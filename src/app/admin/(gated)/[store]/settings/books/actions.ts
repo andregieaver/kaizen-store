@@ -12,7 +12,8 @@ import { formatMoney } from "@/lib/money";
 import { HAND_ROWS } from "@/lib/ledger";
 import type { Membership } from "@/server/auth";
 import { actionAdminLang } from "@/server/admin-request-lang";
-import { lockLedgerThrough, openLedgerBook, postDueDocuments, openBookOf, postHandEntry, reverseLedgerEntry } from "@/server/ledger";
+import { lockLedgerThrough, openLedgerBook, openLedgerBookEarlier, postDueDocuments, openBookOf, postHandEntry, reverseLedgerEntry } from "@/server/ledger";
+import { matchBankStatement } from "@/server/bank-statements";
 import { postOpeningFromTripletex } from "@/server/ledger-opening";
 import { isPurchaseKind, isPurchaseVatRate, PURCHASE_KINDS } from "@/lib/purchases";
 import { payCertainInvoices, payInvoiceFromBank, postBankOwnLine } from "@/server/bank-payments";
@@ -54,6 +55,25 @@ export async function openBooksAction(storeSlug: string, _state: FormState, form
   }
   refresh();
   return { status: "ok", messages: [w.open.opened] };
+}
+
+/**
+ * *Open the books earlier* (D498): the books' first day moved back, so they hold more of the year; the documents of the days added are
+ * posted at once as far as a request allows (the job does the rest), and the bank's lines in those days matched to what posted.
+ */
+export async function openBooksEarlierAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const from = String(form.get("from") ?? "").trim();
+  const moved = await openLedgerBookEarlier(member, from);
+  if (!moved.ok) return { status: "error", messages: [w.earlier.problems[moved.problem]], fields: moved.problem === "date" || moved.problem === "later" ? { from: w.earlier.problems[moved.problem] } : undefined };
+  const book = moved.book;
+  await postDueDocuments(member.store.id, { id: book.id, currency: book.currency, opened_on: book.openedOn, closed_on: book.closedOn }, { deadline: Date.now() + 20_000 });
+  await matchBankStatement(member.store.id, book.id);
+  refresh();
+  const locale = ADMIN_LANG_FACTS[adminLangOf(member.account.adminLocale)].locale;
+  return { status: "ok", messages: [fillWords(w.earlier.done, { day: new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${book.openedOn}T00:00:00Z`)) })] };
 }
 
 /** *Lock*: nothing dated on or before the day is posted after it. */

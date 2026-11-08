@@ -7,7 +7,8 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 
 const invoices = await import("./work-invoices");
-const { importBankStatement, bankSummary } = await import("./bank-statements");
+const { importBankStatement, bankSummary, matchBankStatement } = await import("./bank-statements");
+const ledger = await import("./ledger");
 const { invoiceOffers, payCertainInvoices, payInvoiceFromBank, postBankOwnLine } = await import("./bank-payments");
 
 import type { Membership } from "./auth";
@@ -179,6 +180,67 @@ describe("an old statement paying old invoices, from before the books opened (D4
     // What a line paid names a payment, and nothing else.
     await expect(db().execute(sql`update commerce.bank_lines set payment_ref = 'anything' where id = ${String(line2.id)}::uuid`)).rejects.toThrow();
   });
+});
+
+describe("the books opened earlier, holding the year (D498)", () => {
+  it("posts an invoice brought in from elsewhere and its payment once its days are in the books, and its bank line then matches", async () => {
+    const { storeId, bookId, member } = await workBooks("sooner");
+    const [days] = await db().execute<Row>(sql`
+      select (current_date - 400)::text as before, (current_date - 60)::text as issued, (current_date - 50)::text as paid, (current_date - 90)::text as sooner,
+             (current_date - 30)::text as opened`);
+    const [client] = await db().execute<Row>(sql`
+      insert into commerce.work_clients (store_id, name, country, currency, locale) values (${storeId}::uuid, 'Optio', 'NO', 'NOK', 'nb-NO') returning id`);
+    // Invoices issued elsewhere (Tripletex's 3101 in the days to be added, 3001 a year before), each with its line.
+    const old = async (number: string, on: string) =>
+      db().transaction(async (t) => {
+        await t.execute(sql`select set_config('commerce.work_importing', 'on', true)`);
+        const [row] = await t.execute<Row>(sql`
+          insert into commerce.work_invoices (store_id, client_id, status, document_number, legacy_number, imported, issued_on, due_on, sent_at, currency, locale, payment_days,
+            subtotal_minor, vat_minor, total_minor, seller, buyer)
+          values (${storeId}::uuid, ${String(client.id)}::uuid, 'sent', ${number}, ${number}, true, ${on}::date, ${on}::date + 14, now(), 'NOK', 'nb-NO', 14,
+            100000, 25000, 125000, '{}'::jsonb, '{"name":"Optio AS"}'::jsonb)
+          returning id`);
+        await t.execute(sql`
+          insert into commerce.work_invoice_lines (store_id, invoice_id, position, description, unit, quantity_hundredths, unit_price_minor, discount_bp,
+            vat_category, vat_rate, excl_minor, vat_minor, incl_minor, quantity_manual)
+          values (${storeId}::uuid, ${String(row.id)}::uuid, 1, 'Rådgivning', 'hour', 100, 100000, 0, 'standard', 0.25, 100000, 25000, 125000, true)`);
+        return String(row.id);
+      });
+    const inDays = await old("3101", String(days.issued));
+    await old("3001", String(days.before));
+
+    // Paid from the statement before the books opened: marked paid, posted nowhere, its line settled.
+    const file = camt(String(days.paid), [{ ref: `${run}-s1`, amount: "1250.00", payer: "OPTIO AS", words: "Faktura 3101" }]);
+    expect(await importBankStatement(member, { name: "tidlig.xml", bytes: new TextEncoder().encode(file) })).toMatchObject({ ok: true, newLines: 1 });
+    expect(await payCertainInvoices(member)).toEqual(["3101"]);
+    const lineOf = async () => (await db().execute<Row>(sql`select entry_id, payment_ref from commerce.bank_lines where book_id = ${bookId}::uuid and line_key = ${`ref:${run}-s1`}`))[0];
+    expect((await lineOf()).payment_ref).not.toBeNull();
+
+    // Not later, not while locked.
+    expect(await ledger.openLedgerBookEarlier(member, String(days.opened))).toEqual({ ok: false, problem: "later" });
+    expect((await ledger.lockLedgerThrough(member, String(days.opened))).ok).toBe(true);
+    expect(await ledger.openLedgerBookEarlier(member, String(days.sooner))).toEqual({ ok: false, problem: "locked" });
+    expect((await ledger.lockLedgerThrough(member, null)).ok).toBe(true);
+
+    // Opened 90 days back: the invoice of those days and its payment post; the one a year before stays in the opening balance.
+    const earlier = await ledger.openLedgerBookEarlier(member, String(days.sooner));
+    expect(earlier).toMatchObject({ ok: true, book: { openedOn: String(days.sooner) } });
+    expect((await lineOf()).payment_ref).toBeNull();
+    const book = (await ledger.openBookOf(storeId))!;
+    await ledger.postDueDocuments(storeId, { id: book.id, currency: book.currency, opened_on: book.openedOn, closed_on: book.closedOn });
+    const posted = await db().execute<Row>(sql`
+      select e.series, e.source_kind, e.entry_date::text as day from commerce.ledger_entries e where e.book_id = ${bookId}::uuid order by e.entry_date`);
+    expect(posted).toEqual([
+      { series: "S", source_kind: "work_invoice", day: String(days.issued) },
+      { series: "B", source_kind: "work_payment", day: String(days.paid) },
+    ]);
+    const [sale] = await db().execute<Row>(sql`select source_id from commerce.ledger_entries where book_id = ${bookId}::uuid and source_kind = 'work_invoice'`);
+    expect(sale.source_id).toBe(inDays);
+    await matchBankStatement(storeId, bookId);
+    expect((await lineOf()).entry_id).not.toBeNull();
+    const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action = 'work.ledger_book_opened_earlier'`);
+    expect(audited.n).toBe(1);
+  }, 60_000);
 });
 
 describe("the bank's own fees and interest, posted with a press (B4, D488)", () => {
