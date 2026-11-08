@@ -123,6 +123,11 @@ export type FakeTripletex = {
    * balance as the period began, its movement in it and its balance as it ended, in kroner (debit positive). Empty unless a test sets it.
    */
   balanceSheet: (period: { dateFrom: string; dateTo: string }) => { account: { number: number; name: string }; balanceIn: number; balanceChange: number; balanceOut: number }[];
+  /**
+   * The company's own invoices, as `GET /invoice` answers them (D494): each as Tripletex's `Invoice` with what the test gives it. The list
+   * asks `invoiceDateFrom` (from and including) and `invoiceDateTo` (to and excluding), as Tripletex's does [spec].
+   */
+  invoices: Json[];
 };
 
 export function fakeTripletex(options: { companyId?: number; companyName?: string; organizationNumber?: string | null } = {}): FakeTripletex {
@@ -146,6 +151,7 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
     closedBefore: null,
     shapes: { session: "spec", whoAmI: "spec" },
     balanceSheet: () => [],
+    invoices: [],
     failNext(method, path, status, body, headers, times = 1) {
       failures.push({ method, path, status, body, headers, times });
     },
@@ -251,6 +257,12 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
       const dateTo = url.searchParams.get("dateTo") ?? "";
       if (!dateFrom || !dateTo || dateTo <= dateFrom) return answer(422, { status: 422, message: "dateTo must be after dateFrom" });
       return list(state.balanceSheet({ dateFrom, dateTo }), url);
+    }
+    if (method === "GET" && path === "/invoice") {
+      const from = url.searchParams.get("invoiceDateFrom") ?? "";
+      const to = url.searchParams.get("invoiceDateTo") ?? "";
+      if (!from || !to) return answer(422, { status: 422, message: "invoiceDateFrom and invoiceDateTo are required" });
+      return list(state.invoices.filter((i) => String(i.invoiceDate) >= from && String(i.invoiceDate) < to), url);
     }
     if (method === "GET" && path === "/ledger/vatType") return list(state.vatTypes, url);
     if (method === "GET" && path === "/ledger/voucherType") return list([{ id: 9, name: "Utgående faktura" }], url);

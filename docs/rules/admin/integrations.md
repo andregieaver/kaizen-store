@@ -209,7 +209,12 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   only by Check (`checkTripletexDocument()`, read-only) and is never booked again but by the owner's Post again (`postTripletexAgain()`, the
   next external number). The page (`/admin/{store}/integrations/tripletex`, owners act, `settings:read` sees) is
   Homer's: one paste, then only the questions Tripletex would refuse (`checkTripletexSettings()` before Start), then Start; the card
-  speaks only when something needs the owner; every account, code, the start day and the switches are under Customise. Tests run against `fakeTripletex()`
+  speaks only when something needs the owner; every account, code, the start day and the switches are under Customise. Invoices made in
+  Tripletex come into Work only through `importTripletexInvoices()` (D494, the page's *Your invoices in Tripletex*, owners, audited), planned
+  by `planTripletexInvoices()`: as imported invoices in a transaction that says it is importing, never numbered from the store's series,
+  never sent back or posted; one already here (by Tripletex's number, or Life's unnumbered one for the same client and amount within a
+  week) is never doubled; a found client is only filled where empty; every client is linked to its Tripletex card by
+  `adoptTripletexCustomers()`. Tests run against `fakeTripletex()`
   (`src/server/tripletex-test-support.ts`), which must answer as Tripletex's spec does and never refuses a repeated external number;
   nothing in CI calls Tripletex.
 

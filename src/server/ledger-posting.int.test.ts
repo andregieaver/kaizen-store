@@ -181,6 +181,36 @@ describe("a store's documents, posted to its books", () => {
     expect(await ledger.ledgerVatByCode(book.id, book.opened_on, String(today))).toEqual([{ code: "3", base: 1_200_000 + 13_800_000, vat: 300_000 + 3_450_000 }]);
   });
 
+  it("posts the payment of an imported invoice issued before the book opened, and not of one issued after (D494)", async () => {
+    const { storeId, actor } = await workStore();
+    const book = await openBook(storeId, actor.account.id);
+    const clientId = await client(storeId);
+    const [{ d: today }] = await db().execute<Row>(sql`select commerce.store_day(${storeId}::uuid, now())::text as d`);
+    // Two imported invoices (history from Life or Tripletex), each paid today: one from before the book, one from after it opened.
+    const imported = (issuedOn: string, label: string) =>
+      db().transaction(async (t) => {
+        await t.execute(sql`select set_config('commerce.work_importing', 'on', true)`);
+        const [row] = await t.execute<Row>(sql`
+          insert into commerce.work_invoices (store_id, client_id, status, document_number, legacy_number, imported, issued_on, due_on, sent_at, currency, locale, payment_days,
+            subtotal_minor, vat_minor, total_minor, seller, buyer)
+          values (${storeId}::uuid, ${clientId}::uuid, 'sent', ${label}, ${label}, true, ${issuedOn}::date, ${issuedOn}::date + 14, now(), 'NOK', 'nb-NO', 14,
+            100000, 25000, 125000, '{}'::jsonb, '{"name":"Acme AS"}'::jsonb)
+          returning id`);
+        return String(row.id);
+      });
+    const before = await imported("2020-01-01", "T-1");
+    const after = await imported(String(today), "T-2");
+    const paidBefore = ok(await invoices.recordPayment(actor, { invoiceId: before, amountMinor: 125_000, receivedOn: String(today), method: "bank" })).paymentId;
+    const paidAfter = ok(await invoices.recordPayment(actor, { invoiceId: after, amountMinor: 125_000, receivedOn: String(today), method: "bank" })).paymentId;
+
+    // The first's receivable is in the opening balance; the second is in Tripletex's books, not these, and so is its money.
+    expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 1, waiting: 0 });
+    expect(await entriesOf(book.id, paidBefore)).toHaveLength(2);
+    expect(await entriesOf(book.id, paidAfter)).toEqual([]);
+    expect(await ledger.postWorkPaymentNow(storeId, paidAfter)).toBeNull();
+    expect(await entriesOf(book.id, paidAfter)).toEqual([]);
+  });
+
   it("posts an entry by hand, the opening balance among them, lists it in the journal and reverses it once", async () => {
     const { storeId, actor } = await workStore();
     const book = await openBook(storeId, actor.account.id);

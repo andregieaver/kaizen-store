@@ -4793,6 +4793,38 @@ describe("work: invoices imported from Kaizen Life (WP15)", () => {
     await expect(db.query("update commerce.work_invoices set status = 'paid' where id = $1", [invoiceId])).rejects.toThrow(/work_invoice\.status/);
   });
 
+  it("takes a number once when it came without one, and only from an import (D494)", async () => {
+    const w = await importStore();
+    const { invoiceId } = await importInvoice(w, { legacy: null });
+    const give = (number: string, set = "") =>
+      db.transaction(async (tx) => {
+        await tx.query("select set_config('commerce.work_importing', 'on', true)");
+        await tx.query(`update commerce.work_invoices set legacy_number = $2, document_number = $2${set} where id = $1`, [invoiceId, number]);
+      });
+    // Outside an import, never.
+    await expect(db.query("update commerce.work_invoices set legacy_number = '2154', document_number = '2154' where id = $1", [invoiceId])).rejects.toThrow(/work_invoice\.immutable/);
+    // The number and nothing else; shown as its document number too.
+    await expect(give("2154", ", notes = 'x'")).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(
+      db.transaction(async (tx) => {
+        await tx.query("select set_config('commerce.work_importing', 'on', true)");
+        await tx.query("update commerce.work_invoices set legacy_number = '2154' where id = $1", [invoiceId]);
+      }),
+    ).rejects.toThrow(/work_invoice\.immutable/);
+    await give("2154");
+    expect(await invoiceRow(invoiceId)).toMatchObject({ legacy_number: "2154", document_number: "2154", number: null, imported: true });
+    // Once kept, it stays.
+    await expect(give("2155")).rejects.toThrow(/work_invoice\.immutable/);
+    // A number another invoice has is refused.
+    const second = await importInvoice(w, { legacy: null });
+    await expect(
+      db.transaction(async (tx) => {
+        await tx.query("select set_config('commerce.work_importing', 'on', true)");
+        await tx.query("update commerce.work_invoices set legacy_number = '2154', document_number = '2154' where id = $1", [second.invoiceId]);
+      }),
+    ).rejects.toThrow(/work_invoices_legacy_number_key|work_invoices_document_number_key/);
+  });
+
   it("still cannot be made or edited the normal way: a normal issued invoice has a number and cannot change", async () => {
     const w = await importStore();
     await expect(

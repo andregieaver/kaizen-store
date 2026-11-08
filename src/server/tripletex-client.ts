@@ -198,10 +198,12 @@ export async function whoAmI(session: TripletexSession): Promise<TxResult<Triple
   return { ok: true, value: { id, name: textOf(company.name).slice(0, 255), organizationNumber: org === "" ? null : org }, requestId: answer.requestId };
 }
 
-/** Every value of a list, a page at a time (Tripletex caps a page; `fullResultSize` says how many there are). */
-export async function listAll<T>(session: TripletexSession, path: string, query: Query = {}, max = 5000): Promise<TxResult<T[]>> {
+/**
+ * Every value of a list, a page at a time (Tripletex caps a page; `fullResultSize` says how many there are). A list whose values carry
+ * much (invoices with their lines) asks smaller pages, so each answers within the call's timeout.
+ */
+export async function listAll<T>(session: TripletexSession, path: string, query: Query = {}, max = 5000, count = 1000): Promise<TxResult<T[]>> {
   const values: T[] = [];
-  const count = 1000;
   for (let from = 0; from < max; from += count) {
     const page = await session.get<{ values?: T[]; fullResultSize?: number }>(path, { ...query, from, count });
     if (!page.ok) return page;

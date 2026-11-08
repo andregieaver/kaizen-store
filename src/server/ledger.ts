@@ -464,7 +464,9 @@ const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_i
 /**
  * The documents of a book's days not posted yet, the oldest first, invoices before credit notes: the same as Tripletex books (Work's sent
  * invoices, not imported ones, and credit notes; the shop's invoices and credit notes), each once; and the payments for Work's invoices
- * received in those days (step 2c), an imported invoice's too (its receivable is in the opening balance), a reversal after what it reverses;
+ * received in those days (step 2c), an imported invoice's too when it was issued before the book opened (its receivable is in the opening
+ * balance; one issued later, brought in from Tripletex, D494, is in Tripletex's books and not in these, nor is its payment), a reversal
+ * after what it reverses;
  * and the shop's captured payments, its refunds that move money or owe it as store credit, and the payment provider's paid payouts. One that has an entry (even one a person
  * reversed) is done; one that waits is tried again a day after it was last tried.
  */
@@ -490,6 +492,7 @@ async function dueDocuments(storeId: string, book: { id: string; opened_on: stri
         select 'work_payment', p.id::text, p.received_on, case when p.reverses is null then 2 else 3 end from commerce.work_invoice_payments p
           join commerce.work_invoices i on i.store_id = p.store_id and i.id = p.invoice_id
          where p.store_id = ${storeId}::uuid and i.status <> 'draft' and p.received_on between ${book.opened_on}::date and ${to}::date
+           and (not i.imported or i.issued_on < ${book.opened_on}::date)
         union all
         select m.kind, m.id, m.day, m.rank from (
           select 'shop_payment' as kind, p.id::text as id, ${SHOP_PAYMENT_DAY} as day, 4 as rank
@@ -613,7 +616,12 @@ async function postPayment(
 export async function postWorkPaymentNow(storeId: string, paymentId: string): Promise<string | null> {
   const book = await typedRow(
     z.object({ id: col.uuid, currency: col.currency }),
-    sql`select id, currency from commerce.ledger_books where store_id = ${storeId}::uuid and closed_on is null`,
+    sql`
+      select b.id, b.currency from commerce.ledger_books b
+       where b.store_id = ${storeId}::uuid and b.closed_on is null
+         -- An imported invoice issued after the book opened is not in it, so neither is its payment (as dueDocuments() does).
+         and not exists (select 1 from commerce.work_invoice_payments p join commerce.work_invoices i on i.store_id = p.store_id and i.id = p.invoice_id
+                          where p.store_id = b.store_id and p.id = ${paymentId}::uuid and i.imported and i.issued_on >= b.opened_on)`,
   );
   if (!book) return null;
   const posting = await postingOf(storeId);

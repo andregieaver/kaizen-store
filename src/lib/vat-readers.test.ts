@@ -59,7 +59,8 @@ describe("who reads a buyer's VAT number and VIES's answer", () => {
   });
 
   it("is the order's own modules, for the treatment an order keeps (the shopper's copy has no registered name or address)", () => {
-    const orders = readers(/\bvat_treatment\b/).filter((file) => !/work|vat-treatment\.ts$/.test(file));
+    // Work's modules, and the invoices brought in from Tripletex into Work (D494), read a Work client's own `vat_treatment`, not an order's.
+    const orders = readers(/\bvat_treatment\b/).filter((file) => !/work|vat-treatment\.ts$|tripletex-invoices\.ts$/.test(file));
     // `order-insert.ts` writes it (the one insert of an order, which checkout, the renewal and draft orders call), `orders.ts` reads it for the order page and for staff, `tax-treatment.ts` builds it,
     // `owner-tools.ts` mentions the column's name in a comment on what the assistant is told (kind and relief only).
     // `personal-data.ts` (the register of personal data, D162) names the keys erasure removes from it; it reads nothing. The data export reads the treatment's

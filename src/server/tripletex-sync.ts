@@ -296,6 +296,41 @@ async function ensureCustomer(ctx: Ctx, ref: CustomerRef): Promise<Outcome<numbe
   return { ok: true, value: id };
 }
 
+/**
+ * Work clients brought in with their invoices from Tripletex (D494) keep the customer card they have there: each is remembered as that
+ * client's card, with the hash of the card we would send, so the sync neither makes a second card for a client without an organisation
+ * number nor sends ours over the accountant's. A client already linked to a card keeps it. Returns how many were linked.
+ */
+export async function adoptTripletexCustomers(storeId: string, session: TripletexSession, links: readonly { clientId: string; theirId: number }[]): Promise<number> {
+  const connection = await getTripletexConnection(storeId);
+  if (!connection?.settings || links.length === 0) return 0;
+  const run: TripletexRun = { stores: 0, sent: 0, adopted: 0, failed: 0, blocked: 0, waiting: 0, attached: 0, alerted: 0 };
+  const ctx: Ctx = {
+    storeId,
+    connection: { ...connection, settings: connection.settings, syncFrom: connection.syncFrom ?? todayIn(new Date(), "Europe/Oslo") },
+    session,
+    ids: null,
+    chart: null,
+    countries: null,
+    now: new Date(),
+    run,
+  };
+  let linked = 0;
+  for (const link of links) {
+    const ref: CustomerRef = { kind: "work_client", clientId: link.clientId };
+    const body = await customerBodyOf(ctx, ref);
+    if (!body) continue;
+    const made = await db().execute(sql`
+      insert into commerce.tripletex_sync (store_id, mode, company_id, kind, local_id, their_id, content_hash, state, synced_at)
+      values (${storeId}::uuid, ${connection.mode}, ${connection.company.id}, 'customer', ${customerKey(ref)}, ${link.theirId}, ${hashOf(body)}, 'synced', now())
+      on conflict (store_id, mode, company_id, kind, local_id) do nothing
+      returning 1 as one
+    `);
+    linked += made.length;
+  }
+  return linked;
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // One document
 // ---------------------------------------------------------------------------------------------------------------------

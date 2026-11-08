@@ -123,6 +123,11 @@ export function TripletexAccountingCard({ lang, storeSlug, connection, needYou }
       >
         {connection ? p.manage : p.connect}
       </Link>
+      {connection && (connection.state === "on" || connection.state === "paused") && (
+        <Link href={`${href}#invoices`} className="ml-3 text-sm underline">
+          {w.invoices.cardLink}
+        </Link>
+      )}
     </section>
   );
 }

@@ -7,7 +7,9 @@ import type { FormState } from "@/components/admin/action-form";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { todayIn } from "@/lib/analytics-period";
 import { failureWords } from "@/lib/tripletex-errors";
+import { invoicesFrom } from "@/lib/tripletex-invoices";
 import { BOOKING_KEYS, DEFAULT_BOOKING, isBookingKey, readSettings, type TripletexSettings } from "@/lib/tripletex-settings";
 import type { SettingsProblem } from "@/lib/tripletex-setup";
 import { actionAdminLang } from "@/server/admin-request-lang";
@@ -23,6 +25,7 @@ import {
   setTripletexSyncFrom,
   startTripletex,
 } from "@/server/tripletex";
+import { importTripletexInvoices } from "@/server/tripletex-invoices";
 import { checkTripletexDocument, postTripletexAgain, retryTripletex } from "@/server/tripletex-sync";
 
 /**
@@ -196,4 +199,25 @@ export async function postTripletexAgainAction(storeSlug: string, kind: string, 
   if (!known || !/^[0-9a-f-]{36}$/.test(localId) || !(await postTripletexAgain(owner.store.id, known, localId, owner.account.id))) return refused(w.nothingToRetry);
   refresh();
   return { status: "ok", messages: [w.panel.postedAgain] };
+}
+
+/**
+ * Bring in: Tripletex's invoices from the chosen day into Work (D494), as history (imported, never sent back, never posted). Only an owner,
+ * as for every Tripletex action; read and planned again on the press, so what is written is what both sides say now.
+ */
+export async function importTripletexInvoicesAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (typeof owner === "string") return refused(owner);
+  const w = wordsOf(owner).invoices;
+  const from = invoicesFrom(form.get("from"), todayIn(new Date(), owner.store.timeZone));
+  if (!from) return refused(w.badDay);
+  const result = await importTripletexInvoices(owner, from);
+  if (!result.ok) return refused(w.problems[result.problem]);
+  refresh();
+  const said = fillWords(w.done, {
+    invoices: countWords(result.made.invoices, w.doneInvoices),
+    clients: countWords(result.made.clients, w.doneClients),
+    payments: countWords(result.made.payments, w.donePayments),
+  });
+  return { status: "ok", messages: [result.made.numbered > 0 ? `${said} ${countWords(result.made.numbered, w.doneNumbered)}` : said] };
 }

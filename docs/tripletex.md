@@ -78,6 +78,7 @@ the start day, "send the client's email", "attach PDFs", Pause, Disconnect, and 
 | Settings and buckets | `src/lib/tripletex-settings.ts` | built, tested |
 | Setup from the company's chart | `src/lib/tripletex-setup.ts` | built, tested |
 | Documents to vouchers, customer cards | `src/lib/tripletex-map.ts` | built, tested |
+| Invoices made in Tripletex brought into Work (D494): read, planned, imported once | `src/lib/tripletex-invoices.ts`, `src/server/tripletex-invoices.ts` | built, tested |
 | Failures and their words | `src/lib/tripletex-errors.ts` | built, tested |
 | Tables | `commerce.tripletex_connections`, `commerce.tripletex_sync` (`20261104230740_tripletex.sql`), `src/db/tripletex.test.ts` | built, tested |
 | HTTP client | `src/server/tripletex-client.ts`, `tripletex-client.int.test.ts` | built, tested against the fake |
@@ -93,6 +94,14 @@ the start day, "send the client's email", "attach PDFs", Pause, Disconnect, and 
 | Check in Tripletex (a booked document's voucher read back, nothing written) and Post again for one deleted there (`drifted`, booked anew under `#2`, `#3`; never on its own) | `checkTripletexDocument()`, `postTripletexAgain()` in `src/server/tripletex-sync.ts`, on the document panel and the page's Needs you | built, tested against the fake |
 | Tripletex's state on the shop's invoice list; *Leave it out* for a document the owner books by hand | section 3.4 | next |
 | Payments read back (T2), foreign currency, webhooks, the marketplace's Activate | sections 4.5, 4.6, TP13 | later |
+
+### Invoices from Tripletex into Work (D494)
+
+The other way round, once: the invoices a store made in Tripletex's own invoicing (`GET /invoice`, `invoiceDateFrom` and `invoiceDateTo`
+required, with `customer(...)`, `orderLines(...)` and `postings(date,amountCurrency)` expanded [spec 2.75.22]) come into Work as imported
+invoices, history as Life's were. Kaizena Flow's own documents are vouchers in Tripletex, never invoices, so nothing the sync sent comes
+back. The fields asked are `TRIPLETEX_INVOICE_FIELDS`; that Tripletex expands `postings` and `orderLines` on the list as the spec says is
+[U] until the first live read (a refusal shows as *could not be read*, and nothing is written).
 
 ### Still to find out in Tripletex's sandbox (Appendix A, plus)
 
@@ -955,5 +964,5 @@ Integrations admin pages and actions, `src/server/checkout-stripe.int.test.ts`,
 `GET /country`, `GET /currency`, `GET /ledger/account`, `GET /ledger/vatType`,
 `GET /ledger/vatSettings`, `GET /ledger/voucherType`, `GET /ledger/accountingPeriod`,
 `POST /ledger/voucher`, `GET /ledger/voucher/{id}`, `GET /ledger/voucher/>externalVoucherNumber`,
-`POST /ledger/voucher/{voucherId}/attachment`, `GET /ledger/posting`, `GET /ledger/posting/openPost`;
-later `POST /event/subscription`, `GET /event`.
+`POST /ledger/voucher/{voucherId}/attachment`, `GET /ledger/posting`, `GET /ledger/posting/openPost`, `GET /balanceSheet` (the ledger's opening
+balance, D478), `GET /invoice` (invoices brought into Work, D494); later `POST /event/subscription`, `GET /event`.

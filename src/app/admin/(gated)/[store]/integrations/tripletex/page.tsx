@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AdminTextScope } from "@/components/admin/admin-text";
@@ -7,20 +8,25 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf, type AdminLang } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
+import { formatMoney } from "@/lib/money";
 import { norwegianOrgNumber } from "@/lib/tripletex";
 import { failureWords } from "@/lib/tripletex-errors";
+import { invoicesFrom } from "@/lib/tripletex-invoices";
 import { BOOKING_KEYS, DEFAULT_BOOKING, type BookingKey } from "@/lib/tripletex-settings";
 import { bookingProblem, receivableProblem, type Chart, type SettingsProblem } from "@/lib/tripletex-setup";
+import type { Membership } from "@/server/auth";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { checkTripletexSettings, getTripletexConnection, storeOrgNumber, tripletexCounts, tripletexProblems } from "@/server/tripletex";
+import { previewTripletexInvoices } from "@/server/tripletex-invoices";
 
 import {
   chooseAccountAction,
   connectTripletexAction,
   disconnectTripletexAction,
+  importTripletexInvoicesAction,
   pauseTripletexAction,
   postTripletexAgainAction,
   retryTripletexAction,
@@ -44,11 +50,96 @@ function optionsFor(problem: SettingsProblem, chart: Chart): { number: number; n
 }
 
 /**
+ * What would come in from Tripletex (D494), read when the owner asks (the page's `invoicesFrom`): the counts in words, what is left out and
+ * why, and one button that brings it in. Reading Tripletex takes a moment, so it streams in under the card.
+ */
+async function InvoicesPreview({ member, from, lang }: { member: Membership; from: string; lang: AdminLang }) {
+  const w = adminText(lang, "notifications").integrations.tripletex.invoices;
+  const locale = ADMIN_LANG_FACTS[lang].locale;
+  const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "UTC" });
+  const read = await previewTripletexInvoices(member, from);
+  if (!read.ok) {
+    return (
+      <p role="alert" className="mt-4 rounded-md bg-warning-soft px-4 py-3 text-sm text-warning-text">
+        {w.problems[read.problem]}
+      </p>
+    );
+  }
+  const s = read.summary;
+  const work = `/admin/account/work/s/${member.store.slug}/invoices`;
+  const changesHere = s.numbered + s.paymentsHere + s.filled;
+  const facts = [
+    s.invoices > 0 && countWords(s.lines, w.lines),
+    s.paid > 0 && countWords(s.paid, w.paid),
+    s.voided > 0 && countWords(s.voided, w.voided),
+    s.joined > 0 && countWords(s.joined, w.joined),
+    s.clients > 0 && countWords(s.clients, w.newClients),
+    s.filled > 0 && countWords(s.filled, w.filled),
+  ].filter((f): f is string => typeof f === "string");
+  const here = [s.alreadyHere > 0 && countWords(s.alreadyHere, w.alreadyHere), s.numbered > 0 && countWords(s.numbered, w.numbered), s.paymentsHere > 0 && countWords(s.paymentsHere, w.paymentsHere)].filter(
+    (f): f is string => typeof f === "string",
+  );
+  return (
+    <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4 text-sm">
+      {s.invoices === 0 && changesHere === 0 ? (
+        <p>{fillWords(w.nothing, { date: day(from) })}</p>
+      ) : (
+        <>
+          {s.invoices > 0 && (
+            <div>
+              <p className="font-medium text-ink">{countWords(s.invoices, w.found)}</p>
+              {s.firstDay && s.lastDay && (
+                <p className="text-muted">
+                  {fillWords(w.range, { first: day(s.firstDay), last: day(s.lastDay), total: s.totals.map((t) => formatMoney(t.minor, t.currency, locale)).join(" + ") || "0" })}
+                </p>
+              )}
+            </div>
+          )}
+          {facts.length > 0 && (
+            <ul className="flex list-disc flex-col gap-0.5 pl-5">
+              {facts.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          )}
+          {here.length > 0 && <p className="text-muted">{here.join(" · ")}</p>}
+        </>
+      )}
+      {s.skipped.length > 0 && (
+        <details>
+          <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{countWords(s.skipped.length, w.leftOut)}</summary>
+          <ul className="mt-2 flex flex-col gap-1">
+            {s.skipped.slice(0, 50).map((k, n) => (
+              <li key={`${k.number ?? "none"}-${n}`}>
+                {k.number ? fillWords(w.invoiceNumber, { number: k.number }) : w.noNumber}
+                {k.issuedOn && <span className="text-muted"> · {day(k.issuedOn)}</span>}: {w.reasons[k.reason]}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <div className="flex flex-wrap items-center gap-3">
+        {(s.invoices > 0 || changesHere > 0) && (
+          <ActionForm action={importTripletexInvoicesAction.bind(null, member.store.slug)}>
+            <input type="hidden" name="from" value={from} />
+            <SubmitButton>{s.invoices > 0 ? countWords(s.invoices, w.bring) : w.bringAll}</SubmitButton>
+          </ActionForm>
+        )}
+        <Link href={work} className="underline">
+          {w.openWork}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Tripletex (D453): Homer connects with one paste and presses Start; afterwards the card says how it goes and speaks up only when
  * something needs him. Lisa's every account, VAT code, start day and switch is behind Customise. Owners act; other members see.
  */
-export default async function TripletexPage({ params }: PageProps<"/admin/[store]/integrations/tripletex">) {
+export default async function TripletexPage({ params, searchParams }: PageProps<"/admin/[store]/integrations/tripletex">) {
   const { store: slug } = await params;
+  const asked = (await searchParams).invoicesFrom;
   const current = await requirePermission(slug, "settings:read");
   const { store } = current;
   const lang = adminLangOf(current.account.adminLocale);
@@ -67,6 +158,10 @@ export default async function TripletexPage({ params }: PageProps<"/admin/[store
   const ours = norwegianOrgNumber(connection ? await storeOrgNumber(store.id) : null);
   const theirs = norwegianOrgNumber(connection?.company.organizationNumber);
   const needYou = (counts?.blocked ?? 0) + (counts?.failed ?? 0);
+  const wi = w.invoices;
+  // Bring in (D494): the first day the owner asked about, or ten years back for the field's first value.
+  const invoicesFromAsked = invoicesFrom(Array.isArray(asked) ? asked[0] : asked, today);
+  const invoicesFromField = invoicesFromAsked ?? `${Number(today.slice(0, 4)) - 10}-01-01`;
 
   const connectForm = (
     <ActionForm action={connectTripletexAction.bind(null, store.slug)} className="flex flex-col gap-4">
@@ -243,6 +338,29 @@ export default async function TripletexPage({ params }: PageProps<"/admin/[store
                   </ActionForm>
                 )}
               </div>
+            )}
+          </section>
+        )}
+
+        {connection && (connection.state === "on" || connection.state === "paused") && owner && (
+          <section id="invoices" aria-labelledby="tripletex-invoices" className={card}>
+            <h2 id="tripletex-invoices" className="mb-1 text-title text-ink">
+              {wi.title}
+            </h2>
+            <p className="mb-4 text-sm text-muted">{wi.lead}</p>
+            <form method="get" action={`/admin/${store.slug}/integrations/tripletex#invoices`} className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                {wi.from}
+                <input name="invoicesFrom" type="date" min="2000-01-01" max={today} defaultValue={invoicesFromField} className={`${field} max-w-48`} />
+              </label>
+              <button type="submit" className="min-h-10 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
+                {wi.look}
+              </button>
+            </form>
+            {invoicesFromAsked && (
+              <Suspense fallback={<p className="mt-4 text-sm text-muted" role="status">{wi.looking}</p>}>
+                <InvoicesPreview member={current} from={invoicesFromAsked} lang={lang} />
+              </Suspense>
             )}
           </section>
         )}
