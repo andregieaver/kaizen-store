@@ -15,7 +15,9 @@ import {
   generateLinesFromTime,
   invoiceReadiness,
   issueInvoice,
+  markInvoiceLost,
   recordIssuedElsewhere,
+  reverseInvoiceLoss,
   recordPayment,
   releaseTimeFromDrafts,
   reversePayment,
@@ -239,6 +241,42 @@ export async function creditInvoiceAction(storeSlug: string, input: CreditInvoic
         refundedMinor: result.creditNote.refundedMinor,
       });
     }
+    return result;
+  });
+})(),
+    lang,
+  );
+}
+
+// --- Lost invoices (D500) ---------------------------------------------------------------------------------
+
+/** Writes off what of an invoice is lost: owners only, audited. */
+export async function markLostAction(storeSlug: string, input: { invoiceId: string; amountMinor?: number; writtenOffOn: string; reason?: string }) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
+  return change(storeSlug, async (member) => {
+    if (!memberCan(member, "owner")) return problem("Only an owner can write off an invoice.");
+    const result = await markInvoiceLost(member, input);
+    if (result.ok) {
+      await audit(member.account.id, member.store.id, "work.invoice.written_off", { invoiceId: input.invoiceId, lossId: result.lossId, status: result.status });
+    }
+    return result;
+  });
+})(),
+    lang,
+  );
+}
+
+/** Takes a loss back: owners only, audited. */
+export async function reverseLossAction(storeSlug: string, input: { lossId: string }) {
+  const lang = await actionAdminLang();
+  return inWorkLang(
+    await (async () => {
+  return change(storeSlug, async (member) => {
+    if (!memberCan(member, "owner")) return problem("Only an owner can write off an invoice.");
+    const result = await reverseInvoiceLoss(member, input);
+    if (result.ok) await audit(member.account.id, member.store.id, "work.invoice.loss_reversed", { lossId: input.lossId, reversalId: result.reversalId });
     return result;
   });
 })(),

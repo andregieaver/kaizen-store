@@ -4420,6 +4420,48 @@ describe("work: clients, time and invoices (D122)", () => {
     expect(events.rows.map((e) => e.type)).toEqual(["invoice.issued", "invoice.credited", "invoice.credited", "payment.refunded"]);
   });
 
+  it("writes off what is outstanding as lost, only that, and a reversal sends the invoice back (D500)", async () => {
+    const w = await workStore();
+    const { invoiceId } = await issued(w);
+    const pay = (amount: number) =>
+      db.query(
+        `insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method, recorded_by)
+         values ($1, $2, $3, 'NOK', '2026-09-10', 'bank', $4)`,
+        [w.storeId, invoiceId, amount, w.account],
+      );
+    const lose = (amount: number, over: Row = {}) =>
+      one<{ id: string }>(
+        `insert into commerce.work_invoice_losses (store_id, invoice_id, amount_minor, currency, written_off_on, reverses, recorded_by)
+         values ($1, $2, $3, $4, '2026-10-01', $5, $6) returning id`,
+        [w.storeId, invoiceId, amount, over.currency ?? "NOK", over.reverses ?? null, w.account],
+      );
+    const status = async () => (await one<Row>("select status from commerce.work_invoices where id = $1", [invoiceId])).status;
+    const outstanding = async () => Number((await one<Row>("select outstanding_minor from commerce.work_invoice_amounts($1, $2)", [w.storeId, invoiceId])).outstanding_minor);
+
+    // Part paid, then the rest lost: the invoice is lost, nothing outstanding; never more than was outstanding.
+    await pay(100000);
+    await expect(lose(87501)).rejects.toThrow(/work_loss\.too_much/);
+    await expect(lose(1000, { currency: "SEK" })).rejects.toThrow(/work_loss\.currency/);
+    await expect(lose(-1000)).rejects.toThrow(/work_invoice_losses_amount/);
+    const loss = await lose(87500);
+    expect(await status()).toBe("lost");
+    expect(await outstanding()).toBe(0);
+    await expect(lose(1)).rejects.toThrow(/work_loss\.too_much/);
+    // Append-only; a reversal takes back the loss in full, once, and the invoice is owed again.
+    await expect(db.query("delete from commerce.work_invoice_losses where id = $1", [loss.id])).rejects.toThrow(/append-only/);
+    await expect(lose(-1000, { reverses: loss.id })).rejects.toThrow(/work_loss\.reversal/);
+    await lose(-87500, { reverses: loss.id });
+    expect(await status()).toBe("sent");
+    expect(await outstanding()).toBe(87500);
+    await expect(lose(-87500, { reverses: loss.id })).rejects.toThrow();
+    // Paid in full: nothing to write off.
+    await pay(87500);
+    expect(await status()).toBe("paid");
+    await expect(lose(100)).rejects.toThrow(/work_loss\.status/);
+    const events = await db.query<Row>("select type from commerce.work_events where entity_id = $1 and type like 'loss.%' or (entity_id = $1 and type = 'invoice.lost') order by created_at", [invoiceId]);
+    expect(events.rows.map((r) => r.type)).toEqual(["loss.written_off", "invoice.lost", "loss.reversed"]);
+  });
+
   it("credits a paid invoice, and a credit that brings what is owed within what was paid marks it paid", async () => {
     const w = await workStore();
     const { invoiceId, lineId } = await issued(w);

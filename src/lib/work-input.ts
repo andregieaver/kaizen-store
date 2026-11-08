@@ -412,6 +412,18 @@ export const recordPaymentInput = z.object({
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentInput>;
 
+/** Writing off what of an invoice is lost (D500): all that is outstanding unless an amount is given, on a day, with why. */
+export const markLostInput = z.object({
+  invoiceId: uuid,
+  amountMinor: int(1, Number.MAX_SAFE_INTEGER, "Enter the amount to write off.").optional(),
+  writtenOffOn: day("Give the date it was written off."),
+  reason: optionalText(500),
+});
+export type MarkLostInput = z.infer<typeof markLostInput>;
+
+/** Taking a loss back adds a reversing row; the original stays. */
+export const reverseLossInput = z.object({ lossId: uuid });
+
 /** Undoing a payment adds a reversing row; the original stays. */
 export const reversePaymentInput = z.object({ paymentId: uuid, reason: optionalText(500) });
 export type ReversePaymentInput = z.infer<typeof reversePaymentInput>;

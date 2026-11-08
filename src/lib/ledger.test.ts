@@ -22,6 +22,8 @@ import {
   entryOfPayment,
   entryOfPayout,
   entryOfPaymentReversal,
+  entryOfInvoiceLoss,
+  entryOfLossReversal,
   entryProblems,
   handEntryOf,
   isVatCode,
@@ -583,5 +585,55 @@ describe("the opening balance read from another system (step 2d)", () => {
     expect(nearestStandard(7771)).toBe("7770");
     expect(nearestStandard(99)).toBeNull();
     expect(nearestStandard(123456)).toBeNull();
+  });
+});
+
+describe("a lost invoice written off (D500)", () => {
+  const loss = { id: "l1", day: "2026-11-08", invoiceNumber: "10042", counterparty: "Acme AS" };
+
+  it("shares the loss over the invoice's rates, each rate's VAT back as a deduction on its code, the rest on 7830", () => {
+    const made = entryOfInvoiceLoss(
+      { ...loss, amountMinor: 50_000, buckets: [{ ratePercent: 25, inclMinor: 125_000, vatMinor: 25_000 }, { ratePercent: 15, inclMinor: 115_000, vatMinor: 15_000 }, { ratePercent: 0, inclMinor: 10_000, vatMinor: 0 }] },
+      1500,
+    );
+    expect(made.ok).toBe(true);
+    if (!made.ok) return;
+    expect(made.entry).toMatchObject({ series: "M", date: "2026-11-08", text: "Tap på krav, faktura 10042, Acme AS", source: { kind: "work_invoice_loss", id: "l1" } });
+    expect(made.entry.lines).toEqual([
+      { account: 7830, amountMinor: 20_000, vatCode: "1" },
+      { account: 2710, amountMinor: 5_000, vatCode: "1" },
+      { account: 7830, amountMinor: 20_000, vatCode: "11" },
+      { account: 2711, amountMinor: 3_000, vatCode: "11" },
+      { account: 7830, amountMinor: 2_000, vatCode: null },
+      { account: 1500, amountMinor: -50_000, vatCode: null },
+    ]);
+    expect(entryProblems(made.entry)).toEqual([]);
+    // VAT by code finds the deduction and its base.
+    expect(vatByCode(made.entry.lines.filter((l) => l.vatCode).map((l) => ({ account: l.account, vatCode: l.vatCode!, amountMinor: l.amountMinor })))).toEqual([
+      { code: "1", base: -20_000, vat: -5_000 },
+      { code: "11", base: -20_000, vat: -3_000 },
+    ]);
+  });
+
+  it("takes no VAT back where the invoice had none, and nothing for nought", () => {
+    const made = entryOfInvoiceLoss({ ...loss, amountMinor: 10_000, buckets: [{ ratePercent: 0, inclMinor: 10_000, vatMinor: 0 }] }, 1500);
+    expect(made.ok && made.entry.lines).toEqual([
+      { account: 7830, amountMinor: 10_000, vatCode: null },
+      { account: 1500, amountMinor: -10_000, vatCode: null },
+    ]);
+    expect(entryOfInvoiceLoss({ ...loss, amountMinor: 0, buckets: [] }, 1500)).toEqual({ ok: false, problem: "nothing" });
+  });
+
+  it("turns a loss's own entry when it is taken back, its VAT codes kept", () => {
+    const made = entryOfLossReversal({ id: "r1", day: "2026-12-01", invoiceNumber: "10042", counterparty: null }, [
+      { account: 7830, amountMinor: 8_000, vatCode: "1" },
+      { account: 2710, amountMinor: 2_000, vatCode: "1" },
+      { account: 1500, amountMinor: -10_000, vatCode: null },
+    ]);
+    expect(made.ok && made.entry.lines).toEqual([
+      { account: 7830, amountMinor: -8_000, vatCode: "1" },
+      { account: 2710, amountMinor: -2_000, vatCode: "1" },
+      { account: 1500, amountMinor: 10_000, vatCode: null },
+    ]);
   });
 });

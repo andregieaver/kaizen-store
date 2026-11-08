@@ -473,6 +473,92 @@ export function entryOfPaymentReversal(
   };
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// A lost invoice (D500)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Where a receivable found lost goes: losses on receivables. */
+export const BAD_DEBT_ACCOUNT = 7830;
+
+/**
+ * The output VAT a lost receivable takes back, by the invoice's rate: Skatteetaten has it reported as a deduction on the purchase codes
+ * (*tap på krav*, rule R038: codes 1, 11, 12 or 13), so it is posted as input VAT on the code's account.
+ */
+export const LOSS_VAT: Readonly<Record<number, { code: string; account: number }>> = {
+  25: { code: "1", account: 2710 },
+  15: { code: "11", account: 2711 },
+  12: { code: "13", account: 2713 },
+};
+
+export type LossDoc = {
+  id: string;
+  day: string;
+  /** What is written off, with VAT (the receivable's amount). */
+  amountMinor: number;
+  invoiceNumber: string;
+  counterparty: string | null;
+  /** The invoice's lines by VAT rate (percent): what they came to with VAT, and the VAT in that. */
+  buckets: readonly { ratePercent: number; inclMinor: number; vatMinor: number }[];
+};
+
+/**
+ * A lost receivable posted (D500): the receivable credited by what is written off; that shared over the invoice's VAT rates as its lines
+ * were, each share's VAT taken back as a deduction on its rate's code and account (a rate without one, or no VAT, takes none), and the
+ * rest a loss on 7830 under the same code, so the VAT return finds the deduction and its base. In the manual series, on the day written off.
+ */
+export function entryOfInvoiceLoss(loss: LossDoc, receivable: number): { ok: true; entry: LedgerEntryInput } | { ok: false; problem: PaymentProblem } {
+  if (!Number.isSafeInteger(loss.amountMinor) || loss.amountMinor <= 0) return { ok: false, problem: "nothing" };
+  const buckets = loss.buckets.filter((b) => b.inclMinor > 0);
+  const total = buckets.reduce((sum, b) => sum + b.inclMinor, 0);
+  const lines: LedgerLineInput[] = [];
+  const add = (account: number, amountMinor: number, vatCode: string | null) => {
+    if (amountMinor === 0) return;
+    const held = lines.find((l) => l.account === account && (l.vatCode ?? null) === vatCode);
+    if (held) held.amountMinor += amountMinor;
+    else lines.push({ account, amountMinor, vatCode });
+  };
+  let left = loss.amountMinor;
+  buckets.forEach((b, i) => {
+    const share = i === buckets.length - 1 ? left : Math.round((loss.amountMinor * b.inclMinor) / total);
+    left -= share;
+    const back = LOSS_VAT[b.ratePercent];
+    const vat = back && b.vatMinor > 0 ? Math.round((share * b.vatMinor) / b.inclMinor) : 0;
+    add(BAD_DEBT_ACCOUNT, share - vat, vat !== 0 ? back.code : null);
+    if (vat !== 0) add(back.account, vat, back.code);
+  });
+  if (buckets.length === 0) add(BAD_DEBT_ACCOUNT, loss.amountMinor, null);
+  lines.push({ account: receivable, amountMinor: -loss.amountMinor, vatCode: null });
+  return {
+    ok: true,
+    entry: {
+      series: LEDGER_SERIES.manual,
+      date: loss.day,
+      text: clipText(`Tap på krav, faktura ${loss.invoiceNumber}${loss.counterparty ? `, ${loss.counterparty}` : ""}`, 200),
+      source: { kind: "work_invoice_loss", id: loss.id },
+      lines,
+    },
+  };
+}
+
+/** A loss taken back (a mistake, or the money came after all): the loss's own entry turned, its VAT codes kept so the deduction goes too. */
+export function entryOfLossReversal(
+  reversal: { id: string; day: string; invoiceNumber: string; counterparty: string | null },
+  original: readonly { account: number; amountMinor: number; vatCode: string | null }[],
+): { ok: true; entry: LedgerEntryInput } | { ok: false; problem: PaymentProblem } {
+  const lines = original.filter((l) => l.amountMinor !== 0).map((l) => ({ account: l.account, amountMinor: -l.amountMinor, vatCode: l.vatCode }));
+  if (lines.length < 2) return { ok: false, problem: "nothing" };
+  return {
+    ok: true,
+    entry: {
+      series: LEDGER_SERIES.manual,
+      date: reversal.day,
+      text: clipText(`Tilbakeført tap på krav, faktura ${reversal.invoiceNumber}${reversal.counterparty ? `, ${reversal.counterparty}` : ""}`, 200),
+      source: { kind: "work_invoice_loss", id: reversal.id },
+      lines,
+    },
+  };
+}
+
 /** The posting a store's Tripletex settings make (its receivable and each bucket's account), over Norway's defaults. */
 export function postingOfTripletex(settings: { receivableAccount: number; bookings: Partial<Record<BookingKey, { account: number }>> } | null): LedgerPosting {
   if (!settings) return NO_POSTING;
@@ -624,8 +710,11 @@ export function balanceSheet(rows: readonly (TrialRow & { after: number })[]): B
 /** A posted line with its VAT code, for the VAT report. */
 export type VatLine = { account: number; vatCode: string; amountMinor: number };
 
-/** One VAT code in a period: what it was charged on (the base) and the VAT, output VAT and sales positive. */
-export type VatRow = { code: string; base: number; vat: number };
+/**
+ * One VAT code in a period: what it was charged on (the base) and the VAT, output VAT and sales positive. `spec` sets apart what the VAT
+ * return reports on a line of its own: a lost receivable's VAT taken back (`tapPåKrav`, D500).
+ */
+export type VatRow = { code: string; base: number; vat: number; spec?: "tapPåKrav" };
 
 /**
  * VAT by code for a period (the VAT return's lines, by SAF-T's standard codes): each code's base, from its lines on income and cost

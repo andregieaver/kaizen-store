@@ -451,6 +451,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   work_events: never("Work (D122) is the owner's own bookkeeping."),
   work_invoice_lines: never("Work (D122) is the owner's own bookkeeping."),
   work_invoice_payments: never("Work (D122) is the owner's own bookkeeping."),
+  work_invoice_losses: never("Work (D122) is the owner's own bookkeeping; a loss written off is a record of its invoice (D500)."),
   work_invoices: never("Work (D122) is the owner's own bookkeeping."),
   work_recurring_invoices: never("Work (D122) is the owner's own bookkeeping."),
   work_settings: never("Work (D122) is the owner's own bookkeeping."),

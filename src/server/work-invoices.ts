@@ -31,7 +31,9 @@ import {
   MANUAL_PAYMENT_METHODS,
   MAX_INVOICE_LINES,
   recordElsewhereInput,
+  markLostInput,
   recordPaymentInput,
+  reverseLossInput,
   reversePaymentInput,
   invoiceDraftInput,
   type BillingAddress,
@@ -111,7 +113,7 @@ const fail = (code: string, ...problems: string[]): { ok: false; problems: strin
   code,
 });
 
-export type InvoiceStatus = "draft" | "sent" | "paid" | "void";
+export type InvoiceStatus = "draft" | "sent" | "paid" | "void" | "lost";
 
 export type InvoiceLine = {
   id: string;
@@ -209,7 +211,19 @@ export type InvoiceHeader = {
   updatedAt: string;
 };
 
-export type InvoiceAmounts = { totalMinor: number; paidMinor: number; creditedMinor: number; outstandingMinor: number };
+export type InvoiceAmounts = { totalMinor: number; paidMinor: number; creditedMinor: number; outstandingMinor: number; lostMinor?: number };
+
+/** What of an invoice was written off as lost (D500), or a row taking such a loss back. */
+export type InvoiceLoss = {
+  id: string;
+  amountMinor: number;
+  writtenOffOn: string;
+  reason: string | null;
+  reverses: string | null;
+  /** A loss a later row has taken back. */
+  reversed: boolean;
+  recordedByName: string | null;
+};
 
 export type InvoicePayment = {
   id: string;
@@ -307,6 +321,7 @@ export type InvoiceDetail = {
   totals: InvoiceTotals;
   amounts: InvoiceAmounts;
   payments: InvoicePayment[];
+  losses: InvoiceLoss[];
   creditNotes: CreditNoteSummary[];
   events: InvoiceEvent[];
   /** For a draft: the checklist before it can be issued. */
@@ -2064,7 +2079,7 @@ export async function creditInvoice(
 
 async function amountsOf(run: Runner, storeId: string, invoiceId: string): Promise<InvoiceAmounts> {
   const [a] = await run.execute<Row>(sql`
-    select total_minor, paid_minor, credited_minor, outstanding_minor
+    select total_minor, paid_minor, credited_minor, outstanding_minor, commerce.work_invoice_lost(${storeId}::uuid, ${invoiceId}::uuid) as lost_minor
     from commerce.work_invoice_amounts(${storeId}::uuid, ${invoiceId}::uuid)
   `);
   return a
@@ -2073,8 +2088,9 @@ async function amountsOf(run: Runner, storeId: string, invoiceId: string): Promi
         paidMinor: int(a.paid_minor),
         creditedMinor: int(a.credited_minor),
         outstandingMinor: int(a.outstanding_minor),
+        lostMinor: int(a.lost_minor),
       }
-    : { totalMinor: 0, paidMinor: 0, creditedMinor: 0, outstandingMinor: 0 };
+    : { totalMinor: 0, paidMinor: 0, creditedMinor: 0, outstandingMinor: 0, lostMinor: 0 };
 }
 
 /**
@@ -2172,6 +2188,70 @@ export async function reversePayment(
         };
       },
     ),
+  );
+}
+
+// --- Lost invoices (D500) ---------------------------------------------------------------------------------------------------------
+
+/**
+ * Writes off what of an issued invoice is lost (D500): all that is outstanding unless less is given, on a day from its issue to today. Only
+ * for a loss the owner has found (the client bankrupt, collection failed): the books take the VAT on it back. The database keeps it within
+ * what is outstanding, marks the invoice `lost` when nothing is left, and writes the history; the ledger's job posts it.
+ */
+export async function markInvoiceLost(actor: WorkActor, raw: unknown): Promise<InvoiceResult<{ lossId: string; status: InvoiceStatus; amounts: InvoiceAmounts }>> {
+  const storeId = actor.store.id;
+  const parsed = markLostInput.safeParse(raw);
+  if (!parsed.success) return problem(...zodProblems(parsed.error));
+  const input = parsed.data;
+  return guarded(() =>
+    db().transaction(async (tx): Promise<InvoiceResult<{ lossId: string; status: InvoiceStatus; amounts: InvoiceAmounts }>> => {
+      const invoice = await lockInvoice(tx, storeId, input.invoiceId);
+      if (!invoice) return problem(NOT_FOUND);
+      if (invoice.status !== "sent") return problem("Only an issued invoice with something outstanding can be written off.");
+      const [issued] = await tx.execute<Row>(sql`select issued_on::text as issued_on from commerce.work_invoices where store_id = ${storeId}::uuid and id = ${invoice.id}::uuid`);
+      if (input.writtenOffOn > (await today(tx, storeId))) return problem("A loss cannot be dated in the future.");
+      if (issued?.issued_on && input.writtenOffOn < String(issued.issued_on)) return problem("A loss cannot be dated before the invoice.");
+      const before = await amountsOf(tx, storeId, invoice.id);
+      const amount = input.amountMinor ?? before.outstandingMinor;
+      if (amount <= 0) return problem("Nothing is outstanding on this invoice.");
+      if (amount > before.outstandingMinor) {
+        return problem(`The loss is more than what is outstanding (${formatMoney(before.outstandingMinor, invoice.currency, "en")}).`);
+      }
+      const [row] = await tx.execute<Row>(sql`
+        insert into commerce.work_invoice_losses (store_id, invoice_id, amount_minor, currency, written_off_on, reason, recorded_by)
+        values (${storeId}::uuid, ${invoice.id}::uuid, ${amount}, ${invoice.currency}, ${input.writtenOffOn}::date, ${input.reason}, ${actor.account?.id ?? null}::uuid)
+        returning id`);
+      const [after] = await tx.execute<Row>(sql`select status from commerce.work_invoices where store_id = ${storeId}::uuid and id = ${invoice.id}::uuid`);
+      return { ok: true, lossId: String(row.id), status: String(after.status) as InvoiceStatus, amounts: await amountsOf(tx, storeId, invoice.id) };
+    }),
+  );
+}
+
+/** Takes a loss back by a reversing row, today (a mistake, or the money came after all): the invoice is owed again. Once. */
+export async function reverseInvoiceLoss(actor: WorkActor, raw: unknown): Promise<InvoiceResult<{ reversalId: string; status: InvoiceStatus; amounts: InvoiceAmounts }>> {
+  const storeId = actor.store.id;
+  const parsed = reverseLossInput.safeParse(raw);
+  if (!parsed.success) return problem(...zodProblems(parsed.error));
+  return guarded(() =>
+    db().transaction(async (tx): Promise<InvoiceResult<{ reversalId: string; status: InvoiceStatus; amounts: InvoiceAmounts }>> => {
+      const [loss] = await tx.execute<Row>(sql`
+        select l.id, l.invoice_id, l.amount_minor, l.currency::text as currency, l.reverses,
+               exists (select 1 from commerce.work_invoice_losses r where r.store_id = l.store_id and r.reverses = l.id) as reversed
+          from commerce.work_invoice_losses l
+         where l.store_id = ${storeId}::uuid and l.id = ${parsed.data.lossId}::uuid`);
+      if (!loss) return problem("This loss no longer exists.");
+      const invoice = await lockInvoice(tx, storeId, String(loss.invoice_id));
+      if (!invoice) return problem(NOT_FOUND);
+      if (loss.reverses || int(loss.amount_minor) < 0) return problem("Only a loss can be taken back.");
+      if (Boolean(loss.reversed)) return problem("This loss has already been taken back.");
+      const [row] = await tx.execute<Row>(sql`
+        insert into commerce.work_invoice_losses (store_id, invoice_id, amount_minor, currency, written_off_on, reverses, recorded_by)
+        values (${storeId}::uuid, ${invoice.id}::uuid, ${-int(loss.amount_minor)}, ${String(loss.currency)}, ${await today(tx, storeId)}::date,
+                ${String(loss.id)}::uuid, ${actor.account?.id ?? null}::uuid)
+        returning id`);
+      const [after] = await tx.execute<Row>(sql`select status from commerce.work_invoices where store_id = ${storeId}::uuid and id = ${invoice.id}::uuid`);
+      return { ok: true, reversalId: String(row.id), status: String(after.status) as InvoiceStatus, amounts: await amountsOf(tx, storeId, invoice.id) };
+    }),
   );
 }
 
@@ -2445,7 +2525,7 @@ export async function getWorkInvoiceDetail(storeId: string, invoiceId: string): 
   if (!row) return null;
   const status = String(row.status) as InvoiceStatus;
   const draft = status === "draft";
-  const [seller, client, lineRows, paymentRows, creditRows, eventRows, assignmentRow, now, amounts] = await Promise.all(
+  const [seller, client, lineRows, paymentRows, creditRows, lossRows, eventRows, assignmentRow, now, amounts] = await Promise.all(
     [
       loadSeller(run, storeId),
       loadClient(run, storeId, String(row.client_id)),
@@ -2463,6 +2543,13 @@ export async function getWorkInvoiceDetail(storeId: string, invoiceId: string): 
       run.execute<Row>(
         sql`${CREDIT_SELECT} where c.store_id = ${storeId}::uuid and c.invoice_id = ${invoiceId}::uuid order by c.number`,
       ),
+      run.execute<Row>(sql`
+      select l.id, l.amount_minor, l.written_off_on::text as written_off_on, l.reason, l.reverses, coalesce(a.name, a.email) as recorded_by_name,
+             exists (select 1 from commerce.work_invoice_losses r where r.store_id = l.store_id and r.reverses = l.id) as reversed
+      from commerce.work_invoice_losses l left join commerce.accounts a on a.id = l.recorded_by
+      where l.store_id = ${storeId}::uuid and l.invoice_id = ${invoiceId}::uuid
+      order by l.created_at, l.id
+    `),
       run.execute<Row>(sql`
       select e.id, e.type, e.data, e.created_at, coalesce(a.name, a.email) as account_name
       from commerce.work_events e left join commerce.accounts a on a.id = e.account_id
@@ -2553,6 +2640,15 @@ export async function getWorkInvoiceDetail(storeId: string, invoiceId: string): 
       refund: int(p.amount_minor) < 0 && !p.reverses,
       recordedByName: text(p.recorded_by_name),
       createdAt: iso(p.created_at),
+    })),
+    losses: lossRows.map((l) => ({
+      id: String(l.id),
+      amountMinor: int(l.amount_minor),
+      writtenOffOn: String(l.written_off_on),
+      reason: text(l.reason),
+      reverses: text(l.reverses),
+      reversed: Boolean(l.reversed),
+      recordedByName: text(l.recorded_by_name),
     })),
     creditNotes,
     events: eventRows.map((e) => ({

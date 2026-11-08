@@ -61,6 +61,22 @@ describe("the return's lines, as Skatteetaten's form asks for them (D496)", () =
     expect(vatReturnOf([{ code: "87", base: -1_000_000, vat: 0 }]).total).toBe(250_000);
   });
 
+  it("gives a lost receivable's VAT taken back a deduction line of its own, as Skatteetaten's tap på krav (D500)", () => {
+    const ret = vatReturnOf([
+      { code: "1", base: -80_000, vat: -20_000 },
+      { code: "1", base: -40_000, vat: -10_000, spec: "tapPåKrav" },
+    ]);
+    expect(ret.lines).toEqual([
+      { code: "1", side: "deducted", base: null, rate: null, vat: -20_000 },
+      { code: "1", side: "deducted", base: null, rate: null, vat: -10_000, spec: "tapPåKrav" },
+    ]);
+    expect(ret.total).toBe(-30_000);
+    const xml = mvaMeldingXml({ organisationNumber: "913238254", term: vatTerm("two_months", 2026, 6), ret, reference: "r", system: { name: "K", version: "1" } });
+    expect(xml).toMatch(/<mvaKode>1<\/mvaKode>\s*<spesifikasjon>tapPåKrav<\/spesifikasjon>\s*<merverdiavgift>-100<\/merverdiavgift>/);
+    // Compared with Tripletex by code: the two rows of code 1 together.
+    expect(compareVatReturns([{ code: "1", base: -80_000, vat: -20_000 }, { code: "1", base: -40_000, vat: -10_000, spec: "tapPåKrav" }], [{ code: "1", base: -120_000, vat: -30_000 }])).toEqual({ differences: [], totalDifference: 0 });
+  });
+
   it("names a code the form does not take, and leaves it out", () => {
     expect(vatReturnOf([{ code: "0", base: -5_000, vat: 0 }])).toEqual({ lines: [], total: 0, unknown: ["0"] });
   });

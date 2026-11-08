@@ -169,6 +169,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   variant_cost_history: "catalogue",
   webhook_endpoints: "secret",
   work_invoice_lines: "record",
+  work_invoice_losses: "record",
   work_invoice_payments: "record",
   work_tasks: "record",
   work_timers: "people",

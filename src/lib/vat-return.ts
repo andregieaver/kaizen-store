@@ -134,7 +134,7 @@ export const VAT_RETURN_CODES: Record<string, { kind: CodeKind; rate: number; de
 };
 
 /** One line of the form: its code, its base and rate where the form asks for them, and its VAT (positive due, negative deducted). */
-export type VatReturnLine = { code: string; side: "due" | "deducted"; base: number | null; rate: number | null; vat: number };
+export type VatReturnLine = { code: string; side: "due" | "deducted"; base: number | null; rate: number | null; vat: number; spec?: "tapPåKrav" };
 
 export type VatReturn = {
   lines: VatReturnLine[];
@@ -157,7 +157,8 @@ export function vatReturnOf(rows: readonly VatRow[]): VatReturn {
     if (known.kind === "sale" || known.kind === "sale_zero") {
       lines.push({ code: r.code, side: "due", base: r.base, rate: known.rate, vat: known.kind === "sale_zero" ? 0 : r.vat });
     } else if (known.kind === "purchase") {
-      if (r.vat !== 0) lines.push({ code: r.code, side: "deducted", base: null, rate: null, vat: r.vat });
+      // A lost receivable's VAT taken back is a deduction on a line of its own (`tapPåKrav`, D500).
+      if (r.vat !== 0) lines.push({ code: r.code, side: "deducted", base: null, rate: null, vat: r.vat, ...(r.spec ? { spec: r.spec } : {}) });
     } else {
       // A purchase is negative in the ledger: the form takes what was bought as the base, and the VAT due on it.
       const base = -r.base;
@@ -191,7 +192,9 @@ export type VatDifference = { code: string; oursBase: number; theirsBase: number
 /** Where our return and Tripletex's differ, code by code (base or VAT), and by how much in all. */
 export function compareVatReturns(ours: readonly VatRow[], theirs: readonly VatRow[]): { differences: VatDifference[]; totalDifference: number } {
   const codes = [...new Set([...ours.map((r) => r.code), ...theirs.map((r) => r.code)])].sort((a, b) => Number(a) - Number(b));
-  const of = (rows: readonly VatRow[], code: string) => rows.find((r) => r.code === code) ?? { code, base: 0, vat: 0 };
+  // A code's rows together (a lost receivable's deduction is a row of its own on the same code).
+  const of = (rows: readonly VatRow[], code: string) =>
+    rows.filter((r) => r.code === code).reduce((sum, r) => ({ code, base: sum.base + r.base, vat: sum.vat + r.vat }), { code, base: 0, vat: 0 });
   const differences = codes
     .map((code) => ({ code, oursBase: of(ours, code).base, theirsBase: of(theirs, code).base, oursVat: of(ours, code).vat, theirsVat: of(theirs, code).vat }))
     .filter((d) => d.oursBase !== d.theirsBase || d.oursVat !== d.theirsVat);
@@ -228,6 +231,7 @@ export function mvaMeldingXml(input: { organisationNumber: string; term: VatTerm
       [
         "    <mvaSpesifikasjonslinje>",
         `      <mvaKode>${l.code}</mvaKode>`,
+        l.spec ? `      <spesifikasjon>${l.spec}</spesifikasjon>` : null,
         l.base !== null ? `      <grunnlag>${formAmount(l.base)}</grunnlag>` : null,
         l.rate !== null ? `      <sats>${rateText(l.rate)}</sats>` : null,
         `      <merverdiavgift>${formAmount(l.vat)}</merverdiavgift>`,

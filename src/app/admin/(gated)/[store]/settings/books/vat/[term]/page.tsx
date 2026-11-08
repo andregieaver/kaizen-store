@@ -176,7 +176,7 @@ export default async function VatReturnPage({ params }: PageProps<"/admin/[store
                   {ours.ret.lines.map((l, i) => (
                     <tr key={`${l.code}-${l.side}-${i}`} className="border-b border-line last:border-0">
                       <td className="px-3 py-2 tabular-nums">{l.code}</td>
-                      <td className="px-3 py-2">{l.side === "deducted" ? `${w.deduction} · ${codeName(l.code)}` : codeName(l.code)}</td>
+                      <td className="px-3 py-2">{l.spec ? `${w.deduction} · ${w.lossOnClaims}` : l.side === "deducted" ? `${w.deduction} · ${codeName(l.code)}` : codeName(l.code)}</td>
                       <td className={cell}>{l.base === null ? "" : money(l.base)}</td>
                       <td className={cell}>{l.rate === null ? "" : `${l.rate} %`}</td>
                       <td className={cell}>{money(l.vat)}</td>

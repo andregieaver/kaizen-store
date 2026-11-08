@@ -11404,7 +11404,7 @@ export const workInvoices = commerce.table(
     index("work_invoices_assignment_idx").on(t.storeId, t.assignmentId),
     index("work_invoices_due_idx").on(t.storeId, t.dueOn).where(sql`${t.status} = 'sent'`),
     index("work_invoices_created_by_idx").on(t.createdBy),
-    check("work_invoices_status", sql`${t.status} in ('draft', 'sent', 'paid', 'void')`),
+    check("work_invoices_status", sql`${t.status} in ('draft', 'sent', 'paid', 'void', 'lost')`),
     check("work_invoices_series", sql`${t.series} = 'work_invoice'`),
     check("work_invoices_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
     check("work_invoices_amounts", sql`${t.subtotalMinor} >= 0 and ${t.vatMinor} >= 0 and ${t.totalMinor} = ${t.subtotalMinor} + ${t.vatMinor}`),
@@ -11610,6 +11610,49 @@ export const workInvoicePayments = commerce.table(
     check("work_invoice_payments_method", sql`${t.method} in ('bank', 'card', 'cash', 'other', 'stripe', 'prepaid')`),
     check("work_invoice_payments_reversal", sql`${t.reverses} is null or ${t.amountMinor} < 0`),
     check("work_invoice_payments_texts", sql`length(coalesce(${t.reference}, '')) <= 200`),
+  ],
+);
+
+/**
+ * What of an issued invoice is lost (D500): a receivable the owner has found cannot be collected (*konstatert tap*: the client bankrupt,
+ * collection failed), written off on a day, with the output VAT on it taken back. Append-only; a mistake is a negative row taking one
+ * back in full (`reverses`). The invoice becomes `lost` when payments, credit notes and losses cover its total and something is lost,
+ * and `sent` again if a reversal drops it below (a trigger). Posted to the books against the receivable: the loss on 7830, the VAT as a
+ * deduction on code 1, 11 or 13 (Skatteetaten's *tap på krav*).
+ */
+export const workInvoiceLosses = commerce.table(
+  "work_invoice_losses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    invoiceId: uuid("invoice_id").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    writtenOffOn: date("written_off_on", { mode: "string" }).notNull(),
+    reason: text("reason"),
+    /** The loss this negative row takes back. */
+    reverses: uuid("reverses"),
+    recordedBy: uuid("recorded_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("work_invoice_losses_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "work_invoice_losses_invoice_fk",
+      columns: [t.storeId, t.invoiceId],
+      foreignColumns: [workInvoices.storeId, workInvoices.id],
+    }),
+    foreignKey({
+      name: "work_invoice_losses_reverses_fk",
+      columns: [t.storeId, t.reverses],
+      foreignColumns: [t.storeId, t.id],
+    }),
+    index("work_invoice_losses_invoice_idx").on(t.storeId, t.invoiceId, t.writtenOffOn),
+    index("work_invoice_losses_recorded_by_idx").on(t.recordedBy),
+    uniqueIndex("work_invoice_losses_reverses_idx").on(t.storeId, t.reverses).where(sql`${t.reverses} is not null`),
+    check("work_invoice_losses_amount", sql`${t.amountMinor} <> 0 and (${t.reverses} is null) = (${t.amountMinor} > 0)`),
+    check("work_invoice_losses_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("work_invoice_losses_reason", sql`length(coalesce(${t.reason}, '')) <= 500`),
   ],
 );
 

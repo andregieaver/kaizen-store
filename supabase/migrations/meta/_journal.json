@@ -5097,6 +5097,20 @@
       "when": 1794170205377,
       "tag": "20261108203645_ledger_books_open_earlier",
       "breakpoints": true
+    },
+    {
+      "idx": 728,
+      "version": "7",
+      "when": 1794173156212,
+      "tag": "20261108212556_work_invoice_losses",
+      "breakpoints": true
+    },
+    {
+      "idx": 729,
+      "version": "7",
+      "when": 1794173191326,
+      "tag": "20261108212631_work_invoice_loss_rules",
+      "breakpoints": true
     }
   ]
 }

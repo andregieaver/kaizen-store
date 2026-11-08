@@ -129,6 +129,7 @@ export const booksNb: BooksMessages = {
     rate: "Sats",
     vat: "Mva",
     deduction: "Fradrag",
+    lossOnClaims: "Merverdiavgift tilbake på tapte krav (tap på krav)",
     empty: "Ingen mva i denne terminen ennå.",
     unknown: { one: "Kode {codes} finnes ikke i Skatteetatens skjema og er utelatt: sjekk bilaget den kom fra.", many: "Kodene {codes} finnes ikke i Skatteetatens skjema og er utelatt: sjekk bilagene de kom fra." },
     send: "Til Kaizena Flow sender meldingen for deg: før disse linjene inn i mva-meldingen hos Skatteetaten, eller gi filen til regnskapsføreren din.",

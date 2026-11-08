@@ -155,6 +155,7 @@ export function draftDetail(over: Partial<InvoiceDetail> = {}): InvoiceDetail {
     totals: totalsOf(lines),
     amounts: { totalMinor: 325_000, paidMinor: 0, creditedMinor: 0, outstandingMinor: 0 },
     payments: [],
+    losses: [],
     creditNotes: [],
     events: [],
     readiness: notReady,
@@ -224,6 +225,7 @@ export function issuedDetail(over: Partial<InvoiceDetail> = {}, amounts: Partial
       ...amounts,
     },
     payments: [],
+    losses: [],
     creditNotes: [],
     events: [
       {

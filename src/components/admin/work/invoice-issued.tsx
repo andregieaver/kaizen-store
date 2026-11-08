@@ -10,6 +10,7 @@ import { vatNotesFor } from "@/lib/work-vat";
 import type { InvoiceDetail, InvoiceLine } from "@/server/work-invoices";
 
 import { CreditInvoiceButton } from "./invoice-credit-dialog";
+import { MarkLostButton, TakeBackLossButton } from "./invoice-losses";
 import { RecordPaymentButton, ReversePaymentButton } from "./invoice-payments";
 import { SendCreditNoteButton, SendInvoiceSlot } from "./invoice-send-slot";
 import { InvoiceStatusChip } from "./invoice-status";
@@ -82,6 +83,16 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
               today={detail.today}
             />
           )}
+          {open && amounts.outstandingMinor > 0 && isOwner && (
+            <MarkLostButton
+              storeSlug={storeSlug}
+              invoiceId={invoice.id}
+              currency={invoice.currency}
+              locale={locale}
+              outstandingMinor={amounts.outstandingMinor}
+              today={detail.today}
+            />
+          )}
           {canCredit && (
             <CreditInvoiceButton
               storeSlug={storeSlug}
@@ -107,6 +118,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
           <Amount label={tw.totalWithVat} value={money(amounts.totalMinor)} />
           <Amount label={tw.paid} value={money(amounts.paidMinor)} />
           <Amount label={tw.credited} value={money(amounts.creditedMinor)} />
+          {(amounts.lostMinor ?? 0) > 0 && <Amount label={tw.lost} value={money(amounts.lostMinor ?? 0)} />}
           <Amount
             label={tw.outstanding}
             value={money(amounts.outstandingMinor)}
@@ -328,6 +340,35 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
           </ul>
         )}
       </section>
+
+      {detail.losses.length > 0 && (
+        <section aria-labelledby="losses-heading" className={card}>
+          <h2 id="losses-heading" className="mb-3 text-title text-ink">
+            {tw.losses}
+          </h2>
+          <ul className="flex flex-col divide-y divide-line">
+            {detail.losses.map((loss) => {
+              const label = fillWords(tw.lossLabel, { amount: money(Math.abs(loss.amountMinor)), day: formatDay(loss.writtenOffOn, locale) });
+              return (
+                <li key={loss.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                  <span className="flex flex-col">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span>{label}</span>
+                      {loss.reversed && <Badge tone="warn">{tw.takenBack}</Badge>}
+                      {loss.reverses && <Badge>{tw.takingBack}</Badge>}
+                    </span>
+                    <span className="text-xs text-muted">
+                      {loss.reason ? `${loss.reason}. ` : ""}
+                      {loss.recordedByName ? fillWords(tw.recordedBy, { name: loss.recordedByName }) : ""}
+                    </span>
+                  </span>
+                  {isOwner && loss.amountMinor > 0 && !loss.reversed && <TakeBackLossButton storeSlug={storeSlug} lossId={loss.id} label={label} />}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="credit-heading" className={card}>
         <h2 id="credit-heading" className="mb-3 text-title text-ink">

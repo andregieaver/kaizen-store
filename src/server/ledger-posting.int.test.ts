@@ -251,6 +251,53 @@ describe("a store's documents, posted to its books", () => {
     expect(sale).toEqual({ series: "S", day: String(before), receivable: 250_000 });
   });
 
+  it("writes off a lost invoice: the receivable out, the loss on 7830, its VAT back as tap på krav, and a taking back turns it (D500)", async () => {
+    const { storeId, actor } = await workStore();
+    const book = await openBook(storeId, actor.account.id);
+    const clientId = await client(storeId);
+    const [{ d: today }] = await db().execute<Row>(sql`select commerce.store_day(${storeId}::uuid, now())::text as d`);
+    const invoiceId = await issued(actor, clientId);
+    await ledger.postDueDocuments(storeId, book);
+
+    // The owner writes off all of it: the invoice is lost, nothing outstanding.
+    const lost = ok(await invoices.markInvoiceLost(actor, { invoiceId, writtenOffOn: String(today), reason: "Konkurs" }));
+    expect(lost.status).toBe("lost");
+    expect(lost.amounts).toMatchObject({ outstandingMinor: 0, lostMinor: 1_500_000 });
+    expect(await invoices.markInvoiceLost(actor, { invoiceId, writtenOffOn: String(today) })).toMatchObject({ ok: false });
+
+    await ledger.postDueDocuments(storeId, book);
+    const lines = await db().execute<Row>(sql`
+      select l.account, l.amount_minor::int as amount, l.vat_code from commerce.ledger_lines l
+        join commerce.ledger_entries e on e.id = l.entry_id
+       where e.book_id = ${book.id}::uuid and e.source_kind = 'work_invoice_loss' and e.source_id = ${lost.lossId} order by l.line`);
+    expect(lines).toEqual([
+      { account: 7830, amount: 1_200_000, vat_code: "1" },
+      { account: 2710, amount: 300_000, vat_code: "1" },
+      { account: 1500, amount: -1_500_000, vat_code: null },
+    ]);
+    // The VAT return reports it on a line of its own.
+    const rows = await ledger.ledgerVatByCode(book.id, String(today), String(today));
+    expect(rows).toContainEqual({ code: "1", base: -1_200_000, vat: -300_000, spec: "tapPåKrav" });
+    const { vatReturnOf, mvaMeldingXml, vatTermOfDay } = await import("@/lib/vat-return");
+    const ret = vatReturnOf(rows);
+    expect(ret.lines).toContainEqual({ code: "1", side: "deducted", base: null, rate: null, vat: -300_000, spec: "tapPåKrav" });
+    expect(mvaMeldingXml({ organisationNumber: "913238254", term: vatTermOfDay("two_months", String(today)), ret, reference: "r", system: { name: "K", version: "1" } })).toMatch(
+      /<mvaKode>1<\/mvaKode>\s*<spesifikasjon>tapPåKrav<\/spesifikasjon>\s*<merverdiavgift>-3000<\/merverdiavgift>/,
+    );
+
+    // Taken back: owed again, and the loss's entry turned with its VAT codes.
+    const back = ok(await invoices.reverseInvoiceLoss(actor, { lossId: lost.lossId }));
+    expect(back.status).toBe("sent");
+    expect(await invoices.reverseInvoiceLoss(actor, { lossId: lost.lossId })).toMatchObject({ ok: false });
+    await ledger.postDueDocuments(storeId, book);
+    const after = await ledger.ledgerVatByCode(book.id, String(today), String(today));
+    expect(after.some((r) => r.spec === "tapPåKrav")).toBe(false);
+    const [turned] = await db().execute<Row>(sql`
+      select count(*)::int as n from commerce.ledger_lines l join commerce.ledger_entries e on e.id = l.entry_id
+       where e.book_id = ${book.id}::uuid and e.source_kind = 'work_invoice_loss' and e.source_id = ${back.reversalId} and l.vat_code = '1'`);
+    expect(turned.n).toBe(2);
+  });
+
   it("posts an entry by hand, the opening balance among them, lists it in the journal and reverses it once", async () => {
     const { storeId, actor } = await workStore();
     const book = await openBook(storeId, actor.account.id);

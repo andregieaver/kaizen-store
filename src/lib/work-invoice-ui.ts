@@ -689,6 +689,8 @@ export function statusView(invoice: { status: InvoiceStatus; dueOn: Day | null; 
       return { label: "Paid", tone: "good", note: null };
     case "void":
       return { label: "Void", tone: "neutral", note: "Fully credited" };
+    case "lost":
+      return { label: "Lost", tone: "bad", note: "Written off" };
     case "sent": {
       if (!invoice.dueOn) return { label: "Issued", tone: "neutral", note: null };
       const state = dueState(invoice.dueOn, invoice.today);

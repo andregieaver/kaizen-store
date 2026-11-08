@@ -133,6 +133,7 @@ export const booksEn = {
     rate: "Rate",
     vat: "VAT",
     deduction: "Deduction",
+    lossOnClaims: "VAT back on lost receivables (tap på krav)",
     empty: "No VAT in this term yet.",
     unknown: { one: "Code {codes} is not on Skatteetaten's form and is left out: check the entry it came from.", many: "Codes {codes} are not on Skatteetaten's form and are left out: check the entries they came from." },
     send: "Until Kaizena Flow sends the return for you, type these lines into the VAT return (mva-melding) in Skatteetaten's service, or give the file to your accountant.",

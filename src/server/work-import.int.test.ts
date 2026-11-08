@@ -269,7 +269,7 @@ describe("the import from Kaizen Life", () => {
 
     const detail = await invoices.getWorkInvoiceDetail(f.storeId, idOf("invoice", LIFE.paidNumbered));
     expect(detail?.invoice).toMatchObject({ status: "paid", imported: true, legacyNumber: "2154", documentNumber: "2154", number: null, totalMinor: 502875, issuedOn: "2026-06-08", dueOn: "2026-06-20", locale: "nb-NO" });
-    expect(detail?.amounts).toEqual({ totalMinor: 502875, paidMinor: 502875, creditedMinor: 0, outstandingMinor: 0 });
+    expect(detail?.amounts).toEqual({ totalMinor: 502875, paidMinor: 502875, creditedMinor: 0, outstandingMinor: 0, lostMinor: 0 });
     expect(detail?.payments).toHaveLength(1);
     expect(detail?.lines).toHaveLength(1);
     expect(detail?.lines[0]).toMatchObject({ description: "Landingsside", quantityHundredths: 300, unitPriceMinor: 149000, discountBp: 1000, exclMinor: 402300, vatMinor: 100575, inclMinor: 502875 });

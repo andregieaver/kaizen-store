@@ -425,7 +425,7 @@ describe("the invoice lifecycle", () => {
       country: "NO",
       vatTreatment: "domestic",
     });
-    expect(detail.amounts).toEqual({ totalMinor: 618250, paidMinor: 0, creditedMinor: 0, outstandingMinor: 618250 });
+    expect(detail.amounts).toEqual({ totalMinor: 618250, paidMinor: 0, creditedMinor: 0, outstandingMinor: 618250, lostMinor: 0 });
     expect(detail.lines.find((l) => l.description === "Design work")).toMatchObject({ vatBp: 2500, exclMinor: 270000 });
     expect(detail.readiness).toBeNull();
 

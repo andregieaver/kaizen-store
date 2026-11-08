@@ -351,6 +351,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   A book's terms are two months or a year (`ledger_books.vat_term`, the owner's word, audited `work.ledger_vat_term_set`); each term's due day is
   `vatTerm()`'s, a weekend moved to Monday. The XML is only `mvaMeldingXml()`, which writes exactly what was validated against Skatteetaten's
   schema (`src/data/vat-return/mva-melding-sample.xml`, a unit test holds them equal; change the XML only after validating it again).
+  A lost receivable's VAT taken back (D500) is posted only by `entryOfInvoiceLoss()` (a deduction on code 1, 11 or 13, the rest on 7830) and
+  reported only as a deduction line with `spesifikasjon` `tapPåKrav` (Skatteetaten's rule R038), never as a minus on the sales code.
   Tripletex's return for the same days is worked out from its postings by `theirVatRows()` (never counting its own VAT postings) and
   compared code by code; reading Tripletex never writes there. Nothing is filed: sending through Skatteetaten waits for the store's own
   sign-in with them.

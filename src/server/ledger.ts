@@ -6,11 +6,13 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import type { BookingDoc } from "@/lib/accounting-docs";
 import {
+  BAD_DEBT_ACCOUNT,
   BUCKET_VAT,
   FX_GAIN_ACCOUNT,
   FX_LOSS_ACCOUNT,
   LEDGER_KINDS,
   LEDGER_SERIES,
+  LOSS_VAT,
   PAYMENT_ACCOUNTS,
   SHOP_PAYMENT_ACCOUNTS,
   STORE_CREDIT_ACCOUNT,
@@ -20,6 +22,8 @@ import {
   entryOfDoc,
   entryOfPayment,
   entryOfPaymentReversal,
+  entryOfInvoiceLoss,
+  entryOfLossReversal,
   entryOfDisputeLine,
   entryOfPayout,
   entryProblems,
@@ -437,16 +441,18 @@ export async function ledgerTrialBalance(bookId: string, from: string, to: strin
 /** VAT by code for the days `from` through `to` (step 3b, `vatByCode()`): each standard VAT code's base and VAT, from the lines that carry it. */
 export async function ledgerVatByCode(bookId: string, from: string, to: string): Promise<VatRow[]> {
   const lines = await typedRows(
-    z.object({ account: col.int, vat_code: col.text, amount_minor: col.minor }),
+    z.object({ account: col.int, vat_code: col.text, amount_minor: col.minor, loss: z.boolean() }),
     sql`
-      select l.account, l.vat_code, sum(l.amount_minor) as amount_minor
+      select l.account, l.vat_code, sum(l.amount_minor) as amount_minor, coalesce(e.source_kind = 'work_invoice_loss', false) as loss
         from commerce.ledger_lines l
         join commerce.ledger_entries e on e.id = l.entry_id
        where l.book_id = ${bookId}::uuid and l.vat_code is not null and e.entry_date between ${from}::date and ${to}::date
-       group by l.account, l.vat_code
+       group by l.account, l.vat_code, coalesce(e.source_kind = 'work_invoice_loss', false)
     `,
   );
-  return vatByCode(lines.map((l) => ({ account: l.account, vatCode: l.vat_code, amountMinor: l.amount_minor })));
+  const of = (loss: boolean) => vatByCode(lines.filter((l) => l.loss === loss).map((l) => ({ account: l.account, vatCode: l.vat_code, amountMinor: l.amount_minor })));
+  // A lost receivable's VAT taken back is reported on a line of its own (D500).
+  return [...of(false), ...of(true).map((r) => ({ ...r, spec: "tapPåKrav" as const }))].sort((a, b) => Number(a.code) - Number(b.code) || (a.spec ? 1 : 0) - (b.spec ? 1 : 0));
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -475,6 +481,8 @@ async function chartFor(storeId: string, bookId: string, posting: LedgerPosting)
     CARD_FEE_ACCOUNT,
     FX_GAIN_ACCOUNT,
     FX_LOSS_ACCOUNT,
+    BAD_DEBT_ACCOUNT,
+    ...Object.values(LOSS_VAT).map((v) => v.account),
   ]);
   const have = new Set((await ledgerAccounts(bookId)).map((a) => a.number));
   for (const number of needed) if (!have.has(number) && standardOf(number)) await addLedgerAccount(storeId, bookId, { number });
@@ -510,7 +518,7 @@ const SHOP_PAYMENT_DAY = sql`coalesce(p.received_on,
   (select min(i.issued_on) from commerce.invoices i where i.store_id = p.store_id and i.order_id = p.order_id),
   (p.created_at at time zone s.time_zone)::date)`;
 
-const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note", "work_payment", "shop_payment", "shop_refund", "payout", "dispute"]), id: col.text });
+const DUE = z.object({ kind: z.enum(["work_invoice", "work_credit_note", "shop_invoice", "shop_credit_note", "work_payment", "work_invoice_loss", "shop_payment", "shop_refund", "payout", "dispute"]), id: col.text });
 
 /**
  * The documents of a book's days not posted yet, the oldest first, invoices before credit notes: Work's sent invoices and credit notes,
@@ -542,6 +550,9 @@ async function dueDocuments(storeId: string, book: { id: string; opened_on: stri
         select 'work_payment', p.id::text, p.received_on, case when p.reverses is null then 2 else 3 end from commerce.work_invoice_payments p
           join commerce.work_invoices i on i.store_id = p.store_id and i.id = p.invoice_id
          where p.store_id = ${storeId}::uuid and i.status <> 'draft' and p.received_on between ${book.opened_on}::date and ${to}::date
+        union all
+        select 'work_invoice_loss', l.id::text, l.written_off_on, 3 from commerce.work_invoice_losses l
+         where l.store_id = ${storeId}::uuid and l.written_off_on between ${book.opened_on}::date and ${to}::date
         union all
         select m.kind, m.id, m.day, m.rank from (
           select 'shop_payment' as kind, p.id::text as id, ${SHOP_PAYMENT_DAY} as day, 4 as rank
@@ -651,6 +662,70 @@ async function postPayment(
       posting,
       book.currency,
       rates,
+    );
+  }
+  if (!made.ok) return made;
+  const posted = await postLedgerEntry(book.id, made.entry, null);
+  return posted.ok ? posted : { ok: false, problem: posted.problems[0] };
+}
+
+/**
+ * Posts a lost receivable (D500): written off from the receivable, shared over the invoice's VAT rates as its lines were, each rate's VAT
+ * taken back; a loss taken back turns the loss's own entry. Only in the book's currency (the receivable was posted in it).
+ */
+async function postInvoiceLoss(
+  storeId: string,
+  book: { id: string; currency: string },
+  posting: LedgerPosting,
+  id: string,
+): Promise<{ ok: true; id: string } | { ok: false; problem: PaymentProblem | PostProblem | "original" | "unreadable" }> {
+  const loss = await typedRow(
+    z.object({
+      id: col.uuid,
+      invoice_id: col.uuid,
+      amount_minor: col.minor,
+      currency: col.currency,
+      day: col.text,
+      reverses: col.textOrNull,
+      document_number: col.text,
+      buyer_name: col.textOrNull,
+    }),
+    sql`
+      select l.id, l.invoice_id, l.amount_minor, l.currency, l.written_off_on::text as day, l.reverses::text,
+             coalesce(i.legacy_number, i.document_number, '') as document_number, i.buyer ->> 'name' as buyer_name
+        from commerce.work_invoice_losses l
+        join commerce.work_invoices i on i.store_id = l.store_id and i.id = l.invoice_id
+       where l.store_id = ${storeId}::uuid and l.id = ${id}::uuid
+    `,
+  );
+  if (!loss) return { ok: false, problem: "unreadable" };
+  if (loss.currency !== book.currency) return { ok: false, problem: "currency" };
+  const facts = { id: loss.id, day: loss.day, invoiceNumber: loss.document_number, counterparty: loss.buyer_name };
+  let made: ReturnType<typeof entryOfInvoiceLoss>;
+  if (loss.reverses) {
+    const original = await typedRows(
+      z.object({ account: col.int, amount_minor: col.minor, vat_code: col.textOrNull }),
+      sql`
+        select l.account, l.amount_minor, l.vat_code from commerce.ledger_lines l
+          join commerce.ledger_entries e on e.id = l.entry_id
+         where e.book_id = ${book.id}::uuid and e.source_kind = 'work_invoice_loss' and e.source_id = ${loss.reverses}
+         order by l.line
+      `,
+    );
+    if (original.length === 0) return { ok: false, problem: "original" };
+    made = entryOfLossReversal(facts, original.map((l) => ({ account: l.account, amountMinor: l.amount_minor, vatCode: l.vat_code })));
+  } else {
+    const buckets = await typedRows(
+      z.object({ rate: col.decimal, incl: col.minor, vat: col.minor }),
+      sql`
+        select vat_rate as rate, sum(incl_minor) as incl, sum(vat_minor) as vat from commerce.work_invoice_lines
+         where store_id = ${storeId}::uuid and invoice_id = ${loss.invoice_id}::uuid
+         group by vat_rate order by vat_rate desc
+      `,
+    );
+    made = entryOfInvoiceLoss(
+      { ...facts, amountMinor: loss.amount_minor, buckets: buckets.map((b) => ({ ratePercent: Math.round(b.rate * 100), inclMinor: b.incl, vatMinor: b.vat })) },
+      posting.receivable,
     );
   }
   if (!made.ok) return made;
@@ -907,6 +982,7 @@ export async function postDueDocuments(
     if (options.deadline && Date.now() > options.deadline) break;
     let result: { ok: true; id: string } | { ok: false; problem: string };
     if (d.kind === "work_payment") result = await postPayment(storeId, book, posting, d.id);
+    else if (d.kind === "work_invoice_loss") result = await postInvoiceLoss(storeId, book, posting, d.id);
     else if (d.kind === "shop_payment" || d.kind === "shop_refund") result = await postShopMoney(storeId, book, posting, d.kind, d.id);
     else if (d.kind === "payout") result = await postPayout(storeId, book, d.id);
     else if (d.kind === "dispute") result = await postDisputeLine(storeId, book, posting, d.id);
