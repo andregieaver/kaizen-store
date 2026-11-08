@@ -119,7 +119,7 @@ describe("the control center (D107)", () => {
     expect(JSON.stringify(view)).not.toContain(`p1-${run}`);
   });
 
-  it("counts the books' documents that differ from Tripletex while their entry stands, and those waiting more than a week (D478)", async () => {
+  it("counts the books' documents that differ from Tripletex while their entry stands, those waiting more than a week (D478), and bills overdue or due within the week (D492)", async () => {
     const [book] = await db().execute<Row>(sql`
       insert into commerce.ledger_books (store_id, legal_name, country, currency, opened_on, opened_by)
       values (${storeId}::uuid, 'Kaffe AS', 'NO', 'NOK', current_date - 40, ${account.id}::uuid) returning id`);
@@ -144,11 +144,21 @@ describe("the control center (D107)", () => {
       insert into commerce.ledger_waiting (store_id, book_id, source_kind, source_id, problem, since)
       values (${storeId}::uuid, ${bookId}::uuid, 'shop_payment', ${`p1-${run}`}, 'lines', now() - interval '10 days'),
              (${storeId}::uuid, ${bookId}::uuid, 'shop_payment', ${`p2-${run}`}, 'lines', now())`);
+    // Bills (D492): one past its due day, one due within the week, one due later, and one past due but paid.
+    const [supplier] = await db().execute<Row>(sql`insert into commerce.suppliers (store_id, name) values (${storeId}::uuid, ${`Telenor ${run}`}) returning id`);
+    const bill = (due: string, paid: string | null) => sql`(${storeId}::uuid, ${bookId}::uuid, ${String(supplier.id)}::uuid, current_date - 20,
+      commerce.store_day(${storeId}::uuid, now()) + ${due}::int, 10000, 'NOK', 'phone', 25, 'Telenor', ${standing}::uuid, ${paid}::uuid,
+      case when ${paid}::uuid is null then null else current_date end)`;
+    await db().execute(sql`
+      insert into commerce.supplier_invoices (store_id, book_id, supplier_id, issued_on, due_on, total_minor, currency, kind, vat_rate, text, entry_id, paid_entry_id, paid_on)
+      values ${bill("-3", null)}, ${bill("3", null)}, ${bill("30", null)}, ${bill("-5", standing)}`);
     const view = await center.controlCenter(account, `center-${run}`);
-    expect(view.stores[0].books).toEqual({ differ: 1, waiting: 1 });
+    expect(view.stores[0].books).toEqual({ differ: 1, waiting: 1, billsOverdue: 1, billsDue: 1 });
     expect(attentionFor(view.stores).filter((i) => i.href.endsWith("/settings/books")).map((i) => i.text)).toEqual([
       "Kaffe: 1 document in the books differs from Tripletex.",
       "Kaffe: 1 document has waited more than a week to be posted to the books.",
+      "Kaffe: 1 bill is past its due date.",
+      "Kaffe: 1 bill falls due within a week.",
     ]);
   });
 

@@ -66,6 +66,18 @@ describe("the control center and the store's own books (D478)", () => {
     expect(texts({ books: { differ: 1, waiting: 0 } })).toEqual(["Kaffe: 1 document in the books differs from Tripletex. -> /admin/kaffe/settings/books [Open the books]"]);
   });
 
+  it("tells the owner of bills past their due date and bills falling due within the week (D492)", () => {
+    expect(texts({ books: { differ: 0, waiting: 0, billsOverdue: 2, billsDue: 1 } })).toEqual([
+      "Kaffe: 2 bills are past their due date. -> /admin/kaffe/settings/books [See the bills]",
+      "Kaffe: 1 bill falls due within a week. -> /admin/kaffe/settings/books [See the bills]",
+    ]);
+    expect(texts({ books: { differ: 0, waiting: 0, billsOverdue: 0, billsDue: 0 } })).toEqual([]);
+    expect(texts({ role: "admin", books: { differ: 0, waiting: 0, billsOverdue: 1 } })).toEqual([]);
+    expect(attentionFor([store({ books: { differ: 0, waiting: 0, billsOverdue: 1 } })], Date.now(), homeNb.attention).map((i) => i.text)).toEqual([
+      "Kaffe: 1 regning har passert forfallsdatoen.",
+    ]);
+  });
+
   it("says it only to the owner, in their language", () => {
     expect(texts({ role: "admin", books: { differ: 2, waiting: 1 } })).toEqual([]);
     expect(attentionFor([store({ books: { differ: 3, waiting: 0 } })], Date.now(), homeNb.attention).map((i) => i.text)).toEqual(["Kaffe: 3 bilag i regnskapet avviker fra Tripletex."]);

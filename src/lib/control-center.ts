@@ -102,9 +102,10 @@ export type StoreFigures = {
   reviewsWaiting?: number;
   /**
    * The store's own books (D478), only for its owner and only when some of their documents differ from Tripletex (an entry that stands, not
-   * one reversed) or have waited more than a week to be posted (a payment waiting for its payout is posted within days). Counts only.
+   * one reversed) or have waited more than a week to be posted (a payment waiting for its payout is posted within days), or when bills wait to
+   * be paid past their due day or within the week (D492, by the store's day). Counts only.
    */
-  books?: { differ: number; waiting: number };
+  books?: { differ: number; waiting: number; billsOverdue?: number; billsDue?: number };
 };
 
 /** Orders to hand over (D237): to be collected (and when the oldest was placed), and local deliveries not delivered yet. */
@@ -209,6 +210,13 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
     }
     if (owner && s.books && s.books.waiting > 0) {
       items.push({ text: count(s.books.waiting, w.booksWaiting), href: `${base}/settings/books`, action: a.openBooks });
+    }
+    // Bills to pay (D492): overdue first, then those falling due within the week.
+    if (owner && s.books && (s.books.billsOverdue ?? 0) > 0) {
+      items.push({ text: count(s.books.billsOverdue ?? 0, w.billsOverdue), href: `${base}/settings/books`, action: a.openBills });
+    }
+    if (owner && s.books && (s.books.billsDue ?? 0) > 0) {
+      items.push({ text: count(s.books.billsDue ?? 0, w.billsDue), href: `${base}/settings/books`, action: a.openBills });
     }
     if (returns && returns.requested > 0) {
       items.push({ text: count(returns.requested, w.returnRequests), href: `${base}/returns?status=requested`, action: a.answer });

@@ -236,13 +236,18 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         and ${EDIT_REFUND_OWED_SQL} > 0
       group by e.store_id
     `),
-    // The store's own books (D478): documents that differ from Tripletex while their entry stands, and documents waiting more than a week.
+    // The store's own books (D478): documents that differ from Tripletex while their entry stands, documents waiting more than a week, and
+    // bills overdue or falling due within the week (D492).
     ownerIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select b.store_id,
         (select count(*) from commerce.ledger_comparisons c
           join commerce.ledger_entries e on e.book_id = c.book_id and e.source_kind = c.source_kind and e.source_id = c.source_id and e.reverses is null
           where c.book_id = b.id and c.state <> 'agrees' and not exists (select 1 from commerce.ledger_entries r where r.reverses = e.id))::int as differ,
-        (select count(*) from commerce.ledger_waiting w where w.book_id = b.id and w.since < now() - interval '7 days')::int as waiting
+        (select count(*) from commerce.ledger_waiting w where w.book_id = b.id and w.since < now() - interval '7 days')::int as waiting,
+        (select count(*) from commerce.supplier_invoices i where i.store_id = b.store_id and i.book_id = b.id and i.paid_entry_id is null
+            and i.due_on < commerce.store_day(b.store_id, now()))::int as bills_overdue,
+        (select count(*) from commerce.supplier_invoices i where i.store_id = b.store_id and i.book_id = b.id and i.paid_entry_id is null
+            and i.due_on between commerce.store_day(b.store_id, now()) and commerce.store_day(b.store_id, now()) + 7)::int as bills_due
       from commerce.ledger_books b
       where b.store_id in (${idList(ownerIds)}) and b.closed_on is null
     `),
@@ -266,7 +271,12 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const reviewsBy = new Map(reviewRows.filter((r) => Number(r.waiting) > 0).map((r) => [String(r.store_id), Number(r.waiting)]));
   const termsBy = new Map(termsRows.filter((r) => Number(r.overdue) > 0).map((r) => [String(r.store_id), Number(r.overdue)]));
   const booksBy = new Map(
-    booksRows.filter((r) => Number(r.differ) > 0 || Number(r.waiting) > 0).map((r) => [String(r.store_id), { differ: Number(r.differ), waiting: Number(r.waiting) }]),
+    booksRows
+      .filter((r) => Number(r.differ) > 0 || Number(r.waiting) > 0 || Number(r.bills_overdue) > 0 || Number(r.bills_due) > 0)
+      .map((r) => [
+        String(r.store_id),
+        { differ: Number(r.differ), waiting: Number(r.waiting), billsOverdue: Number(r.bills_overdue), billsDue: Number(r.bills_due) },
+      ]),
   );
   // Limits of the plan used up (D314), where the member may read the plan; nothing is read for a store whose plan sets none.
   const limitsBy = new Map(await Promise.all([...billingIds].map(async (id) => [id, await limitsReachedCount(id).catch(() => 0)] as const)));

@@ -105,6 +105,8 @@ export const homeNb: HomeMessages = {
     },
     booksDiffer: { one: "{store}: {n} bilag i regnskapet avviker fra Tripletex.", many: "{store}: {n} bilag i regnskapet avviker fra Tripletex." },
     booksWaiting: { one: "{store}: {n} bilag har ventet mer enn en uke på å bli bokført.", many: "{store}: {n} bilag har ventet mer enn en uke på å bli bokført." },
+    billsOverdue: { one: "{store}: {n} regning har passert forfallsdatoen.", many: "{store}: {n} regninger har passert forfallsdatoen." },
+    billsDue: { one: "{store}: {n} regning forfaller innen en uke.", many: "{store}: {n} regninger forfaller innen en uke." },
     drafts: {
       one: "{store}: {n} utkast til bestilling venter på betaling{late}.",
       many: "{store}: {n} utkast til bestillinger venter på betaling{late}.",
@@ -159,6 +161,7 @@ export const homeNb: HomeMessages = {
     },
     actions: {
       openBooks: "Åpne regnskapet",
+      openBills: "Se regningene",
       open: "Åpne",
       finishSetup: "Fullfør oppsettet",
       openBilling: "Åpne abonnement og faktura",

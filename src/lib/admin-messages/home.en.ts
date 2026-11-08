@@ -110,6 +110,8 @@ export const homeEn = {
     },
     booksDiffer: { one: "{store}: {n} document in the books differs from Tripletex.", many: "{store}: {n} documents in the books differ from Tripletex." },
     booksWaiting: { one: "{store}: {n} document has waited more than a week to be posted to the books.", many: "{store}: {n} documents have waited more than a week to be posted to the books." },
+    billsOverdue: { one: "{store}: {n} bill is past its due date.", many: "{store}: {n} bills are past their due date." },
+    billsDue: { one: "{store}: {n} bill falls due within a week.", many: "{store}: {n} bills fall due within a week." },
     drafts: {
       one: "{store}: {n} draft order is waiting for payment{late}.",
       many: "{store}: {n} draft orders are waiting for payment{late}.",
@@ -161,6 +163,7 @@ export const homeEn = {
     },
     actions: {
       openBooks: "Open the books",
+      openBills: "See the bills",
       open: "Open",
       finishSetup: "Finish setup",
       openBilling: "Open billing",
