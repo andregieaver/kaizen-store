@@ -121,6 +121,7 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   ledger_vouchers: "record",
   suppliers: "record",
   supplier_invoices: "record",
+  recurring_costs: "record",
   bank_lines: "record",
   crm_move_links: "record",
   shop_move_items: "record",

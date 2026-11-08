@@ -5118,6 +5118,20 @@
       "when": 1794178062292,
       "tag": "20261108224742_supplier_invoices_reverse_charge",
       "breakpoints": true
+    },
+    {
+      "idx": 731,
+      "version": "7",
+      "when": 1794179563248,
+      "tag": "20261108231243_recurring_costs",
+      "breakpoints": true
+    },
+    {
+      "idx": 732,
+      "version": "7",
+      "when": 1794179597346,
+      "tag": "20261108231317_recurring_costs_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -18482,3 +18482,42 @@ export const supplierInvoices = commerce.table(
     check("supplier_invoices_paid", sql`(${t.paidEntryId} is null) = (${t.paidOn} is null)`),
   ],
 );
+
+/**
+ * A subscription a store pays again and again (D503): a licence or service such as Claude, Vercel or Supabase, kept as a register for the
+ * owner. The words its charge carries in the bank's statement (`match_text`) know its lines, which are then offered as its purchase with
+ * what it was and its VAT filled (bought abroad, D502, when `reverse_charge`); about what it costs (`amount_minor`, in the books' currency)
+ * and how often say what the subscriptions cost a month. Nothing here is posted: the charge is, with its receipt.
+ */
+export const recurringCosts = commerce.table(
+  "recurring_costs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    matchText: text("match_text").notNull(),
+    kind: text("kind").notNull(),
+    vatRate: integer("vat_rate").notNull(),
+    reverseCharge: boolean("reverse_charge").notNull().default(false),
+    every: text("every").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    startedOn: date("started_on").notNull(),
+    endedOn: date("ended_on"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("recurring_costs_store_id_key").on(t.storeId, t.id),
+    index("recurring_costs_store_idx").on(t.storeId),
+    index("recurring_costs_created_by_idx").on(t.createdBy),
+    check("recurring_costs_name", sql`char_length(trim(${t.name})) between 1 and 80`),
+    check("recurring_costs_match_text", sql`char_length(trim(${t.matchText})) between 3 and 60`),
+    check("recurring_costs_kind", sql`${t.kind} ~ '^[a-z_]{2,30}$'`),
+    check("recurring_costs_vat_rate", sql`${t.vatRate} in (0, 12, 15, 25) and (not ${t.reverseCharge} or ${t.vatRate} = 0)`),
+    check("recurring_costs_every", sql`${t.every} in ('month', 'year')`),
+    check("recurring_costs_amount", sql`${t.amountMinor} > 0`),
+    check("recurring_costs_days", sql`${t.endedOn} is null or ${t.endedOn} >= ${t.startedOn}`),
+  ],
+);

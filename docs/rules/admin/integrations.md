@@ -410,3 +410,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `commerce.supplier_invoices` changes only by its payment, once, and is never deleted.
   A bill is read by a model only through `readBill()` (`src/server/bill-reading.ts`, D493): a PDF's text framed by `billPrompt()` (cleaned
   line by line), a photo through `seeing()`, the answer read by `parseBillReading()` into the form's fields only, never posted by itself.
+
+## Subscriptions (D503, `src/lib/recurring-costs.ts`, `src/server/recurring-costs.ts`, `RecurringCostsCard`)
+
+- **Subscriptions (D503, `src/lib/recurring-costs.ts`, `src/server/recurring-costs.ts`, `RecurringCostsCard`)**: a store's
+  subscriptions are `commerce.recurring_costs`, the owner's own register on Settings → Books, written only by `saveRecurringCost()` and
+  `endRecurringCost()` (owners, audited); nothing in it is posted. A bank line is known as a subscription's charge only by `chargeOf()`
+  (its words as whole words, on a day it ran, the nearest usual amount), and is then offered as a purchase with what it was and its VAT
+  filled (bought abroad, D502), still posted only by `postPurchaseFromBank()` with its receipt. What the subscriptions cost and which are
+  late is only `recurringState()`; the charges offered to add are only `likelySubscriptions()` (three months or more, about once a month,
+  steady amounts, seen within six weeks), so a transfer made many times a month is never one. The register is never copied to another store.
+

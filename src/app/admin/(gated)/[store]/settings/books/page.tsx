@@ -18,16 +18,18 @@ import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { hasOpeningBalance } from "@/server/ledger-opening";
 import { BillFields, type BillFieldWords } from "@/components/admin/bill-fields";
 import { ReceiptFields, type ReceiptFieldWords } from "@/components/admin/receipt-fields";
+import { RecurringCostsCard } from "@/components/admin/recurring-costs";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
 import { invoiceOffers } from "@/server/bank-payments";
 import { vouchersOf } from "@/server/purchases";
 import { billOffers, unpaidBills } from "@/server/supplier-invoices";
+import { recurringView } from "@/server/recurring-costs";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 import { vatReturnOrgNumber } from "@/server/vat-return";
 
-import { addBillAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, reverseEntryAction, uploadBankStatementAction } from "./actions";
+import { addBillAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, recurringPressAction, reverseEntryAction, saveRecurringCostAction, uploadBankStatementAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -108,6 +110,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const offers = await invoiceOffers(store.id, book.id);
   // The bills waiting to be paid, and the bank lines that most likely pay them (D492).
   const [bills, billFor] = await Promise.all([unpaidBills(store.id, book.id), billOffers(store.id, book.id)]);
+  // The subscriptions (D503): the register, and the subscription each waiting bank line most likely is.
+  const recurring = await recurringView(store.id, book.id, today);
   // The vouchers of the journal's entries and of the bills, such as a purchase's receipt (D490), by entry.
   const vouchers = await vouchersOf(store.id, [...journal.map((e) => e.id), ...bills.map((b) => b.entryId)]);
   // The bill's fields' words, for the part of them that reads its file in the browser (D493).
@@ -123,6 +127,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
     vatUsual: w.bank.vatUsual,
     vatNone: w.bank.vatNone,
     vatAbroad: w.bank.vatAbroad,
+    vatAbroadNote: w.bank.vatAbroadNote,
     kinds: w.bank.kinds,
     more: w.bills.more,
     organisationNumber: w.bills.organisationNumber,
@@ -140,6 +145,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
     vatUsual: w.bank.vatUsual,
     vatNone: w.bank.vatNone,
     vatAbroad: w.bank.vatAbroad,
+    vatAbroadNote: w.bank.vatAbroadNote,
     words: w.bank.words,
     receiptFile: w.bank.receiptFile,
     kinds: w.bank.kinds,
@@ -210,6 +216,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                     const own = offer || billOffer ? null : bankOwnKind({ amountMinor: l.amountMinor, text: l.text });
                     const ownAccount = own ? BANK_OWN_ACCOUNTS[own] : null;
                     const ownName = ownAccount ? `${ownAccount} ${chart.find((a) => a.number === ownAccount)?.name ?? ""}`.trim() : "";
+                    const subscription = recurring.charges.get(l.id);
                     return (
                       <li key={l.id} className="flex flex-col gap-2 py-2">
                         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -254,15 +261,18 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                             </SubmitButton>
                           </div>
                         )}
-                        {/* A purchase: its receipt, what it was and its VAT, posted with one press (D490). */}
+                        {/* A purchase: its receipt, what it was and its VAT, posted with one press (D490); a subscription's filled (D503). */}
                         {!offer && !billOffer && !own && owner && l.amountMinor < 0 && (
-                          <details className="text-sm">
+                          <details className="text-sm" open={subscription !== undefined}>
                             <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{w.bank.receipt}</summary>
                             <div className="mt-2 flex flex-col gap-3">
-                              <p className="text-muted">{w.bank.receiptLead}</p>
+                              <p className="text-muted">{subscription ? fillWords(w.recurring.charge, { name: subscription.name }) : w.bank.receiptLead}</p>
                               <ReceiptFields
+                                key={subscription?.id ?? "none"}
                                 lineId={l.id}
-                                defaultText={l.text}
+                                defaultText={subscription?.name ?? l.text}
+                                defaultKind={subscription?.kind}
+                                defaultVat={subscription ? (subscription.abroad ? "abroad" : String(subscription.vatRate)) : undefined}
                                 bankMinor={l.amountMinor}
                                 currency={book.currency}
                                 locale={locale}
@@ -418,6 +428,19 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           )}
         </div>
       </Card>
+
+      {/* Subscriptions (D503): what is paid again and again, its charges known in the bank. */}
+      <RecurringCostsCard
+        view={recurring}
+        owner={owner}
+        currency={book.currency}
+        today={today}
+        words={w}
+        amount={amount}
+        day={day}
+        save={saveRecurringCostAction.bind(null, store.slug)}
+        press={recurringPressAction.bind(null, store.slug)}
+      />
 
       {waiting.length > 0 && (
         <Card title={w.waiting.title} aside={<Chip signal="warning">{waiting.length}</Chip>}>

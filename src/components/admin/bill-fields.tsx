@@ -21,6 +21,7 @@ export type BillFieldWords = {
   vatUsual: string;
   vatNone: string;
   vatAbroad: string;
+  vatAbroadNote: string;
   kinds: Record<string, string>;
   more: string;
   organisationNumber: string;
@@ -153,6 +154,7 @@ export function BillFields({
           </select>
         </label>
       </div>
+      {vat === "abroad" && <p className="text-muted">{words.vatAbroadNote}</p>}
       <details>
         <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{words.more}</summary>
         <div className="mt-2 flex flex-col gap-3">

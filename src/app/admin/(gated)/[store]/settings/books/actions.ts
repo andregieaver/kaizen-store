@@ -27,6 +27,8 @@ import type { PurchaseKind, PurchaseVatRate } from "@/lib/purchases";
 import { importBankStatement, STATEMENT_BYTES } from "@/server/bank-statements";
 import { checkOwnerRole } from "@/server/permissions";
 import { setVatTermSize } from "@/server/vat-return";
+import { recurringInputOf } from "@/lib/recurring-costs";
+import { endRecurringCost, recurringView, saveRecurringCost } from "@/server/recurring-costs";
 
 /**
  * Settings → Books (B2, D478): opening the store's books, posting an entry by hand, reversing one, and locking them through a day. Each
@@ -351,3 +353,79 @@ export async function setVatTermAction(storeSlug: string, _state: FormState, for
   refresh();
   return { status: "ok", messages: [w.vatReturn.saved] };
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * *Add a subscription* or *Save* one changed (D503): what it is, the words its charge carries in the bank's statement, what it was, its VAT
+ * (or bought abroad, D502), how often and about what it costs in the books' currency, from when. The form's fields are named alike; `id`
+ * says which one is changed.
+ */
+export async function saveRecurringCostAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const book = await openBookOf(member.store.id);
+  if (!book) return { status: "error", messages: [w.bills.problems.book] };
+  const id = String(form.get("id") ?? "");
+  if (id && !UUID.test(id)) return { status: "error", messages: [w.recurring.problems.not_found] };
+  const read = recurringInputOf(
+    {
+      name: form.get("name"),
+      matchText: form.get("matchText"),
+      kind: form.get("kind"),
+      vat: form.get("vat"),
+      every: form.get("every"),
+      amount: form.get("amount"),
+      startedOn: form.get("startedOn"),
+    },
+    book.currency,
+    bankAmount,
+  );
+  if (!read.ok) {
+    const fieldOf = { name: "name", words: "matchText", kind: "kind", vat: "vat", every: "every", amount: "amount", day: "startedOn" } as const;
+    return {
+      status: "error",
+      messages: read.problems.map((p) => w.recurring.problems[p]),
+      fields: Object.fromEntries(read.problems.map((p) => [fieldOf[p], w.recurring.problems[p]])),
+    };
+  }
+  const saved = await saveRecurringCost(member, read.input, book.currency, id || undefined);
+  if (!saved.ok) return { status: "error", messages: [w.recurring.problems[saved.problem]] };
+  refresh();
+  return { status: "ok", messages: [fillWords(id ? w.recurring.changed : w.recurring.added, { name: read.input.name })] };
+}
+
+/**
+ * *End it* (a subscription stopped, today) or *Add it* (a charge the statement shows coming back each month, D503): with one press, the
+ * button naming which (`end` the subscription's id, `likely` the charge's words). One added this way is a purchase of software with its
+ * usual VAT, every month, from its first charge; the owner changes what is not so.
+ */
+export async function recurringPressAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const today = todayIn(new Date(), member.store.timeZone);
+  const ended = form.get("end");
+  if (ended !== null) {
+    const id = String(ended);
+    if (!UUID.test(id)) return { status: "error", messages: [w.recurring.problems.not_found] };
+    const done = await endRecurringCost(member, id, today);
+    if (!done.ok) return { status: "error", messages: [w.recurring.problems[done.problem]] };
+    refresh();
+    return { status: "ok", messages: [w.recurring.endDone] };
+  }
+  const likely = form.get("likely");
+  if (likely === null) return { status: "error", messages: [w.recurring.problems.not_found] };
+  const book = await openBookOf(member.store.id);
+  if (!book) return { status: "error", messages: [w.bills.problems.book] };
+  // Only a charge the statement still offers: what a stale page sends is checked again.
+  const offered = (await recurringView(member.store.id, book.id, today)).likely.find((l) => l.matchText === String(likely));
+  if (!offered) return { status: "error", messages: [w.recurring.problems.not_found] };
+  const input = { name: offered.name, matchText: offered.matchText, kind: "software" as const, vatRate: PURCHASE_KINDS.software.vat, abroad: false, every: "month" as const, amountMinor: offered.amountMinor, startedOn: offered.firstDay };
+  const saved = await saveRecurringCost(member, input, book.currency);
+  if (!saved.ok) return { status: "error", messages: [w.recurring.problems[saved.problem]] };
+  refresh();
+  return { status: "ok", messages: [fillWords(w.recurring.added, { name: offered.name })] };
+}
+

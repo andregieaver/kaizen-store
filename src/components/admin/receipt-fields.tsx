@@ -15,6 +15,7 @@ export type ReceiptFieldWords = {
   vatUsual: string;
   vatNone: string;
   vatAbroad: string;
+  vatAbroadNote: string;
   words: string;
   receiptFile: string;
   kinds: Record<string, string>;
@@ -33,6 +34,8 @@ export type ReceiptFieldWords = {
 export function ReceiptFields({
   lineId,
   defaultText,
+  defaultKind = "office",
+  defaultVat = "usual",
   bankMinor,
   currency,
   locale,
@@ -41,14 +44,17 @@ export function ReceiptFields({
 }: {
   lineId: string;
   defaultText: string;
+  /** What it was and its VAT to start from: a subscription's (D503), else office supplies at their usual rate. */
+  defaultKind?: PurchaseKind;
+  defaultVat?: string;
   bankMinor: number;
   currency: string;
   locale: string;
   words: ReceiptFieldWords;
   read: (form: FormData) => Promise<ReceiptReadResult>;
 }) {
-  const [kind, setKind] = useState<string>("office");
-  const [vat, setVat] = useState<string>("usual");
+  const [kind, setKind] = useState<string>(defaultKind);
+  const [vat, setVat] = useState<string>(defaultVat);
   const [text, setText] = useState(defaultText);
   const [note, setNote] = useState<string | null>(null);
   const [reading, start] = useTransition();
@@ -116,6 +122,7 @@ export function ReceiptFields({
           </select>
         </label>
       </div>
+      {vat === "abroad" && <p className="text-muted">{words.vatAbroadNote}</p>}
       <label className="flex max-w-md flex-col gap-1 font-medium">
         {words.words}
         <input name={`text-${lineId}`} maxLength={200} value={text} onChange={(e) => setText(e.target.value)} className={field} />
