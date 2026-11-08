@@ -13,8 +13,8 @@ import { formatStoreDay } from "@/lib/return-time";
 import { ledgerAccounts, ledgerJournal, ledgerTrialBalance, ledgerVatByCode, ledgerWaiting, openBookOf } from "@/server/ledger";
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { hasOpeningBalance } from "@/server/ledger-opening";
+import { BillFields, type BillFieldWords } from "@/components/admin/bill-fields";
 import { ReceiptFields, type ReceiptFieldWords } from "@/components/admin/receipt-fields";
-import { PURCHASE_KINDS, PURCHASE_VAT_RATES, type PurchaseKind } from "@/lib/purchases";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
 import { invoiceOffers } from "@/server/bank-payments";
 import { vouchersOf } from "@/server/purchases";
@@ -23,7 +23,7 @@ import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 
-import { addBillAction, lockBooksAction, openBooksAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readReceiptAction, reverseEntryAction, uploadBankStatementAction } from "./actions";
+import { addBillAction, lockBooksAction, openBooksAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, reverseEntryAction, uploadBankStatementAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -105,6 +105,28 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const [bills, billFor] = await Promise.all([unpaidBills(store.id, book.id), billOffers(store.id, book.id)]);
   // The vouchers of the journal's entries and of the bills, such as a purchase's receipt (D490), by entry.
   const vouchers = await vouchersOf(store.id, [...journal.map((e) => e.id), ...bills.map((b) => b.entryId)]);
+  // The bill's fields' words, for the part of them that reads its file in the browser (D493).
+  const billWords: BillFieldWords = {
+    file: w.bills.file,
+    supplier: w.bills.supplier,
+    number: w.bills.number,
+    issuedOn: w.bills.issuedOn,
+    dueOn: w.bills.dueOn,
+    amount: w.bills.amount,
+    what: w.bank.what,
+    vatRate: w.bank.vatRate,
+    vatUsual: w.bank.vatUsual,
+    vatNone: w.bank.vatNone,
+    kinds: w.bank.kinds,
+    more: w.bills.more,
+    organisationNumber: w.bills.organisationNumber,
+    words: w.bank.words,
+    reading: w.bills.reading,
+    readFrom: w.bills.readFrom,
+    readBare: w.bills.readBare,
+    unread: w.bills.unread,
+    otherCurrency: w.bills.otherCurrency,
+  };
   // The receipt's fields' words, for the part of them that reads a photo in the browser (D491).
   const receiptWords: ReceiptFieldWords = {
     what: w.bank.what,
@@ -333,70 +355,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
             <details>
               <summary className="w-fit cursor-pointer font-medium underline underline-offset-2">{w.bills.add}</summary>
               <ActionForm action={addBillAction.bind(null, store.slug)} className="mt-3 flex flex-col gap-3">
-                <div className="flex flex-wrap gap-3">
-                  <label className="flex min-w-56 flex-1 flex-col gap-1 font-medium">
-                    {w.bills.supplier}
-                    <input name="supplier" required maxLength={120} className={field} />
-                  </label>
-                  <label className="flex w-48 flex-col gap-1 font-medium">
-                    {w.bills.number}
-                    <input name="number" maxLength={60} className={field} />
-                  </label>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <label className="flex w-44 flex-col gap-1 font-medium">
-                    {w.bills.issuedOn}
-                    <input type="date" name="issuedOn" required defaultValue={today} min={book.openedOn} className={field} />
-                  </label>
-                  <label className="flex w-44 flex-col gap-1 font-medium">
-                    {w.bills.dueOn}
-                    <input type="date" name="dueOn" className={field} />
-                  </label>
-                  <label className="flex w-56 flex-col gap-1 font-medium">
-                    {w.bills.amount}
-                    <input name="amount" required inputMode="decimal" className={field} />
-                  </label>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <label className="flex min-w-56 flex-1 flex-col gap-1 font-medium">
-                    {w.bank.what}
-                    <select name="kind" defaultValue="office" className={field}>
-                      {(Object.keys(PURCHASE_KINDS) as PurchaseKind[]).map((kind) => (
-                        <option key={kind} value={kind}>
-                          {w.bank.kinds[kind]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex w-44 flex-col gap-1 font-medium">
-                    {w.bank.vatRate}
-                    <select name="vat" defaultValue="usual" className={field}>
-                      <option value="usual">{w.bank.vatUsual}</option>
-                      {PURCHASE_VAT_RATES.map((rate) => (
-                        <option key={rate} value={rate}>
-                          {rate === 0 ? w.bank.vatNone : `${rate} %`}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <label className="flex max-w-md flex-col gap-1 font-medium">
-                  {w.bills.file}
-                  <input name="bill" type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/heic" className={`${field} py-2`} />
-                </label>
-                <details>
-                  <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{w.bills.more}</summary>
-                  <div className="mt-2 flex flex-col gap-3">
-                    <label className="flex max-w-md flex-col gap-1 font-medium">
-                      {w.bills.organisationNumber}
-                      <input name="organisationNumber" maxLength={30} className={field} />
-                    </label>
-                    <label className="flex max-w-md flex-col gap-1 font-medium">
-                      {w.bank.words}
-                      <input name="text" maxLength={200} className={field} />
-                    </label>
-                  </div>
-                </details>
+                <BillFields today={today} openedOn={book.openedOn} currency={book.currency} locale={locale} words={billWords} read={readBillAction.bind(null, store.slug)} />
                 <div>
                   <SubmitButton>{w.bills.save}</SubmitButton>
                 </div>

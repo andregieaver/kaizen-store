@@ -14,7 +14,7 @@ import { isPurchaseKind, PURCHASE_KINDS, type PurchaseKind, type PurchaseVatRate
 
 export { READABLE_RECEIPTS } from "./purchases";
 
-const KIND_WORDS: Record<PurchaseKind, string> = {
+export const KIND_WORDS: Record<PurchaseKind, string> = {
   goods: "goods bought to sell on",
   office: "office supplies",
   software: "software, apps and subscriptions",
@@ -66,7 +66,7 @@ export type ReceiptReading = {
 };
 
 /** A supplier's name as the model read it: one plain line, no text addressed to an AI, at most 80 characters; null when nothing is left. */
-function cleanName(value: string | null | undefined): string | null {
+export function cleanName(value: string | null | undefined): string | null {
   if (!value) return null;
   const cleaned = withoutInstructions(value);
   if (cleaned !== value) return null;

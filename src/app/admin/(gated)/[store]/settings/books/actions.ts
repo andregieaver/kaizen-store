@@ -18,6 +18,7 @@ import { isPurchaseKind, isPurchaseVatRate, PURCHASE_KINDS } from "@/lib/purchas
 import { payCertainInvoices, payInvoiceFromBank, postBankOwnLine } from "@/server/bank-payments";
 import { postPurchaseFromBank, purchaseLine, VOUCHER_BYTES } from "@/server/purchases";
 import { readReceipt } from "@/server/receipt-reading";
+import { readBill } from "@/server/bill-reading";
 import { addBill, payBillFromBank, payCertainBills } from "@/server/supplier-invoices";
 import { bankAmount } from "@/lib/bank-statement";
 import { receiptAgrees } from "@/lib/receipt-reading";
@@ -266,4 +267,47 @@ export async function addBillAction(storeSlug: string, _state: FormState, form: 
   }
   refresh();
   return { status: "ok", messages: [fillWords(w.bills.added, { supplier })] };
+}
+
+export type BillReadResult =
+  | {
+      ok: true;
+      supplier: string | null;
+      organisationNumber: string | null;
+      number: string | null;
+      issuedOn: string | null;
+      dueOn: string | null;
+      totalMinor: number | null;
+      kind: PurchaseKind | null;
+      vatRate: PurchaseVatRate | null;
+      /** The bill's own currency when it is not the books' (its amount is then not filled). */
+      otherCurrency: string | null;
+    }
+  | { ok: false; reason: "no_ai" | "not_readable" | "unread" | "refused" };
+
+/** A bill read by the store's model as the owner chooses its file (D493): its fields for the form to show. Nothing is kept or posted here. */
+export async function readBillAction(storeSlug: string, form: FormData): Promise<BillReadResult> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { ok: false, reason: "refused" };
+  const { member } = who;
+  const file = form.get("bill");
+  if (!(file instanceof File) || file.size === 0 || file.size > VOUCHER_BYTES) return { ok: false, reason: "not_readable" };
+  const book = await openBookOf(member.store.id);
+  if (!book) return { ok: false, reason: "refused" };
+  const read = await readBill(member.store.id, member.account.id, new Uint8Array(await file.arrayBuffer()), book.currency);
+  if (!read.ok) return read;
+  const r = read.reading;
+  const other = r.currency !== null && r.currency !== book.currency ? r.currency : null;
+  return {
+    ok: true,
+    supplier: r.supplier,
+    organisationNumber: r.organisationNumber,
+    number: r.number,
+    issuedOn: r.issuedOn,
+    dueOn: r.dueOn,
+    totalMinor: other ? null : r.totalMinor,
+    kind: r.kind,
+    vatRate: r.vatRate,
+    otherCurrency: other,
+  };
 }

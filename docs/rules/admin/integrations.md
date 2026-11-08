@@ -367,3 +367,5 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   A supplier's invoice (D492) is posted only through `addBill()` (`src/server/supplier-invoices.ts`: `entryOfBill()` against 2400, its file
   kept first as the voucher) and paid only through `payBillFromBank()` (`entryOfBillPayment()`: exactly its amount, against the bank);
   `commerce.supplier_invoices` changes only by its payment, once, and is never deleted.
+  A bill is read by a model only through `readBill()` (`src/server/bill-reading.ts`, D493): a PDF's text framed by `billPrompt()` (cleaned
+  line by line), a photo through `seeing()`, the answer read by `parseBillReading()` into the form's fields only, never posted by itself.

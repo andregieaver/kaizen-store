@@ -244,6 +244,11 @@ export const booksEn = {
     amount: "Amount to pay, VAT included",
     file: "The bill: a PDF or a photo, up to 3 MB",
     save: "Add the bill",
+    reading: "Reading the bill…",
+    readFrom: "Read from the bill: {details}. Check it, then add it.",
+    readBare: "The bill was read. Check it, then add it.",
+    unread: "The bill could not be read: fill it in yourself.",
+    otherCurrency: "The bill is in {currency}: write what it costs in {books}.",
     more: "More: organisation number, own words",
     added: "The bill from {supplier} is posted. It waits here until the bank shows it paid.",
     problems: {

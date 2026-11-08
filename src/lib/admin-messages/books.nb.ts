@@ -240,6 +240,11 @@ export const booksNb: BooksMessages = {
     amount: "Beløp å betale, med mva",
     file: "Regningen: en PDF eller et bilde, inntil 3 MB",
     save: "Legg til regningen",
+    reading: "Leser regningen …",
+    readFrom: "Lest fra regningen: {details}. Sjekk den, og legg den til.",
+    readBare: "Regningen er lest. Sjekk den, og legg den til.",
+    unread: "Regningen kunne ikke leses: fyll den inn selv.",
+    otherCurrency: "Regningen er i {currency}: skriv hva den koster i {books}.",
     more: "Mer: organisasjonsnummer, egne ord",
     added: "Regningen fra {supplier} er ført. Den venter her til banken viser den betalt.",
     problems: {
