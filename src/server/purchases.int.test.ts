@@ -46,8 +46,8 @@ function memoryBucket(): DocumentStorage & { files: Map<string, Uint8Array> } {
   };
 }
 
-async function booksWithStatement(): Promise<{ storeId: string; bookId: string; member: Membership; lineId: string }> {
-  const name = `buy-${run}`;
+async function booksWithStatement(tag = "buy"): Promise<{ storeId: string; bookId: string; member: Membership; lineId: string }> {
+  const name = `${tag}-${run}`;
   const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${name}@example.com`}, 'W', 'Kjøp') returning id`);
   await db().execute(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${name}, 'Kjøp', null)`);
   const [owner] = await db().execute<Row>(sql`select id from commerce.accounts where email = ${`${name}@example.com`}`);
@@ -63,13 +63,13 @@ async function booksWithStatement(): Promise<{ storeId: string; bookId: string; 
   const member = { account: { id: String(owner.id) }, store: { id: storeId } } as unknown as Membership;
   const camt = `<?xml version="1.0" encoding="UTF-8"?><Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><BkToCstmrStmt><Stmt>
     <Acct><Id><IBAN>NO9386011117947</IBAN></Id><Ccy>NOK</Ccy></Acct>
-    <Ntry><Amt Ccy="NOK">1000.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><Sts>BOOK</Sts><BookgDt><Dt>2027-01-25</Dt></BookgDt><AcctSvcrRef>${run}-buy</AcctSvcrRef>
+    <Ntry><Amt Ccy="NOK">1000.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><Sts>BOOK</Sts><BookgDt><Dt>2027-01-25</Dt></BookgDt><AcctSvcrRef>${run}-${tag}</AcctSvcrRef>
       <AddtlNtryInf>Varekjøp Kontorbutikken</AddtlNtryInf></Ntry>
-    <Ntry><Amt Ccy="NOK">500.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Sts>BOOK</Sts><BookgDt><Dt>2027-01-26</Dt></BookgDt><AcctSvcrRef>${run}-in</AcctSvcrRef>
+    <Ntry><Amt Ccy="NOK">500.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Sts>BOOK</Sts><BookgDt><Dt>2027-01-26</Dt></BookgDt><AcctSvcrRef>${run}-${tag}-in</AcctSvcrRef>
       <AddtlNtryInf>Innbetaling</AddtlNtryInf></Ntry>
   </Stmt></BkToCstmrStmt></Document>`;
   expect(await importBankStatement(member, { name: "konto.xml", bytes: new TextEncoder().encode(camt) })).toMatchObject({ ok: true, newLines: 2 });
-  const [line] = await db().execute<Row>(sql`select id from commerce.bank_lines where book_id = ${bookId}::uuid and line_key = ${`ref:${run}-buy`}`);
+  const [line] = await db().execute<Row>(sql`select id from commerce.bank_lines where book_id = ${bookId}::uuid and line_key = ${`ref:${run}-${tag}`}`);
   return { storeId, bookId, member, lineId: String(line.id) };
 }
 
@@ -117,10 +117,29 @@ describe("a purchase posted from the bank with its receipt (B3, D490)", () => {
 
     // Pressed again, the line is matched; money in is no purchase.
     expect(await postPurchaseFromBank(member, lineId, { kind: "office", vatRate: 25 }, { name: "k.pdf", bytes: PDF }, { storage: bucket })).toEqual({ ok: false, problem: "line" });
-    const [moneyIn] = await db().execute<Row>(sql`select id from commerce.bank_lines where book_id = ${bookId}::uuid and line_key = ${`ref:${run}-in`}`);
+    const [moneyIn] = await db().execute<Row>(sql`select id from commerce.bank_lines where book_id = ${bookId}::uuid and line_key = ${`ref:${run}-buy-in`}`);
     expect(await postPurchaseFromBank(member, String(moneyIn.id), { kind: "office", vatRate: 25 }, { name: "k.pdf", bytes: PDF }, { storage: bucket })).toEqual({ ok: false, problem: "line" });
     expect(bucket.files.size).toBe(1);
     const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action = 'work.purchase_posted'`);
     expect(audited.n).toBe(1);
+  });
+
+  it("posts a service bought from abroad with its VAT reckoned, due and deducted on code 86 (D502)", async () => {
+    const { bookId, member, lineId } = await booksWithStatement("abroad");
+    const bucket = memoryBucket();
+    const posted = await postPurchaseFromBank(member, lineId, { kind: "software", vatRate: 0, abroad: true, text: "Claude Max" }, { name: "anthropic.pdf", bytes: PDF }, { storage: bucket });
+    expect(posted).toMatchObject({ ok: true, account: 6553 });
+    if (!posted.ok) return;
+    const lines = await db().execute<Row>(sql`
+      select l.account, l.amount_minor::int as amount, l.vat_code from commerce.ledger_lines l where l.entry_id = ${posted.entryId}::uuid order by l.line`);
+    expect(lines.map((l) => [l.account, l.amount, l.vat_code])).toEqual([
+      [6553, 100_000, "86"],
+      [2714, 25_000, "86"],
+      [2704, -25_000, "86"],
+      [1920, -100_000, null],
+    ]);
+    // The reverse charge's accounts were added from the standard chart.
+    const chart = await db().execute<Row>(sql`select number from commerce.ledger_accounts where book_id = ${bookId}::uuid and number in (2704, 2714, 6553) order by number`);
+    expect(chart.map((a) => a.number)).toEqual([2704, 2714, 6553]);
   });
 });

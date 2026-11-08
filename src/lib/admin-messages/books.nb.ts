@@ -253,6 +253,7 @@ export const booksNb: BooksMessages = {
     what: "Hva det var",
     vatRate: "Mva",
     vatNone: "Ingen mva",
+    vatAbroad: "Kjøpt fra utlandet (ingen norsk mva: omvendt avgiftsplikt)",
     vatUsual: "Som vanlig for dette",
     words: "Med egne ord (valgfritt)",
     receiptFile: "Kvittering: et bilde eller en PDF, inntil 3 MB",

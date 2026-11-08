@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { entryProblems, isVatCode, standardAccount } from "./ledger";
-import { entryOfPurchase, INPUT_VAT, PURCHASE_KINDS, vatInside, voucherTypeOf } from "./purchases";
+import { entryProblems, isVatCode, standardAccount, vatByCode } from "./ledger";
+import { boughtAbroad, entryOfPurchase, INPUT_VAT, PURCHASE_KINDS, purchaseAccounts, REVERSE_CHARGE, vatInside, voucherTypeOf } from "./purchases";
+import { entryOfBill } from "./supplier-invoices";
+import { vatReturnOf } from "./vat-return";
 
 const line = { id: "l1", day: "2027-01-25", amountMinor: -100_000, text: "Varekjøp Kontorbutikken" };
 
@@ -67,5 +69,82 @@ describe("a purchase posted from the bank with its receipt (B3, D490)", () => {
     expect(voucherTypeOf(bytes(0, 0, 0, 24, "ftypheic"))).toEqual({ contentType: "image/heic", ext: "heic" });
     expect(voucherTypeOf(bytes("<html>"))).toBeNull();
     expect(voucherTypeOf(bytes("GIF89a"))).toBeNull();
+  });
+});
+
+describe("a service bought from abroad, its VAT reckoned by the store (D502)", () => {
+  const claude = { id: "l2", day: "2026-03-04", amountMinor: -21_437, text: "ANTHROPIC CLAUDE.AI SUBSCRIPTION" };
+
+  it("names standard codes and accounts", () => {
+    expect(isVatCode(REVERSE_CHARGE.deductible)).toBe(true);
+    expect(isVatCode(REVERSE_CHARGE.notDeductible)).toBe(true);
+    expect(standardAccount(String(REVERSE_CHARGE.due))).toBeTruthy();
+    expect(standardAccount(String(REVERSE_CHARGE.deducted))).toBeTruthy();
+  });
+
+  it("posts all of what was paid as cost, and 25 % of it as VAT due and deducted on code 86, netting to nought", () => {
+    const entry = entryOfPurchase(claude, { kind: "software", vatRate: 25, abroad: true })!;
+    expect(entry.lines).toEqual([
+      { account: 6553, amountMinor: 21_437, vatCode: "86" },
+      { account: 2714, amountMinor: 5_359, vatCode: "86" },
+      { account: 2704, amountMinor: -5_359, vatCode: "86" },
+      { account: 1920, amountMinor: -21_437, vatCode: null },
+    ]);
+    expect(entryProblems(entry)).toEqual([]);
+    // The VAT chosen on the form does not matter: the store reckons it at 25 %.
+    expect(entryOfPurchase(claude, { kind: "software", vatRate: 0, abroad: true })!.lines).toEqual(entry.lines);
+    expect(purchaseAccounts("software", 0, true)).toEqual([6553, 2704, 2714]);
+    expect(purchaseAccounts("software", 25)).toEqual([6553, 2710]);
+    expect(purchaseAccounts("insurance", 0)).toEqual([7500]);
+  });
+
+  it("owes the VAT on entertainment from abroad and keeps it as a cost (code 87)", () => {
+    const entry = entryOfPurchase({ ...claude, amountMinor: -40_000 }, { kind: "meals", vatRate: 0, abroad: true })!;
+    expect(entry.lines).toEqual([
+      { account: 7350, amountMinor: 40_000, vatCode: "87" },
+      { account: 7350, amountMinor: 10_000, vatCode: null },
+      { account: 2704, amountMinor: -10_000, vatCode: "87" },
+      { account: 1920, amountMinor: -40_000, vatCode: null },
+    ]);
+    expect(entryProblems(entry)).toEqual([]);
+    expect(purchaseAccounts("meals", 25, true)).toEqual([7350, 2704]);
+  });
+
+  it("does the same for a bill, against what the store owes", () => {
+    const entry = entryOfBill({ id: "b1", day: "2026-03-01", totalMinor: 250_000, kind: "software", vatRate: 25, abroad: true, text: "Vercel Inc., faktura 123" });
+    expect(entry.lines).toEqual([
+      { account: 6553, amountMinor: 250_000, vatCode: "86" },
+      { account: 2714, amountMinor: 62_500, vatCode: "86" },
+      { account: 2704, amountMinor: -62_500, vatCode: "86" },
+      { account: 2400, amountMinor: -250_000, vatCode: null },
+    ]);
+  });
+
+  it("stands on the VAT return as a base with VAT due and the same deducted, and on code 87 as VAT due alone", () => {
+    const lines = [
+      ...entryOfPurchase(claude, { kind: "software", vatRate: 25, abroad: true })!.lines,
+      ...entryOfBill({ id: "b1", day: "2026-03-01", totalMinor: 250_000, kind: "software", vatRate: 25, abroad: true, text: "Vercel" }).lines,
+      ...entryOfPurchase({ ...claude, amountMinor: -40_000 }, { kind: "meals", vatRate: 0, abroad: true })!.lines,
+    ];
+    const rows = vatByCode(lines.filter((l) => l.vatCode).map((l) => ({ account: l.account, vatCode: l.vatCode!, amountMinor: l.amountMinor })));
+    expect(rows).toEqual([
+      { code: "86", base: -271_437, vat: 0 },
+      { code: "87", base: -40_000, vat: 10_000 },
+    ]);
+    const vatReturn = vatReturnOf(rows);
+    expect(vatReturn.lines).toEqual([
+      { code: "86", side: "due", base: 271_437, rate: 25, vat: 67_859 },
+      { code: "86", side: "deducted", base: null, rate: null, vat: -67_859 },
+      { code: "87", side: "due", base: 40_000, rate: 25, vat: 10_000 },
+    ]);
+    expect(vatReturn.total).toBe(10_000);
+  });
+
+  it("guesses abroad for a reading in another currency than the books' with no VAT on it", () => {
+    expect(boughtAbroad({ currency: "USD", vatRate: 0 }, "NOK")).toBe(true);
+    expect(boughtAbroad({ currency: "EUR", vatRate: null }, "NOK")).toBe(true);
+    expect(boughtAbroad({ currency: "USD", vatRate: 25 }, "NOK")).toBe(false);
+    expect(boughtAbroad({ currency: "NOK", vatRate: 0 }, "NOK")).toBe(false);
+    expect(boughtAbroad({ currency: null, vatRate: 0 }, "NOK")).toBe(false);
   });
 });

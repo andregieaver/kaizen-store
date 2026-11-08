@@ -18451,6 +18451,8 @@ export const supplierInvoices = commerce.table(
     currency: char("currency", { length: 3 }).notNull(),
     kind: text("kind").notNull(),
     vatRate: integer("vat_rate").notNull(),
+    /** A service bought from abroad: no Norwegian VAT on the bill, the store reckons it (reverse charge, code 86; D502). */
+    reverseCharge: boolean("reverse_charge").notNull().default(false),
     text: text("text").notNull(),
     entryId: uuid("entry_id").notNull(),
     paidEntryId: uuid("paid_entry_id"),

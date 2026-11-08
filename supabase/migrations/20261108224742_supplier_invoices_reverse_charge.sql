@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."supplier_invoices" ADD COLUMN "reverse_charge" boolean DEFAULT false NOT NULL;

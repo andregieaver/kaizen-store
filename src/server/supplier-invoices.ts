@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import type { InvoiceMatchKind } from "@/lib/bank-invoices";
-import { INPUT_VAT, PURCHASE_KINDS, vatRateOf, voucherTypeOf, type PurchaseKind, type PurchaseVatRate } from "@/lib/purchases";
+import { purchaseAccounts, vatRateOf, voucherTypeOf, type PurchaseKind, type PurchaseVatRate } from "@/lib/purchases";
 import { entryOfBill, entryOfBillPayment, matchBills, PAYABLE_ACCOUNT } from "@/lib/supplier-invoices";
 
 import { audit, type Membership } from "./auth";
@@ -35,6 +35,8 @@ export type BillInput = {
   totalMinor: number;
   kind: PurchaseKind;
   vatRate: PurchaseVatRate;
+  /** A service bought from abroad: its VAT reckoned by the store (D502). */
+  abroad?: boolean;
   text?: string | null;
 };
 
@@ -87,9 +89,10 @@ export async function addBill(
 
   const billId = randomUUID();
   const text = (input.text?.trim() || `${name}${number ? `, faktura ${number}` : ""}`).slice(0, 200);
-  const entry = entryOfBill({ id: billId, day: issuedOn, totalMinor: input.totalMinor, kind: input.kind, vatRate: input.vatRate, text });
-  const rate = vatRateOf(input.kind, input.vatRate);
-  const needed = [PURCHASE_KINDS[input.kind].account, PAYABLE_ACCOUNT, ...(rate === 0 ? [] : [INPUT_VAT[rate].account])];
+  const abroad = input.abroad ?? false;
+  const entry = entryOfBill({ id: billId, day: issuedOn, totalMinor: input.totalMinor, kind: input.kind, vatRate: input.vatRate, abroad, text });
+  const rate = abroad ? 0 : vatRateOf(input.kind, input.vatRate);
+  const needed = [...purchaseAccounts(input.kind, input.vatRate, abroad), PAYABLE_ACCOUNT];
   const have = new Set((await ledgerAccounts(book.id)).map((a) => a.number));
   for (const n of needed) if (!have.has(n)) await addLedgerAccount(storeId, book.id, { number: n });
 
@@ -107,15 +110,15 @@ export async function addBill(
   const fileName = file.name.trim().replace(/[\u0000-\u001f]/g, "").slice(0, 200) || `faktura.${type.ext}`;
   await db().transaction(async (tx) => {
     await tx.execute(sql`
-      insert into commerce.supplier_invoices (id, store_id, book_id, supplier_id, number, issued_on, due_on, total_minor, currency, kind, vat_rate, text, entry_id, created_by)
+      insert into commerce.supplier_invoices (id, store_id, book_id, supplier_id, number, issued_on, due_on, total_minor, currency, kind, vat_rate, reverse_charge, text, entry_id, created_by)
       values (${billId}::uuid, ${storeId}::uuid, ${book.id}::uuid, ${supplier.id}::uuid, ${number}, ${issuedOn}::date, ${dueOn}::date, ${input.totalMinor}, ${book.currency},
-              ${input.kind}, ${rate}, ${text}, ${posted.id}::uuid, ${member.account.id}::uuid)`);
+              ${input.kind}, ${rate}, ${abroad}, ${text}, ${posted.id}::uuid, ${member.account.id}::uuid)`);
     await tx.execute(sql`
       insert into commerce.ledger_vouchers (id, store_id, book_id, entry_id, file_path, file_name, content_type, size_bytes, sha256, uploaded_by)
       values (${voucherId}::uuid, ${storeId}::uuid, ${book.id}::uuid, ${posted.id}::uuid, ${path}, ${fileName}, ${type.contentType}, ${file.bytes.length},
               ${createHash("sha256").update(file.bytes).digest("hex")}, ${member.account.id}::uuid)`);
   });
-  await audit(member.account.id, storeId, "work.supplier_invoice_added", { billId, entryId: posted.id, supplierId: supplier.id, totalMinor: input.totalMinor });
+  await audit(member.account.id, storeId, "work.supplier_invoice_added", { billId, entryId: posted.id, supplierId: supplier.id, totalMinor: input.totalMinor, abroad });
   return { ok: true, billId, entryId: posted.id };
 }
 

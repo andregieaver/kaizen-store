@@ -5111,6 +5111,13 @@
       "when": 1794173191326,
       "tag": "20261108212631_work_invoice_loss_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 730,
+      "version": "7",
+      "when": 1794178062292,
+      "tag": "20261108224742_supplier_invoices_reverse_charge",
+      "breakpoints": true
     }
   ]
 }

@@ -15,7 +15,8 @@ export const PAYABLE_ACCOUNT = 2400;
 /** The bank's account a bill is paid from. */
 const BANK = 1920;
 
-export type BillFacts = { id: string; day: string; totalMinor: number; kind: PurchaseKind; vatRate: PurchaseVatRate; text: string };
+/** A bill: `abroad` for a service bought from abroad, its VAT reckoned by the store (D502). */
+export type BillFacts = { id: string; day: string; totalMinor: number; kind: PurchaseKind; vatRate: PurchaseVatRate; abroad?: boolean; text: string };
 
 /** The entry a bill makes when it comes. */
 export function entryOfBill(bill: BillFacts): LedgerEntryInput {
@@ -24,7 +25,7 @@ export function entryOfBill(bill: BillFacts): LedgerEntryInput {
     date: bill.day,
     text: bill.text.trim().slice(0, 200) || "Leverandørfaktura",
     source: { kind: "supplier_invoice", id: bill.id },
-    lines: [...costLinesOf(bill.totalMinor, bill.kind, bill.vatRate), { account: PAYABLE_ACCOUNT, amountMinor: -bill.totalMinor, vatCode: null }],
+    lines: [...costLinesOf(bill.totalMinor, bill.kind, bill.vatRate, bill.abroad ?? false), { account: PAYABLE_ACCOUNT, amountMinor: -bill.totalMinor, vatCode: null }],
   };
 }
 

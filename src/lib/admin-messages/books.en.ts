@@ -257,6 +257,7 @@ export const booksEn = {
     what: "What it was",
     vatRate: "VAT",
     vatNone: "No VAT",
+    vatAbroad: "Bought abroad (no Norwegian VAT: reverse charge)",
     vatUsual: "As usual for it",
     words: "In your own words (optional)",
     receiptFile: "Receipt: a photo or a PDF, up to 3 MB",

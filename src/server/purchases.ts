@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { entryOfPurchase, INPUT_VAT, PURCHASE_KINDS, vatRateOf, voucherTypeOf, type PurchaseKind, type PurchaseVatRate } from "@/lib/purchases";
+import { entryOfPurchase, PURCHASE_KINDS, purchaseAccounts, vatRateOf, voucherTypeOf, type PurchaseKind, type PurchaseVatRate } from "@/lib/purchases";
 
 import { audit, type Membership } from "./auth";
 import { BANK_ACCOUNT } from "./bank-statements";
@@ -30,7 +30,7 @@ export type PurchaseProblem = "line" | "file" | "type" | "too_big" | "storage" |
 export async function postPurchaseFromBank(
   member: Membership,
   lineId: string,
-  input: { kind: PurchaseKind; vatRate: PurchaseVatRate; text?: string | null },
+  input: { kind: PurchaseKind; vatRate: PurchaseVatRate; abroad?: boolean; text?: string | null },
   file: { name: string; bytes: Uint8Array },
   deps: { storage?: DocumentStorage | null } = {},
 ): Promise<{ ok: true; entryId: string; voucherId: string; account: number } | { ok: false; problem: PurchaseProblem }> {
@@ -50,8 +50,9 @@ export async function postPurchaseFromBank(
   const entry = entryOfPurchase({ id: line.id, day: line.day, amountMinor: line.amount_minor, text: line.text }, input);
   if (!entry) return { ok: false, problem: "line" };
   // The accounts it posts to, added to the chart when the book has not got them.
-  const rate = vatRateOf(input.kind, input.vatRate);
-  const needed = [PURCHASE_KINDS[input.kind].account, ...(rate === 0 ? [] : [INPUT_VAT[rate].account])];
+  const abroad = input.abroad ?? false;
+  const rate = abroad ? 0 : vatRateOf(input.kind, input.vatRate);
+  const needed = purchaseAccounts(input.kind, input.vatRate, abroad);
   const have = new Set((await ledgerAccounts(line.book_id)).map((a) => a.number));
   for (const number of needed) if (!have.has(number)) await addLedgerAccount(storeId, line.book_id, { number });
 
@@ -78,7 +79,7 @@ export async function postPurchaseFromBank(
   } catch (error) {
     log("info", "bank.purchase_match_taken", { storeId, lineId }, error);
   }
-  await audit(member.account.id, storeId, "work.purchase_posted", { lineId, entryId: posted.id, voucherId, kind: input.kind, vatRate: rate });
+  await audit(member.account.id, storeId, "work.purchase_posted", { lineId, entryId: posted.id, voucherId, kind: input.kind, vatRate: rate, abroad });
   return { ok: true, entryId: posted.id, voucherId, account: PURCHASE_KINDS[input.kind].account };
 }
 

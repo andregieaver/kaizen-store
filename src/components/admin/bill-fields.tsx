@@ -20,6 +20,7 @@ export type BillFieldWords = {
   vatRate: string;
   vatUsual: string;
   vatNone: string;
+  vatAbroad: string;
   kinds: Record<string, string>;
   more: string;
   organisationNumber: string;
@@ -81,7 +82,8 @@ export function BillFields({
       if (r.dueOn) setDueOn(r.dueOn);
       if (r.totalMinor !== null) setAmount((r.totalMinor / 100).toFixed(2));
       if (r.kind) setKind(r.kind);
-      if (r.vatRate !== null) setVat(String(r.vatRate));
+      if (r.abroad) setVat("abroad");
+      else if (r.vatRate !== null) setVat(String(r.vatRate));
       if (r.organisationNumber) setOrg(r.organisationNumber);
       if (r.otherCurrency) {
         setNote(fillWords(words.otherCurrency, { currency: r.otherCurrency, books: currency }));
@@ -147,6 +149,7 @@ export function BillFields({
                 {rate === 0 ? words.vatNone : `${rate} %`}
               </option>
             ))}
+            <option value="abroad">{words.vatAbroad}</option>
           </select>
         </label>
       </div>

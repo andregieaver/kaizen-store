@@ -399,6 +399,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   worked out in code, SAF-T's input codes, never VAT back on entertainment) with its receipt kept first as the entry's voucher
   (`commerce.ledger_vouchers`, the private `documents` bucket, type by the file's first bytes, never changed or deleted); nothing is posted
   without a place to keep it. A voucher is read only through `readVoucher()`, for a member who may read the books.
+  A service bought from abroad (D502, *Bought abroad*) is posted only by `reverseChargeLines()`: what was paid, in kroner from the
+  bank, is all cost, and 25 % of it VAT due (2704) and deducted (2714) on code 86 (entertainment: code 87, the VAT kept as cost); never
+  as a domestic purchase with input VAT, and a bill from abroad the same against 2400 (`supplier_invoices.reverse_charge`).
   A receipt is read by a model only through `readReceipt()` (`src/server/receipt-reading.ts`, D491) with the prompt `receiptPrompt()`
   writes and the answer `parseReceiptReading()` reads: it only fills the form's choices for the owner to post, and nothing it read is
   posted (the amount is the bank's, the VAT worked out in code).

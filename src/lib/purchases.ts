@@ -41,6 +41,14 @@ export const INPUT_VAT: Record<Exclude<PurchaseVatRate, 0>, { code: string; acco
 /** The bank's account a purchase is paid from. */
 const BANK = 1920;
 
+/**
+ * A service bought from abroad (D502): Claude, Vercel, Supabase and the like invoice without Norwegian VAT, and a business registered for
+ * VAT reckons it itself (*omvendt avgiftsplikt*, Norway's VAT act § 11-3): 25 % of what was paid as VAT due (code 86, on 2704) and, where it
+ * may be deducted, the same back as input VAT (on 2714), so it nets to nought but stands on the VAT return. A kind whose VAT is never
+ * deducted (entertainment) owes the VAT and keeps it as a cost (code 87).
+ */
+export const REVERSE_CHARGE = { rate: 25, deductible: "86", notDeductible: "87", due: 2704, deducted: 2714 } as const;
+
 export const isPurchaseKind = (value: unknown): value is PurchaseKind => typeof value === "string" && Object.hasOwn(PURCHASE_KINDS, value);
 export const isPurchaseVatRate = (value: unknown): value is PurchaseVatRate => PURCHASE_VAT_RATES.includes(Number(value) as PurchaseVatRate);
 
@@ -58,8 +66,12 @@ export const vatRateOf = (kind: PurchaseKind, rate: PurchaseVatRate): PurchaseVa
  * The entry of a purchase paid from the bank (money out, a negative amount): its cost account without VAT and the deductible VAT on its
  * account, both with the VAT code, against the bank, in the bank's series on the bank's day, posted once for the line. Null for money in.
  */
-/** A purchase's cost lines for an amount with VAT: the cost without VAT and the deductible VAT apart, both with the VAT code (debits). */
-export function costLinesOf(grossMinor: number, kind: PurchaseKind, vatRate: PurchaseVatRate): LedgerEntryInput["lines"] {
+/**
+ * A purchase's cost lines for an amount with VAT: the cost without VAT and the deductible VAT apart, both with the VAT code (debits). Bought
+ * from abroad (`abroad`), the amount is all cost and the VAT is reckoned on it, due and deducted (D502).
+ */
+export function costLinesOf(grossMinor: number, kind: PurchaseKind, vatRate: PurchaseVatRate, abroad = false): LedgerEntryInput["lines"] {
+  if (abroad) return reverseChargeLines(grossMinor, kind);
   const rate = vatRateOf(kind, vatRate);
   const vat = vatInside(grossMinor, rate);
   const cost = PURCHASE_KINDS[kind].account;
@@ -71,9 +83,39 @@ export function costLinesOf(grossMinor: number, kind: PurchaseKind, vatRate: Pur
       ];
 }
 
+/** A service bought from abroad: all of what was paid is cost, and 25 % of it is VAT due and, where it may be, deducted (D502). */
+export function reverseChargeLines(costMinor: number, kind: PurchaseKind): LedgerEntryInput["lines"] {
+  const cost = PURCHASE_KINDS[kind].account;
+  const vat = Math.round((Math.abs(costMinor) * REVERSE_CHARGE.rate) / 100) * Math.sign(costMinor);
+  if (vat === 0) return [{ account: cost, amountMinor: costMinor, vatCode: null }];
+  if (NO_VAT_BACK.has(kind)) {
+    return [
+      { account: cost, amountMinor: costMinor, vatCode: REVERSE_CHARGE.notDeductible },
+      { account: cost, amountMinor: vat, vatCode: null },
+      { account: REVERSE_CHARGE.due, amountMinor: -vat, vatCode: REVERSE_CHARGE.notDeductible },
+    ];
+  }
+  return [
+    { account: cost, amountMinor: costMinor, vatCode: REVERSE_CHARGE.deductible },
+    { account: REVERSE_CHARGE.deducted, amountMinor: vat, vatCode: REVERSE_CHARGE.deductible },
+    { account: REVERSE_CHARGE.due, amountMinor: -vat, vatCode: REVERSE_CHARGE.deductible },
+  ];
+}
+
+/** The accounts a purchase posts to, for the chart to have them. */
+export function purchaseAccounts(kind: PurchaseKind, vatRate: PurchaseVatRate, abroad = false): number[] {
+  const rate = vatRateOf(kind, vatRate);
+  if (abroad) return [PURCHASE_KINDS[kind].account, REVERSE_CHARGE.due, ...(NO_VAT_BACK.has(kind) ? [] : [REVERSE_CHARGE.deducted])];
+  return [PURCHASE_KINDS[kind].account, ...(rate === 0 ? [] : [INPUT_VAT[rate].account])];
+}
+
+/** Whether a receipt or bill read is most likely a service bought from abroad: in another currency than the books', with no VAT on it. */
+export const boughtAbroad = (reading: { currency: string | null; vatRate: PurchaseVatRate | null }, bookCurrency: string): boolean =>
+  reading.currency !== null && reading.currency !== bookCurrency && (reading.vatRate === 0 || reading.vatRate === null);
+
 export function entryOfPurchase(
   line: { id: string; day: string; amountMinor: number; text: string },
-  input: { kind: PurchaseKind; vatRate: PurchaseVatRate; text?: string | null },
+  input: { kind: PurchaseKind; vatRate: PurchaseVatRate; abroad?: boolean; text?: string | null },
 ): LedgerEntryInput | null {
   if (line.amountMinor >= 0) return null;
   const paid = -line.amountMinor;
@@ -83,7 +125,7 @@ export function entryOfPurchase(
     date: line.day,
     text,
     source: { kind: "bank_line", id: line.id },
-    lines: [...costLinesOf(paid, input.kind, input.vatRate), { account: BANK, amountMinor: -paid, vatCode: null }],
+    lines: [...costLinesOf(paid, input.kind, input.vatRate, input.abroad ?? false), { account: BANK, amountMinor: -paid, vatCode: null }],
   };
 }
 

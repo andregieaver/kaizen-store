@@ -44,8 +44,8 @@ function memoryBucket(): DocumentStorage & { files: Map<string, Uint8Array> } {
 
 const PDF = new TextEncoder().encode("%PDF-1.7\n% faktura\n%%EOF\n");
 
-async function books(): Promise<{ storeId: string; bookId: string; member: Membership }> {
-  const name = `bill-${run}`;
+async function books(tag = "bill"): Promise<{ storeId: string; bookId: string; member: Membership }> {
+  const name = `${tag}-${run}`;
   const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${name}@example.com`}, 'W', 'Regning') returning id`);
   await db().execute(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${name}, 'Regning', null)`);
   const [owner] = await db().execute<Row>(sql`select id from commerce.accounts where email = ${`${name}@example.com`}`);
@@ -131,5 +131,30 @@ describe("a supplier's invoice, a bill (B3, D492)", () => {
     await expect(db().execute(sql`delete from commerce.supplier_invoices where id = ${added.billId}::uuid`)).rejects.toThrow();
     const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action like 'work.supplier_invoice_%'`);
     expect(audited.n).toBe(4);
+  });
+
+  it("from abroad, is posted with the VAT the store reckons on it, due and deducted on code 86, and kept as reverse charge (D502)", async () => {
+    const { storeId, bookId, member } = await books("billabroad");
+    const added = await bills.addBill(
+      member,
+      { supplier: "Vercel Inc.", number: "INV-2027-01", issuedOn: "2027-01-05", totalMinor: 250_000, kind: "software", vatRate: 0, abroad: true },
+      { name: "vercel.pdf", bytes: PDF },
+      { storage: memoryBucket() },
+    );
+    expect(added.ok).toBe(true);
+    if (!added.ok) return;
+    const lines = await db().execute<Row>(sql`select l.account, l.amount_minor::int as amount, l.vat_code from commerce.ledger_lines l where l.entry_id = ${added.entryId}::uuid order by l.line`);
+    expect(lines.map((l) => [l.account, l.amount, l.vat_code])).toEqual([
+      [6553, 250_000, "86"],
+      [2714, 62_500, "86"],
+      [2704, -62_500, "86"],
+      [2400, -250_000, null],
+    ]);
+    const [bill] = await db().execute<Row>(sql`select vat_rate::int as vat_rate, reverse_charge from commerce.supplier_invoices where id = ${added.billId}::uuid`);
+    expect(bill).toEqual({ vat_rate: 0, reverse_charge: true });
+    const chart = await db().execute<Row>(sql`select number from commerce.ledger_accounts where book_id = ${bookId}::uuid and number in (2704, 2714) order by number`);
+    expect(chart.map((a) => a.number)).toEqual([2704, 2714]);
+    const [audited] = await db().execute<Row>(sql`select details->>'abroad' as abroad from commerce.audit_log where store_id = ${storeId}::uuid and action = 'work.supplier_invoice_added'`);
+    expect(audited.abroad).toBe("true");
   });
 });

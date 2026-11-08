@@ -15,7 +15,7 @@ import { actionAdminLang } from "@/server/admin-request-lang";
 import { lockLedgerThrough, openLedgerBook, openLedgerBookEarlier, postDueDocuments, openBookOf, postHandEntry, reverseLedgerEntry } from "@/server/ledger";
 import { matchBankStatement } from "@/server/bank-statements";
 import { postOpeningFromTripletex } from "@/server/ledger-opening";
-import { isPurchaseKind, isPurchaseVatRate, PURCHASE_KINDS } from "@/lib/purchases";
+import { boughtAbroad, isPurchaseKind, isPurchaseVatRate, PURCHASE_KINDS } from "@/lib/purchases";
 import { payCertainInvoices, payInvoiceFromBank, postBankOwnLine } from "@/server/bank-payments";
 import { postPurchaseFromBank, purchaseLine, VOUCHER_BYTES } from "@/server/purchases";
 import { readReceipt } from "@/server/receipt-reading";
@@ -179,13 +179,14 @@ export async function payFromBankAction(storeSlug: string, _state: FormState, fo
     const file = form.get(`receipt-${lineId}`);
     const field = (name: string, words: string): FormState => ({ status: "error", messages: [words], fields: { [`${name}-${lineId}`]: words } });
     if (!isPurchaseKind(kind)) return field("kind", w.bank.purchaseProblems.kind);
-    // The kind's usual rate unless the owner chose one.
-    const vatRate = rate === "usual" ? PURCHASE_KINDS[kind].vat : isPurchaseVatRate(rate) ? (Number(rate) as 25 | 15 | 12 | 0) : null;
+    // The kind's usual rate unless the owner chose one; bought from abroad, the VAT is the store's to reckon (D502).
+    const abroad = rate === "abroad";
+    const vatRate = abroad ? 0 : rate === "usual" ? PURCHASE_KINDS[kind].vat : isPurchaseVatRate(rate) ? (Number(rate) as 25 | 15 | 12 | 0) : null;
     if (vatRate === null) return field("vat", w.bank.purchaseProblems.kind);
     if (!(file instanceof File) || file.size === 0) return field("receipt", w.bank.purchaseProblems.file);
     if (file.size > VOUCHER_BYTES) return field("receipt", w.bank.purchaseProblems.too_big);
     const text = String(form.get(`text-${lineId}`) ?? "").trim().slice(0, 200) || null;
-    const posted = await postPurchaseFromBank(member, lineId, { kind, vatRate, text }, { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+    const posted = await postPurchaseFromBank(member, lineId, { kind, vatRate, abroad, text }, { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
     if (!posted.ok) {
       const words = w.bank.purchaseProblems[posted.problem] ?? w.hand.problems[posted.problem] ?? w.hand.problems.other;
       return posted.problem === "file" || posted.problem === "type" || posted.problem === "too_big" ? field("receipt", words) : { status: "error", messages: [words] };
@@ -223,7 +224,7 @@ export async function payFromBankAction(storeSlug: string, _state: FormState, fo
 }
 
 export type ReceiptReadResult =
-  | { ok: true; kind: PurchaseKind | null; vatRate: PurchaseVatRate | null; supplier: string | null; totalMinor: number | null; agrees: "same" | "differs" | "unknown" }
+  | { ok: true; kind: PurchaseKind | null; vatRate: PurchaseVatRate | null; abroad: boolean; supplier: string | null; totalMinor: number | null; agrees: "same" | "differs" | "unknown" }
   | { ok: false; reason: "no_ai" | "not_a_picture" | "unread" | "refused" };
 
 /**
@@ -242,7 +243,7 @@ export async function readReceiptAction(storeSlug: string, form: FormData): Prom
   const read = await readReceipt(member.store.id, member.account.id, new Uint8Array(await file.arrayBuffer()), line.currency);
   if (!read.ok) return read;
   const { kind, vatRate, supplier, totalMinor } = read.reading;
-  return { ok: true, kind, vatRate, supplier, totalMinor, agrees: receiptAgrees(read.reading, line.amountMinor, line.currency) };
+  return { ok: true, kind, vatRate, abroad: boughtAbroad(read.reading, line.currency), supplier, totalMinor, agrees: receiptAgrees(read.reading, line.amountMinor, line.currency) };
 }
 
 /** *Add the bill* (D492): a supplier's invoice with its file, posted against what the store owes, waiting until the bank shows it paid. */
@@ -257,7 +258,8 @@ export async function addBillAction(storeSlug: string, _state: FormState, form: 
   const kind = form.get("kind");
   if (!isPurchaseKind(kind)) return field("kind", p.kind);
   const rate = form.get("vat");
-  const vatRate = rate === "usual" ? PURCHASE_KINDS[kind].vat : isPurchaseVatRate(rate) ? (Number(rate) as 25 | 15 | 12 | 0) : null;
+  const abroad = rate === "abroad";
+  const vatRate = abroad ? 0 : rate === "usual" ? PURCHASE_KINDS[kind].vat : isPurchaseVatRate(rate) ? (Number(rate) as 25 | 15 | 12 | 0) : null;
   if (vatRate === null) return field("vat", p.kind);
   const book = await openBookOf(member.store.id);
   if (!book) return { status: "error", messages: [p.book] };
@@ -277,6 +279,7 @@ export async function addBillAction(storeSlug: string, _state: FormState, form: 
       totalMinor,
       kind,
       vatRate,
+      abroad,
       text: String(form.get("text") ?? "").trim() || null,
     },
     { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) },
@@ -301,6 +304,8 @@ export type BillReadResult =
       totalMinor: number | null;
       kind: PurchaseKind | null;
       vatRate: PurchaseVatRate | null;
+      /** Most likely a service bought from abroad (another currency, no VAT on it, D502). */
+      abroad: boolean;
       /** The bill's own currency when it is not the books' (its amount is then not filled). */
       otherCurrency: string | null;
     }
@@ -329,6 +334,7 @@ export async function readBillAction(storeSlug: string, form: FormData): Promise
     totalMinor: other ? null : r.totalMinor,
     kind: r.kind,
     vatRate: r.vatRate,
+    abroad: boughtAbroad(r, book.currency),
     otherCurrency: other,
   };
 }

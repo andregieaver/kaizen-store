@@ -14,6 +14,7 @@ export type ReceiptFieldWords = {
   vatRate: string;
   vatUsual: string;
   vatNone: string;
+  vatAbroad: string;
   words: string;
   receiptFile: string;
   kinds: Record<string, string>;
@@ -68,7 +69,8 @@ export function ReceiptFields({
         return;
       }
       if (result.kind) setKind(result.kind);
-      if (result.vatRate !== null) setVat(String(result.vatRate));
+      if (result.abroad) setVat("abroad");
+      else if (result.vatRate !== null) setVat(String(result.vatRate));
       if (result.supplier) setText(result.supplier);
       if (result.agrees === "differs" && result.totalMinor !== null) {
         setNote(fillWords(words.differs, { total: money(result.totalMinor), bank: money(Math.abs(bankMinor)) }));
@@ -110,6 +112,7 @@ export function ReceiptFields({
                 {rate === 0 ? words.vatNone : `${rate} %`}
               </option>
             ))}
+            <option value="abroad">{words.vatAbroad}</option>
           </select>
         </label>
       </div>
