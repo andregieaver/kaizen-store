@@ -33,6 +33,8 @@ export const deskAddress = (key: string, domain: string) => `desk-${key}@${domai
 export const replyAddress = (key: string, domain: string) => `reply-${key}@${domain}`;
 /** A store's filing address (S5, D476): staff copy or forward mail to it, and it is filed on the people, companies and deals it is about. */
 export const filingAddress = (key: string, domain: string) => `bcc-${key}@${domain}`;
+/** A store's books address (D504): receipts and invoices sent or forwarded to it wait in the books' inbox for their bank lines. */
+export const booksAddress = (key: string, domain: string) => `books-${key}@${domain}`;
 
 /** The receiving domain as set (lower case, no `@`), or null when receiving is not set up. */
 export function inboundDomain(raw: string | undefined): string | null {
@@ -53,17 +55,17 @@ export function displayName(raw: string): string | null {
   return name ? name.slice(0, 120) : null;
 }
 
-export type Route = { kind: "desk"; key: string } | { kind: "reply"; key: string } | { kind: "filing"; key: string };
+export type Route = { kind: "desk"; key: string } | { kind: "reply"; key: string } | { kind: "filing"; key: string } | { kind: "books"; key: string };
 
-/** Where an email is for: the first of its addresses at the receiving domain that is a desk's, a reply or a filing address, else null. */
+/** Where an email is for: the first of its addresses at the receiving domain that is a desk's, a reply, a filing or a books address, else null. */
 export function routeOf(addresses: readonly string[], domain: string): Route | null {
   for (const raw of addresses) {
     const address = bareAddress(raw);
     if (!address) continue;
     const [local, host] = [address.slice(0, address.lastIndexOf("@")), address.slice(address.lastIndexOf("@") + 1)];
     if (host !== domain) continue;
-    const match = local.match(/^(desk|reply|bcc)-([a-z0-9]{12,32})$/);
-    if (match) return { kind: match[1] === "bcc" ? "filing" : (match[1] as "desk" | "reply"), key: match[2] };
+    const match = local.match(/^(desk|reply|bcc|books)-([a-z0-9]{12,32})$/);
+    if (match) return { kind: match[1] === "bcc" ? "filing" : (match[1] as "desk" | "reply" | "books"), key: match[2] };
   }
   return null;
 }

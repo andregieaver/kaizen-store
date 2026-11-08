@@ -18521,3 +18521,55 @@ export const recurringCosts = commerce.table(
     check("recurring_costs_days", sql`${t.endedOn} is null or ${t.endedOn} >= ${t.startedOn}`),
   ],
 );
+
+/** A store's books address (D504): `books-{key}@` the receiving domain, made the first time the Books screen asks for it. */
+export const booksEmail = commerce.table(
+  "books_email",
+  {
+    storeId: uuid("store_id").primaryKey().references(() => stores.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("books_email_key").on(t.key), check("books_email_key_shape", sql`${t.key} ~ '^[a-z0-9]{12,32}$'`)],
+);
+
+/**
+ * The books' inbox (D504): a PDF or picture attached to a mail sent to the store's books address, kept in the private `documents` bucket
+ * while it waits for its bank line. Taken as a purchase's receipt it is `used` (`entry_id`, the voucher keeps its own copy) and its file
+ * goes; set aside it is `dismissed`, its file gone too. The same file is kept once per store.
+ */
+export const booksInbox = commerce.table(
+  "books_inbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    providerId: text("provider_id").notNull(),
+    fromAddress: text("from_address").notNull(),
+    subject: text("subject"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    filePath: text("file_path").notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256: text("sha256").notNull(),
+    status: text("status").notNull().default("waiting"),
+    entryId: uuid("entry_id"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedBy: uuid("decided_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("books_inbox_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("books_inbox_file_key").on(t.storeId, t.sha256),
+    index("books_inbox_waiting_idx").on(t.storeId, t.receivedAt).where(sql`${t.status} = 'waiting'`),
+    index("books_inbox_entry_idx").on(t.storeId, t.entryId),
+    index("books_inbox_decided_by_idx").on(t.decidedBy),
+    foreignKey({ name: "books_inbox_entry_fk", columns: [t.storeId, t.entryId], foreignColumns: [ledgerEntries.storeId, ledgerEntries.id] }),
+    check("books_inbox_status", sql`${t.status} in ('waiting', 'used', 'dismissed')`),
+    check("books_inbox_used", sql`(${t.status} = 'used') = (${t.entryId} is not null)`),
+    check(
+      "books_inbox_lengths",
+      sql`length(${t.providerId}) between 1 and 200 and length(${t.fromAddress}) between 1 and 320 and coalesce(length(${t.subject}) <= 200, true) and length(${t.fileName}) between 1 and 200 and ${t.sizeBytes} > 0 and ${t.sha256} ~ '^[0-9a-f]{64}$'`,
+    ),
+  ],
+);

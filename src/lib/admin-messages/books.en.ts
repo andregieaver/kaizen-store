@@ -258,6 +258,8 @@ export const booksEn = {
     vatRate: "VAT",
     vatNone: "No VAT",
     vatAbroad: "Bought abroad",
+    fromInbox: "Or a receipt from your email",
+    fromInboxNone: "None: I add a file",
     vatAbroadNote:
       "Bought from a seller abroad with no Norwegian VAT on it, such as Claude, Vercel or Supabase: the books reckon 25 % of it as VAT you owe and deduct again (reverse charge, code 86), so it costs nothing extra but shows on the VAT return.",
     vatUsual: "As usual for it",
@@ -390,6 +392,22 @@ export const booksEn = {
       amount: "Write about what it costs, such as 220 or 2 200,00.",
       day: "Choose a real day.",
       not_found: "That subscription is not there any more. Reload the page.",
+    } as Record<string, string>,
+  },
+  inbox: {
+    title: "Receipts by email",
+    lead: "Forward receipts and invoices to this address, or give it to your suppliers as the address their bills go to. Each PDF or picture waits here, and is offered with the bank line it belongs to.",
+    address: "Your books address",
+    notSetUp: "Receiving email is not set up on this platform yet.",
+    none: "Nothing waiting.",
+    waiting: { one: "1 document waiting.", many: "{n} documents waiting." },
+    from: "From {from}, {day}",
+    open: "Open",
+    dismiss: "Not for the books",
+    dismissed: "Set aside.",
+    fits: "Its receipt came by email ({name}): check it and post it.",
+    problems: {
+      gone: "That document is not in the inbox any more. Reload the page.",
     } as Record<string, string>,
   },
   opening: {

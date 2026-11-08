@@ -254,6 +254,8 @@ export const booksNb: BooksMessages = {
     vatRate: "Mva",
     vatNone: "Ingen mva",
     vatAbroad: "Kjøpt fra utlandet",
+    fromInbox: "Eller en kvittering fra e-posten din",
+    fromInboxNone: "Ingen: jeg legger til en fil",
     vatAbroadNote:
       "Kjøpt fra en selger i utlandet uten norsk mva, som Claude, Vercel eller Supabase: regnskapet beregner 25 % av det som mva du skylder og trekker fra igjen (omvendt avgiftsplikt, kode 86), så det koster ikke noe ekstra, men vises i mva-meldingen.",
     vatUsual: "Som vanlig for dette",
@@ -386,6 +388,22 @@ export const booksNb: BooksMessages = {
       amount: "Skriv omtrent hva det koster, som 220 eller 2 200,00.",
       day: "Velg en ekte dag.",
       not_found: "Det abonnementet finnes ikke lenger. Last inn siden på nytt.",
+    } as Record<string, string>,
+  },
+  inbox: {
+    title: "Kvitteringer på e-post",
+    lead: "Videresend kvitteringer og fakturaer til denne adressen, eller gi den til leverandørene som adressen regningene skal til. Hver PDF eller hvert bilde venter her, og tilbys sammen med banklinjen det hører til.",
+    address: "Regnskapsadressen din",
+    notSetUp: "Mottak av e-post er ikke satt opp på plattformen ennå.",
+    none: "Ingenting venter.",
+    waiting: { one: "1 dokument venter.", many: "{n} dokumenter venter." },
+    from: "Fra {from}, {day}",
+    open: "Åpne",
+    dismiss: "Ikke for regnskapet",
+    dismissed: "Lagt til side.",
+    fits: "Kvitteringen kom på e-post ({name}): sjekk den og bokfør.",
+    problems: {
+      gone: "Det dokumentet er ikke i innboksen lenger. Last inn siden på nytt.",
     } as Record<string, string>,
   },
   opening: {

@@ -228,6 +228,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   suppliers: "Butikkens egne leverandører (D492): hvem som sender den regninger, med navn og organisasjonsnummer (et enkeltpersonforetaks navn er en persons), oppbevart med regningene under bokføringsplikten. " + OWN,
   supplier_invoices: "Butikkens egne regninger (D492): hva hver var, slik eieren skrev det eller leverandørens navn og nummer, ført i regnskapet under bokføringsplikten. " + OWN,
   recurring_costs: "Butikkens egne abonnementer (D503): det den betaler for igjen og igjen og ordene trekket har i banken, eierens egen liste. " + OWN,
+  books_inbox: "Kvitteringer og fakturaer sendt til butikkens regnskapsadresse (D504): hvem som sendte hver og emnet, beholdt som regnskapets dokumenter mens de venter på banklinjen og etterpå, under bokføringsplikten. " + OWN,
   work_recurring_invoices: WORK + OWN,
   work_time_entries: WORK + OWN,
 

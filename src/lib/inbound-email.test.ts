@@ -37,6 +37,7 @@ describe("addresses", () => {
     const reply = replyAddress("0123456789ab", DOMAIN);
     expect(routeOf(["shop@store.no", `Support <${desk}>`], DOMAIN)).toEqual({ kind: "desk", key: "abcdefghijkl" });
     expect(routeOf([reply.toUpperCase(), desk], DOMAIN)).toEqual({ kind: "reply", key: "0123456789ab" });
+    expect(routeOf([`Books <books-abcdefghijkl@${DOMAIN}>`], DOMAIN)).toEqual({ kind: "books", key: "abcdefghijkl" });
     expect(routeOf(["desk-abcdefghijkl@elsewhere.com"], DOMAIN)).toBeNull();
     expect(routeOf([`desk-short@${DOMAIN}`, `other-abcdefghijkl@${DOMAIN}`], DOMAIN)).toBeNull();
   });

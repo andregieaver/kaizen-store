@@ -16,6 +16,8 @@ export type ReceiptFieldWords = {
   vatNone: string;
   vatAbroad: string;
   vatAbroadNote: string;
+  fromInbox: string;
+  fromInboxNone: string;
   words: string;
   receiptFile: string;
   kinds: Record<string, string>;
@@ -36,6 +38,8 @@ export function ReceiptFields({
   defaultText,
   defaultKind = "office",
   defaultVat = "usual",
+  inbox = [],
+  defaultInbox = "",
   bankMinor,
   currency,
   locale,
@@ -47,6 +51,9 @@ export function ReceiptFields({
   /** What it was and its VAT to start from: a subscription's (D503), else office supplies at their usual rate. */
   defaultKind?: PurchaseKind;
   defaultVat?: string;
+  /** The documents waiting in the books' inbox (D504), to take one as the receipt in place of a file; the one that fits chosen. */
+  inbox?: readonly { id: string; label: string }[];
+  defaultInbox?: string;
   bankMinor: number;
   currency: string;
   locale: string;
@@ -89,6 +96,19 @@ export function ReceiptFields({
 
   return (
     <>
+      {inbox.length > 0 && (
+        <label className="flex max-w-md flex-col gap-1 font-medium">
+          {words.fromInbox}
+          <select name={`inbox-${lineId}`} defaultValue={defaultInbox} className={field}>
+            <option value="">{words.fromInboxNone}</option>
+            {inbox.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="flex max-w-md flex-col gap-1 font-medium">
         {words.receiptFile}
         <input name={`receipt-${lineId}`} type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" onChange={chosen} className={`${field} py-2`} />

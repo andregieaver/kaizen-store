@@ -421,3 +421,13 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   late is only `recurringState()`; the charges offered to add are only `likelySubscriptions()` (three months or more, about once a month,
   steady amounts, seen within six weeks), so a transfer made many times a month is never one. The register is never copied to another store.
 
+## Receipts by email (D504, `src/lib/books-inbox.ts`, `src/server/books-inbox.ts`, `BooksInboxCard`)
+
+- **Receipts by email (D504, `src/lib/books-inbox.ts`, `src/server/books-inbox.ts`, `BooksInboxCard`)**: a mail to a
+  store's books address (`books-{key}@`, `booksAddressOf()`) is a received email of purpose `books`, read only by `booksOne()` in
+  `support-inbound.ts` and kept only by `keepInboxAttachments()`: PDFs and pictures by their first bytes, no larger than a voucher, never a
+  picture inline in the mail, once per store, at most `INBOX_PER_DAY`; mail failing DMARC keeps nothing. A document is read only through
+  `readInboxDocument()` (the store's own, its path checked), offered to a bank line only by `inboxMatches()`, and becomes a voucher only as
+  the receipt of `postPurchaseFromBank()`, then `markInboxUsed()`; nothing is posted from a mail alone. `commerce.books_inbox` changes
+  once (used or set aside) and is never deleted.
+

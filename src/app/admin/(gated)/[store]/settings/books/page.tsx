@@ -19,17 +19,20 @@ import { hasOpeningBalance } from "@/server/ledger-opening";
 import { BillFields, type BillFieldWords } from "@/components/admin/bill-fields";
 import { ReceiptFields, type ReceiptFieldWords } from "@/components/admin/receipt-fields";
 import { RecurringCostsCard } from "@/components/admin/recurring-costs";
+import { BooksInboxCard } from "@/components/admin/books-inbox";
+import { inboxMatches } from "@/lib/books-inbox";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
 import { invoiceOffers } from "@/server/bank-payments";
 import { vouchersOf } from "@/server/purchases";
 import { billOffers, unpaidBills } from "@/server/supplier-invoices";
 import { recurringView } from "@/server/recurring-costs";
+import { booksAddressOf, inboxDocuments } from "@/server/books-inbox";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 import { vatReturnOrgNumber } from "@/server/vat-return";
 
-import { addBillAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, recurringPressAction, reverseEntryAction, saveRecurringCostAction, uploadBankStatementAction } from "./actions";
+import { addBillAction, dismissInboxAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, recurringPressAction, reverseEntryAction, saveRecurringCostAction, uploadBankStatementAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -112,6 +115,15 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const [bills, billFor] = await Promise.all([unpaidBills(store.id, book.id), billOffers(store.id, book.id)]);
   // The subscriptions (D503): the register, and the subscription each waiting bank line most likely is.
   const recurring = await recurringView(store.id, book.id, today);
+  // The books' inbox (D504): its address, the documents waiting, and the one each waiting bank line most likely is.
+  const [booksAddress, inbox] = await Promise.all([booksAddressOf(store.id), inboxDocuments(store.id, store.timeZone)]);
+  const inboxFor = inboxMatches(
+    inbox,
+    bank.bankOnly.filter((l) => l.amountMinor < 0),
+    recurring.rows.map((r) => r.cost),
+  );
+  const inboxChoices = inbox.map((d) => ({ id: d.id, label: `${day(d.receivedOn)} · ${d.subject || d.fileName}`.slice(0, 120) }));
+  const inboxName = new Map(inbox.map((d) => [d.id, d.subject || d.fileName]));
   // The vouchers of the journal's entries and of the bills, such as a purchase's receipt (D490), by entry.
   const vouchers = await vouchersOf(store.id, [...journal.map((e) => e.id), ...bills.map((b) => b.entryId)]);
   // The bill's fields' words, for the part of them that reads its file in the browser (D493).
@@ -146,6 +158,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
     vatNone: w.bank.vatNone,
     vatAbroad: w.bank.vatAbroad,
     vatAbroadNote: w.bank.vatAbroadNote,
+    fromInbox: w.bank.fromInbox,
+    fromInboxNone: w.bank.fromInboxNone,
     words: w.bank.words,
     receiptFile: w.bank.receiptFile,
     kinds: w.bank.kinds,
@@ -217,6 +231,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                     const ownAccount = own ? BANK_OWN_ACCOUNTS[own] : null;
                     const ownName = ownAccount ? `${ownAccount} ${chart.find((a) => a.number === ownAccount)?.name ?? ""}`.trim() : "";
                     const subscription = recurring.charges.get(l.id);
+                    const fromInbox = inboxFor.get(l.id);
                     return (
                       <li key={l.id} className="flex flex-col gap-2 py-2">
                         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -263,12 +278,20 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                         )}
                         {/* A purchase: its receipt, what it was and its VAT, posted with one press (D490); a subscription's filled (D503). */}
                         {!offer && !billOffer && !own && owner && l.amountMinor < 0 && (
-                          <details className="text-sm" open={subscription !== undefined}>
+                          <details className="text-sm" open={subscription !== undefined || fromInbox !== undefined}>
                             <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{w.bank.receipt}</summary>
                             <div className="mt-2 flex flex-col gap-3">
-                              <p className="text-muted">{subscription ? fillWords(w.recurring.charge, { name: subscription.name }) : w.bank.receiptLead}</p>
+                              <p className="text-muted">
+                                {fromInbox
+                                  ? fillWords(w.inbox.fits, { name: inboxName.get(fromInbox) ?? "" })
+                                  : subscription
+                                    ? fillWords(w.recurring.charge, { name: subscription.name })
+                                    : w.bank.receiptLead}
+                              </p>
                               <ReceiptFields
-                                key={subscription?.id ?? "none"}
+                                key={`${subscription?.id ?? "none"}:${fromInbox ?? ""}`}
+                                inbox={inboxChoices}
+                                defaultInbox={fromInbox ?? ""}
                                 lineId={l.id}
                                 defaultText={subscription?.name ?? l.text}
                                 defaultKind={subscription?.kind}
@@ -428,6 +451,17 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           )}
         </div>
       </Card>
+
+      {/* Receipts by email (D504): the books address, and what waits in the inbox. */}
+      <BooksInboxCard
+        storeSlug={store.slug}
+        address={booksAddress}
+        docs={inbox}
+        owner={owner}
+        words={w}
+        day={day}
+        dismiss={dismissInboxAction.bind(null, store.slug)}
+      />
 
       {/* Subscriptions (D503): what is paid again and again, its charges known in the bank. */}
       <RecurringCostsCard

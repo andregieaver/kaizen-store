@@ -5132,6 +5132,20 @@
       "when": 1794179597346,
       "tag": "20261108231317_recurring_costs_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 733,
+      "version": "7",
+      "when": 1794180776375,
+      "tag": "20261108233256_books_inbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 734,
+      "version": "7",
+      "when": 1794180804088,
+      "tag": "20261108233324_books_inbox_rules",
+      "breakpoints": true
     }
   ]
 }

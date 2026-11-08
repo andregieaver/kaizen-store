@@ -29,6 +29,7 @@ import { checkOwnerRole } from "@/server/permissions";
 import { setVatTermSize } from "@/server/vat-return";
 import { recurringInputOf } from "@/lib/recurring-costs";
 import { endRecurringCost, recurringView, saveRecurringCost } from "@/server/recurring-costs";
+import { dismissInboxDocument, readInboxDocument, markInboxUsed } from "@/server/books-inbox";
 
 /**
  * Settings → Books (B2, D478): opening the store's books, posting an entry by hand, reversing one, and locking them through a day. Each
@@ -185,14 +186,26 @@ export async function payFromBankAction(storeSlug: string, _state: FormState, fo
     const abroad = rate === "abroad";
     const vatRate = abroad ? 0 : rate === "usual" ? PURCHASE_KINDS[kind].vat : isPurchaseVatRate(rate) ? (Number(rate) as 25 | 15 | 12 | 0) : null;
     if (vatRate === null) return field("vat", w.bank.purchaseProblems.kind);
-    if (!(file instanceof File) || file.size === 0) return field("receipt", w.bank.purchaseProblems.file);
-    if (file.size > VOUCHER_BYTES) return field("receipt", w.bank.purchaseProblems.too_big);
+    // The receipt: a file chosen, else a document of the books' inbox (D504).
+    const inboxId = String(form.get(`inbox-${lineId}`) ?? "");
+    let voucher: { name: string; bytes: Uint8Array };
+    if (file instanceof File && file.size > 0) {
+      if (file.size > VOUCHER_BYTES) return field("receipt", w.bank.purchaseProblems.too_big);
+      voucher = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
+    } else if (inboxId) {
+      const doc = await readInboxDocument(member.store.id, inboxId);
+      if (!doc || doc.status !== "waiting") return field("inbox", w.inbox.problems.gone);
+      voucher = { name: doc.fileName, bytes: doc.bytes };
+    } else {
+      return field("receipt", w.bank.purchaseProblems.file);
+    }
     const text = String(form.get(`text-${lineId}`) ?? "").trim().slice(0, 200) || null;
-    const posted = await postPurchaseFromBank(member, lineId, { kind, vatRate, abroad, text }, { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+    const posted = await postPurchaseFromBank(member, lineId, { kind, vatRate, abroad, text }, voucher);
     if (!posted.ok) {
       const words = w.bank.purchaseProblems[posted.problem] ?? w.hand.problems[posted.problem] ?? w.hand.problems.other;
       return posted.problem === "file" || posted.problem === "type" || posted.problem === "too_big" ? field("receipt", words) : { status: "error", messages: [words] };
     }
+    if (inboxId && !(file instanceof File && file.size > 0)) await markInboxUsed(member.store.id, inboxId, posted.entryId, member.account.id);
     refresh();
     return { status: "ok", messages: [fillWords(w.bank.purchased, { account: posted.account })] };
   }
@@ -427,5 +440,16 @@ export async function recurringPressAction(storeSlug: string, _state: FormState,
   if (!saved.ok) return { status: "error", messages: [w.recurring.problems[saved.problem]] };
   refresh();
   return { status: "ok", messages: [fillWords(w.recurring.added, { name: offered.name })] };
+}
+
+/** *Not for the books* (D504): a document of the books' inbox set aside, the button naming which. */
+export async function dismissInboxAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const id = String(form.get("dismiss") ?? "");
+  if (!UUID.test(id) || !(await dismissInboxDocument(member, id))) return { status: "error", messages: [w.inbox.problems.gone] };
+  refresh();
+  return { status: "ok", messages: [w.inbox.dismissed] };
 }
 

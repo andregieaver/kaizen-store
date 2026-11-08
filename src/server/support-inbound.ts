@@ -34,6 +34,8 @@ import { CONVERSATION_MESSAGES_MAX, REOPEN_HOURS } from "@/lib/support-rules";
 import { takeChatTurn, type ChatSite } from "./chat-agent";
 import { chatContext, type ChatPlace } from "./chat-route";
 import { fileReceived, pruneFiledEmails, storeOfFilingKey } from "./email-filing";
+import { keepInboxAttachments, storeOfBooksKey, type ReceivedAttachment } from "./books-inbox";
+import type { DocumentStorage } from "./invoice-storage";
 import { log } from "./log";
 import { getOpenStore } from "./stores";
 import { SupportError, addMessage, deskSettings, transition, type DeskSettings } from "./support";
@@ -89,6 +91,8 @@ export type InboundDeps = {
   fetch?: typeof fetch;
   turn?: typeof runSupportTurn;
   env?: Record<string, string | undefined>;
+  /** Where the books' inbox keeps its documents (D504); the private `documents` bucket unless given. */
+  storage?: DocumentStorage | null;
 };
 
 const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : []);
@@ -120,6 +124,10 @@ export async function receiveInboundEvent(event: InboundEvent, deps: InboundDeps
     // A store's filing address (S5, D476): filed on its people by `fileReceived()`, never a conversation.
     const filingStore = await storeOfFilingKey(route.key);
     if (filingStore) [storeId, routed] = [filingStore, true];
+  } else if (route?.kind === "books") {
+    // A store's books address (D504): its attachments kept in the books' inbox by `keepInboxAttachments()`, never a conversation.
+    const booksStore = await storeOfBooksKey(route.key);
+    if (booksStore) [storeId, routed] = [booksStore, true];
   } else if (route?.kind === "reply") {
     const [conversation] = await db().execute<Row>(sql`
       select id, store_id from commerce.support_conversations where reply_key = ${route.key} and anonymised_at is null
@@ -131,7 +139,7 @@ export async function receiveInboundEvent(event: InboundEvent, deps: InboundDeps
     insert into commerce.support_inbound_emails (provider_id, store_id, routed, conversation_id, from_address, subject, message_id, status, reason, received_at, finished_at, purpose)
     values (${providerId}, ${storeId}::uuid, ${routed}, ${conversationId}::uuid, ${from}, ${cleanSubject(data.subject)}, ${messageIdOf(data.message_id)},
       ${routed ? "pending" : "refused"}, ${routed ? null : domain ? "unknown_address" : "not_set_up"}, ${new Date(receivedAt).toISOString()}::timestamptz,
-      ${routed ? null : sql`now()`}, ${route?.kind === "filing" ? "filing" : "support"})
+      ${routed ? null : sql`now()`}, ${route?.kind === "filing" ? "filing" : route?.kind === "books" && routed ? "books" : "support"})
     on conflict (provider_id) do nothing
     returning id, status
   `);
@@ -258,12 +266,37 @@ async function fileOne(row: Row, storeId: string | null, deps: InboundDeps): Pro
   return filed.status === "done" ? { status: "done" } : refused(filed.reason ?? "refused");
 }
 
+/**
+ * A mail to a store's books address (D504): its PDFs and pictures kept in the books' inbox (`keepInboxAttachments()`). A supplier's own
+ * billing system sends it, so mail sent by a machine is taken; mail that fails DMARC is not.
+ */
+async function booksOne(row: Row, storeId: string | null, deps: InboundDeps): Promise<Outcome> {
+  if (!storeId) return refused("unknown_address");
+  const email = await fetchEmail(String(row.provider_id), deps);
+  if (email === "key_refused") return { status: "failed", reason: "key_refused" };
+  if (!email) return refused("not_set_up");
+  if (fails(email.authentication?.dmarc)) return refused("dmarc_fail");
+  const kept = await keepInboxAttachments(
+    storeId,
+    {
+      providerId: String(row.provider_id),
+      from: email.from ?? String(row.from_address),
+      subject: cleanSubject(email.subject ?? (row.subject ? String(row.subject) : null)),
+      receivedAt: new Date(String(row.received_at ?? new Date().toISOString())).toISOString(),
+      attachments: Array.isArray(email.attachments) ? (email.attachments as ReceivedAttachment[]) : [],
+    },
+    { fetch: deps.fetch, env: deps.env, storage: deps.storage },
+  );
+  return kept.status === "done" ? { status: "done" } : refused(kept.reason ?? "refused");
+}
+
 async function processOne(row: Row, deps: InboundDeps): Promise<Outcome> {
   const env = deps.env ?? process.env;
   if (!inboundDomain(env.SUPPORT_INBOUND_DOMAIN)) return refused("not_set_up");
   const storeId = row.store_id ? String(row.store_id) : null;
   const from = String(row.from_address);
   if (row.purpose === "filing") return fileOne(row, storeId, deps);
+  if (row.purpose === "books") return booksOne(row, storeId, deps);
   const desk = systemDesk(storeId);
   const settings = await deskSettings(desk);
   if (!settings || settings.mode === "off") return refused("desk_off");
