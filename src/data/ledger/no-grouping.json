@@ -1,0 +1,1529 @@
+{
+"source": "Skatteetaten, SAF-T Financial (github.com/Skatteetaten/saf-t): Grouping Category Code 2025-2026, naeringsspesifikasjon.csv, read 8 November 2026; the categories of the business statement for companies other than banks and insurers, without the IFRS and bank codes",
+"codes": [
+{
+"code": "1000",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Utvikling",
+"en": "Development"
+},
+{
+"code": "1020",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Varige konsesjoner, patenter, lisenser, rettigheter med mer",
+"en": "Long-term concessions, patents, licenses, rights, etc."
+},
+{
+"code": "1070",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Utsatt skattefordel",
+"en": "Deferred tax asset"
+},
+{
+"code": "1080",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Goodwill",
+"en": "Goodwill"
+},
+{
+"code": "1101",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Aktiverte letekostnader",
+"en": "Captalized exploration costs"
+},
+{
+"code": "1102",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Felt under utbygging",
+"en": "Fields under development"
+},
+{
+"code": "1103",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Produksjonsinnretning og rørledning",
+"en": "Production facility and pipeline"
+},
+{
+"code": "1104",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Fjernings- og nedstengningseiendeler",
+"en": "Removal and shutdown assets"
+},
+{
+"code": "1105",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Forretningsbygg",
+"en": "Commercial estates"
+},
+{
+"code": "1115",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Bygg, anlegg, hotell o.l.",
+"en": "Buildings, installations, hotels, etc."
+},
+{
+"code": "1117",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Elektroteknisk utrustning i kraftforetak mv.",
+"en": "Electrotechnical equipment in power enterprises, etc."
+},
+{
+"code": "1120",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Fast teknisk installasjon i bygninger",
+"en": "Fixed technical installations in buildings"
+},
+{
+"code": "1130",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Anlegg og maskiner under bygging",
+"en": "Installations and machines under construction"
+},
+{
+"code": "1140",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Jord- og skogbrukseiendommer",
+"en": "Agricultural and forestry properties"
+},
+{
+"code": "1150",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Tomter og andre grunnarealer",
+"en": "Plots and other land areas"
+},
+{
+"code": "1160",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Bolig inkl. boligtomter, hytter mv.",
+"en": "Housing incl. housing plots, cabins, etc."
+},
+{
+"code": "1180",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Investeringseiendommer",
+"en": "Investment properties"
+},
+{
+"code": "1205",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Personbiler, maskiner, inventar",
+"en": "Cars, machinery and fixtures and fittings"
+},
+{
+"code": "1221",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Skip, rigger mv.",
+"en": "Ships, rigs, etc."
+},
+{
+"code": "1225",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Fly, helikopter mv.",
+"en": "Aircrafts, helicopters, etc."
+},
+{
+"code": "1238",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Vare- og lastebiler, busser, inkludert varebiler med nullutslipp mv.",
+"en": "Vans and trucks, buses, etc., and vans with zero emissions"
+},
+{
+"code": "1280",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Kontormaskiner o.l.",
+"en": "Office equipment, etc."
+},
+{
+"code": "1290",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Andre driftsmidler",
+"en": "Other fixed assets"
+},
+{
+"code": "1295",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Driftsmidler som avskrives lineært",
+"en": "Fixed assets depreciated on a straight-line basis"
+},
+{
+"code": "1296",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Negativ gevinst- og tapskonto",
+"en": "Negative profit and loss account"
+},
+{
+"code": "1298",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Negativ tømmerkonto",
+"en": "Negative timber account"
+},
+{
+"code": "1299",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Negativ jordbrukskonto",
+"en": "Negative agriculture account"
+},
+{
+"code": "1312",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Investeringer i datter- og konsernselskap med deltakerfastsetting",
+"en": "Investments in subsidiaries and companies in a group assessed as a partnership"
+},
+{
+"code": "1313",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Investeringer i andre datter- og konsernselskap",
+"en": "Investments in other subsidiaries and companies in a group"
+},
+{
+"code": "1320",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Lån til foretak i samme konsern",
+"en": "Loans to enterprises within the same group"
+},
+{
+"code": "1331",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Investeringer i tilknyttede selskap med deltakerfastsetting",
+"en": "Investments in associated companies assessed as a partnership"
+},
+{
+"code": "1332",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Investeringer i andre tilknyttede selskap",
+"en": "Investments in other associated companies"
+},
+{
+"code": "1340",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Lån til tilknyttet selskap og felles kontrollert virksomhet",
+"en": "Loans to associated companies and jointly controlled enterprises"
+},
+{
+"code": "1350",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Investeringer i aksjer, andeler og verdipapirfondsandeler",
+"en": "Investments in shares, holdings and units in securities funds"
+},
+{
+"code": "1360",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Obligasjoner",
+"en": "Bonds"
+},
+{
+"code": "1370",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Fordringer på personlige eiere, styremedl. o.l.",
+"en": "Receivables from personal owners, board members, etc."
+},
+{
+"code": "1380",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Krav/fordringer mot ansatte",
+"en": "Claims towards/receivables from employees"
+},
+{
+"code": "1390",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Andre langsiktige fordringer",
+"en": "Other non-current receivables"
+},
+{
+"code": "1395",
+"category": "balanseverdiForAnleggsmiddel",
+"nb": "Netto pensjonsmidler",
+"en": "Net pension funds"
+},
+{
+"code": "1400",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Varelager",
+"en": "Inventory"
+},
+{
+"code": "1401",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Beholdning av egenproduserte varer for bruk i egen jordbruksvirksomhet",
+"en": "Stock of self-manufactured goods for use in own agricultural activity"
+},
+{
+"code": "1470",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Mindreuttak av petroleumsprodukter",
+"en": "Reduced withdrawal of petroleum products"
+},
+{
+"code": "1490",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Biologiske eiendeler",
+"en": "Biological assets"
+},
+{
+"code": "1500",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Kundefordringer",
+"en": "Accounts receivable"
+},
+{
+"code": "1501",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Kundefordringer på selskap i samme konsern",
+"en": "Trade debtors relating to companies in the same group"
+},
+{
+"code": "1530",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Opptjente ikke fakturerte driftsinntekter",
+"en": "Earned, non-invoiced operating revenues"
+},
+{
+"code": "1560",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Andre fordringer på selskap i samme konsern",
+"en": "Other receivables from companies in the same group"
+},
+{
+"code": "1565",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Kortsiktige fordringer mot personlig eier, styremedlem o.l.",
+"en": "Current receivables concerning personal owners/board members, etc."
+},
+{
+"code": "1570",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Andre kortsiktige krav/fordringer",
+"en": "Other current claims/receivables"
+},
+{
+"code": "1780",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Krav på innbetalt selskapskapital",
+"en": "Claims for paid-up company capital"
+},
+{
+"code": "1800",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Ikke-markedsbaserte aksjer og verdipapirfondsandeler",
+"en": "Non-market based shares and units in securities funds"
+},
+{
+"code": "1810",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Markedsbaserte aksjer og verdipapirfondsandeler",
+"en": "Market-based shares and units in securities funds"
+},
+{
+"code": "1830",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Markedsbaserte obligasjoner, sertifikater mv.",
+"en": "Market-based bonds, certificates, etc."
+},
+{
+"code": "1840",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Andre obligasjoner og sertifikater",
+"en": "Other bonds and certificates"
+},
+{
+"code": "1880",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Andre finansielle instrumenter",
+"en": "Other financial instruments"
+},
+{
+"code": "1895",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Andel i selskap med deltakerfastsetting",
+"en": "Ownership interest in a business assessed as a partnership"
+},
+{
+"code": "1900",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Kontanter",
+"en": "Cash"
+},
+{
+"code": "1920",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Bankinnskudd",
+"en": "Bank deposits"
+},
+{
+"code": "1950",
+"category": "balanseverdiForOmloepsmiddel",
+"nb": "Innskudd på skattetrekkskonto",
+"en": "Deposits on a tax deduction account"
+},
+{
+"code": "2000",
+"category": "egenkapital",
+"nb": "Aksjekapital/Egenkapital andre foretak",
+"en": "Share capital/Equity other enterprises"
+},
+{
+"code": "2010",
+"category": "egenkapital",
+"nb": "Egne aksjer",
+"en": "Own shares"
+},
+{
+"code": "2015",
+"category": "egenkapital",
+"nb": "Felleseid andelskapital",
+"en": "Jointly owned share capital"
+},
+{
+"code": "2020",
+"category": "egenkapital",
+"nb": "Overkurs",
+"en": "Premium"
+},
+{
+"code": "2030",
+"category": "egenkapital",
+"nb": "Annen innskutt egenkapital",
+"en": "Other contributed equity"
+},
+{
+"code": "2041",
+"category": "egenkapital",
+"nb": "Etterbetalingsfond",
+"en": "Retroactive payments reserve"
+},
+{
+"code": "2042",
+"category": "egenkapital",
+"nb": "Medlemskapitalkonti",
+"en": "Member's capital accounts"
+},
+{
+"code": "2043",
+"category": "egenkapital",
+"nb": "Fond for vurderingsforskjeller",
+"en": "Fund for valuation differences"
+},
+{
+"code": "2045",
+"category": "egenkapital",
+"nb": "Fond for urealiserte gevinster",
+"en": "Fund for unrealised gains"
+},
+{
+"code": "2050",
+"category": "egenkapital",
+"nb": "Positiv egenkapital",
+"en": "Positive equity"
+},
+{
+"code": "2055",
+"category": "egenkapital",
+"nb": "Avsatt utbytte - IFRS",
+"en": "Provisions for dividend – IFRS"
+},
+{
+"code": "2080",
+"category": "egenkapital",
+"nb": "Negativ egenkapital",
+"en": "Negative equity"
+},
+{
+"code": "2095",
+"category": "egenkapital",
+"nb": "Negativ saldo",
+"en": "Negative balance"
+},
+{
+"code": "2096",
+"category": "egenkapital",
+"nb": "Positiv gevinst og tapskonto",
+"en": "Positive profit and loss account"
+},
+{
+"code": "2097",
+"category": "egenkapital",
+"nb": "Betinget avsatt gevinst",
+"en": "Provisions for conditional gain"
+},
+{
+"code": "2098",
+"category": "egenkapital",
+"nb": "Positiv tømmerkonto",
+"en": "Positive timber account"
+},
+{
+"code": "2099",
+"category": "egenkapital",
+"nb": "Positiv jordbrukskonto",
+"en": "Positive agriculture account"
+},
+{
+"code": "2100",
+"category": "langsiktigGjeld",
+"nb": "Pensjonsforpliktelser",
+"en": "Pension liabilities"
+},
+{
+"code": "2120",
+"category": "langsiktigGjeld",
+"nb": "Utsatt skatt",
+"en": "Deferred tax"
+},
+{
+"code": "2130",
+"category": "langsiktigGjeld",
+"nb": "Derivater",
+"en": "Derivatives"
+},
+{
+"code": "2160",
+"category": "langsiktigGjeld",
+"nb": "Uopptjent inntekt",
+"en": "Unearned income"
+},
+{
+"code": "2180",
+"category": "langsiktigGjeld",
+"nb": "Avsetninger for forpliktelser",
+"en": "Provisions for liabilities"
+},
+{
+"code": "2185",
+"category": "langsiktigGjeld",
+"nb": "Avsetninger for fjerning- og nedstengningsforpliktelser",
+"en": "Provisions for removal and closure obligations"
+},
+{
+"code": "2200",
+"category": "langsiktigGjeld",
+"nb": "Konvertible lån",
+"en": "Convertible loans"
+},
+{
+"code": "2210",
+"category": "langsiktigGjeld",
+"nb": "Obligasjonslån",
+"en": "Bond loans"
+},
+{
+"code": "2220",
+"category": "langsiktigGjeld",
+"nb": "Langsiktig gjeld til banker og andre kredittinstitusjoner",
+"en": "Long-term debt to banks and other credit institutions"
+},
+{
+"code": "2250",
+"category": "langsiktigGjeld",
+"nb": "Gjeld til ansatte og personlige eiere",
+"en": "Debt to employees and personal owners"
+},
+{
+"code": "2260",
+"category": "langsiktigGjeld",
+"nb": "Gjeld til selskap i samme konsern",
+"en": "Debt to companies in the same group"
+},
+{
+"code": "2280",
+"category": "langsiktigGjeld",
+"nb": "Stille interessentinnskudd og ansvarlig lånekapital",
+"en": "Contributions by silent partners and subordinated loan capital"
+},
+{
+"code": "2290",
+"category": "langsiktigGjeld",
+"nb": "Annen langsiktig gjeld",
+"en": "Other long-term debt"
+},
+{
+"code": "2310",
+"category": "kortsiktigGjeld",
+"nb": "Konvertible lån",
+"en": "Convertible loans"
+},
+{
+"code": "2320",
+"category": "kortsiktigGjeld",
+"nb": "Obligasjonslån",
+"en": "Bond loans"
+},
+{
+"code": "2330",
+"category": "kortsiktigGjeld",
+"nb": "Derivater",
+"en": "Derivatives"
+},
+{
+"code": "2380",
+"category": "kortsiktigGjeld",
+"nb": "Kortsiktig gjeld til banker og andre kredittinstitusjoner",
+"en": "Short-term debt to banks and other credit institutions"
+},
+{
+"code": "2400",
+"category": "kortsiktigGjeld",
+"nb": "Gjeld til leverandører",
+"en": "Debt to suppliers"
+},
+{
+"code": "2460",
+"category": "kortsiktigGjeld",
+"nb": "Leverandørgjeld til selskap i samme konsern",
+"en": "Debts to suppliers that are companies in the same group"
+},
+{
+"code": "2470",
+"category": "kortsiktigGjeld",
+"nb": "Meruttak av petroleumsprodukter",
+"en": "Additional withdrawal of petroleum products"
+},
+{
+"code": "2500",
+"category": "kortsiktigGjeld",
+"nb": "Betalbar skatt, ikke fastsatt",
+"en": "Payable tax, not assessed"
+},
+{
+"code": "2510",
+"category": "kortsiktigGjeld",
+"nb": "Betalbar skatt, fastsatt",
+"en": "Payable tax, assessed"
+},
+{
+"code": "2600",
+"category": "kortsiktigGjeld",
+"nb": "Skattetrekk og andre trekk",
+"en": "Deducted tax and other deductions"
+},
+{
+"code": "2740",
+"category": "kortsiktigGjeld",
+"nb": "Skyldig merverdiavgift",
+"en": "Unpaid value added tax"
+},
+{
+"code": "2770",
+"category": "kortsiktigGjeld",
+"nb": "Skyldig arbeidsgiveravgift",
+"en": "Unpaid employers national insurance contributions"
+},
+{
+"code": "2790",
+"category": "kortsiktigGjeld",
+"nb": "Andre offentlige avgifter",
+"en": "Other public taxes and duties"
+},
+{
+"code": "2800",
+"category": "kortsiktigGjeld",
+"nb": "Avsatt utbytte",
+"en": "Provisions for dividend"
+},
+{
+"code": "2900",
+"category": "kortsiktigGjeld",
+"nb": "Forskudd fra kunder",
+"en": "Advances from customers"
+},
+{
+"code": "2910",
+"category": "kortsiktigGjeld",
+"nb": "Gjeld til ansatte og personlige eiere",
+"en": "Debt to employees and personal owners"
+},
+{
+"code": "2920",
+"category": "kortsiktigGjeld",
+"nb": "Gjeld til selskap i samme konsern",
+"en": "Debt to companies in the same group"
+},
+{
+"code": "2949",
+"category": "kortsiktigGjeld",
+"nb": "Skyldig lønn og feriepenger med mer",
+"en": "Unpaid salary and holiday pay, etc."
+},
+{
+"code": "2950",
+"category": "kortsiktigGjeld",
+"nb": "Skyldige gjeldsrenter",
+"en": "Unpaid interest on debt"
+},
+{
+"code": "2970",
+"category": "kortsiktigGjeld",
+"nb": "Uopptjent inntekt",
+"en": "Unearned income"
+},
+{
+"code": "2980",
+"category": "kortsiktigGjeld",
+"nb": "Avsetninger for forpliktelser",
+"en": "Provisions for liabilities"
+},
+{
+"code": "2981",
+"category": "kortsiktigGjeld",
+"nb": "Avsatt etterbetaling til utbetaling",
+"en": "Transferred retroactive payment for payment"
+},
+{
+"code": "2990",
+"category": "kortsiktigGjeld",
+"nb": "Annen kortsiktig gjeld",
+"en": "Other short-term debt"
+},
+{
+"code": "3000",
+"category": "salgsinntekt",
+"nb": "Salg og uttak med mva-plikt",
+"en": "Sales and withdrawals subject to VAT"
+},
+{
+"code": "3001",
+"category": "salgsinntekt",
+"nb": "Salgsinntekter og uttak av olje",
+"en": "Sales revenue and withdrawals of oil"
+},
+{
+"code": "3002",
+"category": "salgsinntekt",
+"nb": "Salgsinntekter og uttak av tørrgass",
+"en": "Sales revenue and withdrawals of dry gas"
+},
+{
+"code": "3003",
+"category": "salgsinntekt",
+"nb": "Salgsinntekter og uttak av våtgass",
+"en": "Sales revenue and withdrawals of wet gas"
+},
+{
+"code": "3004",
+"category": "salgsinntekt",
+"nb": "Tariffinntekt rørledning",
+"en": "Tariff revenue pipeline"
+},
+{
+"code": "3005",
+"category": "salgsinntekt",
+"nb": "Tariffinntekt prosessering",
+"en": "Tariff revenue processing"
+},
+{
+"code": "3006",
+"category": "salgsinntekt",
+"nb": "Timer viderefakturert",
+"en": "Re-invoicing of hours"
+},
+{
+"code": "3007",
+"category": "salgsinntekt",
+"nb": "Annen kostnad viderefakturert",
+"en": "Re-invoicing of other costs"
+},
+{
+"code": "3008",
+"category": "salgsinntekt",
+"nb": "Endring i mer-/mindreuttak av petroleumsprodukter",
+"en": "Change in more/less withdrawal of petroleum products"
+},
+{
+"code": "3100",
+"category": "salgsinntekt",
+"nb": "Salg og uttak med 0 prosent mva.",
+"en": "Sales and withdrawals with zero rate VAT"
+},
+{
+"code": "3200",
+"category": "salgsinntekt",
+"nb": "Salg og uttak utenfor mva-loven",
+"en": "Sales and withdrawals outside the scope of the VAT Act"
+},
+{
+"code": "3300",
+"category": "salgsinntekt",
+"nb": "Offentlige særavgifter ved salg",
+"en": "Excise duties on sales"
+},
+{
+"code": "3400",
+"category": "annenDriftsinntekt",
+"nb": "Offentlige tilskudd og refusjoner",
+"en": "Government subsidies and reimbursements"
+},
+{
+"code": "3500",
+"category": "annenDriftsinntekt",
+"nb": "Endring uopptjent inntekt",
+"en": "Change in unearned income"
+},
+{
+"code": "3600",
+"category": "annenDriftsinntekt",
+"nb": "Inntekt fra utleie av eiendom",
+"en": "Income from renting out property"
+},
+{
+"code": "3650",
+"category": "annenDriftsinntekt",
+"nb": "Utleie av rettigheter til jakt og fiske med mer",
+"en": "Renting out hunting and fishing rights, etc."
+},
+{
+"code": "3695",
+"category": "annenDriftsinntekt",
+"nb": "Andre leieinntekter",
+"en": "Other rental income"
+},
+{
+"code": "3700",
+"category": "annenDriftsinntekt",
+"nb": "Provisjon",
+"en": "Commission"
+},
+{
+"code": "3710",
+"category": "annenDriftsinntekt",
+"nb": "Lisens-, patent- og royalty-inntekter",
+"en": "Licence, patent and royalty income"
+},
+{
+"code": "3850",
+"category": "annenDriftsinntekt",
+"nb": "Verdiendringer av investeringseiendommer etter IFRS",
+"en": "Changes in value of investment properties according to IFRS"
+},
+{
+"code": "3870",
+"category": "annenDriftsinntekt",
+"nb": "Verdiendringer biologiske eiendeler etter IFRS",
+"en": "Changes in value of biological assets according to IFRS"
+},
+{
+"code": "3880",
+"category": "annenDriftsinntekt",
+"nb": "Gevinst ved avgang av immaterielle eiendeler og varige driftsmidler",
+"en": "Gain from disposal of intangible assets and fixed tangible assets"
+},
+{
+"code": "3885",
+"category": "annenDriftsinntekt",
+"nb": "Gevinst ved avgang av finansielle anleggsmidler",
+"en": "Gain from disposal of financial fixed assets"
+},
+{
+"code": "3886",
+"category": "annenDriftsinntekt",
+"nb": "Gevinst ved overdragelse av tillatelse til petroleumsvirksomhet",
+"en": "Gain on the transfer of licences for petroleum activities"
+},
+{
+"code": "3890",
+"category": "annenDriftsinntekt",
+"nb": "Inntekt fra gevinst-/tapskonto",
+"en": "Income from profit and loss account"
+},
+{
+"code": "3895",
+"category": "annenDriftsinntekt",
+"nb": "Inntekt fra saldo",
+"en": "Income from a balance"
+},
+{
+"code": "3900",
+"category": "annenDriftsinntekt",
+"nb": "Andre driftsinntekter",
+"en": "Other operating revenues"
+},
+{
+"code": "3910",
+"category": "annenDriftsinntekt",
+"nb": "Inntekt fra tømmerkonto",
+"en": "Income from a timber account"
+},
+{
+"code": "3911",
+"category": "annenDriftsinntekt",
+"nb": "Inntekt fra jordbrukskonto",
+"en": "Income from a agriculture account"
+},
+{
+"code": "4001",
+"category": "varekostnad",
+"nb": "Letekostnader",
+"en": "Exploration costs"
+},
+{
+"code": "4002",
+"category": "varekostnad",
+"nb": "Utbyggingskostnader",
+"en": "Development costs"
+},
+{
+"code": "4003",
+"category": "varekostnad",
+"nb": "Produksjonskostnader",
+"en": "Production costs"
+},
+{
+"code": "4004",
+"category": "varekostnad",
+"nb": "Handling fee / Service fee / Trading fee",
+"en": "Handling fee / Service fee / Trading fee"
+},
+{
+"code": "4005",
+"category": "varekostnad",
+"nb": "Varekostnader inklusiv endring i beholdningen",
+"en": "Cost of goods including change in stock"
+},
+{
+"code": "4007",
+"category": "varekostnad",
+"nb": "Endring i mer-/mindreuttak av petroleumsprodukter",
+"en": "Change in more/less withdrawal of petroleum products"
+},
+{
+"code": "4008",
+"category": "varekostnad",
+"nb": "Fjernings- og nedstengningskostnader",
+"en": "Removal and shutdown costs"
+},
+{
+"code": "4295",
+"category": "varekostnad",
+"nb": "Endring i beholdningen av ferdige og uferdige egenproduserte varerr",
+"en": "The change in stock of complete and incomplete self-manufactured goods"
+},
+{
+"code": "4500",
+"category": "varekostnad",
+"nb": "Innleid arbeidskraft",
+"en": "Hired labour"
+},
+{
+"code": "4995",
+"category": "varekostnad",
+"nb": "Beholdningsendring av egentilvirkede anleggsmidler",
+"en": "Change in stock of self-manufactured fixed assets"
+},
+{
+"code": "5000",
+"category": "loennskostnad",
+"nb": "Lønn og feriepenger med mer",
+"en": "Salary and holiday pay, etc."
+},
+{
+"code": "5300",
+"category": "loennskostnad",
+"nb": "Andre opplysningspliktige godtgjørelser",
+"en": "Other remunerations carrying a reporting obligation"
+},
+{
+"code": "5400",
+"category": "loennskostnad",
+"nb": "Arbeidsgiveravgift",
+"en": "Employer’s national insurance contributions"
+},
+{
+"code": "5420",
+"category": "loennskostnad",
+"nb": "Opplysningspliktige pensjonskostnader",
+"en": "Pension costs subject to a reporting obligation"
+},
+{
+"code": "5600",
+"category": "loennskostnad",
+"nb": "Arbeidsgodtgjørelse til eiere i ANS mv.",
+"en": "Remuneration for work performed by owners in a partnership (ANS etc.)"
+},
+{
+"code": "5900",
+"category": "loennskostnad",
+"nb": "Andre personalkostnader",
+"en": "Other personnel costs"
+},
+{
+"code": "5950",
+"category": "loennskostnad",
+"nb": "Egen pensjonsordning",
+"en": "Own pension scheme"
+},
+{
+"code": "6000",
+"category": "annenDriftskostnad",
+"nb": "Avskrivning på varige driftsmidler",
+"en": "Depreciation of fixed assets"
+},
+{
+"code": "6001",
+"category": "annenDriftskostnad",
+"nb": "Avskrivning på produksjonsinnretning og rørledning",
+"en": "Depreciation of production installations and pipelines"
+},
+{
+"code": "6002",
+"category": "annenDriftskostnad",
+"nb": "Avskrivning på fjernings- og nedstengningseiendeler",
+"en": "Depreciation of removal and shut-down assets"
+},
+{
+"code": "6004",
+"category": "annenDriftskostnad",
+"nb": "Annen avskrivning",
+"en": "Other depreciation"
+},
+{
+"code": "6050",
+"category": "annenDriftskostnad",
+"nb": "Nedskrivning på varige driftsmidler og immaterielle eiendeler",
+"en": "Write-downs of tangible fixed assets and intangible assets"
+},
+{
+"code": "6051",
+"category": "annenDriftskostnad",
+"nb": "Nedskrivning på produksjonsinnretning og rørledning",
+"en": "Write-downs of production equipment and pipeline"
+},
+{
+"code": "6052",
+"category": "annenDriftskostnad",
+"nb": "Nedskrivning på aktiverte letekostnader",
+"en": "Write-downs of captalized exploration costs"
+},
+{
+"code": "6053",
+"category": "annenDriftskostnad",
+"nb": "Nedskrivning på anlegg under utførelse",
+"en": "Write-downs of plant under construction"
+},
+{
+"code": "6054",
+"category": "annenDriftskostnad",
+"nb": "Annen nedskrivning",
+"en": "Other write-downs"
+},
+{
+"code": "6100",
+"category": "annenDriftskostnad",
+"nb": "Frakt- og transportkostnader ved salg",
+"en": "Shipping and transport costs related to sales"
+},
+{
+"code": "6110",
+"category": "annenDriftskostnad",
+"nb": "Frakt- og transportkostnad vedrørende salg av olje",
+"en": "Shipping and transport costs related to oil"
+},
+{
+"code": "6120",
+"category": "annenDriftskostnad",
+"nb": "Frakt- og transportkostnad vedrørende salg av tørrgass",
+"en": "Shipping and transport costs related to dry gas"
+},
+{
+"code": "6130",
+"category": "annenDriftskostnad",
+"nb": "Frakt- og transportkostnad vedrørende salg av LNG",
+"en": "Shipping and transport costs related to LNG"
+},
+{
+"code": "6140",
+"category": "annenDriftskostnad",
+"nb": "Frakt- og transportkostnad vedrørende salg av våtgass",
+"en": "Shipping and transport costs related to wet gas"
+},
+{
+"code": "6200",
+"category": "annenDriftskostnad",
+"nb": "Energi og brensel med mer til produksjon",
+"en": "Power and fuel, etc. for manufacture"
+},
+{
+"code": "6300",
+"category": "annenDriftskostnad",
+"nb": "Leie av lokaler",
+"en": "Rental of premises"
+},
+{
+"code": "6340",
+"category": "annenDriftskostnad",
+"nb": "Strøm og oppvarming",
+"en": "Electricity and heating"
+},
+{
+"code": "6350",
+"category": "annenDriftskostnad",
+"nb": "IT kostnader",
+"en": "IT costs"
+},
+{
+"code": "6395",
+"category": "annenDriftskostnad",
+"nb": "Renovasjon, vann, avløp, renhold med mer",
+"en": "Refuse collection, water, sewage, cleaning, etc."
+},
+{
+"code": "6400",
+"category": "annenDriftskostnad",
+"nb": "Leie av maskiner, inventar og utstyr med mer",
+"en": "Rental of machines, fixtures and fittings, etc."
+},
+{
+"code": "6440",
+"category": "annenDriftskostnad",
+"nb": "Langtidsleie/leasing av bil",
+"en": "Long-term rental/leasing of vehicle"
+},
+{
+"code": "6500",
+"category": "annenDriftskostnad",
+"nb": "Verktøy, inventar med mer som skal kostnadsføres direkte",
+"en": "Tools, fixtures and fittings etc. for direct expense deduction"
+},
+{
+"code": "6600",
+"category": "annenDriftskostnad",
+"nb": "Reparasjoner og vedlikehold av bygninger",
+"en": "Building repairs and maintenance"
+},
+{
+"code": "6695",
+"category": "annenDriftskostnad",
+"nb": "Reparasjoner og vedlikehold av utstyr med mer",
+"en": "Repairs and maintenance of equipment, etc."
+},
+{
+"code": "6700",
+"category": "annenDriftskostnad",
+"nb": "Regnskapstjenester, rådgivning med mer",
+"en": "Accountancy and consultancy services, etc."
+},
+{
+"code": "6750",
+"category": "annenDriftskostnad",
+"nb": "Konserntjenester",
+"en": "Group company services"
+},
+{
+"code": "6751",
+"category": "annenDriftskostnad",
+"nb": "Kostnadsreduksjon timer viderefakturert",
+"en": "Cost reduction hours re-invoiced"
+},
+{
+"code": "6752",
+"category": "annenDriftskostnad",
+"nb": "Kostnadsreduksjon annen kostnad viderefakturert",
+"en": "Cost reduction other costs re-invoiced"
+},
+{
+"code": "6995",
+"category": "annenDriftskostnad",
+"nb": "Kontorrekvisita, elektronisk kommunikasjon, porto med mer",
+"en": "Office equipment, electronic communication, postage, etc."
+},
+{
+"code": "6998",
+"category": "annenDriftskostnad",
+"nb": "Privat bruk av elektronisk kommunikasjon",
+"en": "Private use of electronic communication"
+},
+{
+"code": "7000",
+"category": "annenDriftskostnad",
+"nb": "Drivstoff",
+"en": "Fuel"
+},
+{
+"code": "7020",
+"category": "annenDriftskostnad",
+"nb": "Vedlikehold",
+"en": "Maintenance"
+},
+{
+"code": "7040",
+"category": "annenDriftskostnad",
+"nb": "Forsikring og avgifter",
+"en": "Insurance and taxes"
+},
+{
+"code": "7080",
+"category": "annenDriftskostnad",
+"nb": "Fradrag for bruk av privat bil i næringsvirksomheten",
+"en": "Deductions for the use of a private vehicle in the business activity"
+},
+{
+"code": "7099",
+"category": "annenDriftskostnad",
+"nb": "Privat bruk av næringsbil",
+"en": "Private use of a commercial vehicle"
+},
+{
+"code": "7155",
+"category": "annenDriftskostnad",
+"nb": "Reise-, diett- og bilgodtgjørelser, med opplysningsplikt",
+"en": "Travel, subsistence and car allowances carrying a reporting obligation"
+},
+{
+"code": "7165",
+"category": "annenDriftskostnad",
+"nb": "Reise- og diettkostnader, uten opplysningsplikt",
+"en": "Travel and subsistence expenses, not subject to a reporting obligation"
+},
+{
+"code": "7295",
+"category": "annenDriftskostnad",
+"nb": "Provisjonskostnader",
+"en": "Commission costs"
+},
+{
+"code": "7330",
+"category": "annenDriftskostnad",
+"nb": "Salgs- og reklamekostnader",
+"en": "Marketing costs"
+},
+{
+"code": "7350",
+"category": "annenDriftskostnad",
+"nb": "Representasjonskostnader med fradragsrett",
+"en": "Deductible business entertainment costs"
+},
+{
+"code": "7370",
+"category": "annenDriftskostnad",
+"nb": "Representasjonskostnader",
+"en": "Business entertainment costs"
+},
+{
+"code": "7400",
+"category": "annenDriftskostnad",
+"nb": "Kontingenter med fradragsrett",
+"en": "Deductible membership fees"
+},
+{
+"code": "7420",
+"category": "annenDriftskostnad",
+"nb": "Gaver med fradragsrett",
+"en": "Deductible costs for gifts"
+},
+{
+"code": "7440",
+"category": "annenDriftskostnad",
+"nb": "Gaver",
+"en": "Gifts"
+},
+{
+"code": "7490",
+"category": "annenDriftskostnad",
+"nb": "Kontingenter",
+"en": "Membership fees"
+},
+{
+"code": "7500",
+"category": "annenDriftskostnad",
+"nb": "Forsikringspremier",
+"en": "Insurance premiums"
+},
+{
+"code": "7501",
+"category": "annenDriftskostnad",
+"nb": "Driftsforsikring",
+"en": "Operational insurance"
+},
+{
+"code": "7502",
+"category": "annenDriftskostnad",
+"nb": "Utbyggingsforsikring",
+"en": "Development insurance"
+},
+{
+"code": "7503",
+"category": "annenDriftskostnad",
+"nb": "Annen forsikring",
+"en": "Other insurance"
+},
+{
+"code": "7565",
+"category": "annenDriftskostnad",
+"nb": "Garanti- og servicekostnader",
+"en": "Warranty and servicing costs"
+},
+{
+"code": "7600",
+"category": "annenDriftskostnad",
+"nb": "Lisenser, patenter og royalties",
+"en": "License, patent and royalties"
+},
+{
+"code": "7650",
+"category": "annenDriftskostnad",
+"nb": "Forskning og utviklingskostnad",
+"en": "Research and development cost"
+},
+{
+"code": "7651",
+"category": "annenDriftskostnad",
+"nb": "Tilskudd til vitenskapelig forskning mv jf sktl § 6-42",
+"en": "Grants for scientific research, etc. cf. Tax Act § 6-42"
+},
+{
+"code": "7700",
+"category": "annenDriftskostnad",
+"nb": "Andre kostnader",
+"en": "Other costs"
+},
+{
+"code": "7701",
+"category": "annenDriftskostnad",
+"nb": "Co2-avgift",
+"en": "CO2 tax"
+},
+{
+"code": "7830",
+"category": "annenDriftskostnad",
+"nb": "Tap på fordringer",
+"en": "Losses on receivables"
+},
+{
+"code": "7860",
+"category": "annenDriftskostnad",
+"nb": "Tap på kontrakter",
+"en": "Losses on contracts"
+},
+{
+"code": "7880",
+"category": "annenDriftskostnad",
+"nb": "Tap ved avgang av immaterielle eiendeler og varige driftsmidler",
+"en": "Losses on the disposal of intangible assets and fixed tangible assets"
+},
+{
+"code": "7885",
+"category": "annenDriftskostnad",
+"nb": "Tap ved avgang av finansielle anleggsmidler",
+"en": "Losses on the disposal of financial fixed assets"
+},
+{
+"code": "7886",
+"category": "annenDriftskostnad",
+"nb": "Tap ved overdragelse av tillatelse til petroleumsvirksomhet",
+"en": "Loss on the transfer of licenses for petroleum activities"
+},
+{
+"code": "7890",
+"category": "annenDriftskostnad",
+"nb": "Fradrag fra gevinst- og tapskonto",
+"en": "Deductions from profit and loss accounts"
+},
+{
+"code": "7897",
+"category": "annenDriftskostnad",
+"nb": "Endring i skattemessig tap på fordringer",
+"en": "Change in tax losses on receivables"
+},
+{
+"code": "7910",
+"category": "annenDriftskostnad",
+"nb": "Overført til tømmerkonto av årets overskudd/underskudd",
+"en": "Transferred to timber account from this year’s profit and loss"
+},
+{
+"code": "7911",
+"category": "annenDriftskostnad",
+"nb": "Kostnadsføring tømmerkonto",
+"en": "Expense recognition timber account"
+},
+{
+"code": "7912",
+"category": "annenDriftskostnad",
+"nb": "Overført til jordbrukskonto av årets overskudd/underskudd",
+"en": "Transferred to agriculture account from this year´s profit and loss"
+},
+{
+"code": "7913",
+"category": "annenDriftskostnad",
+"nb": "Kostnadsføring fra jordbrukskonto",
+"en": "Expense recognition agriculture account"
+},
+{
+"code": "8005",
+"category": "finansinntekt",
+"nb": "Netto positiv resultatandel vedrørende investering i DS, TS og FKV",
+"en": "Net positive share in profits regarding investments in subsidiaries, associated companies and jointly controlled enterprises"
+},
+{
+"code": "8030",
+"category": "finansinntekt",
+"nb": "Renteinntekt fra foretak i samme konsern",
+"en": "Interest income from enterprises in the same group"
+},
+{
+"code": "8050",
+"category": "finansinntekt",
+"nb": "Annen renteinntekt",
+"en": "Other interest income"
+},
+{
+"code": "8054",
+"category": "finansinntekt",
+"nb": "Garantiinntekter fra foretak i samme konsern",
+"en": "Guarantee income from enterprises in the same group"
+},
+{
+"code": "8059",
+"category": "finansinntekt",
+"nb": "Garantiinntekt",
+"en": "Guarantee income"
+},
+{
+"code": "8060",
+"category": "finansinntekt",
+"nb": "Gevinst ved kursendring på valuta",
+"en": "Gains on fluctuations of currency exchange rates"
+},
+{
+"code": "8074",
+"category": "finansinntekt",
+"nb": "Gevinst ved realisasjon av aksjer, egenkapitalbevis og fondsandeler",
+"en": "Profits made on the sale of shares, equity certificates and units in funds"
+},
+{
+"code": "8075",
+"category": "finansinntekt",
+"nb": "Finansinntekt fra foretak i samme konsern",
+"en": "Financial income from enterprises in the same group"
+},
+{
+"code": "8079",
+"category": "finansinntekt",
+"nb": "Andre finansinntekter",
+"en": "Other financial income"
+},
+{
+"code": "8080",
+"category": "finansinntekt",
+"nb": "Verdiøkning av finansielle instrumenter vurdert til virkelig verdi",
+"en": "Increase in value of financial instruments carried at fair value"
+},
+{
+"code": "8090",
+"category": "finansinntekt",
+"nb": "Inntekt av andre investeringer/utbytte",
+"en": "Income from other investments/dividends"
+},
+{
+"code": "8091",
+"category": "finansinntekt",
+"nb": "3 % av netto skattefrie inntekter etter fritaksmetoden og 3 % av utdeling fra selskap med deltakerfastsetting til selskapsdeltaker",
+"en": "3% of net tax-free income in accordance with the exemption method and 3% of dividends to a partner from businesses assessed as partnerships"
+},
+{
+"code": "8100",
+"category": "finanskostnad",
+"nb": "Verdireduksjon av finansielle instrumenter vurdert til virkelig verdi",
+"en": "Reduction in value of financial instruments carried at fair value"
+},
+{
+"code": "8105",
+"category": "finanskostnad",
+"nb": "Netto negativ resultatandel vedrørende investering i DS, TS og FKV",
+"en": "Net negative share in profits regarding investments in subsidiaries, associated companies and jointly controlled enterprises"
+},
+{
+"code": "8115",
+"category": "finanskostnad",
+"nb": "Nedskriving av finansielle eiendeler",
+"en": "Write-down of financial assets"
+},
+{
+"code": "8120",
+"category": "finanskostnad",
+"nb": "Kalkulatorisk rente fjernings- og nedstengningsforpliktelse",
+"en": "Calculated interest, removal and shutdown obligation"
+},
+{
+"code": "8130",
+"category": "finanskostnad",
+"nb": "Rentekostnad til foretak i samme konsern",
+"en": "Interest paid to group companies"
+},
+{
+"code": "8150",
+"category": "finanskostnad",
+"nb": "Annen rentekostnad",
+"en": "Other interest expenses"
+},
+{
+"code": "8154",
+"category": "finanskostnad",
+"nb": "Garantikostnad til foretak i samme konsern",
+"en": "Guarantee costs for companies in the same group"
+},
+{
+"code": "8159",
+"category": "finanskostnad",
+"nb": "Annen garantikostnad",
+"en": "Other guarantee costs"
+},
+{
+"code": "8160",
+"category": "finanskostnad",
+"nb": "Tap ved kursendring på valuta",
+"en": "Losses from currency fluctuations"
+},
+{
+"code": "8174",
+"category": "finanskostnad",
+"nb": "Tap ved realisasjon av aksjer, egenkapitalbevis og fondsandeler",
+"en": "Losses on the sale of shares, equity certificates and units in funds"
+},
+{
+"code": "8175",
+"category": "finanskostnad",
+"nb": "Finanskostnader til foretak i samme konsern",
+"en": "Financial expenses for companies in the same group"
+},
+{
+"code": "8179",
+"category": "finanskostnad",
+"nb": "Andre finanskostnader",
+"en": "Other financial costs"
+},
+{
+"code": "8300",
+"category": "skattekostnad",
+"nb": "Betalbar skatt på ordinært resultat",
+"en": "Tax payable on the profit/loss on ordinary activities"
+},
+{
+"code": "8321",
+"category": "skattekostnad",
+"nb": "Økning i utsatt skatt/nedgang i utsatt skattefordel på ordinært resultat",
+"en": "Increase in deferred tax/decrease in deferred tax asset on the profit/loss on ordinary activities"
+},
+{
+"code": "8322",
+"category": "skattekostnad",
+"nb": "Nedgang i utsatt skatt/økning i utsatt skattefordel på ordinært resultat",
+"en": "Decrease in deferred tax/increase in deferred tax asset on the profit/loss on ordinary activities"
+},
+{
+"code": "8323",
+"category": "skattekostnad",
+"nb": "For lite avsatt skatt fra forrige år",
+"en": "Under-allocated tax from last year"
+},
+{
+"code": "8324",
+"category": "skattekostnad",
+"nb": "For mye avsatt skatt fra forrige år",
+"en": "Over-allocated tax from last year"
+},
+{
+"code": "8800",
+"category": "resultatDisponeringForSAF-T",
+"nb": "Disponering av årets overskudd/dekning av årets underskudd",
+"en": "Appropriation of profit/allocation of loss"
+}
+]
+}

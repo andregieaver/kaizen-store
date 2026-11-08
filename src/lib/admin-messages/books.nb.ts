@@ -168,6 +168,18 @@ export const booksNb: BooksMessages = {
       },
     },
   },
+  saft: {
+    title: "SAF-T-fil",
+    lead: "Et år av regnskapet ditt som én fil i Skatteetatens format (SAF-T Regnskap): til bokettersyn, til regnskapsføreren, eller for å flytte til et annet regnskapssystem.",
+    download: "Last ned {year}",
+    days: "{from} til {to}",
+    noOrgNumber: "Legg inn organisasjonsnummeret til virksomheten for å laste ned filen: Skatteetaten tar ikke imot noen uten.",
+    mapping: "Slik rapporteres hver konto",
+    mappingLead: "Skatteetaten vil ha hver konto under en kode fra næringsspesifikasjonen. Dette er kodene kontoene dine rapporteres under; regnskapsføreren din kan se over dem.",
+    account: "Konto",
+    code: "Kode",
+    codeName: "Rapporteres som",
+  },
   journal: {
     title: "Bilagsjournal",
     lead: "De siste bilagene, nyeste først, hvert med sine linjer.",

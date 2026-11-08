@@ -11,6 +11,7 @@ import { todayIn } from "@/lib/analytics-period";
 import { HAND_ROWS, LEDGER_SERIES, NO_TAX_CODES, balanceSheet, isDay, profitAndLoss, vatTermOf, type ReportRow } from "@/lib/ledger";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { formatStoreDay } from "@/lib/return-time";
+import { groupingOf, saftYears } from "@/lib/saft";
 import { vatTermOfDay } from "@/lib/vat-return";
 import { ledgerAccounts, ledgerJournal, ledgerTrialBalance, ledgerVatByCode, ledgerWaiting, openBookOf } from "@/server/ledger";
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
@@ -24,6 +25,7 @@ import { billOffers, unpaidBills } from "@/server/supplier-invoices";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
+import { vatReturnOrgNumber } from "@/server/vat-return";
 
 import { addBillAction, lockBooksAction, openBooksAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, reverseEntryAction, uploadBankStatementAction } from "./actions";
 
@@ -79,13 +81,14 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const asked = (value: unknown) => (typeof value === "string" && isDay(value) ? value : null);
   const from = asked(query.from) ?? (yearStart < book.openedOn ? book.openedOn : yearStart);
   const to = asked(query.to) ?? today;
-  const [waiting, tb, vat, tripletex, journal, chart] = await Promise.all([
+  const [waiting, tb, vat, tripletex, journal, chart, organisationNumber] = await Promise.all([
     ledgerWaiting(book.id),
     ledgerTrialBalance(book.id, from, to),
     ledgerVatByCode(book.id, from, to),
     getTripletexConnection(store.id),
     ledgerJournal(book.id),
-    owner ? ledgerAccounts(book.id) : Promise.resolve([]),
+    ledgerAccounts(book.id),
+    vatReturnOrgNumber(book, store.id),
   ]);
   const pl = profitAndLoss(tb.rows);
   const bs = balanceSheet(tb.rows);
@@ -585,6 +588,52 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
             </table>
           </div>
         )}
+      </Card>
+
+      <Card title={w.saft.title} description={w.saft.lead}>
+        {organisationNumber ? (
+          <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {saftYears(book.openedOn, book.closedOn, today).map((y) => (
+              <li key={y.year} className="flex flex-col">
+                <a href={`/admin/${store.slug}/settings/books/saft/${y.year}`} download className="underline underline-offset-2">
+                  {fillWords(w.saft.download, { year: String(y.year) })}
+                </a>
+                {(y.from !== `${y.year}-01-01` || y.to !== `${y.year}-12-31`) && <span className="text-muted">{fillWords(w.saft.days, { from: day(y.from), to: day(y.to) })}</span>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm">{w.saft.noOrgNumber}</p>
+        )}
+        <details className="mt-4 text-sm">
+          <summary className="cursor-pointer">{w.saft.mapping}</summary>
+          <p className="mt-2 text-muted">{w.saft.mappingLead}</p>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full">
+              <thead className="text-muted">
+                <tr className="border-b border-line">
+                  <th className="px-3 py-2 text-left font-medium">{w.saft.account}</th>
+                  <th className="px-3 py-2 text-left font-medium">{w.saft.code}</th>
+                  <th className="px-3 py-2 text-left font-medium">{w.saft.codeName}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {chart.map((a) => {
+                  const g = groupingOf(a.number, a.standard);
+                  return (
+                    <tr key={a.number} className="border-b border-line last:border-0">
+                      <td className="px-3 py-2">
+                        <span className="tabular-nums">{a.number}</span> {a.name}
+                      </td>
+                      <td className="px-3 py-2 tabular-nums">{g?.code ?? "–"}</td>
+                      <td className="px-3 py-2">{g ? (lang === "nb" ? g.nb : g.en) : ""}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </details>
       </Card>
 
       <Card title={w.journal.title} description={w.journal.lead}>

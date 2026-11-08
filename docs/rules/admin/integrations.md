@@ -353,6 +353,18 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   compared code by code; reading Tripletex never writes there. Nothing is filed: sending through Skatteetaten waits for the store's own
   sign-in with them.
 
+## SAF-T Financial (B5, D497, `src/lib/saft.ts`, `src/server/saft.ts`)
+
+- **SAF-T Financial (B5, D497, `src/lib/saft.ts`, `src/server/saft.ts`)**: a year of the open book as Skatteetaten's file is only
+  `saftXml()`, which writes exactly what was validated against Skatteetaten's schemas v1.30 and v1.40 (`src/data/saft/saft-sample.xml`, a
+  unit test holds them equal; change the file only after validating it again, `WRITE_SAFT_SAMPLE=1` writes the sample). Each account reports
+  under the business statement's code `groupingOf()` gives (`NO_GROUPING_RANGES`, covering 1000 to 8999; a change there is an accountant's
+  question, and the Books screen shows every account's code). Balances are `saftBalances()`'s (a profit and loss account starts each year at
+  nought; an earlier year's uncarried result is on 2050), a customer's or supplier's `partyBalances()`'s; a line on 1500–1529 names its client
+  (the shop's buyers as `NETTBUTIKK`), one on 2400–2459 its bill's supplier, a reversal by the entry it reverses. The file is for the books'
+  organisation number, else the store's, and none is offered without one. A download is a route (`/settings/books/saft/[year]`), never a new
+  page, and is audited (`work.ledger_saft_downloaded`).
+
 ## Bank statements in the books (B4, D486, `src/lib/bank-statement.ts`, `src/lib/xml-read.ts`, `src/server/bank-statements.ts`)
 
 - **Bank statements in the books (B4, D486, `src/lib/bank-statement.ts`, `src/lib/xml-read.ts`, `src/server/bank-statements.ts`)**: the

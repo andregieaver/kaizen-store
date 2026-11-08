@@ -172,6 +172,18 @@ export const booksEn = {
       },
     },
   },
+  saft: {
+    title: "SAF-T file",
+    lead: "A year of your books as one file in Skatteetaten's format (SAF-T Financial): for an audit, for your accountant, or to move to another accounting system.",
+    download: "Download {year}",
+    days: "{from} to {to}",
+    noOrgNumber: "Add your business's organisation number to download the file: Skatteetaten takes none without it.",
+    mapping: "How each account is reported",
+    mappingLead: "Skatteetaten wants each account under a code of its business statement (næringsspesifikasjon). These are the codes your accounts are reported under; your accountant can check them.",
+    account: "Account",
+    code: "Code",
+    codeName: "Reported as",
+  },
   journal: {
     title: "Journal",
     lead: "The latest entries, newest first, each with its lines.",
