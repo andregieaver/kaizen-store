@@ -137,6 +137,8 @@ export const booksEn = {
     unknown: { one: "Code {codes} is not on Skatteetaten's form and is left out: check the entry it came from.", many: "Codes {codes} are not on Skatteetaten's form and are left out: check the entries they came from." },
     send: "Until Kaizena Flow sends the return for you, type these lines into the VAT return (mva-melding) in Skatteetaten's service, or give the file to your accountant.",
     download: "Download the return (XML)",
+    noOrgNumber: "Add your business's organisation number to download the return: Skatteetaten takes none without it.",
+    company: "Company",
     termSize: "Your VAT terms",
     termSizeHelp: "Most businesses report every two months. Choose a year only if Skatteetaten has allowed your business to report yearly.",
     sizes: { two_months: "Two months", year: "A year" },

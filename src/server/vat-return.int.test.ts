@@ -14,7 +14,7 @@ const invoices = await import("./work-invoices");
 const ledger = await import("./ledger");
 const { connectTripletex, startTripletex } = await import("./tripletex");
 const { syncDueTripletex } = await import("./tripletex-sync");
-const { ourVatReturn, theirVatReturn, setVatTermSize, vatReturnXml } = await import("./vat-return");
+const { ourVatReturn, theirVatReturn, setVatTermSize, vatReturnOrgNumber, vatReturnXml } = await import("./vat-return");
 const { fakeTripletex } = await import("./tripletex-test-support");
 const { getStore } = await import("./stores");
 
@@ -135,7 +135,9 @@ describe("the VAT return, from the books and compared with Tripletex (D496)", ()
     expect(differ).toMatchObject({ ok: true, comparison: { differences: [{ code: "1", oursVat: -20_000, theirsVat: 0 }], totalDifference: -20_000 } });
 
     // The XML says the same.
-    const xml = vatReturnXml(book, after, storeId);
+    const org9 = await vatReturnOrgNumber(book, storeId);
+    expect(org9).toBe(org);
+    const xml = vatReturnXml(org9!, after, storeId);
     expect(xml).toContain("<fastsattMerverdiavgift>2800</fastsattMerverdiavgift>");
     expect(xml).toContain(`<organisasjonsnummer>${org}</organisasjonsnummer>`);
   }, 60_000);
@@ -152,5 +154,9 @@ describe("the VAT return, from the books and compared with Tripletex (D496)", ()
     const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action = 'work.ledger_vat_term_set'`);
     expect(audited.n).toBe(1);
     expect(await theirVatReturn(storeId, await ourVatReturn((await ledger.openBookOf(storeId))!, vatTermOfDay("year", "2026-06-01")))).toEqual({ ok: false, problem: "connection" });
+    // No organisation number on the books nor the store: no return is offered.
+    await db().execute(sql`update commerce.stores set organisation_number = null where id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.ledger_books set organisation_number = '' where id = ${book.id}::uuid`);
+    expect(await vatReturnOrgNumber((await ledger.openBookOf(storeId))!, storeId)).toBeNull();
   });
 });

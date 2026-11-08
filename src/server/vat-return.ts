@@ -105,10 +105,25 @@ export async function theirVatReturn(storeId: string, ours: OurVatReturn, deps: 
   return { ok: true, rows, status, comparison: compareVatReturns(ours.rows, rows) };
 }
 
+/**
+ * The organisation number the return is for: the books' (the legal entity's when they opened), else the store's now; nine digits, or null
+ * when there is none (Skatteetaten takes no return without one, so none is offered).
+ */
+export async function vatReturnOrgNumber(book: LedgerBook, storeId: string): Promise<string | null> {
+  const nine = (v: string | null | undefined) => {
+    const digits = (v ?? "").replace(/\D/g, "");
+    return /^\d{9}$/.test(digits) ? digits : null;
+  };
+  const own = nine(book.organisationNumber);
+  if (own) return own;
+  const [store] = await db().execute<{ organisation_number: string | null }>(sql`select organisation_number from commerce.stores where id = ${storeId}::uuid`);
+  return nine(store?.organisation_number);
+}
+
 /** The return as Skatteetaten's XML, with Kaizena Flow as the system and the term as our reference. */
-export function vatReturnXml(book: LedgerBook, ours: OurVatReturn, storeId: string): string {
+export function vatReturnXml(organisationNumber: string, ours: OurVatReturn, storeId: string): string {
   return mvaMeldingXml({
-    organisationNumber: book.organisationNumber,
+    organisationNumber,
     term: ours.term,
     ret: ours.ret,
     reference: `kf-${storeId.slice(0, 8)}-${ours.term.key}`,

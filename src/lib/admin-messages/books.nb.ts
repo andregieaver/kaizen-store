@@ -133,6 +133,8 @@ export const booksNb: BooksMessages = {
     unknown: { one: "Kode {codes} finnes ikke i Skatteetatens skjema og er utelatt: sjekk bilaget den kom fra.", many: "Kodene {codes} finnes ikke i Skatteetatens skjema og er utelatt: sjekk bilagene de kom fra." },
     send: "Til Kaizena Flow sender meldingen for deg: før disse linjene inn i mva-meldingen hos Skatteetaten, eller gi filen til regnskapsføreren din.",
     download: "Last ned meldingen (XML)",
+    noOrgNumber: "Legg inn organisasjonsnummeret til virksomheten for å laste ned meldingen: Skatteetaten tar ikke imot noen uten.",
+    company: "Firma",
     termSize: "Mva-terminene dine",
     termSizeHelp: "De fleste rapporterer annenhver måned. Velg år bare om Skatteetaten har gitt virksomheten lov til å rapportere årlig.",
     sizes: { two_months: "To måneder", year: "Ett år" },

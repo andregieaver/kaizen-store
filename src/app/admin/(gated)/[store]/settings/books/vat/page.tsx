@@ -17,7 +17,7 @@ import { VAT_TERM_SIZES, vatTermOfDay, vatTermOfKey, vatTermsOf, type VatTerm } 
 import { openBookOf, type LedgerBook } from "@/server/ledger";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
-import { ourVatReturn, theirVatReturn, type OurVatReturn } from "@/server/vat-return";
+import { ourVatReturn, theirVatReturn, vatReturnOrgNumber, type OurVatReturn } from "@/server/vat-return";
 
 import { setVatTermAction } from "../actions";
 
@@ -110,8 +110,7 @@ export default async function VatReturnPage({ params, searchParams }: PageProps<
   const terms = vatTermsOf(book.vatTerm, book.openedOn, today);
   const asked = vatTermOfKey(book.vatTerm, (await searchParams).term);
   const term: VatTerm = asked && terms.some((t) => t.key === asked.key) ? asked : (terms[0] ?? vatTermOfDay(book.vatTerm, today));
-  const ours = await ourVatReturn(book, term);
-  const tripletex = await getTripletexConnection(store.id);
+  const [ours, tripletex, orgNumber] = await Promise.all([ourVatReturn(book, term), getTripletexConnection(store.id), vatReturnOrgNumber(book, store.id)]);
   const amount = (minor: number) => formatMoney(minor, book.currency, locale);
   const digits = minorUnitDigits(book.currency);
   const number = new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -184,14 +183,24 @@ export default async function VatReturnPage({ params, searchParams }: PageProps<
           )}
           {ours.ret.unknown.length > 0 && <p className="text-sm">{countWords(ours.ret.unknown.length, w.unknown, { codes: ours.ret.unknown.join(", ") })}</p>}
           <p className="text-sm text-muted">{w.send}</p>
-          <div>
-            <a
-              href={`/admin/${store.slug}/settings/books/vat/xml?term=${term.key}`}
-              className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
-            >
-              {w.download}
-            </a>
-          </div>
+          {orgNumber ? (
+            <div>
+              <a
+                href={`/admin/${store.slug}/settings/books/vat/xml?term=${term.key}`}
+                className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
+              >
+                {w.download}
+              </a>
+            </div>
+          ) : (
+            // Skatteetaten takes no return without the business's organisation number: ask for it instead of offering a file it refuses.
+            <p className="text-sm">
+              {w.noOrgNumber}{" "}
+              <Link href={`/admin/${store.slug}/settings/company`} className="underline">
+                {w.company}
+              </Link>
+            </p>
+          )}
         </div>
       </Card>
 
