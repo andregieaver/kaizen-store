@@ -120,7 +120,7 @@ export async function invoiceOffers(storeId: string, bookId: string): Promise<Ma
     MONEY_IN,
     sql`select id, booked_on::text as day, amount_minor, currency, text, reference, counterparty from commerce.bank_lines
          where store_id = ${storeId}::uuid and book_id = ${bookId}::uuid and ledger_account = ${BANK_ACCOUNT}
-           and entry_id is null and amount_minor > 0`,
+           and entry_id is null and payment_ref is null and amount_minor > 0`,
   );
   if (lines.length === 0) return new Map();
   const open = await openDocuments(storeId);
@@ -166,7 +166,7 @@ export async function payInvoiceFromBank(
     sql`select b.id, b.booked_on::text as day, b.amount_minor, b.currency, b.text, b.reference, b.counterparty
           from commerce.bank_lines b join commerce.ledger_books k on k.id = b.book_id
          where b.id = ${lineId}::uuid and b.store_id = ${storeId}::uuid and b.ledger_account = ${BANK_ACCOUNT}
-           and b.entry_id is null and b.amount_minor > 0 and k.closed_on is null`,
+           and b.entry_id is null and b.payment_ref is null and b.amount_minor > 0 and k.closed_on is null`,
   );
   if (!line) return { ok: false, problem: "line" };
   const reference = [line.counterparty, line.text, line.reference].filter(Boolean).join(" · ").slice(0, 200) || undefined;
@@ -207,6 +207,12 @@ export async function payInvoiceFromBank(
       // The entry was matched to another line meanwhile: this one waits for the matching.
       log("info", "bank.payment_match_taken", { storeId, lineId }, error);
     }
+  } else if (paymentId) {
+    // Paid with no entry in the books (D495): money before the books opened (in the opening balance), or an invoice that is not in these
+    // books. The line has done its work: it is never offered again, nor left waiting for an entry.
+    await db().execute(sql`
+      update commerce.bank_lines set payment_ref = ${`${open.source}_payment:${paymentId}`}
+       where id = ${lineId}::uuid and store_id = ${storeId}::uuid and entry_id is null and payment_ref is null`);
   }
   await audit(member.account.id, storeId, "work.bank_payment_recorded", { lineId, invoiceId, source: open.source, paymentId, posted: entryId !== null });
   return { ok: true, printedNumber: open.printedNumber };
@@ -244,7 +250,7 @@ export async function postBankOwnLine(
     sql`select b.id, b.book_id, b.booked_on::text as day, b.amount_minor, b.text
           from commerce.bank_lines b join commerce.ledger_books k on k.id = b.book_id
          where b.id = ${lineId}::uuid and b.store_id = ${storeId}::uuid and b.ledger_account = ${BANK_ACCOUNT}
-           and b.entry_id is null and k.closed_on is null`,
+           and b.entry_id is null and b.payment_ref is null and k.closed_on is null`,
   );
   if (!line) return { ok: false, problem: "line" };
   const kind = bankOwnKind({ amountMinor: line.amount_minor, text: line.text });

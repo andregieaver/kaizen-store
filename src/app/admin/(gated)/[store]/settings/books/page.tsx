@@ -169,11 +169,14 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         </Card>
       )}
 
-      <Card title={w.bank.title} description={w.bank.lead} aside={bank.statements > 0 ? <Chip signal={bank.matched === bank.lines ? "positive" : "warning"}>{`${bank.matched}/${bank.lines}`}</Chip> : undefined}>
+      <Card title={w.bank.title} description={w.bank.lead} aside={bank.statements > 0 ? <Chip signal={bank.waiting === 0 ? "positive" : "warning"}>{`${bank.lines - bank.waiting}/${bank.lines}`}</Chip> : undefined}>
         <div className="flex flex-col gap-4 text-sm">
           {bank.statements > 0 && bank.fromDay && bank.toDay && (
             <div className="flex flex-col gap-1">
-              <p>{countWords(bank.lines, w.bank.summary, { from: day(bank.fromDay), to: day(bank.toDay), matched: bank.matched })}</p>
+              <p>
+                {countWords(bank.lines, w.bank.summary, { from: day(bank.fromDay), to: day(bank.toDay), matched: bank.matched })}
+                {bank.settled > 0 && <> {countWords(bank.settled, w.bank.settled)}</>}
+              </p>
               {bank.closing && (
                 <p className={bank.closing.bankMinor === bank.closing.booksMinor ? "text-muted" : "font-medium"}>
                   {bank.closing.bankMinor === bank.closing.booksMinor
@@ -181,7 +184,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                     : fillWords(w.bank.balance, { bank: amount(bank.closing.bankMinor), day: day(bank.closing.day), books: amount(bank.closing.booksMinor) })}
                 </p>
               )}
-              {bank.matched === bank.lines && bank.booksOnly.length === 0 && <p className="text-muted">{w.bank.none}</p>}
+              {bank.waiting === 0 && bank.booksOnly.length === 0 && <p className="text-muted">{w.bank.none}</p>}
             </div>
           )}
           {(() => {
@@ -189,7 +192,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
             // offer, so its message stays once the line it paid has left the list.
             const list = bank.bankOnly.length > 0 && (
               <details open>
-                <summary className="cursor-pointer font-medium">{`${w.bank.bankOnly} (${bank.lines - bank.matched})`}</summary>
+                <summary className="cursor-pointer font-medium">{`${w.bank.bankOnly} (${bank.waiting})`}</summary>
                 <p className="mt-1 text-muted">{w.bank.bankOnlyLead}</p>
                 <ul className="mt-2 flex flex-col divide-y divide-line">
                   {bank.bankOnly.map((l) => {
@@ -273,14 +276,58 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                 </ul>
               </details>
             );
+            // Before the books opened (D495): nothing waits for an entry; a client's payment can still mark an old invoice paid.
+            const earlierPaying = bank.earlier.filter((l) => offers.has(l.id));
+            const earlier = bank.earlierCount > 0 && bank.openedOn && (
+              <details open={earlierPaying.length > 0}>
+                <summary className="cursor-pointer font-medium">{`${w.bank.earlier} (${bank.earlierCount})`}</summary>
+                <p className="mt-1 text-muted">{w.bank.earlierLead}</p>
+                {earlierPaying.length > 0 && (
+                  <ul className="mt-2 flex flex-col divide-y divide-line">
+                    {earlierPaying.map((l) => {
+                      const offer = offers.get(l.id)!;
+                      return (
+                        <li key={l.id} className="flex flex-col gap-2 py-2">
+                          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                            <span className="min-w-0 flex-1">
+                              <span className="text-muted">{day(l.day)}</span> {[l.counterparty, l.text, l.reference].filter(Boolean).join(" · ")}
+                            </span>
+                            <span className="tabular-nums">{amount(l.amountMinor)}</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <span className="text-muted">
+                              {offer.source === "shop"
+                                ? fillWords(w.bank.offerOrder, { number: offer.printedNumber, order: offer.orderNumber ?? "", amount: amount(offer.outstandingMinor) })
+                                : fillWords(w.bank.offer, { number: offer.printedNumber, client: offer.client, amount: amount(offer.outstandingMinor) })}
+                            </span>
+                            {owner && (
+                              <SubmitButton variant="secondary" name="pay" value={`${l.id}:${offer.invoiceId}`}>
+                                {w.bank.pay}
+                              </SubmitButton>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {bank.earlierCount > earlierPaying.length && (
+                  <p className="mt-2 text-muted">{countWords(bank.earlierCount - earlierPaying.length, w.bank.earlierRest, { day: day(bank.openedOn) })}</p>
+                )}
+              </details>
+            );
             return owner ? (
               <ActionForm action={payFromBankAction.bind(null, store.slug)} className="flex flex-col gap-2">
                 {/* Enter in a field presses the form's first button: a disabled one first, so it presses none (only a button pressed acts). */}
                 <button type="submit" disabled hidden aria-hidden="true" tabIndex={-1} />
                 {list}
+                {earlier}
               </ActionForm>
             ) : (
-              list
+              <>
+                {list}
+                {earlier}
+              </>
             );
           })()}
           {bank.booksOnly.length > 0 && (

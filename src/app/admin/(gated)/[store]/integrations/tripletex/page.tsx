@@ -67,7 +67,7 @@ async function InvoicesPreview({ member, from, lang }: { member: Membership; fro
   }
   const s = read.summary;
   const work = `/admin/account/work/s/${member.store.slug}/invoices`;
-  const changesHere = s.numbered + s.paymentsHere + s.filled;
+  const changesHere = s.numbered + s.paymentsHere + s.filled + s.merged;
   const facts = [
     s.invoices > 0 && countWords(s.lines, w.lines),
     s.paid > 0 && countWords(s.paid, w.paid),
@@ -76,7 +76,7 @@ async function InvoicesPreview({ member, from, lang }: { member: Membership; fro
     s.clients > 0 && countWords(s.clients, w.newClients),
     s.filled > 0 && countWords(s.filled, w.filled),
   ].filter((f): f is string => typeof f === "string");
-  const here = [s.alreadyHere > 0 && countWords(s.alreadyHere, w.alreadyHere), s.numbered > 0 && countWords(s.numbered, w.numbered), s.paymentsHere > 0 && countWords(s.paymentsHere, w.paymentsHere)].filter(
+  const here = [s.alreadyHere > 0 && countWords(s.alreadyHere, w.alreadyHere), s.numbered > 0 && countWords(s.numbered, w.numbered), s.paymentsHere > 0 && countWords(s.paymentsHere, w.paymentsHere), s.merged > 0 && countWords(s.merged, w.merged)].filter(
     (f): f is string => typeof f === "string",
   );
   return (

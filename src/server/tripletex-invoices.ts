@@ -40,7 +40,7 @@ export type TripletexInvoicesProblem = "connection" | "work" | "session" | "read
 export type TripletexInvoicesRead = { ok: true; plan: TripletexInvoicePlan; summary: PlanSummary } | { ok: false; problem: TripletexInvoicesProblem };
 
 export type TripletexImportResult =
-  | { ok: true; summary: PlanSummary; made: { invoices: number; clients: number; payments: number; numbered: number; linked: number } }
+  | { ok: true; summary: PlanSummary; made: { invoices: number; clients: number; payments: number; numbered: number; merged: number; linked: number } }
   | { ok: false; problem: TripletexInvoicesProblem };
 
 const dayAfter = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
@@ -90,10 +90,22 @@ async function hereOf(storeId: string): Promise<{ clients: HereClient[]; here: H
       currency: col.currency,
       total_minor: col.minor,
       paid_minor: col.minor,
+      lines: col.int,
+      from_tripletex: col.bool,
+      removable: col.bool,
     }),
     sql`
       select i.id, i.client_id, i.imported, i.legacy_number, i.document_number, i.status, i.issued_on::text, i.currency, i.total_minor,
-             coalesce((select sum(p.amount_minor) from commerce.work_invoice_payments p where p.store_id = i.store_id and p.invoice_id = i.id), 0)::bigint as paid_minor
+             coalesce((select sum(p.amount_minor) from commerce.work_invoice_payments p where p.store_id = i.store_id and p.invoice_id = i.id), 0)::bigint as paid_minor,
+             (select count(*) from commerce.work_invoice_lines l where l.store_id = i.store_id and l.invoice_id = i.id)::int as lines,
+             exists (select 1 from commerce.work_events e where e.store_id = i.store_id and e.entity_type = 'invoice' and e.entity_id = i.id
+                       and e.type = 'invoice.imported' and e.data ->> 'import' = 'tripletex') as from_tripletex,
+             -- What the guard lets an import take back (D495): no payment, no credit note, no time on its lines.
+             (i.imported
+              and not exists (select 1 from commerce.work_invoice_payments p where p.store_id = i.store_id and p.invoice_id = i.id)
+              and not exists (select 1 from commerce.work_credit_notes c where c.store_id = i.store_id and c.invoice_id = i.id)
+              and not exists (select 1 from commerce.work_time_entries t join commerce.work_invoice_lines l on l.store_id = t.store_id and l.id = t.invoice_line_id
+                               where l.store_id = i.store_id and l.invoice_id = i.id)) as removable
         from commerce.work_invoices i where i.store_id = ${storeId}::uuid`,
   );
   return {
@@ -119,6 +131,9 @@ async function hereOf(storeId: string): Promise<{ clients: HereClient[]; here: H
       currency: i.currency,
       totalMinor: i.total_minor,
       paidMinor: i.paid_minor,
+      lines: i.lines,
+      fromTripletex: i.from_tripletex,
+      removable: i.removable,
     })),
   };
 }
@@ -277,9 +292,24 @@ export async function importTripletexInvoices(member: Membership, from: string, 
       `);
     }
 
+    // The same invoice here twice (D495): the copy brought in from Tripletex is taken back, and Life's takes its number below.
+    let merged = 0;
+    for (const m of plan.merges) {
+      const dropped = await tx.execute(sql`
+        delete from commerce.work_invoices where store_id = ${storeId}::uuid and id = ${m.dropId}::uuid and imported and legacy_number = ${m.number}
+        returning id`);
+      if (dropped.length === 0) continue;
+      merged += 1;
+      await tx.execute(sql`
+        select commerce.work_event(${storeId}::uuid, 'invoice', ${m.keepId}::uuid, 'invoice.merged',
+          ${JSON.stringify({ import: "tripletex", tripletex_invoice_id: m.theirId, legacy_number: m.number, removed_copy: m.dropId })}::jsonb, ${accountId}::uuid)
+      `);
+    }
+
     // One of Life's without a number takes Tripletex's, when no other invoice here has it.
     let numbered = 0;
-    for (const m of plan.matched.filter((x) => x.giveNumber)) {
+    const numbering = [...plan.matched.filter((x) => x.giveNumber).map((x) => ({ invoiceId: x.invoiceId, theirId: x.theirId, giveNumber: x.giveNumber })), ...plan.merges.map((x) => ({ invoiceId: x.keepId, theirId: x.theirId, giveNumber: x.number }))];
+    for (const m of numbering) {
       const rows = await tx.execute(sql`
         update commerce.work_invoices i set legacy_number = ${m.giveNumber}, document_number = ${m.giveNumber}
          where i.store_id = ${storeId}::uuid and i.id = ${m.invoiceId}::uuid and i.imported and i.legacy_number is null
@@ -299,6 +329,7 @@ export async function importTripletexInvoices(member: Membership, from: string, 
     const payments = [
       ...plan.invoices.filter((i) => i.payment && i.status === "sent").map((i) => ({ invoiceId: i.id, payment: i.payment! })),
       ...plan.matched.filter((m) => m.payment).map((m) => ({ invoiceId: m.invoiceId, payment: m.payment! })),
+      ...plan.merges.filter((m) => m.payment).map((m) => ({ invoiceId: m.keepId, payment: m.payment! })),
     ];
     let paid = 0;
     if (payments.length > 0) {
@@ -314,7 +345,7 @@ export async function importTripletexInvoices(member: Membership, from: string, 
       `);
       paid = rows.length;
     }
-    return { invoices, clients, payments: paid, numbered };
+    return { invoices, clients, payments: paid, numbered, merged };
   });
 
   // The clients' Tripletex cards: after the clients are filled in, so the card remembered is the one the sync would send.

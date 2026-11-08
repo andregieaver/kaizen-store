@@ -266,6 +266,54 @@ describe("invoices brought in from Tripletex (D494)", () => {
     expect(tx.calls.filter((c) => c.method === "POST").length).toBe(posts);
   }, 60_000);
 
+  it("keeps an invoice brought in twice once: Life's copy takes Tripletex's number, the copy brought in is taken back (D495)", async () => {
+    const { storeId, accountId, org, member } = await workStore();
+    const tx = await connected(storeId, accountId, org, BASE + 3);
+    const kaffe = await lifeClient(storeId, "Kaffehus");
+    // Life wrote it on 12 June; Tripletex sent it as 3010 on 7 July, and the first import (a week's window) brought it in beside Life's.
+    const life = await lifeInvoice(storeId, kaffe, "2026-06-12", 1_500_000);
+    const copy = await db().transaction(async (t) => {
+      await t.execute(sql`select set_config('commerce.work_importing', 'on', true)`);
+      const [row] = await t.execute<Row>(sql`
+        insert into commerce.work_invoices (store_id, client_id, status, document_number, legacy_number, imported, issued_on, due_on, sent_at, currency, locale, payment_days,
+          subtotal_minor, vat_minor, total_minor, seller, buyer)
+        values (${storeId}::uuid, ${kaffe}::uuid, 'sent', '3010', '3010', true, '2026-07-07', '2026-07-21', now(), 'NOK', 'nb-NO', 14, 1200000, 300000, 1500000, '{}'::jsonb, '{}'::jsonb)
+        returning id`);
+      await t.execute(sql`
+        insert into commerce.work_invoice_lines (store_id, invoice_id, position, description, quantity_hundredths, unit_price_minor, vat_category, vat_rate, excl_minor, vat_minor, incl_minor)
+        values (${storeId}::uuid, ${String(row.id)}::uuid, 0, 'Rådgivning', 1000, 120000, 'standard', 0.25, 1200000, 300000, 1500000)`);
+      await t.execute(sql`select commerce.work_event(${storeId}::uuid, 'invoice', ${String(row.id)}::uuid, 'invoice.imported', '{"import":"tripletex"}'::jsonb, ${accountId}::uuid)`);
+      return String(row.id);
+    });
+    tx.invoices = [
+      {
+        id: 10,
+        invoiceNumber: 3010,
+        invoiceDate: "2026-07-07",
+        invoiceDueDate: "2026-07-21",
+        isCreditNote: false,
+        amountCurrency: 15000,
+        amountExcludingVatCurrency: 12000,
+        amountCurrencyOutstanding: 15000,
+        currency: { code: "NOK" },
+        customer: customer(81, "Kaffehus AS", null),
+        orderLines: [hours("Rådgivning", 10, 1200)],
+        postings: [],
+      },
+    ];
+    const deps = { fetch: tx.fetch, now: () => new Date("2026-11-08T12:00:00Z") };
+    const preview = await previewTripletexInvoices(member, "2026-01-01", deps);
+    expect(preview).toMatchObject({ ok: true, summary: { invoices: 0, merged: 1, alreadyHere: 1 } });
+    expect(await importTripletexInvoices(member, "2026-01-01", deps)).toMatchObject({ ok: true, made: { invoices: 0, merged: 1, numbered: 1 } });
+    const rows = await invoicesOf(storeId);
+    expect(rows.map((r) => [r.id, r.document_number, r.legacy_number, r.status])).toEqual([[life, "3010", "3010", "sent"]]);
+    expect(await db().execute<Row>(sql`select 1 from commerce.work_invoice_lines where invoice_id = ${copy}::uuid`)).toHaveLength(0);
+    const [merged] = await db().execute<Row>(sql`select data from commerce.work_events where store_id = ${storeId}::uuid and type = 'invoice.merged'`);
+    expect(merged.data).toMatchObject({ legacy_number: "3010", removed_copy: copy });
+    // Pressed again: the one invoice is here, nothing more.
+    expect(await importTripletexInvoices(member, "2026-01-01", deps)).toMatchObject({ ok: true, made: { invoices: 0, merged: 0 }, summary: { alreadyHere: 1 } });
+  }, 60_000);
+
   it("brings in nothing without Work, without a connection, or when Tripletex cannot be read", async () => {
     const { storeId, accountId, org, member } = await workStore();
     expect(await previewTripletexInvoices(member, "2026-01-01")).toEqual({ ok: false, problem: "connection" });

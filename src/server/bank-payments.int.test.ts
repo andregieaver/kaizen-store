@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 
 const invoices = await import("./work-invoices");
-const { importBankStatement } = await import("./bank-statements");
+const { importBankStatement, bankSummary } = await import("./bank-statements");
 const { invoiceOffers, payCertainInvoices, payInvoiceFromBank, postBankOwnLine } = await import("./bank-payments");
 
 import type { Membership } from "./auth";
@@ -125,6 +125,59 @@ describe("a client's payment on the statement, paying the invoice it names (B4, 
 
     const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action = 'work.bank_payment_recorded'`);
     expect(audited.n).toBe(2);
+  });
+});
+
+describe("an old statement paying old invoices, from before the books opened (D495)", () => {
+  it("marks each paid once, posts nothing before the books, leaves nothing waiting, and never offers a line twice", async () => {
+    const { storeId, bookId, member, actor } = await workBooks("earlier");
+    const [days] = await db().execute<Row>(sql`select (current_date - 400)::text as issued, (current_date - 380)::text as first, (current_date - 350)::text as second`);
+    const [client] = await db().execute<Row>(sql`
+      insert into commerce.work_clients (store_id, name, country, currency, locale) values (${storeId}::uuid, 'Optio', 'NO', 'NOK', 'nb-NO') returning id`);
+    // Two of the same amount, brought in as history (Tripletex's 2101 and 2102).
+    const old = async (number: string) =>
+      db().transaction(async (t) => {
+        await t.execute(sql`select set_config('commerce.work_importing', 'on', true)`);
+        const [row] = await t.execute<Row>(sql`
+          insert into commerce.work_invoices (store_id, client_id, status, document_number, legacy_number, imported, issued_on, due_on, sent_at, currency, locale, payment_days,
+            subtotal_minor, vat_minor, total_minor, seller, buyer)
+          values (${storeId}::uuid, ${String(client.id)}::uuid, 'sent', ${number}, ${number}, true, ${String(days.issued)}::date, ${String(days.issued)}::date + 14, now(), 'NOK', 'nb-NO', 14,
+            99000, 24750, 123750, '{}'::jsonb, '{"name":"Optio AS"}'::jsonb)
+          returning id`);
+        return String(row.id);
+      });
+    const first = await old("2101");
+    const second = await old("2102");
+    void actor;
+
+    const file = camt(String(days.first), [
+      { ref: `${run}-e1`, amount: "1237.50", payer: "OPTIO AS", words: "Faktura 2101" },
+      { ref: `${run}-e2`, amount: "1237.50", payer: "OPTIO AS", words: "Betaling" },
+      { ref: `${run}-e3`, amount: "99.00", payer: "Ukjent", words: "Overføring" },
+    ]);
+    expect(await importBankStatement(member, { name: "gammel.xml", bytes: new TextEncoder().encode(file) })).toMatchObject({ ok: true, newLines: 3 });
+
+    // The line naming 2101 pays it on reading; no entry is posted before the books opened, and the line is settled, not waiting.
+    expect(await payCertainInvoices(member)).toEqual(["2101"]);
+    const [paid] = await db().execute<Row>(sql`select i.status, (select count(*)::int from commerce.ledger_entries e where e.book_id = ${bookId}::uuid) as entries
+                                                 from commerce.work_invoices i where i.id = ${first}::uuid`);
+    expect(paid).toEqual({ status: "paid", entries: 0 });
+    const [line1] = await db().execute<Row>(sql`select entry_id, payment_ref from commerce.bank_lines where book_id = ${bookId}::uuid and line_key = ${`ref:${run}-e1`}`);
+    expect(line1.entry_id).toBeNull();
+    expect(String(line1.payment_ref)).toMatch(/^work_payment:[0-9a-f-]{36}$/);
+
+    // The unnamed 1 237.50 is offered for 2102 only; once it pays it, it is offered for nothing more.
+    const [line2] = await db().execute<Row>(sql`select id from commerce.bank_lines where book_id = ${bookId}::uuid and line_key = ${`ref:${run}-e2`}`);
+    const offers = await invoiceOffers(storeId, bookId);
+    expect(offers.get(String(line2.id))).toMatchObject({ invoiceId: second, printedNumber: "2102" });
+    expect(await payInvoiceFromBank(member, String(line2.id), second)).toEqual({ ok: true, printedNumber: "2102" });
+    expect((await invoiceOffers(storeId, bookId)).size).toBe(0);
+    expect(await payInvoiceFromBank(member, String(line2.id), second)).toEqual({ ok: false, problem: "line" });
+
+    // The Books screen: nothing waits; the stray line before the books is in the opening balance; no bank balance is compared.
+    expect(await bankSummary(bookId)).toMatchObject({ lines: 3, matched: 0, settled: 2, waiting: 0, earlierCount: 1, bankOnly: [], closing: null });
+    // What a line paid names a payment, and nothing else.
+    await expect(db().execute(sql`update commerce.bank_lines set payment_ref = 'anything' where id = ${String(line2.id)}::uuid`)).rejects.toThrow();
   });
 });
 

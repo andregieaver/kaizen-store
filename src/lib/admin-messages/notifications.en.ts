@@ -549,6 +549,7 @@ export const notificationsEn = {
         alreadyHere: { one: "{n} is here already", many: "{n} are here already" },
         numbered: { one: "{n} of them gets its Tripletex number", many: "{n} of them get their Tripletex numbers" },
         paymentsHere: { one: "{n} of them gets the payment Tripletex has", many: "{n} of them get the payments Tripletex has" },
+        merged: { one: "{n} is here twice and is kept once, with Tripletex's number", many: "{n} are here twice and are kept once, with Tripletex's numbers" },
         leftOut: { one: "{n} left out", many: "{n} left out" },
         reasons: {
           credited_part: "credited in part: add it by hand if you need it",
@@ -569,6 +570,7 @@ export const notificationsEn = {
         doneClients: { one: "{n} new client", many: "{n} new clients" },
         donePayments: { one: "{n} payment", many: "{n} payments" },
         doneNumbered: { one: "{n} invoice got its Tripletex number.", many: "{n} invoices got their Tripletex numbers." },
+        doneMerged: { one: "{n} invoice that was here twice is now here once.", many: "{n} invoices that were here twice are now here once." },
         openWork: "Open Work's invoices",
         badDay: "Choose a first day from 2000 to today.",
         problems: {

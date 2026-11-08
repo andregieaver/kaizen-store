@@ -619,9 +619,11 @@ export async function postWorkPaymentNow(storeId: string, paymentId: string): Pr
     sql`
       select b.id, b.currency from commerce.ledger_books b
        where b.store_id = ${storeId}::uuid and b.closed_on is null
-         -- An imported invoice issued after the book opened is not in it, so neither is its payment (as dueDocuments() does).
+         -- An imported invoice issued after the book opened is not in it, so neither is its payment (as dueDocuments() does); and money
+         -- received before the book opened is in its opening balance (D495).
          and not exists (select 1 from commerce.work_invoice_payments p join commerce.work_invoices i on i.store_id = p.store_id and i.id = p.invoice_id
-                          where p.store_id = b.store_id and p.id = ${paymentId}::uuid and i.imported and i.issued_on >= b.opened_on)`,
+                          where p.store_id = b.store_id and p.id = ${paymentId}::uuid
+                            and ((i.imported and i.issued_on >= b.opened_on) or p.received_on < b.opened_on))`,
   );
   if (!book) return null;
   const posting = await postingOf(storeId);

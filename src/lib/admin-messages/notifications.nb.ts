@@ -812,6 +812,7 @@ export const notificationsNb: NotificationsMessages = {
         alreadyHere: { one: "{n} er her allerede", many: "{n} er her allerede" },
         numbered: { one: "{n} av dem får fakturanummeret fra Tripletex", many: "{n} av dem får fakturanumrene fra Tripletex" },
         paymentsHere: { one: "{n} av dem får betalingen Tripletex har", many: "{n} av dem får betalingene Tripletex har" },
+        merged: { one: "{n} ligger her to ganger og beholdes én gang, med nummeret fra Tripletex", many: "{n} ligger her to ganger og beholdes én gang, med numrene fra Tripletex" },
         leftOut: { one: "{n} utelatt", many: "{n} utelatt" },
         reasons: {
           credited_part: "delvis kreditert: legg den inn for hånd om du trenger den",
@@ -832,6 +833,7 @@ export const notificationsNb: NotificationsMessages = {
         doneClients: { one: "{n} ny kunde", many: "{n} nye kunder" },
         donePayments: { one: "{n} betaling", many: "{n} betalinger" },
         doneNumbered: { one: "{n} faktura fikk nummeret fra Tripletex.", many: "{n} fakturaer fikk numrene fra Tripletex." },
+        doneMerged: { one: "{n} faktura som lå her to ganger, ligger nå her én gang.", many: "{n} fakturaer som lå her to ganger, ligger nå her én gang." },
         openWork: "Åpne fakturaene i Work",
         badDay: "Velg en første dag fra 2000 til i dag.",
         problems: {

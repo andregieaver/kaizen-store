@@ -4793,6 +4793,36 @@ describe("work: invoices imported from Kaizen Life (WP15)", () => {
     await expect(db.query("update commerce.work_invoices set status = 'paid' where id = $1", [invoiceId])).rejects.toThrow(/work_invoice\.status/);
   });
 
+  it("can be taken back by an import, with its lines, only while it has no payment, credit note or time (D495)", async () => {
+    const w = await importStore();
+    const copy = await importInvoice(w, { legacy: "2153" });
+    const take = (id: string) =>
+      db.transaction(async (tx) => {
+        await tx.query("select set_config('commerce.work_importing', 'on', true)");
+        await tx.query("delete from commerce.work_invoices where id = $1", [id]);
+      });
+    // Outside an import, never.
+    await expect(db.query("delete from commerce.work_invoices where id = $1", [copy.invoiceId])).rejects.toThrow(/work_invoice\.immutable/);
+    // Not one with a payment.
+    const paid = await importInvoice(w, { legacy: "2154" });
+    await db.transaction(async (tx) => {
+      await tx.query("select set_config('commerce.work_importing', 'on', true)");
+      await tx.query("insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method) values ($1, $2, 125000, 'NOK', '2026-04-10', 'bank')", [
+        w.storeId,
+        paid.invoiceId,
+      ]);
+    });
+    await expect(take(paid.invoiceId)).rejects.toThrow(/work_invoice\.immutable/);
+    // Not a normal issued invoice, even while importing.
+    const draft = await draftWithLine(w);
+    await issue(w, draft);
+    await expect(take(draft)).rejects.toThrow(/work_invoice\.immutable/);
+    // The copy goes, and its lines with it.
+    await take(copy.invoiceId);
+    expect((await db.query("select 1 from commerce.work_invoices where id = $1", [copy.invoiceId])).rows).toHaveLength(0);
+    expect((await db.query("select 1 from commerce.work_invoice_lines where id = $1", [copy.lineId])).rows).toHaveLength(0);
+  });
+
   it("takes a number once when it came without one, and only from an import (D494)", async () => {
     const w = await importStore();
     const { invoiceId } = await importInvoice(w, { legacy: null });

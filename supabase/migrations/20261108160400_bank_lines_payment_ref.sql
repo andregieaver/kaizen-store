@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."bank_lines" ADD COLUMN "payment_ref" text;--> statement-breakpoint
+ALTER TABLE "commerce"."bank_lines" ADD CONSTRAINT "bank_lines_payment_ref" CHECK ("commerce"."bank_lines"."payment_ref" is null or "commerce"."bank_lines"."payment_ref" ~ '^(work|shop)_payment:[0-9a-f-]{36}$');

@@ -104,6 +104,9 @@ const life = (over: Partial<HereInvoice> = {}): HereInvoice => ({
   currency: "NOK",
   totalMinor: 2_346_751,
   paidMinor: 0,
+  lines: 1,
+  fromTripletex: false,
+  removable: false,
   ...over,
 });
 
@@ -183,6 +186,28 @@ describe("the plan of what comes into Work (D494)", () => {
     expect(plan.matched).toEqual([expect.objectContaining({ invoiceId: "near", giveNumber: "2154", payment: expect.objectContaining({ amountMinor: 2_346_751 }) })]);
     // Another amount is another invoice.
     expect(planTripletexInvoices(input({ clients: [client({ name: "Acme Norge" })], here: [life({ totalMinor: 100 })] })).invoices).toHaveLength(1);
+  });
+
+  it("knows one of Life's dated weeks away when it has as many lines, but not one with other lines (D495)", () => {
+    const clients = [client({ name: "Acme Norge" })];
+    // Life wrote it on 12 May, Tripletex sent it on 8 June: 27 days, both with two lines.
+    const twoLines = planTripletexInvoices(input({ clients, here: [life({ issuedOn: "2026-05-12", lines: 2 })] }));
+    expect(twoLines.invoices).toEqual([]);
+    expect(twoLines.matched[0]).toMatchObject({ invoiceId: "i1", giveNumber: "2154" });
+    expect(planTripletexInvoices(input({ clients, here: [life({ issuedOn: "2026-05-12", lines: 5 })] })).invoices).toHaveLength(1);
+    expect(planTripletexInvoices(input({ clients, here: [life({ issuedOn: "2026-03-01", lines: 2 })] })).invoices).toHaveLength(1);
+  });
+
+  it("keeps an invoice brought in twice once: Life's copy takes the number, Tripletex's copy is taken back (D495)", () => {
+    const clients = [client({ name: "Acme Norge" })];
+    const copy = life({ id: "copy", legacyNumber: "2154", documentNumber: "2154", fromTripletex: true, removable: true, lines: 2 });
+    const lifes = life({ id: "life", issuedOn: "2026-05-20", lines: 2 });
+    const plan = planTripletexInvoices(input({ clients, here: [copy, lifes] }));
+    expect(plan.matched).toEqual([]);
+    expect(plan.merges).toEqual([{ keepId: "life", dropId: "copy", theirId: 501, number: "2154", payment: expect.objectContaining({ amountMinor: 2_346_751 }) }]);
+    expect(summarisePlan(plan)).toMatchObject({ merged: 1, alreadyHere: 1, paymentsHere: 1 });
+    // A copy that has a payment or time on it stays as it is.
+    expect(planTripletexInvoices(input({ clients, here: [{ ...copy, removable: false }, lifes] })).merges).toEqual([]);
   });
 
   it("leaves out an invoice whose number an invoice here already has", () => {

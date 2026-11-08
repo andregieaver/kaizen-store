@@ -219,5 +219,8 @@ export async function importTripletexInvoicesAction(storeSlug: string, _state: F
     clients: countWords(result.made.clients, w.doneClients),
     payments: countWords(result.made.payments, w.donePayments),
   });
-  return { status: "ok", messages: [result.made.numbered > 0 ? `${said} ${countWords(result.made.numbered, w.doneNumbered)}` : said] };
+  const more = [result.made.numbered > 0 && countWords(result.made.numbered, w.doneNumbered), result.made.merged > 0 && countWords(result.made.merged, w.doneMerged)].filter(
+    (m): m is string => typeof m === "string",
+  );
+  return { status: "ok", messages: [[said, ...more].join(" ")] };
 }

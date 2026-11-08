@@ -213,8 +213,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Tripletex come into Work only through `importTripletexInvoices()` (D494, the page's *Your invoices in Tripletex*, owners, audited), planned
   by `planTripletexInvoices()`: as imported invoices in a transaction that says it is importing, never numbered from the store's series,
   never sent back or posted; one already here (by Tripletex's number, or Life's unnumbered one for the same client and amount within a
-  week) is never doubled; a found client is only filled where empty; every client is linked to its Tripletex card by
-  `adoptTripletexCustomers()`. Tests run against `fakeTripletex()`
+  week, or within two months with as many lines) is never doubled, and one here twice is kept once (D495: Life's copy takes the number,
+  the import's copy is taken back, only while importing and only when nothing hangs on it); a found client is only filled where empty;
+  every client is linked to its Tripletex card by `adoptTripletexCustomers()`. Tests run against `fakeTripletex()`
   (`src/server/tripletex-test-support.ts`), which must answer as Tripletex's spec does and never refuses a repeated external number;
   nothing in CI calls Tripletex.
 
@@ -359,6 +360,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`work.bank_payment_recorded`). Which invoice a line pays is `matchInvoices()` alone (`src/lib/bank-invoices.ts`): only a `certain` match
   (the invoice's printed number in the line, exactly what is outstanding, no other number) is recorded without the owner, and only when
   the owner uploads the statement; every other is offered on the Books screen for one press. Never record a payment from the ledger's job.
+  A line is settled when it has an entry (`entry_id`) or paid something the books hold no entry for (`payment_ref`, D495: a payment before
+  the books opened, in the opening balance, or for an imported invoice not in these books); every reader of what waits or what may be
+  offered asks both. A line dated before the books opened never waits for an entry and is shown apart (*Before your books opened*); the
+  bank's balance is compared only from a statement ending on or after the opening day.
   The bank's own fees and interest (D488) are posted only through `postBankOwnLine()`, which posts `entryOfBankOwnLine()` (`src/lib/bank-own-lines.ts`:
   7770, 8050 or 8150 against 1920, no VAT, source `bank_line`) for a line `bankOwnKind()` names, with the owner's press; any other cost from a
   bank line waits for its receipt (B3), never posted from the line alone. A purchase from a bank line is posted only through

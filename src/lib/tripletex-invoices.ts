@@ -216,6 +216,12 @@ export type HereInvoice = {
   currency: string;
   totalMinor: number;
   paidMinor: number;
+  /** How many lines it has: one of Life's and Tripletex's with as many lines, for the same client and amount, is one invoice. */
+  lines: number;
+  /** Brought in from Tripletex (D494), as against Life's. */
+  fromTripletex: boolean;
+  /** No payment, credit note or time on it: an import may take it back when it is a copy (D495). */
+  removable: boolean;
 };
 
 export type PlanInput = {
@@ -311,6 +317,12 @@ export type Matched = {
   payment: NewPayment | null;
 };
 
+/**
+ * The same invoice here twice (D495): one of Life's without a number, and the copy brought in from Tripletex because Life dated it more
+ * than a week away. Life's is kept (its time and payments are on it) and takes Tripletex's number; the copy is taken back.
+ */
+export type Merge = { keepId: string; dropId: string; theirId: number; number: string; payment: NewPayment | null };
+
 export type SkipReason = "credited_part" | "credit_alone" | "credited_here" | "number_taken" | "no_customer" | "amounts" | "lines" | "unreadable";
 
 export type Skipped = { number: string | null; issuedOn: string | null; reason: SkipReason };
@@ -322,6 +334,7 @@ export type TripletexInvoicePlan = {
   links: { clientId: string; theirId: number }[];
   invoices: NewInvoice[];
   matched: Matched[];
+  merges: Merge[];
   skipped: Skipped[];
 };
 
@@ -535,6 +548,19 @@ export function planTripletexInvoices(input: PlanInput): TripletexInvoicePlan {
 
   const invoices: NewInvoice[] = [];
   const matched: Matched[] = [];
+  const merges: Merge[] = [];
+  /**
+   * One of Life's without a number that is this invoice: the same client, currency and amount, within a week, or within two months with
+   * as many lines (Life dated an invoice when it was written there, Tripletex when it was sent); the nearest.
+   */
+  const lifeTwin = (t: TxInvoice, clientId: string) =>
+    unnumbered
+      .filter((h) => {
+        if (used.has(h.id) || h.clientId !== clientId || h.currency !== t.currency || h.totalMinor !== t.totalMinor) return false;
+        const apart = daysApart(h.issuedOn as string, t.issuedOn);
+        return apart <= 7 || (apart <= 60 && t.lines.length > 0 && h.lines === t.lines.length);
+      })
+      .sort((a, b) => daysApart(a.issuedOn as string, t.issuedOn) - daysApart(b.issuedOn as string, t.issuedOn))[0];
 
   const ordered = input.invoices.filter((t) => !t.creditNote).sort((a, b) => a.issuedOn.localeCompare(b.issuedOn) || a.id - b.id);
   // Two passes: an invoice that has its number here first, so a Life invoice matched by amount is never one another has by number.
@@ -563,6 +589,13 @@ export function planTripletexInvoices(input: PlanInput): TripletexInvoicePlan {
 
     // Already here with its number.
     const same = number ? byLegacy.get(number) : undefined;
+    // Brought in from Tripletex beside one of Life's that is the same invoice: Life's is kept, with this number (D495).
+    const twin = same && same.fromTripletex && same.removable ? lifeTwin(t, same.clientId) : undefined;
+    if (same && twin && number) {
+      used.add(twin.id);
+      merges.push({ keepId: twin.id, dropId: same.id, theirId: t.id, number, payment: twin.status === "sent" && !credit ? paymentFor(twin.paidMinor) : null });
+      continue;
+    }
     if (same) {
       const client = input.clients.find((c) => c.id === same.clientId);
       if (client) fillFrom(client, t.customer);
@@ -576,10 +609,7 @@ export function planTripletexInvoices(input: PlanInput): TripletexInvoicePlan {
     }
     const clientId = resolve(t.customer, t.currency);
 
-    // One of Life's without a number: the same client, currency and amount, within a week (the nearest).
-    const life = unnumbered
-      .filter((h) => !used.has(h.id) && h.clientId === clientId && h.currency === t.currency && h.totalMinor === t.totalMinor && daysApart(h.issuedOn as string, t.issuedOn) <= 7)
-      .sort((a, b) => daysApart(a.issuedOn as string, t.issuedOn) - daysApart(b.issuedOn as string, t.issuedOn))[0];
+    const life = lifeTwin(t, clientId);
     if (life) {
       used.add(life.id);
       if (credit && life.status !== "void") skip(t, "credited_here");
@@ -631,7 +661,7 @@ export function planTripletexInvoices(input: PlanInput): TripletexInvoicePlan {
   const links = [...clientOf.entries()].map(([theirId, clientId]) => ({ clientId, theirId }));
   // A fill with nothing to fill is only a link.
   const realFills = [...fills.values()].filter((f) => f.organisationNumber || f.billingEmail || f.phone || f.address);
-  return { clients, fills: realFills, links, invoices, matched, skipped };
+  return { clients, fills: realFills, links, invoices, matched, merges, skipped };
 }
 
 /** A first day the owner may choose for the invoices brought in: a real day from 2000 to today, else null. */
@@ -652,6 +682,8 @@ export type PlanSummary = {
   numbered: number;
   paymentsHere: number;
   alreadyHere: number;
+  /** Invoices here twice, kept once (D495). */
+  merged: number;
   skipped: Skipped[];
   firstDay: string | null;
   lastDay: string | null;
@@ -672,8 +704,9 @@ export function summarisePlan(plan: TripletexInvoicePlan): PlanSummary {
     clients: plan.clients.length,
     filled: plan.fills.length,
     numbered: plan.matched.filter((m) => m.giveNumber).length,
-    paymentsHere: plan.matched.filter((m) => m.payment).length,
-    alreadyHere: plan.matched.length,
+    paymentsHere: plan.matched.filter((m) => m.payment).length + plan.merges.filter((m) => m.payment).length,
+    alreadyHere: plan.matched.length + plan.merges.length,
+    merged: plan.merges.length,
     skipped: plan.skipped,
     firstDay: days[0] ?? null,
     lastDay: days.at(-1) ?? null,

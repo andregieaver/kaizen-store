@@ -107,7 +107,7 @@ export async function matchBankStatement(storeId: string, bookId: string): Promi
     typedRows(
       UNMATCHED_BANK,
       sql`select id, booked_on::text as day, amount_minor from commerce.bank_lines
-           where book_id = ${bookId}::uuid and ledger_account = ${BANK_ACCOUNT} and entry_id is null`,
+           where book_id = ${bookId}::uuid and ledger_account = ${BANK_ACCOUNT} and entry_id is null and payment_ref is null`,
     ),
     typedRows(
       UNMATCHED_BOOKS,
@@ -151,7 +151,7 @@ export async function matchAllBankStatements(deadline: number): Promise<number> 
     z.object({ store_id: col.uuid, book_id: col.uuid }),
     sql`select distinct b.store_id, b.book_id from commerce.bank_lines b join commerce.ledger_books k on k.id = b.book_id
          where k.closed_on is null
-           and (b.entry_id is null or exists (select 1 from commerce.ledger_entries r where r.reverses = b.entry_id))`,
+           and ((b.entry_id is null and b.payment_ref is null) or exists (select 1 from commerce.ledger_entries r where r.reverses = b.entry_id))`,
   );
   let matched = 0;
   for (const b of books) {
@@ -167,13 +167,25 @@ export type BooksLineView = { entryId: string; day: string; amountMinor: number;
 export type BankSummary = {
   statements: number;
   lines: number;
+  /** Lines with an entry in the books. */
   matched: number;
+  /** Lines that paid an invoice with no entry of their own (D495): before the books opened, or an invoice not in these books. */
+  settled: number;
+  /** Lines after the books opened with neither: what waits for the books. */
+  waiting: number;
   fromDay: string | null;
   toDay: string | null;
   /** The bank's last closing balance and its day, and what the books hold on the bank's account at the end of that day. */
   closing: { day: string; bankMinor: number; booksMinor: number } | null;
   /** Money in the bank the books do not have yet, the newest first. */
   bankOnly: BankLineView[];
+  /**
+   * Lines dated before the books opened, settled by nothing yet (D495): their money is in the opening balance, so none waits for an entry,
+   * but a client's payment among them can still mark an invoice paid. The newest first; `earlierCount` counts them all.
+   */
+  earlier: BankLineView[];
+  earlierCount: number;
+  openedOn: string | null;
   /** The books' money on the bank's account within the statements' days that the bank has not shown, the newest first. */
   booksOnly: BooksLineView[];
 };
@@ -181,17 +193,50 @@ export type BankSummary = {
 /** What the Books screen shows of the bank: how much is matched, the balances side by side, and what is left on either side. */
 export async function bankSummary(bookId: string, limit = 30): Promise<BankSummary> {
   const counts = await typedRow(
-    z.object({ statements: col.int, lines: col.int, matched: col.int, from_day: col.textOrNull, to_day: col.textOrNull }),
+    z.object({
+      statements: col.int,
+      lines: col.int,
+      matched: col.int,
+      settled: col.int,
+      waiting: col.int,
+      earlier: col.int,
+      from_day: col.textOrNull,
+      to_day: col.textOrNull,
+      opened_on: col.text,
+    }),
     sql`
       select (select count(*) from commerce.bank_statements s where s.book_id = ${bookId}::uuid)::int as statements,
-             count(*)::int as lines, count(entry_id)::int as matched,
+             count(b.id)::int as lines, count(b.entry_id)::int as matched,
+             count(b.payment_ref) filter (where b.entry_id is null)::int as settled,
+             count(*) filter (where b.id is not null and b.entry_id is null and b.payment_ref is null and b.booked_on >= k.opened_on)::int as waiting,
+             count(*) filter (where b.id is not null and b.entry_id is null and b.payment_ref is null and b.booked_on < k.opened_on)::int as earlier,
              (select min(from_day)::text from commerce.bank_statements s where s.book_id = ${bookId}::uuid) as from_day,
-             (select max(to_day)::text from commerce.bank_statements s where s.book_id = ${bookId}::uuid) as to_day
-        from commerce.bank_lines where book_id = ${bookId}::uuid and ledger_account = ${BANK_ACCOUNT}`,
+             (select max(to_day)::text from commerce.bank_statements s where s.book_id = ${bookId}::uuid) as to_day,
+             k.opened_on::text as opened_on
+        from commerce.ledger_books k
+        left join commerce.bank_lines b on b.book_id = k.id and b.ledger_account = ${BANK_ACCOUNT}
+       where k.id = ${bookId}::uuid
+       group by k.opened_on`,
   );
-  const empty: BankSummary = { statements: 0, lines: 0, matched: 0, fromDay: null, toDay: null, closing: null, bankOnly: [], booksOnly: [] };
+  const empty: BankSummary = {
+    statements: 0,
+    lines: 0,
+    matched: 0,
+    settled: 0,
+    waiting: 0,
+    fromDay: null,
+    toDay: null,
+    closing: null,
+    bankOnly: [],
+    earlier: [],
+    earlierCount: 0,
+    openedOn: counts?.opened_on ?? null,
+    booksOnly: [],
+  };
   if (!counts || counts.statements === 0) return empty;
-  const [closing, bankOnly, booksOnly] = await Promise.all([
+  const lineRow = z.object({ id: col.uuid, day: col.text, amount_minor: col.minor, text: col.text, counterparty: col.textOrNull, reference: col.textOrNull });
+  const toView = (b: z.infer<typeof lineRow>): BankLineView => ({ id: b.id, day: b.day, amountMinor: b.amount_minor, text: b.text, counterparty: b.counterparty, reference: b.reference });
+  const [closing, bankOnly, earlier, booksOnly] = await Promise.all([
     typedRow(
       z.object({ day: col.text, bank: col.minor, books: col.minor }),
       sql`
@@ -199,14 +244,23 @@ export async function bankSummary(bookId: string, limit = 30): Promise<BankSumma
                coalesce((select sum(l.amount_minor) from commerce.ledger_lines l join commerce.ledger_entries e on e.id = l.entry_id
                           where e.book_id = s.book_id and l.account = ${BANK_ACCOUNT} and e.entry_date <= s.to_day), 0) as books
           from commerce.bank_statements s
-         where s.book_id = ${bookId}::uuid and s.closing_minor is not null
+         -- A statement that ends before the books opened says nothing of them: its balance is in the opening balance.
+         where s.book_id = ${bookId}::uuid and s.closing_minor is not null and s.to_day >= ${counts.opened_on}::date
          order by s.to_day desc, s.imported_at desc limit 1`,
     ),
     typedRows(
-      z.object({ id: col.uuid, day: col.text, amount_minor: col.minor, text: col.text, counterparty: col.textOrNull, reference: col.textOrNull }),
+      lineRow,
       sql`select id, booked_on::text as day, amount_minor, text, counterparty, reference from commerce.bank_lines
-           where book_id = ${bookId}::uuid and ledger_account = ${BANK_ACCOUNT} and entry_id is null
+           where book_id = ${bookId}::uuid and ledger_account = ${BANK_ACCOUNT} and entry_id is null and payment_ref is null
+             and booked_on >= ${counts.opened_on}::date
            order by booked_on desc, id limit ${limit}`,
+    ),
+    typedRows(
+      lineRow,
+      sql`select id, booked_on::text as day, amount_minor, text, counterparty, reference from commerce.bank_lines
+           where book_id = ${bookId}::uuid and ledger_account = ${BANK_ACCOUNT} and entry_id is null and payment_ref is null
+             and booked_on < ${counts.opened_on}::date and amount_minor > 0
+           order by booked_on desc, id limit ${limit * 10}`,
     ),
     typedRows(
       z.object({ entry_id: col.uuid, day: col.text, amount_minor: col.minor, text: col.text, series: col.text, year: col.int, number: col.int }),
@@ -226,10 +280,15 @@ export async function bankSummary(bookId: string, limit = 30): Promise<BankSumma
     statements: counts.statements,
     lines: counts.lines,
     matched: counts.matched,
+    settled: counts.settled,
+    waiting: counts.waiting,
     fromDay: counts.from_day,
     toDay: counts.to_day,
     closing: closing ? { day: closing.day, bankMinor: closing.bank, booksMinor: closing.books } : null,
-    bankOnly: bankOnly.map((b) => ({ id: b.id, day: b.day, amountMinor: b.amount_minor, text: b.text, counterparty: b.counterparty, reference: b.reference })),
+    bankOnly: bankOnly.map(toView),
+    earlier: earlier.map(toView),
+    earlierCount: counts.earlier,
+    openedOn: counts.opened_on,
     booksOnly: booksOnly.map((l) => ({ entryId: l.entry_id, day: l.day, amountMinor: l.amount_minor, text: l.text, name: entryName(l.series, l.year, l.number) })),
   };
 }

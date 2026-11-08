@@ -18295,6 +18295,11 @@ export const bankLines = commerce.table(
     counterparty: text("counterparty"),
     entryId: uuid("entry_id"),
     matchedAt: timestamp("matched_at", { withTimezone: true }),
+    /**
+     * What the line paid when the books hold no entry for it (D495): a payment recorded from a line dated before the books opened, or one
+     * the books could not post; `work_payment:{id}` or `shop_payment:{id}`. Such a line is settled: never offered again, never waiting.
+     */
+    paymentRef: text("payment_ref"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -18312,6 +18317,7 @@ export const bankLines = commerce.table(
     check("bank_lines_text", sql`char_length(${t.text}) <= 500`),
     check("bank_lines_reference", sql`${t.reference} is null or char_length(${t.reference}) between 1 and 140`),
     check("bank_lines_counterparty", sql`${t.counterparty} is null or char_length(${t.counterparty}) between 1 and 140`),
+    check("bank_lines_payment_ref", sql`${t.paymentRef} is null or ${t.paymentRef} ~ '^(work|shop)_payment:[0-9a-f-]{36}$'`),
     check("bank_lines_matched", sql`(${t.entryId} is null) = (${t.matchedAt} is null)`),
     check("bank_lines_account", sql`${t.ledgerAccount} between 1000 and 99999`),
   ],
