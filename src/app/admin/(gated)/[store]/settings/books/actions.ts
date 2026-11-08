@@ -25,6 +25,7 @@ import { receiptAgrees } from "@/lib/receipt-reading";
 import type { PurchaseKind, PurchaseVatRate } from "@/lib/purchases";
 import { importBankStatement, STATEMENT_BYTES } from "@/server/bank-statements";
 import { checkOwnerRole } from "@/server/permissions";
+import { setVatTermSize } from "@/server/vat-return";
 
 /**
  * Settings → Books (B2, D478): opening the store's books, posting an entry by hand, reversing one, and locking them through a day. Each
@@ -310,4 +311,17 @@ export async function readBillAction(storeSlug: string, form: FormData): Promise
     vatRate: r.vatRate,
     otherCurrency: other,
   };
+}
+
+/** *Your VAT terms* (D496): two months, or a year where Skatteetaten has allowed it; the owner's to say. */
+export async function setVatTermAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const book = await openBookOf(member.store.id);
+  if (!book) return { status: "error", messages: [w.problems.forbidden] };
+  const done = await setVatTermSize(member, book.id, form.get("size"));
+  if (!done.ok) return { status: "error", messages: [w.vatReturn.invalid] };
+  refresh();
+  return { status: "ok", messages: [w.vatReturn.saved] };
 }

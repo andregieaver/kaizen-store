@@ -128,6 +128,8 @@ export type FakeTripletex = {
    * asks `invoiceDateFrom` (from and including) and `invoiceDateTo` (to and excluding), as Tripletex's does [spec].
    */
   invoices: Json[];
+  /** Tripletex's status of a VAT term (`GET /vatReturns/status`), by `{year}-{term}` (D496); a term not here answers 404. */
+  vatStatus: Map<string, Json>;
 };
 
 export function fakeTripletex(options: { companyId?: number; companyName?: string; organizationNumber?: string | null } = {}): FakeTripletex {
@@ -152,6 +154,7 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
     shapes: { session: "spec", whoAmI: "spec" },
     balanceSheet: () => [],
     invoices: [],
+    vatStatus: new Map(),
     failNext(method, path, status, body, headers, times = 1) {
       failures.push({ method, path, status, body, headers, times });
     },
@@ -257,6 +260,29 @@ export function fakeTripletex(options: { companyId?: number; companyName?: strin
       const dateTo = url.searchParams.get("dateTo") ?? "";
       if (!dateFrom || !dateTo || dateTo <= dateFrom) return answer(422, { status: 422, message: "dateTo must be after dateFrom" });
       return list(state.balanceSheet({ dateFrom, dateTo }), url);
+    }
+    if (method === "GET" && path === "/ledger/posting") {
+      // Every voucher's postings in the days asked (`dateTo` exclusive), as Tripletex lists them: each with its account's number and its
+      // VAT code's, its net and gross; and, as Tripletex does, the VAT it worked out as postings of its own on the output VAT account.
+      const from = url.searchParams.get("dateFrom") ?? "";
+      const to = url.searchParams.get("dateTo") ?? "";
+      if (!from || !to) return answer(422, { status: 422, message: "dateFrom and dateTo are required" });
+      const out: Json[] = [];
+      for (const v of state.vouchers.values()) {
+        if (v.date < from || v.date >= to) continue;
+        for (const p of v.postings) {
+          const account = state.accounts.find((a) => a.id === p.account.id);
+          const vat = p.vatType ? state.vatTypes.find((t) => t.id === p.vatType!.id) : undefined;
+          out.push({ date: v.date, account: { number: account?.number }, vatType: vat ? { number: vat.number } : null, amount: p.amount, amountGross: p.amountGross });
+          const vatPart = Math.round(p.amountGross * 100) - Math.round(p.amount * 100);
+          if (vat && vatPart !== 0) out.push({ date: v.date, account: { number: 2700 }, vatType: { number: vat.number }, amount: vatPart / 100, amountGross: vatPart / 100 });
+        }
+      }
+      return list(out, url);
+    }
+    if (method === "GET" && path === "/vatReturns/status") {
+      const found = state.vatStatus.get(`${url.searchParams.get("year")}-${url.searchParams.get("term")}`);
+      return found ? answer(200, { value: found }) : answer(404, { status: 404, message: "Not found" });
     }
     if (method === "GET" && path === "/invoice") {
       const from = url.searchParams.get("invoiceDateFrom") ?? "";

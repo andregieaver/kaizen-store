@@ -965,4 +965,4 @@ Integrations admin pages and actions, `src/server/checkout-stripe.int.test.ts`,
 `GET /ledger/vatSettings`, `GET /ledger/voucherType`, `GET /ledger/accountingPeriod`,
 `POST /ledger/voucher`, `GET /ledger/voucher/{id}`, `GET /ledger/voucher/>externalVoucherNumber`,
 `POST /ledger/voucher/{voucherId}/attachment`, `GET /ledger/posting`, `GET /ledger/posting/openPost`, `GET /balanceSheet` (the ledger's opening
-balance, D478), `GET /invoice` (invoices brought into Work, D494); later `POST /event/subscription`, `GET /event`.
+balance, D478), `GET /invoice` (invoices brought into Work, D494), `GET /vatReturns/status` (a VAT term's status, D496); later `POST /event/subscription`, `GET /event`.

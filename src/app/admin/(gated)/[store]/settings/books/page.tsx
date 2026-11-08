@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { field } from "@/components/admin/data/ui";
@@ -533,7 +534,15 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         )}
       </Card>
 
-      <Card title={w.vat.title} description={w.vat.lead}>
+      <Card
+        title={w.vat.title}
+        description={w.vat.lead}
+        aside={
+          <Link href={`/admin/${store.slug}/settings/books/vat`} className="text-sm underline">
+            {w.vatReturn.link}
+          </Link>
+        }
+      >
         <p className="mb-3 text-sm text-muted">
           {fillWords(w.vat.term, { to: day(to), term: String(term.term) })}{" "}
           {(from !== termFrom || to !== term.to) && (

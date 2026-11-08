@@ -244,6 +244,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Fiken (D460, `docs/fiken.md`, `src/lib/fiken*.ts`, `src/server/fiken.ts`, `src/server/fiken-client.ts`, `src/server/fiken-sync.ts`)
 - Changing the business behind a store (B8, D473, `src/lib/business-change.ts`, `src/server/business-change.ts`)
 - Our own ledger (B2, D478, `src/lib/ledger.ts`, `src/server/ledger.ts`, `src/data/ledger/no-saft.json`)
+- The VAT return (B5, D496, `src/lib/vat-return.ts`, `src/server/vat-return.ts`)
 - Bank statements in the books (B4, D486, `src/lib/bank-statement.ts`, `src/lib/xml-read.ts`, `src/server/bank-statements.ts`)
 - E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)
 - Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…

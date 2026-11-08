@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."ledger_books" ADD COLUMN "vat_term" text DEFAULT 'two_months' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."ledger_books" ADD CONSTRAINT "ledger_books_vat_term" CHECK ("commerce"."ledger_books"."vat_term" in ('two_months', 'year'));

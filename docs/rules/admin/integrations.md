@@ -341,6 +341,18 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   account (`SHOP_PAYMENT_ACCOUNTS`, store credit 2900), and a payout only through `entryOfPayout()`. An entry typed by hand goes through `handEntryOf()` and `postHandEntry()` (the
   owner's, series `M` or `IB` only, audited); the books' screen reverses an entry only through `reverseLedgerEntry()`.
 
+## The VAT return (B5, D496, `src/lib/vat-return.ts`, `src/server/vat-return.ts`)
+
+- **The VAT return (B5, D496, `src/lib/vat-return.ts`, `src/server/vat-return.ts`)**: a term's return is only `vatReturnOf()` over the
+  ledger's VAT by code for the term's days the book holds (`ourVatReturn()`); its lines follow Skatteetaten's form (a sale's base, rate and
+  VAT; a sale without VAT its base at 0; a purchase only its deduction; a reverse charge its VAT due and, where deductible, the deduction).
+  A book's terms are two months or a year (`ledger_books.vat_term`, the owner's word, audited `work.ledger_vat_term_set`); each term's due day is
+  `vatTerm()`'s, a weekend moved to Monday. The XML is only `mvaMeldingXml()`, which writes exactly what was validated against Skatteetaten's
+  schema (`src/data/vat-return/mva-melding-sample.xml`, a unit test holds them equal; change the XML only after validating it again).
+  Tripletex's return for the same days is worked out from its postings by `theirVatRows()` (never counting its own VAT postings) and
+  compared code by code; reading Tripletex never writes there. Nothing is filed: sending through Skatteetaten waits for the store's own
+  sign-in with them.
+
 ## Bank statements in the books (B4, D486, `src/lib/bank-statement.ts`, `src/lib/xml-read.ts`, `src/server/bank-statements.ts`)
 
 - **Bank statements in the books (B4, D486, `src/lib/bank-statement.ts`, `src/lib/xml-read.ts`, `src/server/bank-statements.ts`)**: the

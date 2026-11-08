@@ -73,6 +73,8 @@ export type LedgerBook = {
   openedOn: string;
   closedOn: string | null;
   lockedThrough: string | null;
+  /** How long its VAT terms are (D496). */
+  vatTerm: "two_months" | "year";
 };
 
 const BOOK = z.object({
@@ -84,6 +86,7 @@ const BOOK = z.object({
   opened_on: col.text,
   closed_on: col.textOrNull,
   locked_through: col.textOrNull,
+  vat_term: z.enum(["two_months", "year"]),
 });
 const toBook = (r: z.infer<typeof BOOK>): LedgerBook => ({
   id: r.id,
@@ -94,13 +97,14 @@ const toBook = (r: z.infer<typeof BOOK>): LedgerBook => ({
   openedOn: r.opened_on,
   closedOn: r.closed_on,
   lockedThrough: r.locked_through,
+  vatTerm: r.vat_term,
 });
 
 /** The store's open book, or null when it keeps none. */
 export async function openBookOf(storeId: string): Promise<LedgerBook | null> {
   const row = await typedRow(
     BOOK,
-    sql`select id, legal_name, organisation_number, country, currency, opened_on::text, closed_on::text, locked_through::text
+    sql`select id, legal_name, organisation_number, country, currency, opened_on::text, closed_on::text, locked_through::text, vat_term
           from commerce.ledger_books where store_id = ${storeId}::uuid and closed_on is null`,
   );
   return row ? toBook(row) : null;

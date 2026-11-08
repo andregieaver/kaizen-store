@@ -229,7 +229,7 @@ through the provider) later.
 Not a reason to change banks: the platform must read DNB for other owners whatever Human Web does, and the pilot is the place to find
 out how well it can.
 
-**B5. Reports to the authorities, and the year.** The VAT return through Skatteetaten's API (built from B2, validated by their
+**B5. Reports to the authorities, and the year.** (Step 1 built, D496: each term's return computed from the ledger as Skatteetaten's form asks, due day, the return as Skatteetaten's XML validated against its schema, and the comparison with Tripletex code by code and with Tripletex's status of the term; filing waits for the sign-in with Skatteetaten.) The VAT return through Skatteetaten's API (built from B2, validated by their
 validation API, signed in by the person with ID-porten in 2026's way, a *systembruker* when Skatteetaten offers it); a corrected return
 when one is needed (a new complete return). SAF-T Financial export. Year-end: closing entries, simple depreciation, accruals, the figures
 for the annual accounts and the business's tax return [U: what can be submitted by API for an AS, what is filed by hand from our

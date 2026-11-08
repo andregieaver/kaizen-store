@@ -926,6 +926,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["books", "ledger", "accounting", "bookkeeping", "regnskap", "hovedbok", "saldobalanse", "trial balance", "bilag", "lock period", "profit and loss", "resultatregnskap", "balance sheet", "balanse", "VAT report", "mva"],
     tasks: ["See the profit and loss", "See the balance sheet", "See VAT by code for a term"],
   }),
+  store("books.vat", "/settings/books/vat", "VAT return", "Store", "A term's VAT return from the store's own books (D496): the lines Skatteetaten's form asks for, the VAT to pay or get back, the due day, the return as Skatteetaten's XML to download, and with Tripletex connected the same term worked out from Tripletex's postings and compared code by code. The owner chooses two-month or yearly terms.", {
+    keywords: ["vat return", "mva-melding", "mva melding", "merverdiavgift", "vat", "mva", "termin", "skatteetaten", "altinn", "vat to pay"],
+    tasks: ["See what VAT to pay this term", "Download the VAT return for Skatteetaten", "Compare the VAT return with Tripletex"],
+  }),
   store("integrations.fiken", "/integrations/fiken", "Fiken", "Store", "Connects the store's Fiken company through Fiken's own page and books its invoices and credit notes there as sales; where they are booked, what needs the owner, Try again.", {
     keywords: ["fiken", "accounting", "bookkeeping", "regnskap", "bokføring", "annet salg", "bilag", "accountant"],
   }),
