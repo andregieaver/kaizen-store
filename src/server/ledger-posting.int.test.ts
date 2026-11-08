@@ -116,8 +116,8 @@ describe("a store's documents, posted to its books", () => {
     // Again the same day: nothing is posted twice.
     expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 0, waiting: 0 });
 
-    // The books locked through today: a new invoice waits with why, and is not tried again the same day.
-    await db().execute(sql`update commerce.ledger_books set locked_through = current_date where id = ${book.id}::uuid`);
+    // The books locked through the store's today (its day, as the invoice is dated): a new invoice waits with why, and is not tried again the same day.
+    await db().execute(sql`update commerce.ledger_books set locked_through = commerce.store_day(store_id, now()) where id = ${book.id}::uuid`);
     await issued(actor, await client(storeId));
     expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 0, waiting: 1 });
     expect(await ledger.ledgerWaiting(book.id)).toMatchObject([{ kind: "work_invoice", problem: "locked" }]);
@@ -127,7 +127,7 @@ describe("a store's documents, posted to its books", () => {
     await db().execute(sql`update commerce.ledger_books set locked_through = null where id = ${book.id}::uuid`);
     const [entry] = await db().execute<Row>(sql`select id from commerce.ledger_entries where book_id = ${book.id}::uuid and source_id = ${nok}`);
     await db().execute(sql`select commerce.ledger_reverse(${String(entry.id)}::uuid, null, 'Tilbakeføring', ${actor.account.id}::uuid)`);
-    await db().execute(sql`update commerce.ledger_books set locked_through = current_date where id = ${book.id}::uuid`);
+    await db().execute(sql`update commerce.ledger_books set locked_through = commerce.store_day(store_id, now()) where id = ${book.id}::uuid`);
     await db().execute(sql`update commerce.ledger_waiting set tried_at = now() - interval '25 hours' where book_id = ${book.id}::uuid`);
     expect(await ledger.postDueDocuments(storeId, book)).toEqual({ posted: 0, waiting: 1 });
   });
@@ -136,7 +136,8 @@ describe("a store's documents, posted to its books", () => {
     const { storeId, actor } = await workStore();
     const book = await openBook(storeId, actor.account.id);
     const nok = await issued(actor, await client(storeId));
-    const [{ d: today }] = await db().execute<Row>(sql`select current_date::text as d`);
+    // The store's day, as an invoice and a payment are dated (not the database's, which is UTC: an hour a night they differ in Norway).
+    const [{ d: today }] = await db().execute<Row>(sql`select commerce.store_day(${storeId}::uuid, now())::text as d`);
     const paid = ok(await invoices.recordPayment(actor, { invoiceId: nok, amountMinor: 1_000_000, receivedOn: String(today), method: "bank" })).paymentId;
     const reversal = ok(await invoices.reversePayment(actor, { paymentId: paid })).reversalId;
     const card = ok(await invoices.recordPayment(actor, { invoiceId: nok, amountMinor: 500_000, receivedOn: String(today), method: "card" })).paymentId;
