@@ -11,6 +11,7 @@ import { todayIn } from "@/lib/analytics-period";
 import { HAND_ROWS, LEDGER_SERIES, NO_TAX_CODES, balanceSheet, isDay, profitAndLoss, vatTermOf, type ReportRow } from "@/lib/ledger";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { formatStoreDay } from "@/lib/return-time";
+import { vatTermOfDay } from "@/lib/vat-return";
 import { ledgerAccounts, ledgerJournal, ledgerTrialBalance, ledgerVatByCode, ledgerWaiting, openBookOf } from "@/server/ledger";
 import { ledgerComparisonSummary } from "@/server/ledger-compare";
 import { hasOpeningBalance } from "@/server/ledger-opening";
@@ -538,7 +539,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         title={w.vat.title}
         description={w.vat.lead}
         aside={
-          <Link href={`/admin/${store.slug}/settings/books/vat`} className="text-sm underline">
+          <Link href={`/admin/${store.slug}/settings/books/vat/${vatTermOfDay(book.vatTerm, today).key}`} className="text-sm underline">
             {w.vatReturn.link}
           </Link>
         }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
@@ -19,7 +20,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 import { ourVatReturn, theirVatReturn, vatReturnOrgNumber, type OurVatReturn } from "@/server/vat-return";
 
-import { setVatTermAction } from "../actions";
+import { setVatTermAction } from "../../actions";
 
 export const metadata: Metadata = { title: "VAT return" };
 
@@ -82,8 +83,9 @@ async function TripletexComparison({ storeId, ours, w, money, amount }: { storeI
  * The VAT return (B5, D496): Homer sees the term's amount to pay or get back, its due day and the lines to type into Skatteetaten's form
  * (or the file for the accountant); Lisa sees the comparison with Tripletex and the term length. Read by anyone who sees the Books.
  */
-export default async function VatReturnPage({ params, searchParams }: PageProps<"/admin/[store]/settings/books/vat">) {
-  const member = await requirePermission((await params).store, "settings:read");
+export default async function VatReturnPage({ params }: PageProps<"/admin/[store]/settings/books/vat/[term]">) {
+  const { store: slug, term: termKey } = await params;
+  const member = await requirePermission(slug, "settings:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const books = adminText(lang, "books");
@@ -108,8 +110,10 @@ export default async function VatReturnPage({ params, searchParams }: PageProps<
   }
 
   const terms = vatTermsOf(book.vatTerm, book.openedOn, today);
-  const asked = vatTermOfKey(book.vatTerm, (await searchParams).term);
-  const term: VatTerm = asked && terms.some((t) => t.key === asked.key) ? asked : (terms[0] ?? vatTermOfDay(book.vatTerm, today));
+  // The term is in the address (`…/vat/2026-6`); one the book does not hold, or of another length, goes to today's.
+  const asked = vatTermOfKey(book.vatTerm, termKey);
+  if (!asked || !terms.some((t) => t.key === asked.key)) redirect(`/admin/${store.slug}/settings/books/vat/${(terms[0] ?? vatTermOfDay(book.vatTerm, today)).key}`);
+  const term: VatTerm = asked;
   const [ours, tripletex, orgNumber] = await Promise.all([ourVatReturn(book, term), getTripletexConnection(store.id), vatReturnOrgNumber(book, store.id)]);
   const amount = (minor: number) => formatMoney(minor, book.currency, locale);
   const digits = minorUnitDigits(book.currency);
@@ -129,21 +133,22 @@ export default async function VatReturnPage({ params, searchParams }: PageProps<
       {back}
       <PageHeader title={w.title} description={w.lead} />
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          {w.term}
-          <select name="term" defaultValue={term.key} className={`${field} min-w-56`}>
-            {terms.map((t) => (
-              <option key={t.key} value={t.key}>
+      {terms.length > 1 && (
+        <nav aria-label={w.term} className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted">{w.term}:</span>
+          {terms.slice(0, 12).map((t) =>
+            t.key === term.key ? (
+              <span key={t.key} aria-current="page" className="rounded-pill bg-sunken px-3 py-1 font-medium text-ink">
                 {termName(t)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" className="min-h-10 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
-          {w.show}
-        </button>
-      </form>
+              </span>
+            ) : (
+              <Link key={t.key} href={`/admin/${store.slug}/settings/books/vat/${t.key}`} className="rounded-pill px-3 py-1 underline underline-offset-2 hover:bg-sunken">
+                {termName(t)}
+              </Link>
+            ),
+          )}
+        </nav>
+      )}
 
       <Card title={termName(term)}>
         <div className="flex flex-col gap-4">
@@ -186,7 +191,7 @@ export default async function VatReturnPage({ params, searchParams }: PageProps<
           {orgNumber ? (
             <div>
               <a
-                href={`/admin/${store.slug}/settings/books/vat/xml?term=${term.key}`}
+                href={`/admin/${store.slug}/settings/books/vat/${term.key}/xml`}
                 className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
               >
                 {w.download}
