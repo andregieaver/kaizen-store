@@ -43,17 +43,22 @@ export function BudgetCard({
     const words = l.income ? (l.off > 0 ? b.short : b.ahead) : l.off > 0 ? b.over : b.under;
     return <Chip signal={l.off > 0 ? "warning" : "positive"}>{fillWords(words, { amount: money(Math.abs(l.off)) })}</Chip>;
   };
-  const total = (label: string, t: { budget: number; actual: number; forecast: number }, income: boolean, strong = false) => (
-    <tr className={strong ? "font-medium" : undefined}>
-      <th scope="row" className="px-3 py-2 text-left">
-        {label}
-      </th>
-      <td className={cell}>{anyBudget ? money(t.budget) : ""}</td>
-      <td className={cell}>{money(t.actual)}</td>
-      <td className={cell}>{money(t.forecast)}</td>
-      <td className="px-3 py-2 text-right">{anyBudget ? off({ income, off: income ? t.budget - t.forecast : t.forecast - t.budget }) : null}</td>
-    </tr>
-  );
+  // A total is set against its budget only where every line in it has one; a budget for some lines says nothing of the rest.
+  const budgeted = (lines: readonly BudgetLine[]) => ({ some: lines.some((l) => l.budget !== null), all: lines.length > 0 && lines.every((l) => l.budget !== null) });
+  const total = (label: string, t: { budget: number; actual: number; forecast: number }, income: boolean, lines: readonly BudgetLine[], strong = false) => {
+    const has = budgeted(lines);
+    return (
+      <tr className={strong ? "font-medium" : undefined}>
+        <th scope="row" className="px-3 py-2 text-left">
+          {label}
+        </th>
+        <td className={cell}>{has.some ? money(t.budget) : ""}</td>
+        <td className={cell}>{money(t.actual)}</td>
+        <td className={cell}>{money(t.forecast)}</td>
+        <td className="px-3 py-2 text-right whitespace-nowrap">{has.all ? off({ income, off: income ? t.budget - t.forecast : t.forecast - t.budget }) : null}</td>
+      </tr>
+    );
+  };
   const monthName = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" });
   return (
     <Card title={fillWords(b.title, { year })} description={b.lead}>
@@ -64,10 +69,10 @@ export function BudgetCard({
           <>
             {!anyBudget && <p className="text-muted">{b.noBudget}</p>}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[40rem] border-collapse">
+              <table className="w-full min-w-[44rem] border-collapse">
                 <thead>
                   <tr className="border-b border-line text-muted">
-                    <th scope="col" className="px-3 py-2 text-left font-normal">
+                    <th scope="col" className="min-w-[16rem] px-3 py-2 text-left font-normal">
                       {b.account}
                     </th>
                     <th scope="col" className={`${cell} font-normal`}>
@@ -94,14 +99,14 @@ export function BudgetCard({
                       <td className={cell}>{l.budget === null ? "" : money(l.budget)}</td>
                       <td className={cell}>{money(l.actual)}</td>
                       <td className={cell}>{money(l.forecast)}</td>
-                      <td className="px-3 py-2 text-right">{off(l)}</td>
+                      <td className="px-3 py-2 text-right whitespace-nowrap">{off(l)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot className="border-t-2 border-line">
-                  {total(b.income, view.income, true)}
-                  {total(b.costs, view.costs, false)}
-                  {total(b.result, view.result, true, true)}
+                  {total(b.income, view.income, true, view.lines.filter((l) => l.income))}
+                  {total(b.costs, view.costs, false, view.lines.filter((l) => !l.income))}
+                  {total(b.result, view.result, true, view.lines, true)}
                 </tfoot>
               </table>
             </div>
