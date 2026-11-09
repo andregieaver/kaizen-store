@@ -54,9 +54,10 @@ describe("the registry", () => {
       expect(reason.length).toBeGreaterThan(15);
     }
     // The tax tables keep D161's files; the others are a single payout's lines (D290), the Live page's countries, which are now, not a period
-    // (D347), and the ten least profitable orders, each a link to its order (D415).
+    // (D347), the ten least profitable orders, each a link to its order (D415), and the sales report's three tables, read from the deals (D520).
     const tax = Object.entries(NOT_EXPORTED).filter(([i]) => i.startsWith("tax.") || i.startsWith("oss."));
-    expect(tax.length).toBe(Object.keys(NOT_EXPORTED).length - 3);
+    expect(tax.length).toBe(Object.keys(NOT_EXPORTED).length - 6);
+    for (const id of ["sales.forecast", "sales.stages", "sales.people"]) expect(NOT_EXPORTED[id]).toMatch(/D520/);
     expect(tax.every(([, r]) => /D161/.test(r))).toBe(true);
     expect(NOT_EXPORTED["payout-lines"]).toMatch(/D290/);
     expect(NOT_EXPORTED["live.countries"]).toMatch(/D347/);
