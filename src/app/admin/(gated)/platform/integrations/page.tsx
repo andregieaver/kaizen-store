@@ -25,7 +25,8 @@ export default async function PlatformIntegrationsPage() {
   const lang = adminLangOf(admin.adminLocale);
   const all = adminText(lang, "notifications");
   const w = all.integrations;
-  const own = adminText(lang, "platform").integrations;
+  const platformWords = adminText(lang, "platform");
+  const own = { ...platformWords.integrations, api: platformWords.api };
   const [connected, endpoints] = await Promise.all([listPlatformIntegrations(), listPlatformEndpoints()]);
   const services = INTEGRATIONS.filter((info) => isProvider(info.id));
 
@@ -67,6 +68,18 @@ export default async function PlatformIntegrationsPage() {
             </li>
           );
         })}
+        {/* Kaizena Flow's own API (C4 step 4, D517): its tools read the platform with a token. */}
+        <li className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
+          <div className="min-w-0">
+            <h2 className="text-title text-ink">{own.api.title}</h2>
+            <p className="text-sm text-muted">{own.api.cardDescription}</p>
+          </div>
+          <div className="mt-auto">
+            <Link href="/admin/platform/integrations/api" className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
+              {own.api.cardButton}
+            </Link>
+          </div>
+        </li>
         {/* Kaizena Flow's own endpoints (C4, D515): its events, signed, to addresses of its own. */}
         <li className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
           <div className="min-w-0">

@@ -62,6 +62,7 @@ export function WorkflowEditor({
   save,
   onDone,
   scope = "store",
+  namePlaceholder,
 }: {
   start: (AnyWorkflowInput & { id: string | null }) | null;
   endpoints: { id: string; name: string }[];
@@ -69,6 +70,8 @@ export function WorkflowEditor({
   save: WorkflowActions["save"];
   onDone: () => void;
   scope?: WorkflowScope;
+  /** The name's example, when the store's (*Tag big orders*) does not fit. */
+  namePlaceholder?: string;
 }) {
   const w = useAdminText("notifications").workflows;
   const kit = kitOf(scope);
@@ -98,7 +101,7 @@ export function WorkflowEditor({
     >
       <label className="flex flex-col gap-1 text-sm font-medium">
         {w.name}
-        <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} placeholder={w.namePlaceholder} className={`${FIELD} font-normal`} />
+        <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} placeholder={namePlaceholder ?? w.namePlaceholder} className={`${FIELD} font-normal`} />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         {w.trigger}
@@ -255,7 +258,7 @@ export function WorkflowEditor({
 }
 
 /** The New workflow card: the editor, then a line that it was saved off. */
-export function NewWorkflow(props: { endpoints: { id: string; name: string }[]; triggerLabels: Record<string, string>; save: WorkflowActions["save"]; scope?: WorkflowScope }) {
+export function NewWorkflow(props: { endpoints: { id: string; name: string }[]; triggerLabels: Record<string, string>; save: WorkflowActions["save"]; scope?: WorkflowScope; namePlaceholder?: string }) {
   const w = useAdminText("notifications").workflows;
   const [key, setKey] = useState(0);
   const [saved, setSaved] = useState(false);

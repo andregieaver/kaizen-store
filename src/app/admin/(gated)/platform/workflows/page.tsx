@@ -58,7 +58,7 @@ export default async function PlatformWorkflowsPage() {
         <PageHeader title={w.title} description={<>{own.workflows.description}</>} />
         {canWrite && (
           <Card title={w.make}>
-            <NewWorkflow endpoints={endpointChoices} triggerLabels={triggerLabels} save={actions.save} scope="platform" />
+            <NewWorkflow endpoints={endpointChoices} triggerLabels={triggerLabels} save={actions.save} scope="platform" namePlaceholder={own.workflows.namePlaceholder} />
           </Card>
         )}
         {views.length === 0 ? (

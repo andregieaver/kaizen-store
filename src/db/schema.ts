@@ -7674,6 +7674,32 @@ export const platformWorkflowRuns = commerce.table(
 );
 
 /**
+ * A token for Kaizena Flow's own API (C4 step 4, D517, `src/server/platform-api-tokens.ts`, its only writer): made by a platform owner
+ * with the scopes chosen, shown once and kept only as its SHA-256; it reads as the owner who made it, who must still be one.
+ */
+export const platformApiTokens = commerce.table(
+  "platform_api_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    scopes: text("scopes").array().notNull(),
+    tokenHash: text("token_hash").notNull(),
+    /** The token's first characters (`kfp_ab1`), shown in the list. */
+    prefix: text("prefix").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("platform_api_tokens_hash_key").on(t.tokenHash),
+    index("platform_api_tokens_created_by_idx").on(t.createdBy),
+    check("platform_api_tokens_name", sql`char_length(${t.name}) between 1 and 80`),
+    check("platform_api_tokens_scopes", sql`cardinality(${t.scopes}) between 1 and 20`),
+  ],
+);
+
+/**
  * A store's connection to its Tripletex company (D453, `docs/tripletex.md`, written only by `src/server/tripletex.ts`): the
  * one token its owner pasted, encrypted (`tripletexToken()` is the only reader), which company it opened, and where the
  * store's documents are booked (`settings`, `tripletexSettingsSchema`, account and VAT code numbers, no secrets). `setup`

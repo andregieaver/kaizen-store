@@ -43,10 +43,26 @@ export const platformNb: PlatformMessages = {
     endpointsPayload:
       "Innholdet er JSON, slik Zapier og Make får det: id, event, created_at, platform, og det hendelsen gjelder under sitt eget navn (request, store og plan, eller report).",
   },
+  api: {
+    title: "API",
+    description: "La Kaizena Flows egne verktøy (et dashbord, et skript, et regneark) lese plattformen: butikkene og abonnementene deres, abonnementene, forespørslene om en butikk og tallene fra forsiden. Bare lesing, hver med sin egen nøkkel.",
+    cardDescription: "Les plattformens butikker, abonnementer, forespørsler og tall fra dine egne verktøy, med en nøkkel.",
+    cardButton: "Administrer nøkler",
+    actsAs: "En nøkkel leser som plattformeieren som laget den: den slutter å virke hvis de ikke lenger er eier. Den endrer aldri noe.",
+    ownerOnly: "Bare en eier av plattformen lager eller trekker tilbake nøkler.",
+    scopeWords: {
+      "stores:read": "Lese eiernes butikker, hver med sitt abonnement",
+      "plans:read": "Lese abonnementene og prisene deres",
+      "requests:read": "Lese forespørslene om en butikk, med hvem som spurte (navn og e-post)",
+      "figures:read": "Lese tallene fra forsiden: faste inntekter, betalende butikker og butikker på prøve, salg denne måneden, forespørsler",
+    },
+    how: "Kall {base} med GET og overskriften Authorization: Bearer og nøkkelen. Svarene er JSON; beløp er i minste enhet med valutaen; lister tar limit (høyst 100) og before, created_at for den siste på siden før; forespørsler tar status (pending, approved, declined eller all). 120 kall i minuttet per nøkkel; flere får 429 med Retry-After.",
+  },
   workflows: {
     description:
       "Når noe skjer på plattformen (en butikk det er bedt om, som er laget eller åpnet, et abonnement som startet, ble endret, avsluttet eller ikke betalt, en melding om ulovlig innhold), eller til en fast tid i Oslo: sjekk det du velger og gjør noe. Send e-post til plattformens eiere, skriv i Kaizena Flows Slack, eller send det til et av dens egne endepunkter.",
     limits: "Hver arbeidsflyt kjører én gang per hendelse og høyst 100 ganger i timen. E-post til ansatte går til plattformens eiere.",
+    namePlaceholder: "Si fra i Slack om store abonnementer",
   },
   referrals: {
     title: "Verving",

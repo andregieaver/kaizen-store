@@ -44,11 +44,28 @@ export const platformEn = {
     endpointsPayload:
       "The body is JSON, as Zapier and Make get it: id, event, created_at, platform, and what the event is about under its own name (request, store and plan, or report).",
   },
+  /** Kaizena Flow's own API (D517): the store's token words, with these of the platform's own. */
+  api: {
+    title: "API",
+    description: "Let Kaizena Flow's own tools (a dashboard, a script, a spreadsheet) read the platform: its stores and their plans, the plans, the requests for a store and the home's figures. Read only, each with a token of its own.",
+    cardDescription: "Read the platform's stores, plans, requests and figures from your own tools, with a token.",
+    cardButton: "Manage tokens",
+    actsAs: "A token reads as the platform owner who made it: it stops working if they are no longer one. It never changes anything.",
+    ownerOnly: "Only a platform owner makes or revokes tokens.",
+    scopeWords: {
+      "stores:read": "Read the owners' stores, each with its plan",
+      "plans:read": "Read the plans and their prices",
+      "requests:read": "Read the requests for a store, with who asked (name and email)",
+      "figures:read": "Read the home's figures: recurring revenue, paying and trying stores, sales this month, requests",
+    } as Record<string, string>,
+    how: "Call {base} with GET and the header Authorization: Bearer and the token. Answers are JSON; money is in minor units with the currency; lists take limit (at most 100) and before, the created_at of the last one on the page before; requests take status (pending, approved, declined or all). 120 calls a minute per token; more get 429 with Retry-After.",
+  },
   /** Kaizena Flow's workflows (D516): the store's words, with these two of the platform's own. */
   workflows: {
     description:
       "When something happens on the platform (a store asked for, made or opened, a plan started, changed, cancelled or not paid, a notice of illegal content), or at a set time in Oslo, check what you choose and act: email the platform's owners, post in Kaizena Flow's Slack, or send it to one of its own endpoints.",
     limits: "Each workflow runs once per event and at most 100 times an hour. Email staff goes to the platform's owners.",
+    namePlaceholder: "Tell Slack about big plans",
   },
   referrals: {
     title: "Referrals",

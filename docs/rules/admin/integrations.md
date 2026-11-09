@@ -110,6 +110,16 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   then the version's entry at the top of `content/docs/developers/changelog.md` (`## 1.<n> — YYYY-MM-DD`, what changed for callers). The
   contract test fails until all of it is done, and fails a removed path or field within the major version.
 
+
+## Kaizena Flow's own API (D517, `src/lib/platform-api.ts`, `src/server/platform-api-tokens.ts`, `src/server/platform-api.ts`)
+
+- **Kaizena Flow's own API (D517, `src/lib/platform-api.ts`, `src/server/platform-api-tokens.ts`, `src/server/platform-api.ts`)**: the
+  Admin API's twin for the platform's own tools, read only. Its tokens are `commerce.platform_api_tokens` (`kfp_`, a hash only, shown once),
+  written only by `platform-api-tokens.ts` for a platform owner (the settings area, D510); a call is `GET /api/platform/v1/{resource}` read by
+  `platformApiCaller()` (the maker read again: still an owner of the platform, the account active), routed by `platformRouteOf()` with the one
+  scope each needs, budgeted by `takeBudget()` (`api`, no store) and answered by `runPlatformApiRoute()`. It never writes; a write is a new
+  decision. A store it lists is an owner's only (never a demo store, a template, a sandbox or the house store). It is not part of the
+  stores' API contract.
 ## Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)
 
 - **Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)**:

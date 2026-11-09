@@ -220,6 +220,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Shopping agents (wave 8 unit I, D353, `src/lib/shopping-agents.ts`, `src/server/shopping-agents.ts`)
 - Events to an owner's own endpoints (wave 9 unit A, D354, `src/lib/webhook-signature.ts`, `src/server/webhook-endpoints.ts`)
 - The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)
+- Kaizena Flow's own API (D517, `src/lib/platform-api.ts`, `src/server/platform-api-tokens.ts`, `src/server/platform-api.ts`)
 - Checkout rules and questions (wave 9 unit D, D357, `src/lib/checkout-rules.ts`, `src/server/checkout-rules.ts`)
 - Versions compared and staging (wave 9 unit E, D358, `src/lib/version-compare.ts`, `src/server/site-staging.ts`)
 - Self-serve sign-up (wave 9 unit F, D359, `src/server/self-signup.ts`)

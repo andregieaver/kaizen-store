@@ -27,8 +27,20 @@ function ScopeBox({ scope, words }: { scope: string; words: string }) {
  * Makes an Admin API token (D355) and shows it once. The everyday scopes are ticked in the open; the powers (D440: what the AI manager asks
  * the owner's yes for) wait under *Customise*, one deliberate step away.
  */
-export function MakeApiToken({ scopes, powers, make }: { scopes: string[]; powers: string[]; make: (form: FormData) => Async }) {
+export function MakeApiToken({
+  scopes,
+  powers,
+  make,
+  scopeWords,
+}: {
+  scopes: string[];
+  powers: string[];
+  make: (form: FormData) => Async;
+  /** What each scope allows, when they are not the stores' (Kaizena Flow's own API, D517). */
+  scopeWords?: Record<string, string>;
+}) {
   const w = useAdminText("notifications").apiTokens;
+  const wordsOf = (scope: string) => scopeWords?.[scope] ?? w.scopeWords[scope] ?? scope;
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -78,7 +90,7 @@ export function MakeApiToken({ scopes, powers, make }: { scopes: string[]; power
         <legend className="mb-1 text-sm font-medium">{w.scopes}</legend>
         <div className="grid gap-2 sm:grid-cols-2">
           {scopes.map((scope) => (
-            <ScopeBox key={scope} scope={scope} words={w.scopeWords[scope] ?? scope} />
+            <ScopeBox key={scope} scope={scope} words={wordsOf(scope)} />
           ))}
         </div>
         {powers.length > 0 && (
@@ -86,7 +98,7 @@ export function MakeApiToken({ scopes, powers, make }: { scopes: string[]; power
             <summary className="cursor-pointer text-sm font-medium">{w.powers}</summary>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {powers.map((scope) => (
-                <ScopeBox key={scope} scope={scope} words={w.scopeWords[scope] ?? scope} />
+                <ScopeBox key={scope} scope={scope} words={wordsOf(scope)} />
               ))}
             </div>
           </details>

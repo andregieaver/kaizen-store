@@ -398,6 +398,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   shop_move_items: "What a move from Shopify made (D445 step 9): kinds and ids, a customer only as the md5 of their address; never an address or a name.",
   ledger_books: "A store's books (D478): the legal entity's name and organisation number, its country, currency and days; the business's, never a person's.",
   ledger_accounts: "A book's chart of accounts (D478): numbers, names and kinds; never a person's data.",
+  platform_api_tokens: "Kaizena Flow's own API's tokens (D517): a name, the scopes, a hash of the token and its first characters, and the platform owner who made it (an id).",
   platform_workflows: "Kaizena Flow's workflows (D516): a platform owner's own words (a name, conditions, an email's or a Slack message's text) and who saved them (ids); no customer.",
   platform_workflow_runs: "A platform workflow's runs (D516): the event, what it is about (an id), whether its conditions held and each action's outcome; kept 90 days.",
   platform_webhook_endpoints: "Kaizena Flow's own endpoints (D515): a name, an encrypted address and signing secret, the platform events each gets and the platform admin who added it (an id); what is sent is in platform_integration_deliveries.",
