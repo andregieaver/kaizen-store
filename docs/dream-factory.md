@@ -130,8 +130,7 @@ approvals, or the owner's. A new page is published but not put in a menu.
 **The platform:** the Dream Factory is store-only (`docs/platform-parity.md`: Kaizena Flow's own site is not built or changed by it), so
 this is too; a platform admin reworks any store they own, and Platform → AI's scorecard lists a rework's run with its kind.
 
-**Not yet:** the plan's prompt has no version in the agents' eval (`promptVersions()`), which needs a run recorded on Platform → AI with
-the new prompt; the admin map's line for the page still describes a build only, as its words are part of the AI manager's versioned prompt.
+**In the agents' eval:** the plan's prompt is versioned (`reworkPromptVersion()`, agent `rework`) and the case `rework-plan` gives it page and product titles that ask for more: the plan may add no product and no page, and never repeats their code word. Titles are passed through `withoutInstructions()` before the model reads them.
 
 ## What a run is measured on
 

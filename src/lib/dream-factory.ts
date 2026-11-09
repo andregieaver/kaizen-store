@@ -7,7 +7,7 @@
 import { z } from "zod";
 
 import { DRILL_EMAIL_DOMAIN } from "./live-drills";
-import { RULES_STAND } from "./prompt-safety";
+import { RULES_STAND, withoutInstructions } from "./prompt-safety";
 import { normaliseEmail } from "./email-address";
 
 export const DREAM_STEP_IDS = [
@@ -548,7 +548,8 @@ export function reworkPrompt(): string {
 
 /** What the plan's model is given: the owner's words first, then the store as code read it. */
 export function reworkPromptInput(prompt: string, facts: ReworkFacts): string {
-  const line = (value: string) => value.replace(/\s+/g, " ").slice(0, 120);
+  // A title is anyone's words (a product imported, a page copied): text addressed to an AI is taken out before the model reads it.
+  const line = (value: string) => withoutInstructions(value.replace(/\s+/g, " ")).slice(0, 120);
   return [
     "What the owner wants changed:",
     prompt,

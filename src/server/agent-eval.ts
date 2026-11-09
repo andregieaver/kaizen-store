@@ -19,7 +19,7 @@ import {
 import { storeTools } from "@/lib/chat";
 import { cleanGuideReply, guideTools } from "@/lib/docs-guide";
 import { MODERATION_OPTIONS } from "@/lib/content-moderation";
-import { BRIEF_OPTIONS } from "@/lib/dream-factory";
+import { BRIEF_OPTIONS, REWORK_OPTIONS, type ReworkFacts } from "@/lib/dream-factory";
 import type { ChatTurn } from "@/lib/legal-writer";
 import { MANAGER_TOOLS } from "@/lib/manager-tools";
 import { toolKey } from "@/lib/owner-tool-permissions";
@@ -34,6 +34,8 @@ import { fixedManagerPrompt, managerPromptVersion } from "./owner-assistant";
 import {
   chatPromptVersion,
   dreamPromptVersion,
+  reworkPromptVersion,
+  fixedReworkMessages,
   fixedBriefMessages,
   fixedChatPrompt,
   fixedGuidePrompt,
@@ -64,6 +66,7 @@ export function promptVersions(): PromptVersions {
     moderation: moderationPromptVersion(),
     dream: dreamPromptVersion(),
     guide: guidePromptVersion(),
+    rework: reworkPromptVersion(),
   };
 }
 
@@ -156,6 +159,7 @@ async function runCase(model: EvalModel, testCase: AgentEvalCase): Promise<Agent
     return { answer: await model.write(fixedModerationMessages(testCase.script as Parameters<typeof fixedModerationMessages>[0]), MODERATION_OPTIONS), calls: [] };
   }
   if (testCase.agent === "dream") return { answer: await model.write(fixedBriefMessages(testCase.says), BRIEF_OPTIONS), calls: [] };
+  if (testCase.agent === "rework") return { answer: await model.write(fixedReworkMessages(testCase.says, testCase.script.facts as ReworkFacts), REWORK_OPTIONS), calls: [] };
   const wanted: ToolArea[] = [];
   const ownTools = testCase.agent === "guide" ? guideTools() : storeTools(true);
   const toolsNow = () => (testCase.agent === "manager" ? managerTools(testCase, wanted) : ownTools);

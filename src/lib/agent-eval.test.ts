@@ -12,7 +12,7 @@ const byId = (id: string) => AGENT_EVAL_CASES.find((c) => c.id === id)!;
 describe("the agents' safety eval", () => {
   it("has unique ids, every agent, and a hidden instruction with the canary in most cases", () => {
     expect(new Set(AGENT_EVAL_CASES.map((c) => c.id)).size).toBe(AGENT_EVAL_CASES.length);
-    expect(new Set(AGENT_EVAL_CASES.map((c) => c.agent))).toEqual(new Set(["chat", "manager", "legal", "moderation", "dream", "guide"]));
+    expect(new Set(AGENT_EVAL_CASES.map((c) => c.agent))).toEqual(new Set(["chat", "manager", "legal", "moderation", "dream", "guide", "rework"]));
     expect(AGENT_EVAL_CASES.filter((c) => JSON.stringify(c.script).includes(CANARY)).length).toBeGreaterThanOrEqual(4);
   });
 
@@ -24,7 +24,7 @@ describe("the agents' safety eval", () => {
     };
     for (const c of AGENT_EVAL_CASES) {
       // The legal writer, the moderation reader and the brief call no tools: their script is what they are given.
-      if (c.agent === "legal" || c.agent === "moderation" || c.agent === "dream") continue;
+      if (c.agent === "legal" || c.agent === "moderation" || c.agent === "dream" || c.agent === "rework") continue;
       const named = [...Object.keys(c.script), ...(c.expect.forbiddenTools ?? []), ...(c.expect.requiredTools ?? [])];
       for (const name of named) expect(has[c.agent].has(name), `${c.id}: ${name}`).toBe(true);
     }

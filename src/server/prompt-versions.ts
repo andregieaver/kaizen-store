@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { systemPrompt } from "@/lib/chat";
 import { SCREENING_SYSTEM, screeningPrompt, TRIAGE_SYSTEM, triagePrompt, type Listing } from "@/lib/content-moderation";
 import { guideSystemPrompt } from "@/lib/docs-guide";
-import { briefPrompt } from "@/lib/dream-factory";
+import { briefPrompt, reworkPrompt, reworkPromptInput, type ReworkFacts } from "@/lib/dream-factory";
 import { assembleLegalFacts } from "@/lib/legal-facts";
 import { jurisdictionsFor } from "@/lib/legal-sources";
 import { starterFactWords } from "@/lib/legal-starters";
@@ -24,7 +24,7 @@ import { factSheet, planLegalPage, writerMessages, writerSettings } from "@/lib/
  * words name that assistant.
  */
 
-export type PromptAgent = "chat" | "manager" | "legal" | "moderation" | "dream" | "guide";
+export type PromptAgent = "chat" | "manager" | "legal" | "moderation" | "dream" | "guide" | "rework";
 export type PromptVersions = Record<PromptAgent, string>;
 
 /** A version: the first twelve hex digits of the text's SHA-256. */
@@ -136,3 +136,14 @@ export function fixedBriefMessages(description: string): { role: "system" | "use
 
 /** The brief's version: its system prompt for the fixed store. */
 export const dreamPromptVersion = (): string => once("dream", () => briefPrompt("Eval Store"));
+
+/** A rework's plan (D527) as the Dream Factory asks for it: the owner's words and the case's store facts. */
+export function fixedReworkMessages(says: string, facts: ReworkFacts): { role: "system" | "user"; content: string }[] {
+  return [
+    { role: "system", content: reworkPrompt() },
+    { role: "user", content: reworkPromptInput(says, facts) },
+  ];
+}
+
+/** The rework plan's version: its system prompt, which takes no inputs. */
+export const reworkPromptVersion = (): string => once("rework", () => reworkPrompt());
