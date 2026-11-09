@@ -1,0 +1,5 @@
+ALTER TABLE "commerce"."platform_discount_codes" ADD COLUMN "campaign_name" text;--> statement-breakpoint
+ALTER TABLE "commerce"."platform_discount_codes" ADD COLUMN "starts_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."platform_discount_codes" ADD COLUMN "plan_ids" uuid[] DEFAULT '{}'::uuid[] NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."platform_discount_codes" ADD CONSTRAINT "platform_discount_codes_campaign" CHECK (("commerce"."platform_discount_codes"."campaign_name" is null and "commerce"."platform_discount_codes"."starts_at" is null and cardinality("commerce"."platform_discount_codes"."plan_ids") = 0)
+        or (char_length("commerce"."platform_discount_codes"."campaign_name") between 1 and 60 and "commerce"."platform_discount_codes"."starts_at" is not null and "commerce"."platform_discount_codes"."expires_at" is not null and "commerce"."platform_discount_codes"."starts_at" < "commerce"."platform_discount_codes"."expires_at"));
