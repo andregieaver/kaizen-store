@@ -41,7 +41,7 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const asked = Number((await searchParams).days);
   const days = (PERIODS as readonly number[]).includes(asked) ? asked : 30;
   const year = new Date().getUTCFullYear();
-  // Where owners come from and what they are worth (C2, D521): the period's days in Oslo, to tomorrow.
+  // Where owners come from and what they are worth (C2, D522): the period's days in Oslo, to tomorrow.
   const todayOslo = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
   const tomorrow = new Date(Date.parse(`${todayOslo}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
   const periodFrom = new Date(Date.parse(`${tomorrow}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);

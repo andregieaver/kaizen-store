@@ -15,7 +15,7 @@ const num = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
 type Words = ConsoleMessages["planAnalytics"];
 
 /**
- * Owners by the month they joined, and where new owners came from (C2, D521) on Plans → Analytics: two tables Homer reads as they are; Lisa
+ * Owners by the month they joined, and where new owners came from (C2, D522) on Plans → Analytics: two tables Homer reads as they are; Lisa
  * enters what was spent on each channel below the second, one step away (a platform owner or its finance role).
  */
 export function OwnerCohortsCard({ currency, rows, locale, words: w }: { currency: string; rows: CohortRow[]; locale: string; words: Words }) {

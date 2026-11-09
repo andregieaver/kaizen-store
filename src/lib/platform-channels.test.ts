@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { channelRows, ownerCohorts, touchChannel } from "./platform-channels";
 
-describe("where Kaizena Flow's owners come from (D521)", () => {
+describe("where Kaizena Flow's owners come from (D522)", () => {
   it("classifies a sign-up's first touch as a visit's channel is, and nothing without one", () => {
     expect(touchChannel(null, ["kaizenaflow.com"])).toBeNull();
     expect(touchChannel({ source: "google", medium: "cpc", campaign: "Winter", day: "2026-11-01" }, ["kaizenaflow.com"])).toMatchObject({ channel: "paid_search", source: "google" });

@@ -175,9 +175,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   goes once, to the owners and the finance role, each in their language.
 
 
-## Where Kaizena Flow's owners come from (C2, D521, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)
+## Where Kaizena Flow's owners come from (C2, D522, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)
 
-- **Where Kaizena Flow's owners come from (C2, D521, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)**: a request for a
+- **Where Kaizena Flow's owners come from (C2, D522, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)**: a request for a
   store keeps its first touch only through `signupFirstTouch()` (the house store's first-touch cookie, which exists only with statistics
   consent, classified by the stores' `classifyChannel()`), in `access_requests.first_channel`, `first_source` and `first_campaign`, never a
   visit or a click id. Plans → Analytics reads owners by the month their store was made with what they paid only from `platform_sales`

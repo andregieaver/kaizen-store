@@ -15,7 +15,7 @@ const channels = await import("./platform-channels");
 const { createAccessRequest } = await import("./platform");
 
 /**
- * Where Kaizena Flow's owners come from and what they are worth (C2, D521) against a real database: a request keeps its first touch, the
+ * Where Kaizena Flow's owners come from and what they are worth (C2, D522) against a real database: a request keeps its first touch, the
  * period's requests are counted by channel against the spend entered (by a platform owner or its finance role, never read-only), and the
  * owners' stores are grouped by the month they were made with what Kaizena Flow was paid for their plans.
  */
@@ -28,7 +28,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-describe("Kaizena Flow's channels and owners (D521)", () => {
+describe("Kaizena Flow's channels and owners (D522)", () => {
   it("keeps a sign-up's first touch, and counts the period's requests by channel against the spend", async () => {
     const [f] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_role) values (${`ch-fin-${run}@example.com`}, 'Fia', 'finance') returning id`);
     const [r] = await db().execute<Row>(sql`insert into commerce.accounts (email, name, platform_role) values (${`ch-read-${run}@example.com`}, 'Rut', 'read_only') returning id`);

@@ -82,7 +82,7 @@ export async function setBriefingAction(_state: FormState, form: FormData): Prom
   return { status: "ok", messages: [w.saved] };
 }
 
-/** *Add spend* (C2, D521): what Kaizena Flow spent on a channel on a day; the amount in its currency's whole units. The plans area's. */
+/** *Add spend* (C2, D522): what Kaizena Flow spent on a channel on a day; the amount in its currency's whole units. The plans area's. */
 export async function savePlatformSpendAction(_state: FormState, form: FormData): Promise<FormState> {
   const admin = await requirePlatform("plans");
   const w = adminText(adminLangOf(admin.adminLocale), "console").planAnalytics.channels;
@@ -100,7 +100,7 @@ export async function savePlatformSpendAction(_state: FormState, form: FormData)
   return { status: "ok", messages: [w.saved] };
 }
 
-/** *Remove* beside a spend row (D521). */
+/** *Remove* beside a spend row (D522). */
 export async function removePlatformSpendAction(id: string): Promise<FormState> {
   const admin = await requirePlatform("plans");
   const w = adminText(adminLangOf(admin.adminLocale), "console").planAnalytics.channels;

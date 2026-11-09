@@ -3,7 +3,7 @@ import { classifyChannel } from "./analytics-traffic";
 import type { Touch } from "./first-touch";
 
 /**
- * Where Kaizena Flow's owners come from and what they are worth (C2 of `docs/platform-parity-plan.md`, D521): the pure parts. A sign-up's
+ * Where Kaizena Flow's owners come from and what they are worth (C2 of `docs/platform-parity-plan.md`, D522): the pure parts. A sign-up's
  * first touch is the house store's first-touch cookie on Kaizena Flow's site (D303, kept only for a visitor who allowed statistics), classified
  * as a visit's channel is; owners are grouped by the month their store was made, with what Kaizena Flow was paid for their plans (its own
  * sales, D508); and each channel's new owners are set against what was spent on it. Nothing here reads the database.

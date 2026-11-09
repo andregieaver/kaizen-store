@@ -575,7 +575,7 @@ export const accessRequests = commerce.table(
      */
     selfServe: boolean("self_serve").notNull().default(false),
     /**
-     * Where the person first came from (C2, D521): the channel, source and campaign of the house store's first-touch cookie on Kaizena
+     * Where the person first came from (C2, D522): the channel, source and campaign of the house store's first-touch cookie on Kaizena
      * Flow's site (D303), classified as a visit's are, kept only when they allowed statistics cookies; else null (unknown).
      */
     firstChannel: text("first_channel"),
@@ -7709,7 +7709,7 @@ export const platformApiTokens = commerce.table(
 );
 
 /**
- * What Kaizena Flow spent on marketing (C2, D521): a store's `marketing_spend` for the platform, entered by a platform owner or its finance
+ * What Kaizena Flow spent on marketing (C2, D522): a store's `marketing_spend` for the platform, entered by a platform owner or its finance
  * role (the plans area, D510), by day, channel and campaign, in a currency; the cost per new owner divides it by the owners a channel brought.
  */
 export const platformMarketingSpend = commerce.table(

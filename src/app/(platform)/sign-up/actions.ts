@@ -52,7 +52,7 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
   // A referral (D131): the code the link put in the form, else the cookie, which only exists when the visitor allowed it.
   // An unknown or blocked code is dropped inside, so nothing here tells the visitor whether it was good.
   const referralCode = referralCodeFor(String(formData.get("ref") ?? ""), (await cookies()).get(REFERRAL_COOKIE)?.value);
-  // Where the person first came from (C2, D521): the house store's first-touch cookie on Kaizena Flow's site, which exists only when they
+  // Where the person first came from (C2, D522): the house store's first-touch cookie on Kaizena Flow's site, which exists only when they
   // allowed statistics cookies; nothing is kept without it.
   const house = await houseStoreId();
   const firstTouch = house ? signupFirstTouch((await cookies()).get(touchCookieName(house))?.value) : null;

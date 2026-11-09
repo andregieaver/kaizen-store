@@ -13,7 +13,7 @@ import { audit, platformCan, type Account } from "./auth";
 import { col, typedRows } from "./typed-rows";
 
 /**
- * Where Kaizena Flow's owners come from and what they are worth (C2, D521, `src/lib/platform-channels.ts`). A sign-up keeps its first touch
+ * Where Kaizena Flow's owners come from and what they are worth (C2, D522, `src/lib/platform-channels.ts`). A sign-up keeps its first touch
  * (`signupFirstTouch()`, from the house store's first-touch cookie: only for a visitor who allowed statistics); the owners' stores are grouped
  * by the month they were made with what Kaizena Flow was paid for them (`platform_sales`, live, net of VAT, D508); each channel's requests and
  * owners are set against what was spent on it (`platform_marketing_spend`, written only here, by a platform owner or its finance role). Never

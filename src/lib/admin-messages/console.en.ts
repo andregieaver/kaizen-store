@@ -69,7 +69,7 @@ export const consoleEn = {
     trialing: "On a free trial",
     cancelling: "Leaving",
     cancellingSub: "Plans that end at the end of their period.",
-    /** Owners by the month they joined, and where they came from (C2, D521). */
+    /** Owners by the month they joined, and where they came from (C2, D522). */
     owners: {
       title: "Owners by the month they joined",
       description: "Each month's new owners' stores: how many opened, pay now and ever paid, and what Kaizena Flow was paid for their plans in {currency} (net of VAT and credit notes, live mode): per store and per owner who paid.",

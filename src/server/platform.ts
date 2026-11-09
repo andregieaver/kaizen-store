@@ -52,7 +52,7 @@ export type AccessRequestInput = {
    * sandbox is open; a request merged into one pending for the address keeps what that one named.
    */
   sandboxId?: string | null;
-  /** Where the person first came from (C2, D521): the house store's first touch, classified; kept only with consent, else nothing. */
+  /** Where the person first came from (C2, D522): the house store's first touch, classified; kept only with consent, else nothing. */
   firstTouch?: { channel: string; source: string; campaign: string } | null;
 };
 
