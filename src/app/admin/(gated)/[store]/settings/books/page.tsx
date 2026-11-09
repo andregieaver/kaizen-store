@@ -8,7 +8,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
-import { HAND_ROWS, LEDGER_SERIES, NO_TAX_CODES, balanceSheet, isDay, profitAndLoss, resultGroupOf, vatTermOf, type ReportRow } from "@/lib/ledger";
+import { HAND_ROWS, LEDGER_SERIES, NO_TAX_CODES, balanceSheet, isDay, profitAndLoss, resultGroupOf, standardAccount, vatTermOf, type ReportRow } from "@/lib/ledger";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { formatStoreDay } from "@/lib/return-time";
 import { groupingOf, saftYears } from "@/lib/saft";
@@ -22,6 +22,7 @@ import { RecurringCostsCard } from "@/components/admin/recurring-costs";
 import { BooksInboxCard } from "@/components/admin/books-inbox";
 import { BudgetCard } from "@/components/admin/budget-card";
 import { inboxMatches } from "@/lib/books-inbox";
+import { PURCHASE_KINDS } from "@/lib/purchases";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
 import { invoiceOffers } from "@/server/bank-payments";
 import { vouchersOf } from "@/server/purchases";
@@ -129,6 +130,17 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   // Budget and forecast for this year (D505).
   const budgetYear = Number(today.slice(0, 4));
   const budget = await budgetOf(store.id, book.id, budgetYear, today);
+  // The accounts a budget is set on: the chart's result accounts, and the standard ones a purchase or a line posts to before the chart has them.
+  const budgetAccounts = (() => {
+    const names = new Map(chart.filter((a) => resultGroupOf(a.number) !== null).map((a) => [a.number, a.name]));
+    for (const number of [...Object.values(PURCHASE_KINDS).map((k) => k.account), ...budget.lines.map((l) => l.account)]) {
+      if (!names.has(number)) {
+        const standard = standardAccount(String(number));
+        names.set(number, standard ? (lang === "nb" ? standard.nb : standard.en) : "");
+      }
+    }
+    return [...names].sort((a, b) => a[0] - b[0]).map(([number, name]) => ({ number, name }));
+  })();
   // The vouchers of the journal's entries and of the bills, such as a purchase's receipt (D490), by entry.
   const vouchers = await vouchersOf(store.id, [...journal.map((e) => e.id), ...bills.map((b) => b.entryId)]);
   // The bill's fields' words, for the part of them that reads its file in the browser (D493).
@@ -485,7 +497,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
       <BudgetCard
         year={budgetYear}
         view={budget}
-        accounts={chart.filter((a) => resultGroupOf(a.number) !== null).map((a) => ({ number: a.number, name: a.name }))}
+        accounts={budgetAccounts}
         owner={owner}
         currency={book.currency}
         locale={locale}
