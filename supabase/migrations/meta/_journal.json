@@ -5307,6 +5307,20 @@
       "when": 1794242153349,
       "tag": "20261109163553_kaizen_life_assistants",
       "breakpoints": true
+    },
+    {
+      "idx": 758,
+      "version": "7",
+      "when": 1794243581537,
+      "tag": "20261109165941_platform_api_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 759,
+      "version": "7",
+      "when": 1794243613882,
+      "tag": "20261109170013_platform_api_tokens_rules",
+      "breakpoints": true
     }
   ]
 }
