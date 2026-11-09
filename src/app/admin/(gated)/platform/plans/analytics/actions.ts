@@ -7,18 +7,24 @@ import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { requirePlatformAdmin } from "@/server/auth";
-import { postPlatformMoney, readPlatformPayouts, setPlatformBooks } from "@/server/platform-books";
+import { postPlatformMoney, setPlatformBooks } from "@/server/platform-books";
+import { readPlatformPayouts } from "@/server/platform-payouts";
 import { catchUpPlatformSales } from "@/server/platform-sales";
+import { platformModes } from "@/server/stripe";
 
-/** *Read from Stripe* (D507): every paid invoice of the year read again into what Kaizena Flow sold. A platform admin's alone. */
+/** *Read from Stripe* (D507, D509): every paid invoice and payout of the year read again. A platform admin's alone. */
 export async function readSalesAction(_state: FormState, form: FormData): Promise<FormState> {
   const admin = await requirePlatformAdmin();
   const w = adminText(adminLangOf(admin.adminLocale), "console").planAnalytics.sales;
   const year = Number(form.get("year"));
   const current = new Date().getUTCFullYear();
-  const done = await catchUpPlatformSales(admin, Number.isInteger(year) && year >= 2024 && year <= current ? year : current);
+  const chosen = Number.isInteger(year) && year >= 2024 && year <= current ? year : current;
+  const done = await catchUpPlatformSales(admin, chosen);
+  // The year's payouts too, in each mode, with what each carried (D509).
+  let payouts = 0;
+  for (const mode of platformModes()) payouts += await readPlatformPayouts(mode, `${chosen}-01-01`);
   refresh();
-  return { status: "ok", messages: [countWords(done.read, w.readDone)] };
+  return { status: "ok", messages: [countWords(done.read, w.readDone), countWords(payouts, w.payoutsDone)] };
 }
 
 /** The store whose books hold Kaizena Flow's money (D508), or none. A platform admin's alone. */

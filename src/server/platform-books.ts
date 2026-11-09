@@ -13,14 +13,16 @@ import type { PaymentModeName } from "@/lib/stripe-account";
 import { audit, type Account } from "./auth";
 import { addLedgerAccount, ledgerAccounts, postLedgerEntry } from "./ledger";
 import { log } from "./log";
-import { platformStripe } from "./stripe";
+import { readPlatformPayouts } from "./platform-payouts";
+import { platformModes, platformStripe } from "./stripe";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * Kaizena Flow's own money in the books of the business behind it (C3 step 2 of `docs/platform-parity-plan.md`, D508,
  * `src/lib/platform-books.ts`). The platform names the store whose books hold it (`platform_settings.books_store_id`: one business keeps
  * one book and one VAT return); each live sale (D507) is posted there once on the day it was paid, in kroner as Stripe settled it, with its
- * credit notes; Kaizena Flow's own Stripe payouts are read and posted against the bank with Stripe's fees. Test payments are never posted.
+ * credit notes; Kaizena Flow's own Stripe payouts (read in `platform-payouts.ts`, D509) are posted against the bank with Stripe's fees once
+ * their lines are read. Test payments are never posted.
  * The five-minute dispatcher's `platformBooks` job does it; a platform admin's press does it at once.
  */
 
@@ -98,33 +100,6 @@ export async function settlePlatformSale(mode: PaymentModeName, invoiceId: strin
     log("warn", "platform_books.settle_failed", { mode }, error);
     return false;
   }
-}
-
-/**
- * Kaizena Flow's own payouts paid since a day, read from its Stripe account: what reached the bank and the fees of what each carried (its
- * balance transactions' fees), kept once. Returns how many were read; never throws.
- */
-export async function readPlatformPayouts(mode: PaymentModeName, sinceDay: string, stripe: Stripe | null = platformStripe(mode)): Promise<number> {
-  if (!stripe) return 0;
-  let read = 0;
-  try {
-    for await (const payout of stripe.payouts.list({ created: { gte: Math.floor(Date.parse(`${sinceDay}T00:00:00Z`) / 1000) }, limit: 100 })) {
-      if (payout.status !== "paid") continue;
-      let fee = 0;
-      for await (const bt of stripe.balanceTransactions.list({ payout: payout.id, limit: 100 })) {
-        if (bt.type !== "payout") fee += bt.fee;
-      }
-      const arrival = new Date(payout.arrival_date * 1000).toISOString().slice(0, 10);
-      await db().execute(sql`
-        insert into commerce.platform_payouts (mode, stripe_payout_id, arrival_on, currency, amount_minor, fee_minor, status)
-        values (${mode}, ${payout.id}, ${arrival}::date, ${payout.currency.toUpperCase()}, ${payout.amount}, ${Math.max(fee, 0)}, ${payout.status})
-        on conflict (mode, stripe_payout_id) do update set status = excluded.status, fee_minor = excluded.fee_minor, updated_at = now()`);
-      read += 1;
-    }
-  } catch (error) {
-    log("warn", "platform_books.payouts_failed", { mode }, error);
-  }
-  return read;
 }
 
 /** A standing (not reversed) entry of the book for a source, if any. */
@@ -241,8 +216,10 @@ export async function postPlatformMoney(options: { deadline?: number; stripe?: S
 
   const payouts = await typedRows(
     z.object({ id: col.uuid, arrival_on: col.text, currency: col.currency, amount_minor: col.minor, fee_minor: col.minor }),
+    // Once its lines are read, so its fee is known (D509); a manual payout has none.
     sql`select id, arrival_on::text, currency, amount_minor, fee_minor from commerce.platform_payouts
-         where mode = 'live' and status = 'paid' and arrival_on >= ${openedOn}::date order by arrival_on, id limit 200`,
+         where mode = 'live' and status = 'paid' and arrival_on >= ${openedOn}::date and (not automatic or (lines_read_at is not null and lines_complete))
+         order by arrival_on, id limit 200`,
   );
   for (const p of payouts) {
     if (options.deadline && Date.now() > options.deadline) break;
@@ -254,12 +231,16 @@ export async function postPlatformMoney(options: { deadline?: number; stripe?: S
   return run;
 }
 
-/** The dispatcher's `platformBooks` job: Kaizena Flow's live payouts of the last 40 days read, then what is due posted, within 30 seconds. */
+/**
+ * The dispatcher's `platformBooks` job: Kaizena Flow's payouts of the last 40 days read in each mode it has keys for (and what each carried,
+ * D509), then what is due posted to the books, if any are named, within 30 seconds.
+ */
 export async function runPlatformBooks(): Promise<PlatformBooksRun & { read: number }> {
-  const books = await platformBooks();
-  if (!books?.bookId) return { posted: 0, waiting: 0, payouts: 0, read: 0 };
   const since = new Date(Date.now() - 40 * 86_400_000).toISOString().slice(0, 10);
-  const read = await readPlatformPayouts("live", since);
+  let read = 0;
+  for (const mode of platformModes()) read += await readPlatformPayouts(mode, since);
+  const books = await platformBooks();
+  if (!books?.bookId) return { posted: 0, waiting: 0, payouts: 0, read };
   return { ...(await postPlatformMoney({ deadline: Date.now() + 30_000 })), read };
 }
 

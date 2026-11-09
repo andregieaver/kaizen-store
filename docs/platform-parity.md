@@ -14,7 +14,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-20 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books, D508).
+19 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509).
 
 ### Website
 
@@ -38,7 +38,6 @@ Website section is the site's (see *Built for both*).
 | Reports | None | Console, C2 (later) |
 | Analytics settings | None: no targets | Console, C2 |
 | Live | Visitors on kaizenaflow.com now, through Kaizena Flow's store (D484); no sign-ups today | Console, C2 (sign-ups today) |
-| Payouts | Kaizena Flow's own Stripe payouts read and posted to the books with their fees (D508), counted on Plans → Analytics; no list of them and what each settled | Console, C3 (next of D508) |
 
 ### Customers
 
@@ -98,6 +97,7 @@ Website section is the site's (see *Built for both*).
 | Company details, private mode, the accessibility statement | Settings | Kaizena Flow's store (D466, D484; private mode stays off while the store serves the site) |
 | Finance and VAT (D161, D496) | Analytics → Finance, VAT; Settings → Books | Plans → Analytics: what Kaizena Flow sold by month with its VAT (D507), posted into the books of the business behind it with codes 3 and 52 (D508), so in that business's VAT return and accounts, Stripe's fees with each payout |
 | Accounting (our ledger; Tripletex and Fiken compare with it) | Settings → Books | Plans → Analytics, *In the books* (D508): Kaizena Flow's sales, credit notes and Stripe payouts posted into the books the platform names (Human Web's) |
+| Payouts (D290) | Analytics → Payouts | Plans → Analytics, *Payouts* (D509): Kaizena Flow's own Stripe payouts, live and test apart, each with Stripe's fees, the sales it carried line by line and whether it adds up; posted to the books (D508) |
 
 ## Store-only: cannot apply to Kaizena Flow
 

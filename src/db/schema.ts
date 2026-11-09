@@ -18611,6 +18611,11 @@ export const platformPayouts = commerce.table(
     amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
     feeMinor: bigint("fee_minor", { mode: "number" }).notNull().default(0),
     status: text("status").notNull(),
+    /** False for a payout made by hand in Stripe, which lists no lines (D509). */
+    automatic: boolean("automatic").notNull().default(true),
+    /** When its lines were read from Stripe (D509), and whether all of them were (none past `PAYOUT_LINES_MAX`). */
+    linesReadAt: timestamp("lines_read_at", { withTimezone: true }),
+    linesComplete: boolean("lines_complete").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -18620,6 +18625,34 @@ export const platformPayouts = commerce.table(
     check("platform_payouts_mode", sql`${t.mode} in ('live', 'test')`),
     check("platform_payouts_fee", sql`${t.feeMinor} >= 0`),
     check("platform_payouts_status", sql`char_length(${t.status}) between 1 and 30`),
+  ],
+);
+
+/**
+ * What one of Kaizena Flow's own payouts carried (D509): each balance transaction Stripe lists for it, gross, fee and net in the payout's
+ * currency, and the sale it was for where it is one (a payment, its refund or dispute); the platform's twin of `payout_lines` (D290).
+ */
+export const platformPayoutLines = commerce.table(
+  "platform_payout_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    payoutId: uuid("payout_id")
+      .notNull()
+      .references(() => platformPayouts.id, { onDelete: "cascade" }),
+    stripeBalanceTransactionId: text("stripe_balance_transaction_id").notNull(),
+    kind: text("kind").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    feeMinor: bigint("fee_minor", { mode: "number" }).notNull().default(0),
+    netMinor: bigint("net_minor", { mode: "number" }).notNull(),
+    saleId: uuid("sale_id").references(() => platformSales.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("platform_payout_lines_key").on(t.payoutId, t.stripeBalanceTransactionId),
+    index("platform_payout_lines_sale_idx").on(t.saleId),
+    check("platform_payout_lines_kind", sql`${t.kind} in ('charge', 'refund', 'dispute', 'fee', 'adjustment', 'payout', 'other')`),
+    check("platform_payout_lines_net", sql`${t.netMinor} = ${t.amountMinor} - ${t.feeMinor}`),
   ],
 );
 

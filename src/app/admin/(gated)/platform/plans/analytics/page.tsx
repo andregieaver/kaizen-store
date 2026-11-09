@@ -8,10 +8,12 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
+import { payoutFlagged } from "@/lib/payouts";
 import { share, type CurrencyFigure, type MovementFigure, type PlanSummary } from "@/lib/plan-analytics";
 import { requirePlatformAdmin } from "@/server/auth";
 import { planAnalytics } from "@/server/plan-analytics";
 import { platformBooksState, storesWithBooks } from "@/server/platform-books";
+import { platformPayoutsView, type PlatformPayoutRow } from "@/server/platform-payouts";
 import { platformSalesView } from "@/server/platform-sales";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { SalesMonth } from "@/lib/platform-sales";
@@ -35,9 +37,59 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const asked = Number((await searchParams).days);
   const days = (PERIODS as readonly number[]).includes(asked) ? asked : 30;
   const year = new Date().getUTCFullYear();
-  const [a, sales, books, bookStores] = await Promise.all([planAnalytics(days), platformSalesView(year), platformBooksState(), storesWithBooks()]);
+  const [a, sales, books, bookStores, payouts] = await Promise.all([planAnalytics(days), platformSalesView(year), platformBooksState(), storesWithBooks(), platformPayoutsView(year)]);
   const sw = w.sales;
   const bw = w.books;
+  const pw = w.payouts;
+  const fw = adminText(lang, "finance").payouts;
+  const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "UTC" });
+  // Kaizena Flow's own payouts (D509): newest first, each a link to what it carried.
+  const payoutsTable = (rows: PlatformPayoutRow[]) => (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[36rem] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-line text-muted">
+            <th scope="col" className="px-3 py-2 text-left font-normal">
+              {pw.arrives}
+            </th>
+            <th scope="col" className="px-3 py-2 text-left font-normal">
+              {pw.status}
+            </th>
+            <th scope="col" className={`${cell} font-normal`}>
+              {pw.amount}
+            </th>
+            <th scope="col" className={`${cell} font-normal`}>
+              {pw.fees}
+            </th>
+            <th scope="col" className={`${cell} font-normal`}>
+              {pw.sales}
+            </th>
+            <th scope="col" className="px-3 py-2 text-left font-normal">
+              {pw.reconciliation}
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((p) => (
+            <tr key={p.id}>
+              <th scope="row" className="px-3 py-2 text-left font-normal whitespace-nowrap">
+                <a href={`/admin/platform/plans/analytics/payouts/${p.id}`} className="underline underline-offset-2 hover:text-ink">
+                  {day(p.arrivalOn)}
+                </a>
+              </th>
+              <td className="px-3 py-2 whitespace-nowrap">{fw.status[p.status]}</td>
+              <td className={cell}>{formatMoney(p.amountMinor, p.currency, locale)}</td>
+              <td className={cell}>{p.feeMinor === 0 ? "" : formatMoney(p.feeMinor, p.currency, locale)}</td>
+              <td className={cell}>{p.sales === 0 ? "" : p.sales}</td>
+              <td className={`px-3 py-2 whitespace-nowrap ${payoutFlagged(p.state) ? "text-danger-text" : "text-ink-2"}`}>
+                {p.status === "paid" ? (p.state === "untied" ? pw.untied : fw.states[p.state]) : ""}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
   const monthName = (month: string) => new Date(`${month}-01T12:00:00Z`).toLocaleDateString(locale, { month: "long", timeZone: "UTC" });
   const cell = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
   // What Kaizena Flow sold (D507): a month a row, each currency apart, the year's totals at the foot.
@@ -253,6 +305,18 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
                 <p className="text-sm text-muted">{fillWords(bw.noBook, { name: books.books.name })}</p>
               ))}
           </section>
+        </div>
+      </Card>
+
+      <Card title={fillWords(pw.title, { year })} description={pw.description}>
+        <div className="flex flex-col gap-4">
+          {payouts.live.length === 0 ? <p className="text-sm text-muted">{pw.none}</p> : payoutsTable(payouts.live)}
+          {payouts.test.length > 0 && (
+            <details>
+              <summary className="w-fit cursor-pointer text-sm text-muted underline underline-offset-2">{pw.testTitle}</summary>
+              <div className="mt-2">{payoutsTable(payouts.test)}</div>
+            </details>
+          )}
         </div>
       </Card>
 

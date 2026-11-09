@@ -8,6 +8,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 
 const books = await import("./platform-books");
+const payouts = await import("./platform-payouts");
 
 import type { Account } from "./auth";
 
@@ -17,7 +18,7 @@ type Row = Record<string, unknown>;
  * Kaizena Flow's own money in the books (D508) against a real database, with Stripe as a stand-in: the platform names a store with open
  * books; its live sales are posted there once (kroner with 25 % MVA, a sale in euros at what Stripe settled in kroner), test payments and
  * sales before the book opened never; a credit note's share is posted, and posted again when it changes with the earlier one reversed;
- * a payout read from Stripe is posted against the bank with its fees.
+ * a payout read from Stripe keeps what it carried, tied to its sale (D509), and is posted against the bank with its fees.
  */
 
 const run = Date.now().toString(36);
@@ -71,20 +72,40 @@ describe("Kaizena Flow's own money in the books (D508)", () => {
 
       // Stripe, standing in: the euro invoice's charge settled 573.30 kroner with a 10 krone fee; one paid payout and one on its way.
       const stripe = {
-        invoicePayments: { list: async function* () { yield { payment: { type: "charge", charge: "ch_1" } }; } },
-        charges: { retrieve: async () => ({ balance_transaction: { amount: 57_330, fee: 1_000, currency: "nok" } }) },
-        payouts: { list: async function* () {
-          yield { id: `po_${run}a`, status: "paid", arrival_date: Date.parse("2026-11-06T00:00:00Z") / 1000, currency: "nok", amount: 36_100 };
-          yield { id: `po_${run}b`, status: "in_transit", arrival_date: Date.parse("2026-11-09T00:00:00Z") / 1000, currency: "nok", amount: 5_000 };
+        // An invoice's payments (to settle the euro sale), or the invoice a payment intent paid (to tie a payout's line to its sale, D509).
+        invoicePayments: { list: async function* (params: { payment?: { payment_intent: string } }) {
+          if (params.payment) yield { invoice: params.payment.payment_intent === "pi_plan" ? `in_${run}plan` : "in_unknown" };
+          else yield { payment: { type: "charge", charge: "ch_1" } };
         } },
+        charges: { retrieve: async () => ({ balance_transaction: { amount: 57_330, fee: 1_000, currency: "nok" } }) },
+        invoices: { retrieve: async () => ({ id: "in_unknown", total: 0 }) },
+        payouts: { list: async function* () {
+          yield { id: `po_${run}a`, status: "paid", automatic: true, arrival_date: Date.parse("2026-11-06T00:00:00Z") / 1000, currency: "nok", amount: 36_100 };
+          yield { id: `po_${run}b`, status: "in_transit", automatic: true, arrival_date: Date.parse("2026-11-09T00:00:00Z") / 1000, currency: "nok", amount: 5_000 };
+        } },
+        // The paid payout carried the plan's payment (by its payment intent) and itself.
         balanceTransactions: { list: async function* () {
-          yield { type: "charge", fee: 1_275 };
-          yield { type: "payout", fee: 0 };
+          yield { id: `txn_${run}1`, type: "charge", amount: 37_375, fee: 1_275, net: 36_100, currency: "nok", source: { object: "charge", id: "ch_p", payment_intent: "pi_plan" } };
+          yield { id: `txn_${run}2`, type: "payout", amount: -36_100, fee: 0, net: -36_100, currency: "nok", source: { object: "payout", id: `po_${run}a` } };
         } },
       } as unknown as Stripe;
-      expect(await books.readPlatformPayouts("live", "2026-11-01", stripe)).toBe(1);
-      const [payout] = await db().execute<Row>(sql`select id, amount_minor::int as amount, fee_minor::int as fee, arrival_on::text as day from commerce.platform_payouts where stripe_payout_id = ${`po_${run}a`}`);
-      expect([payout.amount, payout.fee, payout.day]).toEqual([36_100, 1_275, "2026-11-06"]);
+      expect(await payouts.readPlatformPayouts("live", "2026-11-01", stripe)).toBe(2);
+      const [payout] = await db().execute<Row>(sql`select id, amount_minor::int as amount, fee_minor::int as fee, arrival_on::text as day, lines_complete from commerce.platform_payouts where stripe_payout_id = ${`po_${run}a`}`);
+      expect([payout.amount, payout.fee, payout.day, payout.lines_complete]).toEqual([36_100, 1_275, "2026-11-06", true]);
+      // What it carried, tied to the plan; the one on its way is kept, its lines not read yet.
+      const view = await payouts.platformPayoutsView(2026);
+      expect(view.live.find((p) => p.stripePayoutId === `po_${run}a`)).toMatchObject({ status: "paid", sales: 1, feeMinor: 1_275, state: "reconciles" });
+      expect(view.live.find((p) => p.stripePayoutId === `po_${run}b`)).toMatchObject({ status: "in_transit", sales: 0 });
+      const detail = await payouts.platformPayoutDetail(String(payout.id));
+      expect(detail?.lines.map((l) => [l.kind, l.netMinor, l.sale?.number ?? null, l.sale?.storeSlug ?? null])).toEqual([
+        ["charge", 36_100, "KF-plan", null],
+        ["payout", -36_100, null, null],
+      ]);
+      expect(detail?.reconciliation).toMatchObject({ state: "reconciles", feesMinor: 1_275, linesNetMinor: 36_100 });
+      // Read again: nothing doubles.
+      expect(await payouts.readPlatformPayouts("live", "2026-11-01", stripe)).toBe(2);
+      const [count] = await db().execute<Row>(sql`select count(*)::int as n from commerce.platform_payout_lines where payout_id = ${String(payout.id)}::uuid`);
+      expect(count.n).toBe(2);
 
       const now = new Date("2026-11-20T12:00:00Z");
       const first = await books.postPlatformMoney({ stripe, now });

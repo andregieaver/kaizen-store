@@ -1164,9 +1164,10 @@ const PAGES: readonly AdminPage[] = [
   platform("plan-features", "/plans/features", "Plan features", "Platform", "Every feature in a table with the plans as columns, and a box to tick what each plan includes.", {
     keywords: ["compare plans", "features", "what is included", "tiers"],
   }),
-  platform("plan-analytics", "/plans/analytics", "Plan analytics", "Platform", "What the stores' plans earn every month in live and test payments, how that moved (started, upgraded, downgraded, paused, resumed, cancelled), the way from an application to a paying store, and each plan's stores.", {
-    keywords: ["mrr", "monthly recurring revenue", "churn", "revenue", "funnel", "conversion", "trials"],
+  platform("plan-analytics", "/plans/analytics", "Plan analytics", "Platform", "What the stores' plans earn every month in live and test payments, how that moved (started, upgraded, downgraded, paused, resumed, cancelled), the way from an application to a paying store, and each plan's stores; what Kaizena Flow sold by month with its VAT, its own Stripe payouts, and the books that hold its money.", {
+    keywords: ["mrr", "monthly recurring revenue", "churn", "revenue", "funnel", "conversion", "trials", "sales", "vat", "payouts", "books"],
   }),
+  platform("plan-payout", "/plans/analytics/payouts/[payoutId]", "Payout", "Platform", "One of Kaizena Flow's own Stripe payouts: what it carried line by line, the sale and store each line was for, Stripe's fees, and whether it adds up."),
   platform("discounts", "/discounts", "Discounts", "Platform", "Discount codes for stores' plans."),
   platform("discount", "/discounts/[discountId]", "Discount", "Platform", "One plan discount code."),
   platform("plan-reminders", "/plan-reminders", "Plan reminders", "Platform", "Emails to owners who left a plan checkout."),

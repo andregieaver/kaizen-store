@@ -5188,6 +5188,20 @@
       "when": 1794218798501,
       "tag": "20261109100638_platform_books_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 741,
+      "version": "7",
+      "when": 1794223085820,
+      "tag": "20261109111805_platform_payout_lines",
+      "breakpoints": true
+    },
+    {
+      "idx": 742,
+      "version": "7",
+      "when": 1794223127427,
+      "tag": "20261109111847_platform_payout_lines_rules",
+      "breakpoints": true
     }
   ]
 }

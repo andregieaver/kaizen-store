@@ -460,5 +460,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `settlePlatformSale()` has read what its balance transaction settled in the book's currency); its credited share turned on the day it is
   posted (a changed share reversed before the new one is posted, and none posted while that reversal fails); a payout as the bank and
   Stripe's fees (7770) against 1579, as a store's (D290). Each is posted once by its source (`platform_sale/{id}`,
-  `platform_credit/{id}:{credited}`, `platform_payout/{id}`).
+  `platform_credit/{id}:{credited}`, `platform_payout/{id}`). Kaizena Flow's own payouts are read only by `readPlatformPayouts()`
+  (`src/server/platform-payouts.ts`, D509), in each mode, a paid one's lines once (each tied to its sale by its payment intent, the
+  payout's fee their sum); a payout is posted only once its lines are read and complete (a manual one at once), and whether it adds up is
+  only `reconcilePlatformPayout()` (a store's `reconcilePayout()`, a sale where a store has an order).
 
