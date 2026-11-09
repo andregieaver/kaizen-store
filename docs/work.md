@@ -2279,7 +2279,7 @@ store with other Work rows is refused, the readers, no email, a normal invoice s
   Work settings (VAT number, bank account, payment note) first, or the frozen seller lacks them for good.
 
 
-### Kaizen Life's Work summary (D507)
+### Kaizen Life's Work summary (D511)
 
 WP13's `work_summary` is built, as the reader Kaizen Life shows in place of its own Work (`docs/life-work-summary.md`):
 `workSummaryOf()` over `workStoresFor()`, `getOwnerOverview()` and `getRunningTimer()`, served to Kaizen Life for a linked account

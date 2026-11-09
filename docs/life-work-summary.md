@@ -1,6 +1,6 @@
 # Work in Kaizen Life: a summary from Kaizena Flow, and Life's own Work retired (proposal)
 
-Status: **proposed 9 November 2026; the Flow side is built (D507, see "As built: the Flow side" at the end), and Life's phase 2 too (Life's `docs/work-moves-to-kaizena-flow.md`, "As built: phase 2").** Phases 0, 3 and 4 in Life are still to do.
+Status: **proposed 9 November 2026; the Flow side is built (D511, see "As built: the Flow side" at the end), and Life's phase 2 too (Life's `docs/work-moves-to-kaizena-flow.md`, "As built: phase 2").** Phases 0, 3 and 4 in Life are still to do.
 
 The owner's ask: *now that Work is built into Kaizena Flow, Work can go from Kaizen Life; what Life needs instead is a summary of
 Work across the person's stores, with links back to Kaizena Flow. Information and navigation between the two must be intuitive,
@@ -493,7 +493,7 @@ Candidates for phase 5:
 * **[docs]** Supabase, *OAuth 2.1 Server: Getting started* and `oauth.getAuthorizationDetails`: a client approved before is
   answered with a redirect, not a consent screen.
 
-## As built: the Flow side (D507, 9 November 2026)
+## As built: the Flow side (D511, 9 November 2026)
 
 The owner confirmed one company runs both apps, so the link is made by itself as section 3.3 says. What differs from the plan above:
 

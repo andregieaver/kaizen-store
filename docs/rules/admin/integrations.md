@@ -268,7 +268,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`einvoiceLines()`, `screens.einvoiceState`) on the order page and on a Work invoice, where the XML is also downloaded
   (`…/work/s/{store}/invoices/{id}/xml`, `…/credit-notes/{id}/xml`). Email is unchanged in this step.
 
-## Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D507, `docs/life-work-summary.md`)
+## Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`)
 
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
@@ -290,7 +290,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   tokens encrypted in `kaizen_life_links`); the assistant then has
   `ask_kaizen_life` (`ASK_KAIZEN_LIFE`, not an owner tool), never in turns
   Kaizen Life asked for.
-- Kaizen Life's account link and Work summary (D507, `docs/life-work-summary.md`, `src/server/kaizen-life-accounts.ts`,
+- Kaizen Life's account link and Work summary (D511, `docs/life-work-summary.md`, `src/server/kaizen-life-accounts.ts`,
   `src/server/kaizen-life-doors.ts`, `src/lib/kaizen-life-jwt.ts`, `src/lib/work-summary.ts`, `src/server/work-summary.ts`): Kaizen Life
   shows Work only for a person with accounts on both, linked. The link is `commerce.kaizen_life_accounts`, written only by
   `kaizen-life-accounts.ts` (one live link per account and per Life user, one row per pair, its pair fixed by a trigger; audited

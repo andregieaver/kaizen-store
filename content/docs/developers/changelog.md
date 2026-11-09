@@ -9,7 +9,7 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-09
-sources: [D438, D439, D440, D441, D458, D464, D507]
+sources: [D438, D439, D440, D441, D458, D464, D511]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
@@ -18,7 +18,7 @@ Every change to a published contract gets a version here, newest first: the Admi
 
 ## 1.11 — 2026-11-09
 
-An addition to the owner MCP's catalogue (D507).
+An addition to the owner MCP's catalogue (D511).
 
 - `work_summary`: what needs the person in Work across the stores the connection reaches, in one call that takes no store. It returns
   overdue invoices, their own running timer, time ready to invoice, repeating invoices ready and drafts left waiting, urgent first. Money

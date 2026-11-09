@@ -65,7 +65,7 @@ describe("signing in with Kaizen Life (D95)", () => {
   });
 });
 
-describe("signing in with Kaizen Life once the accounts are linked (D507)", () => {
+describe("signing in with Kaizen Life once the accounts are linked (D511)", () => {
   it("admits staff linked to this Kaizen Life user whatever their role, and not through someone else's link", async () => {
     const email = `life-linked-staff-${run}@example.com`;
     const [store] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${`life-${run}`}`);
