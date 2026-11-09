@@ -100,6 +100,24 @@ describe("the AI manager's conversations kept for a period (D391)", () => {
     expect(await messageCount(followed)).toBe(0);
   });
 
+  it("deletes a task handed over the Kaizen Life link once it ended as long ago, never one still open", async () => {
+    const task = async (status: string, endedAt: string) => {
+      const [row] = await db().execute<Row>(sql`
+        insert into commerce.kaizen_life_handoffs (id, account_id, store_id, direction, task, status, updated_at, finished_at)
+        values (gen_random_uuid(), ${accountId}::uuid, ${store.storeId}::uuid, 'from_life', 'Count the orders', ${status},
+                ${endedAt}::timestamptz, ${status === "waiting_for_you" ? null : endedAt}::timestamptz)
+        returning id`);
+      return String(row.id);
+    };
+    const oldDone = await task("done", monthsAgo(13));
+    const oldWaiting = await task("waiting_for_you", monthsAgo(13));
+    const recentDone = await task("done", monthsAgo(2));
+    for (let round = 0; round < 5; round++) await pruneAssistantConversations(NOW, ASSISTANT_KEEP_MONTHS, 500);
+    const left = await db().execute<Row>(sql`select id from commerce.kaizen_life_handoffs where account_id = ${accountId}::uuid`);
+    expect(left.map((r) => String(r.id)).sort()).toEqual([oldWaiting, recentDone].sort());
+    expect(left.some((r) => String(r.id) === oldDone)).toBe(false);
+  });
+
   it("follows the store owner's own period, saved and audited", async () => {
     const owner = { account: { id: accountId }, store: { id: store.storeId } } as never;
     expect(await saveAssistantKeep(owner, "99")).toEqual({ ok: false });

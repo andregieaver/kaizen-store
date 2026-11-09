@@ -118,6 +118,8 @@ export async function eraseOwnAccount(account: Pick<Account, "id">, deps: { dele
     await tx.execute(sql`delete from commerce.assistant_notices where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.assistant_skills where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.assistant_follow_ups where account_id = ${id}::uuid`);
+    // Tasks the person's assistants handed each other over the Kaizen Life link (docs/assistants-together.md), in their words.
+    await tx.execute(sql`delete from commerce.kaizen_life_handoffs where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.push_subscriptions where account_id = ${id}::uuid`);
     // Report emails (D395): the account is taken off each list; a schedule left with nobody goes.
     await tx.execute(sql`delete from commerce.report_schedules where recipients = array[${id}::uuid]`);
