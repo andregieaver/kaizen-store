@@ -439,3 +439,12 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `actualRows()`, the forecast from the budget, else the register's subscriptions (`subscriptionMonths()`, the cost as the books post it),
   else the months so far; arithmetic in code, never in the page. Nothing in a budget is posted.
 
+## The year-end (D506, `src/lib/year-end.ts`, `src/server/year-end.ts`, `YearEndCard`)
+
+- **The year-end (D506, `src/lib/year-end.ts`, `src/server/year-end.ts`, `YearEndCard`)**: a year is
+  closed only by `closeYear()` (owners, audited): once it is over and `readyToClose()` (nothing waiting, the year's bank lines in the books,
+  the bank's balance on a statement covering its last day agreeing), its result goes to equity by `closingEntryOf()` (8960 against 2050 on
+  31 December, the source `year_end/{year}`, posted once) and the book is locked through that day. It is reopened only by `reopenYear()`
+  (the lock back to the year before, the closing entry reversed). The business specification is only `businessSpecOf()` over the year's
+  trial balance and the SAF-T grouping codes (`groupingOf()`); a new code or category is a change to `no-grouping.json` and its sets there.
+

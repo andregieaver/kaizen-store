@@ -21,6 +21,7 @@ import { ReceiptFields, type ReceiptFieldWords } from "@/components/admin/receip
 import { RecurringCostsCard } from "@/components/admin/recurring-costs";
 import { BooksInboxCard } from "@/components/admin/books-inbox";
 import { BudgetCard } from "@/components/admin/budget-card";
+import { YearEndCard } from "@/components/admin/year-end-card";
 import { inboxMatches } from "@/lib/books-inbox";
 import { PURCHASE_KINDS } from "@/lib/purchases";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
@@ -30,12 +31,13 @@ import { billOffers, unpaidBills } from "@/server/supplier-invoices";
 import { recurringView } from "@/server/recurring-costs";
 import { booksAddressOf, inboxDocuments } from "@/server/books-inbox";
 import { budgetOf } from "@/server/budget";
+import { yearEndView, yearEndYear } from "@/server/year-end";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 import { vatReturnOrgNumber } from "@/server/vat-return";
 
-import { addBillAction, dismissInboxAction, saveBudgetAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, recurringPressAction, reverseEntryAction, saveRecurringCostAction, uploadBankStatementAction } from "./actions";
+import { addBillAction, dismissInboxAction, saveBudgetAction, yearEndAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, recurringPressAction, reverseEntryAction, saveRecurringCostAction, uploadBankStatementAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -127,6 +129,11 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   );
   const inboxChoices = inbox.map((d) => ({ id: d.id, label: `${day(d.receivedOn)} · ${d.subject || d.fileName}`.slice(0, 120) }));
   const inboxName = new Map(inbox.map((d) => [d.id, d.subject || d.fileName]));
+  // The year-end (D506): the first year not closed that has ended, else this year to get ready for.
+  const closingYear = await yearEndYear(book, today);
+  const yearEnd = await yearEndView(store.id, book, closingYear, today);
+  // A past year waiting to be closed comes first on the screen; this year's year-end waits below until its end.
+  const yearEndDue = closingYear < Number(today.slice(0, 4));
   // Budget and forecast for this year (D505).
   const budgetYear = Number(today.slice(0, 4));
   const budget = await budgetOf(store.id, book.id, budgetYear, today);
@@ -192,6 +199,18 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   const number = new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const signed = (minor: number) => number.format(minor / 10 ** digits);
   const money = (minor: number) => (minor === 0 ? "" : signed(minor));
+  const yearEndCard = (
+    <YearEndCard
+      storeSlug={store.slug}
+      view={yearEnd}
+      owner={owner}
+      lang={lang}
+      words={w}
+      money={amount}
+      day={day}
+      act={yearEndAction.bind(null, store.slug)}
+    />
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -204,6 +223,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
           <li className="text-muted">{book.lockedThrough ? fillWords(w.facts.locked, { day: day(book.lockedThrough) }) : w.facts.open}</li>
         </ul>
       </Card>
+
+      {yearEndDue && yearEndCard}
 
       {offerOpening && (
         <Card title={w.opening.title} description={w.opening.lead}>
@@ -505,6 +526,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         money={amount}
         save={saveBudgetAction.bind(null, store.slug)}
       />
+
+      {!yearEndDue && yearEndCard}
 
       {waiting.length > 0 && (
         <Card title={w.waiting.title} aside={<Chip signal="warning">{waiting.length}</Chip>}>

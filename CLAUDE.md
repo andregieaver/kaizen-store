@@ -250,6 +250,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Subscriptions (D503, `src/lib/recurring-costs.ts`, `src/server/recurring-costs.ts`, `RecurringCostsCard`)
 - Receipts by email (D504, `src/lib/books-inbox.ts`, `src/server/books-inbox.ts`, `BooksInboxCard`)
 - Budget and forecast (D505, `src/lib/budget.ts`, `src/server/budget.ts`, `BudgetCard`)
+- The year-end (D506, `src/lib/year-end.ts`, `src/server/year-end.ts`, `YearEndCard`)
 - E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)
 - Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…
 - Sign in with Google (wave 10 unit L, D375, `src/lib/google-sign-in.ts`, `src/server/google-sign-in.ts`)

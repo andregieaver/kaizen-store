@@ -32,6 +32,7 @@ import { endRecurringCost, recurringView, saveRecurringCost } from "@/server/rec
 import { dismissInboxDocument, readInboxDocument, markInboxUsed } from "@/server/books-inbox";
 import { budgetMonthsOf, MONTHS } from "@/lib/budget";
 import { saveBudget } from "@/server/budget";
+import { closeYear, reopenYear } from "@/server/year-end";
 
 /**
  * Settings → Books (B2, D478): opening the store's books, posting an entry by hand, reversing one, and locking them through a day. Each
@@ -476,5 +477,26 @@ export async function saveBudgetAction(storeSlug: string, _state: FormState, for
   if (!saved.ok) return { status: "error", messages: [w.budget.problems[saved.problem]], fields: saved.problem === "account" ? { account: w.budget.problems.account } : undefined };
   refresh();
   return { status: "ok", messages: [fillWords(saved.removed ? w.budget.removed : w.budget.saved, { account: String(account) })] };
+}
+
+/** *Close {year}* or *Reopen {year}* (D506): the year-end's two presses, the button naming the year (`close`, `reopen`). */
+export async function yearEndAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const closing = form.get("close");
+  const reopening = form.get("reopen");
+  const year = Number(closing ?? reopening);
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) return { status: "error", messages: [w.yearEnd.problems.year] };
+  if (closing !== null) {
+    const closed = await closeYear(member, year, todayIn(new Date(), member.store.timeZone));
+    if (!closed.ok) return { status: "error", messages: [w.yearEnd.problems[closed.problem]] };
+    refresh();
+    return { status: "ok", messages: [fillWords(w.yearEnd.closedDone, { year })] };
+  }
+  const reopened = await reopenYear(member, year);
+  if (!reopened.ok) return { status: "error", messages: [w.yearEnd.problems[reopened.problem]] };
+  refresh();
+  return { status: "ok", messages: [fillWords(w.yearEnd.reopened, { year })] };
 }
 
