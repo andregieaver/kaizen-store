@@ -763,7 +763,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Enter this month's ad spend", "See which channel earns the most"],
     feature: "shop",
   }),
-  store("analytics.sales", "/analytics/sales", "Sales analytics", "Analytics", "From the deals (S6, D519): when the open deals may close and their value weighted by stage, how deals move from stage to stage, what each person won and lost, and how long a deal takes to win.", {
+  store("analytics.sales", "/analytics/sales", "Sales analytics", "Analytics", "From the deals (S6, D520): when the open deals may close and their value weighted by stage, how deals move from stage to stage, what each person won and lost, and how long a deal takes to win.", {
     keywords: ["sales forecast", "pipeline report", "win rate", "conversion", "deals"], feature: "sales" }),
   store("analytics.subscriptions", "/analytics/subscriptions", "Subscription analytics", "Analytics", "Monthly recurring revenue and how it moves, churn, failed renewals and subscribers.", {
     keywords: ["mrr", "arr", "churn", "recurring"], feature: "subscriptions" }),

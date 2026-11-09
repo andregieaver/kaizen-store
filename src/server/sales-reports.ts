@@ -8,7 +8,7 @@ import { byPerson, forecast, forecastCurrencies, stageConversion, timeToWin, typ
 import { col, typedRows } from "./typed-rows";
 
 /**
- * Sales reports (S6, D519, `src/lib/sales-reports.ts`): what Analytics → Sales reads from the store's deals (D464). The forecast is of every
+ * Sales reports (S6, D520, `src/lib/sales-reports.ts`): what Analytics → Sales reads from the store's deals (D464). The forecast is of every
  * open deal now; the stages, the people and the time to win are of the period, by the store's day: deals made in it for the stages, deals won
  * or lost in it for the people and the time to win. Counts and sums only; a deal's title or customer is never read here.
  */

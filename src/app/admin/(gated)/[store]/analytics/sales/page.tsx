@@ -13,7 +13,7 @@ import { salesReport } from "@/server/sales-reports";
 export const metadata: Metadata = { title: "Sales analytics" };
 
 /**
- * Analytics → Sales (S6, D519): the deals' forecast, stages, people and time to win, from the store's deals (D464). Thin on purpose: it reads
+ * Analytics → Sales (S6, D520): the deals' forecast, stages, people and time to win, from the store's deals (D464). Thin on purpose: it reads
  * the period, the pipeline and the currency asked for, and hands the report to `SalesView`. Behind the store's Sales feature, as the deals are.
  */
 export default async function AnalyticsSalesPage({ params, searchParams }: PageProps<"/admin/[store]/analytics/sales">) {

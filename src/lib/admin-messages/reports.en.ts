@@ -159,7 +159,7 @@ export const reportsEn = {
     counted: "A customer is a person by their email: an account's orders go together, and a guest is told apart by the email they gave. Someone who orders with two different emails counts as two customers. Amounts are in {currency} without VAT, after refunds, and orders in other currencies are converted at today's rates. Refunds made in the payment provider's own dashboard are counted once it reports them.",
   },
   /** The Subscriptions page (`SubscriptionsView`). */
-  /** Analytics → Sales (S6, D519). */
+  /** Analytics → Sales (S6, D520). */
   sales: {
     pipeline: "Pipeline",
     currency: "Currency",

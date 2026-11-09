@@ -11,14 +11,14 @@ const { salesReport } = await import("./sales-reports");
 type Row = Record<string, unknown>;
 
 /**
- * Sales reports (S6, D519) against a real database: the forecast of open deals by month and weighted by their stage's chance, the stages
+ * Sales reports (S6, D520) against a real database: the forecast of open deals by month and weighted by their stage's chance, the stages
  * reached by deals made in the period (from the moves the database keeps), what each owner won and lost, and the time to win.
  */
 
 const run = Date.now().toString(36);
 afterAll(async () => closeDb());
 
-describe("sales reports (D519)", () => {
+describe("sales reports (D520)", () => {
   it("reads the forecast, the stages, the people and the time to win from the store's deals", async () => {
     const name = `sales-${run}`;
     const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${name}@example.com`}, 'Siri', 'Salg') returning id`);

@@ -1,5 +1,5 @@
 /**
- * Sales reports (S6 of `docs/own-books-and-sales.md`, D519): the pure parts, worked out in code from the deals' own rows (D464). The forecast
+ * Sales reports (S6 of `docs/own-books-and-sales.md`, D520): the pure parts, worked out in code from the deals' own rows (D464). The forecast
  * (open value by the month a deal is expected to close, and weighted by its stage's chance, Lisa's), how deals move from stage to stage, what
  * each person won and lost, and how long a deal takes to win. Nothing here reads the database.
  */

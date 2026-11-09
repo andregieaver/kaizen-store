@@ -15,7 +15,7 @@ const num = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
 const cell = "px-3 py-2";
 
 /**
- * Analytics → Sales (S6, D519): the open deals' value and its weighted part, the share of closed deals won and the time to win at the top;
+ * Analytics → Sales (S6, D520): the open deals' value and its weighted part, the share of closed deals won and the time to win at the top;
  * then when the open deals may close, how deals made in the period moved from stage to stage, and what each person won and lost. Homer reads
  * the four cards; Lisa switches the pipeline and the currency, one step away.
  */

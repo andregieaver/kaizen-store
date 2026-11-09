@@ -4,7 +4,7 @@ import { byPerson, forecast, forecastCurrencies, monthsFrom, stageConversion, ti
 
 const open = (estimateMinor: number | null, expectedCloseOn: string | null, probability: number | null, currency = "NOK"): OpenDeal => ({ estimateMinor, currency, expectedCloseOn, probability });
 
-describe("sales reports (S6, D519)", () => {
+describe("sales reports (S6, D520)", () => {
   it("forecasts open value by the month a deal may close, weighted by its stage's chance", () => {
     expect(monthsFrom("2026-11-09")).toEqual(["2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04"]);
     const buckets = forecast(

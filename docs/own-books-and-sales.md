@@ -132,7 +132,7 @@ erasure list (D162) and, if AI reads them, the DPIA (`docs/dpia-ai.md`) and the 
 mail the team copies or forwards to it is on the timeline of the people it is about.*
 
 **S6. Sales reports.** Forecast (open value by expected month, weighted on Lisa's view), conversion per stage, won and lost per person,
-time to win. In Analytics, beside Reports (D345). *Built 9 November 2026 (D519):* Analytics → Sales, behind the `sales` feature: the forecast by the month a deal may
+time to win. In Analytics, beside Reports (D345). *Built 9 November 2026 (D520):* Analytics → Sales, behind the `sales` feature: the forecast by the month a deal may
 close and weighted by its stage's chance, how deals made in the period moved from stage to stage, won and lost per owner, and the time to
 win (median and mean).
 
@@ -354,7 +354,7 @@ the dates more than the code does, so section 6's items 1 to 3 start now.
 | Now | S1 timeline (built, D462) | **B1 EHF out** (deadline 1 January 2027; built but the access point's adapter, D463) |
 | Next | S3 activities (built, D468) | B8 (built, D473) before the AS issues its first invoice; B2 the ledger in shadow (its journal built, D478) on the AS's books from their opening balance, with B4's statement upload |
 | Then | S4 leads (built, D475), S5 email (forwarding address built, D476), S7 import; Human Web leaves Pipedrive | B3 purchases, B4 bank |
-| Then | S6 reports (built, D519); `sales` opens to every store after the pilot's exit (section 3.3) | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |
+| Then | S6 reports (built, D520); `sales` opens to every store after the pilot's exit (section 3.3) | B5 the VAT return, SAF-T, year-end; Human Web leaves Tripletex after a full year |
 | Then | | B6 accountants, ready before Human Web's turnover passes NOK 5 million (the threshold watch says when it is near); then ring 2 |
 | Later | S5 Microsoft 365 and Gmail sync | B7 payroll partner (ring 3), a second country pack (ring 4) |
 

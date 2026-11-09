@@ -111,9 +111,9 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   parts get theirs as props.
 
 
-## Sales reports (S6, D519, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)
+## Sales reports (S6, D520, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)
 
-- **Sales reports (S6, D519, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)**: Analytics → Sales, behind the
+- **Sales reports (S6, D520, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)**: Analytics → Sales, behind the
   store's `sales` feature and `analytics:read`, is read only by `salesReport()` from the deals' own rows: the forecast from every open deal now
   (`forecast()`: by the month it is expected to close, weighted by its stage's `probability`, a deal without one or without an estimate left
   out of the weighted value and said so), the stages from deals made in the period and their `deal_moves` (`stageConversion()`: a skipped
