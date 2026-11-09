@@ -1,44 +1,69 @@
 # Work in Kaizen Life: a summary from Kaizena Flow, and Life's own Work retired (proposal)
 
-Status: **proposed 9 November 2026**, no decision number yet. The owner: *now that Work is built into Kaizena Flow, Work can go
-from Kaizen Life; what Life needs instead is a summary of Work across the person's stores, with links back to Kaizena Flow.
-Information and navigation between the two must be intuitive, relevant and seamless.* The owner's answer to the one question
-asked: **only Work goes; personal Finances stays in Kaizen Life.**
+Status: **proposed 9 November 2026**, no decision number yet.
+
+The owner's ask: *now that Work is built into Kaizena Flow, Work can go from Kaizen Life; what Life needs instead is a summary of
+Work across the person's stores, with links back to Kaizena Flow. Information and navigation between the two must be intuitive,
+relevant and seamless.*
+
+The owner then decided two things the same day:
+
+* **Only Work goes; personal Finances stays in Kaizen Life.**
+* **Work appears in Life only for someone who has both accounts.** Someone who uses only Kaizen Life sees no Work at all. As soon as
+  the person has an account on both, the accounts are linked and the Work summary appears. Until then, `/app/work` invites the
+  person to sign up to Kaizena Flow.
 
 This is a plan, not a design: each phase gets its decision when it is built. "Life" is `/home/user/lifesaver-app`
 (kaizenlifetracker.com); "Flow" is this repository. The Life-side checklist, file by file, is in Life's
-`docs/work-moves-to-kaizena-flow.md`. Pictures: `docs/life-work-summary/mockup.png` (what Life shows) and
-`docs/life-work-summary/flow.svg` (how data and taps travel).
+`docs/work-moves-to-kaizena-flow.md`.
 
-Evidence is marked: **[repo]** read in the code on 9 November 2026; **[prod]** counted in the production databases
-the same day (counts only, no person's data read); **[docs]** a vendor's own documentation; **[U]** not verified.
+Pictures:
+
+* `docs/life-work-summary/mockup.png`: what Life shows.
+* `docs/life-work-summary/linking.svg`: when Work appears.
+* `docs/life-work-summary/flow.svg`: how data and taps travel.
+
+Evidence is marked:
+
+* **[repo]** read in the code on 9 November 2026.
+* **[prod]** counted in the production databases the same day (counts only, no person's data read).
+* **[docs]** read in a vendor's own documentation.
+* **[U]** not verified.
 
 ## 0. Summary
 
-1. **Flow is the one home of Work; Life shows only what needs you, and every line opens the exact Flow screen.** Life keeps no
-   copy of a client, invoice or hour. It reads one summary from Flow when a page draws and forgets it.
-2. **One reader, one door.** Flow gets `workSummary(account, grant)`, built from readers that already exist (`workStoresFor`,
-   `getOwnerOverview`, `getRunningTimer`). It is served as the MCP tool `work_summary`, which WP13 of `docs/work.md`
-   planned and never built. Life's Today card, Life's Work page and Life's assistant all call that one tool over the
-   connection Life already has. There is no new API and no second grant.
-3. **One tap, no second sign-in.** Every link in the summary is built by Flow and goes through one door,
-   `/admin/from/kaizen-life?next=…`. Signed in to Flow, it goes straight through. Signed out, it signs in with Kaizen Life
-   and goes on to the same screen; after the first consent this is silent, because Life's consent page already skips a
-   client the person has approved [repo, docs]. Today a signed-out deep link into Flow loses where it was going [repo]; that
-   is fixed for every link, not only Life's.
-4. **The way back.** Flow's account menu gets *Kaizen Life ↗* for accounts linked to Life. Today Flow never links to Life [repo].
-5. **Life's Work goes, its Finances stay.** The `/app/work` address stays and becomes the summary, so the Money door, its Work
-   tile, bookmarks and saved nav bars keep working. Clients, invoices, time, repeating invoices, reports, print pages and the
-   revenue wall (Views) go. **Organizations stay**: they are employers and businesses with salary, reimbursable and repeating
-   costs, and they feed personal Finances (`docs/work.md` §0.1 says the same). They move under Money.
-6. **Data first.** Human Web's Life Work was imported on 30 September and Life's Work has not been touched since
-   [prod, `docs/work.md` "Import run for Human Web"]. A second Life space was never imported: 4 invoices (1 draft, 2 paid,
-   1 sent, the last made 17 August) [prod]. The owner decides its fate (open question 1). Everything Life holds is exported to
-   an archive before any table is dropped, and the drop waits 30 days after the code is gone.
-7. **Now is the cheapest moment.** Nobody has connected Life to Flow in production (no `kaizen_store` connection in Life) and
-   nobody has signed in to Flow with Kaizen Life (no `custom:kaizen-life` identity in Flow) [prod]. So the connection can move to
-   Flow's own OAuth server (D439), and Life's out-of-date names ("Kaizen Store", `kaizenstore.cloud`) can be put right, with
-   no one to migrate.
+1. **Work is present in Life only when there is Work to show.**
+   * **Life only:** nothing. No Today card, no Money tile, no assistant tool. `/app/work` is an invitation to sign up to Kaizena
+     Flow with the Kaizen Life account.
+   * **Linked:** the summary. If no store uses Work yet, `/app/work` says how to turn it on.
+2. **The accounts link by themselves**, as soon as the person has both. This happens when:
+   * they sign up to Flow from Life;
+   * the same verified email appears on the other side;
+   * they sign in to one app with the other;
+   * at launch, once, for those who already have both.
+
+   A link is told to the person in both apps, can be undone in either, and is never made again by itself once undone.
+3. **Flow is the one home of Work; Life shows only what needs the person.** Life keeps no copy of a client, invoice or hour. Every
+   line opens the exact Flow screen.
+4. **One reader, two doors.** Flow gets `workSummary(account)`, built from readers that already exist (`workStoresFor`,
+   `getOwnerOverview`, `getRunningTimer`). Life reads it over the account link: a server-to-server call signed by Life, for that
+   linked account only, read only. Other assistants get the same reader as the MCP tool `work_summary`, which WP13 of
+   `docs/work.md` planned.
+5. **One tap, no second sign-in.** Every link in the summary goes through one door in Flow, `/admin/from/kaizen-life?next=…`.
+   * Signed in to Flow: it goes straight through.
+   * Signed out: it signs in with Kaizen Life and goes on to the same screen. After the first consent this is silent [repo, docs].
+
+   Today a signed-out deep link into Flow loses where it was going [repo]. That is fixed for every link, not only Life's.
+6. **The way back.** Flow's account menu gets *Kaizen Life ↗* for linked accounts. Today Flow never links to Life [repo].
+7. **Life's Work goes, its Finances stay.** The `/app/work` address stays, and is the invitation or the summary.
+   * **Goes:** clients, invoices, time, repeating invoices, reports, print pages and the revenue wall (Views).
+   * **Stays:** Organizations, which are employers and businesses with salary and costs that feed personal Finances. They move
+     under Money.
+8. **Data first.** Human Web's Life Work was imported on 30 September, and Life's Work has not been touched since [prod].
+   * A second Life space was never imported: 4 invoices from August [prod].
+   * Everything is archived before any table is dropped.
+9. **Now is the cheapest moment** [prod]. Nobody has connected Life to Flow (no `kaizen_store` connection in Life), and nobody has
+   signed in to Flow with Kaizen Life (no `custom:kaizen-life` identity in Flow). Nobody needs migrating.
 
 ![What Kaizen Life shows](life-work-summary/mockup.png)
 
@@ -46,111 +71,153 @@ the same day (counts only, no person's data read); **[docs]** a vendor's own doc
 
 ### 1.1 Life's Work [repo, prod]
 
-* **Screens.** `/app/work` (tabs: overview and organizations), `/app/work/invoices`, `/app/work/invoices/[id]`,
-  `/app/work/clients/[id]`, `/app/work/organizations/[id]`, `/app/work/reports` and its print page, `/app/work-invoice-print/[id]`,
-  the revenue wall `/app/views` (and its public `/views/[token]`), `/api/work/report`, `/api/agent/work`, and the cron job
-  `/api/cron/work-recurring-invoices` (`vercel.json`). The Money door (`components/app-shell/nav-defs.tsx:75-80`) lights for
-  `/app/money`, `/app/finances` and `/app/work`. The Money hub (`app/app/money/page.tsx`) shows two tiles: Finances and Work.
-* **Data.** Across two spaces: 8 clients, 8 assignments, 16 tasks, 28 time entries, 17 invoices (5 paid, 10 sent, 2 drafts),
-  no repeating invoice, no running timer. The newest invoice was made on 16 September, and no time was logged after September.
-  The revenue wall has never been shared (no `view_share_tokens` row).
-* **Tied to Finances.** Invoices write expected income into the personal budget (`finance_work_invoice_projections`, 13 rows;
-  `lib/work/finance-sync.ts`, `recurring-invoice-sync.ts`). A paid invoice links to its Finances transaction
-  (`work_invoices.finance_transaction_id`, the "Payment received" badge). `lib/finance/comparison.ts` takes VAT out of invoice
-  payments. A Finances category cannot be deleted while Work uses it.
-* **Organizations are not Work in Flow's sense.** These are `life_area_groups` with domain `work` (5), with a salary (1),
-  reimbursable expenses (2) and repeating costs (11), feeding employment income and expense projections in Finances. Flow did
-  not port them, on purpose.
-* **"Work" also means tasks.** Two other things use the word and are not touched: task and project work items
-  (`work_activity_messages`, `lib/work/{fields,due,primary-project,project-tasks}.ts`, `docs/work.md` §1 table, row B), and
-  the *Work room*, a Life space of kind `work`.
+* **Screens:**
+  * `/app/work` (tabs: overview and organizations), `/app/work/invoices`, `/app/work/invoices/[id]`, `/app/work/clients/[id]`,
+    `/app/work/organizations/[id]`, `/app/work/reports` and its print page, `/app/work-invoice-print/[id]`.
+  * The revenue wall `/app/views`, and its public `/views/[token]`.
+  * `/api/work/report`, `/api/agent/work`, and the cron job `/api/cron/work-recurring-invoices`.
+* **Navigation:**
+  * The Money door (`components/app-shell/nav-defs.tsx:75-80`) lights for `/app/money`, `/app/finances` and `/app/work`.
+  * The Money hub (`app/app/money/page.tsx`) shows two tiles: Finances and Work.
+  * `page.work` is a feature in Life's plans ("Freelance work module").
+* **Data:**
+  * Across two spaces: 8 clients, 8 assignments, 16 tasks, 28 time entries, 17 invoices (5 paid, 10 sent, 2 drafts). There is no
+    repeating invoice and no running timer.
+  * The newest invoice was made on 16 September, and no time was logged after September.
+  * The revenue wall has never been shared.
+* **Tied to Finances:**
+  * Invoices write expected income into the personal budget (`finance_work_invoice_projections`, 13 rows).
+  * A paid invoice links to its Finances transaction (`work_invoices.finance_transaction_id`).
+  * `lib/finance/comparison.ts` takes VAT out of invoice payments.
+  * A Finances category that Work uses cannot be deleted.
+* **Organizations are not Work in Flow's sense.**
+  * They are `life_area_groups` with domain `work` (5), with a salary (1), reimbursable expenses (2) and repeating costs (11).
+  * They feed employment income and expense projections in Finances.
+  * Flow did not port them, on purpose (`docs/work.md` §0.1).
+* **"Work" also means tasks.** Two other things carry the word and are not touched:
+  * task and project work items (`docs/work.md` §1, row B);
+  * the *Work room*, a Life space of kind `work`.
 
 ### 1.2 What Flow already has [repo, prod]
 
-* **Readers over all of a person's stores** (D123, `src/server/work-owner.ts`). `workStoresFor(account)` covers owner and admin
-  memberships that hold `settings:read`. `getOwnerOverview()` returns a `CombinedOverview`: money per currency, never added
-  across currencies (unbilled, drafts, receivables not yet due, due soon and overdue, paid this month); a part per store; and
-  attention lists (overdue invoices, unbilled time per client, running timers), each tagged with its store.
-  `getRunningTimer(account)` (`src/server/work-time.ts:568`) returns the one running timer across stores. Every Work address is
-  made by `workBase()` (`src/lib/work-paths.ts`).
-* **The bridge to Life** (D95, D96, D439). Each Supabase project is the other's OpenID provider (`KAIZEN_LIFE_SSO`).
-  `/api/mcp` takes Life's Supabase tokens, which reach only the stores the person *owns* (`store-mcp.ts:89`), and Flow's own
-  `kfa_` tokens, which reach what the grant and the role allow. Flow's MCP Work tools are per store, answer with preformatted
-  strings and relative links, and none covers all stores or the timer (`src/server/work-tools.ts`).
-* **Gaps.**
+* **Readers over all of a person's stores** (D123, `src/server/work-owner.ts`):
+  * `workStoresFor(account)` covers owner and admin memberships that hold `settings:read`.
+  * `getOwnerOverview()` gives money per currency, never added across currencies, a part per store, and attention lists
+    tagged with their store.
+  * `getRunningTimer(account)` gives the one running timer across stores.
+  * Every Work address is made by `workBase()` (`src/lib/work-paths.ts`).
+* **The bridge to Life** (D95, D96, D439):
+  * Each Supabase project is the other's OpenID provider (`KAIZEN_LIFE_SSO`).
+  * Signing in with Kaizen Life admits only owners and platform admins (`admitFromKaizenLife()`).
+  * Someone with no account lands on `/sign-up?via=kaizen-life`, prefilled (`kaizen-life-prefill.tsx`), and goes through the usual
+    self-serve sign-up, with its confirmation email (D359).
+  * `/api/mcp` takes Life's Supabase tokens (owned stores only) and Flow's own `kfa_` tokens.
+* **Gaps:**
   * No reader answers "my Work across stores" for another app.
-  * `workAttention()` writes English sentences only. Another app needs numbers it can word itself.
-  * A signed-out visit to any `/admin/...` page lands on plain `/admin/sign-in` and forgets the page asked for
-    (`src/components/admin/session.tsx`, `requireAccount()` in `src/server/auth.ts`).
-  * Nothing in Flow's admin links to Life.
-* **In production.** Work is on in 2 stores. Human Web holds 49 invoices (48 of them imported: from Life on 30 September and
-  from Tripletex, D494), 9 clients and 14 tasks. No time is logged in Flow today, so "unbilled" starts at nothing.
+  * `workAttention()` writes English sentences only.
+  * A signed-out visit to any `/admin/...` page forgets the page that was asked for (`src/components/admin/session.tsx`,
+    `requireAccount()`).
+  * Nothing in Flow's admin links to Life, and nothing links the two accounts apart from a sign-in identity.
+* **In production:**
+  * Work is on in 2 stores.
+  * Human Web holds 49 invoices, 48 of them imported (from Life on 30 September, and from Tripletex, D494), 9 clients and 14
+    tasks.
+  * No time is logged in Flow today.
 
 ### 1.3 Life's link to Flow [repo, prod]
 
-* Provider `kaizen_store` (`lib/integrations/kaizen-store.ts`). It uses OAuth with PKCE against Flow's Supabase OAuth server
-  (scopes `openid email`) and calls `${site}/api/mcp` with JSON-RPC `tools/call`. Tokens are kept encrypted in
-  `integration_connections`, which is **per person** (`user_id`), not per space.
-* The default site is `https://kaizenstore.cloud` (`lib/integrations/env.ts:153`). Every text says "Kaizen Store". There are
-  no wrappers yet for Flow's Work tools.
-* In production nobody has connected it: no `kaizen_store` row.
+* Provider `kaizen_store` (`lib/integrations/kaizen-store.ts`) uses OAuth against Flow's Supabase OAuth server, for Life's
+  assistant to act in stores through `/api/mcp`.
+* Its tokens are kept per person in `integration_connections`.
+* Its default site is `https://kaizenstore.cloud` (`lib/integrations/env.ts:153`), and every text says "Kaizen Store".
+* Nobody has connected it in production.
 
 ## 2. What the person should experience
 
 ### 2.1 Rules the design keeps
 
-1. **One home per thing.** Work is done in Flow. Life never offers a form that changes Work, so nobody wonders where the truth is.
-2. **Relevant before complete.** The Today card shows only what needs the person: overdue invoices, a running timer, time ready to
-   invoice, repeating invoices ready to go out. When nothing does, it is one quiet line ("Nothing waiting at work", with what is on
-   its way). The full picture is one tap away on `/app/work`. Homer reads the card. Lisa opens the page: per store, per currency,
-   paid this month, her own hours this week.
-3. **Every line is a door to the exact screen.** "2 invoices overdue" opens Flow's invoices filtered to overdue, in that store or
-   across stores. The timer opens the store's Work, where the timer strip is. "Ready to invoice" opens the invoices. A store row
-   opens that store's Work overview. *Open Work in Kaizena Flow* opens the combined view.
-4. **Never a second sign-in.** See 3.4.
-5. **Money stays honest.** It is per currency and never added across currencies (Flow's rule). It is formatted in the person's
-   language by Life's own `formatMoney`. Durations show as hours and minutes.
-6. **Personal, not shared.** The summary is the person's, read with the person's own connection. It never appears for other
-   members of a shared space, even on a shared Today.
-7. **Honest about freshness and failure.** It says when it was read ("Updated 07:15"). If Flow does not answer within 4
-   seconds, the card says so in one line and links to Flow. It never shows old numbers as if they were new, and it never shows a
-   blank card or a spinner that never ends.
-8. **Life writes its own words.** Flow sends numbers, names, dates and links. Life words them in its five languages (en, nb,
-   sv, de, es). Client and store names are shown as text, never as HTML.
+1. **Work is present only when there is Work to show.** A Life-only person never meets Work, except at `/app/work` itself, which
+   invites. A linked person sees the card, the tile and the assistant's answers only while some store uses Work.
+2. **One home per thing.** Work is done in Flow. Life never offers a form that changes Work.
+3. **Relevant before complete.**
+   * The Today card shows only what needs the person: overdue invoices, a running timer, time ready to invoice, repeating
+     invoices ready.
+   * Nothing waiting is one quiet line.
+   * The whole picture is one tap away on `/app/work`.
+   * Homer reads the card. Lisa opens the page: per store, per currency, paid this month, her own hours this week.
+4. **Every line is a door to the exact screen.**
+   * "2 invoices overdue" opens Flow's invoices filtered to overdue.
+   * The timer opens the store's Work.
+   * A store row opens that store's Work overview.
+   * *Open Work in Kaizena Flow* opens the combined view.
+5. **Never a second sign-in** (3.5), and never a second account to wire up by hand when the email is the same (3.3).
+6. **Money stays honest.** It is per currency and never added across currencies. It is formatted in the person's language.
+7. **Personal, not shared.** The link and the summary are the person's. They never appear for other members of a shared space.
+8. **Honest about freshness and failure.**
+   * The summary says when it was read.
+   * If Flow does not answer within 4 seconds, one line says so and links to Flow.
+   * Old numbers never pass as new.
+9. **Life writes its own words.** Flow sends numbers, names, dates and links. Life words them in en, nb, sv, de and es, and shows
+   names as text, never as HTML.
 
-### 2.2 The journeys
+### 2.2 What shows where
 
-* **Morning, in the Work room.** Today shows the Work card between the day's tasks and the calendar (picture A). One tap on a
-  line lands on that Flow screen, signed in.
-* **Money → Work.** The Work tile (picture C, last) says in a few words what is waiting. `/app/work` (picture B) shows *Needs you*,
-  then *Money* per currency, *By store*, and the one main button, *Open Work in Kaizena Flow*.
-* **An old Life address.** `/app/work/invoices/…`, `/app/work/clients/…`, `/app/work/reports` and `/app/views` land on
-  `/app/work` with one line: *Work has moved to Kaizena Flow*. Life's ids are not Flow's, so nothing is guessed.
-* **Not connected yet.** The card and the page offer *Connect Kaizena Flow* once: one consent in Flow, then back to the same
-  page with the summary. *Not now* hides it for good. The offer shows only in the Work room or to someone who used Life's Work;
-  it is never shown to someone with no reason to care.
-* **Asking.** "What's overdue at work?" in Life's assistant is answered from the same `work_summary` tool, grounded and
-  untrusted like every Flow tool in Life (`lib/agent/untrusted.ts`).
-* **From Flow back to Life.** *Kaizen Life ↗* in Flow's account menu opens Life's Today. Only accounts linked to Life see it.
+![When Work appears](life-work-summary/linking.svg)
+
+| | Today | Money hub | `/app/work` | Assistant | Settings → Connected apps |
+| --- | --- | --- | --- | --- | --- |
+| **1. Life only** | nothing | Finances only | the invitation (picture C) | no Work tool; asked about invoicing, says Kaizena Flow does it and links `/app/work` | *Kaizena Flow: not linked*, with sign up or sign in to link |
+| **2. Linked, no store uses Work** | nothing | Finances only | *Turn on Work in Kaizena Flow ↗* (picture D) | no Work tool | *Linked since …* · *Unlink* |
+| **3. Linked, Work on in a store** | the Work card, in the Work room (elsewhere only when urgent, open question 6) | the Work tile with its live line | the summary (picture B) | `work_summary` | *Linked since …* · *Unlink* |
+| **4. Unlinked by the person** | nothing | Finances only | the invitation, with *Link again* first | no Work tool | *Not linked* · *Link again* |
+
+Notes:
+
+* **The address works for everyone.** `/app/work`, old bookmarks, saved nav bars, links from Life's own marketing pages and the
+  assistant all lead to it. It shows the state's page.
+* **Life's plans do not gate it.** `/app/work` no longer checks `page.work` (open question 4).
+
+### 2.3 The journeys
+
+* **A Life-only person opens `/app/work`.** They see an old bookmark, a saved bar or the features page, and land on the invitation
+  (picture C).
+  * *Sign up with Kaizen Life* goes to Flow's sign-up, starting with Sign in with Kaizen Life.
+  * An unknown person lands on `/sign-up?via=kaizen-life`, prefilled.
+  * Kaizen Life has already verified the email, so Flow skips its own confirmation email for that address (open question 9). The
+    self-serve slots and limits still apply.
+  * The new account is linked at once. When Flow's setup ends, it offers *Back to Kaizen Life*, which opens `/app/work`.
+* **Someone already on Flow with another email.** They choose *Already on Kaizena Flow? Sign in to link*, sign in to Flow
+  through the door, and are linked by that sign-in. Their consent in Flow is the proof.
+* **Someone who is on both with the same email.** They do nothing; the link is made by itself. Life shows *Kaizena Flow is
+  linked* once (picture D), and Flow sends one email saying so, with *Unlink* in it.
+* **Morning in the Work room, linked.** Today shows the Work card (picture A). One tap on a line lands on that Flow screen,
+  signed in.
+* **Money → Work, linked.** The tile says what is waiting. `/app/work` shows *Needs you*, *Money* per currency, *By store*, and
+  *Open Work in Kaizena Flow*.
+* **An old Life Work address.** `/app/work/invoices/…`, `/app/work/clients/…`, `/app/work/reports` and `/app/views` land on
+  `/app/work`. When linked, it shows one line, *Work has moved to Kaizena Flow*. Life's ids are not Flow's, so nothing is guessed.
+* **Unlinking.** In either app, under connected apps. It takes effect at once in both, and Work leaves Life.
+* **From Flow back to Life.** *Kaizen Life ↗* in Flow's account menu opens Life's Today. Only linked accounts see it.
 
 ## 3. How it works
 
 ![How data and taps travel](life-work-summary/flow.svg)
 
-### 3.1 Flow: `workSummary(account, grant)`
+### 3.1 Flow: `workSummary(account)`
 
-A pure shaper in `src/lib/work-summary.ts`; its reads in `src/server/work-summary.ts`. It reads with the readers that exist
-(`workStoresFor` → `getOwnerOverview` → `getRunningTimer`, about five queries on `readDb()`, all scoped to the person's
-memberships), limited to the stores the grant reaches and those where the person holds `settings:read`, as Work's screens
-require. A store with Work off is listed only by name, for Lisa ("Turn Work on in …"). Kaizena Flow's own store is covered like
-any other the person belongs to (platform parity).
+The pure shaper goes in `src/lib/work-summary.ts`, and its reads in `src/server/work-summary.ts`. It reads with the readers that
+exist (`workStoresFor` → `getOwnerOverview` → `getRunningTimer`): about five queries on `readDb()`, all scoped to the account's
+memberships with `settings:read`, as Work's screens require. A store with Work off is listed by name only, so `/app/work` can
+offer to turn it on. Kaizena Flow's own store is covered like any other the person belongs to (platform parity).
 
 The answer is data, not sentences:
 
 ```ts
 type WorkSummary = {
   asOf: string;                                   // ISO time the figures were read
-  open: string;                                   // the combined Work view, through the handoff door (3.4)
+  workOn: boolean;                                // some store the person can read uses Work (state 3 against state 2)
+  open: string;                                   // the combined Work view, through the handoff door (3.5)
+  turnOn: string | null;                          // where to turn Work on, when no store uses it and the person owns one
   needs: Array<{                                  // what needs the person, most urgent first; empty when nothing does
     kind: "overdue" | "timer" | "unbilled" | "recurring_ready" | "drafts_waiting";
     urgent: boolean;                              // overdue 14 days or more, timer 12 hours or more (workAttention's rules)
@@ -172,178 +239,256 @@ type WorkSummary = {
 };
 ```
 
-* **Links are Flow's.** Every `href` is built with `workBase()` and wrapped in the handoff door, so Life never builds a Flow
-  address. When Flow moves a screen, Life follows.
-* **Least data.** Client names appear only where a line is about one client (the timer, a single overdue invoice). Lists of
-  people never cross. Both projects are in eu-west-1.
-* **Served as the MCP tool `work_summary`.** It takes no `store` argument, like `list_stores`. The JSON is in
-  `structuredContent`, with a short text rendering for models. Flow's own AI manager can be offered it too, under
-  `settings:read`. MCP calls stay audited and budgeted as now (`takeMcpBudget()`: 120 a minute a grant). A new tool description
-  means a new agent-eval run and its recording (CLAUDE.md, *AI features must stay grounded*).
-* **Why not a REST endpoint.** A `kfa_` token is bound to one resource (D439). Life holds an `mcp` grant for its assistant, and
-  a second resource would mean a second consent and a second token for the same person. A REST door can be added later from the
-  same reader if a client other than Life needs one.
+* **Links are Flow's.** Every `href` is built with `workBase()` and wrapped in the handoff door. Life never builds a Flow address.
+* **Least data.** A client's name appears only where a line is about one client. Lists of people never cross. Both projects are in
+  eu-west-1.
+* **Two doors, one reader:**
+  * the account link's `work-summary` door (3.3), for Life;
+  * the MCP tool `work_summary` (no `store` argument, like `list_stores`; JSON in `structuredContent`), for outside assistants
+    and for Flow's own AI manager under `settings:read`.
+
+  A new tool description needs a new agent-eval run and its recording (CLAUDE.md, *AI features must stay grounded*).
 
 ### 3.2 Life: reading it
 
-* `lib/integrations/kaizena-flow-work.ts`: `getWorkSummary(userId)` calls `work_summary` through the person's connection
-  (`getValidAccessToken`, which refreshes), gives up after 4 seconds, checks the answer's shape with zod (an answer of another
-  shape is a failure, never half drawn), and returns `null` on any failure.
-* **Today.** A new section id `work` in `SECTION_ORDER` (`app/app/today/page.tsx`) and its label in five languages. The main
-  wave does only the cheap check: does the person have a Flow connection? The section itself is an async server component in
-  `<Suspense>` with a skeleton, as `flagged-emails-section.tsx` does (Life's AGENTS.md, *Slow or external reads*). It is on by
-  default in the Work room; in other rooms it can be added from Today's edit mode, and it shows there only when a line is urgent
-  (open question 4).
-* **`/app/work`.** The summary page (picture B), same pattern, same gate (`page.work`, so module sections, onboarding and plans
-  need no change).
-* **No cache, so no write-through.** Life stores nothing it reads, and changes nothing in Flow. Life's AGENTS.md rule on synced
-  data therefore has nothing to write through. If Life ever stops the timer from the card (phase 5), that action must update the
-  card at once (optimistic), since there is no cache to refresh.
+* **The cheap check.** Whether Work is present is a local read of Life's copy of the link, `kaizena_flow_links` (3.3). It takes no
+  call to Flow and runs in the main wave of Today, the Money hub and `/app/work`.
+* **`lib/integrations/kaizena-flow-work.ts`.** `getWorkSummary(userId)`:
+  * calls Flow's `work-summary` door for the linked account, signed by Life;
+  * gives up after 4 seconds;
+  * checks the answer's shape with zod (an answer of another shape is a failure, never half drawn);
+  * returns `null` on any failure.
 
-### 3.3 The connection: Flow's own OAuth server
+  An answer of `not_linked` clears Life's copy of the link, so the two can never disagree for long.
+* **Today.**
+  * A new section id `work` in `SECTION_ORDER` (`app/app/today/page.tsx`), with its label in five languages.
+  * Drawn only when linked, by an async server component in `<Suspense>` with a skeleton, as `flagged-emails-section.tsx` does
+    (Life's AGENTS.md, *Slow or external reads*).
+  * It draws nothing when `workOn` is false.
+  * It is on by default in the Work room. Elsewhere it shows only when a line is urgent, or when the person added it.
+* **`/app/work`.** The state's page (2.2), drawn the same way. The invitation needs no call to Flow.
+* **Money hub.** The Work tile, only in state 3, with its line drawn inside Suspense.
+* **No cache, so no write-through.** Life stores nothing it reads and changes nothing in Flow. The one thing Life copies is the
+  link itself, and that copy is written in the same call that changes the link (3.3), as Life's AGENTS.md asks for synced data.
 
-Recommended (open question 3): Life becomes a pre-registered first-party client of Flow's authorization server (D439). The
-change:
+### 3.3 The account link
 
-* **In Flow.** A `commerce.oauth_clients` row named *Kaizen Life* with the redirect `…/api/integrations/kaizen_store/callback`
-  and resource `mcp`.
-* **In Life.** Point the issuer at `https://kaizenaflow.com` (RFC 8414 discovery). Point the site at `https://kaizenaflow.com`.
+**What it is.** Flow knows which Life user an account is, and Life knows which Flow account a user is. A link gives Life one thing:
+the read-only Work summary for that account. Acting in a store from Life's assistant (`ask_store_assistant`, `log_time`, …) still
+needs the person's own grant on Flow's consent screen (D96, D439). A link never lets Life change anything.
 
-What it gains:
+**Records:**
 
-* Life shows in Flow's *Connected apps and assistants*, with *Disconnect* and per-store *Cut off*.
-* The person picks the level on Flow's consent screen. The summary needs only *Read*; the assistant keeps whatever was chosen.
-* It reaches stores the person runs as an admin, not only those they own.
+* **Flow keeps the link.** `commerce.kaizen_life_links`:
+  * columns: `account_id` unique, `life_user_id` unique, `how` (`identity` or `email`), `linked_at`, `unlinked_at`,
+    `unlinked_from` (`flow` or `life`);
+  * written only by `src/server/kaizen-life-links.ts`;
+  * audited as `account.kaizen_life_linked` and `account.kaizen_life_unlinked`;
+  * RLS on with no policies, like every `commerce` table.
+* **Life keeps a copy.** `kaizena_flow_links`:
+  * columns: `user_id` unique, `flow_account_id`, `linked_at`, `unlinked_at`;
+  * RLS lets a person read their own row, and only the service role writes;
+  * every change is written in the same call on both sides.
 
-There is nobody to migrate. Flow's Supabase-token path for Life (D96) is removed one step later, once Life has switched.
-Keeping Supabase tokens also works, but then the summary covers owned stores only.
+**The channel.** Server to server, both ways:
 
-### 3.4 One tap, no second sign-in
+* Each request is a JWT signed with the sender's private key (ES256). Its audience is the receiver, it lives 60 seconds, and its
+  `jti` is kept, so it is never accepted twice.
+* Keys live in env: Life's private key in Life and its public half in Flow, and the other way round. They are validated when used
+  (`src/lib/env.ts`).
+* The doors:
+  * Flow: `POST /api/kaizen-life/v1/{lookup,link,unlink,work-summary}`.
+  * Life: `POST /api/kaizena-flow/v1/{lookup,link,unlink}`.
+* Bodies carry ids. A lookup also carries the email being matched, which is never logged (`log()`: ids and counts).
+* Each door is budgeted: lookups and links 30 a minute per address, the summary 60 a minute per account.
+* A Life-only person's email reaches Flow only in a lookup, and Flow keeps nothing from a lookup that finds no account.
 
-* **The door.** `src/app/admin/from/kaizen-life/route.ts` reads `next` through `safeNext()` (`/admin…` only, same origin).
+**When it links: as soon as the person has both.**
+
+1. **Through the other app's sign-in, which proves both accounts are the same person.** This covers Flow sign-in or sign-up with
+   Kaizen Life (the `custom:kaizen-life` identity, whose `sub` is the Life user) and Life sign-in with Kaizena Flow. It links at
+   once, as `identity`.
+2. **A new verified account on either side asks the other.**
+   * Flow asks when `confirmSelfSignup()` makes an owner, when an invitation is accepted, and when `linkAccount()` first ties a
+     sign-in to an account.
+   * Life asks when an email is confirmed, or when a Google sign-in creates the user.
+
+   The same verified email on the other side links, as `email`. **Both sides must hold the email as verified**, or nothing links:
+   someone who types another person's address on one side must never receive that person's Work.
+3. **At launch, once.** A script finds every pair with the same verified email on both sides and links them. It runs a dry run
+   first and reports counts only, and each person is told as in the next paragraph.
+4. **Different emails.** From `/app/work`, *Sign in to link* goes through route 1.
+
+Two things never happen:
+
+* **A pair the person unlinked is never linked again by itself.** `unlinked_at` is kept on both sides. Only the person, by route
+  1 or 4, links them again.
+* **A changed email on either side does not move or break a link.**
+
+**Telling the person.** When a link is made:
+
+* Life shows *Kaizena Flow is linked* once.
+* Flow emails the account once, from the platform's sender and in the account's language, with *Not you, or not wanted? Unlink*.
+* Both apps list the link under connected apps with *Unlink*, which takes effect at once in both.
+
+**Signing in with Kaizen Life once linked.** `admitFromKaizenLife()` admits a linked account whatever its role, because the link
+already proves it is the same person. Today it admits owners and platform admins only, so an admin of someone else's store could
+not follow a tap from Life without typing a password.
+
+**Privacy.** Linking by email without asking is fair only if the same company runs both apps and both privacy texts say so [U].
+Life's privacy policy names **HumanWeb AS** as the data controller (`messages/en/legal.json:13`), while Flow's own documents
+describe Human Web as a sole proprietorship (ENK) that becomes an AS in 2027 (`docs/own-books-and-sales.md`). Before linking goes
+live:
+
+* settle who runs each app (open question 3);
+* add the link to both privacy texts;
+* update Life's `docs/compliance/data-map.md` and Flow's record of processing.
+
+If the two are not the same controller, the link must be offered and confirmed with one tap instead of made by itself.
+
+**Life's assistant acting in stores** keeps needing the person's grant through the `kaizen_store` connection. Moving that grant to
+Flow's own OAuth server (D439, a pre-registered *Kaizen Life* client) is still worth doing while nobody is connected, but it no
+longer blocks the summary.
+
+### 3.4 Signing up to Flow from Life
+
+* The invitation's *Sign up with Kaizen Life* opens Flow's door, `/admin/from/kaizen-life?next=/admin`, with intent `sign-up`.
+* The door starts Sign in with Kaizen Life (silent if the person approved Flow before).
+* An unknown person lands on the prefilled sign-up (D95, `kaizen-life-prefill.tsx`).
+* Because the address comes verified from Kaizen Life's identity, the self-serve flow can treat it as confirmed and skip the email
+  round trip. The slots and limits of D359 still apply.
+* The account is created linked (route 1).
+* Setup ends with *Back to Kaizen Life*, which opens `https://kaizenlifetracker.com/app/work`.
+
+### 3.5 One tap, no second sign-in
+
+* **The door: `src/app/admin/from/kaizen-life/route.ts`.** It reads `next` through `safeNext()` (`/admin…` only, same origin).
   * A signed-in person goes straight to `next`.
-  * A signed-out person, while `KAIZEN_LIFE_SSO` is on, goes straight into *Sign in with Kaizen Life*: the same action as the
-    sign-in page's button (`src/app/admin/sign-in/actions.ts:94`), carrying `next` through `/auth/callback?via=kaizen-life`.
-    Life's consent page redirects at once for a client the person approved before (`app/app/oauth/consent/page.tsx:32`; Supabase's
-    `getAuthorizationDetails` returns a redirect when consent exists [docs]). So the second time, the person sees nothing but
-    the page they tapped.
-  * With SSO off, the person goes to `/admin/sign-in?next=…`.
-  * `admitFromKaizenLife()` still admits owners and platform admins only. An admin who is not an owner signs in with their
-    password, and `next` survives that too.
-* **Every signed-out deep link keeps its destination.** This fixes more than Life's links: invoice emails, push notifications and
-  shared links gain it too.
-  * The `(gated)` layout's `SessionRecovery` goes to `/admin/sign-in?next=<this page>`.
-  * `requireAccount()` does the same with the requested path.
-  * Both are checked by `safeNext()`.
-* **Switch `KAIZEN_LIFE_SSO` on in production.** Check first that it works end to end; no identity has ever been linked [prod].
+  * A signed-out person, while `KAIZEN_LIFE_SSO` is on, goes straight into Sign in with Kaizen Life (the sign-in page's action,
+    `src/app/admin/sign-in/actions.ts:94`), carrying `next` through `/auth/callback?via=kaizen-life`.
+    * Life's consent page redirects at once for a client the person approved before (`app/app/oauth/consent/page.tsx:32`).
+      Supabase's `getAuthorizationDetails` returns a redirect when consent exists [docs].
+    * So from the second time on, the person sees only the page they tapped.
+  * With SSO off, the door goes to `/admin/sign-in?next=…`.
+* **Every signed-out deep link keeps its destination.** The `(gated)` layout's `SessionRecovery` and `requireAccount()` go to
+  `/admin/sign-in?next=<the page>`, checked by `safeNext()`. Invoice emails, push notifications and shared links gain it too.
+* **`KAIZEN_LIFE_SSO` goes on in production** once it is checked end to end.
 
-### 3.5 The way back
+### 3.6 The way back
 
-`AdminAccountMenu` (`src/components/admin/admin-shell-parts.tsx`) gets *Kaizen Life ↗*, opening `KAIZEN_LIFE_URL` (default
-`https://kaizenlifetracker.com`, `src/server/kaizen-life-link.ts:34`) at `/app/today`. It appears only when the account has a
-linked Kaizen Life identity (`kaizenLifeIdentity()`) or a live grant to the Kaizen Life client. Its words are in the admin's
-catalogue (D312).
+`AdminAccountMenu` (`src/components/admin/admin-shell-parts.tsx`) gets *Kaizen Life ↗*:
+
+* It opens `KAIZEN_LIFE_URL` (`src/server/kaizen-life-link.ts:34`) at `/app/today`.
+* It shows only for linked accounts.
+* Its words are in the admin's catalogue (D312).
 
 ## 4. Retiring Life's Work, keeping Finances
 
 The file list is in Life's `docs/work-moves-to-kaizena-flow.md`. In short:
 
-* **Goes.** The clients, assignments, tasks, time, timers, invoices, repeating invoices, reports and print screens, and their
-  actions, queries and components. Also:
+* **Goes:**
+  * the clients, assignments, tasks, time, timers, invoices, repeating invoices, reports and print screens, with their actions,
+    queries and components;
   * `/api/work/report`, `/api/agent/work` and the cron job;
-  * the revenue wall (Views: it is Work revenue, never shared);
+  * the revenue wall (Views: Work revenue, never shared);
   * Analytics' Work tab;
-  * settings for invoice VAT;
+  * the invoice VAT setting;
   * the Contacts "make client" card;
   * the activity feed's links to Work items (the events stay as history; their links go to `/app/work`);
-  * 471 keys of `work.json` per language, less what the summary reuses.
-* **Moves.**
-  * Organizations move to the Money hub as their own tile (*Jobs and income*, open question 2): the life-area domain `work`
-    keeps its key, and its `basePath` becomes `/app/money`. An organization page loses its client list. In its place, if the
-    person is connected, a line: *Your clients are in Kaizena Flow ↗*.
+  * most of `work.json` (471 keys per language).
+* **Moves:**
+  * Organizations move to the Money hub, as their own tile (named per open question 2). The life-area domain `work` keeps its
+    key, and its `basePath` becomes `/app/money`. An organization page loses its client list; a linked person sees *Your clients
+    are in Kaizena Flow ↗* in its place.
   * The repeating-cost helpers that life areas share move from `lib/work/` to `lib/life-area/`.
-  * Organization tools and their scopes (`read:work`, `write:work`, tool domain `work`, which also routes the taxonomy
-    tools) keep their names; only Work's invoice and client reads go.
-* **Finances keeps working without Work.**
-  * The two invoice projection syncs and their reads go. The budget no longer shows expected income from Life's invoices;
-    phase 5 can bring it back from Flow.
+  * Organization tools and their scopes (`read:work`, `write:work`, tool domain `work`, which also routes the taxonomy tools) keep
+    their names.
+* **Finances keeps working without Work:**
+  * The two invoice projection syncs and their reads go. The budget no longer shows expected income from Life's invoices; phase 5
+    can bring it back from Flow, for linked people.
   * The "Payment received" link goes with `work_invoices`; the transactions stay.
   * The category guard goes.
-  * `comparison.ts` stops taking VAT out of invoice payments: income is counted as entered, which affects at most the 13
-    projections there are today.
-* **Navigation.**
+  * `comparison.ts` stops taking VAT out of invoice payments.
+* **Navigation:**
   * `/app/money` keeps `/app/work` in its match prefixes.
-  * `/app/views` leaves the More list. Saved bars and the command palette that point at it are sent to `/app/work`.
-  * The assistant's sitemap names the summary.
-* **Marketing.** Life's features page, *The entrepreneur* use case, `llms.txt` and `marketing.json` stop promising invoicing
-  in Life and say *invoices and time with Kaizena Flow*.
-* **Database, last.** One migration, 30 days or more after the code is gone, drops what only Work used:
-  * the `work_*` tables of Work proper, their enums and triggers;
-  * `finance_work_invoice_projections` and `finance_work_recurring_invoice_projections`;
+  * `/app/views` leaves the More list.
+  * The command palette offers *Work* only in state 3.
+* **Marketing.** Life's features page, *The entrepreneur* use case, `llms.txt` and `marketing.json` say *invoices and time with
+  Kaizena Flow*, and link to `/app/work`.
+* **Database, last.** One migration, 30 days or more after the code is gone, drops:
+  * the `work_*` tables of Work proper, with their enums and triggers;
+  * the two invoice projection tables;
   * `spaces.work_default_vat_percent`;
   * `view_share_tokens`.
 
-  It keeps `life_area_*`, `work_activity_messages` and everything task-related. It is named with the version production
-  records (Life's AGENTS.md, *Migrations*). Life's `docs/compliance/data-map.md` changes in the same step.
+  It keeps `life_area_*`, `work_activity_messages` and everything task-related.
 
 ## 5. Phases
 
-Each phase is shippable alone, in this order. In each repo, `main` deploys to production, so every phase passes that repo's
-checks first (Flow: lint, typecheck, unit and integration tests; Life: `npm run check` and `npm run smoke`).
+Each phase can ship on its own. In both repos `main` deploys to production, so every phase passes that repo's checks first (Flow:
+lint, typecheck, unit and integration tests; Life: `npm run check` and `npm run smoke`).
 
 | Phase | Where | What | Done when |
 | --- | --- | --- | --- |
-| **0. Data** | Life, owner | Export every Life Work row of both spaces to a private archive. The owner decides the second space (open question 1); if it is to be imported, run `scripts/import-life-work.mjs` for it. Confirm nothing changed in Human Web's Life Work since 30 September (newest invoice 16 September [prod]). | The archive is kept. Each Life invoice is in Flow or in the archive, in a reconciliation note added to `docs/work.md`. |
-| **1. Flow** | Flow | `work_summary` (3.1) with tests (pure shaper, `work-summary.int.test.ts` across two stores and two currencies, a left store hidden, a cut-off store hidden, an admin without `settings:read` sees nothing). The handoff door and the kept `next` (3.4), with tests. The account menu link (3.5). Life as an OAuth client (3.3). Agent-eval run and recording. Docs: a decision, `docs/rules/admin/integrations.md` (Kaizen Life), `commerce.md` (Work), `docs/work.md` (WP13's `work_summary` built). | A Flow `kfa_` token for a test account gets the summary through `/api/mcp`. A signed-out tap lands on the right screen after signing in. |
-| **2. Life: the summary** | Life | Names: "Kaizena Flow", `kaizenaflow.com`; the provider id `kaizen_store` stays in code. The connection on Flow's server. `getWorkSummary()`. The Today section and the `/app/work` page with all their states (picture C). The redirects from old Work addresses. The Money tile's live line. The assistant's `work_summary` wrapper, its untrusted entry and its tool domain. Words in five languages. Smoke checks: the zod guard accepts what Flow sends, and the configured client reaches `work_summary`. | The owner sees picture B with Human Web's real figures, and every line opens the right Flow screen on a phone. |
-| **3. Life: Work removed** | Life | Section 4, except the database, in one change, with `tools:check`, `i18n:check` and `i18n:scope` clean. Organizations under Money. | No Life screen writes Work. Finances, life areas, household and the forecast work as before, except the invoice projections. |
-| **4. Life: tables dropped** | Life | The drop migration, 30 days after phase 3. Advisors checked. `types/database.ts` regenerated. The account export's table list trimmed. | Life's database has no Work tables, and the archive from phase 0 still opens. |
+| **0. Data** | Life, owner | Archive every Life Work row of both spaces. Decide the second space (open question 1). Confirm nothing changed in Human Web's Life Work since 30 September. | Each Life invoice is in Flow or in the archive, noted in `docs/work.md`. |
+| **1. Flow** | Flow | `workSummary` and the MCP tool. The link: table, writer, the four doors, the signed channel, the link moments (routes 1 and 2), the email, *Unlink* in Connected apps. Linked accounts admitted through Kaizen Life. The handoff door and the kept `next`. Sign-up from Life without a second confirmation email. The account menu link. Agent-eval run and recording. A decision, plus `docs/rules/admin/integrations.md`, `commerce.md` and `docs/work.md`. | Tests, against a fake Life signed with test keys, cover: a summary across two stores and two currencies; a left or cut-off store hidden; unverified email never linking; an unlinked pair never relinked by itself. A signed-out tap lands on the right screen. |
+| **2. Life** | Life | Names ("Kaizena Flow", `kaizenaflow.com`). Life's link copy, its three doors, the link moments, the notice, *Unlink* in Settings. The presence rules (2.2). The invitation, the Today section, the summary page, the Money tile, the assistant's tool, the redirects. Words in five languages. Privacy texts and the data map. Smoke checks for the guard, the signed call and each state. | A Life-only test user sees no Work anywhere and the invitation at `/app/work`. Signing up to Flow from it links, and the page turns to *Turn on Work*. |
+| **2b. Launch** | both | Once both are deployed and open question 3 is settled, run the backfill (route 3): dry run, then for real. | The owner's own accounts are linked and see picture B with Human Web's real figures. |
+| **3. Life: Work removed** | Life | Section 4, except the database, in one change, with `tools:check`, `i18n:check` and `i18n:scope` clean. | No Life screen writes Work. Finances, life areas, household and the forecast work as before, except the invoice projections. |
+| **4. Life: tables dropped** | Life | The drop migration, 30 days after phase 3. Advisors checked, types regenerated, the export's table list trimmed. | No Work tables, and the archive still opens. |
 | **5. Later, if wanted** | both | See the list after this table. | Each by the owner's choice. |
 
-The candidates for phase 5:
+Candidates for phase 5:
 
-* Expected payments from Flow in the personal forecast, opt-in per space, from `currencies[].dueSoon` and `onItsWay` by due month.
-* *Stop timer* on the card (a Flow tool behind `settings:write`, and the card updated at once).
-* The revenue wall rebuilt as a Flow screen.
-* Work webhook topics (invoice paid, timer left running), so Life can notify.
-* *Add as a client in Kaizena Flow* from Life's Contacts.
+* For linked people, expected payments from Flow in the personal forecast (opt-in per space).
+* *Stop timer* on the card.
+* The revenue wall rebuilt in Flow.
+* Work webhook topics, so Life can notify.
+* *Add as a client in Kaizena Flow* from Contacts.
 * A line about overdue invoices in Life's morning briefing.
+* The assistant's store grant moved to Flow's own OAuth server.
 
 ## 6. Open questions for the owner
 
-1. **The second Life space** (4 invoices: 1 draft, 2 paid, 1 sent, the last from August). Recommended: keep it in the phase 0
-   archive only, unless that work goes on. Import it into a store only if it does. If those were real invoices to customers, the
-   Bookkeeping Act wants their documentation kept for five years [U]: the archive is that copy.
-2. **What Organizations are called under Money.** *Jobs and income* is proposed. They hold employers and businesses, salary,
-   reimbursable and repeating costs.
-3. **Move Life's connection to Flow's own OAuth server now?** Recommended: yes. There is nobody to migrate, it reaches stores the
-   person runs as an admin, and the person sees and controls it in Flow.
-4. **The Work card outside the Work room.** Recommended: only when something is urgent (an invoice 14 or more days overdue, or a
-   timer running 12 hours or more), and the person can add it for good from Today's edit mode.
-5. **The revenue wall (Views).** Recommended: retire it with Life's Work (it has never been shared), and rebuild it in Flow only
-   if it is missed.
-6. **The name.** The request says "Kaizena Life". Is Kaizen Life being renamed? This plan uses today's name, and Flow's
-   brand test keeps "Kaizen Life" as another product's name.
+1. **The second Life space** (4 invoices: 1 draft, 2 paid, 1 sent, the last from August).
+   * Recommended: keep it in the phase 0 archive only, unless that work goes on.
+   * If those were real invoices, the Bookkeeping Act wants their documentation kept for five years [U]. The archive is that copy.
+2. **What Organizations are called under Money.** *Jobs and income* is proposed.
+3. **Who runs each app (blocks automatic linking).**
+   * Life's privacy policy says HumanWeb AS; Flow's documents say Human Web is an ENK, becoming an AS in 2027.
+   * Automatic linking by email needs one controller named in both privacy texts. Otherwise each link is confirmed with one tap.
+4. **Is the summary free in Life's plans?** Recommended: yes, for linked people. They pay Flow, and `page.work` stops gating
+   `/app/work`.
+5. **Where a Life-only person can meet the invitation.**
+   * Recommended: only at `/app/work` itself and in Settings → Connected apps. The address is reached from bookmarks, saved bars,
+     Life's marketing pages and the assistant.
+   * There is no Money tile or Today card for them, as decided.
+6. **The Work card outside the Work room.** Recommended: only when something is urgent (an invoice 14 or more days overdue, or a
+   timer running 12 hours or more).
+7. **The revenue wall (Views).** Recommended: retire it with Life's Work, and rebuild it in Flow only if it is missed.
+8. **The name.** The request says "Kaizena Life". Is Kaizen Life being renamed? This plan uses today's name.
+9. **Skipping Flow's confirmation email for a sign-up from Kaizen Life.** Recommended: yes, since Kaizen Life has verified the
+   address.
 
 ## 7. Evidence
 
 * **[repo]** Flow:
-  * `src/server/work-owner.ts`, `src/lib/work-owner.ts`, `src/lib/work-overview.ts`, `src/server/work-attention.ts`,
-    `src/lib/work-paths.ts`, `src/server/work-time.ts`;
-  * `src/server/store-mcp.ts`, `src/server/work-tools.ts`, `src/lib/oauth.ts`, `src/server/kaizen-life.ts`,
-    `src/app/admin/sign-in/actions.ts`, `src/app/admin/(gated)/layout.tsx`, `src/components/admin/session.tsx`,
-    `src/server/auth.ts`;
-  * `docs/work.md` (§0, §1, WP13, WP15 and the import run), `docs/decisions.md` D95, D96, D122, D123, D439.
+  * Work: `src/server/work-owner.ts`, `src/lib/work-owner.ts`, `src/lib/work-overview.ts`, `src/server/work-attention.ts`,
+    `src/lib/work-paths.ts`, `src/server/work-time.ts`, `src/server/work-tools.ts`.
+  * Sign-in and the bridge: `src/server/store-mcp.ts`, `src/lib/oauth.ts`, `src/server/kaizen-life.ts`, `src/server/auth.ts`
+    (`linkAccount`, `requireAccount`), `src/server/self-signup.ts`, `src/app/(platform)/sign-up/kaizen-life-prefill.tsx`,
+    `src/app/admin/sign-in/actions.ts`, `src/app/admin/(gated)/layout.tsx`, `src/components/admin/session.tsx`.
+  * Docs: `docs/work.md` (§0, §1, WP13, WP15 and the import run), `docs/decisions.md` (D95, D96, D122, D123, D359, D439),
+    `docs/own-books-and-sales.md`.
 * **[repo]** Life:
-  * `components/app-shell/nav-defs.tsx`, `app/app/money/page.tsx`, `app/app/finances/page.tsx`, `app/app/work/**`,
-    `lib/life-area/domains.ts`, `lib/integrations/{kaizen-store,env}.ts`, `app/app/oauth/consent/page.tsx`,
-    `app/app/today/page.tsx`, `app/app/today/flagged-emails-section.tsx`, `lib/agent/{mcp-tools,tool-domains}.ts`,
-    `app/api/agent/organizations/route.ts`;
-  * Life's `AGENTS.md`.
-* **[prod]**, counts only, 9 November 2026:
-  * Life (`ugljipgbugzilpfmeprc`): Work and finance table counts, invoices per space and status, `integration_connections`
-    per provider, `view_share_tokens`, organizations and their salaries and costs. Life's and Flow's invoice numbers were compared
-    as hashes only.
-  * Flow (`ybsozesfuxuitoacntfo`): `commerce.work_*` counts, stores with Work on, `auth.identities` for `custom:kaizen-life`.
-* **[docs]** Supabase, *OAuth 2.1 Server: Getting started* and `oauth.getAuthorizationDetails`: a previously approved client is
+  * Screens and navigation: `components/app-shell/nav-defs.tsx`, `app/app/money/page.tsx`, `app/app/finances/page.tsx`,
+    `app/app/work/**`, `app/app/today/page.tsx`, `app/app/today/flagged-emails-section.tsx`.
+  * The rest: `lib/life-area/domains.ts`, `lib/integrations/{kaizen-store,env}.ts`, `app/app/oauth/consent/page.tsx`,
+    `lib/agent/{mcp-tools,tool-domains}.ts`, `app/api/agent/organizations/route.ts`, `lib/billing/feature-keys.ts`,
+    `messages/en/legal.json`, `docs/compliance/data-map.md`, and Life's `AGENTS.md`.
+* **[prod]** Counts only, 9 November 2026:
+  * Life (`ugljipgbugzilpfmeprc`): Work and finance tables, invoices per space and status, `integration_connections` per provider,
+    `view_share_tokens`, organizations with their salaries and costs. Invoice numbers were compared as hashes only.
+  * Flow (`ybsozesfuxuitoacntfo`): `commerce.work_*`, stores with Work on, `auth.identities` for `custom:kaizen-life`.
+* **[docs]** Supabase, *OAuth 2.1 Server: Getting started* and `oauth.getAuthorizationDetails`: a client approved before is
   answered with a redirect, not a consent screen.

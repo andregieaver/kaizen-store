@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 690" width="1200" height="690" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>When Work appears in Kaizen Life: the account link between Kaizen Life and Kaizena Flow</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3a3e48"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f8a3a"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b3261e"/></marker>
+  </defs>
+  <style>
+    .t { font-size: 17px; font-weight: 700; fill: #12141a; }
+    .k { font-size: 11.5px; font-weight: 700; fill: #5c606b; letter-spacing: .06em; }
+    .s { font-size: 13px; fill: #3a3e48; }
+    .b { font-size: 13px; fill: #12141a; font-weight: 600; }
+    .lb { font-size: 12.5px; fill: #12141a; }
+    .lbm { font-size: 12.5px; fill: #12141a; font-weight: 650; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; fill: #12141a; }
+  </style>
+  <rect x="0" y="0" width="1200" height="690" rx="18" fill="#ffffff"/>
+  <text class="t" x="30" y="44">When Work appears in Kaizen Life</text>
+  <text class="s" x="30" y="66">Life shows Work only once the person has a Kaizena Flow account too, and the two are linked.</text>
+
+  <!-- S1 Life only -->
+  <rect x="30" y="100" width="240" height="176" rx="14" fill="#f6f7fa" stroke="#c9cdd6"/>
+  <text class="k" x="48" y="126">STATE 1</text>
+  <text class="t" x="48" y="150">Life only</text>
+  <text class="s" x="48" y="176">No Work anywhere: no Today card,</text>
+  <text class="s" x="48" y="194">no Money tile, no assistant tool.</text>
+  <text class="b" x="48" y="226">/app/work invites:</text>
+  <text class="s" x="48" y="244">Sign up with Kaizen Life,</text>
+  <text class="s" x="48" y="262">or sign in to link another email.</text>
+
+  <!-- S2 Linked -->
+  <rect x="480" y="100" width="240" height="176" rx="14" fill="#eef4fd" stroke="#a9c6ee"/>
+  <text class="k" x="498" y="126">STATE 2</text>
+  <text class="t" x="498" y="150">Linked, no Work yet</text>
+  <text class="s" x="498" y="176">Flow knows the Life user, Life</text>
+  <text class="s" x="498" y="194">the Flow account. Still nothing</text>
+  <text class="s" x="498" y="212">on Today or in Money.</text>
+  <text class="b" x="498" y="244">/app/work: Turn on Work ↗</text>
+  <text class="s" x="498" y="262">in the store's Work settings.</text>
+
+  <!-- S3 Work shows -->
+  <rect x="930" y="100" width="240" height="176" rx="14" fill="#eef8f1" stroke="#9fd3ae"/>
+  <text class="k" x="948" y="126">STATE 3</text>
+  <text class="t" x="948" y="150">Work shows</text>
+  <text class="s" x="948" y="176">The Today card (Work room), the</text>
+  <text class="s" x="948" y="194">Money tile, /app/work and the</text>
+  <text class="s" x="948" y="212">assistant, from work_summary.</text>
+  <text class="b" x="948" y="244">Every line opens Flow,</text>
+  <text class="s" x="948" y="262">signed in, on the exact screen.</text>
+
+  <!-- S4 Unlinked -->
+  <rect x="480" y="390" width="240" height="140" rx="14" fill="#fdf1f0" stroke="#e8b4ae"/>
+  <text class="k" x="498" y="416">STATE 4</text>
+  <text class="t" x="498" y="440">Unlinked by the person</text>
+  <text class="s" x="498" y="466">Like Life only, and never linked</text>
+  <text class="s" x="498" y="484">again by itself.</text>
+  <text class="b" x="498" y="514">/app/work: Link again</text>
+
+  <!-- S1 -> S2 -->
+  <path d="M270,150 H476" fill="none" stroke="#1f8a3a" stroke-width="2.5" marker-end="url(#g)"/>
+  <text class="lbm" x="284" y="122">Linked as soon as</text>
+  <text class="lbm" x="284" y="140">both accounts exist:</text>
+  <text class="lb" x="284" y="174">• signed up to Flow from Life</text>
+  <text class="lb" x="284" y="194">• the same verified email</text>
+  <text class="lb" x="296" y="211">appears on the other side</text>
+  <text class="lb" x="284" y="231">• signed in with the other app</text>
+  <text class="lb" x="284" y="251">• once, at launch, for both</text>
+
+  <!-- S2 -> S3 -->
+  <path d="M720,150 H926" fill="none" stroke="#1f8a3a" stroke-width="2.5" marker-end="url(#g)"/>
+  <text class="lbm" x="734" y="140">Work on in a store</text>
+  <path d="M926,240 H724" fill="none" stroke="#3a3e48" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#a)"/>
+  <text class="lb" x="734" y="232">Work off in every store</text>
+
+  <!-- unlink -->
+  <path d="M600,276 V386" fill="none" stroke="#b3261e" stroke-width="2.5" marker-end="url(#r)"/>
+  <path d="M1050,276 V330 Q1050,345 1035,345 H600" fill="none" stroke="#b3261e" stroke-width="1.8"/>
+  <text class="lbm" x="590" y="322" text-anchor="end">Unlink, in either app</text>
+  <text class="lb" x="590" y="340" text-anchor="end">from state 2 or 3:</text>
+  <text class="lb" x="590" y="358" text-anchor="end">Work leaves Life at once</text>
+
+  <!-- relink -->
+  <path d="M480,460 H400 Q385,460 385,445 V302 Q385,290 397,290 H528 Q540,290 540,281" fill="none" stroke="#1f8a3a" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#g)"/>
+  <text class="lb" x="236" y="420">The person signs in</text>
+  <text class="lb" x="236" y="438">to link again (their</text>
+  <text class="lb" x="236" y="456">own act, never by itself)</text>
+
+  <!-- channel -->
+  <rect x="30" y="566" width="1140" height="100" rx="14" fill="#f6f7fa" stroke="#d6d9e0"/>
+  <text class="b" x="48" y="592">How the two apps keep it</text>
+  <text class="s" x="48" y="614">Flow keeps the link (commerce.kaizen_life_links); Life keeps a copy (kaizena_flow_links), written in the same call: its cheap check for whether Work shows.</text>
+  <text class="s" x="48" y="634">Server to server, both ways, each request signed by the sender (ES256, 60 seconds, used once). Both sides must hold the email as verified.</text>
+  <text class="s" x="48" y="654">The link gives Life one thing: the read-only Work summary. Acting in a store from Life still needs the person's own grant in Flow.</text>
+</svg>

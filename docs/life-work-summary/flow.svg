@@ -45,9 +45,9 @@
   <text class="s" x="64" y="378">Asks the same tool when you ask about work</text>
 
   <rect class="box" x="48" y="430" width="382" height="96" rx="12"/>
-  <text class="t" x="64" y="457">Life server · the Kaizena Flow connection</text>
-  <text class="s" x="64" y="478">One per person, never shown to a shared space</text>
-  <text class="s" x="64" y="497">Token from Flow's own OAuth server</text>
+  <text class="t" x="64" y="457">Life server · the account link</text>
+  <text class="s" x="64" y="478">Made by itself once both accounts exist</text>
+  <text class="s" x="64" y="497">Per person, never shown to a shared space</text>
   <text class="s" x="64" y="516">Read live, inside Suspense; nothing is stored</text>
 
   <rect class="back" x="48" y="616" width="382" height="66" rx="12"/>
@@ -69,11 +69,11 @@
   <text class="s" x="786" y="284">The overdue invoices, the timer, the client</text>
 
   <rect class="data" x="770" y="430" width="382" height="66" rx="12"/>
-  <text class="mono" x="786" y="457">/api/mcp · tools/call work_summary</text>
-  <text class="s" x="786" y="478">One door for data: card, page and assistant</text>
+  <text class="mono" x="786" y="457">POST /api/kaizen-life/v1/work-summary</text>
+  <text class="s" x="786" y="478">For linked accounts; MCP work_summary for others</text>
 
   <rect class="data" x="770" y="526" width="382" height="76" rx="12"/>
-  <text class="mono" x="786" y="552">workSummary(account, grant)</text>
+  <text class="mono" x="786" y="552">workSummary(account)</text>
   <text class="s" x="786" y="572">workStoresFor · getOwnerOverview · getRunningTimer</text>
   <text class="s" x="786" y="590">Money per currency; every link built by workBase()</text>
 
@@ -98,7 +98,7 @@
 
   <!-- data arrows (blue) -->
   <path d="M430,455 H766" fill="none" stroke="#0068da" stroke-width="2.5" marker-end="url(#b)"/>
-  <text class="lb" x="470" y="446">tools/call, Bearer kfa_… (4 s, then gives up)</text>
+  <text class="lb" x="470" y="446">Signed by Life, 60 s (4 s, then gives up)</text>
   <path d="M766,480 H434" fill="none" stroke="#0068da" stroke-width="2.5" marker-end="url(#b)"/>
   <text class="lb" x="470" y="500">JSON: numbers, names, links, asOf</text>
   <text class="lb" x="470" y="517">Life writes its own words, in 5 languages</text>
