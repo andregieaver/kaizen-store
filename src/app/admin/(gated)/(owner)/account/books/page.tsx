@@ -25,7 +25,10 @@ export default async function AccountBooksPage() {
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "books").clients;
-  const clients = await booksClients(account);
+  const all = await booksClients(account);
+  // Stores whose books are not open ask nothing of an accountant yet: one line at the end, never a card each.
+  const clients = all.filter((c) => c.book !== null);
+  const notOpen = all.filter((c) => c.book === null);
   const day = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "UTC" });
   const needText = (need: ClientNeed, currency: string, vat: number | null): string => {
     if (need.kind === "open_books") return w.notOpen;
@@ -38,7 +41,7 @@ export default async function AccountBooksPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={w.title} description={w.description} />
-      {clients.length === 0 ? (
+      {all.length === 0 ? (
         <Card>
           <p className="text-sm text-muted">{w.none}</p>
         </Card>
@@ -81,6 +84,19 @@ export default async function AccountBooksPage() {
             );
           })}
         </ul>
+      )}
+      {notOpen.length > 0 && (
+        <p className="text-sm text-muted">
+          {w.notOpenList}{" "}
+          {notOpen.map((c, i) => (
+            <span key={c.slug}>
+              {i > 0 && ", "}
+              <Link href={storeHref(c.slug, "/settings/books")} className="underline underline-offset-2 hover:text-ink">
+                {c.name}
+              </Link>
+            </span>
+          ))}
+        </p>
       )}
     </div>
   );

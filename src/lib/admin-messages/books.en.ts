@@ -604,6 +604,7 @@ export const booksEn = {
     yours: "Yours",
     reads: "Read only",
     notOpen: "The books are not open yet: the owner opens them under Settings → Books.",
+    notOpenList: "Books not open yet:",
     vat: "VAT {term} due {due}: {amount}",
     vatLate: "VAT {term} was due {due}: {amount}",
     bank: { one: "1 bank line to book", many: "{n} bank lines to book" },

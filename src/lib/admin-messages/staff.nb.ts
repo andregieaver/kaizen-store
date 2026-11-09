@@ -5,7 +5,7 @@ export const staffNb: StaffMessages = {
   roles: {
     owner: "Eier",
     admin: "Administrator",
-    adminLong: "Administrator (alt unntatt teamet og abonnementet)",
+    adminLong: "Administrator (alt unntatt teamet, abonnementet og å endre regnskapet)",
   },
   areas: {
     orders: "Ordre",
@@ -83,7 +83,7 @@ export const staffNb: StaffMessages = {
   rolesPage: {
     title: "Roller",
     description:
-      "En rolle sier, for hver del av administrasjonen, om noen kan se den, endre den eller ikke åpne den i det hele tatt. Eiere har alt. En administrator uten egen rolle kan gjøre alt unntatt teamet og abonnementet. Endrer du en rolle, endres det alle som har den kan gjøre, med en gang.",
+      "En rolle sier, for hver del av administrasjonen, om noen kan se den, endre den eller ikke åpne den i det hele tatt. Eiere har alt. En administrator uten egen rolle kan gjøre alt unntatt teamet og abonnementet, og leser regnskapet uten å endre det. Endrer du en rolle, endres det alle som har den kan gjøre, med en gang.",
     nobody: "Ingen har den",
     holds: { one: "{n} person har den", many: "{n} personer har den" },
     heldBy: "Har den: {emails}.",

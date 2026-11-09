@@ -10,7 +10,7 @@ export const staffEn = {
   roles: {
     owner: "Owner",
     admin: "Admin",
-    adminLong: "Admin (everything except the team and the plan)",
+    adminLong: "Admin (everything except the team, the plan and changing the books)",
   },
   /** Each area of the admin, as the role editor and the log name it (`AREA_LABELS`, `AUDIT_AREA_LABELS`). */
   areas: {
@@ -91,7 +91,7 @@ export const staffEn = {
   rolesPage: {
     title: "Roles",
     description:
-      "A role says, for each part of the admin, whether someone can see it, change it, or not open it at all. Owners hold everything. An admin with no role of their own can do everything except the team and the plan. Changing a role changes what everyone who holds it can do, at once.",
+      "A role says, for each part of the admin, whether someone can see it, change it, or not open it at all. Owners hold everything. An admin with no role of their own can do everything except the team and the plan, and reads the books without changing them. Changing a role changes what everyone who holds it can do, at once.",
     nobody: "Nobody holds it",
     holds: { one: "{n} person holds it", many: "{n} people hold it" },
     heldBy: "Held by {emails}.",

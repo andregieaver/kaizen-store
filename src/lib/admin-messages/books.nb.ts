@@ -599,6 +599,7 @@ export const booksNb: BooksMessages = {
     yours: "Din",
     reads: "Kun lesing",
     notOpen: "Regnskapet er ikke åpnet ennå: eieren åpner det under Innstillinger → Regnskap.",
+    notOpenList: "Regnskap ikke åpnet ennå:",
     vat: "Mva {term} forfaller {due}: {amount}",
     vatLate: "Mva {term} forfalt {due}: {amount}",
     bank: { one: "1 banklinje å bokføre", many: "{n} banklinjer å bokføre" },
