@@ -838,12 +838,6 @@ export const bookingsNb: BookingsMessages = {
     lifeDisconnect: "Koble fra Kaizen Life",
     lifeHint: "Koble til Kaizen Life-kontoen din for å logge inn her med den, også om den bruker en annen e-postadresse.",
     lifeConnect: "Koble til Kaizen Life",
-    assistant: "Kaizen Life for assistenten din",
-    assistantFailed: "Kaizen Life ble ikke koblet til. Prøv igjen.",
-    assistantConnected: "Koblet til{as}: butikkassistenten din kan spørre Kaizen Life-assistenten din om kalenderen, oppgavene og planene dine når du ber den om det.",
-    assistantDisconnect: "Koble den fra assistenten din",
-    assistantHint: "La butikkassistenten din spørre Kaizen Life-assistenten din om kalenderen, oppgavene og planene dine. Kaizen Life spør deg først, og butikken din fungerer like godt uten.",
-    assistantConnect: "Koble den til assistenten din",
     apps: "Apper du logger inn i med Kaizena Flow",
     anApp: "En app",
     erase: {

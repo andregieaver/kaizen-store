@@ -838,12 +838,6 @@ export const bookingsEn = {
     lifeDisconnect: "Disconnect Kaizen Life",
     lifeHint: "Connect your Kaizen Life account to sign in here with it, even if it uses another email address.",
     lifeConnect: "Connect Kaizen Life",
-    assistant: "Kaizen Life for your assistant",
-    assistantFailed: "Kaizen Life was not connected. Try again.",
-    assistantConnected: "Connected{as}: your store assistant can ask your Kaizen Life assistant about your calendar, tasks and plans when you ask it to.",
-    assistantDisconnect: "Disconnect it from your assistant",
-    assistantHint: "Let your store assistant ask your Kaizen Life assistant about your calendar, tasks and plans. Kaizen Life asks you first, and your store works just the same without it.",
-    assistantConnect: "Connect it to your assistant",
     apps: "Apps you sign in to with Kaizena Flow",
     anApp: "An app",
     erase: {

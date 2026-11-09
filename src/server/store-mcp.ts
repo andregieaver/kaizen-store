@@ -1,11 +1,9 @@
 import "server-only";
 
-import { createClient as createSupabase } from "@supabase/supabase-js";
 import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { publicEnv } from "@/lib/env";
 import { isReadOnly, MCP_TOOLS, toolScope, type McpToolInfo } from "@/lib/mcp-catalogue";
 import { missingScopes, protectedResourceMetadata, scopeKeys, STORES_READ, type AccessLevel, type OAuthScope } from "@/lib/oauth";
 import { toolFeature, toolOffered } from "@/lib/owner-tool-features";
@@ -30,11 +28,12 @@ type Row = Record<string, unknown>;
 
 /**
  * The store's MCP server (D96, wave 14 unit B D439): the owner assistant's tools, served to an outside AI assistant for the person who
- * connected it. Two kinds of bearer token are taken: an access token of Kaizena Flow's own authorization server (`kfa_`, D439), bound to
- * `/api/mcp` and to a grant whose scopes and stores the person chose, which acts as that person with what both the grant and their role in
- * the store allow now; and, as before, Kaizen Life's tokens from the store's Supabase OAuth server (`KAIZEN_LIFE_CLIENT_ID`), for an
- * account that owns stores. Every tool takes the store it is for; changes that send, publish or cost money (and under *Read and propose
- * changes* every change) are kept for the person's yes in the store's admin, never run from here.
+ * connected it. `/api/mcp` takes one kind of bearer token: an access token of Kaizena Flow's own authorization server (`kfa_`, D439), bound
+ * to `/api/mcp` and to a grant whose scopes and stores the person chose, which acts as that person with what both the grant and their role
+ * in the store allow now. Kaizen Life's assistant reaches the same tools over the account link's `tool` door (`callerOfLink()`, D517), as
+ * the owner of the stores the linked account owns; its Supabase tokens (D96) are no longer taken (D525). Every tool takes the store it is
+ * for; changes that send, publish or cost money (and under *Read and propose changes* every change) are kept for the person's yes in the
+ * store's admin, never run from here.
  */
 
 export type McpVia =
@@ -52,39 +51,16 @@ export type McpCaller = {
   stores: { id: string; slug: string; name: string }[];
   /** The assurance level of the token (`aal` claim, or the grant's): a store that requires two-step, and a platform admin, are served at `aal2` only (wave 1, 1f). */
   aal: "aal1" | "aal2";
-  /** How the caller came: Kaizen Life's Supabase token, or a grant of Kaizena Flow's authorization server (D439). */
+  /** How the caller came: Kaizen Life over the account link (D517), or a grant of Kaizena Flow's authorization server (D439). */
   via: McpVia;
 };
 
 /** The name a caller's client goes by: on approvals, notices and the audit log. */
 export const clientName = (caller: Pick<McpCaller, "via">): string => (caller.via.kind === "oauth" ? caller.via.client.name : "Kaizen Life");
 
-/** Who a bearer token is: a person through one of our grants (`kfa_`), or an owner with the stores they own if the token is Kaizen Life's. */
+/** Who a bearer token is: a person through one of our grants (`kfa_`); anything else is no one. */
 export async function mcpCaller(token: string): Promise<McpCaller | null> {
-  if (token.startsWith(ACCESS_PREFIX)) return oauthCaller(token);
-  const clientId = process.env.KAIZEN_LIFE_CLIENT_ID?.trim();
-  if (!clientId || token.length > 8000 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) return null;
-  let claims: Record<string, unknown> | null = null;
-  try {
-    const env = publicEnv();
-    const supabase = createSupabase(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data) return null;
-    claims = data.claims as Record<string, unknown>;
-    if (claims.iss !== `${env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "")}/auth/v1`) return null;
-  } catch {
-    return null;
-  }
-  return callerFromClaims(claims, clientId);
-}
-
-/** The caller for verified claims: Kaizen Life's client, not expired, an active account that owns stores. */
-export async function callerFromClaims(claims: Record<string, unknown>, clientId: string): Promise<McpCaller | null> {
-  if (claims.client_id !== clientId || typeof claims.sub !== "string") return null;
-  if (typeof claims.exp !== "number" || claims.exp * 1000 < Date.now()) return null;
-  return ownerCaller(sql`a.auth_user_id = ${claims.sub}::uuid`, claims.aal === "aal2" ? "aal2" : "aal1");
+  return token.startsWith(ACCESS_PREFIX) ? oauthCaller(token) : null;
 }
 
 /**
@@ -406,15 +382,7 @@ async function askStoreAssistant(caller: McpCaller, member: Membership, question
   });
 }
 
-/** The owner MCP's protected resource metadata (RFC 9728): our issuer first, then Supabase's while Kaizen Life uses it (D439). */
+/** The owner MCP's protected resource metadata (RFC 9728): our own issuer only (Kaizen Life's Supabase tokens are retired, D525). */
 export function protectedResource() {
-  let supabase: string | null = null;
-  if (process.env.KAIZEN_LIFE_CLIENT_ID?.trim()) {
-    try {
-      supabase = `${publicEnv().NEXT_PUBLIC_SUPABASE_URL.replace(/\/$/, "")}/auth/v1`;
-    } catch {
-      supabase = null;
-    }
-  }
-  return protectedResourceMetadata(siteUrl(), supabase);
+  return protectedResourceMetadata(siteUrl(), null);
 }

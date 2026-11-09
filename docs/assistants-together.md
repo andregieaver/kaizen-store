@@ -65,11 +65,13 @@ each other tasks.*
 The run each side starts for the other cannot ask back: Flow's turn for Life runs with `fromKaizenLife` (no `ask_kaizen_life`), and
 Life's run for Flow has no store tools and runs at the deepest hand-off depth.
 
-### The older connections
+### The older connections (retired, D525)
 
-D96's two OAuth connections (Flow's `kaizen_life_links`, Life's `kaizen_store` integration) still work for anyone who set them up,
-and are used only while the switch is off. Nobody has either in production (counted 9 November 2026), and their client settings are
-left unset. They go once the link has served a while.
+D96's two OAuth connections (Flow's `kaizen_life_links`, Life's `kaizen_store` integration, and each app's `/api/mcp` taking the other's
+Supabase token) never had a user in production and were removed on 9 November 2026: the code, Your account's *Kaizen Life for your
+assistant*, Life's Settings → Integrations → Kaizena Flow, and their settings. `kaizen_life_links` is dropped in its own change once
+the code that stopped using it is live. The two OAuth clients stay, as signing in with each other (D95) uses them; their extra redirect
+URIs (`/admin/account/kaizen-life/callback` and `/api/integrations/kaizen_store/callback`) can be removed in each Supabase project.
 
 ## 3. Step 2 as built: tasks, with a report back (D519)
 

@@ -21,7 +21,6 @@ import { PushSettings } from "@/components/admin/push-settings";
 import { removePushAction, removePushDeviceAction, savePushAction } from "./push-actions";
 import { avatarFor } from "@/server/avatars";
 import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
-import { lifeLink, lifeLinkOn } from "@/server/kaizen-life-link";
 import { twoStepStatus } from "@/server/two-step";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -32,9 +31,7 @@ import {
   adminViewAction,
   colorModeAction,
   connectKaizenLifeAction,
-  connectLifeAssistantAction,
   disconnectKaizenLifeAction,
-  disconnectLifeAssistantAction,
   regenerateRecoveryCodesAction,
   removeTwoStepAction,
   revokeAppAction,
@@ -56,7 +53,6 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   const dateLocale = lang === "en" ? "en-GB" : ADMIN_LANG_FACTS[lang].locale;
   const query = await searchParams;
   const status = query["kaizen-life"];
-  const assistantStatus = query["life-assistant"];
   const owner = await isOwner(account);
   const supabase = await createClient();
   const twoStep = await twoStepStatus(account);
@@ -68,10 +64,9 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
     }),
     pushDevicesOf(account.id),
   ]);
-  const [identity, grants, link] = await Promise.all([
+  const [identity, grants] = await Promise.all([
     owner && kaizenLifeSignInOn() ? kaizenLifeIdentity(supabase) : null,
     owner ? supabase.auth.oauth.listGrants().then(({ data }) => data ?? [], () => []) : [],
-    owner && lifeLinkOn() ? lifeLink(account.id) : null,
   ]);
   return (
     <div className="flex flex-col gap-8">
@@ -239,42 +234,6 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
               <form action={connectKaizenLifeAction}>
                 <button type="submit" className={smallButton}>
                   {w.lifeConnect}
-                </button>
-              </form>
-            </>
-          )}
-        </section>
-      )}
-
-      {owner && lifeLinkOn() && (
-        <section aria-labelledby="life-assistant-heading" className="flex max-w-md flex-col gap-3">
-          <h2 id="life-assistant-heading" className="text-title text-ink">
-            {w.assistant}
-          </h2>
-          {assistantStatus === "failed" && (
-            <p role="alert" className="text-sm">
-              {w.assistantFailed}
-            </p>
-          )}
-          {link ? (
-            <>
-              <p className="text-sm">
-                {fillWords(w.assistantConnected, { as: link.email ? fillWords(w.as, { email: link.email }) : "" })}
-              </p>
-              <form action={disconnectLifeAssistantAction}>
-                <button type="submit" className={smallButton}>
-                  {w.assistantDisconnect}
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-muted">
-                {w.assistantHint}
-              </p>
-              <form action={connectLifeAssistantAction}>
-                <button type="submit" className={smallButton}>
-                  {w.assistantConnect}
                 </button>
               </form>
             </>
