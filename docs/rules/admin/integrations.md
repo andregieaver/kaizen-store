@@ -124,8 +124,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - **Kaizena Flow's authorization server and the open owner MCP (wave 14 unit B, D439, `src/lib/oauth.ts`, `src/server/oauth.ts`, `src/server/oauth-clients.ts`)**:
   Kaizena Flow is an OAuth 2.1 authorization server (RFC 8414 metadata at `/.well-known/oauth-authorization-server`, issuer `siteUrl()`;
-  the owner MCP's protected resource metadata at `/.well-known/oauth-protected-resource` and `…/api/mcp` names it first and Supabase's
-  while Kaizen Life uses it). Clients are `commerce.oauth_clients`, written only by `oauth-clients.ts`: a Client ID Metadata Document is
+  the owner MCP's protected resource metadata at `/.well-known/oauth-protected-resource` and `…/api/mcp` names it alone since D525). Clients are `commerce.oauth_clients`, written only by `oauth-clients.ts`: a Client ID Metadata Document is
   fetched only through `safeFetch()` (HTTPS, 5 seconds, 64 KB, no redirect), checked by `readClientMetadata()` and kept for its cache
   headers, at most a day; RFC 7591 registration (`/api/oauth/register`) is public only, HTTPS or loopback redirects by `application_type`,
   ten an hour from an address (`oauth_register`, failing closed); a redirect URI matches exactly but a loopback's port (`redirectMatches()`),
@@ -290,20 +289,19 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `admitFromKaizenLife()`, which admits owners and platform admins only;
   apps asking to sign someone in with Kaizen Store land on
   `/admin/oauth/consent` (owners only). Sign-in shares identity, never
-  store data. Kaizen Life's assistant reaches the owner's stores through
-  `/api/mcp` (D96, `src/server/store-mcp.ts`), which since D439 also takes
-  Kaizena Flow's own tokens (*Kaizena Flow's authorization server*, above):
-  Kaizen Life's are tokens from the store's Supabase OAuth server for
-  `KAIZEN_LIFE_CLIENT_ID` only, every owner tool with a
-  `store` argument, gated tools only kept (`keepForApproval()`, named
-  "Kaizen Life asks: …") in the
-  owner's Kaizen Life conversation (`kaizenLifeConversation()`), and
-  `ask_store_assistant` runs a turn there with `fromKaizenLife` and `outside`. A new owner
-  tool is served there too (manager and platform tools are not). The other way, an owner connects Kaizen Life
-  for the assistant under Your account (`src/server/kaizen-life-link.ts`,
-  tokens encrypted in `kaizen_life_links`); the assistant then has
-  `ask_kaizen_life` (`ASK_KAIZEN_LIFE`, not an owner tool), never in turns
-  Kaizen Life asked for.
+  store data. Kaizen Life's assistant reaches the owner's stores (D96) only
+  over the account link's `tool` door while the person lets the assistants work
+  together (D517, below): every owner tool with a `store` argument, as
+  `callMcpTool()` answers it for `callerOfLink()`, gated tools only kept
+  (`keepForApproval()`, named "Kaizen Life asks: …") in the owner's Kaizen Life
+  conversation (`kaizenLifeConversation()`), and `ask_store_assistant` runs a turn
+  there with `fromKaizenLife` and `outside`. A new owner tool is served there too
+  (manager and platform tools are not). The other way, the AI manager's
+  `ask_kaizen_life` (`ASK_KAIZEN_LIFE`, not an owner tool) asks Life's `ask` door,
+  never in turns Kaizen Life asked for. D96's OAuth bridge (Kaizen Life's Supabase
+  tokens on `/api/mcp`, and the connection under Your account with its tokens in
+  `kaizen_life_links`) is retired (D525): `/api/mcp` takes only Kaizena Flow's own
+  tokens, and never takes another app's token again without a decision.
 - Kaizen Life's account link and Work summary (D511, `docs/life-work-summary.md`, `src/server/kaizen-life-accounts.ts`,
   `src/server/kaizen-life-doors.ts`, `src/lib/kaizen-life-jwt.ts`, `src/lib/work-summary.ts`, `src/server/work-summary.ts`): Kaizen Life
   shows Work only for a person with accounts on both, linked. The link is `commerce.kaizen_life_accounts`, written only by

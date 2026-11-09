@@ -26,7 +26,6 @@ import { actingAs, currentActor } from "./actor";
 import { afterAnswer } from "./after-answer";
 import { askLifeAssistant, assistantsOn, LifeAssistantError } from "./kaizen-life-accounts";
 import { cancelToLife, handToLife, lifeHandoffsOf, settleHandoffAfterApproval } from "./kaizen-life-handoffs";
-import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
 import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext, type OutsideAsker } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
@@ -295,10 +294,10 @@ async function isClientConversation(id: string): Promise<boolean> {
 
 /**
  * Asking Kaizen Life's assistant (D96), offered only while the person lets
- * their assistants work together over the account link
- * (docs/assistants-together.md), or connected Kaizen Life the older way, and
- * the question is not Kaizen Life's own, so the two never ask each other in a
- * loop. Not an owner tool: `/api/mcp` never serves it.
+ * their assistants work together over the account link (D517,
+ * docs/assistants-together.md) and the question is not Kaizen Life's own, so
+ * the two never ask each other in a loop. Not an owner tool: `/api/mcp` never
+ * serves it. (The older OAuth connection is retired, D525.)
  */
 export const ASK_KAIZEN_LIFE: ToolDefinition = {
   name: "ask_kaizen_life",
@@ -653,7 +652,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
       log("error", "ai_manager.memories_failed", {}, error);
       return [] as Memory[];
     }),
-    !input.fromKaizenLife && !input.outside ? lifeAsked(account.id) : Promise.resolve(false),
+    !input.fromKaizenLife && !input.outside ? assistantsOn(account.id) : Promise.resolve(false),
     db().execute<Row>(sql`
       select id, summary from commerce.assistant_approvals
       where conversation_id = ${conversationId}::uuid and account_id = ${account.id}::uuid and status = 'pending'
@@ -702,7 +701,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
   const used = [...new Set(history.flatMap((row) => ((row.tools as ToolTrail[] | null) ?? []).map((t) => t.name)))];
   const pageArea = store && input.path?.startsWith(`/admin/${store.slug}`) ? (areaOfPath(input.path.slice(`/admin/${store.slug}`.length)) as ToolArea | null) : null;
   // Handing Kaizen Life a task (docs/assistants-together.md): only in the person's own turns, while the assistants work together.
-  const withHandoffs = withLife && !input.fromKaizenLife && !input.outside && !input.scheduled && !input.autopilot && (await assistantsOn(account.id));
+  const withHandoffs = withLife && !input.scheduled && !input.autopilot;
   // An outside assistant's turn gets the manager's reading and guiding tools only (D439): it writes no memory, skill, goal or plan.
   const managerTools = [
     ...MANAGER_TOOLS.filter((t) => !input.outside || OUTSIDE_MANAGER_TOOLS.has(t.name)).map(toolDefinition),
@@ -832,13 +831,7 @@ async function handoffTool(p: Principal, conversationId: string | null, name: st
   }
 }
 
-/** Whether the AI manager may ask Kaizen Life's assistant for this account: over the account link while switched on, or the older connection (D96). */
-async function lifeAsked(accountId: string): Promise<boolean> {
-  if (await assistantsOn(accountId)) return true;
-  return lifeLinkOn() ? (await lifeLink(accountId)) !== null : false;
-}
-
-/** Kaizen Life's assistant's answer for the model, or why there is none: over the account link while switched on, else the older connection. */
+/** Kaizen Life's assistant's answer for the model, or why there is none: over the account link, while the assistants work together (D517). */
 async function askKaizenLife(p: Principal, rawArgs: string): Promise<Record<string, unknown>> {
   let question = "";
   try {
@@ -850,10 +843,9 @@ async function askKaizenLife(p: Principal, rawArgs: string): Promise<Record<stri
   if (!question) return { error: "Ask a question in words." };
   const from = p.store?.name ?? "Kaizena Flow";
   try {
-    if (await assistantsOn(p.account.id)) return { kaizen_life_says: await askLifeAssistant(p.account.id, question, from) };
-    return { kaizen_life_says: await askLife(p.account.id, question, from) };
+    return { kaizen_life_says: await askLifeAssistant(p.account.id, question, from) };
   } catch (error) {
-    if (error instanceof LifeLinkError || error instanceof LifeAssistantError) return { error: error.message };
+    if (error instanceof LifeAssistantError) return { error: error.message };
     log("error", "ai_manager.ask_kaizen_life_failed", {}, error);
     return { error: "Kaizen Life did not answer." };
   }

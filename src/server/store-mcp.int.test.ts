@@ -11,9 +11,9 @@ const ai = await import("./ai");
 
 type Row = Record<string, unknown>;
 const run = Date.now().toString(36);
-const CLIENT = "kaizen-life-client-id";
 const authUser = crypto.randomUUID();
-let caller: Awaited<ReturnType<typeof mcp.callerFromClaims>>;
+let caller: Awaited<ReturnType<typeof mcp.callerOfLink>>;
+let accountId: string;
 let slug: string;
 let handle: string;
 
@@ -24,6 +24,8 @@ beforeAll(async () => {
   const [store] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`mcp-${run}`}, 'Kaffe', null) as id`);
   slug = `mcp-${run}`;
   await db().execute(sql`update commerce.accounts set auth_user_id = ${authUser}::uuid where email = ${`mcp-${run}@example.com`}`);
+  const [account] = await db().execute<Row>(sql`select id from commerce.accounts where email = ${`mcp-${run}@example.com`}`);
+  accountId = String(account.id);
   const [product] = await db().execute<Row>(sql`select handle from commerce.products where store_id = ${String(store.id)}::uuid and status = 'active' order by handle limit 1`);
   handle = String(product.handle);
 });
@@ -34,35 +36,33 @@ afterAll(async () => {
   await closeDb();
 });
 
-const claims = (extra: Record<string, unknown> = {}) => ({ sub: authUser, client_id: CLIENT, exp: Date.now() / 1000 + 600, ...extra });
-
-describe("the store's MCP server for Kaizen Life (D96)", () => {
-  it("takes only Kaizen Life's unexpired tokens, for an owner", async () => {
-    caller = await mcp.callerFromClaims(claims(), CLIENT);
+describe("the store's MCP tools for Kaizen Life, over the account link (D96, D517)", () => {
+  it("serves the linked account as the owner of its stores, and takes no Supabase token on /api/mcp any more (D525)", async () => {
+    caller = await mcp.callerOfLink(accountId, "aal1");
     expect(caller?.stores).toEqual([expect.objectContaining({ slug, name: "Kaffe" })]);
-    expect(await mcp.callerFromClaims(claims({ client_id: "another-app" }), CLIENT)).toBeNull();
-    expect(await mcp.callerFromClaims(claims({ exp: Date.now() / 1000 - 1 }), CLIENT)).toBeNull();
-    expect(await mcp.callerFromClaims(claims({ sub: crypto.randomUUID() }), CLIENT)).toBeNull();
+    expect(caller?.via).toEqual({ kind: "kaizen-life" });
+    expect(await mcp.callerOfLink(crypto.randomUUID(), "aal1")).toBeNull();
+    expect(await mcp.mcpCaller("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.c2ln")).toBeNull();
   });
 
-  it("serves a store that requires two-step, and a platform admin, to a token that passed the second step only (aal2)", async () => {
-    // A token at aal1 still reaches a store that does not require two-step ...
-    expect((await mcp.callerFromClaims(claims({ aal: "aal1" }), CLIENT))?.aal).toBe("aal1");
-    expect((await mcp.callerFromClaims(claims({ aal: "aal2" }), CLIENT))?.aal).toBe("aal2");
+  it("serves a store that requires two-step, and a platform admin, to a switch turned on at the second step only (aal2)", async () => {
+    // A switch at aal1 still reaches a store that does not require two-step ...
+    expect((await mcp.callerOfLink(accountId, "aal1"))?.aal).toBe("aal1");
+    expect((await mcp.callerOfLink(accountId, "aal2"))?.aal).toBe("aal2");
     // ... but not one that requires it: the store is left out for aal1, and a caller with no store left is refused.
     await db().execute(sql`update commerce.stores set require_two_step = true where slug = ${slug}`);
     try {
-      expect(await mcp.callerFromClaims(claims({ aal: "aal1" }), CLIENT)).toBeNull();
-      expect(await mcp.callerFromClaims(claims(), CLIENT)).toBeNull();
-      expect((await mcp.callerFromClaims(claims({ aal: "aal2" }), CLIENT))?.stores).toEqual([expect.objectContaining({ slug })]);
+      expect(await mcp.callerOfLink(accountId, "aal1")).toBeNull();
+      expect(await mcp.callerOfLink(accountId, "aal1")).toBeNull();
+      expect((await mcp.callerOfLink(accountId, "aal2"))?.stores).toEqual([expect.objectContaining({ slug })]);
     } finally {
       await db().execute(sql`update commerce.stores set require_two_step = false where slug = ${slug}`);
     }
     // A platform admin is served at aal2 only, wherever they sign in.
     await db().execute(sql`update commerce.accounts set platform_admin = true where auth_user_id = ${authUser}::uuid`);
     try {
-      expect(await mcp.callerFromClaims(claims({ aal: "aal1" }), CLIENT)).toBeNull();
-      expect(await mcp.callerFromClaims(claims({ aal: "aal2" }), CLIENT)).not.toBeNull();
+      expect(await mcp.callerOfLink(accountId, "aal1")).toBeNull();
+      expect(await mcp.callerOfLink(accountId, "aal2")).not.toBeNull();
     } finally {
       await db().execute(sql`update commerce.accounts set platform_admin = false where auth_user_id = ${authUser}::uuid`);
     }
