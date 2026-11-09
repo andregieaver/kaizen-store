@@ -16,8 +16,9 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * only by `saveAssistantKeep()`; the daily `runRetention()` step `assistant_conversations` calls `pruneAssistantConversations()`.
  *
  * What goes: every message older than its store's period (or the rule's, for Kaizena Flow's own conversations and stores that chose none),
- * decided approvals as old (their arguments can name a customer), and then a conversation left with no message, as long as nothing still
- * works in it: an autopilot plan (its conversation is its record) or a follow-up still waiting.
+ * decided approvals as old (their arguments can name a customer), tasks the assistants handed each other over the Kaizen Life link that
+ * ended as long ago (docs/assistants-together.md), and then a conversation left with no message, as long as nothing still works in it: an
+ * autopilot plan (its conversation is its record) or a follow-up still waiting.
  */
 
 /** The owner's choice for a store: null is the default period. */
@@ -59,6 +60,13 @@ export async function pruneAssistantConversations(now: Date, ruleMonths: number,
        where a.status <> 'pending' and coalesce(a.decided_at, a.created_at) < ${cutoff(sql`a.store_id`)}
        order by a.created_at limit ${batch})
     returning id`);
+  // A task Kaizen Life and the AI manager handed each other, once it ended (one still working or waiting for a yes is never touched).
+  const handoffs = await typedRows(IDS, sql`
+    delete from commerce.kaizen_life_handoffs where id in (
+      select h.id from commerce.kaizen_life_handoffs h
+       where h.status not in ('working', 'waiting_for_you') and coalesce(h.finished_at, h.updated_at) < ${cutoff(sql`h.store_id`)}
+       order by h.updated_at limit ${batch})
+    returning id`);
   const conversations = await typedRows(IDS, sql`
     delete from commerce.assistant_conversations where id in (
       select c.id from commerce.assistant_conversations c
@@ -69,5 +77,5 @@ export async function pruneAssistantConversations(now: Date, ruleMonths: number,
          and not exists (select 1 from commerce.assistant_approvals a where a.conversation_id = c.id and a.status = 'pending')
        order by c.updated_at limit ${batch})
     returning id`);
-  return messages.length + approvals.length + conversations.length;
+  return messages.length + approvals.length + handoffs.length + conversations.length;
 }

@@ -350,6 +350,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`runFromLife()`, claimed once); what it keeps waits for the yes, and `decideApproval()` settles it (`settleHandoffAfterApproval()`) once
   none waits. The dispatcher's `lifeHandoffs` job (`runKaizenLifeHandoffs()`) runs a task never started, ends one stopped, settles one whose
   changes were all answered, tells Kaizen Life what it has not heard (`REPORT_TRIES`), and gives up a task Kaizen Life never answered.
+  An ended task is deleted with the AI manager's conversations (`pruneAssistantConversations()`, the store's or the rule's period) and by
+  the account's erasure (`account-erasure.ts`); a new table of a person's words gets both.
 - What the person sees of them (D521, `docs/assistants-together.md` step 3): *Between your assistants* on Connected apps and assistants
   (`recentHandoffsOf()`, both ways, `HANDOFF_SIGNAL` for the status chip, *Take back* through `cancelToLife()`), and in the AI manager's
   chat a report from Kaizen Life drawn as its own card (`lifeReportOf()` on `LIFE_REPORT_MARK`, never rated) and a note under an answer

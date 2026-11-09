@@ -68,6 +68,9 @@ describe("erasing one's own account", () => {
     const email = `staff-${run}@example.com`;
     await db().execute(sql`insert into commerce.store_members (store_id, account_id, role) values (${store.storeId}::uuid, ${id}::uuid, 'owner')`);
     await db().execute(sql`insert into commerce.assistant_memories (account_id, kind, source, content) values (${id}::uuid, 'preference', 'told', 'Prefers short answers')`);
+    await db().execute(sql`
+      insert into commerce.kaizen_life_handoffs (id, account_id, direction, task, status) values (gen_random_uuid(), ${id}::uuid, 'to_life', 'Remind me to call Kari', 'done')
+    `);
     await db().execute(sql`insert into commerce.access_requests (email, name, store_name, message) values (${email}, 'Person staff', 'Theirs', 'Hello')`);
     await db().execute(sql`
       insert into commerce.email_messages (store_id, kind, to_address, subject, html, text) values (${store.storeId}::uuid, 'staff.new_order', ${email}, 'New order', '<p>x</p>', 'x')
@@ -90,9 +93,10 @@ describe("erasing one's own account", () => {
              (select count(*)::int from commerce.assistant_memories where account_id = ${id}::uuid) as memories,
              (select count(*)::int from commerce.access_requests where lower(email) = ${email}) as requests,
              (select count(*)::int from commerce.email_messages where to_address = ${email}) as emails,
-             (select count(*)::int from commerce.customer_notes where created_by = ${id}::uuid) as notes
+             (select count(*)::int from commerce.customer_notes where created_by = ${id}::uuid) as notes,
+             (select count(*)::int from commerce.kaizen_life_handoffs where account_id = ${id}::uuid) as handoffs
     `);
-    expect(counts).toEqual({ members: 0, memories: 0, requests: 0, emails: 0, notes: 1 });
+    expect(counts).toEqual({ members: 0, memories: 0, requests: 0, emails: 0, notes: 1, handoffs: 0 });
     // The store keeps its own owner.
     const [owners] = await db().execute<Row>(sql`select count(*)::int as n from commerce.store_members where store_id = ${store.storeId}::uuid and role = 'owner'`);
     expect(owners.n).toBe(1);

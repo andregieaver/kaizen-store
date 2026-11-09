@@ -127,6 +127,11 @@ The five-minute job (`runKaizenLifeHandoffs()`, the dispatcher's `lifeHandoffs`)
 
 Tasks wait while a platform admin has paused the AI acting on its own (PSI AST-07).
 
+**Kept for:** in Flow, an ended task goes with the AI manager's conversations (12 months, or the store owner's own period; the daily
+retention step) and with the account (*Leaving*). In Life, an ended task goes after 12 months (the daily `purge-deletions` job) and with
+the account; Life also gives up a task handed to Flow that Flow never reported on (two days working, eight waiting for a yes), and Life's
+data export includes its tasks.
+
 ### Not yet
 
 * The agent eval has no case for a report from Kaizen Life yet: adding one needs a new recorded run on Platform → AI (step 3).
