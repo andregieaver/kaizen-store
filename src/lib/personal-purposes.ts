@@ -324,7 +324,6 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   host_tax_details: "platform_billing",
   hosts: "platform_service",
   blog_authors: "platform_service",
-  kaizen_life_links: "platform_service",
   wordpress_connections: "platform_service",
   referral_entries: "platform_billing",
   return_settings: "platform_service",

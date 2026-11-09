@@ -52,7 +52,6 @@ describe("rotating the settings key", () => {
       "payment_credentials.webhook_secret_ciphertext",
       "ai_providers.api_key_encrypted",
       "mollie_connections.refresh_token",
-      "kaizen_life_links.access_token",
       "domain_purchases.auth_code_box",
       "webhook_endpoints.secret_encrypted",
       "custom_apps.token_encrypted",

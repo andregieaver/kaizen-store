@@ -289,7 +289,6 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   host_tax_details: "En verts skatteopplysninger (DAC7). " + OWN,
   hosts: OWN,
   blog_authors: "Forfatterne av butikkens artikler (D341), navngitt og beskrevet av butikken for dens egen blogg. " + OWN,
-  kaizen_life_links: "En eiers kobling til Kaizen Life. " + OWN,
   wordpress_connections: "Et WordPress-nettsted en eier koblet til (D169): adressen og navnet, en hash av tokenet, aldri selve tokenet. " + OWN,
   referral_entries: "Vervekreditt mellom butikkeiere (D131). " + OWN,
   return_settings: "Butikkens egen returadresse. " + OWN,

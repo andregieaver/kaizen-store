@@ -285,7 +285,6 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("host_tax_details", "host", via("none"), ["legal_name", "address"], null, "none", "A host's tax details (DAC7). " + OWN),
   entry("hosts", "host", via("none"), ["name"], null, "none", OWN),
   entry("blog_authors", "staff", via("none"), ["name", "bio"], null, "none", "The authors of the store's articles (D341), named and described by the store for its own blog. " + OWN),
-  entry("kaizen_life_links", "owner", via("none"), ["life_email"], null, "none", "An owner's link to Kaizen Life. " + OWN),
   entry("wordpress_connections", "owner", via("none"), ["site_name"], null, "none", "A WordPress site an owner connected (D169): its address and name, a hash of its token, never the token. " + OWN),
   entry("referral_entries", "owner", via("none"), ["note"], null, "none", "Referral credit between store owners (D131). " + OWN),
   entry("return_settings", "owner", via("none"), ["return_address"], null, "none", "The store's own return address. " + OWN),

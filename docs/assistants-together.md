@@ -69,8 +69,8 @@ Life's run for Flow has no store tools and runs at the deepest hand-off depth.
 
 D96's two OAuth connections (Flow's `kaizen_life_links`, Life's `kaizen_store` integration, and each app's `/api/mcp` taking the other's
 Supabase token) never had a user in production and were removed on 9 November 2026: the code, Your account's *Kaizen Life for your
-assistant*, Life's Settings → Integrations → Kaizena Flow, and their settings. `kaizen_life_links` is dropped in its own change once
-the code that stopped using it is live. The two OAuth clients stay, as signing in with each other (D95) uses them; their extra redirect
+assistant*, Life's Settings → Integrations → Kaizena Flow, and their settings. `kaizen_life_links` (never a row) was dropped in a
+change of its own once no running code named it (migration `20261109192751_kaizen_life_links_dropped`). The two OAuth clients stay, as signing in with each other (D95) uses them; their extra redirect
 URIs (`/admin/account/kaizen-life/callback` and `/api/integrations/kaizen_store/callback`) can be removed in each Supabase project.
 
 ## 3. Step 2 as built: tasks, with a report back (D519)

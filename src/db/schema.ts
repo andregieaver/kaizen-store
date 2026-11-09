@@ -10969,24 +10969,6 @@ export const assistantConversations = commerce.table(
 );
 
 /**
- * An owner's Kaizen Life account, connected for the assistant (D96): tokens
- * from Kaizen Life's OAuth server, encrypted with SETTINGS_ENCRYPTION_KEY,
- * with which the owner assistant asks Kaizen Life's. One per account.
- */
-export const kaizenLifeLinks = commerce.table("kaizen_life_links", {
-  accountId: uuid("account_id")
-    .primaryKey()
-    .references(() => accounts.id, { onDelete: "cascade" }),
-  accessToken: text("access_token").notNull(),
-  refreshToken: text("refresh_token"),
-  expiresAt: timestamp("expires_at", { withTimezone: true }),
-  /** The Kaizen Life account's email, from its token, shown to the owner. */
-  lifeEmail: text("life_email"),
-  createdAt: createdAt(),
-  updatedAt: updatedAt(),
-});
-
-/**
  * A WordPress site an owner connected to their stores (D169, `docs/wordpress-plugin.md`): the plugin asks the owner to approve in
  * Kaizen's admin, gets a one-time `code` (kept as a hash, five minutes) and swaps it for a token (kept as a hash, never in clear).
  * The token reads the account's stores' public catalogue and nothing else; the owner can revoke it. A row with no token yet is an
