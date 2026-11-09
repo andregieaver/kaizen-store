@@ -9,7 +9,7 @@ import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { AGENT_EVAL_CASES, samePrompts, versionWords } from "@/lib/agent-eval";
 import { AgentEvalButton } from "@/components/admin/agent-eval-button";
 import { managerRatingsByVersion, promptVersions, recentAgentEvalRuns } from "@/server/agent-eval";
-import { DREAM_STEPS } from "@/lib/dream-factory";
+import { stepsOf } from "@/lib/dream-factory";
 import { recentDreamRuns } from "@/server/dream-factory";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 import { aiAutonomyPaused } from "@/server/ai-pause";
@@ -211,19 +211,20 @@ export default async function PlatformAiPage() {
             {dreamRuns.map((run) => (
               <li key={run.id} className={run.status === "failed" ? "text-danger-text" : "text-ink-2"}>
                 {/* A test run is watched here (D419): its store belongs to the test address, so its own page is not a platform admin's. */}
-                <Link href={run.test ? `/admin/platform/ai/dream/${run.id}` : `/admin/${run.storeSlug}/dream-factory`} className="underline">
+                <Link href={run.test && run.kind === "build" ? `/admin/platform/ai/dream/${run.id}` : `/admin/${run.storeSlug}/dream-factory`} className="underline">
                   {fillWords(w.dreamRun, {
                     date: run.createdAt.toISOString().slice(0, 16).replace("T", " "),
                     store: run.storeName,
                     status: run.status,
                     done: run.score.done,
-                    total: DREAM_STEPS.length,
+                    total: stepsOf(run.kind).length,
                     minutes: run.score.minutesToReady ?? "–",
                     presses: run.score.ownerPresses,
                     first: run.score.firstTryPercent === null ? "–" : `${run.score.firstTryPercent} %`,
                   })}
                 </Link>
                 {run.test && <span className="text-muted"> · {w.dreamTest}</span>}
+                {run.kind === "rework" && <span className="text-muted"> · {w.dreamRework}</span>}
               </li>
             ))}
           </ul>

@@ -52,6 +52,7 @@ export const platformToolsEn = {
     dreamNone: "No run yet.",
     dreamRun: "{date}: {store}, {status}, {done} of {total} steps, {minutes} min to ready, {presses} presses, {first} right first time",
     dreamTest: "test",
+    dreamRework: "changes to an existing store",
     /** Watching a test run (D419). */
     dreamWatchTitle: "Dream Factory: {store}",
     dreamWatchText: "A test run, as its owner sees it. The page reads itself again every few seconds while the store is being built.",

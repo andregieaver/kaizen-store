@@ -17489,7 +17489,8 @@ export const liveDrills = commerce.table(
  * The Dream Factory (D409, `docs/dream-factory.md`): one run from an owner's description to a store ready to open. Its steps and their needs
  * are code (`DREAM_STEPS` in `src/lib/dream-factory.ts`); `steps` keeps each one's state (status, tries, times, what its check found) and is
  * written only by `src/server/dream-factory.ts`. One run in progress a store. A test run (`test`, an owner at the drills' test address) stays
- * private and ends ready to open. `claimed_until` lets one cron run work on it at a time.
+ * private and ends ready to open. `claimed_until` lets one cron run work on it at a time. `kind` (D527): `build` makes a store before it
+ * opens; `rework` changes a store that exists and ends `applied`, once its owner made the prepared changes live.
  */
 export const dreamRuns = commerce.table(
   "dream_runs",
@@ -17500,6 +17501,7 @@ export const dreamRuns = commerce.table(
       .references(() => stores.id, { onDelete: "cascade" }),
     accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
     prompt: text("prompt").notNull(),
+    kind: text("kind").notNull().default("build"),
     test: boolean("test").notNull().default(false),
     status: text("status").notNull().default("running"),
     brief: jsonb("brief"),
@@ -17518,7 +17520,8 @@ export const dreamRuns = commerce.table(
     index("dream_runs_conversation_idx").on(t.conversationId),
     index("dream_runs_due_idx").on(t.claimedUntil).where(sql`${t.finishedAt} is null`),
     uniqueIndex("dream_runs_one_open").on(t.storeId).where(sql`${t.finishedAt} is null and ${t.status} <> 'stopped'`),
-    check("dream_runs_status", sql`${t.status} in ('running', 'asking', 'ready', 'open', 'failed', 'stopped')`),
+    check("dream_runs_status", sql`${t.status} in ('running', 'asking', 'ready', 'open', 'applied', 'failed', 'stopped')`),
+    check("dream_runs_kind", sql`${t.kind} in ('build', 'rework')`),
     check("dream_runs_prompt", sql`length(${t.prompt}) between 20 and 2000`),
     check("dream_runs_presses", sql`${t.ownerPresses} between 0 and 100`),
   ],

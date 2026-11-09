@@ -78,7 +78,7 @@ export default async function PlatformDreamRunPage({ params }: { params: Promise
         {going ? (
           <DreamProgress steps={run.steps} startedAt={run.createdAt} now={now} storeName={name} words={words} />
         ) : (
-          <p className="text-body text-ink-2">{words.run[run.status]}</p>
+          <p className="text-body text-ink-2">{words.run[run.status === "applied" ? "ready" : run.status]}</p>
         )}
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[auto_1fr]">

@@ -5,7 +5,7 @@ import { ButtonLink, Card, Chip } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import type { HomeMessages } from "@/lib/admin-messages/home.en";
 import type { Signal } from "@/lib/admin-schemes";
-import { DREAM_STEPS, type DreamStepId, type DreamSteps, type StepStatus } from "@/lib/dream-factory";
+import { DREAM_STEPS, type AllSteps, type AnyStepId, type DreamStep, type DreamSteps, type StepStatus } from "@/lib/dream-factory";
 import { agoMinutes, mockColours, safeFont, showcaseProgress, stepMinutes, type ShowcaseProgress } from "@/lib/dream-showcase";
 import type { DreamShowcase } from "@/server/dream-showcase";
 
@@ -19,14 +19,32 @@ const SIGNAL: Record<StepStatus, Signal> = { waiting: "neutral", running: "insig
  * just made; when the store is ready, what was made and where to go next. Everything shown is the store's own records and the code's words
  * (`src/server/dream-showcase.ts`); the page refreshes itself while the run goes.
  */
-export function DreamProgress({ steps, startedAt, now, storeName, words: w }: { steps: DreamSteps; startedAt: Date; now: Date; storeName: string; words: Words }) {
+export function DreamProgress({
+  steps: given,
+  startedAt,
+  now,
+  storeName,
+  words: w,
+  list = DREAM_STEPS,
+  heading,
+}: {
+  steps: DreamSteps | AllSteps;
+  startedAt: Date;
+  now: Date;
+  storeName: string;
+  words: Words;
+  /** The steps of the run's kind (a build's unless given, D527), and the heading's words for it. */
+  list?: readonly DreamStep<AnyStepId>[];
+  heading?: string;
+}) {
   const s = w.show;
-  const p = showcaseProgress(steps, startedAt, now);
+  const steps = given as AllSteps;
+  const p = showcaseProgress(steps, startedAt, now, list);
   return (
     <section aria-labelledby="dream-building" className="flex flex-col gap-4 rounded-lg border border-line bg-card p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="dream-building" className="text-title text-ink">
-          {fillWords(s.building, { store: storeName })}
+          {fillWords(heading ?? s.building, { store: storeName })}
         </h2>
         <span className="text-body text-ink-2">{p.minutes === 0 ? s.startedNow : fillWords(s.started, { minutes: p.minutes })}</span>
       </div>
@@ -69,26 +87,32 @@ function ProgressBar({ progress, label }: { progress: ShowcaseProgress; label: s
 
 /** Every step on a line: done ones ticked with their minutes, the working one turning, the rest waiting. */
 export function DreamTimeline({
-  steps,
+  steps: given,
   now,
   words: w,
   action,
+  list = DREAM_STEPS,
+  stages = true,
 }: {
-  steps: DreamSteps;
+  steps: DreamSteps | AllSteps;
   now: Date;
   words: Words;
   /** What a step offers beside its status (Try again), when it does. */
-  action?: (id: DreamStepId) => ReactNode;
+  action?: (id: AnyStepId) => ReactNode;
+  /** The steps of the run's kind (a build's unless given, D527); a rework has no stage headings. */
+  list?: readonly DreamStep<AnyStepId>[];
+  stages?: boolean;
 }) {
+  const steps = given as AllSteps;
   return (
     <ol className="flex flex-col [&>li:last-child]:pb-0">
-      {DREAM_STEPS.map((step, index) => {
+      {list.map((step, index) => {
         const state = steps[step.id];
         const minutes = stepMinutes(state, now);
-        const last = index === DREAM_STEPS.length - 1;
+        const last = index === list.length - 1;
         const working = state.status === "running" || state.status === "asking";
         // The two stages (D422): a heading where each begins.
-        const stageStarts = index === 0 || DREAM_STEPS[index - 1].stage !== step.stage;
+        const stageStarts = stages && (index === 0 || list[index - 1].stage !== step.stage);
         return (
           <Fragment key={step.id}>
             {stageStarts && <li className={`pb-3 text-sm font-medium text-ink-2 ${index === 0 ? "" : "pt-2"}`}>{step.stage === 1 ? w.stage.one : w.stage.two}</li>}

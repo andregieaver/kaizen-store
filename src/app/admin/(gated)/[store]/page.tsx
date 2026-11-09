@@ -124,6 +124,14 @@ export default async function AdminOverview({ params, searchParams }: Props) {
       {/* A website keeps Orders out of the menu, but reachable while an order can still be withdrawn from or returned (D178 step 5). */}
       <AfterSaleNote store={store} />
       {store.setupCompletedAt && <Attention items={attention} empty={selling ? h.nothingShop : h.nothing} words={words.attention} />}
+      {/* An open store is changed with the Dream Factory too (D527): the owner says what to change, and nothing goes live before their press. */}
+      {store.setupCompletedAt && owner && !store.starter && (
+        <p className="text-body text-muted">
+          <Link href={`${base}/dream-factory`} className="underline">
+            {words.dream.rework.offer}
+          </Link>
+        </p>
+      )}
       {/* Today's calls, meetings and tasks (S3, D468), the viewer's or the team's: read after the page is shown. */}
       {store.setupCompletedAt && featureOn(store, "sales") && memberCan(current, "customers:read") && (
         <Suspense fallback={null}>

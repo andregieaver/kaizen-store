@@ -1,4 +1,4 @@
-import { DREAM_STEPS, type DreamStepId, type DreamSteps } from "./dream-factory";
+import { DREAM_STEPS, type AllSteps, type AnyStepId, type DreamStep, type DreamSteps } from "./dream-factory";
 
 /**
  * Watching the Dream Factory build (D419): what the owner's page shows while a run goes, worked out from the run's steps and what the steps
@@ -13,18 +13,20 @@ export type ShowcaseProgress = {
   total: number;
   percent: number;
   /** The steps working or waiting for the owner now, in the page's order. */
-  now: DreamStepId[];
+  now: AnyStepId[];
   /** The first step still waiting, when nothing is working. */
-  next: DreamStepId | null;
+  next: AnyStepId | null;
   /** Whole minutes since the run started. */
   minutes: number;
 };
 
-export function showcaseProgress(steps: DreamSteps, startedAt: Date, now: Date): ShowcaseProgress {
-  const total = DREAM_STEPS.length;
-  const done = DREAM_STEPS.filter((s) => steps[s.id].status === "done" || steps[s.id].status === "skipped").length;
-  const working = DREAM_STEPS.filter((s) => steps[s.id].status === "running" || steps[s.id].status === "asking").map((s) => s.id);
-  const next = working.length === 0 ? (DREAM_STEPS.find((s) => steps[s.id].status === "waiting")?.id ?? null) : null;
+/** `list`: the steps of the run's kind (a build's unless given, D527). */
+export function showcaseProgress(given: DreamSteps | AllSteps, startedAt: Date, now: Date, list: readonly DreamStep<AnyStepId>[] = DREAM_STEPS): ShowcaseProgress {
+  const steps = given as AllSteps;
+  const total = list.length;
+  const done = list.filter((s) => steps[s.id].status === "done" || steps[s.id].status === "skipped").length;
+  const working = list.filter((s) => steps[s.id].status === "running" || steps[s.id].status === "asking").map((s) => s.id);
+  const next = working.length === 0 ? (list.find((s) => steps[s.id].status === "waiting")?.id ?? null) : null;
   return {
     done,
     total,

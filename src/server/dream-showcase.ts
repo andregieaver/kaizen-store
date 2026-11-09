@@ -9,8 +9,12 @@ import { formatMoney } from "@/lib/money";
 import type { SiteFonts } from "@/lib/fonts-schema";
 import { parseStoreTheme, type Palette } from "@/lib/theme";
 
+import { parsePageContent } from "@/lib/page-content";
+import { compareVersions, type PageDifference } from "@/lib/version-compare";
+
 import { brandOf } from "./brand";
-import type { DreamRun } from "./dream-factory";
+import { keptChanges, preparedPages, preparedProducts, type DreamRun } from "./dream-factory";
+import { listInstalls } from "./theme-installs";
 import { openDraft } from "./store-drafts";
 import type { Store } from "./stores";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -143,5 +147,53 @@ export async function dreamShowcase(store: Store, run: Pick<DreamRun, "createdAt
     legal: legalPages.map((l) => ({ name: l.name, status: l.status })),
     goals: goals.map((g) => g.title),
     feed: latestMade(feed),
+  };
+}
+
+/**
+ * What a rework has prepared (D527), for the owner's review: the new look waiting in the library, each page with what its draft changes on
+ * the page visitors see (`compareVersions()`: words from facts), the new products, and the changes to products on the site that wait for
+ * a yes, in the words they were kept with. Reads only, the store's own.
+ */
+export type ReworkPrepared = {
+  look: { id: string; title: string; live: boolean } | null;
+  pages: { id: string; title: string; isNew: boolean; changed: boolean; differences: PageDifference[] }[];
+  building: number;
+  products: { id: string; title: string; status: string; complete: boolean }[];
+  changes: { id: string; summary: string; status: string }[];
+};
+
+export async function reworkPrepared(store: Store, run: Pick<DreamRun, "storeId" | "createdAt" | "plan" | "steps">): Promise<ReworkPrepared> {
+  const [installs, own, pages, products, changes] = await Promise.all([
+    listInstalls(store.id),
+    typedRow(
+      z.object({ id: col.uuid }),
+      sql`select id from commerce.store_theme_installs
+          where store_id = ${store.id}::uuid and preset_id is null and installed_at >= ${run.createdAt.toISOString()}::timestamptz
+          order by installed_at desc limit 1`,
+    ),
+    preparedPages(run),
+    preparedProducts(store, run),
+    keptChanges(run, true),
+  ]);
+  const contents =
+    pages.pages.length > 0
+      ? await typedRows(
+          z.object({ id: col.uuid, draft: z.unknown(), published: z.unknown() }),
+          sql`select id, draft, published from commerce.pages where store_id = ${store.id}::uuid and id = any(${`{${pages.pages.map((p) => p.id).join(",")}}`}::uuid[])`,
+        )
+      : [];
+  const look = own ? (installs.find((i) => i.id === own.id) ?? null) : null;
+  return {
+    look: look ? { id: look.id, title: look.title, live: look.live } : null,
+    pages: pages.pages.map((page) => {
+      const row = contents.find((c) => c.id === page.id);
+      const draft = row ? parsePageContent(row.draft) : null;
+      const published = row ? parsePageContent(row.published) : null;
+      return { ...page, differences: draft && published ? compareVersions(published, draft) : [] };
+    }),
+    building: pages.building,
+    products: products.map((p) => ({ id: p.id, title: p.title, status: p.status, complete: p.complete })),
+    changes,
   };
 }

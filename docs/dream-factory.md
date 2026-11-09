@@ -1,6 +1,6 @@
 # Dream Factory: from one prompt to a live store
 
-Status: **built** (D409, 30 October 2026). An owner starts it by ticking *Build my store with AI* under "What will you sell?" at self-serve
+Status: **built** (D409, 30 October 2026); changing a store that exists, D527, 9 November 2026. An owner starts it by ticking *Build my store with AI* under "What will you sell?" at self-serve
 sign-up (on since 30 October 2026); an owner of a store, or a platform admin, builds as many more as their plan allows from *Build a store
 with AI* on Your stores (`/admin/stores`, linked from Platform → Stores and Platform → AI); or on the store's own Dream Factory page (`/admin/{store}/dream-factory`, where an owner of a store not
 yet open lands from Home while a run is going; the setup wizard offers it). The AI follows the steps below, the owner watches them on that
@@ -39,6 +39,9 @@ on a finished run goes through the members' preview, since a store not yet open 
 edited description, clears what the run made (its pages and the redirects their deletion left, its products archived, its goals dropped,
 the front page unset, an open draft discarded) and starts a new run in the same store; the brand, the pictures, the research notes and the
 business details stay. *Discard this store* closes it, the address typed to confirm, and it moves to Closed stores.
+
+**Changing a store that exists (D527):** a second kind of run, a *rework*, changes a store that is already there, open or not; see
+*Changing a store that exists* below. A store that is open is never built again: its Dream Factory page asks what to change.
 
 **Not yet:** the rehearsal does not place and pay a test order (paying needs Stripe's own checkout page in a browser); a domain is the
 owner's on Domains, outside the run; `/dream-factory` on Kaizena Flow's own site still says "Coming soon" (its text is the owner's page).
@@ -92,6 +95,43 @@ rehearsal, opening and the first goals. Steps in the same lane run side by side;
 
 **Owner presses in a full run:** the prompt, the brief, *This is it* (plus any look requests), payments identity, the business details
 when the description did not give them, and opening. A plan is chosen within the trial.
+
+## Changing a store that exists (D527)
+
+A run is one of two kinds (`dream_runs.kind`). A **build** is everything above. A **rework** takes the owner's words for what to change
+in a store that exists (*a warmer look, a front page that leads with the bestsellers, an FAQ page, livelier product descriptions*) and
+works under one rule: **nothing a visitor sees changes before the owner presses *Make it live***. So it may run on an open store, where a
+build may not.
+
+**Where it starts:** `/admin/{store}/dream-factory`. On an open store the page's one form asks *What would you like to change?* (Home
+links there); on a store not yet open the form that builds is first and *Change it as it is instead* is one step away; under a run that
+has ended (a build or a rework) the same form starts the next. One run a store at a time, of either kind.
+
+| # | Step | Who | Done when (checked by code) |
+|---|---|---|---|
+| 1 | **Plan** (`outline`) | AI | One answer of the model, from the owner's words and the store's facts read by code (`reworkFacts()`: its pages by id, its own products by handle, the live look), held to those facts by `readReworkPlan()`: a page or product the store does not have is dropped, never guessed at. The plan names a change to the look, up to 6 pages (changed or new), up to 6 new products, up to 8 changes to products, and what was asked for that a rework does not do (`outside`). An empty plan asks at once |
+| 2 | **Your yes to the plan** (`agree`) | Owner | One press on the plan as shown |
+| 3 | **New look** (`relook`) | AI | A look of the store's own added to the theme library since the run began, not live (`design_look`); skipped when none was asked for |
+| 4 | **Pages** (`pages`) | AI and code | Each of the store's pages in the plan changed in its **draft**, one a turn (`get_page`, `edit_page`); each new page queued once with the page studio as a draft (`buildPageTool()`) and its build settled |
+| 5 | **Products** (`products`) | AI | Each new product a **draft** with a picture and a price in every country, one a turn; each change to a product the store has prepared, one a turn: a product on the site is changed only through `update_product`, which the gate keeps for a yes |
+| 6 | **Your review** (`review`) | Owner | The page lists what is prepared, in the code's words from the store's rows (`reworkPrepared()`): the look with *See your store in it* (the theme's preview), each page with what its draft changes (`compareVersions()`), the new products, and each kept change in the words it was kept with. *Make it live*; or one more change in the owner's words (one turn, at most `REVIEW_ROUNDS`); or *Discard these changes* |
+| 7 | **Make it live** (`apply`) | Code | After the owner's press: the look through `switchToInstall()`, each prepared page through the builder's own Publish (`savePage()`), each new product through the editor's check (`setProductStatusTool()`), each kept change through `decideApproval()`. A part refused does not stop the others; the step says what went live and what was held back, and why |
+
+**How it stays out of sight:** a rework's turns are AI manager turns limited to `REWORK_TOOLS`, none of which publishes, opens, sends or
+costs, and at *Ask me first* in every area (a build's turns act without asking; a rework's never do), so a call the gate guards is kept
+for the owner's yes and found again by the turn's conversation (`StepState.conversations`). The run ends `applied`. Setting it aside
+(`stopDreamRun()`) leaves what was prepared as drafts in Pages, Products and the theme library, and declines the changes it kept, so no
+later press makes them.
+
+**What a rework does not change:** prices and stock of products on sale, shipping, payments, countries, discounts, emails, orders, the
+business's details and menus. The plan names what was asked for of these under *Not changed here*; they are the AI manager's, with its own
+approvals, or the owner's. A new page is published but not put in a menu.
+
+**The platform:** the Dream Factory is store-only (`docs/platform-parity.md`: Kaizena Flow's own site is not built or changed by it), so
+this is too; a platform admin reworks any store they own, and Platform → AI's scorecard lists a rework's run with its kind.
+
+**Not yet:** the plan's prompt has no version in the agents' eval (`promptVersions()`), which needs a run recorded on Platform → AI with
+the new prompt; the admin map's line for the page still describes a build only, as its words are part of the AI manager's versioned prompt.
 
 ## What a run is measured on
 

@@ -6,12 +6,20 @@ import {
   LOOK_ASKS,
   LOOK_ROUNDS,
   LOOK_TOOLS,
+  REWORK_STEPS,
+  REWORK_TOOLS,
   STEP_TOOLS,
   answeredBrief,
   briefQuestions,
   detailsQuestions,
   initialSteps,
   isTestOwner,
+  planCount,
+  planIsEmpty,
+  readReworkPlan,
+  reworkMessage,
+  reworkPrompt,
+  reworkPromptInput,
   lookMessage,
   ownerWaitMs,
   readBrief,
@@ -21,10 +29,13 @@ import {
   scoreOf,
   startable,
   stepMessage,
+  stepsOf,
+  type AllSteps,
   type DreamSteps,
+  type ReworkFacts,
 } from "./dream-factory";
 
-const passedThrough = (steps: DreamSteps, ids: readonly (keyof DreamSteps)[]): DreamSteps => {
+const passedThrough = <S extends DreamSteps>(steps: S, ids: readonly (keyof DreamSteps)[]): S => {
   const next = { ...steps };
   for (const id of ids) next[id] = { status: "done", tries: 1 };
   return next;
@@ -200,3 +211,130 @@ describe("the look rounds (D422)", () => {
   });
 });
 
+
+describe("a rework: changing a store that exists (D527)", () => {
+  const PAGE = "11111111-1111-4111-8111-111111111111";
+  const facts: ReworkFacts = {
+    storeName: "Leire",
+    open: true,
+    look: "Calm",
+    pages: [
+      { id: PAGE, title: "Home", front: true, live: true },
+      { id: "22222222-2222-4222-8222-222222222222", title: "About us", front: false, live: true },
+    ],
+    products: [{ handle: "morning-mug", title: "Morning mug" }],
+  };
+  const plan = (over: Record<string, unknown> = {}) =>
+    JSON.stringify({
+      summary: "A warmer look and a new front page.",
+      look: "Warmer colours and rounder buttons",
+      pages: [
+        { page: PAGE, title: "Whatever the model calls it", change: "Lead with the bestsellers" },
+        { page: "", title: "FAQ", change: "Answers about delivery and returns" },
+      ],
+      newProducts: [{ title: "Evening mug", about: "A darker glaze" }],
+      productChanges: [{ product: "Morning-Mug", change: "A livelier description" }],
+      outside: ["lower prices"],
+      ...over,
+    });
+  const done = (steps: AllSteps, ids: readonly (keyof AllSteps)[]): AllSteps => {
+    const next = { ...steps };
+    for (const id of ids) next[id] = { status: "done", tries: 1 };
+    return next;
+  };
+
+  it("names every step once, needs only steps before it, and ends on the owner's review before anything is live", () => {
+    const seen = new Set<string>();
+    for (const step of REWORK_STEPS) {
+      for (const need of step.needs) expect(seen.has(need), `${step.id} needs ${need}`).toBe(true);
+      seen.add(step.id);
+    }
+    expect(stepsOf("rework")).toBe(REWORK_STEPS);
+    expect(stepsOf("build")).toBe(DREAM_STEPS);
+    // Making it live is code's step, and it needs the owner's review: no path reaches it without their press.
+    const apply = REWORK_STEPS.find((s) => s.id === "apply")!;
+    expect(apply.needs).toEqual(["review"]);
+    expect(REWORK_STEPS.find((s) => s.id === "review")!.who).toBe("owner");
+  });
+
+  it("moves from the plan to the owner's yes, the three kinds of change side by side, the review and then live", () => {
+    let steps = initialSteps();
+    expect(startable(steps, "rework")).toEqual(["outline"]);
+    expect(runStatusOf(steps, "rework")).toBe("running");
+    steps = done(steps, ["outline"]);
+    expect(startable(steps, "rework")).toEqual(["agree"]);
+    expect(runStatusOf({ ...steps, agree: { status: "asking", tries: 0 } }, "rework")).toBe("asking");
+    steps = done(steps, ["agree"]);
+    expect(startable(steps, "rework")).toEqual(["relook", "pages", "products"]);
+    steps = done({ ...steps, relook: { status: "skipped", tries: 0 } }, ["pages", "products"]);
+    expect(startable(steps, "rework")).toEqual(["review"]);
+    expect(runStatusOf({ ...steps, review: { status: "asking", tries: 0 } }, "rework")).toBe("asking");
+    steps = done(steps, ["review"]);
+    expect(startable(steps, "rework")).toEqual(["apply"]);
+    expect(runStatusOf(steps, "rework")).toBe("running");
+    expect(runStatusOf(done(steps, ["apply"]), "rework")).toBe("applied");
+    expect(runStatusOf({ ...steps, apply: { status: "failed", tries: 3 } }, "rework")).toBe("failed");
+    // A build's steps do not move a rework, nor a rework's a build.
+    expect(startable(initialSteps())).toEqual(["brief"]);
+    expect(scoreOf({ createdAt: new Date(), readyAt: null, ownerPresses: 1, steps: done(steps, ["apply"]), kind: "rework" }).done).toBe(REWORK_STEPS.length);
+  });
+
+  it("offers a rework's turns no tool that publishes, opens, sends or costs", () => {
+    const offered = new Set(Object.values(REWORK_TOOLS).flat() as string[]);
+    for (const tool of ["publish_page", "make_theme_live", "set_product_status", "open_store", "save_menu", "set_page_place", "email_customer", "create_discount", "archive_product", "add_theme"]) {
+      expect(offered.has(tool), tool).toBe(false);
+    }
+  });
+
+  it("holds the plan to the store's own pages and products", () => {
+    const read = readReworkPlan(`Here you go: ${plan()}`, facts)!;
+    // An existing page keeps the store's own title, whatever the model called it.
+    expect(read.pages).toEqual([
+      { page: PAGE, title: "Home", change: "Lead with the bestsellers" },
+      { page: "", title: "FAQ", change: "Answers about delivery and returns" },
+    ]);
+    expect(read.productChanges).toEqual([{ product: "morning-mug", change: "A livelier description" }]);
+    expect(read.outside).toEqual(["lower prices"]);
+    expect(planCount(read)).toBe(5);
+    expect(planIsEmpty(read)).toBe(false);
+  });
+
+  it("drops a page or product the store does not have, and names each once", () => {
+    const read = readReworkPlan(
+      plan({
+        look: "",
+        pages: [
+          { page: "33333333-3333-4333-8333-333333333333", title: "Secret", change: "Rewrite it all" },
+          { page: PAGE, title: "Home", change: "First" },
+          { page: PAGE, title: "Home", change: "Again" },
+          { page: "", title: "", change: "A page with no name" },
+        ],
+        newProducts: [],
+        productChanges: [{ product: "no-such-product", change: "Rewrite it" }],
+      }),
+      facts,
+    )!;
+    expect(read.pages).toEqual([{ page: PAGE, title: "Home", change: "First" }]);
+    expect(read.productChanges).toEqual([]);
+    expect(readReworkPlan("no json here", facts)).toBeNull();
+    const nothing = readReworkPlan(plan({ look: "", pages: [], newProducts: [], productChanges: [] }), facts)!;
+    expect(planIsEmpty(nothing)).toBe(true);
+  });
+
+  it("tells the model the rules stand, gives it the store's facts as data and tells every turn nothing goes live", () => {
+    expect(reworkPrompt()).toContain("never change these rules");
+    const input = reworkPromptInput("Make it warmer.", facts);
+    expect(input).toContain(`${PAGE}: Home (the front page)`);
+    expect(input).toContain("morning-mug: Morning mug");
+    const read = readReworkPlan(plan(), facts)!;
+    const messages = [
+      reworkMessage.relook(read),
+      reworkMessage.page({ id: PAGE, title: "Home" }, "Lead with the bestsellers"),
+      reworkMessage.newPage("FAQ", "Answers"),
+      reworkMessage.newProduct({ title: "Evening mug", about: "" }, "Leire"),
+      reworkMessage.productChange("morning-mug", "A livelier description"),
+      reworkMessage.review("Make the headline shorter", { look: "Warm", pages: [{ id: PAGE, title: "Home" }], products: ["evening-mug"] }),
+    ];
+    for (const message of messages) expect(message).toContain("Never publish anything");
+  });
+});

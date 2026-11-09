@@ -6,7 +6,6 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { autonomySettingsSchema } from "@/lib/autopilot-autonomy";
 import {
-  DREAM_STEPS,
   DREAM_TRIES,
   PROMPT_MAX,
   PROMPT_MIN,
@@ -20,6 +19,17 @@ import {
   briefQuestions,
   detailsQuestions,
   initialSteps,
+  planCount,
+  planIsEmpty,
+  readReworkPlan,
+  reworkMessage,
+  reworkPlanSchema,
+  reworkPrompt,
+  reworkPromptInput,
+  REVIEW_ROUNDS,
+  REWORK_OPTIONS,
+  REWORK_TOOLS,
+  stepsOf,
   LOOK_ROUNDS,
   LOOK_TOOLS,
   lookMessage,
@@ -35,13 +45,17 @@ import {
   stepMessage,
   stepOf,
   type AiStepId,
+  type AllSteps,
+  type AnyStepId,
   type DreamBrief,
+  type DreamKind,
   type DreamScore,
-  type DreamStepId,
-  type DreamSteps,
+  type ReworkFacts,
+  type ReworkPlan,
   type RunStatus,
   type StepState,
 } from "@/lib/dream-factory";
+import type { BuildPageArgs } from "@/lib/site-tools";
 import { STARTER_ROLES, type StarterRole } from "@/lib/legal-starters";
 import { featureOn } from "@/lib/store-features";
 
@@ -52,8 +66,11 @@ import { isDemoProduct } from "./demo-content";
 import { createLegalStarter } from "./legal-starters";
 import { legalWrites, turnOnLegalAi } from "./legal-writer";
 import { log } from "./log";
-import { runTurn, type Principal, type TurnInput } from "./owner-assistant";
-import { deletePage, setFrontPage } from "./pages";
+import { decideApproval, runTurn, type Principal, type TurnInput } from "./owner-assistant";
+import { OwnerToolError } from "./owner-tool-error";
+import { deletePage, getPageForEdit, savePage, setFrontPage } from "./pages";
+import { setProductStatusTool } from "./product-tools";
+import { buildPageTool } from "./site-tools";
 import { saveCurrencies } from "./localization";
 import { backToRule, marketPriceRules, rateProblem, saveMarketPriceRule } from "./market-prices";
 import { memberCan } from "./permissions";
@@ -62,7 +79,7 @@ import { setFeature } from "./store-features";
 import { createStoreForOwner } from "./platform";
 import { catalogTag } from "./catalog";
 import { deleteRedirects } from "./redirects";
-import { addOwnLook, switchToInstall } from "./theme-installs";
+import { addOwnLook, listInstalls, liveLook, switchToInstall } from "./theme-installs";
 import { refreshTag } from "./refresh";
 import { archiveDemoProducts, getSetupProgress, saveStoreDetails } from "./setup";
 import { checkupFindings } from "./store-checkup";
@@ -99,10 +116,14 @@ export type DreamRun = {
   storeId: string;
   accountId: string | null;
   prompt: string;
+  /** `build`: a store from a description, before it opens. `rework` (D527): changes to a store that exists, made live on the owner's press. */
+  kind: DreamKind;
   test: boolean;
   status: RunStatus | "stopped";
   brief: DreamBrief | null;
-  steps: DreamSteps;
+  /** A rework's plan (kept where a build keeps its brief). */
+  plan: ReworkPlan | null;
+  steps: AllSteps;
   conversationId: string | null;
   ownerPresses: number;
   createdAt: Date;
@@ -115,6 +136,7 @@ const runRow = z.object({
   store_id: col.uuid,
   account_id: col.uuid.nullable(),
   prompt: col.text,
+  kind: col.text,
   test: col.bool,
   status: col.text,
   brief: z.unknown().nullable(),
@@ -126,19 +148,24 @@ const runRow = z.object({
   finished_at: col.timestampOrNull,
 });
 
-const RUN_COLUMNS = sql`id, store_id, account_id, prompt, test, status, brief, steps, conversation_id, owner_presses, created_at, ready_at, finished_at`;
+const RUN_COLUMNS = sql`id, store_id, account_id, prompt, kind, test, status, brief, steps, conversation_id, owner_presses, created_at, ready_at, finished_at`;
 
 function toRun(row: z.output<typeof runRow>): DreamRun {
   // The brief as kept: its business details were checked against the owner's words when it was made (`readBrief()`).
-  const brief = row.brief ? (briefSchema.safeParse(row.brief).data ?? null) : null;
+  const kind: DreamKind = row.kind === "rework" ? "rework" : "build";
+  const brief = kind === "build" && row.brief ? (briefSchema.safeParse(row.brief).data ?? null) : null;
+  // A rework's plan as kept: its pages and products were held to the store's own when it was made (`readReworkPlan()`).
+  const plan = kind === "rework" && row.brief ? (reworkPlanSchema.safeParse(row.brief).data ?? null) : null;
   return {
     id: row.id,
     storeId: row.store_id,
     accountId: row.account_id,
     prompt: row.prompt,
+    kind,
     test: row.test,
     status: row.status as DreamRun["status"],
     brief,
+    plan,
     steps: readSteps(row.steps),
     conversationId: row.conversation_id,
     ownerPresses: row.owner_presses,
@@ -162,7 +189,7 @@ export async function startDreamRun(member: Pick<Membership, "account" | "store"
   if (!memberCan(member, "owner")) return { ok: false, problem: "Only an owner of the store can start the Dream Factory." };
   // The run's AI works at its own levels, which act without asking, on the promise that nothing reaches the public before opening.
   const [opened] = await typedRows(z.object({ open: col.bool }), sql`select setup_completed_at is not null as open from commerce.stores where id = ${member.store.id}::uuid`);
-  if (opened?.open) return { ok: false, problem: "This store is already open: the Dream Factory builds stores before they open. Ask the AI manager for changes instead." };
+  if (opened?.open) return { ok: false, problem: "This store is already open: describe what to change instead, and the Dream Factory prepares it for you to look at before anything goes live." };
   const text = prompt.trim();
   if (text.length < PROMPT_MIN || text.length > PROMPT_MAX) {
     return { ok: false, problem: `Describe the store in ${PROMPT_MIN} to ${PROMPT_MAX} characters.` };
@@ -216,7 +243,7 @@ export type DreamRunSummary = DreamRun & { storeName: string; storeSlug: string;
 export async function recentDreamRuns(limit = 20): Promise<DreamRunSummary[]> {
   const rows = await typedRows(
     runRow.extend({ store_name: col.text, store_slug: col.text }),
-    sql`select r.id, r.store_id, r.account_id, r.prompt, r.test, r.status, r.brief, r.steps, r.conversation_id, r.owner_presses, r.created_at,
+    sql`select r.id, r.store_id, r.account_id, r.prompt, r.kind, r.test, r.status, r.brief, r.steps, r.conversation_id, r.owner_presses, r.created_at,
           r.ready_at, r.finished_at, s.name as store_name, s.slug as store_slug
         from commerce.dream_runs r join commerce.stores s on s.id = r.store_id
         order by r.created_at desc limit ${limit}`,
@@ -224,7 +251,7 @@ export async function recentDreamRuns(limit = 20): Promise<DreamRunSummary[]> {
   const now = new Date();
   return rows.map((row) => {
     const run = toRun(row);
-    return { ...run, storeName: row.store_name, storeSlug: row.store_slug, score: scoreOf({ ...run, ownerWaitMs: ownerWaitMs(run.steps, now) }) };
+    return { ...run, storeName: row.store_name, storeSlug: row.store_slug, score: scoreOf({ ...run, ownerWaitMs: ownerWaitMs(run.steps, now, run.kind) }) };
   });
 }
 
@@ -236,10 +263,10 @@ export async function testDreamRun(runId: string): Promise<(DreamRun & { storeSl
   if (!z.uuid().safeParse(runId).success) return null;
   const row = await typedRow(
     runRow.extend({ store_slug: col.text }),
-    sql`select r.id, r.store_id, r.account_id, r.prompt, r.test, r.status, r.brief, r.steps, r.conversation_id, r.owner_presses, r.created_at,
+    sql`select r.id, r.store_id, r.account_id, r.prompt, r.kind, r.test, r.status, r.brief, r.steps, r.conversation_id, r.owner_presses, r.created_at,
           r.ready_at, r.finished_at, s.slug as store_slug
         from commerce.dream_runs r join commerce.stores s on s.id = r.store_id
-        where r.id = ${runId}::uuid and r.test`,
+        where r.id = ${runId}::uuid and r.test and r.kind = 'build'`,
   );
   return row ? { ...toRun(row), storeSlug: row.store_slug } : null;
 }
@@ -301,10 +328,13 @@ export async function confirmDreamBrief(member: Membership, runId: string): Prom
 }
 
 /** A step that became a question after three tries is tried again on the owner's press. */
-export async function retryDreamStep(member: Membership, runId: string, step: DreamStepId): Promise<OwnerAction> {
+export async function retryDreamStep(member: Membership, runId: string, step: AnyStepId): Promise<OwnerAction> {
   const run = await ownedRun(member, runId);
-  if (!run || stepOf(step).who === "owner" || run.steps[step].status !== "asking") return { ok: false, problem: "That step is not waiting." };
-  await save(run.id, { steps: { ...run.steps, [step]: { status: "waiting", tries: 0, detail: run.steps[step].detail } }, presses: 1 });
+  if (!run || !stepsOf(run.kind).some((s) => s.id === step) || stepOf(step).who === "owner" || run.steps[step].status !== "asking") return { ok: false, problem: "That step is not waiting." };
+  const was = run.steps[step];
+  // A rework's step goes on from what it prepared: the builds it queued and the turns whose changes wait for a yes.
+  const kept = run.kind === "rework" ? { startedAt: was.startedAt, ref: was.ref, conversations: was.conversations } : {};
+  await save(run.id, { steps: { ...run.steps, [step]: { status: "waiting", tries: 0, detail: was.detail, ...kept } }, presses: 1 });
   return { ok: true };
 }
 
@@ -313,6 +343,8 @@ export async function stopDreamRun(member: Membership, runId: string): Promise<O
   const run = await ownedRun(member, runId);
   if (!run || (run.status !== "running" && run.status !== "asking")) return { ok: false, problem: "The run is not going." };
   await db().execute(sql`update commerce.dream_runs set status = 'stopped', finished_at = now(), updated_at = now() where id = ${run.id}::uuid`);
+  // A rework set aside (D527): what it prepared stays as drafts, and the changes it kept for a yes are declined, so none is made by a later press.
+  if (run.kind === "rework") await declineKept(run, member);
   await audit(member.account.id, member.store.id, "store.dream_stopped", { run: run.id }, { area: "website", target: { type: "store", id: member.store.id } });
   return { ok: true };
 }
@@ -375,7 +407,7 @@ export async function startDreamOver(member: Membership, prompt: string): Promis
 
 const now = () => new Date().toISOString();
 
-async function save(runId: string, change: { steps?: DreamSteps; brief?: DreamBrief; conversationId?: string | null; presses?: number }) {
+async function save(runId: string, change: { steps?: AllSteps; brief?: DreamBrief | ReworkPlan; conversationId?: string | null; presses?: number }) {
   const [row] = await db().execute<Row>(sql`
     update commerce.dream_runs set
       steps = coalesce(${change.steps ? JSON.stringify(change.steps) : null}::jsonb, steps),
@@ -384,16 +416,20 @@ async function save(runId: string, change: { steps?: DreamSteps; brief?: DreamBr
       owner_presses = owner_presses + ${change.presses ?? 0},
       updated_at = now()
     where id = ${runId}::uuid
-    returning steps, status, test
+    returning steps, status, test, kind
   `);
   if (!row || row.status === "stopped") return;
   const steps = readSteps(row.steps);
-  const status = runStatusOf(steps);
+  const rework = row.kind === "rework";
+  const status = runStatusOf(steps, rework ? "rework" : "build");
+  // A rework is ready when its changes are prepared and wait for the owner's review; a build, when only opening is left.
+  const ready = rework ? steps.review.status !== "waiting" : status === "ready" || status === "open" || passed(steps.rehearsal);
+  const finished = status === "failed" || status === "open" || status === "applied" || (status === "ready" && passed(steps.goals));
   await db().execute(sql`
     update commerce.dream_runs set
       status = ${status},
-      ready_at = case when ${status === "ready" || status === "open" || passed(steps.rehearsal)} then coalesce(ready_at, now()) else ready_at end,
-      finished_at = case when ${status === "failed" || status === "open" || (status === "ready" && passed(steps.goals))} then coalesce(finished_at, now()) else null end
+      ready_at = case when ${ready} then coalesce(ready_at, now()) else ready_at end,
+      finished_at = case when ${finished} then coalesce(finished_at, now()) else null end
     where id = ${runId}::uuid
   `);
 }
@@ -407,6 +443,8 @@ export type DreamDeps = {
   legalOn?: typeof turnOnLegalAi;
   /** The store's currencies saved at the ECB's rates (`saveCurrencies()`); tests stand in for the ECB. */
   currencies?: (member: Membership) => Promise<SaveResult>;
+  /** A rework's new page queued with the page studio (`buildPageTool()`), giving its job; tests stand in for the studio. */
+  buildPage?: (member: Membership, args: BuildPageArgs) => Promise<string>;
 };
 
 /**
@@ -443,7 +481,8 @@ export async function advanceDreamRuns({ deadline, deps = {} }: { deadline: numb
   return { moved, failed };
 }
 
-type Context = { run: DreamRun; member: Membership; deps: DreamDeps; deadline: number };
+/** `slot`: the minute's one turn of the AI manager: free while none was taken and there is time for one; a turn marks it used. */
+type Context = { run: DreamRun; member: Membership; deps: DreamDeps; deadline: number; slot: { free: boolean; used: boolean } };
 
 /** One run's turn: the steps waiting on something are looked at again, then the ones that may start are started, one AI turn at most. */
 async function advanceRun(runId: string, deadline: number, deps: DreamDeps): Promise<number> {
@@ -459,33 +498,44 @@ async function advanceRun(runId: string, deadline: number, deps: DreamDeps): Pro
   }
   // Opened by hand before the run reached its last step: the run's levels act without asking, so it stops, and the store's own levels
   // (the AI manager and autopilot) take over from here.
-  if (!run.test && member.store.setupCompletedAt && run.steps.open.status !== "asking" && run.steps.open.status !== "done") {
+  // A rework (D527) is made for a store that may be open: its turns change nothing visitors see, so it goes on.
+  if (run.kind === "build" && !run.test && member.store.setupCompletedAt && run.steps.open.status !== "asking" && run.steps.open.status !== "done") {
     await db().execute(sql`update commerce.dream_runs set status = 'stopped', finished_at = now(), updated_at = now() where id = ${run.id}::uuid`);
     log("info", "dream_factory.stopped_opened", { run: run.id });
     return 0;
   }
   let moved = 0;
   let turns = 0;
-  for (let pass = 0; pass < DREAM_STEPS.length && Date.now() < deadline; pass++) {
-    const due = DREAM_STEPS.filter((s) => run.steps[s.id].status === "running" || run.steps[s.id].status === "asking" || startable(run.steps).includes(s.id)).map((s) => s.id);
+  const list = stepsOf(run.kind);
+  for (let pass = 0; pass < list.length && Date.now() < deadline; pass++) {
+    const due = list.filter((s) => run.steps[s.id].status === "running" || run.steps[s.id].status === "asking" || startable(run.steps, run.kind).includes(s.id)).map((s) => s.id);
     let changed = false;
     for (const id of due) {
       if (Date.now() >= deadline) break;
       // A turn of the AI manager takes up to two minutes: one a minute. The brief is one short answer, not a turn.
+      // A rework's steps ask for the minute's turn themselves (`slot`): one that only waits on page builds takes none.
       const usesTurn =
-        (stepOf(id).who === "ai" && id !== "brief" && run.steps[id].status !== "asking") ||
+        run.kind === "build" &&
+        ((stepOf(id).who === "ai" && id !== "brief" && run.steps[id].status !== "asking") ||
         (id === "website" && Boolean(run.steps.website.ref)) ||
         // A change to the look the owner asked for (D422) is one turn of the AI.
-        (id === "approve" && run.steps.approve.status === "running" && Boolean(run.steps.approve.ref));
-      if (usesTurn && (turns > 0 || deadline - Date.now() < TURN_MS)) continue;
+          (id === "approve" && run.steps.approve.status === "running" && Boolean(run.steps.approve.ref)));
+      const slot = { free: turns === 0 && deadline - Date.now() >= TURN_MS, used: false };
+      if (usesTurn && !slot.free) continue;
       const before = run.steps[id];
       // The store as it is now: a step earlier in this minute may have set its country, its markets or its features.
       const current = (await passMembership(store.slug, member.account.id)) ?? member;
-      const after = await runStep(id, { run, member: current, deps, deadline });
-      if (usesTurn) turns++;
-      if (after && (JSON.stringify(after.state) !== JSON.stringify(before) || after.brief || after.presses)) {
-        run = { ...run, steps: { ...run.steps, [id]: after.state }, ...(after.brief && { brief: after.brief }), ...(after.conversationId && { conversationId: after.conversationId }) };
-        await save(run.id, { steps: run.steps, brief: after.brief, conversationId: after.conversationId, presses: after.presses });
+      const after = await runStep(id, { run, member: current, deps, deadline, slot });
+      if (usesTurn || slot.used) turns++;
+      if (after && (JSON.stringify(after.state) !== JSON.stringify(before) || after.brief || after.plan || after.presses)) {
+        run = {
+          ...run,
+          steps: { ...run.steps, [id]: after.state },
+          ...(after.brief && { brief: after.brief }),
+          ...(after.plan && { plan: after.plan }),
+          ...(after.conversationId && { conversationId: after.conversationId }),
+        };
+        await save(run.id, { steps: run.steps, brief: after.brief ?? after.plan, conversationId: after.conversationId, presses: after.presses });
         changed = true;
         moved++;
       }
@@ -495,7 +545,7 @@ async function advanceRun(runId: string, deadline: number, deps: DreamDeps): Pro
   return moved;
 }
 
-type StepOutcome = { state: StepState; brief?: DreamBrief; conversationId?: string; presses?: number };
+type StepOutcome = { state: StepState; brief?: DreamBrief; plan?: ReworkPlan; conversationId?: string; presses?: number };
 
 const started = (state: StepState): StepState => (state.status === "waiting" ? { ...state, status: "running", startedAt: now() } : state);
 const done = (state: StepState, detail: string): StepState => ({ ...state, status: "done", finishedAt: now(), detail });
@@ -513,9 +563,23 @@ function failedTry(run: DreamRun, state: StepState, problem: string): StepState 
 /** Background work (page builds, legal writes) given up on after `WAIT_MINUTES`. */
 const waitedTooLong = (state: StepState) => Boolean(state.startedAt) && Date.now() - new Date(state.startedAt as string).getTime() > WAIT_MINUTES * 60_000;
 
-async function runStep(id: DreamStepId, ctx: Context): Promise<StepOutcome | null> {
+async function runStep(id: AnyStepId, ctx: Context): Promise<StepOutcome | null> {
   const state = ctx.run.steps[id];
   switch (id) {
+    case "outline":
+      return state.status === "asking" ? null : outlineStep(ctx);
+    case "agree":
+      return state.status === "asking" ? null : { state: asking(state, "Waiting for the owner's yes to the plan.") };
+    case "relook":
+      return state.status === "asking" ? null : relookStep(ctx);
+    case "pages":
+      return state.status === "asking" ? null : pagesStep(ctx);
+    case "products":
+      return state.status === "asking" ? null : productsStep(ctx);
+    case "review":
+      return reviewStep(ctx);
+    case "apply":
+      return applyStep(ctx);
     case "brief":
       return state.status === "asking" ? null : briefStep(ctx);
     case "confirm":
@@ -652,10 +716,13 @@ async function priceOtherCountries({ member, deps }: Context): Promise<{ ok: tru
 }
 
 /** A turn of the AI manager in the owner's name, offered only the tools given, at the run's levels. */
-async function managerTurn({ run, member, deps }: Context, tools: readonly string[], message: string, conversationId: string | null) {
+async function managerTurn({ run, member, deps, slot }: Context, tools: readonly string[], message: string, conversationId: string | null) {
+  slot.used = true;
   const principal: Principal = { account: member.account, store: member.store, role: member.role, kind: member.kind, permissions: member.permissions };
   const connection = deps.connection !== undefined ? deps.connection : await aiFor(run.storeId, { feature: "dream_factory", accountId: member.account.id });
-  const seen: { error: string | null; conversationId: string | null } = { error: null, conversationId: null };
+  const seen: { error: string | null; conversationId: string | null; kept: number } = { error: null, conversationId: null, kept: 0 };
+  // A build acts without asking where a store being set up needs it; a rework (D527) never does: every gated call waits for the owner's yes.
+  const levels = run.kind === "rework" ? {} : RUN_LEVELS;
   await actingAs("autopilot", () =>
     (deps.turn ?? runTurn)({
       member: principal,
@@ -664,11 +731,12 @@ async function managerTurn({ run, member, deps }: Context, tools: readonly strin
       emit: (event) => {
         if (event.type === "conversation") seen.conversationId = event.id;
         if (event.type === "error") seen.error = event.message;
+        if (event.type === "approval") seen.kept++;
       },
       invalidate: refreshTag,
       signal: AbortSignal.timeout(TURN_MS),
       scheduled: true,
-      autopilot: { tools: [...tools], settings: autonomySettingsSchema.parse({ levels: RUN_LEVELS }), told: [] },
+      autopilot: { tools: [...tools], settings: autonomySettingsSchema.parse({ levels }), told: [] },
       connection,
     }),
   );
@@ -997,3 +1065,419 @@ async function openStep({ run, member }: Context): Promise<StepOutcome | null> {
   return state.status === "asking" ? null : { state: asking(state, "Everything is ready: open the store when you are.") };
 }
 
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// A rework: changing a store that exists (D527)
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Starts a rework (D527): the owner says what to change in a store that exists, open or not. Refused for anyone but an owner, a description
+ * of the wrong length, or while another run of the store is going. Unlike a build it gives no trial and clears nothing: it prepares its
+ * changes beside what the store shows and waits for the owner's press.
+ */
+export async function startDreamRework(member: Pick<Membership, "account" | "store" | "role" | "permissions" | "kind">, prompt: string): Promise<StartResult> {
+  if (!memberCan(member, "owner")) return { ok: false, problem: "Only an owner of the store can start the Dream Factory." };
+  const text = prompt.trim();
+  if (text.length < PROMPT_MIN || text.length > PROMPT_MAX) return { ok: false, problem: `Say what to change in ${PROMPT_MIN} to ${PROMPT_MAX} characters.` };
+  const [row] = await db().execute<Row>(sql`
+    insert into commerce.dream_runs (store_id, account_id, prompt, kind, test, steps)
+    values (${member.store.id}::uuid, ${member.account.id}::uuid, ${text}, 'rework', ${isTestOwner(member.account.email)}, ${JSON.stringify(initialSteps())}::jsonb)
+    on conflict do nothing
+    returning id
+  `);
+  if (!row) return { ok: false, problem: "The Dream Factory is already working on this store: let it finish, or stop it first." };
+  const id = String(row.id);
+  await audit(member.account.id, member.store.id, "store.dream_rework_started", { run: id }, { area: "website", target: { type: "store", id: member.store.id } });
+  log("info", "dream_factory.rework_started", { run: id });
+  return { ok: true, id };
+}
+
+/** The owner's yes to a rework's plan: the changes are prepared. */
+export async function agreeReworkPlan(member: Membership, runId: string): Promise<OwnerAction> {
+  const run = await ownedRun(member, runId);
+  if (!run || run.kind !== "rework" || run.steps.agree.status !== "asking") return { ok: false, problem: "The plan is not waiting for a yes." };
+  await save(run.id, { steps: { ...run.steps, agree: { ...run.steps.agree, status: "done", finishedAt: now(), detail: "Agreed by the owner." } }, presses: 1 });
+  return { ok: true };
+}
+
+/** One more change asked for while reviewing a rework: one turn of the AI, taken by the conductor's next minute; at most `REVIEW_ROUNDS`. */
+export async function askReworkChange(member: Membership, runId: string, ask: string): Promise<OwnerAction> {
+  const run = await ownedRun(member, runId);
+  if (!run || run.kind !== "rework" || run.steps.review.status !== "asking") return { ok: false, problem: "The changes are not waiting for you." };
+  const text = ask.trim();
+  if (text.length < 3 || text.length > 500) return { ok: false, problem: "Say what to change in 3 to 500 characters." };
+  const state = run.steps.review;
+  if (state.tries >= REVIEW_ROUNDS) return { ok: false, problem: `You have asked for ${REVIEW_ROUNDS} changes: make them live, or discard them and describe it again.` };
+  await save(run.id, { steps: { ...run.steps, review: { ...state, status: "running", tries: state.tries + 1, ref: text, detail: `Working on: ${text.slice(0, 200)}` } }, presses: 1 });
+  return { ok: true };
+}
+
+/** The owner's *Make it live* (D527): the conductor's next minute publishes what was prepared (`applyStep()`). */
+export async function applyRework(member: Membership, runId: string): Promise<OwnerAction> {
+  const run = await ownedRun(member, runId);
+  if (!run || run.kind !== "rework" || run.steps.review.status !== "asking") return { ok: false, problem: "The changes are not waiting for you." };
+  await save(run.id, { steps: { ...run.steps, review: { ...run.steps.review, status: "done", finishedAt: now(), detail: "Made live by the owner." } }, presses: 1 });
+  await audit(member.account.id, member.store.id, "store.dream_rework_agreed", { run: run.id }, { area: "website", target: { type: "store", id: member.store.id } });
+  return { ok: true };
+}
+
+/** The store as a rework's plan is drawn from it, read by code. */
+export async function reworkFacts(store: Store): Promise<ReworkFacts> {
+  const locale = store.markets[0]?.locale ?? "en";
+  const [pages, products, look] = await Promise.all([
+    typedRows(
+      z.object({ id: col.uuid, title: col.text, live: col.bool }),
+      sql`select id, coalesce(draft ->> 'title', published ->> 'title', '') as title, published_at is not null as live
+          from commerce.pages where store_id = ${store.id}::uuid and type = 'page' order by updated_at desc limit 30`,
+    ),
+    typedRows(
+      z.object({ handle: col.text, title: col.text }),
+      sql`select p.handle, coalesce(
+            (select t.title from commerce.product_translations t where t.product_id = p.id and t.title <> '' order by t.locale = ${locale} desc, t.locale limit 1),
+            p.handle) as title
+          from commerce.products p
+          where p.store_id = ${store.id}::uuid and p.status <> 'archived' and not ${isDemoProduct(sql`p`)}
+          order by p.updated_at desc limit 40`,
+    ),
+    liveLook(store.id),
+  ]);
+  return {
+    storeName: store.name,
+    open: Boolean(store.setupCompletedAt),
+    look: look?.title ?? "",
+    pages: pages.map((p) => ({ ...p, front: p.id === store.frontPageId })),
+    products,
+  };
+}
+
+/** A waiting step set working, its first start kept: what a rework's step prepared is counted from the run's start, over every try. */
+const begun = (state: StepState): StepState => (state.status === "waiting" ? { ...state, status: "running", startedAt: state.startedAt ?? now() } : state);
+const withTurn = (state: StepState, conversationId: string | null): StepState =>
+  conversationId ? { ...state, conversations: [...(state.conversations ?? []), conversationId].slice(-60) } : state;
+
+/** The plan: one answer of the model from the owner's words and the store's facts, held to the store's own pages and products. */
+async function outlineStep({ run, member, deps }: Context): Promise<StepOutcome> {
+  const state = begun(run.steps.outline);
+  const connection = deps.connection !== undefined ? deps.connection : await aiFor(run.storeId, { feature: "dream_factory", accountId: member.account.id });
+  if (!connection?.textModel) return { state: failedTry(run, state, "The store's AI has no text model.") };
+  const facts = await reworkFacts(member.store);
+  let answer: string;
+  try {
+    answer = (
+      await (deps.complete ?? completeText)(
+        connection,
+        [
+          { role: "system", content: reworkPrompt() },
+          { role: "user", content: reworkPromptInput(run.prompt, facts) },
+        ],
+        REWORK_OPTIONS,
+      )
+    ).text;
+  } catch (error) {
+    log("warn", "dream_factory.outline_failed", { run: run.id }, error);
+    return { state: failedTry(run, state, "The plan could not be written just now.") };
+  }
+  const plan = readReworkPlan(answer, facts);
+  if (!plan) return { state: failedTry(run, state, "The plan could not be read.") };
+  // Nothing a rework changes was asked for: said at once, with no further try, so the owner describes it again or asks the AI manager.
+  if (planIsEmpty(plan)) {
+    return { state: asking(state, "Nothing in your description is a change to the look, the pages or the products. Stop this run and describe it again, or ask the AI manager."), plan };
+  }
+  return { state: done(state, `${planCount(plan)} change(s) planned.`), plan };
+}
+
+/** The newest look of the store's own made since the run began, with whether it is live. */
+async function preparedLook(run: DreamRun): Promise<{ id: string; title: string; live: boolean } | null> {
+  const row = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`select id from commerce.store_theme_installs
+        where store_id = ${run.storeId}::uuid and preset_id is null and installed_at >= ${run.createdAt.toISOString()}::timestamptz
+        order by installed_at desc limit 1`,
+  );
+  const install = row ? (await listInstalls(run.storeId)).find((i) => i.id === row.id) : null;
+  return install ? { id: install.id, title: install.title, live: install.live } : null;
+}
+
+/** The look: a new look of the store's own in the library, not live (`design_look`); skipped when the plan asks for none. */
+async function relookStep(ctx: Context): Promise<StepOutcome | null> {
+  const { run } = ctx;
+  if (!run.plan?.look) return { state: skipped(begun(run.steps.relook), "No change to the look was asked for.") };
+  const state = begun(run.steps.relook);
+  const found = async () => {
+    const look = await preparedLook(run);
+    return look ? { state: { ...done(state, `The look "${look.title}" is in your theme library, not live.`), ref: look.id } } : null;
+  };
+  const already = await found();
+  if (already) return already;
+  if (!ctx.slot.free) return { state };
+  const seen = await managerTurn(ctx, REWORK_TOOLS.relook, reworkMessage.relook(run.plan), null);
+  if (seen.error) return { state: failedTry(run, state, seen.error.slice(0, 300)) };
+  return (await found()) ?? { state: failedTry(run, state, "No new look was made.") };
+}
+
+type PreparedPage = { id: string; title: string; isNew: boolean; changed: boolean };
+
+/**
+ * The pages a rework prepared: the plan's own pages, changed when their draft was saved since the run began and differs from what
+ * visitors see, and the pages its builds made, never published.
+ */
+export async function preparedPages(run: Pick<DreamRun, "storeId" | "createdAt" | "plan" | "steps">): Promise<{ pages: PreparedPage[]; building: number; notBuilt: number }> {
+  const planned = (run.plan?.pages ?? []).filter((p) => p.page).map((p) => p.page);
+  const jobIds = (run.steps.pages.ref ?? "").split(",").filter(Boolean);
+  const [own, jobs] = await Promise.all([
+    planned.length > 0
+      ? typedRows(
+          z.object({ id: col.uuid, title: col.text, changed: col.bool }),
+          sql`select id, coalesce(draft ->> 'title', '') as title,
+                (updated_at >= ${run.createdAt.toISOString()}::timestamptz and (published is null or draft::text <> published::text)) as changed
+              from commerce.pages where store_id = ${run.storeId}::uuid and type = 'page' and id = any(${`{${planned.join(",")}}`}::uuid[])`,
+        )
+      : [],
+    jobIds.length > 0
+      ? typedRows(
+          z.object({ status: col.text, page_id: col.uuid.nullable(), title: col.text }),
+          sql`select j.status, j.page_id, coalesce(p.draft ->> 'title', j.input ->> 'title', '') as title
+              from commerce.page_ai_jobs j left join commerce.pages p on p.id = j.page_id
+              where j.store_id = ${run.storeId}::uuid and j.kind = 'build' and j.id = any(${`{${jobIds.join(",")}}`}::uuid[])`,
+        )
+      : [],
+  ]);
+  const built = jobs.filter((j) => j.status === "done" && j.page_id);
+  const building = jobs.filter((j) => j.status === "waiting" || j.status === "running").length;
+  return {
+    pages: [
+      // In the plan's order.
+      ...planned.flatMap((id) => own.filter((p) => p.id === id).map((p) => ({ id: p.id, title: p.title, isNew: false, changed: p.changed }))),
+      ...built.map((j) => ({ id: j.page_id as string, title: j.title, isNew: true, changed: true })),
+    ],
+    building,
+    notBuilt: jobs.length - built.length - building,
+  };
+}
+
+/**
+ * The pages: each new page queued once with the page studio (as a draft), and each of the store's pages the plan names changed in its
+ * draft, one a turn (`edit_page`); passed once every one is changed and the builds have settled. What visitors see is untouched.
+ */
+async function pagesStep(ctx: Context): Promise<StepOutcome | null> {
+  const { run, member, deps } = ctx;
+  const planned = run.plan?.pages ?? [];
+  if (planned.length === 0) return { state: skipped(begun(run.steps.pages), "No change to the pages was asked for.") };
+  let state = begun(run.steps.pages);
+  const fresh = planned.filter((p) => !p.page);
+  if (fresh.length > 0 && !state.ref) {
+    const jobs: string[] = [];
+    for (const page of fresh) {
+      try {
+        jobs.push(await (deps.buildPage ?? queuePage)(member, { title: page.title, purpose: page.change, audience: "", key_points: [], facts: [], sections: [], call_to_action: "", tone: "", pictures: true, picture_style: "" }));
+      } catch (error) {
+        if (!(error instanceof OwnerToolError)) throw error;
+        return { state: failedTry(run, jobs.length > 0 ? { ...state, ref: jobs.join(",") } : state, `The page "${page.title}" could not be built: ${error.message}`.slice(0, 300)) };
+      }
+    }
+    state = { ...state, ref: jobs.join(",") };
+    return { state: waitingOn(state, `Building ${jobs.length} new page(s) as drafts.`) };
+  }
+  const before = await preparedPages({ ...run, steps: { ...run.steps, pages: state } });
+  const next = before.pages.find((p) => !p.isNew && !p.changed);
+  if (next) {
+    if (!ctx.slot.free) return { state };
+    const change = planned.find((p) => p.page === next.id)?.change ?? "";
+    const seen = await managerTurn(ctx, REWORK_TOOLS.page, reworkMessage.page(next, change), null);
+    state = withTurn(state, seen.conversationId);
+    if (seen.error) return { state: failedTry(run, state, seen.error.slice(0, 300)) };
+    const after = await preparedPages({ ...run, steps: { ...run.steps, pages: state } });
+    if (!after.pages.find((p) => p.id === next.id)?.changed) return { state: failedTry(run, state, `The page "${next.title}" was not changed.`) };
+    // One page a turn: a turn that changed its page is progress, and the next page takes the next minute.
+    return { state: { ...state, status: "waiting", detail: `${after.pages.filter((p) => !p.isNew && p.changed).length} of ${after.pages.filter((p) => !p.isNew).length} page(s) changed.` } };
+  }
+  if (before.building > 0) {
+    if (waitedTooLong(state)) return { state: failedTry(run, { ...state, startedAt: now() }, "The new pages took too long to build.") };
+    return { state: waitingOn(state, `${before.building} new page(s) still being built.`) };
+  }
+  const changed = before.pages.filter((p) => !p.isNew).length;
+  const built = before.pages.filter((p) => p.isNew).length;
+  if (changed + built === 0) return { state: failedTry(run, { ...state, ref: undefined }, "No page could be prepared.") };
+  const words = [changed > 0 && `${changed} page(s) changed as drafts`, built > 0 && `${built} new page(s) built as drafts`, before.notBuilt > 0 && `${before.notBuilt} could not be built`].filter(Boolean);
+  return { state: done(state, `${words.join(", ")}. Visitors see none of it yet.`) };
+}
+
+/** A new page queued with the page studio, as `build_page` queues one, in the run's name. */
+async function queuePage(member: Membership, args: BuildPageArgs): Promise<string> {
+  const made = await actingAs("autopilot", () => buildPageTool({ account: member.account, store: member.store, invalidate: refreshTag }, args));
+  return made.building;
+}
+
+/** The store's own products made since the run began and not archived, with whether each is complete (a picture, a price everywhere). */
+export async function preparedProducts(store: Store, run: Pick<DreamRun, "createdAt">): Promise<{ id: string; handle: string; title: string; status: string; complete: boolean }[]> {
+  const locale = store.markets[0]?.locale ?? "en";
+  return typedRows(
+    z.object({ id: col.uuid, handle: col.text, title: col.text, status: col.text, complete: col.bool }),
+    sql`
+      with markets as (select unnest(${`{${store.markets.map((m) => m.code).join(",")}}`}::text[]) as code)
+      select p.id, p.handle, p.status, coalesce(
+          (select t.title from commerce.product_translations t where t.product_id = p.id and t.title <> '' order by t.locale = ${locale} desc, t.locale limit 1),
+          p.handle) as title,
+        (exists (select 1 from commerce.product_media m where m.product_id = p.id)
+          and not exists (
+            select 1 from markets mk where not exists (
+              select 1 from commerce.kept_prices k join commerce.product_variants v on v.id = k.variant_id
+              where k.store_id = p.store_id and v.product_id = p.id and k.market_code = mk.code))) as complete
+      from commerce.products p
+      where p.store_id = ${store.id}::uuid and p.created_at >= ${run.createdAt.toISOString()}::timestamptz and p.status <> 'archived' and not ${isDemoProduct(sql`p`)}
+      order by p.created_at
+      limit 40
+    `,
+  );
+}
+
+/**
+ * The products: each new product made as a draft, one a turn, until the plan's number are complete; then each change to a product the
+ * store has, one a turn, counted as prepared when its turn kept a change for the owner's yes (a product on the site) or changed a draft.
+ * Nothing on the site changes before the owner makes it live.
+ */
+async function productsStep(ctx: Context): Promise<StepOutcome | null> {
+  const { run, member } = ctx;
+  const news = run.plan?.newProducts ?? [];
+  const changes = run.plan?.productChanges ?? [];
+  if (news.length + changes.length === 0) return { state: skipped(begun(run.steps.products), "No change to the products was asked for.") };
+  let state = begun(run.steps.products);
+  const complete = async () => (await preparedProducts(member.store, run)).filter((p) => p.complete).length;
+  const made = await complete();
+  if (made < news.length) {
+    if (!ctx.slot.free) return { state };
+    const seen = await managerTurn(ctx, REWORK_TOOLS.newProduct, `${reworkMessage.newProduct(news[made], member.store.name)}\n\nNow: ${made} of ${news.length} new product(s) are made. Make this one only, complete.`, null);
+    state = withTurn(state, seen.conversationId);
+    if (seen.error) return { state: failedTry(run, state, seen.error.slice(0, 300)) };
+    const after = await complete();
+    if (after <= made) return { state: failedTry(run, state, `${made} of ${news.length} new product(s) are made as drafts with a picture and a price in every country.`) };
+    return { state: { ...state, status: "waiting", detail: `${after} of ${news.length} new product(s) made as drafts.` } };
+  }
+  // `ref`: how many of the plan's changes are prepared, in its order.
+  const prepared = Math.min(Number(state.ref ?? 0) || 0, changes.length);
+  if (prepared < changes.length) {
+    if (!ctx.slot.free) return { state };
+    const change = changes[prepared];
+    const turned = new Date().toISOString();
+    const seen = await managerTurn(ctx, REWORK_TOOLS.productChange, reworkMessage.productChange(change.product, change.change), null);
+    state = withTurn(state, seen.conversationId);
+    if (seen.error) return { state: failedTry(run, state, seen.error.slice(0, 300)) };
+    const [saved] = await typedRows(
+      z.object({ changed: col.bool }),
+      sql`select updated_at >= ${turned}::timestamptz as changed from commerce.products where store_id = ${member.store.id}::uuid and handle = ${change.product}`,
+    );
+    if (seen.kept === 0 && !saved?.changed) return { state: failedTry(run, state, `No change to "${change.product}" was prepared.`) };
+    return { state: { ...state, status: "waiting", ref: String(prepared + 1), detail: `${prepared + 1} of ${changes.length} product change(s) prepared.` } };
+  }
+  const words = [news.length > 0 && `${news.length} new product(s) made as drafts`, changes.length > 0 && `${changes.length} change(s) to your products prepared`].filter(Boolean);
+  return { state: done(state, `${words.join(", ")}. Visitors see none of it yet.`) };
+}
+
+/** The conversations a rework's turns were, where what they kept for a yes is found. */
+const reworkConversations = (run: Pick<DreamRun, "steps">): string[] => [
+  ...new Set([...(run.steps.pages.conversations ?? []), ...(run.steps.products.conversations ?? []), ...(run.steps.review.conversations ?? [])]),
+];
+
+/** The changes a rework's turns kept for a yes (changes to products on the site), still waiting unless `all`. */
+export async function keptChanges(run: Pick<DreamRun, "storeId" | "steps">, all = false): Promise<{ id: string; summary: string; status: string }[]> {
+  const conversations = reworkConversations(run);
+  if (conversations.length === 0) return [];
+  return typedRows(
+    z.object({ id: col.uuid, summary: col.text, status: col.text }),
+    sql`select id, summary, status from commerce.assistant_approvals
+        where store_id = ${run.storeId}::uuid and conversation_id = any(${`{${conversations.join(",")}}`}::uuid[])
+          and (${all} or status = 'pending')
+        order by created_at limit 60`,
+  );
+}
+
+/** A rework's kept changes declined, in the name of the owner whose turns kept them: nothing of a run set aside is made later. */
+async function declineKept(run: DreamRun, member: Pick<Membership, "store">): Promise<void> {
+  const owner = run.accountId ? await passMembership(member.store.slug, run.accountId) : null;
+  if (!owner) return;
+  const principal: Principal = { account: owner.account, store: owner.store, role: owner.role, kind: owner.kind, permissions: owner.permissions };
+  for (const kept of await keptChanges(run)) await decideApproval(principal, kept.id, false, refreshTag);
+}
+
+/**
+ * The owner's review (D527): they see what is prepared and make it live (`applyRework()`), ask for one more change (`askReworkChange()`,
+ * one turn of the AI with the rework's own tools) or set it aside (`stopDreamRun()`).
+ */
+async function reviewStep(ctx: Context): Promise<StepOutcome | null> {
+  const { run, member } = ctx;
+  const state = run.steps.review;
+  if (state.status === "running" && state.ref) {
+    if (!ctx.slot.free) return null;
+    const [look, pages, products] = await Promise.all([preparedLook(run), preparedPages(run), preparedProducts(member.store, run)]);
+    const message = reworkMessage.review(state.ref, { look: look && !look.live ? look.title : null, pages: pages.pages, products: products.map((p) => p.handle) });
+    const seen = await managerTurn(ctx, REWORK_TOOLS.review, message, null);
+    const asked = state.ref.replace(/\s+/g, " ").slice(0, 200);
+    return {
+      state: {
+        ...withTurn(state, seen.conversationId),
+        status: "asking",
+        ref: undefined,
+        detail: seen.error ? `The change could not be made just now (${seen.error.slice(0, 160)}): ask again.` : `Changed as asked: ${asked}`,
+      },
+    };
+  }
+  return state.status === "asking" ? null : { state: asking(begun(state), "Look through what is prepared: make it live, ask for a change, or discard it.") };
+}
+
+/**
+ * Making a rework live, after the owner's press: the new look through `switchToInstall()`, each prepared page through the builder's own
+ * Publish (`savePage()`, refused where the builder would refuse), each new product through the editor's own check
+ * (`setProductStatusTool()`), and each change kept for a yes through `decideApproval()`. A part refused does not stop the others, and the
+ * step says what became of each; a part already live is left alone, so the step can be run again.
+ */
+async function applyStep(ctx: Context): Promise<StepOutcome> {
+  const { run, member } = ctx;
+  const state = begun(run.steps.apply);
+  const { account, store } = member;
+  const live: string[] = [];
+  const held: string[] = [];
+
+  const look = await preparedLook(run);
+  if (look && !look.live) {
+    const switched = await switchToInstall(store.id, look.id, account.id);
+    if (switched.ok) live.push(`the look "${look.title}"`);
+    else held.push(`the look "${look.title}" (${switched.problems.join(" ")})`);
+  }
+
+  let published = 0;
+  for (const page of (await preparedPages(run)).pages.filter((p) => p.changed)) {
+    const editable = await getPageForEdit(store.id, page.id, "page");
+    if (!editable) continue;
+    const saved = await savePage(account, store.id, page.id, editable.draft, { publish: true, type: "page" });
+    if (saved.ok) published++;
+    else held.push(`the page "${page.title}" (${saved.problems.join(" ") || "the builder holds it back: publish it there"})`);
+  }
+  if (published > 0) live.push(`${published} page(s)`);
+
+  let onSale = 0;
+  for (const product of (await preparedProducts(store, run)).filter((p) => p.status === "draft")) {
+    try {
+      await setProductStatusTool({ account, store, invalidate: refreshTag }, { product: product.id, status: "active" });
+      onSale++;
+    } catch (error) {
+      if (!(error instanceof OwnerToolError)) throw error;
+      held.push(`the product "${product.title}" (${error.message})`);
+    }
+  }
+  if (onSale > 0) live.push(`${onSale} new product(s)`);
+
+  let changed = 0;
+  const principal: Principal = { account, store, role: member.role, kind: member.kind, permissions: member.permissions };
+  for (const kept of await keptChanges(run)) {
+    const decided = await decideApproval(principal, kept.id, true, refreshTag);
+    if (decided?.status === "done") changed++;
+    else held.push(`a change to a product (${kept.summary.slice(0, 120)})`);
+  }
+  if (changed > 0) live.push(`${changed} change(s) to your products`);
+
+  refreshTag(catalogTag(store.id));
+  refreshTag(storeTag(store.slug));
+  await audit(account.id, store.id, "store.dream_rework_applied", { run: run.id, look: Boolean(look && !look.live), pages: published, products: onSale, changes: changed, held: held.length }, { area: "website", target: { type: "store", id: store.id } });
+  const words = `${live.length > 0 ? `Live: ${live.join(", ")}.` : "Nothing was left to make live."}${held.length > 0 ? ` Held back: ${held.join("; ")}.` : ""}`;
+  return { state: done(state, words.slice(0, 900)) };
+}

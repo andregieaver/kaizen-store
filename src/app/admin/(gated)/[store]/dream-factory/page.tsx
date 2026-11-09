@@ -17,6 +17,7 @@ import { requirePermission } from "@/server/permissions";
 
 import { answerDreamAction, approveLookAction, askLookAction, confirmDreamAction, discardDreamStoreAction, retryDreamAction, startDreamAction, startDreamOverAction, stopDreamAction } from "./actions";
 import { DreamFrontPage } from "./front-page";
+import { ReworkRun, ReworkStart } from "./rework";
 
 export const metadata: Metadata = { title: "Dream Factory" };
 
@@ -41,12 +42,33 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
   const base = `/admin/${slug}`;
   const going = run && (run.status === "running" || run.status === "asking" || (run.status === "ready" && !run.finishedAt));
 
+  // A rework (D527): changes to a store that exists, prepared as drafts and made live on the owner's press.
+  if (run && run.kind === "rework" && run.status !== "stopped") {
+    return (
+      <AdminTextScope texts={adminTexts(lang, ["home", "builder"])}>
+        <ReworkRun store={store} run={run} words={w} />
+      </AdminTextScope>
+    );
+  }
+
   if (!run || run.status === "stopped") {
+    // An open store is changed, never built again: its one form asks what to change.
+    if (store.setupCompletedAt) {
+      return (
+        <AdminTextScope texts={adminTexts(lang, ["home"])}>
+          <div className="flex max-w-2xl flex-col gap-6">
+            <PageHeader title={w.rework.title} description={<>{w.rework.description}</>} />
+            {run && <p className="text-body text-ink-2">{run.kind === "rework" ? w.rework.run.stopped : w.run.stopped}</p>}
+            <ReworkStart slug={slug} words={w} />
+          </div>
+        </AdminTextScope>
+      );
+    }
     return (
       <AdminTextScope texts={adminTexts(lang, ["home"])}>
         <div className="flex max-w-2xl flex-col gap-6">
           <PageHeader title={w.title} description={<>{w.description}</>} />
-          {run && <p className="text-body text-ink-2">{w.run.stopped}</p>}
+          {run && <p className="text-body text-ink-2">{run.kind === "rework" ? w.rework.run.stopped : w.run.stopped}</p>}
           <ActionForm action={startDreamAction.bind(null, slug)} className="flex flex-col gap-4">
             <label className={field}>
               {w.startLabel}
@@ -57,6 +79,14 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
               <SubmitButton>{w.start}</SubmitButton>
             </div>
           </ActionForm>
+          {/* A store built by hand is changed as it is (D527), one step away from the form that builds one. */}
+          <details className="rounded-lg border border-line bg-card p-5">
+            <summary className="cursor-pointer text-title text-ink">{w.rework.instead}</summary>
+            <div className="mt-3 flex flex-col gap-3">
+              <p className="text-body text-ink-2">{w.rework.description}</p>
+              <ReworkStart slug={slug} words={w} />
+            </div>
+          </details>
         </div>
       </AdminTextScope>
     );
@@ -72,7 +102,8 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
   const lookOpen = look.status === "asking" || look.status === "running";
   // The real front page in its live look, once the website step has published it (D422): it replaces the sketch.
   const frontPage = run.steps.website.status === "done" && store.frontPageId ? await getPageForEdit(store.id, store.frontPageId, "page") : null;
-  const runWords = w.run[run.status];
+  // A build never ends `applied` (a rework's end, shown above).
+  const runWords = run.status === "applied" ? w.run.ready : w.run[run.status];
   const show = await dreamShowcase(store, run);
   const market = store.markets[0];
   const storeUrl = storeHref(slug, market ? marketPath(slug, market.slug) : "/");
@@ -233,6 +264,14 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
             <DreamMade show={show} base={base} words={w} />
           </div>
         </div>
+
+        {/* Once the build has ended, the store is changed from here (D527): what to change, prepared as drafts first. */}
+        {!going && (
+          <Card title={w.rework.title}>
+            <p className="mb-3 text-body text-ink-2">{w.rework.description}</p>
+            <ReworkStart slug={slug} words={w} />
+          </Card>
+        )}
 
         {/* Start over or discard (D421), one deliberate step away and only before the store opens. */}
         {!store.setupCompletedAt && (

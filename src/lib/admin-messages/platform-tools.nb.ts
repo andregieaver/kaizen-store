@@ -50,6 +50,7 @@ export const platformToolsNb: PlatformToolsMessages = {
     dreamNone: "Ingen kjøring ennå.",
     dreamRun: "{date}: {store}, {status}, {done} av {total} steg, {minutes} min til klar, {presses} trykk, {first} riktig første gang",
     dreamTest: "test",
+    dreamRework: "endringer i en eksisterende butikk",
     dreamWatchTitle: "Dream Factory: {store}",
     dreamWatchText: "En testkjøring, slik eieren ser den. Siden leser seg selv på nytt med noen sekunders mellomrom mens butikken bygges.",
     dreamBack: "Tilbake til KI",
