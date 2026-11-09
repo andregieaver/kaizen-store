@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 790" width="1200" height="790" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Work in Kaizen Life: a summary read from Kaizena Flow, and one tap back into Flow</title>
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f8a3a"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0068da"/></marker>
+    <marker id="p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6e44c9"/></marker>
+  </defs>
+  <style>
+    .panel { fill: #f6f7fa; stroke: #d6d9e0; }
+    .box { fill: #ffffff; stroke: #c9cdd6; }
+    .door { fill: #eef8f1; stroke: #9fd3ae; }
+    .data { fill: #eef4fd; stroke: #a9c6ee; }
+    .back { fill: #f3effc; stroke: #c6b4ef; }
+    .h { font-size: 19px; font-weight: 700; fill: #12141a; }
+    .hs { font-size: 13px; fill: #5c606b; }
+    .t { font-size: 15px; font-weight: 650; fill: #12141a; }
+    .s { font-size: 12.5px; fill: #4a4e59; }
+    .lg { font-size: 12.5px; fill: #12141a; font-weight: 600; }
+    .lb { font-size: 12px; fill: #3a3e48; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; fill: #12141a; }
+  </style>
+
+  <rect x="0" y="0" width="1200" height="790" rx="18" fill="#ffffff"/>
+
+  <!-- panels -->
+  <rect class="panel" x="24" y="24" width="430" height="690" rx="16"/>
+  <text class="h" x="48" y="58">Kaizen Life</text>
+  <text class="hs" x="48" y="78">kaizenlifetracker.com · your day</text>
+
+  <rect class="panel" x="746" y="24" width="430" height="690" rx="16"/>
+  <text class="h" x="770" y="58">Kaizena Flow</text>
+  <text class="hs" x="770" y="78">kaizenaflow.com · the one home of Work</text>
+
+  <!-- Life boxes -->
+  <rect class="box" x="48" y="104" width="382" height="66" rx="12"/>
+  <text class="t" x="64" y="131">Today, in the Work room</text>
+  <text class="s" x="64" y="152">The Work card: only what needs you</text>
+
+  <rect class="box" x="48" y="190" width="382" height="66" rx="12"/>
+  <text class="t" x="64" y="217">Money → Work  (/app/work)</text>
+  <text class="s" x="64" y="238">The summary page; old Work addresses land here</text>
+
+  <rect class="box" x="48" y="330" width="382" height="66" rx="12"/>
+  <text class="t" x="64" y="357">Life's assistant</text>
+  <text class="s" x="64" y="378">Asks the same tool when you ask about work</text>
+
+  <rect class="box" x="48" y="430" width="382" height="96" rx="12"/>
+  <text class="t" x="64" y="457">Life server · the Kaizena Flow connection</text>
+  <text class="s" x="64" y="478">One per person, never shown to a shared space</text>
+  <text class="s" x="64" y="497">Token from Flow's own OAuth server</text>
+  <text class="s" x="64" y="516">Read live, inside Suspense; nothing is stored</text>
+
+  <rect class="back" x="48" y="616" width="382" height="66" rx="12"/>
+  <text class="t" x="64" y="643">Back in Life, where you were</text>
+  <text class="s" x="64" y="664">Today, signed in as the same person</text>
+
+  <!-- Life internal: pages read through the server -->
+  <path d="M48,137 H36 V478 H46" fill="none" stroke="#0068da" stroke-width="2" marker-end="url(#b)"/>
+  <path d="M48,223 H36" fill="none" stroke="#0068da" stroke-width="2"/>
+  <path d="M48,363 H36" fill="none" stroke="#0068da" stroke-width="2"/>
+
+  <!-- Flow boxes -->
+  <rect class="door" x="770" y="104" width="382" height="66" rx="12"/>
+  <text class="mono" x="786" y="131">/admin/from/kaizen-life?next=…</text>
+  <text class="s" x="786" y="152">The one door in. Signed in: straight through</text>
+
+  <rect class="door" x="770" y="236" width="382" height="66" rx="12"/>
+  <text class="t" x="786" y="263">The exact Work screen</text>
+  <text class="s" x="786" y="284">The overdue invoices, the timer, the client</text>
+
+  <rect class="data" x="770" y="430" width="382" height="66" rx="12"/>
+  <text class="mono" x="786" y="457">/api/mcp · tools/call work_summary</text>
+  <text class="s" x="786" y="478">One door for data: card, page and assistant</text>
+
+  <rect class="data" x="770" y="526" width="382" height="76" rx="12"/>
+  <text class="mono" x="786" y="552">workSummary(account, grant)</text>
+  <text class="s" x="786" y="572">workStoresFor · getOwnerOverview · getRunningTimer</text>
+  <text class="s" x="786" y="590">Money per currency; every link built by workBase()</text>
+
+  <rect class="back" x="770" y="616" width="382" height="66" rx="12"/>
+  <text class="t" x="786" y="643">Account menu · Kaizen Life ↗</text>
+  <text class="s" x="786" y="664">Only for accounts linked to Kaizen Life</text>
+
+  <!-- signed-out detour -->
+  <rect class="door" x="482" y="196" width="236" height="96" rx="12"/>
+  <text class="t" x="498" y="222">Signed out of Flow?</text>
+  <text class="s" x="498" y="243">Sign in with Kaizen Life,</text>
+  <text class="s" x="498" y="261">silent after the first consent,</text>
+  <text class="s" x="498" y="279">then on to the same next</text>
+
+  <!-- navigation arrows (green) -->
+  <path d="M430,137 H766" fill="none" stroke="#1f8a3a" stroke-width="2.5" marker-end="url(#g)"/>
+  <text class="lb" x="470" y="128">Tap any line, on Today or /app/work</text>
+  <path d="M1061,170 V232" fill="none" stroke="#1f8a3a" stroke-width="2.5" marker-end="url(#g)"/>
+  <text class="lb" x="1068" y="205">signed in</text>
+  <path d="M800,170 C780,190 750,200 722,214" fill="none" stroke="#1f8a3a" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#g)"/>
+  <path d="M718,270 H766" fill="none" stroke="#1f8a3a" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#g)"/>
+
+  <!-- data arrows (blue) -->
+  <path d="M430,455 H766" fill="none" stroke="#0068da" stroke-width="2.5" marker-end="url(#b)"/>
+  <text class="lb" x="470" y="446">tools/call, Bearer kfa_… (4 s, then gives up)</text>
+  <path d="M766,480 H434" fill="none" stroke="#0068da" stroke-width="2.5" marker-end="url(#b)"/>
+  <text class="lb" x="470" y="500">JSON: numbers, names, links, asOf</text>
+  <text class="lb" x="470" y="517">Life writes its own words, in 5 languages</text>
+  <path d="M961,496 V522" fill="none" stroke="#0068da" stroke-width="2.5" marker-end="url(#b)"/>
+
+  <!-- back to Life (purple) -->
+  <path d="M770,649 H434" fill="none" stroke="#6e44c9" stroke-width="2.5" marker-end="url(#p)"/>
+  <text class="lb" x="470" y="640">One link back; no second sign-in</text>
+
+  <!-- legend -->
+  <line x1="40" y1="752" x2="80" y2="752" stroke="#1f8a3a" stroke-width="2.5"/>
+  <text class="lg" x="88" y="756">A tap: always lands on the exact screen</text>
+  <line x1="410" y1="752" x2="450" y2="752" stroke="#0068da" stroke-width="2.5"/>
+  <text class="lg" x="458" y="756">Data: read only, never stored in Life</text>
+  <line x1="760" y1="752" x2="800" y2="752" stroke="#6e44c9" stroke-width="2.5"/>
+  <text class="lg" x="808" y="756">Back to Life</text>
+  <text class="lb" x="990" y="756">Dashed: only when signed out</text>
+</svg>
