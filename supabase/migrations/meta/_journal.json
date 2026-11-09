@@ -5300,20 +5300,6 @@
       "when": 1794240824956,
       "tag": "20261109161344_platform_workflows_rules",
       "breakpoints": true
-    },
-    {
-      "idx": 757,
-      "version": "7",
-      "when": 1794242220615,
-      "tag": "20261109163700_platform_api_tokens",
-      "breakpoints": true
-    },
-    {
-      "idx": 758,
-      "version": "7",
-      "when": 1794242257032,
-      "tag": "20261109163737_platform_api_tokens_rules",
-      "breakpoints": true
     }
   ]
 }
