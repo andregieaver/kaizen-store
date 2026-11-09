@@ -148,7 +148,8 @@ test("a shopper rents a bike by the hour, then for half a day", async ({ page })
   await times.getByRole("button", { name: /^13[:.]00–17[:.]00$/ }).click();
   await expect(page.locator("[data-range-total]")).toContainText(/Totalt:\s*300,00/);
   await add.click();
-  await expect(page.getByText("Lagt i handlekurven.")).toBeVisible();
+  // The first add's words are still on the page: wait until the cart holds both, or going to it may leave the second add unfinished.
+  await expect(page.getByRole("link", { name: "Handlekurv (2)" }).first()).toBeVisible();
 
   await page.goto(`/s/${slug}/no/cart`);
   const hourly = page.getByRole("listitem").filter({ hasText: "3 timer" });
