@@ -11,17 +11,19 @@ import { requireAccount } from "@/server/auth";
 import { kaizenLifeAppUrl, lifeLinkOf } from "@/server/kaizen-life-accounts";
 import { grantsOfAccount } from "@/server/oauth";
 
-import { disconnectGrantAction, unlinkKaizenLifeAction } from "./actions";
+import { disconnectGrantAction, switchAssistantsAction, unlinkKaizenLifeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Connected apps and assistants" };
 
 /**
  * Account → Connected apps and assistants (wave 14 unit B, D439, B7): each AI assistant or app the person let work with their stores, the
  * stores it reaches, its access level and when it was last used, with *Disconnect*, which ends it at once. Everyone's own page, owners and
- * staff alike: a grant acts as the person who made it. A link to Kaizen Life (docs/life-work-summary.md 3.3) stands first, with *Unlink*.
+ * staff alike: a grant acts as the person who made it. A link to Kaizen Life (docs/life-work-summary.md 3.3) stands first, with *Unlink*,
+ * and under it the switch that lets the person's assistants here and in Kaizen Life work together (docs/assistants-together.md).
  */
-export default async function ConnectedAppsPage() {
+export default async function ConnectedAppsPage(props: { searchParams: Promise<{ assistants?: string }> }) {
   await connection();
+  const { assistants: switched } = await props.searchParams;
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "oauth");
@@ -53,6 +55,26 @@ export default async function ConnectedAppsPage() {
                   </button>
                 </form>
               </div>
+            </div>
+          </Card>
+          <Card compact className="mt-3">
+            <div id="assistants" className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 max-w-xl">
+                <p className="font-medium text-ink">{w.kaizenLife.assistants.title}</p>
+                <p className="text-sm text-ink-2">
+                  {life.assistants ? fillWords(w.kaizenLife.assistants.on, { when: when(life.assistants.since) }) : w.kaizenLife.assistants.off}
+                </p>
+                {switched === "failed" && !life.assistants ? (
+                  <p role="alert" className="mt-1 text-sm text-danger-text">
+                    {w.kaizenLife.assistants.failed}
+                  </p>
+                ) : null}
+              </div>
+              <form action={switchAssistantsAction.bind(null, !life.assistants)}>
+                <button type="submit" className={buttonClass(life.assistants ? "secondary" : "primary")}>
+                  {life.assistants ? w.kaizenLife.assistants.turnOff : w.kaizenLife.assistants.turnOn}
+                </button>
+              </form>
             </div>
           </Card>
         </section>

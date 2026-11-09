@@ -108,6 +108,14 @@ export const oauthEn = {
     open: "Open Kaizen Life",
     unlink: "Unlink",
     unlinked: "Unlinked. Kaizen Life no longer shows your Work. They are linked again only if you sign in to one with the other.",
+    assistants: {
+      title: "Your assistants together",
+      off: "Let your AI manager here and your assistant in Kaizen Life ask each other things for you. Kaizen Life's assistant can then read your stores and ask your AI manager, and anything it would change waits for your yes here. Your AI manager can ask about your day, tasks and calendar, and add a task or reminder there.",
+      on: "On since {when}. Your AI manager and your assistant in Kaizen Life ask each other things for you. Changes to a store always wait for your yes here.",
+      turnOn: "Let them work together",
+      turnOff: "Stop",
+      failed: "Kaizen Life did not answer, so nothing was switched on. Try again in a moment.",
+    },
   },
   store: {
     title: "AI assistants and apps connected to this store",

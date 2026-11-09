@@ -272,7 +272,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`einvoiceLines()`, `screens.einvoiceState`) on the order page and on a Work invoice, where the XML is also downloaded
   (`…/work/s/{store}/invoices/{id}/xml`, `…/credit-notes/{id}/xml`). Email is unchanged in this step.
 
-## Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`)
+## Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517, `docs/assistants-together.md`)
 
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
@@ -317,6 +317,17 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   door from Life, `/admin/sign-in/kaizen-life?next=…` (`safeNext()`; straight through when signed in, to the second step when held,
   else Sign in with Kaizen Life with `next` kept). The same reader is the owner MCP's `work_summary` (scope `settings:read`, over the
   caller's stores only). A session that is gone keeps the page asked for on the way to sign in (`signInFor()` in `SessionRecovery`).
+- The assistants together (D517, `docs/assistants-together.md`): while the person lets them, Kaizen Life's assistant and the AI manager
+  ask each other over the account link instead of D96's two OAuth connections (which still serve anyone who has one, only while the
+  switch is off). The switch is `kaizen_life_accounts.assistants_at`/`assistants_aal`, written only by `setAssistants()` (audited
+  `account.kaizen_life_assistants_on`/`_off`); it is switched **on only in Flow** (`switchAssistantsFromFlow()`, Life's copy written in the
+  same call, a switch on Life did not take put back off), at the session's assurance, and off in either app (Life's `assistants` door
+  takes only `on: false`); unlinking switches it off and a check keeps it off on an undone link. Life asks through the `tool` door, which
+  answers as `/api/mcp` answers Kaizen Life (`callerOfLink()`: the linked account's owned stores, a two-step store and a platform admin
+  only at `aal2`, refused `two_step`; `callMcpTool()` with its approvals, audit and the person's `takeMcpBudget()`). The AI manager offers
+  `ask_kaizen_life` while the switch is on (`assistantsOn()`, the platform's too) and asks Life's `ask` door (`askLifeAssistant()`, 90
+  seconds), which runs Life's assistant in its narrow lane and never asks back. A new door, tool or lane for the assistants is decided
+  in `docs/assistants-together.md` first (step 2: handoffs with a report back).
 
 ## Duplicating a store (D129, `docs/store-copy.md`, `src/lib/store-copy.ts`, `src/lib/store-copy-rules.ts`, `src/server/store-copy.ts`,…
 

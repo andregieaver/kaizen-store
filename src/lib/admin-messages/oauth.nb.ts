@@ -102,6 +102,14 @@ export const oauthNb: OauthMessages = {
     open: "Åpne Kaizen Life",
     unlink: "Fjern koblingen",
     unlinked: "Koblingen er fjernet. Kaizen Life viser ikke lenger Work. De kobles sammen igjen bare hvis du logger inn på den ene med den andre.",
+    assistants: {
+      title: "Assistentene dine sammen",
+      off: "La AI-manageren din her og assistenten din i Kaizen Life spørre hverandre for deg. Assistenten i Kaizen Life kan da lese butikkene dine og spørre AI-manageren, og alt den ville endret venter på ditt ja her. AI-manageren kan spørre om dagen, oppgavene og kalenderen din, og legge til en oppgave eller påminnelse der.",
+      on: "På siden {when}. AI-manageren din og assistenten din i Kaizen Life spør hverandre for deg. Endringer i en butikk venter alltid på ditt ja her.",
+      turnOn: "La dem jobbe sammen",
+      turnOff: "Stopp",
+      failed: "Kaizen Life svarte ikke, så ingenting ble slått på. Prøv igjen om litt.",
+    },
   },
   store: {
     title: "AI-assistenter og apper koblet til denne butikken",
