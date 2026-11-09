@@ -299,8 +299,8 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (manager and platform tools are not). The other way, the AI manager's
   `ask_kaizen_life` (`ASK_KAIZEN_LIFE`, not an owner tool) asks Life's `ask` door,
   never in turns Kaizen Life asked for. D96's OAuth bridge (Kaizen Life's Supabase
-  tokens on `/api/mcp`, and the connection under Your account with its tokens in
-  `kaizen_life_links`) is retired (D525): `/api/mcp` takes only Kaizena Flow's own
+  tokens on `/api/mcp`, and the connection under Your account, its table
+  `kaizen_life_links` dropped) is retired (D525): `/api/mcp` takes only Kaizena Flow's own
   tokens, and never takes another app's token again without a decision.
 - Kaizen Life's account link and Work summary (D511, `docs/life-work-summary.md`, `src/server/kaizen-life-accounts.ts`,
   `src/server/kaizen-life-doors.ts`, `src/lib/kaizen-life-jwt.ts`, `src/lib/work-summary.ts`, `src/server/work-summary.ts`): Kaizen Life
