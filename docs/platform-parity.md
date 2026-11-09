@@ -5,7 +5,7 @@ well.* Kaizena Flow's own site and store are run from the platform admin (`/admi
 `platform_*` tables. The rule is in `CLAUDE.md` (Conventions). This file is its list: what a store's admin has, and whether the
 platform has it. Tick a row (move it to *Built for both*) in the change that brings it.
 
-**How the gap closes:** [`platform-parity-plan.md`](platform-parity-plan.md) (chosen 6 November 2026, D466; steps 1 and 2 built: Kaizena Flow's store exists, and its owners and applicants are its customers, D467):
+**How the gap closes:** [`platform-parity-plan.md`](platform-parity-plan.md) (chosen 6 November 2026, D466; steps 1 to 5 built: Kaizena Flow's store exists, its owners and applicants are its customers (D467), and it serves kaizenaflow.com (D484, on)):
 Kaizena Flow's site and its customers move into a store of its own, which gets every store page for a website by itself (*Store*, with
 the plan's step), and the platform console gets what is about running the business (*Console*, C1 to C6).
 
@@ -14,24 +14,18 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-33 rows.
+23 rows (read again 9 November 2026, after the site switch, D484).
 
 ### Website
 
-| Store page | Kaizena Flow today | Comes by |
-|---|---|---|
-| Blogs (several, with authors) | One blog at `/blog`; `blogs` and `blog_authors` need a store | Store, step 5 |
-| Blog comments | None; `blog_comments` needs a store and its page | Store, step 5 |
-| Redirects and the 404 report | Only the automatic redirect when a page's address changes (`page_redirects`); `redirects` and `not_found_hits` need a store, and the platform's 404 records nothing | Store, step 5 |
-| Staging | Page versions and CSS versions; no set of changes compared and made live together (`site_stagings` needs a store) | Store, step 5 |
-| Translate the store | Page by page in the builder's translate mode; no whole-site pass with review (`store-translate.ts` needs a store) | Store, step 5 |
+Nothing left: kaizenaflow.com is served from Kaizena Flow's store since the switch (D484, on in production), so every page of a store's
+Website section is the site's (see *Built for both*).
 
 ### Marketing
 
 | Store page | Kaizena Flow today | Comes by |
 |---|---|---|
-| A/B tests | None for its own pages. Settings → A/B tests only reads the stores' tests; `experiments.store_id` is not null, keyed to the page's store. (Listed as built for both until 6 November: it was not.) | Store, step 5 |
-| Ads and conversions | Tags only: GA4, GTM and Meta Pixel; Google Ads, TikTok and Pinterest are left out for the platform (`STORE_ONLY_TOOLS`); no server-side conversions | Store, step 5; a sign-up or a paid plan as a conversion, built for stores as a form sent |
+| Ads and conversions | The store's tags and conversions on kaizenaflow.com's pages, through Kaizena Flow's store (D484); a sign-up or a paid plan is not yet sent as a conversion (the platform's own events) | Console, with C2 |
 | Campaigns | Discount codes only; no timed price on a plan | Console, C5 |
 
 ### Analytics
@@ -43,8 +37,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 | Marketing | Referral totals, recovered plan checkouts; no channels or cost per new owner | Console, C2 |
 | Reports | None | Console, C2 (later) |
 | Analytics settings | None: no targets | Console, C2 |
-| Live | None | Store, step 5 (visitors); Console, C2 (sign-ups today) |
-| Traffic | Requests and errors per day under Usage and limits, the sandbox funnel, docs reads; no visits counted on kaizenaflow.com (`visits.store_id` is not null; the site loads only the speed beacon) | Store, step 5 |
+| Live | Visitors on kaizenaflow.com now, through Kaizena Flow's store (D484); no sign-ups today | Console, C2 (sign-ups today) |
 | Finance | Single invoices under each store; no totals of plans, themes and domains sold, or fees | Console, C3 |
 | Payouts | None: the platform's own Stripe payouts are not shown | Console, C3 |
 | VAT | None for its own sales (Settings → VAT is the stores' rate tables) | Console, C3 |
@@ -53,15 +46,12 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 | Store page | Kaizena Flow today | Comes by |
 |---|---|---|
-| Custom fields | On content types only; none on Kaizena Flow's customers or on stores (`field_groups` needs a store) | Store, step 2 (customers); Console (fields on stores) |
+| Custom fields | On Kaizena Flow's customers through its store (D467); none on stores themselves | Console (fields on stores) |
 
 ### Settings
 
 | Store page | Kaizena Flow today | Comes by |
 |---|---|---|
-| Company | Four business details under Header and footer (legal name, organisation number, address, email); no places, phone or VAT number | Store, step 1 |
-| Private mode | None (`/holding` is a holding page per domain) | Store, step 1 |
-| Accessibility | None: no accessibility statement for kaizenaflow.com | Store, step 5 |
 | Search | None: the site has no search; Settings → Search is the stores' search experiment | Store, step 5, if wanted |
 | Workflows | Kaizena Flow's events go to Slack, Zapier and Make (D465); no rules on them | Console, C4; the site's own events, Store |
 | Integrations: own endpoints | None | Console, C4 (next of D465) |
@@ -103,6 +93,12 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 | Deals (D464) | Customers → Deals | Kaizena Flow's store: a Sign-ups pipeline, a deal per application, won when its plan is paid (D467) |
 | Privacy requests (D162) | Customers → Privacy requests | Kaizena Flow's store, its erasure blanking the person's applications too (D467) |
 | Subscriptions analytics (for Kaizena Flow: its plans) | Analytics → Subscriptions | Plans → Analytics (D470): monthly revenue, paying, late, trying and leaving stores, each plan, how revenue moved, and the way from asking to paying |
+| Blogs (several, with authors) and their comments | Website → Blogs | Kaizena Flow's store, serving kaizenaflow.com (D484) |
+| Redirects and the 404 report | Website → Redirects | Kaizena Flow's store: the site's missing addresses are recorded and can be sent on (D484) |
+| Staging, and translating the whole site | Website | Kaizena Flow's store (D484) |
+| A/B tests of pages | Marketing → A/B tests | Kaizena Flow's store, on the site's pages (D484) |
+| Traffic and visits | Analytics → Traffic | Kaizena Flow's store: visits on kaizenaflow.com are counted (D484) |
+| Company details, private mode, the accessibility statement | Settings | Kaizena Flow's store (D466, D484; private mode stays off while the store serves the site) |
 
 ## Store-only: cannot apply to Kaizena Flow
 

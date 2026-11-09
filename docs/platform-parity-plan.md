@@ -1,6 +1,6 @@
 # Kaizena Flow runs on Kaizena Flow: the plan to close the gap
 
-*Proposed and chosen 6 November 2026 (D466: "Let's go with your recommendations. execute the plan"). Built so far: step 1 (D466), step 2 (D467), steps 3 and 4 (D469), step 5's switch, built and left off (D484); the console's plan analytics (C2, D470); the platform's team page (C1's first step, D471).*
+*Proposed and chosen 6 November 2026 (D466: "Let's go with your recommendations. execute the plan"). Built so far: step 1 (D466), step 2 (D467), steps 3 and 4 (D469), step 5's switch, built (D484) and on: kaizenaflow.com has been served from Kaizena Flow's store since 7 November 2026; the console's plan analytics (C2, D470); the platform's team page (C1's first step, D471).*
 
 The owner, 6 November 2026, comparing Platform → Settings with a store's Settings: *there still seems to be a wide gap between
 what the main store owner has on the platform and what a customer's store owner has. Make a plan to give the main store owner the
