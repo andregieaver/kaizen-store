@@ -5244,6 +5244,20 @@
       "when": 1794230521137,
       "tag": "20261109132201_accountants_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 749,
+      "version": "7",
+      "when": 1794231238075,
+      "tag": "20261109133358_platform_briefing",
+      "breakpoints": true
+    },
+    {
+      "idx": 750,
+      "version": "7",
+      "when": 1794231276662,
+      "tag": "20261109133436_platform_briefing_rules",
+      "breakpoints": true
     }
   ]
 }

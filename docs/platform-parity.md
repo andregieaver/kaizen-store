@@ -14,7 +14,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-18 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510).
+14 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510; the home's figures, targets and briefing, D513).
 
 ### Website
 
@@ -32,12 +32,9 @@ Website section is the site's (see *Built for both*).
 
 | Store page | Kaizena Flow today | Comes by |
 |---|---|---|
-| Overview | The platform home counts stores, paying, overdue, without a plan, new this week, requests; no revenue, no comparison with a period, no funnel | Console, C2 |
 | Customers | None: no cohorts of owners, no lifetime value | Console, C2 |
 | Marketing | Referral totals, recovered plan checkouts; no channels or cost per new owner | Console, C2 |
 | Reports | None | Console, C2 (later) |
-| Analytics settings | None: no targets | Console, C2 |
-| Live | Visitors on kaizenaflow.com now, through Kaizena Flow's store (D484); no sign-ups today | Console, C2 (sign-ups today) |
 
 ### Customers
 
@@ -60,9 +57,8 @@ Website section is the site's (see *Built for both*).
 
 ### Home
 
-| Store page | Kaizena Flow today | Comes by |
-|---|---|---|
-| Home | An attention list (requests, failing jobs, overdue and suspended stores, failed emails and AI) and counts; no briefing, revenue or alerts | Console, C2 |
+Nothing left: the platform home shows this month's revenue and sales, what needs a look and the targets, and sends the morning briefing
+(D513; see *Built for both*).
 
 ## Built for both
 
@@ -98,6 +94,9 @@ Website section is the site's (see *Built for both*).
 | Accounting (our ledger; Tripletex and Fiken compare with it) | Settings → Books | Plans → Analytics, *In the books* (D508): Kaizena Flow's sales, credit notes and Stripe payouts posted into the books the platform names (Human Web's) |
 | Payouts (D290) | Analytics → Payouts | Plans → Analytics, *Payouts* (D509): Kaizena Flow's own Stripe payouts, live and test apart, each with Stripe's fees, the sales it carried line by line and whether it adds up; posted to the books (D508) |
 | Team, roles and permissions (D158) | Settings → Team | Settings → Team (D471, D510): owners, and Support, Content, Finance and Read-only, each reading everything and changing its own part, and working in Kaizena Flow's store in the same role |
+| Home and Overview: revenue, a comparison, alerts and the briefing (D348) | Home, Analytics → Overview | Platform home (D513): this month's recurring revenue and how it moved, paying and trying stores, sales against last month to the same day, sign-ups today, what the figures raise in the attention list, and the morning briefing by email (daily or weekly, to owners and finance) |
+| Targets (Analytics settings) | Analytics → Settings | Plans → Analytics, *Targets* (D513): a month's recurring revenue, sales, paying and new stores, their progress on the home and in the briefing |
+| Live (sign-ups today) | Analytics → Live | Kaizena Flow's store for visitors (D484); the platform home for who asked for a store and opened one today (D513) |
 
 ## Store-only: cannot apply to Kaizena Flow
 

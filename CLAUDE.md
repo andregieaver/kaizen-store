@@ -176,6 +176,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Staff security (D158)
 - Permissions (D158)
 - The platform's team and its roles (C1, D471, D510, `src/lib/platform-access.ts`, `src/server/platform-team.ts`)
+- The platform's figures, targets and morning briefing (C2, D513, `src/lib/platform-briefing.ts`, `src/server/platform-briefing.ts`)
 - Audit log (D158)
 - Invoices and credit notes for shop orders (D159, `docs/wave-1b-invoices.md`)
 - Unit price (D160, `docs/wave-1d-unit-price.md`, `src/lib/unit-price.ts`, `unit-price-rules.ts`, `unit-price-text.ts`, `unit-price-editor.ts`)

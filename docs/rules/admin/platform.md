@@ -163,6 +163,17 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   place, and the platform keeps an owner; a member is an admin of Kaizena Flow's own store in the store role of their work
   (`HOUSE_ROLE_TEMPLATE`), set in the same transaction, never its owner (`store_members_house()`).
 
+## The platform's figures, targets and morning briefing (C2, D513, `src/lib/platform-briefing.ts`, `src/server/platform-briefing.ts`)
+
+- **The platform's figures, targets and morning briefing (C2, D513, `src/lib/platform-briefing.ts`, `src/server/platform-briefing.ts`)**:
+  the platform home's month (recurring revenue and how it moved, paying and trying stores, sales against last month to the same day,
+  sign-ups today) is only `platformSnapshot()`, live payments only, in Oslo's day. A target is a month's (`platform_targets`: recurring
+  revenue and sales in a currency, paying and new stores as counts), set only by `savePlatformTarget()` (the plans area: an owner or the
+  finance role), its progress only `targetProgress()`. What the figures raise is only `platformAlertsFor()`, worked out in code, never a
+  model's. The briefing is off until turned on (offered once on the home), daily or weekly at seven in Oslo, and goes only from
+  `sendPlatformBriefing()` (the dispatcher's `platformBriefing` job), claimed in `platform_settings.briefing_last_period` first so a period
+  goes once, to the owners and the finance role, each in their language.
+
 ## Audit log (D158)
 
 - **Audit log (D158)**: `audit()` keeps its signature and takes an optional `{ area, target, changes }`; `auditChange()` writes allowlisted diffs (`ALLOWED_FIELDS`), never secrets; a new action needs an area in `AUDIT_AREAS` (a scan test). The log is append-only, deletable only after 24 months by `pruneAuditLog()` (`commerce.guard_audit_log()`); `/admin/{store}/activity` shows an owner everything and others their readable areas; the CSV is owners'.

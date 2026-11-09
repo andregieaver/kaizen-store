@@ -7,7 +7,9 @@ import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { requirePlatform } from "@/server/auth";
+import { isBriefingKind, isTargetMetric } from "@/lib/platform-briefing";
 import { postPlatformMoney, setPlatformBooks } from "@/server/platform-books";
+import { savePlatformTarget, setPlatformBriefing } from "@/server/platform-briefing";
 import { readPlatformPayouts } from "@/server/platform-payouts";
 import { catchUpPlatformSales } from "@/server/platform-sales";
 import { platformModes } from "@/server/stripe";
@@ -48,4 +50,32 @@ export async function postBooksAction(): Promise<FormState> {
   const messages = [countWords(done.posted + done.payouts, w.postDone)];
   if (done.waiting > 0) messages.push(countWords(done.waiting, w.waiting));
   return { status: "ok", messages };
+}
+
+/** Sets one of this month's targets (D513), or takes it away with 0. The plans area's (an owner or the finance role). */
+export async function setTargetAction(_state: FormState, form: FormData): Promise<FormState> {
+  const admin = await requirePlatform("plans");
+  const w = adminText(adminLangOf(admin.adminLocale), "platform").briefing;
+  const metric = String(form.get("metric") ?? "");
+  const month = String(form.get("month") ?? "");
+  const currency = String(form.get("currency") ?? "").trim().toUpperCase() || null;
+  const raw = String(form.get("value") ?? "").replace(/\s/g, "").replace(",", ".");
+  const number = Number(raw);
+  if (!isTargetMetric(metric) || !Number.isFinite(number) || number < 0) return { status: "error", messages: [w.targetInvalid] };
+  // Money is typed in whole units and kept in minor units; counts as they are.
+  const value = metric === "mrr" || metric === "sales" ? Math.round(number * 100) : Math.round(number);
+  const ok = await savePlatformTarget(admin, { metric, month, currency, targetValue: value });
+  if (!ok) return { status: "error", messages: [w.targetInvalid] };
+  refresh();
+  return { status: "ok", messages: [w.targetSaved] };
+}
+
+/** The morning briefing (D513): daily, weekly or off, or its offer put away. The plans area's (an owner or the finance role). */
+export async function setBriefingAction(_state: FormState, form: FormData): Promise<FormState> {
+  const admin = await requirePlatform("plans");
+  const w = adminText(adminLangOf(admin.adminLocale), "platform").briefing;
+  const choice = String(form.get("briefing") ?? "");
+  if (!(isBriefingKind(choice) || choice === "dismiss") || !(await setPlatformBriefing(admin, choice))) return { status: "error", messages: [w.targetInvalid] };
+  refresh();
+  return { status: "ok", messages: [w.saved] };
 }

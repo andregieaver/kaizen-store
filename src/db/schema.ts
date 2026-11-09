@@ -1857,6 +1857,13 @@ export const platformSettings = commerce.table(
      * its sales of plans, themes and domains and its Stripe payouts are posted there. None: nothing is posted.
      */
     booksStoreId: uuid("books_store_id").references(() => stores.id, { onDelete: "set null" }),
+    /**
+     * The platform's morning briefing by email (C2, D513): off until turned on (offered once on the platform home), daily or weekly, to the
+     * platform's owners and its finance role; the last period sent, so each goes once; when the offer was put away.
+     */
+    briefing: text("briefing").notNull().default("off"),
+    briefingLastPeriod: text("briefing_last_period"),
+    briefingOfferDismissedAt: timestamp("briefing_offer_dismissed_at", { withTimezone: true }),
     /** Kaizen's own analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
     tracking: jsonb("tracking").notNull().default({}),
     /** Heading and body fonts from Google Fonts, self-hosted (D59). */
@@ -1899,6 +1906,7 @@ export const platformSettings = commerce.table(
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
   (t) => [
+    check("platform_settings_briefing", sql`${t.briefing} in ('off', 'daily', 'weekly')`),
     check("platform_settings_single_row", sql`${t.id}`),
     check("platform_settings_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
     check("platform_settings_checkout_ui", sql`${t.checkoutUi} in ('custom', 'hosted')`),
@@ -18663,6 +18671,32 @@ export const platformPayoutLines = commerce.table(
     index("platform_payout_lines_sale_idx").on(t.saleId),
     check("platform_payout_lines_kind", sql`${t.kind} in ('charge', 'refund', 'dispute', 'fee', 'adjustment', 'payout', 'other')`),
     check("platform_payout_lines_net", sql`${t.netMinor} = ${t.amountMinor} - ${t.feeMinor}`),
+  ],
+);
+
+/**
+ * The platform's own targets (C2, D513, the twin of a store's `analytics_targets`, D348): for a month, recurring revenue and sales in a
+ * currency, paying stores and new stores as counts. Set on Plans → Analytics; their progress is on the platform home and in the briefing.
+ */
+export const platformTargets = commerce.table(
+  "platform_targets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    metric: text("metric").notNull(),
+    month: date("month", { mode: "string" }).notNull(),
+    currency: char("currency", { length: 3 }),
+    targetValue: bigint("target_value", { mode: "number" }).notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("platform_targets_key").on(t.metric, t.month, sql`coalesce(${t.currency}, '')`),
+    index("platform_targets_created_by_idx").on(t.createdBy),
+    check("platform_targets_metric", sql`${t.metric} in ('mrr', 'sales', 'paying', 'new_stores')`),
+    check("platform_targets_month", sql`extract(day from ${t.month}) = 1`),
+    check("platform_targets_currency", sql`(${t.metric} in ('mrr', 'sales')) = (${t.currency} is not null)`),
+    check("platform_targets_value", sql`${t.targetValue} > 0`),
   ],
 );
 

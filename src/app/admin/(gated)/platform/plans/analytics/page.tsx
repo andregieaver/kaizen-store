@@ -14,11 +14,13 @@ import { requirePlatformReader } from "@/server/auth";
 import { planAnalytics } from "@/server/plan-analytics";
 import { platformBooksState, storesWithBooks } from "@/server/platform-books";
 import { platformPayoutsView, type PlatformPayoutRow } from "@/server/platform-payouts";
+import { platformBriefingSetting, platformSnapshot } from "@/server/platform-briefing";
+import { BRIEFING_KINDS, monthOf, TARGET_METRICS } from "@/lib/platform-briefing";
 import { platformSalesView } from "@/server/platform-sales";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { SalesMonth } from "@/lib/platform-sales";
 
-import { postBooksAction, readSalesAction, setBooksStoreAction } from "./actions";
+import { postBooksAction, readSalesAction, setBooksStoreAction, setBriefingAction, setTargetAction } from "./actions";
 
 export const metadata: Metadata = { title: "Plan analytics" };
 
@@ -37,7 +39,19 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const asked = Number((await searchParams).days);
   const days = (PERIODS as readonly number[]).includes(asked) ? asked : 30;
   const year = new Date().getUTCFullYear();
-  const [a, sales, books, bookStores, payouts] = await Promise.all([planAnalytics(days), platformSalesView(year), platformBooksState(), storesWithBooks(), platformPayoutsView(year)]);
+  const [a, sales, books, bookStores, payouts, snapshot, briefing] = await Promise.all([
+    planAnalytics(days),
+    platformSalesView(year),
+    platformBooksState(),
+    storesWithBooks(),
+    platformPayoutsView(year),
+    platformSnapshot(),
+    platformBriefingSetting(),
+  ]);
+  const tw = adminText(lang, "platform").briefing;
+  const thisMonth = monthOf(snapshot.today);
+  const monthLabel = new Date(`${thisMonth}T12:00:00Z`).toLocaleDateString(locale, { month: "long", year: "numeric", timeZone: "UTC" });
+  const currencies = [...new Set([...snapshot.mrr.map((m) => m.currency), ...snapshot.sales.map((x) => x.currency), "NOK"])];
   const sw = w.sales;
   const bw = w.books;
   const pw = w.payouts;
@@ -204,6 +218,71 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
         </h2>
         {summary(a.live)}
       </section>
+
+      {/* Targets and the morning briefing (D513): this month's targets, their progress, and the briefing's setting. */}
+      <Card title={`${tw.targetsTitle} · ${monthLabel}`} description={tw.targetsDescription}>
+        <div className="flex flex-col gap-4">
+          {snapshot.targets.length === 0 ? (
+            <p className="text-sm text-muted">{tw.noTargets}</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-line">
+              {snapshot.targets.map(({ target, progress }) => (
+                <li key={target.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm">
+                  <span>
+                    {tw.metrics[target.metric]}
+                    {target.currency ? ` (${target.currency})` : ""} · {tw.status[progress.status]}
+                  </span>
+                  <span className="tabular-nums text-ink-2">
+                    {target.currency ? formatMoney(progress.actual, target.currency, locale) : progress.actual} / {target.currency ? formatMoney(target.targetValue, target.currency, locale) : target.targetValue} ({progress.pct} %)
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <ActionForm action={setTargetAction} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="month" value={thisMonth} />
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-ink-2">{tw.targetMetric}</span>
+              <select name="metric" className="min-h-10 rounded-lg border border-edge bg-card px-3 text-sm">
+                {TARGET_METRICS.map((m) => (
+                  <option key={m} value={m}>
+                    {tw.metrics[m]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-ink-2">{tw.targetCurrency}</span>
+              <select name="currency" className="min-h-10 rounded-lg border border-edge bg-card px-3 text-sm" defaultValue={currencies[0]}>
+                {currencies.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-ink-2">{tw.targetValue}</span>
+              <input name="value" inputMode="decimal" required className="min-h-10 w-36 rounded-lg border border-edge bg-card px-3 text-sm tabular-nums" />
+            </label>
+            <SubmitButton variant="secondary">{tw.saveTarget}</SubmitButton>
+            <span className="text-sm text-muted">{tw.removeHint}</span>
+          </ActionForm>
+          <ActionForm action={setBriefingAction} className="flex flex-wrap items-end gap-3 border-t border-edge pt-4">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-ink-2">{tw.setting}</span>
+              <select name="briefing" defaultValue={briefing.kind} className="min-h-10 rounded-lg border border-edge bg-card px-3 text-sm">
+                {BRIEFING_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {k === "off" ? tw.off : tw[k]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <SubmitButton variant="secondary">{bw.save}</SubmitButton>
+          </ActionForm>
+        </div>
+      </Card>
 
       <Card title={fillWords(w.funnelTitle, { n: a.days })} description={w.funnelDescription}>
         <div className="flex flex-col gap-3">

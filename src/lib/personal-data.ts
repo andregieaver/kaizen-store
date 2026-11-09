@@ -595,6 +595,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "domain.renewal_unpaid": "staff",
   "domain.renewal_stopping": "staff",
   "platform.access_received": "staff",
+  // The platform's morning briefing (D513), to its owners and its finance role.
+  "platform.briefing": "staff",
   // Notices of illegal content (DSA, D411): the sender's receipt and decision go to a member of the public; the alert and the statement of
   // reasons go to Kaizena Flow's admins and the store's owners.
   "platform.content_report_received": "shopper",
