@@ -30,6 +30,8 @@ import { setVatTermSize } from "@/server/vat-return";
 import { recurringInputOf } from "@/lib/recurring-costs";
 import { endRecurringCost, recurringView, saveRecurringCost } from "@/server/recurring-costs";
 import { dismissInboxDocument, readInboxDocument, markInboxUsed } from "@/server/books-inbox";
+import { budgetMonthsOf, MONTHS } from "@/lib/budget";
+import { saveBudget } from "@/server/budget";
 
 /**
  * Settings → Books (B2, D478): opening the store's books, posting an entry by hand, reversing one, and locking them through a day. Each
@@ -451,5 +453,28 @@ export async function dismissInboxAction(storeSlug: string, _state: FormState, f
   if (!UUID.test(id) || !(await dismissInboxDocument(member, id))) return { status: "error", messages: [w.inbox.problems.gone] };
   refresh();
   return { status: "ok", messages: [w.inbox.dismissed] };
+}
+
+/**
+ * *Save the budget* (D505): an account's budget for a year, one amount for every month or each month on its own (`month-1` … `month-12`);
+ * all nought removes it.
+ */
+export async function saveBudgetAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await owner(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const book = await openBookOf(member.store.id);
+  if (!book) return { status: "error", messages: [w.bills.problems.book] };
+  const account = Number(form.get("account"));
+  const months = budgetMonthsOf(
+    { each: form.get("each"), months: Array.from({ length: MONTHS }, (_, i) => form.get(`month-${i + 1}`)) },
+    book.currency,
+    bankAmount,
+  );
+  if (months === null) return { status: "error", messages: [w.budget.problems.amount], fields: { each: w.budget.problems.amount } };
+  const saved = await saveBudget(member, book.id, { year: Number(form.get("year")), account, months });
+  if (!saved.ok) return { status: "error", messages: [w.budget.problems[saved.problem]], fields: saved.problem === "account" ? { account: w.budget.problems.account } : undefined };
+  refresh();
+  return { status: "ok", messages: [fillWords(saved.removed ? w.budget.removed : w.budget.saved, { account: String(account) })] };
 }
 

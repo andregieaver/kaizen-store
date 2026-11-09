@@ -5146,6 +5146,20 @@
       "when": 1794180804088,
       "tag": "20261108233324_books_inbox_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 735,
+      "version": "7",
+      "when": 1794182795290,
+      "tag": "20261109000635_ledger_budgets",
+      "breakpoints": true
+    },
+    {
+      "idx": 736,
+      "version": "7",
+      "when": 1794182826512,
+      "tag": "20261109000706_ledger_budgets_rules",
+      "breakpoints": true
     }
   ]
 }

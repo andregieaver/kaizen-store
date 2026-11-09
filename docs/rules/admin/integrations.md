@@ -431,3 +431,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   the receipt of `postPurchaseFromBank()`, then `markInboxUsed()`; nothing is posted from a mail alone. `commerce.books_inbox` changes
   once (used or set aside) and is never deleted.
 
+## Budget and forecast (D505, `src/lib/budget.ts`, `src/server/budget.ts`, `BudgetCard`)
+
+- **Budget and forecast (D505, `src/lib/budget.ts`, `src/server/budget.ts`, `BudgetCard`)**: a book's
+  budget is `commerce.ledger_budgets` (twelve amounts per result account and year, positive, as the profit and loss shows them), written
+  only by `saveBudget()` (owners, audited; all nought removes it). What a year looks like is only `budgetView()`: actuals from the ledger by
+  `actualRows()`, the forecast from the budget, else the register's subscriptions (`subscriptionMonths()`, the cost as the books post it),
+  else the months so far; arithmetic in code, never in the page. Nothing in a budget is posted.
+

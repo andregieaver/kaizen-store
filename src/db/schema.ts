@@ -18522,6 +18522,34 @@ export const recurringCosts = commerce.table(
   ],
 );
 
+/**
+ * A book's budget for a year (D505): per result account, twelve amounts, January first, in the books' currency, income and costs both
+ * positive as the profit and loss shows them. The owner's own plan, changed at will; nothing in it is posted.
+ */
+export const ledgerBudgets = commerce.table(
+  "ledger_budgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    bookId: uuid("book_id").notNull(),
+    year: integer("year").notNull(),
+    account: integer("account").notNull(),
+    months: bigint("months", { mode: "number" }).array().notNull(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ledger_budgets_key").on(t.bookId, t.year, t.account),
+    index("ledger_budgets_store_idx").on(t.storeId),
+    index("ledger_budgets_updated_by_idx").on(t.updatedBy),
+    foreignKey({ name: "ledger_budgets_book_fk", columns: [t.storeId, t.bookId], foreignColumns: [ledgerBooks.storeId, ledgerBooks.id] }),
+    check("ledger_budgets_year", sql`${t.year} between 2000 and 2100`),
+    check("ledger_budgets_account", sql`${t.account} between 3000 and 8999`),
+    check("ledger_budgets_months", sql`cardinality(${t.months}) = 12 and 0 <= all(${t.months})`),
+  ],
+);
+
 /** A store's books address (D504): `books-{key}@` the receiving domain, made the first time the Books screen asks for it. */
 export const booksEmail = commerce.table(
   "books_email",

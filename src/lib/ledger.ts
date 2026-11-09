@@ -635,6 +635,12 @@ export type ProfitAndLoss = {
 
 const INCOME_GROUPS: ReadonlySet<ResultGroup> = new Set(["sales", "other_income", "financial_income"]);
 
+/** Whether a result account is income (sales, other income, financial income), shown positive in the profit and loss. */
+export const isIncomeAccount = (number: number): boolean => {
+  const group = resultGroupOf(number);
+  return group !== null && INCOME_GROUPS.has(group);
+};
+
 /**
  * The profit and loss of a period from the trial balance's rows (what each account moved in the days): each group's accounts with their
  * amounts as a reader reads them (income and costs both positive), the operating and financial results, and the result after tax.

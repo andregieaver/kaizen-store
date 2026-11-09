@@ -8,7 +8,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { todayIn } from "@/lib/analytics-period";
-import { HAND_ROWS, LEDGER_SERIES, NO_TAX_CODES, balanceSheet, isDay, profitAndLoss, vatTermOf, type ReportRow } from "@/lib/ledger";
+import { HAND_ROWS, LEDGER_SERIES, NO_TAX_CODES, balanceSheet, isDay, profitAndLoss, resultGroupOf, vatTermOf, type ReportRow } from "@/lib/ledger";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { formatStoreDay } from "@/lib/return-time";
 import { groupingOf, saftYears } from "@/lib/saft";
@@ -20,6 +20,7 @@ import { BillFields, type BillFieldWords } from "@/components/admin/bill-fields"
 import { ReceiptFields, type ReceiptFieldWords } from "@/components/admin/receipt-fields";
 import { RecurringCostsCard } from "@/components/admin/recurring-costs";
 import { BooksInboxCard } from "@/components/admin/books-inbox";
+import { BudgetCard } from "@/components/admin/budget-card";
 import { inboxMatches } from "@/lib/books-inbox";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
 import { invoiceOffers } from "@/server/bank-payments";
@@ -27,12 +28,13 @@ import { vouchersOf } from "@/server/purchases";
 import { billOffers, unpaidBills } from "@/server/supplier-invoices";
 import { recurringView } from "@/server/recurring-costs";
 import { booksAddressOf, inboxDocuments } from "@/server/books-inbox";
+import { budgetOf } from "@/server/budget";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 import { vatReturnOrgNumber } from "@/server/vat-return";
 
-import { addBillAction, dismissInboxAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, recurringPressAction, reverseEntryAction, saveRecurringCostAction, uploadBankStatementAction } from "./actions";
+import { addBillAction, dismissInboxAction, saveBudgetAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, recurringPressAction, reverseEntryAction, saveRecurringCostAction, uploadBankStatementAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -124,6 +126,9 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
   );
   const inboxChoices = inbox.map((d) => ({ id: d.id, label: `${day(d.receivedOn)} · ${d.subject || d.fileName}`.slice(0, 120) }));
   const inboxName = new Map(inbox.map((d) => [d.id, d.subject || d.fileName]));
+  // Budget and forecast for this year (D505).
+  const budgetYear = Number(today.slice(0, 4));
+  const budget = await budgetOf(store.id, book.id, budgetYear, today);
   // The vouchers of the journal's entries and of the bills, such as a purchase's receipt (D490), by entry.
   const vouchers = await vouchersOf(store.id, [...journal.map((e) => e.id), ...bills.map((b) => b.entryId)]);
   // The bill's fields' words, for the part of them that reads its file in the browser (D493).
@@ -474,6 +479,19 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         day={day}
         save={saveRecurringCostAction.bind(null, store.slug)}
         press={recurringPressAction.bind(null, store.slug)}
+      />
+
+      {/* Budget and forecast (D505): this year's budget against what the books hold, and where the year is heading. */}
+      <BudgetCard
+        year={budgetYear}
+        view={budget}
+        accounts={chart.filter((a) => resultGroupOf(a.number) !== null).map((a) => ({ number: a.number, name: a.name }))}
+        owner={owner}
+        currency={book.currency}
+        locale={locale}
+        words={w}
+        money={amount}
+        save={saveBudgetAction.bind(null, store.slug)}
       />
 
       {waiting.length > 0 && (
