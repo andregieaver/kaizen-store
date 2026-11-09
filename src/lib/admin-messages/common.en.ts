@@ -16,6 +16,7 @@ export const commonEn = {
     toDark: "Switch to dark colours",
     toLight: "Switch to light colours",
     language: "Language",
+    kaizenLife: "Kaizen Life",
     signOut: "Sign out",
   },
   /** A store feature's name (D178, `STORE_FEATURES`), what it needs in a sentence, and what a page says while it is off (`FeatureOff`, D312 A8). */

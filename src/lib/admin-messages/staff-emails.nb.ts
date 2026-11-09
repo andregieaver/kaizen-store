@@ -24,6 +24,19 @@ export const staffEmailsNb: StaffEmailsMessages = {
       "Hvis det ikke var deg, kan noen andre ha tilgang til kontoen din. Logg inn, bytt passord med en gang og sett opp innlogging i to trinn igjen, og si så fra til eieren av butikken din.",
     signIn: "Logg inn",
   },
+  kaizenLife: {
+    subject: "Kaizena Flow-kontoen din er koblet til Kaizen Life",
+    hello: "Hei {person},",
+    linkedEmail:
+      "Kaizena Flow-kontoen din ble koblet til Kaizen Life-kontoen din {when}, fordi begge bruker samme e-postadresse.",
+    linkedSignIn:
+      "Kaizena Flow-kontoen din ble koblet til Kaizen Life-kontoen din {when}, fordi du logget inn på den ene med den andre.",
+    shows:
+      "Kaizen Life viser nå det i Work som venter på deg, som forfalte fakturaer, en tidtaker som går og timer som kan faktureres, og åpner Kaizena Flow når du trykker. Den kan bare lese denne oversikten: den kan ikke endre noe i butikkene dine.",
+    notWanted:
+      "Ikke deg, eller ikke ønsket? Fjern koblingen under Din konto → Tilkoblede apper og assistenter, eller i innstillingene i Kaizen Life. Når koblingen er fjernet, kobles de aldri sammen igjen av seg selv.",
+    button: "Tilkoblede apper og assistenter",
+  },
   guardrail: {
     days: { one: "{n} dag", many: "{n} dager" },
     figures:

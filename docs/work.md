@@ -2279,6 +2279,13 @@ store with other Work rows is refused, the readers, no email, a normal invoice s
   Work settings (VAT number, bank account, payment note) first, or the frozen seller lacks them for good.
 
 
+### Kaizen Life's Work summary (D507)
+
+WP13's `work_summary` is built, as the reader Kaizen Life shows in place of its own Work (`docs/life-work-summary.md`):
+`workSummaryOf()` over `workStoresFor()`, `getOwnerOverview()` and `getRunningTimer()`, served to Kaizen Life for a linked account
+(`/api/kaizen-life/v1/work-summary`) and to outside assistants as the owner MCP's `work_summary`. Its links go through
+`/admin/sign-in/kaizen-life?next=…`. The timer tools of WP13 are still to build.
+
 ### Import run for Human Web (2026-09-30)
 
 `scripts/import-life-work.mjs` was run against production for the store `human-web` from Kaizen Life's

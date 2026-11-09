@@ -76,6 +76,8 @@ export const toolPermission = (name: string): string | null => (Object.hasOwn(TO
 export function toolScope(name: string): OAuthScope | null {
   if (name === "list_stores") return STORES_READ;
   if (name === "ask_store_assistant") return "owner";
+  // Work's screens need `settings:read` (as `workStoresFor()`); the summary reads the same.
+  if (name === "work_summary") return "settings:read";
   return Object.hasOwn(TOOL_PERMISSIONS, name) ? TOOL_PERMISSIONS[name as keyof typeof TOOL_PERMISSIONS] : null;
 }
 
@@ -115,12 +117,20 @@ function withStore(tool: OwnerTool): McpToolInfo {
   return { name: tool.name, title: toolTitle(tool.name), description: `${tool.description}${gate}`, inputSchema: { ...parameters, properties, required }, annotations: toolAnnotations(tool) };
 }
 
-/** Every tool of the owner MCP (`/api/mcp`): the two of its own, then every owner tool with the store it is for. */
+/** Every tool of the owner MCP (`/api/mcp`): the three of its own, then every owner tool with the store it is for. */
 export const MCP_TOOLS: McpToolInfo[] = [
   {
     name: "list_stores",
     title: "List stores",
     description: "The stores this connection reaches in Kaizena Flow: slug, name. Every other tool takes one of these slugs.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  },
+  {
+    name: "work_summary",
+    title: "Work summary",
+    description:
+      "What needs the person in Work across the stores this connection reaches, in one answer: overdue invoices, their own running timer, time ready to invoice, repeating invoices ready and drafts left waiting, urgent first; money per currency in minor units (never added across currencies), each store's figures, and a link to each screen in Kaizena Flow. Read only; takes no store.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   },
@@ -154,7 +164,7 @@ export function mcpCatalogue() {
   return {
     server: { endpoint: "/api/mcp", transport: "streamable-http", protocol_version: "2025-06-18" },
     description:
-      "The tools of a store owner's MCP server. Every tool but list_stores takes the store it is for. A tool with a gate changes nothing from here: the change is kept for the owner to approve in Kaizena Flow's admin. A tool stands behind a store feature when it names one, and needs the permission it names in that store. With an OAuth token from Kaizena Flow (D439), a call also needs that permission as a scope of the token's grant (list_stores needs stores:read), and the person's own role decides at every call.",
+      "The tools of a store owner's MCP server. Every tool but list_stores and work_summary takes the store it is for. A tool with a gate changes nothing from here: the change is kept for the owner to approve in Kaizena Flow's admin. A tool stands behind a store feature when it names one, and needs the permission it names in that store. With an OAuth token from Kaizena Flow (D439), a call also needs that permission as a scope of the token's grant (list_stores needs stores:read), and the person's own role decides at every call.",
     tools: MCP_TOOLS.map((t) => {
       const own = byName.get(t.name);
       const feature = own && Object.hasOwn(TOOL_FEATURES, own.name) ? TOOL_FEATURES[own.name as keyof typeof TOOL_FEATURES] : undefined;
@@ -164,7 +174,7 @@ export function mcpCatalogue() {
         description: t.description,
         inputSchema: t.inputSchema,
         gate: own?.gate ?? null,
-        permission: own ? toolPermission(own.name) : t.name === "ask_store_assistant" ? "owner" : null,
+        permission: own ? toolPermission(own.name) : t.name === "ask_store_assistant" ? "owner" : t.name === "work_summary" ? "settings:read" : null,
         // The scope an OAuth grant needs to call it (D439).
         scope: toolScope(t.name),
         feature: feature === undefined ? null : typeof feature === "string" ? [feature] : [...feature],

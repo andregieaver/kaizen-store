@@ -17,6 +17,7 @@ import { siteUrl } from "@/lib/site";
 import { noticeApproval } from "./assistant-notices";
 import { activeAccount, audit, holderOf, passMembership, type Account, type Membership } from "./auth";
 import { log } from "./log";
+import { getWorkSummary } from "./work-summary";
 import { ACCESS_PREFIX, oauthAccess } from "./oauth";
 import { clientConversation, keepForApproval, kaizenLifeConversation, runTurn, type AssistantEvent } from "./owner-assistant";
 import type { OutsideAsker } from "./manager-tools";
@@ -270,6 +271,12 @@ export async function callMcpTool(
   if (name === "list_stores") {
     await auditCall(caller, null, name, "done");
     return text({ stores: caller.stores.map(({ slug, name: storeName }) => ({ slug, name: storeName })) });
+  }
+  if (name === "work_summary") {
+    // Across the stores the caller reaches; Work's own rule (`settings:read` in the person's role) picks among them.
+    const summary = await getWorkSummary(caller.account, { onlyStores: new Set(caller.stores.map((s) => s.slug)) });
+    await auditCall(caller, null, name, "done");
+    return text(summary);
   }
   const member = await memberFor(caller, args.store);
   if (!member) {

@@ -8,6 +8,7 @@ import { Avatar } from "@/components/avatar";
 import { platformRoleOf } from "@/lib/platform-access";
 import { listStores, type Account } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
+import { kaizenLifeAppUrl } from "@/server/kaizen-life-accounts";
 import { countPendingRequests } from "@/server/platform";
 
 import { AdminLanguageSwitch } from "@/components/admin/admin-text";
@@ -40,11 +41,15 @@ export async function LevelSwitcher({ account, level, label, currentSlug }: { ac
   );
 }
 
-/** The account menu (D107): who is signed in, their account, the colours and signing out. */
-export function AdminAccountMenu({ account, role }: { account: Account; role?: string }) {
+/**
+ * The account menu (D107): who is signed in, their account, the colours and signing out; and the way back to Kaizen Life for an
+ * account linked to it (docs/life-work-summary.md 3.6).
+ */
+export async function AdminAccountMenu({ account, role }: { account: Account; role?: string }) {
   // In the account's language (D312 A0).
   const w = adminText(adminLangOf(account.adminLocale), "common").accountMenu;
   const avatar = avatarFor(account);
+  const life = await kaizenLifeAppUrl(account.id);
   return (
     <AccountMenu avatar={<Avatar avatar={avatar} size={32} />} initials={avatar.initials} name={account.name} email={account.email}>
       <MenuLink href="/admin/account">
@@ -53,6 +58,7 @@ export function AdminAccountMenu({ account, role }: { account: Account; role?: s
       </MenuLink>
       <MenuNotices label={adminText(adminLangOf(account.adminLocale), "assistant").notices.menu} href="/admin/account/notices" />
       <MenuLink href="/admin/account/kaizen-support">{w.contactSupport}</MenuLink>
+      {life ? <MenuLink href={life}>{w.kaizenLife} ↗</MenuLink> : null}
       <MenuRow label={w.colours}>
         <AdminColorSwitch save={colorModeAction} labels={{ toDark: w.toDark, toLight: w.toLight }} />
       </MenuRow>

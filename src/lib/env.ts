@@ -76,6 +76,25 @@ export function domainConnectKey(source: Record<string, string | undefined> = { 
 }
 
 /**
+ * Kaizen Life's account link (docs/life-work-summary.md 3.3): Kaizena Flow's own ES256 private key (PEM, PKCS#8), which signs what it
+ * asks Kaizen Life, and Kaizen Life's public key (PEM, SPKI), which checks what Kaizen Life asks here; `\n` written as two characters
+ * is allowed, so each fits one variable. Null without both: nothing is linked, and the link's doors refuse everything.
+ */
+export function kaizenLifeLinkKeys(
+  source: Record<string, string | undefined> = {
+    KAIZEN_LIFE_LINK_PRIVATE_KEY: process.env.KAIZEN_LIFE_LINK_PRIVATE_KEY,
+    KAIZEN_LIFE_LINK_PUBLIC_KEY: process.env.KAIZEN_LIFE_LINK_PUBLIC_KEY,
+  },
+): { privateKey: string; lifePublicKey: string } | null {
+  const own = source.KAIZEN_LIFE_LINK_PRIVATE_KEY?.trim().replace(/\\n/g, "\n");
+  const life = source.KAIZEN_LIFE_LINK_PUBLIC_KEY?.trim().replace(/\\n/g, "\n");
+  if (!own || !life) return null;
+  if (!/^-----BEGIN PRIVATE KEY-----/.test(own)) throw new Error("KAIZEN_LIFE_LINK_PRIVATE_KEY must be a PEM (PKCS#8) private key.");
+  if (!/^-----BEGIN PUBLIC KEY-----/.test(life)) throw new Error("KAIZEN_LIFE_LINK_PUBLIC_KEY must be a PEM (SPKI) public key.");
+  return { privateKey: own, lifePublicKey: life };
+}
+
+/**
  * The admin's Web Push keys (D361): the VAPID key pair (base64url, as `web-push generate-vapid-keys` prints them) and who the push services
  * may contact (`mailto:` or a web address; Kaizena Flow's site by default). Null without both keys: notifications are then not offered.
  */

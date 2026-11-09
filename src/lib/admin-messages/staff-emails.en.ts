@@ -27,6 +27,19 @@ export const staffEmailsEn = {
       "If it was not you, someone else may have access to your account. Sign in, change your password at once and set up two-step sign-in again, then tell the owner of your store.",
     signIn: "Sign in",
   },
+  kaizenLife: {
+    subject: "Your Kaizena Flow account is linked to Kaizen Life",
+    hello: "Hello {person},",
+    linkedEmail:
+      "Your Kaizena Flow account was linked to your Kaizen Life account on {when}, because both use the same email address.",
+    linkedSignIn:
+      "Your Kaizena Flow account was linked to your Kaizen Life account on {when}, because you signed in to one with the other.",
+    shows:
+      "Kaizen Life now shows what needs you in Work, such as overdue invoices, a running timer and hours to invoice, and opens Kaizena Flow when you tap. It can only read that summary: it cannot change anything in your stores.",
+    notWanted:
+      "Not you, or not wanted? Unlink it under Your account → Connected apps and assistants, or in Kaizen Life's settings. Once unlinked, the two are never linked again by themselves.",
+    button: "Connected apps and assistants",
+  },
   guardrail: {
     days: { one: "{n} day", many: "{n} days" },
     figures:

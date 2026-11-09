@@ -12,7 +12,7 @@ import { ucpCatalogue, UCP_TOOLS } from "./ucp-catalogue";
  */
 describe("the owner MCP's annotations", () => {
   it("gives every tool a title and every hint", () => {
-    expect(MCP_TOOLS).toHaveLength(OWNER_TOOLS.length + 2);
+    expect(MCP_TOOLS).toHaveLength(OWNER_TOOLS.length + 3);
     for (const tool of MCP_TOOLS) {
       expect(tool.title, tool.name).toMatch(/^[A-Z][A-Za-z' ]+[A-Za-z]$/);
       expect(tool.title, tool.name).not.toContain("_");

@@ -86,6 +86,7 @@ export const oauthEn = {
     title: "Connected apps and assistants",
     description: "AI assistants and apps you let work with your stores. Each reaches only the stores you chose, and only what your role there allows.",
     none: "Nothing is connected. An AI assistant such as Claude or ChatGPT connects at {address}.",
+    noneElse: "No AI assistant or app is connected. One such as Claude or ChatGPT connects at {address}.",
     stores: "Stores: {stores}",
     level: "Access: {level}",
     lastUsed: "Last used {when}",
@@ -95,6 +96,18 @@ export const oauthEn = {
     open: "See what is connected",
     disconnected: "Disconnected: its tokens no longer work.",
     gone: "It was already disconnected.",
+  },
+  kaizenLife: {
+    title: "Kaizen Life",
+    linked: "Linked since {when}. Kaizen Life shows what needs you in Work across your stores, such as overdue invoices and a running timer, and opens Kaizena Flow when you tap. It can only read that summary.",
+    how: {
+      email: "Linked because both accounts use the same email address.",
+      identity: "Linked when you signed in with the other.",
+      backfill: "Linked because both accounts use the same email address.",
+    },
+    open: "Open Kaizen Life",
+    unlink: "Unlink",
+    unlinked: "Unlinked. Kaizen Life no longer shows your Work. They are linked again only if you sign in to one with the other.",
   },
   store: {
     title: "AI assistants and apps connected to this store",

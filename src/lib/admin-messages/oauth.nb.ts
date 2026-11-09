@@ -80,6 +80,7 @@ export const oauthNb: OauthMessages = {
     title: "Tilkoblede apper og assistenter",
     description: "AI-assistenter og apper du har latt jobbe med butikkene dine. Hver når bare butikkene du valgte, og bare det rollen din der tillater.",
     none: "Ingenting er koblet til. En AI-assistent som Claude eller ChatGPT kobles til på {address}.",
+    noneElse: "Ingen AI-assistent eller app er koblet til. En som Claude eller ChatGPT kobles til på {address}.",
     stores: "Butikker: {stores}",
     level: "Tilgang: {level}",
     lastUsed: "Sist brukt {when}",
@@ -89,6 +90,18 @@ export const oauthNb: OauthMessages = {
     open: "Se hva som er koblet til",
     disconnected: "Koblet fra: tokenene virker ikke lenger.",
     gone: "Den var allerede koblet fra.",
+  },
+  kaizenLife: {
+    title: "Kaizen Life",
+    linked: "Koblet sammen siden {when}. Kaizen Life viser det i Work som venter på deg i butikkene dine, som forfalte fakturaer og en tidtaker som går, og åpner Kaizena Flow når du trykker. Den kan bare lese denne oversikten.",
+    how: {
+      email: "Koblet sammen fordi begge kontoene bruker samme e-postadresse.",
+      identity: "Koblet sammen da du logget inn på den ene med den andre.",
+      backfill: "Koblet sammen fordi begge kontoene bruker samme e-postadresse.",
+    },
+    open: "Åpne Kaizen Life",
+    unlink: "Fjern koblingen",
+    unlinked: "Koblingen er fjernet. Kaizen Life viser ikke lenger Work. De kobles sammen igjen bare hvis du logger inn på den ene med den andre.",
   },
   store: {
     title: "AI-assistenter og apper koblet til denne butikken",

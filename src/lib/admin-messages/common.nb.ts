@@ -17,6 +17,7 @@ export const commonNb: CommonMessages = {
     toDark: "Bytt til mørke farger",
     toLight: "Bytt til lyse farger",
     language: "Språk",
+    kaizenLife: "Kaizen Life",
     signOut: "Logg ut",
   },
   features: {

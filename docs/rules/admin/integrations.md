@@ -268,7 +268,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`einvoiceLines()`, `screens.einvoiceState`) on the order page and on a Work invoice, where the XML is also downloaded
   (`…/work/s/{store}/invoices/{id}/xml`, `…/credit-notes/{id}/xml`). Email is unchanged in this step.
 
-## Kaizen Life (D95, `src/server/kaizen-life.ts`)
+## Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D507, `docs/life-work-summary.md`)
 
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
@@ -290,6 +290,29 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   tokens encrypted in `kaizen_life_links`); the assistant then has
   `ask_kaizen_life` (`ASK_KAIZEN_LIFE`, not an owner tool), never in turns
   Kaizen Life asked for.
+- Kaizen Life's account link and Work summary (D507, `docs/life-work-summary.md`, `src/server/kaizen-life-accounts.ts`,
+  `src/server/kaizen-life-doors.ts`, `src/lib/kaizen-life-jwt.ts`, `src/lib/work-summary.ts`, `src/server/work-summary.ts`): Kaizen Life
+  shows Work only for a person with accounts on both, linked. The link is `commerce.kaizen_life_accounts`, written only by
+  `kaizen-life-accounts.ts` (one live link per account and per Life user, one row per pair, its pair fixed by a trigger; audited
+  `account.kaizen_life_linked` and `_unlinked`). It is made by itself: by a sign-in with the other app (`identity`:
+  `admitFromKaizenLife()` → `linkBySignIn()`, which also links a pair the person undid), or by the same email proved on both
+  (`email`: `offerLinkByEmail()` after every sign-in through `admit()` and after a confirmed self-serve sign-up, never for an account
+  ever linked; Kaizen Life's own `link` request names a user who verified the email there, and Flow links only an account that has
+  signed in, `provedAccountByEmail()`). An undone pair is never linked again by email. Kaizen Life keeps a copy, written in the same
+  call (`linkAndTell()` takes a link back when Life did not take its copy; Life's `link` asked again answers the link that stands).
+  Linked, the person gets one email (`sendKaizenLifeLinkedEmail()`), *Kaizen Life ↗* in the account menu (`kaizenLifeAppUrl()`) and
+  *Unlink* on Connected apps and assistants (`unlinkFromFlow()`, Life told; a failure never keeps the link). A link gives Kaizen Life
+  the read-only Work summary and nothing else; signing in with Kaizen Life also admits a linked account whatever its role. The two
+  servers talk only by requests signed with ES256 (`signLinkRequest()`/`checkLinkRequest()`: issuer, audience, the door's path, the
+  body's SHA-256, 60 seconds, the `jti` taken once in `commerce.kaizen_life_jtis`), with the keys of `kaizenLifeLinkKeys()`
+  (`KAIZEN_LIFE_LINK_PRIVATE_KEY`, Flow's own, and `KAIZEN_LIFE_LINK_PUBLIC_KEY`, Life's); without both nothing links and
+  `/api/kaizen-life/v1/{link,unlink,status,work-summary}` refuse everything (budgets `life_link`, `life_summary`). Flow asks Life's
+  `/api/kaizena-flow/v1/{lookup,link,unlink}` through `askLife()` (5 seconds, never a body in a log). The summary is
+  `workSummaryOf()` over `workStoresFor()`, `getOwnerOverview()` and `getRunningTimer()`: data, not sentences, money per currency in
+  integer minor units, a client named only on a line about one, and every link built with `workBase()` and passed through the one
+  door from Life, `/admin/sign-in/kaizen-life?next=…` (`safeNext()`; straight through when signed in, to the second step when held,
+  else Sign in with Kaizen Life with `next` kept). The same reader is the owner MCP's `work_summary` (scope `settings:read`, over the
+  caller's stores only). A session that is gone keeps the page asked for on the way to sign in (`signInFor()` in `SessionRecovery`).
 
 ## Duplicating a store (D129, `docs/store-copy.md`, `src/lib/store-copy.ts`, `src/lib/store-copy-rules.ts`, `src/server/store-copy.ts`,…
 

@@ -644,6 +644,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "work.invoice": "staff",
   "work.credit_note": "staff",
   "work.reminder": "staff",
+  // Told once that the account was linked to Kaizen Life (D507), to the account's own address, as the security notices are.
+  "kaizen_life.linked": "staff",
 };
 
 /** Kinds built from a prefix and a changing part (`subscription.${change}`, `security.${event}`, `booking.staff_${change}`). */

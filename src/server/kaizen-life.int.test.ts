@@ -64,3 +64,43 @@ describe("signing in with Kaizen Life (D95)", () => {
     expect(stranger.signOut).toHaveBeenCalled();
   });
 });
+
+describe("signing in with Kaizen Life once the accounts are linked (D507)", () => {
+  it("admits staff linked to this Kaizen Life user whatever their role, and not through someone else's link", async () => {
+    const email = `life-linked-staff-${run}@example.com`;
+    const [store] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${`life-${run}`}`);
+    const [account] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${email}, 'Per') returning id`);
+    await db().execute(sql`
+      insert into commerce.store_members (store_id, account_id, role) values (${String(store.id)}::uuid, ${String(account.id)}::uuid, 'admin')
+    `);
+    const lifeUserId = crypto.randomUUID();
+    const signOut = vi.fn(async () => ({ error: null }));
+    const supabase = { auth: { signOut } } as unknown as SupabaseClient;
+    const user = {
+      id: crypto.randomUUID(),
+      email,
+      identities: [{ provider: life.KAIZEN_LIFE_PROVIDER, id: lifeUserId, identity_data: { sub: lifeUserId, email } }],
+    } as unknown as User;
+    expect(await life.admitFromKaizenLife(supabase, user)).toEqual({ kind: "owners-only" });
+    // Linked to another Kaizen Life user: still not this one's way in.
+    await db().execute(sql`
+      insert into commerce.kaizen_life_accounts (account_id, life_user_id, how) values (${String(account.id)}::uuid, ${crypto.randomUUID()}::uuid, 'email')
+    `);
+    expect(await life.admitFromKaizenLife(supabase, user)).toEqual({ kind: "owners-only" });
+    await db().execute(sql`delete from commerce.kaizen_life_accounts where account_id = ${String(account.id)}::uuid`);
+    await db().execute(sql`
+      insert into commerce.kaizen_life_accounts (account_id, life_user_id, how) values (${String(account.id)}::uuid, ${lifeUserId}::uuid, 'email')
+    `);
+    signOut.mockClear();
+    expect(await life.admitFromKaizenLife(supabase, user)).toEqual({ kind: "admitted" });
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("reads the Kaizen Life user from the identity's subject, and nothing that is no user id", () => {
+    const id = "7D1E2C64-6F0A-4B55-9D3E-2A3B4C5D6E7F";
+    expect(life.lifeUserIdOf({ id: "x", identity_data: { sub: id } })).toBe(id.toLowerCase());
+    expect(life.lifeUserIdOf({ id, identity_data: {} })).toBe(id.toLowerCase());
+    expect(life.lifeUserIdOf({ id: "not-a-uuid", identity_data: { sub: "life-user" } })).toBeNull();
+    expect(life.lifeUserIdOf(undefined)).toBeNull();
+  });
+});

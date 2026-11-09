@@ -8,13 +8,22 @@ areas: [api, webhooks, mcp]
 features: []
 plans: []
 order: 1000
-checked: 2026-11-06
-sources: [D438, D439, D440, D441, D458, D464]
+checked: 2026-11-09
+sources: [D438, D439, D440, D441, D458, D464, D507]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.11 — 2026-11-09
+
+An addition to the owner MCP's catalogue (D507).
+
+- `work_summary`: what needs the person in Work across the stores the connection reaches, in one call that takes no store. It returns
+  overdue invoices, their own running timer, time ready to invoice, repeating invoices ready and drafts left waiting, urgent first. Money
+  is per currency in minor units, never added across currencies. It also gives each store's figures and a link to each screen in
+  Kaizena Flow. It reads only, and needs the scope `settings:read`, as Work's screens do.
 
 ## 1.10 — 2026-11-06
 

@@ -18710,3 +18710,45 @@ export const booksInbox = commerce.table(
     ),
   ],
 );
+
+/**
+ * Kaizen Life's account link (docs/life-work-summary.md 3.3): which Kaizen Life user an account is. Made by itself once the person
+ * has both (a sign-in with the other app, `identity`; the same verified email on both, `email`; the one run at launch, `backfill`)
+ * and undone by the person in either app. It lets Kaizen Life read the account's Work summary and nothing else. One live link per
+ * account and per Life user; one row per pair, so an undone link is kept (`unlinked_at`) and the same pair is never linked again by
+ * itself (only the person's own sign-in revives it). Written only by `src/server/kaizen-life-links.ts`.
+ */
+export const kaizenLifeAccounts = commerce.table(
+  "kaizen_life_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    lifeUserId: uuid("life_user_id").notNull(),
+    how: text("how").notNull(),
+    linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+    unlinkedAt: timestamp("unlinked_at", { withTimezone: true }),
+    unlinkedFrom: text("unlinked_from"),
+  },
+  (t) => [
+    uniqueIndex("kaizen_life_accounts_pair_key").on(t.accountId, t.lifeUserId),
+    uniqueIndex("kaizen_life_accounts_account_live_key").on(t.accountId).where(sql`${t.unlinkedAt} is null`),
+    uniqueIndex("kaizen_life_accounts_life_live_key").on(t.lifeUserId).where(sql`${t.unlinkedAt} is null`),
+    check("kaizen_life_accounts_how", sql`${t.how} in ('identity', 'email', 'backfill')`),
+    check(
+      "kaizen_life_accounts_unlinked",
+      sql`(${t.unlinkedAt} is null) = (${t.unlinkedFrom} is null) and coalesce(${t.unlinkedFrom} in ('flow', 'life'), true)`,
+    ),
+  ],
+);
+
+/** Signed requests between Kaizena Flow and Kaizen Life already taken (their `jti`), so none is accepted twice; kept until it expires. */
+export const kaizenLifeJtis = commerce.table(
+  "kaizen_life_jtis",
+  {
+    jti: text("jti").primaryKey(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("kaizen_life_jtis_expires_idx").on(t.expiresAt), check("kaizen_life_jtis_jti", sql`length(${t.jti}) between 16 and 100`)],
+);

@@ -88,7 +88,7 @@
   <!-- channel -->
   <rect x="30" y="566" width="1140" height="100" rx="14" fill="#f6f7fa" stroke="#d6d9e0"/>
   <text class="b" x="48" y="592">How the two apps keep it</text>
-  <text class="s" x="48" y="614">Flow keeps the link (commerce.kaizen_life_links); Life keeps a copy (kaizena_flow_links), written in the same call: its cheap check for whether Work shows.</text>
+  <text class="s" x="48" y="614">Flow keeps the link (commerce.kaizen_life_accounts); Life keeps a copy (kaizena_flow_links), written in the same call: its cheap check for whether Work shows.</text>
   <text class="s" x="48" y="634">Server to server, both ways, each request signed by the sender (ES256, 60 seconds, used once). Both sides must hold the email as verified.</text>
   <text class="s" x="48" y="654">The link gives Life one thing: the read-only Work summary. Acting in a store from Life still needs the person's own grant in Flow.</text>
 </svg>

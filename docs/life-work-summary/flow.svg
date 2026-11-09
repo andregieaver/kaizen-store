@@ -61,7 +61,7 @@
 
   <!-- Flow boxes -->
   <rect class="door" x="770" y="104" width="382" height="66" rx="12"/>
-  <text class="mono" x="786" y="131">/admin/from/kaizen-life?next=…</text>
+  <text class="mono" x="786" y="131">/admin/sign-in/kaizen-life?next=…</text>
   <text class="s" x="786" y="152">The one door in. Signed in: straight through</text>
 
   <rect class="door" x="770" y="236" width="382" height="66" rx="12"/>

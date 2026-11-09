@@ -73,6 +73,11 @@ export const BUDGETS = {
   // Fetching a client's metadata document for an authorization request (D439): the server fetches an address a visitor names, so a few
   // an hour from one address and a ceiling for the site; a document already kept is not fetched again.
   oauth_fetch: { window: "hour", visitor: 30, store: 3000 },
+  // Kaizen Life's account link (docs/life-work-summary.md 3.3): lookups, links and unlinks from Kaizen Life's server, counted under no store;
+  // the visitor is the door. A ceiling against a loop on Life's side, never met by people signing up.
+  life_link: { window: "minute", visitor: 300, store: 900 },
+  // The Work summary Kaizen Life reads for a linked account: the visitor is the account, the whole site's ceiling under no store.
+  life_summary: { window: "minute", visitor: 60, store: 6000 },
   // Making a page builder sandbox (D457): each is a copied store, so a few an hour from one network and a ceiling for the whole site,
   // counted under no store; a failed count refuses. The platform's daily cap (`platform_settings.sandbox_daily_cap`) stands beside it.
   sandbox: { window: "hour", visitor: 5, store: 200 },

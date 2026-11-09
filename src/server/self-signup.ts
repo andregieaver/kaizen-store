@@ -14,6 +14,8 @@ import { siteUrl } from "@/lib/site";
 import { slugProblem, suggestSlug } from "@/lib/slug";
 
 import { audit, passMembership, type Account } from "./auth";
+import { afterAnswer } from "./after-answer";
+import { offerLinkByEmail } from "./kaizen-life-accounts";
 import { startDreamRun } from "./dream-factory";
 import { log } from "./log";
 import { TRIAL_DAYS } from "./store-trial";
@@ -231,6 +233,8 @@ export async function confirmSelfSignup(
     if (password && !passwordSet) log("warn", "self_signup.password_not_set", { requestId });
     // The Dream Factory (D409): the store is built from what they said they will sell. A run that cannot start never undoes the store.
     if (claimed.dream === true && owner) await startDreamFromSignup(slug, String(owner.id), String(claimed.message ?? ""), requestId);
+    // The confirmation link proved the address: linked to the Kaizen Life user with the same verified email, if there is one (3.3).
+    if (owner) afterAnswer(() => offerLinkByEmail(String(owner.id), made.email));
     return { ok: true, storeName, password: passwordSet };
   } catch (error) {
     log("error", "self_signup.store_failed", { requestId }, error);

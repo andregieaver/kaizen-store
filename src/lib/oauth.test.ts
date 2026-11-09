@@ -243,9 +243,10 @@ describe("the owner MCP's tools and their scopes", () => {
     for (const tool of MCP_TOOLS) expect(toolScope(tool.name), tool.name).not.toBeNull();
     expect(toolScope("list_stores")).toBe("stores:read");
     expect(toolScope("ask_store_assistant")).toBe("owner");
+    expect(toolScope("work_summary")).toBe("settings:read");
     expect(toolScope("list_orders")).toBe("orders:read");
     expect(toolScope("no_such_tool")).toBeNull();
-    expect(OWNER_TOOLS.length + 2).toBe(MCP_TOOLS.length);
+    expect(OWNER_TOOLS.length + 3).toBe(MCP_TOOLS.length);
     expect(mcpCatalogue().tools.find((t) => t.name === "list_stores")?.scope).toBe("stores:read");
   });
 });

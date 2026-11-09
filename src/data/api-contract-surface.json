@@ -1,5 +1,5 @@
 {
- "version": "1.10",
+ "version": "1.11",
  "surface": [
   "admin DELETE /categories/{id}",
   "admin DELETE /categories/{id} -> data",
@@ -2654,6 +2654,7 @@
   "mcp wishlist_insights <- store (required)",
   "mcp work_overview",
   "mcp work_overview <- store (required)",
+  "mcp work_summary",
   "mcp write_product_texts",
   "mcp write_product_texts <- product (required)",
   "mcp write_product_texts <- store (required)",

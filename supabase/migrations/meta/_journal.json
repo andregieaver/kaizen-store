@@ -5216,6 +5216,20 @@
       "when": 1794224634149,
       "tag": "20261109114354_platform_roles_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 745,
+      "version": "7",
+      "when": 1794226870587,
+      "tag": "20261109122110_kaizen_life_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 746,
+      "version": "7",
+      "when": 1794226904153,
+      "tag": "20261109122144_kaizen_life_accounts_rules",
+      "breakpoints": true
     }
   ]
 }

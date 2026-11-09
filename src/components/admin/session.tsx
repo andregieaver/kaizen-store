@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { cookiesReadable } from "@/lib/browser-access";
+import { signInFor } from "@/lib/sign-in-redirect";
 import { createClient } from "@/lib/supabase/client";
 import { AdminWaiting } from "./admin-waiting";
 import type { AdminLang } from "@/lib/admin-lang";
@@ -31,24 +32,26 @@ const RECOVERY_KEY = "kaizen-admin-recovery";
 
 /**
  * Shown when the server finds no valid staff session. If the access token
- * has merely expired, refresh it and reload; otherwise go to sign-in.
+ * has merely expired, refresh it and reload; otherwise go to sign-in, which
+ * brings the person back to this page afterwards (`signInFor()`).
  */
 export function SessionRecovery({ waiting }: { waiting: Record<AdminLang, string> }) {
   const router = useRouter();
   useEffect(() => {
     let cancelled = false;
+    const signIn = signInFor(`${window.location.pathname}${window.location.search}`);
     (async () => {
       let client;
       try {
         client = createClient();
       } catch {
-        router.replace("/admin/sign-in");
+        router.replace(signIn);
         return;
       }
       const { data } = await client.auth.getSession();
       if (cancelled) return;
       if (!data.session) {
-        router.replace("/admin/sign-in");
+        router.replace(signIn);
         return;
       }
       // There is a session, yet the server refused it. Refresh once; if that

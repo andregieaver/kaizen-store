@@ -1,6 +1,6 @@
 # Work in Kaizen Life: a summary from Kaizena Flow, and Life's own Work retired (proposal)
 
-Status: **proposed 9 November 2026**, no decision number yet.
+Status: **proposed 9 November 2026; the Flow side is built (D507, see "As built: the Flow side" at the end).** Life's side is still to build.
 
 The owner's ask: *now that Work is built into Kaizena Flow, Work can go from Kaizen Life; what Life needs instead is a summary of
 Work across the person's stores, with links back to Kaizena Flow. Information and navigation between the two must be intuitive,
@@ -49,7 +49,7 @@ Evidence is marked:
    `getOwnerOverview`, `getRunningTimer`). Life reads it over the account link: a server-to-server call signed by Life, for that
    linked account only, read only. Other assistants get the same reader as the MCP tool `work_summary`, which WP13 of
    `docs/work.md` planned.
-5. **One tap, no second sign-in.** Every link in the summary goes through one door in Flow, `/admin/from/kaizen-life?next=…`.
+5. **One tap, no second sign-in.** Every link in the summary goes through one door in Flow, `/admin/sign-in/kaizen-life?next=…`.
    * Signed in to Flow: it goes straight through.
    * Signed out: it signs in with Kaizen Life and goes on to the same screen. After the first consent this is silent [repo, docs].
 
@@ -279,7 +279,7 @@ needs the person's own grant on Flow's consent screen (D96, D439). A link never 
 
 **Records:**
 
-* **Flow keeps the link.** `commerce.kaizen_life_links`:
+* **Flow keeps the link.** `commerce.kaizen_life_accounts`:
   * columns: `account_id` unique, `life_user_id` unique, `how` (`identity` or `email`), `linked_at`, `unlinked_at`,
     `unlinked_from` (`flow` or `life`);
   * written only by `src/server/kaizen-life-links.ts`;
@@ -352,7 +352,7 @@ longer blocks the summary.
 
 ### 3.4 Signing up to Flow from Life
 
-* The invitation's *Sign up with Kaizen Life* opens Flow's door, `/admin/from/kaizen-life?next=/admin`, with intent `sign-up`.
+* The invitation's *Sign up with Kaizen Life* opens Flow's door, `/admin/sign-in/kaizen-life?next=/admin`, with intent `sign-up`.
 * The door starts Sign in with Kaizen Life (silent if the person approved Flow before).
 * An unknown person lands on the prefilled sign-up (D95, `kaizen-life-prefill.tsx`).
 * Because the address comes verified from Kaizen Life's identity, the self-serve flow can treat it as confirmed and skip the email
@@ -362,7 +362,7 @@ longer blocks the summary.
 
 ### 3.5 One tap, no second sign-in
 
-* **The door: `src/app/admin/from/kaizen-life/route.ts`.** It reads `next` through `safeNext()` (`/admin…` only, same origin).
+* **The door: `src/app/admin/sign-in/kaizen-life/route.ts`.** It reads `next` through `safeNext()` (`/admin…` only, same origin).
   * A signed-in person goes straight to `next`.
   * A signed-out person, while `KAIZEN_LIFE_SSO` is on, goes straight into Sign in with Kaizen Life (the sign-in page's action,
     `src/app/admin/sign-in/actions.ts:94`), carrying `next` through `/auth/callback?via=kaizen-life`.
@@ -492,3 +492,39 @@ Candidates for phase 5:
   * Flow (`ybsozesfuxuitoacntfo`): `commerce.work_*`, stores with Work on, `auth.identities` for `custom:kaizen-life`.
 * **[docs]** Supabase, *OAuth 2.1 Server: Getting started* and `oauth.getAuthorizationDetails`: a client approved before is
   answered with a redirect, not a consent screen.
+
+## As built: the Flow side (D507, 9 November 2026)
+
+The owner confirmed one company runs both apps, so the link is made by itself as section 3.3 says. What differs from the plan above:
+
+* **The door is `/admin/sign-in/kaizen-life?next=…`**, not `/admin/from/…`: `from` is not a reserved store address, and a store
+  called `from` would have lost its admin to it. `sign-in` is reserved.
+* **The link's table is `commerce.kaizen_life_accounts`.** `kaizen_life_links` already holds the tokens of Flow's own assistant at
+  Kaizen Life (D96). The signed requests taken are kept in `commerce.kaizen_life_jtis`.
+* **The doors.**
+  * Flow's are `/api/kaizen-life/v1/{link,unlink,status,work-summary}`. Kaizen Life links its user by asking `link` with either
+    the verified email (`how: "email"`) or the Kaizena Flow identity its user signed in with (`how: "identity"`, the Flow Auth user
+    id). Asked again, `link` answers the link that stands, so Life can heal a copy it lost.
+  * Life's doors, which Flow asks, are `/api/kaizena-flow/v1/{lookup,link,unlink}`.
+  * Every request is signed both ways with `signLinkRequest()` (ES256; issuer, audience, the door's path, the body's SHA-256, 60
+    seconds, a `jti`).
+* **Money is integer minor units as numbers.** These are the same numbers Work's screens use; they are not strings.
+* **`myMinutesThisWeek` is left out for now.** Life's weekly review can take it when Life is built.
+* **What Life must build for its side to work** (Life's `docs/work-moves-to-kaizena-flow.md`, phase 2):
+  * the three doors, checking Flow's signature with Flow's public key;
+  * its copy of the link;
+  * the moments it asks Flow's `link` (an email confirmed, a sign-in with Kaizena Flow);
+  * the presence rules, the invitation, the Today card and the summary page.
+
+  Life signs with its own private key. Flow holds Life's public key in `KAIZEN_LIFE_LINK_PUBLIC_KEY`, and Life holds Flow's.
+* **Not built yet:**
+  * the one run at launch for people already on both (phase 2b, once Life's doors exist);
+  * skipping Flow's confirmation email for a sign-up that comes verified from Kaizen Life (open question 9).
+  * A page's own `requireAccount()` still sends a signed-out person to the plain sign-in page. Only the admin's session recovery
+    keeps the page asked for, because the server does not know the path, and links from Life go through the door anyway.
+* **To switch it on in production:**
+  * make an ES256 key pair for each app;
+  * set `KAIZEN_LIFE_LINK_PRIVATE_KEY` (Flow's) and `KAIZEN_LIFE_LINK_PUBLIC_KEY` (Life's) in Vercel;
+  * turn `KAIZEN_LIFE_SSO` on once Sign in with Kaizen Life is checked end to end.
+
+  Until then nothing is linked, and the doors refuse everything.

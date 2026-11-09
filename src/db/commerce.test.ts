@@ -8085,3 +8085,40 @@ describe("the docs' search (D443)", () => {
     await db.query("delete from commerce.docs_guide");
   });
 });
+
+describe("Kaizen Life's account link (docs/life-work-summary.md 3.3)", () => {
+  it("keeps one live link per account and per Kaizen Life user, one row per pair, its pair fixed, and RLS on", async () => {
+    const account = async (email: string) => (await one<{ id: string }>("insert into commerce.accounts (email) values ($1) returning id", [email])).id;
+    const kari = await account("kari-life-link@example.com");
+    const ola = await account("ola-life-link@example.com");
+    const life1 = "11111111-1111-4111-8111-111111111111";
+    const life2 = "22222222-2222-4222-8222-222222222222";
+    await db.query("insert into commerce.kaizen_life_accounts (account_id, life_user_id, how) values ($1, $2, 'email')", [kari, life1]);
+    // One live link each way.
+    await expect(db.query("insert into commerce.kaizen_life_accounts (account_id, life_user_id, how) values ($1, $2, 'email')", [kari, life2])).rejects.toThrow(
+      /kaizen_life_accounts_account_live_key/,
+    );
+    await expect(db.query("insert into commerce.kaizen_life_accounts (account_id, life_user_id, how) values ($1, $2, 'email')", [ola, life1])).rejects.toThrow(
+      /kaizen_life_accounts_life_live_key/,
+    );
+    await expect(db.query("insert into commerce.kaizen_life_accounts (account_id, life_user_id, how) values ($1, $2, 'guess')", [ola, life2])).rejects.toThrow(
+      /kaizen_life_accounts_how/,
+    );
+    // Undone, it is kept: the pair cannot be added again as a new row, and an undone link says who undid it.
+    await expect(db.query("update commerce.kaizen_life_accounts set unlinked_at = now() where account_id = $1", [kari])).rejects.toThrow(/kaizen_life_accounts_unlinked/);
+    await db.query("update commerce.kaizen_life_accounts set unlinked_at = now(), unlinked_from = 'life' where account_id = $1", [kari]);
+    await expect(db.query("insert into commerce.kaizen_life_accounts (account_id, life_user_id, how) values ($1, $2, 'email')", [kari, life1])).rejects.toThrow(
+      /kaizen_life_accounts_pair_key/,
+    );
+    // Another Kaizen Life user may be linked once the first is undone; a link's pair never changes.
+    await db.query("insert into commerce.kaizen_life_accounts (account_id, life_user_id, how) values ($1, $2, 'identity')", [kari, life2]);
+    await expect(db.query("update commerce.kaizen_life_accounts set life_user_id = $2 where account_id = $1 and life_user_id = $3", [kari, life1, life2])).rejects.toThrow(
+      /kaizen_life_accounts.fixed/,
+    );
+    await expect(db.query("insert into commerce.kaizen_life_jtis (jti, expires_at) values ('short', now())")).rejects.toThrow(/kaizen_life_jtis_jti/);
+    for (const table of ["kaizen_life_accounts", "kaizen_life_jtis"]) {
+      const row = await one<{ relrowsecurity: boolean }>("select relrowsecurity from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname = 'commerce' and c.relname = $1", [table]);
+      expect(row.relrowsecurity, table).toBe(true);
+    }
+  });
+});
