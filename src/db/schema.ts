@@ -18700,6 +18700,29 @@ export const platformTargets = commerce.table(
   ],
 );
 
+/**
+ * A store's own turnover thresholds (the threshold watch, D514, section 4.4 of `docs/own-books-and-sales.md`): an amount over twelve months
+ * and what the owner will do before it (Human Web's NOK 5 million: take an accountant). The country pack's legal ones are in code.
+ */
+export const turnoverThresholds = commerce.table(
+  "turnover_thresholds",
+  {
+    storeId: storeId().references(() => stores.id),
+    id: uuid("id").notNull().defaultRandom(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    note: text("note").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.id] }),
+    index("turnover_thresholds_created_by_idx").on(t.createdBy),
+    check("turnover_thresholds_amount", sql`${t.amountMinor} > 0`),
+    check("turnover_thresholds_note", sql`char_length(btrim(${t.note})) between 1 and 120`),
+  ],
+);
+
 /** A store's books address (D504): `books-{key}@` the receiving domain, made the first time the Books screen asks for it. */
 export const booksEmail = commerce.table(
   "books_email",

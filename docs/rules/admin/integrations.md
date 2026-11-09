@@ -499,3 +499,12 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   year in it; only such a member does. An accountant's clients (Your account → Books, shown by `showsClients()`) are read only by
   `booksClients()`: counts and the VAT term to report (`vatToReport()`), never a document.
 
+## The threshold watch (D514, `src/lib/turnover-watch.ts`, `src/server/turnover-watch.ts`, `TurnoverWatchCard`)
+
+- **The threshold watch (D514, `src/lib/turnover-watch.ts`, `src/server/turnover-watch.ts`, `TurnoverWatchCard`)**: a store's turnover over
+  twelve months is read only by `turnoverOf()` (the income accounts, class 3, net), and what is said about it only by `watchThresholds()`:
+  the country pack's legal thresholds (`NO_THRESHOLDS`, an AS's only for `isLimitedCompany()`) and the owner's own
+  (`commerce.turnover_thresholds`), near from `NEAR_SHARE` and passed (a legal one only in the month after). The home, the checkup's
+  `turnover` finding and the Books card word it with `watchText()`; a threshold of one's own is added and taken away only through
+  `addOwnThreshold()` and `removeOwnThreshold()`, by a member with `books:write`.
+

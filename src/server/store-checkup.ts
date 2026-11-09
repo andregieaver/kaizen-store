@@ -3,7 +3,10 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { booksEn } from "@/lib/admin-messages/books.en";
+import { todayIn } from "@/lib/analytics-period";
 import { auditProblems } from "@/lib/order-numbers";
+import { watchText } from "@/lib/turnover-watch";
 
 import { accountingAttention } from "./accounting";
 import { listIntegrations } from "./integrations";
@@ -15,6 +18,7 @@ import { getSetupProgress } from "./setup";
 import { onHandActive } from "./stock-sql";
 import type { Store } from "./stores";
 import { taxCheckupFindings } from "./tax-profile";
+import { turnoverWatch } from "./turnover-watch";
 
 type Row = Record<string, unknown>;
 
@@ -47,13 +51,15 @@ export const CHECKUP_KEYS = [
   // Accounting, Tripletex (D453) or Fiken (D460): documents that wait for the owner, and a token or grant the system no longer takes.
   "accounting",
   "accounting_token",
+  // The threshold watch (D514): the books' turnover over twelve months near or past a threshold that changes the owner's duties.
+  "turnover",
 ] as const;
 export type CheckupKey = (typeof CHECKUP_KEYS)[number];
 
 export type CheckupFinding = { key: CheckupKey; count: number; what: string; page: string };
 
 export async function checkupFindings(store: Store, accountId: string): Promise<CheckupFinding[]> {
-  const [[counts], [low], progress, integrations, restock, numbering, taxFindings, documentFindings, ledger, levels, accounting] = await Promise.all([
+  const [[counts], [low], progress, integrations, restock, numbering, taxFindings, documentFindings, ledger, levels, accounting, turnover] = await Promise.all([
     db().execute<Row>(sql`
       select
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
@@ -88,6 +94,7 @@ export async function checkupFindings(store: Store, accountId: string): Promise<
     ledgerProblems(store.id),
     inventoryCounts(store.id),
     accountingAttention(store.id),
+    turnoverWatch(store.id, todayIn(new Date(), store.timeZone)),
   ]);
   const findings: CheckupFinding[] = [];
   const add = (when: boolean, key: CheckupKey, count: number, what: string, page: string) => when && findings.push({ key, count, what, page });
@@ -118,6 +125,9 @@ export async function checkupFindings(store: Store, accountId: string): Promise<
     add(accounting.tokenRefused, "accounting_token", 1, `${accounting.name} stopped letting Kaizena Flow in: nothing is sent until it is connected again on the ${accounting.name} page.`, accounting.page);
     add(accounting.waiting > 0, "accounting", accounting.waiting, `${accounting.waiting} invoice(s) or credit note(s) wait for you before they can go to ${accounting.name}.`, accounting.page);
   }
+  // The threshold watch (D514): each threshold the turnover is near or has just passed, in one finding.
+  const watches = turnover?.watches ?? [];
+  add(watches.length > 0, "turnover", watches.length, watches.map((w) => watchText(w, booksEn.watch, "en-GB")).join(" "), "/settings/books");
   return findings;
 }
 

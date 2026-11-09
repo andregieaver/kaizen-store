@@ -106,6 +106,11 @@ export type StoreFigures = {
    * be paid past their due day or within the week (D492, by the store's day). Counts only.
    */
   books?: { differ: number; waiting: number; billsOverdue?: number; billsDue?: number };
+  /**
+   * The threshold watch (D514): the books' turnover over twelve months near or just past a threshold that changes the owner's duties (the
+   * law's, or their own), each already worded in the member's language; only when there is one, for a member who may read the books.
+   */
+  turnover?: string[];
 };
 
 /** Orders to hand over (D237): to be collected (and when the oldest was placed), and local deliveries not delivered yet. */
@@ -218,6 +223,7 @@ export function attentionFor(stores: StoreFigures[], now = Date.now(), w: Attent
     if (owner && s.books && (s.books.billsDue ?? 0) > 0) {
       items.push({ text: count(s.books.billsDue ?? 0, w.billsDue), href: `${base}/settings/books`, action: a.openBills });
     }
+    for (const text of s.turnover ?? []) items.push({ text: say(w.turnover, { text }), href: `${base}/settings/books`, action: a.openBooks });
     if (returns && returns.requested > 0) {
       items.push({ text: count(returns.requested, w.returnRequests), href: `${base}/returns?status=requested`, action: a.answer });
     }

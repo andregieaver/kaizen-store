@@ -158,6 +158,7 @@ export const staffEmailsNb: StaffEmailsMessages = {
         integration: { one: "En integrasjon feilet {n} sending denne uken.", many: "En integrasjon feilet {n} sendinger denne uken." },
         accounting: { one: "{n} faktura eller kreditnota venter på deg før den kan gå til regnskapet.", many: "{n} fakturaer og kreditnotaer venter på deg før de kan gå til regnskapet." },
         accounting_token: { one: "Regnskapet sluttet å slippe inn Kaizena Flow: ingenting sendes før det er koblet til igjen.", many: "Regnskapet sluttet å slippe inn Kaizena Flow: ingenting sendes før det er koblet til igjen." },
+        turnover: { one: "Omsetningen er nær eller over en terskel som endrer pliktene dine: se Regnskap.", many: "Omsetningen er nær eller over {n} terskler som endrer pliktene dine: se Regnskap." },
       },
     },
     analyticsAlerts: {

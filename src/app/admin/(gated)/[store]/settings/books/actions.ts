@@ -33,6 +33,7 @@ import { dismissInboxDocument, readInboxDocument, markInboxUsed } from "@/server
 import { budgetMonthsOf, MONTHS } from "@/lib/budget";
 import { saveBudget } from "@/server/budget";
 import { closeYear, reopenYear } from "@/server/year-end";
+import { addOwnThreshold, removeOwnThreshold } from "@/server/turnover-watch";
 
 /**
  * Settings → Books (B2, D478): opening the store's books, posting an entry by hand, reversing one, and locking them through a day. Each
@@ -509,3 +510,28 @@ export async function yearEndAction(storeSlug: string, _state: FormState, form: 
   return { status: "ok", messages: [fillWords(w.yearEnd.reopened, { year })] };
 }
 
+
+/** *Add* under the threshold watch (D514): one of the owner's own thresholds, an amount over twelve months in the books' currency and what they will do before it. */
+export async function addThresholdAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await keeper(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  const book = await openBookOf(member.store.id);
+  if (!book) return { status: "error", messages: [w.bills.problems.book] };
+  const amountMinor = bankAmount(String(form.get("amount") ?? ""), book.currency);
+  if (amountMinor === null || amountMinor <= 0) return { status: "error", messages: [w.watch.problems.amount], fields: { amount: w.watch.problems.amount } };
+  const added = await addOwnThreshold(member, { amountMinor, note: String(form.get("note") ?? "") });
+  if (!added.ok) return { status: "error", messages: [w.watch.problems[added.problem]], fields: { [added.problem]: w.watch.problems[added.problem] } };
+  refresh();
+  return { status: "ok", messages: [w.watch.added] };
+}
+
+/** *Remove* beside one of the owner's own thresholds (D514). */
+export async function removeThresholdAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const who = await keeper(storeSlug);
+  if (who.refused !== null) return { status: "error", messages: [who.refused] };
+  const { member, w } = who;
+  if (!(await removeOwnThreshold(member, String(form.get("id") ?? "")))) return { status: "error", messages: [w.watch.problems.gone] };
+  refresh();
+  return { status: "ok", messages: [w.watch.removed] };
+}

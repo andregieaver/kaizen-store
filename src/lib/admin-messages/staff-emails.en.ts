@@ -162,6 +162,7 @@ export const staffEmailsEn = {
         integration: { one: "An integration failed {n} send this week.", many: "An integration failed {n} sends this week." },
         accounting: { one: "{n} invoice or credit note waits for you before it can go to your accounting.", many: "{n} invoices and credit notes wait for you before they can go to your accounting." },
         accounting_token: { one: "Your accounting stopped letting Kaizena Flow in: nothing is sent until it is connected again.", many: "Your accounting stopped letting Kaizena Flow in: nothing is sent until it is connected again." },
+        turnover: { one: "Turnover is near or past a threshold that changes your duties: see Books.", many: "Turnover is near or past {n} thresholds that change your duties: see Books." },
       },
     },
     analyticsAlerts: {

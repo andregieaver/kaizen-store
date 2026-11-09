@@ -22,6 +22,7 @@ import { RecurringCostsCard } from "@/components/admin/recurring-costs";
 import { BooksInboxCard } from "@/components/admin/books-inbox";
 import { BudgetCard } from "@/components/admin/budget-card";
 import { YearEndCard } from "@/components/admin/year-end-card";
+import { TurnoverWatchCard } from "@/components/admin/turnover-watch-card";
 import { inboxMatches } from "@/lib/books-inbox";
 import { PURCHASE_KINDS } from "@/lib/purchases";
 import { bankOwnKind, BANK_OWN_ACCOUNTS } from "@/lib/bank-own-lines";
@@ -32,12 +33,13 @@ import { recurringView } from "@/server/recurring-costs";
 import { booksAddressOf, inboxDocuments } from "@/server/books-inbox";
 import { budgetOf } from "@/server/budget";
 import { yearEndView, yearEndYear } from "@/server/year-end";
+import { ownThresholds, turnoverWatch } from "@/server/turnover-watch";
 import { bankSummary } from "@/server/bank-statements";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getTripletexConnection } from "@/server/tripletex";
 import { vatReturnOrgNumber } from "@/server/vat-return";
 
-import { addBillAction, dismissInboxAction, saveBudgetAction, yearEndAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, recurringPressAction, reverseEntryAction, saveRecurringCostAction, uploadBankStatementAction } from "./actions";
+import { addBillAction, addThresholdAction, removeThresholdAction, dismissInboxAction, saveBudgetAction, yearEndAction, lockBooksAction, openBooksAction, openBooksEarlierAction, openingFromTripletexAction, payFromBankAction, postEntryAction, readBillAction, readReceiptAction, recurringPressAction, reverseEntryAction, saveRecurringCostAction, uploadBankStatementAction } from "./actions";
 
 export const metadata: Metadata = { title: "Books" };
 
@@ -151,6 +153,8 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
     }
     return [...names].sort((a, b) => a[0] - b[0]).map(([number, name]) => ({ number, name }));
   })();
+  // The threshold watch (D514): the turnover over twelve months against the law's thresholds and the owner's own.
+  const [watch, own] = await Promise.all([turnoverWatch(store.id, today), ownThresholds(store.id)]);
   // The vouchers of the journal's entries and of the bills, such as a purchase's receipt (D490), by entry.
   const vouchers = await vouchersOf(store.id, [...journal.map((e) => e.id), ...bills.map((b) => b.entryId)]);
   // The bill's fields' words, for the part of them that reads its file in the browser (D493).
@@ -529,6 +533,22 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         money={amount}
         save={saveBudgetAction.bind(null, store.slug)}
       />
+
+      {/* The threshold watch (D514): the turnover over twelve months, the law's thresholds and the owner's own. */}
+      {watch && (
+        <TurnoverWatchCard
+          turnoverMinor={watch.turnoverMinor}
+          currency={watch.currency}
+          legalName={book.legalName}
+          watches={watch.watches}
+          own={own}
+          keeper={keeper}
+          locale={locale}
+          words={w}
+          add={addThresholdAction.bind(null, store.slug)}
+          remove={removeThresholdAction.bind(null, store.slug)}
+        />
+      )}
 
       {!yearEndDue && yearEndCard}
 

@@ -3,7 +3,11 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
+import { adminText } from "@/lib/admin-text";
+import { todayIn } from "@/lib/analytics-period";
 import { featureOn } from "@/lib/store-features";
+import { watchText } from "@/lib/turnover-watch";
 import { DRAFT_EXPIRING_DAYS, EDIT_EXPIRING_DAYS, LOW_STOCK_AT, type SalesFigure, type StoreFigures } from "@/lib/control-center";
 import { totalOf } from "@/lib/ai-usage";
 import { can, type PermissionKey } from "@/lib/permissions";
@@ -17,6 +21,7 @@ import { privacyAttention } from "./privacy-attention";
 import { returnAttention } from "./return-attention";
 import { taxAttention } from "./tax-attention";
 import { taxReturnsAttention } from "./tax-returns-attention";
+import { turnoverWatch } from "./turnover-watch";
 import { workAttention } from "./work-attention";
 import { EDIT_REFUND_OWED_SQL } from "./edit-refund-owed";
 
@@ -278,6 +283,22 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         { differ: Number(r.differ), waiting: Number(r.waiting), billsOverdue: Number(r.bills_overdue), billsDue: Number(r.bills_due) },
       ]),
   );
+  // The threshold watch (D514), where the member may read the books: each threshold near or just passed, in their language.
+  const booksReaders = new Set(idsWith(storeRows, "books:read"));
+  const lang = adminLangOf(account.adminLocale);
+  const watchWords = adminText(lang, "books").watch;
+  const turnoverBy = new Map(
+    (
+      await Promise.all(
+        storeRows
+          .filter((r) => booksReaders.has(String(r.id)))
+          .map(async (r) => {
+            const watch = await turnoverWatch(String(r.id), todayIn(new Date(), String(r.time_zone ?? "Europe/Oslo"))).catch(() => null);
+            return [String(r.id), (watch?.watches ?? []).map((w) => watchText(w, watchWords, ADMIN_LANG_FACTS[lang].locale))] as const;
+          }),
+      )
+    ).filter(([, texts]) => texts.length > 0),
+  );
   // Limits of the plan used up (D314), where the member may read the plan; nothing is read for a store whose plan sets none.
   const limitsBy = new Map(await Promise.all([...billingIds].map(async (id) => [id, await limitsReachedCount(id).catch(() => 0)] as const)));
 
@@ -334,6 +355,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       ...(termsBy.has(id) ? { termsOverdue: termsBy.get(id) } : {}),
       ...(reviewsBy.has(id) ? { reviewsWaiting: reviewsBy.get(id) } : {}),
       ...(booksBy.has(id) ? { books: booksBy.get(id) } : {}),
+      ...(turnoverBy.has(id) ? { turnover: turnoverBy.get(id) } : {}),
       ...((limitsBy.get(id) ?? 0) > 0 ? { limitsReached: limitsBy.get(id) } : {}),
     };
   });

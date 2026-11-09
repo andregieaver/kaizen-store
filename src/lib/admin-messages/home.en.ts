@@ -145,6 +145,7 @@ export const homeEn = {
     },
     privacyDueSoon: { one: "{store}: {n} privacy request is due within the week.", many: "{store}: {n} privacy requests are due within the week." },
     tax: "{store}: the tax settings need a look. {findings}",
+    turnover: "{store}: {text}",
     invoices: {
       one: "{store}: {n} paid order is waiting for an invoice{overdue}.",
       many: "{store}: {n} paid orders are waiting for an invoice{overdue}.",

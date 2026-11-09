@@ -5258,6 +5258,20 @@
       "when": 1794231276662,
       "tag": "20261109133436_platform_briefing_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 751,
+      "version": "7",
+      "when": 1794233752599,
+      "tag": "20261109141552_turnover_thresholds",
+      "breakpoints": true
+    },
+    {
+      "idx": 752,
+      "version": "7",
+      "when": 1794233793703,
+      "tag": "20261109141633_turnover_thresholds_rules",
+      "breakpoints": true
     }
   ]
 }

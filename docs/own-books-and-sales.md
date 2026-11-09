@@ -264,6 +264,8 @@ outside accountant, and that is the owner's wife, an accountant. What it means f
    duties. Homer's home says it before it happens, for example "Turnover NOK 4.3 million over the last 12 months: invite your accountant
    before NOK 5 million", and the store checkup (`accountingAttention()`) carries it, so the AI manager's checkup and the briefing say it
    too. An owner can add a threshold of their own (Human Web's NOK 5 million); the country pack brings the legal ones.
+   *Built 9 November 2026 (D514):* the watch reads class 3 over twelve months; the store checkup's finding is `turnover` (not
+   `accountingAttention()`); the pack brings NOK 50 000 and, for an AS, NOK 7 million; an ENK's size limits wait for their numbers.
 3. **Before then, as a design partner, if the owner's wife agrees**: reviewing the Norway pack (section 6, item 4) and shaping B6 from
    read-only access to the pilot's books. Whether and when is the owner's and the wife's choice; nothing in the plan waits for it.
 

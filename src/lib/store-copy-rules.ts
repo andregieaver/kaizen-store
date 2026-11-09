@@ -312,6 +312,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   books_email: never("The original's books address (D504): a copy gets its own when it opens its books."),
   books_inbox: never("The original's receipts by email (D504): documents of its own books."),
   ledger_budgets: never("The original's budget (D505): a plan for its own books."),
+  turnover_thresholds: never("The original's own thresholds (D514): watched against its own books' turnover."),
   bank_lines: never("The lines of the original's bank statements (D486), matched to its own books."),
   crm_moves: never("The original's connection to the Pipedrive account it moved in from (D477): a token, never copied."),
   crm_move_links: never("What the original brought over from Pipedrive (D477), linked to its own rows: never the copy's."),

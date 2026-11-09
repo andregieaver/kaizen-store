@@ -398,6 +398,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   shop_move_items: "What a move from Shopify made (D445 step 9): kinds and ids, a customer only as the md5 of their address; never an address or a name.",
   ledger_books: "A store's books (D478): the legal entity's name and organisation number, its country, currency and days; the business's, never a person's.",
   ledger_accounts: "A book's chart of accounts (D478): numbers, names and kinds; never a person's data.",
+  turnover_thresholds: "The owner's own thresholds for the turnover watch (D514): an amount, a currency, the owner's note of what they will do before it and the staff account that added it (an id); never a customer.",
   crm_moves: "A store's connection to the Pipedrive account it moves in from (D477): the Pipedrive company's id and name, an encrypted token and the account that connected it, and the run's counts; never a person's data.",
   shop_moves: "A store's connection to the Shopify or WooCommerce shop it moves from (D445, D446): the shop's name and address, encrypted tokens or key and the account that connected it; never a shopper's data.",
   data_jobs: "An import or export (D165): its kind, options, counts and the staff account that ran it. The customer and order files it points to are the `storage:exports` entry; the job itself holds no shopper's data.",

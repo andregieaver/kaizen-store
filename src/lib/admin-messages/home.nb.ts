@@ -143,6 +143,7 @@ export const homeNb: HomeMessages = {
       many: "{store}: {n} personvernforespørsler må besvares innen en uke.",
     },
     tax: "{store}: avgiftsinnstillingene må ses på. {findings}",
+    turnover: "{store}: {text}",
     invoices: {
       one: "{store}: {n} betalt bestilling venter på faktura{overdue}.",
       many: "{store}: {n} betalte bestillinger venter på faktura{overdue}.",
