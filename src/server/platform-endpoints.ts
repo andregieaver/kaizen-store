@@ -199,7 +199,7 @@ export async function resendPlatformDelivery(admin: Account, deliveryId: string)
     sql`
       with source as (
         select d.* from commerce.platform_integration_deliveries d
-        where d.id = ${deliveryId}::uuid and d.provider = 'webhook' and d.status <> 'pending' and d.event <> 'test'
+        where d.id = ${deliveryId}::uuid and d.provider = 'webhook' and d.status <> 'pending'
       ),
       endpoint as (
         select e.id, e.enabled from commerce.platform_webhook_endpoints e join source s on s.endpoint_id = e.id
