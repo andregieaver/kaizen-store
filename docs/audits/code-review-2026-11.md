@@ -40,7 +40,7 @@ This report is a working document: the plan below is the list of work, and this 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
 | 0.1 | Hold a release for every suite | FH2 | S | Done | 9 Nov 2026, D526: `hosts` and `signed-in` are in `release`'s `needs` and `if`. The "done when" (a red `signed-in` run holds a migration push) follows from GitHub's `needs`; not yet seen on a real red run. |
-| 0.2 | Put a cheap gate before the fast deploy, and go back by itself | FH1 | M | In progress | 9 Nov 2026, D526: the gate is built (lint, type check and `pnpm test:smoke` in the `pending` job before the deploy hook). Still open: going back by itself when a full check fails after a deploy. It needs a Vercel token as a repository secret and a check that production still runs the failing commit. |
+| 0.2 | Put a cheap gate before the fast deploy, and go back by itself | FH1 | M | In progress | 9 Nov 2026, D526: the gate is built (lint, type check and `pnpm test:smoke` in the `pending` job before the deploy hook). Seen working on CI run 1160 (commit 15eb8ec): lint, type check and smoke tests took 5 min 11 s, then the deploy went out and `/api/health` reported the commit. Still open: going back by itself when a full check fails after a deploy. It needs a Vercel token as a repository secret and a check that production still runs the failing commit. |
 | 0.3 | Drop the old snapshots | FD1, FH3 | S | Open | |
 | 0.4 | Build the test database once | FD2 | S | Open | |
 | 0.5 | Log every failed payment webhook | FV2 | M | Open | |
@@ -137,6 +137,7 @@ This report is a working document: the plan below is the list of work, and this 
 
 - 9 November 2026: the review written; every step Open.
 - 9 November 2026: step 0.1 done and the gate half of step 0.2 built (D526).
+- 9 November 2026: the gate seen working on its first live run (CI run 1160).
 
 ## 1. The headline
 
