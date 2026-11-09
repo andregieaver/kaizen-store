@@ -23,6 +23,119 @@ none is a 4. Effort: S under a day, M a few days, L a week or more.
 Short forms in paths: `S/` is `src/app/admin/(gated)/[store]/`, `P/` is `src/app/admin/(gated)/platform/`, `A/` is
 `src/components/admin/`, `F/` is `src/app/s/[store]/[market]/`.
 
+## Progress
+
+This report is a working document: the plan below is the list of work, and this table says where each step stands. Keep it true as the work goes, in the same commit as the fix.
+
+- **Status** is one of: Open, In progress, Done, Dropped (with the reason in Notes).
+- When a step is done, set Done and put the date and the commit in Notes. Check the step's "done when" before ticking it.
+- If a finding proves wrong or the code has moved on, say so in Notes and correct the finding's row; do not delete it.
+- New findings met on the way get the next free ID in their series and a step in the plan, then a row here.
+- Add a line to the change log at the foot of this section for each session that changes the table.
+
+
+**Phase 0: This week**
+
+| Step | What | Closes | Effort | Status | Notes |
+|---|---|---|---|---|---|
+| 0.1 | Hold a release for every suite | FH2 | S | Open | |
+| 0.2 | Put a cheap gate before the fast deploy, and go back by itself | FH1 | M | Open | |
+| 0.3 | Drop the old snapshots | FD1, FH3 | S | Open | |
+| 0.4 | Build the test database once | FD2 | S | Open | |
+| 0.5 | Log every failed payment webhook | FV2 | M | Open | |
+| 0.6 | Claim a webhook event before working on it | FV6 | S | Open | |
+| 0.7 | Make two money writes all-or-nothing | FV7, FV11 | S | Open | |
+| 0.8 | Give the AI manager's turn a deadline and a cost ceiling | FA2, FA5 | M | Open | |
+| 0.9 | Let shoppers reach every product | FF1 | M | Open | |
+| 0.10 | Show that a click worked | FS1 | S | Open | |
+| 0.11 | Group Marketing, Analytics and Website | FN5 | S | Open | |
+
+**Phase 1: Foundations**
+
+| Step | What | Closes | Effort | Status | Notes |
+|---|---|---|---|---|---|
+| 1.1 | Type the money reads | FV1, FF9 | M | Open | |
+| 1.2 | Ratchet the rest | FD6, FH11 | S (burn-down L) | Open | |
+| 1.3 | Carry the store in every write | FV5 | M | Open | |
+| 1.4 | One wrapper for server actions | FV9 | M | Open | |
+| 1.5 | Bound every query and webhook route | FD9 | S | Open | |
+| 1.6 | Safe indexes on hot tables | FD4 | M | Open | |
+| 1.7 | Squash to a baseline | FD3 | M | Open | |
+| 1.8 | Give the build room, and deploy what was checked | FH10 | M | Open | |
+| 1.9 | Test what gets owners paid | FH9 | M | Open | |
+| 1.10 | Make the written rules cheap to read | FH4, FH5 | M | Open | |
+| 1.11 | Pull the drop rules out of the builder | FB7 | M | Open | |
+| 1.12 | Build the admin kit | FS4 | L | Open | |
+| 1.13 | One way to search and page a list | FS2 | M | Open | |
+| 1.14 | One date formatter | FS5 | M | Open | |
+| 1.15 | Forms that answer | FS6 | M | Open | |
+| 1.16 | Unsaved work survives | FB5 | M | Open | |
+| 1.17 | Free a page's permission from its place in the menu | FN2 | M | Open | |
+| 1.18 | One structure for the platform's navigation | FN9 | M | Open | |
+| 1.19 | One source for a page's name | FN8 | M | Open | |
+
+**Phase 2: Structure**
+
+| Step | What | Closes | Effort | Status | Notes |
+|---|---|---|---|---|---|
+| 2.1 | Build *Go to* | FN1 | M | Open | |
+| 2.2 | Say where you are | FN7, FN6 (and FN12) | S | Open | |
+| 2.3 | Bring Basic and groups to the platform and the account | FN4 | M | Open | |
+| 2.4 | Do the audit's phase 2 moves | (admin audit, phase 2) | M | Open | |
+| 2.5 | Add the Money section | FN3 | L | Open | |
+| 2.6 | Split Books | FS3 | L | Open | |
+| 2.7 | Fit the menu to a phone | FN10 | M | Open | |
+| 2.8 | One way to start | FS7 | M | Open | |
+| 2.9 | Empty screens with a next step | FS8 | M | Open | |
+| 2.10 | Give the platform's Stores list the store admin's list | FS9 | M | Open | |
+| 2.11 | A Basic view in the builder | FB3 | M | Open | |
+| 2.12 | Select parts in the builder | FB4 | M | Open | |
+| 2.13 | A trail on the storefront | FF7 | S | Open | |
+| 2.14 | Search in the header | FF8 | M | Open | |
+| 2.15 | Filters that work without script | FF6 | M | Open | |
+| 2.16 | Show what the AI changed | FA7 | M | Open | |
+
+**Phase 3: Depth**
+
+| Step | What | Closes | Effort | Status | Notes |
+|---|---|---|---|---|---|
+| 3.1 | Split the page builder | FB1 | L | Open | |
+| 3.2 | One definition per block | FB6, FB9 | M | Open | |
+| 3.3 | Stop re-drawing the canvas | FB2 | M | Open | |
+| 3.4 | Load the builder's dialogs on demand | FB8 | M | Open | |
+| 3.5 | Split the product editor | FB10 | M | Open | |
+| 3.6 | A ceiling for page files | FS10 | L | Open | |
+| 3.7 | Stage `placeOrder` | FV3 | L | Open | |
+| 3.8 | Cut the repeated round trips | FF4, FV8 | S | Open | |
+| 3.9 | Stop reading the whole catalogue for one page | FF2, FF5 | S | Open | |
+| 3.10 | Cache tags per product | FF3 | M | Open | |
+| 3.11 | One card query; smaller storefront files | FF10 | M | Open | |
+| 3.12 | One accounting adapter, one `afterOrNow` | FV10 | M | Open | |
+| 3.13 | Domain folders | FV4, FH6 | L | Open | |
+| 3.14 | Split `schema.ts` | FD5 | M | Open | |
+| 3.15 | Keep the big tables lean | FD7, FD8 | M | Open | |
+| 3.16 | One error shape for the API | FD10 | M | Open | |
+| 3.17 | Limit floods at the edge | FD11 | S | Open | |
+| 3.18 | Cheaper, faster AI rounds | FA1, FA9 | M | Open | |
+| 3.19 | A cut or failed round recovers | FA3, FA4 | S | Open | |
+| 3.20 | A quick model for small jobs | FA8 | M | Open | |
+| 3.21 | A tool's facts in one place | FA6 | M | Open | |
+
+**Phase 4: Polish, and keeping it so**
+
+| Step | What | Closes | Effort | Status | Notes |
+|---|---|---|---|---|---|
+| 4.1 | Lint rules for the boundaries | FH7, FH8 | M | Open | |
+| 4.2 | All environment reads through `env.ts` | FD12 | S | Open | |
+| 4.3 | Generate the navigation doc | FN11 | S | Open | |
+| 4.4 | The small ones | severity 1 findings | S to M | Open | |
+| 4.5 | Check that each guard exists | - | S | Open | |
+| 4.6 | Measure, then tune | (admin audit, phase 4) | M | Open | |
+
+**Change log**
+
+- 9 November 2026: the review written; every step Open.
+
 ## 1. The headline
 
 **The rules are good; they do not yet reach the riskiest places.** Money is worked out in the database, every admin action is guarded

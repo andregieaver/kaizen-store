@@ -416,3 +416,6 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   and row recipes, read from production. Save it as a draft for the owner to publish, and correct that file when the site's look changes.
 - Deferred work from the PSI audit is tracked in `docs/audits/psi-followups.md`: tick
   an item there when a change does it.
+- The code review of November 2026 is a working plan in `docs/audits/code-review-2026-11.md`: its Progress table lists every
+  step (phases 0 to 4) with its status. Read that table before starting a fix from it, and in the same change set the step to
+  Done with the date and commit, correct a finding the code no longer matches, and add a line to its change log.
