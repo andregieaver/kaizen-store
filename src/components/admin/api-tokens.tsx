@@ -36,7 +36,7 @@ export function MakeApiToken({
   scopes: string[];
   powers: string[];
   make: (form: FormData) => Async;
-  /** What each scope allows, when they are not the stores' (Kaizena Flow's own API, D517). */
+  /** What each scope allows, when they are not the stores' (Kaizena Flow's own API, D518). */
   scopeWords?: Record<string, string>;
 }) {
   const w = useAdminText("notifications").apiTokens;

@@ -23,7 +23,9 @@ import { col, typedRow } from "./typed-rows";
  * Nothing is linked while the keys are not set (`kaizenLifeLinkKeys()`).
  */
 export type LinkHow = "identity" | "email" | "backfill";
-export type LifeLink = { lifeUserId: string; how: LinkHow; linkedAt: string };
+/** The person lets their assistants work together over the link (docs/assistants-together.md): since when, and at what assurance. */
+export type AssistantsSwitch = { since: string; aal: "aal1" | "aal2" };
+export type LifeLink = { lifeUserId: string; how: LinkHow; linkedAt: string; assistants: AssistantsSwitch | null };
 
 export type LinkOutcome =
   | { kind: "linked"; link: LifeLink; revived: { unlinkedAt: string; unlinkedFrom: string } | null }
@@ -35,14 +37,18 @@ export const LIFE_DOORS = {
   lookup: "/api/kaizena-flow/v1/lookup",
   link: "/api/kaizena-flow/v1/link",
   unlink: "/api/kaizena-flow/v1/unlink",
+  assistants: "/api/kaizena-flow/v1/assistants",
+  ask: "/api/kaizena-flow/v1/ask",
 } as const;
 
 /** Kaizena Flow's doors that Kaizen Life asks (`src/app/api/kaizen-life/v1/[door]/route.ts`). */
-export const FLOW_DOORS = ["link", "unlink", "status", "work-summary"] as const;
+export const FLOW_DOORS = ["link", "unlink", "status", "work-summary", "assistants", "tool"] as const;
 export type FlowDoor = (typeof FLOW_DOORS)[number];
 export const flowDoorPath = (door: FlowDoor) => `/api/kaizen-life/v1/${door}`;
 
 const ASK_TIMEOUT_MS = 5_000;
+/** How long Kaizena Flow's AI manager waits for Kaizen Life's assistant to answer (a run of a few tool rounds). */
+const ASSISTANT_TIMEOUT_MS = 90_000;
 
 const lifeUrl = () => (process.env.KAIZEN_LIFE_URL?.trim() || "https://kaizenalife.com").replace(/\/$/, "");
 
@@ -58,16 +64,38 @@ export function linkKeys(): ReturnType<typeof kaizenLifeLinkKeys> {
 
 export const linkingOn = () => linkKeys() !== null;
 
-const LINK_ROW = z.object({ life_user_id: col.uuid, how: z.enum(["identity", "email", "backfill"]), linked_at: col.timestamp });
-const toLink = (row: z.output<typeof LINK_ROW>): LifeLink => ({ lifeUserId: row.life_user_id, how: row.how, linkedAt: row.linked_at });
+const LINK_ROW = z.object({
+  life_user_id: col.uuid,
+  how: z.enum(["identity", "email", "backfill"]),
+  linked_at: col.timestamp,
+  assistants_at: col.timestamp.nullable(),
+  assistants_aal: z.enum(["aal1", "aal2"]).nullable(),
+});
+const LINK_COLUMNS = sql`life_user_id, how, linked_at, assistants_at, assistants_aal`;
+const toLink = (row: z.output<typeof LINK_ROW>): LifeLink => ({
+  lifeUserId: row.life_user_id,
+  how: row.how,
+  linkedAt: row.linked_at,
+  assistants: row.assistants_at && row.assistants_aal ? { since: row.assistants_at, aal: row.assistants_aal } : null,
+});
 
 /** The account's live link to Kaizen Life, or null. */
 export async function lifeLinkOf(accountId: string): Promise<LifeLink | null> {
   const row = await typedRow(
     LINK_ROW,
-    sql`select life_user_id, how, linked_at from commerce.kaizen_life_accounts where account_id = ${accountId}::uuid and unlinked_at is null`,
+    sql`select ${LINK_COLUMNS} from commerce.kaizen_life_accounts where account_id = ${accountId}::uuid and unlinked_at is null`,
   );
   return row ? toLink(row) : null;
+}
+
+/** Whether the account lets its assistants work together over a live link (never throws: a failed read is off). */
+export async function assistantsOn(accountId: string): Promise<boolean> {
+  try {
+    return linkingOn() && Boolean((await lifeLinkOf(accountId))?.assistants);
+  } catch (error) {
+    log("warn", "kaizen_life.assistants_read_failed", {}, error);
+    return false;
+  }
 }
 
 /** Kaizen Life's Today, for an account linked to it (the account menu's way back, 3.6); null when not linked or never readable. */
@@ -135,8 +163,8 @@ export async function linkAccounts(accountId: string, lifeUserId: string, how: L
   );
   if (!account) return { kind: "refused", reason: "no_account" };
   const existing = await typedRow(
-    z.object({ account_id: col.uuid, life_user_id: col.uuid, how: LINK_ROW.shape.how, linked_at: col.timestamp }),
-    sql`select account_id, life_user_id, how, linked_at from commerce.kaizen_life_accounts
+    LINK_ROW.extend({ account_id: col.uuid }),
+    sql`select account_id, ${LINK_COLUMNS} from commerce.kaizen_life_accounts
         where (account_id = ${accountId}::uuid or life_user_id = ${lifeUserId}::uuid) and unlinked_at is null
         order by (account_id = ${accountId}::uuid and life_user_id = ${lifeUserId}::uuid) desc
         limit 1`,
@@ -159,13 +187,13 @@ export async function linkAccounts(accountId: string, lifeUserId: string, how: L
           sql`update commerce.kaizen_life_accounts
                  set unlinked_at = null, unlinked_from = null, how = ${how}, linked_at = now()
                where account_id = ${accountId}::uuid and life_user_id = ${lifeUserId}::uuid and unlinked_at is not null
-              returning life_user_id, how, linked_at`,
+              returning ${LINK_COLUMNS}`,
         )
       : await typedRow(
           LINK_ROW,
           sql`insert into commerce.kaizen_life_accounts (account_id, life_user_id, how)
               values (${accountId}::uuid, ${lifeUserId}::uuid, ${how})
-              returning life_user_id, how, linked_at`,
+              returning ${LINK_COLUMNS}`,
         );
     if (!row) return { kind: "refused", reason: "taken" };
     await audit(accountId, null, "account.kaizen_life_linked", { how });
@@ -200,11 +228,15 @@ async function takeBack(accountId: string, outcome: Extract<LinkOutcome, { kind:
   log("warn", "kaizen_life.link_taken_back", { accountId });
 }
 
-/** Undoes the account's live link (the person's choice, in Flow or in Kaizen Life); the Kaizen Life user it joined, or null. */
+/**
+ * Undoes the account's live link (the person's choice, in Flow or in Kaizen Life); the Kaizen Life user it joined, or null. The
+ * assistants stop working together with it, and a link made again starts with them apart.
+ */
 export async function unlinkAccount(accountId: string, from: "flow" | "life"): Promise<string | null> {
   const row = await typedRow(
     z.object({ life_user_id: col.uuid }),
-    sql`update commerce.kaizen_life_accounts set unlinked_at = now(), unlinked_from = ${from}
+    sql`update commerce.kaizen_life_accounts
+           set unlinked_at = now(), unlinked_from = ${from}, assistants_at = null, assistants_aal = null
         where account_id = ${accountId}::uuid and unlinked_at is null
         returning life_user_id`,
   );
@@ -225,7 +257,12 @@ export async function takeJti(jti: string, expiresAt: Date): Promise<boolean> {
 }
 
 /** Asks Kaizen Life (a signed POST to one of its doors); the answer, or null on any failure (logged without the body). */
-export async function askLife(door: keyof typeof LIFE_DOORS, body: Record<string, unknown>, fetcher: typeof fetch = fetch): Promise<unknown> {
+export async function askLife(
+  door: keyof typeof LIFE_DOORS,
+  body: Record<string, unknown>,
+  fetcher: typeof fetch = fetch,
+  timeoutMs = ASK_TIMEOUT_MS,
+): Promise<unknown> {
   const keys = linkKeys();
   if (!keys) return null;
   const path = LIFE_DOORS[door];
@@ -237,7 +274,7 @@ export async function askLife(door: keyof typeof LIFE_DOORS, body: Record<string
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
       body: text,
       redirect: "error",
-      signal: AbortSignal.timeout(ASK_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) {
       log("warn", "kaizen_life.ask_failed", { door, status: response.status });
@@ -297,4 +334,90 @@ export async function unlinkFromFlow(accountId: string, fetcher: typeof fetch = 
   const told = z.object({ ok: z.literal(true) }).safeParse(await askLife("unlink", { lifeUserId }, fetcher));
   if (!told.success) log("warn", "kaizen_life.unlink_not_told", { accountId });
   return true;
+}
+
+// The assistants working together (docs/assistants-together.md) ----------------------------------------------------------------
+
+/**
+ * Switches the assistants working together on or off for the account's live link: on only from Kaizena Flow, with the assurance of the
+ * session that did it; off from either app. Audited when it changes. The new switch, or null when there is no live link.
+ */
+export async function setAssistants(
+  accountId: string,
+  on: { aal: "aal1" | "aal2" } | null,
+  from: "flow" | "life",
+  options: { audited?: boolean } = {},
+): Promise<LifeLink | null> {
+  const before = await lifeLinkOf(accountId);
+  if (!before) return null;
+  const row = await typedRow(
+    LINK_ROW,
+    on
+      ? sql`update commerce.kaizen_life_accounts
+               set assistants_at = coalesce(assistants_at, now()), assistants_aal = ${on.aal}
+             where account_id = ${accountId}::uuid and unlinked_at is null
+            returning ${LINK_COLUMNS}`
+      : sql`update commerce.kaizen_life_accounts set assistants_at = null, assistants_aal = null
+             where account_id = ${accountId}::uuid and unlinked_at is null
+            returning ${LINK_COLUMNS}`,
+  );
+  if (!row) return null;
+  const after = toLink(row);
+  if (options.audited !== false && Boolean(before.assistants) !== Boolean(after.assistants)) await auditAssistants(accountId, on, from);
+  return after;
+}
+
+const auditAssistants = (accountId: string, on: { aal: "aal1" | "aal2" } | null, from: "flow" | "life") =>
+  audit(accountId, null, on ? "account.kaizen_life_assistants_on" : "account.kaizen_life_assistants_off", { from, ...(on && { aal: on.aal }) });
+
+export type AssistantsSwitchOutcome = { kind: "on" | "off" } | { kind: "not_linked" } | { kind: "life" };
+
+/**
+ * The person switches the assistants working together in Kaizena Flow: written here, then Kaizen Life's copy in the same call. A switch
+ * on that Kaizen Life did not take is put back off, so the two never disagree; a switch off holds whatever Kaizen Life answers (it is
+ * told, and its copy is checked against `status` too).
+ */
+export async function switchAssistantsFromFlow(
+  account: { id: string; assurance?: { level: "aal1" | "aal2" } },
+  on: boolean,
+  fetcher: typeof fetch = fetch,
+): Promise<AssistantsSwitchOutcome> {
+  if (!linkingOn()) return { kind: "not_linked" };
+  const before = await lifeLinkOf(account.id);
+  if (!before) return { kind: "not_linked" };
+  const switched = on ? { aal: account.assurance?.level ?? "aal1" } : null;
+  // A switch on is audited once Kaizen Life has taken it; one it did not take never happened.
+  const link = await setAssistants(account.id, switched, "flow", { audited: !on });
+  if (!link) return { kind: "not_linked" };
+  const answer = z
+    .object({ ok: z.literal(true) })
+    .safeParse(await askLife("assistants", { lifeUserId: link.lifeUserId, flowAccountId: account.id, on }, fetcher));
+  if (!answer.success) {
+    if (on) {
+      if (before.assistants) await setAssistants(account.id, before.assistants, "flow", { audited: false });
+      else await setAssistants(account.id, null, "flow", { audited: false });
+      return { kind: "life" };
+    }
+    log("warn", "kaizen_life.assistants_off_not_told", { accountId: account.id });
+  }
+  if (on && !before.assistants) await auditAssistants(account.id, switched, "flow");
+  return { kind: on ? "on" : "off" };
+}
+
+export class LifeAssistantError extends Error {}
+
+/**
+ * Asks Kaizen Life's assistant over the link, for the person (the AI manager's `ask_kaizen_life`): a signed request that Kaizen Life
+ * answers with a run of its assistant in its narrow lane for Kaizena Flow (the day, tasks, reminders, when they are free, adding a task or
+ * reminder). Its answer, in words; a `LifeAssistantError` says why there is none, in words the model can pass on.
+ */
+export async function askLifeAssistant(accountId: string, question: string, from: string, fetcher: typeof fetch = fetch): Promise<string> {
+  const link = await lifeLinkOf(accountId);
+  if (!link?.assistants) throw new LifeAssistantError("Kaizen Life's assistant is not switched on for this account: the person switches it on under Your account → Connected apps.");
+  const answer = z
+    .union([z.object({ answer: z.string() }), z.object({ error: z.string() })])
+    .safeParse(await askLife("ask", { lifeUserId: link.lifeUserId, flowAccountId: accountId, question: question.slice(0, 4000), from: from.slice(0, 200) }, fetcher, ASSISTANT_TIMEOUT_MS));
+  if (!answer.success) throw new LifeAssistantError("Kaizen Life did not answer.");
+  if ("error" in answer.data) throw new LifeAssistantError(answer.data.error.slice(0, 500) || "Kaizen Life did not answer.");
+  return answer.data.answer.slice(0, 8000);
 }

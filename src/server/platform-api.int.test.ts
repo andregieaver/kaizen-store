@@ -15,7 +15,7 @@ const route = await import("@/app/api/platform/v1/[...path]/route");
 const tokens = await import("./platform-api-tokens");
 
 /**
- * Kaizena Flow's own API (C4 step 4, D517) against a real database: a token made only by a platform owner, shown once and kept as a hash;
+ * Kaizena Flow's own API (C4 step 4, D518) against a real database: a token made only by a platform owner, shown once and kept as a hash;
  * read only, by scope; a store by its id or address name, never a demo store; requests by state; refused once revoked or once its maker is
  * no longer an owner.
  */
@@ -48,7 +48,7 @@ const call = (path: string, token: string | null, method: "GET" | "POST" = "GET"
   return method === "GET" ? route.GET(request, { params: Promise.resolve({ path: segments }) }) : route.POST();
 };
 
-describe("Kaizena Flow's own API (D517)", () => {
+describe("Kaizena Flow's own API (D518)", () => {
   it("makes a token only for a platform owner, shown once and kept as a hash", async () => {
     expect(await tokens.makePlatformToken(reader, { name: "Sheet", scopes: ["stores:read"] })).toEqual({ ok: false, problem: "owner" });
     expect(await tokens.makePlatformToken(owner, { name: " ", scopes: ["stores:read"] })).toEqual({ ok: false, problem: "name" });

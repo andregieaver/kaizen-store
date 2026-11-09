@@ -18,7 +18,7 @@ import { makePlatformTokenAction, revokePlatformTokenAction } from "./actions";
 export const metadata: Metadata = { title: "API" };
 
 /**
- * Kaizena Flow's own API (C4 step 4, D517): a store's Apps and API (D355) for the platform. A platform owner makes a token with the scopes
+ * Kaizena Flow's own API (C4 step 4, D518): a store's Apps and API (D355) for the platform. A platform owner makes a token with the scopes
  * it needs, sees it once and revokes it; every role on the team sees the tokens in use (their names and first characters only) and the routes.
  */
 export default async function PlatformApiPage() {

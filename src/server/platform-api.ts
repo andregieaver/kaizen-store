@@ -10,7 +10,7 @@ import { platformSnapshot } from "./platform-briefing";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
- * What Kaizena Flow's own API answers (C4 step 4, D517): the platform's stores (of owners: never a demo store, a template, a sandbox or its
+ * What Kaizena Flow's own API answers (C4 step 4, D518): the platform's stores (of owners: never a demo store, a template, a sandbox or its
  * own), each with its plan; its plans and their prices; the requests for a store; and the figures of the home (D513). Read only. Money is in
  * minor units with its currency, as the stores' Admin API gives it (D355); times are ISO 8601.
  */

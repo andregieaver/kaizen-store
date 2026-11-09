@@ -12,7 +12,7 @@ import { audit, platformCan, type Account } from "./auth";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
- * Kaizena Flow's own API's tokens (C4 step 4, D517): the only writer of `commerce.platform_api_tokens`, the stores' tokens (D355,
+ * Kaizena Flow's own API's tokens (C4 step 4, D518): the only writer of `commerce.platform_api_tokens`, the stores' tokens (D355,
  * `api-tokens.ts`) for the platform. A token is made by a platform owner (the settings area, D510) with the scopes chosen, shown once and kept
  * only as its SHA-256; it reads as the owner who made it, whose account is read again on every call, so a maker who is no longer an owner of
  * the platform, a disabled account or a revoked token ends it at once.

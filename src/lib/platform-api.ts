@@ -1,5 +1,5 @@
 /**
- * Kaizena Flow's own API (C4 step 4 of `docs/platform-parity-plan.md`, D517): the pure parts. The stores' Admin API (D355) for the platform's
+ * Kaizena Flow's own API (C4 step 4 of `docs/platform-parity-plan.md`, D518): the pure parts. The stores' Admin API (D355) for the platform's
  * own tools: a token (`kfp_` and 32 random bytes) made by a platform owner with the scopes chosen, shown once and kept only as its SHA-256,
  * reads the platform's stores, plans, requests and figures at `/api/platform/v1/{resource}`. Read only: nothing it does changes the platform.
  * Nothing here reads the database.

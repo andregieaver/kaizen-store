@@ -5300,6 +5300,13 @@
       "when": 1794240824956,
       "tag": "20261109161344_platform_workflows_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 757,
+      "version": "7",
+      "when": 1794242153349,
+      "tag": "20261109163553_kaizen_life_assistants",
+      "breakpoints": true
     }
   ]
 }

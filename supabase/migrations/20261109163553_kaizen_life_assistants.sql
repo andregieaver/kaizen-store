@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."kaizen_life_accounts" ADD COLUMN "assistants_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."kaizen_life_accounts" ADD COLUMN "assistants_aal" text;--> statement-breakpoint
+ALTER TABLE "commerce"."kaizen_life_accounts" ADD CONSTRAINT "kaizen_life_accounts_assistants" CHECK (("commerce"."kaizen_life_accounts"."assistants_at" is null) = ("commerce"."kaizen_life_accounts"."assistants_aal" is null) and coalesce("commerce"."kaizen_life_accounts"."assistants_aal" in ('aal1', 'aal2'), true) and ("commerce"."kaizen_life_accounts"."assistants_at" is null or "commerce"."kaizen_life_accounts"."unlinked_at" is null));

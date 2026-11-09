@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { isPlatformApiScope, listQuery, platformBearer, platformRouteOf } from "./platform-api";
 
-describe("Kaizena Flow's own API (D517)", () => {
+describe("Kaizena Flow's own API (D518)", () => {
   it("takes only a platform token, never a store's or an app's", () => {
     const token = `kfp_${"a".repeat(43)}`;
     expect(platformBearer(`Bearer ${token}`)).toBe(token);

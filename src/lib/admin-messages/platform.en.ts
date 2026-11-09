@@ -44,7 +44,7 @@ export const platformEn = {
     endpointsPayload:
       "The body is JSON, as Zapier and Make get it: id, event, created_at, platform, and what the event is about under its own name (request, store and plan, or report).",
   },
-  /** Kaizena Flow's own API (D517): the store's token words, with these of the platform's own. */
+  /** Kaizena Flow's own API (D518): the store's token words, with these of the platform's own. */
   api: {
     title: "API",
     description: "Let Kaizena Flow's own tools (a dashboard, a script, a spreadsheet) read the platform: its stores and their plans, the plans, the requests for a store and the home's figures. Read only, each with a token of its own.",

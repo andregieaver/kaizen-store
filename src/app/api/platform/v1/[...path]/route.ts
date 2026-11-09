@@ -7,7 +7,7 @@ import { platformApiCaller } from "@/server/platform-api-tokens";
 import { takeBudget } from "@/server/request-budget";
 
 /**
- * Kaizena Flow's own API (C4 step 4, D517): `GET /api/platform/v1/{stores|stores/{id or slug}|plans|requests|figures}` with
+ * Kaizena Flow's own API (C4 step 4, D518): `GET /api/platform/v1/{stores|stores/{id or slug}|plans|requests|figures}` with
  * `Authorization: Bearer kfp_…`, a token a platform owner made under Settings → Integrations → API. Read only. A route outside the token's
  * scopes is a 403 that names the scope, anything not found a 404, more than the budget a 429 with `Retry-After`. JSON out, never cached.
  */

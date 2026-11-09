@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient as createSupabase } from "@supabase/supabase-js";
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
@@ -84,6 +84,20 @@ export async function mcpCaller(token: string): Promise<McpCaller | null> {
 export async function callerFromClaims(claims: Record<string, unknown>, clientId: string): Promise<McpCaller | null> {
   if (claims.client_id !== clientId || typeof claims.sub !== "string") return null;
   if (typeof claims.exp !== "number" || claims.exp * 1000 < Date.now()) return null;
+  return ownerCaller(sql`a.auth_user_id = ${claims.sub}::uuid`, claims.aal === "aal2" ? "aal2" : "aal1");
+}
+
+/**
+ * Kaizen Life's assistant over the account link (docs/assistants-together.md): the linked account, owner of the stores it owns, at the
+ * assurance of the session that switched the assistants on in Kaizena Flow. The same caller as Kaizen Life's tokens (D96), so the same
+ * rules hold: owners' stores only, changes kept for the owner's yes in the admin, a platform admin and a two-step store at `aal2` only.
+ */
+export async function callerOfLink(accountId: string, aal: "aal1" | "aal2"): Promise<McpCaller | null> {
+  return ownerCaller(sql`a.id = ${accountId}::uuid`, aal);
+}
+
+/** An active account that owns stores, as Kaizen Life's caller: the stores it owns that are open to it at this assurance. */
+async function ownerCaller(who: SQL, aal: "aal1" | "aal2"): Promise<McpCaller | null> {
   const rows = await db().execute<Row>(sql`
     select a.id, a.email, a.name, a.platform_admin, s.id as store_id, s.slug, s.name as store_name, s.require_two_step
     from commerce.accounts a
@@ -91,12 +105,11 @@ export async function callerFromClaims(claims: Record<string, unknown>, clientId
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed'
       -- Never a store the platform keeps for itself (a store template's frozen copy, a design profile's workspace, D177).
       and (not s.starter or exists (select 1 from commerce.store_starters st where st.store_id = s.id))
-    where a.auth_user_id = ${claims.sub}::uuid and a.disabled_at is null
+    where ${who} and a.disabled_at is null
     order by s.name
   `);
   if (rows.length === 0) return null;
   const first = rows[0];
-  const aal = claims.aal === "aal2" ? "aal2" : "aal1";
   // A platform admin works at the second step only, wherever they sign in: a token that did not pass it is refused whole.
   if (first.platform_admin && aal !== "aal2") return null;
   // A store that requires two-step is not served to a token that did not pass it, as its admin is not.

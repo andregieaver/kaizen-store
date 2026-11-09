@@ -8,7 +8,7 @@ import { adminText } from "@/lib/admin-text";
 import { requirePlatform } from "@/server/auth";
 import { makePlatformToken, PLATFORM_TOKENS_MAX, revokePlatformToken } from "@/server/platform-api-tokens";
 
-/** Kaizena Flow's own API's tokens (D517) read the platform's stores, plans and requests, so they are a platform owner's (the settings area, D510). */
+/** Kaizena Flow's own API's tokens (D518) read the platform's stores, plans and requests, so they are a platform owner's (the settings area, D510). */
 export type PlatformTokenAnswer = { ok: true; token?: string } | { ok: false; message: string };
 
 export async function makePlatformTokenAction(form: FormData): Promise<PlatformTokenAnswer> {

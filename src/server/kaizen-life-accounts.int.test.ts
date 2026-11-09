@@ -189,3 +189,92 @@ describe("Kaizena Flow linking by itself", () => {
     expect(await linkRow(other.id)).toBeNull();
   });
 });
+
+describe("The assistants working together over the link (docs/assistants-together.md)", () => {
+  let assist: { id: string; email: string; slug: string };
+  const lifeUser = randomUUID();
+  const switchRow = async (accountId: string) => {
+    const [row] = await db().execute<Row>(sql`select assistants_at, assistants_aal from commerce.kaizen_life_accounts where account_id = ${accountId}::uuid`);
+    return row ?? null;
+  };
+  const tool = (name: string, args: Record<string, unknown> = {}, who = lifeUser) => ask("tool", { lifeUserId: who, name, arguments: args });
+
+  beforeAll(async () => {
+    assist = await makeOwner("assist");
+    await signedIn(assist.id);
+    expect(await links.linkAccounts(assist.id, lifeUser, "email")).toMatchObject({ kind: "linked", link: { assistants: null } });
+  });
+
+  it("starts apart: Life's assistant reaches no store, and status says so", async () => {
+    expect(await tool("list_stores")).toMatchObject({ status: 403, body: { error: "assistants_off" } });
+    expect(await tool("list_stores", {}, randomUUID())).toMatchObject({ status: 404, body: { error: "not_linked" } });
+    expect((await ask("status", { lifeUserId: lifeUser })).body).toMatchObject({ linked: true, assistants: false });
+    expect(await links.assistantsOn(assist.id)).toBe(false);
+  });
+
+  it("switches on only in Kaizena Flow, writing Kaizen Life's copy in the same call, and puts it back off when Life did not take it", async () => {
+    const refused = lifeAnswers(503);
+    expect(await links.switchAssistantsFromFlow({ id: assist.id, assurance: { level: "aal1" } }, true, refused.fetcher)).toEqual({ kind: "life" });
+    expect(await switchRow(assist.id)).toEqual({ assistants_at: null, assistants_aal: null });
+
+    const life = lifeAnswers({ ok: true });
+    expect(await links.switchAssistantsFromFlow({ id: assist.id, assurance: { level: "aal1" } }, true, life.fetcher)).toEqual({ kind: "on" });
+    expect(life.sent.map((s) => [new URL(s.url).pathname, s.checked])).toEqual([["/api/kaizena-flow/v1/assistants", true]]);
+    expect(life.sent[0].body).toEqual({ lifeUserId: lifeUser, flowAccountId: assist.id, on: true });
+    expect(await switchRow(assist.id)).toMatchObject({ assistants_aal: "aal1" });
+    expect((await ask("status", { lifeUserId: lifeUser })).body).toMatchObject({ assistants: true });
+    const audits = await db().execute<Row>(sql`select action, details from commerce.audit_log where account_id = ${assist.id}::uuid and action like 'account.kaizen_life_assistants_%' order by created_at`);
+    expect(audits.map((a) => [a.action, a.details])).toEqual([["account.kaizen_life_assistants_on", { from: "flow", aal: "aal1" }]]);
+    // Kaizen Life can only switch it off: it is switched on where the stores are.
+    expect((await ask("assistants", { lifeUserId: lifeUser, on: true })).status).toBe(400);
+  });
+
+  it("serves the store MCP's tools to Life's assistant as the owner, and refuses what is no tool", async () => {
+    const stores = await tool("list_stores");
+    expect(stores.status).toBe(200);
+    const listed = JSON.parse(String((stores.body.content as { text: string }[])[0].text)) as { stores: { slug: string }[] };
+    expect(listed.stores.map((s) => s.slug)).toEqual([assist.slug]);
+    const nothing = await tool("constructor", { store: assist.slug });
+    expect(nothing.body).toMatchObject({ isError: true });
+    const elsewhere = await tool("store_overview", { store: owner.slug });
+    expect(elsewhere.body).toMatchObject({ isError: true });
+    const [logged] = await db().execute<Row>(sql`select details from commerce.audit_log where account_id = ${assist.id}::uuid and action = 'integration.mcp_call' order by created_at limit 1`);
+    expect(logged.details).toMatchObject({ via: "mcp", client: "Kaizen Life", tool: "list_stores", outcome: "done" });
+  });
+
+  it("keeps a store that requires two-step out of reach of a switch turned on without the second step", async () => {
+    await db().execute(sql`update commerce.stores set require_two_step = true where slug = ${assist.slug}`);
+    expect(await tool("list_stores")).toMatchObject({ status: 403, body: { error: "two_step" } });
+    expect(await links.switchAssistantsFromFlow({ id: assist.id, assurance: { level: "aal2" } }, true, lifeAnswers({ ok: true }).fetcher)).toEqual({ kind: "on" });
+    expect((await tool("list_stores")).status).toBe(200);
+    await db().execute(sql`update commerce.stores set require_two_step = false where slug = ${assist.slug}`);
+  });
+
+  it("asks Kaizen Life's assistant over the link with a signed request, and words a refusal for the model", async () => {
+    const life = lifeAnswers({ answer: "Free on Friday after 13:00." }, { error: "Kaizen Life's assistant is switched off here." }, 503);
+    expect(await links.askLifeAssistant(assist.id, "When am I free on Friday?", "Kaffe", life.fetcher)).toBe("Free on Friday after 13:00.");
+    expect(life.sent[0]).toMatchObject({ checked: true, body: { lifeUserId: lifeUser, flowAccountId: assist.id, question: "When am I free on Friday?", from: "Kaffe" } });
+    expect(new URL(life.sent[0].url).pathname).toBe("/api/kaizena-flow/v1/ask");
+    await expect(links.askLifeAssistant(assist.id, "And Saturday?", "Kaffe", life.fetcher)).rejects.toThrow("switched off here");
+    await expect(links.askLifeAssistant(assist.id, "And Sunday?", "Kaffe", life.fetcher)).rejects.toThrow("did not answer");
+  });
+
+  it("stops when Kaizen Life switches it off, and unlinking switches it off for good", async () => {
+    expect((await ask("assistants", { lifeUserId: lifeUser, on: false })).body).toEqual({ ok: true });
+    expect(await switchRow(assist.id)).toEqual({ assistants_at: null, assistants_aal: null });
+    await expect(links.askLifeAssistant(assist.id, "Anything?", "Kaffe", lifeAnswers().fetcher)).rejects.toThrow("not switched on");
+
+    expect(await links.switchAssistantsFromFlow({ id: assist.id, assurance: { level: "aal1" } }, true, lifeAnswers({ ok: true }).fetcher)).toEqual({ kind: "on" });
+    expect(await links.unlinkFromFlow(assist.id, lifeAnswers({ ok: true }).fetcher)).toBe(true);
+    expect(await switchRow(assist.id)).toEqual({ assistants_at: null, assistants_aal: null });
+    const [account] = await db().execute<Row>(sql`select auth_user_id from commerce.accounts where id = ${assist.id}::uuid`);
+    expect((await ask("link", { how: "identity", lifeUserId: lifeUser, flowAuthUserId: String(account.auth_user_id) })).body).toMatchObject({ linked: true });
+    expect(await switchRow(assist.id)).toEqual({ assistants_at: null, assistants_aal: null });
+    // Switched off from Flow, Kaizen Life is told, and a failure to tell it never keeps it on.
+    expect(await links.switchAssistantsFromFlow({ id: assist.id, assurance: { level: "aal1" } }, true, lifeAnswers({ ok: true }).fetcher)).toEqual({ kind: "on" });
+    const off = lifeAnswers(503);
+    expect(await links.switchAssistantsFromFlow({ id: assist.id }, false, off.fetcher)).toEqual({ kind: "off" });
+    expect(off.sent[0].body).toEqual({ lifeUserId: lifeUser, flowAccountId: assist.id, on: false });
+    expect(await switchRow(assist.id)).toEqual({ assistants_at: null, assistants_aal: null });
+  });
+});

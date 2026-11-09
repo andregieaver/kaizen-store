@@ -346,7 +346,8 @@ live:
 
 If the two are not the same controller, the link must be offered and confirmed with one tap instead of made by itself.
 
-**Life's assistant acting in stores** keeps needing the person's grant through the `kaizen_store` connection. Moving that grant to
+**Life's assistant acting in stores** keeps needing the person's grant through the `kaizen_store` connection. (Since D517 that grant
+is one switch on the link instead, *Let them work together*, turned on in Flow: `docs/assistants-together.md`.) Moving that grant to
 Flow's own OAuth server (D439, a pre-registered *Kaizen Life* client) is still worth doing while nobody is connected, but it no
 longer blocks the summary.
 

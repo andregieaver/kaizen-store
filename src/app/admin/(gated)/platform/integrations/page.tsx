@@ -68,7 +68,7 @@ export default async function PlatformIntegrationsPage() {
             </li>
           );
         })}
-        {/* Kaizena Flow's own API (C4 step 4, D517): its tools read the platform with a token. */}
+        {/* Kaizena Flow's own API (C4 step 4, D518): its tools read the platform with a token. */}
         <li className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
           <div className="min-w-0">
             <h2 className="text-title text-ink">{own.api.title}</h2>

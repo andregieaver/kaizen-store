@@ -7674,7 +7674,7 @@ export const platformWorkflowRuns = commerce.table(
 );
 
 /**
- * A token for Kaizena Flow's own API (C4 step 4, D517, `src/server/platform-api-tokens.ts`, its only writer): made by a platform owner
+ * A token for Kaizena Flow's own API (C4 step 4, D518, `src/server/platform-api-tokens.ts`, its only writer): made by a platform owner
  * with the scopes chosen, shown once and kept only as its SHA-256; it reads as the owner who made it, who must still be one.
  */
 export const platformApiTokens = commerce.table(
@@ -18919,6 +18919,13 @@ export const kaizenLifeAccounts = commerce.table(
     linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
     unlinkedAt: timestamp("unlinked_at", { withTimezone: true }),
     unlinkedFrom: text("unlinked_from"),
+    /**
+     * Since when the person lets their assistants work together over this link (docs/assistants-together.md), null while they do
+     * not; switched on only here, in Kaizena Flow, and off in either app. Unlinking switches it off.
+     */
+    assistantsAt: timestamp("assistants_at", { withTimezone: true }),
+    /** The assurance of the session that switched it on: Kaizen Life's assistant reaches a store that requires two-step, and a platform admin's stores, only at `aal2`. */
+    assistantsAal: text("assistants_aal"),
   },
   (t) => [
     uniqueIndex("kaizen_life_accounts_pair_key").on(t.accountId, t.lifeUserId),
@@ -18928,6 +18935,10 @@ export const kaizenLifeAccounts = commerce.table(
     check(
       "kaizen_life_accounts_unlinked",
       sql`(${t.unlinkedAt} is null) = (${t.unlinkedFrom} is null) and coalesce(${t.unlinkedFrom} in ('flow', 'life'), true)`,
+    ),
+    check(
+      "kaizen_life_accounts_assistants",
+      sql`(${t.assistantsAt} is null) = (${t.assistantsAal} is null) and coalesce(${t.assistantsAal} in ('aal1', 'aal2'), true) and (${t.assistantsAt} is null or ${t.unlinkedAt} is null)`,
     ),
   ],
 );

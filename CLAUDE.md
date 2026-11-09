@@ -220,7 +220,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Shopping agents (wave 8 unit I, D353, `src/lib/shopping-agents.ts`, `src/server/shopping-agents.ts`)
 - Events to an owner's own endpoints (wave 9 unit A, D354, `src/lib/webhook-signature.ts`, `src/server/webhook-endpoints.ts`)
 - The Admin API (wave 9 unit B, D355, `src/lib/admin-api.ts`, `src/server/api-tokens.ts`, `src/server/admin-api.ts`)
-- Kaizena Flow's own API (D517, `src/lib/platform-api.ts`, `src/server/platform-api-tokens.ts`, `src/server/platform-api.ts`)
+- Kaizena Flow's own API (D518, `src/lib/platform-api.ts`, `src/server/platform-api-tokens.ts`, `src/server/platform-api.ts`)
 - Checkout rules and questions (wave 9 unit D, D357, `src/lib/checkout-rules.ts`, `src/server/checkout-rules.ts`)
 - Versions compared and staging (wave 9 unit E, D358, `src/lib/version-compare.ts`, `src/server/site-staging.ts`)
 - Self-serve sign-up (wave 9 unit F, D359, `src/server/self-signup.ts`)
@@ -285,7 +285,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Theme photographs (D264, `docs/theme-showcase-phase-2.md` step 1)
 - Premium themes (D286, `docs/theme-prices.md`, `src/lib/theme-prices.ts`, `src/server/theme-prices.ts`)
 - Signature themes (D267, D269, D281, D287, `docs/signature-themes.md`; Orbit, Atelier, Arcade, Botanica, Kinetic, Meridian)
-- Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`)
+- Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517, `docs/assistants-together.md`)
 - Templates (D125, `src/lib/templates.ts`, `src/lib/template-content.ts`, `src/server/templates.ts`, `TemplatesTab`/`TemplatesModal`)
 - Page layouts and preview (D127, `src/lib/page-layout.ts`, `src/lib/page-layout-apply.ts`, `previewTemplate()`, `TemplatesPreview`,…
 - Motion (D128, `src/lib/motion.ts`, `src/lib/motion-attrs.ts`, `src/lib/motion-runtime.ts`, `src/app/motion.css`, `src/lib/motion-plan.ts`,…
