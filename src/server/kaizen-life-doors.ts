@@ -19,6 +19,8 @@ import {
   type FlowDoor,
 } from "./kaizen-life-accounts";
 import { sendKaizenLifeLinkedEmail } from "./kaizen-life-emails";
+import { runFromLife, takeHandoffFromLife, takeUpdateFromLife } from "./kaizen-life-handoffs";
+import { afterAnswer } from "./after-answer";
 import { log } from "./log";
 import { takeBudget, takeMcpBudget } from "./request-budget";
 import { callerOfLink, callMcpTool, storeOfCall } from "./store-mcp";
@@ -61,12 +63,15 @@ const isDoor = (door: string): door is FlowDoor => (FLOW_DOORS as readonly strin
  *   switched on here, where the stores are.
  * - `tool`: Kaizen Life's assistant calls one of the store MCP's tools for the linked account, while the person lets the assistants work
  *   together: answered as `/api/mcp` answers Kaizen Life (`callMcpTool()`), with its budget, its audit and its approvals.
+ * - `handoff`: Kaizen Life's assistant hands a store's AI manager a task (or takes one back), docs/assistants-together.md step 2: answered
+ *   202 at once and run after the answer (`takeHandoffFromLife()`, `runFromLife()`; the five-minute job runs one that did not start).
+ * - `handoff-update`: Kaizen Life reports on a task the AI manager handed it (`takeUpdateFromLife()`).
  */
 export async function answerLifeDoor(door: string, request: Request, invalidate: (tag: string) => void = () => {}): Promise<Response> {
   if (!isDoor(door)) return refuse(404, "not_found");
   const keys = linkKeys();
   if (!keys) return refuse(503, "not_set_up");
-  const max = door === "tool" ? TOOL_BODY_MAX : BODY_MAX;
+  const max = door === "tool" || door === "handoff" || door === "handoff-update" ? TOOL_BODY_MAX : BODY_MAX;
   const length = Number(request.headers.get("content-length") ?? 0);
   if (length > max) return refuse(413, "too_large");
   const body = await request.text();
@@ -99,6 +104,26 @@ export async function answerLifeDoor(door: string, request: Request, invalidate:
   }
 
   if (door === "tool") return answerTool(parsed, invalidate);
+
+  if (door === "handoff" || door === "handoff-update") {
+    const who = LIFE_USER.safeParse(parsed);
+    if (!who.success) return refuse(400, "bad_request");
+    if (!(await takeBudget(null, "life_handoff", who.data.lifeUserId))) return refuse(429, "slow_down");
+  }
+
+  if (door === "handoff") {
+    const outcome = await takeHandoffFromLife(parsed);
+    if (outcome.kind === "refused") return refuse(outcome.status, outcome.error);
+    if (outcome.kind === "cancelled") return json({ ok: true });
+    if (outcome.fresh) afterAnswer(() => runFromLife(outcome.id));
+    return json({ accepted: true, handoffId: outcome.id }, 202);
+  }
+
+  if (door === "handoff-update") {
+    const outcome = await takeUpdateFromLife(parsed);
+    if ("error" in outcome) return refuse(outcome.error === "bad_request" ? 400 : 404, outcome.error);
+    return json({ ok: true });
+  }
 
   if (!(await takeBudget(null, "life_link", door))) return refuse(429, "slow_down");
 

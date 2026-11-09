@@ -304,6 +304,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   store_drafts: "platform_service",
   dream_runs: "platform_service",
   assistant_follow_ups: "platform_service",
+  kaizen_life_handoffs: "platform_service",
   assistant_goals: "platform_service",
   assistant_plans: "platform_service",
   autopilot_reports: "platform_service",

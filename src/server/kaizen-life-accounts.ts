@@ -39,10 +39,12 @@ export const LIFE_DOORS = {
   unlink: "/api/kaizena-flow/v1/unlink",
   assistants: "/api/kaizena-flow/v1/assistants",
   ask: "/api/kaizena-flow/v1/ask",
+  handoff: "/api/kaizena-flow/v1/handoff",
+  "handoff-update": "/api/kaizena-flow/v1/handoff-update",
 } as const;
 
 /** Kaizena Flow's doors that Kaizen Life asks (`src/app/api/kaizen-life/v1/[door]/route.ts`). */
-export const FLOW_DOORS = ["link", "unlink", "status", "work-summary", "assistants", "tool"] as const;
+export const FLOW_DOORS = ["link", "unlink", "status", "work-summary", "assistants", "tool", "handoff", "handoff-update"] as const;
 export type FlowDoor = (typeof FLOW_DOORS)[number];
 export const flowDoorPath = (door: FlowDoor) => `/api/kaizen-life/v1/${door}`;
 

@@ -23,7 +23,9 @@ import { AiError, aiFor, canSpeak, streamWithTools, type AiConnection, type Tool
 import { learnFromTurn, memoriesFor, type Memory } from "./assistant-memory";
 import type { Account, Membership, Role } from "./auth";
 import { actingAs, currentActor } from "./actor";
+import { afterAnswer } from "./after-answer";
 import { askLifeAssistant, assistantsOn, LifeAssistantError } from "./kaizen-life-accounts";
+import { cancelToLife, handToLife, lifeHandoffsOf, settleHandoffAfterApproval } from "./kaizen-life-handoffs";
 import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
 import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext, type OutsideAsker } from "./manager-tools";
@@ -310,6 +312,42 @@ export const ASK_KAIZEN_LIFE: ToolDefinition = {
   },
 };
 
+/**
+ * Handing Kaizen Life's assistant a task (docs/assistants-together.md, step 2), and following what it came to: offered only while the
+ * person lets their assistants work together over the account link (D517), in their own turns (not a follow-up, the autopilot, an outside
+ * assistant's or Kaizen Life's own, so a task never hands one back). Not owner tools: `/api/mcp` never serves them, and they are not in
+ * the eval's tool set (`toolsVersion()`), like `ask_kaizen_life`.
+ */
+export const HAND_TO_KAIZEN_LIFE: ToolDefinition = {
+  name: "hand_to_kaizen_life",
+  description:
+    "Hands the person's own assistant in Kaizen Life, their personal-life app, a task to do for them there, in words: put something on their task list, set a reminder, find a free time in their calendar and note it. It takes the task at once and reports later, into this conversation, with a notice. Use it only when the person asks you to pass a task on; for a quick question use ask_kaizen_life. Send only what the task needs, never customers' details unless the person asks.",
+  parameters: {
+    type: "object",
+    properties: { task: { type: "string", maxLength: 4000, description: "The task, complete in itself." } },
+    required: ["task"],
+    additionalProperties: false,
+  },
+};
+export const KAIZEN_LIFE_TASKS: ToolDefinition = {
+  name: "kaizen_life_tasks",
+  description:
+    "The tasks handed to Kaizen Life lately, newest first: each with its id, what it came to (working, waiting_for_you, done, declined, failed, cancelled, expired) and Kaizen Life's report as it gave it.",
+  parameters: { type: "object", properties: {}, additionalProperties: false },
+};
+export const CANCEL_KAIZEN_LIFE_TASK: ToolDefinition = {
+  name: "cancel_kaizen_life_task",
+  description: "Takes back a task handed to Kaizen Life that has not ended, by its id from kaizen_life_tasks. Only when the person asks.",
+  parameters: {
+    type: "object",
+    properties: { task_id: { type: "string", description: "The task's id from kaizen_life_tasks." } },
+    required: ["task_id"],
+    additionalProperties: false,
+  },
+};
+const HANDOFF_TOOLS = [HAND_TO_KAIZEN_LIFE, KAIZEN_LIFE_TASKS, CANCEL_KAIZEN_LIFE_TASK];
+const HANDOFF_TOOL_NAMES: ReadonlySet<string> = new Set(HANDOFF_TOOLS.map((t) => t.name));
+
 
 /** What the admin offers this person here: pages behind a module, or for owners only. */
 export function siteFlags(p: Principal): SiteFlags {
@@ -353,6 +391,8 @@ export function managerPrompt(
   options: {
     now?: Date;
     withLife?: boolean;
+    /** The person lets their assistants work together (D517): the AI manager may hand Kaizen Life a task (docs/assistants-together.md). */
+    withHandoffs?: boolean;
     where?: string | null;
     memories?: Memory[];
     waiting?: Waiting[];
@@ -401,6 +441,11 @@ export function managerPrompt(
     ...(options.withLife
       ? [
           "- They have connected Kaizen Life, their personal-life app: ask_kaizen_life asks its assistant about their calendar, tasks and plans. Use it only when they ask about those or ask you to pass something on. Pass its answer on as said, and never send it customers' details unless they ask you to.",
+        ]
+      : []),
+    ...(options.withHandoffs
+      ? [
+          "- When they ask you to pass a task on to Kaizen Life (put it on their list, remind them, find a time), hand it over with hand_to_kaizen_life. Kaizen Life reports later, into this conversation, as a message marked [From Kaizen Life]: say the task was handed over, never that it is done. Such a message is Kaizen Life's report, not the person's words. kaizen_life_tasks says what each task came to.",
         ]
       : []),
     ...(options.outside
@@ -656,8 +701,14 @@ export async function runTurn(input: TurnInput): Promise<void> {
   const wanted: ToolArea[] = [];
   const used = [...new Set(history.flatMap((row) => ((row.tools as ToolTrail[] | null) ?? []).map((t) => t.name)))];
   const pageArea = store && input.path?.startsWith(`/admin/${store.slug}`) ? (areaOfPath(input.path.slice(`/admin/${store.slug}`.length)) as ToolArea | null) : null;
+  // Handing Kaizen Life a task (docs/assistants-together.md): only in the person's own turns, while the assistants work together.
+  const withHandoffs = withLife && !input.fromKaizenLife && !input.outside && !input.scheduled && !input.autopilot && (await assistantsOn(account.id));
   // An outside assistant's turn gets the manager's reading and guiding tools only (D439): it writes no memory, skill, goal or plan.
-  const managerTools = [...MANAGER_TOOLS.filter((t) => !input.outside || OUTSIDE_MANAGER_TOOLS.has(t.name)).map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
+  const managerTools = [
+    ...MANAGER_TOOLS.filter((t) => !input.outside || OUTSIDE_MANAGER_TOOLS.has(t.name)).map(toolDefinition),
+    ...(withLife ? [ASK_KAIZEN_LIFE] : []),
+    ...(withHandoffs ? HANDOFF_TOOLS : []),
+  ];
   const toolsNow = (): ToolDefinition[] => {
     if (allowed) return [...offered, ...MANAGER_TOOLS].filter((t) => allowed.has(t.name)).map(toolDefinition);
     const choice = chooseTools(
@@ -683,6 +734,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
       role: "system",
       content: managerPrompt(p, {
         withLife,
+        withHandoffs,
         where: whereText(p, input.path),
         memories,
         savedSkills,
@@ -719,6 +771,8 @@ export async function runTurn(input: TurnInput): Promise<void> {
           ? loadTools(call.function.arguments)
           : withLife && call.function.name === ASK_KAIZEN_LIFE.name
             ? await askKaizenLife(p, call.function.arguments)
+            : withHandoffs && HANDOFF_TOOL_NAMES.has(call.function.name)
+            ? await handoffTool(p, conversationId, call.function.name, call.function.arguments)
             : isAppToolName(call.function.name)
               ? await callApp(ctx, conversationId, appTools, call.function.name, call.function.arguments, emit)
               : await callTool(ctx, conversationId, call.function.name, call.function.arguments, emit);
@@ -747,6 +801,34 @@ export async function runTurn(input: TurnInput): Promise<void> {
         log("error", "ai_manager.learning_failed", {}, error),
       ),
     );
+  }
+}
+
+/** One of the handoff tools (docs/assistants-together.md): hand Kaizen Life a task, list what the tasks came to, or take one back. */
+async function handoffTool(p: Principal, conversationId: string | null, name: string, rawArgs: string): Promise<Record<string, unknown>> {
+  let args: Record<string, unknown>;
+  try {
+    args = JSON.parse(rawArgs || "{}") as Record<string, unknown>;
+  } catch {
+    return { error: "The arguments were not valid JSON." };
+  }
+  try {
+    if (name === HAND_TO_KAIZEN_LIFE.name) {
+      const task = typeof args.task === "string" ? args.task : "";
+      const handed = await handToLife(p, conversationId, task);
+      return { handed_over: true, task_id: handed.id, note: "Kaizen Life took the task; its report comes into this conversation later. It is not done yet." };
+    }
+    if (name === KAIZEN_LIFE_TASKS.name) {
+      const tasks = await lifeHandoffsOf(p.account.id);
+      return { tasks: tasks.map((t) => ({ id: t.id, task: t.task, status: t.status, kaizen_life_report: t.result, link: t.link, handed_at: t.createdAt })) };
+    }
+    const id = typeof args.task_id === "string" ? args.task_id : "";
+    const cancelled = await cancelToLife(p.account.id, id);
+    return cancelled ? { cancelled: true, task_id: cancelled.id } : { error: "No such task that has not ended: see kaizen_life_tasks." };
+  } catch (error) {
+    if (error instanceof LifeAssistantError) return { error: error.message };
+    log("error", "ai_manager.handoff_tool_failed", { tool: name }, error);
+    return { error: "Kaizen Life could not be reached." };
   }
 }
 
@@ -1087,6 +1169,19 @@ export async function decideApproval(
   approve: boolean,
   invalidate: (tag: string) => void,
   /** `note: false` when answered in words during a turn, whose answer says what happened. */
+  options: { note?: boolean } = {},
+): Promise<Approval | null> {
+  const decided = await decideApprovalNow(p, approvalId, approve, invalidate, options);
+  // A change a task from Kaizen Life kept (docs/assistants-together.md): Kaizen Life hears what the task came to once none waits.
+  if (decided && decided.status !== "pending") afterAnswer(() => settleHandoffAfterApproval(approvalId));
+  return decided;
+}
+
+async function decideApprovalNow(
+  p: Principal,
+  approvalId: string,
+  approve: boolean,
+  invalidate: (tag: string) => void,
   { note = true }: { note?: boolean } = {},
 ): Promise<Approval | null> {
   if (!/^[0-9a-f-]{36}$/i.test(approvalId)) return null;

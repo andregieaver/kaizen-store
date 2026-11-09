@@ -282,7 +282,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`einvoiceLines()`, `screens.einvoiceState`) on the order page and on a Work invoice, where the XML is also downloaded
   (`…/work/s/{store}/invoices/{id}/xml`, `…/credit-notes/{id}/xml`). Email is unchanged in this step.
 
-## Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517, `docs/assistants-together.md`)
+## Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517 and D519, `docs/assistants-together.md`)
 
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
@@ -337,7 +337,19 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   only at `aal2`, refused `two_step`; `callMcpTool()` with its approvals, audit and the person's `takeMcpBudget()`). The AI manager offers
   `ask_kaizen_life` while the switch is on (`assistantsOn()`, the platform's too) and asks Life's `ask` door (`askLifeAssistant()`, 90
   seconds), which runs Life's assistant in its narrow lane and never asks back. A new door, tool or lane for the assistants is decided
-  in `docs/assistants-together.md` first (step 2: handoffs with a report back).
+  in `docs/assistants-together.md` first.
+- Tasks the assistants hand each other (D519, `docs/assistants-together.md` step 2, `src/lib/kaizen-life-handoffs.ts` pure,
+  `src/server/kaizen-life-handoffs.ts`): `commerce.kaizen_life_handoffs`, written only there, one row per task under the sender's id
+  (`to_life` or `from_life`; account, direction and task fixed by a trigger). Doors `handoff` (a task, answered 202 and run after the answer,
+  or `cancel`) and `handoff-update` (a report), each way, budgeted `life_handoff` per Kaizen Life user, beside `HANDOFFS_PER_DAY`. The AI
+  manager's `hand_to_kaizen_life`, `kaizen_life_tasks` and `cancel_kaizen_life_task` are not owner or manager tools (outside `toolsVersion()`,
+  like `ask_kaizen_life`) and are offered only while the switch is on, in the person's own turns (never `fromKaizenLife`, `outside`,
+  `scheduled` or the autopilot), so a task never hands one back. Kaizen Life's report is written into the conversation as
+  `lifeReportMessage()` (marked `[From Kaizen Life]`, a link only to Kaizen Life's origin) with a `life_handoff` notice. A task from Kaizen
+  Life runs as `callerOfLink()`'s owner in the store's "From Kaizen Life" conversation with `fromKaizenLife`, `outside` and `scheduled`
+  (`runFromLife()`, claimed once); what it keeps waits for the yes, and `decideApproval()` settles it (`settleHandoffAfterApproval()`) once
+  none waits. The dispatcher's `lifeHandoffs` job (`runKaizenLifeHandoffs()`) runs a task never started, ends one stopped, settles one whose
+  changes were all answered, tells Kaizen Life what it has not heard (`REPORT_TRIES`), and gives up a task Kaizen Life never answered.
 
 ## Duplicating a store (D129, `docs/store-copy.md`, `src/lib/store-copy.ts`, `src/lib/store-copy-rules.ts`, `src/server/store-copy.ts`,…
 
