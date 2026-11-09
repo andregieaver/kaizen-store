@@ -75,6 +75,13 @@ Git → Deploy Hooks, branch `main`). `AUTO_MIGRATE` and `DEPLOY_VIA_CI` are rep
 failed deploy). A hook builds the head of `main` at the moment it is called, so two quick pushes make
 two builds of the newest commit.
 
+**The quick gate (D526).** A push without a migration no longer deploys the moment it lands. The `pending` job first runs
+`pnpm lint`, `pnpm typecheck` and `pnpm test:smoke` (the unit tests of money, cart, checkout, discounts and VAT), in the same
+job so there is no second runner to wait for, and asks for the deploy only when all three pass. Vercel's build skips the type
+check (D378), so this is the only type check between a push and production. A failed gate deploys nothing and the job is red;
+production stays on the commit it has. The full checks (`static`, `integration`, `e2e`, `hosts`, `signed-in`) still run beside
+the deploy and report after it. A push with a migration waits for every one of them, `hosts` and `signed-in` included.
+
 A deploy that should not have gone out: roll back in Vercel (*Deployments → the earlier one → Promote to
 Production*, seconds) and push the fix.
 
