@@ -14,7 +14,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-10 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510; the home's figures, targets and briefing, D513; its own endpoints and *Add to Slack*, D515; workflows on its events, D516; its own API, D518).
+8 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510; the home's figures, targets and briefing, D513; its own endpoints and *Add to Slack*, D515; workflows on its events, D516; its own API, D518; its owners by the month they joined and by channel, D521).
 
 ### Website
 
@@ -32,8 +32,6 @@ Website section is the site's (see *Built for both*).
 
 | Store page | Kaizena Flow today | Comes by |
 |---|---|---|
-| Customers | None: no cohorts of owners, no lifetime value | Console, C2 |
-| Marketing | Referral totals, recovered plan checkouts; no channels or cost per new owner | Console, C2 |
 | Reports | None | Console, C2 (later) |
 
 ### Customers
@@ -76,6 +74,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | Apps and AI assistants (D439, D441) | Settings → Apps and API | Settings → AI assistants and apps, App listings |
 | Zapier, Make and Slack (D41, D101; the platform's D465) | Integrations | Settings → Integrations: Kaizena Flow's own events (a store requested, made or opened, a plan started, changed, cancelled or not paid, a notice of illegal content) |
 | Own endpoints and *Add to Slack* (D354, D101; the platform's D515) | Integrations | Settings → Integrations: Kaizena Flow's events, signed, to its own endpoints; its Slack channel picked in Slack |
+| Customers' cohorts and lifetime value, channels and cost per customer (D152; the platform's D521) | Analytics → Customers, Marketing | Plans → Analytics: owners by the month they joined with what they paid for plans; new owners by the channel of their first visit against the spend entered, with the cost per store made and per paying owner |
 | The Admin API (D355; the platform's D518) | Settings → Apps and API | Settings → Integrations → API: a read-only API of its stores, plans, requests and figures for its own tools |
 | Workflows (D356; the platform's D516) | Settings → Workflows | Settings → Workflows, on Kaizena Flow's events: email its owners, post in its Slack, send to its endpoint. The site's own events (a form sent, a page published) are its store's |
 | Customers, with leads, notes, tags, timeline, import and export | Customers | Kaizena Flow's store (D466, D467): every owner and applicant, linked from Platform → Customers |

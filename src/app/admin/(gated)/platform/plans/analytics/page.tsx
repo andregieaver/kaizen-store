@@ -10,7 +10,9 @@ import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { payoutFlagged } from "@/lib/payouts";
 import { share, type CurrencyFigure, type MovementFigure, type PlanSummary } from "@/lib/plan-analytics";
-import { requirePlatformReader } from "@/server/auth";
+import { OwnerChannelsCard, OwnerCohortsCard } from "@/components/admin/platform-owner-analytics";
+import { platformCan, requirePlatformReader } from "@/server/auth";
+import { listPlatformSpend, platformChannels, platformOwnerCohorts } from "@/server/platform-channels";
 import { planAnalytics } from "@/server/plan-analytics";
 import { platformBooksState, storesWithBooks } from "@/server/platform-books";
 import { platformPayoutsView, type PlatformPayoutRow } from "@/server/platform-payouts";
@@ -20,7 +22,7 @@ import { platformSalesView } from "@/server/platform-sales";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { SalesMonth } from "@/lib/platform-sales";
 
-import { postBooksAction, readSalesAction, setBooksStoreAction, setBriefingAction, setTargetAction } from "./actions";
+import { postBooksAction, readSalesAction, removePlatformSpendAction, savePlatformSpendAction, setBooksStoreAction, setBriefingAction, setTargetAction } from "./actions";
 
 export const metadata: Metadata = { title: "Plan analytics" };
 
@@ -39,6 +41,11 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const asked = Number((await searchParams).days);
   const days = (PERIODS as readonly number[]).includes(asked) ? asked : 30;
   const year = new Date().getUTCFullYear();
+  // Where owners come from and what they are worth (C2, D521): the period's days in Oslo, to tomorrow.
+  const todayOslo = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
+  const tomorrow = new Date(Date.parse(`${todayOslo}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+  const periodFrom = new Date(Date.parse(`${tomorrow}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+  const [cohorts, channels, spend] = await Promise.all([platformOwnerCohorts(), platformChannels(periodFrom, tomorrow), listPlatformSpend(periodFrom, tomorrow)]);
   const [a, sales, books, bookStores, payouts, snapshot, briefing] = await Promise.all([
     planAnalytics(days),
     platformSalesView(year),
@@ -298,6 +305,22 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
           ))}
         </div>
       </Card>
+
+      <OwnerChannelsCard
+        days={days}
+        currency={channels.currency}
+        rows={channels.rows}
+        spend={spend}
+        canWrite={platformCan(admin, "plans")}
+        today={todayOslo}
+        locale={locale}
+        words={w}
+        channelNames={adminText(lang, "reports").channels}
+        save={savePlatformSpendAction}
+        remove={removePlatformSpendAction}
+      />
+
+      <OwnerCohortsCard currency={cohorts.currency} rows={cohorts.rows} locale={locale} words={w} />
 
       <Card title={fillWords(w.movesTitle, { n: a.days })} description={since ? fillWords(w.movesSince, { date: since }) : w.movesNone}>
         {moved(a.moves.live).length === 0 ? (

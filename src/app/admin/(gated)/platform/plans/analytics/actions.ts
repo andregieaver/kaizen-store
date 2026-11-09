@@ -12,6 +12,8 @@ import { postPlatformMoney, setPlatformBooks } from "@/server/platform-books";
 import { savePlatformTarget, setPlatformBriefing } from "@/server/platform-briefing";
 import { readPlatformPayouts } from "@/server/platform-payouts";
 import { catchUpPlatformSales } from "@/server/platform-sales";
+import { bankAmount } from "@/lib/bank-statement";
+import { removePlatformSpend, savePlatformSpend } from "@/server/platform-channels";
 import { platformModes } from "@/server/stripe";
 
 /** *Read from Stripe* (D507, D509): every paid invoice and payout of the year read again. A platform admin's alone. */
@@ -78,4 +80,31 @@ export async function setBriefingAction(_state: FormState, form: FormData): Prom
   if (!(isBriefingKind(choice) || choice === "dismiss") || !(await setPlatformBriefing(admin, choice))) return { status: "error", messages: [w.targetInvalid] };
   refresh();
   return { status: "ok", messages: [w.saved] };
+}
+
+/** *Add spend* (C2, D521): what Kaizena Flow spent on a channel on a day; the amount in its currency's whole units. The plans area's. */
+export async function savePlatformSpendAction(_state: FormState, form: FormData): Promise<FormState> {
+  const admin = await requirePlatform("plans");
+  const w = adminText(adminLangOf(admin.adminLocale), "console").planAnalytics.channels;
+  const currency = String(form.get("currency") ?? "").trim().toUpperCase();
+  const saved = await savePlatformSpend(admin, {
+    day: String(form.get("day") ?? ""),
+    channel: String(form.get("channel") ?? ""),
+    campaign: String(form.get("campaign") ?? ""),
+    amountMinor: /^[A-Z]{3}$/.test(currency) ? bankAmount(String(form.get("amount") ?? ""), currency) : null,
+    currency,
+    note: String(form.get("note") ?? ""),
+  });
+  if (!saved.ok) return { status: "error", messages: [w.problems[saved.problem]], fields: { [saved.problem]: w.problems[saved.problem] } };
+  refresh();
+  return { status: "ok", messages: [w.saved] };
+}
+
+/** *Remove* beside a spend row (D521). */
+export async function removePlatformSpendAction(id: string): Promise<FormState> {
+  const admin = await requirePlatform("plans");
+  const w = adminText(adminLangOf(admin.adminLocale), "console").planAnalytics.channels;
+  if (!(await removePlatformSpend(admin, id))) return { status: "error", messages: [w.problems.plans] };
+  refresh();
+  return { status: "ok", messages: [w.removed] };
 }

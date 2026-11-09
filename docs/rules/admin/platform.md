@@ -174,6 +174,16 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `sendPlatformBriefing()` (the dispatcher's `platformBriefing` job), claimed in `platform_settings.briefing_last_period` first so a period
   goes once, to the owners and the finance role, each in their language.
 
+
+## Where Kaizena Flow's owners come from (C2, D521, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)
+
+- **Where Kaizena Flow's owners come from (C2, D521, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)**: a request for a
+  store keeps its first touch only through `signupFirstTouch()` (the house store's first-touch cookie, which exists only with statistics
+  consent, classified by the stores' `classifyChannel()`), in `access_requests.first_channel`, `first_source` and `first_campaign`, never a
+  visit or a click id. Plans → Analytics reads owners by the month their store was made with what they paid only from `platform_sales`
+  (live, plans, net of VAT and of credit notes) through `platformOwnerCohorts()`, and channels against spend through `platformChannels()`;
+  `commerce.platform_marketing_spend` is written only by `savePlatformSpend()` and `removePlatformSpend()`, for the plans area (D510). Never a
+  demo store, a template, a sandbox or Kaizena Flow's own.
 ## Audit log (D158)
 
 - **Audit log (D158)**: `audit()` keeps its signature and takes an optional `{ area, target, changes }`; `auditChange()` writes allowlisted diffs (`ALLOWED_FIELDS`), never secrets; a new action needs an area in `AUDIT_AREAS` (a scan test). The log is append-only, deletable only after 24 months by `pruneAuditLog()` (`commerce.guard_audit_log()`); `/admin/{store}/activity` shows an owner everything and others their readable areas; the CSV is owners'.

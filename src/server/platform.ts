@@ -52,6 +52,8 @@ export type AccessRequestInput = {
    * sandbox is open; a request merged into one pending for the address keeps what that one named.
    */
   sandboxId?: string | null;
+  /** Where the person first came from (C2, D521): the house store's first touch, classified; kept only with consent, else nothing. */
+  firstTouch?: { channel: string; source: string; campaign: string } | null;
 };
 
 /** The preset key when the design profile's published version has a preset of that key, else null (SQL, beside the profile's id). */
@@ -78,7 +80,7 @@ export async function createAccessRequest(
   const referralCode = await usableReferralCode(input.referralCode);
   const [made] = await db().execute<Row>(sql`
     insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation, locale, domain, dream,
-      terms_accepted_at, terms_version, sandbox_id)
+      terms_accepted_at, terms_version, sandbox_id, first_channel, first_source, first_campaign)
     values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode},
       (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published and st.kind = 'content'),
       (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published),
@@ -90,7 +92,8 @@ export async function createAccessRequest(
         ? sql`(select to_char(coalesce(p.published_at, p.updated_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') from commerce.pages p
                 where p.store_id is null and p.type = 'page' and p.slug = ${PLATFORM_LEGAL_SLUGS.terms} and p.published is not null)`
         : sql`null`},
-      (select x.id from commerce.sandboxes x where x.id = ${input.sandboxId ?? null}::uuid and x.state = 'open'))
+      (select x.id from commerce.sandboxes x where x.id = ${input.sandboxId ?? null}::uuid and x.state = 'open'),
+      ${input.firstTouch?.channel ?? null}, ${input.firstTouch ? input.firstTouch.source || null : null}, ${input.firstTouch ? input.firstTouch.campaign || null : null})
     on conflict ((lower(email))) where status = 'pending' do nothing
     returning id
   `);

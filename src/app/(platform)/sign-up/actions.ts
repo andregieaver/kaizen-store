@@ -8,7 +8,10 @@ import { formProblems } from "@/lib/form-problems";
 import { REFERRAL_COOKIE, referralCodeFor } from "@/lib/referrals";
 import { designLookChoice } from "@/lib/design-presets";
 import { contentForLook } from "@/server/design-presets";
+import { touchCookieName } from "@/lib/first-touch";
+import { houseStoreId } from "@/server/house-customers";
 import { createAccessRequest } from "@/server/platform";
+import { signupFirstTouch } from "@/server/platform-channels";
 import { addressOf } from "@/server/analytics-visits";
 import { confirmSelfSignup, selfServeOn, startSelfSignup } from "@/server/self-signup";
 import { langOfLocale, type PlatformLang } from "@/lib/platform-lang";
@@ -49,6 +52,10 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
   // A referral (D131): the code the link put in the form, else the cookie, which only exists when the visitor allowed it.
   // An unknown or blocked code is dropped inside, so nothing here tells the visitor whether it was good.
   const referralCode = referralCodeFor(String(formData.get("ref") ?? ""), (await cookies()).get(REFERRAL_COOKIE)?.value);
+  // Where the person first came from (C2, D521): the house store's first-touch cookie on Kaizena Flow's site, which exists only when they
+  // allowed statistics cookies; nothing is kept without it.
+  const house = await houseStoreId();
+  const firstTouch = house ? signupFirstTouch((await cookies()).get(touchCookieName(house))?.value) : null;
   try {
     // The theme and its preset (`docs/theme-showcase-phase-1.md` step 4) chosen, kept only when published (checked inside), and the demo
     // store the look starts a store with (D273): never chosen apart.
@@ -63,6 +70,7 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
       dream: formData.get("dream") === "on",
       // The form is sent under the sentence that links the terms and the privacy notice (PSI REG-02).
       termsAccepted: true,
+      firstTouch,
     };
     // Self-serve (D359): the address is confirmed by a link first, and the store is made on the press; the answer is the same either way.
     if (await selfServeOn()) {

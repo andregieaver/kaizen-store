@@ -574,6 +574,13 @@ export const accessRequests = commerce.table(
      * pressed (a request confirmed whose store could not be made stays pending for a platform admin).
      */
     selfServe: boolean("self_serve").notNull().default(false),
+    /**
+     * Where the person first came from (C2, D521): the channel, source and campaign of the house store's first-touch cookie on Kaizena
+     * Flow's site (D303), classified as a visit's are, kept only when they allowed statistics cookies; else null (unknown).
+     */
+    firstChannel: text("first_channel"),
+    firstSource: text("first_source"),
+    firstCampaign: text("first_campaign"),
     confirmHash: text("confirm_hash"),
     confirmExpiresAt: timestamp("confirm_expires_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
@@ -599,6 +606,8 @@ export const accessRequests = commerce.table(
     check("access_requests_confirm", sql`${t.confirmHash} is null or (${t.selfServe} and ${t.confirmExpiresAt} is not null)`),
     uniqueIndex("access_requests_confirm_hash_idx").on(t.confirmHash),
     check("access_requests_locale", sql`${t.locale} is null or ${t.locale} in ('en', 'nb-NO')`),
+    check("access_requests_first_channel", sql`${t.firstChannel} is null or ${t.firstChannel} in (${channelList})`),
+    check("access_requests_first_touch", sql`length(coalesce(${t.firstSource}, '')) <= 120 and length(coalesce(${t.firstCampaign}, '')) <= 120`),
     check(
       "access_requests_design_variation",
       sql`${t.designVariation} is null or (${t.designPresetId} is not null and ${t.designVariation} ~ '^[a-z0-9][a-z0-9-]{0,39}$')`,
@@ -7696,6 +7705,34 @@ export const platformApiTokens = commerce.table(
     index("platform_api_tokens_created_by_idx").on(t.createdBy),
     check("platform_api_tokens_name", sql`char_length(${t.name}) between 1 and 80`),
     check("platform_api_tokens_scopes", sql`cardinality(${t.scopes}) between 1 and 20`),
+  ],
+);
+
+/**
+ * What Kaizena Flow spent on marketing (C2, D521): a store's `marketing_spend` for the platform, entered by a platform owner or its finance
+ * role (the plans area, D510), by day, channel and campaign, in a currency; the cost per new owner divides it by the owners a channel brought.
+ */
+export const platformMarketingSpend = commerce.table(
+  "platform_marketing_spend",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    day: date("day", { mode: "string" }).notNull(),
+    channel: text("channel").notNull(),
+    campaign: text("campaign").notNull().default(""),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    note: text("note").notNull().default(""),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("platform_marketing_spend_key").on(t.day, t.channel, t.campaign, t.currency),
+    index("platform_marketing_spend_created_by_idx").on(t.createdBy),
+    check("platform_marketing_spend_channel", sql`${t.channel} in (${channelList})`),
+    check("platform_marketing_spend_campaign", sql`length(${t.campaign}) <= 100`),
+    check("platform_marketing_spend_amount", sql`${t.amountMinor} > 0`),
+    check("platform_marketing_spend_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("platform_marketing_spend_note", sql`length(${t.note}) <= 500`),
   ],
 );
 
