@@ -1112,6 +1112,12 @@ export const en = {
     perYear: "per year",
     exVat: "excl. VAT",
     saveYearly: (percent: string): string => `Save ${percent} % with yearly billing`,
+    /** A campaign on the plans (D524): its name and last day, the price it gives for how long, and the price after. */
+    campaignUntil: (name: string, date: string): string => `${name}, until ${date}`,
+    campaignOnce: (price: string): string => `The first payment, then ${price}`,
+    campaignMonths: (months: number, price: string): string => (months === 1 ? `The first month, then ${price}` : `The first ${months} months, then ${price}`),
+    campaignForever: "For as long as you keep the plan",
+    wasPrice: "Regular price",
     fee: (percent: string): string => `${percent} fee per sale`,
     popular: "Most popular",
     includes: "What's included",

@@ -14,7 +14,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-7 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510; the home's figures, targets and briefing, D513; its own endpoints and *Add to Slack*, D515; workflows on its events, D516; its own API, D518; its owners by the month they joined and by channel, D522; sign-ups and first paid plans as ad conversions, D523).
+6 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510; the home's figures, targets and briefing, D513; its own endpoints and *Add to Slack*, D515; workflows on its events, D516; its own API, D518; its owners by the month they joined and by channel, D522; sign-ups and first paid plans as ad conversions, D523; timed plan prices, D524).
 
 ### Website
 
@@ -23,9 +23,8 @@ Website section is the site's (see *Built for both*).
 
 ### Marketing
 
-| Store page | Kaizena Flow today | Comes by |
-|---|---|---|
-| Campaigns | Discount codes only; no timed price on a plan | Console, C5 |
+Nothing left: Kaizena Flow's sign-ups and paid plans go to the ad platforms as conversions (D523) and its plans have timed prices
+(D524; see *Built for both*).
 
 ### Analytics
 
@@ -75,6 +74,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | Own endpoints and *Add to Slack* (D354, D101; the platform's D515) | Integrations | Settings → Integrations: Kaizena Flow's events, signed, to its own endpoints; its Slack channel picked in Slack |
 | Customers' cohorts and lifetime value, channels and cost per customer (D152; the platform's D522) | Analytics → Customers, Marketing | Plans → Analytics: owners by the month they joined with what they paid for plans; new owners by the channel of their first visit against the spend entered, with the cost per store made and per paying owner |
 | Ads and conversions: server-side conversion events (D303; the platform's D523) | Marketing → Ads and conversions | Kaizena Flow's store's tags and conversions on kaizenaflow.com's pages (D484); a sign-up made with marketing consent and the first plan its store paid sent as conversions through the platforms connected to Kaizena Flow's store, counted on Plans → Analytics (D523) |
+| Campaigns: a timed price without a code (D114; the platform's D524) | Sales → Campaigns | Platform → Discounts, *New campaign*: a percentage or an amount off for the first payment, some months or always, on chosen plans, from a start to an end, one at a time; taken off a plan chosen while it runs without a code and shown on the plans pages and owners' Billing (D524) |
 | The Admin API (D355; the platform's D518) | Settings → Apps and API | Settings → Integrations → API: a read-only API of its stores, plans, requests and figures for its own tools |
 | Workflows (D356; the platform's D516) | Settings → Workflows | Settings → Workflows, on Kaizena Flow's events: email its owners, post in its Slack, send to its endpoint. The site's own events (a form sent, a page published) are its store's |
 | Customers, with leads, notes, tags, timeline, import and export | Customers | Kaizena Flow's store (D466, D467): every owner and applicant, linked from Platform → Customers |

@@ -4,7 +4,10 @@ import { sql } from "drizzle-orm";
 import Stripe from "stripe";
 
 import { db } from "@/db/client";
+import { randomBytes } from "node:crypto";
+
 import { normalizeCode, platformDiscountInput, type PlatformDiscount } from "@/lib/discounts";
+import { campaignCode, campaignFor, campaignRuns, campaignsMeet, type PlanCampaign } from "@/lib/plan-campaigns";
 import { parsePrice } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
@@ -37,8 +40,15 @@ function toDiscount(row: Row): PlatformDiscount {
     active: Boolean(row.active),
     createdAt: iso(row.created_at)!,
     updatedAt: iso(row.updated_at ?? row.created_at)!,
+    campaign: row.campaign_name
+      ? { name: String(row.campaign_name), startsAt: iso(row.starts_at)!, planIds: ((row.plan_ids as string[] | null) ?? []).map(String) }
+      : null,
   };
 }
+
+/** A discount that is a campaign, as the campaign rules take it (D524). */
+const asCampaign = (d: PlatformDiscount): PlanCampaign | null =>
+  d.campaign && d.expiresAt ? { ...d, name: d.campaign.name, startsAt: d.campaign.startsAt, expiresAt: d.expiresAt, planIds: d.campaign.planIds } : null;
 
 async function recordSync(
   mode: PaymentModeName,
@@ -183,15 +193,45 @@ type CheckedInput = {
   durationMonths: number | null;
   expiresAt: string | null;
   maxRedemptions: number | null;
+  campaign: { name: string; startsAt: string; planIds: string[] } | null;
 };
 
-/** What the admin typed, checked: amounts per plan currency, an expiry in the future (or unchanged). */
+/** The name of an active campaign not ended whose time and plans meet this one's (D524), other than itself; null when none does. */
+async function campaignClash(c: Pick<PlanCampaign, "startsAt" | "expiresAt" | "planIds"> | null, selfId: string | null): Promise<string | null> {
+  if (!c) return null;
+  const others = await db().execute<Row>(sql`
+    select campaign_name, starts_at, expires_at, plan_ids from commerce.platform_discount_codes
+    where campaign_name is not null and active and expires_at > now() and id is distinct from ${selfId}::uuid
+  `);
+  const clash = others.find((o) =>
+    campaignsMeet(c, { startsAt: iso(o.starts_at)!, expiresAt: iso(o.expires_at)!, planIds: ((o.plan_ids as string[]) ?? []).map(String) }),
+  );
+  return clash ? String(clash.campaign_name) : null;
+}
+
+const clashProblem = (name: string) => `The campaign ${name} runs at the same time for the same plans: one campaign at a time.`;
+
+/** A date alone as the start of that day, Norwegian time; anything else as written; null for nothing or no date. */
+function startOfDay(text: string | null): string | null {
+  if (!text) return null;
+  const at = new Date(/^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T00:00:00+01:00` : text);
+  return Number.isNaN(at.getTime()) ? null : at.toISOString();
+}
+
+/** What the admin typed, checked: amounts per plan currency, an expiry in the future (or unchanged); a campaign's start, end and plans. */
 async function checkInput(
   input: unknown,
   currencies: string[],
   keptExpiry: string | null = null,
+  /** The code being changed, so its own time is not a clash. */
+  selfId: string | null = null,
 ): Promise<{ ok: true; values: CheckedInput } | { ok: false; problems: string[] }> {
-  const parsed = platformDiscountInput.safeParse(input);
+  // A campaign's code is never typed (D524): made from its name when it has none.
+  const raw = (input ?? {}) as Record<string, unknown>;
+  const named = typeof raw.campaignName === "string" && raw.campaignName.trim() !== "";
+  const parsed = platformDiscountInput.safeParse(
+    named && !String(raw.code ?? "").trim() ? { ...raw, code: campaignCode(String(raw.campaignName), randomBytes(6).toString("base64url")) } : raw,
+  );
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const d = parsed.data;
   const problems: string[] = [];
@@ -215,6 +255,23 @@ async function checkInput(
   else if (expiresAt && expiresAt !== keptExpiry && new Date(expiresAt) <= new Date()) {
     problems.push("The code must expire in the future.");
   }
+  // A campaign (D524): a start before its end, which it must have, its plans among the plans, and no other campaign at the same time.
+  let campaign: CheckedInput["campaign"] = null;
+  if (d.campaignName) {
+    const startsAt = startOfDay(d.startsAt);
+    if (!startsAt) problems.push("Say when the campaign starts.");
+    if (!expiresAt) problems.push("Say when the campaign ends.");
+    else if (startsAt && new Date(startsAt) >= new Date(expiresAt)) problems.push("The campaign must end after it starts.");
+    const plans = d.planIds.length === 0 ? [] : await db().execute<Row>(sql`select id from commerce.plans where id = any(${`{${d.planIds.join(",")}}`}::uuid[])`);
+    const planIds = plans.map((p) => String(p.id));
+    // A plan that is not there is refused, never dropped: fewer plans than named would be every plan.
+    if (planIds.length !== new Set(d.planIds).size) problems.push("Choose plans that exist.");
+    if (startsAt && expiresAt && problems.length === 0) {
+      campaign = { name: d.campaignName, startsAt, planIds };
+      const clash = await campaignClash({ startsAt, expiresAt, planIds }, selfId);
+      if (clash) problems.push(clashProblem(clash));
+    }
+  }
   if (problems.length > 0) return { ok: false, problems };
   return {
     ok: true,
@@ -227,6 +284,7 @@ async function checkInput(
       durationMonths: d.duration === "repeating" ? d.durationMonths : null,
       expiresAt,
       maxRedemptions: d.maxRedemptions,
+      campaign,
     },
   };
 }
@@ -244,10 +302,11 @@ export async function createPlatformDiscount(
   try {
     [row] = await db().execute<Row>(sql`
       insert into commerce.platform_discount_codes (
-        code, kind, percent, amounts, duration, duration_months, expires_at, max_redemptions, created_by
+        code, kind, percent, amounts, duration, duration_months, expires_at, max_redemptions, created_by, campaign_name, starts_at, plan_ids
       ) values (
         ${d.code}, ${d.kind}, ${d.percent}, ${JSON.stringify(d.amounts)}::jsonb,
-        ${d.duration}, ${d.durationMonths}, ${d.expiresAt}::timestamptz, ${d.maxRedemptions}, ${actor.id}::uuid
+        ${d.duration}, ${d.durationMonths}, ${d.expiresAt}::timestamptz, ${d.maxRedemptions}, ${actor.id}::uuid,
+        ${d.campaign?.name ?? null}, ${d.campaign?.startsAt ?? null}::timestamptz, ${`{${(d.campaign?.planIds ?? []).join(",")}}`}::uuid[]
       )
       returning *
     `);
@@ -257,7 +316,7 @@ export async function createPlatformDiscount(
     throw error;
   }
   const discount = toDiscount(row);
-  await audit(actor.id, null, "platform.discount_created", { code: discount.code });
+  await audit(actor.id, null, "platform.discount_created", { code: discount.code, campaign: Boolean(discount.campaign) });
   const syncProblems = await syncEverywhere(discount);
   return {
     ok: true,
@@ -268,6 +327,10 @@ export async function createPlatformDiscount(
 
 /** Switches a code on or off, in Kaizen and in Stripe; plans that have it keep it. */
 export async function setPlatformDiscountActive(actor: Account, id: string, active: boolean): Promise<SaveResult> {
+  // A campaign switched back on is held to one at a time, as when it is saved (D524).
+  const current = active ? await getPlatformDiscount(id) : null;
+  const clash = current ? await campaignClash(asCampaign(current), id) : null;
+  if (clash) return { ok: false, problems: [clashProblem(clash)] };
   const [row] = await db().execute<Row>(sql`
     update commerce.platform_discount_codes set active = ${active} where id = ${id}::uuid returning *
   `);
@@ -301,6 +364,9 @@ export async function findPlatformDiscount(
   if (!discount.active || (discount.expiresAt && new Date(discount.expiresAt) <= new Date())) {
     return { ok: false, problem: "That discount code is no longer valid." };
   }
+  // A campaign's coupon goes only on plans chosen while it runs (D524).
+  const campaign = asCampaign(discount);
+  if (campaign && !campaignRuns(campaign, new Date())) return { ok: false, problem: "That discount code is not valid now." };
   if (discount.kind === "fixed" && currency && !discount.amounts[currency.toLowerCase()]) {
     return { ok: false, problem: `That discount code is not for plans paid in ${currency.toUpperCase()}.` };
   }
@@ -354,7 +420,7 @@ export async function updatePlatformDiscount(
 ): Promise<SaveResult> {
   const current = await getPlatformDiscount(id);
   if (!current) return { ok: false, problems: ["Unknown code."] };
-  const checked = await checkInput(input, currencies, current.expiresAt);
+  const checked = await checkInput(input, currencies, current.expiresAt, id);
   if (!checked.ok) return checked;
   const d = checked.values;
   const same =
@@ -374,6 +440,8 @@ export async function updatePlatformDiscount(
         code = ${d.code}, kind = ${d.kind}, percent = ${d.percent}, amounts = ${JSON.stringify(d.amounts)}::jsonb,
         duration = ${d.duration}, duration_months = ${d.durationMonths}, expires_at = ${d.expiresAt}::timestamptz,
         max_redemptions = ${d.maxRedemptions}, active = ${active},
+        campaign_name = ${d.campaign?.name ?? null}, starts_at = ${d.campaign?.startsAt ?? null}::timestamptz,
+        plan_ids = ${`{${(d.campaign?.planIds ?? []).join(",")}}`}::uuid[],
         updated_at = ${same ? sql`updated_at` : sql`now()`}
       where id = ${id}::uuid
       returning *
@@ -384,7 +452,7 @@ export async function updatePlatformDiscount(
     throw error;
   }
   const discount = toDiscount(row);
-  await audit(actor.id, null, "platform.discount_updated", { code: discount.code, replaced: !same });
+  await audit(actor.id, null, "platform.discount_updated", { code: discount.code, replaced: !same, campaign: Boolean(discount.campaign) });
   const problems = same ? [] : await retireInStripe(id);
   problems.push(...(await syncEverywhere(discount)));
   return { ok: true, note: problems.length > 0 ? `Saved, but Stripe was not fully updated. ${problems.join(" ")}` : undefined };
@@ -401,4 +469,26 @@ export async function deletePlatformDiscount(actor: Account, id: string): Promis
   await db().execute(sql`delete from commerce.platform_discount_codes where id = ${id}::uuid`);
   await audit(actor.id, null, "platform.discount_deleted", { code: current.code });
   return { ok: true, note: problems.length > 0 ? `Deleted, but Stripe was not fully updated. ${problems.join(" ")}` : undefined };
+}
+
+/** The campaigns that have not ended (D524), switched on, earliest first: what the plans pages and a plan's checkout read. */
+export async function listPlanCampaigns(): Promise<PlanCampaign[]> {
+  const rows = await db().execute<Row>(sql`
+    select * from commerce.platform_discount_codes where campaign_name is not null and active and expires_at > now() order by starts_at
+  `);
+  return rows.flatMap((row) => {
+    const campaign = asCampaign(toDiscount(row));
+    return campaign ? [campaign] : [];
+  });
+}
+
+/**
+ * The campaign a plan chosen now gets, in its price's currency and the mode Kaizena Flow bills in (D524): its promotion code in Stripe and
+ * its id, or null when none runs for the plan (or it is not in Stripe yet, which is logged by the sync).
+ */
+export async function campaignPromotion(planId: string, currency: string, mode: PaymentModeName): Promise<{ promotionCode: string; discountId: string } | null> {
+  const campaign = campaignFor(await listPlanCampaigns(), planId, currency, new Date());
+  if (!campaign) return null;
+  const found = await findPlatformDiscount(campaign.code, mode, currency);
+  return found.ok ? { promotionCode: found.promotionCode, discountId: found.discount.id } : null;
 }

@@ -7,6 +7,7 @@ import { readDb } from "@/db/client";
 import type { PlanInterval } from "@/lib/plans";
 import { LIMIT_KEYS } from "@/lib/limits";
 import type { PublicPlans } from "@/lib/plan-offer";
+import { publicCampaign, type PlanCampaign } from "@/lib/plan-campaigns";
 
 type Row = Record<string, unknown>;
 
@@ -20,9 +21,8 @@ export const PLANS_TAG = "plans";
  */
 export async function getPublicPlans(): Promise<PublicPlans> {
   "use cache";
-  cacheLife("hours");
   cacheTag(PLANS_TAG);
-  const [plans, prices, features, grants, limits, rates] = await Promise.all([
+  const [plans, prices, features, grants, limits, rates, campaigns] = await Promise.all([
     readDb().execute<Row>(sql`
       select id, name, description, sale_fee_bps, position from commerce.plans where active order by position, lower(name)
     `),
@@ -35,7 +35,18 @@ export async function getPublicPlans(): Promise<PublicPlans> {
     readDb().execute<Row>(sql`select plan_id, key, value from commerce.plan_limits where plan_id is not null`),
     // The ECB's latest rate of each currency (D481): the AI a plan includes is in euros, shown in the page's currency.
     readDb().execute<Row>(sql`select distinct on (currency) currency::text as currency, rate::text as rate from commerce.ecb_reference_rates order by currency, rate_date desc`),
+    // Campaigns not ended (D524), with how many seconds until each starts and ends: the one running is shown, never its code.
+    readDb().execute<Row>(sql`
+      select id, code, campaign_name, kind, percent, amounts, duration, duration_months, plan_ids, starts_at, expires_at,
+        extract(epoch from starts_at - now())::float8 as starts_in, extract(epoch from expires_at - now())::float8 as ends_in
+      from commerce.platform_discount_codes where campaign_name is not null and active and expires_at > now() order by starts_at
+    `),
   ]);
+  // Read again when a campaign starts or ends within the hour, so its price shows and goes on time; else hourly.
+  const nextChange = Math.min(...campaigns.map((c) => (Number(c.starts_in) > 0 ? Number(c.starts_in) : Number(c.ends_in))), Infinity);
+  if (nextChange < 3600) cacheLife({ revalidate: Math.max(60, Math.ceil(nextChange)) });
+  else cacheLife("hours");
+  const running = campaigns.find((c) => Number(c.starts_in) <= 0);
   return {
     plans: plans.map((plan) => ({
       id: String(plan.id),
@@ -60,5 +71,24 @@ export async function getPublicPlans(): Promise<PublicPlans> {
       position: Number(f.position),
     })),
     euroRates: Object.fromEntries(rates.map((r) => [String(r.currency).trim(), Number(r.rate)])),
+    campaign: running ? publicCampaign(campaignOf(running)) : null,
+  };
+}
+
+/** A campaign's row as the campaign rules take it (D524). */
+function campaignOf(row: Row): PlanCampaign {
+  return {
+    id: String(row.id),
+    code: String(row.code),
+    name: String(row.campaign_name),
+    kind: row.kind === "fixed" ? "fixed" : "percent",
+    percent: Number(row.percent),
+    amounts: (row.amounts ?? {}) as Record<string, number>,
+    duration: String(row.duration) as PlanCampaign["duration"],
+    durationMonths: row.duration_months == null ? null : Number(row.duration_months),
+    active: true,
+    startsAt: new Date(String(row.starts_at)).toISOString(),
+    expiresAt: new Date(String(row.expires_at)).toISOString(),
+    planIds: ((row.plan_ids as string[] | null) ?? []).map(String),
   };
 }

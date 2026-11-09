@@ -30,6 +30,9 @@ export const billingEn = {
     house: "This is Kaizena Flow's own store: it needs no plan and pays no fee per sale. The plans it sells are edited under Platform.",
     houseLink: "Kaizena Flow's plans",
     pricesExclude: "Prices exclude VAT",
+    /** A campaign running on the plans (D524): taken off a plan chosen now without a code. */
+    campaign: "{name}: {gives} on a plan chosen until {date}, taken off without a code.",
+    campaignPlans: " For {plans}.",
     norwayVat: "; 25 % MVA is added",
     yearlyCheaper: "Paying yearly costs less.",
     changeApplies: "A change applies at once: the difference is credited or charged on your next invoice.",

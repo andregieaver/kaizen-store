@@ -738,6 +738,15 @@ export const platformNb: PlatformMessages = {
       one: " Den {n} butikken som har den på abonnementet, beholder rabatten til den løper ut.",
       many: " De {n} butikkene som har den på abonnementet, beholder rabatten til den løper ut.",
     },
+    newCampaign: "Ny kampanje",
+    campaignDescription:
+      "En pris for en tid: trukket fra et abonnement som velges mens den varer, uten kode, så lenge den gir, og vist på abonnementssidene og i eiernes Fakturering. Én kampanje om gangen; en eiers egen kode går foran.",
+    makeCampaign: "Lag kampanje",
+    campaign: "Kampanje",
+    campaignWhen: "{from} – {to}",
+    running: "Pågår",
+    comingUp: "Kommer",
+    ended: "Avsluttet",
   },
   discountFields: {
     code: "Kode",
@@ -756,6 +765,12 @@ export const platformNb: PlatformMessages = {
     uses: "Antall bruk i alt (valgfritt)",
     noLimit: "Ingen grense",
     on: "Slått på",
+    campaignName: "Navn",
+    campaignNameHint: "Det besøkende og eiere leser, som Vintertilbud. Ingen skriver inn en kode.",
+    starts: "Starter",
+    ends: "Slutter (siste dag)",
+    plans: "Abonnementer",
+    allPlans: "Alle abonnementer når ingen er krysset av.",
   },
   stripe: {
     title: "Stripe",

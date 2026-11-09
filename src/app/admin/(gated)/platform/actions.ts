@@ -334,6 +334,10 @@ function platformDiscountFromForm(formData: FormData, currencies: string[]) {
     durationMonths: text("durationMonths"),
     expiresAt: text("expiresAt"),
     maxRedemptions: text("maxRedemptions"),
+    // A campaign (D524): its name, start and plans; a code without a name is an ordinary code.
+    campaignName: text("campaignName"),
+    startsAt: text("startsAt"),
+    planIds: formData.getAll("planIds").map(String).filter(Boolean),
   };
 }
 
@@ -343,6 +347,8 @@ export async function createPlatformDiscountAction(_state: FormState, formData: 
   const currencies = await planCurrencies();
   const result = await createPlatformDiscount(admin, platformDiscountFromForm(formData, currencies), currencies);
   if (!result.ok) return { status: "error", messages: result.problems };
+  // A campaign shows on the plans pages (D524): they read it again.
+  updateTag(PLANS_TAG);
   refresh();
   return { status: "ok", messages: [result.note ?? (await said()).codeMadeAndPutIn] };
 }
@@ -360,6 +366,8 @@ export async function updatePlatformDiscountAction(id: string, _state: FormState
     formData.get("active") === "on",
   );
   if (!result.ok) return { status: "error", messages: result.problems };
+  // A campaign shows on the plans pages (D524): they read it again.
+  updateTag(PLANS_TAG);
   refresh();
   return { status: "ok", messages: [result.note ?? (await said()).savedAndStripeUpdated] };
 }
@@ -370,6 +378,8 @@ export async function deletePlatformDiscountAction(id: string): Promise<{ ok: tr
   if (!z.uuid().safeParse(id).success) return { ok: false, problems: [(await said()).unknownCode] };
   const result = await deletePlatformDiscount(admin, id);
   if (!result.ok) return result;
+  // A campaign shows on the plans pages (D524): they read it again.
+  updateTag(PLANS_TAG);
   refresh();
   if (result.note) return { ok: false, problems: [result.note] };
   redirect("/admin/platform/discounts");
@@ -381,6 +391,8 @@ export async function setPlatformDiscountActiveAction(id: string, active: boolea
   if (!z.uuid().safeParse(id).success) return { status: "error", messages: [(await said()).unknownCode] };
   const result = await setPlatformDiscountActive(admin, id, active);
   if (!result.ok) return { status: "error", messages: result.problems };
+  // A campaign shows on the plans pages (D524): they read it again.
+  updateTag(PLANS_TAG);
   refresh();
   return { status: "ok", messages: [result.note ?? (active ? (await said()).switchedOn : (await said()).switchedOff)] };
 }

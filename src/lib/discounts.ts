@@ -515,6 +515,8 @@ export type PlatformDiscount = {
   createdAt: string;
   /** Changes with what the code gives; a new version is a new coupon in Stripe. */
   updatedAt: string;
+  /** A campaign (D524): applied without a code to plans chosen while it runs (`starts_at` to `expires_at`); none for an ordinary code. */
+  campaign?: { name: string; startsAt: string; planIds: string[] } | null;
 };
 
 export const platformDiscountInput = z
@@ -527,6 +529,10 @@ export const platformDiscountInput = z
     durationMonths: z.coerce.number().int().min(1).max(36).nullable().default(null),
     expiresAt: z.string().trim().nullable().default(null),
     maxRedemptions: z.coerce.number().int().min(1).max(1_000_000).nullable().default(null),
+    /** A campaign's name, start and plans (D524); a code without a name is an ordinary code. */
+    campaignName: z.string().trim().max(60, "A campaign's name is at most 60 characters.").nullable().default(null),
+    startsAt: z.string().trim().nullable().default(null),
+    planIds: z.array(z.uuid()).max(50).default([]),
   })
   .refine((input) => input.duration !== "repeating" || input.durationMonths !== null, {
     message: "Say for how many months the discount lasts.",

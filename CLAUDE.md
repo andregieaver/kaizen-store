@@ -179,6 +179,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - The platform's figures, targets and morning briefing (C2, D513, `src/lib/platform-briefing.ts`, `src/server/platform-briefing.ts`)
 - Where Kaizena Flow's owners come from (C2, D522, `src/lib/platform-channels.ts`, `src/server/platform-channels.ts`)
 - Kaizena Flow's sign-ups and paid plans as ad conversions (C2, D523, `src/lib/platform-ad-conversions.ts`, `src/server/platform-ad-conversions.ts`)
+- Timed plan prices (C5, D524, `src/lib/plan-campaigns.ts`, `src/server/platform-discounts.ts`)
 - Audit log (D158)
 - Invoices and credit notes for shop orders (D159, `docs/wave-1b-invoices.md`)
 - Unit price (D160, `docs/wave-1d-unit-price.md`, `src/lib/unit-price.ts`, `unit-price-rules.ts`, `unit-price-text.ts`, `unit-price-editor.ts`)

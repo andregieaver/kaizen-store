@@ -13,30 +13,47 @@ export const deleteQuestion = (code: string, stores: number, w: PlatformMessages
 /** `YYYY-MM-DD` of a time, in Norwegian time. */
 const osloDate = (iso: string) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(new Date(iso));
 
-/** The fields of one of Kaizen's plan codes, empty for a new one or filled in to edit one (D31). */
+/**
+ * The fields of one of Kaizen's plan codes, empty for a new one or filled in to edit one (D31). A campaign (D524) has a name, a start, an
+ * end and its plans instead of a code to type (its code is made and kept out of sight) and no limit on uses.
+ */
 export function PlatformDiscountFields({
   discount,
   currencies,
   w = platformEn.discountFields,
+  campaign = Boolean(discount?.campaign),
+  plans = [],
 }: {
   discount: PlatformDiscount | null;
   currencies: string[];
   w?: PlatformMessages["discountFields"];
+  campaign?: boolean;
+  /** The plans a campaign may name. */
+  plans?: { id: string; name: string }[];
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <label className={label}>
-        {w.code}
-        <input
-          name="code"
-          required
-          maxLength={40}
-          autoCapitalize="characters"
-          defaultValue={discount?.code}
-          className={`${control} font-mono uppercase`}
-        />
-        <span className="text-xs font-normal text-muted">{w.codeHint}</span>
-      </label>
+      {campaign ? (
+        <label className={label}>
+          {w.campaignName}
+          <input name="campaignName" required maxLength={60} defaultValue={discount?.campaign?.name} className={control} />
+          {discount && <input type="hidden" name="code" value={discount.code} />}
+          <span className="text-xs font-normal text-muted">{w.campaignNameHint}</span>
+        </label>
+      ) : (
+        <label className={label}>
+          {w.code}
+          <input
+            name="code"
+            required
+            maxLength={40}
+            autoCapitalize="characters"
+            defaultValue={discount?.code}
+            className={`${control} font-mono uppercase`}
+          />
+          <span className="text-xs font-normal text-muted">{w.codeHint}</span>
+        </label>
+      )}
       <label className={label}>
         {w.gives}
         <select name="kind" defaultValue={discount?.kind ?? "percent"} className={control}>
@@ -86,21 +103,44 @@ export function PlatformDiscountFields({
         {w.months}
         <input name="durationMonths" type="number" min={1} max={36} defaultValue={discount?.durationMonths ?? 3} className={control} />
       </label>
+      {campaign && (
+        <label className={label}>
+          {w.starts}
+          <input name="startsAt" type="date" required defaultValue={discount?.campaign ? osloDate(discount.campaign.startsAt) : ""} className={control} />
+        </label>
+      )}
       <label className={label}>
-        {w.expires}
-        <input name="expiresAt" type="date" defaultValue={discount?.expiresAt ? osloDate(discount.expiresAt) : ""} className={control} />
+        {campaign ? w.ends : w.expires}
+        <input name="expiresAt" type="date" required={campaign} defaultValue={discount?.expiresAt ? osloDate(discount.expiresAt) : ""} className={control} />
       </label>
-      <label className={label}>
-        {w.uses}
-        <input
-          name="maxRedemptions"
-          type="number"
-          min={1}
-          placeholder={w.noLimit}
-          defaultValue={discount?.maxRedemptions ?? ""}
-          className={control}
-        />
-      </label>
+      {campaign ? (
+        plans.length > 0 && (
+          <fieldset className="flex flex-col gap-2 sm:col-span-2">
+            <legend className="mb-1 text-sm font-medium">{w.plans}</legend>
+            <div className="flex flex-wrap gap-4">
+              {plans.map((plan) => (
+                <label key={plan.id} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="planIds" value={plan.id} defaultChecked={discount?.campaign?.planIds.includes(plan.id)} className="size-4" />
+                  {plan.name}
+                </label>
+              ))}
+            </div>
+            <span className="text-xs text-muted">{w.allPlans}</span>
+          </fieldset>
+        )
+      ) : (
+        <label className={label}>
+          {w.uses}
+          <input
+            name="maxRedemptions"
+            type="number"
+            min={1}
+            placeholder={w.noLimit}
+            defaultValue={discount?.maxRedemptions ?? ""}
+            className={control}
+          />
+        </label>
+      )}
       {discount && (
         <label className="flex items-center gap-3 text-sm font-medium sm:col-span-2">
           <input type="checkbox" name="active" defaultChecked={discount.active} className="size-4" />

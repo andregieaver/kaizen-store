@@ -58,9 +58,15 @@ export function PlansView({ block, data, lang = "en" }: { block: PlansBlock; dat
     </div>
   );
   const yearly = block.switcher ? planCards(data, { ...options, interval: "year" }).cards : [];
+  // A campaign running (D524): its name and last day over the cards, when it gives on any of them.
+  const campaign = data.campaign && [...cards, ...yearly].some((card) => card.campaign) ? data.campaign : null;
+  const lastDay = campaign ? new Date(campaign.expiresAt).toLocaleDateString(lang, { day: "numeric", month: "long", timeZone: "Europe/Oslo" }) : "";
 
   return (
     <div className="flex flex-col gap-10">
+      {campaign && (
+        <p className="self-center rounded-full bg-accent px-4 py-1 text-sm font-medium text-accent-foreground">{m.campaignUntil(campaign.name, lastDay)}</p>
+      )}
       {block.switcher ? (
         <div data-plan-switch="" className="flex flex-col gap-8">
           <IntervalSwitch name={`plans-${block.id}`} start={block.interval === "year" ? "year" : "month"} saving={bestYearlySaving(yearly)} allSame={new Set(yearly.map((c) => c.yearlySavingPercent).filter((p) => p !== null)).size === 1} m={m} />
@@ -184,8 +190,21 @@ function PlanCardView({
       </div>
       <div>
         <p className="text-3xl font-semibold" data-kz-text="price">
-          {money(card.main)} <span className="text-base font-normal text-muted">{every(card.main)}</span>
+          {money(card.campaign ? { ...card.main, amountMinor: card.campaign.amountMinor } : card.main)}{" "}
+          <span className="text-base font-normal text-muted">{every(card.main)}</span>
         </p>
+        {/* A campaign's price (D524): for how long, and the price after; the regular price struck through when it lasts. */}
+        {card.campaign &&
+          (card.campaign.lasts === "forever" ? (
+            <p className="text-sm">
+              <span className="sr-only">{m.wasPrice} </span>
+              <s className="text-muted">{money(card.main)}</s> {m.campaignForever}
+            </p>
+          ) : (
+            <p className="text-sm">
+              {card.campaign.lasts === "once" ? m.campaignOnce(money(card.main)) : m.campaignMonths(card.campaign.lasts, money(card.main))}
+            </p>
+          ))}
         <p className="text-xs text-muted">{m.exVat}</p>
         {card.other && <p className="mt-1 text-sm">{m.yearlyPrice(money(card.other))}</p>}
         {card.yearlySavingPercent !== null && <p className="text-sm font-medium text-accent">{m.saveYearly(String(card.yearlySavingPercent))}</p>}

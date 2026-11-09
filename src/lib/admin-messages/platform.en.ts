@@ -738,6 +738,16 @@ export const platformEn = {
       one: " The {n} store with it on their plan keeps the discount until it runs out.",
       many: " The {n} stores with it on their plan keep the discount until it runs out.",
     },
+    /** Campaigns (D524): a price for a time, without a code. */
+    newCampaign: "New campaign",
+    campaignDescription:
+      "A price for a time: taken off a plan chosen while it runs, without a code, for as long as it gives, and shown on the plans pages and owners' Billing. One campaign at a time; an owner's own code wins over it.",
+    makeCampaign: "Make campaign",
+    campaign: "Campaign",
+    campaignWhen: "{from} – {to}",
+    running: "Running",
+    comingUp: "Coming up",
+    ended: "Ended",
   },
   discountFields: {
     code: "Code",
@@ -756,6 +766,12 @@ export const platformEn = {
     uses: "Uses in all (optional)",
     noLimit: "No limit",
     on: "Switched on",
+    campaignName: "Name",
+    campaignNameHint: "What visitors and owners read, such as Winter offer. Nobody types a code.",
+    starts: "Starts",
+    ends: "Ends (the last day)",
+    plans: "Plans",
+    allPlans: "Every plan when none is ticked.",
   },
   stripe: {
     title: "Stripe",

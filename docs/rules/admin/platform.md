@@ -197,6 +197,17 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   consent and the ids leave the request after 90 days (`prunePlatformAdSignals()`, daily) and with the person (erasure, retention). A new
   platform event that becomes a conversion goes through the same consent and table, never around them.
 
+## Timed plan prices (C5, D524, `src/lib/plan-campaigns.ts`, `src/server/platform-discounts.ts`)
+
+- **Timed plan prices (C5, D524, `src/lib/plan-campaigns.ts`, `src/server/platform-discounts.ts`)**: a campaign is a row of
+  `commerce.platform_discount_codes` with `campaign_name`, `starts_at`, `expires_at` and `plan_ids` (every plan when empty; the database
+  holds a campaign to a start before its end), written only by the discount service, which makes its code (never typed), refuses unknown
+  plans rather than widening the campaign, and refuses a second campaign whose time and plans meet an active one's. Its coupon reaches a
+  plan only through `waitingDiscount()` in `src/server/billing.ts`, for a new plan chosen while it runs and only when the owner saved no
+  code of their own (theirs wins); a typed campaign code works only while it runs. What visitors see comes from `getPublicPlans()`
+  (`PublicPlans.campaign`, never the code; read again within the hour a campaign starts or ends) and the owner's Billing page; prices
+  under it are worked out only by `campaignPrice()`. A change to a discount refreshes `PLANS_TAG`.
+
 ## Audit log (D158)
 
 - **Audit log (D158)**: `audit()` keeps its signature and takes an optional `{ area, target, changes }`; `auditChange()` writes allowlisted diffs (`ALLOWED_FIELDS`), never secrets; a new action needs an area in `AUDIT_AREAS` (a scan test). The log is append-only, deletable only after 24 months by `pruneAuditLog()` (`commerce.guard_audit_log()`); `/admin/{store}/activity` shows an owner everything and others their readable areas; the CSV is owners'.

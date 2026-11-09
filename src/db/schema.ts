@@ -2076,8 +2076,21 @@ export const platformDiscountCodes = commerce.table(
     /** Changes when what the code gives changes, and with it the coupon in Stripe. */
     updatedAt: updatedAt(),
     createdBy: uuid("created_by").references(() => accounts.id),
+    /**
+     * Timed plan prices (C5, D524): a code with a name is a **campaign**, which needs no code. While it runs (`starts_at` to `expires_at`),
+     * a plan chosen of `plan_ids` (every plan when empty) gets its coupon without one being typed, and the plans pages show it by its name.
+     * One campaign at a time (`savePlatformDiscount()` refuses a second whose time meets an active one's). Null for an ordinary code.
+     */
+    campaignName: text("campaign_name"),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    planIds: uuid("plan_ids").array().notNull().default(sql`'{}'::uuid[]`),
   },
   (t) => [
+    check(
+      "platform_discount_codes_campaign",
+      sql`(${t.campaignName} is null and ${t.startsAt} is null and cardinality(${t.planIds}) = 0)
+        or (char_length(${t.campaignName}) between 1 and 60 and ${t.startsAt} is not null and ${t.expiresAt} is not null and ${t.startsAt} < ${t.expiresAt})`,
+    ),
     check("platform_discount_codes_kind", sql`${t.kind} in ('percent', 'fixed')`),
     check(
       "platform_discount_codes_percent",

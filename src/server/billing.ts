@@ -11,7 +11,7 @@ import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { audit, type Account } from "./auth";
 import { createStripeAccount, getSaleFeeBps, getStripeAccounts } from "./connect";
-import { findPlatformDiscount } from "./platform-discounts";
+import { campaignPromotion, findPlatformDiscount } from "./platform-discounts";
 import { capturePlanCheckout, markPlanCheckoutRecovered, planRemindersOn, planRemindersOptedOut } from "./plan-reminders";
 import type { SaveResult } from "./settings";
 import { platformModes, platformStripe } from "./stripe";
@@ -653,15 +653,24 @@ export async function billingTaxRates(stripe: Stripe, mode: PaymentModeName, cou
 /**
  * The code an owner saved before choosing a plan (D31), checked again for
  * the price chosen. None is fine; one that no longer works stops the
- * choice, so the owner is not charged more than they expected.
+ * choice, so the owner is not charged more than they expected. Without a
+ * saved code, a campaign running for the plan gives its coupon (D524): the
+ * owner's own code wins over a campaign.
  */
 async function waitingDiscount(
   p: Prepared,
 ): Promise<{ ok: true; promotionCode: string | null; metadata: Record<string, string> } | { ok: false; problem: string }> {
   const billing = await getStoreBilling(p.store.id);
-  if (!billing?.discount || billing.discount.appliedAt) return { ok: true, promotionCode: null, metadata: {} };
   const [price] = await db().execute<Row>(sql`select currency from commerce.plan_prices where id = ${p.price.id}::uuid`);
-  const found = await findPlatformDiscount(billing.discount.code, p.mode, price ? String(price.currency) : null);
+  const currency = price ? String(price.currency).trim() : null;
+  if (!billing?.discount || billing.discount.appliedAt) {
+    // No code saved: a campaign running for the plan (D524) gives its coupon without one being typed.
+    const campaign = currency ? await campaignPromotion(p.price.planId, currency, p.mode) : null;
+    return campaign
+      ? { ok: true, promotionCode: campaign.promotionCode, metadata: { kaizen_discount_id: campaign.discountId } }
+      : { ok: true, promotionCode: null, metadata: {} };
+  }
+  const found = await findPlatformDiscount(billing.discount.code, p.mode, currency);
   if (!found.ok) return { ok: false, problem: `${found.problem} Remove the code to choose the plan without it.` };
   return { ok: true, promotionCode: found.promotionCode, metadata: { kaizen_discount_id: found.discount.id } };
 }

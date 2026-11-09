@@ -1,4 +1,5 @@
 import type { LimitKey } from "./limits";
+import { cardCampaignPrice, type PublicCampaign } from "./plan-campaigns";
 import { featureGroups, type PlanFeature } from "./plan-features";
 import type { PlanInterval } from "./plans";
 
@@ -29,6 +30,8 @@ export type PublicPlans = {
   features: Omit<PlanFeature, "planIds">[];
   /** The ECB's latest rate of each currency, units per euro (D481): the AI a plan includes is in euros, and shown in the page's currency. */
   euroRates?: Record<string, number>;
+  /** The campaign running now (D524), if any: a timed price on the plans it names. */
+  campaign?: PublicCampaign | null;
 };
 
 export type PlanCardPrice = { amountMinor: number; currency: string; interval: PlanInterval };
@@ -47,7 +50,20 @@ export type PlanCard = {
   /** What the plan includes of its limits (D314). */
   limits: { key: LimitKey; value: number | null }[];
   highlighted: boolean;
+  /**
+   * The main price under the running campaign (D524), and for how long: `once` the first payment, a number of months, or `forever`; null
+   * when no campaign gives on this plan in this currency.
+   */
+  campaign: { amountMinor: number; lasts: "once" | "forever" | number } | null;
 };
+
+/** How long a campaign's price lasts on a price of this interval: months on a yearly price are its first payment, up to twelve. */
+export function campaignLasts(c: Pick<PublicCampaign, "duration" | "durationMonths">, interval: PlanInterval): "once" | "forever" | number {
+  if (c.duration === "forever") return "forever";
+  if (c.duration === "once") return "once";
+  const months = c.durationMonths ?? 1;
+  return interval === "year" && months <= 12 ? "once" : months;
+}
 
 /**
  * The currency to show: the one asked for if any plan has a price in it, else the one most plans have a
@@ -106,6 +122,10 @@ export function planCards(
         .map((f) => ({ id: f.id, name: f.name, description: f.description })),
       limits: plan.limits ?? [],
       highlighted: plan.id === options.highlightId,
+      campaign: (() => {
+        const price = cardCampaignPrice(data.campaign, plan.id, first.amountMinor, currency);
+        return price === null || !data.campaign ? null : { amountMinor: price, lasts: campaignLasts(data.campaign, first.interval) };
+      })(),
     });
   }
   return { currency, cards };

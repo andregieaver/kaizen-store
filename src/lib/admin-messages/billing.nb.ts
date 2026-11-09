@@ -26,6 +26,8 @@ export const billingNb: BillingMessages = {
     house: "Dette er Kaizena Flows egen butikk: den betaler verken abonnement eller gebyr per salg. Abonnementene den selger, endres under Plattform.",
     houseLink: "Kaizena Flows abonnementer",
     pricesExclude: "Prisene er ekskl. mva.",
+    campaign: "{name}: {gives} på et abonnement valgt til og med {date}, trukket fra uten kode.",
+    campaignPlans: " Gjelder {plans}.",
     norwayVat: " – 25 % merverdiavgift kommer i tillegg.",
     yearlyCheaper: "Det koster mindre å betale årlig.",
     changeApplies: "Et bytte gjelder med en gang: differansen godskrives eller belastes på neste faktura.",

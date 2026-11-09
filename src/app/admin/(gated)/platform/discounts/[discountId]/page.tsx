@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
-import { planCurrencies } from "@/server/billing";
+import { listPlans, planCurrencies } from "@/server/billing";
 import { listPlatformDiscounts } from "@/server/platform-discounts";
 
 import { deletePlatformDiscountAction, updatePlatformDiscountAction } from "../../actions";
@@ -25,7 +25,7 @@ export default async function PlatformDiscountPage({ params }: PageProps<"/admin
   const w = t.discounts;
   const { discountId } = await params;
   if (!z.uuid().safeParse(discountId).success) notFound();
-  const [discounts, currencies] = await Promise.all([listPlatformDiscounts(), planCurrencies()]);
+  const [discounts, currencies, plans] = await Promise.all([listPlatformDiscounts(), planCurrencies(), listPlans()]);
   const discount = discounts.find((d) => d.id === discountId);
   if (!discount) notFound();
 
@@ -34,19 +34,24 @@ export default async function PlatformDiscountPage({ params }: PageProps<"/admin
     <div className="flex flex-col gap-6">
       <PageHeader
         back={{ href: "/admin/platform/discounts", label: w.back }}
-        title={<span className="font-mono">{discount.code}</span>}
+        title={discount.campaign ? discount.campaign.name : <span className="font-mono">{discount.code}</span>}
         description={<>{countWords(discount.stores, w.onPlans)} {w.editNote}</>}
       />
       <section aria-label={w.code} className={`p-5 ${CARD_CLASS}`}>
         <ActionForm action={updatePlatformDiscountAction.bind(null, discount.id)} className="flex flex-col gap-4">
-          <PlatformDiscountFields discount={discount} currencies={currencies} w={t.discountFields} />
+          <PlatformDiscountFields
+            discount={discount}
+            currencies={currencies}
+            w={t.discountFields}
+            plans={plans.filter((plan) => plan.active).map((plan) => ({ id: plan.id, name: plan.name }))}
+          />
           <SubmitButton>{w.save}</SubmitButton>
         </ActionForm>
       </section>
       <DeleteDiscountButton
         action={deletePlatformDiscountAction.bind(null, discount.id)}
         code={discount.code}
-        question={deleteQuestion(discount.code, discount.stores, w)}
+        question={deleteQuestion(discount.campaign?.name ?? discount.code, discount.stores, w)}
       />
     </div>
     </AdminAreas>

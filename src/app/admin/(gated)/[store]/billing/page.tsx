@@ -11,6 +11,9 @@ import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { getFeatureMatrix } from "@/server/plan-features";
 import { planRemindersOn, planRemindersOptedOut } from "@/server/plan-reminders";
 import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan, type StoreBilling } from "@/server/billing";
+import { listPlanCampaigns } from "@/server/platform-discounts";
+import { campaignFor, campaignRuns } from "@/lib/plan-campaigns";
+import { platformDiscountSummary } from "@/lib/discounts";
 import { Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { PURCHASE_STATUS_WORDS, priceText } from "@/lib/theme-prices";
 import { storeThemePurchases, type ThemePurchase } from "@/server/theme-prices";
@@ -98,6 +101,22 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
 
   // A code waiting for the plan to be chosen: the plans show what they cost with it.
   const waiting = billing?.discount && !billing.discount.appliedAt ? billing.discount : null;
+  // A campaign running on the plans (D524): said over them while no code waits, as it is then taken off a plan chosen without one.
+  const now = new Date();
+  const campaigns = onPlan || waiting ? [] : (await listPlanCampaigns()).filter((c) => campaignRuns(c, now));
+  const campaign = offered.map((plan) => campaignFor(campaigns, plan.id, currency, now)).find((c) => c !== null) ?? null;
+  const campaignLine = campaign
+    ? fillWords(w.campaign, {
+        name: campaign.name,
+        gives: platformDiscountSummary(campaign, (minor, cur) => formatMoney(minor, cur, moneyLocale), words.discount),
+        date: new Date(campaign.expiresAt).toLocaleDateString(locale, { day: "numeric", month: "long", timeZone: "Europe/Oslo" }),
+      }) +
+      (campaign.planIds.length > 0
+        ? fillWords(w.campaignPlans, {
+            plans: new Intl.ListFormat(locale, { type: "conjunction" }).format(offered.filter((p) => campaign.planIds.includes(p.id)).map((p) => p.name)),
+          })
+        : "")
+    : null;
   const codeField = (
     <PlanDiscount
       discount={billing?.discount ?? null}
@@ -175,6 +194,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
               {inNorway ? w.norwayVat : ""}
               {lang === "en" ? "." : ""} {w.yearlyCheaper} {onPlan ? w.changeApplies : w.payByCard}
             </p>
+            {campaignLine && <p className="mt-2 text-sm font-medium text-ink">{campaignLine}</p>}
             {!isOwner && <p className="text-sm text-muted">{w.ownerOnly}</p>}
             {noCountry && (
               <p role="status" className="mt-2 text-sm">
