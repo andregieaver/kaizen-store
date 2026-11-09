@@ -3,7 +3,7 @@
  * and the account's page share the kinds and their words' keys.
  */
 
-export const NOTICE_KINDS = ["page_built", "follow_up", "plan_question", "plan_done", "approval_waiting", "report_ready"] as const;
+export const NOTICE_KINDS = ["page_built", "follow_up", "plan_question", "plan_done", "approval_waiting", "report_ready", "life_handoff"] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
 
 /** How long a notice is kept, read or not. */
@@ -21,5 +21,8 @@ export function noticeText(template: string, facts: Record<string, string>): str
 export function noticeWordKey(kind: NoticeKind, facts: Record<string, string>): string {
   if (kind === "page_built" && facts.problem && !facts.title) return "page_failed";
   if (kind === "follow_up" && facts.outcome === "failed") return "follow_up_failed";
+  // A task handed to Kaizen Life (docs/assistants-together.md): what it came to.
+  if (kind === "life_handoff" && facts.outcome === "waiting") return "life_handoff_waiting";
+  if (kind === "life_handoff" && facts.outcome === "failed") return "life_handoff_failed";
   return kind;
 }

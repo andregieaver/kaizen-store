@@ -239,6 +239,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   store_drafts: never("A draft of the store is the owner's work in progress; a copy starts with none (D351)."),
   dream_runs: never("A Dream Factory run builds the store it started in (D409); a copy starts with none."),
   assistant_follow_ups: never("The AI manager's follow-ups belong to the account and the conversation they were asked in."),
+  kaizen_life_handoffs: never("Tasks the assistants handed each other belong to the account and the conversation they came from (docs/assistants-together.md)."),
   assistant_goals: never("The owner's goals are the store's own business, not a setting to copy (D309)."),
   assistant_plans: never("The autopilot's plans run in an account's name in the store they were made for (D309)."),
   assistant_plan_steps: never("A plan's steps go with their plan (D309)."),

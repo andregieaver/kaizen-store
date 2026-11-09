@@ -16359,7 +16359,7 @@ export const assistantNotices = commerce.table(
     index("assistant_notices_created_idx").on(t.createdAt),
     check(
       "assistant_notices_kind",
-      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready')`,
+      sql`${t.kind} in ('page_built', 'follow_up', 'plan_question', 'plan_done', 'approval_waiting', 'report_ready', 'life_handoff')`,
     ),
     check("assistant_notices_ref", sql`length(${t.ref}) between 1 and 200`),
     check("assistant_notices_href", sql`${t.href} like '/admin/%' and length(${t.href}) <= 300`),
@@ -18940,6 +18940,57 @@ export const kaizenLifeAccounts = commerce.table(
       "kaizen_life_accounts_assistants",
       sql`(${t.assistantsAt} is null) = (${t.assistantsAal} is null) and coalesce(${t.assistantsAal} in ('aal1', 'aal2'), true) and (${t.assistantsAt} is null or ${t.unlinkedAt} is null)`,
     ),
+  ],
+);
+
+/**
+ * Tasks the assistants hand each other over the account link (docs/assistants-together.md, step 2): one row per task on each side,
+ * under the id the sender gave it. `to_life` is one the AI manager handed Kaizen Life (its answer comes back into `conversation_id`);
+ * `from_life` one Kaizen Life's assistant handed a store's AI manager (run in the store's "From Kaizen Life" conversation, with the
+ * changes it kept for a yes in `approval_ids`). Written only by `src/server/kaizen-life-handoffs.ts`.
+ */
+export const kaizenLifeHandoffs = commerce.table(
+  "kaizen_life_handoffs",
+  {
+    id: uuid("id").primaryKey(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    direction: text("direction").notNull(),
+    conversationId: uuid("conversation_id").references(() => assistantConversations.id, { onDelete: "set null" }),
+    task: text("task").notNull(),
+    fromName: text("from_name"),
+    status: text("status").notNull().default("working"),
+    result: text("result"),
+    link: text("link"),
+    approvalIds: uuid("approval_ids").array().notNull().default(sql`'{}'::uuid[]`),
+    /** For `from_life`: when Kaizen Life last took the row's status, null while it has not; tried again by the five-minute job. */
+    reportedAt: timestamp("reported_at", { withTimezone: true }),
+    reportTries: integer("report_tries").notNull().default(0),
+    /** For `from_life`: a run holding it, so the five-minute job never runs it twice. */
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("kaizen_life_handoffs_account_idx").on(t.accountId, t.direction, t.createdAt),
+    index("kaizen_life_handoffs_open_idx").on(t.status, t.updatedAt).where(sql`${t.status} in ('working', 'waiting_for_you')`),
+    index("kaizen_life_handoffs_store_idx").on(t.storeId),
+    index("kaizen_life_handoffs_conversation_idx").on(t.conversationId),
+    check("kaizen_life_handoffs_direction", sql`${t.direction} in ('to_life', 'from_life')`),
+    check(
+      "kaizen_life_handoffs_status",
+      sql`${t.status} in ('working', 'waiting_for_you', 'done', 'declined', 'failed', 'cancelled', 'expired')`,
+    ),
+    check("kaizen_life_handoffs_task", sql`length(${t.task}) between 1 and 4000`),
+    check("kaizen_life_handoffs_result", sql`${t.result} is null or length(${t.result}) <= 8000`),
+    check("kaizen_life_handoffs_from", sql`${t.fromName} is null or length(${t.fromName}) <= 200`),
+    check("kaizen_life_handoffs_link", sql`${t.link} is null or length(${t.link}) <= 2000`),
+    // A task from Kaizen Life always runs in a store (the owner MCP's tools are a store's).
+    check("kaizen_life_handoffs_store", sql`${t.direction} = 'to_life' or ${t.storeId} is not null`),
   ],
 );
 

@@ -1,6 +1,6 @@
 # The assistants together: Kaizena Flow's AI manager and Kaizen Life's assistant
 
-Status: **step 1 built (D517, 9 November 2026).** Steps 2 and 3 are planned below.
+Status: **steps 1 and 2 built (D517, D519, 9 November 2026).** Step 3 is planned below.
 
 The owner's ask: *Life and Flow are two apps, each with its own AI assistant. Let them talk: ask each other questions and give
 each other tasks.*
@@ -71,22 +71,67 @@ D96's two OAuth connections (Flow's `kaizen_life_links`, Life's `kaizen_store` i
 and are used only while the switch is off. Nobody has either in production (counted 9 November 2026), and their client settings are
 left unset. They go once the link has served a while.
 
-## 3. Step 2: tasks, with a report back
+## 3. Step 2 as built: tasks, with a report back (D519)
 
-Today an assistant waits for the other's answer (90 seconds at most), and a change that needs a yes ends as "waiting": the asker
-never hears how it ended. Step 2 adds a **handoff**:
+A question waits for its answer (90 seconds at most), and a change that needs a yes used to end as "waiting": the asker never heard how
+it ended. Now an assistant can **hand the other a task**, which is taken at once and reported on later.
 
-* **The record**, one in each app: who asked (store or space, conversation), what was asked, status (`sent` → `working` →
-  `waiting_for_you` → `done` | `declined` | `failed` | `expired`), the result in words and its links, a due time, and a hop count
-  of 1.
-* **Two signed doors on each side:** `handoff` takes a task and answers 202 at once; `handoff-update` reports a new status back.
-* **Work in the background.** Flow runs it as a follow-up does (`follow-up-runner.ts`, the five-minute job); Life as its external
-  agents do (`lib/agent/external-runner.ts`, which already knows "accepted, not finished").
-* **The report back.** The answer is written into the conversation the task came from, with a notice: Flow's AI manager notices
-  (D350), Life's push and Today.
-* **Tools.** `hand_to_kaizen_life` and `hand_to_kaizena_flow`, `check_handoff`, `cancel_handoff`; the question tools stay for quick
-  questions.
-* **Limits.** A handoff never starts another (its hop count); a cap per person per day; each app pays its own AI.
+### The record
+
+One row per task on each side, under the id the sender gave it: Flow's `commerce.kaizen_life_handoffs`, Life's `kaizena_flow_handoffs`.
+Each holds who asked (account, store or space, the conversation), the task, its status, the result in words and a link. Statuses:
+`working` → `waiting_for_you` → `done` | `declined` | `failed` | `cancelled` | `expired`.
+
+### The doors (signed, as every other)
+
+| Door | On | Takes |
+| --- | --- | --- |
+| `handoff` | both | a task (answered 202 at once, then run after the answer), or `cancel: true` for one it holds |
+| `handoff-update` | both | the status, result and link of a task it handed the other |
+
+Both are budgeted per Kaizen Life user (`life_handoff`, 30 a minute) beside the day's cap: **20 tasks a person a day, each way**
+(`HANDOFFS_PER_DAY`).
+
+### Flow hands Kaizen Life a task
+
+* The AI manager's `hand_to_kaizen_life` (with `kaizen_life_tasks` and `cancel_kaizen_life_task`), offered only while the switch is on and
+  only in the person's own turns: never in a follow-up, the autopilot, an outside assistant's turn, or a turn Kaizen Life asked for. It is
+  offered on the platform's AI manager too.
+* Life takes it at once and runs its assistant in the narrow lane (the day, tasks, reminders, calendar, adding a task or reminder), with
+  nobody watching, so anything gated waits for the person in Life.
+* Life's report comes back through Flow's `handoff-update`. It is written into the conversation the task came from, as a message marked
+  `[From Kaizen Life]` (another app's words, read as data), with a notice (`life_handoff`). A link is kept only to Kaizen Life's own pages.
+* A task Life never reports on is given up after two days, and the person is told.
+
+### Kaizen Life hands a store's AI manager a task
+
+* Life's `hand_to_kaizena_flow` (with `list_flow_tasks` and `cancel_flow_task`) names the store, as the store tools do. It is not in
+  Flow's lane on Life, so a task from Flow can never hand one back.
+* Flow takes it with the same caller as the `tool` door (`callerOfLink()`: owned stores, two-step stores at `aal2` only), and runs it as a
+  turn of the store's AI manager in the "From Kaizen Life" conversation, nobody watching (`fromKaizenLife`, `outside`, `scheduled`).
+* A change it keeps waits for the owner's yes in Flow, as ever, with a notice. Life hears `waiting_for_you`, with the conversation's link
+  through the door. Once the owner has answered every kept change, Life hears what they came to: `done`, `declined`, `failed` or `expired`
+  (`settleHandoffAfterApproval()`, from `decideApproval()`).
+* Life writes Flow's report into the chat the task came from, and tells the person (a notification and a push).
+* Taking a task back declines what it kept, so nothing runs later.
+
+### Reliability
+
+The five-minute job (`runKaizenLifeHandoffs()`, the dispatcher's `lifeHandoffs`):
+
+* runs a task from Life whose run never started (the answer's `after()` lost);
+* ends one whose run stopped;
+* settles a task whose kept changes were all answered while its report was lost;
+* tells Life a status it has not heard, up to six tries;
+* gives up a task handed to Life that it never reported on.
+
+Tasks wait while a platform admin has paused the AI acting on its own (PSI AST-07).
+
+### Not yet
+
+* The agent eval has no case for a report from Kaizen Life yet: adding one needs a new recorded run on Platform → AI (step 3).
+* Life keeps no job of its own: a report to Flow that fails is tried three times at once, then left to Flow's job, which gives up a task
+  Life never answered.
 
 ## 4. Step 3: what the person sees
 

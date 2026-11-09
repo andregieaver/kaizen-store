@@ -78,6 +78,9 @@ export const BUDGETS = {
   life_link: { window: "minute", visitor: 300, store: 900 },
   // The Work summary Kaizen Life reads for a linked account: the visitor is the account, the whole site's ceiling under no store.
   life_summary: { window: "minute", visitor: 60, store: 6000 },
+  // Tasks the assistants hand each other (docs/assistants-together.md step 2), and Kaizen Life's reports on them: the visitor is the Kaizen
+  // Life user, the whole site's ceiling under no store. Beside the day's cap of tasks (`HANDOFFS_PER_DAY`).
+  life_handoff: { window: "minute", visitor: 30, store: 3000 },
   // Making a page builder sandbox (D457): each is a copied store, so a few an hour from one network and a ceiling for the whole site,
   // counted under no store; a failed count refuses. The platform's daily cap (`platform_settings.sandbox_daily_cap`) stands beside it.
   sandbox: { window: "hour", visitor: 5, store: 200 },

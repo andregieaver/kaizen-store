@@ -5321,6 +5321,20 @@
       "when": 1794243613882,
       "tag": "20261109170013_platform_api_tokens_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 760,
+      "version": "7",
+      "when": 1794245727998,
+      "tag": "20261109173527_kaizen_life_handoffs",
+      "breakpoints": true
+    },
+    {
+      "idx": 761,
+      "version": "7",
+      "when": 1794245761750,
+      "tag": "20261109173601_kaizen_life_handoffs_rules",
+      "breakpoints": true
     }
   ]
 }

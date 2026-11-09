@@ -267,6 +267,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   dream_runs:
     "En kjøring i Dream Factory (D409): eierens beskrivelse av sin egen virksomhet og briefen som ble lest ut av den, med virksomhetens egne opplysninger; aldri en kundes; slettes med butikken.",
   assistant_follow_ups: "Oppfølginger en ansatt ba KI-assistenten om, med egne ord; slettes med kontoen eller samtalen.",
+  kaizen_life_handoffs: "Oppgaver en persons assistenter i Kaizena Flow og Kaizen Life ga hverandre over kontokoblingen, med personens og assistentenes egne ord; slettes med kontoen.",
   assistant_goals: "Eierens mål for virksomheten med egne ord (D309); butikkens, ikke en kundes.",
   assistant_plans: "Autopilotens planer (D309), kjørt i en ansatts navn; slettes med kontoen eller samtalen.",
   autopilot_reports: "Det autopiloten fortalte en ansatt: antall, titlene på planenes steg og tall, aldri en kunde (D309).",
