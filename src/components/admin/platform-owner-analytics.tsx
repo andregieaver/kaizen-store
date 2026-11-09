@@ -7,6 +7,8 @@ import { CHANNELS } from "@/lib/analytics-channels";
 import { formatCount } from "@/lib/analytics-core";
 import { formatMoney } from "@/lib/money";
 import type { ChannelRow, CohortRow } from "@/lib/platform-channels";
+import type { AdPlatform } from "@/lib/ad-payloads";
+import type { PlatformAdCount } from "@/server/platform-ad-conversions";
 import type { SpendRow } from "@/server/platform-channels";
 
 const th = "px-3 py-2 text-left font-normal";
@@ -192,6 +194,85 @@ export function OwnerChannelsCard({
             )}
           </div>
         </details>
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Kaizena Flow's sign-ups and first paid plans sent as ad conversions (C2, D523), per platform: counts only, and the way to Kaizena Flow's
+ * store's Ads and conversions page, where the platforms are connected (D303).
+ */
+export function PlatformAdsCard({
+  counts,
+  connected,
+  connectHref,
+  words: w,
+  platformNames,
+}: {
+  counts: PlatformAdCount[];
+  connected: AdPlatform[];
+  connectHref: string | null;
+  words: Words;
+  platformNames: Record<AdPlatform, string>;
+}) {
+  const a = w.ads;
+  const platforms = [...new Set([...connected, ...counts.map((c) => c.platform)])];
+  const cell = (platform: AdPlatform, event: PlatformAdCount["event"]) => {
+    const mine = counts.filter((c) => c.platform === platform && c.event === event);
+    const sum = (status: string) => mine.filter((c) => c.status === status).reduce((n, c) => n + c.n, 0);
+    const parts = (
+      [
+        ["sent", a.sent],
+        ["pending", a.waiting],
+        ["skipped", a.skipped],
+        ["failed", a.failed],
+      ] as const
+    ).flatMap(([status, words]) => (sum(status) > 0 ? [fillWords(words, { n: formatCount(sum(status)) })] : []));
+    return parts.length === 0 ? a.nothing : parts.join(" · ");
+  };
+  return (
+    <Card title={a.title} description={a.description}>
+      <div className="flex flex-col gap-4">
+        {platforms.length === 0 ? (
+          <p className="text-sm text-muted">{a.notConnected}</p>
+        ) : (
+          <div className="relative overflow-x-auto">
+            <table className="w-full min-w-[30rem] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-line text-muted">
+                  <th scope="col" className={th}>
+                    {a.platform}
+                  </th>
+                  <th scope="col" className={th}>
+                    {a.signUps}
+                  </th>
+                  <th scope="col" className={th}>
+                    {a.plans}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {platforms.map((platform) => (
+                  <tr key={platform} className="border-b border-line last:border-0">
+                    <th scope="row" className="px-3 py-2 text-left font-medium">
+                      {platformNames[platform]}
+                    </th>
+                    <td className="px-3 py-2 tabular-nums">{cell(platform, "sign_up")}</td>
+                    <td className="px-3 py-2 tabular-nums">{cell(platform, "plan_paid")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {connectHref && (
+          <p className="text-sm">
+            <a href={connectHref} className="underline underline-offset-2">
+              {connected.length === 0 ? a.connect : a.change}
+            </a>
+          </p>
+        )}
       </div>
     </Card>
   );

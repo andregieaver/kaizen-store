@@ -23,6 +23,7 @@ import { notifyReferralOpened, usableReferralCode } from "./referrals";
 import { storeTag } from "./stores";
 import { PROMPT_MIN } from "@/lib/dream-factory";
 import { PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
+import { cleanAdSignals, type AdSignals } from "@/lib/ad-signals";
 
 type Row = Record<string, unknown>;
 
@@ -54,6 +55,11 @@ export type AccessRequestInput = {
   sandboxId?: string | null;
   /** Where the person first came from (C2, D522): the house store's first touch, classified; kept only with consent, else nothing. */
   firstTouch?: { channel: string; source: string; campaign: string } | null;
+  /**
+   * Sign-ups as ad conversions (C2, D523): the ad platforms' ids the browser held, kept only when the person had allowed marketing cookies on
+   * Kaizena Flow's site (`signupAdSignals()`); null without that consent, and then this sign-up never sends anything.
+   */
+  adSignals?: AdSignals | null;
 };
 
 /** The preset key when the design profile's published version has a preset of that key, else null (SQL, beside the profile's id). */
@@ -80,7 +86,7 @@ export async function createAccessRequest(
   const referralCode = await usableReferralCode(input.referralCode);
   const [made] = await db().execute<Row>(sql`
     insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id, design_variation, locale, domain, dream,
-      terms_accepted_at, terms_version, sandbox_id, first_channel, first_source, first_campaign)
+      terms_accepted_at, terms_version, sandbox_id, first_channel, first_source, first_campaign, ad_consent_at, ad_signals)
     values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode},
       (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published and st.kind = 'content'),
       (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published),
@@ -93,7 +99,8 @@ export async function createAccessRequest(
                 where p.store_id is null and p.type = 'page' and p.slug = ${PLATFORM_LEGAL_SLUGS.terms} and p.published is not null)`
         : sql`null`},
       (select x.id from commerce.sandboxes x where x.id = ${input.sandboxId ?? null}::uuid and x.state = 'open'),
-      ${input.firstTouch?.channel ?? null}, ${input.firstTouch ? input.firstTouch.source || null : null}, ${input.firstTouch ? input.firstTouch.campaign || null : null})
+      ${input.firstTouch?.channel ?? null}, ${input.firstTouch ? input.firstTouch.source || null : null}, ${input.firstTouch ? input.firstTouch.campaign || null : null},
+      ${input.adSignals ? sql`now()` : sql`null`}, ${input.adSignals ? JSON.stringify(cleanAdSignals(input.adSignals)) : null}::jsonb)
     on conflict ((lower(email))) where status = 'pending' do nothing
     returning id
   `);

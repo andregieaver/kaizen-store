@@ -65,6 +65,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/platform-workflows.ts": "real",
   "src/server/platform-api.ts": "real",
   "src/server/platform-channels.ts": "real",
+  "src/server/platform-ad-conversions.ts": "real",
   "src/server/platform-overview.ts": "real",
   "src/server/platform-unit-tests.ts": "real",
   "src/server/platform.ts": "real",

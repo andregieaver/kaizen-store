@@ -13,6 +13,10 @@ export type AdPlatform = (typeof AD_PLATFORMS)[number];
 export const AD_EVENTS = ["begin_checkout", "purchase"] as const;
 export type AdEvent = (typeof AD_EVENTS)[number];
 
+/** Kaizena Flow's own (C2, D523): a sign-up, and the first paid plan of the store it made. */
+export const PLATFORM_AD_EVENTS = ["sign_up", "plan_paid"] as const;
+export type PlatformAdEvent = (typeof PLATFORM_AD_EVENTS)[number];
+
 /** The only hosts a conversion goes to, one a platform. */
 export const AD_HOSTS: Record<AdPlatform, string> = {
   meta: "graph.facebook.com",
@@ -22,13 +26,15 @@ export const AD_HOSTS: Record<AdPlatform, string> = {
 };
 
 export type Conversion = {
-  event: AdEvent;
+  event: AdEvent | PlatformAdEvent;
   /** The order's id: the same event id for every platform, so a browser event and this one are counted once. */
   eventId: string;
+  /** GA4's client id where one person's events belong together (a sign-up and its plan, D523); the event id when left out. */
+  clientId?: string;
   /** Seconds since 1970. */
   time: number;
   currency: string;
-  /** Major units, VAT included, as charged. */
+  /** Major units, VAT included, as charged (a plan: net of VAT, what Kaizena Flow earns, D523; a sign-up: 0, and not sent). */
   value: number;
   lines: { id: string; quantity: number; price: number }[];
   signals: AdSignals;
@@ -42,8 +48,14 @@ export type Connection = { platform: AdPlatform; accountId: string; token: strin
 
 export type AdRequest = { url: string; headers: Record<string, string>; body: string };
 
-const META_NAMES: Record<AdEvent, string> = { begin_checkout: "InitiateCheckout", purchase: "Purchase" };
-const TIKTOK_NAMES: Record<AdEvent, string> = { begin_checkout: "InitiateCheckout", purchase: "CompletePayment" };
+type AnyEvent = AdEvent | PlatformAdEvent;
+// Each platform's standard event: a sign-up is a registration, a paid plan a subscription (GA4's recommended `sign_up` and `purchase`).
+const META_NAMES: Record<AnyEvent, string> = { begin_checkout: "InitiateCheckout", purchase: "Purchase", sign_up: "CompleteRegistration", plan_paid: "Subscribe" };
+const TIKTOK_NAMES: Record<AnyEvent, string> = { begin_checkout: "InitiateCheckout", purchase: "CompletePayment", sign_up: "CompleteRegistration", plan_paid: "Subscribe" };
+const GA4_NAMES: Record<AnyEvent, string> = { begin_checkout: "begin_checkout", purchase: "purchase", sign_up: "sign_up", plan_paid: "purchase" };
+const PINTEREST_NAMES: Partial<Record<AnyEvent, string>> = { purchase: "checkout", sign_up: "signup", plan_paid: "checkout" };
+/** A purchase of something, with an order id: an order's purchase or a paid plan. */
+const paid = (event: AnyEvent) => event === "purchase" || event === "plan_paid";
 
 /** An email as the platforms want it before hashing: trimmed and lower case. */
 export { normaliseEmail } from "./email-address";
@@ -80,13 +92,17 @@ export function adRequest(connection: Connection, c: Conversion): AdRequest | nu
               action_source: "website",
               event_source_url: c.pageUrl,
               user_data: user,
-              custom_data: {
-                currency: c.currency,
-                value: c.value,
-                content_type: "product",
-                contents: c.lines.map((l) => ({ id: l.id, quantity: l.quantity, item_price: l.price })),
-                ...(c.event === "purchase" ? { order_id: c.eventId } : {}),
-              },
+              ...(c.event === "sign_up"
+                ? {}
+                : {
+                    custom_data: {
+                      currency: c.currency,
+                      value: c.value,
+                      content_type: "product",
+                      contents: c.lines.map((l) => ({ id: l.id, quantity: l.quantity, item_price: l.price })),
+                      ...(paid(c.event) ? { order_id: c.eventId } : {}),
+                    },
+                  }),
             },
           ],
           ...(connection.testCode ? { test_event_code: connection.testCode } : {}),
@@ -99,16 +115,16 @@ export function adRequest(connection: Connection, c: Conversion): AdRequest | nu
         url: `https://${AD_HOSTS.ga4}/mp/collect?measurement_id=${encodeURIComponent(connection.accountId)}&api_secret=${encodeURIComponent(connection.token)}`,
         headers: json,
         body: JSON.stringify({
-          client_id: c.eventId,
+          client_id: c.clientId ?? c.eventId,
           timestamp_micros: c.time * 1_000_000,
           events: [
             {
-              name: c.event,
+              name: GA4_NAMES[c.event],
               params: {
-                ...(c.event === "purchase" ? { transaction_id: c.eventId } : {}),
-                currency: c.currency,
-                value: c.value,
-                items: c.lines.map((l) => ({ item_id: l.id, quantity: l.quantity, price: l.price })),
+                ...(paid(c.event) ? { transaction_id: c.eventId } : {}),
+                ...(c.event === "sign_up"
+                  ? { method: "email" }
+                  : { currency: c.currency, value: c.value, items: c.lines.map((l) => ({ item_id: l.id, quantity: l.quantity, price: l.price })) }),
                 ...(signals.gclid ? { gclid: signals.gclid } : {}),
               },
             },
@@ -138,21 +154,26 @@ export function adRequest(connection: Connection, c: Conversion): AdRequest | nu
               event_id: c.eventId,
               user,
               page: { url: c.pageUrl },
-              properties: {
-                currency: c.currency,
-                value: c.value,
-                content_type: "product",
-                contents: c.lines.map((l) => ({ content_id: l.id, quantity: l.quantity, price: l.price })),
-                ...(c.event === "purchase" ? { order_id: c.eventId } : {}),
-              },
+              ...(c.event === "sign_up"
+                ? {}
+                : {
+                    properties: {
+                      currency: c.currency,
+                      value: c.value,
+                      content_type: "product",
+                      contents: c.lines.map((l) => ({ content_id: l.id, quantity: l.quantity, price: l.price })),
+                      ...(paid(c.event) ? { order_id: c.eventId } : {}),
+                    },
+                  }),
             },
           ],
         }),
       };
     }
     case "pinterest": {
-      // Pinterest has no standard event for a checkout started; its `checkout` is the purchase.
-      if (c.event !== "purchase") return null;
+      // Pinterest has no standard event for a checkout started; its `checkout` is the purchase (and a paid plan), its `signup` a sign-up.
+      const name = PINTEREST_NAMES[c.event];
+      if (!name) return null;
       const user = {
         ...(signals.epik ? { click_id: signals.epik } : {}),
         ...(hashes.email ? { em: [hashes.email] } : {}),
@@ -165,20 +186,24 @@ export function adRequest(connection: Connection, c: Conversion): AdRequest | nu
         body: JSON.stringify({
           data: [
             {
-              event_name: "checkout",
+              event_name: name,
               action_source: "web",
               event_time: c.time,
               event_id: c.eventId,
               event_source_url: c.pageUrl,
               user_data: user,
-              custom_data: {
-                currency: c.currency,
-                value: String(c.value),
-                order_id: c.eventId,
-                content_ids: c.lines.map((l) => l.id),
-                contents: c.lines.map((l) => ({ id: l.id, quantity: l.quantity, item_price: String(l.price) })),
-                num_items: c.lines.reduce((n, l) => n + l.quantity, 0),
-              },
+              ...(c.event === "sign_up"
+                ? {}
+                : {
+                    custom_data: {
+                      currency: c.currency,
+                      value: String(c.value),
+                      order_id: c.eventId,
+                      content_ids: c.lines.map((l) => l.id),
+                      contents: c.lines.map((l) => ({ id: l.id, quantity: l.quantity, item_price: String(l.price) })),
+                      num_items: c.lines.reduce((n, l) => n + l.quantity, 0),
+                    },
+                  }),
             },
           ],
         }),

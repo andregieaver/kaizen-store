@@ -481,7 +481,7 @@ const STEPS: Record<RetentionStep, StepFn> = {
     return {
       count: await batched(ctx.batch, () =>
         db().execute(sql`
-          update commerce.access_requests set email = 'erased-' || id || '@erased.invalid', name = '', message = ''
+          update commerce.access_requests set email = 'erased-' || id || '@erased.invalid', name = '', message = '', ad_consent_at = null, ad_signals = null
           where id in (
             select id from commerce.access_requests
             where status <> 'pending' and decided_at < ${cutoff}::timestamptz and email not like 'erased-%@erased.invalid'

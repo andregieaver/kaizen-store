@@ -248,7 +248,7 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
   access_requests:
     "Personer som søkte om å åpne en butikk: plattformens søkere. " +
     OWN +
-    " Når personen sletter sin egen konto (D377, `eraseOwnAccount()`), tømmes søkerens e-post, navn og melding, og i en avgjort søknad tømmes de 12 måneder etter avgjørelsen (PSI REG-05). Hvor de først kom fra (D522: kanalen, kilden og kampanjen for deres første besøk på Kaizena Flows nettsted) lagres bare når de tillot statistikk-informasjonskapsler, aldri et besøk eller en klikk-ID.",
+    " Når personen sletter sin egen konto (D377, `eraseOwnAccount()`), tømmes søkerens e-post, navn og melding, og i en avgjort søknad tømmes de 12 måneder etter avgjørelsen (PSI REG-05). Hvor de først kom fra (D522: kanalen, kilden og kampanjen for deres første besøk på Kaizena Flows nettsted) lagres bare når de tillot statistikk-informasjonskapsler, aldri et besøk. Annonseplattformenes ID-er nettleseren hadde da de registrerte seg (D523: Metas, Googles, TikToks og Pinterests) lagres bare når de tillot markedsføringsinformasjonskapsler, for å sende registreringen og deres første betalte abonnement som konverteringer (bare en hash av e-posten, og bare på nivået Utvidet), og slettes 90 dager etter søknaden, eller sammen med personen.",
   abandoned_plan_checkouts: "En butikkeiers uferdige kjøp av et abonnement. " + OWN,
   platform_integration_deliveries:
     "Kaizena Flows egne hendelser på vei til Slack, Zapier eller Make (D465): innholdet for en forespørsel nevner personen som spurte (navn og e-postadresse; meldingen til Slack aldri e-postadressen). " +

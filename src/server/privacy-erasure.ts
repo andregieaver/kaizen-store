@@ -721,7 +721,7 @@ async function blankApplications(tx: Tx, s: PrivacySubject): Promise<void> {
   const [store] = await tx.execute<Row>(sql`select house from commerce.stores where id = ${s.storeId}::uuid`);
   if (!store?.house) return;
   await tx.execute(sql`
-    update commerce.access_requests set email = 'erased-' || id || '@erased.invalid', name = '', message = ''
+    update commerce.access_requests set email = 'erased-' || id || '@erased.invalid', name = '', message = '', ad_consent_at = null, ad_signals = null
     where lower(email) = any(${textList(s.addresses.map((a) => a.toLowerCase()))})
   `);
 }

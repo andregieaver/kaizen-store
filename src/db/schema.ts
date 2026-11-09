@@ -581,6 +581,13 @@ export const accessRequests = commerce.table(
     firstChannel: text("first_channel"),
     firstSource: text("first_source"),
     firstCampaign: text("first_campaign"),
+    /**
+     * Sign-ups as ad conversions (C2, D523): when the person had allowed marketing cookies on Kaizena Flow's site as they signed up, and the
+     * ad platforms' ids their browser held then (`AdSignals`: Meta's, Google's, TikTok's and Pinterest's, each checked by shape). Both null
+     * without that consent, and both cleared 90 days after the request (`prunePlatformAdSignals()`): a plan paid later sends nothing.
+     */
+    adConsentAt: timestamp("ad_consent_at", { withTimezone: true }),
+    adSignals: jsonb("ad_signals"),
     confirmHash: text("confirm_hash"),
     confirmExpiresAt: timestamp("confirm_expires_at", { withTimezone: true }),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
@@ -608,6 +615,10 @@ export const accessRequests = commerce.table(
     check("access_requests_locale", sql`${t.locale} is null or ${t.locale} in ('en', 'nb-NO')`),
     check("access_requests_first_channel", sql`${t.firstChannel} is null or ${t.firstChannel} in (${channelList})`),
     check("access_requests_first_touch", sql`length(coalesce(${t.firstSource}, '')) <= 120 and length(coalesce(${t.firstCampaign}, '')) <= 120`),
+    check(
+      "access_requests_ad_signals",
+      sql`${t.adSignals} is null or (${t.adConsentAt} is not null and jsonb_typeof(${t.adSignals}) = 'object' and length(${t.adSignals}::text) <= 2000)`,
+    ),
     check(
       "access_requests_design_variation",
       sql`${t.designVariation} is null or (${t.designPresetId} is not null and ${t.designVariation} ~ '^[a-z0-9][a-z0-9-]{0,39}$')`,
@@ -7733,6 +7744,40 @@ export const platformMarketingSpend = commerce.table(
     check("platform_marketing_spend_amount", sql`${t.amountMinor} > 0`),
     check("platform_marketing_spend_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
     check("platform_marketing_spend_note", sql`length(${t.note}) <= 500`),
+  ],
+);
+
+/**
+ * Kaizena Flow's own conversions sent to ad platforms (C2, D523): a store's `ad_conversions` for the platform. A sign-up (`sign_up`, the
+ * request) and its first paid plan (`plan_paid`, the first live plan sale of the store it made) are queued once per platform for a request
+ * made with marketing consent, and sent through the house store's ad connections (D303) by `src/server/platform-ad-conversions.ts`, the
+ * only writer. The payload is built when sent and never kept.
+ */
+export const platformAdConversions = commerce.table(
+  "platform_ad_conversions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => accessRequests.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    event: text("event").notNull(),
+    status: text("status").notNull().default("pending"),
+    tries: integer("tries").notNull().default(0),
+    nextAt: timestamp("next_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Why it was skipped, or the platform's answer code when it failed. */
+    answer: text("answer"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("platform_ad_conversions_once").on(t.requestId, t.platform, t.event),
+    index("platform_ad_conversions_due_idx").on(t.status, t.nextAt),
+    index("platform_ad_conversions_created_idx").on(t.createdAt),
+    check("platform_ad_conversions_platform", sql`${t.platform} in ('meta', 'ga4', 'tiktok', 'pinterest')`),
+    check("platform_ad_conversions_event", sql`${t.event} in ('sign_up', 'plan_paid')`),
+    check("platform_ad_conversions_status", sql`${t.status} in ('pending', 'sent', 'skipped', 'failed')`),
+    check("platform_ad_conversions_answer", sql`${t.answer} is null or char_length(${t.answer}) <= 200`),
   ],
 );
 

@@ -8,7 +8,9 @@ import { formProblems } from "@/lib/form-problems";
 import { REFERRAL_COOKIE, referralCodeFor } from "@/lib/referrals";
 import { designLookChoice } from "@/lib/design-presets";
 import { contentForLook } from "@/server/design-presets";
+import { consentCookieName } from "@/lib/cookie-consent";
 import { touchCookieName } from "@/lib/first-touch";
+import { signupAdSignals } from "@/lib/platform-ad-conversions";
 import { houseStoreId } from "@/server/house-customers";
 import { createAccessRequest } from "@/server/platform";
 import { signupFirstTouch } from "@/server/platform-channels";
@@ -55,7 +57,10 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
   // Where the person first came from (C2, D522): the house store's first-touch cookie on Kaizena Flow's site, which exists only when they
   // allowed statistics cookies; nothing is kept without it.
   const house = await houseStoreId();
-  const firstTouch = house ? signupFirstTouch((await cookies()).get(touchCookieName(house))?.value) : null;
+  const jar = await cookies();
+  const firstTouch = house ? signupFirstTouch(jar.get(touchCookieName(house))?.value) : null;
+  // A sign-up as an ad conversion (C2, D523): the ad platforms' ids, only when they allowed marketing cookies on Kaizena Flow's site.
+  const adSignals = house ? signupAdSignals((name) => jar.get(name)?.value, jar.get(consentCookieName(house))?.value) : null;
   try {
     // The theme and its preset (`docs/theme-showcase-phase-1.md` step 4) chosen, kept only when published (checked inside), and the demo
     // store the look starts a store with (D273): never chosen apart.
@@ -71,6 +76,7 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
       // The form is sent under the sentence that links the terms and the privacy notice (PSI REG-02).
       termsAccepted: true,
       firstTouch,
+      adSignals,
     };
     // Self-serve (D359): the address is confirmed by a link first, and the store is made on the press; the answer is the same either way.
     if (await selfServeOn()) {

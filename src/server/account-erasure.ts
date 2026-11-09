@@ -139,7 +139,7 @@ export async function eraseOwnAccount(account: Pick<Account, "id">, deps: { dele
     `);
     // Their applications to open a store: the row stays for the store it made, the person goes.
     await tx.execute(sql`
-      update commerce.access_requests set email = ${erasedEmail(id)}, name = '', message = '' where lower(email) = ${email}
+      update commerce.access_requests set email = ${erasedEmail(id)}, name = '', message = '', ad_consent_at = null, ad_signals = null where lower(email) = ${email}
     `);
     await tx.execute(sql`
       update commerce.accounts

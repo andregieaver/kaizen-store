@@ -1,4 +1,5 @@
 import { pruneAdSignals } from "@/server/ad-conversions";
+import { prunePlatformAdSignals } from "@/server/platform-ad-conversions";
 import { revalidateTag } from "next/cache";
 import { connection } from "next/server";
 
@@ -60,6 +61,8 @@ async function run(request: Request) {
   const [run, memories, usage, company, rates, visits, withdrawals, security, vatRates, vatChecks, ecb, speedSamplesPruned, ownSpeedSamplesPruned] = await Promise.all([sendDueReminders(), fadeMemories(), pruneUsage(), pruneCompanyRecords(), refreshAutoRates(), pruneVisits(), expireWithdrawalRequests(), runSecurityJobs(), syncStandardRates(), pruneVatChecks(), storeEcbRates(), pruneSpeedSamples(), pruneOwnSpeedSamples()]);
   // Ad platforms' ids on orders go 90 days after (D303 I2).
   await pruneAdSignals();
+  // And from sign-ups 90 days after (D523): a plan paid later sends nothing.
+  await prunePlatformAdSignals();
   // The database's door (PSI SEC-03): the Data API's roles still reach nothing in commerce. Kept as its own job, so an open door reads as failing.
   const databaseDoor = await tracked("daily.database-door", 86400, () => checkDatabaseDoor());
   // The AI manager's notices go after 60 days (D350, never throws).

@@ -5349,6 +5349,20 @@
       "when": 1794247997306,
       "tag": "20261109181317_platform_channels_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 764,
+      "version": "7",
+      "when": 1794251244689,
+      "tag": "20261109190724_platform_ad_conversions",
+      "breakpoints": true
+    },
+    {
+      "idx": 765,
+      "version": "7",
+      "when": 1794251280548,
+      "tag": "20261109190800_platform_ad_conversions_rules",
+      "breakpoints": true
     }
   ]
 }

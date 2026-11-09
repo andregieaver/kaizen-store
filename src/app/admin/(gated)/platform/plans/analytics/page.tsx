@@ -10,7 +10,8 @@ import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { payoutFlagged } from "@/lib/payouts";
 import { share, type CurrencyFigure, type MovementFigure, type PlanSummary } from "@/lib/plan-analytics";
-import { OwnerChannelsCard, OwnerCohortsCard } from "@/components/admin/platform-owner-analytics";
+import { OwnerChannelsCard, OwnerCohortsCard, PlatformAdsCard } from "@/components/admin/platform-owner-analytics";
+import { platformAdConnections, platformAdConversionCounts } from "@/server/platform-ad-conversions";
 import { platformCan, requirePlatformReader } from "@/server/auth";
 import { listPlatformSpend, platformChannels, platformOwnerCohorts } from "@/server/platform-channels";
 import { planAnalytics } from "@/server/plan-analytics";
@@ -45,7 +46,13 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const todayOslo = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Oslo" });
   const tomorrow = new Date(Date.parse(`${todayOslo}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
   const periodFrom = new Date(Date.parse(`${tomorrow}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
-  const [cohorts, channels, spend] = await Promise.all([platformOwnerCohorts(), platformChannels(periodFrom, tomorrow), listPlatformSpend(periodFrom, tomorrow)]);
+  const [cohorts, channels, spend, adCounts, adConnections] = await Promise.all([
+    platformOwnerCohorts(),
+    platformChannels(periodFrom, tomorrow),
+    listPlatformSpend(periodFrom, tomorrow),
+    platformAdConversionCounts(),
+    platformAdConnections(),
+  ]);
   const [a, sales, books, bookStores, payouts, snapshot, briefing] = await Promise.all([
     planAnalytics(days),
     platformSalesView(year),
@@ -318,6 +325,15 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
         channelNames={adminText(lang, "reports").channels}
         save={savePlatformSpendAction}
         remove={removePlatformSpendAction}
+      />
+
+      {/* Sign-ups and first paid plans as ad conversions (C2, D523), connected in Kaizena Flow's store. */}
+      <PlatformAdsCard
+        counts={adCounts}
+        connected={adConnections.on}
+        connectHref={adConnections.houseSlug ? `/admin/${adConnections.houseSlug}/ads` : null}
+        words={w}
+        platformNames={adminText(lang, "marketing").ads.platforms}
       />
 
       <OwnerCohortsCard currency={cohorts.currency} rows={cohorts.rows} locale={locale} words={w} />

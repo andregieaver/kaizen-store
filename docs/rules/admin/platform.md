@@ -184,6 +184,19 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (live, plans, net of VAT and of credit notes) through `platformOwnerCohorts()`, and channels against spend through `platformChannels()`;
   `commerce.platform_marketing_spend` is written only by `savePlatformSpend()` and `removePlatformSpend()`, for the plans area (D510). Never a
   demo store, a template, a sandbox or Kaizena Flow's own.
+
+## Kaizena Flow's sign-ups and paid plans as ad conversions (C2, D523, `src/lib/platform-ad-conversions.ts`, `src/server/platform-ad-conversions.ts`)
+
+- **Kaizena Flow's sign-ups and paid plans as ad conversions (C2, D523, `src/lib/platform-ad-conversions.ts`, `src/server/platform-ad-conversions.ts`)**:
+  a request keeps `access_requests.ad_consent_at` and `ad_signals` only through `signupAdSignals()` (the house store's consent cookie
+  allowing marketing, asked with marketing among its choices; the ad platforms' own cookies, each id by its shape), never otherwise, and the
+  database refuses ids without consent. `commerce.platform_ad_conversions` is written only by `src/server/platform-ad-conversions.ts`: a
+  sign-up within 7 days, and the first live plan its store paid within 7 days of paying and 90 of the request, once per connection of
+  Kaizena Flow's store that is on (its Ads and conversions page, D303, the only place they are connected), sent with the store's
+  `adRequest()` builders to the platform's own host only; an email leaves only as a SHA-256 hash at the *Enhanced* level, never raw. The
+  consent and the ids leave the request after 90 days (`prunePlatformAdSignals()`, daily) and with the person (erasure, retention). A new
+  platform event that becomes a conversion goes through the same consent and table, never around them.
+
 ## Audit log (D158)
 
 - **Audit log (D158)**: `audit()` keeps its signature and takes an optional `{ area, target, changes }`; `auditChange()` writes allowlisted diffs (`ALLOWED_FIELDS`), never secrets; a new action needs an area in `AUDIT_AREAS` (a scan test). The log is append-only, deletable only after 24 months by `pruneAuditLog()` (`commerce.guard_audit_log()`); `/admin/{store}/activity` shows an owner everything and others their readable areas; the CSV is owners'.
