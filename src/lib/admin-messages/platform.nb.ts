@@ -50,6 +50,7 @@ export const platformNb: PlatformMessages = {
     cardButton: "Administrer nøkler",
     actsAs: "En nøkkel leser som plattformeieren som laget den: den slutter å virke hvis de ikke lenger er eier. Den endrer aldri noe.",
     ownerOnly: "Bare en eier av plattformen lager eller trekker tilbake nøkler.",
+    namePlaceholder: "Inntektsdashbord",
     scopeWords: {
       "stores:read": "Lese eiernes butikker, hver med sitt abonnement",
       "plans:read": "Lese abonnementene og prisene deres",

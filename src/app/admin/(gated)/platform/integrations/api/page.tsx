@@ -44,7 +44,7 @@ export default async function PlatformApiPage() {
         {owner ? (
           <Card title={w.make} description={w.makeHint}>
             <p className="mb-4 text-sm text-muted">{own.api.actsAs}</p>
-            <MakeApiToken scopes={[...PLATFORM_API_SCOPES]} powers={[]} make={makePlatformTokenAction} scopeWords={own.api.scopeWords} />
+            <MakeApiToken scopes={[...PLATFORM_API_SCOPES]} powers={[]} make={makePlatformTokenAction} scopeWords={own.api.scopeWords} namePlaceholder={own.api.namePlaceholder} />
           </Card>
         ) : (
           <p className="text-sm text-ink-2">{own.api.ownerOnly}</p>

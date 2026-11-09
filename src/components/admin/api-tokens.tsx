@@ -32,12 +32,15 @@ export function MakeApiToken({
   powers,
   make,
   scopeWords,
+  namePlaceholder,
 }: {
   scopes: string[];
   powers: string[];
   make: (form: FormData) => Async;
   /** What each scope allows, when they are not the stores' (Kaizena Flow's own API, D518). */
   scopeWords?: Record<string, string>;
+  /** The name's example, when the store's (*Warehouse*) does not fit. */
+  namePlaceholder?: string;
 }) {
   const w = useAdminText("notifications").apiTokens;
   const wordsOf = (scope: string) => scopeWords?.[scope] ?? w.scopeWords[scope] ?? scope;
@@ -84,7 +87,7 @@ export function MakeApiToken({
     >
       <label className="flex flex-col gap-1 text-sm font-medium">
         {w.name}
-        <input name="name" required maxLength={80} placeholder={w.namePlaceholder} className="min-h-10 rounded-md border border-line bg-card px-3 font-normal" />
+        <input name="name" required maxLength={80} placeholder={namePlaceholder ?? w.namePlaceholder} className="min-h-10 rounded-md border border-line bg-card px-3 font-normal" />
       </label>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">{w.scopes}</legend>

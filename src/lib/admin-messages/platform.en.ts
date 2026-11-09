@@ -52,6 +52,7 @@ export const platformEn = {
     cardButton: "Manage tokens",
     actsAs: "A token reads as the platform owner who made it: it stops working if they are no longer one. It never changes anything.",
     ownerOnly: "Only a platform owner makes or revokes tokens.",
+    namePlaceholder: "Revenue dashboard",
     scopeWords: {
       "stores:read": "Read the owners' stores, each with its plan",
       "plans:read": "Read the plans and their prices",
