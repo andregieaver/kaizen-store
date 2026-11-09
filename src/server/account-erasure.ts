@@ -125,7 +125,6 @@ export async function eraseOwnAccount(account: Pick<Account, "id">, deps: { dele
     await tx.execute(sql`delete from commerce.report_schedules where recipients = array[${id}::uuid]`);
     await tx.execute(sql`update commerce.report_schedules set recipients = array_remove(recipients, ${id}::uuid) where ${id}::uuid = any(recipients)`);
     await tx.execute(sql`delete from commerce.account_recovery_codes where account_id = ${id}::uuid`);
-    await tx.execute(sql`delete from commerce.kaizen_life_links where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.wordpress_connections where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.support_agents where account_id = ${id}::uuid`);
     await tx.execute(sql`delete from commerce.support_reads where account_id = ${id}::uuid`);
