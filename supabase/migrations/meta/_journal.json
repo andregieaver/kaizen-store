@@ -5230,6 +5230,20 @@
       "when": 1794226904153,
       "tag": "20261109122144_kaizen_life_accounts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 747,
+      "version": "7",
+      "when": 1794230487643,
+      "tag": "20261109132127_accountants",
+      "breakpoints": true
+    },
+    {
+      "idx": 748,
+      "version": "7",
+      "when": 1794230521137,
+      "tag": "20261109132201_accountants_rules",
+      "breakpoints": true
     }
   ]
 }

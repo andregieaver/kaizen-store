@@ -488,3 +488,14 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   payout's fee their sum); a payout is posted only once its lines are read and complete (a manual one at once), and whether it adds up is
   only `reconcilePlatformPayout()` (a store's `reconcilePayout()`, a sale where a store has an order).
 
+## Accountants (B6, D512, `src/lib/books-clients.ts`, `src/server/books-clients.ts`, `ROLE_TEMPLATES.accountant`)
+
+- **Accountants (B6, D512, `src/lib/books-clients.ts`, `src/server/books-clients.ts`, `ROLE_TEMPLATES.accountant`)**: the store's books are
+  an area of their own (`books:read`, `books:write`; Settings → Books and every route under it), never Settings'. Reading them is every
+  admin's by default (`ADMIN_DEFAULT`); changing them is the owner's and a role's that grants it (the Accountant's: `books:write` with
+  orders, customers and analytics to read). Opening the books, opening them earlier and their opening balance stay the owner's. A lock is
+  moved only by `lockLedgerThrough()` and the year-end's `setLock()`: one set by a member who keeps the books without owning the store
+  (`locksAsAccountant()`) is held (`ledger_books.lock_held`), so the owner may lock further but never move it back, open it or reopen a
+  year in it; only such a member does. An accountant's clients (Your account → Books, shown by `showsClients()`) are read only by
+  `booksClients()`: counts and the VAT term to report (`vatToReport()`), never a document.
+

@@ -47,15 +47,18 @@ const cell = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
  * Settings → Books (B2, D478): the store's own books. Homer opens them (the owner, from the day Tripletex started booking), then reads what
  * waits for him, the trial balance of this year with its result, the profit and loss, the balance sheet on the last day and VAT by code
  * (step 3b), and the journal of the latest entries; Lisa chooses the days (or the VAT term), posts an entry by hand (the opening balance among
- * them), reverses one and locks the books through a day. Members who may read settings see them; only the owner opens, posts, reverses and locks.
+ * them), reverses one and locks the books through a day. Members who may read the books see them (`books:read`, D512); the owner opens them,
+ * and the owner or a member who keeps them (`books:write`, an accountant) posts, reverses and locks.
  */
 export default async function BooksPage({ params, searchParams }: PageProps<"/admin/[store]/settings/books">) {
-  const member = await requirePermission((await params).store, "settings:read");
+  const member = await requirePermission((await params).store, "books:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "books");
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const owner = memberCan(member, "owner");
+  // Keeping the books (D512): the owner, or a member whose role grants it, such as an accountant. Opening them stays the owner's.
+  const keeper = memberCan(member, "books:write");
   const today = todayIn(new Date(), store.timeZone);
   const book = await openBookOf(store.id);
   const day = (d: string) => formatStoreDay(d, locale);
@@ -203,7 +206,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
     <YearEndCard
       storeSlug={store.slug}
       view={yearEnd}
-      owner={owner}
+      owner={keeper}
       lang={lang}
       words={w}
       money={amount}
@@ -285,7 +288,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                                 ? fillWords(w.bank.offerOrder, { number: offer.printedNumber, order: offer.orderNumber ?? "", amount: amount(offer.outstandingMinor) })
                                 : fillWords(w.bank.offer, { number: offer.printedNumber, client: offer.client, amount: amount(offer.outstandingMinor) })}
                             </span>
-                            {owner && (
+                            {keeper && (
                               <SubmitButton variant="secondary" name="pay" value={`${l.id}:${offer.invoiceId}`}>
                                 {w.bank.pay}
                               </SubmitButton>
@@ -299,14 +302,14 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                                 ? fillWords(w.bank.offerBill, { number: billOffer.number, supplier: billOffer.supplier })
                                 : fillWords(w.bank.offerBillNoNumber, { supplier: billOffer.supplier })}
                             </span>
-                            {owner && (
+                            {keeper && (
                               <SubmitButton variant="secondary" name="bill" value={`${l.id}:${billOffer.billId}`}>
                                 {w.bank.pay}
                               </SubmitButton>
                             )}
                           </div>
                         )}
-                        {own && owner && (
+                        {own && keeper && (
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                             <span className="text-muted">{fillWords(w.bank.own[own], { account: ownName })}</span>
                             <SubmitButton variant="secondary" name="post" value={l.id}>
@@ -315,7 +318,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                           </div>
                         )}
                         {/* A purchase: its receipt, what it was and its VAT, posted with one press (D490); a subscription's filled (D503). */}
-                        {!offer && !billOffer && !own && owner && l.amountMinor < 0 && (
+                        {!offer && !billOffer && !own && keeper && l.amountMinor < 0 && (
                           <details className="text-sm" open={subscription !== undefined || fromInbox !== undefined}>
                             <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{w.bank.receipt}</summary>
                             <div className="mt-2 flex flex-col gap-3">
@@ -378,7 +381,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                                 ? fillWords(w.bank.offerOrder, { number: offer.printedNumber, order: offer.orderNumber ?? "", amount: amount(offer.outstandingMinor) })
                                 : fillWords(w.bank.offer, { number: offer.printedNumber, client: offer.client, amount: amount(offer.outstandingMinor) })}
                             </span>
-                            {owner && (
+                            {keeper && (
                               <SubmitButton variant="secondary" name="pay" value={`${l.id}:${offer.invoiceId}`}>
                                 {w.bank.pay}
                               </SubmitButton>
@@ -394,7 +397,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                 )}
               </details>
             );
-            return owner ? (
+            return keeper ? (
               <ActionForm action={payFromBankAction.bind(null, store.slug)} className="flex flex-col gap-2">
                 {/* Enter in a field presses the form's first button: a disabled one first, so it presses none (only a button pressed acts). */}
                 <button type="submit" disabled hidden aria-hidden="true" tabIndex={-1} />
@@ -424,7 +427,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
               </ul>
             </details>
           )}
-          {owner && (
+          {keeper && (
             <ActionForm action={uploadBankStatementAction.bind(null, store.slug)} className="flex flex-col items-start gap-3">
               <label className="flex w-full max-w-md flex-col gap-1 text-sm font-medium">
                 {w.bank.file}
@@ -476,7 +479,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
               </ul>
             </>
           )}
-          {owner && (
+          {keeper && (
             <details>
               <summary className="w-fit cursor-pointer font-medium underline underline-offset-2">{w.bills.add}</summary>
               <ActionForm action={addBillAction.bind(null, store.slug)} className="mt-3 flex flex-col gap-3">
@@ -495,7 +498,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         storeSlug={store.slug}
         address={booksAddress}
         docs={inbox}
-        owner={owner}
+        owner={keeper}
         words={w}
         day={day}
         dismiss={dismissInboxAction.bind(null, store.slug)}
@@ -504,7 +507,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
       {/* Subscriptions (D503): what is paid again and again, its charges known in the bank. */}
       <RecurringCostsCard
         view={recurring}
-        owner={owner}
+        owner={keeper}
         currency={book.currency}
         today={today}
         words={w}
@@ -519,7 +522,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         year={budgetYear}
         view={budget}
         accounts={budgetAccounts}
-        owner={owner}
+        owner={keeper}
         currency={book.currency}
         locale={locale}
         words={w}
@@ -795,7 +798,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
                     ))}
                   </tbody>
                 </table>
-                {owner && !e.reversedBy && !e.reverses && (
+                {keeper && !e.reversedBy && !e.reverses && (
                   <details className="text-sm">
                     <summary className="w-fit cursor-pointer text-muted underline underline-offset-2">{w.journal.reverse}</summary>
                     <ActionForm action={reverseEntryAction.bind(null, store.slug, e.id)} className="mt-2 flex flex-col gap-2">
@@ -859,7 +862,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         </Card>
       )}
 
-      {owner && (
+      {keeper && (
         <Card title={w.hand.title} description={w.hand.lead}>
           <details>
             <summary className="w-fit cursor-pointer rounded-full border border-edge bg-card px-4 py-2 text-sm hover:bg-sunken">{w.hand.open}</summary>
@@ -935,7 +938,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
         </Card>
       )}
 
-      {owner && (
+      {keeper && (
         <Card title={w.lock.title} description={w.lock.text}>
           <ActionForm action={lockBooksAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium">
@@ -944,6 +947,7 @@ export default async function BooksPage({ params, searchParams }: PageProps<"/ad
             </label>
             <SubmitButton variant="secondary">{w.lock.button}</SubmitButton>
           </ActionForm>
+          {book.lockHeld && owner && <p className="mt-3 text-sm text-ink-2">{w.lock.heldNote}</p>}
         </Card>
       )}
 

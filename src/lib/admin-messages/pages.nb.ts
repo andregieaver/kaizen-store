@@ -703,6 +703,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Prøv et tema i butikken din",
     keywords: ["prøv tema", "temabutikk", "installer tema", "legg til tema"],
   },
+  "account:account.books": { title: "Regnskap", keywords: ["regnskapsfører", "klienter", "bokføring", "mva", "regnskap"] },
   "account:account.support": { title: "Kundestøtte", keywords: ["kundestøtte", "innboks", "livechat", "kundeservice", "samtaler"] },
   "account:account.kaizen_support": {
     title: "Kundestøtte fra Kaizena Flow",

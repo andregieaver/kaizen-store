@@ -10,7 +10,7 @@ import { ourVatReturn, vatReturnOrgNumber, vatReturnXml } from "@/server/vat-ret
  */
 export async function GET(_request: Request, { params }: RouteContext<"/admin/[store]/settings/books/vat/[term]/xml">) {
   const { store: slug, term: key } = await params;
-  const { store } = await requirePermission(slug, "settings:read");
+  const { store } = await requirePermission(slug, "books:read");
   const book = await openBookOf(store.id);
   if (!book) return new Response("Not found", { status: 404 });
   const term = vatTermOfKey(book.vatTerm, key);

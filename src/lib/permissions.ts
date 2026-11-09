@@ -68,7 +68,7 @@ export function permissionsOf(holder: PermissionHolder): PermissionKey[] {
   const held = new Set<string>();
   for (const key of base) {
     if (OWNER_HELD.includes(key as PermissionKey)) continue;
-    if (!/^(orders|products|customers|marketing|analytics|website|bookings|support|settings|billing|staff):(read|write)$/.test(key)) continue;
+    if (!/^(orders|products|customers|marketing|analytics|website|bookings|support|settings|billing|staff|books):(read|write)$/.test(key)) continue;
     held.add(key);
     if (key.endsWith(":write")) held.add(key.replace(/:write$/, ":read"));
   }
@@ -94,6 +94,8 @@ export function can(holder: PermissionHolder, key: PermissionKey): boolean {
 const AREA_OVERRIDES: { path: string; area: Area }[] = [
   { path: "/staff", area: "staff" },
   { path: "/billing", area: "billing" },
+  // The store's own books (D512) live in the Settings sidebar but are an area of their own, an accountant's.
+  { path: "/settings/books", area: "books" },
 ];
 
 /** The area of a page after the store's address (`/orders/[orderId]`, `/settings/shipping`), or null for Home's pages (membership only). */
@@ -181,6 +183,7 @@ export const AREA_LABELS: Record<Area, string> = {
   settings: "Settings",
   billing: "Billing",
   staff: "Team",
+  books: "Books",
 };
 
 /** What a role gives in an area, for the role editor: no access, can view, can change. */
@@ -207,7 +210,7 @@ export function permissionsFromLevels(levels: Partial<Record<Area, AreaLevel>>):
 // Role templates and collaborators
 // ---------------------------------------------------------------------------
 
-export const ROLE_TEMPLATE_KEYS = ["orders", "products", "marketing", "content", "analytics", "support", "read_only"] as const;
+export const ROLE_TEMPLATE_KEYS = ["orders", "products", "marketing", "content", "analytics", "support", "accountant", "read_only"] as const;
 export type RoleTemplateKey = (typeof ROLE_TEMPLATE_KEYS)[number];
 
 /** The roles `ensureStoreRoles()` offers a store on first visit; the owner can edit or delete them. Already normalised. */
@@ -243,10 +246,16 @@ export const ROLE_TEMPLATES: Record<RoleTemplateKey, { name: string; description
     description: "Answers customers in the support inbox, and can look up their orders, accounts and products.",
     permissions: normalisePermissions(["support:write", "orders:read", "customers:read", "products:read"]),
   },
+  // An accountant (B6, D512): keeps the store's books, and reads the orders, customers and figures behind them; nothing else is theirs.
+  accountant: {
+    name: "Accountant",
+    description: "Keeps the books: posts, matches the bank, files VAT, locks periods and closes the year, and reads orders, customers and the figures.",
+    permissions: normalisePermissions(["books:write", "orders:read", "customers:read", "analytics:read"]),
+  },
   read_only: {
     name: "Read-only",
     description: "Can look at everything except billing and the team, and change nothing.",
-    permissions: normalisePermissions(["orders:read", "products:read", "customers:read", "marketing:read", "analytics:read", "website:read", "bookings:read", "support:read", "settings:read"]),
+    permissions: normalisePermissions(["orders:read", "products:read", "customers:read", "marketing:read", "analytics:read", "website:read", "bookings:read", "support:read", "settings:read", "books:read"]),
   },
 };
 

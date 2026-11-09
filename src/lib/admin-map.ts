@@ -1077,6 +1077,9 @@ const PAGES: readonly AdminPage[] = [
   account("account.support", "/account/support", "Support", "The support inboxes of every store where you may read them, in one list: who is waiting and what was said, filterable by store.", {
     keywords: ["inbox", "live chat", "customer service", "conversations"],
   }),
+  account("account.books", "/account/books", "Books", "An accountant's clients (D512): every store whose books you keep or read, each with the VAT term to report and when it is due, supplier invoices due, bank lines and documents waiting, receipts in the inbox and how far the books are locked, the most pressing first.", {
+    keywords: ["accountant", "clients", "bookkeeping", "vat", "ledger"],
+  }),
   account("account.kaizen_support", "/account/kaizen-support", "Kaizena Flow support", "Ask Kaizena Flow itself for help (a problem with the admin, billing with Kaizena Flow, how something works): your conversations with Kaizena Flow's support, answered first by Kaizena Flow's assistant and then by people from Kaizena Flow, with answers also by email. A new request may name the store it is about. ?c= opens one.", {
     keywords: ["help", "contact kaizen", "kaizen support", "bug", "problem", "ask kaizen"],
     tasks: ["Ask Kaizena Flow for help", "Read Kaizena Flow's answer to a request"],

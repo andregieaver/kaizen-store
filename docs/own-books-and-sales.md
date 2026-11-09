@@ -241,7 +241,7 @@ accounts with Brønnøysund and is audited unless it may opt out (section 4.4).
 from Kaizena Flow; then a full financial year closed in Kaizena Flow (at the earliest the AS's first year, 2027, kept beside Tripletex;
 section 4.5). Human Web stops paying for Tripletex.
 
-**B6. Accountants (proven at Human Web, then the gate for ring 2).** An accountant is a person with access to many clients' stores: a
+**B6. Accountants (proven at Human Web, then the gate for ring 2).** (Built, D512: the books an area of their own, `books:read` and `books:write`; the Accountant's starting role; the accountant's lock, which only they move back; Your account → Books across their clients. The owner invites an accountant on the store's Team page in the Accountant role.) An accountant is a person with access to many clients' stores: a
 role template *Accountant* (today's templates are Orders, Products, Marketing, Content, Analytics, Support agent and Read-only,
 `src/lib/permissions.ts`) with new `books:read`/`books:write` permissions, an invitation from the owner, and a screen across all their
 clients: VAT due, bank lines not matched, supplier invoices not approved, periods not locked. The accountant locks a period, and the

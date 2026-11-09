@@ -36,20 +36,24 @@ export const ACCOUNT_EXTRA = ["/account/kaizen-life", "/account/delete"];
 
 type Link = { href: string; label: string; exact?: boolean; icon?: NavIconName };
 /** Who the person is at this level: an owner of a store, someone with Work in a store, someone who may read a store's support inbox (D216). */
-export type OwnerWho = { owner: boolean; work: boolean; support?: boolean; domains?: boolean };
+export type OwnerWho = { owner: boolean; work: boolean; support?: boolean; domains?: boolean; books?: boolean };
 
 /** The owner's combined support inbox (D216): every store where the person may read support. */
 export const SUPPORT_PATH = "/account/support";
 
+/** An accountant's clients (B6, D512): the books of every store whose books the person keeps or reads, with what each needs. */
+export const BOOKS_PATH = "/account/books";
+
 const accountItems = (who: OwnerWho) => ACCOUNT_ITEMS.filter((i) => (i.holder ? who.owner || who.domains : who.owner || !i.owner));
 const accountPaths = (who: OwnerWho) => [...accountItems(who).map((i) => i.path), ...ACCOUNT_EXTRA];
 
-/** The tabs: Home (owners), Stores, Support (where the person may read a store's inbox, with the number waiting), Work (owners, or where a store has it on) and Account. */
+/** The tabs: Home (owners), Stores, Support (where the person may read a store's inbox, with the number waiting), Books (an accountant's clients, D512), Work (owners, or where a store has it on) and Account. */
 export function ownerTabs(who: OwnerWho, counts: { support?: number } = {}): (Link & { icon: NavIconName; also?: string[]; badge?: number; foot?: boolean })[] {
   return [
     ...(who.owner ? [{ href: OWNER_BASE, label: "Home", exact: true, icon: "home" as const }] : []),
     { href: `${OWNER_BASE}/stores`, label: "Stores", icon: "shopping-bag" as const },
     ...(who.support ? [{ href: `${OWNER_BASE}${SUPPORT_PATH}`, label: "Support", icon: "chat" as const, ...(counts.support ? { badge: counts.support } : {}) }] : []),
+    ...(who.books ? [{ href: `${OWNER_BASE}${BOOKS_PATH}`, label: "Books", icon: "book-open" as const }] : []),
     ...(who.work ? [{ href: WORK_ROOT, label: "Work", icon: "briefcase" as const }] : []),
     // Account sits at the rail's foot (D219), as Settings does in a store.
     { href: `${OWNER_BASE}/account`, label: "Account", exact: true, icon: "user" as const, also: accountPaths(who).map((p) => `${OWNER_BASE}${p}`), foot: true },
@@ -62,6 +66,7 @@ export function ownerAreas(who: OwnerWho): { prefixes: string[]; exact?: string[
     { prefixes: [], exact: [OWNER_BASE], groups: [] },
     { prefixes: [`${OWNER_BASE}/stores`], groups: [] },
     { prefixes: [`${OWNER_BASE}${SUPPORT_PATH}`], groups: [] },
+    { prefixes: [`${OWNER_BASE}${BOOKS_PATH}`], groups: [] },
     { prefixes: [WORK_ROOT], groups: [] },
     {
       prefixes: accountPaths(who).map((p) => `${OWNER_BASE}${p}`),

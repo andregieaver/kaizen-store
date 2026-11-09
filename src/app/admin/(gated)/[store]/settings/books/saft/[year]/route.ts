@@ -17,7 +17,7 @@ const stampIn = (at: Date, timeZone: string) =>
  */
 export async function GET(_request: Request, { params }: RouteContext<"/admin/[store]/settings/books/saft/[year]">) {
   const { store: slug, year } = await params;
-  const member = await requirePermission(slug, "settings:read");
+  const member = await requirePermission(slug, "books:read");
   const book = await openBookOf(member.store.id);
   if (!book || !/^\d{4}$/.test(year)) return new Response("Not found", { status: 404 });
   const now = new Date();

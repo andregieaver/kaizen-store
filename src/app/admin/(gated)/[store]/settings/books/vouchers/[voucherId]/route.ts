@@ -9,7 +9,7 @@ import { readVoucher } from "@/server/purchases";
  */
 export async function GET(_request: Request, { params }: RouteContext<"/admin/[store]/settings/books/vouchers/[voucherId]">) {
   const { store: slug, voucherId } = await params;
-  const { store } = await requirePermission(slug, "settings:read");
+  const { store } = await requirePermission(slug, "books:read");
   if (!z.uuid().safeParse(voucherId).success) return new Response("Not found", { status: 404 });
   const voucher = await readVoucher(store.id, voucherId);
   if (!voucher) return new Response("Not found", { status: 404 });

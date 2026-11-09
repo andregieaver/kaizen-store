@@ -24,7 +24,7 @@ import { checkLimit } from "./limits";
 type Row = Record<string, unknown>;
 
 /**
- * A store's roles and who holds them (wave 1, 1f, docs/wave-1-trust.md 2.7): the six templates, the owner's own roles, assigning a
+ * A store's roles and who holds them (wave 1, 1f, docs/wave-1-trust.md 2.7): the starting roles (`ROLE_TEMPLATES`, the Accountant's since D512), the owner's own roles, assigning a
  * role to a member, and collaborators (an agency's account with a role and an expiry). Only an owner changes any of it
  * (`staff:write` is held by the owner role only), and a role can only ever contain the keys a custom role may hold, so a role can
  * never grant the power to invite people, change roles or change the plan. The store always keeps one active owner (the database's
@@ -62,7 +62,8 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 /**
- * Makes the six role templates the store has not been offered yet (Orders, Products, Marketing, Content, Analytics, Read-only).
+ * Makes the role templates the store has not been offered yet (Orders, Products, Marketing, Content, Analytics, Support agent, Accountant,
+ * Read-only).
  * Idempotent and safe to run when the Team or roles page loads and before a role is given to a member. A template an owner deleted
  * stays in `stores.role_templates_offered` and is never made again; one that exists (made by an earlier call, or by a racing one)
  * is left as it is, because the template key is unique per store. The owner can edit or delete them like any role.

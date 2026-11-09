@@ -8,7 +8,7 @@ import { readInboxDocument } from "@/server/books-inbox";
  */
 export async function GET(_request: Request, { params }: RouteContext<"/admin/[store]/settings/books/inbox/[documentId]">) {
   const { store: slug, documentId } = await params;
-  const { store } = await requirePermission(slug, "settings:read");
+  const { store } = await requirePermission(slug, "books:read");
   const doc = await readInboxDocument(store.id, documentId);
   if (!doc || doc.status !== "waiting") return new Response("Not found", { status: 404 });
   const name = doc.fileName.replace(/[^\w.\- ]+/g, "_");

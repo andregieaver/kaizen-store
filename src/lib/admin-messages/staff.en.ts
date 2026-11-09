@@ -25,6 +25,7 @@ export const staffEn = {
     settings: "Settings",
     billing: "Billing",
     staff: "Team",
+    books: "Books",
     platform: "Platform",
     account: "Account security",
   },
@@ -36,6 +37,7 @@ export const staffEn = {
     content: { name: "Content", description: "Writes and designs the site: pages, blog, menus, pictures and translations." },
     analytics: { name: "Analytics", description: "Reads the figures and what lies behind them." },
     support: { name: "Support agent", description: "Answers customers in the support inbox, and can look up their orders, accounts and products." },
+    accountant: { name: "Accountant", description: "Keeps the books: posts, matches the bank, files VAT, locks periods and closes the year, and reads orders, customers and the figures." },
     read_only: { name: "Read-only", description: "Can look at everything except billing and the team, and change nothing." },
   },
   team: {
@@ -47,7 +49,7 @@ export const staffEn = {
     members: "Members",
     /** Kaizena Flow's own store (D466): its team is the platform admins. */
     houseTitle: "This is Kaizena Flow's own store",
-    houseText: "Everyone who runs the platform works here as an owner, and nobody else yet: they are added and removed with the platform admins.",
+    houseText: "Everyone who runs the platform works here: its owners as owners, its other roles as admins in the role of the same work. They are added, changed and removed on the platform's Team page.",
     collaboratorUntil: "Collaborator until {date}",
     twoStepOn: "Two-step on",
     noTwoStep: "No two-step",

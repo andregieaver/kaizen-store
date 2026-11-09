@@ -52,11 +52,12 @@ import {
 } from "@/lib/ledger";
 import { parseAmount } from "@/lib/field-money";
 import { mainCurrency } from "@/lib/markets";
+import { can } from "@/lib/permissions";
 
 import { loadDocument, type DocumentKind } from "./accounting-documents";
 import { compareWithTripletex } from "./ledger-compare";
 import { matchAllBankStatements, matchBankStatement } from "./bank-statements";
-import { audit, type Membership } from "./auth";
+import { audit, holderOf, type Membership } from "./auth";
 import { log } from "./log";
 import { getTripletexConnection } from "./tripletex";
 import { col, typedRow, typedRows } from "./typed-rows";
@@ -78,6 +79,8 @@ export type LedgerBook = {
   openedOn: string;
   closedOn: string | null;
   lockedThrough: string | null;
+  /** Whether the lock is the accountant's, which only they move back (D512). */
+  lockHeld: boolean;
   /** How long its VAT terms are (D496). */
   vatTerm: "two_months" | "year";
 };
@@ -91,6 +94,7 @@ const BOOK = z.object({
   opened_on: col.text,
   closed_on: col.textOrNull,
   locked_through: col.textOrNull,
+  lock_held: col.bool,
   vat_term: z.enum(["two_months", "year"]),
 });
 const toBook = (r: z.infer<typeof BOOK>): LedgerBook => ({
@@ -102,6 +106,7 @@ const toBook = (r: z.infer<typeof BOOK>): LedgerBook => ({
   openedOn: r.opened_on,
   closedOn: r.closed_on,
   lockedThrough: r.locked_through,
+  lockHeld: r.lock_held,
   vatTerm: r.vat_term,
 });
 
@@ -109,7 +114,7 @@ const toBook = (r: z.infer<typeof BOOK>): LedgerBook => ({
 export async function openBookOf(storeId: string): Promise<LedgerBook | null> {
   const row = await typedRow(
     BOOK,
-    sql`select id, legal_name, organisation_number, country, currency, opened_on::text, closed_on::text, locked_through::text, vat_term
+    sql`select id, legal_name, organisation_number, country, currency, opened_on::text, closed_on::text, locked_through::text, lock_held, vat_term
           from commerce.ledger_books where store_id = ${storeId}::uuid and closed_on is null`,
   );
   return row ? toBook(row) : null;
@@ -400,17 +405,36 @@ export async function reverseLedgerEntry(member: Membership, entryId: string, da
 }
 
 /** Locks the store's open book through a day: nothing dated on or before it is posted after. Moving it back is the owner's too, and audited. */
-export async function lockLedgerThrough(member: Membership, day: string | null): Promise<{ ok: boolean }> {
-  if (day !== null && !isDay(day)) return { ok: false };
+export type LockProblem = "invalid" | "held";
+
+/** Whether a member locks as an accountant (D512): someone who keeps the books without owning the store. */
+export const locksAsAccountant = (member: Membership): boolean => !can(holderOf(member), "owner");
+
+/**
+ * Locks the books through a day, or opens them (null). A lock an accountant set is held (B6, D512): the owner may lock further but never
+ * move it back, and an accountant (a member who keeps the books without owning the store) opens it again. Audited.
+ */
+export async function lockLedgerThrough(member: Membership, day: string | null): Promise<{ ok: true } | { ok: false; problem: LockProblem }> {
+  if (day !== null && !isDay(day)) return { ok: false, problem: "invalid" };
+  const accountant = locksAsAccountant(member);
   const book = await typedRow(
-    z.object({ id: col.uuid, before: col.textOrNull }),
-    sql`update commerce.ledger_books b set locked_through = ${day}::date, updated_at = now()
-          from (select id, locked_through from commerce.ledger_books where store_id = ${member.store.id}::uuid and closed_on is null for update) old
-         where b.id = old.id and (${day}::date is null or ${day}::date >= b.opened_on)
-         returning b.id, old.locked_through::text as before`,
+    z.object({ id: col.uuid, before: col.textOrNull, held: col.bool, done: col.bool }),
+    sql`with old as (select id, opened_on, locked_through, lock_held from commerce.ledger_books where store_id = ${member.store.id}::uuid and closed_on is null for update),
+         moved as (
+           update commerce.ledger_books b
+              set locked_through = ${day}::date,
+                  lock_held = case when ${accountant} then ${day}::date is not null else old.lock_held end,
+                  locked_by = ${member.account.id}::uuid,
+                  updated_at = now()
+             from old
+            where b.id = old.id and (${day}::date is null or ${day}::date >= old.opened_on)
+              and (${accountant} or not old.lock_held or (${day}::date is not null and old.locked_through is not null and ${day}::date >= old.locked_through))
+            returning b.id)
+        select old.id, old.locked_through::text as before, old.lock_held as held, exists (select 1 from moved) as done from old`,
   );
-  if (!book) return { ok: false };
-  await audit(member.account.id, member.store.id, "work.ledger_locked", { bookId: book.id, through: day, before: book.before });
+  if (!book) return { ok: false, problem: "invalid" };
+  if (!book.done) return { ok: false, problem: book.held && (day === null || (book.before !== null && day < book.before)) ? "held" : "invalid" };
+  await audit(member.account.id, member.store.id, "work.ledger_locked", { bookId: book.id, through: day, before: book.before, accountant });
   return { ok: true };
 }
 

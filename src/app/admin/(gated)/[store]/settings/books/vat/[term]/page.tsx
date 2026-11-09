@@ -85,13 +85,13 @@ async function TripletexComparison({ storeId, ours, w, money, amount }: { storeI
  */
 export default async function VatReturnPage({ params }: PageProps<"/admin/[store]/settings/books/vat/[term]">) {
   const { store: slug, term: termKey } = await params;
-  const member = await requirePermission(slug, "settings:read");
+  const member = await requirePermission(slug, "books:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const books = adminText(lang, "books");
   const w = books.vatReturn;
   const locale = ADMIN_LANG_FACTS[lang].locale;
-  const owner = memberCan(member, "owner");
+  const owner = memberCan(member, "books:write");
   const today = todayIn(new Date(), store.timeZone);
   const book: LedgerBook | null = await openBookOf(store.id);
   const day = (d: string) => formatStoreDay(d, locale);

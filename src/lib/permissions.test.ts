@@ -32,11 +32,12 @@ const admin: PermissionHolder = { role: "admin" };
 const withRole = (permissions: string[], extra: Partial<PermissionHolder> = {}): PermissionHolder => ({ role: "admin", permissions, ...extra });
 
 describe("the keys", () => {
-  it("are eleven areas with read and write, and the owner key: 23 in all, 20 of them grantable", () => {
-    expect(AREAS).toHaveLength(11);
-    expect(AREA_PERMISSIONS).toHaveLength(22);
-    expect(PERMISSION_KEYS).toHaveLength(23);
-    expect(GRANTABLE_PERMISSIONS).toHaveLength(20);
+  it("are twelve areas with read and write, and the owner key: 25 in all, 22 of them grantable (the books its own area, D512)", () => {
+    expect(AREAS).toHaveLength(12);
+    expect(AREA_PERMISSIONS).toHaveLength(24);
+    expect(PERMISSION_KEYS).toHaveLength(25);
+    expect(GRANTABLE_PERMISSIONS).toHaveLength(22);
+    expect(GRANTABLE_PERMISSIONS).toEqual(expect.arrayContaining(["books:read", "books:write"]));
     expect(OWNER_HELD).toEqual(["owner", "staff:write", "billing:write"]);
     for (const key of OWNER_HELD) expect(GRANTABLE_PERMISSIONS as readonly string[]).not.toContain(key);
   });
@@ -46,9 +47,11 @@ describe("the keys", () => {
     for (const area of WORKING_AREAS) expect(STORE_SECTIONS.map((s) => s.key as string)).toContain(area);
   });
 
-  it("give the default admin what an admin could do before roles: every working area, and to see the team and the plan", () => {
-    expect(ADMIN_DEFAULT).toHaveLength(WORKING_AREAS.length * 2 + 2);
-    expect(ADMIN_DEFAULT).toEqual(expect.arrayContaining(["orders:write", "settings:write", "staff:read", "billing:read"]));
+  it("give the default admin what an admin could do before roles: every working area, and to see the team, the plan and the books", () => {
+    expect(ADMIN_DEFAULT).toHaveLength(WORKING_AREAS.length * 2 + 3);
+    expect(ADMIN_DEFAULT).toEqual(expect.arrayContaining(["orders:write", "settings:write", "staff:read", "billing:read", "books:read"]));
+    // Changing the books was the owner's alone before D512, and is still not an admin's by default.
+    expect(ADMIN_DEFAULT as readonly string[]).not.toContain("books:write");
     expect(ADMIN_DEFAULT as readonly string[]).not.toContain("staff:write");
     expect(ADMIN_DEFAULT as readonly string[]).not.toContain("billing:write");
   });
@@ -203,9 +206,12 @@ describe("the key a page needs", () => {
 });
 
 describe("the role templates", () => {
-  it("are the seven the owner is offered", () => {
-    expect(ROLE_TEMPLATE_KEYS).toEqual(["orders", "products", "marketing", "content", "analytics", "support", "read_only"]);
-    expect(Object.values(ROLE_TEMPLATES).map((t) => t.name)).toEqual(["Orders", "Products", "Marketing", "Content", "Analytics", "Support agent", "Read-only"]);
+  it("are the eight the owner is offered", () => {
+    expect(ROLE_TEMPLATE_KEYS).toEqual(["orders", "products", "marketing", "content", "analytics", "support", "accountant", "read_only"]);
+    expect(Object.values(ROLE_TEMPLATES).map((t) => t.name)).toEqual(["Orders", "Products", "Marketing", "Content", "Analytics", "Support agent", "Accountant", "Read-only"]);
+    // The accountant (B6, D512) keeps the books and reads what lies behind them; nothing else is theirs to change.
+    expect(ROLE_TEMPLATES.accountant.permissions.filter((k) => k.endsWith(":write"))).toEqual(["books:write"]);
+    expect(ROLE_TEMPLATES.read_only.permissions).toContain("books:read");
     // Support (D216): an agent answers in the inbox and looks up orders, customers and products; the read-only role can read the inbox.
     expect(ROLE_TEMPLATES.support.permissions).toEqual(["orders:read", "products:read", "customers:read", "support:read", "support:write"]);
     expect(ROLE_TEMPLATES.read_only.permissions).toContain("support:read");

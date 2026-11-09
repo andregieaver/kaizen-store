@@ -20,7 +20,7 @@ import {
 
 import { audit, type Membership } from "./auth";
 import { BANK_ACCOUNT } from "./bank-statements";
-import { addLedgerAccount, ledgerAccounts, ledgerTrialBalance, openBookOf, postLedgerEntry, reverseLedgerEntry, type LedgerBook } from "./ledger";
+import { addLedgerAccount, ledgerAccounts, ledgerTrialBalance, locksAsAccountant, openBookOf, postLedgerEntry, reverseLedgerEntry, type LedgerBook } from "./ledger";
 import { log } from "./log";
 import { col, typedRow } from "./typed-rows";
 
@@ -114,12 +114,18 @@ export async function yearEndYear(book: LedgerBook, today: string): Promise<numb
   return current;
 }
 
-export type CloseProblem = "no_book" | "year" | "not_ready" | "later_locked" | "post";
+export type CloseProblem = "no_book" | "year" | "not_ready" | "later_locked" | "post" | "held";
 
 /** Moves the book's lock (audited), as the lock card does. */
+/** Moves the lock for the year-end; an accountant's lock is held as theirs (D512), and the owner's leaves a held lock held. */
 async function setLock(member: Membership, bookId: string, day: string | null, why: string): Promise<void> {
-  await db().execute(sql`update commerce.ledger_books set locked_through = ${day}::date, updated_at = now() where id = ${bookId}::uuid and store_id = ${member.store.id}::uuid`);
-  await audit(member.account.id, member.store.id, "work.ledger_locked", { bookId, through: day, why });
+  const accountant = locksAsAccountant(member);
+  await db().execute(sql`
+    update commerce.ledger_books
+       set locked_through = ${day}::date, locked_by = ${member.account.id}::uuid,
+           lock_held = case when ${accountant} then ${day}::date is not null else lock_held end, updated_at = now()
+     where id = ${bookId}::uuid and store_id = ${member.store.id}::uuid`);
+  await audit(member.account.id, member.store.id, "work.ledger_locked", { bookId, through: day, why, accountant });
 }
 
 /**
@@ -162,6 +168,8 @@ export async function reopenYear(member: Membership, year: number): Promise<{ ok
   if (!book) return { ok: false, problem: "no_book" };
   const end = lastDayOf(year);
   if (book.lockedThrough !== null && book.lockedThrough > end) return { ok: false, problem: "later_locked" };
+  // A year the accountant closed is opened again by the accountant (D512).
+  if (book.lockHeld && !locksAsAccountant(member)) return { ok: false, problem: "held" };
   const entry = await closingEntry(book.id, year);
   if (!entry && !(book.lockedThrough !== null && book.lockedThrough >= end)) return { ok: false, problem: "not_closed" };
   const before = lastDayOf(year - 1);

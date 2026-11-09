@@ -1727,7 +1727,7 @@ export const storeRoles = commerce.table(
     check("store_roles_name", sql`length(btrim(${t.name})) between 1 and 60`),
     check(
       "store_roles_template",
-      sql`${t.template} is null or ${t.template} in ('orders', 'products', 'marketing', 'content', 'analytics', 'support', 'read_only')`,
+      sql`${t.template} is null or ${t.template} in ('orders', 'products', 'marketing', 'content', 'analytics', 'support', 'accountant', 'read_only')`,
     ),
     check("store_roles_permissions", sql`${t.permissions} <@ array[${grantableList}]::text[]`),
   ],
@@ -18108,6 +18108,12 @@ export const ledgerBooks = commerce.table(
     openedOn: date("opened_on", { mode: "string" }).notNull(),
     closedOn: date("closed_on", { mode: "string" }),
     lockedThrough: date("locked_through", { mode: "string" }),
+    /**
+     * Whether the lock is the accountant's (B6, D512): set by a member who keeps the books without owning the store, it is moved back only by
+     * such a member, never by the owner. Who set it last.
+     */
+    lockHeld: boolean("lock_held").notNull().default(false),
+    lockedBy: uuid("locked_by").references(() => accounts.id, { onDelete: "set null" }),
     /** How long its VAT terms are (D496): `two_months` (the rule) or `year` (a small business Skatteetaten allows to report yearly). */
     vatTerm: text("vat_term").notNull().default("two_months"),
     openedBy: uuid("opened_by").references(() => accounts.id, { onDelete: "set null" }),
@@ -18118,6 +18124,7 @@ export const ledgerBooks = commerce.table(
     unique("ledger_books_store_id_key").on(t.storeId, t.id),
     uniqueIndex("ledger_books_open_key").on(t.storeId).where(sql`${t.closedOn} is null`),
     index("ledger_books_opened_by_idx").on(t.openedBy),
+    index("ledger_books_locked_by_idx").on(t.lockedBy),
     check("ledger_books_country", sql`${t.country} ~ '^[A-Z]{2}$' and ${t.currency} ~ '^[A-Z]{3}$'`),
     check("ledger_books_name", sql`char_length(${t.legalName}) between 1 and 200 and char_length(${t.organisationNumber}) <= 40`),
     check("ledger_books_closed", sql`${t.closedOn} is null or ${t.closedOn} >= ${t.openedOn}`),

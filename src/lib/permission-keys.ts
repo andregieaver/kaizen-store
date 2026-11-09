@@ -6,8 +6,11 @@
  * without the app's path aliases.
  */
 
-/** The areas of a store's admin, the store navigation's sections (D147) plus `billing` and `staff`, which live in the Settings sidebar. */
-export const AREAS = ["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "support", "settings", "billing", "staff"] as const;
+/**
+ * The areas of a store's admin, the store navigation's sections (D147) plus `billing` and `staff`, which live in the Settings sidebar, and
+ * `books` (B6, D512): the store's own books, Settings → Books, kept apart so an accountant may keep them without the rest of Settings.
+ */
+export const AREAS = ["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "support", "settings", "billing", "staff", "books"] as const;
 export type Area = (typeof AREAS)[number];
 
 /** The areas that are working areas: what an admin can do in without being the owner. */
@@ -19,21 +22,28 @@ export type AreaPermission = `${Area}:${Access}`;
 export type PermissionKey = AreaPermission | "owner";
 
 export const AREA_PERMISSIONS: readonly AreaPermission[] = AREAS.flatMap((area) => [`${area}:read`, `${area}:write`] as const);
-/** All 23 keys. */
+/** All 25 keys. */
 export const PERMISSION_KEYS: readonly PermissionKey[] = [...AREA_PERMISSIONS, "owner"];
 
 /** Held by owners only in this wave: a role must not be able to grant the power to change roles, the plan or what only the owner may. */
 export const OWNER_HELD: readonly PermissionKey[] = ["owner", "staff:write", "billing:write"];
 
-/** The 20 keys a custom role may contain. */
+/** The 22 keys a custom role may contain. */
 export const GRANTABLE_PERMISSIONS: readonly AreaPermission[] = AREA_PERMISSIONS.filter((key) => !(OWNER_HELD as readonly string[]).includes(key));
 
-/** What an `admin` with no custom role can do: every `read` and `write` of the working areas, and to see the team and the plan. */
+/**
+ * What an `admin` with no custom role can do: every `read` and `write` of the working areas, and to see the team, the plan and the books
+ * (changing the books is the owner's and a role's that grants it, such as the accountant's, D512).
+ */
 export const ADMIN_DEFAULT: readonly AreaPermission[] = [
   ...WORKING_AREAS.flatMap((area) => [`${area}:read`, `${area}:write`] as const),
   "staff:read",
   "billing:read",
+  "books:read",
 ];
+
+/** The areas a custom role chooses a level in (the role editor's rows): the working areas and the books. */
+export const ROLE_AREAS = [...WORKING_AREAS, "books"] as const satisfies readonly Area[];
 
 export const isPermissionKey = (value: unknown): value is PermissionKey => (PERMISSION_KEYS as readonly unknown[]).includes(value);
 export const isGrantable = (value: unknown): value is AreaPermission => (GRANTABLE_PERMISSIONS as readonly unknown[]).includes(value);

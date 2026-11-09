@@ -9,8 +9,8 @@
  * the two together.
  */
 
-/** The areas of an entry: the store admin's ten, the platform's, and a person's own account. */
-export const AUDIT_AREA_KEYS = ["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "support", "settings", "billing", "staff", "platform", "account"] as const;
+/** The areas of an entry: the store admin's twelve (the books their own since D512), the platform's, and a person's own account. */
+export const AUDIT_AREA_KEYS = ["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "support", "settings", "billing", "staff", "books", "platform", "account"] as const;
 export type AuditArea = (typeof AUDIT_AREA_KEYS)[number];
 
 export const isAuditArea = (value: unknown): value is AuditArea => (AUDIT_AREA_KEYS as readonly unknown[]).includes(value);
@@ -199,6 +199,13 @@ const PREFIXES: Record<string, AuditArea> = {
   "cookies.": "settings",
   "google.": "settings",
   "work.": "settings",
+  // The store's own books (D512): an area of their own, so an accountant reads what was done in them.
+  "work.ledger_": "books",
+  "work.bank_": "books",
+  "work.purchase_": "books",
+  "work.supplier_invoice_": "books",
+  "work.recurring_cost_": "books",
+  "work.books_inbox_": "books",
   // Customer notifications, staff alerts and automation rules (wave 3, D238): the store's settings. A hold (`order.held`) is `order.`'s.
   "notification.": "settings",
   "automation.": "settings",

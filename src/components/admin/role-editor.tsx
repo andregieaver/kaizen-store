@@ -1,5 +1,5 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { AREA_LABELS, WORKING_AREAS, levelIn, type AreaLevel } from "@/lib/permissions";
+import { AREA_LABELS, ROLE_AREAS, levelIn, type AreaLevel } from "@/lib/permissions";
 import { LEVELS, levelField } from "@/lib/role-form";
 import { staffEn, type StaffMessages } from "@/lib/admin-messages/staff.en";
 
@@ -51,7 +51,7 @@ export function RoleEditor({
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {WORKING_AREAS.map((area) => {
+            {ROLE_AREAS.map((area) => {
               const chosen: AreaLevel = levelIn(role?.permissions ?? [], area);
               return (
                 <tr key={area}>

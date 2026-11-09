@@ -491,6 +491,7 @@ export const booksEn = {
       later_locked: "The books are locked into a later year. Move the lock back first.",
       post: "The closing entry could not be posted. Try again.",
       not_closed: "That year is not closed.",
+      held: "Your accountant closed this year. Only they can open it again: ask them.",
     } as Record<string, string>,
   },
   opening: {
@@ -567,6 +568,8 @@ export const booksEn = {
     button: "Lock",
     done: "Locked.",
     invalid: "Choose a day after the books open.",
+    held: "Your accountant locked the books through this day. Only they can move it back: ask them.",
+    heldNote: "Locked by your accountant: only they move the day back.",
   },
   earlier: {
     title: "Open the books earlier",
@@ -588,6 +591,28 @@ export const booksEn = {
     open: "The books are open already.",
     no_pack: "Books are kept here for Norwegian businesses first.",
     date: "Choose a real day.",
+  },
+  /** An accountant's clients (B6, D512): Your account → Books, every store whose books the person keeps or reads. */
+  clients: {
+    title: "Books",
+    description: "Every store whose books you keep or read, with what each needs from you now, the most pressing first.",
+    none: "You keep no store's books yet. An owner gives you their books by adding you to their team in the Accountant role.",
+    store: "Store",
+    needs: "What it needs",
+    open: "Open its books",
+    nothing: "Nothing waits.",
+    yours: "Yours",
+    reads: "Read only",
+    notOpen: "The books are not open yet: the owner opens them under Settings → Books.",
+    vat: "VAT {term} due {due}: {amount}",
+    vatLate: "VAT {term} was due {due}: {amount}",
+    bank: { one: "1 bank line to book", many: "{n} bank lines to book" },
+    waiting: { one: "1 document waits for the books", many: "{n} documents wait for the books" },
+    bills: { one: "1 supplier invoice due", many: "{n} supplier invoices due" },
+    inbox: { one: "1 receipt in the inbox", many: "{n} receipts in the inbox" },
+    locked: "Locked through {day}",
+    lockedHeld: "Locked through {day}, by the accountant",
+    notLocked: "Not locked",
   },
 };
 

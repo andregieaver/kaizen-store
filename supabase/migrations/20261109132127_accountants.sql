@@ -1,0 +1,10 @@
+ALTER TABLE "commerce"."audit_log" DROP CONSTRAINT "audit_log_area";--> statement-breakpoint
+ALTER TABLE "commerce"."store_roles" DROP CONSTRAINT "store_roles_template";--> statement-breakpoint
+ALTER TABLE "commerce"."store_roles" DROP CONSTRAINT "store_roles_permissions";--> statement-breakpoint
+ALTER TABLE "commerce"."ledger_books" ADD COLUMN "lock_held" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."ledger_books" ADD COLUMN "locked_by" uuid;--> statement-breakpoint
+ALTER TABLE "commerce"."ledger_books" ADD CONSTRAINT "ledger_books_locked_by_accounts_id_fk" FOREIGN KEY ("locked_by") REFERENCES "commerce"."accounts"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "ledger_books_locked_by_idx" ON "commerce"."ledger_books" USING btree ("locked_by");--> statement-breakpoint
+ALTER TABLE "commerce"."audit_log" ADD CONSTRAINT "audit_log_area" CHECK ("commerce"."audit_log"."area" is null or "commerce"."audit_log"."area" in ('orders', 'products', 'customers', 'marketing', 'analytics', 'website', 'bookings', 'support', 'settings', 'billing', 'staff', 'books', 'platform', 'account'));--> statement-breakpoint
+ALTER TABLE "commerce"."store_roles" ADD CONSTRAINT "store_roles_template" CHECK ("commerce"."store_roles"."template" is null or "commerce"."store_roles"."template" in ('orders', 'products', 'marketing', 'content', 'analytics', 'support', 'accountant', 'read_only'));--> statement-breakpoint
+ALTER TABLE "commerce"."store_roles" ADD CONSTRAINT "store_roles_permissions" CHECK ("commerce"."store_roles"."permissions" <@ array['orders:read', 'orders:write', 'products:read', 'products:write', 'customers:read', 'customers:write', 'marketing:read', 'marketing:write', 'analytics:read', 'analytics:write', 'website:read', 'website:write', 'bookings:read', 'bookings:write', 'support:read', 'support:write', 'settings:read', 'settings:write', 'billing:read', 'staff:read', 'books:read', 'books:write']::text[]);

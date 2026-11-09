@@ -9,12 +9,19 @@ features: []
 plans: []
 order: 1000
 checked: 2026-11-09
-sources: [D438, D439, D440, D441, D458, D464, D511]
+sources: [D438, D439, D440, D441, D458, D464, D511, D512]
 ---
 
 Every change to a published contract gets a version here, newest first: the Admin API (`/api/admin/v1/openapi.json`), the storefront API
 (`/api/storefront/v1/openapi.json`), the webhook topics (`/api/webhooks/v1/topics.json`) and the MCP catalogues (`/api/mcp/catalogue.json`,
 `/api/ucp/catalogue.json`). Within a major version nothing a caller relies on is renamed or removed; answers and payloads may gain fields.
+
+## 1.12 — 2026-11-09
+
+An addition to the scopes an app or assistant may ask for (D512).
+
+- `books:read` and `books:write`: a store's own books (Settings → Books), now an area of their own so an accountant may keep them
+  without the rest of Settings. Nothing already granted changes.
 
 ## 1.11 — 2026-11-09
 

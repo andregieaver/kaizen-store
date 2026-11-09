@@ -25,7 +25,7 @@ import { bankAmount } from "@/lib/bank-statement";
 import { receiptAgrees } from "@/lib/receipt-reading";
 import type { PurchaseKind, PurchaseVatRate } from "@/lib/purchases";
 import { importBankStatement, STATEMENT_BYTES } from "@/server/bank-statements";
-import { checkOwnerRole } from "@/server/permissions";
+import { checkOwnerRole, checkPermission } from "@/server/permissions";
 import { setVatTermSize } from "@/server/vat-return";
 import { recurringInputOf } from "@/lib/recurring-costs";
 import { endRecurringCost, recurringView, saveRecurringCost } from "@/server/recurring-costs";
@@ -36,13 +36,22 @@ import { closeYear, reopenYear } from "@/server/year-end";
 
 /**
  * Settings → Books (B2, D478): opening the store's books, posting an entry by hand, reversing one, and locking them through a day. Each
- * action checks the member is the store's owner, whatever a stale page sends, and answers in their language.
+ * action checks, whatever a stale page sends, that the member keeps the books (`books:write`: the owner, or a role that grants it such as
+ * an accountant's, D512), or for opening them that they are the store's owner, and answers in their language.
  */
 
 type Owner = { member: Membership; w: BooksMessages; refused: null } | { member: null; w: null; refused: string };
 
+/** The store's owner: opening the books, opening them earlier and their opening balance define them, and are the owner's. */
 async function owner(storeSlug: string): Promise<Owner> {
   const member = await checkOwnerRole(storeSlug);
+  if (!member) return { member: null, w: null, refused: adminText(await actionAdminLang(), "books").problems.forbidden };
+  return { member, w: adminText(adminLangOf(member.account.adminLocale), "books"), refused: null };
+}
+
+/** A member who keeps the books (D512): everything done in them once they are open. */
+async function keeper(storeSlug: string): Promise<Owner> {
+  const member = await checkPermission(storeSlug, "books:write");
   if (!member) return { member: null, w: null, refused: adminText(await actionAdminLang(), "books").problems.forbidden };
   return { member, w: adminText(adminLangOf(member.account.adminLocale), "books"), refused: null };
 }
@@ -84,19 +93,19 @@ export async function openBooksEarlierAction(storeSlug: string, _state: FormStat
 
 /** *Lock*: nothing dated on or before the day is posted after it. */
 export async function lockBooksAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const through = String(form.get("through") ?? "").trim();
   const locked = await lockLedgerThrough(member, through || null);
-  if (!locked.ok) return { status: "error", messages: [w.lock.invalid], fields: { through: w.lock.invalid } };
+  if (!locked.ok) return { status: "error", messages: [w.lock[locked.problem]], fields: { through: w.lock[locked.problem] } };
   refresh();
   return { status: "ok", messages: [w.lock.done] };
 }
 
 /** *Post the entry*: an entry typed by hand (step 3b), in the series of entries by hand or of the opening balance. */
 export async function postEntryAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const text = (name: string) => String(form.get(name) ?? "");
@@ -113,7 +122,7 @@ export async function postEntryAction(storeSlug: string, _state: FormState, form
 
 /** *Reverse*: an entry turned back by one with its lines' signs turned, on its own day while that is open, else today. */
 export async function reverseEntryAction(storeSlug: string, entryId: string): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const reversed = await reverseLedgerEntry(member, entryId, todayIn(new Date(), member.store.timeZone));
@@ -143,7 +152,7 @@ export async function openingFromTripletexAction(storeSlug: string): Promise<For
 
 /** *Upload the statement*: the bank's file read into the books (B4, D486), its lines kept once and matched to the books. */
 export async function uploadBankStatementAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const file = form.get("file");
@@ -171,7 +180,7 @@ export async function uploadBankStatementAction(storeSlug: string, _state: FormS
  * (D487; the button says which, `line:invoice`), *Post it* posts the bank's own fee or interest (D488; the button names the line).
  */
 export async function payFromBankAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -250,7 +259,7 @@ export type ReceiptReadResult =
  * whether its total is the bank's amount, for the form to show. Nothing is kept or posted here; the owner posts.
  */
 export async function readReceiptAction(storeSlug: string, form: FormData): Promise<ReceiptReadResult> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { ok: false, reason: "refused" };
   const { member } = who;
   const lineId = String(form.get("line") ?? "");
@@ -266,7 +275,7 @@ export async function readReceiptAction(storeSlug: string, form: FormData): Prom
 
 /** *Add the bill* (D492): a supplier's invoice with its file, posted against what the store owes, waiting until the bank shows it paid. */
 export async function addBillAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const p = w.bills.problems;
@@ -331,7 +340,7 @@ export type BillReadResult =
 
 /** A bill read by the store's model as the owner chooses its file (D493): its fields for the form to show. Nothing is kept or posted here. */
 export async function readBillAction(storeSlug: string, form: FormData): Promise<BillReadResult> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { ok: false, reason: "refused" };
   const { member } = who;
   const file = form.get("bill");
@@ -359,7 +368,7 @@ export async function readBillAction(storeSlug: string, form: FormData): Promise
 
 /** *Your VAT terms* (D496): two months, or a year where Skatteetaten has allowed it; the owner's to say. */
 export async function setVatTermAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const book = await openBookOf(member.store.id);
@@ -378,7 +387,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * says which one is changed.
  */
 export async function saveRecurringCostAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const book = await openBookOf(member.store.id);
@@ -418,7 +427,7 @@ export async function saveRecurringCostAction(storeSlug: string, _state: FormSta
  * usual VAT, every month, from its first charge; the owner changes what is not so.
  */
 export async function recurringPressAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const today = todayIn(new Date(), member.store.timeZone);
@@ -447,7 +456,7 @@ export async function recurringPressAction(storeSlug: string, _state: FormState,
 
 /** *Not for the books* (D504): a document of the books' inbox set aside, the button naming which. */
 export async function dismissInboxAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const id = String(form.get("dismiss") ?? "");
@@ -461,7 +470,7 @@ export async function dismissInboxAction(storeSlug: string, _state: FormState, f
  * all nought removes it.
  */
 export async function saveBudgetAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const book = await openBookOf(member.store.id);
@@ -481,7 +490,7 @@ export async function saveBudgetAction(storeSlug: string, _state: FormState, for
 
 /** *Close {year}* or *Reopen {year}* (D506): the year-end's two presses, the button naming the year (`close`, `reopen`). */
 export async function yearEndAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const who = await owner(storeSlug);
+  const who = await keeper(storeSlug);
   if (who.refused !== null) return { status: "error", messages: [who.refused] };
   const { member, w } = who;
   const closing = form.get("close");

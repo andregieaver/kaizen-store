@@ -14,7 +14,7 @@ import { yearEndView } from "@/server/year-end";
  */
 export async function GET(_request: Request, { params }: RouteContext<"/admin/[store]/settings/books/naering/[year]">) {
   const { store: slug, year: raw } = await params;
-  const member = await requirePermission(slug, "settings:read");
+  const member = await requirePermission(slug, "books:read");
   const book = await openBookOf(member.store.id);
   const year = Number(raw);
   if (!book || !/^\d{4}$/.test(raw) || lastDayOf(year) < book.openedOn) return new Response("Not found", { status: 404 });
