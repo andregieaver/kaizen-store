@@ -44,14 +44,14 @@ export function YearEndCard({
   const specRows = (lines: readonly SpecLine[]) =>
     lines.map((l) => (
       <tr key={l.code}>
-        <td className="px-3 py-2 tabular-nums">{l.code}</td>
+        <td className="w-20 px-3 py-2 tabular-nums">{l.code}</td>
         <td className="px-3 py-2">{lang === "nb" ? l.nb : l.en}</td>
         <td className={cell}>{money(l.amount)}</td>
       </tr>
     ));
   const total = (label: string, amount: number) => (
     <tr className="font-medium">
-      <td />
+      <td className="w-20" />
       <td className="px-3 py-2">{label}</td>
       <td className={cell}>{money(amount)}</td>
     </tr>
