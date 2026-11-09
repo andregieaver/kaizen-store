@@ -5363,13 +5363,6 @@
       "when": 1794251280548,
       "tag": "20261109190800_platform_ad_conversions_rules",
       "breakpoints": true
-    },
-    {
-      "idx": 766,
-      "version": "7",
-      "when": 1794252084540,
-      "tag": "20261109192124_plan_campaigns",
-      "breakpoints": true
     }
   ]
 }
