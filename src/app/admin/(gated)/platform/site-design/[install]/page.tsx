@@ -6,7 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ThemeChanges } from "@/components/admin/theme-changes";
 import { ThemeEditor } from "@/components/admin/theme-editor";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { getPlatformChrome } from "@/server/platform-navigation";
 import { platformInstallPreview, whatChangesForPlatform } from "@/server/platform-theme-preview";
 
@@ -27,7 +27,7 @@ export const metadata: Metadata = { title: "Customise theme" };
  */
 export default async function CustomisePlatformThemePage({ params }: PageProps<"/admin/platform/site-design/[install]">) {
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { lang, w } = await platformSiteWords();
   const d = w.siteDesign;
   const { install: installId } = await params;

@@ -7,7 +7,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { contentProblem } from "@/lib/content-admin";
 import { PLATFORM_PAGE_LOCALES } from "@/lib/platform-lang";
-import { requirePlatformAdmin, type Account } from "@/server/auth";
+import { requirePlatform, type Account } from "@/server/auth";
 import { deleteEntry, moveEntry, publishEntry, saveEntry, unpublishEntry, type EntryContext } from "@/server/content-entries";
 import { contentTag, deleteContentType, saveContentType } from "@/server/content-types";
 import type { SaveResult } from "@/server/settings";
@@ -29,14 +29,14 @@ const actorOf = (account: Account) => ({ accountId: account.id, owner: null });
 const entryContext = (account: Account): EntryContext => ({ ...actorOf(account), locales: [...PLATFORM_PAGE_LOCALES], main: "en", currencies: [] });
 
 export async function savePlatformContentTypeAction(input: unknown): Promise<SaveResult & { id?: string }> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("website");
   const result = await saveContentType(actorOf(account), input);
   if (result.ok) updateTag(contentTag(null));
   return inWords(account, result);
 }
 
 export async function deletePlatformContentTypeAction(id: string): Promise<SaveResult> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("website");
   const result = await deleteContentType(actorOf(account), id);
   if (!result.ok) return inWords(account, result);
   updateTag(contentTag(null));
@@ -44,28 +44,28 @@ export async function deletePlatformContentTypeAction(id: string): Promise<SaveR
 }
 
 export async function savePlatformEntryAction(input: unknown): Promise<SaveResult & { id?: string }> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("website");
   const result = await saveEntry(entryContext(account), input);
   if (result.ok) updateTag(contentTag(null));
   return inWords(account, result);
 }
 
 export async function publishPlatformEntryAction(id: string): Promise<SaveResult> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("website");
   const result = await publishEntry(entryContext(account), id);
   if (result.ok) updateTag(contentTag(null));
   return inWords(account, result);
 }
 
 export async function unpublishPlatformEntryAction(id: string): Promise<SaveResult> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("website");
   const result = await unpublishEntry(actorOf(account), id);
   if (result.ok) updateTag(contentTag(null));
   return inWords(account, result);
 }
 
 export async function deletePlatformEntryAction(typeId: string, id: string): Promise<SaveResult> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("website");
   const result = await deleteEntry(actorOf(account), id);
   if (!result.ok) return inWords(account, result);
   updateTag(contentTag(null));
@@ -73,7 +73,7 @@ export async function deletePlatformEntryAction(typeId: string, id: string): Pro
 }
 
 export async function movePlatformEntryAction(id: string, direction: "earlier" | "later"): Promise<void> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("website");
   const result = await moveEntry(actorOf(account), id, direction === "earlier" ? "earlier" : "later");
   if (result.ok) {
     updateTag(contentTag(null));

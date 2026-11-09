@@ -69,7 +69,8 @@ describe("themes go through the template's cleaning (D176)", () => {
     for (const name of exported) {
       const fn = body(actions, name);
       // Either it checks (the admin and the workspace, or the admin before the server function checks the workspace), or it only refuses.
-      const checks = /\bworkspace\(presetId\)|requirePlatformAdmin\(|saveWorkspaceCssAction\(presetId/.test(fn);
+      // The admin is an owner or the platform's content role (D510): `requirePlatform("website")`.
+      const checks = /\bworkspace\(presetId\)|requirePlatform\("website"\)|requirePlatformAdmin\(|saveWorkspaceCssAction\(presetId/.test(fn);
       const refusesOnly = !/\bawait\b/.test(fn);
       expect(checks || refusesOnly, name).toBe(true);
     }

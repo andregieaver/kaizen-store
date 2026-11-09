@@ -10,7 +10,7 @@ import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { payoutFlagged } from "@/lib/payouts";
 import { share, type CurrencyFigure, type MovementFigure, type PlanSummary } from "@/lib/plan-analytics";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { planAnalytics } from "@/server/plan-analytics";
 import { platformBooksState, storesWithBooks } from "@/server/platform-books";
 import { platformPayoutsView, type PlatformPayoutRow } from "@/server/platform-payouts";
@@ -30,7 +30,7 @@ const PERIODS = [30, 90, 365] as const;
  */
 export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/admin/platform/plans/analytics">) {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "console").planAnalytics;

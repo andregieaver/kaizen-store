@@ -7,7 +7,7 @@ import { getCheckoutUi, getSaleFeeBps, listPlatformWebhooks } from "@/server/con
 import { platformModes, WEBHOOK_KINDS } from "@/server/stripe";
 
 import { connectWebhooksAction, saveCheckoutUiAction, saveSaleFeeAction } from "../actions";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -20,7 +20,7 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 export default async function PlatformStripePage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const w = adminText(adminLangOf(account.adminLocale), "platform").stripe;
   const [webhooks, saleFeeBps, checkoutUi] = await Promise.all([
     listPlatformWebhooks(),

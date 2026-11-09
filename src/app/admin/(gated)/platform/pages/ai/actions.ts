@@ -1,7 +1,7 @@
 "use server";
 
 import type { PageBrief, PagePlan, PictureJob, StudioMessage } from "@/lib/page-ai";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { buildDraft, fillPicture, hearOwner, interviewTurn, planPage, speakToOwner, type StudioOwner } from "@/server/page-ai";
 import { isPageId, readRecording, readStudioInput, readStudioPlan, unreadable } from "@/server/page-studio-input";
 import { queueStudioPictures, studioPictureStates } from "@/server/site-tools";
@@ -9,7 +9,7 @@ import { queueStudioPictures, studioPictureStates } from "@/server/site-tools";
 /** Kaizen's AI page studio (D92), for platform admins; pages are saved as drafts only. */
 
 async function studioOwner(): Promise<StudioOwner> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("website");
   return { storeId: null, storeSlug: null, account };
 }
 

@@ -6,7 +6,8 @@ import { createTestDatabase } from "./testing";
 /**
  * Kaizena Flow's own store (D466, `docs/platform-parity-plan.md` step 1), against real Postgres (PGlite) with every migration applied: the
  * migration makes it once, a website with Deals in Kaizena Flow's languages; it is never billed, closed, suspended, unmarked or made twice;
- * its members are the platform admins and only they; and it is never news to Kaizena Flow's own integrations.
+ * its owners are the platform admins, its other members the platform's team in other roles (D510), and only they; and it is never news
+ * to Kaizena Flow's own integrations.
  */
 
 let db: PGlite;
@@ -110,6 +111,29 @@ describe("Kaizena Flow's own store (D466)", () => {
     expect(await refused("update commerce.store_members set disabled_at = null where store_id = $1 and account_id = $2", [house, admin])).toMatch(
       /store_members\.house/,
     );
+  });
+
+  it("lets the platform's other roles work in it as admins, never as owners (D510)", async () => {
+    // A role other than owner is never held with platform_admin, and only the four roles exist.
+    const owner = await account(true);
+    expect(await refused("update commerce.accounts set platform_role = 'content' where id = $1", [owner])).toMatch(/accounts_platform_role/);
+    const writer = await account(false);
+    expect(await refused("update commerce.accounts set platform_role = 'boss' where id = $1", [writer])).toMatch(/accounts_platform_role/);
+
+    // A member: an admin of the store (in a store role, which the team page sets), never its owner.
+    await db.query("update commerce.accounts set platform_role = 'content' where id = $1", [writer]);
+    expect(await membership(writer)).toBeUndefined();
+    expect(await refused("insert into commerce.store_members (store_id, account_id, role) values ($1, $2, 'owner')", [house, writer])).toMatch(/store_members\.house/);
+    await db.query("insert into commerce.store_members (store_id, account_id, role) values ($1, $2, 'admin')", [house, writer]);
+    expect(await membership(writer)).toEqual({ role: "admin", active: true });
+
+    // An owner made a member stops being the store's owner; a member made an owner becomes it; off the team, out of the store.
+    await db.query("update commerce.accounts set platform_admin = false, platform_role = 'finance' where id = $1", [owner]);
+    expect(await membership(owner)).toEqual({ role: "owner", active: false });
+    await db.query("update commerce.accounts set platform_role = null, platform_admin = true where id = $1", [writer]);
+    expect(await membership(writer)).toEqual({ role: "owner", active: true });
+    await db.query("update commerce.accounts set platform_role = null where id = $1", [owner]);
+    expect(await refused("insert into commerce.store_members (store_id, account_id, role) values ($1, $2, 'admin') on conflict (store_id, account_id) do update set disabled_at = null, role = 'admin'", [house, owner])).toMatch(/store_members\.house/);
   });
 
   it("lets an account be deleted outright, taking its place in the store with it", async () => {

@@ -6,7 +6,7 @@ import { SiteSwitchCard } from "@/components/admin/site-switch-card";
 import { SectionHub } from "@/components/admin/section-hub";
 import { adminLangOf } from "@/lib/admin-lang";
 import { HOUSE_STORE_CARD, PLATFORM_HUB_INTROS, PLATFORM_HUB_TITLES, WEBSITE_ITEMS } from "@/lib/platform-nav";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { lastSiteCopy } from "@/server/house-site";
 import { siteSwitch } from "@/server/house-switch";
 
@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: "Website" };
 export default async function PlatformWebsitePage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const [last, state] = await Promise.all([lastSiteCopy(), siteSwitch()]);
   return (

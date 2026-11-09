@@ -2,13 +2,13 @@
 
 import { updateTag } from "next/cache";
 
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { deleteTextStyle, saveTextStyle, textStylesTag, type DeleteStyleResult, type TextStyleResult } from "@/server/text-styles";
 
 /** Kaizena Flow's own text styles (D393), from its builder's Styles tab: platform admins only. */
 
 export async function savePlatformTextStyleAction(payload: string): Promise<TextStyleResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   let input: unknown;
   try {
     input = JSON.parse(payload);
@@ -21,7 +21,7 @@ export async function savePlatformTextStyleAction(payload: string): Promise<Text
 }
 
 export async function deletePlatformTextStyleAction(slug: string, confirmed: boolean): Promise<DeleteStyleResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await deleteTextStyle(admin, null, String(slug), confirmed === true);
   if (result.ok) updateTag(textStylesTag(null));
   return result;

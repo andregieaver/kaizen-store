@@ -15,7 +15,7 @@ import { ScopedCss } from "@/components/custom-css";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { getPageForEdit } from "@/server/pages";
 import { getPlatformChrome } from "@/server/platform-navigation";
 import { themeStoreRoleOf } from "@/server/platform-roles";
@@ -99,7 +99,7 @@ async function platformSecondDoc(doc: DualWith, lang: AdminLang, author: string)
 /** A new page, article, header or footer in the editor; with `?with=`, beside a second document (D412). */
 export async function NewPageView({ type, searchParams }: { type: PageType; searchParams?: Query }) {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const [saved, terms, context, query] = await Promise.all([
     listSavedParts(null),
     listTerms({ storeId: null, contentType: termContentOf(type) }),
@@ -158,7 +158,7 @@ async function themeStoreView(role: "themes" | "theme") {
 /** One of Kaizen's pages or articles in the editor, opened from its list or from the site; `themeStore`: one of the theme store's own (D285). */
 export async function EditPageView({ type, params, searchParams, themeStore = false }: { type: PageType; params: Params; searchParams: Query; themeStore?: boolean }) {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const [page, query, saved, terms, base, gridTerms] = await Promise.all([
     load(type, params),
     searchParams,
@@ -230,7 +230,7 @@ export async function EditPageView({ type, params, searchParams, themeStore = fa
 /** The last saved draft, as the site will show it once published (D42); a theme's page (D285) with the first theme, or `?theme=`'s. */
 export async function PreviewPageView({ type, params, searchParams, themeStore = false }: { type: PageType; params: Params; searchParams?: Query; themeStore?: boolean }) {
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const page = await load(type, params);
   if (!page) notFound();
   const elsewhere = await editedElsewhere(type, page.id, themeStore);

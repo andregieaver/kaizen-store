@@ -3,7 +3,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowLead } from "@/components/admin/ui";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { ThemeUpdates } from "@/components/admin/theme-updates";
 import { THEME_UPDATE_KEEP_DAYS, listOfferedDesigns, platformThemeUpdates } from "@/server/design-presets";
 import { listPlatformInstalls } from "@/server/platform-theme-installs";
@@ -30,7 +30,7 @@ export const metadata: Metadata = { title: "Themes for Kaizena Flow's site" };
  */
 export default async function PlatformThemesPage() {
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { lang, w } = await platformSiteWords();
   const d = w.siteDesign;
   const [installs, offered, updates] = await Promise.all([listPlatformInstalls(), listOfferedDesigns(), platformThemeUpdates()]);

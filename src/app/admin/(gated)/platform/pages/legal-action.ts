@@ -6,13 +6,13 @@ import type { FormState } from "@/components/admin/action-form";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { PLATFORM_LEGAL_KINDS, type PlatformLegalKind } from "@/lib/platform-legal";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { PAGES_TAG } from "@/server/pages";
 import { writePlatformLegalPages } from "@/server/platform-legal";
 
 /** Writes and publishes Kaizena Flow's legal pages in English and Norwegian (D312 P5); a ticked page already written is written again. */
 export async function writeLegalPagesAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const w = adminText(adminLangOf(admin.adminLocale), "platformLegal");
   const overwrite = formData
     .getAll("overwrite")

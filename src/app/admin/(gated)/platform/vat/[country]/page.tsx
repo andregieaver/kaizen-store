@@ -7,7 +7,7 @@ import { RateForm } from "@/components/admin/vat/rate-form";
 import { RateHistory } from "@/components/admin/vat/rates-table";
 import { ShippingRulesCard } from "@/components/admin/vat/shipping-rules-card";
 import { PLATFORM_BASE } from "@/lib/platform-nav";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listShippingVatRules, listVatRates, vatCoverage } from "@/server/vat-admin";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: "VAT by country" };
 export default async function PlatformVatCountryPage({ params }: PageProps<"/admin/platform/vat/[country]">) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").vat;
   const locale = ADMIN_LANG_FACTS[lang].locale;

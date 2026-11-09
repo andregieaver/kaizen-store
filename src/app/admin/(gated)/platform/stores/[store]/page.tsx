@@ -19,7 +19,7 @@ import { storeObligations, storeState } from "@/server/store-closure";
 import { getStore } from "@/server/stores";
 
 import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { featureOffer } from "@/server/store-features";
 import { fillWords } from "@/lib/admin-fill";
@@ -39,7 +39,7 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 
 /** One store's plan with Kaizen: start, change or cancel it, and its fee. */
 export default async function PlatformStorePage({ params }: PageProps<"/admin/platform/stores/[store]">) {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").store;
   const t = adminText(lang, "platform");

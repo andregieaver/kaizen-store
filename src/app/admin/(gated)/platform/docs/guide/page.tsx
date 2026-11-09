@@ -10,7 +10,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { platformText } from "@/lib/platform-text";
 import { aiFor } from "@/server/ai";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { getDocsGuideForEdit, guideKeeping } from "@/server/docs-guide-settings";
 import { uploadsEnabled } from "@/server/media";
 
@@ -27,7 +27,7 @@ export const metadata: Metadata = { title: "Docs guide" };
  */
 export default async function DocsGuidePage() {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const w = adminText(lang, "platform").docsGuide;
   const [guide, ai, keeping] = await Promise.all([getDocsGuideForEdit(), aiFor(null), guideKeeping()]);

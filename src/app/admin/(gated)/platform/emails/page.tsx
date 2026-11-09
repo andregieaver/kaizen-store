@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { EmailLog } from "@/components/admin/email-log";
 import { emailEventsSetup } from "@/lib/email-settings";
 import { emailSettings, listEmails } from "@/server/email";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Emails" };
 export default async function PlatformEmailsPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").emails;
   const [emails, settings] = await Promise.all([listEmails({ limit: 200 }), Promise.resolve(emailSettings())]);

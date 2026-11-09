@@ -32,7 +32,7 @@ import { pictureItem } from "@/lib/product-media";
 
 import { AiError, aiFor, type ImageShape } from "./ai";
 import { makePicture } from "./ai-pictures";
-import { activeAccount, audit, type Account } from "./auth";
+import { activeAccount, audit, platformCan, type Account } from "./auth";
 import { catalogTag } from "./catalog";
 import type { ApplyDeps } from "./design-presets";
 import { log } from "./log";
@@ -230,7 +230,7 @@ export type SyncResult = { made: string[]; updated: string[]; current: string[];
  */
 export async function syncContentPacks(admin: Account, deps: PackDeps = {}): Promise<SyncResult> {
   const result: SyncResult = { made: [], updated: [], current: [], problems: [], stores: [] };
-  if (!admin.platformAdmin) return { ...result, problems: ["Only Kaizena Flow's admins set up content packs."] };
+  if (!platformCan(admin, "website")) return { ...result, problems: ["Only Kaizena Flow's admins set up content packs."] };
   for (const pack of CONTENT_PACKS) {
     try {
       let row = await packRow(pack.key);
@@ -506,7 +506,7 @@ export async function makeNextPackPicture(
   key: string,
   deps: { make?: typeof makePicture; connection?: Awaited<ReturnType<typeof aiFor>>; apply?: PackDeps["apply"] } = {},
 ): Promise<{ ok: true; made: string | null; remaining: number; store: { id: string; slug: string } } | { ok: false; problems: string[] }> {
-  if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
+  if (!platformCan(admin, "website")) return { ok: false, problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
   const pack = contentPack(key);
   const row = pack ? await packRow(pack.key) : null;
   if (!pack || !row) return { ok: false, problems: ["Set up the content packs first."] };
@@ -632,7 +632,7 @@ export async function packSlotViews(key: string): Promise<PackSlotView[] | null>
 
 /** A pack, its template's row and one of its slots' made picture, or why not: for making it again or putting back the one before. */
 async function madeSlot(admin: Account, key: string, slot: string): Promise<{ pack: ContentPack; row: PackRow; held: StoredPicture } | { problems: string[] }> {
-  if (!admin.platformAdmin) return { problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
+  if (!platformCan(admin, "website")) return { problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
   const pack = contentPack(key);
   const row = pack ? await packRow(pack.key) : null;
   if (!pack || !row || row.archived) return { problems: ["Set up the content packs first."] };
@@ -701,7 +701,7 @@ const PICTURES_AT_ONCE = 2;
  * failures. A pack already asked for keeps its place in the queue. The page no longer waits for each picture, so the person may leave it.
  */
 export async function askForPackPictures(admin: Account, keys: string[]): Promise<{ ok: true; asked: string[] } | { ok: false; problems: string[] }> {
-  if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
+  if (!platformCan(admin, "website")) return { ok: false, problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
   const asked: string[] = [];
   for (const key of keys) {
     const pack = contentPack(key);
@@ -721,7 +721,7 @@ export async function askForPackPictures(admin: Account, keys: string[]): Promis
 
 /** *Stop*: the job makes no more of the pack's pictures; one being made is finished and kept. */
 export async function stopPackPictures(admin: Account, key: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
-  if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
+  if (!platformCan(admin, "website")) return { ok: false, problems: ["Only Kaizena Flow's admins make content packs' pictures."] };
   await db().execute(sql`
     update commerce.store_starters set pictures_wanted_by = null, pictures_wanted_at = null, pack_pictures = ${WITHOUT_AGAIN} where pack_key = ${key}
   `);
@@ -773,7 +773,7 @@ export async function runPackPictures(
     let outcome: Awaited<ReturnType<typeof makeNextPackPicture>>;
     try {
       const admin = await activeAccount(claimed.wantedBy);
-      outcome = admin?.platformAdmin
+      outcome = admin && platformCan(admin, "website")
         ? await makeNextPackPicture(admin, claimed.key, deps)
         : { ok: false, problems: ["The admin who asked for these pictures is no longer one of Kaizena Flow's admins. Ask again."] };
     } catch (error) {

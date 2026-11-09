@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."accounts" ADD COLUMN "platform_role" text;--> statement-breakpoint
+ALTER TABLE "commerce"."accounts" ADD CONSTRAINT "accounts_platform_role" CHECK ("commerce"."accounts"."platform_role" is null or ("commerce"."accounts"."platform_role" in ('support', 'content', 'finance', 'read_only') and not "commerce"."accounts"."platform_admin"));

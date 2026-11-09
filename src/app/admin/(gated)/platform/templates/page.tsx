@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { LAYOUT_TYPE_LABELS } from "@/lib/page-layout";
 import { KIND_LABELS, SHARING_LABELS } from "@/lib/templates";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listMarketplaceTemplates } from "@/server/templates";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: "Templates" };
 export default async function PlatformTemplatesPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { w } = await platformSiteWords();
   const templates = await listMarketplaceTemplates();
   const hidden = templates.filter((t) => t.hidden).length;

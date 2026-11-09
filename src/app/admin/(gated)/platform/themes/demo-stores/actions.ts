@@ -10,7 +10,7 @@ import { after } from "next/server";
 import type { FormState } from "@/components/admin/action-form";
 import type { PackPictureResult } from "@/components/admin/pack-pictures";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import {
   askForPackPictures,
   askToRemakePackPicture,
@@ -35,7 +35,7 @@ function offeredChanged() {
  * no new store until it is published again.
  */
 export async function publishStarterAction(starterId: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await publishStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
@@ -47,7 +47,7 @@ export async function publishStarterAction(starterId: string): Promise<FormState
 
 /** Stops offering a demo store at once (D177): looks shown on it start new stores from the Standard store until it is published again. */
 export async function unpublishStarterAction(starterId: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await unpublishStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
@@ -58,7 +58,7 @@ export async function unpublishStarterAction(starterId: string): Promise<FormSta
 
 /** Archives a demo store (D177): unpublished and out of the list until restored. */
 export async function archiveStarterAction(starterId: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await archiveStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
@@ -67,7 +67,7 @@ export async function archiveStarterAction(starterId: string): Promise<FormState
 
 /** Restores an archived demo store (D177), unpublished. */
 export async function restoreStarterAction(starterId: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await restoreStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   offeredChanged();
@@ -76,7 +76,7 @@ export async function restoreStarterAction(starterId: string): Promise<FormState
 
 /** Deletes a demo store nothing used (D177), after the admin confirmed; its stores are closed and kept. */
 export async function deleteStarterAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (formData.get("confirm") !== "on") return { status: "error", messages: [(await platformActionWords()).confirmDelete] };
   const result = await deleteStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
@@ -86,7 +86,7 @@ export async function deleteStarterAction(starterId: string, _state: FormState, 
 
 /** Opens the demo store's admin, making the platform admin an owner of it first if they are not a member yet. */
 export async function openStarterAdminAction(starterId: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await joinStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   redirect(`/admin/${result.slug}`);
@@ -97,7 +97,7 @@ export async function openStarterAdminAction(starterId: string): Promise<FormSta
  * the next Publish. A switch off with something to know (`featureWarnings()`) needs the form's tick, as on the Features page.
  */
 export async function setStarterFeaturesAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const target = formData.getAll("features").map(String);
   const result = await setStarterFeatures(admin, starterId, target, { confirmed: formData.get("confirm") === "on" });
   if (!result.ok) {
@@ -115,7 +115,7 @@ export async function setStarterFeaturesAction(starterId: string, _state: FormSt
  * the code has a newer version. Unpublished until the admin publishes each.
  */
 export async function syncContentPacksAction(): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await syncContentPacks(admin);
   refreshPackStores(result.stores);
   refresh();
@@ -133,7 +133,7 @@ export async function syncContentPacksAction(): Promise<FormState> {
  * job's next minute. The page need not stay open.
  */
 export async function askPackPicturesAction(keys: string[]): Promise<PackPictureResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const asked = await askForPackPictures(admin, keys);
   if (!asked.ok) return asked;
   after(async () => {
@@ -149,7 +149,7 @@ export async function askPackPicturesAction(keys: string[]): Promise<PackPicture
  * pictures* does. The picture shown stays until the new one is made.
  */
 export async function remakePackPictureAction(key: string, slot: string, brief: string): Promise<PackPictureResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const asked = await askToRemakePackPicture(admin, String(key), String(slot), typeof brief === "string" ? brief : null);
   if (!asked.ok) return asked;
   after(async () => {
@@ -162,7 +162,7 @@ export async function remakePackPictureAction(key: string, slot: string, brief: 
 
 /** *Put back the one before* (D283): the picture a remake replaced is used again, everywhere it was. */
 export async function putBackPackPictureAction(key: string, slot: string): Promise<PackPictureResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await putBackPackPicture(admin, String(key), String(slot));
   if (!result.ok) return result;
   refreshPackStores([result.store]);
@@ -172,7 +172,7 @@ export async function putBackPackPictureAction(key: string, slot: string): Promi
 
 /** *Stop*: no more of the pack's pictures are made; one being made is finished and kept. */
 export async function stopPackPicturesAction(key: string): Promise<PackPictureResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const stopped = await stopPackPictures(admin, key);
   if (!stopped.ok) return stopped;
   refresh();

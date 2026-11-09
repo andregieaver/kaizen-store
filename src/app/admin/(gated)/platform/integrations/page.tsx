@@ -7,7 +7,7 @@ import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { INTEGRATIONS, isProvider } from "@/lib/integrations";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listPlatformIntegrations } from "@/server/platform-integrations";
 
 export const metadata: Metadata = { title: "Integrations" };
@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "Integrations" };
  */
 export default async function PlatformIntegrationsPage() {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const all = adminText(lang, "notifications");
   const w = all.integrations;

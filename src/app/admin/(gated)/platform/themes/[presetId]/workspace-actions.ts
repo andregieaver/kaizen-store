@@ -13,7 +13,7 @@ import type { GridData } from "@/lib/content-grid";
 import { DESIGN_LAYOUT_KINDS, LAYOUT_PAGE_TYPE, type DesignLayoutKind } from "@/lib/design-presets";
 import { pageBlockSchema, type PageType } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
-import { requirePlatformAdmin, type Account } from "@/server/auth";
+import { requirePlatform, type Account } from "@/server/auth";
 import { chooseWorkspaceLayout, designTags, workspaceOf, type DesignWorkspace } from "@/server/design-presets";
 import { installFont } from "@/server/fonts";
 import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
@@ -37,7 +37,7 @@ const isId = (id: unknown): id is string => typeof id === "string" && z.uuid().s
 
 /** The admin and the profile's workspace, or null: the check every action starts with. */
 async function workspace(presetId: string): Promise<{ admin: Account; workspace: DesignWorkspace } | null> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const found = await workspaceOf(admin, presetId);
   return found ? { admin, workspace: found } : null;
 }
@@ -84,22 +84,22 @@ export async function saveWorkspacePageAction(presetId: string, type: PageType, 
 
 
 export async function unpublishWorkspacePageAction(): Promise<PageSaveState> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   return { status: "error", problems: [(await platformActionWords()).whole] };
 }
 
 export async function removeWorkspacePageAction(): Promise<{ problems: string[] }> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   return { problems: [(await platformActionWords()).wholeDelete] };
 }
 
 export async function duplicateWorkspacePageAction(): Promise<{ ok: false; problems: string[] }> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   return { ok: false, problems: [(await platformActionWords()).whole] };
 }
 
 export async function createWorkspaceTermAction(): Promise<TermsResult> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   return { ok: false, problems: [(await platformActionWords()).noTerms] };
 }
 
@@ -227,7 +227,7 @@ export async function removeWorkspaceSavedThemeAction(presetId: string, id: stri
 
 /** The standard header, footer or product layout for the profile, or one of its own to build (made as the standard one to change from). */
 export async function chooseWorkspaceLayoutAction(presetId: string, kind: string, choice: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!(DESIGN_LAYOUT_KINDS as readonly string[]).includes(kind) || (choice !== "standard" && choice !== "build")) {
     return { status: "error", messages: [(await platformActionWords()).unknownChoice] };
   }

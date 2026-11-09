@@ -9,7 +9,7 @@ import { adminText } from "@/lib/admin-text";
 import { formatUsage } from "@/lib/usage-format";
 import { USAGE_METRIC_IDS, type UsageMetric } from "@/lib/usage-metrics";
 import { shiftMonth, usageMonth } from "@/lib/usage-month";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { upcomingPeaks } from "@/server/capacity-events";
 import { databaseGlance, drainConnected, platformUsage } from "@/server/usage";
 import { cronJobRows } from "@/server/cron-runs";
@@ -26,7 +26,7 @@ const BASE = "/admin/platform/capacity";
  * columns to compare, sortable through the address; the database at a glance; a CSV of the month.
  */
 export default async function PlatformCapacityPage({ searchParams }: PageProps<"/admin/platform/capacity">) {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const query = await searchParams;
   const month = usageMonth(query.month);
   const sort = USAGE_METRIC_IDS.find((m) => m === query.sort) ?? null;

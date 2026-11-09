@@ -175,6 +175,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Checkout branding (wave 7 unit C, D337, `docs/wave-7-storefront.md` C)
 - Staff security (D158)
 - Permissions (D158)
+- The platform's team and its roles (C1, D471, D510, `src/lib/platform-access.ts`, `src/server/platform-team.ts`)
 - Audit log (D158)
 - Invoices and credit notes for shop orders (D159, `docs/wave-1b-invoices.md`)
 - Unit price (D160, `docs/wave-1d-unit-price.md`, `src/lib/unit-price.ts`, `unit-price-rules.ts`, `unit-price-text.ts`, `unit-price-editor.ts`)

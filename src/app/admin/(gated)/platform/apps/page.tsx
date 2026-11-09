@@ -10,7 +10,7 @@ import { isApiPower } from "@/lib/admin-api";
 import { LISTING_NOTE_MAX } from "@/lib/apps";
 import { clientHost } from "@/lib/oauth";
 import { scopeLabel } from "@/lib/oauth-words";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listingRequests } from "@/server/developer-apps";
 
 import { decideListingAction } from "./actions";
@@ -24,7 +24,7 @@ export const metadata: Metadata = { title: "App listings" };
  */
 export default async function PlatformAppsPage() {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const ow = adminText(lang, "oauth");
   const w = ow.platformApps;

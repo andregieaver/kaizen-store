@@ -13,7 +13,7 @@ import { pageFonts } from "@/lib/page-content";
 import { themeLayersOf } from "@/lib/section-styles";
 import { themeAttributes, themeCss } from "@/lib/theme";
 import { themeFontFamilies } from "@/lib/theme-elements";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { siteFontStyle } from "@/server/fonts";
 import { getPlatformChrome } from "@/server/platform-navigation";
 import { getPlatformPageRoles } from "@/server/platform-roles";
@@ -32,7 +32,7 @@ export const metadata: Metadata = { title: "Theme preview", robots: { index: fal
  */
 export default async function PlatformThemePreviewPage({ params, searchParams }: PageProps<"/admin/platform/site-design/[install]/preview">) {
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const w = adminText(adminLangOf(account.adminLocale), "screens").themePreview;
   const { install: installId } = await params;
   const query = await searchParams;

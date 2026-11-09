@@ -14,7 +14,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { INTEGRATIONS, isProvider } from "@/lib/integrations";
 import { PLATFORM_EVENTS } from "@/lib/platform-integrations";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { getPlatformIntegration, listPlatformDeliveries, platformDefaultEvents, type PlatformDeliveryRow } from "@/server/platform-integrations";
 
 import { removePlatformIntegrationAction, savePlatformIntegrationAction, sendPlatformTestAction } from "../actions";
@@ -31,7 +31,7 @@ const SIGNAL: Record<PlatformDeliveryRow["status"], "positive" | "warning" | "da
 export default async function PlatformIntegrationPage({ params }: PageProps<"/admin/platform/integrations/[provider]">) {
   await connection();
   const { provider } = await params;
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const info = INTEGRATIONS.find((i) => i.id === provider);
   if (!info || info.comingSoon || !isProvider(provider)) notFound();
   const lang = adminLangOf(admin.adminLocale);

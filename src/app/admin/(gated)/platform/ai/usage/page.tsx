@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { PeriodLinks, UsageReport } from "@/components/admin/usage-report";
 import { usagePeriod } from "@/lib/ai-usage";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { usageByDay, usageRows } from "@/server/ai-usage";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "AI usage" };
  */
 export default async function PlatformAiUsagePage({ searchParams }: PageProps<"/admin/platform/ai/usage">) {
   // The page checks for itself: the layout's check redirects in the browser, after the page's own data would already be sent.
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").usage;
   const { period } = await searchParams;

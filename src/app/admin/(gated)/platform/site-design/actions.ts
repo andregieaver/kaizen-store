@@ -4,7 +4,7 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { presetChoice } from "@/lib/design-variations";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { DESIGNS_TAG, installPresetOnPlatform, undoPlatformThemeUpdate, updatePlatformInstall } from "@/server/design-presets";
 import { PAGES_TAG } from "@/server/pages";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
@@ -25,7 +25,7 @@ const refreshLook = () => {
 const lines = (title: string, notes: string[], first: string) => [first.replace("{title}", title), ...notes];
 
 export async function addPlatformThemeAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await installPresetOnPlatform(admin, String(formData.get("design") ?? ""), {}, presetChoice(formData.get("preset")));
   if (!result.ok) return { status: "error", messages: result.problems };
   refreshLook();
@@ -33,7 +33,7 @@ export async function addPlatformThemeAction(_state: FormState, formData: FormDa
 }
 
 export async function switchPlatformThemeAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await switchPlatformInstall(admin, String(formData.get("install") ?? ""));
   if (!result.ok) return { status: "error", messages: result.problems };
   refreshLook();
@@ -41,7 +41,7 @@ export async function switchPlatformThemeAction(_state: FormState, formData: For
 }
 
 export async function removePlatformThemeAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await removePlatformInstall(admin, String(formData.get("install") ?? ""));
   if (!result.ok) return { status: "error", messages: result.problems };
   refreshLook();
@@ -50,7 +50,7 @@ export async function removePlatformThemeAction(_state: FormState, formData: For
 
 /** Updates one of Kaizena Flow's installed themes to its theme's latest version now (D253), keeping the admins' own changes. */
 export async function updatePlatformThemeAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await updatePlatformInstall(admin, String(formData.get("install") ?? ""));
   if (!result.ok) return { status: "error", messages: result.problems };
   refreshLook();
@@ -60,7 +60,7 @@ export async function updatePlatformThemeAction(_state: FormState, formData: For
 
 /** Undoes an update of one of Kaizena Flow's installed themes (D253) while nothing has changed since. */
 export async function undoPlatformThemeUpdateAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await undoPlatformThemeUpdate(admin, String(formData.get("update") ?? ""));
   if (!result.ok) return { status: "error", messages: result.problems };
   refreshLook();
@@ -69,7 +69,7 @@ export async function undoPlatformThemeUpdateAction(_state: FormState, formData:
 
 /** Whether one of Kaizena Flow's installed themes updates by itself (D253). */
 export async function followPlatformUpdatesAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const follows = formData.get("follows") === "on";
   const result = await setPlatformFollowsUpdates(admin, String(formData.get("install") ?? ""), follows);
   if (!result.ok) return { status: "error", messages: result.problems };

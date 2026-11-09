@@ -5,6 +5,7 @@ import { SignOutForm } from "@/components/admin/admin-trail";
 import { AccountMenu, AdminSwitcher, MenuLink, MenuRow } from "@/components/admin/admin-menus";
 import { MenuNotices } from "@/components/admin/ai-notices";
 import { Avatar } from "@/components/avatar";
+import { platformRoleOf } from "@/lib/platform-access";
 import { listStores, type Account } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
 import { countPendingRequests } from "@/server/platform";
@@ -24,7 +25,9 @@ const waitingFor = cache(() => countPendingRequests());
 
 /** The level switcher (D107) with what the person may reach, read on the server. */
 export async function LevelSwitcher({ account, level, label, currentSlug }: { account: Account; level: "platform" | "control" | "store" | "hosting"; label: string; currentSlug?: string }) {
-  const [stores, waiting] = await Promise.all([storesOf(account), account.platformAdmin ? waitingFor() : 0]);
+  // Everyone on the platform's team reaches the platform (D510).
+  const team = platformRoleOf(account) !== null;
+  const [stores, waiting] = await Promise.all([storesOf(account), team ? waitingFor() : 0]);
   return (
     <AdminSwitcher
       level={level}
@@ -32,7 +35,7 @@ export async function LevelSwitcher({ account, level, label, currentSlug }: { ac
       stores={stores}
       currentSlug={currentSlug}
       owner={stores.some((store) => store.role === "owner")}
-      platform={account.platformAdmin ? { waiting } : null}
+      platform={team ? { waiting } : null}
     />
   );
 }

@@ -4,7 +4,7 @@ import { ActivityFilters, ActivityList, valuesFromQuery } from "@/components/adm
 import { activityQuery } from "@/lib/activity-text";
 import { isAuditArea } from "@/lib/audit";
 import { listPlatformActivity, platformActivityFilters } from "@/server/activity";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Activity log" };
  * Platform admins only. A store's own log is on its own page; nothing of a store is ever here.
  */
 export default async function PlatformActivityPage({ searchParams }: PageProps<"/admin/platform/activity">) {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").activity;
   const staffWords = adminText(lang, "staff");

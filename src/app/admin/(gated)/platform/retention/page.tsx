@@ -5,7 +5,7 @@ import { AdminTextScope } from "@/components/admin/admin-text";
 import { RetentionView } from "@/components/admin/privacy/retention-view";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { retentionOverview } from "@/server/retention";
 
 import { changeRetentionRuleAction, verifyRetentionRuleAction } from "./actions";
@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "Data retention" };
 export default async function PlatformRetentionPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const overview = await retentionOverview();
   const lang = adminLangOf(account.adminLocale);
   return (

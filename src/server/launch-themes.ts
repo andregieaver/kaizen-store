@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { LAUNCH_THEMES, launchListing, launchVariation, type LaunchTheme } from "@/lib/launch-themes";
 
-import { audit, type Account } from "./auth";
+import { audit, platformCan, type Account } from "./auth";
 import { createDesign, markLaunchTheme, publishDesign, saveDesignDraft, writeDesignLook, type ApplyDeps } from "./design-presets";
 import { writeLaunchVariations } from "./design-variations";
 import { dressSignaturePacks, linkLaunchContents } from "./signature-themes";
@@ -63,7 +63,7 @@ async function publishLaunch(admin: Account, presetId: string, theme: LaunchThem
 
 export async function syncLaunchThemes(admin: Account, deps: ApplyDeps = {}): Promise<LaunchSync> {
   const result: LaunchSync = { made: [], updated: [], current: [], skipped: [], problems: [] };
-  if (!admin.platformAdmin) return { ...result, problems: ["Only Kaizena Flow's admins add its themes."] };
+  if (!platformCan(admin, "website")) return { ...result, problems: ["Only Kaizena Flow's admins add its themes."] };
   for (const theme of LAUNCH_THEMES) {
     const [row] = await db().execute<Row>(sql`select id, launch_version, archived_at from commerce.design_presets where launch_key = ${theme.key}`);
     if (row?.archived_at) {

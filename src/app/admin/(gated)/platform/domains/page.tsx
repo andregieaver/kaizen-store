@@ -7,7 +7,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { domainPrice } from "@/lib/domain-prices";
 import { formatMoney } from "@/lib/money";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { allRegistrations, domainLeads, domainsOpenToAll, domainsPublic, purchasesInReview, purchasesNeedingALook, storesBuyingDomains } from "@/server/domain-admin";
 import { domainPricingRows, latestEurRates } from "@/server/domain-prices";
 
@@ -23,7 +23,7 @@ const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-s
  */
 export default async function PlatformDomainsPage() {
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "domains").platform;

@@ -5202,6 +5202,20 @@
       "when": 1794223127427,
       "tag": "20261109111847_platform_payout_lines_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 743,
+      "version": "7",
+      "when": 1794224599743,
+      "tag": "20261109114319_platform_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 744,
+      "version": "7",
+      "when": 1794224634149,
+      "tag": "20261109114354_platform_roles_rules",
+      "breakpoints": true
     }
   ]
 }

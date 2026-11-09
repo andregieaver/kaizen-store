@@ -10,7 +10,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import type { PlatformToolsMessages } from "@/lib/admin-messages/platform-tools.en";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 
 import { startSearchTestAction, stopSearchTestAction } from "./actions";
 
@@ -29,7 +29,7 @@ const verdictWords = (verdict: Verdict, w: Words) => fillWords(w.verdicts[verdic
  * compare. Every store's searches take part while it runs.
  */
 export default async function SearchTestPage({ searchParams }: PageProps<"/admin/platform/search-test">) {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").searchTest;
   const date = dateIn(ADMIN_LANG_FACTS[lang].locale);

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { MediaLibrary } from "@/components/admin/media-library";
 import { mediaQuery } from "@/lib/media-query";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { aiFor } from "@/server/ai";
 import { altSite, missingAltTexts } from "@/server/alt-texts";
 import { uploadsEnabled } from "@/server/media";
@@ -33,7 +33,7 @@ export const metadata: Metadata = { title: "Media library" };
 export default async function PlatformMediaPage({ searchParams }: PageProps<"/admin/platform/media">) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { w } = await platformSiteWords();
   return (
     <AdminAreas areas={["website"]}>
@@ -52,7 +52,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
 }
 
 async function Library({ searchParams }: { searchParams: PageProps<"/admin/platform/media">["searchParams"] }) {
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const query = mediaQuery(await searchParams);
   const owner = { storeId: null, storeSlug: null };
   const [{ items, total, searched }, ai, site, altMissing, waiting] = await Promise.all([

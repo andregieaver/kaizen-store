@@ -12,7 +12,7 @@ import { listEmails } from "@/server/email";
 import { houseCustomerOfAccount } from "@/server/house-customers";
 import { getPlatformCustomer } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { twoStepOfAccount } from "@/server/team";
 import { avatarFor } from "@/server/avatars";
 import { CARD_CLASS, List, ListRow, PageHeader, RowDate, RowFact, RowLead } from "@/components/admin/ui";
@@ -33,7 +33,7 @@ const card = "rounded-lg border border-line bg-card p-5";
  */
 export default async function PlatformCustomerPage({ params }: PageProps<"/admin/platform/customers/[accountId]">) {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const w = adminText(lang, "platform").customer;
   const billingWords = adminText(lang, "billing");

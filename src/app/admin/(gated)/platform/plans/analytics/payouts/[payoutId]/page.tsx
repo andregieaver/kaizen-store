@@ -10,7 +10,7 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { formatMoney } from "@/lib/money";
 import { payoutFlagged } from "@/lib/payouts";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { platformPayoutDetail } from "@/server/platform-payouts";
 
 export const metadata: Metadata = { title: "Payout" };
@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: "Payout" };
  */
 export default async function PlatformPayoutPage({ params }: PageProps<"/admin/platform/plans/analytics/payouts/[payoutId]">) {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const detail = await platformPayoutDetail((await params).payoutId);

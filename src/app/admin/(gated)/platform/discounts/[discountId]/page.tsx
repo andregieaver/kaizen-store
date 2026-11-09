@@ -9,7 +9,7 @@ import { listPlatformDiscounts } from "@/server/platform-discounts";
 
 import { deletePlatformDiscountAction, updatePlatformDiscountAction } from "../../actions";
 import { deleteQuestion, PlatformDiscountFields } from "../discount-fields";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { countWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Discount code" };
 
 /** Changes one of Kaizen's plan codes (D31). */
 export default async function PlatformDiscountPage({ params }: PageProps<"/admin/platform/discounts/[discountId]">) {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const t = adminText(adminLangOf(account.adminLocale), "platform");
   const w = t.discounts;
   const { discountId } = await params;

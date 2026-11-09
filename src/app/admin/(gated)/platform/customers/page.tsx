@@ -4,7 +4,7 @@ import { connection } from "next/server";
 
 import { Avatar } from "@/components/avatar";
 import { listPlatformCustomers } from "@/server/platform-customers";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
 import { Card, CARD_CLASS, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Customers" };
 export default async function PlatformCustomersPage({ searchParams }: PageProps<"/admin/platform/customers">) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").customers;
   const billingWords = adminText(lang, "billing");

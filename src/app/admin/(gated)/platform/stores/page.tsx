@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { formatBps, priceLabel } from "@/lib/plans";
 import { listStoreBilling } from "@/server/billing";
 import { sandboxFunnel, sandboxSettings } from "@/server/sandbox";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Stores" };
 export default async function PlatformStoresPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").stores;
   const billingWords = adminText(lang, "billing");

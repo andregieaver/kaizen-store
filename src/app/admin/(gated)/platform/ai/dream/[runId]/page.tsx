@@ -11,7 +11,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { ownerWaitMs, scoreOf } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
-import { passMembership, requirePlatformAdmin } from "@/server/auth";
+import { passMembership, requirePlatformReader } from "@/server/auth";
 import { testDreamRun } from "@/server/dream-factory";
 import { dreamShowcase } from "@/server/dream-showcase";
 import { getPageForEdit } from "@/server/pages";
@@ -30,7 +30,7 @@ const REFRESH_SECONDS = 6;
  */
 export default async function PlatformDreamRunPage({ params }: { params: Promise<{ runId: string }> }) {
   // The page checks for itself: the layout's check redirects in the browser, after the page's own data would already be sent.
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").ai;
   const words = adminText(lang, "home").dream;

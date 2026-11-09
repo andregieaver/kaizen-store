@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { designTabHref } from "@/lib/design-presets";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { addVariation, moveVariation, removeVariation, renameVariation, saveVariationTheme } from "@/server/design-variations";
 import { installFont } from "@/server/fonts";
 
@@ -20,14 +20,14 @@ import { installFont } from "@/server/fonts";
 const failed = (problems: string[]): FormState => ({ status: "error", messages: problems });
 
 export async function addVariationAction(presetId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await addVariation(admin, presetId, formData.get("name"));
   if (!result.ok) return failed(result.problems);
   redirect(`${designTabHref(presetId, "presets")}/${result.key}`);
 }
 
 export async function renameVariationAction(presetId: string, key: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await renameVariation(admin, presetId, key, formData.get("name"));
   if (!result.ok) return failed(result.problems);
   refresh();
@@ -35,13 +35,13 @@ export async function renameVariationAction(presetId: string, key: string, _stat
 }
 
 export async function moveVariationAction(presetId: string, key: string, direction: "up" | "down"): Promise<void> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   await moveVariation(admin, presetId, key, direction === "up" ? "up" : "down");
   refresh();
 }
 
 export async function removeVariationAction(presetId: string, key: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await removeVariation(admin, presetId, key);
   if (!result.ok) return failed(result.problems);
   redirect(designTabHref(presetId, "presets"));
@@ -57,12 +57,12 @@ const read = (payload: string): unknown => {
 
 /** The theme editor's save for one preset's look. */
 export async function saveVariationThemeAction(presetId: string, key: string, payload: string) {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   return saveVariationTheme(admin, presetId, key, read(payload));
 }
 
 /** The theme editor's font picker: a family installed before a preset uses it (D59). */
 export async function installVariationFontAction(fontFamily: string) {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   return installFont(String(fontFamily));
 }

@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { getPlanReminderSettings, newPlanStepContent } from "@/server/plan-reminders";
 
 import { PlanReminderForm } from "../reminder-form";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "New plan reminder" };
 export default async function NewPlanReminderPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const w = adminText(adminLangOf(account.adminLocale), "platform").newReminder;
   const { steps } = await getPlanReminderSettings();
   const last = steps.at(-1)?.delayMinutes ?? 0;

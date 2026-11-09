@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 const getMembership = vi.fn();
-const requirePlatformAdmin = vi.fn();
-vi.mock("@/server/auth", () => ({ getMembership, requireMember: vi.fn(), holderOf: (member: { role: string }) => ({ role: member.role }), requirePlatformAdmin }));
+const requirePlatform = vi.fn();
+vi.mock("@/server/auth", () => ({ getMembership, requireMember: vi.fn(), holderOf: (member: { role: string }) => ({ role: member.role }), requirePlatform }));
 const aiFor = vi.fn();
 vi.mock("@/server/ai", () => ({ aiFor, AiError: class extends Error {}, completeText: vi.fn() }));
 const planPageMotion = vi.fn();
@@ -27,7 +27,7 @@ const plan = { ok: true, plan: { style: "elegant", summary: "s", items: [], aiUs
 
 beforeEach(() => {
   getMembership.mockReset().mockResolvedValue({ store: { id: "store-1" }, account: { id: "acct-1" }, role: "owner" });
-  requirePlatformAdmin.mockReset().mockResolvedValue({ id: "admin-1" });
+  requirePlatform.mockReset().mockResolvedValue({ id: "admin-1" });
   aiFor.mockReset().mockResolvedValue({ textModel: "m" });
   planPageMotion.mockReset().mockResolvedValue(plan);
 });
@@ -85,14 +85,15 @@ describe("a store's planMotionAction", () => {
 describe("Kaizena Flow's planMotionAction", () => {
   it("is for platform admins and uses Kaizena Flow's AI", async () => {
     const result = await platformAction("article", JSON.stringify(rows));
-    expect(requirePlatformAdmin).toHaveBeenCalled();
+    // An owner or the platform's content role (D510).
+    expect(requirePlatform).toHaveBeenCalledWith("website");
     expect(aiFor).toHaveBeenCalledWith(null, { feature: "page_motion", accountId: "admin-1" });
     expect(planPageMotion).toHaveBeenCalledWith({ textModel: "m" }, rows);
     expect(result).toBe(plan);
   });
 
   it("refuses others before reading anything", async () => {
-    requirePlatformAdmin.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
+    requirePlatform.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
     await expect(platformAction("page", JSON.stringify(rows))).rejects.toThrow("NEXT_NOT_FOUND");
     expect(planPageMotion).not.toHaveBeenCalled();
   });

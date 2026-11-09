@@ -13,6 +13,7 @@ import { adminScheme, isOfferedScheme } from "@/lib/admin-schemes";
 import { adminViewOf, type AdminView } from "@/lib/admin-view";
 import { signedInWithin } from "@/lib/fresh-sign-in";
 import { type PermissionHolder } from "@/lib/permissions";
+import { canPlatform, isMemberRole, platformRoleOf, type MemberRole, type PlatformAccess, type PlatformArea } from "@/lib/platform-access";
 import { createClient } from "@/lib/supabase/server";
 import { assuranceOf, heldPath, KILL_SWITCH_ACTION, mayUseAdmin, twoStepKillSwitch, TWO_STEP_PATHS, type Assurance } from "@/lib/two-step";
 
@@ -29,7 +30,10 @@ export type Account = {
   id: string;
   email: string;
   name: string | null;
+  /** An owner on the platform's team: everything, as before roles (D510). Ask what someone else on the team may do with `platformCan()`. */
   platformAdmin: boolean;
+  /** A role on the platform's team other than owner (D510: support, content, finance, read-only); absent or null for anyone else. */
+  platformRole?: MemberRole | null;
   /** Their own profile picture in the avatars bucket (D97), if they chose one. */
   avatarPath?: string | null;
   /** The admin's colours for them (D99): their device's, light or dark. */
@@ -99,6 +103,7 @@ const toAccount = (row: Row): Account => ({
   email: String(row.email),
   name: row.name ? String(row.name) : null,
   platformAdmin: Boolean(row.platform_admin),
+  platformRole: !row.platform_admin && isMemberRole(row.platform_role) ? row.platform_role : null,
   avatarPath: row.avatar_path ? String(row.avatar_path) : null,
   colorMode: isColorChoice(row.color_mode) ? row.color_mode : "system",
   adminScheme: adminScheme(typeof row.admin_scheme === "string" ? row.admin_scheme : null).id,
@@ -130,7 +135,7 @@ export const readSession = cache(async (): Promise<SessionFacts | null> => {
   const level = (data?.claims as { aal?: unknown } | undefined)?.aal === "aal2" ? "aal2" : "aal1";
 
   const [row] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale, admin_view, two_step_since, two_step_reenrol_at from commerce.accounts
+    select id, email, name, platform_admin, platform_role, avatar_path, color_mode, admin_scheme, admin_locale, admin_view, two_step_since, two_step_reenrol_at from commerce.accounts
     where auth_user_id = ${userId}::uuid and disabled_at is null
   `);
   if (!row) return null;
@@ -179,7 +184,8 @@ export function assuranceFor(session: SessionFacts, storeRequires = false): Assu
   return assuranceOf({
     level: session.level,
     enrolled: session.enrolled,
-    platformAdmin: session.account.platformAdmin,
+    // Everyone on the platform's team is held at the second step, whatever their role (D510).
+    platformAdmin: platformRoleOf(session.account) !== null,
     storeRequires,
     reenrolPending: session.reenrolPending,
     killSwitch: session.killSwitch,
@@ -236,6 +242,28 @@ export async function requireAccount(): Promise<Account> {
 export async function requirePlatformAdmin(): Promise<Account> {
   const account = await requireAccount();
   if (!account.platformAdmin) notFound();
+  return account;
+}
+
+/** What someone on the platform's team may do in an area (D510): an owner everything, any role read, a role write in its own area. */
+export function platformCan(account: Pick<Account, "platformAdmin" | "platformRole"> | null | undefined, area: PlatformArea, access: PlatformAccess = "write"): boolean {
+  return canPlatform(platformRoleOf(account), area, access);
+}
+
+/**
+ * For the platform admin's pages and actions (D510): the account when its role may read (a page) or change (an action) the area, else a
+ * 404. The area is the guard's own, in code, never read from the address: a server action can be posted to any page's.
+ */
+export async function requirePlatform(area: PlatformArea, access: PlatformAccess = "write"): Promise<Account> {
+  const account = await requireAccount();
+  if (!platformCan(account, area, access)) notFound();
+  return account;
+}
+
+/** For a page of the platform admin every role reads (D510): anyone on the platform's team. */
+export async function requirePlatformReader(): Promise<Account> {
+  const account = await requireAccount();
+  if (platformRoleOf(account) === null) notFound();
   return account;
 }
 
@@ -346,7 +374,7 @@ const loadMembership = cache(async (storeSlug: string): Promise<MembershipState>
  */
 export async function activeAccount(accountId: string): Promise<Account | null> {
   const [person] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale, admin_view from commerce.accounts
+    select id, email, name, platform_admin, platform_role, avatar_path, color_mode, admin_scheme, admin_locale, admin_view from commerce.accounts
     where id = ${accountId}::uuid and disabled_at is null
   `);
   return person ? toAccount(person) : null;
@@ -363,7 +391,7 @@ export async function passMembership(storeSlug: string, accountId: string): Prom
   const store = await getStore(storeSlug);
   if (!store) return null;
   const [person] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale, admin_view from commerce.accounts
+    select id, email, name, platform_admin, platform_role, avatar_path, color_mode, admin_scheme, admin_locale, admin_view from commerce.accounts
     where id = ${accountId}::uuid and disabled_at is null
   `);
   if (!person) return null;
@@ -410,7 +438,7 @@ export async function signInAccount(email: string): Promise<{ linked: boolean } 
   const [row] = await db().execute<Row>(sql`
     select a.auth_user_id is not null as linked from commerce.accounts a
     where lower(a.email) = lower(${email}) and a.disabled_at is null
-      and (a.platform_admin or exists (
+      and (a.platform_admin or a.platform_role is not null or exists (
         select 1 from commerce.store_members m
         where m.account_id = a.id and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
       ) or exists (
@@ -436,7 +464,7 @@ export async function linkAccount(authUserId: string, email: string): Promise<Ac
      where lower(email) = lower(${email})
        and disabled_at is null
        and (auth_user_id is null or auth_user_id = ${authUserId}::uuid)
-    returning id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, admin_locale, admin_view
+    returning id, email, name, platform_admin, platform_role, avatar_path, color_mode, admin_scheme, admin_locale, admin_view
   `);
   return row ? toAccount(row) : null;
 }

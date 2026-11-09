@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
 
-import { audit, type Account } from "./auth";
+import { audit, platformCan, type Account } from "./auth";
 import { log } from "./log";
 import { checkPlatformTheme } from "./themes";
 
@@ -127,7 +127,7 @@ export async function savePlatformInstallLook(
   installId: string,
   change: { theme: unknown } | { css: string },
 ): Promise<PlatformInstallResult<{ theme?: unknown; css?: string }>> {
-  if (!admin.platformAdmin) return refuse(ADMINS_ONLY);
+  if (!platformCan(admin, "website")) return refuse(ADMINS_ONLY);
   if (!isUuid(installId)) return refuse(UNKNOWN);
   let patch: Record<string, unknown>;
   let shown: { theme?: unknown; css?: string };
@@ -220,7 +220,7 @@ async function writePlatformLook(tx: Tx, kept: unknown): Promise<string[]> {
  * kept), the chosen one becomes live. One transaction; the caller refreshes the platform's look tags.
  */
 export async function switchPlatformInstall(admin: Account, installId: string): Promise<PlatformInstallResult<{ title: string; from: string; notes: string[] }>> {
-  if (!admin.platformAdmin) return refuse(ADMINS_ONLY);
+  if (!platformCan(admin, "website")) return refuse(ADMINS_ONLY);
   if (!isUuid(installId)) return refuse(UNKNOWN);
   let done: { title: string; from: string; fromId: string; notes: string[] };
   try {
@@ -248,7 +248,7 @@ export async function switchPlatformInstall(admin: Account, installId: string): 
 
 /** Removes an installed theme that is not live. The header and footer pages it chose stay among Kaizena Flow's pages. */
 export async function removePlatformInstall(admin: Account, installId: string): Promise<PlatformInstallResult<{ title: string }>> {
-  if (!admin.platformAdmin) return refuse(ADMINS_ONLY);
+  if (!platformCan(admin, "website")) return refuse(ADMINS_ONLY);
   if (!isUuid(installId)) return refuse(UNKNOWN);
   const [row] = await db().execute<Row>(sql`
     delete from commerce.platform_theme_installs where id = ${installId}::uuid and not live returning title, preset_id
@@ -262,7 +262,7 @@ export async function removePlatformInstall(admin: Account, installId: string): 
 
 /** Whether one of Kaizena Flow's installs takes new versions of its theme by itself (D253); on until switched off. */
 export async function setPlatformFollowsUpdates(admin: Account, installId: string, follows: boolean): Promise<PlatformInstallResult<{ title: string }>> {
-  if (!admin.platformAdmin) return refuse(ADMINS_ONLY);
+  if (!platformCan(admin, "website")) return refuse(ADMINS_ONLY);
   if (!isUuid(installId)) return refuse(UNKNOWN);
   const [row] = await db().execute<Row>(sql`
     update commerce.platform_theme_installs set follows_updates = ${follows} where id = ${installId}::uuid and preset_id is not null returning title

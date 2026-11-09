@@ -8,7 +8,7 @@ import { formatMoney } from "@/lib/money";
 import { getStoreBilling, getStoreInvoice } from "@/server/billing";
 import { listStorePeople } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -24,7 +24,7 @@ const card = "rounded-lg border border-line bg-card p-5";
  */
 export default async function PlanInvoicePage({ params }: PageProps<"/admin/platform/stores/[store]/invoices/[invoiceId]">) {
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").invoice;
   const t = adminText(lang, "platform");

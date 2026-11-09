@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { SectionHub } from "@/components/admin/section-hub";
 import { adminLangOf } from "@/lib/admin-lang";
 import { PLATFORM_HUB_INTROS, PLATFORM_HUB_TITLES, SETTINGS_ITEMS } from "@/lib/platform-nav";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Settings" };
 export default async function PlatformSettingsPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   return (
     <SectionHub
       lang={adminLangOf(admin.adminLocale)}

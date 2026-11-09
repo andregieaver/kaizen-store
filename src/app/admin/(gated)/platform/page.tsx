@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { Attention, Section, Stat, StatGrid, type AttentionItem } from "@/components/admin/overview-parts";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { platformOverview } from "@/server/platform-overview";
 import { cronJobRows } from "@/server/cron-runs";
 import { jobsNeedingLook } from "@/lib/cron-health";
@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: "Platform home" };
 export default async function PlatformOverviewPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const w = adminText(adminLangOf(account.adminLocale), "platform").overview;
   const [o, jobs] = await Promise.all([platformOverview(), cronJobRows()]);
   const lateJobs = jobsNeedingLook(jobs);

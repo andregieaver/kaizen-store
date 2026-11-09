@@ -13,7 +13,7 @@ import { DREAM_STEPS } from "@/lib/dream-factory";
 import { recentDreamRuns } from "@/server/dream-factory";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 import { aiAutonomyPaused } from "@/server/ai-pause";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { searchSettings } from "@/server/web-search-settings";
 import { SEARCH_API_IDS, SEARCH_APIS } from "@/lib/web-search";
 import { ActionForm } from "@/components/admin/action-form";
@@ -39,7 +39,7 @@ const card = "rounded-lg border border-line bg-card p-5";
  * products are embedded again with a new search model.
  */
 export default async function PlatformAiPage() {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").ai;
   const shared = adminText(lang, "settings").ai;

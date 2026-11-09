@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { SiteFontsForm } from "@/components/admin/site-fonts-form";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { getPlatformChrome } from "@/server/platform-navigation";
 import { Card, PageHeader } from "@/components/admin/ui";
 
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Fonts" };
 /** Kaizen's own fonts (D59). */
 export default async function PlatformFontsPage() {
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { w } = await platformSiteWords();
   const chrome = await getPlatformChrome();
   return (

@@ -1,11 +1,11 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { ReminderStepInput } from "@/lib/cart-reminders";
-import { requireAccount, type Account } from "@/server/auth";
+import { requirePlatform, type Account } from "@/server/auth";
 import {
   deletePlanReminderStep,
   savePlanReminderStep,
@@ -14,11 +14,8 @@ import {
 } from "@/server/plan-reminders";
 import type { SaveResult } from "@/server/settings";
 
-async function platformAdmin(): Promise<Account> {
-  const account = await requireAccount();
-  if (!account.platformAdmin) notFound();
-  return account;
-}
+/** The plans' reminders are the plans area's (D510): an owner, or the platform's finance role. */
+const platformAdmin = (): Promise<Account> => requirePlatform("plans");
 
 /** Turns Kaizen's plan reminders on (with three to start from) or off (D33). */
 export async function setPlanRemindersAction(enabled: boolean): Promise<void> {

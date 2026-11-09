@@ -7,7 +7,7 @@ import { Fragment } from "react";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { suggestSlug } from "@/lib/slug";
 import { designLookValue, type DesignCard } from "@/lib/design-presets";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
 import { designChoices } from "@/server/design-presets";
 import { CARD_CLASS, Card, PageHeader } from "@/components/admin/ui";
@@ -31,7 +31,7 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 export default async function PlatformPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const w = adminText(adminLangOf(account.adminLocale), "platform").requests;
   // The themes offered, each look with the demo store it starts a store with (D273); the first card is Standard.
   const [requests, { cards }, selfServe, unconfirmed, sandbox, sandboxes] = await Promise.all([

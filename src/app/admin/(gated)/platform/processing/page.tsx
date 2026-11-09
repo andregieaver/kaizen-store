@@ -8,7 +8,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { PERSONAL_DATA } from "@/lib/personal-data";
 import { processingRecord } from "@/lib/personal-purposes";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Record of processing" };
 
@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Record of processing" };
  */
 export default async function PlatformProcessingPage() {
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "privacy");
   const r = w.record;

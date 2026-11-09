@@ -14,7 +14,7 @@ export async function GET(
   { params }: RouteContext<"/admin/platform/support/c/[id]">,
 ) {
   const { id } = await params;
-  const desk = await checkKaizenDesk();
+  const desk = await checkKaizenDesk("read");
   if (!desk || !UUID.test(id))
     return new NextResponse("Not found", { status: 404, headers: NO_STORE });
   const conversation = await conversationFeed(

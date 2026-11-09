@@ -2,7 +2,7 @@ import { connection } from "next/server";
 
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { getAccount, type Account } from "@/server/auth";
+import { getAccount, platformCan, type Account } from "@/server/auth";
 import { checkPassPermission, checkPermission } from "@/server/permissions";
 
 /**
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     account = ((await checkPermission(store, "website:write")) ?? (await checkPassPermission(store, "website:write")))?.account ?? null;
   } else {
     const signedIn = await getAccount();
-    account = signedIn?.platformAdmin ? signedIn : null;
+    account = platformCan(signedIn, "website") ? signedIn : null;
   }
   const editor = account !== null;
   const lang = adminLangOf(account?.adminLocale);

@@ -8,7 +8,7 @@ import { UiTranslator } from "@/components/admin/ui-translator";
 import { nativeName } from "@/lib/languages";
 import { sourceHash } from "@/lib/ui-catalog";
 import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listLanguages } from "@/server/languages";
 import { uiRows } from "@/server/ui-text";
 import { PageHeader } from "@/components/admin/ui";
@@ -33,7 +33,7 @@ const area = "w-full rounded-md border border-line bg-card px-2 py-1 text-sm";
  */
 export default async function LanguagePage({ params, searchParams }: PageProps<"/admin/platform/languages/[lang]">) {
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const adminLang = adminLangOf(account.adminLocale);
   const w = adminText(adminLang, "platformTools").languages.one;
   const { lang } = await params;

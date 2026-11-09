@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { can, type Access, type PermissionHolder } from "@/lib/permissions";
 import { allowedWhenNotOpen } from "@/lib/store-closure";
 
-import { getAccount, requirePlatformAdmin, type Account, type Membership } from "./auth";
+import { getAccount, platformCan, requirePlatformReader, type Account, type Membership } from "./auth";
 import type { ChatSite } from "./chat-agent";
 import { checkPermission, requirePermission } from "./permissions";
 
@@ -107,16 +107,17 @@ export async function checkStoreDesk(slug: string, access: Access): Promise<Staf
   return member ? fromMember(member) : null;
 }
 
-/** Kaizen's own desk, for a platform admin's page (a 404 for anyone else). */
+/** Kaizen's own desk, for a page of the platform's team (a 404 for anyone else); answered by an owner or the support role (D510). */
 export async function kaizenDesk(): Promise<StaffDesk> {
-  const account = await requirePlatformAdmin();
-  return { desk: make(null), store: null, account, canWrite: true, holder: null };
+  const account = await requirePlatformReader();
+  return { desk: make(null), store: null, account, canWrite: platformCan(account, "support"), holder: null };
 }
 
-/** Kaizen's own desk for a route or an action, or null. */
-export async function checkKaizenDesk(): Promise<StaffDesk | null> {
+/** Kaizen's own desk for an action (`write`: an owner or the support role, D510) or a route that reads it (`read`: the team), or null. */
+export async function checkKaizenDesk(access: "read" | "write" = "write"): Promise<StaffDesk | null> {
   const account = await getAccount();
-  return account?.platformAdmin ? { desk: make(null), store: null, account, canWrite: true, holder: null } : null;
+  if (!platformCan(account, "support", access)) return null;
+  return account ? { desk: make(null), store: null, account, canWrite: platformCan(account, "support"), holder: null } : null;
 }
 
 type Row = Record<string, unknown>;

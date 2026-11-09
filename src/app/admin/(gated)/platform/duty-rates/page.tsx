@@ -10,7 +10,7 @@ import { adminText } from "@/lib/admin-text";
 import { APPLIES_TO, percentOfBps } from "@/lib/duties";
 import { formatMoney } from "@/lib/money";
 import { PLATFORM_BASE } from "@/lib/platform-nav";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listDutyRates, type DutyRateListed } from "@/server/duty-rates";
 
 import { removeDutyRateAction, saveDutyRateAction, setDutyRateVerifiedAction } from "./actions";
@@ -23,7 +23,7 @@ export const metadata: Metadata = { title: "Duty rates" };
  */
 export default async function PlatformDutyRatesPage({ searchParams }: PageProps<"/admin/platform/duty-rates">) {
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platformTools").dutyRates;
   const locale = ADMIN_LANG_FACTS[lang].locale;

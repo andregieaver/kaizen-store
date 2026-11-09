@@ -8,7 +8,7 @@ import { adminText } from "@/lib/admin-text";
 import { docsPageAt } from "@/lib/docs-content";
 import { docsUrl } from "@/lib/docs-host";
 import { DOCS_SEARCH_SUB, docsSearchQueryString, NO_FILTERS } from "@/lib/docs-search";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { docsIndex } from "@/server/docs";
 import { listDocsFeedback, tallyDocsFeedback } from "@/server/docs-feedback";
 import { listDocsMisses } from "@/server/docs-search";
@@ -28,7 +28,7 @@ const control = "min-h-10 rounded-lg border border-edge bg-card px-3 text-sm";
  */
 export default async function DocsFeedbackPage({ searchParams }: PageProps<"/admin/platform/docs/feedback">) {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const w = adminText(adminLangOf(admin.adminLocale), "platform").docsFeedback;
   const query = await searchParams;
   const path = typeof query.page === "string" && PATH.test(query.page) ? query.page : null;

@@ -2,7 +2,7 @@ import "server-only";
 
 import { sameSite } from "@/lib/same-site";
 
-import { getAccount } from "./auth";
+import { getAccount, platformCan } from "./auth";
 import { changePageWithAi } from "./page-change-ai";
 import { checkPageTypeAccess } from "./permissions";
 
@@ -28,7 +28,7 @@ export async function storeChangeRequest(request: Request, storeSlug: string): P
 export async function platformChangeRequest(request: Request): Promise<Response> {
   if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
   const account = await getAccount();
-  if (!account?.platformAdmin) return notFound();
+  if (!account || !platformCan(account, "website")) return notFound();
   const body = (await request.json().catch(() => null)) as Body;
   const result = await changePageWithAi({ storeId: null, storeSlug: null, account }, body?.content, body?.description);
   return json(result, result.ok ? 200 : 400);

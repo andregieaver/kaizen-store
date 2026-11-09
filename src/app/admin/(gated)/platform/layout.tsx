@@ -3,13 +3,15 @@ import { Suspense } from "react";
 import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
+import { PlatformRoleNotice } from "@/components/admin/platform-role-notice";
 import { AdminTextScope } from "@/components/admin/admin-text";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
+import { platformRoleOf } from "@/lib/platform-access";
 import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs, sectionPrefixes, withBase } from "@/lib/platform-nav";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { countPendingRequests } from "@/server/platform";
 import { waitingCount } from "@/server/support";
 import { kaizenDesk } from "@/server/support-desk";
@@ -60,7 +62,8 @@ const areas: NavArea[] = [
  * are the rail's icons, Settings at its foot.
  */
 export default async function PlatformLayout({ children }: LayoutProps<"/admin/platform">) {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
+  const role = platformRoleOf(account) ?? "read_only";
   const [waiting, supportWaiting] = await Promise.all([countPendingRequests(), waitingCount([(await kaizenDesk()).desk])]);
   const tabs: NavItem[] = platformTabs({ requests: waiting, support: supportWaiting });
   const lang = adminLangOf(account.adminLocale);
@@ -75,6 +78,8 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         </Suspense>
       }
       actions={
+        // The AI manager can do anything on the platform, so it is the owners' (D510).
+        account.platformAdmin && (
         <AdminTextScope texts={adminTexts(lang, ["assistant"])}>
           <AiManagerLauncher
             area="platform"
@@ -92,6 +97,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
             }}
           />
         </AdminTextScope>
+        )
       }
       account={<AdminAccountMenu account={account} role={w.levels.platform} />}
       tabs={tabs}
@@ -109,6 +115,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
       fullWidth={FULL_WIDTH}
       workspaceLinks={INBOX}
     >
+      {role !== "owner" && <PlatformRoleNotice role={role} words={w.platformRole} />}
       {children}
     </AdminFrame>
   );

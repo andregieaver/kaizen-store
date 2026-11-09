@@ -6,7 +6,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { setTemplateHidden } from "@/server/templates";
 
 /**
@@ -14,7 +14,7 @@ import { setTemplateHidden } from "@/server/templates";
  * are. Every page checks for itself that the account runs the platform.
  */
 export async function setTemplateHiddenAction(id: string, hidden: boolean): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!z.uuid().safeParse(id).success) return { status: "error", messages: [(await platformActionWords()).unknownTemplate] };
   const result = await setTemplateHidden(admin, id, hidden === true);
   if (!result.ok) return { status: "error", messages: result.problems };

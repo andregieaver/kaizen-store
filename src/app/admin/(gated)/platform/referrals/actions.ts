@@ -7,7 +7,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { percentTextToBps } from "@/lib/bonus-admin";
 import { minorUnitDigits } from "@/lib/money";
 import { parsePrice } from "@/lib/product-input";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { ensureBillingEvents } from "@/server/referral-billing";
 import {
   adjustReferralCredit,
@@ -26,7 +26,7 @@ const answer = (result: ReferralResult, done: string): FormState =>
 
 /** Kaizen's referral program (D131): on or off, the commission, how long it lasts, the days credit waits and the cookie's. */
 export async function saveReferralSettingsAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("plans");
   const bps = percentTextToBps(text(formData, "commissionPercent"));
   if (bps === null) return { status: "error", messages: ["Commission is a percentage such as 10 or 7,5."] };
   const number = (name: string) => (/^\d{1,4}$/.test(text(formData, name).trim()) ? Number(text(formData, name).trim()) : NaN);
@@ -50,7 +50,7 @@ export async function saveReferralSettingsAction(_state: FormState, formData: Fo
 }
 
 export async function blockReferrerAction(accountId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("plans");
   if (!uuid.safeParse(accountId).success) return { status: "error", messages: ["Unknown referrer."] };
   const result = await setReferrerBlocked(account, accountId, true, text(formData, "reason"));
   if (result.ok) refresh();
@@ -58,14 +58,14 @@ export async function blockReferrerAction(accountId: string, _state: FormState, 
 }
 
 export async function unblockReferrerAction(accountId: string): Promise<void> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("plans");
   if (!uuid.safeParse(accountId).success) return;
   await setReferrerBlocked(account, accountId, false);
   refresh();
 }
 
 export async function voidReferralAction(referralId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("plans");
   if (!uuid.safeParse(referralId).success) return { status: "error", messages: ["Unknown referral."] };
   const result = await setReferralVoid(account, referralId, true, text(formData, "reason"));
   if (result.ok) refresh();
@@ -73,7 +73,7 @@ export async function voidReferralAction(referralId: string, _state: FormState, 
 }
 
 export async function restoreReferralAction(referralId: string): Promise<void> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("plans");
   if (!uuid.safeParse(referralId).success) return;
   await setReferralVoid(account, referralId, false);
   refresh();
@@ -81,7 +81,7 @@ export async function restoreReferralAction(referralId: string): Promise<void> {
 
 /** Adds or removes a referrer's credit: the amount in the currency's main unit, positive to add, negative to remove. */
 export async function adjustReferralCreditAction(accountId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("plans");
   if (!uuid.safeParse(accountId).success) return { status: "error", messages: ["Unknown referrer."] };
   const currency = text(formData, "currency").trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) return { status: "error", messages: ["Enter a currency such as NOK or EUR."] };

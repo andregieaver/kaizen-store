@@ -9,7 +9,7 @@ import { refresh, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import type { PageSaveState } from "@/components/admin/page-context";
 import { stopPageJob } from "@/server/page-jobs";
 import { deletePage, getPageForEdit, listPages, PAGES_TAG, savePage, unpublishPage } from "@/server/pages";
@@ -55,7 +55,7 @@ export async function savePageAction(
   publish: boolean,
   acknowledged?: string[],
 ): Promise<PageSaveState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isType(type) || (id !== null && !isId(id))) return { status: "error", problems: [(await platformActionWords()).unknownPage] };
   let json: unknown;
   try {
@@ -74,7 +74,7 @@ export async function savePageAction(
 }
 
 export async function unpublishPageAction(type: PageType, id: string): Promise<PageSaveState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isType(type) || !isId(id)) return { status: "error", problems: [(await platformActionWords()).unknownPage] };
   await unpublishPage(admin, null, id, type);
   updateTag(PAGES_TAG);
@@ -85,7 +85,7 @@ export async function unpublishPageAction(type: PageType, id: string): Promise<P
 
 /** Deletes the page and goes back to the list; returns only when it could not. */
 export async function deletePageAction(type: PageType, id: string): Promise<{ problems: string[] } | void> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isType(type) || !isId(id)) return { problems: [(await platformActionWords()).unknownPage] };
   await deletePage(admin, null, id, type);
   updateTag(PAGES_TAG);
@@ -99,7 +99,7 @@ export async function deletePageAction(type: PageType, id: string): Promise<{ pr
  * until it is published. Asked again, it opens the one there.
  */
 export async function createThemeStorePageAction(role: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isThemeStoreRole(role)) return { status: "error", messages: [(await platformActionWords()).unknownPage] };
   const result = await createThemeStorePage(admin, role);
   if (!result.ok) return { status: "error", messages: result.problems };
@@ -109,7 +109,7 @@ export async function createThemeStorePageAction(role: string): Promise<FormStat
 
 /** Deletes a theme store page (D285) from its editor: the standard page shows again, and the way back is Themes. */
 export async function deleteThemeStorePageAction(id: string): Promise<{ problems: string[] } | void> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isId(id)) return { problems: [(await platformActionWords()).unknownPage] };
   if (!(await themeStoreRoleOf(id))) return { problems: [(await platformActionWords()).notThemeStorePage] };
   await deletePage(admin, null, id, "page");
@@ -119,7 +119,7 @@ export async function deleteThemeStorePageAction(id: string): Promise<{ problems
 
 /** What Kaizen's page builder's Theme tab holds (D235): into Kaizen's theme, live on its site at once. */
 export async function savePlatformThemeTabAction(payload: string) {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await savePlatformThemeTab(admin, readJson(payload));
   if (result.ok) {
     updateTag(PLATFORM_NAVIGATION_TAG);
@@ -130,7 +130,7 @@ export async function savePlatformThemeTabAction(payload: string) {
 
 /** Kaizen's saved colours and gradients (D235), from its page builder's colour fields; nothing else of the theme. */
 export async function savePlatformLibraryAction(payload: string) {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await savePlatformThemeLibrary(admin, readJson(payload));
   if (result.ok) updateTag(PLATFORM_NAVIGATION_TAG);
   return result;
@@ -147,37 +147,37 @@ function readJson(payload: string): unknown {
 
 /** Kaizen's own templates for its own builder (D236): its saved parts, always on; there is no "my stores" source. */
 export async function kaizenTemplatesListAction(source: TemplateSource): Promise<TemplateItem[]> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   return source === "marketplace" ? listKaizenTemplates() : [];
 }
 
 /** A copy of one of Kaizen's own templates for a Kaizen page (D236). */
 export async function applyKaizenTemplateAction(id: string) {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   return applyKaizenTemplate(admin, String(id));
 }
 
 /** The live theme's sections for the Rows tab of Kaizena Flow's builder (D272), or null when it has none. */
 export async function platformThemeSectionsAction(): Promise<ThemeSectionsOffer> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   return themeSectionsFor(null);
 }
 
 /** One of the live theme's sections for a Kaizena Flow page, its pictures copied into Kaizena Flow's library (D272). */
 export async function placePlatformThemeSectionAction(key: string): Promise<SectionResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   return placeThemeSection(null, admin, String(key).slice(0, 60));
 }
 
 /** Kaizen's own templates are always on in its builder, and their sharing is always the marketplace's (D125, D236). */
 export async function kaizenTemplateFixedAction(): Promise<{ ok: false; problems: string[] }> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   return { ok: false, problems: [(await platformActionWords()).ownTemplates] };
 }
 
 /** Kaizen's own CSS for every one of its pages (D100): live at once. */
 export async function savePlatformCssAction(css: unknown): Promise<{ ok: true } | { ok: false; problems: string[] }> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await saveSiteCss(admin, null, css);
   if (result.ok) updateTag(PLATFORM_NAVIGATION_TAG);
   return result;
@@ -188,12 +188,12 @@ export async function savePlatformCssAction(css: unknown): Promise<{ ok: true } 
 // ---------------------------------------------------------------------------
 
 export async function createSavedPartAction(input: unknown): Promise<SavedResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   return createSavedPart(admin, null, input);
 }
 
 export async function updateSavedPartAction(id: string, input: unknown): Promise<SavedResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isId(id)) return { ok: false, problems: [(await platformActionWords()).unknownPart] };
   const result = await updateSavedPart(admin, null, id, input);
   if (result.ok && result.pages) updateTag(PAGES_TAG);
@@ -201,7 +201,7 @@ export async function updateSavedPartAction(id: string, input: unknown): Promise
 }
 
 export async function deleteSavedPartAction(id: string): Promise<SavedResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isId(id)) return { ok: false, problems: [(await platformActionWords()).unknownPart] };
   const result = await deleteSavedPart(admin, null, id);
   if (result.ok && result.pages) updateTag(PAGES_TAG);
@@ -226,19 +226,19 @@ function termsChanged(type: PageType, result: TermsResult): TermsResult {
 const unknownTerm = async (): Promise<TermsResult> => ({ ok: false, problems: [(await platformActionWords()).unknownTerm] });
 
 export async function createPageTermAction(type: PageType, input: unknown): Promise<TermsResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isType(type)) return unknownTerm();
   return termsChanged(type, await createTerm(admin, termScope(type), input));
 }
 
 export async function updatePageTermAction(type: PageType, id: string, input: unknown): Promise<TermsResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isType(type) || !isId(id)) return unknownTerm();
   return termsChanged(type, await updateTerm(admin, termScope(type), id, input));
 }
 
 export async function deletePageTermAction(type: PageType, id: string): Promise<TermsResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isType(type) || !isId(id)) return unknownTerm();
   return termsChanged(type, await deleteTerm(admin, termScope(type), id));
 }
@@ -249,7 +249,7 @@ export async function deletePageTermAction(type: PageType, id: string): Promise<
 
 /** A grid's items as the site will show them, for the canvas. */
 export async function gridPreviewAction(block: unknown, pageId: string | null): Promise<GridData | { problem: string }> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   const parsed = pageBlockSchema.safeParse(block);
   if (!parsed.success || parsed.data.type !== "contentGrid") {
     return { problem: parsed.success ? (await platformActionWords()).notGrid : parsed.error.issues[0].message };
@@ -259,20 +259,20 @@ export async function gridPreviewAction(block: unknown, pageId: string | null): 
 
 /** A store's product categories and tags, for a grid of its products. */
 export async function gridTermsAction(storeId: string): Promise<Term[]> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   if (!isId(storeId)) return [];
   return listTerms({ storeId, contentType: "product" });
 }
 
 /** What a custom grid item's link can point at (D155): Kaizen's own pages, articles, categories and tags, by address. */
 export async function platformLinkTargetsAction(): Promise<ItemLinkTargets> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   return itemLinkTargets(null);
 }
 
 /** Which of Kaizen's headers or footers its pages show (D80), or the standard one. */
 export async function choosePlatformSiteLayoutAction(type: SiteLayoutType, _state: FormState, form: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const choice = String(form.get("layout") ?? "");
   if (choice !== "" && !z.uuid().safeParse(choice).success) return { status: "error", messages: [fillWords((await platformActionWords()).unknownLayout, { one: type })] };
   const result = await chooseSiteLayout(admin, null, type, choice || null);
@@ -283,7 +283,7 @@ export async function choosePlatformSiteLayoutAction(type: SiteLayoutType, _stat
 
 /** Chooses the page Kaizen's front page, blog or 404 page shows (D143), or the standard one; the site follows at once. */
 export async function setPlatformPageRoleAction(role: string, _state: FormState, form: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   // The Special pages only; the theme store's pages are made and taken away from Themes (D285).
   if (!isSpecialRole(role)) return { status: "error", messages: [(await platformActionWords()).unknownPage] };
   const choice = String(form.get("page") ?? "");
@@ -298,7 +298,7 @@ export async function setPlatformPageRoleAction(role: string, _state: FormState,
 
 /** Makes a starter page for one of Kaizen's places, published and in place, to change in the builder (D143). */
 export async function createPlatformRolePageAction(role: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (!isSpecialRole(role)) return { status: "error", messages: [(await platformActionWords()).unknownPage] };
   const result = await createPlatformRolePage(admin, role);
   if (!result.ok) return { status: "error", messages: result.problems };
@@ -311,7 +311,7 @@ export async function createPlatformRolePageAction(role: string): Promise<FormSt
  * editor, and nothing is saved until the page is.
  */
 export async function translatePlatformPageAction(request: unknown): Promise<TranslateResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const parsed = translateRequest.safeParse(request);
   if (!parsed.success) return { ok: false, problem: (await platformActionWords()).textsUnread };
   const connection = await aiFor(null, { feature: "page_translation", accountId: admin.id });
@@ -326,7 +326,7 @@ export async function translatePlatformPageAction(request: unknown): Promise<Tra
 
 /** Kaizena Flow's own documents of a kind to open beside another in the builder (D412); the theme store's pages are edited under Themes. */
 export async function platformDualChoicesAction(kind: unknown): Promise<DualChoice[]> {
-  await requirePlatformAdmin();
+  await requirePlatform("website");
   if (kind !== "page" && kind !== "article" && kind !== "header" && kind !== "footer") return [];
   const theirs = new Set(kind === "page" ? (await themeStorePageStates()).flatMap((state) => (state.page ? [state.page.id] : [])) : []);
   return (await listPages(null, kind)).filter((page) => !theirs.has(page.id)).map((page) => ({ id: page.id, title: page.title }));
@@ -334,7 +334,7 @@ export async function platformDualChoicesAction(kind: unknown): Promise<DualChoi
 
 /** A page build or a page's pictures on Kaizena Flow's own site stopped from the Pages list (PSI UX-01), as `cancel_page_build` stops one. */
 export async function stopPlatformPageJobAction(kind: string, id: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const answer = await stopPageJob(null, admin.id, kind, id, adminText(await actionAdminLang(), "website").pageJobs);
   refresh();
   return answer;

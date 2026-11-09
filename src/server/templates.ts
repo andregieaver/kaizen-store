@@ -30,7 +30,7 @@ import {
 import { storeOrigins } from "@/lib/paths";
 import type { TextStyle } from "@/lib/text-styles";
 
-import { audit, type Account } from "./auth";
+import { audit, platformCan, type Account } from "./auth";
 import { copyStoredFile } from "./media";
 import { copyToLibrary, libraryFilesByUrl, type LibraryFile } from "./media-library";
 import { carryTextStyles } from "./text-styles";
@@ -538,7 +538,7 @@ export async function listMarketplaceTemplates(): Promise<ModerationItem[]> {
  * hiding stays through the publisher changing how it is shared.
  */
 export async function setTemplateHidden(account: Account, id: string, hidden: boolean): Promise<TemplateResult> {
-  if (!account.platformAdmin) return problem("Only the platform's admins can hide templates.");
+  if (!platformCan(account, "website")) return problem("Only the platform's admins can hide templates.");
   if (!isId(id)) return problem("This template no longer exists.");
   const [row] = await db().execute<Row>(sql`
     update commerce.saved_parts

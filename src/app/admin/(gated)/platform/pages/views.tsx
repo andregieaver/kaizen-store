@@ -9,7 +9,7 @@ import { TermsManager } from "@/components/admin/terms";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { isThemeStoreRole, PLATFORM_ROLE_COPY, SPECIAL_ROLES, type PlatformRole } from "@/lib/platform-roles";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listPages } from "@/server/pages";
 import { runningPageJobs } from "@/server/page-jobs";
 import { getPlatformPageRoles } from "@/server/platform-roles";
@@ -48,7 +48,7 @@ type Query = Promise<Record<string, string | string[] | undefined>>;
 export async function PagesListView({ type, searchParams }: { type: PageType; searchParams: Query }) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const { lang, w } = await platformSiteWords();
   const tw = typeWords(w, type);
   const copy = PAGE_TYPE_COPY[type];
@@ -151,7 +151,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
 
 export async function PageTermsView({ type }: { type: PageType }) {
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { lang, w } = await platformSiteWords();
   const tw = typeWords(w, type);
   const copy = PAGE_TYPE_COPY[type];

@@ -29,7 +29,7 @@ import { contentPack, packSlots, picturesMissing } from "@/lib/content-packs";
 import { isPack, type ThemeContent } from "@/lib/theme-store";
 import { normaliseFeatures, type FeatureId } from "@/lib/store-features";
 
-import { audit, type Account } from "./auth";
+import { audit, platformCan, type Account } from "./auth";
 import { log } from "./log";
 import { setFeatures } from "./store-features";
 import { getStore, refreshStoreById, templateStoreSlug } from "./stores";
@@ -206,7 +206,7 @@ export async function createStarter(
   admin: Account,
   input: { slug: string; details: StarterDetails },
 ): Promise<StarterResult<{ id: string; slug: string }>> {
-  if (!admin.platformAdmin) return { ok: false, problems: ["Only Kaizena Flow's admins make demo stores."] };
+  if (!platformCan(admin, "website")) return { ok: false, problems: ["Only Kaizena Flow's admins make demo stores."] };
   const problem = slugProblem(input.slug);
   if (problem) return { ok: false, problems: [`Store address: ${problem}`] };
   const [taken] = await db().execute<Row>(sql`select 1 as taken from commerce.stores where slug = ${input.slug}`);
@@ -250,7 +250,7 @@ async function recommendable(presetId: string | null | undefined): Promise<boole
  * published is no draft. The recommended design profile (D176) is one of the details.
  */
 export async function saveStarterDraft(admin: Account, id: string, details: StarterDetails): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
+  if (!platformCan(admin, "website") || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const starter = await getStarter(id);
   if (!starter) return { ok: false, problems: ["Unknown demo store."] };
   const next: StarterDetails = { ...details, recommendedDesign: details.recommendedDesign === undefined ? shownDetails(starter).recommendedDesign ?? null : details.recommendedDesign };
@@ -276,7 +276,7 @@ export async function saveStarterDraft(admin: Account, id: string, details: Star
  * One transaction: a failure publishes nothing. Refused while archived, and for a content pack whose pictures are not all made.
  */
 export async function publishStarter(admin: Account, id: string): Promise<StarterResult<{ copySlug: string; notes: string[] }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
+  if (!platformCan(admin, "website") || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const notes: string[] = [];
   let done: { storeId: string; copyId: string; copySlug: string };
   try {
@@ -378,7 +378,7 @@ export async function contentSources(): Promise<{ id: string; title: string; kin
  * in the same transaction: a content pack's template stays starting content, a copy of its own is archived.
  */
 export async function giveThemeContent(admin: Account, presetId: string, sourceId: string): Promise<StarterResult<{ id: string }>> {
-  if (!admin.platformAdmin || !isUuid(presetId)) return { ok: false, problems: ["Unknown theme."] };
+  if (!platformCan(admin, "website") || !isUuid(presetId)) return { ok: false, problems: ["Unknown theme."] };
   if (!isUuid(sourceId)) return { ok: false, problems: ["Choose the content to start from."] };
   const slug = `content-${randomBytes(4).toString("hex")}`;
   let made: { id: string; storeId: string };
@@ -469,7 +469,7 @@ export async function themeContentOf(presetId: string): Promise<ThemeContentRow 
 
 /** Stops offering a store template at once (D177): stores made from it keep what they got; pending sign-ups that chose it get the Standard store. */
 export async function unpublishStarter(admin: Account, id: string): Promise<StarterResult<{ pendingRequests: number }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
+  if (!platformCan(admin, "website") || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const [row] = await db().execute<Row>(sql`
     update commerce.store_starters set published = false, updated_by = ${admin.id}::uuid where id = ${id}::uuid and published
     returning store_id, (select count(*)::int from commerce.access_requests r where r.starter_id = ${id}::uuid and r.status = 'pending') as pending
@@ -481,7 +481,7 @@ export async function unpublishStarter(admin: Account, id: string): Promise<Star
 
 /** Archives a store template (D177): unpublished, and hidden from every list but the platform's Archived filter, until Restore. */
 export async function archiveStarter(admin: Account, id: string): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
+  if (!platformCan(admin, "website") || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const [row] = await db().execute<Row>(sql`
     update commerce.store_starters set archived_at = now(), archived_by = ${admin.id}::uuid, published = false, updated_by = ${admin.id}::uuid
      where id = ${id}::uuid and archived_at is null
@@ -493,7 +493,7 @@ export async function archiveStarter(admin: Account, id: string): Promise<Starte
 
 /** Restores an archived store template (D177): back in the list as an unpublished draft. */
 export async function restoreStarter(admin: Account, id: string): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
+  if (!platformCan(admin, "website") || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const [row] = await db().execute<Row>(sql`
     update commerce.store_starters set archived_at = null, archived_by = null, updated_by = ${admin.id}::uuid
      where id = ${id}::uuid and archived_at is not null
@@ -509,7 +509,7 @@ export async function restoreStarter(admin: Account, id: string): Promise<Starte
  * stay, hidden; only the template's row goes.
  */
 export async function deleteStarter(admin: Account, id: string): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
+  if (!platformCan(admin, "website") || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const starter = await getStarter(id);
   if (!starter) return { ok: false, problems: ["Unknown demo store."] };
   const blocker = deleteBlocker("demo store", { stores: starter.storesMade, requests: starter.requests });
@@ -533,7 +533,7 @@ export async function deleteStarter(admin: Account, id: string): Promise<Starter
 
 /** Moves a store template one place up or down in the order owners see; the order is written again as 1, 2, 3 … */
 export async function moveStarter(admin: Account, id: string, direction: "up" | "down"): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
+  if (!platformCan(admin, "website") || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const moved = await db().transaction(async (tx) => {
     // One mover at a time, so two admins reordering never interleave.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('commerce.store_starters.position'))`);
@@ -557,7 +557,7 @@ export async function moveStarter(admin: Account, id: string, direction: "up" | 
  * can edit every template. Returns the store's slug.
  */
 export async function joinStarter(admin: Account, id: string): Promise<StarterResult<{ slug: string }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
+  if (!platformCan(admin, "website") || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const [starter] = await db().execute<Row>(sql`
     select s.id, s.slug from commerce.store_starters st join commerce.stores s on s.id = st.store_id where st.id = ${id}::uuid
   `);
@@ -598,7 +598,7 @@ export async function setStarterFeatures(
   target: readonly string[],
   options: { confirmed?: boolean } = {},
 ): Promise<StarterResult<{ features: FeatureId[] }> | { ok: false; problems: string[]; warnings: string[]; needsConfirmation: true }> {
-  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
+  if (!platformCan(admin, "website") || !isUuid(id)) return { ok: false, problems: ["Unknown demo store."] };
   const starter = await getStarter(id);
   const store = starter ? await getStore(starter.storeSlug) : null;
   if (!starter || !store) return { ok: false, problems: ["Unknown demo store."] };

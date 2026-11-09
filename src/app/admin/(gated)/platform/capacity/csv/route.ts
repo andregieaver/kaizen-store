@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 import { writeCsv, type Cell } from "@/lib/csv";
 import { USAGE_METRIC_IDS } from "@/lib/usage-metrics";
 import { usageMonth } from "@/lib/usage-month";
-import { getAccount } from "@/server/auth";
+import { getAccount, platformCan } from "@/server/auth";
 import { platformUsage } from "@/server/usage";
 
 /** The platform's month of usage as CSV (D314): one row per store, raw numbers in each metric's unit (bytes, counts, millionths of a euro). */
 export async function GET(request: Request) {
   const account = await getAccount();
-  if (!account?.platformAdmin) notFound();
+  if (!platformCan(account, "settings", "read")) notFound();
   const month = usageMonth(new URL(request.url).searchParams.get("month"));
   const rows = await platformUsage(month);
   const table: Cell[][] = [

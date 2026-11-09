@@ -12,7 +12,7 @@ import { platformModes } from "@/server/stripe";
 
 import { createPlatformDiscountAction, deletePlatformDiscountAction, setPlatformDiscountActiveAction } from "../actions";
 import { deleteQuestion, PlatformDiscountFields } from "./discount-fields";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -30,7 +30,7 @@ const money = (minor: number, currency: string) => formatMoney(minor, currency, 
 export default async function PlatformDiscountsPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const t = adminText(adminLangOf(account.adminLocale), "platform");
   const w = t.discounts;
   const [discounts, currencies] = await Promise.all([listPlatformDiscounts(), planCurrencies()]);

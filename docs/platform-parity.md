@@ -14,7 +14,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-19 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509).
+18 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510).
 
 ### Website
 
@@ -56,7 +56,6 @@ Website section is the site's (see *Built for both*).
 | E-invoices (EHF, D463) | Kaizena Flow's plan invoices are Stripe's and go by email; from 1 January 2027 an owner's business registered in ELMA is owed EHF, which needs Kaizena Flow's own documents sent through B1's sender | Console, C3, with the books |
 | Apps and API | Settings → AI assistants and apps and App listings oversee others' apps; no Admin API for the platform (`api_tokens` needs a store) | Console, C4 |
 | AI | Has more than a store (pause, web search, prices, the eval); lacks how long AI manager conversations are kept | Console |
-| Team (roles) | Platform → Settings → Team adds and removes platform admins (D471); every one can do everything: no roles yet | Console, C1 |
 | The language a visitor sees first (D479) | Kaizena Flow's site suggests a visitor's language and never sends them to it (D312); no choice of rule. The switcher's look (by name, code or flag, side by side, one under another or a list, by screen size) is built for both | Console: the same rule on `platform_settings`, read by the proxy at `/` (next of D479) |
 
 ### Home
@@ -98,6 +97,7 @@ Website section is the site's (see *Built for both*).
 | Finance and VAT (D161, D496) | Analytics → Finance, VAT; Settings → Books | Plans → Analytics: what Kaizena Flow sold by month with its VAT (D507), posted into the books of the business behind it with codes 3 and 52 (D508), so in that business's VAT return and accounts, Stripe's fees with each payout |
 | Accounting (our ledger; Tripletex and Fiken compare with it) | Settings → Books | Plans → Analytics, *In the books* (D508): Kaizena Flow's sales, credit notes and Stripe payouts posted into the books the platform names (Human Web's) |
 | Payouts (D290) | Analytics → Payouts | Plans → Analytics, *Payouts* (D509): Kaizena Flow's own Stripe payouts, live and test apart, each with Stripe's fees, the sales it carried line by line and whether it adds up; posted to the books (D508) |
+| Team, roles and permissions (D158) | Settings → Team | Settings → Team (D471, D510): owners, and Support, Content, Finance and Read-only, each reading everything and changing its own part, and working in Kaizena Flow's store in the same role |
 
 ## Store-only: cannot apply to Kaizena Flow
 

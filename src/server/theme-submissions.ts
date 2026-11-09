@@ -18,7 +18,7 @@ import {
   type SubmissionStatus,
 } from "@/lib/theme-submissions";
 
-import { audit, type Account, type Membership } from "./auth";
+import { audit, platformCan, type Account, type Membership } from "./auth";
 import { archiveDesign, archiveWithdrawnDraft, createDesign, giveThemeAddress, publishDesign, takeSnapshot, writeDesignLook } from "./design-presets";
 import { memberCan } from "./permissions";
 import type { TemplateDeps } from "./templates";
@@ -286,7 +286,7 @@ export type QueueFilter = "open" | "decided";
 
 /** The submissions to review (`open`: waiting and in review, oldest first) or decided (newest first). */
 export async function listSubmissions(admin: Account, filter: QueueFilter = "open"): Promise<Submission[]> {
-  if (!admin.platformAdmin) return [];
+  if (!platformCan(admin, "website", "read")) return [];
   const rows =
     filter === "open"
       ? await db().execute<Row>(sql`${SELECT} where s.status in ('waiting', 'reviewing') order by s.created_at limit 200`)
@@ -295,7 +295,7 @@ export async function listSubmissions(admin: Account, filter: QueueFilter = "ope
 }
 
 export async function getSubmission(admin: Account, id: string): Promise<Submission | null> {
-  if (!admin.platformAdmin || !UUID.test(id)) return null;
+  if (!platformCan(admin, "website", "read") || !UUID.test(id)) return null;
   const [row] = await db().execute<Row>(sql`${SELECT} where s.id = ${id}::uuid`);
   return row ? submissionOf(row) : null;
 }
@@ -445,7 +445,7 @@ function problemWords(fields: SubmissionProblem[]): string {
 
 /** How many submissions wait for a first look, for the Themes page's card. */
 export async function waitingSubmissions(admin: Account): Promise<number> {
-  if (!admin.platformAdmin) return 0;
+  if (!platformCan(admin, "website", "read")) return 0;
   const [row] = await db().execute<Row>(sql`select count(*)::int as n from commerce.theme_submissions where status = 'waiting'`);
   return Number(row?.n ?? 0);
 }

@@ -490,6 +490,8 @@ export const accounts = commerce.table(
     adminView: text("admin_view").notNull().default("basic"),
     /** Operators of the platform itself (approve access requests). */
     platformAdmin: boolean("platform_admin").notNull().default(false),
+    /** A role on the platform's team other than owner (D510: support, content, finance, read-only); an owner is `platform_admin`. */
+    platformRole: text("platform_role"),
     /** The AI manager learns their preferences from conversations (D103); off, it only keeps what they tell it to. */
     assistantLearns: boolean("assistant_learns").notNull().default(true),
     /** The owner asked Kaizen for no reminders about plans left unpaid (D33). */
@@ -526,6 +528,7 @@ export const accounts = commerce.table(
     check("accounts_admin_scheme", sql`${t.adminScheme} in ('meadow', 'indigo')`),
     check("accounts_admin_locale", sql`${t.adminLocale} in ('en', 'nb-NO')`),
     check("accounts_admin_view", sql`${t.adminView} in ('basic', 'advanced')`),
+    check("accounts_platform_role", sql`${t.platformRole} is null or (${t.platformRole} in ('support', 'content', 'finance', 'read_only') and not ${t.platformAdmin})`),
   ],
 );
 

@@ -114,6 +114,16 @@ export const shellEn = {
     aiUsage: "AI usage",
     accountMenu: "{initials}, account menu, {email}",
   },
+  platformRole: {
+    names: { owner: "Owner", support: "Support", content: "Content", finance: "Finance", read_only: "Read-only" },
+    notice: "You can look at this page. As {role} on the team, you change {what}.",
+    readOnly: "You can look at this page. As Read-only on the team, you change nothing.",
+    what: {
+      support: "the support desk, the chat assistant and requests for stores",
+      content: "Kaizena Flow's website and themes",
+      finance: "the plans, discounts, referrals and plan reminders",
+    },
+  },
   levels: {
     controlCenter: "Control center",
     yourStores: "Your stores",

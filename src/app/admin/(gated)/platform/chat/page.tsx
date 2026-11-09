@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ChatAgentView } from "@/components/admin/chat-agent-view";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { adminLangOf } from "@/lib/admin-lang";
 import { AdminAreas } from "@/components/admin/admin-areas";
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Chat agent" };
 
 /** Kaizen's own chat agent and its knowledge base (D81). */
 export default async function PlatformChatPage() {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   return (
     <AdminAreas areas={["website"]}>
     <ChatAgentView

@@ -106,6 +106,16 @@ export const shellNb: ShellMessages = {
     aiUsage: "KI-bruk",
     accountMenu: "{initials}, kontomeny, {email}",
   },
+  platformRole: {
+    names: { owner: "Eier", support: "Kundestøtte", content: "Innhold", finance: "Økonomi", read_only: "Kun lesing" },
+    notice: "Du kan se på denne siden. Som {role} i teamet endrer du {what}.",
+    readOnly: "Du kan se på denne siden. Med kun lesetilgang i teamet endrer du ingenting.",
+    what: {
+      support: "kundestøtten, chatassistenten og forespørsler om butikker",
+      content: "Kaizena Flows nettsted og temaer",
+      finance: "abonnementene, rabattene, vervingen og påminnelsene",
+    },
+  },
   levels: {
     controlCenter: "Kontrollsenter",
     yourStores: "Butikkene dine",

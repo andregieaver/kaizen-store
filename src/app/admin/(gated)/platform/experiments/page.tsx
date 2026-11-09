@@ -4,7 +4,7 @@ import { connection } from "next/server";
 
 import { GOAL_WORDS, STATUS_SIGNAL, STATUS_WORDS } from "@/lib/experiments";
 import { daysBetween } from "@/lib/platform-experiments";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { platformExperiments } from "@/server/platform-experiments";
 import { platformUnitTests } from "@/server/platform-unit-tests";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: "A/B tests" };
  */
 export default async function PlatformExperimentsPage({ searchParams }: PageProps<"/admin/platform/experiments">) {
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "platformTools").experiments;

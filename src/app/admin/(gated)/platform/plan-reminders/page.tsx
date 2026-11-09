@@ -13,7 +13,7 @@ import {
 import { listPlatformDiscounts } from "@/server/platform-discounts";
 
 import { setPlanRemindersAction } from "./actions";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -32,7 +32,7 @@ const tile = "flex flex-col gap-1 rounded-lg border border-line bg-card p-4";
 export default async function PlanRemindersPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").planReminders;
   const STATUS: Record<AbandonedPlanRow["status"], string> = w.status;

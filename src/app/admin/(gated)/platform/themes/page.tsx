@@ -7,7 +7,7 @@ import { LifecycleBadge, LifecycleButtons } from "@/components/admin/lifecycle-b
 import { PreviewLink } from "@/components/admin/preview-link";
 import { DESIGN_LIMITS, designPreviewPath, designTabHref, type DesignRow } from "@/lib/design-presets";
 import { listFilterOf, type LifecycleFacts } from "@/lib/lifecycle";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { designLifecycle, listDesigns, shownDesignDetails, snapshotSources } from "@/server/design-presets";
 import { launchThemeStates } from "@/server/launch-themes";
 import { contentPackStates } from "@/server/content-packs";
@@ -52,7 +52,7 @@ const tab = "flex min-h-10 items-center rounded-md border border-edge px-3 text-
  */
 export default async function ThemesPage({ searchParams }: PageProps<"/admin/platform/themes">) {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const { lang, w } = await platformSiteWords();
   const t = w.themes;
   const query = await searchParams;

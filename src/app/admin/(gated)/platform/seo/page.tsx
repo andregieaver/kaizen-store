@@ -10,7 +10,7 @@ import { uploadsEnabled } from "@/server/media";
 import { getPlatformSeo, PLATFORM_DEFAULTS } from "@/server/seo";
 
 import { savePlatformSeoAction, uploadPlatformImageAction } from "../actions";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { platformSiteWords } from "@/server/platform-site-words";
 
@@ -25,7 +25,7 @@ const hint = "text-sm font-normal text-muted";
 export default async function PlatformSeoPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { w, lang } = await platformSiteWords();
   const t = w.seo;
   const seo = await getPlatformSeo();

@@ -11,7 +11,7 @@ import { featureSummary } from "@/lib/onboarding";
 import { STARTING_CONTENT_HREF } from "@/lib/theme-admin-paths";
 import { FEATURES_BY_ID, STORE_FEATURES, featureKept, featureOn } from "@/lib/store-features";
 import { featureWarnings } from "@/lib/feature-words";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { featureFacts } from "@/server/store-features";
 import { getDemoStore, presetCheck } from "@/server/demo-stores";
 import { getStarter, shownDetails, starterLifecycle, starterPreviewHref } from "@/server/store-starters";
@@ -40,7 +40,7 @@ export const metadata: Metadata = { title: "Demo store" };
  */
 export default async function DemoStorePage({ params, searchParams }: PageProps<"/admin/platform/themes/demo-stores/[starterId]">) {
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { lang, w } = await platformSiteWords();
   const labels = adminText(lang, "common").features.labels;
   const t = w.starter;

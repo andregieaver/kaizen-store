@@ -7,7 +7,7 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { screeningOn } from "@/server/content-moderation";
 import { listContentReports, type ContentReport } from "@/server/content-reports";
 
@@ -24,7 +24,7 @@ const when = (at: string) => at.slice(0, 16).replace("T", " ");
 /** Notices of illegal content on stores (DSA art. 16, D411): those waiting first, each decided here with its reason. */
 export default async function PlatformReportsPage() {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const w = adminText(adminLangOf(admin.adminLocale), "platform").reports;
   const [reports, screening] = await Promise.all([listContentReports(), screeningOn()]);
   const waiting = reports.filter((r) => r.status === "received");

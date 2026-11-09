@@ -4,7 +4,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { featureGroups, NEW_FEATURE_ROWS } from "@/lib/plan-features";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { getFeatureMatrix } from "@/server/plan-features";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
@@ -24,7 +24,7 @@ const input = "min-h-9 w-full rounded-md border border-line bg-card px-2 text-sm
 export default async function PlanFeaturesPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const w = adminText(adminLangOf(account.adminLocale), "platform").features;
   const { plans, features } = await getFeatureMatrix();
   const columns = plans.filter((plan) => plan.active);

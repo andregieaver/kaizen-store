@@ -9,7 +9,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { designLookChoice, designTabHref } from "@/lib/design-presets";
 import { parseDemoDetails } from "@/lib/demo-stores";
 import { DEMO_STORES_HREF, THEMES_ADMIN, demoStoreHref } from "@/lib/theme-admin-paths";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { DESIGNS_TAG } from "@/server/design-presets";
 import { createDemoStore, demoLookAsPreset, demoLookAsTheme, demoLookIntoNextVersion, publishDemoStore, saveDemoDetails } from "@/server/demo-stores";
 import { STARTERS_TAG, archiveStarter, deleteStarter, restoreStarter, unpublishStarter } from "@/server/store-starters";
@@ -27,7 +27,7 @@ const text = (value: FormDataEntryValue | null) => (typeof value === "string" ? 
  * customised like any store. When the theme could not be applied, its page says so instead.
  */
 export async function createDemoStoreAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const look = designLookChoice(formData.get("design"));
   if (!look) return { status: "error", messages: [(await platformActionWords()).chooseWears] };
   const result = await createDemoStore(admin, {
@@ -44,7 +44,7 @@ export async function createDemoStoreAction(_state: FormState, formData: FormDat
 
 /** Publishes a demo store (D277): live as it stands, listed under *See it live* on the theme it wears. */
 export async function publishDemoStoreAction(starterId: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await publishDemoStore(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   liveChanged();
@@ -53,7 +53,7 @@ export async function publishDemoStoreAction(starterId: string): Promise<FormSta
 
 /** Takes a demo store down (D277): no longer listed under *See it live*. */
 export async function unpublishDemoStoreAction(starterId: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await unpublishStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   liveChanged();
@@ -61,7 +61,7 @@ export async function unpublishDemoStoreAction(starterId: string): Promise<FormS
 }
 
 export async function archiveDemoStoreAction(starterId: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await archiveStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   liveChanged();
@@ -69,7 +69,7 @@ export async function archiveDemoStoreAction(starterId: string): Promise<FormSta
 }
 
 export async function restoreDemoStoreAction(starterId: string): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await restoreStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   liveChanged();
@@ -78,7 +78,7 @@ export async function restoreDemoStoreAction(starterId: string): Promise<FormSta
 
 /** Deletes a demo store after the admin confirmed: its store is closed and kept (D171), only its row goes. */
 export async function deleteDemoStoreAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (formData.get("confirm") !== "on") return { status: "error", messages: [(await platformActionWords()).confirmDelete] };
   const result = await deleteStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
@@ -88,7 +88,7 @@ export async function deleteDemoStoreAction(starterId: string, _state: FormState
 
 /** Its trade and picture for *See it live*, shown at once. */
 export async function saveDemoDetailsAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const details = parseDemoDetails({ trade: formData.get("trade"), pictureUrl: formData.get("pictureUrl") });
   if (!details.ok) return { status: "error", messages: details.problems };
   const result = await saveDemoDetails(admin, starterId, details.details);
@@ -99,7 +99,7 @@ export async function saveDemoDetailsAction(starterId: string, _state: FormState
 
 /** *Publish this look… → As a new theme*: an unpublished theme with the demo store's look and a copy of its content, opened to name and publish. */
 export async function demoAsThemeAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const title = text(formData.get("title"));
   if (!title) return { status: "error", messages: [(await platformActionWords()).nameTheme] };
   if (title.length > 80) return { status: "error", messages: [(await platformActionWords()).nameShort] };
@@ -111,7 +111,7 @@ export async function demoAsThemeAction(starterId: string, _state: FormState, fo
 
 /** *Publish this look… → As a preset of {theme}*: a new draft preset of the theme it wears, sent out when the theme is published. */
 export async function demoAsPresetAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await demoLookAsPreset(admin, starterId, text(formData.get("name")));
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(DESIGNS_TAG);
@@ -121,7 +121,7 @@ export async function demoAsPresetAction(starterId: string, _state: FormState, f
 
 /** *Publish this look… → Into {theme}'s next version*: the theme's draft look becomes the demo store's, to review and publish. */
 export async function demoIntoNextVersionAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   if (formData.get("confirm") !== "on") return { status: "error", messages: [(await platformActionWords()).confirmThemeReplace] };
   const result = await demoLookIntoNextVersion(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };

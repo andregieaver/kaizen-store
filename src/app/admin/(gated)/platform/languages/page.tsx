@@ -6,7 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { nativeName, worldLanguages } from "@/lib/languages";
 import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
 import { UI_NIGHT_KEYS_PER_LANGUAGE } from "@/lib/ui-nightly";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listLanguages, storesUsing } from "@/server/languages";
 import { uiCoverage } from "@/server/ui-text";
 import { getPlatformLangs } from "@/server/platform-navigation";
@@ -30,7 +30,7 @@ const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 export default async function LanguagesPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const w = adminText(adminLangOf(account.adminLocale), "platformTools").languages;
   const [languages, coverage, siteLangs] = await Promise.all([listLanguages(), uiCoverage(), getPlatformLangs()]);
   const uses = new Map(await Promise.all(languages.map(async (l) => [l.lang, await storesUsing(l.lang)] as const)));

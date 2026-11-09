@@ -8,7 +8,7 @@ import { getPlanReminderStep } from "@/server/plan-reminders";
 
 import { deletePlanReminderAction } from "../actions";
 import { PlanReminderForm } from "../reminder-form";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
@@ -17,7 +17,7 @@ import { adminText } from "@/lib/admin-text";
 export const metadata: Metadata = { title: "Plan reminder" };
 
 export default async function PlanReminderPage({ params }: PageProps<"/admin/platform/plan-reminders/[stepId]">) {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const t = adminText(adminLangOf(account.adminLocale), "platform");
   const w = t.planReminderStep;
   const { stepId } = await params;

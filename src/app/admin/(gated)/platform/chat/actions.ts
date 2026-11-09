@@ -5,13 +5,13 @@ import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { chatTag, saveChatAgent } from "@/server/chat-agent";
 import { addDocumentFromForm, deleteDocument, refreshSiteKnowledge } from "@/server/knowledge";
 
 /** Kaizen's own chat agent (D81), on Kaizen's pages. */
 export async function savePlatformChatAgentAction(json: string) {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("support");
   let raw: unknown;
   try {
     raw = JSON.parse(json);
@@ -27,7 +27,7 @@ export async function savePlatformChatAgentAction(json: string) {
 }
 
 export async function addPlatformDocumentAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("support");
   const result = await addDocumentFromForm(account, null, formData);
   if (!result.ok) return { status: "error", messages: result.problems };
   after(() => refreshSiteKnowledge(null));
@@ -36,7 +36,7 @@ export async function addPlatformDocumentAction(_state: FormState, formData: For
 }
 
 export async function deletePlatformDocumentAction(id: string) {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("support");
   if (!z.uuid().safeParse(id).success) return { ok: false as const, problems: ["No such document."] };
   await deleteDocument(account, null, id);
   refresh();

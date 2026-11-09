@@ -6,7 +6,7 @@ import { ConsentLog, TrackingForm } from "@/components/admin/cookie-settings";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { reviewFindings } from "@/lib/cookie-scan";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listConsents } from "@/server/consents";
 import { latestFindings, listScans } from "@/server/cookie-scans";
 import { getPlatformChrome } from "@/server/platform-navigation";
@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: "Cookies and tracking" };
 /** Kaizen's own cookies, tools and consents (D58). */
 export default async function PlatformCookiesPage() {
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { w, lang } = await platformSiteWords();
   const words = adminText(lang, "legal");
   const locale = ADMIN_LANG_FACTS[lang].locale;

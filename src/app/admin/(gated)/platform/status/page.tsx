@@ -9,7 +9,7 @@ import { adminText } from "@/lib/admin-text";
 import type { PlatformMessages } from "@/lib/admin-messages/platform.en";
 import { platformText } from "@/lib/platform-text";
 import { INCIDENT_IMPACTS, INCIDENT_STATUSES, STATUS_COMPONENTS } from "@/lib/status";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { readStatusOverview, subscriberCount, type IncidentView } from "@/server/status";
 
 import { postIncidentAction, updateIncidentAction } from "./actions";
@@ -22,7 +22,7 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3";
 /** The status page's admin (D360): the latest checks, incidents to post and update, and how many subscribe. */
 export default async function PlatformStatusPage() {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const w = adminText(lang, "platform").status;
   // The components as the public status page names them, in the admin's language (both languages are the site's own, D312).

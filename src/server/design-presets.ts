@@ -49,7 +49,7 @@ import { OWN_SLOTS, THEME_SLUG, isThemePicture, readListing, readListingWords, t
 import { blockingLines, themeCheck, type ThemeCheckResult } from "@/lib/theme-check";
 import { coreStylesRemoved, cssFate, layoutFate, layoutFingerprintSource, mergeSettings, whatsNew, type Placed as PlacedLook, type WhatsNewWords } from "@/lib/theme-update";
 
-import { audit, type Account } from "./auth";
+import { audit, platformCan, type Account } from "./auth";
 import { catalogTag } from "./catalog";
 import { findFont, installFonts } from "./fonts";
 import { log } from "./log";
@@ -315,7 +315,7 @@ const NOT_HIDDEN = sql`not (s.starter and not exists (select 1 from commerce.sto
  * they reach as members), not closed, and never a store the platform keeps for itself (D177).
  */
 export async function snapshotSources(admin: Account): Promise<{ id: string; name: string; slug: string; kind: "template" | "starter" | "store" }[]> {
-  if (!admin.platformAdmin) return [];
+  if (!platformCan(admin, "website", "read")) return [];
   const rows = await db().execute<Row>(sql`
     select s.id, s.name, s.slug, s.is_template, s.starter from commerce.stores s
     join commerce.store_members m on m.store_id = s.id and m.account_id = ${admin.id}::uuid and m.disabled_at is null
@@ -470,7 +470,7 @@ async function readWorkspace(presetId: string): Promise<{ title: string; workspa
  * Null for anyone who does not run the platform, an unknown profile, and a profile without a workspace yet.
  */
 export async function workspaceOf(account: Pick<Account, "platformAdmin">, presetId: string): Promise<DesignWorkspace | null> {
-  if (!account.platformAdmin || !isUuid(presetId)) return null;
+  if (!platformCan(account, "website", "read") || !isUuid(presetId)) return null;
   const found = await readWorkspace(presetId);
   return found?.workspace ? { presetId, title: found.title, store: found.workspace } : null;
 }
@@ -481,7 +481,7 @@ export async function workspaceOf(account: Pick<Account, "platformAdmin">, prese
  * once get the same one (the second's is closed). Null for anyone who does not run the platform and an unknown profile.
  */
 export async function ensureWorkspace(admin: Account, presetId: string, deps: ApplyDeps = {}): Promise<DesignResult<{ workspace: DesignWorkspace }>> {
-  if (!admin.platformAdmin || !isUuid(presetId)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(presetId)) return refuse(UNKNOWN);
   const found = await readWorkspace(presetId);
   if (!found) return refuse(UNKNOWN);
   if (found.workspace) return { ok: true, workspace: { presetId, title: found.title, store: found.workspace } };
@@ -596,7 +596,7 @@ export async function createDesign(
   input: { origin: DesignOrigin; details: DesignDetails },
   deps: ApplyDeps = {},
 ): Promise<DesignResult<{ id: string; notes: string[] }>> {
-  if (!admin.platformAdmin) return refuse("Only Kaizena Flow's admins make themes.");
+  if (!platformCan(admin, "website")) return refuse("Only Kaizena Flow's admins make themes.");
   const { origin } = input;
   const notes: string[] = [];
   let source: DesignSnapshot | null = null;
@@ -653,7 +653,7 @@ export async function createDesign(
  * from a store writes it. Only the draft changes: stores keep the published profile until Publish.
  */
 export async function copyStoreLookToDraft(admin: Account, presetId: string, storeId: string, deps: ApplyDeps = {}): Promise<DesignResult<{ notes: string[] }>> {
-  if (!admin.platformAdmin || !isUuid(presetId)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(presetId)) return refuse(UNKNOWN);
   if (!isUuid(storeId) || !(await works(admin.id, storeId))) return refuse("Choose a store you work in.");
   const ready = await ensureWorkspace(admin, presetId, deps);
   if (!ready.ok) return ready;
@@ -670,7 +670,7 @@ export async function copyStoreLookToDraft(admin: Account, presetId: string, sto
  * (`syncLaunchThemes()`), as *Start again from a store* writes a store's. Only the draft changes until Publish.
  */
 export async function writeDesignLook(admin: Account, presetId: string, snapshot: DesignSnapshot, deps: ApplyDeps = {}): Promise<DesignResult<{ notes: string[] }>> {
-  if (!admin.platformAdmin || !isUuid(presetId)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(presetId)) return refuse(UNKNOWN);
   const parsed = parseDesignSnapshot(snapshot);
   if (!parsed) return refuse("That look cannot be read as a theme.");
   const ready = await ensureWorkspace(admin, presetId, deps);
@@ -730,7 +730,7 @@ export async function workspaceChosenPage(workspace: DesignWorkspace, kind: Desi
 
 /** Saves a profile's details as a draft (D177): stores keep seeing what is published until Publish. A draft equal to what is published is none. */
 export async function saveDesignDraft(admin: Account, id: string, details: DesignDetails): Promise<DesignResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id)) return refuse(UNKNOWN);
   const design = await getDesign(id);
   if (!design) return refuse(UNKNOWN);
   const draft = sameDesignDetails(details, shownDesignDetails({ ...design, draft: null })) ? null : details;
@@ -750,7 +750,7 @@ export async function saveDesignDraft(admin: Account, id: string, details: Desig
  * archived. Stores that applied it keep what they got.
  */
 export async function publishDesign(admin: Account, id: string, whatsNewNote: string | null = null): Promise<DesignResult<{ notes: string[] }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id)) return refuse(UNKNOWN);
   const design = await getDesign(id);
   if (!design) return refuse(UNKNOWN);
   if (design.archivedAt) return refuse("This theme is archived. Restore it before publishing it.");
@@ -828,7 +828,7 @@ export async function publishDesign(admin: Account, id: string, whatsNewNote: st
 
 /** Stops offering a profile at once (D177): stores that applied it keep their look; pending sign-ups that chose it keep the template's own. */
 export async function unpublishDesign(admin: Account, id: string): Promise<DesignResult<{ pendingRequests: number }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id)) return refuse(UNKNOWN);
   const [row] = await db().execute<Row>(sql`
     update commerce.design_presets set published = false, updated_by = ${admin.id}::uuid where id = ${id}::uuid and published
     returning workspace_store_id,
@@ -846,7 +846,7 @@ export async function unpublishDesign(admin: Account, id: string): Promise<Desig
  * recommended profile (published or drafted): the templates it was cleared from are named back.
  */
 export async function archiveDesign(admin: Account, id: string): Promise<DesignResult<{ clearedFrom: string[] }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id)) return refuse(UNKNOWN);
   const done = await db().transaction(async (tx) => {
     const [row] = await tx.execute<Row>(sql`
       update commerce.design_presets set archived_at = now(), archived_by = ${admin.id}::uuid, published = false, updated_by = ${admin.id}::uuid
@@ -870,7 +870,7 @@ export async function archiveDesign(admin: Account, id: string): Promise<DesignR
 
 /** Restores an archived profile (D177): back in the list as an unpublished draft. */
 export async function restoreDesign(admin: Account, id: string): Promise<DesignResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id)) return refuse(UNKNOWN);
   const [row] = await db().execute<Row>(sql`
     update commerce.design_presets set archived_at = null, archived_by = null, updated_by = ${admin.id}::uuid
      where id = ${id}::uuid and archived_at is not null
@@ -886,7 +886,7 @@ export async function restoreDesign(admin: Account, id: string): Promise<DesignR
  * closed and stays (D171), hidden.
  */
 export async function deleteDesign(admin: Account, id: string): Promise<DesignResult<{ clearedFrom: string[] }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id)) return refuse(UNKNOWN);
   const design = await getDesign(id);
   if (!design) return refuse(UNKNOWN);
   const blocker = deleteBlocker("theme", { stores: design.storesUsing, requests: design.requests, platform: design.onPlatform });
@@ -924,7 +924,7 @@ export async function deleteDesign(admin: Account, id: string): Promise<DesignRe
 
 /** Moves a design profile one place up or down in the order stores see; the order is written again as 1, 2, 3 … */
 export async function moveDesign(admin: Account, id: string, direction: "up" | "down"): Promise<DesignResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id)) return refuse(UNKNOWN);
   const moved = await db().transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('commerce.design_presets.position'))`);
     const rows = await tx.execute<Row>(sql`select id from commerce.design_presets where archived_at is null order by position, lower(title), id`);
@@ -1255,7 +1255,7 @@ export async function installPresetOnPlatform(
   deps: ApplyDeps = {},
   variation: string | null = null,
 ): Promise<DesignResult<{ installId: string; title: string; notes: string[] }>> {
-  if (!admin.platformAdmin) return refuse("Only Kaizena Flow's admins change its site's look.");
+  if (!platformCan(admin, "website")) return refuse("Only Kaizena Flow's admins change its site's look.");
   if (!isUuid(presetId)) return refuse(UNKNOWN);
   const [preset] = await db().execute<Row>(sql`
     select id, title, snapshot, published, archived_at, source_store_id from commerce.design_presets where id = ${presetId}::uuid
@@ -1962,7 +1962,7 @@ async function platformUpdateActor(install: Row): Promise<string | null> {
  * and pictures of Kaizena Flow are never touched.
  */
 export async function updatePlatformInstall(admin: Account | null, installId: string, deps: ApplyDeps = {}): Promise<UpdateResult> {
-  if (admin !== null && !admin.platformAdmin) return refuse("Only Kaizena Flow's admins change its site's look.");
+  if (admin !== null && !platformCan(admin, "website")) return refuse("Only Kaizena Flow's admins change its site's look.");
   if (!isUuid(installId)) return refuse(UNKNOWN);
   const [install] = await db().execute<Row>(sql`
     select i.id, i.title, i.preset_id, i.version_id, i.live, i.look, i.placed, i.installed_by, i.variation, cur.number as current_number, cur.snapshot as current_snapshot
@@ -2096,7 +2096,7 @@ export async function updatePlatformInstall(admin: Account | null, installId: st
  * shows exactly what the update left. Pages the update made stay among Kaizena Flow's pages, unused.
  */
 export async function undoPlatformThemeUpdate(admin: Account, updateId: string): Promise<DesignResult<{ title: string }>> {
-  if (!admin.platformAdmin) return refuse("Only Kaizena Flow's admins change its site's look.");
+  if (!platformCan(admin, "website")) return refuse("Only Kaizena Flow's admins change its site's look.");
   if (!isUuid(updateId)) return refuse("That update is not known.");
   try {
     const title = await db().transaction(async (tx) => {
@@ -2320,7 +2320,7 @@ export async function markLaunchTheme(presetId: string, key: string, version: nu
  * Saved at once, as the listing is; audited `platform.theme_picture_replaced` and `platform.theme_picture_restored`.
  */
 export async function saveThemeOwnPicture(admin: Account, id: string, slot: OwnSlot, url: string | null): Promise<DesignResult> {
-  if (!admin.platformAdmin || !isUuid(id) || !(OWN_SLOTS as readonly string[]).includes(slot)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id) || !(OWN_SLOTS as readonly string[]).includes(slot)) return refuse(UNKNOWN);
   const address = url?.trim() || null;
   if (address && !isThemePicture(address)) return refuse("A picture's address is one on this site (/…) or an https:// address.");
   const rows = await db().execute<Row>(sql`
@@ -2346,7 +2346,7 @@ export async function saveThemeOwnPicture(admin: Account, id: string, slot: OwnS
  * Not a draft: the list and the theme's page show it at once while the theme is published. An address another theme has is refused.
  */
 export async function saveThemeListing(admin: Account, id: string, slug: string, listing: ThemeListing): Promise<DesignResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id)) return refuse(UNKNOWN);
   if (!THEME_SLUG.test(slug)) return refuse("The address is lowercase letters, digits and hyphens.");
   const [taken] = await db().execute<Row>(sql`select 1 from commerce.design_presets where slug = ${slug} and id <> ${id}::uuid`);
   if (taken) return refuse("Another theme has that address. Choose another.");

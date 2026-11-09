@@ -8,7 +8,7 @@ import { Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { bpsToPercentText } from "@/lib/bonus-admin";
 import { money } from "@/lib/control-center";
 import { bpsText, type AdminReferrer } from "@/lib/referrals";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { getReferralSettings, listReferrals, listReferrers, referralTotals } from "@/server/referrals";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
@@ -91,7 +91,7 @@ function ReferrerActions({ referrer, w }: { referrer: AdminReferrer; w: W }) {
  */
 export default async function PlatformReferralsPage() {
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").referrals;
   const locale = ADMIN_LANG_FACTS[lang].locale;

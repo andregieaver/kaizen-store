@@ -7,13 +7,13 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { fillWords } from "@/lib/admin-fill";
 import { adminText } from "@/lib/admin-text";
 import { parseLimitsForm } from "@/lib/limits";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { limitGrid, savePlanLimits } from "@/server/limits-admin";
 import { PLANS_TAG } from "@/server/public-plans";
 
 /** Saves the plans' limits and the default (D314, `docs/capacity.md` step 2.6): only the cells that changed are written. */
 export async function savePlanLimitsAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   const w = adminText(adminLangOf(admin.adminLocale), "capacity");
   const grid = await limitGrid();
   const { cells, problems } = parseLimitsForm(formData, grid.plans.map((p) => p.id));

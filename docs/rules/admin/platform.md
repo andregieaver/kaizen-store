@@ -148,6 +148,21 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - **Permissions (D158)**: every store admin page, action, route and helper asks `requirePermission(slug, key)`, `checkPermission`, `requireOwnerRole`, `requireAnyPermission`/`checkAnyPermission` or `requirePageTypeAccess`/`checkPageTypeAccess` (`src/server/permissions.ts`, names in `src/lib/permission-guards.ts`); Work's screens ask `settings:*`; nothing else compares `role` with `"owner"` or calls `requireMember`/`getMembership` (`permissions.scan.test.ts`, against `permissions.baseline.json`). A page's key is its navigation section (`sectionOf`), `/staff…` is `staff`, `/billing` is `billing`; owner-only pages need `owner`; `staff:write` and `billing:write` are owner-held. Roles are `store_roles` made by `ensureStoreRoles()`; a custom-role member has the enum `admin` and a `role_id`. A new page: one nav item, `ADMIN_PAGES`, a guard with its area. A new owner tool: a row in `TOOL_PERMISSIONS`. Collaborators are members with `kind = 'collaborator'` and `expires_at`: any reader of `commerce.store_members` ignores an expired one (`store-members-expiry.test.ts`), and Home and the control center show only the figures a member's role may read (`StoreFigures.hides`).
 
+## The platform's team and its roles (C1, D471, D510, `src/lib/platform-access.ts`, `src/server/platform-team.ts`)
+
+- **The platform's team and its roles (C1, D471, D510, `src/lib/platform-access.ts`, `src/server/platform-team.ts`)**: an owner of the
+  platform is `accounts.platform_admin` (everything, as before roles); the other roles (`support`, `content`, `finance`, `read_only`) are
+  `accounts.platform_role`, never held with `platform_admin`. Every role reads every platform page (`requirePlatformReader()`); a role
+  changes only its own area (`ROLE_WRITES`: support the desk, the chat assistant and store requests; content the website and themes; finance
+  the plans, discounts, referrals, reminders and the books). Settings, the team, the AI manager and drastic store actions (suspend, close,
+  limits, two-step resets) stay `requirePlatformAdmin()`. A platform action or route asks `requirePlatform(area)`, its area written in code
+  for the folder it sits in, never read from the request's address (a server action can be posted to any page's); a server module asks
+  `platformCan(account, area, access)`, never `account.platformAdmin` for something a role may do; `platform-access.scan.test.ts` holds the
+  areas to their folders and keeps `requirePlatformReader()` out of anything that changes something. Everyone on the team is held at
+  two-step sign-in. Only an owner changes the team (`addPlatformAdmin()`, `setPlatformRole()`, `removePlatformAdmin()`), never their own
+  place, and the platform keeps an owner; a member is an admin of Kaizena Flow's own store in the store role of their work
+  (`HOUSE_ROLE_TEMPLATE`), set in the same transaction, never its owner (`store_members_house()`).
+
 ## Audit log (D158)
 
 - **Audit log (D158)**: `audit()` keeps its signature and takes an optional `{ area, target, changes }`; `auditChange()` writes allowlisted diffs (`ALLOWED_FIELDS`), never secrets; a new action needs an area in `AUDIT_AREAS` (a scan test). The log is append-only, deletable only after 24 months by `pruneAuditLog()` (`commerce.guard_audit_log()`); `/admin/{store}/activity` shows an owner everything and others their readable areas; the CSV is owners'.

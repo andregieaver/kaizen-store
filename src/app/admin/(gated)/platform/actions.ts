@@ -12,7 +12,7 @@ import { parsePrice } from "@/lib/product-input";
 import { seoFromForm } from "@/lib/seo";
 import { designLookChoice } from "@/lib/design-presets";
 import { siteUrl } from "@/lib/site";
-import { requireAccount, type Account } from "@/server/auth";
+import { requireAccount, requirePlatform, type Account } from "@/server/auth";
 import {
   applyPlanDiscount,
   assignPlan,
@@ -84,7 +84,7 @@ export async function decideAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("stores");
   const id = z.uuid().safeParse(requestId);
   if (!id.success) return { status: "error", messages: [(await said()).unknownRequest] };
 
@@ -182,7 +182,7 @@ export async function savePlanAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   if (planId !== null && !z.uuid().safeParse(planId).success) {
     return { status: "error", messages: [(await said()).unknownPlan] };
   }
@@ -223,7 +223,7 @@ export async function savePlanAction(
 
 /** Copies every plan to Stripe again, e.g. after a failure or new keys. */
 export async function syncPlansAction(): Promise<FormState> {
-  await requirePlatformAdmin();
+  await requirePlatform("plans");
   const problems: string[] = [];
   const modes = platformModes();
   if (modes.length === 0) return { status: "error", messages: [(await said()).kaizenaFlowsStripeKeysAre] };
@@ -239,7 +239,7 @@ export async function syncPlansAction(): Promise<FormState> {
 
 /** Starts or changes a store's plan. */
 export async function assignPlanAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   const priceId = z.uuid().safeParse(formData.get("priceId"));
   if (!priceId.success) return { status: "error", messages: [(await said()).chooseAPlanAndPrice] };
   const trial = Number.parseInt(String(formData.get("trialDays") ?? "0") || "0", 10);
@@ -254,7 +254,7 @@ export async function assignPlanAction(storeSlug: string, _state: FormState, for
 
 /** Cancels a store's plan at the end of its period, at once, or undoes a cancellation. */
 export async function cancelPlanAction(storeId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   const when = z.enum(["period_end", "now", "undo"]).safeParse(formData.get("when"));
   if (!when.success || !z.uuid().safeParse(storeId).success) return { status: "error", messages: [(await said()).unknownRequest] };
   const result = await cancelPlan(admin, storeId, when.data);
@@ -274,7 +274,7 @@ export async function cancelPlanAction(storeId: string, _state: FormState, formD
 
 /** Sets a store's own fee per sale; empty returns it to its plan's fee. */
 export async function setStoreFeeAction(storeId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   if (!z.uuid().safeParse(storeId).success) return { status: "error", messages: [(await said()).unknownStore] };
   const text = String(formData.get("fee") ?? "").trim();
   const bps = text === "" ? null : percentToBps(text);
@@ -301,14 +301,14 @@ export async function savePlatformSeoAction(_state: FormState, formData: FormDat
 }
 
 export async function uploadPlatformImageAction(formData: FormData): Promise<UploadResult> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   // Kept in Kaizen's media library too (D88).
   return uploadToLibrary({ storeId: null, accountId: admin.id }, formData);
 }
 
 /** Starts an upload of a row's background video on Kaizen's pages, straight from the browser to the public bucket. */
 export async function startPlatformVideoUploadAction(file: unknown): Promise<VideoUpload> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const parsed = z
     .object({ name: z.string().max(255).optional(), type: z.string().max(100), size: z.number().int().nonnegative(), compressed: z.boolean().optional() })
     .safeParse(file);
@@ -339,7 +339,7 @@ function platformDiscountFromForm(formData: FormData, currencies: string[]) {
 
 /** Makes one of Kaizen's discount codes for plans, and puts it in Stripe (D31). */
 export async function createPlatformDiscountAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   const currencies = await planCurrencies();
   const result = await createPlatformDiscount(admin, platformDiscountFromForm(formData, currencies), currencies);
   if (!result.ok) return { status: "error", messages: result.problems };
@@ -349,7 +349,7 @@ export async function createPlatformDiscountAction(_state: FormState, formData: 
 
 /** Changes one of Kaizen's codes; a change to what it gives replaces it in Stripe. */
 export async function updatePlatformDiscountAction(id: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   if (!z.uuid().safeParse(id).success) return { status: "error", messages: [(await said()).unknownCode] };
   const currencies = await planCurrencies();
   const result = await updatePlatformDiscount(
@@ -366,7 +366,7 @@ export async function updatePlatformDiscountAction(id: string, _state: FormState
 
 /** Deletes one of Kaizen's codes, in Stripe too; back to the list. */
 export async function deletePlatformDiscountAction(id: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   if (!z.uuid().safeParse(id).success) return { ok: false, problems: [(await said()).unknownCode] };
   const result = await deletePlatformDiscount(admin, id);
   if (!result.ok) return result;
@@ -377,7 +377,7 @@ export async function deletePlatformDiscountAction(id: string): Promise<{ ok: tr
 
 /** Switches one of Kaizen's codes on or off. */
 export async function setPlatformDiscountActiveAction(id: string, active: boolean): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   if (!z.uuid().safeParse(id).success) return { status: "error", messages: [(await said()).unknownCode] };
   const result = await setPlatformDiscountActive(admin, id, active);
   if (!result.ok) return { status: "error", messages: result.problems };
@@ -387,7 +387,7 @@ export async function setPlatformDiscountActiveAction(id: string, active: boolea
 
 /** Puts a discount code on a store's plan, for a platform admin (D31). */
 export async function applyStoreDiscountAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   const store = await getStore(storeSlug);
   if (!store) return { status: "error", messages: [(await said()).unknownStore] };
   const code = String(formData.get("code") ?? "").slice(0, 60);

@@ -7,7 +7,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 import { SUBMISSION_SIGNAL } from "@/lib/theme-submissions";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { platformSiteWords } from "@/server/platform-site-words";
 import { listSubmissions, type QueueFilter } from "@/server/theme-submissions";
 
@@ -21,7 +21,7 @@ const tab = "flex min-h-10 items-center rounded-md border border-edge px-3 text-
  */
 export default async function SubmissionsPage({ searchParams }: PageProps<"/admin/platform/themes/submissions">) {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const { lang, w } = await platformSiteWords();
   const s = w.submissions;
   const filter: QueueFilter = (await searchParams).show === "decided" ? "decided" : "open";

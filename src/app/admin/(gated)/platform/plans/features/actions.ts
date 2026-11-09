@@ -4,13 +4,13 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { parseMatrixForm } from "@/lib/plan-features";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { PLANS_TAG } from "@/server/public-plans";
 import { getFeatureMatrix, saveFeatureMatrix } from "@/server/plan-features";
 
 /** Saves the plan comparison: every feature's words and order, the new ones, and what each shown plan includes. */
 export async function saveFeaturesAction(_state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("plans");
   const matrix = await getFeatureMatrix();
   const shown = matrix.plans.filter((plan) => plan.active).map((plan) => plan.id);
   const parsed = parseMatrixForm(formData, { featureIds: matrix.features.map((f) => f.id), planIds: shown });

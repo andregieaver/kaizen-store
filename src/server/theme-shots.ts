@@ -31,7 +31,7 @@ import {
   type WantedShot,
 } from "@/lib/theme-shots";
 
-import { audit, type Account } from "./auth";
+import { audit, platformCan, type Account } from "./auth";
 import { log } from "./log";
 import { removeStoredFiles, uploadBytes } from "./media";
 import { publishedContents } from "./store-starters";
@@ -407,7 +407,7 @@ export async function themeShotStatus(presetId: string): Promise<ShotStatus[]> {
 
 /** *Try again* on a theme's pictures that could not be made, or rest before trying again (D284): their tries start over now. Platform admins only. */
 export async function retryThemeShots(admin: Account, presetId: string): Promise<number> {
-  if (!admin.platformAdmin) return 0;
+  if (!platformCan(admin, "website")) return 0;
   const rows = await db().execute<Row>(sql`
     update commerce.theme_shots set status = 'waiting', tries = 0, problem = null, claimed_until = null
      where preset_id = ${presetId}::uuid and (status = 'failed' or (status = 'waiting' and claimed_until > now())) returning id

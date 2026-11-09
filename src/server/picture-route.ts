@@ -2,7 +2,7 @@ import "server-only";
 
 import { sameSite } from "@/lib/same-site";
 
-import { getAccount } from "./auth";
+import { getAccount, platformCan } from "./auth";
 import { checkPermission } from "./permissions";
 import { editLibraryPicture } from "./picture-editor";
 import { makeSitePicture } from "./picture-maker";
@@ -33,7 +33,7 @@ export async function storePictureRequest(request: Request, storeSlug: string): 
 export async function platformPictureRequest(request: Request): Promise<Response> {
   if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
   const account = await getAccount();
-  if (!account?.platformAdmin) return notFound();
+  if (!account || !platformCan(account, "website")) return notFound();
   return made(request, null, account.id);
 }
 
@@ -65,6 +65,6 @@ export async function storeEditRequest(request: Request, storeSlug: string): Pro
 export async function platformEditRequest(request: Request): Promise<Response> {
   if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
   const account = await getAccount();
-  if (!account?.platformAdmin) return notFound();
+  if (!account || !platformCan(account, "website")) return notFound();
   return edited(request, null, account.id);
 }

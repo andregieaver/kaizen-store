@@ -5,7 +5,7 @@ import { buttonClass, Card, Chip, List, ListRow, PageHeader, RowActions, RowLead
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { clientsSeen } from "@/server/oauth-clients";
 
 import { blockClientAction, verifyClientAction } from "./actions";
@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: "AI assistants and apps" };
  */
 export default async function PlatformOAuthPage() {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const lang = adminLangOf(admin.adminLocale);
   const w = adminText(lang, "oauth").platform;
   const clients = await clientsSeen();

@@ -6,7 +6,7 @@ import { DesignCards } from "@/components/admin/design-cards";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { demoStoreAddress } from "@/lib/demo-stores";
 import { DEMO_STORES_HREF } from "@/lib/theme-admin-paths";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { demoContentChoices } from "@/server/demo-stores";
 import { designChoices } from "@/server/design-presets";
 
@@ -26,7 +26,7 @@ const field = "flex flex-col gap-1 text-sm font-medium";
  */
 export default async function NewDemoStorePage() {
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { lang, w } = await platformSiteWords();
   const n = w.newDemo;
   const [designs, contents] = await Promise.all([designChoices(), demoContentChoices()]);

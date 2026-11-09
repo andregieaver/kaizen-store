@@ -6,7 +6,7 @@ import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import type { StoreTheme } from "@/lib/theme";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { savePlatformInstallLook } from "@/server/platform-theme-installs";
 
 const read = (payload: string): unknown => {
@@ -22,7 +22,7 @@ const read = (payload: string): unknown => {
  * page is, so its preview and What changes read the new settings.
  */
 export async function savePlatformInstallThemeAction(installId: string, payload: string): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await savePlatformInstallLook(admin, String(installId), { theme: read(payload) });
   if (!result.ok) return result;
   refresh();
@@ -31,7 +31,7 @@ export async function savePlatformInstallThemeAction(installId: string, payload:
 
 /** Keeps its own CSS in one of Kaizena Flow's installs that is not live (D252). */
 export async function savePlatformInstallCssAction(installId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatform("website");
   const result = await savePlatformInstallLook(admin, String(installId), { css: String(formData.get("css") ?? "") });
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();

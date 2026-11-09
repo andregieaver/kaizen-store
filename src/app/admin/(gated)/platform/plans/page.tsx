@@ -9,7 +9,7 @@ import { listPlans, planCurrencies, type Plan } from "@/server/billing";
 import { platformModes } from "@/server/stripe";
 
 import { savePlanAction, syncPlansAction } from "../actions";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
@@ -27,7 +27,7 @@ const storesText = (w: W, n: number) => (n === 1 ? w.oneStore : fillWords(w.stor
 export default async function PlansPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "platform").plans;
   const locale = ADMIN_LANG_FACTS[lang].locale;

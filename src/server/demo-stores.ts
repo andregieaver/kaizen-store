@@ -11,7 +11,7 @@ import { slugProblem } from "@/lib/slug";
 import { starterRefusal, type StarterRow } from "@/lib/store-starters";
 import { parseStoreTheme } from "@/lib/theme";
 
-import { audit, type Account } from "./auth";
+import { audit, platformCan, type Account } from "./auth";
 import { addVariation } from "./design-variations";
 import { applyDesignPreset, copyStoreLookToDraft, createDesign, liveLookChanges, type ApplyDeps } from "./design-presets";
 import { log } from "./log";
@@ -112,7 +112,7 @@ export async function createDemoStore(
   input: { name: string; slug: string; look: { id: string; variation: string | null }; contentId: string },
   deps: ApplyDeps = {},
 ): Promise<StarterResult<{ id: string; slug: string; themed: boolean; notes: string[] }>> {
-  if (!admin.platformAdmin) return refuse(NOT_YOURS);
+  if (!platformCan(admin, "website")) return refuse(NOT_YOURS);
   const name = input.name.trim().replace(/\s+/g, " ");
   if (!name) return refuse("Give the demo store a name.");
   if (name.length > 80) return refuse("Keep the name under 81 characters.");
@@ -182,7 +182,7 @@ function describe(error: unknown): string {
  * appears under *See it live* on the theme it wears. Refused while archived or while its store is not open.
  */
 export async function publishDemoStore(admin: Account, id: string): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id)) return refuse(UNKNOWN);
   const [row] = await db().execute<Row>(sql`
     update commerce.store_starters st set published = true, published_at = now(), draft = null, updated_by = ${admin.id}::uuid
       from commerce.stores s
@@ -200,7 +200,7 @@ export async function publishDemoStore(admin: Account, id: string): Promise<Star
 
 /** Saves a demo store's details (D277): its trade and its picture for *See it live*, shown at once (it is live, nothing waits for Publish). */
 export async function saveDemoDetails(admin: Account, id: string, details: DemoDetails): Promise<StarterResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  if (!platformCan(admin, "website") || !isUuid(id)) return refuse(UNKNOWN);
   const [row] = await db().execute<Row>(sql`
     update commerce.store_starters set summary = ${details.trade}, picture_url = ${details.pictureUrl}, updated_by = ${admin.id}::uuid
      where id = ${id}::uuid and kind = 'demo'
@@ -259,7 +259,7 @@ async function joined(admin: Account, id: string): Promise<{ ok: true; demo: Dem
  * The theme stays when its content cannot be copied, and the note says so.
  */
 export async function demoLookAsTheme(admin: Account, id: string, details: DesignDetails, deps: ApplyDeps = {}): Promise<StarterResult<{ presetId: string; notes: string[] }>> {
-  if (!admin.platformAdmin) return refuse(NOT_YOURS);
+  if (!platformCan(admin, "website")) return refuse(NOT_YOURS);
   const ready = await joined(admin, id);
   if (!ready.ok) return ready;
   const made = await createDesign(admin, { origin: { kind: "store", storeId: ready.demo.storeId }, details }, deps);
@@ -296,7 +296,7 @@ export async function presetCheck(demo: DemoStore): Promise<{ ok: true; changed:
  * a preset cannot hold (`presetCheck()`).
  */
 export async function demoLookAsPreset(admin: Account, id: string, name: string): Promise<StarterResult<{ presetId: string; key: string }>> {
-  if (!admin.platformAdmin) return refuse(NOT_YOURS);
+  if (!platformCan(admin, "website")) return refuse(NOT_YOURS);
   const demo = await getDemoStore(id);
   if (!demo) return refuse(UNKNOWN);
   const check = await presetCheck(demo);
@@ -317,7 +317,7 @@ export async function demoLookAsPreset(admin: Account, id: string, name: string)
  * write What's new for and publish; stores that follow updates get it only then.
  */
 export async function demoLookIntoNextVersion(admin: Account, id: string, deps: ApplyDeps = {}): Promise<StarterResult<{ presetId: string; notes: string[] }>> {
-  if (!admin.platformAdmin) return refuse(NOT_YOURS);
+  if (!platformCan(admin, "website")) return refuse(NOT_YOURS);
   const ready = await joined(admin, id);
   if (!ready.ok) return ready;
   const wears = ready.demo.wears;

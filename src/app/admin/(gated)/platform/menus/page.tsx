@@ -9,7 +9,7 @@ import { PLATFORM_KINDS } from "@/components/admin/menu-links";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import type { PageType } from "@/lib/page-content";
 import { termTargets } from "@/lib/taxonomy";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listPlatformMenus, menuUses } from "@/server/menus";
 import { uploadsEnabled } from "@/server/media";
 import { listMenuPages } from "@/server/pages";
@@ -28,7 +28,7 @@ export const metadata: Metadata = { title: "Menus" };
 export default async function PlatformMenusPage({ searchParams }: PageProps<"/admin/platform/menus">) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const { w } = await platformSiteWords();
   return (
     <AdminAreas areas={["website"]}>

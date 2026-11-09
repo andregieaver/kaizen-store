@@ -6,7 +6,7 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { PeriodPicker } from "@/components/admin/analytics/period-picker";
 import { StoreTotalsView } from "@/components/admin/support/store-totals-view";
 import { addDays, parseAnalyticsParams, todayIn } from "@/lib/analytics-period";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { storeTotals } from "@/server/support-platform";
 import { KAIZEN_TIME_ZONE } from "@/server/support-reports";
 import { PageHeader } from "@/components/admin/ui";
@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Stores' support" };
 export default async function StoresSupportPage({
   searchParams,
 }: PageProps<"/admin/platform/support/stores">) {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const t = adminText(lang, "support");
   const now = new Date();

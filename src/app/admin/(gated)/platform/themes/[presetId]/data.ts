@@ -6,7 +6,7 @@ import { connection } from "next/server";
 import type { DesignRow } from "@/lib/design-presets";
 import type { LifecycleFacts } from "@/lib/lifecycle";
 import { SITE_DESIGN } from "@/lib/theme-admin-paths";
-import { requirePlatformAdmin, type Account } from "@/server/auth";
+import { requirePlatformReader, type Account } from "@/server/auth";
 import { designLifecycle, ensureWorkspace, getDesign, type DesignWorkspace } from "@/server/design-presets";
 import { platformInstallLook } from "@/server/platform-theme-installs";
 import { getStore, type Store } from "@/server/stores";
@@ -17,7 +17,7 @@ import { getStore, type Store } from "@/server/stores";
  */
 export async function designPage(presetId: string): Promise<{ admin: Account; design: DesignRow; facts: LifecycleFacts & { used: boolean } }> {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const design = await getDesign(presetId);
   if (!design) {
     const install = await platformInstallLook(presetId);

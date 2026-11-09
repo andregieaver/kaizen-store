@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { LAUNCH_THEMES } from "@/lib/launch-themes";
 
-import type { Account } from "./auth";
+import { platformCan, type Account } from "./auth";
 import { applyDesignPreset, designTags, updateThemeInstall, type ApplyDeps } from "./design-presets";
 import { log } from "./log";
 import { refreshTag } from "./refresh";
@@ -40,7 +40,7 @@ export async function linkLaunchContents(): Promise<void> {
 
 export async function dressSignaturePacks(admin: Account, deps: ApplyDeps = {}): Promise<string[]> {
   const problems: string[] = [];
-  if (!admin.platformAdmin) return problems;
+  if (!platformCan(admin, "website")) return problems;
   for (const theme of LAUNCH_THEMES) {
     if (!theme.signature) continue;
     try {

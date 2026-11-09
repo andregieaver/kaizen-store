@@ -4,7 +4,7 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatPerMillion, formatUnitPrice } from "@/lib/ai-cost";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { listPrices, unpricedModels } from "@/server/ai-prices";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -37,7 +37,7 @@ const usedWords = (m: { tokens: number; images: number; audioSeconds: number; ch
 export default async function PlatformAiPricesPage({ searchParams }: PageProps<"/admin/platform/ai/prices">) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatformReader();
   const lang = adminLangOf(account.adminLocale);
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "platformTools").prices;

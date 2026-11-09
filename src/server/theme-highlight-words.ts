@@ -11,7 +11,7 @@ import { HIGHLIGHT_KINDS, HIGHLIGHT_NAMES, HIGHLIGHT_WORDS_MAX, readHighlightWor
 import { THEME_FEATURES, themeFeatures } from "@/lib/theme-store";
 
 import { AiError, aiFor, completeText } from "./ai";
-import type { Account } from "./auth";
+import { platformCan, type Account } from "./auth";
 import { themeContentOf } from "./store-starters";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 
@@ -69,7 +69,7 @@ export function checkedSuggestion(answer: string): { words: HighlightWords; left
 }
 
 export async function suggestHighlightWords(admin: Account, presetId: string): Promise<HighlightSuggestion> {
-  if (!admin.platformAdmin) return { ok: false, problem: "Only Kaizena Flow's platform admins write a theme's words." };
+  if (!platformCan(admin, "website")) return { ok: false, problem: "Only Kaizena Flow's platform admins write a theme's words." };
   const [row] = await readDb().execute<Row>(sql`select title, summary, snapshot from commerce.design_presets where id = ${presetId}::uuid`);
   const snapshot = row ? parseDesignSnapshot(row.snapshot) : null;
   if (!row || !snapshot) return { ok: false, problem: "The theme's published look could not be read: publish it first." };

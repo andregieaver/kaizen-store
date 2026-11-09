@@ -10,7 +10,7 @@ import { makeReferralCode, normalizeReferralCode, REFERRAL_DEFAULTS, referralEnd
 import { referralSettingsInput } from "@/lib/referrals-schema";
 import { siteUrl } from "@/lib/site";
 
-import { audit, type Account } from "./auth";
+import { audit, platformCan, type Account } from "./auth";
 import { sendEmail, type SendOutcome } from "./email";
 
 type Row = Record<string, unknown>;
@@ -76,7 +76,7 @@ export async function referralProgramOn(): Promise<boolean> {
  * keeps every balance, which can still be put on invoices. The caller refreshes `REFERRALS_TAG`.
  */
 export async function saveReferralSettings(actor: Account, raw: unknown): Promise<ReferralResult> {
-  if (!actor.platformAdmin) return problems("Only platform admins can change the referral program.");
+  if (!platformCan(actor, "plans")) return problems("Only platform admins can change the referral program.");
   const parsed = referralSettingsInput.safeParse(raw);
   if (!parsed.success) return problems(...new Set(parsed.error.issues.map((issue) => issue.message)));
   const s = parsed.data;
@@ -362,7 +362,7 @@ const reasonOf = (text: unknown) => String(text ?? "").trim().slice(0, 300);
 
 /** Blocks a referrer: they earn nothing more and their credit is not put on invoices, until unblocked. Balances are kept. */
 export async function setReferrerBlocked(actor: Account, accountId: string, blocked: boolean, reason?: string): Promise<ReferralResult> {
-  if (!actor.platformAdmin) return problems("Only platform admins can block a referrer.");
+  if (!platformCan(actor, "plans")) return problems("Only platform admins can block a referrer.");
   const why = reasonOf(reason);
   if (blocked && why.length < 3) return problems("Say why, so the next person knows.");
   const [row] = await db().execute<Row>(sql`
@@ -378,7 +378,7 @@ export async function setReferrerBlocked(actor: Account, accountId: string, bloc
 
 /** Voids a referral (it earns nothing more, what it earned stays) or puts it back, with a reason. */
 export async function setReferralVoid(actor: Account, referralId: string, isVoid: boolean, reason?: string): Promise<ReferralResult> {
-  if (!actor.platformAdmin) return problems("Only platform admins can void a referral.");
+  if (!platformCan(actor, "plans")) return problems("Only platform admins can void a referral.");
   const why = reasonOf(reason);
   if (isVoid && why.length < 3) return problems("Say why, so the next person knows.");
   const [row] = await db().execute<Row>(sql`
@@ -402,7 +402,7 @@ export async function adjustReferralCredit(
   input: { accountId: string; currency: string; amountMinor: number; reason: string },
   key: string = crypto.randomUUID(),
 ): Promise<ReferralResult> {
-  if (!actor.platformAdmin) return problems("Only platform admins can adjust credit.");
+  if (!platformCan(actor, "plans")) return problems("Only platform admins can adjust credit.");
   const currency = input.currency.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) return problems("Choose a currency.");
   if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor === 0) return problems("Enter an amount, positive to add or negative to remove.");

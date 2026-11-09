@@ -21,6 +21,11 @@ vi.mock("@/server/auth", async (original) => ({
     if (!current.platformAdmin) throw new Error("NEXT_HTTP_ERROR_FALLBACK;404");
     return current;
   },
+  // The theme editor's actions are the website area's (D510): an owner here.
+  requirePlatform: async () => {
+    if (!current.platformAdmin) throw new Error("NEXT_HTTP_ERROR_FALLBACK;404");
+    return current;
+  },
 }));
 
 const designs = await import("./design-presets");

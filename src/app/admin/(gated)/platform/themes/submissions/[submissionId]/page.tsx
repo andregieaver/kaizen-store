@@ -8,7 +8,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { designPreviewPath, designTabHref } from "@/lib/design-presets";
 import { THEMES_ADMIN } from "@/lib/theme-admin-paths";
 import { SUBMISSION_LIMITS, SUBMISSION_SIGNAL, canMove } from "@/lib/theme-submissions";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { platformSiteWords } from "@/server/platform-site-words";
 import { getSubmission } from "@/server/theme-submissions";
 
@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: "Submission" };
  */
 export default async function SubmissionPage({ params }: PageProps<"/admin/platform/themes/submissions/[submissionId]">) {
   await connection();
-  const admin = await requirePlatformAdmin();
+  const admin = await requirePlatformReader();
   const { w } = await platformSiteWords();
   const s = w.submissions;
   const submission = await getSubmission(admin, (await params).submissionId);

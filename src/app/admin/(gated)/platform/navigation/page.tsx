@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 
 import { NavigationEditor } from "@/components/admin/navigation-editor";
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatformReader } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { listPlatformMenus } from "@/server/menus";
 import { getPlatformNavigationForEdit } from "@/server/platform-navigation";
@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Header and footer" };
 export default async function PlatformNavigationPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  await requirePlatformAdmin();
+  await requirePlatformReader();
   const n = (await platformSiteWords()).w.misc.navigation;
   const [{ navigation, business, headerMenuId, footerMenuId }, menus] = await Promise.all([
     getPlatformNavigationForEdit(),

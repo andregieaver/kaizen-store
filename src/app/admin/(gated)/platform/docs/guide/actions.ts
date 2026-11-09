@@ -2,12 +2,12 @@
 
 import { refresh } from "next/cache";
 
-import { requirePlatformAdmin } from "@/server/auth";
+import { requirePlatform } from "@/server/auth";
 import { saveDocsGuide } from "@/server/docs-guide-settings";
 
 /** The docs guide's settings (D444), saved by a platform admin; the docs' panel reads them afresh (`DOCS_GUIDE_TAG`). */
 export async function saveDocsGuideAction(json: string) {
-  const account = await requirePlatformAdmin();
+  const account = await requirePlatform("website");
   let raw: unknown;
   try {
     raw = JSON.parse(json);
