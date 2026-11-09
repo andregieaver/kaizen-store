@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 
 import type { PaymentAnswer, PaymentState, ShopperAddress, ShopperDetails } from "@/lib/payment-providers";
 
+import { log } from "./log";
 import { applyPaymentAnswer } from "./payment-outcome";
 import { adoptDeliveryCard } from "./standing-orders";
 import { sendOrderConfirmation } from "./shopper-emails";
@@ -82,6 +83,8 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
     }
     await markProcessed(storeId, event.id);
   } catch (error) {
+    // Said in the log as well as kept on the row (code review FV2): `last_error` alone was only ever seen as a daily count.
+    log("error", "stripe.webhook_failed", { storeId, eventId: event.id, type: event.type, account: event.account ?? undefined }, error);
     await markProcessed(storeId, event.id, error instanceof Error ? error.message : String(error));
     throw error;
   }

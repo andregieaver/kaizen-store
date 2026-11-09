@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
   try {
     await handleStripeEvent(storeId, event);
   } catch {
-    // Stripe retries on errors, with backoff, for up to three days.
+    // Logged where it failed (`stripe.webhook_failed` in handleStripeEvent). Stripe retries on errors, with backoff, for up to three days.
     return new Response("Could not process the event", { status: 500 });
   }
   return Response.json({ received: true });

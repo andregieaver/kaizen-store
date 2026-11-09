@@ -9,6 +9,7 @@ import { stripeFor } from "@/server/stripe";
 import { applyDomainInvoiceEvent, registerPaidDomains } from "@/server/domain-purchases";
 import { applyThemeInvoiceEvent } from "@/server/theme-prices";
 import { applyPlatformSaleEvent } from "@/server/platform-sales";
+import { log } from "@/server/log";
 
 /**
  * Events about Kaizen's own subscriptions to stores (Stripe Billing on
@@ -44,7 +45,8 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
       // What Kaizena Flow sold (D507): a paid invoice kept as a sale, a credit note's amount on it.
       const sale = await applyPlatformSaleEvent(mode as PaymentModeName, event);
       return Response.json({ received: true, ...(result.handled || theme.handled || domain.handled || sale ? {} : { ignored: event.type }) });
-    } catch {
+    } catch (error) {
+      log("error", "stripe.platform_webhook_failed", { mode, eventId: event.id, type: event.type }, error);
       // Stripe retries on errors, with backoff, for up to three days; every step is safe to repeat.
       return new Response("Could not process the event", { status: 500 });
     }
@@ -54,7 +56,8 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
   try {
     const known = await applySubscription(event.data.object as Stripe.Subscription, mode as PaymentModeName);
     return Response.json({ received: true, ...(known ? {} : { ignored: "not a Kaizena Flow store" }) });
-  } catch {
+  } catch (error) {
+    log("error", "stripe.platform_webhook_failed", { mode, eventId: event.id, type: event.type }, error);
     // Stripe retries on errors, with backoff, for up to three days.
     return new Response("Could not process the event", { status: 500 });
   }
