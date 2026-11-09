@@ -92,7 +92,7 @@ export function SalesView({
     <div className="flex flex-col gap-8">
       {(r.pipelines.length > 1 || r.currencies.length > 1) && <div className="text-sm">{switches}</div>}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label={w.openValue} value={money(r.open.valueMinor)} hint={countWords(r.open.deals, { one: `{n} ${w.open.toLowerCase()}`, many: `{n} ${w.open.toLowerCase()}` })} emphasis />
+        <KpiCard label={w.openValue} value={money(r.open.valueMinor)} hint={countWords(r.open.deals, { one: `{n} ${w.open.toLowerCase()}`, many: `{n} ${w.open.toLowerCase()}` })} />
         <KpiCard label={w.weighted} value={money(r.open.weightedMinor)} hint={w.weightedHint} />
         <KpiCard label={w.winRate} value={closed === 0 ? NO_FIGURE : formatPercent(won / closed, 0)} hint={`${formatCount(won)} / ${formatCount(closed)}`} />
         <KpiCard
