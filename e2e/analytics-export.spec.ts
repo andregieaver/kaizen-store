@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectSentToSignIn } from "./sign-in";
 
 /**
  * The CSV of an analytics table (wave 2, D165, docs/wave-2-data.md 2.8): a visitor without a session gets no file, and no sign that a table exists. Signing in to
@@ -30,6 +31,6 @@ test("a request from another site is refused, and the analytics pages send a vis
   expect([403, 404]).toContain(foreign.status());
   for (const path of ["/admin/demo/analytics", "/admin/demo/analytics/products", "/admin/demo/analytics/traffic?period=7d&compare=none"]) {
     await page.goto(path);
-    await expect(page).toHaveURL("/admin/sign-in");
+    await expectSentToSignIn(page, path);
   }
 });

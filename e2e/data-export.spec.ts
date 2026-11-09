@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectSentToSignIn } from "./sign-in";
 
 /**
  * Data in and out (wave 2, D165, docs/wave-2-data.md): the admin's new pages and the routes behind them give a visitor without a session nothing.
@@ -24,7 +25,7 @@ test("the data pages send a visitor without a session to sign in", async ({ page
   ];
   for (const path of paths) {
     await page.goto(path);
-    await expect(page).toHaveURL("/admin/sign-in");
+    await expectSentToSignIn(page, path);
   }
 });
 

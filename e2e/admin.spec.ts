@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectSentToSignIn } from "./sign-in";
 
 test("the admin sends visitors without a session to sign in", async ({ page }) => {
   await page.goto("/admin");
@@ -111,7 +112,7 @@ test("admin pages are not reachable without a session", async ({ page }) => {
   ];
   for (const path of paths) {
     await page.goto(path);
-    await expect(page).toHaveURL("/admin/sign-in");
+    await expectSentToSignIn(page, path);
   }
 });
 
@@ -186,9 +187,9 @@ test("the AI manager answers only a signed-in owner or platform admin (D94, D103
     expect((await request.post(`/admin/platform/assistant/${path}`, { data: {} })).status(), path).toBe(404);
   }
   await page.goto("/admin/demo/assistant");
-  await expect(page).toHaveURL("/admin/sign-in");
+  await expectSentToSignIn(page, "/admin/demo/assistant");
   await page.goto("/admin/platform/assistant");
-  await expect(page).toHaveURL("/admin/sign-in");
+  await expectSentToSignIn(page, "/admin/platform/assistant");
 });
 
 test("an app asking to sign someone in with Kaizena Flow sends them to sign in first, and back (D95)", async ({ page }) => {

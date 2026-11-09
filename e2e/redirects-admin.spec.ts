@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectSentToSignIn } from "./sign-in";
 
 /**
  * The redirect manager's admin (wave 2, second run, D168, docs/wave-2-redirects.md 2.2, 2.3, 5.4): its pages and the routes behind them give a visitor without
@@ -24,7 +25,7 @@ test("the redirect pages send a visitor without a session to sign in", async ({ 
   ];
   for (const path of paths) {
     await page.goto(path);
-    await expect(page).toHaveURL("/admin/sign-in");
+    await expectSentToSignIn(page, path);
   }
 });
 

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { testDb } from "./db";
+import { expectSentToSignIn } from "./sign-in";
 
 /**
  * Work (D122): clients, hours and invoices in the store admin. The admin
@@ -43,7 +44,7 @@ test("Work's old addresses redirect to the owner's level and reveal nothing", as
 test("the Work pages are closed to visitors without a session", async ({ page, request }) => {
   for (const path of WORK_PAGES) {
     await page.goto(path);
-    await expect(page, path).toHaveURL("/admin/sign-in");
+    await expectSentToSignIn(page, path);
   }
   // The redirect runs in the browser, so the response itself must hold none of the page.
   for (const path of WORK_PAGES) {

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectSentToSignIn } from "./sign-in";
 
 /**
  * Onboarding (D178 step 6, `docs/store-features.md` 4f): the setup wizard asks "What will you sell?" first and follows the store's features.
@@ -13,6 +14,6 @@ import { expect, test } from "@playwright/test";
 test("the setup wizard's steps, the question and the bookings step included, send a visitor without a session to sign in", async ({ page }) => {
   for (const path of ["/admin/demo/setup", "/admin/demo/setup/features", "/admin/demo/setup/bookings", "/admin/demo/setup/launch", "/admin/platform/store-templates"]) {
     await page.goto(path);
-    await expect(page, path).toHaveURL("/admin/sign-in");
+    await expectSentToSignIn(page, path);
   }
 });

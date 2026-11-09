@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { cookiesReadable } from "@/lib/browser-access";
-import { signInFor } from "@/lib/sign-in-redirect";
+import { signInFor } from "@/lib/sign-in-for";
 import { createClient } from "@/lib/supabase/client";
 import { AdminWaiting } from "./admin-waiting";
 import type { AdminLang } from "@/lib/admin-lang";
