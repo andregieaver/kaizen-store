@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } fr
 import { AI_COMPOSER_ATTRIBUTE } from "@/lib/ai-composer";
 import { alreadySaid, answerToAnnounce } from "@/lib/answer-announce";
 import { matchPath } from "@/lib/admin-map";
+import { lifeReportOf } from "@/lib/kaizen-life-handoffs";
 import { TOOL_WORDS } from "@/lib/manager-tools";
 import { fillWords } from "@/lib/admin-fill";
 import { PAGES_NB } from "@/lib/admin-messages/pages.nb";
@@ -690,14 +691,31 @@ function Bubble({
   const sw = useAdminText("assistant").skills;
   const [saving, setSaving] = useState<"form" | "saved" | null>(null);
   const savable = mine && saveSkill && !message.id.startsWith("local-") && message.content.trim().length >= 10;
-  const rateable = !mine && onRate && !message.id.startsWith("local-") && message.id !== "streaming";
+  // Kaizen Life's report on a task handed to it (docs/assistants-together.md, step 3): another app's words, drawn as its own card.
+  const lifeReport = mine ? null : lifeReportOf(message.content);
+  const handedToLife = !mine && message.tools.some((t) => t.name === "hand_to_kaizen_life" && t.ok);
+  const rateable = !mine && lifeReport === null && onRate && !message.id.startsWith("local-") && message.id !== "streaming";
   // The last report the answer ran (D346), opened on its page, where Save keeps it.
   const report = message.tools.findLast((t) => t.report)?.report;
   return (
     <div className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
-      <p className={`max-w-[46rem] whitespace-pre-wrap wrap-anywhere rounded-lg px-3 py-2 text-sm ${mine ? "bg-brand text-brand-ink" : "bg-sunken"}`}>
-        {mine ? message.content : <Linked text={message.content} onOpen={onOpen} />}
-      </p>
+      {lifeReport !== null ? (
+        <div className="max-w-[46rem] rounded-lg border border-line bg-card px-3 py-2 text-sm" role="group" aria-label={w.fromLife} data-life-report>
+          <p className="text-eyebrow text-muted uppercase">{w.fromLife}</p>
+          <div className="mt-1 whitespace-pre-wrap wrap-anywhere">
+            <Linked text={lifeReport} onOpen={onOpen} />
+          </div>
+        </div>
+      ) : (
+        <p className={`max-w-[46rem] whitespace-pre-wrap wrap-anywhere rounded-lg px-3 py-2 text-sm ${mine ? "bg-brand text-brand-ink" : "bg-sunken"}`}>
+          {mine ? message.content : <Linked text={message.content} onOpen={onOpen} />}
+        </p>
+      )}
+      {handedToLife && (
+        <p className="rounded-pill border border-line px-3 py-1 text-xs text-muted" data-handed-to-life>
+          {w.handedToLife}
+        </p>
+      )}
       {savable && saving === null && (
         <button type="button" onClick={() => setSaving("form")} className="rounded-pill px-2 py-0.5 text-xs text-muted hover:bg-sunken hover:text-ink" data-save-skill>
           {sw.saveAs}

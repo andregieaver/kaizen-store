@@ -296,4 +296,19 @@ describe("tasks Kaizen Life hands a store's AI manager", () => {
     expect(await rowOf(failing, "from_life")).toMatchObject({ report_tries: 0 });
     expect(life.sent.map((s) => s.body.handoffId)).toEqual(expect.arrayContaining([lost, failing]));
   });
+
+  it("lists the latest tasks both ways for Between your assistants, with where each lives and whether it can be taken back", async () => {
+    const handed = await handoffs.handToLife(
+      { account: { id: owner.id, email: owner.email, name: null, platformAdmin: false }, store: await getStore(owner.slug) },
+      null,
+      "Note the supplier's call",
+      lifeAnswers({ accepted: true }).fetcher,
+    );
+    const list = await handoffs.recentHandoffsOf(owner.id, 30);
+    expect(list[0]).toMatchObject({ id: handed.id, direction: "to_life", status: "working", open: true, storeName: "Kaffe", href: null });
+    const fromLife = list.find((t) => t.direction === "from_life" && t.status === "done");
+    expect(fromLife?.href).toMatch(new RegExp(`^/admin/${owner.slug}/assistant\\?c=[0-9a-f-]{36}$`));
+    expect(fromLife?.open).toBe(false);
+    expect(await handoffs.recentHandoffsOf(randomUUID())).toEqual([]);
+  });
 });

@@ -614,5 +614,8 @@ export const TOOL_WORDS: Record<string, string> = {
   get_my_referrals: "Looking at your referrals",
   ai_usage: "Looking at AI usage",
   ask_kaizen_life: "Asking Kaizen Life",
+  hand_to_kaizen_life: "Handing Kaizen Life a task",
+  kaizen_life_tasks: "Looking at tasks handed to Kaizen Life",
+  cancel_kaizen_life_task: "Taking a task back from Kaizen Life",
   load_tools: "Getting more tools",
 };
