@@ -37,6 +37,11 @@ export const platformNb: PlatformMessages = {
       events: "Velg minst én hendelse som skal sendes.",
     },
     saveFirst: "Lagre webhook-adressen først.",
+    endpointsOwnerOnly: "Bare en eier av plattformen legger til eller endrer endepunkter: de får navnet og e-posten til hver som ber om en butikk.",
+    endpointsPrivacy:
+      "En forespørsel har navnet og e-posten til den som ba om en butikk; butikker og abonnementer har butikkenes navn og abonnementer. Sørg for at systemet som tar imot dem er Kaizena Flows eget, eller dekket av en avtale med den som lager det (en databehandleravtale).",
+    endpointsPayload:
+      "Innholdet er JSON, slik Zapier og Make får det: id, event, created_at, platform, og det hendelsen gjelder under sitt eget navn (request, store og plan, eller report).",
   },
   referrals: {
     title: "Verving",

@@ -5272,6 +5272,20 @@
       "when": 1794233793703,
       "tag": "20261109141633_turnover_thresholds_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 753,
+      "version": "7",
+      "when": 1794236328184,
+      "tag": "20261109145848_platform_endpoints",
+      "breakpoints": true
+    },
+    {
+      "idx": 754,
+      "version": "7",
+      "when": 1794236363585,
+      "tag": "20261109145923_platform_endpoints_rules",
+      "breakpoints": true
     }
   ]
 }

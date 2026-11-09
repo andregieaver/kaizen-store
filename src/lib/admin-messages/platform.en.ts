@@ -38,6 +38,11 @@ export const platformEn = {
       events: "Choose at least one event to send.",
     },
     saveFirst: "Save the webhook address first.",
+    endpointsOwnerOnly: "Only a platform owner adds or changes endpoints: they get the name and email of each person who asks for a store.",
+    endpointsPrivacy:
+      "A request carries the name and email of the person who asked for a store; stores and plans carry the stores' names and plans. Make sure the system that takes them is Kaizena Flow's own, or covered by an agreement with its maker (a data processing agreement).",
+    endpointsPayload:
+      "The body is JSON, as Zapier and Make get it: id, event, created_at, platform, and what the event is about under its own name (request, store and plan, or report).",
   },
   referrals: {
     title: "Referrals",

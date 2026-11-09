@@ -7580,6 +7580,37 @@ export const platformIntegrations = commerce.table(
 );
 
 /**
+ * Kaizena Flow's own endpoints (C4 of `docs/platform-parity-plan.md`, D515): what a store's are (`webhook_endpoints`, D354) for the
+ * platform's events, written only by `src/server/platform-endpoints.ts`. An HTTPS address and a signing secret, both encrypted, the
+ * platform events it gets, and whether it is on: switched off by a platform owner, or after three days of failures with none arriving.
+ */
+export const platformWebhookEndpoints = commerce.table(
+  "platform_webhook_endpoints",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    urlEncrypted: text("url_encrypted").notNull(),
+    /** Where the address points, shown to platform admins: e.g. `hooks.example.com/…/ab12`. */
+    hint: text("hint").notNull(),
+    secretEncrypted: text("secret_encrypted").notNull(),
+    topics: text("topics").array().notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    failingSince: timestamp("failing_since", { withTimezone: true }),
+    /** `failing` (switched off after `FAILING_DAYS`) or `owner`. */
+    disabledReason: text("disabled_reason"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("platform_webhook_endpoints_created_by_idx").on(t.createdBy),
+    check("platform_webhook_endpoints_name", sql`char_length(${t.name}) between 1 and 80`),
+    check("platform_webhook_endpoints_topics", sql`cardinality(${t.topics}) between 1 and 40`),
+    check("platform_webhook_endpoints_disabled", sql`${t.disabledReason} is null or ${t.disabledReason} in ('failing', 'owner')`),
+  ],
+);
+
+/**
  * A store's connection to its Tripletex company (D453, `docs/tripletex.md`, written only by `src/server/tripletex.ts`): the
  * one token its owner pasted, encrypted (`tripletexToken()` is the only reader), which company it opened, and where the
  * store's documents are booked (`settings`, `tripletexSettingsSchema`, account and VAT code numbers, no secrets). `setup`
@@ -8415,6 +8446,8 @@ export const platformIntegrationDeliveries = commerce.table(
     event: text("event").notNull(),
     /** The access request, store or notice it is about. */
     subjectId: uuid("subject_id"),
+    /** The platform's own endpoint it goes to (D515), for `provider = 'webhook'` only. */
+    endpointId: uuid("endpoint_id"),
     /** What was sent, built at the first try and sent the same on every retry. */
     payload: jsonb("payload"),
     status: text("status").notNull().default("pending"),
@@ -8429,7 +8462,10 @@ export const platformIntegrationDeliveries = commerce.table(
     index("platform_integration_deliveries_due_idx").on(t.nextAttemptAt).where(sql`${t.status} = 'pending'`),
     index("platform_integration_deliveries_provider_idx").on(t.provider, t.createdAt),
     index("platform_integration_deliveries_subject_idx").on(t.subjectId),
-    check("platform_integration_deliveries_provider", sql`${t.provider} in ('zapier', 'make', 'slack')`),
+    index("platform_integration_deliveries_endpoint_idx").on(t.endpointId, t.createdAt),
+    check("platform_integration_deliveries_provider", sql`${t.provider} in ('zapier', 'make', 'slack', 'webhook')`),
+    check("platform_integration_deliveries_endpoint", sql`(${t.provider} = 'webhook') = (${t.endpointId} is not null)`),
+    foreignKey({ name: "platform_deliveries_endpoint_fk", columns: [t.endpointId], foreignColumns: [platformWebhookEndpoints.id] }).onDelete("cascade"),
     check("platform_integration_deliveries_status", sql`${t.status} in ('pending', 'delivered', 'failed')`),
   ],
 );

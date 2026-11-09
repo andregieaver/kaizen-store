@@ -14,23 +14,26 @@ import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { INTEGRATIONS, isProvider } from "@/lib/integrations";
 import { PLATFORM_EVENTS } from "@/lib/platform-integrations";
-import { requirePlatformReader } from "@/server/auth";
+import { platformCan, requirePlatformReader } from "@/server/auth";
 import { getPlatformIntegration, listPlatformDeliveries, platformDefaultEvents, type PlatformDeliveryRow } from "@/server/platform-integrations";
+import { slackAppOn } from "@/server/slack";
 
-import { removePlatformIntegrationAction, savePlatformIntegrationAction, sendPlatformTestAction } from "../actions";
+import { connectPlatformSlackAction, removePlatformIntegrationAction, savePlatformIntegrationAction, sendPlatformTestAction } from "../actions";
 
 export const metadata: Metadata = { title: "Integration" };
 
 const card = "rounded-lg border border-line bg-card p-5";
+const SLACK_RETURN: Record<string, boolean> = { connected: true, cancelled: false, failed: false };
 const SIGNAL: Record<PlatformDeliveryRow["status"], "positive" | "warning" | "danger"> = { delivered: "positive", pending: "warning", failed: "danger" };
 
 /**
  * One of Kaizena Flow's own integrations (D465): how to make the service's webhook, which platform events it gets, a test, and what was sent
  * lately. The store's page (D41) is the model; the words they share are the store's, the events and what is sent are the platform's.
  */
-export default async function PlatformIntegrationPage({ params }: PageProps<"/admin/platform/integrations/[provider]">) {
+export default async function PlatformIntegrationPage({ params, searchParams }: PageProps<"/admin/platform/integrations/[provider]">) {
   await connection();
   const { provider } = await params;
+  const answer = provider === "slack" ? String((await searchParams).slack ?? "") : "";
   const admin = await requirePlatformReader();
   const info = INTEGRATIONS.find((i) => i.id === provider);
   if (!info || info.comingSoon || !isProvider(provider)) notFound();
@@ -43,6 +46,9 @@ export default async function PlatformIntegrationPage({ params }: PageProps<"/ad
   const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const chosen = new Set<string>(integration?.events ?? platformDefaultEvents());
   const slack = provider === "slack";
+  // *Add to Slack* (C4, D515): through Kaizena Flow's own Slack app (D101), for a platform owner, when the app is set up here.
+  const addToSlack = slack && platformCan(admin, "settings") && slackAppOn();
+  const returned = answer in SLACK_RETURN ? { ok: SLACK_RETURN[answer], text: w.slackReturn[answer as keyof typeof w.slackReturn] } : undefined;
   const eventLabel = (id: string) => (id === "test" ? w.testEvent : (own.events[id]?.label ?? id));
   const steps = all.integrations.infos[info.id]?.steps ?? info.steps ?? [];
 
@@ -62,9 +68,32 @@ export default async function PlatformIntegrationPage({ params }: PageProps<"/ad
           </div>
         </div>
 
+        {returned && (
+          <p
+            role={returned.ok ? "status" : "alert"}
+            className={`rounded-md px-4 py-3 text-sm ${returned.ok ? "bg-positive-soft text-positive-text" : "bg-warning-soft text-warning-text"}`}
+          >
+            {returned.text}
+          </p>
+        )}
+
+        {addToSlack && (
+          <section aria-labelledby="add-to-slack" className={card}>
+            <h2 id="add-to-slack" className="mb-1 text-title text-ink">
+              {integration ? w.changeChannel : w.addToSlack}
+            </h2>
+            <p className="mb-3 text-sm text-muted">{w.slackAsks}</p>
+            <form action={connectPlatformSlackAction}>
+              <button type="submit" className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
+                {integration ? w.otherChannel : w.addToSlack}
+              </button>
+            </form>
+          </section>
+        )}
+
         <section aria-labelledby="how" className={card}>
           <h2 id="how" className="mb-2 text-title text-ink">
-            {w.how}
+            {addToSlack ? w.orYourself : w.how}
           </h2>
           <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
             {steps.map((step) => (

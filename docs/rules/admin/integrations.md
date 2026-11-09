@@ -342,7 +342,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   store (D457) is. `deliverPlatformDue()` sends them every minute in the integrations cron with the stores' `postToService()` and
   `RETRY_SECONDS`, and keeps them `PLATFORM_DELIVERY_KEEP_DAYS` (30). Zapier and Make get a request's name and email (the operator's own
   leads); Slack's message (`platformSlackMessage()`, everything escaped) names the person but never an email, and a notice gives its category
-  and store, never its sender or words. Blanking a request (retention or the account's erasure) empties every delivery about it at once. A new
+  and store, never its sender or words. Blanking a request (retention or the account's erasure) empties every delivery about it at once.
+  The platform's own endpoints (C4, D515) are `commerce.platform_webhook_endpoints`, written only by `platform-endpoints.ts` (a platform
+  owner's, the settings area); `queue_platform_event()` queues them as `provider = 'webhook'` deliveries with their `endpoint_id`, and
+  `deliverPlatformDue()` sends those signed with the stores' `postSigned()`, never through `postToService()`. *Add to Slack* for the platform
+  goes through the stores' Slack app with `PLATFORM_SLACK` in the cookie, and only `connectPlatformSlack()` keeps what Slack gives. A new
   platform event is an id in `PLATFORM_EVENTS`, a trigger that calls `queue_platform_event()`, its payload in `platformPayload()`, its message
   in `platformSlackMessage()`, its words in the `platform` catalogues (`integrations.events`, every language) and a case in
   `src/db/platform-integrations.test.ts`. Own endpoints (D354), *Add to Slack* and accounting are not on the platform yet

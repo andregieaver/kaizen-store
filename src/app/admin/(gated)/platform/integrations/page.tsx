@@ -8,6 +8,8 @@ import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
 import { INTEGRATIONS, isProvider } from "@/lib/integrations";
 import { requirePlatformReader } from "@/server/auth";
+import { countWords } from "@/lib/admin-fill";
+import { listPlatformEndpoints } from "@/server/platform-endpoints";
 import { listPlatformIntegrations } from "@/server/platform-integrations";
 
 export const metadata: Metadata = { title: "Integrations" };
@@ -24,7 +26,7 @@ export default async function PlatformIntegrationsPage() {
   const all = adminText(lang, "notifications");
   const w = all.integrations;
   const own = adminText(lang, "platform").integrations;
-  const connected = await listPlatformIntegrations();
+  const [connected, endpoints] = await Promise.all([listPlatformIntegrations(), listPlatformEndpoints()]);
   const services = INTEGRATIONS.filter((info) => isProvider(info.id));
 
   return (
@@ -65,6 +67,21 @@ export default async function PlatformIntegrationsPage() {
             </li>
           );
         })}
+        {/* Kaizena Flow's own endpoints (C4, D515): its events, signed, to addresses of its own. */}
+        <li className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
+          <div className="min-w-0">
+            <h2 className="flex flex-wrap items-center gap-2 text-title text-ink">
+              {w.endpoints.cardTitle}
+              {endpoints.length > 0 && <span className="rounded bg-sunken px-1.5 py-0.5 text-xs font-medium text-muted">{countWords(endpoints.length, w.endpoints.cardCount)}</span>}
+            </h2>
+            <p className="text-sm text-muted">{w.endpoints.cardDescription}</p>
+          </div>
+          <div className="mt-auto">
+            <Link href="/admin/platform/integrations/endpoints" className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
+              {w.endpoints.cardButton}
+            </Link>
+          </div>
+        </li>
       </ul>
       <p className="text-sm text-muted">{own.storesHave}</p>
     </div>

@@ -845,9 +845,9 @@ export async function postToService(provider: Provider, url: string, deliveryId:
 /**
  * A signed event to an owner's endpoint (D354): through the address guard again (`safeFetch()`: a public address, no redirect, ten seconds,
  * a small answer read), with the delivery's id, the time, the topic and the HMAC of `"{time}.{body}"` in the headers. The secret is never
- * logged or kept outside the endpoint's row.
+ * logged or kept outside the endpoint's row. The platform's own endpoints (D515) are sent through it too.
  */
-async function postSigned(url: string, secret: string, deliveryId: string, topic: string, payload: Record<string, unknown>): Promise<Outcome> {
+export async function postSigned(url: string, secret: string, deliveryId: string, topic: string, payload: Record<string, unknown>): Promise<Outcome> {
   const body = JSON.stringify(payload);
   const timestamp = Math.floor(Date.now() / 1000);
   const fetched = await safeFetch(url, {

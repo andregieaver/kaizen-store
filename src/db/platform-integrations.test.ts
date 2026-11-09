@@ -205,13 +205,46 @@ describe("the platform's integrations", () => {
     );
   });
 
+  it("send to one of the platform's own endpoints only as `webhook`, and queue each endpoint that is on and asks for the event (D515)", async () => {
+    await expect(db.query("insert into commerce.platform_integration_deliveries (provider, event) values ('webhook', 'test')")).rejects.toThrow(
+      /platform_integration_deliveries_endpoint/,
+    );
+    const on = (
+      await one<{ id: string }>(
+        "insert into commerce.platform_webhook_endpoints (name, url_encrypted, hint, secret_encrypted, topics) values ('CRM', 'x', 'x', 'x', '{store.opened}') returning id",
+      )
+    ).id;
+    const off = (
+      await one<{ id: string }>(
+        "insert into commerce.platform_webhook_endpoints (name, url_encrypted, hint, secret_encrypted, topics, enabled, disabled_reason) values ('Off', 'x', 'x', 'x', '{store.opened}', false, 'owner') returning id",
+      )
+    ).id;
+    await expect(
+      db.query("insert into commerce.platform_webhook_endpoints (name, url_encrypted, hint, secret_encrypted, topics) values ('None', 'x', 'x', 'x', '{}')"),
+    ).rejects.toThrow(/platform_webhook_endpoints_topics/);
+    await expect(
+      db.query("insert into commerce.platform_webhook_endpoints (name, url_encrypted, hint, secret_encrypted, topics, disabled_reason) values ('Odd', 'x', 'x', 'x', '{store.opened}', 'uninstalled')"),
+    ).rejects.toThrow(/platform_webhook_endpoints_disabled/);
+    const subject = "00000000-0000-4000-8000-0000000000d5";
+    await db.query(`select commerce.queue_platform_event('store.opened', '${subject}')`);
+    await db.query(`select commerce.queue_platform_event('plan.started', '${subject}')`);
+    const { rows } = await db.query<{ endpoint_id: string; event: string }>(
+      `select endpoint_id, event from commerce.platform_integration_deliveries where provider = 'webhook' and subject_id = '${subject}'`,
+    );
+    expect(rows).toEqual([{ endpoint_id: on, event: "store.opened" }]);
+    await db.query(`delete from commerce.platform_webhook_endpoints where id in ('${on}', '${off}')`);
+    const { rows: left } = await db.query(`select 1 from commerce.platform_integration_deliveries where subject_id = '${subject}' and provider = 'webhook'`);
+    expect(left).toEqual([]);
+  });
+
   it("have row-level security, as every commerce table", async () => {
     const { rows } = await db.query<{ relname: string; relrowsecurity: boolean }>(
-      "select relname, relrowsecurity from pg_class where relname in ('platform_integrations', 'platform_integration_deliveries') order by relname",
+      "select relname, relrowsecurity from pg_class where relname in ('platform_integrations', 'platform_integration_deliveries', 'platform_webhook_endpoints') order by relname",
     );
     expect(rows).toEqual([
       { relname: "platform_integration_deliveries", relrowsecurity: true },
       { relname: "platform_integrations", relrowsecurity: true },
+      { relname: "platform_webhook_endpoints", relrowsecurity: true },
     ]);
   });
 });

@@ -20,6 +20,8 @@ const TIMEOUT_MS = 10_000;
 export const SLACK_COOKIE = "kaizen_slack_connect";
 export const SLACK_CALLBACK = "/api/integrations/slack/callback";
 export const SLACK_COOKIE_PATH = "/api/integrations/slack";
+/** In place of a store's slug in the cookie: Kaizena Flow's own Slack (C4, D515), connected on Platform → Integrations. Never a slug. */
+export const PLATFORM_SLACK = "~platform";
 
 type SlackApp = { clientId: string; clientSecret: string };
 

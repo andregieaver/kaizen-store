@@ -1279,6 +1279,7 @@ const PAGES: readonly AdminPage[] = [
   platform("integrations", "/integrations", "Integrations", "Platform", "Kaizena Flow's own integrations (D465): Zapier, Make and Slack for the platform's events (a store asked for, made or opened, a plan started, changed, cancelled or not paid, a notice of illegal content), and how their sends are doing.", {
     keywords: ["zapier", "make", "slack", "webhooks", "notifications"],
   }),
+  platform("integrations.endpoints", "/integrations/endpoints", "Your own endpoints", "Platform", "Sends Kaizena Flow's events, signed, to its own HTTPS endpoints (D515): the events, the secret, a test, the log and sending again.", { keywords: ["webhooks", "endpoints", "signed events", "hmac", "developers"] }),
   platform("integration", "/integrations/[provider]", "Integration", "Platform", "Connects one of Kaizena Flow's integrations with the service's webhook address, chooses its platform events, tests it, and shows recent sends."),
   platform("google-reviews", "/google-reviews", "Google reviews", "Kaizena Flow site", "Kaizena Flow's own Google reviews for testimonials."),
   platform("experiments", "/experiments", "A/B tests", "Platform", "Every store's A/B tests, read-only: what is running, which need a look (a version lowering orders, visitors nobody sees, a test past its end or forgotten) and what waits for a decision.", {

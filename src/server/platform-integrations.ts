@@ -18,8 +18,9 @@ import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
 
 import { audit, type Account } from "./auth";
-import { postToService, RETRY_SECONDS, type DeliveryStatus, type Outcome } from "./integrations";
+import { postSigned, postToService, RETRY_SECONDS, type DeliveryStatus, type Outcome } from "./integrations";
 import { log } from "./log";
+import { keepPlatformEndpointHealth } from "./platform-endpoints";
 import { encryptionKey } from "./settings";
 import { col, typedRow, typedRows } from "./typed-rows";
 
@@ -137,6 +138,30 @@ export async function savePlatformIntegration(
 
 /** What a service gets until a platform admin chooses. */
 export const platformDefaultEvents = (): PlatformEvent[] => [...DEFAULT_PLATFORM_EVENTS];
+
+/**
+ * *Add to Slack* for the platform (C4, D515): the channel a platform owner picked in Slack, through Kaizena Flow's own Slack app (D101), kept
+ * as a pasted webhook is, switched on, with the events it had or the defaults.
+ */
+export async function connectPlatformSlack(admin: Account, webhook: { url: string; channel: string; team: string }): Promise<PlatformSaveResult> {
+  const checked = checkWebhookUrl("slack", webhook.url);
+  if (!checked.ok) return { ok: false, problem: "slack" };
+  const key = encryptionKey();
+  if (!key) return { ok: false, problem: "key" };
+  const existing = await getPlatformIntegration("slack");
+  const events = existing?.events.length ? existing.events : platformDefaultEvents();
+  const channel = webhook.channel.trim() || "a channel";
+  const hint = (webhook.team.trim() ? `${channel} in ${webhook.team.trim()}` : channel).slice(0, 120);
+  await db().execute(sql`
+    insert into commerce.platform_integrations (provider, enabled, webhook_url_encrypted, webhook_hint, events, updated_by)
+    values ('slack', true, ${encryptSecret(checked.url, key)}, ${hint}, array[${sql.join(events.map((event) => sql`${event}`), sql`, `)}]::text[], ${admin.id}::uuid)
+    on conflict (provider) do update set
+      enabled = true, webhook_url_encrypted = excluded.webhook_url_encrypted, webhook_hint = excluded.webhook_hint,
+      events = excluded.events, updated_at = now(), updated_by = excluded.updated_by
+  `);
+  await audit(admin.id, null, "platform.integration_saved", { provider: "slack", enabled: true, events, newAddress: true, addToSlack: true });
+  return { ok: true };
+}
 
 /** Disconnects the service: its address and settings go; deliveries waiting are dropped. */
 export async function removePlatformIntegration(admin: Account, provider: Provider): Promise<boolean> {
@@ -341,7 +366,8 @@ export async function platformPayload(delivery: { id: string; event: string; sub
 
 const claimedRow = z.object({
   id: col.uuid,
-  provider: z.enum(["zapier", "make", "slack"]),
+  /** A service, or `webhook` for one of the platform's own endpoints (D515). */
+  provider: z.enum(["zapier", "make", "slack", "webhook"]),
   event: col.text,
   subject_id: z.string().nullable(),
   payload: z.record(z.string(), z.unknown()).nullable(),
@@ -349,12 +375,19 @@ const claimedRow = z.object({
   created_at: col.timestamp,
   webhook_url_encrypted: col.textOrNull,
   enabled: col.bool,
+  endpoint_id: col.uuid.nullable(),
+  secret_encrypted: col.textOrNull,
 });
 type Claimed = z.output<typeof claimedRow>;
 
 const claimedColumns = sql`
   d.id, d.provider, d.event, d.subject_id, d.payload, d.attempts, d.created_at,
-  i.webhook_url_encrypted, coalesce(i.enabled, false) as enabled
+  coalesce(i.webhook_url_encrypted, e.url_encrypted) as webhook_url_encrypted, coalesce(i.enabled, e.enabled, false) as enabled,
+  d.endpoint_id, e.secret_encrypted
+`;
+const claimedJoins = sql`
+  left join commerce.platform_integrations i on i.provider = d.provider and d.provider <> 'webhook'
+  left join commerce.platform_webhook_endpoints e on e.id = d.endpoint_id
 `;
 
 async function attempt(delivery: Claimed): Promise<Outcome> {
@@ -377,12 +410,19 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
     await db().execute(sql`update commerce.platform_integration_deliveries set payload = ${JSON.stringify(payload)}::jsonb where id = ${delivery.id}::uuid`);
   }
   let url: string;
+  let secret: string | null = null;
   try {
     url = decryptSecret(delivery.webhook_url_encrypted, key);
+    if (delivery.provider === "webhook") secret = delivery.secret_encrypted ? decryptSecret(delivery.secret_encrypted, key) : null;
   } catch {
     return fail("Kaizena Flow could not read the address");
   }
-  const outcome = await postToService(delivery.provider, url, delivery.id, delivery.event, payload);
+  // One of the platform's own endpoints (D515): signed as a store's are (D354), and its health kept; a service through its own webhook.
+  if (delivery.provider === "webhook" && !secret) return fail("Kaizena Flow could not read the address");
+  const outcome =
+    delivery.provider === "webhook"
+      ? await postSigned(url, secret!, delivery.id, delivery.event, payload)
+      : await postToService(delivery.provider, url, delivery.id, delivery.event, payload);
   const tries = delivery.attempts + 1;
   const wait = outcome.final ? undefined : RETRY_SECONDS[tries - 1];
   await db().execute(sql`
@@ -395,6 +435,8 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
       next_attempt_at = now() + make_interval(secs => ${wait ?? 0})
     where id = ${delivery.id}::uuid
   `);
+  // An endpoint's health (D515), after the delivery is written, so one switched off leaves nothing pending.
+  if (delivery.provider === "webhook" && delivery.endpoint_id && delivery.event !== "test") await keepPlatformEndpointHealth(delivery.endpoint_id, outcome.ok);
   if (!outcome.ok) log("warn", "platform_integrations.not_delivered", { provider: delivery.provider, event: delivery.event, status: outcome.status, tries });
   return outcome;
 }
@@ -425,7 +467,7 @@ export async function deliverPlatformDue(limit = 25): Promise<{ delivered: numbe
           sql`
             select ${claimedColumns}
             from commerce.platform_integration_deliveries d
-            left join commerce.platform_integrations i on i.provider = d.provider
+            ${claimedJoins}
             where d.id in (${sql.join(ids.map((r) => sql`${r.id}::uuid`), sql`, `)})
             order by d.created_at
           `,
@@ -455,11 +497,30 @@ export async function sendPlatformTest(admin: Account, provider: Provider): Prom
         values (${provider}, 'test', now() + interval '5 minutes')
         returning *
       )
-      select ${claimedColumns} from made d left join commerce.platform_integrations i on i.provider = d.provider
+      select ${claimedColumns} from made d ${claimedJoins}
     `,
   );
   await audit(admin.id, null, "platform.integration_test_sent", { provider });
   return row ? attempt(row) : { ok: false, status: null, error: null };
+}
+
+/** Sends a test event to one of the platform's own endpoints now (D515), on or off, and says how it went; null when it is gone. */
+export async function sendPlatformEndpointTest(admin: Account, endpointId: string): Promise<Outcome | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(endpointId)) return null;
+  const row = await typedRow(
+    claimedRow,
+    sql`
+      with made as (
+        insert into commerce.platform_integration_deliveries (provider, event, endpoint_id, next_attempt_at)
+        select 'webhook', 'test', e.id, now() + interval '5 minutes' from commerce.platform_webhook_endpoints e where e.id = ${endpointId}::uuid
+        returning *
+      )
+      select ${claimedColumns} from made d ${claimedJoins}
+    `,
+  );
+  if (!row) return null;
+  await audit(admin.id, null, "platform.endpoint_test_sent", {}, { target: { type: "platform_webhook_endpoint", id: endpointId } });
+  return attempt(row);
 }
 
 export type PlatformDeliveryRow = {

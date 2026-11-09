@@ -14,7 +14,7 @@ Read page by page on 6 November 2026: every page in a store's sections (`src/lib
 
 ## Missing or partial on the platform, and it applies
 
-14 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510; the home's figures, targets and briefing, D513).
+12 rows (read again 9 November 2026, after the site switch, D484; Kaizena Flow's money in the books and its payouts, D508, D509; the team's roles, D510; the home's figures, targets and briefing, D513; its own endpoints and *Add to Slack*, D515).
 
 ### Website
 
@@ -48,8 +48,6 @@ Website section is the site's (see *Built for both*).
 |---|---|---|
 | Search | None: the site has no search; Settings → Search is the stores' search experiment | Store, step 5, if wanted |
 | Workflows | Kaizena Flow's events go to Slack, Zapier and Make (D465); no rules on them | Console, C4; the site's own events, Store |
-| Integrations: own endpoints | None | Console, C4 (next of D465) |
-| Integrations: *Add to Slack* | A pasted webhook (D465) | Console, C4 (next of D465) |
 | E-invoices (EHF, D463) | Kaizena Flow's plan invoices are Stripe's and go by email; from 1 January 2027 an owner's business registered in ELMA is owed EHF, which needs Kaizena Flow's own documents sent through B1's sender | Console, C3, with the books |
 | Apps and API | Settings → AI assistants and apps and App listings oversee others' apps; no Admin API for the platform (`api_tokens` needs a store) | Console, C4 |
 | AI | Has more than a store (pause, web search, prices, the eval); lacks how long AI manager conversations are kept | Console |
@@ -79,6 +77,7 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 | Activity log | Activity | Settings → Activity log |
 | Apps and AI assistants (D439, D441) | Settings → Apps and API | Settings → AI assistants and apps, App listings |
 | Zapier, Make and Slack (D41, D101; the platform's D465) | Integrations | Settings → Integrations: Kaizena Flow's own events (a store requested, made or opened, a plan started, changed, cancelled or not paid, a notice of illegal content) |
+| Own endpoints and *Add to Slack* (D354, D101; the platform's D515) | Integrations | Settings → Integrations: Kaizena Flow's events, signed, to its own endpoints; its Slack channel picked in Slack |
 | Customers, with leads, notes, tags, timeline, import and export | Customers | Kaizena Flow's store (D466, D467): every owner and applicant, linked from Platform → Customers |
 | The subscriber list, segments, broadcasts, email automations (D295 to D298) | Marketing | Kaizena Flow's store: its own pages' newsletter keeps who asks (D467); the platform's tags (plan, trial, overdue) for segments |
 | Deals (D464) | Customers → Deals | Kaizena Flow's store: a Sign-ups pipeline, a deal per application, won when its plan is paid (D467) |
