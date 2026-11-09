@@ -237,6 +237,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Customers in the admin (wave 10 unit C, D366, `src/server/customer-staff.ts`, `src/server/customer-merge.ts`, `src/server/customer-import.ts`)
 - A customer's timeline (D462, `src/lib/customer-timeline.ts`, `src/server/customer-timeline.ts`, `CustomerTimeline`)
 - Deals and pipelines (S2, D464, `src/lib/deals.ts`, `src/server/deals.ts`, `DealBoard`)
+- Sales reports (S6, D519, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)
 - Activities (S3, D468, `src/lib/activities.ts`, `src/server/activities.ts`, `ActivitiesCard`, `TodayCard`)
 - A leads inbox (S4, D475, `src/lib/leads.ts`, `src/server/leads.ts`, `LeadsList`)
 - Email on the timeline (S5, D476, `src/lib/filed-email.ts`, `src/server/email-filing.ts`)

@@ -469,6 +469,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Markedsføringsanalyse",
     keywords: ["markedsføringsanalyse", "kanaler", "annonser", "kampanje", "annonsekostnad", "roas", "rabatter", "rabattkoder"],
   },
+  "store:analytics.sales": { title: "Salgsanalyse", keywords: ["salgsprognose", "salgsløp", "vinnerrate", "konvertering", "avtaler"] },
   "store:analytics.subscriptions": {
     title: "Abonnementsanalyse",
     keywords: ["abonnementsanalyse", "abonnement", "mrr", "frafall", "gjentakende inntekt"],

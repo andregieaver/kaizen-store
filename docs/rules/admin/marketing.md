@@ -110,6 +110,15 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `stores.sales_pilot`, or `platform_settings.sales_open`); one kept on stays on. The words are the server-only area `deals`; the board's client
   parts get theirs as props.
 
+
+## Sales reports (S6, D519, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)
+
+- **Sales reports (S6, D519, `src/lib/sales-reports.ts`, `src/server/sales-reports.ts`, `SalesView`)**: Analytics → Sales, behind the
+  store's `sales` feature and `analytics:read`, is read only by `salesReport()` from the deals' own rows: the forecast from every open deal now
+  (`forecast()`: by the month it is expected to close, weighted by its stage's `probability`, a deal without one or without an estimate left
+  out of the weighted value and said so), the stages from deals made in the period and their `deal_moves` (`stageConversion()`: a skipped
+  stage counts as passed, a won deal as past them all), and the people and the time to win from deals won or lost in the period, by the
+  store's day (`byPerson()`, `timeToWin()`). Counts and sums only: a deal's title, customer or company is never read for it.
 ## Activities (S3, D468, `src/lib/activities.ts`, `src/server/activities.ts`, `ActivitiesCard`, `TodayCard`)
 
 - **Activities (S3, D468, `src/lib/activities.ts`, `src/server/activities.ts`, `ActivitiesCard`, `TodayCard`)**: a call, a meeting or a task

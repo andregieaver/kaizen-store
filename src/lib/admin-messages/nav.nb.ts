@@ -271,6 +271,7 @@ export const NAV_NB: Record<string, string> = {
   "Switch on invoices, the numbering, the note printed on every invoice and credit note.":
     "Slå på fakturaer, nummereringen og merknaden som skrives på hver faktura og kreditnota.",
   Integrations: "Integrasjoner",
+  Sales: "Salg",
   "Connect shipping carriers, Slack, accounting and other services.": "Koble til fraktselskaper, Slack, regnskap og andre tjenester.",
   Site: "Nettsted",
   "Header and footer": "Topptekst og bunntekst",
@@ -380,6 +381,8 @@ export const NAV_NB: Record<string, string> = {
     "Hva Kaizena Flow gjør med personopplysninger, formål for formål (GDPR art. 30), laget fra registeret.",
   "How long each kind of personal data is kept, where each period comes from, and what the daily job removed.":
     "Hvor lenge hver type personopplysninger lagres, hvor hver periode kommer fra, og hva den daglige jobben har fjernet.",
+  "Deals: what they may bring and when, how they move from stage to stage, who won and lost, and how long a deal takes to win.":
+    "Avtaler: hva de kan gi og når, hvordan de går fra trinn til trinn, hvem som vant og tapte, og hvor lang tid det tar å vinne en avtale.",
   "Kaizena Flow's own news to Slack, Zapier or Make: a store asked for, made or opened, a plan started or ended, a notice of illegal content.":
     "Kaizena Flows egne nyheter til Slack, Zapier eller Make: en butikk det er bedt om, som er laget eller åpnet, et abonnement som startet eller sluttet, en melding om ulovlig innhold.",
   "When something happens on the platform, or at a set time: check and act. An email to the owners, a Slack message or a signed request.":
