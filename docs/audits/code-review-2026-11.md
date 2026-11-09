@@ -31,6 +31,7 @@ This report is a working document: the plan below is the list of work, and this 
 - When a step is done, set Done and put the date and the commit in Notes. Check the step's "done when" before ticking it.
 - If a finding proves wrong or the code has moved on, say so in Notes and correct the finding's row; do not delete it.
 - New findings met on the way get the next free ID in their series and a step in the plan, then a row here.
+- The grades in the headline's scorecard started at C, C and D on 9 November 2026. When verified fixes raise one, change it in the scorecard, note the old grade and the date beside it, and show the owner the new table (the owner, 9 November 2026). Raise a grade only for fixes seen working in production.
 - Add a line to the change log at the foot of this section for each session that changes the table.
 
 
