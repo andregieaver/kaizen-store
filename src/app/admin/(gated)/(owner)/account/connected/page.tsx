@@ -71,7 +71,7 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
                 ) : null}
               </div>
               <form action={switchAssistantsAction.bind(null, !life.assistants)}>
-                <button type="submit" className={buttonClass(life.assistants ? "secondary" : "primary")}>
+                <button type="submit" className={buttonClass(life.assistants ? "secondary" : "main")}>
                   {life.assistants ? w.kaizenLife.assistants.turnOff : w.kaizenLife.assistants.turnOn}
                 </button>
               </form>
