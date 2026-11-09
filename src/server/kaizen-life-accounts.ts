@@ -44,7 +44,7 @@ export const flowDoorPath = (door: FlowDoor) => `/api/kaizen-life/v1/${door}`;
 
 const ASK_TIMEOUT_MS = 5_000;
 
-const lifeUrl = () => (process.env.KAIZEN_LIFE_URL?.trim() || "https://kaizenlifetracker.com").replace(/\/$/, "");
+const lifeUrl = () => (process.env.KAIZEN_LIFE_URL?.trim() || "https://kaizenalife.com").replace(/\/$/, "");
 
 /** The keys, or null when linking is not set up (a malformed key is logged, and counts as not set up). */
 export function linkKeys(): ReturnType<typeof kaizenLifeLinkKeys> {

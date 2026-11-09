@@ -14,7 +14,7 @@ The owner then decided two things the same day:
   person to sign up to Kaizena Flow.
 
 This is a plan, not a design: each phase gets its decision when it is built. "Life" is `/home/user/lifesaver-app`
-(kaizenlifetracker.com); "Flow" is this repository. The Life-side checklist, file by file, is in Life's
+(kaizenalife.com); "Flow" is this repository. The Life-side checklist, file by file, is in Life's
 `docs/work-moves-to-kaizena-flow.md`.
 
 Pictures:
@@ -358,7 +358,7 @@ longer blocks the summary.
 * Because the address comes verified from Kaizen Life's identity, the self-serve flow can treat it as confirmed and skip the email
   round trip. The slots and limits of D359 still apply.
 * The account is created linked (route 1).
-* Setup ends with *Back to Kaizen Life*, which opens `https://kaizenlifetracker.com/app/work`.
+* Setup ends with *Back to Kaizen Life*, which opens `https://kaizenalife.com/app/work`.
 
 ### 3.5 One tap, no second sign-in
 

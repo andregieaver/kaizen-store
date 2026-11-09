@@ -31,7 +31,7 @@ function lifeConfig(): LifeConfig | null {
   const issuer = process.env.KAIZEN_LIFE_ISSUER?.trim().replace(/\/$/, "");
   const clientId = process.env.KAIZEN_LIFE_OAUTH_CLIENT_ID?.trim();
   const clientSecret = process.env.KAIZEN_LIFE_OAUTH_CLIENT_SECRET?.trim();
-  const app = (process.env.KAIZEN_LIFE_URL?.trim() || "https://kaizenlifetracker.com").replace(/\/$/, "");
+  const app = (process.env.KAIZEN_LIFE_URL?.trim() || "https://kaizenalife.com").replace(/\/$/, "");
   if (!issuer || !clientId || !clientSecret || !encryptionKey()) return null;
   return { issuer, clientId, clientSecret, mcpUrl: `${app}/api/mcp` };
 }

@@ -25,7 +25,7 @@
   <!-- panels -->
   <rect class="panel" x="24" y="24" width="430" height="690" rx="16"/>
   <text class="h" x="48" y="58">Kaizen Life</text>
-  <text class="hs" x="48" y="78">kaizenlifetracker.com · your day</text>
+  <text class="hs" x="48" y="78">kaizenalife.com · your day</text>
 
   <rect class="panel" x="746" y="24" width="430" height="690" rx="16"/>
   <text class="h" x="770" y="58">Kaizena Flow</text>

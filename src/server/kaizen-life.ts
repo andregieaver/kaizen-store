@@ -12,7 +12,7 @@ import { lifeLinkOf, linkBySignIn } from "./kaizen-life-accounts";
 type Row = Record<string, unknown>;
 
 /**
- * Kaizen Life (D95): kaizenlifetracker.com, Kaizen's personal-life app, on
+ * Kaizen Life (D95): kaizenalife.com, Kaizen's personal-life app, on
  * a Supabase project of its own. Each project is the other's OpenID Connect
  * provider (Supabase's OAuth 2.1 server), so a store owner signs in to the
  * admin with their Kaizen Life account and a Kaizen Life user with their

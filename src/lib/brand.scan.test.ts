@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
  */
 const ROOT = process.cwd();
 const ALLOWED_FILES = new Set(["src/lib/retention.ts"]);
-const OLD = [/\bKaizen(?:s|'s)?\b(?! Life)(?!a)/, /kaizenstore\.cloud/, /kaizenalabs\.com/];
+const OLD = [/\bKaizen(?:s|'s)?\b(?! Life)(?!a)/, /kaizenstore\.cloud/, /kaizenalabs\.com/, /kaizenlifetracker\.com/];
 
 function sources(dir: string): string[] {
   return readdirSync(join(ROOT, dir)).flatMap((name) => {
