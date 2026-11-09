@@ -1,6 +1,6 @@
 # Work in Kaizen Life: a summary from Kaizena Flow, and Life's own Work retired (proposal)
 
-Status: **proposed 9 November 2026; the Flow side is built (D507, see "As built: the Flow side" at the end).** Life's side is still to build.
+Status: **proposed 9 November 2026; the Flow side is built (D507, see "As built: the Flow side" at the end), and Life's phase 2 too (Life's `docs/work-moves-to-kaizena-flow.md`, "As built: phase 2").** Phases 0, 3 and 4 in Life are still to do.
 
 The owner's ask: *now that Work is built into Kaizena Flow, Work can go from Kaizen Life; what Life needs instead is a summary of
 Work across the person's stores, with links back to Kaizena Flow. Information and navigation between the two must be intuitive,
@@ -528,3 +528,21 @@ The owner confirmed one company runs both apps, so the link is made by itself as
   * turn `KAIZEN_LIFE_SSO` on once Sign in with Kaizen Life is checked end to end.
 
   Until then nothing is linked, and the doors refuse everything.
+
+## As built: Life's side, phase 2 (9 November 2026)
+
+Built in Life the same day. The details are in Life's `docs/work-moves-to-kaizena-flow.md`, "As built: phase 2".
+
+* **The link.** Life keeps its copy and its three doors. It links after every sign-in, and about once a day for a person not linked
+  yet. *Sign in to link* adds Kaizena Flow as a way to sign in, so different emails link too. A pair the person undid is linked again
+  only by a sign-in with Kaizena Flow that carries `via=kaizena-flow`.
+* **Presence, from the copy alone.**
+  * Today's `work` section: full in the Work room and in All, urgent needs elsewhere.
+  * The Money hub's Work tile.
+  * `/app/work` as the summary or the invitation, no longer behind a plan.
+  * *Unlink* in Connected apps.
+  * The assistant's `work_summary`.
+* **Moved and retired.** Organizations moved to `/app/money/organizations`. Old Work pages redirect. The revenue wall is retired.
+* **Names.** "Kaizen Store" became "Kaizena Flow" in every string.
+* **Checked.** Life's signing and summary guard were checked against Flow's code in both directions.
+* **Not done yet.** Life's migration is not applied to production yet.
