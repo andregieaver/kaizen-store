@@ -163,6 +163,27 @@ export type WorkflowInput = {
   actions: WorkflowAction[];
 };
 
+/** A workflow of the store's or the platform's (D516): the same shape, its trigger from either list. */
+export type AnyWorkflowInput = Omit<WorkflowInput, "trigger"> & { trigger: string };
+
+/**
+ * What a list of triggers offers (D516): the store's (`STORE_WORKFLOWS`) and the platform's (`PLATFORM_WORKFLOWS`, its events) share the
+ * editor, the checks and the runner's rules through it.
+ */
+export type WorkflowKit = {
+  triggers: readonly string[];
+  isTrigger: (value: string) => boolean;
+  fieldsFor: (trigger: string) => WorkflowField[];
+  actionsFor: (trigger: string) => WorkflowActionKind[];
+};
+
+export const STORE_WORKFLOWS: WorkflowKit = {
+  triggers: WORKFLOW_TRIGGERS,
+  isTrigger: isWorkflowTrigger,
+  fieldsFor: (trigger) => (isWorkflowTrigger(trigger) ? fieldsFor(trigger) : []),
+  actionsFor: (trigger) => (isWorkflowTrigger(trigger) ? actionsFor(trigger) : []),
+};
+
 const tag = z.string().trim().min(1).max(40);
 const text = (max: number) => z.string().trim().min(1).max(max);
 
@@ -176,9 +197,10 @@ export const workflowActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("ask_ai_manager"), question: text(400) }),
 ]);
 
-export const workflowInputSchema = z.object({
+/** A workflow's shape, its trigger one of a kit's. */
+export const workflowSchemaFor = (kit: Pick<WorkflowKit, "isTrigger">) => z.object({
   name: z.string().trim().min(1).max(80),
-  trigger: z.string().refine(isWorkflowTrigger, "Choose what starts the workflow."),
+  trigger: z.string().refine(kit.isTrigger, "Choose what starts the workflow."),
   schedule: z
     .object({
       every: z.enum(["day", "week"]),
@@ -191,10 +213,12 @@ export const workflowInputSchema = z.object({
   actions: z.array(workflowActionSchema).min(1, "Add at least one action.").max(ACTIONS_MAX),
 });
 
+export const workflowInputSchema = workflowSchemaFor(STORE_WORKFLOWS);
+
 /** What is wrong with a workflow beyond its shape: a field the trigger does not have, an action it cannot take, a schedule where none belongs. */
-export function workflowProblems(input: WorkflowInput): string[] {
+export function workflowProblems(input: AnyWorkflowInput, kit: WorkflowKit = STORE_WORKFLOWS): string[] {
   const problems: string[] = [];
-  const fields = new Map(fieldsFor(input.trigger).map((f) => [f.key, f]));
+  const fields = new Map(kit.fieldsFor(input.trigger).map((f) => [f.key, f]));
   if (input.trigger === "schedule") {
     if (!input.schedule) problems.push("A schedule needs its time.");
     else if (input.schedule.every === "week" && input.schedule.weekday === null) problems.push("A weekly schedule needs its day.");
@@ -207,7 +231,7 @@ export function workflowProblems(input: WorkflowInput): string[] {
     else if (field.kind === "number" && c.op !== "is" && c.op !== "is_not" && Number.isNaN(Number(c.value))) problems.push(`${c.field} compares with a number.`);
     else if (field.kind === "yes_no" && !["yes", "no"].includes(c.value)) problems.push(`${c.field} is yes or no.`);
   }
-  const allowed = new Set(actionsFor(input.trigger));
+  const allowed = new Set(kit.actionsFor(input.trigger));
   for (const a of input.actions) if (!allowed.has(a.kind)) problems.push(`${a.kind} cannot follow this trigger.`);
   return [...new Set(problems)];
 }

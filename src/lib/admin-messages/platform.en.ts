@@ -44,6 +44,12 @@ export const platformEn = {
     endpointsPayload:
       "The body is JSON, as Zapier and Make get it: id, event, created_at, platform, and what the event is about under its own name (request, store and plan, or report).",
   },
+  /** Kaizena Flow's workflows (D516): the store's words, with these two of the platform's own. */
+  workflows: {
+    description:
+      "When something happens on the platform (a store asked for, made or opened, a plan started, changed, cancelled or not paid, a notice of illegal content), or at a set time in Oslo, check what you choose and act: email the platform's owners, post in Kaizena Flow's Slack, or send it to one of its own endpoints.",
+    limits: "Each workflow runs once per event and at most 100 times an hour. Email staff goes to the platform's owners.",
+  },
   referrals: {
     title: "Referrals",
     description:

@@ -81,6 +81,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/ai/usage", "AI usage", "What every store, owner and Kaizena Flow itself used of the AI.", "chart-column"),
   item("/status", "Status page", "The public status page: each part's checks every five minutes, incidents to post and update, and their subscribers.", "activity"),
   item("/integrations", "Integrations", "Kaizena Flow's own news to Slack, Zapier or Make: a store asked for, made or opened, a plan started or ended, a notice of illegal content.", "puzzle"),
+  item("/workflows", "Workflows", "When something happens on the platform, or at a set time: check and act. An email to the owners, a Slack message or a signed request.", "workflow"),
   item("/oauth", "AI assistants and apps", "The AI assistants and apps people connected through Kaizena Flow's sign-in, to verify or block.", "plug"),
   item("/apps", "App listings", "Apps that ask to be listed in the app directory, to approve or decline.", "puzzle"),
   item("/reports", "Illegal content notices", "Notices people sent about illegal content on stores, each decided with its reason (DSA).", "flag"),

@@ -5286,6 +5286,20 @@
       "when": 1794236363585,
       "tag": "20261109145923_platform_endpoints_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 755,
+      "version": "7",
+      "when": 1794240786531,
+      "tag": "20261109161306_platform_workflows",
+      "breakpoints": true
+    },
+    {
+      "idx": 756,
+      "version": "7",
+      "when": 1794240824956,
+      "tag": "20261109161344_platform_workflows_rules",
+      "breakpoints": true
     }
   ]
 }

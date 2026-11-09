@@ -205,6 +205,26 @@ describe("the platform's integrations", () => {
     );
   });
 
+  it("start a platform workflow that is on for its event, once per transaction, never one untested (D516)", async () => {
+    const make = async (name: string, trigger: string) =>
+      (await one<{ id: string }>(`insert into commerce.platform_workflows (name, trigger, actions) values ('${name}', '${trigger}', '[]') returning id`)).id;
+    await expect(db.query("insert into commerce.platform_workflows (name, trigger, actions) values ('Odd', 'order.paid', '[]')")).rejects.toThrow(/platform_workflows_trigger/);
+    const on = await make("On", "store.opened");
+    const off = await make("Off", "store.opened");
+    await expect(db.query(`update commerce.platform_workflows set enabled = true where id = '${on}'`)).rejects.toThrow(/platform_workflows_on_when_tested/);
+    await db.query(`update commerce.platform_workflows set tested_version = version, enabled = true where id = '${on}'`);
+    const subject = "00000000-0000-4000-8000-0000000000d6";
+    // Twice in one transaction: one run.
+    await db.transaction(async (tx) => {
+      await tx.query(`select commerce.queue_platform_event('store.opened', '${subject}')`);
+      await tx.query(`select commerce.queue_platform_event('store.opened', '${subject}')`);
+    });
+    await db.query(`select commerce.queue_platform_event('store.created', '${subject}')`);
+    const { rows } = await db.query<{ workflow_id: string; status: string }>(`select workflow_id, status from commerce.platform_workflow_runs where subject_id = '${subject}'`);
+    expect(rows).toEqual([{ workflow_id: on, status: "pending" }]);
+    await db.query(`delete from commerce.platform_workflows where id in ('${on}', '${off}')`);
+  });
+
   it("send to one of the platform's own endpoints only as `webhook`, and queue each endpoint that is on and asks for the event (D515)", async () => {
     await expect(db.query("insert into commerce.platform_integration_deliveries (provider, event) values ('webhook', 'test')")).rejects.toThrow(
       /platform_integration_deliveries_endpoint/,
@@ -239,12 +259,14 @@ describe("the platform's integrations", () => {
 
   it("have row-level security, as every commerce table", async () => {
     const { rows } = await db.query<{ relname: string; relrowsecurity: boolean }>(
-      "select relname, relrowsecurity from pg_class where relname in ('platform_integrations', 'platform_integration_deliveries', 'platform_webhook_endpoints') order by relname",
+      "select relname, relrowsecurity from pg_class where relname in ('platform_integrations', 'platform_integration_deliveries', 'platform_webhook_endpoints', 'platform_workflows', 'platform_workflow_runs') order by relname",
     );
     expect(rows).toEqual([
       { relname: "platform_integration_deliveries", relrowsecurity: true },
       { relname: "platform_integrations", relrowsecurity: true },
       { relname: "platform_webhook_endpoints", relrowsecurity: true },
+      { relname: "platform_workflow_runs", relrowsecurity: true },
+      { relname: "platform_workflows", relrowsecurity: true },
     ]);
   });
 });

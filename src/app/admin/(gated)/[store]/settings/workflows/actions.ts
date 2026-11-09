@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
-import type { WorkflowInput } from "@/lib/workflows";
+import type { AnyWorkflowInput } from "@/lib/workflows";
 import { actionAdminLang } from "@/server/admin-request-lang";
 import { checkPermission } from "@/server/permissions";
 import { deleteWorkflow, getWorkflow, saveWorkflow, switchWorkflow, testWorkflow } from "@/server/workflows";
@@ -12,7 +12,7 @@ import { deleteWorkflow, getWorkflow, saveWorkflow, switchWorkflow, testWorkflow
 /** Workflows change what happens in the store, so they are `settings:write` (D356); asking the AI manager is an owner's, checked by the save. */
 const noAccess = async () => adminText(await actionAdminLang(), "order").messages.noAccess;
 
-export async function saveWorkflowAction(storeSlug: string, id: string | null, input: WorkflowInput): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+export async function saveWorkflowAction(storeSlug: string, id: string | null, input: AnyWorkflowInput): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { ok: false, problems: [await noAccess()] };
   const saved = await saveWorkflow(member, id, input);

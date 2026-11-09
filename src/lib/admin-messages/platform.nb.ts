@@ -43,6 +43,11 @@ export const platformNb: PlatformMessages = {
     endpointsPayload:
       "Innholdet er JSON, slik Zapier og Make får det: id, event, created_at, platform, og det hendelsen gjelder under sitt eget navn (request, store og plan, eller report).",
   },
+  workflows: {
+    description:
+      "Når noe skjer på plattformen (en butikk det er bedt om, som er laget eller åpnet, et abonnement som startet, ble endret, avsluttet eller ikke betalt, en melding om ulovlig innhold), eller til en fast tid i Oslo: sjekk det du velger og gjør noe. Send e-post til plattformens eiere, skriv i Kaizena Flows Slack, eller send det til et av dens egne endepunkter.",
+    limits: "Hver arbeidsflyt kjører én gang per hendelse og høyst 100 ganger i timen. E-post til ansatte går til plattformens eiere.",
+  },
   referrals: {
     title: "Verving",
     description:

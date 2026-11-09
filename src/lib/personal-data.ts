@@ -398,6 +398,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   shop_move_items: "What a move from Shopify made (D445 step 9): kinds and ids, a customer only as the md5 of their address; never an address or a name.",
   ledger_books: "A store's books (D478): the legal entity's name and organisation number, its country, currency and days; the business's, never a person's.",
   ledger_accounts: "A book's chart of accounts (D478): numbers, names and kinds; never a person's data.",
+  platform_workflows: "Kaizena Flow's workflows (D516): a platform owner's own words (a name, conditions, an email's or a Slack message's text) and who saved them (ids); no customer.",
+  platform_workflow_runs: "A platform workflow's runs (D516): the event, what it is about (an id), whether its conditions held and each action's outcome; kept 90 days.",
   platform_webhook_endpoints: "Kaizena Flow's own endpoints (D515): a name, an encrypted address and signing secret, the platform events each gets and the platform admin who added it (an id); what is sent is in platform_integration_deliveries.",
   turnover_thresholds: "The owner's own thresholds for the turnover watch (D514): an amount, a currency, the owner's note of what they will do before it and the staff account that added it (an id); never a customer.",
   crm_moves: "A store's connection to the Pipedrive account it moves in from (D477): the Pipedrive company's id and name, an encrypted token and the account that connected it, and the run's counts; never a person's data.",
@@ -599,6 +601,8 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "platform.access_received": "staff",
   // The platform's morning briefing (D513), to its owners and its finance role.
   "platform.briefing": "staff",
+  // A platform workflow's email (D516), to the platform's owners.
+  "platform.workflow": "staff",
   // Notices of illegal content (DSA, D411): the sender's receipt and decision go to a member of the public; the alert and the statement of
   // reasons go to Kaizena Flow's admins and the store's owners.
   "platform.content_report_received": "shopper",

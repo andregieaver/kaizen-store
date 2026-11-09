@@ -167,6 +167,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   integrations job, reading the event as `subjectData()` builds it. A new action is a kind in `ACTION_KINDS` with its schema, `actionsFor()`,
   its case in `act()` through its screen's function, words in the `notifications` catalogues and a test; it never emails a customer, refunds
   or spends, and never makes an event a workflow waits for. A new trigger is an event of `EVENTS` (unit A) with its fields in `WORKFLOW_FIELDS`.
+  Kaizena Flow's own workflows (C4 step 3, D516) are `commerce.platform_workflows` and `platform_workflow_runs`, written only by
+  `platform-workflows.ts` (a platform owner's, the settings area) and queued by `queue_platform_event()`; their triggers, fields and actions are
+  `PLATFORM_WORKFLOWS` (`src/lib/platform-workflows.ts`), the kit the shared editor (`scope="platform"`) and `workflowProblems()` take, and
+  they read the event as `platformPayload()` builds it. A new platform event is a trigger there with its fields.
 
 ## Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…
 

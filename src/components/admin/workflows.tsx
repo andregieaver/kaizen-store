@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 
 import { fillWords } from "@/lib/admin-fill";
-import { actionsFor, fieldsFor, OPERATORS, WORKFLOW_TRIGGERS, type WorkflowAction, type WorkflowCondition, type WorkflowInput, type WorkflowTrigger } from "@/lib/workflows";
+import { PLATFORM_WORKFLOWS } from "@/lib/platform-workflows";
+import { OPERATORS, STORE_WORKFLOWS, type AnyWorkflowInput, type WorkflowAction, type WorkflowCondition } from "@/lib/workflows";
 
 import { useAdminText } from "./admin-text";
 import { Button, Card, Chip, List, ListRow, RowDate, RowLead } from "./ui";
@@ -15,7 +16,11 @@ type AsyncSaved = Promise<Saved>;
 type AsyncPlain = Promise<Plain>;
 type AsyncTest = Promise<TestAnswer>;
 
-export type WorkflowView = WorkflowInput & {
+/** Whose workflows: a store's (D356) or Kaizena Flow's own, on its events (D516). */
+export type WorkflowScope = "store" | "platform";
+const kitOf = (scope: WorkflowScope) => (scope === "platform" ? PLATFORM_WORKFLOWS : STORE_WORKFLOWS);
+
+export type WorkflowView = AnyWorkflowInput & {
   id: string;
   enabled: boolean;
   tested: boolean;
@@ -23,7 +28,7 @@ export type WorkflowView = WorkflowInput & {
 };
 
 export type WorkflowActions = {
-  save: (id: string | null, input: WorkflowInput) => AsyncSaved;
+  save: (id: string | null, input: AnyWorkflowInput) => AsyncSaved;
   test: (id: string) => AsyncTest;
   switchOn: (id: string, on: boolean) => AsyncPlain;
   remove: (id: string) => AsyncPlain;
@@ -56,23 +61,26 @@ export function WorkflowEditor({
   triggerLabels,
   save,
   onDone,
+  scope = "store",
 }: {
-  start: (WorkflowInput & { id: string | null }) | null;
+  start: (AnyWorkflowInput & { id: string | null }) | null;
   endpoints: { id: string; name: string }[];
   triggerLabels: Record<string, string>;
   save: WorkflowActions["save"];
   onDone: () => void;
+  scope?: WorkflowScope;
 }) {
   const w = useAdminText("notifications").workflows;
+  const kit = kitOf(scope);
   const [pending, run] = useTransition();
   const [problems, setProblems] = useState<string[]>([]);
   const [name, setName] = useState(start?.name ?? "");
-  const [trigger, setTrigger] = useState<WorkflowTrigger>(start?.trigger ?? "order.paid");
+  const [trigger, setTrigger] = useState<string>(start?.trigger ?? kit.triggers[0]);
   const [schedule, setSchedule] = useState(start?.schedule ?? { every: "day" as const, at: "08:00", weekday: null });
   const [conditions, setConditions] = useState<WorkflowCondition[]>(start?.conditions ?? []);
   const [actions, setActions] = useState<WorkflowAction[]>(start?.actions ?? [blankAction("email_staff", null)]);
-  const fields = fieldsFor(trigger);
-  const allowed = actionsFor(trigger);
+  const fields = kit.fieldsFor(trigger);
+  const allowed = kit.actionsFor(trigger);
   const setAction = (i: number, next: WorkflowAction) => setActions(actions.map((a, j) => (j === i ? next : a)));
 
   return (
@@ -81,7 +89,7 @@ export function WorkflowEditor({
       className="flex flex-col gap-5"
       action={() =>
         run(async () => {
-          const input: WorkflowInput = { name, trigger, schedule: trigger === "schedule" ? schedule : null, conditions: trigger === "schedule" ? [] : conditions, actions };
+          const input: AnyWorkflowInput = { name, trigger, schedule: trigger === "schedule" ? schedule : null, conditions: trigger === "schedule" ? [] : conditions, actions };
           const answer = await save(start?.id ?? null, input);
           if (answer.ok) onDone();
           else setProblems(answer.problems);
@@ -97,14 +105,14 @@ export function WorkflowEditor({
         <select
           value={trigger}
           onChange={(e) => {
-            const next = e.target.value as WorkflowTrigger;
+            const next = e.target.value;
             setTrigger(next);
             setConditions([]);
-            setActions(actions.filter((a) => actionsFor(next).includes(a.kind)));
+            setActions(actions.filter((a) => kit.actionsFor(next).includes(a.kind)));
           }}
           className={`${FIELD} font-normal`}
         >
-          {WORKFLOW_TRIGGERS.map((t) => (
+          {kit.triggers.map((t) => (
             <option key={t} value={t}>
               {t === "schedule" ? w.schedule : (triggerLabels[t] ?? t)}
             </option>
@@ -247,7 +255,7 @@ export function WorkflowEditor({
 }
 
 /** The New workflow card: the editor, then a line that it was saved off. */
-export function NewWorkflow(props: { endpoints: { id: string; name: string }[]; triggerLabels: Record<string, string>; save: WorkflowActions["save"] }) {
+export function NewWorkflow(props: { endpoints: { id: string; name: string }[]; triggerLabels: Record<string, string>; save: WorkflowActions["save"]; scope?: WorkflowScope }) {
   const w = useAdminText("notifications").workflows;
   const [key, setKey] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -278,12 +286,14 @@ export function WorkflowCard({
   triggerLabels,
   canWrite,
   actions,
+  scope = "store",
 }: {
   flow: WorkflowView;
   endpoints: { id: string; name: string }[];
   triggerLabels: Record<string, string>;
   canWrite: boolean;
   actions: WorkflowActions;
+  scope?: WorkflowScope;
 }) {
   const w = useAdminText("notifications").workflows;
   const [pending, run] = useTransition();
@@ -304,7 +314,7 @@ export function WorkflowCard({
   if (editing)
     return (
       <Card title={flow.name} level={3} compact>
-        <WorkflowEditor start={flow} endpoints={endpoints} triggerLabels={triggerLabels} save={actions.save} onDone={() => setEditing(false)} />
+        <WorkflowEditor start={flow} endpoints={endpoints} triggerLabels={triggerLabels} save={actions.save} onDone={() => setEditing(false)} scope={scope} />
       </Card>
     );
   return (

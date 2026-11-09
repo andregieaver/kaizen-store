@@ -15,6 +15,7 @@ import {
   type PlatformEvent,
 } from "@/lib/platform-integrations";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
+import { escapeSlack } from "@/lib/slack";
 import { siteUrl } from "@/lib/site";
 
 import { audit, type Account } from "./auth";
@@ -501,6 +502,29 @@ export async function sendPlatformTest(admin: Account, provider: Provider): Prom
     `,
   );
   await audit(admin.id, null, "platform.integration_test_sent", { provider });
+  return row ? attempt(row) : { ok: false, status: null, error: null };
+}
+
+/**
+ * A message in Kaizena Flow's Slack channel from one of its workflows (D516), sent now as one delivery of the log (`workflow.message`), with
+ * the channel's tries; says how it went. Nothing when Slack is not connected and on.
+ */
+export async function postPlatformSlack(text: string): Promise<Outcome> {
+  const integration = await getPlatformIntegration("slack");
+  if (!integration?.enabled) return { ok: false, status: null, error: "Slack is not connected under Integrations." };
+  const body = escapeSlack(text.slice(0, 2000));
+  const payload = { text: body, blocks: [{ type: "section", text: { type: "mrkdwn", text: body } }], unfurl_links: false, unfurl_media: false };
+  const row = await typedRow(
+    claimedRow,
+    sql`
+      with made as (
+        insert into commerce.platform_integration_deliveries (provider, event, payload, next_attempt_at)
+        values ('slack', 'workflow.message', ${JSON.stringify(payload)}::jsonb, now() + interval '5 minutes')
+        returning *
+      )
+      select ${claimedColumns} from made d ${claimedJoins}
+    `,
+  );
   return row ? attempt(row) : { ok: false, status: null, error: null };
 }
 

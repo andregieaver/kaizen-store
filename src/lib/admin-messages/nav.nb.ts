@@ -382,6 +382,8 @@ export const NAV_NB: Record<string, string> = {
     "Hvor lenge hver type personopplysninger lagres, hvor hver periode kommer fra, og hva den daglige jobben har fjernet.",
   "Kaizena Flow's own news to Slack, Zapier or Make: a store asked for, made or opened, a plan started or ended, a notice of illegal content.":
     "Kaizena Flows egne nyheter til Slack, Zapier eller Make: en butikk det er bedt om, som er laget eller åpnet, et abonnement som startet eller sluttet, en melding om ulovlig innhold.",
+  "When something happens on the platform, or at a set time: check and act. An email to the owners, a Slack message or a signed request.":
+    "Når noe skjer på plattformen, eller til en fast tid: sjekk og gjør noe. En e-post til eierne, en melding i Slack eller en signert forespørsel.",
   "Google reviews": "Google-omtaler",
   "Kaizena Flow's own Google reviews for testimonials.": "Kaizena Flows egne Google-omtaler til anbefalinger.",
   Stripe: "Stripe",

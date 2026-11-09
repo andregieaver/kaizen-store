@@ -46,6 +46,7 @@ import { LIMIT_KEYS } from "../lib/limits";
 import { USAGE_METRIC_IDS } from "../lib/usage-metrics";
 import { AUDIT_AREA_KEYS } from "../lib/audit";
 import { MOVEMENT_REASONS, MOVEMENT_SOURCES } from "../lib/inventory";
+import { PLATFORM_WORKFLOW_TRIGGERS } from "../lib/platform-workflows";
 import { WORKFLOW_TRIGGERS } from "../lib/workflows";
 import { CUSTOMER_NOTE_MAX } from "../lib/customer-staff";
 import {
@@ -7607,6 +7608,68 @@ export const platformWebhookEndpoints = commerce.table(
     check("platform_webhook_endpoints_name", sql`char_length(${t.name}) between 1 and 80`),
     check("platform_webhook_endpoints_topics", sql`cardinality(${t.topics}) between 1 and 40`),
     check("platform_webhook_endpoints_disabled", sql`${t.disabledReason} is null or ${t.disabledReason} in ('failing', 'owner')`),
+  ],
+);
+
+/**
+ * A workflow on Kaizena Flow's own events (C4 step 3, D516, `src/server/platform-workflows.ts`, its only writer with the runner): a store's
+ * workflow (D356) for the platform, its trigger one of the platform's events or a schedule. Saved off; `version` rises with each save and it
+ * may be switched on only once `tested_version` equals it.
+ */
+export const platformWorkflows = commerce.table(
+  "platform_workflows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    trigger: text("trigger").notNull(),
+    schedule: jsonb("schedule"),
+    conditions: jsonb("conditions").notNull().default(sql`'[]'::jsonb`),
+    actions: jsonb("actions").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    testedVersion: integer("tested_version"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("platform_workflows_trigger_idx").on(t.trigger).where(sql`${t.enabled}`),
+    index("platform_workflows_created_by_idx").on(t.createdBy),
+    index("platform_workflows_updated_by_idx").on(t.updatedBy),
+    check("platform_workflows_name", sql`char_length(${t.name}) between 1 and 80`),
+    check("platform_workflows_trigger", sql`${t.trigger} in (${sqlList(PLATFORM_WORKFLOW_TRIGGERS)})`),
+    // Strict: a workflow never tested (tested_version null) is not on either.
+    check("platform_workflows_on_when_tested", sql`not ${t.enabled} or coalesce(${t.testedVersion} = ${t.version}, false)`),
+  ],
+);
+
+/**
+ * One run of a platform workflow (D516): once per event (`event_key`: the event, its subject and the transaction, or a schedule's day),
+ * claimed by the runner, with whether its conditions held and each action's outcome. Kept 90 days.
+ */
+export const platformWorkflowRuns = commerce.table(
+  "platform_workflow_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workflowId: uuid("workflow_id")
+      .notNull()
+      .references(() => platformWorkflows.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    subjectId: uuid("subject_id"),
+    eventKey: text("event_key").notNull(),
+    status: text("status").notNull().default("pending"),
+    matched: boolean("matched"),
+    outcome: jsonb("outcome"),
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    createdAt: createdAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("platform_workflow_runs_once_key").on(t.workflowId, t.eventKey),
+    index("platform_workflow_runs_due_idx").on(t.createdAt).where(sql`${t.status} = 'pending'`),
+    index("platform_workflow_runs_workflow_idx").on(t.workflowId, t.createdAt),
+    check("platform_workflow_runs_status", sql`${t.status} in ('pending', 'done', 'failed', 'capped')`),
   ],
 );
 
