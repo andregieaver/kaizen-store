@@ -168,6 +168,38 @@ export async function lifeHandoffsOf(accountId: string, limit = 10): Promise<Han
   return rows.map(toHandoff);
 }
 
+export type HandoffListItem = Handoff & {
+  direction: Row["direction"];
+  /** The store it was for or from; null on the platform. */
+  storeName: string | null;
+  /** The conversation it lives in, in the admin; null when there is none. */
+  href: string | null;
+  /** Not ended: a task handed to Kaizen Life can still be taken back. */
+  open: boolean;
+};
+
+/**
+ * *Between your assistants* (docs/assistants-together.md, step 3): the person's latest tasks both ways, newest first, each with the store
+ * and the conversation it lives in.
+ */
+export async function recentHandoffsOf(accountId: string, limit = 8): Promise<HandoffListItem[]> {
+  const rows = await typedRows(
+    ROW.extend({ slug: col.text.nullable(), store_name: col.text.nullable() }),
+    sql`select h.id, h.account_id, h.store_id, h.direction, h.conversation_id, h.task, h.from_name, h.status, h.result, h.link,
+          h.approval_ids, h.reported_at, h.report_tries, h.created_at, h.updated_at, s.slug, s.name as store_name
+        from commerce.kaizen_life_handoffs h left join commerce.stores s on s.id = h.store_id
+        where h.account_id = ${accountId}::uuid
+        order by h.created_at desc limit ${Math.min(Math.max(limit, 1), 30)}`,
+  );
+  return rows.map((row) => ({
+    ...toHandoff(row),
+    direction: row.direction,
+    storeName: row.store_name,
+    href: row.conversation_id ? `/admin/${row.slug ?? "platform"}/assistant?c=${row.conversation_id}` : null,
+    open: !isFinal(row.status),
+  }));
+}
+
 /** The person takes back a task handed to Kaizen Life that has not ended: stopped here, and Kaizen Life told. */
 export async function cancelToLife(accountId: string, id: string, fetcher: typeof fetch = fetch): Promise<Handoff | null> {
   if (!z.uuid().safeParse(id).success) return null;

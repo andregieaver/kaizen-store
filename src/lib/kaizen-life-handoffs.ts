@@ -1,3 +1,5 @@
+import type { Signal } from "./admin-schemes";
+
 /**
  * Tasks the assistants hand each other over the account link (docs/assistants-together.md, step 2): the statuses, the limits and the
  * words, pure. The records and the doors are `src/server/kaizen-life-handoffs.ts`.
@@ -68,7 +70,7 @@ const REPORT_HEAD: Record<HandoffStatus, string> = {
  */
 export function lifeReportMessage(task: string, status: HandoffStatus, result: string | null, link: string | null): string {
   const quoted = task.length > 200 ? `${task.slice(0, 199)}…` : task;
-  return [`[From Kaizen Life] Kaizen Life ${REPORT_HEAD[status]}: “${quoted}”`, result?.trim() || null, link || null]
+  return [`${LIFE_REPORT_MARK}Kaizen Life ${REPORT_HEAD[status]}: “${quoted}”`, result?.trim() || null, link || null]
     .filter((part): part is string => Boolean(part))
     .join("\n\n")
     .slice(0, RESULT_MAX + 600);
@@ -79,4 +81,23 @@ export function noticeOutcome(status: HandoffStatus): "done" | "waiting" | "fail
   if (status === "done") return "done";
   if (status === "waiting_for_you" || status === "working") return "waiting";
   return "failed";
+}
+
+/** How a status looks on *Between your assistants* (step 3): what waits for the person stands out, what failed is red. */
+export const HANDOFF_SIGNAL: Record<HandoffStatus, Signal> = {
+  working: "neutral",
+  waiting_for_you: "warning",
+  done: "positive",
+  declined: "neutral",
+  failed: "danger",
+  cancelled: "neutral",
+  expired: "warning",
+};
+
+/** The marker Kaizen Life's reports start with in the AI manager's conversation (`lifeReportMessage()`); the chat draws them as a card. */
+export const LIFE_REPORT_MARK = "[From Kaizen Life] ";
+
+/** A message that is Kaizen Life's report, without its marker; null for any other message. */
+export function lifeReportOf(content: string): string | null {
+  return content.startsWith(LIFE_REPORT_MARK) ? content.slice(LIFE_REPORT_MARK.length) : null;
 }

@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
-import { Card, CARD_CLASS, PageHeader, buttonClass } from "@/components/admin/ui";
+import Link from "next/link";
+
+import { Card, CARD_CLASS, PageHeader, buttonClass, chipClass } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText } from "@/lib/admin-text";
+import { HANDOFF_SIGNAL } from "@/lib/kaizen-life-handoffs";
 import { resourceUrl } from "@/lib/oauth";
 import { siteUrl } from "@/lib/site";
 import { requireAccount } from "@/server/auth";
 import { kaizenLifeAppUrl, lifeLinkOf } from "@/server/kaizen-life-accounts";
+import { recentHandoffsOf } from "@/server/kaizen-life-handoffs";
 import { grantsOfAccount } from "@/server/oauth";
 
-import { disconnectGrantAction, switchAssistantsAction, unlinkKaizenLifeAction } from "./actions";
+import { disconnectGrantAction, switchAssistantsAction, takeBackLifeTaskAction, unlinkKaizenLifeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Connected apps and assistants" };
 
@@ -19,7 +23,8 @@ export const metadata: Metadata = { title: "Connected apps and assistants" };
  * Account → Connected apps and assistants (wave 14 unit B, D439, B7): each AI assistant or app the person let work with their stores, the
  * stores it reaches, its access level and when it was last used, with *Disconnect*, which ends it at once. Everyone's own page, owners and
  * staff alike: a grant acts as the person who made it. A link to Kaizen Life (docs/life-work-summary.md 3.3) stands first, with *Unlink*,
- * and under it the switch that lets the person's assistants here and in Kaizen Life work together (docs/assistants-together.md).
+ * and under it the switch that lets the person's assistants here and in Kaizen Life work together (docs/assistants-together.md), and
+ * *Between your assistants*: the latest tasks they handed each other, what each came to, and *Take back* for one still open (step 3).
  */
 export default async function ConnectedAppsPage(props: { searchParams: Promise<{ assistants?: string }> }) {
   await connection();
@@ -27,7 +32,12 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
   const account = await requireAccount();
   const lang = adminLangOf(account.adminLocale);
   const w = adminText(lang, "oauth");
-  const [grants, life, lifeApp] = await Promise.all([grantsOfAccount(account.id), lifeLinkOf(account.id), kaizenLifeAppUrl(account.id)]);
+  const [grants, life, lifeApp, tasks] = await Promise.all([
+    grantsOfAccount(account.id),
+    lifeLinkOf(account.id),
+    kaizenLifeAppUrl(account.id),
+    recentHandoffsOf(account.id),
+  ]);
   const when = (iso: string) => new Date(iso).toLocaleString(ADMIN_LANG_FACTS[lang].locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   return (
     <div className="flex flex-col gap-8">
@@ -77,6 +87,50 @@ export default async function ConnectedAppsPage(props: { searchParams: Promise<{
               </form>
             </div>
           </Card>
+          {life.assistants || tasks.length > 0 ? (
+            <Card compact className="mt-3">
+              <h2 id="between-assistants" className="text-title text-ink">
+                {w.kaizenLife.assistants.tasks.title}
+              </h2>
+              {tasks.length === 0 ? (
+                <p className="mt-1 text-sm text-muted">{w.kaizenLife.assistants.tasks.none}</p>
+              ) : (
+                <ul className="mt-2 flex flex-col divide-y divide-line" aria-labelledby="between-assistants">
+                  {tasks.map((task) => (
+                    <li key={`${task.direction}:${task.id}`} className="flex flex-col gap-2 py-3">
+                      <div className="min-w-0 max-w-2xl">
+                        <p className="text-xs text-muted">
+                          {task.direction === "to_life"
+                            ? w.kaizenLife.assistants.tasks.toLife
+                            : task.storeName
+                              ? fillWords(w.kaizenLife.assistants.tasks.fromLife, { store: task.storeName })
+                              : w.kaizenLife.assistants.tasks.fromLifePlatform}{" "}
+                          · {when(task.createdAt)}
+                        </p>
+                        <p className="line-clamp-2 text-sm text-ink wrap-anywhere">{task.task}</p>
+                        {task.result ? <p className="mt-1 line-clamp-2 text-xs text-ink-2 wrap-anywhere">{task.result}</p> : null}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={chipClass(HANDOFF_SIGNAL[task.status])}>{w.kaizenLife.assistants.tasks.status[task.status]}</span>
+                        {task.href ? (
+                          <Link href={task.href} className={buttonClass("quiet", "dense")}>
+                            {w.kaizenLife.assistants.tasks.open}
+                          </Link>
+                        ) : null}
+                        {task.open && task.direction === "to_life" ? (
+                          <form action={takeBackLifeTaskAction.bind(null, task.id)}>
+                            <button type="submit" className={buttonClass("secondary", "dense")}>
+                              {w.kaizenLife.assistants.tasks.takeBack}
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          ) : null}
         </section>
       ) : null}
       {grants.length === 0 ? (

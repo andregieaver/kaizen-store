@@ -286,7 +286,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Theme photographs (D264, `docs/theme-showcase-phase-2.md` step 1)
 - Premium themes (D286, `docs/theme-prices.md`, `src/lib/theme-prices.ts`, `src/server/theme-prices.ts`)
 - Signature themes (D267, D269, D281, D287, `docs/signature-themes.md`; Orbit, Atelier, Arcade, Botanica, Kinetic, Meridian)
-- Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517 and D519, `docs/assistants-together.md`)
+- Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517, D519 and D521, `docs/assistants-together.md`)
 - Templates (D125, `src/lib/templates.ts`, `src/lib/template-content.ts`, `src/server/templates.ts`, `TemplatesTab`/`TemplatesModal`)
 - Page layouts and preview (D127, `src/lib/page-layout.ts`, `src/lib/page-layout-apply.ts`, `previewTemplate()`, `TemplatesPreview`,…
 - Motion (D128, `src/lib/motion.ts`, `src/lib/motion-attrs.ts`, `src/lib/motion-runtime.ts`, `src/app/motion.css`, `src/lib/motion-plan.ts`,…

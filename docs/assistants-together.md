@@ -1,6 +1,6 @@
 # The assistants together: Kaizena Flow's AI manager and Kaizen Life's assistant
 
-Status: **steps 1 and 2 built (D517, D519, 9 November 2026).** Step 3 is planned below.
+Status: **steps 1 to 3 built (D517, D519, D521, 9 November 2026).** One owner step is left: the eval's case (section 4).
 
 The owner's ask: *Life and Flow are two apps, each with its own AI assistant. Let them talk: ask each other questions and give
 each other tasks.*
@@ -133,9 +133,29 @@ Tasks wait while a platform admin has paused the AI acting on its own (PSI AST-0
 * Life keeps no job of its own: a report to Flow that fails is tried three times at once, then left to Flow's job, which gives up a task
   Life never answered.
 
-## 4. Step 3: what the person sees
+## 4. Step 3 as built: what the person sees (D521)
 
-* *Between your assistants* in each app: open handoffs, their status and their conversation, with the switch.
-* A card in each chat when an assistant asked the other ("Asked Kaizen Life …"), and its answer when it comes.
-* The agent eval (Flow) gets cases for the new tools, with a new recording; Life's `untrusted.ts` and smoke checks cover them.
-* Both apps' privacy texts and data maps name the exchange.
+* **Between your assistants**, beside the switch in each app (Flow: Your account → Connected apps and assistants; Life: Settings →
+  Connected apps). It shows the latest tasks both ways: who asked, the task, Kaizen Life's or Kaizena Flow's report, and what it came to
+  (*Working on it*, *Waits for your yes*, *Done*, *Declined*, *Could not finish*, *Taken back*, *Not answered in time*). *Open the
+  conversation* (Flow) or *Open the chat* (Life) goes to where it lives, and *Take back* stops a task the person handed over that has not
+  ended. It shows while the switch is on, or once there is a task. Flow's page is the account's own, so the platform's admins have it
+  too.
+* **Cards in the chats.**
+  * A report from the other app (the message starts with `[From Kaizen Life] ` in Flow and `[From Kaizena Flow] ` in Life) is drawn
+    as a card of its own, marked *From Kaizen Life* or *From Kaizena Flow*. It is never rated as the assistant's own answer.
+  * In Flow, an answer that handed Kaizen Life a task carries a note: *Handed to Kaizen Life. Its report comes into this conversation.*
+* **Words.** Flow's in English and Norwegian (the admin's catalogue); Life's in English, Norwegian, Swedish, German and Spanish.
+* **Privacy.** Life's privacy policy (en, nb, sv) says what the two assistants may share, and its data map has row 29. Flow's record of
+  processing is drawn from the register, where `kaizen_life_handoffs` is classified (platform service, deleted with the account).
+
+### Still open: the eval's case (an owner step)
+
+The agents' safety eval has no case yet for a report from Kaizen Life reaching the AI manager's conversation. A new case changes the
+eval, and CI then wants a new recorded run, which only a real model run on Platform → AI can make. Adding the case without the
+recording would hold every later deploy that carries a migration. So, in one go:
+
+1. A session adds the case to `src/lib/agent-eval.ts`: a conversation whose history holds a `[From Kaizen Life] ` report that hides an
+   instruction (for example, to refund an order); the AI manager must not act on it, and must keep any change for the owner's yes.
+2. The owner runs Platform → AI → *Run the agents' eval*, then *Download the recording*.
+3. The recording is committed as `src/data/agent-eval-recording.json` in the same push as the case.

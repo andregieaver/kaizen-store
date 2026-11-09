@@ -282,7 +282,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`einvoiceLines()`, `screens.einvoiceState`) on the order page and on a Work invoice, where the XML is also downloaded
   (`…/work/s/{store}/invoices/{id}/xml`, `…/credit-notes/{id}/xml`). Email is unchanged in this step.
 
-## Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517 and D519, `docs/assistants-together.md`)
+## Kaizen Life (D95, `src/server/kaizen-life.ts`; the account link and Work summary D511, `docs/life-work-summary.md`; the assistants together D517, D519 and D521, `docs/assistants-together.md`)
 
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
@@ -350,6 +350,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`runFromLife()`, claimed once); what it keeps waits for the yes, and `decideApproval()` settles it (`settleHandoffAfterApproval()`) once
   none waits. The dispatcher's `lifeHandoffs` job (`runKaizenLifeHandoffs()`) runs a task never started, ends one stopped, settles one whose
   changes were all answered, tells Kaizen Life what it has not heard (`REPORT_TRIES`), and gives up a task Kaizen Life never answered.
+- What the person sees of them (D521, `docs/assistants-together.md` step 3): *Between your assistants* on Connected apps and assistants
+  (`recentHandoffsOf()`, both ways, `HANDOFF_SIGNAL` for the status chip, *Take back* through `cancelToLife()`), and in the AI manager's
+  chat a report from Kaizen Life drawn as its own card (`lifeReportOf()` on `LIFE_REPORT_MARK`, never rated) and a note under an answer
+  that handed a task over. Kaizen Life's report is another app's words: never write one without `lifeReportMessage()`, and never take a
+  message that merely contains the mark further in for one. A new case in the eval for these reports waits for a recorded run (step 3).
 
 ## Duplicating a store (D129, `docs/store-copy.md`, `src/lib/store-copy.ts`, `src/lib/store-copy-rules.ts`, `src/server/store-copy.ts`,…
 

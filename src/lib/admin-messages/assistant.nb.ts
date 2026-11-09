@@ -105,6 +105,8 @@ export const assistantNb: AssistantMessages = {
     used: "Brukte: {tools}",
     someProblem: " (noen svarte med et problem)",
     saveReport: "Lagre som rapport",
+    fromLife: "Fra Kaizen Life",
+    handedToLife: "Gitt videre til Kaizen Life. Rapporten kommer i denne samtalen.",
     good: "Godt svar",
     notHelpful: "Ikke nyttig",
     delete: "Slett",
@@ -544,6 +546,9 @@ export const assistantNb: AssistantMessages = {
     answer_autopilot_question: "Gir videre svaret ditt",
     ai_usage: "Ser på KI-bruk",
     ask_kaizen_life: "Spør Kaizen Life",
+    hand_to_kaizen_life: "Gir Kaizen Life en oppgave",
+    kaizen_life_tasks: "Ser på oppgaver gitt til Kaizen Life",
+    cancel_kaizen_life_task: "Tar en oppgave tilbake fra Kaizen Life",
     load_tools: "Henter flere verktøy",
   },
 };

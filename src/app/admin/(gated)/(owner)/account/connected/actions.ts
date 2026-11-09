@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireAccount } from "@/server/auth";
 import { switchAssistantsFromFlow, unlinkFromFlow } from "@/server/kaizen-life-accounts";
+import { cancelToLife } from "@/server/kaizen-life-handoffs";
 import { disconnectGrant } from "@/server/oauth";
 
 /** *Disconnect* on Connected apps and assistants (D439): the person's own grant ends at once, with every token of it. */
@@ -30,5 +31,12 @@ export async function switchAssistantsAction(on: boolean): Promise<void> {
   const account = await requireAccount();
   const outcome = await switchAssistantsFromFlow(account, on);
   if (outcome.kind === "life") redirect("/admin/account/connected?assistants=failed");
+  refresh();
+}
+
+/** *Take back* on Between your assistants (docs/assistants-together.md, step 3): a task handed to Kaizen Life that has not ended. */
+export async function takeBackLifeTaskAction(id: string): Promise<void> {
+  const account = await requireAccount();
+  await cancelToLife(account.id, id);
   refresh();
 }

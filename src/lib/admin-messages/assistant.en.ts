@@ -111,6 +111,9 @@ export const assistantEn = {
     someProblem: " (some answered with a problem)",
     /** Under an answer that ran a report (D346): opens the report, where it can be changed and saved. */
     saveReport: "Save as report",
+    /** Kaizen Life's report on a task handed to it, drawn as its own card (docs/assistants-together.md, step 3). */
+    fromLife: "From Kaizen Life",
+    handedToLife: "Handed to Kaizen Life. Its report comes into this conversation.",
     good: "Good answer",
     notHelpful: "Not helpful",
     delete: "Delete",
