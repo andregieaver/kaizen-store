@@ -5160,6 +5160,20 @@
       "when": 1794182826512,
       "tag": "20261109000706_ledger_budgets_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 737,
+      "version": "7",
+      "when": 1794214259610,
+      "tag": "20261109085059_platform_sales",
+      "breakpoints": true
+    },
+    {
+      "idx": 738,
+      "version": "7",
+      "when": 1794214302793,
+      "tag": "20261109085142_platform_sales_rules",
+      "breakpoints": true
     }
   ]
 }

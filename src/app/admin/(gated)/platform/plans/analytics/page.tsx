@@ -11,6 +11,11 @@ import { formatMoney } from "@/lib/money";
 import { share, type CurrencyFigure, type MovementFigure, type PlanSummary } from "@/lib/plan-analytics";
 import { requirePlatformAdmin } from "@/server/auth";
 import { planAnalytics } from "@/server/plan-analytics";
+import { platformSalesView } from "@/server/platform-sales";
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import type { SalesMonth } from "@/lib/platform-sales";
+
+import { readSalesAction } from "./actions";
 
 export const metadata: Metadata = { title: "Plan analytics" };
 
@@ -28,7 +33,58 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const w = adminText(lang, "console").planAnalytics;
   const asked = Number((await searchParams).days);
   const days = (PERIODS as readonly number[]).includes(asked) ? asked : 30;
-  const a = await planAnalytics(days);
+  const year = new Date().getUTCFullYear();
+  const [a, sales] = await Promise.all([planAnalytics(days), platformSalesView(year)]);
+  const sw = w.sales;
+  const monthName = (month: string) => new Date(`${month}-01T12:00:00Z`).toLocaleDateString(locale, { month: "long", timeZone: "UTC" });
+  const cell = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
+  // What Kaizena Flow sold (D507): a month a row, each currency apart, the year's totals at the foot.
+  const salesTable = (months: SalesMonth[], totals: SalesMonth[]) => (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[40rem] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-line text-muted">
+            <th scope="col" className="px-3 py-2 text-left font-normal">
+              {sw.month}
+            </th>
+            {[sw.plans, sw.themes, sw.domains, sw.other, sw.vat, sw.total, sw.credited].map((h) => (
+              <th key={h} scope="col" className={`${cell} font-normal`}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {months.map((m) => (
+            <tr key={`${m.month}-${m.currency}`}>
+              <th scope="row" className="px-3 py-2 text-left font-normal">
+                {monthName(m.month)}
+              </th>
+              {[m.byKind.plan, m.byKind.theme, m.byKind.domain, m.byKind.other, m.vat, m.total, m.credited].map((v, i) => (
+                <td key={i} className={cell}>
+                  {formatMoney(v, m.currency, locale)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="border-t-2 border-line font-medium">
+          {totals.map((t) => (
+            <tr key={t.currency}>
+              <th scope="row" className="px-3 py-2 text-left">
+                {sw.year}
+              </th>
+              {[t.byKind.plan, t.byKind.theme, t.byKind.domain, t.byKind.other, t.vat, t.total, t.credited].map((v, i) => (
+                <td key={i} className={cell}>
+                  {formatMoney(v, t.currency, locale)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tfoot>
+      </table>
+    </div>
+  );
   const money = (list: CurrencyFigure[]) => (list.length === 0 ? formatMoney(0, "NOK", locale) : list.map((f) => formatMoney(f.mrrMinor, f.currency, locale)).join(" · "));
   // The tile's figure: each currency on a line of its own, in whole units (the lines below keep the øre).
   const whole = (f: CurrencyFigure) => formatMoney(Math.round(f.mrrMinor / 100) * 100, f.currency, locale, { decimals: "hide_whole" });
@@ -129,6 +185,23 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
             ))}
           </ul>
         )}
+      </Card>
+
+      <Card title={fillWords(sw.title, { year })} description={sw.description}>
+        <div className="flex flex-col gap-4">
+          {sales.live.months.length === 0 ? <p className="text-sm text-muted">{sw.none}</p> : salesTable(sales.live.months, sales.live.totals)}
+          {sales.test.months.length > 0 && (
+            <details>
+              <summary className="w-fit cursor-pointer text-sm text-muted underline underline-offset-2">{sw.testTitle}</summary>
+              <div className="mt-2">{salesTable(sales.test.months, sales.test.totals)}</div>
+            </details>
+          )}
+          <ActionForm action={readSalesAction} className="flex flex-wrap items-center gap-3">
+            <input type="hidden" name="year" value={year} />
+            <SubmitButton variant="secondary">{sw.read}</SubmitButton>
+            <span className="text-sm text-muted">{sw.readHelp}</span>
+          </ActionForm>
+        </div>
       </Card>
 
       {(a.test.paying > 0 || a.test.trialing > 0) && (

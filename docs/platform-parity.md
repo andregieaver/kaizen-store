@@ -38,9 +38,9 @@ Website section is the site's (see *Built for both*).
 | Reports | None | Console, C2 (later) |
 | Analytics settings | None: no targets | Console, C2 |
 | Live | Visitors on kaizenaflow.com now, through Kaizena Flow's store (D484); no sign-ups today | Console, C2 (sign-ups today) |
-| Finance | Single invoices under each store; no totals of plans, themes and domains sold, or fees | Console, C3 |
+| Finance | What Kaizena Flow sold, by month: plans, themes, domains, VAT, paid and credited (D507, Plans → Analytics); no fees yet | Console, C3 step 2 (fees, with the books) |
 | Payouts | None: the platform's own Stripe payouts are not shown | Console, C3 |
-| VAT | None for its own sales (Settings → VAT is the stores' rate tables) | Console, C3 |
+| VAT | The VAT charged on its own sales, by month (D507); not yet in a VAT return of the business behind it | Console, C3 step 2 (the books) |
 
 ### Customers
 

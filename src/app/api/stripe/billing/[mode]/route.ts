@@ -8,6 +8,7 @@ import { handleReferralEvent } from "@/server/referral-billing";
 import { stripeFor } from "@/server/stripe";
 import { applyDomainInvoiceEvent, registerPaidDomains } from "@/server/domain-purchases";
 import { applyThemeInvoiceEvent } from "@/server/theme-prices";
+import { applyPlatformSaleEvent } from "@/server/platform-sales";
 
 /**
  * Events about Kaizen's own subscriptions to stores (Stripe Billing on
@@ -15,7 +16,7 @@ import { applyThemeInvoiceEvent } from "@/server/theme-prices";
  * invoices and credit notes, for the referral program (D131): commission when
  * a referred store pays, credit on a referrer's draft invoice, both undone by
  * voiding and credit notes; and for premium themes (D286): a theme's invoice
- * paid or voided. Only events signed with the billing webhook's secret count.
+ * paid or voided; and every paid invoice kept as what Kaizena Flow sold (D507). Only events signed with the billing webhook's secret count.
  */
 export async function POST(request: Request, { params }: RouteContext<"/api/stripe/billing/[mode]">) {
   const { mode } = await params;
@@ -40,7 +41,9 @@ export async function POST(request: Request, { params }: RouteContext<"/api/stri
       const domain = await applyDomainInvoiceEvent(event);
       if (domain.detail === "domain paid") after(() => registerPaidDomains().then(() => undefined));
       const result = await handleReferralEvent(mode as PaymentModeName, event);
-      return Response.json({ received: true, ...(result.handled || theme.handled || domain.handled ? {} : { ignored: event.type }) });
+      // What Kaizena Flow sold (D507): a paid invoice kept as a sale, a credit note's amount on it.
+      const sale = await applyPlatformSaleEvent(mode as PaymentModeName, event);
+      return Response.json({ received: true, ...(result.handled || theme.handled || domain.handled || sale ? {} : { ignored: event.type }) });
     } catch {
       // Stripe retries on errors, with backoff, for up to three days; every step is safe to repeat.
       return new Response("Could not process the event", { status: 500 });

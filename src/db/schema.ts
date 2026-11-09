@@ -18550,6 +18550,42 @@ export const ledgerBudgets = commerce.table(
   ],
 );
 
+/**
+ * What Kaizena Flow itself sold (C3 of `docs/platform-parity-plan.md`, D507): each paid invoice of its own Stripe account (a store's plan,
+ * a premium theme, D286, a domain, D315), kept from the billing webhook and read again from Stripe on demand, with what it was before VAT,
+ * its VAT (25 % MVA for a buyer in Norway, none abroad) and what credit notes gave back. Live and test apart (`mode`). The buyer's store is
+ * kept while it exists; the figures stay with Kaizena Flow's books.
+ */
+export const platformSales = commerce.table(
+  "platform_sales",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    mode: text("mode").notNull(),
+    stripeInvoiceId: text("stripe_invoice_id").notNull(),
+    buyerStoreId: uuid("buyer_store_id").references(() => stores.id, { onDelete: "set null" }),
+    number: text("number"),
+    kind: text("kind").notNull(),
+    country: char("country", { length: 2 }),
+    paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    netMinor: bigint("net_minor", { mode: "number" }).notNull(),
+    vatMinor: bigint("vat_minor", { mode: "number" }).notNull(),
+    totalMinor: bigint("total_minor", { mode: "number" }).notNull(),
+    creditedMinor: bigint("credited_minor", { mode: "number" }).notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("platform_sales_invoice_key").on(t.mode, t.stripeInvoiceId),
+    index("platform_sales_paid_idx").on(t.mode, t.paidAt),
+    index("platform_sales_buyer_idx").on(t.buyerStoreId),
+    check("platform_sales_mode", sql`${t.mode} in ('live', 'test')`),
+    check("platform_sales_kind", sql`${t.kind} in ('plan', 'theme', 'domain', 'other')`),
+    check("platform_sales_amounts", sql`${t.netMinor} >= 0 and ${t.vatMinor} >= 0 and ${t.totalMinor} = ${t.netMinor} + ${t.vatMinor} and ${t.creditedMinor} between 0 and ${t.totalMinor}`),
+    check("platform_sales_number", sql`${t.number} is null or char_length(${t.number}) between 1 and 60`),
+  ],
+);
+
 /** A store's books address (D504): `books-{key}@` the receiving domain, made the first time the Books screen asks for it. */
 export const booksEmail = commerce.table(
   "books_email",

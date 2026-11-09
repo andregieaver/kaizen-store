@@ -95,6 +95,24 @@ export const consoleEn = {
     test: "Test payments",
     testText:
       "Plans paid with Stripe's test cards: no real money, kept apart from the figures above.",
+    sales: {
+      title: "Sales and VAT {year}",
+      description: "What Kaizena Flow itself sold: plans, premium themes and domains, by month, before VAT, with the VAT charged (25 % MVA for stores in Norway, none abroad) and what credit notes gave back.",
+      none: "Nothing sold yet this year.",
+      month: "Month",
+      plans: "Plans",
+      themes: "Themes",
+      domains: "Domains",
+      other: "Other",
+      vat: "VAT",
+      total: "Paid",
+      credited: "Credited",
+      year: "The year",
+      testTitle: "Test payments",
+      read: "Read from Stripe",
+      readHelp: "Reads every paid invoice of the year again, so anything the webhook missed is counted.",
+      readDone: { one: "1 invoice read from Stripe.", many: "{n} invoices read from Stripe." },
+    },
   },
   /** The platform's team (C1, D471), Platform → Settings → Team. */
   team: {
