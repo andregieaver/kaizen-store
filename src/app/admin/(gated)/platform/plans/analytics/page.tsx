@@ -11,11 +11,12 @@ import { formatMoney } from "@/lib/money";
 import { share, type CurrencyFigure, type MovementFigure, type PlanSummary } from "@/lib/plan-analytics";
 import { requirePlatformAdmin } from "@/server/auth";
 import { planAnalytics } from "@/server/plan-analytics";
+import { platformBooksState, storesWithBooks } from "@/server/platform-books";
 import { platformSalesView } from "@/server/platform-sales";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { SalesMonth } from "@/lib/platform-sales";
 
-import { readSalesAction } from "./actions";
+import { postBooksAction, readSalesAction, setBooksStoreAction } from "./actions";
 
 export const metadata: Metadata = { title: "Plan analytics" };
 
@@ -34,8 +35,9 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const asked = Number((await searchParams).days);
   const days = (PERIODS as readonly number[]).includes(asked) ? asked : 30;
   const year = new Date().getUTCFullYear();
-  const [a, sales] = await Promise.all([planAnalytics(days), platformSalesView(year)]);
+  const [a, sales, books, bookStores] = await Promise.all([planAnalytics(days), platformSalesView(year), platformBooksState(), storesWithBooks()]);
   const sw = w.sales;
+  const bw = w.books;
   const monthName = (month: string) => new Date(`${month}-01T12:00:00Z`).toLocaleDateString(locale, { month: "long", timeZone: "UTC" });
   const cell = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
   // What Kaizena Flow sold (D507): a month a row, each currency apart, the year's totals at the foot.
@@ -216,6 +218,41 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
             <SubmitButton variant="secondary">{sw.read}</SubmitButton>
             <span className="text-sm text-muted">{sw.readHelp}</span>
           </ActionForm>
+          {/* In the books (D508): which business's books hold this money, how much of it is there, and a press to post now. */}
+          <section aria-labelledby="books-heading" className="flex flex-col gap-3 border-t border-edge pt-4">
+            <h3 id="books-heading" className="text-body-strong text-ink">
+              {bw.title}
+            </h3>
+            <p className="max-w-prose text-sm text-muted">{bw.help}</p>
+            <ActionForm action={setBooksStoreAction} className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-ink-2">{bw.store}</span>
+                <select name="storeId" defaultValue={books.books?.storeId ?? ""} className="min-h-10 max-w-80 rounded-lg border border-edge bg-card px-3 text-sm">
+                  <option value="">{bw.noStore}</option>
+                  {bookStores.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name === s.legalName ? s.name : `${s.name} (${s.legalName})`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <SubmitButton variant="secondary">{bw.save}</SubmitButton>
+            </ActionForm>
+            {books.books &&
+              (books.books.bookId ? (
+                <>
+                  <p className="text-sm text-ink-2">
+                    {fillWords(bw.state, { posted: books.posted, sales: books.sales, payoutsPosted: books.payoutsPosted, payouts: books.payouts, name: books.books.name })}
+                  </p>
+                  <ActionForm action={postBooksAction} className="flex flex-wrap items-center gap-3">
+                    <SubmitButton variant="secondary">{bw.post}</SubmitButton>
+                    <span className="text-sm text-muted">{bw.postHelp}</span>
+                  </ActionForm>
+                </>
+              ) : (
+                <p className="text-sm text-muted">{fillWords(bw.noBook, { name: books.books.name })}</p>
+              ))}
+          </section>
         </div>
       </Card>
 

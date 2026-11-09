@@ -1849,6 +1849,11 @@ export const platformSettings = commerce.table(
     navigation: jsonb("navigation").notNull().default({}),
     /** Who runs Kaizen, shown in the footer of its pages (D42): `BusinessDetails` in lib/navigation. */
     business: jsonb("business").notNull().default({}),
+    /**
+     * The store whose books hold Kaizena Flow's own money (D508): the business behind Kaizena Flow keeps one book and one VAT return, so
+     * its sales of plans, themes and domains and its Stripe payouts are posted there. None: nothing is posted.
+     */
+    booksStoreId: uuid("books_store_id").references(() => stores.id, { onDelete: "set null" }),
     /** Kaizen's own analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
     tracking: jsonb("tracking").notNull().default({}),
     /** Heading and body fonts from Google Fonts, self-hosted (D59). */
@@ -18572,17 +18577,49 @@ export const platformSales = commerce.table(
     vatMinor: bigint("vat_minor", { mode: "number" }).notNull(),
     totalMinor: bigint("total_minor", { mode: "number" }).notNull(),
     creditedMinor: bigint("credited_minor", { mode: "number" }).notNull().default(0),
+    /** What reached Kaizena Flow's Stripe balance for it, in that balance's currency, and Stripe's fee (D508); null until read. */
+    settledMinor: bigint("settled_minor", { mode: "number" }),
+    settledCurrency: char("settled_currency", { length: 3 }),
+    feeMinor: bigint("fee_minor", { mode: "number" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("platform_sales_invoice_key").on(t.mode, t.stripeInvoiceId),
+    check("platform_sales_settled", sql`(${t.settledMinor} is null) = (${t.settledCurrency} is null) and (${t.feeMinor} is null or ${t.feeMinor} >= 0)`),
     index("platform_sales_paid_idx").on(t.mode, t.paidAt),
     index("platform_sales_buyer_idx").on(t.buyerStoreId),
     check("platform_sales_mode", sql`${t.mode} in ('live', 'test')`),
     check("platform_sales_kind", sql`${t.kind} in ('plan', 'theme', 'domain', 'other')`),
     check("platform_sales_amounts", sql`${t.netMinor} >= 0 and ${t.vatMinor} >= 0 and ${t.totalMinor} = ${t.netMinor} + ${t.vatMinor} and ${t.creditedMinor} between 0 and ${t.totalMinor}`),
     check("platform_sales_number", sql`${t.number} is null or char_length(${t.number}) between 1 and 60`),
+  ],
+);
+
+/**
+ * Kaizena Flow's own Stripe payouts to the bank (D508): what reached the bank and what Stripe kept as its fees of the payments it carries,
+ * posted to the books that hold Kaizena Flow's money (`platform_settings.books_store_id`) as the store's payouts are (D290).
+ */
+export const platformPayouts = commerce.table(
+  "platform_payouts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    mode: text("mode").notNull(),
+    stripePayoutId: text("stripe_payout_id").notNull(),
+    arrivalOn: date("arrival_on", { mode: "string" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    feeMinor: bigint("fee_minor", { mode: "number" }).notNull().default(0),
+    status: text("status").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("platform_payouts_key").on(t.mode, t.stripePayoutId),
+    index("platform_payouts_arrival_idx").on(t.mode, t.arrivalOn),
+    check("platform_payouts_mode", sql`${t.mode} in ('live', 'test')`),
+    check("platform_payouts_fee", sql`${t.feeMinor} >= 0`),
+    check("platform_payouts_status", sql`char_length(${t.status}) between 1 and 30`),
   ],
 );
 

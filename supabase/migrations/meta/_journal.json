@@ -5174,6 +5174,20 @@
       "when": 1794214302793,
       "tag": "20261109085142_platform_sales_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 739,
+      "version": "7",
+      "when": 1794218756629,
+      "tag": "20261109100556_platform_books",
+      "breakpoints": true
+    },
+    {
+      "idx": 740,
+      "version": "7",
+      "when": 1794218798501,
+      "tag": "20261109100638_platform_books_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -113,6 +113,21 @@ export const consoleEn = {
       readHelp: "Reads every paid invoice of the year again, so anything the webhook missed is counted.",
       readDone: { one: "1 invoice read from Stripe.", many: "{n} invoices read from Stripe." },
     },
+    books: {
+      title: "In the books",
+      help: "The business whose books hold Kaizena Flow's money: each live sale is posted there on the day it was paid (25 % MVA for stores in Norway, a service abroad without it), credit notes when they come, and Stripe's payouts against the bank with their fees.",
+      store: "Books",
+      noStore: "Not in any books",
+      save: "Save",
+      saved: "Saved.",
+      notOpen: "Those books are not open. Open them under the store's Settings → Books first.",
+      noBook: "{name} has no open books. Open them under the store's Settings → Books.",
+      state: "{posted} of {sales} live sales and {payoutsPosted} of {payouts} payouts are in {name}'s books.",
+      post: "Post now",
+      postHelp: "Reads this year's payouts from Stripe and posts what is due. It also happens by itself every few minutes.",
+      postDone: { one: "1 entry posted.", many: "{n} entries posted." },
+      waiting: { one: "1 waits: a locked day, or a sale Stripe has not settled in the book's currency yet.", many: "{n} wait: a locked day, or sales Stripe has not settled in the book's currency yet." },
+    },
   },
   /** The platform's team (C1, D471), Platform → Settings → Team. */
   team: {

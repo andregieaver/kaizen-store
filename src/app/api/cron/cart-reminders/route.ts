@@ -73,6 +73,7 @@ import { runActivityPushes } from "@/server/activities";
 import { runBusinessChanges } from "@/server/business-change";
 import { runPipedriveMoves } from "@/server/pipedrive";
 import { runLedgerPosting } from "@/server/ledger";
+import { runPlatformBooks } from "@/server/platform-books";
 import { runEinvoiceSending } from "@/server/einvoice-sending";
 import { sendAutopilotBudgetAlerts } from "@/server/autopilot-settings";
 import { runNightlyUiTranslations } from "@/server/ui-nightly";
@@ -160,6 +161,8 @@ async function dispatch() {
     pipedrive: () => runPipedriveMoves(),
     // Our own ledger (D478): the documents each store issued since its books opened, posted once, within 40 seconds.
     ledger: () => runLedgerPosting(),
+    // Kaizena Flow's own money (D508): its live sales, credit notes and Stripe payouts posted into the books the platform names, within 30 seconds.
+    platformBooks: () => runPlatformBooks(),
     // Fiken (D460): the same for stores whose Fiken connection is on, booked as sales (Annet salg), within 40 seconds.
     fiken: () => syncDueFiken(),
     storeCopies: () => runStoreCopies(),

@@ -448,3 +448,17 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (the lock back to the year before, the closing entry reversed). The business specification is only `businessSpecOf()` over the year's
   trial balance and the SAF-T grouping codes (`groupingOf()`); a new code or category is a change to `no-grouping.json` and its sets there.
 
+## Kaizena Flow's own money in the books (C3 step 2, D508, `src/lib/platform-books.ts`, `src/server/platform-books.ts`)
+
+- **Kaizena Flow's own money in the books (C3 step 2, D508, `src/lib/platform-books.ts`, `src/server/platform-books.ts`)**: Kaizena
+  Flow's money is posted only into the books of the store `platform_settings.books_store_id` names (one with open books, chosen by a
+  platform admin with `setPlatformBooks()`, audited `platform.books_store_set`), and only by `postPlatformMoney()` (the dispatcher's
+  `platformBooks` job and *Post now* on Plans → Analytics). Only live sales and payouts (D507's `platform_sales`, `platform_payouts`) are
+  posted, never test ones, nor any dated before the book opened. Their entries are only those `entryOfPlatformSale()`,
+  `entryOfPlatformCredit()` and `entryOfPlatformPayout()` make: a sale gross to the Stripe balance (1579) against 3000 and 2700 with code
+  3 where it carried VAT, else 3200 with code 52, on its day in Oslo, in the book's currency (a sale in another currency waits until
+  `settlePlatformSale()` has read what its balance transaction settled in the book's currency); its credited share turned on the day it is
+  posted (a changed share reversed before the new one is posted, and none posted while that reversal fails); a payout as the bank and
+  Stripe's fees (7770) against 1579, as a store's (D290). Each is posted once by its source (`platform_sale/{id}`,
+  `platform_credit/{id}:{credited}`, `platform_payout/{id}`).
+
