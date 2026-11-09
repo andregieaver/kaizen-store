@@ -39,52 +39,67 @@ export default async function PlanAnalyticsPage({ searchParams }: PageProps<"/ad
   const monthName = (month: string) => new Date(`${month}-01T12:00:00Z`).toLocaleDateString(locale, { month: "long", timeZone: "UTC" });
   const cell = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
   // What Kaizena Flow sold (D507): a month a row, each currency apart, the year's totals at the foot.
-  const salesTable = (months: SalesMonth[], totals: SalesMonth[]) => (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[40rem] border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-line text-muted">
-            <th scope="col" className="px-3 py-2 text-left font-normal">
-              {sw.month}
-            </th>
-            {[sw.plans, sw.themes, sw.domains, sw.other, sw.vat, sw.total, sw.credited].map((h) => (
-              <th key={h} scope="col" className={`${cell} font-normal`}>
-                {h}
+  const salesTable = (months: SalesMonth[], totals: SalesMonth[]) => {
+    // Only the columns with something in the year; a nought is left blank.
+    const columns = (
+      [
+        [sw.plans, (m: SalesMonth) => m.byKind.plan],
+        [sw.themes, (m: SalesMonth) => m.byKind.theme],
+        [sw.domains, (m: SalesMonth) => m.byKind.domain],
+        [sw.other, (m: SalesMonth) => m.byKind.other],
+        [sw.vat, (m: SalesMonth) => m.vat],
+        [sw.total, (m: SalesMonth) => m.total],
+        [sw.credited, (m: SalesMonth) => m.credited],
+      ] as const
+    ).filter(([, of], i) => i === 5 || totals.some((t) => of(t) !== 0));
+    const amount = (v: number, currency: string) => (v === 0 ? "" : formatMoney(v, currency, locale));
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[32rem] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-line text-muted">
+              <th scope="col" className="px-3 py-2 text-left font-normal">
+                {sw.month}
               </th>
+              {columns.map(([h]) => (
+                <th key={h} scope="col" className={`${cell} font-normal`}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {months.map((m) => (
+              <tr key={`${m.month}-${m.currency}`}>
+                <th scope="row" className="px-3 py-2 text-left font-normal">
+                  {monthName(m.month)}
+                </th>
+                {columns.map(([h, of]) => (
+                  <td key={h} className={cell}>
+                    {amount(of(m), m.currency)}
+                  </td>
+                ))}
+              </tr>
             ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line">
-          {months.map((m) => (
-            <tr key={`${m.month}-${m.currency}`}>
-              <th scope="row" className="px-3 py-2 text-left font-normal">
-                {monthName(m.month)}
-              </th>
-              {[m.byKind.plan, m.byKind.theme, m.byKind.domain, m.byKind.other, m.vat, m.total, m.credited].map((v, i) => (
-                <td key={i} className={cell}>
-                  {formatMoney(v, m.currency, locale)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-        <tfoot className="border-t-2 border-line font-medium">
-          {totals.map((t) => (
-            <tr key={t.currency}>
-              <th scope="row" className="px-3 py-2 text-left">
-                {sw.year}
-              </th>
-              {[t.byKind.plan, t.byKind.theme, t.byKind.domain, t.byKind.other, t.vat, t.total, t.credited].map((v, i) => (
-                <td key={i} className={cell}>
-                  {formatMoney(v, t.currency, locale)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tfoot>
-      </table>
-    </div>
-  );
+          </tbody>
+          <tfoot className="border-t-2 border-line font-medium">
+            {totals.map((t) => (
+              <tr key={t.currency}>
+                <th scope="row" className="px-3 py-2 text-left">
+                  {sw.year}
+                </th>
+                {columns.map(([h, of]) => (
+                  <td key={h} className={cell}>
+                    {amount(of(t), t.currency)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tfoot>
+        </table>
+      </div>
+    );
+  };
   const money = (list: CurrencyFigure[]) => (list.length === 0 ? formatMoney(0, "NOK", locale) : list.map((f) => formatMoney(f.mrrMinor, f.currency, locale)).join(" · "));
   // The tile's figure: each currency on a line of its own, in whole units (the lines below keep the øre).
   const whole = (f: CurrencyFigure) => formatMoney(Math.round(f.mrrMinor / 100) * 100, f.currency, locale, { decimals: "hide_whole" });
