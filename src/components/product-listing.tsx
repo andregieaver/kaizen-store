@@ -48,6 +48,7 @@ export async function ProductListing({
   tracked = false,
   countText,
   page = 1,
+  givenMore = false,
 }: {
   store: Store;
   market: Market;
@@ -67,14 +68,17 @@ export async function ProductListing({
   countText?: (n: number) => string;
   /** How far *Show more* has been followed (`?page=`): the listing shows its first `page` pages. */
   page?: number;
+  /** The given products stopped at their limit, so there may be more of them (a search): *Show more* is offered without a total. */
+  givenMore?: boolean;
 }) {
   const m = t(market.lang);
   const buyer = await getBuyer(store);
   const viewer = { buyer, audienceBoth: store.audience === "both" };
   const chosen = chosenFilters(filters);
+  const asGiven = Boolean(given) && chosen.length === 0 && filters.sort === "featured";
   const [facets, listed, terms, notices] = await Promise.all([
     listingFacets(store.id, market, scope, viewer, m.options as Record<string, string>),
-    given && chosen.length === 0 && filters.sort === "featured"
+    given && asGiven
       ? { products: given, total: given.length }
       : listingPage(store.id, market, scope, filters, viewer, page),
     // Names as this language has them (D319), for the filters' words.
@@ -115,9 +119,9 @@ export async function ProductListing({
       ) : (
         <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} hrefFor={hrefFor} tracked={tracked} notices={notices} />
       )}
-      {more && page < LISTING_PAGES_MAX && (
+      {(more || (asGiven && givenMore)) && page < LISTING_PAGES_MAX && (
         <div className="flex flex-col items-center gap-2 pt-2">
-          <p className="text-sm text-muted">{m.listing.countOf(products.length, total)}</p>
+          {more && <p className="text-sm text-muted">{m.listing.countOf(products.length, total)}</p>}
           <Link href={`${path}${listingQuery(filters, { ...keep, page: String(page + 1) })}`} scroll={false} className="rounded-button flex min-h-12 items-center justify-center border border-border px-6 font-medium">
             {m.listing.showMore}
           </Link>

@@ -25,6 +25,7 @@ import { queryVector } from "@/server/query-vector";
 import { getRecommendSettings } from "@/server/recommend-settings";
 import { drawArm, runningExperiment } from "@/server/search-experiment";
 import { logRedirectedSearch, logSearch, searchProducts } from "@/server/search";
+import { LISTING_LIMIT, listingPageOf } from "@/server/listing";
 import { rulesOf } from "@/server/search-rules";
 import { siteTerms } from "@/server/taxonomy";
 import { TrackOnView } from "@/components/track-on-view";
@@ -84,8 +85,11 @@ async function Search({ place, results }: { place: GridPlace; results: boolean }
   const experiment = query ? await runningExperiment() : null;
   const arm = experiment ? drawArm(experiment) : null;
   const keywordOnly = arm === "keyword";
+  // How far *Show more* has been followed (code review FF1): the search is asked for that many pages of results.
+  const page = listingPageOf(asked.page);
+  const limit = LISTING_LIMIT * page;
   const found = query
-    ? await searchProducts(where, query, keywordOnly ? null : queryVector, exact || keywordOnly ? null : understandQuery)
+    ? await searchProducts(where, query, keywordOnly ? null : queryVector, exact || keywordOnly ? null : understandQuery, limit)
     : null;
   const products = found?.products ?? [];
   // The search's id goes into its result links, so opening one is recorded against it.
@@ -141,6 +145,8 @@ async function Search({ place, results }: { place: GridPlace; results: boolean }
             path={path}
             keep={{ q: typed, exact: exact ? "1" : "" }}
             countText={(n) => m.search.results(n, typed)}
+            page={page}
+            givenMore={products.length >= limit}
             hrefFor={(product, index) => `${base}/search/go?s=${searchId}&p=${encodeURIComponent(product.handle)}&r=${index + 1}`}
             tracked
           />
