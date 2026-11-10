@@ -15,6 +15,7 @@ const { advanceDreamRuns, agreeReworkPlan, applyRework, askReworkChange, keptCha
 const { reworkPrepared } = await import("./dream-showcase");
 const { keepForApproval } = await import("./owner-assistant");
 const { addOwnLook, liveLook } = await import("./theme-installs");
+const { draftHeaderFooterTool } = await import("./site-tools");
 
 /**
  * A rework (D527) against the database: a store that is open is changed from its owner's words, and nothing its visitors see moves until
@@ -60,6 +61,7 @@ const planJson = (store: TestStore, over: Record<string, unknown> = {}) =>
   JSON.stringify({
     summary: "A warmer look, a front page that leads with the mugs, and a livelier mug.",
     look: "Warmer colours",
+    header: "The logo in the middle",
     pages: [
       { page: store.page, title: "x", change: "Lead with the mugs" },
       { page: "99999999-9999-4999-8999-999999999999", title: "Not ours", change: "Rewrite" },
@@ -78,7 +80,8 @@ async function visible(store: TestStore) {
     select t.title from commerce.product_translations t join commerce.products p on p.id = t.product_id
     where p.store_id = ${store.id}::uuid and p.handle = ${store.product} and t.title <> '' order by t.locale
   `);
-  return { page: String(page.title), look: (await liveLook(store.id))?.installId ?? null, product: titles.map((t) => String(t.title)) };
+  const [site] = await db().execute<Row>(sql`select header_id from commerce.stores where id = ${store.id}::uuid`);
+  return { page: String(page.title), look: (await liveLook(store.id))?.installId ?? null, product: titles.map((t) => String(t.title)), header: site.header_id ? String(site.header_id) : null };
 }
 
 /** The AI's turns, stood in for: each leaves what its own tools would. */
@@ -87,7 +90,19 @@ function standIn(store: TestStore, turns: TurnInput[]) {
     turns.push(input);
     const tools = input.autopilot?.tools ?? [];
     const member = (await passMembership(store.slug, store.owner))!;
-    if (tools.includes("design_look") && !tools.includes("edit_page")) {
+    if (tools.includes("draft_header_footer") && !tools.includes("edit_page")) {
+      // A header drafted as the tool drafts one, and the call that would show it kept for a yes.
+      const drafted = await draftHeaderFooterTool({ account: member.account, store: member.store, invalidate: () => {} }, { kind: "header", look: "centred" });
+      const [conversation] = await db().execute<Row>(sql`
+        insert into commerce.assistant_conversations (store_id, account_id, title) values (${store.id}::uuid, ${store.owner}::uuid, 'Rework') returning id
+      `);
+      input.emit({ type: "conversation", id: String(conversation.id), title: "Rework" });
+      const approval = await keepForApproval({ account: member.account, store: member.store, invalidate: () => {} }, String(conversation.id), "use_header_footer", "public", {
+        kind: "header",
+        page: (drafted as unknown as { header: string }).header,
+      });
+      input.emit({ type: "approval", approval });
+    } else if (tools.includes("design_look") && !tools.includes("edit_page")) {
       const made = await addOwnLook(store.id, store.owner, `Warm ${turns.length}`, { base: "warm", savedId: null, settings: templateSettings("warm") });
       if (!made.ok) throw new Error(made.problems.join(" "));
     } else if (tools.includes("edit_page") && !tools.includes("update_product")) {
@@ -156,12 +171,12 @@ describe("a rework: the Dream Factory changing a store that is open (D527)", () 
     expect(await agreeReworkPlan(member, latest.id)).toEqual({ ok: true });
 
     // One turn of the AI a minute, each with its own tools, none of them at Just do it.
-    for (let i = 0; i < 8 && (await latestDreamRun(shop.id))!.steps.review.status !== "asking"; i++) await minute(shop.id, deps);
+    for (let i = 0; i < 12 && (await latestDreamRun(shop.id))!.steps.review.status !== "asking"; i++) await minute(shop.id, deps);
     latest = (await latestDreamRun(shop.id))!;
-    expect(latest.steps).toMatchObject({ relook: { status: "done" }, pages: { status: "done" }, products: { status: "done" }, review: { status: "asking" } });
+    expect(latest.steps).toMatchObject({ relook: { status: "done" }, frame: { status: "done" }, pages: { status: "done" }, products: { status: "done" }, review: { status: "asking" } });
     expect(latest.status).toBe("asking");
     expect(latest.readyAt).not.toBeNull();
-    expect(turns).toHaveLength(3);
+    expect(turns).toHaveLength(4);
     const offered = new Set(Object.values(REWORK_TOOLS).flat() as string[]);
     for (const turn of turns) {
       expect(Object.values(turn.autopilot?.settings.levels ?? {})).not.toContain("auto");
@@ -175,14 +190,15 @@ describe("a rework: the Dream Factory changing a store that is open (D527)", () 
     expect(prepared.look).toMatchObject({ live: false });
     expect(prepared.pages).toMatchObject([{ id: shop.page, isNew: false, changed: true }]);
     expect(prepared.pages[0].differences).toContainEqual({ kind: "field", field: "title" });
-    expect(prepared.changes).toMatchObject([{ status: "pending" }]);
+    // The drafted header's use and the product's change both wait for the owner.
+    expect(prepared.changes).toMatchObject([{ status: "pending" }, { status: "pending" }]);
 
     // One more change in the owner's words is one more turn; still nothing is live.
     expect(await askReworkChange(member, latest.id, "Call the look something warmer")).toEqual({ ok: true });
     await minute(shop.id, deps);
     latest = (await latestDreamRun(shop.id))!;
     expect(latest.steps.review).toMatchObject({ status: "asking", tries: 1 });
-    expect(turns).toHaveLength(4);
+    expect(turns).toHaveLength(5);
     expect(await visible(shop)).toEqual(before);
 
     // The owner's press, then the minute's run makes it live: the page, the newest look and the product's kept change.
@@ -197,6 +213,9 @@ describe("a rework: the Dream Factory changing a store that is open (D527)", () 
     expect(after.page).toBe("Mugs first");
     expect(after.product).toContain("Livelier morning mug");
     expect(after.look).not.toBe(before.look);
+    // The site shows the header the rework drafted.
+    expect(after.header).not.toBeNull();
+    expect(after.header).not.toBe(before.header);
     expect((await reworkPrepared(member.store, latest)).look).toMatchObject({ live: true });
     expect(await keptChanges(latest)).toEqual([]);
     const [audited] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${shop.id}::uuid and action = 'store.dream_rework_applied'`);
@@ -210,7 +229,7 @@ describe("a rework: the Dream Factory changing a store that is open (D527)", () 
     const before = await visible(aside);
     expect((await startDreamRework(member, "Lower every price by ten per cent and send an email about it.")).ok).toBe(true);
     const turns: TurnInput[] = [];
-    await minute(aside.id, { complete: async () => ({ text: planJson(aside, { look: "", pages: [], productChanges: [], outside: ["lower prices", "an email"] }), region: null }), connection, turn: standIn(aside, turns) });
+    await minute(aside.id, { complete: async () => ({ text: planJson(aside, { look: "", header: "", pages: [], productChanges: [], outside: ["lower prices", "an email"] }), region: null }), connection, turn: standIn(aside, turns) });
     let latest = (await latestDreamRun(aside.id))!;
     expect(latest.steps.outline).toMatchObject({ status: "asking", tries: 0 });
     expect(latest.steps.agree.status).toBe("waiting");
@@ -218,13 +237,13 @@ describe("a rework: the Dream Factory changing a store that is open (D527)", () 
 
     // A second run prepares a product change, then is set aside: the change kept for a yes is declined, and nothing was ever live.
     expect((await startDreamRework(member, "Give the morning mug a livelier title, nothing else.")).ok).toBe(true);
-    const deps = { complete: async () => ({ text: planJson(aside, { look: "", pages: [] }), region: null }), connection, turn: standIn(aside, turns) };
+    const deps = { complete: async () => ({ text: planJson(aside, { look: "", header: "", pages: [] }), region: null }), connection, turn: standIn(aside, turns) };
     await minute(aside.id, deps);
     latest = (await latestDreamRun(aside.id))!;
     expect(await agreeReworkPlan(member, latest.id)).toEqual({ ok: true });
     for (let i = 0; i < 6 && (await latestDreamRun(aside.id))!.steps.review.status !== "asking"; i++) await minute(aside.id, deps);
     latest = (await latestDreamRun(aside.id))!;
-    expect(latest.steps).toMatchObject({ relook: { status: "skipped" }, pages: { status: "skipped" }, products: { status: "done" }, review: { status: "asking" } });
+    expect(latest.steps).toMatchObject({ relook: { status: "skipped" }, frame: { status: "skipped" }, pages: { status: "skipped" }, products: { status: "done" }, review: { status: "asking" } });
     expect(await keptChanges(latest)).toHaveLength(1);
     expect(await stopDreamRun(member, latest.id)).toEqual({ ok: true });
     expect(await keptChanges(latest)).toEqual([]);

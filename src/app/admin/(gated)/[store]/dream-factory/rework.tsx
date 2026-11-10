@@ -182,6 +182,18 @@ function PlanList({ plan, words: w }: { plan: NonNullable<DreamRun["plan"]>; wor
             <dd>{plan.look}</dd>
           </>
         )}
+        {plan.header && (
+          <>
+            <dt className="text-ink-2">{p.header}</dt>
+            <dd>{plan.header}</dd>
+          </>
+        )}
+        {plan.footer && (
+          <>
+            <dt className="text-ink-2">{p.footer}</dt>
+            <dd>{plan.footer}</dd>
+          </>
+        )}
         {plan.pages.length > 0 && (
           <>
             <dt className="text-ink-2">{p.pages}</dt>

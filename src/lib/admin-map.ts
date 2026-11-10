@@ -84,7 +84,7 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["home", "dashboard", "start", "checklist"],
   }),
   store("setup", "/setup", "Setup", "Main", "The setup wizard, resuming at the first unfinished step.", { keywords: ["wizard", "onboarding", "launch"] }),
-  store("dream-factory", "/dream-factory", "Dream Factory", "Main", "The Dream Factory (D409): the owner describes the store and the AI builds it while it is private, step by step (brief, research, setup, brand, products, website, legal pages, rehearsal), each checked by code; the owner gives the business details, says yes to the brief, pays, chooses a plan and opens the store. On a store that exists, open or not, the owner says what to change instead (the look, pages, products): the AI prepares it as drafts, and nothing a visitor sees changes until the owner presses Make it live.", {
+  store("dream-factory", "/dream-factory", "Dream Factory", "Website", "The Dream Factory (D409): the owner describes the store and the AI builds it while it is private, step by step (brief, research, setup, brand, products, website, legal pages, rehearsal), each checked by code; the owner gives the business details, says yes to the brief, pays, chooses a plan and opens the store. On a store that exists, open or not, the owner says what to change instead (the look, pages, products): the AI prepares it as drafts, and nothing a visitor sees changes until the owner presses Make it live.", {
     needs: "owner",
     keywords: ["dream factory", "build my store", "ai store", "from a description", "automatic setup", "launch", "change my store", "redesign", "rework"],
   }),

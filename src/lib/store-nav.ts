@@ -194,6 +194,7 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Website",
         items: [
+          item("/dream-factory", "Dream Factory", "Say what you want and the AI does it: a new store, or changes to the one you have, shown to you before anything goes live.", { icon: "sparkles", basic: true }),
           item("/pages", "Pages", "The store's own pages, built in the page builder: draft, publish, and choose the front page and special pages.", { icon: "files", basic: true }),
           item("/articles", "Blog", "The store's blog: articles, their categories and tags.", { icon: "newspaper", basic: true }),
           item("/articles/blogs", "Blogs", "The store's blogs, each with its address, feed and comments setting, and the authors of its articles.", { icon: "book-open" }),
@@ -367,7 +368,7 @@ export function sectionOf(path: string): StoreSection | undefined {
 }
 
 /** Pages with no section: Home, the setup steps and the AI manager. */
-export const HOME_PATHS = ["/setup", "/assistant", "/dream-factory"];
+export const HOME_PATHS = ["/setup", "/assistant"];
 
 /** Where the cards of a page of cards or the sidebar link to. */
 export const storeLink = (base: string, item: Pick<StoreItem, "path" | "exact">) => ({ href: `${base}${item.path}`, ...(item.exact && { exact: true as const }) });

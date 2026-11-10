@@ -15,6 +15,7 @@ import {
   initialSteps,
   isTestOwner,
   planCount,
+  planFrame,
   planIsEmpty,
   readReworkPlan,
   reworkMessage,
@@ -265,8 +266,11 @@ describe("a rework: changing a store that exists (D527)", () => {
     expect(startable(steps, "rework")).toEqual(["agree"]);
     expect(runStatusOf({ ...steps, agree: { status: "asking", tries: 0 } }, "rework")).toBe("asking");
     steps = done(steps, ["agree"]);
-    expect(startable(steps, "rework")).toEqual(["relook", "pages", "products"]);
+    expect(startable(steps, "rework")).toEqual(["relook", "frame", "pages", "products"]);
     steps = done({ ...steps, relook: { status: "skipped", tries: 0 } }, ["pages", "products"]);
+    // The review waits for every kind of change, the header and footer too.
+    expect(startable(steps, "rework")).toEqual(["frame"]);
+    steps = done(steps, ["frame"]);
     expect(startable(steps, "rework")).toEqual(["review"]);
     expect(runStatusOf({ ...steps, review: { status: "asking", tries: 0 } }, "rework")).toBe("asking");
     steps = done(steps, ["review"]);
@@ -296,6 +300,11 @@ describe("a rework: changing a store that exists (D527)", () => {
     expect(read.productChanges).toEqual([{ product: "morning-mug", change: "A livelier description" }]);
     expect(read.outside).toEqual(["lower prices"]);
     expect(planCount(read)).toBe(5);
+    // A header or footer asked for is a change of its own; a plan with only one of them is not empty.
+    const framed = readReworkPlan(plan({ look: "", pages: [], newProducts: [], productChanges: [], header: "The logo in the middle", footer: "" }), facts)!;
+    expect(planFrame(framed)).toEqual([{ kind: "header", change: "The logo in the middle" }]);
+    expect(planIsEmpty(framed)).toBe(false);
+    expect(planCount(framed)).toBe(1);
     expect(planIsEmpty(read)).toBe(false);
   });
 
@@ -336,6 +345,7 @@ describe("a rework: changing a store that exists (D527)", () => {
     const read = readReworkPlan(plan(), facts)!;
     const messages = [
       reworkMessage.relook(read),
+      reworkMessage.frame("header", "The logo in the middle"),
       reworkMessage.page({ id: PAGE, title: "Home" }, "Lead with the bestsellers"),
       reworkMessage.newPage("FAQ", "Answers"),
       reworkMessage.newProduct({ title: "Evening mug", about: "" }, "Leire"),

@@ -103,15 +103,16 @@ in a store that exists (*a warmer look, a front page that leads with the bestsel
 works under one rule: **nothing a visitor sees changes before the owner presses *Make it live***. So it may run on an open store, where a
 build may not.
 
-**Where it starts:** `/admin/{store}/dream-factory`. On an open store the page's one form asks *What would you like to change?* (Home
+**Where it starts:** `/admin/{store}/dream-factory`, first in the Website section's sidebar (since 10 November 2026; it was reachable only from Home and the setup wizard before). On an open store the page's one form asks *What would you like to change?* (Home
 links there); on a store not yet open the form that builds is first and *Change it as it is instead* is one step away; under a run that
 has ended (a build or a rework) the same form starts the next. One run a store at a time, of either kind.
 
 | # | Step | Who | Done when (checked by code) |
 |---|---|---|---|
-| 1 | **Plan** (`outline`) | AI | One answer of the model, from the owner's words and the store's facts read by code (`reworkFacts()`: its pages by id, its own products by handle, the live look), held to those facts by `readReworkPlan()`: a page or product the store does not have is dropped, never guessed at. The plan names a change to the look, up to 6 pages (changed or new), up to 6 new products, up to 8 changes to products, and what was asked for that a rework does not do (`outside`). An empty plan asks at once |
+| 1 | **Plan** (`outline`) | AI | One answer of the model, from the owner's words and the store's facts read by code (`reworkFacts()`: its pages by id, its own products by handle, the live look), held to those facts by `readReworkPlan()`: a page or product the store does not have is dropped, never guessed at. The plan names a change to the look, to the header and to the footer, up to 6 pages (changed or new), up to 6 new products, up to 8 changes to products, and what was asked for that a rework does not do (`outside`). An empty plan asks at once |
 | 2 | **Your yes to the plan** (`agree`) | Owner | One press on the plan as shown |
 | 3 | **New look** (`relook`) | AI | A look of the store's own added to the theme library since the run began, not live (`design_look`); skipped when none was asked for |
+| 3b | **Header and footer** (`frame`) | AI | Each of the two the plan asks for (`plan.header`, `plan.footer`) drafted in a turn of its own (`draft_header_footer`: the standard parts arranged as asked, a draft) and the call that would show it (`use_header_footer`) kept for a yes by the gate; skipped when neither was asked for. A header built by hand in the builder is not rearranged part by part: the draft is a new one from the standard parts |
 | 4 | **Pages** (`pages`) | AI and code | Each of the store's pages in the plan changed in its **draft**, one a turn (`get_page`, `edit_page`); each new page queued once with the page studio as a draft (`buildPageTool()`) and its build settled |
 | 5 | **Products** (`products`) | AI | Each new product a **draft** with a picture and a price in every country, one a turn; each change to a product the store has prepared, one a turn: a product on the site is changed only through `update_product`, which the gate keeps for a yes |
 | 6 | **Your review** (`review`) | Owner | The page lists what is prepared, in the code's words from the store's rows (`reworkPrepared()`): the look with *See your store in it* (the theme's preview), each page with what its draft changes (`compareVersions()`), the new products, and each kept change in the words it was kept with. *Make it live*; or one more change in the owner's words (one turn, at most `REVIEW_ROUNDS`); or *Discard these changes* |
@@ -124,7 +125,7 @@ for the owner's yes and found again by the turn's conversation (`StepState.conve
 later press makes them.
 
 **What a rework does not change:** prices and stock of products on sale, shipping, payments, countries, discounts, emails, orders, the
-business's details and menus. The plan names what was asked for of these under *Not changed here*; they are the AI manager's, with its own
+business's details and a menu's links (a new header or footer shows one of the store's menus as it is). The plan names what was asked for of these under *Not changed here*; they are the AI manager's, with its own
 approvals, or the owner's. A new page is published but not put in a menu.
 
 **The platform:** the Dream Factory is store-only (`docs/platform-parity.md`: Kaizena Flow's own site is not built or changed by it), so

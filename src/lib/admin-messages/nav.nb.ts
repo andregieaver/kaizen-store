@@ -150,6 +150,9 @@ export const NAV_NB: Record<string, string> = {
   "The store's own pages, built in the page builder: draft, publish, and choose the front page and special pages.":
     "Butikkens egne sider, laget i sidebyggeren: utkast, publisering, og valg av forside og spesialsider.",
   Blog: "Blogg",
+  "Dream Factory": "Dream Factory",
+  "Say what you want and the AI does it: a new store, or changes to the one you have, shown to you before anything goes live.":
+    "Si hva du vil ha, så gjør KI det: en ny butikk, eller endringer i den du har, vist til deg før noe publiseres.",
   "The store's blog: articles, their categories and tags.": "Butikkens blogg: artikler, kategoriene og stikkordene deres.",
   Blogs: "Blogger",
   "The store's blogs, each with its address, feed and comments setting, and the authors of its articles.":

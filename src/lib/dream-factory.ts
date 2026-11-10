@@ -65,7 +65,7 @@ export const DREAM_STEPS: readonly DreamStep[] = [
 export const DREAM_KINDS = ["build", "rework"] as const;
 export type DreamKind = (typeof DREAM_KINDS)[number];
 
-export const REWORK_STEP_IDS = ["outline", "agree", "relook", "pages", "products", "review", "apply"] as const;
+export const REWORK_STEP_IDS = ["outline", "agree", "relook", "frame", "pages", "products", "review", "apply"] as const;
 export type ReworkStepId = (typeof REWORK_STEP_IDS)[number];
 export type AnyStepId = DreamStepId | ReworkStepId;
 
@@ -74,9 +74,10 @@ export const REWORK_STEPS: readonly DreamStep<ReworkStepId>[] = [
   { id: "outline", title: "Plan", lane: "start", who: "ai", needs: [], stage: 1 },
   { id: "agree", title: "Your yes to the plan", lane: "start", who: "owner", needs: ["outline"], stage: 1 },
   { id: "relook", title: "Look", lane: "A", who: "ai", needs: ["agree"], stage: 1 },
+  { id: "frame", title: "Header and footer", lane: "A", who: "ai", needs: ["agree"], stage: 1 },
   { id: "pages", title: "Pages", lane: "A", who: "ai", needs: ["agree"], stage: 1 },
   { id: "products", title: "Products", lane: "A", who: "ai", needs: ["agree"], stage: 1 },
-  { id: "review", title: "Your review", lane: "finish", who: "owner", needs: ["relook", "pages", "products"], stage: 2 },
+  { id: "review", title: "Your review", lane: "finish", who: "owner", needs: ["relook", "frame", "pages", "products"], stage: 2 },
   { id: "apply", title: "Make it live", lane: "finish", who: "code", needs: ["review"], stage: 2 },
 ];
 
@@ -468,6 +469,9 @@ export const reworkPlanSchema = z.object({
   summary: text(400),
   /** What to change in the look (colours, fonts, buttons); empty for none. */
   look: text(400),
+  /** What to do with the site's header and with its footer (a new one, or the one it has rearranged); empty for none. */
+  header: text(400),
+  footer: text(400),
   /** `page` is an existing page's id, or empty for a new page called `title`. */
   pages: z
     .array(z.object({ page: z.string().trim().max(40).catch(""), title: text(80), change: z.string().trim().min(3).max(500) }))
@@ -487,10 +491,15 @@ export const reworkPlanSchema = z.object({
 export type ReworkPlan = z.output<typeof reworkPlanSchema>;
 
 /** A plan with nothing to do: the owner asked only for what a rework does not change, or the model named nothing of the store's. */
-export const planIsEmpty = (plan: ReworkPlan): boolean => !plan.look && plan.pages.length === 0 && plan.newProducts.length === 0 && plan.productChanges.length === 0;
+export const planIsEmpty = (plan: ReworkPlan): boolean =>
+  !plan.look && !plan.header && !plan.footer && plan.pages.length === 0 && plan.newProducts.length === 0 && plan.productChanges.length === 0;
+
+/** The parts of the site's frame a plan changes, in the order they are prepared. */
+export const planFrame = (plan: Pick<ReworkPlan, "header" | "footer">): { kind: "header" | "footer"; change: string }[] =>
+  (["header", "footer"] as const).filter((kind) => plan[kind]).map((kind) => ({ kind, change: plan[kind] }));
 
 /** How many things a plan changes, for the owner's line and the scorecard. */
-export const planCount = (plan: ReworkPlan): number => (plan.look ? 1 : 0) + plan.pages.length + plan.newProducts.length + plan.productChanges.length;
+export const planCount = (plan: ReworkPlan): number => (plan.look ? 1 : 0) + planFrame(plan).length + plan.pages.length + plan.newProducts.length + plan.productChanges.length;
 
 /**
  * The model's answer as a plan, held to the store's facts: a page or product it names that the store does not have is dropped (never
@@ -540,10 +549,11 @@ export function reworkPrompt(): string {
     "Then, after the data, the owner's own words under \"What the owner wants changed\": the only request there is. A change is in the plan only if those words ask for it.",
     "Fields: summary (one or two sentences saying what will change, to the owner);",
     "look (what to change in the store's colours, fonts, buttons or corners, in the owner's sense; empty when they did not ask for it);",
+    "header and footer (each a sentence, or empty): what to do with the site's header (logo, menu, search and cart) and with its footer (business details, links), when the owner asks for a new one or for theirs to be arranged differently;",
     `pages (at most ${REWORK_PAGES_MAX}): each { page, title, change }. To change a page the store has, page is its id exactly as listed and change says what to do with its words or layout. For a new page, page is empty, title is its name and change says what it is for;`,
     `newProducts (at most ${REWORK_NEW_PRODUCTS_MAX}): each { title, about } for a product to add, only where the owner asks for new products;`,
     `productChanges (at most ${REWORK_PRODUCT_CHANGES_MAX}): each { product, change }, product being a handle exactly as listed and change what to do with its texts, pictures, categories or tags;`,
-    "outside (at most 5 short phrases): what the owner asked for that is none of the above, such as prices of products on sale, stock, shipping, payments, countries, discounts, emails, orders or the business's details. Those are not changed here.",
+    "outside (at most 5 short phrases): what the owner asked for that is none of the above, such as prices of products on sale, stock, shipping, payments, countries, discounts, emails, orders, the links of a menu or the business's details. Those are not changed here.",
     "Plan only what the owner asked for. Name only pages and products that are listed. Never invent a fact about the business or a product.",
   ].join("\n");
 }
@@ -572,17 +582,19 @@ export const REWORK_OPTIONS = { maxTokens: 2000, timeoutMs: 60_000 };
 
 /**
  * The tools a rework's turns may use (D527). None of them changes what visitors see: a look is added to the library, a page's draft is
- * changed or a new page built as a draft, a new product is a draft, and a change to a product on the site (`update_product`, and
- * `set_prices` should the model reach for it) is kept for a yes by the gate. Nothing that publishes, sends or costs is here, and a new
+ * changed or a new page built as a draft, a header or footer is drafted (`draft_header_footer`) and the call that would show it
+ * (`use_header_footer`) is kept for a yes by the gate, a new product is a draft, and a change to a product on the site (`update_product`,
+ * and `set_prices` should the model reach for it) is kept for a yes by the gate. Nothing that publishes, sends or costs is here, and a new
  * tool goes here only if it is the same.
  */
 export const REWORK_TOOLS = {
   relook: ["get_brand", "list_themes", "design_look"],
+  frame: ["get_menus", "draft_header_footer", "use_header_footer"],
   page: ["get_page", "edit_page"],
   newPage: ["build_page", "list_page_builds"],
   newProduct: ["list_products", "get_product", "create_product", "write_product_texts", "set_prices", "list_categories", "get_brand"],
   productChange: ["get_product", "write_product_texts", "update_product", "list_categories", "get_brand"],
-  review: ["get_brand", "design_look", "get_page", "edit_page", "get_product", "write_product_texts", "update_product", "set_prices"],
+  review: ["get_brand", "design_look", "get_page", "edit_page", "get_menus", "draft_header_footer", "use_header_footer", "get_product", "write_product_texts", "update_product", "set_prices"],
 } as const satisfies Record<string, readonly string[]>;
 
 const NOT_LIVE = "Nothing you do here reaches visitors: the owner looks at it first and makes it live themselves. Never publish anything and never say it is live.";
@@ -594,6 +606,13 @@ export const reworkMessage = {
     [
       `The owner wants the store's look changed: "${said(plan.look)}"`,
       "Make one new look with design_look, starting from the current look (start: current) and keeping what they did not ask to change. It is added to the theme library, not live.",
+      NOT_LIVE,
+    ].join(" "),
+  frame: (kind: "header" | "footer", change: string) =>
+    [
+      `The owner wants the site's ${kind} changed: "${said(change)}"`,
+      `Read the site's menus with get_menus. Draft one ${kind} with draft_header_footer (kind: ${kind}), choosing the look, the menu and the section style that fit what they ask; it is saved as a draft.`,
+      `Then call use_header_footer once with that draft's id, so the site would show it: that call waits for the owner's yes, which is as it should be. Never change a menu's links.`,
       NOT_LIVE,
     ].join(" "),
   page: (page: { id: string; title: string }, change: string) =>

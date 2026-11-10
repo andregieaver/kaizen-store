@@ -20,6 +20,7 @@ import {
   detailsQuestions,
   initialSteps,
   planCount,
+  planFrame,
   planIsEmpty,
   readReworkPlan,
   reworkMessage,
@@ -572,6 +573,8 @@ async function runStep(id: AnyStepId, ctx: Context): Promise<StepOutcome | null>
       return state.status === "asking" ? null : { state: asking(state, "Waiting for the owner's yes to the plan.") };
     case "relook":
       return state.status === "asking" ? null : relookStep(ctx);
+    case "frame":
+      return state.status === "asking" ? null : frameStep(ctx);
     case "pages":
       return state.status === "asking" ? null : pagesStep(ctx);
     case "products":
@@ -1215,6 +1218,30 @@ async function relookStep(ctx: Context): Promise<StepOutcome | null> {
   return (await found()) ?? { state: failedTry(run, state, "No new look was made.") };
 }
 
+/**
+ * The header and the footer: each one the plan asks for drafted in a turn of its own (`draft_header_footer`, a draft), and the call that
+ * would make the site show it (`use_header_footer`) kept for the owner's yes by the gate; prepared when its turn kept that call. The
+ * site keeps its header and footer until the owner makes the rework live.
+ */
+async function frameStep(ctx: Context): Promise<StepOutcome | null> {
+  const { run } = ctx;
+  const parts = run.plan ? planFrame(run.plan) : [];
+  if (parts.length === 0) return { state: skipped(begun(run.steps.frame), "No change to the header or footer was asked for.") };
+  let state = begun(run.steps.frame);
+  // `ref`: how many of the parts are prepared, in their order.
+  const prepared = Math.min(Number(state.ref ?? 0) || 0, parts.length);
+  if (prepared < parts.length) {
+    if (!ctx.slot.free) return { state };
+    const part = parts[prepared];
+    const seen = await managerTurn(ctx, REWORK_TOOLS.frame, reworkMessage.frame(part.kind, part.change), null);
+    state = withTurn(state, seen.conversationId);
+    if (seen.error) return { state: failedTry(run, state, seen.error.slice(0, 300)) };
+    if (seen.kept === 0) return { state: failedTry(run, state, `No new ${part.kind} was prepared.`) };
+    return { state: { ...state, status: "waiting", ref: String(prepared + 1), detail: `${prepared + 1} of ${parts.length} prepared.` } };
+  }
+  return { state: done(state, `A new ${parts.map((p) => p.kind).join(" and ")} drafted. Visitors see none of it yet.`) };
+}
+
 type PreparedPage = { id: string; title: string; isNew: boolean; changed: boolean };
 
 /**
@@ -1375,7 +1402,12 @@ async function productsStep(ctx: Context): Promise<StepOutcome | null> {
 
 /** The conversations a rework's turns were, where what they kept for a yes is found. */
 const reworkConversations = (run: Pick<DreamRun, "steps">): string[] => [
-  ...new Set([...(run.steps.pages.conversations ?? []), ...(run.steps.products.conversations ?? []), ...(run.steps.review.conversations ?? [])]),
+  ...new Set([
+    ...(run.steps.frame.conversations ?? []),
+    ...(run.steps.pages.conversations ?? []),
+    ...(run.steps.products.conversations ?? []),
+    ...(run.steps.review.conversations ?? []),
+  ]),
 ];
 
 /** The changes a rework's turns kept for a yes (changes to products on the site), still waiting unless `all`. */
@@ -1471,9 +1503,9 @@ async function applyStep(ctx: Context): Promise<StepOutcome> {
   for (const kept of await keptChanges(run)) {
     const decided = await decideApproval(principal, kept.id, true, refreshTag);
     if (decided?.status === "done") changed++;
-    else held.push(`a change to a product (${kept.summary.slice(0, 120)})`);
+    else held.push(`a change (${kept.summary.slice(0, 120)})`);
   }
-  if (changed > 0) live.push(`${changed} change(s) to your products`);
+  if (changed > 0) live.push(`${changed} other change(s) you saw in the review`);
 
   refreshTag(catalogTag(store.id));
   refreshTag(storeTag(store.slug));
