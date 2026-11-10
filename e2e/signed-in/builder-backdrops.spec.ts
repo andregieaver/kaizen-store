@@ -1,5 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 
+import { testDb } from "../db";
+
 import { E2E_STORE, OWNER } from "./accounts";
 
 /**
@@ -96,4 +98,80 @@ test("a ready-made backdrop goes on in one press, turns its hue with one slider,
   const travel = (layer: Locator) => layer.evaluate((el) => Number.parseFloat(getComputedStyle(el).translate.split(" ")[1] ?? "0"));
   await expect.poll(() => travel(published.locator('[data-fx-bglayer="glow"]').last())).toBeGreaterThan(10);
   await expect.poll(() => travel(stars)).toBeLessThan(-5);
+});
+
+test("a picture from the library goes on as a layer, placed or filling the part, and visitors get its small copy when it is blurred", async ({ page, baseURL }) => {
+  // The picture is in the store's media library with its small copy, as an upload leaves it.
+  const run = Date.now().toString(36);
+  const big = `${baseURL}/demo/cabin.svg?layer=${run}`;
+  const small = `${baseURL}/demo/mug.svg?layer=${run}`;
+  const file = `layer-${run}.webp`;
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.media (store_id, kind, url, thumbnail_url, bucket, path, file_name, content_type, width, height)
+      select id, 'image', ${big}, ${small}, 'product-media', ${`${E2E_STORE}/${file}`}, ${file}, 'image/webp', 1600, 900
+      from commerce.stores where slug = ${E2E_STORE}`;
+  } finally {
+    await sql.end();
+  }
+
+  await page.goto(`/admin/${E2E_STORE}/pages/new`);
+  await page.getByRole("tab", { name: "Components" }).click();
+  await page.getByRole("button", { name: "Add heading", exact: true }).press("Enter");
+  await page.getByRole("textbox", { name: "Heading", exact: true }).click();
+  await page.keyboard.type("Over a picture layer");
+  await page.getByRole("button", { name: "Done" }).click();
+
+  const row = page.locator('[data-builder-item="row"]').filter({ has: page.getByRole("heading", { name: "Over a picture layer" }) });
+  await row.getByRole("button", { name: /^Settings \(row \d+\)/ }).press("Enter");
+  await page.getByRole("tab", { name: "Style" }).click();
+
+  // With no background at all, the layers are still one press away, and a picture of the owner's own is one of them.
+  await page.getByRole("button", { name: "Add layers over the background" }).click();
+  await page.locator("[data-add-picture-layer]").getByRole("button", { name: "Choose from the library" }).click();
+  await page.getByRole("dialog").last().getByRole("button", { name: file }).click();
+
+  // It starts placed, in the middle, half as wide as the row; its settings are open.
+  const picture = row.locator("[data-fx-layers] [data-fx-pic]");
+  await expect(picture).toHaveAttribute("data-fx-pic", "placed");
+  await expect(picture).toHaveAttribute("src", big);
+  await expect(picture).toHaveAttribute("alt", "");
+  const fields = page.locator("[data-layer-fields]");
+  await expect(fields.getByRole("slider", { name: "Width" })).toHaveAttribute("aria-valuetext", "50%");
+  // A picture is drawn as it is: alone, it gives the hue nothing to turn.
+  await expect(page.getByRole("slider", { name: "Hue" })).toHaveCount(0);
+
+  // Filling the part it has no width of its own; blurred, it is soft on the canvas at once.
+  await fields.locator("label").filter({ hasText: /^Fills the part$/ }).click();
+  await expect(picture).toHaveAttribute("data-fx-pic", "cover");
+  await expect(fields.getByRole("slider", { name: "Width" })).toHaveCount(0);
+  const blur = fields.getByRole("slider", { name: "Blur" });
+  await blur.focus();
+  for (let i = 0; i < 6; i++) await blur.press("ArrowRight");
+  await expect.poll(() => picture.evaluate((el) => getComputedStyle(el).filter)).toBe("blur(6px)");
+  await page.getByRole("button", { name: "Done" }).click();
+
+  const title = `Picture layer ${run}`;
+  await page.getByRole("textbox", { name: "Title", exact: true }).fill(title);
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await page.waitForURL(/saved=published/);
+
+  // As a visitor sees it: decoration with no alt text, behind the heading, cut to fill the row; blurred, the small copy is all it is sent.
+  await page.goto(`/s/${E2E_STORE}/${title.toLowerCase().replaceAll(" ", "-")}`);
+  const heading = page.getByRole("heading", { name: "Over a picture layer" });
+  await expect(heading).toBeVisible();
+  const drawn = page.locator("[data-row]").filter({ has: heading }).locator("[data-fx-layers] [data-fx-pic]");
+  await expect(drawn).toHaveAttribute("data-fx-pic", "cover");
+  await expect(drawn).toHaveAttribute("src", small);
+  await expect(drawn).toHaveAttribute("alt", "");
+  expect(await drawn.evaluate((el) => getComputedStyle(el).objectFit)).toBe("cover");
+  expect(await drawn.evaluate((el) => getComputedStyle(el).filter)).toBe("blur(6px)");
+  // It reaches past its frame on every side by twice the blur, so its soft rim does not show.
+  const reach = await drawn.evaluate((el) => {
+    const frame = el.closest("[data-fx-layers]")!.getBoundingClientRect();
+    const box = el.getBoundingClientRect();
+    return [frame.left - box.left, box.right - frame.right, frame.top - box.top, box.bottom - frame.bottom].map(Math.round);
+  });
+  for (const side of reach) expect(side).toBeGreaterThanOrEqual(12);
 });

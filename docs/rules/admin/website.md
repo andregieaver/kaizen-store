@@ -395,8 +395,11 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - **Layers over a background, backdrops and the hue (D534, `src/lib/background-layers.ts`, `src/lib/backdrops.ts`, `src/lib/hue.ts`)**: a row or
   column keeps its `background` and takes up to `LAYERS_MAX` layers over it (`backgroundLayers`, the lowest first: a glow, a pattern, a
-  horizon), drawn by `BackgroundLayers` through `PartBackground` (pass `layers` and `hue` wherever a part's background is drawn) as real
-  elements in a frame of their own, never pseudo-elements. A layer is only names from the lists, `#rrggbb` colours and whole numbers inside
+  horizon, a picture), drawn by `BackgroundLayers` through `PartBackground` (pass `layers` and `hue` wherever a part's background is drawn)
+  as real elements in a frame of their own, never pseudo-elements. A picture layer (D537) is the owner's own file: whatever walks a
+  page's pictures walks the layers' too (`layerPictureUrls()`; small copies in `withSmallCopies()`, copying to another store in
+  `mapTemplateMedia()` through `mapLayerPictures()`), its address is checked as `http(s)` by the schema and again by `layerDraw()`, it is
+  an `<img>` with an empty alt text, and the hue does not turn it. A layer is only names from the lists, `#rrggbb` colours and whole numbers inside
   limits (`background-layers-schema.ts`); it reaches the page through `layerDraw()` (attributes and `--fx-*` properties, each value remade)
   and `layerFx()` (its travel on the frame's scroll timeline as `--fx-sk`, its movement by itself as `data-fx-amb`), drawn by `motion.css`:
   never write a layer's value into a style yourself. A new kind, pattern, fade or movement is an id in `background-layers.ts`, its CSS in

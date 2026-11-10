@@ -1,3 +1,4 @@
+import { mapLayerPictures } from "./background-layers";
 import { isCustomPicture } from "./custom-picture";
 import { cssProblem } from "./custom-css";
 import { withoutRecipients } from "./forms";
@@ -386,17 +387,26 @@ export function mapTemplateMedia(kind: SavedPartKind, content: PartContent, reso
     },
     column: (column) => {
       const background = editBackground(column.background, resolve);
-      return background
+      const next = background
         ? { ...column, background: background as PageColumn["background"] }
         : (without(column, ["background", "backgroundMotion"]) as PageColumn);
+      return withLayerPictures(next, resolve);
     },
     row: (row) => {
       const background = editBackground(row.background, resolve);
-      return background
+      const next = background
         ? { ...row, background: background as PageRow["background"] }
         : (without(row, ["background", "backgroundMotion"]) as PageRow);
+      return withLayerPictures(next, resolve);
     },
   });
+}
+
+/** A row or column with its picture layers' addresses (D537) through `resolve`; a layer whose picture is left out goes, the other layers stay. */
+function withLayerPictures<P extends PageRow | PageColumn>(part: P, resolve: MediaResolver): P {
+  if (!part.backgroundLayers) return part;
+  const layers = mapLayerPictures(part.backgroundLayers, resolve);
+  return layers ? { ...part, backgroundLayers: layers } : (without(part, ["backgroundLayers"]) as P);
 }
 
 /** Every picture and video address a part holds, once each, in the order they are read. */

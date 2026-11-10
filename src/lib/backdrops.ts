@@ -1,4 +1,4 @@
-import { copiedLayers, type BackgroundLayer } from "./background-layers";
+import { copiedLayers, layerColour, type BackgroundLayer } from "./background-layers";
 import { hueBetween } from "./hue";
 import type { Background, PageColumn, PageRow, RowBackground } from "./page-content";
 
@@ -100,13 +100,14 @@ export function backdropPatch(id: BackdropId, newId: () => string): BackdropPatc
 const structuredCloneOf = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /**
- * The colour a background is known by, for matching a theme: the topmost glow's or horizon's, else the topmost layer's, else a
- * gradient's first colour or the colour itself. None for a picture or video alone.
+ * The colour a background is known by, for matching a theme: the topmost glow's or horizon's, else the topmost coloured layer's,
+ * else a gradient's first colour or the colour itself. None for a picture or video alone, as a background or as a layer.
  */
 export function mainColour(background: RowBackground | undefined, layers: readonly BackgroundLayer[] | undefined): string | null {
-  const shown = (layers ?? []).filter((layer) => !layer.hidden);
+  const shown = (layers ?? []).filter((layer) => !layer.hidden && layer.type !== "picture");
   const lit = shown.findLast((layer) => layer.type === "glow" || layer.type === "horizon") ?? shown.at(-1);
-  if (lit) return lit.color;
+  const colour = lit ? layerColour(lit) : null;
+  if (colour) return colour;
   if (background?.type === "gradient") return background.colors[0] ?? null;
   if (background?.type === "color") return background.color;
   return null;
@@ -153,8 +154,17 @@ export const BACKDROP_WORDS = {
   addFirst: "Add layers over the background",
   add: "Add a layer",
   full: "A background takes at most {max} layers.",
-  kinds: { glow: "Glow", pattern: "Pattern", horizon: "Horizon" },
-  kindHints: { glow: "A soft ellipse of colour.", pattern: "A grid, dots or stars.", horizon: "A dark disc with a lit rim." },
+  kinds: { glow: "Glow", pattern: "Pattern", horizon: "Horizon", picture: "Picture" },
+  kindHints: { glow: "A soft ellipse of colour.", pattern: "A grid, dots or stars.", horizon: "A dark disc with a lit rim.", picture: "A picture of your own." },
+  addPicture: "Or a picture of your own",
+  addPictureHint: "One with a see-through background works best: a cut-out, a cloud, a shape.",
+  choosePicture: "Choose a picture",
+  replacePicture: "Replace the picture",
+  fit: "How it sits",
+  fits: { placed: "Placed", cover: "Fills the part" },
+  fitHints: { placed: "At a size of its own, where you put it.", cover: "Cut to fill the whole part, as a background picture is." },
+  place: "Where it sits",
+  show: "Which part shows",
   shown: "Shown",
   settings: "Settings",
   close: "Close",

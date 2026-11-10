@@ -4,7 +4,7 @@ import { backdropsEn } from "./admin-messages/backdrops.en";
 import { backdropsNb } from "./admin-messages/backdrops.nb";
 import { BACKDROPS, BACKDROP_IDS, BACKDROP_WORDS, accentOf, backdropPatch, mainColour, themeHue, type Backdrop } from "./backdrops";
 import { themeSwatches } from "./colour";
-import { HORIZON_CURVES, LAYERS_MAX, LAYER_AMBIENTS, LAYER_FADES, LAYER_KINDS, LAYER_PATTERNS, layerDraw, type BackgroundLayer } from "./background-layers";
+import { HORIZON_CURVES, LAYERS_MAX, LAYER_AMBIENTS, LAYER_FADES, LAYER_KINDS, LAYER_PATTERNS, PICTURE_FITS, layerDraw, type BackgroundLayer, type ColourLayer } from "./background-layers";
 import { surfaceOf } from "./background-surface";
 import { hueOf, shiftHue } from "./hue";
 import { pageIssues, themeSetsOf } from "./page-a11y";
@@ -67,7 +67,7 @@ describe("the ready-made backdrops (D534)", () => {
     expect(patch.backdropBlur).toBeUndefined();
     // Changing what the part got changes nothing in the list.
     (patch.background as { colors: string[] }).colors[0] = "#ffffff";
-    (patch.backgroundLayers![0] as BackgroundLayer).color = "#000000";
+    (patch.backgroundLayers![0] as ColourLayer).color = "#000000";
     expect(BACKDROPS.horizon.background.colors[0]).toBe("#1d1250");
     expect(BACKDROPS.horizon.layers[0].color).toBe("#ffffff");
   });
@@ -85,6 +85,11 @@ describe("matching a background to the theme", () => {
     expect(mainColour({ type: "color", color: "#0b0f1a" }, [])).toBe("#0b0f1a");
     expect(mainColour({ type: "image", image: { url: "https://example.com/a.jpg", width: 1, height: 1 }, overlay: null }, undefined)).toBeNull();
     expect(mainColour(undefined, undefined)).toBeNull();
+    // A picture layer (D537) has no colour to be known by: the layer under it is, or the background.
+    const cloud: BackgroundLayer = { id: "i", type: "picture", image: { url: "https://cdn.example.com/cloud.webp", width: 10, height: 10 }, x: 50, y: 50 };
+    expect(mainColour(undefined, [glow, cloud])).toBe("#d946ef");
+    expect(mainColour({ type: "color", color: "#0b0f1a" }, [cloud])).toBe("#0b0f1a");
+    expect(mainColour(undefined, [cloud])).toBeNull();
   });
 
   it("finds the theme's accent among a colour field's swatches: the light set's where both are offered", () => {
@@ -116,6 +121,8 @@ describe("the builder's words for backdrops", () => {
     expect(BACKDROP_WORDS.patterns).toEqual(LAYER_PATTERNS);
     expect(BACKDROP_WORDS.fades).toEqual({ none: "Nowhere", ...LAYER_FADES });
     expect(BACKDROP_WORDS.curves).toEqual(HORIZON_CURVES);
+    expect(BACKDROP_WORDS.fits).toEqual(PICTURE_FITS);
+    expect(Object.keys(BACKDROP_WORDS.fitHints)).toEqual(Object.keys(PICTURE_FITS));
     expect(BACKDROP_WORDS.ambients).toEqual({ none: "Still", ...LAYER_AMBIENTS });
     expect(Object.keys(BACKDROP_WORDS.kindHints)).toEqual(Object.keys(LAYER_KINDS));
   });

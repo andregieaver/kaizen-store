@@ -496,7 +496,7 @@ export function BackgroundFields({
       )}
       {/* A picture, video or gradient can move; a colour cannot. */}
       {backgroundMoves(value) && !fixed && <BackgroundMotionFields target={target} value={motion} onChange={onMotion} />}
-      {backdrop && <LayerFields layers={backdrop.layers} hue={backdrop.hue} onLayers={backdrop.onLayers} />}
+      {backdrop && <LayerFields layers={backdrop.layers} hue={backdrop.hue} upload={upload} onLayers={backdrop.onLayers} />}
     </div>
   );
 }

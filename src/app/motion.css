@@ -204,6 +204,31 @@
       ),
       radial-gradient(circle var(--fx-r, 125cqw) at var(--fx-at), var(--fx-lc2) calc(100% - 0.5px), transparent 100%);
   }
+  /*
+   * A picture (D537), the owner's own. Placed, its centre is where it was put and its width a share of the frame's, its height
+   * following. Filling the part, it is cut to fit as a background picture is, `--fx-x` and `--fx-y` saying which part of it shows; it
+   * reaches past the frame by the room its travel needs (`--fx-room`, set where the layer travels) and by a soft layer's rim.
+   */
+  [data-fx-pic] {
+    position: absolute;
+    max-width: none;
+  }
+  [data-fx-pic="placed"] {
+    left: var(--fx-x, 50%);
+    top: var(--fx-y, 50%);
+    width: var(--fx-w, 50cqw);
+    height: auto;
+    translate: -50% -50%;
+  }
+  [data-fx-pic="cover"] {
+    --fx-room: 0px;
+    left: calc(var(--fx-e, 0px) * -1);
+    top: calc((var(--fx-room) + var(--fx-e, 0px)) * -1);
+    width: calc(100% + var(--fx-e, 0px) * 2);
+    height: calc(100% + (var(--fx-room) + var(--fx-e, 0px)) * 2);
+    object-fit: cover;
+    object-position: var(--fx-x, 50%) var(--fx-y, 50%);
+  }
   /* Patterns: lines and dots of one colour, drawn as gradients on a tile of `--fx-size`, over the whole layer. */
   [data-fx-bglayer] > [data-fx-pattern] {
     position: absolute;
@@ -585,6 +610,10 @@
     /* A pattern in a layer that travels is taller than its frame by the travel, so no edge of it shows. */
     [data-fx-scroll="layer"] > [data-fx-pattern] {
       inset: calc(max(var(--fx-sk), var(--fx-sk) * -1) * -20cqh - var(--fx-e, 0px)) calc(var(--fx-e, 0px) * -1);
+    }
+    /* A picture that fills the part, in a layer that travels, is taller than its frame by the travel too. */
+    [data-fx-scroll="layer"] > [data-fx-pic="cover"] {
+      --fx-room: calc(max(var(--fx-sk), var(--fx-sk) * -1) * 20cqh);
     }
     /* By itself: a glimmer, or a slow swell from where the glow or the arc is. */
     [data-fx-amb="twinkle"] {

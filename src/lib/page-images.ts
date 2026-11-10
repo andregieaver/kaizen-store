@@ -1,3 +1,4 @@
+import { layerPictureUrls, withLayerSmallCopies, type BackgroundLayer } from "./background-layers";
 import { innerColumns, mapChildBlocks, mapInnerColumns, withChildren, type Background, type PageBlock, type PageContent, type RowBackground } from "./page-content";
 import { mapTexts } from "./page-translation";
 import { SMALL_COPY_WIDTH } from "./picture-sizes";
@@ -62,22 +63,24 @@ export function withLibraryAlts(content: PageContent, lookup: (url: string) => L
   return changed ? { ...filled, translations } : content;
 }
 
-/** The pictures behind the page's rows and columns (D48), whose small copies a phone can be given. */
+/** The pictures behind the page's rows and columns (D48), and those that are layers over their backgrounds (D537), whose small copies a phone can be given. */
 export function backgroundImageUrls(content: PageContent): string[] {
   const urls = new Set<string>();
   for (const row of content.rows) {
     if (row.background?.type === "image") urls.add(row.background.image.url);
+    for (const url of layerPictureUrls(row.backgroundLayers)) urls.add(url);
     for (const column of [...row.columns, ...row.columns.flatMap((c) => c.blocks.flatMap(innerColumns))]) {
       if (column.background?.type === "image") urls.add(column.background.image.url);
+      for (const url of layerPictureUrls(column.backgroundLayers)) urls.add(url);
     }
   }
   return [...urls];
 }
 
 /**
- * The page with each background picture's and picture component's small copy (`image.small`, the library's 480 px one) where the
- * library has one, so a phone is not sent the large file (D211, D336) and a blurred picture loads the small one only. Set when the page
- * is read, never saved (the page's schema drops it).
+ * The page with each background picture's, picture layer's (D537) and picture component's small copy (`image.small`, the library's
+ * 480 px one) where the library has one, so a phone is not sent the large file (D211, D336) and a blurred picture loads the small one
+ * only. Set when the page is read, never saved (the page's schema drops it).
  */
 export function withSmallCopies(content: PageContent, lookup: (url: string) => string | undefined): PageContent {
   let changed = false;
@@ -87,6 +90,13 @@ export function withSmallCopies(content: PageContent, lookup: (url: string) => s
     if (!small || small === background.image.url || background.image.small === small) return background;
     changed = true;
     return { ...background, image: { ...background.image, small } };
+  };
+  // The layers' pictures (D537): the key is written only where a part has layers, so a part without them stays as it was.
+  const layered = (layers: BackgroundLayer[] | undefined): { backgroundLayers?: BackgroundLayer[] } => {
+    if (!layers) return {};
+    const filled = withLayerSmallCopies(layers, lookup);
+    if (filled !== layers) changed = true;
+    return { backgroundLayers: filled };
   };
   // A picture component's (D336), and a Columns component's columns' backgrounds (D294), at every depth.
   const fillBlock = (block: PageBlock): PageBlock => {
@@ -107,13 +117,14 @@ export function withSmallCopies(content: PageContent, lookup: (url: string) => s
       };
       out = { ...out, before: withSmall(out.before), after: withSmall(out.after) };
     }
-    if (out.type === "columns") out = mapInnerColumns(out, (inner) => ({ ...inner, background: fill(inner.background) }));
+    if (out.type === "columns") out = mapInnerColumns(out, (inner) => ({ ...inner, background: fill(inner.background), ...layered(inner.backgroundLayers) }));
     return out.type === "columns" || out.type === "faq" ? mapChildBlocks(out, fillBlock) : out;
   };
   const rows = content.rows.map((row) => ({
     ...row,
     background: fill(row.background),
-    columns: row.columns.map((column) => ({ ...column, background: fill(column.background), blocks: column.blocks.map(fillBlock) })),
+    ...layered(row.backgroundLayers),
+    columns: row.columns.map((column) => ({ ...column, background: fill(column.background), ...layered(column.backgroundLayers), blocks: column.blocks.map(fillBlock) })),
   }));
   return changed ? { ...content, rows } : content;
 }

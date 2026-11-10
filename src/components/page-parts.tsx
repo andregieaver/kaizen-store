@@ -15,7 +15,7 @@ import { surfaceClass } from "@/lib/background-surface";
 import { fontClass } from "@/lib/fonts";
 import { backgroundSources } from "@/lib/page-images";
 import type { BackgroundMotion } from "@/lib/motion";
-import { huedBackground, layerDraw, type BackgroundLayer } from "@/lib/background-layers";
+import { PICTURE_WIDTH_DEFAULT, huedBackground, layerDraw, type BackgroundLayer, type PictureLayer } from "@/lib/background-layers";
 import { backgroundFx, layerFx } from "@/lib/motion-attrs";
 import { blockStyle, clipsAnywhere, columnStyle, inlineNowrap, panelStyle, partClass, rowGridStyle, rowStyle, rowWidthStyle, type PartsMode } from "@/lib/part-css";
 import { SIZES } from "@/lib/breakpoints";
@@ -278,7 +278,18 @@ export function GradientLayer({
  * whatever moves past the part. A layer is two elements: the one that travels, and inside it the one that draws. Their colours are turned by the part's `hue`. `still` draws them without motion (the builder's canvas
  * while its motion preview is off). Nothing is drawn where no layer shows.
  */
-export function BackgroundLayers({ layers, hue, still = false }: { layers: readonly BackgroundLayer[] | undefined; hue?: number; still?: boolean }) {
+export function BackgroundLayers({
+  layers,
+  hue,
+  still = false,
+  eager = false,
+}: {
+  layers: readonly BackgroundLayer[] | undefined;
+  hue?: number;
+  still?: boolean;
+  /** It may be on the first screen: a picture layer (D537) is loaded at once; any other only as it comes near. */
+  eager?: boolean;
+}) {
   const drawn = (layers ?? []).flatMap((layer) => {
     const draw = layerDraw(layer, hue);
     return draw ? [{ layer, draw }] : [];
@@ -291,11 +302,36 @@ export function BackgroundLayers({ layers, hue, still = false }: { layers: reado
         return (
           // The layer travels; the element inside it draws, and is what a blur (D535) is on, so the blur is painted once and only moved.
           <div key={layer.id} {...draw.attrs} {...fx.attrs} style={{ ...draw.style, ...fx.style } as CSSProperties}>
-            <span {...draw.inner} />
+            {layer.type === "picture" ? <LayerPicture layer={layer} inner={draw.inner} eager={eager} /> : <span {...draw.inner} />}
           </div>
         );
       })}
     </div>
+  );
+}
+
+/**
+ * A picture layer's picture (D537): the owner's own, decoration behind the content, so it has no alt text. A phone is offered the
+ * library's small copy where there is one, and a blurred picture only that (`backgroundSources()`), as a background picture is.
+ */
+function LayerPicture({ layer, inner, eager }: { layer: PictureLayer; inner: Record<string, string>; eager: boolean }) {
+  const sources = backgroundSources(layer.image, layer.blur ?? 0);
+  // How wide it is drawn, for choosing between the copies: the whole part's width, or its own share of it.
+  const sizes = layer.fit === "cover" ? "100vw" : `${Math.min(100, layer.width ?? PICTURE_WIDTH_DEFAULT)}vw`;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- the owner's picture with its small copy by width, behind the part
+    <img
+      {...inner}
+      src={sources.src}
+      srcSet={sources.srcSet}
+      sizes={sources.srcSet ? sizes : undefined}
+      alt=""
+      width={layer.image.width}
+      height={layer.image.height}
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+      draggable={false}
+    />
   );
 }
 
@@ -332,7 +368,7 @@ export function PartBackground({
   return (
     <>
       <BaseBackground background={huedBackground(background, hue)} {...base} />
-      <BackgroundLayers layers={layers} hue={hue} still={stillLayers} />
+      <BackgroundLayers layers={layers} hue={hue} still={stillLayers} eager={base.eager} />
     </>
   );
 }

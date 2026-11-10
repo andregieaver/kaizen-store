@@ -4,8 +4,9 @@ import { cleanHue, shiftHue } from "./hue";
  * Layers over a row's or column's background (D534): a short list of things drawn over the background and under what the part holds,
  * each a real element in a frame of their own, so each can move by itself as the page scrolls. The background stays what it was (a
  * colour, a picture, a gradient, a video, or none); the layers are what makes a backdrop of it: a *glow* (one soft ellipse of colour,
- * placed), a *pattern* (a grid, dots or stars, fading where asked) and a *horizon* (a dark disc with a lit rim, which a glow can set
- * behind). `backgroundHue` on the part turns every colour of the background and its layers together.
+ * placed), a *pattern* (a grid, dots or stars, fading where asked), a *horizon* (a dark disc with a lit rim, which a glow can set
+ * behind) and a *picture* (D537: the owner's own, placed at a size or filling the part; one with a see-through background is what it is
+ * for). `backgroundHue` on the part turns every colour of the background and its layers together; a picture is drawn as it is.
  *
  * A layer can be blurred (`blur`, D535): out of focus, as what is far away or very close is, which with its travel is what gives a
  * backdrop depth. The blur is drawn on the layer's inner element, so the browser paints it once and the layer that travels only moves
@@ -20,8 +21,17 @@ import { cleanHue, shiftHue } from "./hue";
 /** How many layers one background takes: each is a surface the browser keeps while the page scrolls. */
 export const LAYERS_MAX = 6;
 
-export const LAYER_KINDS = { glow: "Glow", pattern: "Pattern", horizon: "Horizon" } as const;
+export const LAYER_KINDS = { glow: "Glow", pattern: "Pattern", horizon: "Horizon", picture: "Picture" } as const;
 export type LayerKind = keyof typeof LAYER_KINDS;
+
+/** How a picture sits (D537): placed at a width of its own, or cut to fill the whole part as a background picture is. */
+export const PICTURE_FITS = { placed: "Placed", cover: "Fills the part" } as const;
+export type PictureFit = keyof typeof PICTURE_FITS;
+export const PICTURE_FIT_DEFAULT: PictureFit = "placed";
+/** A placed picture's width, as a per cent of the part's. */
+export const PICTURE_WIDTH_MIN = 5;
+export const PICTURE_WIDTH_MAX = 300;
+export const PICTURE_WIDTH_DEFAULT = 50;
 
 export const LAYER_PATTERNS = { grid: "Grid", dots: "Dots", stars: "Stars" } as const;
 export type LayerPattern = keyof typeof LAYER_PATTERNS;
@@ -74,8 +84,30 @@ export type GlowLayer = LayerCommon & { type: "glow"; color: string; outer?: str
 export type PatternLayer = LayerCommon & { type: "pattern"; pattern: LayerPattern; color: string; size?: number; fade?: LayerFade };
 /** A disc filled with `fill` whose top edge, lit in `color`, shows as an arc `y` per cent down the part. */
 export type HorizonLayer = LayerCommon & { type: "horizon"; color: string; fill: string; y: number; curve?: HorizonCurve };
+/**
+ * The owner's picture (D537): placed with its centre at `x`, `y` per cent of the part and `width` per cent wide (its height follows),
+ * or cut to fill the part with `x`, `y` saying which part of it shows. `small` is the library's 480 px copy, set when the page is read
+ * for the site (`withSmallCopies()`), never saved. Drawn as it is: the hue does not turn it.
+ */
+export type PictureLayer = LayerCommon & {
+  type: "picture";
+  image: { url: string; width: number; height: number; small?: string };
+  fit?: PictureFit;
+  x: number;
+  y: number;
+  width?: number;
+  fade?: LayerFade;
+};
+/** A layer drawn in colours of its own, which the hue turns. */
+export type ColourLayer = GlowLayer | PatternLayer | HorizonLayer;
 /** A layer over a background; the first of a list is the lowest. */
-export type BackgroundLayer = GlowLayer | PatternLayer | HorizonLayer;
+export type BackgroundLayer = ColourLayer | PictureLayer;
+
+/** A layer's own colour, for a swatch or for matching a theme; none for a picture. */
+export const layerColour = (layer: BackgroundLayer): string | null => (layer.type === "picture" ? null : layer.color);
+
+/** A picture's address as the page may draw it: the web's own, never a script's or a file's. */
+const WEB_ADDRESS = /^https?:\/\/[^\s"'<>]+$/i;
 
 const HEX = /^#[0-9a-f]{6}$/i;
 
@@ -120,9 +152,6 @@ export type LayerDraw = { attrs: Record<string, string>; style: Record<string, s
  */
 export function layerDraw(layer: BackgroundLayer, hue?: number): LayerDraw | null {
   if (layer.hidden) return null;
-  const colour = (value: string | undefined) => (value && HEX.test(value) ? shiftHue(value.toLowerCase(), hue) : null);
-  const main = colour(layer.color);
-  if (!main) return null;
   const style: Record<string, string | number> = {};
   const opacity = within(layer.opacity, 1, 100, 100);
   if (opacity < 100) style["--fx-o"] = opacity / 100;
@@ -130,6 +159,21 @@ export function layerDraw(layer: BackgroundLayer, hue?: number): LayerDraw | nul
   const blur = within(layer.blur, 0, LAYER_BLUR_MAX, 0);
   const soft: Record<string, string> = blur > 0 ? { "data-fx-soft": "" } : {};
   if (blur > 0) style["--fx-blur"] = `${blur}px`;
+  if (layer.type === "picture") {
+    // The picture itself is the element that draws (an `<img>`, `BackgroundLayers`): here only where it sits and how large.
+    const image = layer.image;
+    if (!image || typeof image.url !== "string" || !WEB_ADDRESS.test(image.url) || !(image.width > 0) || !(image.height > 0)) return null;
+    const fit: PictureFit = layer.fit === "cover" ? "cover" : PICTURE_FIT_DEFAULT;
+    style["--fx-x"] = `${within(layer.x, 0, 100, 50)}%`;
+    style["--fx-y"] = `${within(layer.y, 0, 100, 50)}%`;
+    if (fit === "placed") style["--fx-w"] = `${within(layer.width, PICTURE_WIDTH_MIN, PICTURE_WIDTH_MAX, PICTURE_WIDTH_DEFAULT)}cqw`;
+    const inner: Record<string, string> = { "data-fx-pic": fit };
+    if (layer.fade && layer.fade in LAYER_FADES) inner["data-fx-fade"] = layer.fade;
+    return { attrs: { "data-fx-bglayer": "picture", ...soft }, style, inner };
+  }
+  const colour = (value: string | undefined) => (value && HEX.test(value) ? shiftHue(value.toLowerCase(), hue) : null);
+  const main = colour(layer.color);
+  if (!main) return null;
   if (layer.type === "glow") {
     style["--fx-lc1"] = main;
     // Half as solid where the heart ends, so one colour fades evenly and two blend into each other.
@@ -208,19 +252,78 @@ export function huedBackground<B extends Tinted>(background: B | undefined, hue:
   return { ...b, overlay: huedOverlay(b.overlay, turn) } as B;
 }
 
-/** Whether a turn of the hue would show: a colour, a gradient, a colour over a picture or video, or a layer. */
+/** Whether a turn of the hue would show: a colour, a gradient, a colour over a picture or video, or a layer drawn in colours (a picture is not). */
 export const backgroundHasHue = (background: Tinted | undefined, layers: readonly BackgroundLayer[] | undefined): boolean =>
-  Boolean(layers?.length) || background?.type === "color" || background?.type === "gradient" || Boolean(background && "overlay" in background && background.overlay);
+  Boolean(layers?.some((layer) => layer.type !== "picture")) ||
+  background?.type === "color" ||
+  background?.type === "gradient" ||
+  Boolean(background && "overlay" in background && background.overlay);
 
 // ---------------------------------------------------------------------------
 // Editing
 // ---------------------------------------------------------------------------
 
 /** A new layer of a kind as it starts: white on nothing would not show on a light page, so each starts in a colour that shows on both. */
-export function newLayer(kind: LayerKind, id: string): BackgroundLayer {
+export function newLayer(kind: Exclude<LayerKind, "picture">, id: string): ColourLayer {
   if (kind === "glow") return { id, type: "glow", color: "#8b5cf6", x: 50, y: 50, width: 80, height: 60, opacity: 70 };
   if (kind === "pattern") return { id, type: "pattern", pattern: "grid", color: "#8b8b9a", opacity: 25, fade: "edges" };
   return { id, type: "horizon", color: "#d946ef", fill: "#07051a", y: 64 };
+}
+
+/** A new picture layer (D537) as it starts: the picture in the middle, half as wide as the part. */
+export const newPictureLayer = (id: string, image: { url: string; width: number; height: number }): PictureLayer => ({
+  id,
+  type: "picture",
+  image: { url: image.url, width: image.width, height: image.height },
+  x: 50,
+  y: 50,
+  width: PICTURE_WIDTH_DEFAULT,
+});
+
+/** A picture layer set to sit another way: filling the part it has no width of its own. */
+export function setPictureFit(layer: PictureLayer, fit: PictureFit): PictureLayer {
+  const { fit: _fit, width, ...rest } = layer;
+  void _fit;
+  return fit === "cover" ? { ...rest, fit: "cover" } : { ...rest, width: width ?? PICTURE_WIDTH_DEFAULT };
+}
+
+/** The addresses of the layers' pictures, for their small copies and for copying a part to another store. */
+export const layerPictureUrls = (layers: readonly BackgroundLayer[] | undefined): string[] =>
+  (layers ?? []).flatMap((layer) => (layer.type === "picture" && layer.image?.url ? [layer.image.url] : []));
+
+/**
+ * The layers with each picture's address through `change`: another address (a copy in another store, with nothing left of the small
+ * copy that went with the old one), or null to leave that layer out. The same list when nothing changes.
+ */
+export function mapLayerPictures(layers: readonly BackgroundLayer[] | undefined, change: (url: string) => string | null): BackgroundLayer[] | undefined {
+  if (!layers) return undefined;
+  let changed = false;
+  const next = layers.flatMap((layer): BackgroundLayer[] => {
+    if (layer.type !== "picture") return [layer];
+    const url = change(layer.image.url);
+    if (url === layer.image.url) return [layer];
+    changed = true;
+    if (url === null) return [];
+    const { small: _small, ...image } = layer.image;
+    void _small;
+    return [{ ...layer, image: { ...image, url } }];
+  });
+  if (!changed) return [...layers];
+  return next.length > 0 ? next : undefined;
+}
+
+/** The layers with each picture's small copy (`image.small`) where `lookup` has one; the same list when none is new. */
+export function withLayerSmallCopies<L extends readonly BackgroundLayer[] | undefined>(layers: L, lookup: (url: string) => string | undefined): L {
+  if (!layers) return layers;
+  let changed = false;
+  const next = layers.map((layer) => {
+    if (layer.type !== "picture") return layer;
+    const small = lookup(layer.image.url);
+    if (!small || small === layer.image.url || layer.image.small === small) return layer;
+    changed = true;
+    return { ...layer, image: { ...layer.image, small } };
+  });
+  return (changed ? next : layers) as L;
 }
 
 /** The layers with one more on top; the same list once it is full. */

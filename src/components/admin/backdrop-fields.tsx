@@ -18,17 +18,24 @@ import {
   LAYER_PATTERNS,
   LAYER_SCROLL_MAX,
   PATTERN_SIZES,
+  PICTURE_FITS,
+  PICTURE_FIT_DEFAULT,
+  PICTURE_WIDTH_DEFAULT,
+  PICTURE_WIDTH_MAX,
+  PICTURE_WIDTH_MIN,
   addLayer,
   backgroundHasHue,
   keptLayers,
+  layerColour,
   moveLayer,
   newLayer,
+  newPictureLayer,
   patchLayer,
   patternSize,
   removeLayer,
   setPattern,
+  setPictureFit,
   type BackgroundLayer,
-  type LayerKind,
 } from "@/lib/background-layers";
 import { HUE_MAX, cleanHue, shiftHue } from "@/lib/hue";
 import type { RowBackground } from "@/lib/page-content";
@@ -36,11 +43,12 @@ import type { RowBackground } from "@/lib/page-content";
 import { useHandedText } from "./admin-text";
 import { Choices, ColorField, smallButton } from "./block-fields";
 import { useColourSwatches } from "./colour-field";
+import { ImageUploadButton, type Upload } from "./image-upload";
 
 /**
  * Backdrops in the builder (D534): what `BackgroundFields` adds to a row's or column's background. For Homer, `BackdropPicker`: a
  * ready-made backdrop in one press, then one slider that turns the hue of every colour of it. For Lisa, `LayerFields`: the layers
- * themselves, one deliberate press away, each with its colours, place, fade and how it moves. Loaded when a background's settings
+ * themselves, one deliberate press away, each with its colours or its picture, place, fade and how it moves. Loaded when a background's settings
  * are first opened, so the builder's first scripts do not carry it.
  */
 
@@ -266,8 +274,11 @@ function layerNames(layers: readonly BackgroundLayer[], w: BackdropWords): Map<s
 export function LayerFields({
   layers,
   hue,
+  upload,
   onLayers,
 }: {
+  /** What uploads a picture for a picture layer (D537); null where uploads are not set up, when the library still offers its own. */
+  upload: Upload | null;
   layers: readonly BackgroundLayer[] | undefined;
   /** The part's turn of the hue: each layer's dot in the list is the colour the page draws. */
   hue?: number;
@@ -303,7 +314,12 @@ export function LayerFields({
                 return (
                   <li key={layer.id} className="rounded-md border border-line" data-layer={layer.type}>
                     <div className="flex flex-wrap items-center gap-2 p-2">
-                      <span aria-hidden className="size-4 shrink-0 rounded-full border border-line" style={{ backgroundColor: shiftHue(layer.color, hue) }} />
+                      {layer.type === "picture" ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- a small look at the layer's own picture, in the admin
+                        <img src={layer.image.small ?? layer.image.url} alt="" className="size-6 shrink-0 rounded border border-line object-cover" />
+                      ) : (
+                        <span aria-hidden className="size-4 shrink-0 rounded-full border border-line" style={{ backgroundColor: shiftHue(layerColour(layer) ?? "", hue) }} />
+                      )}
                       <span className={`min-w-0 flex-1 truncate text-sm font-medium ${layer.hidden ? "text-muted line-through" : ""}`}>{name}</span>
                       <label className="flex min-h-9 cursor-pointer items-center gap-1.5 text-xs">
                         {/* Named with its layer, as the list holds several. */}
@@ -337,7 +353,7 @@ export function LayerFields({
                     </div>
                     {isOpen && (
                       <div className="flex flex-col gap-4 border-t border-line p-3">
-                        <OneLayer layer={layer} w={w} patch={patch} replace={(next) => change(list.map((l) => (l.id === next.id ? next : l)))} />
+                        <OneLayer layer={layer} w={w} upload={upload} patch={patch} replace={(next) => change(list.map((l) => (l.id === next.id ? next : l)))} />
                       </div>
                     )}
                   </li>
@@ -347,7 +363,7 @@ export function LayerFields({
           )}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm">{w.add}</span>
-            {(Object.keys(LAYER_KINDS) as LayerKind[]).map((kind) => (
+            {DRAWN_KINDS.map((kind) => (
               <button
                 key={kind}
                 type="button"
@@ -365,12 +381,31 @@ export function LayerFields({
               </button>
             ))}
           </div>
+          {/* A picture of the owner's own (D537): chosen, uploaded or made, it goes on top as a layer. */}
+          {!full && (
+            <div className="flex flex-col gap-2" data-add-picture-layer="">
+              <span className="text-sm">{w.addPicture}</span>
+              <ImageUploadButton
+                upload={upload}
+                label={w.choosePicture}
+                onUploaded={(image) => {
+                  const layer = newPictureLayer(layerId(), image);
+                  change(addLayer(list, layer));
+                  setEditing(layer.id);
+                }}
+              />
+              <p className="text-xs text-muted">{w.addPictureHint}</p>
+            </div>
+          )}
           {full && <p className="text-xs text-muted">{fillWords(w.full, { max: LAYERS_MAX })}</p>}
         </fieldset>
       )}
     </div>
   );
 }
+
+/** The kinds that are drawn in colours and start from nothing; a picture starts from a file. */
+const DRAWN_KINDS = (Object.keys(LAYER_KINDS) as (keyof typeof LAYER_KINDS)[]).filter((kind) => kind !== "picture") as ("glow" | "pattern" | "horizon")[];
 
 /** A list's choices, each with its word in the account's language. */
 function choices<K extends string>(words: { [key in NoInfer<K>]: string }, list: { readonly [key in K]: unknown }) {
@@ -381,11 +416,13 @@ function choices<K extends string>(words: { [key in NoInfer<K>]: string }, list:
 function OneLayer({
   layer,
   w,
+  upload,
   patch,
   replace,
 }: {
   layer: BackgroundLayer;
   w: BackdropWords;
+  upload: Upload | null;
   patch: (values: Record<string, unknown>) => void;
   replace: (layer: BackgroundLayer) => void;
 }) {
@@ -413,6 +450,37 @@ function OneLayer({
         <Choices legend={w.pattern} options={choices(w.patterns, LAYER_PATTERNS)} value={layer.pattern} onChange={(pattern) => replace(setPattern(layer, pattern))} />
         <ColorField label={w.colour} value={layer.color} onChange={(color) => patch({ color })} />
         <Slider label={w.size} min={limits.min} max={limits.max} value={size} shown={`${size} px`} onChange={(next) => patch({ size: next === limits.start ? undefined : next })} />
+        <Choices
+          legend={w.fade}
+          options={[{ value: "none" as const, label: w.fades.none }, ...choices(w.fades, LAYER_FADES)]}
+          value={layer.fade ?? "none"}
+          onChange={(fade) => patch({ fade: fade === "none" ? undefined : fade })}
+        />
+      </>
+    );
+  } else if (layer.type === "picture") {
+    const fit = layer.fit ?? PICTURE_FIT_DEFAULT;
+    const width = layer.width ?? PICTURE_WIDTH_DEFAULT;
+    own = (
+      <>
+        <ImageUploadButton
+          upload={upload}
+          label={w.replacePicture}
+          current={layer.image}
+          onUploaded={(image) => patch({ image: { url: image.url, width: image.width, height: image.height } })}
+        />
+        <Choices legend={w.fit} hint={w.fitHints[fit]} options={choices(w.fits, PICTURE_FITS)} value={fit} onChange={(next) => replace(setPictureFit(layer, next))} />
+        <fieldset className="flex flex-col gap-2">
+          {/* Placed: where its centre is. Filling the part: which part of the picture shows where it is cut. */}
+          <legend className="float-left mb-1 w-full text-sm font-medium">{fit === "cover" ? w.show : w.place}</legend>
+          <div className="flex flex-wrap gap-x-6 gap-y-3">
+            <Slider label={w.across} min={0} max={100} value={layer.x} shown={`${layer.x}%`} onChange={(x) => patch({ x })} />
+            <Slider label={w.down} min={0} max={100} value={layer.y} shown={`${layer.y}%`} onChange={(y) => patch({ y })} />
+            {fit === "placed" && (
+              <Slider label={w.width} min={PICTURE_WIDTH_MIN} max={PICTURE_WIDTH_MAX} value={width} shown={`${width}%`} onChange={(next) => patch({ width: next })} />
+            )}
+          </div>
+        </fieldset>
         <Choices
           legend={w.fade}
           options={[{ value: "none" as const, label: w.fades.none }, ...choices(w.fades, LAYER_FADES)]}

@@ -5,6 +5,7 @@ import {
   newPageContent,
   pageBlockSchema,
   pageInput,
+  pageRowSchema,
   type ContentGridBlock,
   type CustomGridItem,
   type PageBlock,
@@ -173,6 +174,24 @@ describe("a custom grid in a template", () => {
     expect(items[0].picture).toEqual({ url: `${PUBLIC}/product-media/new-store/a.webp`, width: 100, height: 80, alt: "Bilde a" });
     expect(items[1].picture).toBeNull();
     expect(leftoverStorageUrls(mapped).every((url) => url.includes("new-store"))).toBe(true);
+  });
+
+  it("takes a row's and a column's picture layers along (D537), and leaves out a layer whose picture could not be copied", () => {
+    const cloud = (id: string, name: string) => ({ id, type: "picture" as const, image: { url: `${PUBLIC}/product-media/${from.id}/${name}.webp`, width: 100, height: 80 }, x: 50, y: 50 });
+    const glow = { id: "g", type: "glow" as const, color: "#d946ef", x: 50, y: 50, width: 80, height: 60 };
+    const layered: PageRow = { ...row(), backgroundLayers: [glow, cloud("l1", "cloud")], columns: [{ id: "col", blocks: [], backgroundLayers: [cloud("l2", "rock")] }] };
+    expect(templateMediaUrls("row", layered)).toEqual([`${PUBLIC}/product-media/${from.id}/rock.webp`, `${PUBLIC}/product-media/${from.id}/cloud.webp`]);
+
+    const mapped = mapTemplateMedia("row", sanitizeTemplate("row", layered, from), (url) => url.replace(from.id ?? "", "new-store")) as PageRow;
+    expect(mapped.backgroundLayers?.map((layer) => (layer.type === "picture" ? layer.image.url : layer.type))).toEqual(["glow", `${PUBLIC}/product-media/new-store/cloud.webp`]);
+    expect(leftoverStorageUrls(mapped).every((url) => url.includes("new-store"))).toBe(true);
+
+    // Not copied: the picture layers go, the glow stays, and a part left with no layer keeps no empty list.
+    const without = mapTemplateMedia("row", layered, () => null) as PageRow;
+    expect(without.backgroundLayers).toEqual([glow]);
+    expect("backgroundLayers" in without.columns[0]).toBe(false);
+    expect(leftoverStorageUrls(without)).toEqual([]);
+    expect(pageRowSchema.safeParse(without).success).toBe(true);
   });
 
   it("leaves an item without a picture that could not be copied, and the grid is still valid", () => {

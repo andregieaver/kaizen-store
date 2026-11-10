@@ -13,26 +13,35 @@ import {
   LAYER_KINDS,
   LAYER_PATTERNS,
   PATTERN_SIZES,
+  PICTURE_FITS,
+  PICTURE_WIDTH_DEFAULT,
+  PICTURE_WIDTH_MAX,
   addLayer,
   backgroundHasHue,
   copiedLayers,
   huedBackground,
   keptLayers,
+  layerColour,
   layerDraw,
+  layerPictureUrls,
   layerTravel,
   layersScroll,
   layersShow,
+  mapLayerPictures,
   moveLayer,
   newLayer,
+  newPictureLayer,
   patchLayer,
   patternSize,
   removeLayer,
   setPattern,
+  setPictureFit,
+  withLayerSmallCopies,
   type BackgroundLayer,
   type GlowLayer,
   type HorizonLayer,
-  type LayerKind,
   type PatternLayer,
+  type PictureLayer,
 } from "./background-layers";
 import { backgroundHueSchema, backgroundLayerSchema, backgroundLayersSchema } from "./background-layers-schema";
 import { layerFx, motionNeeds } from "./motion-attrs";
@@ -44,6 +53,7 @@ const css = readFileSync(join(process.cwd(), "src/app/motion.css"), "utf8");
 const glow: GlowLayer = { id: "g", type: "glow", color: "#D946EF", outer: "#7c3aed", x: 50, y: 63, width: 150, height: 40 };
 const grid: PatternLayer = { id: "p", type: "pattern", pattern: "grid", color: "#ffffff", opacity: 9, fade: "edges" };
 const horizon: HorizonLayer = { id: "h", type: "horizon", color: "#d946ef", fill: "#07051a", y: 64 };
+const picture: PictureLayer = { id: "i", type: "picture", image: { url: "https://cdn.example.com/cloud.webp", width: 1600, height: 900 }, x: 30, y: 40, width: 60 };
 
 const row = (patch: Partial<PageRow> = {}): PageRow => ({ id: "r", type: "row", layout: "1", columns: [{ id: "c", blocks: [] }], ...patch });
 
@@ -95,8 +105,35 @@ describe("drawing a layer over a background (D534)", () => {
     expect(layerDraw({ ...grid, fade: "sideways" as never })?.inner["data-fx-fade"]).toBeUndefined();
   });
 
+  it("places a picture by its centre at a width of its own, or cuts it to fill the part, and never writes its address into a style (D537)", () => {
+    expect(layerDraw(picture)).toEqual({
+      attrs: { "data-fx-bglayer": "picture" },
+      style: { "--fx-x": "30%", "--fx-y": "40%", "--fx-w": "60cqw" },
+      inner: { "data-fx-pic": "placed" },
+    });
+    // Filling the part it has no width of its own; `x` and `y` say which part of it shows.
+    expect(layerDraw({ ...picture, fit: "cover", fade: "down", opacity: 40 })).toEqual({
+      attrs: { "data-fx-bglayer": "picture" },
+      style: { "--fx-o": 0.4, "--fx-x": "30%", "--fx-y": "40%" },
+      inner: { "data-fx-pic": "cover", "data-fx-fade": "down" },
+    });
+    expect(layerDraw({ ...picture, width: undefined })?.style["--fx-w"]).toBe(`${PICTURE_WIDTH_DEFAULT}cqw`);
+    expect(layerDraw({ ...picture, width: 9000 })?.style["--fx-w"]).toBe(`${PICTURE_WIDTH_MAX}cqw`);
+    expect(layerDraw({ ...picture, fit: "stretch" as never })?.inner["data-fx-pic"]).toBe("placed");
+    // The hue turns colours; a picture is drawn as it is.
+    expect(layerDraw(picture, 120)).toEqual(layerDraw(picture));
+  });
+
+  it("leaves out a picture it should not draw: no address, one that is not the web's, or no size", () => {
+    for (const url of ["", "javascript:alert(1)", "data:image/png;base64,AAAA", "/relative.png", 'https://x.test/a.png" onerror="x', "https://x.test/a b.png"])
+      expect(layerDraw({ ...picture, image: { ...picture.image, url } }), url).toBeNull();
+    expect(layerDraw({ ...picture, image: { ...picture.image, width: 0 } })).toBeNull();
+    expect(layerDraw({ ...picture, image: undefined as never })).toBeNull();
+    expect(layerDraw({ ...picture, hidden: true })).toBeNull();
+  });
+
   it("marks a blurred layer soft and says by how much, held to its limit; a sharp one carries neither (D535)", () => {
-    for (const layer of [glow, grid, horizon]) {
+    for (const layer of [glow, grid, horizon, picture]) {
       const soft = layerDraw({ ...layer, blur: 12 })!;
       expect(soft.attrs["data-fx-soft"], layer.type).toBe("");
       expect(soft.style["--fx-blur"], layer.type).toBe("12px");
@@ -160,6 +197,9 @@ describe("how a layer moves", () => {
     for (const fade of Object.keys(LAYER_FADES)) expect(css).toContain(`[data-fx-fade="${fade}"]`);
     for (const ambient of Object.keys(LAYER_AMBIENTS)) expect(css).toContain(`[data-fx-amb="${ambient}"]`);
     for (const selector of ["[data-fx-layers]", "[data-fx-bglayer]", "[data-fx-glow]", "[data-fx-disc]", '[data-fx-scroll="layer"]']) expect(css).toContain(selector);
+    // A picture (D537) either way it sits, and room for its travel where it fills the part.
+    for (const fit of Object.keys(PICTURE_FITS)) expect(css).toContain(`[data-fx-pic="${fit}"]`);
+    expect(css).toContain('[data-fx-scroll="layer"] > [data-fx-pic="cover"]');
     // A pattern that travels keeps room for its travel, whatever element of the layer draws it.
     expect(css).toContain('[data-fx-scroll="layer"] > [data-fx-pattern]');
     // A layer that moves by itself needs the three animation slots, as every part that moves does.
@@ -176,6 +216,10 @@ describe("how a layer moves", () => {
       const rule = css.slice(css.indexOf(`  ${box} {`), css.indexOf("}", css.indexOf(`  ${box} {`)));
       expect(rule, box).toMatch(/inset: [^;]*var\(--fx-e, 0px\)/);
     }
+    // A picture that fills the part does the same; a placed one is soft at its own edges, which is the look.
+    const cover = css.slice(css.indexOf('  [data-fx-pic="cover"] {'), css.indexOf("}", css.indexOf('  [data-fx-pic="cover"] {')));
+    expect(cover).toMatch(/left: calc\(var\(--fx-e, 0px\) \* -1\)/);
+    expect(cover).toMatch(/width: calc\(100% \+ var\(--fx-e, 0px\) \* 2\)/);
     for (const keyframes of css.matchAll(/@keyframes fx-(?:s-layer|l-[\w-]+) \{([\s\S]*?)\n {4}\}\n/g)) expect(keyframes[1]).not.toContain("filter");
   });
 
@@ -214,17 +258,59 @@ describe("the hue of a whole background", () => {
     expect(backgroundHasHue({ type: "image", overlay: { color: "#7c3aed", opacity: 40 } }, undefined)).toBe(true);
     expect(backgroundHasHue({ type: "color", color: "#1d1250" }, undefined)).toBe(true);
     expect(backgroundHasHue(undefined, [glow])).toBe(true);
+    // A picture is drawn as it is: alone it gives the hue nothing to turn.
+    expect(backgroundHasHue(undefined, [picture])).toBe(false);
+    expect(backgroundHasHue(undefined, [picture, grid])).toBe(true);
+    expect(layerColour(picture)).toBeNull();
+    expect(layerColour(glow)).toBe("#D946EF");
   });
 });
 
 describe("editing the layers", () => {
   it("starts a layer of each kind as one the page accepts and draws", () => {
-    for (const kind of Object.keys(LAYER_KINDS) as LayerKind[]) {
+    for (const kind of ["glow", "pattern", "horizon"] as const) {
       const layer = newLayer(kind, `new-${kind}`);
       expect(layer.type).toBe(kind);
       expect(backgroundLayerSchema.safeParse(layer).success, kind).toBe(true);
       expect(layerDraw(layer), kind).not.toBeNull();
     }
+    // A picture starts from its file: in the middle, half as wide as the part, with nothing kept of what the upload said besides.
+    const fresh = newPictureLayer("new-picture", { url: "https://cdn.example.com/a.webp", width: 800, height: 600, alt: "ignored" } as never);
+    expect(fresh).toEqual({ id: "new-picture", type: "picture", image: { url: "https://cdn.example.com/a.webp", width: 800, height: 600 }, x: 50, y: 50, width: PICTURE_WIDTH_DEFAULT });
+    expect(backgroundLayerSchema.safeParse(fresh).success).toBe(true);
+    expect(layerDraw(fresh)).not.toBeNull();
+    expect(Object.keys(LAYER_KINDS)).toEqual(["glow", "pattern", "horizon", "picture"]);
+  });
+
+  it("changes how a picture sits: filling the part it keeps no width, placed again it gets one", () => {
+    const cover = setPictureFit(picture, "cover");
+    expect(cover.fit).toBe("cover");
+    expect("width" in cover).toBe(false);
+    const placed = setPictureFit(cover, "placed");
+    expect(placed.fit).toBeUndefined();
+    expect(placed.width).toBe(PICTURE_WIDTH_DEFAULT);
+    expect(setPictureFit(picture, "placed").width).toBe(60);
+  });
+
+  it("lists the layers' pictures, gives each its small copy, and takes them to another address or leaves them out", () => {
+    const layers: BackgroundLayer[] = [glow, picture, { ...picture, id: "j", image: { url: "https://cdn.example.com/rock.webp", width: 900, height: 900 } }];
+    expect(layerPictureUrls(layers)).toEqual(["https://cdn.example.com/cloud.webp", "https://cdn.example.com/rock.webp"]);
+    expect(layerPictureUrls(undefined)).toEqual([]);
+
+    const small = withLayerSmallCopies(layers, (url) => (url.includes("cloud") ? "https://cdn.example.com/cloud-480.webp" : undefined));
+    expect((small[1] as PictureLayer).image.small).toBe("https://cdn.example.com/cloud-480.webp");
+    expect(small[0]).toBe(glow);
+    expect(small[2]).toBe(layers[2]);
+    // Nothing new: the same list, so a page read twice is not rebuilt.
+    expect(withLayerSmallCopies(small, (url) => (url.includes("cloud") ? "https://cdn.example.com/cloud-480.webp" : undefined))).toBe(small);
+    expect(withLayerSmallCopies(undefined, () => "x")).toBeUndefined();
+
+    // To another store: the copy's address, without the small copy that went with the old one; a picture not taken along goes, the rest stay.
+    const moved = mapLayerPictures(small, (url) => (url.includes("rock") ? null : url.replace("cdn.example.com", "own.example.com")))!;
+    expect(moved.map((layer) => layer.id)).toEqual(["g", "i"]);
+    expect((moved[1] as PictureLayer).image).toEqual({ url: "https://own.example.com/cloud.webp", width: 1600, height: 900 });
+    expect(mapLayerPictures([picture], () => null)).toBeUndefined();
+    expect(mapLayerPictures(undefined, (url) => url)).toBeUndefined();
   });
 
   it("adds on top until the list is full, removes, and moves a layer up or down", () => {
@@ -263,6 +349,22 @@ describe("editing the layers", () => {
 });
 
 describe("the layers as a page stores them", () => {
+  it("keeps a picture layer with its address and size, and never its small copy (D537)", () => {
+    const stored = row({ backgroundLayers: [{ ...picture, fit: "cover", fade: "edges", blur: 6, scroll: -30, image: { ...picture.image, small: "https://cdn.example.com/cloud-480.webp" } }] });
+    const read = pageRowSchema.parse(stored);
+    expect(read.backgroundLayers).toEqual([{ ...picture, fit: "cover", fade: "edges", blur: 6, scroll: -30 }]);
+    const refused: unknown[] = [
+      { ...picture, image: { ...picture.image, url: "javascript:alert(1)" } },
+      { ...picture, image: { ...picture.image, url: "ftp://cdn.example.com/a.png" } },
+      { ...picture, image: { url: "https://cdn.example.com/a.png" } },
+      { ...picture, image: undefined },
+      { ...picture, fit: "stretch" },
+      { ...picture, width: 2 },
+      { ...picture, x: 120 },
+    ];
+    for (const layer of refused) expect(backgroundLayerSchema.safeParse(layer).success, JSON.stringify(layer)).toBe(false);
+  });
+
   it("reads a row and a column with layers and a hue, and keeps them", () => {
     const stored = row({ backgroundLayers: [glow, { ...grid, scroll: -20, blur: 4 }, { ...horizon, blur: LAYER_BLUR_MAX }], backgroundHue: -45, columns: [{ id: "c", blocks: [], backgroundLayers: [grid], backgroundHue: 20 }] });
     const read = pageRowSchema.parse(stored);

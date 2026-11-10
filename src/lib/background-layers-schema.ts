@@ -11,10 +11,14 @@ import {
   LAYER_PATTERNS,
   LAYER_SCROLL_MAX,
   PATTERN_SIZES,
+  PICTURE_FITS,
+  PICTURE_WIDTH_MAX,
+  PICTURE_WIDTH_MIN,
   type HorizonCurve,
   type LayerAmbient,
   type LayerFade,
   type LayerPattern,
+  type PictureFit,
 } from "./background-layers";
 import { HUE_MAX } from "./hue";
 
@@ -64,8 +68,26 @@ const horizonLayer = z.object({
   curve: z.enum(keys<HorizonCurve>(HORIZON_CURVES)).optional(),
 });
 
+/** The owner's picture as a layer (D537). Its small copy is never kept: it is found again each time the page is read. */
+const pictureLayer = z.object({
+  ...common,
+  type: z.literal("picture"),
+  image: z.object({
+    url: z.url({ protocol: /^https?$/, error: "A background layer's picture has an invalid address." }).max(1000),
+    width: z.number().int().min(1).max(10_000),
+    height: z.number().int().min(1).max(10_000),
+  }),
+  fit: z.enum(keys<PictureFit>(PICTURE_FITS)).optional(),
+  x: percent,
+  y: percent,
+  width: z.number().int().min(PICTURE_WIDTH_MIN).max(PICTURE_WIDTH_MAX).optional(),
+  fade: z.enum(keys<LayerFade>(LAYER_FADES)).optional(),
+});
+
 /** One layer over a background. */
-export const backgroundLayerSchema = z.union([glowLayer, patternLayer, horizonLayer], { error: "A background layer is a glow, a pattern or a horizon." });
+export const backgroundLayerSchema = z.union([glowLayer, patternLayer, horizonLayer, pictureLayer], {
+  error: "A background layer is a glow, a pattern, a horizon or a picture.",
+});
 
 /** A row's or column's layers; an empty list is left out. */
 export const backgroundLayersSchema = z

@@ -70,6 +70,37 @@ describe("the layers over a background, as drawn (D534)", () => {
     expect([...out.matchAll(/--fx-blur/g)]).toHaveLength(1);
   });
 
+  it("draws a picture layer as the owner's picture, without alt text, with its small copy for a phone, loaded as it comes near (D537)", () => {
+    const cloud: BackgroundLayer = { id: "i", type: "picture", image: { url: "https://cdn.example.com/cloud.webp", width: 1600, height: 900, small: "https://cdn.example.com/cloud-480.webp" }, x: 30, y: 40, width: 60, scroll: -50 };
+    const out = layers({ layers: [cloud] });
+    const img = out.match(/<img[^>]*>/)?.[0] ?? "";
+    for (const attribute of [
+      'data-fx-pic="placed"',
+      'src="https://cdn.example.com/cloud.webp"',
+      'srcSet="https://cdn.example.com/cloud-480.webp 480w, https://cdn.example.com/cloud.webp 1600w"',
+      'sizes="60vw"',
+      'alt=""',
+      'width="1600"',
+      'height="900"',
+      'loading="lazy"',
+      'decoding="async"',
+    ])
+      expect(img).toContain(attribute);
+    // It is the element that draws, inside the one that travels.
+    expect(out).toMatch(/<div data-fx-bglayer="picture" data-fx-scroll="layer" data-fx-tl="parent" style="[^"]*--fx-w:60cqw[^"]*--fx-sk:-0.5[^"]*"><img /);
+    // On the first screen it is loaded at once; filling the part it is as wide as the screen; blurred, the small copy is all it needs.
+    expect(layers({ layers: [cloud], eager: true })).toContain('loading="eager"');
+    const cover = layers({ layers: [{ ...cloud, fit: "cover", width: undefined }] });
+    expect(cover).toContain('data-fx-pic="cover"');
+    expect(cover).toContain('sizes="100vw"');
+    const soft = layers({ layers: [{ ...cloud, blur: 8 }] }).match(/<img[^>]*>/)?.[0] ?? "";
+    expect(soft).toContain('src="https://cdn.example.com/cloud-480.webp"');
+    expect(soft).not.toContain("srcSet");
+    // The hue leaves it as it is, and a picture with no usable address is left out.
+    expect(layers({ layers: [cloud], hue: 120 })).toBe(out);
+    expect(layers({ layers: [{ ...cloud, image: { ...cloud.image, url: "javascript:alert(1)" } }] })).toBe("");
+  });
+
   it("draws nothing for no layers, or layers all switched off", () => {
     expect(layers({ layers: undefined })).toBe("");
     expect(layers({ layers: [] })).toBe("");
@@ -151,10 +182,10 @@ describe("the builder's backdrop panel", () => {
   });
 
   it("keeps the layers one press away: closed until asked for, saying how many there are", () => {
-    const some = renderToStaticMarkup(createElement(LayerFields, { layers: [grid, glow, horizon], onLayers: nothing }));
+    const some = renderToStaticMarkup(createElement(LayerFields, { layers: [grid, glow, horizon], upload: null, onLayers: nothing }));
     expect(some).toMatch(/<button[^>]*aria-expanded="false"[^>]*>.*Customise the layers \(3\)<\/button>/);
     expect(some).not.toContain("<fieldset");
-    const none = renderToStaticMarkup(createElement(LayerFields, { layers: undefined, onLayers: nothing }));
+    const none = renderToStaticMarkup(createElement(LayerFields, { layers: undefined, upload: null, onLayers: nothing }));
     expect(none).toContain("Add layers over the background");
   });
 });
