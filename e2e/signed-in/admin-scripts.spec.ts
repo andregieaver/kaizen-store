@@ -34,7 +34,8 @@ const MEASURE = process.env.E2E_MEASURE === "1";
  */
 const BUDGETS: Record<string, number> = {
   "": 2_470_000,
-  "/products": 2_460_000,
+  // 2,460,009 bytes on 10 November 2026 with the pages' shared loading outline (code review FS1), whose words are one small script: the budget of Home and Orders.
+  "/products": 2_470_000,
   "/products/new": 3_400_000,
   "/orders": 2_470_000,
   "/pages": 3_300_000,
