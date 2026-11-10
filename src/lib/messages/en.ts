@@ -721,6 +721,17 @@ export const en = {
     businessOnly: "This product is sold to businesses only.",
     switchToBusiness: "Shop as a business",
   },
+  /** The shop's notes about a basket (D541): free shipping and what is saved today. A saving is against the 30-day lowest price only. */
+  shopNotes: {
+    freeShippingLeft: (amount: string) => `Add ${amount} more for free shipping`,
+    freeShippingReached: "You have free shipping",
+    freeShippingFrom: (amount: string) => `Free shipping on orders from ${amount}`,
+    freeShippingBar: "Towards free shipping",
+    savedToday: (amount: string) => `Today you save ${amount}`,
+    savedCartNote: "Against each product's lowest price in the last 30 days, with your discounts.",
+    savedProductNote: "Against the lowest price in the last 30 days.",
+    goesWith: "Goes well with your cart",
+  },
   priorPrice: "Lowest price in the last 30 days",
   fromPrice: "From",
   /** A buyer's own price from their price list (D321): never a reduction, so no prior price beside it. */

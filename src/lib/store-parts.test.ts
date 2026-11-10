@@ -8,6 +8,7 @@ import {
   PIECE_GROUPS,
   SHOP_PART_KEYS,
   STORE_PARTS,
+  STORE_NOTES,
   STORE_PIECES,
   STORE_PIECE_KEYS,
   isShopPart,
@@ -50,7 +51,7 @@ describe("the pieces of the working pages", () => {
     expect(shopPartCopy("cart").name).toBe(STORE_PARTS.cart.name);
     expect(isShopPart("cart_lines")).toBe(true);
     expect(isShopPart("basket")).toBe(false);
-    expect(SHOP_PART_KEYS).toHaveLength(Object.keys(STORE_PARTS).length + STORE_PIECE_KEYS.length);
+    expect(SHOP_PART_KEYS).toHaveLength(Object.keys(STORE_PARTS).length + STORE_PIECE_KEYS.length + Object.keys(STORE_NOTES).length);
   });
 
   it("all come from what the browser sends, and only the known ones", () => {

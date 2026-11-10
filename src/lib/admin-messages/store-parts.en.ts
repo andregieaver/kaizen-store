@@ -1,4 +1,4 @@
-import { PIECE_GROUPS, STORE_PARTS, STORE_PIECES } from "../store-parts";
+import { PIECE_GROUPS, STORE_NOTES, STORE_PARTS, STORE_PIECES } from "../store-parts";
 
 type Copy = { name: string; hint: string };
 
@@ -10,7 +10,7 @@ type Copy = { name: string; hint: string };
  */
 export const storePartsEn = {
   /** Every component (`STORE_PARTS`) and piece (`STORE_PIECES`) by its key. */
-  parts: Object.fromEntries([...Object.entries(STORE_PARTS), ...Object.entries(STORE_PIECES)].map(([key, part]) => [key, { name: part.name, hint: part.hint }])) as Record<
+  parts: Object.fromEntries([...Object.entries(STORE_PARTS), ...Object.entries(STORE_PIECES), ...Object.entries(STORE_NOTES)].map(([key, part]) => [key, { name: part.name, hint: part.hint }])) as Record<
     string,
     Copy
   >,

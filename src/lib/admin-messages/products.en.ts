@@ -12,6 +12,20 @@ import type { Widen } from "./common.en";
 export const productsEn = {
   /** What `src/lib/bulk-admin.ts` says (`BULK_WORDS`), passed to its functions. */
   bulkLib: BULK_WORDS,
+  /** Settings, Products (D540): what a product's tile in a content grid shows. */
+  settings: {
+    title: "Products",
+    intro: "What shoppers see of your products in grids across your site. Each grid can say otherwise for itself in the page builder.",
+    tilesTitle: "Product tiles",
+    stock: "Show how many are left",
+    stockHint: "\"In stock\", \"Only 3 left\" or \"Sold out\" under the price, read live from your stock. Products without stock to count (downloads, services) say nothing.",
+    quantity: "Show a quantity chooser and Add to cart",
+    quantityHint: "Shoppers can buy straight from the grid. Only for products with one variant that need nothing chosen first; the others keep linking to their page.",
+    save: "Save",
+    saved: "Saved.",
+    readOnly: "Your role may read the store's settings but not change them.",
+    noChange: "You may not change the store's settings.",
+  },
   list: {
     title: "Products",
     exportLink: "Export",

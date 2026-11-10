@@ -15,7 +15,11 @@ import { gridSizes } from "@/lib/picture-sizes";
 import { carouselAnywhere, valueAt } from "@/lib/responsive";
 import { releaseDate } from "@/lib/stock-words";
 
+import type { TileAsk } from "@/lib/shop-tiles";
+
 import { Carousel } from "./carousel";
+import { TileShop } from "./lazy/blocks";
+import type { TileShopWords } from "./tile-shop";
 import { Inline } from "./inline-text";
 import { SHAPES, buttonLook } from "./button-look";
 import { CampaignBadge } from "./campaign-notice";
@@ -35,9 +39,15 @@ export function ContentGridView({
   data,
   notices,
   eager = false,
+  tiles = null,
 }: {
   block: ContentGridBlock;
   data: GridData;
+  /**
+   * What a store's product tiles may show besides the price (D540): the stock left and a quantity chooser with Add to cart, as the grid's
+   * own choices allow (`tileAsk()`); the store's settings come with the facts. Null, as in the builder's canvas, shows neither.
+   */
+  tiles?: TileAsk | null;
   /** The store's campaigns (D115), for a badge on the products they reach. */
   notices?: CampaignNotices;
   /** In a row that may be on the first screen: its first tiles' pictures load at once, the first before anything else. */
@@ -67,6 +77,12 @@ export function ContentGridView({
   const plain = (text: string) => (own ? inlinePlain(text) : text);
   const button = buttonLook(block.button);
   const tile = block.tile;
+  // The facts a store's product tiles ask for (D540): only on its own pages, never for custom items or pages.
+  const shop = tiles && traits.products && data.shop ? { ask: tiles, where: { store: data.shop.store, market: data.shop.market }, cart: data.shop.cart } : null;
+  const shopWords: TileShopWords | null = shop && {
+    cart: { addToCart: m.addToCart, adding: m.adding, added: m.added, capped: m.capped, unavailable: m.unavailable, planConflict: m.planConflict, tryAgain: m.tryAgain, goToCart: m.goToCart },
+    quantity: { quantity: m.quantity, less: m.quantityLess, more: m.quantityMore },
+  };
   // Articles show the day they appeared (D57), in the grid's language.
   const day = new Intl.DateTimeFormat(data.locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
   const tileStyle: CSSProperties = {
@@ -184,6 +200,7 @@ export function ContentGridView({
               {words(item.priceText)}
             </p>
           )}
+          {shop && shopWords && <TileShop productId={item.id} where={shop.where} cart={shop.cart} ask={shop.ask} words={shopWords} />}
           {block.show.button && item.href !== "" && (
             <div className="mt-auto pt-1">
               {/* Named with the item, so "Read more" links are told apart; the visible text starts the name. */}

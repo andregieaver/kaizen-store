@@ -57,6 +57,7 @@ export const STORE_EXPORT_TABLES = [
   "local_delivery_areas",
   "return_settings",
   "order_settings",
+  "product_settings",
   "checkout_rules",
   "checkout_fields",
   "notification_settings",

@@ -753,6 +753,8 @@ export function PageEditor({
             : { count: 0, panel: <p className="text-sm text-muted">{ew.checksUnavailable}</p> }
         }
         shopParts={shape === "page" && context.owner !== null}
+        // The basket's notes (D541) only on a page chosen for the cart, checkout, a category or a tag.
+        noteRoles={fieldRoles}
         siteParts={shape === "header" || shape === "footer" ? sitePartsFor(context.owner, context.house === true) : null}
         upload={upload}
         startVideo={context.startVideo}

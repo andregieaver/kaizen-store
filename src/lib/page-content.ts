@@ -40,6 +40,7 @@ import { foldTypography, textGradientSchema, typographyAtSchema, typographyFamil
 import { SIZES, type Size, type SmallerSize } from "./breakpoints";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
+import type { ShopTiles } from "./shop-tiles";
 import { SHOP_PART_KEYS, type ShopPart } from "./store-parts";
 import { THEME_PART_HEADING_MAX, THEME_PART_TEXT_MAX, THEME_STORE_PARTS, type ThemeStorePart } from "./theme-store-parts";
 import { termIdsSchema } from "./taxonomy";
@@ -936,6 +937,11 @@ export type ContentGridBlock = PartBase & {
    * once, with the choices in the address as on the listing pages (D78).
    */
   filters?: boolean;
+  /**
+   * A product grid's own choice for its tiles' stock left and quantity chooser with Add to cart (D540): absent, each follows the store's
+   * product settings (Settings, Products); `show` or `hide` says otherwise for this grid.
+   */
+  shopTiles?: ShopTiles;
   /** Pictures cropped alike keep the tiles even; landscape unless chosen. */
   /**
    * `theme` draws product tiles as the store theme's product cards (D60):
@@ -993,6 +999,8 @@ export const PRODUCT_PARTS = {
   field: "Custom field",
   loop: "Field loop",
   question: "Product question",
+  free_shipping: "Free shipping",
+  you_saved: "You saved",
 } as const;
 export type ProductPart = keyof typeof PRODUCT_PARTS;
 export const RELATED_MAX = 12;
@@ -3147,6 +3155,9 @@ const contentGridBlock = z
   buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
   emptyText: z.string().trim().max(300, "Keep the text for an empty grid under 300 characters.").default(""),
   filters: z.boolean().optional(),
+  shopTiles: z
+    .object({ stock: z.enum(["show", "hide"]).optional(), quantity: z.enum(["show", "hide"]).optional() }, "A grid's stock and quantity choices are unknown.")
+    .optional(),
   display: z.literal("carousel", "A content grid is shown in an unknown way.").optional(),
   peek: z.boolean().optional(),
   carousel: carouselSettingsSchema.optional(),

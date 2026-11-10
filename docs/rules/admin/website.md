@@ -718,3 +718,16 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   opens): its own suggestions are `src/lib/css-completions.ts` (`THEME_VARIABLES`, a
   new theme variable goes there; `knownClassNames()`), and the plain field stays its fallback; the live site's
   panel uses it too. Where a panel sits and how big it is are only `src/lib/panel-box.ts`, kept per browser.
+
+## Stock and Add to cart on product tiles (D540, `src/lib/shop-tiles.ts`, `src/server/shop-tiles.ts`, `TileShop`, `/api/shop/tiles`)
+
+- Stock and Add to cart on product tiles (D540, `src/lib/shop-tiles.ts`, `src/server/shop-tiles.ts`, `TileShop`, `/api/shop/tiles`): the store's switches are `commerce.product_settings` (Settings, Products), a grid's own choice `ContentGridBlock.shopTiles`, combined only by `tileAsk()`/`tileShows()`. Stock is never drawn on the server or cached: the tile's island asks the route once a page, which answers the settings with the facts; a stock sentence is the product page's own (`tileStockText()`), and a product is buyable from its tile only when nothing must be chosen first (one variant, goods or bundle, no subscription it must have, a price shown, not sold out), through the product page's `AddToCart`.
+
+## Basket notes: free shipping and you saved (D541, `src/lib/shop-notes.ts`, `src/server/shop-notes.ts`, `src/components/shop-notes.tsx`)
+
+- Basket notes: free shipping and you saved (D541, `src/lib/shop-notes.ts`, `src/server/shop-notes.ts`, `src/components/shop-notes.tsx`): `STORE_NOTES` are shop parts that draw on several routes (`drawsOn()`), offered only on a page chosen for the cart, checkout, category or tag (`noteRolesOf()`), and product parts of the same names in product layouts. Free shipping follows `shippingCost()` with the market's flat rate; a saving is only a genuine reduction against the 30-day lowest price (`lineSaving()`, never a price list's, break's, subscription's, booking's or gift card's price) plus the cart's discounts, worked out in code, never by a model.
+
+## Goes well with: upsells from the cart (D542, `recommendForCart()`, `src/components/cart-upsell.tsx`)
+
+- Goes well with: upsells from the cart (D542, `recommendForCart()`, `src/components/cart-upsell.tsx`): the recommendations engine anchored on the cart, plain ranking only (never the AI, never a session), through the same pipeline and its exclusions; a new placement of it goes through `recommendForCart()`, and the standard cart draws it only while the store's recommendations are on.
+

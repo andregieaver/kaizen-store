@@ -1948,6 +1948,31 @@ export function ContentGridFields({
             ))}
         </div>
       </fieldset>
+      {products && own && !recommend && (
+        // The stock left and a quantity chooser on the tiles (D540): the store's setting unless this grid says otherwise.
+        <fieldset className="flex flex-col gap-3 border-t border-border pt-4" data-shop-tiles="">
+          <legend className="float-left mb-1 w-full text-sm font-medium">{gw.shopTiles.legend}</legend>
+          <p className="text-xs text-muted">{gw.shopTiles.hint}</p>
+          {(["stock", "quantity"] as const).map((key) => (
+            <label key={key} className="flex flex-col gap-1 text-sm font-medium">
+              {gw.shopTiles[key]}
+              <select
+                value={block.shopTiles?.[key] ?? "store"}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  const next = { ...block.shopTiles, [key]: value === "show" || value === "hide" ? value : undefined };
+                  onChange({ shopTiles: next.stock || next.quantity ? next : undefined });
+                }}
+                className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal"
+              >
+                <option value="store">{gw.shopTiles.store}</option>
+                <option value="show">{gw.shopTiles.show}</option>
+                <option value="hide">{gw.shopTiles.hide}</option>
+              </select>
+            </label>
+          ))}
+        </fieldset>
+      )}
       {tileEntity(block.source) && (
         <TileFieldsPicker
           entity={tileEntity(block.source)!}

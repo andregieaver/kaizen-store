@@ -102,6 +102,8 @@ export const builderEn = {
     field: "Custom field",
     loop: "Field loop",
     question: "Product question",
+    free_shipping: "Free shipping",
+    you_saved: "You saved",
   },
   /** `SITE_PARTS`. */
   siteParts: {
@@ -262,6 +264,8 @@ export const builderEn = {
     theSite: "The site",
     more: "More",
     shopPages: "Shop pages",
+    basketNotes: "Basket notes",
+    basketNotesHint: "Free shipping and what the shopper saves, for this cart, checkout, category or tag page.",
     shopPagesHint: "Each draws its working page where the page you choose for it is shown, and nothing elsewhere.",
     themeStore: "Theme store",
     themeStoreParts: "Each draws the theme the page's address names, and nothing for a theme it has nothing for.",
@@ -392,6 +396,7 @@ export const builderEn = {
     searchResultsHint:
       "The results, with the filters and what the search understood. Off, it is only the search box, which leads to your search page: right for a 404 page or a header.",
     shows: "Shows",
+    basketNotes: "Basket notes",
     wholePages: "Whole pages",
     shopPartWhere: "It shows only on the page you choose for it under Pages, in the special pages, and nothing elsewhere.",
     inline: "Components side by side",
@@ -672,6 +677,15 @@ export const builderEn = {
     filters: "Filter and sort button",
     filtersHint:
       "Shoppers narrow the products by kind, category, feature, option, price and stock, and change their order; the grid follows at once. The choices go into the page's address, so a filtered grid can be shared.",
+    shopTiles: {
+      legend: "Stock and buying on the tiles",
+      hint: "The store's choice is under Settings, Products. Add to cart shows only on products with one variant that need nothing chosen first; the others link to their page.",
+      stock: "Stock left",
+      quantity: "Quantity and Add to cart",
+      store: "As the store's setting",
+      show: "Show",
+      hide: "Hide",
+    },
     inEachTile: "In each tile",
     elements: { image: "Picture", heading: "Heading", excerpt: "Excerpt", price: "Price", button: "Button" },
     priceText: "Price text",
@@ -927,6 +941,8 @@ export const builderEn = {
       loop: "The rows of one of the product's repeater fields (features, ingredients, sizes), each as a card, line or column. It draws nothing for a product with no rows.",
       question:
         "A short form about the product: a question that goes to your support inbox with the product attached, or a request for a quote of it.",
+      free_shipping: "How much more the shopper adds to their cart for free shipping, with a bar that fills. It uses the free-shipping amount of the market's shipping rate (Settings, Shipping); nothing shows without one.",
+      you_saved: "What the shopper saves today on this product, against its lowest price in the last 30 days. Nothing shows when its price is not a reduction.",
     },
     forProduct: "It shows the product the layout is used for; a part the product has nothing for is left out.",
     heart: "Wishlist heart",

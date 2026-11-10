@@ -58,7 +58,7 @@ import { BLOCKS_MAX, LINE_COLUMNS_MAX, ROW_LAYOUT_KEYS, ROW_LAYOUTS, ROWS_MAX, r
 import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-apply";
 import { hasMotion, type EnterMotion } from "@/lib/motion";
 import { drawTarget, motionSignature, type MotionPart } from "@/lib/motion-edit";
-import { PIECE_GROUPS, STORE_PART_KEYS, STORE_PARTS, piecesOf, shopPartCopy, type ShopPart } from "@/lib/store-parts";
+import { PIECE_GROUPS, STORE_NOTE_KEYS, STORE_PART_KEYS, STORE_PARTS, notesForRoles, piecesOf, shopPartCopy, type ShopPart, type StoreNote } from "@/lib/store-parts";
 import { partDrawsWhenOff, partFeature, partFeatureOn } from "@/lib/part-features";
 import { requirementLabel } from "@/lib/store-features";
 import { type ColumnSpot, type DroppedColumns, columnsLostTo, copyBlock, copyColumn, copyRow, duplicateBlock, addColumn, duplicateColumn, duplicateRow, findBlock, findHolder, nestColumn, newColumnsBlock, htmlIds, insertBlock, insertColumn, insertColumnAt, insertRow, moveBlock, linesOf, locateColumn, moveColumnAt, moveRow, newBlock, newRow, removeBlock, removeColumn, removeRow, setLineLayout, setLineShares, clearLineShares, partOf, patchBlock, patchColumn, patchPart, patchRow, setSpacing, updateBlock, type BlockPatch, type Styled } from "@/lib/page-rows";
@@ -644,6 +644,7 @@ export function PageBuilder({
   productParts = false,
   siteParts = null,
   shopParts = false,
+  noteRoles = [],
   fieldGroups = null,
   lang,
   onTestPart,
@@ -674,6 +675,8 @@ export function PageBuilder({
   siteParts?: SitePart[] | null;
   /** A store's page (D113): its palette offers the working pages' components, the cart, checkout and so on. */
   shopParts?: boolean;
+  /** The roles the page is chosen for (D541): a page for the cart, checkout, a category or a tag is offered the basket's notes that draw there. */
+  noteRoles?: readonly string[];
   /** The store's active custom field groups (D118), for the components that show them; null where the owner has none (Kaizen's). */
   fieldGroups?: FieldGroup[] | null;
   grid: GridContext;
@@ -1368,6 +1371,7 @@ export function PageBuilder({
             // Custom fields (D118) are the page's or article's own: a store's pages and articles, when it has any groups.
             customFields={fieldGroups !== null && grid.owner !== null && !productParts}
             shop={shopParts}
+            notes={shopParts ? notesForRoles(noteRoles) : []}
             parts={parts}
             pageType={pageType}
             onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
@@ -1772,6 +1776,7 @@ function Sidebar({
   themeStoreParts,
   customFields,
   shop,
+  notes,
   features,
   parts,
   pageType,
@@ -1813,6 +1818,8 @@ function Sidebar({
   customFields: boolean;
   /** The store's working pages' components can be added (D113). */
   shop: boolean;
+  /** The basket's notes that can be added (D541): those that draw on the roles the page is chosen for. */
+  notes: readonly StoreNote[];
   /** The store's features as kept (D178): parts of a feature that is off are not offered. Null offers every part. */
   features: readonly string[] | null;
   parts: SavedPart[];
@@ -1838,6 +1845,7 @@ function Sidebar({
   const offered = (part: ShopPart) => partFeatureOn({ type: "storePart", part }, features);
   const shopPages = STORE_PART_KEYS.filter((part) => "feature" in STORE_PARTS[part] && offered(part));
   const siteWideParts = STORE_PART_KEYS.filter((part) => !("feature" in STORE_PARTS[part]) && offered(part));
+  const noteKeys = notes.filter(offered);
   const pieceGroups = PIECE_GROUPS.map((group) => ({ ...group, pieces: piecesOf(group.route).filter(offered) })).filter((group) => group.pieces.length > 0);
   // The sidebar shows the building blocks or, where the store has a theme to edit here, the theme (D182).
   const [mode, setMode] = useState<"blocks" | "theme">("blocks");
@@ -1970,6 +1978,25 @@ function Sidebar({
                     ))}
                   </div>
                 </>
+              )}
+              {noteKeys.length > 0 && (
+                <div className="flex flex-col gap-3" data-palette-notes="">
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{sw.basketNotes}</h3>
+                  <p className="text-xs text-muted">{sw.basketNotesHint}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {noteKeys.map((part) => (
+                      <PaletteTile
+                        key={part}
+                        id={`palette:shop:${part}`}
+                        data={{ kind: "palette-block", type: "storePart", part }}
+                        label={partCopy.part(part).name}
+                        preview={<ShopPartIcon part={part} />}
+                        onAdd={() => onAddBlock("storePart", part)}
+                        disabled={blocksFull}
+                      />
+                    ))}
+                  </div>
+                </div>
               )}
               {shop &&
                 pieceGroups.map((group) => (
@@ -4122,6 +4149,13 @@ function Dialogs({
                   >
                     <optgroup label={dw.wholePages}>
                       {STORE_PART_KEYS.map((part) => (
+                        <option key={part} value={part}>
+                          {partCopy.part(part).name}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label={dw.basketNotes}>
+                      {STORE_NOTE_KEYS.map((part) => (
                         <option key={part} value={part}>
                           {partCopy.part(part).name}
                         </option>

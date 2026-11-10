@@ -25,3 +25,5 @@ export const PageModal = lazyView(dynamic(() => import("../page-modal").then((m)
 export const RecommendedGrid = lazyView(dynamic(() => import("../recommended-grid").then((m) => m.RecommendedGrid)), showChildren);
 export const SearchBox = lazyView(dynamic(() => import("../search-box").then((m) => m.SearchBox)));
 export const DomainSearchBox = lazyView(dynamic(() => import("../domain-search-box").then((m) => m.DomainSearchBox)));
+/** A product tile's stock and Add to cart (D540): loaded only on a page whose grids show them; nothing is drawn until the facts arrive. */
+export const TileShop = lazyView(dynamic(() => import("../tile-shop").then((m) => m.TileShop)));

@@ -1,3 +1,5 @@
+import { FreeShippingNote, ProductSavedNote } from "./shop-notes";
+import { productSaving } from "@/lib/shop-notes";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
@@ -179,6 +181,15 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           large={block.large !== false}
         />
       );
+    // The basket's notes (D541): how far the shopper's cart is from free shipping (per request), and what this product saves today.
+    case "free_shipping":
+      return (
+        <Suspense fallback={null}>
+          <FreeShippingNote store={store} market={market} m={m} />
+        </Suspense>
+      );
+    case "you_saved":
+      return product.priceOnRequest ? null : <ProductSavedNote price={headlinePrice(product)} market={market} m={m} />;
     case "campaigns":
       return <CampaignNotices notices={noticesFor(ctx.campaigns, product.id)} market={market} m={m} />;
     case "rating":
@@ -515,6 +526,8 @@ export function productPartShows(
       );
     case "loop":
       return loopShows(product.fields, productLoopConfig(block));
+    case "you_saved":
+      return !product.priceOnRequest && productSaving(headlinePrice(product)) > 0;
     case "question":
       // A request for a quote only of goods a draft can sell (D431); a question of anything.
       return questionKindOf(block) === "question" || quotable(product);

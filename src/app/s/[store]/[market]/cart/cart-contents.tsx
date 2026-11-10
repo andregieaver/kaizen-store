@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { choicesFor } from "@/lib/customer-addresses";
 import { listAddresses } from "@/server/customer-addresses";
 import Image from "next/image";
@@ -42,6 +43,8 @@ import { getCart, getCartGift, readCartId } from "@/server/cart";
 import { checkoutQuestionsFor } from "@/server/checkout-rules";
 import { perRequest } from "@/server/request-memo";
 import { cartSummary } from "@/server/cart-summary";
+import { getRecommendSettings } from "@/server/recommend-settings";
+import { CartUpsell } from "@/components/cart-upsell";
 import { getCustomer } from "@/server/customers";
 import { buyerFacts } from "@/server/company-locations";
 import { termsForBasket } from "@/server/payment-terms";
@@ -237,12 +240,19 @@ export async function CartContents({
   const view = await cartView(store, market, m);
   if (view.empty) return EMPTY_CART(view.home, m);
   const draw = { store, market, m, view };
+  // What goes with the cart (D542): in the standard cart and the slide-out cart while the store's recommendations are on.
+  const upsell = (await getRecommendSettings(store.id)).enabled ? (
+    <Suspense fallback={null}>
+      <CartUpsell store={store} market={market} m={m} compact={drawer} />
+    </Suspense>
+  ) : null;
   return (
     // minmax(0, …): nothing inside may make a column wider than the screen.
     <div className={`grid grid-cols-[minmax(0,1fr)] ${drawer ? "gap-4" : "gap-8 md:grid-cols-[minmax(0,1fr)_18rem]"}`}>
       <div className="flex min-w-0 flex-col gap-4">
         {linesList(draw, drawer)}
         {giftBox(draw)}
+        {!drawer && upsell}
       </div>
       <aside
         aria-label={m.subtotal}
@@ -253,6 +263,7 @@ export async function CartContents({
         {creditsForm(draw)}
         {checkoutAction(draw)}
       </aside>
+      {drawer && upsell}
     </div>
   );
 }

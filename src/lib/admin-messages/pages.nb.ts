@@ -388,6 +388,10 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Innstillinger for retur",
     keywords: ["returinnstillinger", "angrerett", "angrefrist", "returadresse", "returfrakt", "retningslinjer for retur"],
   },
+  "store:products.settings": {
+    title: "Innstillinger for produkter",
+    keywords: ["lager på flisene", "vis lager", "antall på flisene", "legg i handlekurven fra rutenett", "produktfliser", "bare igjen"],
+  },
   "store:orders.settings": {
     title: "Innstillinger for bestillinger",
     keywords: ["bestillingsinnstillinger", "gavemelding", "gave", "arkiver automatisk", "betalingslenke", "betalt utenfor", "kontant", "bankoverføring"],

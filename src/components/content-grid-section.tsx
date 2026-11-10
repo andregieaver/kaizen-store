@@ -5,6 +5,7 @@ import type { CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import { t } from "@/lib/i18n";
 import { sourceTraits } from "@/lib/grid-source";
+import { tileAsk, type TileAsk } from "@/lib/shop-tiles";
 import { chosenFilters, listingQuery, parseListingParams } from "@/lib/listing-filters";
 import type { ContentGridBlock } from "@/lib/page-content";
 import { tileFieldIds } from "@/lib/tile-fields";
@@ -32,16 +33,18 @@ export async function ContentGridSection({ block, place, eager = false }: { bloc
   if (recommends(block, place) && place.owner) return <RecommendingGrid block={block} place={place} owner={place.owner} eager={eager} />;
   const data = await gridData(block, place);
   const { listing } = place;
+  // The stock left and a quantity chooser on a store's own product tiles (D540), as the grid allows; the store's settings come with the facts.
+  const tiles = place.owner ? tileAsk(block.shopTiles) : null;
   const products = sourceTraits(block.source).products;
   const notices = products && place.owner ? await campaignNoticesAt(place.owner, place.market ?? null) : undefined;
   if (block.filters && products && place.owner && listing) {
     return (
-      <Suspense fallback={<ContentGridView block={block} data={data} notices={notices} eager={eager} />}>
-        <FilterableGrid block={block} owner={place.owner} market={place.market} listing={listing} data={data} notices={notices} eager={eager} />
+      <Suspense fallback={<ContentGridView block={block} data={data} notices={notices} eager={eager} tiles={tiles} />}>
+        <FilterableGrid block={block} owner={place.owner} market={place.market} listing={listing} data={data} notices={notices} eager={eager} tiles={tiles} />
       </Suspense>
     );
   }
-  return <ContentGridView block={block} data={data} notices={notices} eager={eager} />;
+  return <ContentGridView block={block} data={data} notices={notices} eager={eager} tiles={tiles} />;
 }
 
 /** The grid's products as the shopper filters and sorts them, with the controls to do so. */
@@ -53,7 +56,9 @@ async function FilterableGrid({
   data,
   notices,
   eager,
+  tiles,
 }: {
+  tiles: TileAsk | null;
   block: ContentGridBlock;
   owner: string;
   market: string | undefined;
@@ -108,7 +113,7 @@ async function FilterableGrid({
       {items.length === 0 && !unfiltered ? (
         <p>{m.listing.none}</p>
       ) : (
-        <ContentGridView block={block} data={{ ...data, items }} notices={notices} eager={eager} />
+        <ContentGridView block={block} data={{ ...data, items }} notices={notices} eager={eager} tiles={tiles} />
       )}
       {more && page < LISTING_PAGES_MAX && (
         <div className="flex flex-col items-center gap-2 pt-2">

@@ -284,30 +284,79 @@ export const STORE_PIECE_KEYS = Object.keys(STORE_PIECES) as StorePiece[];
 
 export const isStorePiece = (value: unknown): value is StorePiece => typeof value === "string" && Object.hasOwn(STORE_PIECES, value);
 
-/** What a shop component can be: a working page as a whole, or one piece of the cart, checkout or order page. */
-export type ShopPart = StorePart | StorePiece;
+/**
+ * Notes about the shopper's basket (D541) for the pages built as templates of the shop: the cart, the checkout and the category and tag
+ * pages (`routes`), and, as product parts of the same names (`PRODUCT_PARTS`), a product's page. Each draws only on those routes and,
+ * like a piece, with no frame of its own; one with nothing to say (no threshold set, nothing saved) draws nothing. The builder offers them
+ * only on a page chosen for one of those roles (`noteRolesOf()`), and in product layouts.
+ */
+export const STORE_NOTES = {
+  free_shipping: {
+    routes: ["cart", "checkout", "category", "tag"],
+    feature: "shop",
+    name: "Free shipping",
+    hint: "How much more the shopper adds for free shipping, with a bar that fills, or that shipping is free. It uses the free-shipping amount of the market's shipping rate (Settings, Shipping); nothing shows without one.",
+  },
+  you_saved: {
+    routes: ["cart", "checkout", "category", "tag"],
+    feature: "shop",
+    name: "You saved",
+    hint: "What the shopper saves today on the cart: reductions against each product's lowest price in the last 30 days, and discounts. Nothing shows when nothing is saved.",
+  },
+  cart_upsell: {
+    routes: ["cart", "checkout"],
+    feature: "shop",
+    name: "Goes well with",
+    hint: "Products that go with what is in the cart (upsells, cross-sells and accessories, by your Recommendations rules), each with a button to add it. Nothing in the cart, nothing shown.",
+  },
+} as const satisfies Record<string, { routes: readonly StorePart[]; name: string; hint: string; feature?: FeatureRequirement }>;
 
-export const SHOP_PART_KEYS: ShopPart[] = [...STORE_PART_KEYS, ...STORE_PIECE_KEYS];
+export type StoreNote = keyof typeof STORE_NOTES;
 
-export const isShopPart = (value: unknown): value is ShopPart => isStorePart(value) || isStorePiece(value);
+export const STORE_NOTE_KEYS = Object.keys(STORE_NOTES) as StoreNote[];
 
-/** The working page a component draws on: its own for a whole page, the page it is a piece of otherwise. */
-export const routeOfPart = (part: ShopPart): StorePart => (isStorePiece(part) ? STORE_PIECES[part].route : part);
+export const isStoreNote = (value: unknown): value is StoreNote => typeof value === "string" && Object.hasOwn(STORE_NOTES, value);
+
+/** The roles a page is chosen for where the notes are offered (D541): the cart, checkout, category and tag pages. */
+export const NOTE_ROLES: readonly StorePart[] = ["cart", "checkout", "category", "tag"];
+
+/** Whether a page chosen for these roles is offered the notes in the builder. */
+export const noteRolesOf = (roles: readonly string[]): boolean => roles.some((role) => (NOTE_ROLES as readonly string[]).includes(role));
+
+/** The notes offered on a page chosen for these roles: those that draw on one of them. */
+export const notesForRoles = (roles: readonly string[]): StoreNote[] =>
+  STORE_NOTE_KEYS.filter((note) => (STORE_NOTES[note].routes as readonly string[]).some((route) => roles.includes(route)));
+
+/** What a shop component can be: a working page as a whole, one piece of the cart, checkout or order page, or a note (D541). */
+export type ShopPart = StorePart | StorePiece | StoreNote;
+
+export const SHOP_PART_KEYS: ShopPart[] = [...STORE_PART_KEYS, ...STORE_PIECE_KEYS, ...STORE_NOTE_KEYS];
+
+export const isShopPart = (value: unknown): value is ShopPart => isStorePart(value) || isStorePiece(value) || isStoreNote(value);
+
+/** The working page a component draws on: its own for a whole page, the page it is a piece of otherwise, a note's first route. */
+export const routeOfPart = (part: ShopPart): StorePart => (isStoreNote(part) ? STORE_NOTES[part].routes[0] : isStorePiece(part) ? STORE_PIECES[part].route : part);
+
+/** Whether a component draws on this working route: a note on any of its routes, anything else on its own. */
+export const drawsOn = (part: ShopPart, route: StorePart): boolean =>
+  isStoreNote(part) ? (STORE_NOTES[part].routes as readonly StorePart[]).includes(route) : routeOfPart(part) === route;
+
+const entryOf = (part: ShopPart): object => (isStoreNote(part) ? STORE_NOTES[part] : isStorePiece(part) ? STORE_PIECES[part] : STORE_PARTS[part]);
 
 /** The store feature a shop component stands behind (D178), if any. */
 export function shopPartFeature(part: ShopPart): FeatureRequirement | undefined {
-  const entry: object = isStorePiece(part) ? STORE_PIECES[part] : STORE_PARTS[part];
+  const entry = entryOf(part);
   return "feature" in entry ? (entry.feature as FeatureRequirement) : undefined;
 }
 
 /** Whether a shop component still draws while its feature is off (D178): it serves shoppers' links to what they already have. */
 export function shopPartAfterSale(part: ShopPart): boolean {
-  const entry: object = isStorePiece(part) ? STORE_PIECES[part] : STORE_PARTS[part];
+  const entry = entryOf(part);
   return "afterSale" in entry && entry.afterSale === true;
 }
 
 /** What the admin calls a component, and what it says it does. */
-export const shopPartCopy = (part: ShopPart): { name: string; hint: string } => (isStorePiece(part) ? STORE_PIECES[part] : STORE_PARTS[part]);
+export const shopPartCopy = (part: ShopPart): { name: string; hint: string } => entryOf(part) as { name: string; hint: string };
 
 /** The pieces of a working page, in the order the standard page draws them. */
 export const piecesOf = (route: StorePart): StorePiece[] => STORE_PIECE_KEYS.filter((piece) => STORE_PIECES[piece].route === route);

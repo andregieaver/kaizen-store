@@ -93,6 +93,8 @@ export const builderNb: BuilderMessages = {
     field: "Egendefinert felt",
     loop: "Feltløkke",
     question: "Spørsmål om produktet",
+    free_shipping: "Fri frakt",
+    you_saved: "Du sparte",
   },
   siteParts: {
     logo: "Logo",
@@ -245,6 +247,8 @@ export const builderNb: BuilderMessages = {
     theSite: "Nettstedet",
     more: "Mer",
     shopPages: "Butikksider",
+    basketNotes: "Merknader om handlekurven",
+    basketNotesHint: "Fri frakt og hva kunden sparer, for denne siden for handlekurv, kasse, kategori eller stikkord.",
     shopPagesHint: "Hver tegner sin arbeidsside der siden du velger for den vises, og ingenting andre steder.",
     themeStore: "Temabutikk",
     themeStoreParts: "Hver tegner temaet som sidens adresse nevner, og ingenting for et tema den ikke har noe for.",
@@ -367,6 +371,7 @@ export const builderNb: BuilderMessages = {
     searchResultsHint:
       "Treffene, med filtrene og det søket forsto. Av er det bare søkefeltet, som leder til søkesiden din: riktig for en 404-side eller en topptekst.",
     shows: "Viser",
+    basketNotes: "Merknader om handlekurven",
     wholePages: "Hele sider",
     shopPartWhere: "Den vises bare på siden du velger for den under Sider, i spesialsidene, og ingenting andre steder.",
     inline: "Komponenter side om side",
@@ -631,6 +636,15 @@ export const builderNb: BuilderMessages = {
     filters: "Knapp for filter og sortering",
     filtersHint:
       "Kundene snevrer inn produktene etter type, kategori, egenskap, valg, pris og lager, og endrer rekkefølgen; rutenettet følger med med en gang. Valgene legges i sidens adresse, så et filtrert rutenett kan deles.",
+    shopTiles: {
+      legend: "Lager og kjøp på flisene",
+      hint: "Butikkens valg ligger under Innstillinger, Produkter. Legg i handlekurven vises bare på produkter med én variant der ingenting må velges først; de andre lenker til siden sin.",
+      stock: "Antall på lager",
+      quantity: "Antall og Legg i handlekurven",
+      store: "Som butikkens innstilling",
+      show: "Vis",
+      hide: "Skjul",
+    },
     inEachTile: "I hver flis",
     elements: { image: "Bilde", heading: "Overskrift", excerpt: "Utdrag", price: "Pris", button: "Knapp" },
     priceText: "Pristekst",
@@ -874,6 +888,8 @@ export const builderNb: BuilderMessages = {
       loop: "Radene i et av produktets repeterende felt (egenskaper, ingredienser, størrelser), hver som et kort, en linje eller en kolonne. Den tegner ingenting for et produkt uten rader.",
       question:
         "Et kort skjema om produktet: et spørsmål som går til kundeservice-innboksen med produktet vedlagt, eller en forespørsel om tilbud på det.",
+      free_shipping: "Hvor mye mer kunden må legge i handlekurven for fri frakt, med en stolpe som fylles. Den bruker beløpet for fri frakt i markedets fraktpris (Innstillinger, Frakt); ingenting vises uten et.",
+      you_saved: "Hva kunden sparer i dag på dette produktet, mot laveste pris de siste 30 dagene. Ingenting vises når prisen ikke er en reduksjon.",
     },
     forProduct: "Den viser produktet oppsettet brukes for; en del produktet ikke har noe for, utelates.",
     heart: "Ønskelistehjerte",

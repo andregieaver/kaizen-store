@@ -43,10 +43,12 @@ import { SubscriptionSection } from "@/app/s/[store]/[market]/subscription/[toke
 import { TermListing } from "@/app/s/[store]/[market]/term-listing";
 import { WishlistSection } from "@/app/s/[store]/[market]/wishlist/wishlist-section";
 import { PrivateSection } from "@/app/s/[store]/private/[market]/private-section";
+import { CartUpsell } from "@/components/cart-upsell";
+import { CartSavedNote, FreeShippingNote } from "@/components/shop-notes";
 import { t } from "@/lib/i18n";
 import type { StorePartBlock } from "@/lib/page-content";
 import { requirementMet } from "@/lib/store-features";
-import { routeOfPart, shopPartAfterSale, shopPartFeature, type ShopPart, type StoreRoute } from "@/lib/store-parts";
+import { drawsOn, shopPartAfterSale, shopPartFeature, type ShopPart, type StoreRoute } from "@/lib/store-parts";
 import { storeAndMarket, type GridPlace } from "@/server/content-grid";
 
 /**
@@ -60,7 +62,7 @@ import { storeAndMarket, type GridPlace } from "@/server/content-grid";
  */
 export function StorePartSection({ block, place }: { block: StorePartBlock; place: GridPlace }) {
   const route = place.route;
-  if (!route || route.part !== routeOfPart(block.part) || !place.owner) return null;
+  if (!route || !drawsOn(block.part, route.part) || !place.owner) return null;
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>
       <Part owner={place.owner} market={place.market ?? null} route={route} part={block.part} />
@@ -147,6 +149,14 @@ async function Part({
       return order && <OrderTerms {...order} />;
     case "order_continue":
       return order && <OrderContinue {...order} />;
+    // The basket's notes (D541): on the cart, checkout, category and tag pages.
+    case "free_shipping":
+      return <FreeShippingNote store={store} market={market} m={m} />;
+    case "you_saved":
+      return <CartSavedNote store={store} market={market} m={m} />;
+    // What goes with the cart (D542): on the cart and checkout pages.
+    case "cart_upsell":
+      return <CartUpsell store={store} market={market} m={m} />;
     case "cart":
       return <CartContents store={store} market={market} m={m} />;
     case "checkout":

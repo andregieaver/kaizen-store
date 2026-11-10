@@ -5419,6 +5419,20 @@
       "when": 1794307017092,
       "tag": "20261110103657_webhook_claim_exact",
       "breakpoints": true
+    },
+    {
+      "idx": 774,
+      "version": "7",
+      "when": 1794350080117,
+      "tag": "20261110223440_product_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 775,
+      "version": "7",
+      "when": 1794351051092,
+      "tag": "20261110225051_product_settings_rules",
+      "breakpoints": true
     }
   ]
 }

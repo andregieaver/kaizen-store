@@ -1,6 +1,6 @@
 {
-  "id": "385a5a94-ba88-46c6-83a5-23670a8091d7",
-  "prevId": "57fc9ced-cc24-46f3-b1b9-8ba94e2c951c",
+  "id": "ead04e7b-3c34-4e7a-adcc-51fdbd810f09",
+  "prevId": "8e2bcf98-8c38-48d4-ab96-2d6838c8d439",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -58001,6 +58001,61 @@
           ]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "commerce.product_settings": {
+      "name": "product_settings",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tile_stock": {
+          "name": "tile_stock",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "tile_quantity": {
+          "name": "tile_quantity",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "product_settings_store_id_stores_id_fk": {
+          "name": "product_settings_store_id_stores_id_fk",
+          "tableFrom": "product_settings",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},

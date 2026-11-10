@@ -674,6 +674,29 @@ export async function recommendForChat(
 }
 
 /**
+ * Recommendations around the shopper's cart (D542, the *Goes well with* component on the cart, checkout and slide-out cart): the same engine,
+ * rules and exclusions, anchored on what is in the cart (never one of those products again), with the plain ranking only: no session and
+ * no AI, so it costs no tokens and is the same for a cart on every visit. Empty for an empty cart. It answers whether or not the store's
+ * recommendations are on: a placed component is the owner's own choice; the standard cart asks only while they are on (`CartContents`).
+ */
+export async function recommendForCart(store: Store, market: Market, limit: number): Promise<GridItem[]> {
+  const viewer = await viewerOf(store, market);
+  if (viewer.cart.length === 0) return [];
+  const settings = await getRecommendSettings(store.id);
+  const result = await pipeline({
+    store,
+    market,
+    place: { kind: "other" },
+    block: { limit: Math.min(6, Math.max(1, limit)), mix: DEFAULT_MIX, explain: true, categories: [], tags: [], tileFields: [] },
+    signals: { views: [], searches: [] },
+    viewer,
+    ai: false,
+    ceilingPercent: settings.upsellCeilingPercent,
+  });
+  return result.items;
+}
+
+/**
  * One replay for the check against past orders: what the engine (plain ranking, no AI) would put first for a shopper who looked
  * at `viewed`, with the order being replayed left out of what it learns from, and what the best sellers alone would; each
  * as the ids of products that are on sale now, best first.

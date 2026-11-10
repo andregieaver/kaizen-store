@@ -327,6 +327,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use.", { feature: "shop", icon: "credit-card", basic: true }),
           item("/settings/shipping", "Shipping", "Flat rates, shipping methods with zones and profiles, pickup at your places, local delivery and carriers.", { feature: "shop", icon: "truck", basic: true }),
+          item("/settings/products", "Products", "What product tiles in your grids show: how many are left, and a quantity chooser with Add to cart.", { feature: "shop", icon: "package" }),
           item("/settings/orders", "Orders", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizena Flow.", { feature: "shop", icon: "clipboard-list" }),
           item("/settings/notifications", "Notifications", "The emails customers get about their orders and returns: which are sent, your own wording in each language, and who on the team is told of new orders.", { feature: "shop", icon: "bell" }),
           item("/settings/checkout", "Checkout rules", "Hide or rename a delivery option, leave a payment method out or stop an order when the basket matches; and questions the checkout asks.", { feature: "shop", icon: "list-filter" }),

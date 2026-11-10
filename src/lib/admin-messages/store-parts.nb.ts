@@ -90,6 +90,18 @@ export const storePartsNb: StorePartsMessages = {
       hint: "Vilkårene og personvernerklæringen kunden ble vist da de bestilte, hver som en side som bare kan leses. Ingenting for en ordre som ikke tok vare på noen.",
     },
     order_continue: { name: "Fortsett å handle", hint: "En lenke tilbake til butikkens forside." },
+    free_shipping: {
+      name: "Fri frakt",
+      hint: "Hvor mye mer kunden må handle for fri frakt, med en stolpe som fylles, eller at frakten er gratis. Den bruker beløpet for fri frakt i markedets fraktpris (Innstillinger, Frakt); ingenting vises uten et.",
+    },
+    you_saved: {
+      name: "Du sparte",
+      hint: "Hva kunden sparer i dag på handlekurven: reduksjoner mot hvert produkts laveste pris de siste 30 dagene, og rabatter. Ingenting vises når ingenting er spart.",
+    },
+    cart_upsell: {
+      name: "Passer godt med",
+      hint: "Produkter som passer med det som ligger i handlekurven (mersalg, krysssalg og tilbehør, etter reglene dine under Anbefalinger), hver med en knapp for å legge det til. Tom handlekurv, ingenting vises.",
+    },
   },
   groups: {
     cart: { name: "Deler av handlekurven", hint: "Handlekurvsiden tatt fra hverandre. Delene viser seg på siden som er valgt for handlekurven." },

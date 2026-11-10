@@ -306,6 +306,7 @@ export const NAV_NB: Record<string, string> = {
   "Apps and API": "Apper og API",
   Workflows: "Arbeidsflyter",
   "Checkout rules": "Regler i kassen",
+  "What product tiles in your grids show: how many are left, and a quantity chooser with Add to cart.": "Hva produktflisene i rutenettene viser: hvor mange som er igjen, og en antallsvelger med Legg i handlekurven.",
   "Prices and quantity": "Priser og antall",
   "How shoppers see prices, with or without ,00 on whole amounts and your words before and after them, and how they choose how many.":
     "Hvordan kundene ser prisene, med eller uten ,00 på hele beløp og med dine ord før og etter dem, og hvordan de velger antall.",

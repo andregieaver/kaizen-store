@@ -14394,6 +14394,20 @@ export const orderSettings = commerce.table(
 );
 
 /**
+ * The store's product settings (D540), one row a store made when first saved (a store without one reads the defaults): what a product's tile
+ * in a content grid shows besides its picture, title and price: the stock left (`tile_stock`) and a quantity chooser with Add to cart
+ * (`tile_quantity`), both off. A grid may override either (`ContentGridBlock.shopTiles`). A copy starts with the defaults (`never` in `COPY_RULES`).
+ */
+export const productSettings = commerce.table("product_settings", {
+  storeId: uuid("store_id")
+    .primaryKey()
+    .references(() => stores.id, { onDelete: "cascade" }),
+  tileStock: boolean("tile_stock").notNull().default(false),
+  tileQuantity: boolean("tile_quantity").notNull().default(false),
+  updatedAt: updatedAt(),
+});
+
+/**
  * A draft order (D173): a staff-made, editable quote that becomes a real order when sent (`docs/wave-3-orders.md` 4.5). While `open` it holds
  * no stock and no number; *Send* makes the order (`orders.source = 'draft'`, `orders.draft_id` this id, numbered from D141's sequence) and the
  * draft `sent`; paying marks it `paid` (`orders_draft_follow()`), an unpaid expiry `expired`, and *Reopen* returns it to `open`. The lifecycle,

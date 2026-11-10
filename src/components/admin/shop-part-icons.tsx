@@ -123,6 +123,21 @@ const padlock = (
   </>
 );
 
+/** A bar that fills (free shipping, D541). */
+const progress = (
+  <>
+    <rect x="3" y="9" width="18" height="6" rx="3" />
+    {line("M6 12h7")}
+  </>
+);
+/** A price tag with a minus (you saved, D541). */
+const saved = (
+  <>
+    {line("M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z")}
+    {line("M9 11h6")}
+  </>
+);
+
 export const SHOP_PART_ICONS: Record<ShopPart, ReactNode> = {
   cart,
   checkout: card,
@@ -163,6 +178,9 @@ export const SHOP_PART_ICONS: Record<ShopPart, ReactNode> = {
   order_address: pin,
   order_terms: terms,
   order_continue: back,
+  free_shipping: progress,
+  you_saved: saved,
+  cart_upsell: gift,
 };
 
 export function ShopPartIcon({ part }: { part: ShopPart }) {

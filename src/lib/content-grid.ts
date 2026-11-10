@@ -41,6 +41,12 @@ export type GridItem = {
   note?: string;
 };
 
-export type GridData = { items: GridItem[]; lang: string; locale: string };
+export type GridData = {
+  items: GridItem[];
+  lang: string;
+  locale: string;
+  /** A grid of a store's products (D540): the store's and market's address parts and its cart, for what a tile buys. */
+  shop?: { store: string; market: string; cart: string };
+};
 
 export const EMPTY_GRID: GridData = { items: [], lang: "en", locale: "en-GB" };

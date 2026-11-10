@@ -658,6 +658,11 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Set the return window", "Choose who pays for return shipping", "Write the return instructions", "Translate the return instructions"],
     feature: "shop",
   }),
+  store("products.settings", "/settings/products", "Product settings", "Settings", "What a product's tile in a content grid shows besides its picture, title and price: how many are left (\"Only 3 left\") and a quantity chooser with Add to cart, both off until switched on. Each grid can say otherwise for itself in the page builder.", {
+    keywords: ["stock on tiles", "show stock", "quantity on tiles", "add to cart in grid", "buy from grid", "product tiles", "product grid", "only left"],
+    tasks: ["Show the stock left on product tiles", "Let shoppers add to cart straight from a grid"],
+    feature: "shop",
+  }),
   store("orders.settings", "/settings/orders", "Orders settings", "Sales", "How the store handles orders: whether shoppers may mark an order as a gift with a message, automatic archiving of finished orders after a number of days (off by default), how many days a draft order's pay link is valid, and whether staff other than the owner may record a payment taken outside Kaizena Flow.", {
     keywords: ["gift message", "gift", "auto archive", "archive orders", "pay link valid", "draft order link", "payment outside", "cash", "bank transfer", "staff may mark paid"],
     tasks: ["Turn gift messages on or off", "Archive finished orders automatically", "Set how long a draft's pay link is valid", "Let staff record payments taken outside Kaizena Flow"],

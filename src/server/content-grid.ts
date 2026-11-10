@@ -318,7 +318,12 @@ async function gridProducts(storeId: string, marketCode: string | null, filter: 
   const manual = filter.sort === "manual" && single.length === 1 ? { sort: "manual", orderTerm: single[0] } : filter.sort === "manual" ? { sort: "newest" } : { sort: filter.sort };
   const products = await listGridProducts(storeId, market, { ...scope, ...manual, limit: filter.limit });
   const items = products.map((product) => productItem(store.slug, market.slug, product));
-  return { lang: market.lang, locale: market.locale, items: await withTileFields(storeId, "product", market, filter.tileFields, items) };
+  return {
+    lang: market.lang,
+    locale: market.locale,
+    items: await withTileFields(storeId, "product", market, filter.tileFields, items),
+    shop: { store: store.slug, market: market.slug, cart: marketPath(store.slug, market.slug, "/cart") },
+  };
 }
 
 /**
