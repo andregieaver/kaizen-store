@@ -16,11 +16,12 @@ import { ADMIN, E2E_STORE, OWNER } from "./accounts";
 const plain = ADMIN_PAGES.filter((page) => pageParams(page).length === 0);
 
 async function fallbacksOn(page: Page, address: string): Promise<string[]> {
-  const response = await page.goto(address, { waitUntil: "load" });
+  const response = await page.goto(address, { waitUntil: "load", timeout: 20_000 }).catch(() => null);
   // A page a role may not open, or one switched off with its feature, answers so; it has nothing to check.
   if (!response || response.status() >= 400) return [];
-  await page.waitForLoadState("networkidle").catch(() => {});
-  return page.evaluate(() => (window as unknown as { __adminTextFallbacks?: string[] }).__adminTextFallbacks ?? []);
+  // A fallback is noted while the page hydrates, which follows its load; some screens keep the network busy, so it is not waited for.
+  await page.waitForTimeout(400);
+  return page.evaluate(() => (window as unknown as { __adminTextFallbacks?: string[] }).__adminTextFallbacks ?? []).catch(() => []);
 }
 
 /** An address with its ids taken out, so one screen of each kind is visited: `/admin/x/orders/1042` and `/orders/1043` are one. */

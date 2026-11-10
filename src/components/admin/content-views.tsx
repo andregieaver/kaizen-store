@@ -104,7 +104,7 @@ export async function NewContentTypeView({ site, preset }: { site: ContentSite; 
   const taken = (await listContentTypes(site.owner)).map((t) => t.slug);
   const initial = (typeof preset === "string" && typeFromPreset(preset, site.lang, taken)) || emptyType(site.lang, taken);
   return (
-    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields", "website"])}>
+    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields", "builder", "website"])}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: site.base, label: w.type.backToList }} title={w.type.newTitle} />
         <ContentTypeChoices types={await contentTypeChoices(site.owner)}>
