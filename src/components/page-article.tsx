@@ -405,9 +405,12 @@ function RowMarkup({
       className={row.width === "full" || inPanel ? undefined : `mx-auto w-full max-w-(--content-width) ${rowWidthStyle(row).className}`.trim()}
       style={meets ? { marginTop: `calc(${ROW_GAP} * -1)` } : undefined}
     >
-      <div id={box.id} className={box.className} style={{ ...box.style, ...rowFx.style }} {...rowFx.attrs}>
+      <div id={box.id} className={box.className} style={{ ...box.style, ...rowFx.style }} {...rowFx.attrs} data-row="">
         <FontLinks families={partFonts(row)} />
-        <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} eager={eager} fixed={row.backgroundFixed} align={row.backgroundAlign} />
+        {/* Its picture, video or gradient in a box of no layout of its own, so a header's stage can set it aside (D533, globals.css). */}
+        <div data-row-bg="" className="contents">
+          <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} eager={eager} fixed={row.backgroundFixed} align={row.backgroundAlign} />
+        </div>
         <div className={rowInnerClass(row, "site")}>
           <div className={grid.className} style={grid.style}>
             {lines.length === 1

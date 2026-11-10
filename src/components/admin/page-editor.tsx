@@ -81,7 +81,8 @@ import { ColourSwatches } from "./colour-field";
 import { LibraryButton, MediaPickerProvider } from "./media-picker";
 import { PictureEditorProvider, PictureMakerProvider } from "./picture-maker";
 import { SignupCodesContext } from "./block-fields";
-import { ColorField, newId, PageBuilder, type DualBuilder } from "./page-builder";
+import { HeaderStageFields } from "./header-stage-fields";
+import { newId, PageBuilder, type DualBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 import { FindReplaceDialog } from "./find-replace-dialog";
 import { PageVersionsDialog } from "./page-versions-dialog";
@@ -1834,7 +1835,8 @@ function TranslateWithAi({
 /**
  * Where a header lies over the page (D80): nowhere, every page, the front
  * page (a store's) or pages in chosen page categories and tags; only over
- * pages whose first row has a background. Its text colour while over one.
+ * pages whose first row has a background. How it looks at the top and when it
+ * comes back on scroll (D533, `HeaderStageFields`).
  */
 function HeaderOverlayFields({
   value,
@@ -1866,7 +1868,7 @@ function HeaderOverlayFields({
     onChange(
       next === "none"
         ? undefined
-        : { where: next as HeaderOverlay["where"], categories: value?.categories ?? [], tags: value?.tags ?? [], textColor: value?.textColor },
+        : { ...value, where: next as HeaderOverlay["where"], categories: value?.categories ?? [], tags: value?.tags ?? [] },
     );
   return (
     <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4">
@@ -1893,21 +1895,8 @@ function HeaderOverlayFields({
           manageHref={manageHref}
         />
       )}
-      {value && (
-        <div className="flex flex-col gap-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={Boolean(value.textColor)}
-              onChange={(event) => onChange({ ...value, textColor: event.target.checked ? "#ffffff" : undefined })}
-              className="size-4"
-            />
-            {ow.ownColour}
-          </label>
-          {value.textColor && <ColorField label={ow.textColour} value={value.textColor} onChange={(textColor) => onChange({ ...value, textColor })} />}
-          <p className="text-xs text-muted">{ow.white}</p>
-        </div>
-      )}
+      {/* How it looks at the top of the page and when it comes back on scroll (D533); each starts as the header row has it. */}
+      {value && <HeaderStageFields value={value} onChange={onChange} />}
     </section>
   );
 }

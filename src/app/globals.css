@@ -468,6 +468,52 @@ html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
 }
 
 /*
+ * The header's two stages over the page (D533, `src/lib/header-stages.ts`): at the top (`data-at-top`) and back again as
+ * the visitor scrolls. A stage's own background is drawn on the header in place of the theme's header background and
+ * the rows' own colour and picture, video or gradient (`data-row-bg`); its blur in place of the rows' blur; its text
+ * colour over the header's. What a stage leaves out stays as above: the header row's own settings. The rows' own are
+ * `:where(...) !important` (part-css.ts), so setting them aside takes `!important` too. Only on a page the header lies
+ * over: elsewhere none of this applies and the header is drawn from its rows alone.
+ */
+[data-header-stage] {
+  display: none;
+}
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap][data-at-top][data-hs-top-bg] .site-header {
+  background-color: var(--hs-top-bg, transparent);
+}
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap]:not([data-at-top])[data-hs-rev-bg] .site-header {
+  background-color: var(--hs-rev-bg, transparent);
+}
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap][data-at-top][data-hs-top-bg="gradient"] [data-header-stage="top"],
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap]:not([data-at-top])[data-hs-rev-bg="gradient"] [data-header-stage="revealed"] {
+  display: contents;
+}
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap][data-at-top][data-hs-top-bg] .site-header [data-row],
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap]:not([data-at-top])[data-hs-rev-bg] .site-header [data-row] {
+  background-color: transparent !important;
+}
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap][data-at-top][data-hs-top-bg] .site-header [data-row-bg],
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap]:not([data-at-top])[data-hs-rev-bg] .site-header [data-row-bg] {
+  display: none;
+}
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap][data-at-top][data-hs-top-blur] .site-header {
+  backdrop-filter: blur(var(--hs-top-blur));
+  -webkit-backdrop-filter: blur(var(--hs-top-blur));
+}
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap]:not([data-at-top])[data-hs-rev-blur] .site-header {
+  backdrop-filter: blur(var(--hs-rev-blur));
+  -webkit-backdrop-filter: blur(var(--hs-rev-blur));
+}
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap][data-at-top][data-hs-top-blur] .site-header [data-row],
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap]:not([data-at-top])[data-hs-rev-blur] .site-header [data-row] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+:is(html[data-overlay-on], html:not([data-overlay-live]) body:has([data-header-overlay])) [data-header-wrap]:not([data-at-top])[data-hs-rev-text] .site-header {
+  color: var(--hs-rev-text);
+}
+
+/*
  * A mega menu in a header (D87) opens along the header's whole bottom edge,
  * whichever column its menu sits in: fixed, it is placed against the moving
  * header's wrapper (its translate holds fixed descendants), or against the

@@ -2,6 +2,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 
+import type { HeaderStageLook } from "@/lib/header-stages";
+
 import { useHeaderThemeColor } from "./header-theme-color";
 
 /**
@@ -86,12 +88,22 @@ const slide = "transition-transform duration-300 ease-out will-change-transform 
  * Stays at the top of the screen; slides up out of view while scrolling
  * down. A header that may lie over the page (D80) is marked for the
  * stylesheet, which lays it over a page that asks for it (`data-header-overlay`)
- * and makes it see-through while the page is at its top.
+ * and makes it see-through while the page is at its top. Its two stages (D533,
+ * `headerStageLook()`: at the top, and back again on scroll) come as data
+ * attributes and custom properties that `globals.css` draws.
  *
  * On every site (Kaizena Flow's and the stores') the phone browser's colour follows it (`useHeaderThemeColor`); the admin's
  * header leaves it (`themeColor={false}`).
  */
-export function HidingHeader({ children, overlay, themeColor = true }: { children: ReactNode; overlay?: { textColor?: string }; themeColor?: boolean }) {
+export function HidingHeader({
+  children,
+  overlay,
+  themeColor = true,
+}: {
+  children: ReactNode;
+  overlay?: HeaderStageLook;
+  themeColor?: boolean;
+}) {
   const wrap = useRef<HTMLDivElement>(null);
   useHeaderThemeColor(wrap, themeColor);
   const { direction, atTop } = useScroll();
@@ -104,7 +116,8 @@ export function HidingHeader({ children, overlay, themeColor = true }: { childre
       data-header-wrap={overlay ? "" : undefined}
       data-hiding-header
       data-at-top={overlay && atTop ? "" : undefined}
-      style={overlay?.textColor ? ({ "--header-overlay-text": overlay.textColor } as CSSProperties) : undefined}
+      {...overlay?.attrs}
+      style={overlay && Object.keys(overlay.style).length > 0 ? (overlay.style as CSSProperties) : undefined}
       className={`sticky top-0 z-30 ${slide} ${hidden ? "-translate-y-full" : "translate-y-0"}`}
     >
       {children}

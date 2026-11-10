@@ -5,7 +5,8 @@ import { accountsShown } from "@/lib/customer-accounts";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { motionNeeds } from "@/lib/motion-attrs";
-import { rowShows, type PageBlock, type PageContent, type SiteBlock } from "@/lib/page-content";
+import { headerStageGradients, headerStageLook } from "@/lib/header-stages";
+import { rowShows, type HeaderOverlay, type PageBlock, type PageContent, type SiteBlock } from "@/lib/page-content";
 import { flowRows } from "@/lib/page-modal";
 import { localizePage } from "@/lib/page-translation";
 import { languageSwitchStyle } from "@/lib/part-css";
@@ -26,6 +27,7 @@ import { StoreColorSwitch } from "./store-color-switch";
 import { CartLink, CartLinkShell } from "./cart-link";
 import { Icon } from "./icons";
 import { PageRowView } from "./page-article";
+import { GradientLayer } from "./page-parts";
 import { MotionSupport } from "./motion-support";
 import { builtIn, Brand as KaizenBrand, legalPages } from "./platform-layout";
 import { PLATFORM_LANG_FACTS, langOfLocale, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
@@ -292,6 +294,19 @@ function Business({ legal, address, email }: { legal: string; address: string | 
   );
 }
 
+/**
+ * A header's stages drawn with a gradient (D533): each a layer behind the header's rows that `globals.css` shows only at
+ * its stage, on a page the header lies over. The header holds them (`stageLayersClass()`), so they sit over its own colour.
+ */
+function HeaderStageLayers({ overlay }: { overlay: HeaderOverlay | undefined }) {
+  return headerStageGradients(overlay).map(({ stage, gradient }) => (
+    <div key={stage} data-header-stage={stage}>
+      <GradientLayer gradient={gradient} />
+    </div>
+  ));
+}
+const stageLayersClass = (overlay: HeaderOverlay | undefined) => (headerStageGradients(overlay).length > 0 ? "relative isolate" : "");
+
 /** A header's or footer's rows, with its site parts drawn for the site. */
 export function SiteRows({ content, ctx, place }: { content: PageContent; ctx: SiteContext; place: GridPlace }) {
   // A part with nothing to show leaves no space behind (null), as a product's does (D79).
@@ -340,7 +355,7 @@ export async function StoreSiteHeader({
   const background = HEADER_BACKGROUND[store.theme.settings.layout.headerBackground];
   const ownSwitch = siteBlocks(content).some((block) => block.part === "buyerSwitch");
   return (
-    <HidingHeader overlay={content.overlay && { textColor: content.overlay.textColor }}>
+    <HidingHeader overlay={content.overlay && headerStageLook(content.overlay)}>
       <Notice text={notice} />
       {store.audience === "both" && !ownSwitch && (
         <div className={`border-b border-border ${background}`}>
@@ -349,7 +364,8 @@ export async function StoreSiteHeader({
           </div>
         </div>
       )}
-      <header className={`site-header border-b border-border ${background}`}>
+      <header className={`site-header border-b border-border ${background} ${stageLayersClass(content.overlay)}`.trim()}>
+        <HeaderStageLayers overlay={content.overlay} />
         <SiteRows
           content={content}
           ctx={{ kind: "store", store, market, place: "header", withdrawal }}
@@ -388,8 +404,9 @@ type KaizenLayers = GridPlace["theme"];
 export function KaizenSiteHeader({ chrome, layout, theme, lang = "en" }: { chrome: PlatformChrome; layout: SiteLayout; theme?: KaizenLayers; lang?: PlatformLang }) {
   const overlay = layout.content.overlay;
   return (
-    <HidingHeader overlay={overlay && { textColor: overlay.textColor }}>
-      <header className="site-header border-b border-border bg-background/95 backdrop-blur">
+    <HidingHeader overlay={overlay && headerStageLook(overlay)}>
+      <header className={`site-header border-b border-border bg-background/95 backdrop-blur ${stageLayersClass(overlay)}`.trim()}>
+        <HeaderStageLayers overlay={overlay} />
         {/* In the language drawn (D312 P4): the texts written for it over the English, and its links to the site in it too. */}
         <SiteRows content={linksIn(localizePage(layout.content, pageLocaleOf(lang)), lang)} ctx={{ kind: "kaizen", chrome, place: "header", lang }} place={{ pageId: layout.id, owner: null, theme, lang }} />
       </header>

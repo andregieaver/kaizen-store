@@ -2399,6 +2399,24 @@ export type HeaderOverlay = {
   where: "everywhere" | "front" | "terms";
   categories: string[];
   tags: string[];
+  /** The text colour at the top of the page, as it was kept before the stages (D533); `top.textColor` wins over it. */
+  textColor?: Color;
+  /** How the header looks at the top of the page, over the first row (D533); what it leaves out is as it was. */
+  top?: HeaderStage;
+  /** How the header looks when it comes back as the visitor scrolls (D533); what it leaves out is the header row's own. */
+  revealed?: HeaderStage;
+};
+
+/**
+ * How a header over the page looks at one stage (D533, `src/lib/header-stages.ts`). Each setting is a fallback when left
+ * out: the header row's own colour, gradient, opacity and blur still draw, as they did before. A background of its own
+ * (a colour see-through by its `opacity`, a gradient with its own, or `none` for none at all) is drawn over the header in
+ * place of the theme's header background and the header's rows' own; `blur` (0 for none) in place of the rows' blur.
+ */
+export type HeaderStage = {
+  background?: ColorBackground | GradientBackground | { type: "none" };
+  /** What is behind the header blurred, in pixels (up to `BACKDROP_BLUR_MAX`); 0 is none, over the rows' own blur. */
+  blur?: number;
   textColor?: Color;
 };
 
@@ -2809,6 +2827,20 @@ const videoBackground = z.object({
   overlay,
   blur,
 });
+
+/** How a header over the page looks at one stage (D533); an empty one is left out. */
+const headerStageSchema = z
+  .object({
+    background: z
+      .discriminatedUnion("type", [colorBackground, gradientBackground, z.object({ type: z.literal("none") })], {
+        error: "A header's background at a stage is a colour, a gradient or none.",
+      })
+      .optional(),
+    blur: z.number().int().min(0).max(BACKDROP_BLUR_MAX).optional(),
+    textColor: color.optional(),
+  })
+  .optional()
+  .transform((stage) => (stage && (stage.background || stage.blur !== undefined || stage.textColor) ? stage : undefined));
 
 /** A column's background: a colour or a picture; only rows take a video. */
 const background = z
@@ -3927,6 +3959,8 @@ export const pageInput = z.preprocess(
           where: z.enum(["everywhere", "front", "terms"]),
           ...termIdsSchema.shape,
           textColor: color.optional(),
+          top: headerStageSchema,
+          revealed: headerStageSchema,
         })
         .optional(),
       css: z

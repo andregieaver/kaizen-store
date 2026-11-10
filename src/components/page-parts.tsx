@@ -218,7 +218,7 @@ function gradientVars(gradient: GradientBackground): CSSProperties | null {
 }
 
 /** Colours that move, drawn with CSS alone (motion.css): no picture to load, behind the part's content like any background. */
-function GradientLayer({
+export function GradientLayer({
   gradient,
   motion,
   firstRow,
