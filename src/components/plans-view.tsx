@@ -189,20 +189,21 @@ function PlanCardView({
         {card.description && <p className="mt-1 text-sm text-muted">{card.description}</p>}
       </div>
       <div>
+        {/* Monthly or yearly, the card leads with a month (D481): a yearly price as its twelfth, and what the year comes to under it. */}
         <p className="text-3xl font-semibold" data-kz-text="price">
-          {money(card.campaign ? { ...card.main, amountMinor: card.campaign.amountMinor } : card.main)}{" "}
-          <span className="text-base font-normal text-muted">{every(card.main)}</span>
+          {money({ ...card.main, amountMinor: card.display.monthMinor })} <span className="text-base font-normal text-muted">{m.perMonth}</span>
         </p>
-        {/* A campaign's price (D524): for how long, and the price after; the regular price struck through when it lasts. */}
+        <p className="text-sm text-muted">{(card.display.billed === "year" ? m.billedYearly : m.billedMonthly)(money({ ...card.main, amountMinor: card.display.yearMinor }))}</p>
+        {/* A campaign's price (D524): for how long, and the price after; the regular month struck through when it lasts. */}
         {card.campaign &&
           (card.campaign.lasts === "forever" ? (
             <p className="text-sm">
               <span className="sr-only">{m.wasPrice} </span>
-              <s className="text-muted">{money(card.main)}</s> {m.campaignForever}
+              <s className="text-muted">{money({ ...card.main, amountMinor: card.display.regularMonthMinor })}</s> {m.campaignForever}
             </p>
           ) : (
             <p className="text-sm">
-              {card.campaign.lasts === "once" ? m.campaignOnce(money(card.main)) : m.campaignMonths(card.campaign.lasts, money(card.main))}
+              {card.campaign.lasts === "once" ? m.campaignOnce(`${money(card.main)} ${every(card.main)}`) : m.campaignMonths(card.campaign.lasts, `${money(card.main)} ${every(card.main)}`)}
             </p>
           ))}
         <p className="text-xs text-muted">{m.exVat}</p>

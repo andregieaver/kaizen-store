@@ -1102,6 +1102,8 @@ export const nb: Messages = {
     notIncluded: "Ikke inkludert",
     choose: "Kom i gang",
     yearlyPrice: (price: string): string => `eller ${price} per år`,
+    billedMonthly: (price: string): string => `${price} per år, faktureres månedlig`,
+    billedYearly: (price: string): string => `${price} per år, faktureres årlig`,
     period: "Betalingsperiode",
     monthly: "Månedlig",
     yearly: "Årlig",

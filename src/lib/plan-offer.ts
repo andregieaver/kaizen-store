@@ -55,7 +55,26 @@ export type PlanCard = {
    * when no campaign gives on this plan in this currency.
    */
   campaign: { amountMinor: number; lasts: "once" | "forever" | number } | null;
+  /**
+   * What the card leads with, monthly or yearly alike: a month's price (a yearly price shown as its twelfth), and under it what a
+   * year comes to (twelve monthly payments, or the yearly price), both with the campaign's price where it gives; `regularMonthMinor`
+   * is the month without the campaign, struck through beside a campaign that lasts.
+   */
+  display: { monthMinor: number; regularMonthMinor: number; yearMinor: number; billed: PlanInterval };
 };
+
+/**
+ * A card's month and year (D481, the pricing table led by the month): a yearly price is divided by twelve, rounded to the minor
+ * unit; a monthly price is the month, and its year is the first year's twelve payments, the campaign's for as long as it lasts.
+ */
+export function cardDisplay(main: PlanCardPrice, campaign: PlanCard["campaign"]): PlanCard["display"] {
+  const paid = campaign?.amountMinor ?? main.amountMinor;
+  if (main.interval === "year") {
+    return { monthMinor: Math.round(paid / 12), regularMonthMinor: Math.round(main.amountMinor / 12), yearMinor: paid, billed: "year" };
+  }
+  const months = !campaign ? 0 : campaign.lasts === "forever" ? 12 : campaign.lasts === "once" ? 1 : Math.min(campaign.lasts, 12);
+  return { monthMinor: paid, regularMonthMinor: main.amountMinor, yearMinor: paid * months + main.amountMinor * (12 - months), billed: "month" };
+}
 
 /** How long a campaign's price lasts on a price of this interval: months on a yearly price are its first payment, up to twelve. */
 export function campaignLasts(c: Pick<PublicCampaign, "duration" | "durationMonths">, interval: PlanInterval): "once" | "forever" | number {
@@ -106,6 +125,10 @@ export function planCards(
     const first = options.interval === "year" ? (yearly ?? monthly) : (monthly ?? yearly);
     if (!first) continue;
     const other = options.interval ? null : first === monthly ? (yearly ?? null) : null;
+    const campaign = (() => {
+      const price = cardCampaignPrice(data.campaign, plan.id, first.amountMinor, currency);
+      return price === null || !data.campaign ? null : { amountMinor: price, lasts: campaignLasts(data.campaign, first.interval) };
+    })();
     cards.push({
       id: plan.id,
       name: plan.name,
@@ -122,10 +145,8 @@ export function planCards(
         .map((f) => ({ id: f.id, name: f.name, description: f.description })),
       limits: plan.limits ?? [],
       highlighted: plan.id === options.highlightId,
-      campaign: (() => {
-        const price = cardCampaignPrice(data.campaign, plan.id, first.amountMinor, currency);
-        return price === null || !data.campaign ? null : { amountMinor: price, lasts: campaignLasts(data.campaign, first.interval) };
-      })(),
+      campaign,
+      display: cardDisplay(first, campaign),
     });
   }
   return { currency, cards };

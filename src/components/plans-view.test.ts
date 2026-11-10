@@ -194,6 +194,18 @@ describe("whole amounts and the switch between monthly and yearly (D481)", () =>
     expect(html(block({ switcher: true, interval: "year" }))).toMatch(/checked="" value="year"/);
   });
 
+  it("leads every card with a month, monthly or yearly, and what the year comes to under it", () => {
+    const out = html(block({ switcher: true }));
+    const [monthly, yearly] = out.split('data-plan-panel="year"');
+    // Grow: NOK 799 a month, twelve of them; its yearly NOK 7,990 is NOK 665.83 a month.
+    expect(monthly).toMatch(/NOK\s799\.00 <span[^>]*>per month<\/span>/);
+    expect(monthly).toMatch(/NOK\s9,588\.00 per year, billed monthly/);
+    expect(yearly).toMatch(/NOK\s665\.83 <span[^>]*>per month<\/span>/);
+    expect(yearly).toMatch(/NOK\s7,990\.00 per year, billed yearly/);
+    expect(yearly).not.toContain("NOK 7,990.00 <span");
+    expect(html(block({ interval: "year" }), data, "nb")).toMatch(/per år, faktureres årlig/);
+  });
+
   it("says up to when the plans save differently", () => {
     const differ: PublicPlans = {
       ...data,

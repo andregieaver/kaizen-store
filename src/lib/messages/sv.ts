@@ -1098,6 +1098,8 @@ export const sv: Messages = {
     notIncluded: "Ingår inte",
     choose: "Kom igång",
     yearlyPrice: (price: string): string => `eller ${price} per år`,
+    billedMonthly: (price: string): string => `${price} per år, faktureras månadsvis`,
+    billedYearly: (price: string): string => `${price} per år, faktureras årsvis`,
     period: "Betalningsperiod",
     monthly: "Månadsvis",
     yearly: "Årsvis",

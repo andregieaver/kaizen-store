@@ -1134,6 +1134,9 @@ export const en = {
     notIncluded: "Not included",
     choose: "Get started",
     yearlyPrice: (price: string): string => `or ${price} per year`,
+    /** Under the month a card leads with (D481): what a year comes to, and how it is paid. */
+    billedMonthly: (price: string): string => `${price} per year, billed monthly`,
+    billedYearly: (price: string): string => `${price} per year, billed yearly`,
     /** The switch between monthly and yearly prices (D481), named for screen readers by `period`. */
     period: "Billing period",
     monthly: "Monthly",
