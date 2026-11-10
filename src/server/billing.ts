@@ -769,6 +769,16 @@ export async function assignPlan(
   if (!prepared.ok) return prepared;
   const p = prepared.prepared;
 
+  // One at a time per store (code review FV11): a second call in flight waits here, then finds the first one's subscription
+  // below and changes it instead of starting another. The lock is held on its own connection until this function is done.
+  return db().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('plan_subscribe'), hashtext(${p.store.id}))`);
+    return startOrChangePlan(actor, p, priceId, trialDays);
+  });
+}
+
+/** The work of `assignPlan()`, under its lock. */
+async function startOrChangePlan(actor: Account, p: Prepared, priceId: string, trialDays: number): Promise<SaveResult> {
   const running = await runningSubscription(p.store.id, p.mode);
   if (running) return changeSubscription(actor, p, running);
   const waiting = await waitingDiscount(p);

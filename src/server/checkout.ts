@@ -1226,16 +1226,19 @@ export type CheckoutContact = { name: string; email: string; phone: string };
  */
 async function confirmAtVenue(storeId: string, order: PlacedOrder, contact: CheckoutContact): Promise<string> {
   const token = `venue_${randomBytes(18).toString("base64url")}`;
-  await db().execute(sql`
-    update commerce.orders set email = ${contact.email},
-      billing_address = ${JSON.stringify({ name: contact.name, phone: contact.phone })}::jsonb
-    where store_id = ${storeId}::uuid and id = ${order.orderId}::uuid
-  `);
-  await db().execute(sql`
-    insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
-    values (${storeId}::uuid, ${order.orderId}::uuid, 'venue', ${token}, ${order.balanceMinor}, ${order.currency}, 'pending')
-  `);
-  await completeOrderPayment(order.orderId, token);
+  // All or nothing (code review FV7): a failure between these left a pending order with the shopper's details and no payment.
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`
+      update commerce.orders set email = ${contact.email},
+        billing_address = ${JSON.stringify({ name: contact.name, phone: contact.phone })}::jsonb
+      where store_id = ${storeId}::uuid and id = ${order.orderId}::uuid
+    `);
+    await tx.execute(sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+      values (${storeId}::uuid, ${order.orderId}::uuid, 'venue', ${token}, ${order.balanceMinor}, ${order.currency}, 'pending')
+    `);
+    await tx.execute(sql`select commerce.complete_order_payment(${order.orderId}::uuid, ${token})`);
+  });
   const notify = async () => {
     await sendOrderConfirmation(storeId, order.orderId);
     await sendBookingStaffNotices(storeId, order.orderId);
@@ -1279,11 +1282,14 @@ async function confirmPaidByGiftCards(storeId: string, order: PlacedOrder): Prom
  */
 export async function confirmOnTerms(storeId: string, order: Pick<PlacedOrder, "orderId" | "balanceMinor" | "currency">): Promise<string> {
   const token = `terms_${randomBytes(18).toString("base64url")}`;
-  await db().execute(sql`
-    insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
-    values (${storeId}::uuid, ${order.orderId}::uuid, 'terms', ${token}, ${order.balanceMinor}, ${order.currency}, 'pending')
-  `);
-  await completeOrderPayment(order.orderId, token);
+  // All or nothing (code review FV7): the payment row is the order page's key, and is of no use without the completion.
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+      values (${storeId}::uuid, ${order.orderId}::uuid, 'terms', ${token}, ${order.balanceMinor}, ${order.currency}, 'pending')
+    `);
+    await tx.execute(sql`select commerce.complete_order_payment(${order.orderId}::uuid, ${token})`);
+  });
   const notify = () => sendOrderConfirmation(storeId, order.orderId);
   try {
     after(notify);
