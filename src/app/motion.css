@@ -114,6 +114,21 @@
     translate: -50% -50%;
     background: conic-gradient(from 0deg, var(--fx-stops));
   }
+  /*
+   * Colours spreading softly from a focal point the owner places (D531), the first at the point and the last at the far
+   * corner. Mixed in Oklab where the browser can, which keeps the blend between two colours from greying in the middle.
+   * Its breathing grows from the point itself, so the point stays where it was placed.
+   */
+  [data-fx-grad="radial"] {
+    background: radial-gradient(circle farthest-corner at var(--fx-fx, 50%) var(--fx-fy, 50%), var(--fx-rstops));
+    transform-origin: var(--fx-fx, 50%) var(--fx-fy, 50%);
+  }
+  /* Behind `@supports`, not a second declaration: one holding `var()` that the browser cannot draw is dropped, not passed over. */
+  @supports (background: radial-gradient(circle in oklab, red, blue)) {
+    [data-fx-grad="radial"] {
+      background: radial-gradient(circle farthest-corner at var(--fx-fx, 50%) var(--fx-fy, 50%) in oklab, var(--fx-rstops));
+    }
+  }
   /* A fine noise over it, drawn once as a small tile. */
   [data-fx-grain] {
     position: absolute;
@@ -142,6 +157,9 @@
     [data-fx-flow]:not([data-fx-flow="still"]) [data-fx-grad="conic"] {
       animation: fx-turn calc(110s * var(--fx-gf)) linear infinite;
     }
+    [data-fx-flow]:not([data-fx-flow="still"]) [data-fx-grad="radial"] {
+      animation: fx-breathe calc(18s * var(--fx-gf)) ease-in-out infinite alternate;
+    }
     [data-fx-flow]:not([data-fx-flow="still"]) [data-fx-blob="1"] {
       animation: fx-blob-a calc(26s * var(--fx-gf)) ease-in-out infinite alternate;
     }
@@ -160,6 +178,11 @@
   @keyframes fx-turn {
     to {
       rotate: 360deg;
+    }
+  }
+  @keyframes fx-breathe {
+    to {
+      scale: 1.35;
     }
   }
   @keyframes fx-blob-a {

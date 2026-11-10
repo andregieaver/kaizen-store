@@ -9,9 +9,11 @@ import {
   GRADIENT_FLOWS,
   GRADIENT_STYLES,
   backgroundMotionSchema,
+  gradientFocusSchema,
   partMotionSchema,
   type BackgroundMotion,
   type GradientFlow,
+  type GradientFocus,
   type GradientStyle,
   type PartMotion,
 } from "./motion";
@@ -534,6 +536,8 @@ export type GradientBackground = {
   colors: Color[];
   /** Degrees, for the shifting kind; 135 when left out. */
   angle?: number;
+  /** Where a radial blur's colours spread from (D531), anywhere in the part; the centre when left out. */
+  focus?: GradientFocus;
   flow?: GradientFlow;
   /** A fine noise over it. */
   grain?: boolean;
@@ -2792,6 +2796,7 @@ const gradientBackground = z.object({
   style: z.enum(Object.keys(GRADIENT_STYLES) as [GradientStyle, ...GradientStyle[]]),
   colors: z.array(color).min(GRADIENT_COLORS_MIN).max(GRADIENT_COLORS_MAX),
   angle: z.number().int().min(0).max(360).optional(),
+  focus: gradientFocusSchema.optional(),
   flow: z.enum(Object.keys(GRADIENT_FLOWS) as [GradientFlow, ...GradientFlow[]]).optional(),
   grain: z.boolean().optional(),
   opacity: z.number().int().min(0).max(99).optional(),

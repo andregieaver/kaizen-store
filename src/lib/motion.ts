@@ -164,12 +164,18 @@ export const GRADIENT_STYLES = {
   aurora: { label: "Aurora", hint: "Soft blobs of colour drifting and blending." },
   mesh: { label: "Mesh", hint: "Soft spots of colour, still." },
   conic: { label: "Sweep", hint: "Colours turning slowly around the centre." },
+  radial: { label: "Radial blur", hint: "Colours spreading softly from a point you place." },
 } as const;
 export type GradientStyle = keyof typeof GRADIENT_STYLES;
 export const GRADIENT_FLOWS = { still: "Still", slow: "Slow", medium: "Medium", fast: "Fast" } as const;
 export type GradientFlow = keyof typeof GRADIENT_FLOWS;
 export const GRADIENT_COLORS_MIN = 2;
 export const GRADIENT_COLORS_MAX = 4;
+/** Where a radial blur's colours spread from (D531): percent across and down the row or column; the centre unless set. */
+export type GradientFocus = { x: number; y: number };
+export const GRADIENT_FOCUS_DEFAULT: GradientFocus = { x: 50, y: 50 };
+/** A focal point's schema, shared by a part's gradient and a saved one. */
+export const gradientFocusSchema = z.object({ x: z.number().int().min(0).max(100), y: z.number().int().min(0).max(100) });
 
 // ---------------------------------------------------------------------------
 // Schemas, shared by the browser and the server

@@ -7,6 +7,7 @@ import {
   EMPTY_LIBRARY,
   libraryName,
   linearGradient,
+  radialGradient,
   savedFromBackground,
   withSavedColour,
   withSavedGradient,
@@ -191,8 +192,10 @@ export function SavedColours({ label, value, onPick }: { label: string; value: s
   );
 }
 
-/** A gradient's swatch: its colours at its angle. */
-const swatch = (g: { colors: readonly string[]; angle?: number }) => ({ backgroundImage: linearGradient(g.colors, g.angle ?? 90) });
+/** A gradient's swatch: its colours at its angle, or spreading from its focal point for a radial blur (D531). */
+const swatch = (g: { colors: readonly string[]; angle?: number; style?: string; focus?: { x: number; y: number } }) => ({
+  backgroundImage: g.style === "radial" ? radialGradient(g.colors, g.focus) : linearGradient(g.colors, g.angle ?? 90),
+});
 
 /** A gradient editor's saved gradients: press one to use it (`onPick`), × to remove it, and save the one being edited. */
 export function SavedGradients({

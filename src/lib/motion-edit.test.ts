@@ -20,6 +20,8 @@ import {
   addGradientColor,
   backgroundMoves,
   defaultGradient,
+  gradientFocus,
+  gradientHasFocus,
   drawTarget,
   enterFitsPart,
   enterOffered,
@@ -36,6 +38,7 @@ import {
   setGradientAngle,
   setGradientColor,
   setGradientFlow,
+  setGradientFocus,
   setGradientGrain,
   setGradientStyle,
   setHoverEffect,
@@ -374,6 +377,23 @@ describe("gradients", () => {
     expect(setGradientStyle(mesh, "conic").flow).toBe("slow");
   });
 
+  it("take a focal point for the radial blur alone, held inside the part, and leave the centre out (D531)", () => {
+    const radial = defaultGradient("radial");
+    expect(gradientHasFocus("radial")).toBe(true);
+    expect(gradientFocus(radial)).toEqual({ x: 50, y: 50 });
+    const placed = setGradientFocus(radial, { x: 12.4, y: 87.6 });
+    expect(placed.focus).toEqual({ x: 12, y: 88 });
+    expect(setGradientFocus(placed, { x: -20, y: 140 }).focus).toEqual({ x: 0, y: 100 });
+    expect(setGradientFocus(placed, { x: Number.NaN, y: 10 }).focus).toEqual({ x: 50, y: 10 });
+    expect(setGradientFocus(placed, { x: 50, y: 50 })).not.toHaveProperty("focus");
+    // A radial blur flows (it breathes from its point); another style has no point, and loses one it had.
+    expect(radial.flow).toBe("slow");
+    const shift = defaultGradient();
+    expect(setGradientFocus(shift, { x: 10, y: 10 })).toBe(shift);
+    expect(setGradientStyle(placed, "shift")).not.toHaveProperty("focus");
+    expect(setGradientStyle(setGradientAngle(shift, 45), "radial")).not.toHaveProperty("angle");
+  });
+
   it("have a grain that is a switch: off leaves no key", () => {
     const grainy = setGradientGrain(defaultGradient(), true);
     expect(grainy.grain).toBe(true);
@@ -383,7 +403,7 @@ describe("gradients", () => {
   it("are always what a row's schema accepts, with a background motion", () => {
     let gradient: GradientBackground = defaultGradient();
     gradient = addGradientColor(setGradientGrain(setGradientAngle(gradient, 200), true));
-    for (const style of ["shift", "aurora", "mesh", "conic"] as const) {
+    for (const style of ["shift", "aurora", "mesh", "conic", "radial"] as const) {
       const row: PageRow = {
         id: "row-1",
         type: "row",
@@ -402,6 +422,11 @@ describe("gradients", () => {
       };
       expect(pageRowSchema.safeParse(row).success, style).toBe(true);
     }
+    const radial = setGradientFocus(setGradientStyle(gradient, "radial"), { x: 0, y: 100 });
+    const row = (background: unknown) => ({ id: "row-1", type: "row", layout: "1", columns: [{ id: "c-1", blocks: [] }], background });
+    expect(pageRowSchema.safeParse(row(radial)).success).toBe(true);
+    expect(pageRowSchema.safeParse(row({ ...radial, focus: { x: 101, y: 0 } })).success).toBe(false);
+    expect(pageRowSchema.safeParse(row({ ...radial, focus: { x: 5.5, y: 0 } })).success).toBe(false);
   });
 });
 

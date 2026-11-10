@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type PointerEvent } from "react";
 
 import {
   BACKGROUND_EFFECTS,
@@ -18,18 +18,22 @@ import {
   GRADIENT_FLOW_DEFAULT,
   INTENSITY_DEFAULT,
   addGradientColor,
+  gradientFocus,
   gradientHasAngle,
   gradientHasFlow,
+  gradientHasFocus,
   removeGradientColor,
   setBackgroundEffect,
   setBackgroundIntensity,
   setGradientAngle,
   setGradientColor,
   setGradientFlow,
+  setGradientFocus,
   setGradientGrain,
   setGradientStyle,
 } from "@/lib/motion-edit";
 import type { GradientBackground } from "@/lib/page-content";
+import { radialGradient } from "@/lib/colour-library";
 import { fillWords } from "@/lib/admin-fill";
 
 import { useAdminText } from "./admin-text";
@@ -78,6 +82,7 @@ export function GradientFields({
             style: saved.style,
             colors: [...saved.colors],
             ...(saved.angle !== undefined && { angle: saved.angle }),
+            ...(saved.focus !== undefined && { focus: { ...saved.focus } }),
             ...(saved.flow !== undefined && { flow: saved.flow }),
             ...(saved.grain && { grain: true }),
             ...(value.opacity !== undefined && { opacity: value.opacity }),
@@ -157,6 +162,7 @@ export function GradientFields({
           </div>
         </div>
       )}
+      {gradientHasFocus(value.style) && <FocusFields value={value} onChange={onChange} />}
       {gradientHasFlow(value.style) && (
         <Setting
           label={w.flow}
@@ -226,6 +232,92 @@ export function GradientFields({
         </div>
       )}
     </div>
+  );
+}
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/**
+ * A radial blur's focal point (D531): press or drag in a small picture of the gradient to place it anywhere in the row or
+ * column, the way Homer would; two sliders set the same point by the percent, from the keyboard, for Lisa and for anyone
+ * who cannot drag. The picture itself is left out for screen readers, as the sliders say all it does.
+ */
+function FocusFields({ value, onChange }: { value: GradientBackground; onChange: (gradient: GradientBackground) => void }) {
+  const w = useAdminText("blocks").gradient;
+  const id = useId();
+  const focus = gradientFocus(value);
+  const colors = value.colors.filter((c) => HEX.test(c));
+  const centred = value.focus === undefined;
+  const place = (event: PointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    if (box.width <= 0 || box.height <= 0) return;
+    onChange(
+      setGradientFocus(value, {
+        x: ((event.clientX - box.left) / box.width) * 100,
+        y: ((event.clientY - box.top) / box.height) * 100,
+      }),
+    );
+  };
+  const slider = (axis: "x" | "y", label: string) => (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={`${id}-${axis}`} className="text-sm font-medium">
+        {label}
+      </label>
+      <div className="flex min-h-10 items-center gap-3">
+        <input
+          id={`${id}-${axis}`}
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={focus[axis]}
+          aria-valuetext={`${focus[axis]}%`}
+          onChange={(event) => onChange(setGradientFocus(value, { ...focus, [axis]: Number(event.target.value) }))}
+          className="w-32 accent-brand"
+        />
+        <output htmlFor={`${id}-${axis}`} className="w-10 text-sm tabular-nums">
+          {focus[axis]}%
+        </output>
+      </div>
+    </div>
+  );
+  return (
+    <fieldset className="flex flex-col gap-2" aria-describedby={`${id}-hint`} data-gradient-focus="">
+      <legend className="float-left mb-2 w-full text-sm font-medium">{w.focus}</legend>
+      <div
+        aria-hidden
+        data-focus-pad=""
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          place(event);
+        }}
+        onPointerMove={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) place(event);
+        }}
+        className="relative aspect-video w-full max-w-xs cursor-crosshair touch-none overflow-hidden rounded-md border border-line shadow-sm select-none"
+        style={colors.length >= 2 ? { backgroundImage: radialGradient(colors, focus) } : undefined}
+      >
+        <span
+          className="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow ring-1 ring-black/50"
+          style={{ left: `${focus.x}%`, top: `${focus.y}%` }}
+        />
+      </div>
+      <p id={`${id}-hint`} className="text-xs text-muted">
+        {w.focusHint}
+      </p>
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+        {slider("x", w.focusAcross)}
+        {slider("y", w.focusDown)}
+        <button
+          type="button"
+          onClick={() => onChange(setGradientFocus(value, { x: 50, y: 50 }))}
+          disabled={centred}
+          className={`${smallButton} mb-2`}
+        >
+          {w.focusCentre}
+        </button>
+      </div>
+    </fieldset>
   );
 }
 

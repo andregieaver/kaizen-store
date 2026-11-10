@@ -2,6 +2,7 @@ import {
   ENTER_EFFECTS,
   GRADIENT_COLORS_MAX,
   GRADIENT_COLORS_MIN,
+  GRADIENT_FOCUS_DEFAULT,
   HOVER_EFFECTS,
   SCROLL_EFFECTS,
   STAGGER_MAX,
@@ -13,6 +14,7 @@ import {
   type EnterEffect,
   type EnterMotion,
   type GradientFlow,
+  type GradientFocus,
   type GradientStyle,
   type HoverEffect,
   type HoverMotion,
@@ -269,14 +271,19 @@ export function defaultGradient(style: GradientStyle = "shift"): GradientBackgro
   };
 }
 
-/** Whether a style takes an angle (the shifting one alone), and a flow (a mesh is still). */
+/** Whether a style takes an angle (the shifting one alone), a flow (a mesh is still) and a focal point (a radial blur alone, D531). */
 export const gradientHasAngle = (style: GradientStyle) => style === "shift";
 export const gradientHasFlow = (style: GradientStyle) => style !== "mesh";
+export const gradientHasFocus = (style: GradientStyle) => style === "radial";
+
+/** Where a gradient's colours spread from: its own focal point, or the centre. */
+export const gradientFocus = (gradient: Pick<GradientBackground, "focus">): GradientFocus => gradient.focus ?? GRADIENT_FOCUS_DEFAULT;
 
 /** Changes the style; settings of the old style that the new one has no use for are taken away. */
 export function setGradientStyle(gradient: GradientBackground, style: GradientStyle): GradientBackground {
   const next: GradientBackground = { ...gradient, style };
   if (!gradientHasAngle(style)) delete next.angle;
+  if (!gradientHasFocus(style)) delete next.focus;
   if (!gradientHasFlow(style)) delete next.flow;
   else if (!next.flow) next.flow = GRADIENT_FLOW_DEFAULT;
   return next;
@@ -308,6 +315,18 @@ export function setGradientAngle(gradient: GradientBackground, angle: number): G
   const next = { ...gradient };
   if (degrees === GRADIENT_ANGLE_DEFAULT) delete next.angle;
   else next.angle = degrees;
+  return next;
+}
+
+/** Places a radial blur's focal point, in whole percent across and down, held inside the part; the centre leaves no key. */
+export function setGradientFocus(gradient: GradientBackground, focus: GradientFocus): GradientBackground {
+  if (!gradientHasFocus(gradient.style)) return gradient;
+  const at = (n: number) => (Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 50);
+  const x = at(focus.x);
+  const y = at(focus.y);
+  const next = { ...gradient };
+  if (x === GRADIENT_FOCUS_DEFAULT.x && y === GRADIENT_FOCUS_DEFAULT.y) delete next.focus;
+  else next.focus = { x, y };
   return next;
 }
 

@@ -5,7 +5,9 @@ import {
   GRADIENT_COLORS_MIN,
   GRADIENT_FLOWS,
   GRADIENT_STYLES,
+  gradientFocusSchema,
   type GradientFlow,
+  type GradientFocus,
   type GradientStyle,
 } from "./motion";
 
@@ -27,6 +29,8 @@ export type SavedGradient = {
   style: GradientStyle;
   colors: string[];
   angle?: number;
+  /** A radial blur's focal point (D531). */
+  focus?: GradientFocus;
   flow?: GradientFlow;
   grain?: boolean;
 };
@@ -48,6 +52,7 @@ export const colourLibrarySchema = z.object({
         style: z.enum(Object.keys(GRADIENT_STYLES) as [GradientStyle, ...GradientStyle[]]),
         colors: z.array(hex).min(GRADIENT_COLORS_MIN).max(GRADIENT_COLORS_MAX),
         angle: z.number().int().min(0).max(360).optional(),
+        focus: gradientFocusSchema.optional(),
         flow: z.enum(Object.keys(GRADIENT_FLOWS) as [GradientFlow, ...GradientFlow[]]).optional(),
         grain: z.boolean().optional(),
       }),
@@ -80,7 +85,7 @@ export const withoutSaved = (library: ColourLibrary, kind: "colour" | "gradient"
 
 /** A background gradient's own settings as a saved gradient (the overlay and opacity stay with the place). */
 export function savedFromBackground(
-  gradient: { style: GradientStyle; colors: string[]; angle?: number; flow?: GradientFlow; grain?: boolean },
+  gradient: { style: GradientStyle; colors: string[]; angle?: number; focus?: GradientFocus; flow?: GradientFlow; grain?: boolean },
   id: string,
   title: string,
 ): SavedGradient {
@@ -90,7 +95,12 @@ export function savedFromBackground(
     style: gradient.style,
     colors: [...gradient.colors],
     ...(gradient.angle !== undefined && { angle: gradient.angle }),
+    ...(gradient.focus !== undefined && { focus: { ...gradient.focus } }),
     ...(gradient.flow !== undefined && { flow: gradient.flow }),
     ...(gradient.grain && { grain: true }),
   };
 }
+
+/** CSS for colours spreading from a point (a radial blur's swatch and its focal-point box, D531); the centre unless given. */
+export const radialGradient = (colors: readonly string[], focus: GradientFocus = { x: 50, y: 50 }): string =>
+  `radial-gradient(circle farthest-corner at ${focus.x}% ${focus.y}%, ${colors.join(", ")})`;

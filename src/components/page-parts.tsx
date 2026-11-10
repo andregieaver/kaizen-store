@@ -192,6 +192,9 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const FIXED_FRAME = "[clip-path:inset(0)]";
 const BACKGROUND_FRAME = "absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]";
 
+/** A focal point's place, in whole percent held inside the part; the centre when it is not a number. */
+const focusAt = (n: number | undefined) => (Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n as number))) : 50);
+
 /** A gradient's colours as custom properties, from the colours the page holds (only `#rrggbb`, whatever else is dropped). */
 function gradientVars(gradient: GradientBackground): CSSProperties | null {
   const colors = gradient.colors.filter((c) => HEX.test(c));
@@ -205,6 +208,12 @@ function gradientVars(gradient: GradientBackground): CSSProperties | null {
     // Round and back to the first, so a flowing or turning gradient has no seam.
     "--fx-stops": [...colors, colors[0]].join(", "),
     "--fx-angle": `${angle}deg`,
+    // A radial blur (D531): its colours from the focal point outwards, with no return to the first.
+    ...(gradient.style === "radial" && {
+      "--fx-rstops": colors.join(", "),
+      "--fx-fx": `${focusAt(gradient.focus?.x)}%`,
+      "--fx-fy": `${focusAt(gradient.focus?.y)}%`,
+    }),
   } as CSSProperties;
 }
 

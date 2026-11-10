@@ -12,6 +12,7 @@ import {
   colourLibrarySchema,
   libraryName,
   linearGradient,
+  radialGradient,
   savedFromBackground,
   withSavedColour,
   withSavedGradient,
@@ -58,6 +59,15 @@ describe("the saved colours and gradients", () => {
     expect(libraryName("   ", "Colour 3")).toBe("Colour 3");
     expect(libraryName("x".repeat(80), "y")).toHaveLength(40);
     expect(linearGradient(["#000000", "#ffffff"], 45)).toBe("linear-gradient(45deg, #000000, #ffffff)");
+  });
+
+  it("keep a radial blur's focal point, and draw its swatch from it (D531)", () => {
+    const saved = savedFromBackground({ style: "radial", colors: ["#ffffff", "#000000"], focus: { x: 20, y: 80 } }, "r1", "Glow");
+    expect(saved).toMatchObject({ style: "radial", focus: { x: 20, y: 80 } });
+    expect(colourLibrarySchema.safeParse({ colours: [], gradients: [saved] }).success).toBe(true);
+    expect(colourLibrarySchema.safeParse({ colours: [], gradients: [{ ...saved, focus: { x: 200, y: 0 } }] }).success).toBe(false);
+    expect(radialGradient(["#ffffff", "#000000"], { x: 20, y: 80 })).toBe("radial-gradient(circle farthest-corner at 20% 80%, #ffffff, #000000)");
+    expect(radialGradient(["#ffffff", "#000000"])).toContain("at 50% 50%");
   });
 });
 
