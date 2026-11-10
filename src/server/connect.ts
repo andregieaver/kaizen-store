@@ -12,6 +12,7 @@ import { accountStatus, requirementNotes, type AccountStatus, type PaymentModeNa
 import { audit, type Account, type Membership } from "./auth";
 import type { SaveResult } from "./settings";
 import { createPlatformWebhooks, platformStripe, type WebhookKind } from "./stripe";
+import { log } from "./log";
 
 type Row = Record<string, unknown>;
 
@@ -358,7 +359,9 @@ export async function refreshStripeAccount(
   let status: AccountStatus;
   try {
     status = await saveStatus(storeId, mode, await stripe.v2.core.accounts.retrieve(saved.accountId, { include: INCLUDE }));
-  } catch {
+  } catch (error) {
+    // Null also means "no account": a Stripe that could not be asked is said apart from that.
+    log("warn", "connect.account_refresh_failed", { storeId, mode }, error);
     return null;
   }
   return { ...saved, ...status };

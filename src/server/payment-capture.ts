@@ -161,7 +161,11 @@ export async function authorizeFromSession(
   const pi = expanded ?? (await intentOfReference(stripe, session.id, account));
   if (!pi || pi.status !== "requires_capture") return "not_held";
   if (row.status === "cancelled") {
-    await stripe.paymentIntents.cancel(pi.id, {}, { stripeAccount: account, idempotencyKey: `void-${pi.id}` }).catch(() => null);
+    await stripe.paymentIntents.cancel(pi.id, {}, { stripeAccount: account, idempotencyKey: `void-${pi.id}` }).catch((error: unknown) => {
+      // The order is cancelled either way; a hold Stripe would not release stays on the shopper's card until it ends by itself.
+      log("warn", "capture.void_failed", { storeId, reason: "order cancelled" }, error);
+      return null;
+    });
     await db().execute(sql`update commerce.payments set status = 'cancelled', updated_at = now() where store_id = ${storeId}::uuid and provider_reference = ${session.id} and status in ('pending', 'authorized')`);
     return "voided";
   }
@@ -199,7 +203,8 @@ export async function capturePayment(
   let pi: Stripe.PaymentIntent | null;
   try {
     pi = await intentOfReference(stripe, held.reference, held.account);
-  } catch {
+  } catch (error) {
+    log("warn", "capture.intent_read_failed", { storeId, orderId }, error);
     return { ok: false, problem: "stripe" };
   }
   if (!pi) return { ok: false, problem: "stripe" };
@@ -217,7 +222,8 @@ export async function capturePayment(
         { ...(partial ? { amount_to_capture: amount } : {}), ...(fee !== null ? { application_fee_amount: fee } : {}) },
         { ...options, idempotencyKey: `capture-${pi.id}-${amount}` },
       );
-    } catch {
+    } catch (error) {
+      log("warn", "capture.failed", { storeId, orderId, amount, partial }, error);
       return { ok: false, problem: "stripe" };
     }
   } else if (pi.status !== "succeeded") {
@@ -262,7 +268,8 @@ export async function voidAuthorization(storeId: string, orderId: string, accoun
     const pi = await intentOfReference(stripe, held.reference, held.account);
     if (pi && pi.status === "requires_capture") await stripe.paymentIntents.cancel(pi.id, {}, { stripeAccount: held.account, idempotencyKey: `void-${pi.id}` });
     else if (pi && pi.status === "succeeded") return { ok: false, problem: "not_authorized" };
-  } catch {
+  } catch (error) {
+    log("warn", "capture.void_failed", { storeId, orderId, reason: "released by staff" }, error);
     return { ok: false, problem: "stripe" };
   }
   await cancelUnpaidOrder(orderId, "authorization released by staff");
@@ -314,8 +321,10 @@ export async function runCaptureJobs(
         update commerce.orders set capture_warned_at = now() where store_id = ${String(r.store_id)}::uuid and id = ${String(r.id)}::uuid and capture_warned_at is null returning id
       `);
       if (!claimed) continue;
-      if (options.warn) await options.warn(String(r.store_id), String(r.id)).catch(() => null);
-      else await import("./staff-alerts").then((m) => m.sendCaptureDueAlert(String(r.store_id), String(r.id))).catch(() => null);
+      // The order is marked as warned above, so an alert that failed is not sent again: say so.
+      const unsent = (error: unknown) => log("warn", "capture.due_alert_failed", { storeId: String(r.store_id), orderId: String(r.id) }, error);
+      if (options.warn) await options.warn(String(r.store_id), String(r.id)).catch(unsent);
+      else await import("./staff-alerts").then((m) => m.sendCaptureDueAlert(String(r.store_id), String(r.id))).catch(unsent);
       run.warned += 1;
     }
     const past = await db().execute<Row>(sql`
@@ -328,7 +337,10 @@ export async function runCaptureJobs(
       const held = await heldPayment(storeId, orderId);
       const stripe = held ? (options.stripeFor ?? platformStripe)(held.mode) : null;
       if (!held || !stripe) continue;
-      const pi = await intentOfReference(stripe, held.reference, held.account).catch(() => null);
+      const pi = await intentOfReference(stripe, held.reference, held.account).catch((error: unknown) => {
+        log("warn", "capture.intent_read_failed", { storeId, orderId, job: true }, error);
+        return null;
+      });
       if (!pi) continue;
       if (pi.status === "canceled") {
         await cancelUnpaidOrder(orderId, "authorization ended");
