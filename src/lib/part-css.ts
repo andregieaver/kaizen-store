@@ -104,8 +104,8 @@ function frameDecl(border: Border | null | undefined, radius: number | undefined
 const frameAt = (part: PartBase, size: Size): Decl =>
   frameDecl(valueAt(part, "border", size), valueAt(part, "radius", size), valueAt(part, "shadow", size), valueAt(part, "shadowOpacity", size));
 
-/** A row's or column's colour, see-through with an opacity, and what is behind it blurred (D86), at a size. */
-function colorDecl(part: PageRow | PageColumn, size: Size): Decl {
+/** A row's, column's or component's (D538) colour, see-through with an opacity, and what is behind it blurred (D86), at a size. */
+function colorDecl(part: PageRow | PageColumn | PageBlock, size: Size): Decl {
   const background = valueAt(part, "background", size);
   const blur = valueAt(part, "backdropBlur", size);
   const out: Decl = {};
@@ -295,8 +295,8 @@ export function rowWidthStyle(row: PageRow): ElementStyle {
   );
 }
 
-/** Whether a row's or column's corners clip a picture, video, gradient or layers (D534) behind it: rounded at some size. */
-export const clipsAnywhere = (part: PageRow | PageColumn): boolean =>
+/** Whether a row's, column's or component's corners clip a picture, video, gradient or layers (D534) behind it: rounded at some size. */
+export const clipsAnywhere = (part: PageRow | PageColumn | PageBlock): boolean =>
   SIZES.some((size) => Boolean(valueAt(part, "radius", size))) &&
   (part.background?.type === "image" || part.background?.type === "video" || part.background?.type === "gradient" || Boolean(part.backgroundLayers?.length));
 
@@ -535,7 +535,7 @@ export function blockStyle(block: PageBlock, mode: PartsMode): ElementStyle {
     important: true,
     where: true,
     sizes: perSize((size) => {
-      const out: Decl = { ...spacingDecl(spacingAt(block, size)), ...(block.type === "button" ? {} : frameAt(block, size)) };
+      const out: Decl = { ...spacingDecl(spacingAt(block, size)), ...(block.type === "button" ? {} : frameAt(block, size)), ...colorDecl(block, size) };
       if (picture && (block.type === "image" || block.type === "beforeAfter")) {
         const maxWidth = valueAt(block, "maxWidth", size) ?? undefined;
         const shown = block.type === "image" ? imageDisplaySize({ ...block, maxWidth }) : beforeAfterDisplaySize({ ...block, maxWidth });

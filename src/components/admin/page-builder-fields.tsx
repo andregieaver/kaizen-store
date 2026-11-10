@@ -7,7 +7,7 @@ import { rowWidthPatch } from "@/lib/theme-elements";
 import { sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
 import { MarkupInput } from "@/components/admin/markup-input";
 import { carouselAnywhere, carouselAt, clearAt, inheritedAt, setAt, sizeSource, stackAt, stackPatchAt, valueAt } from "@/lib/responsive";
-import { createContext, useContext, useEffect, useEffectEvent, useId, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { ContentGridView } from "@/components/content-grid";
 import { t } from "@/lib/i18n";
@@ -217,22 +217,81 @@ export function ImageFields({
  */
 export const GeneralFoot = createContext<ReactNode>(null);
 
+/**
+ * What the builder adds at the head of a settings dialog's Style tab for the part the dialog is for: a component's background
+ * (D538), in every component's settings without each dialog naming it. Rows and columns draw their own.
+ */
+export const StyleHead = createContext<ReactNode>(null);
+
 const SETTINGS_TABS = [{ key: "general" }, { key: "style" }, { key: "motion" }, { key: "advanced" }] as const;
-type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
+export type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
+
+/** The tab last shown in a settings dialog and how far down it was scrolled, kept while the builder moves from part to part (D538). */
+export type SettingsMemory = { tab: SettingsTab; scroll: number };
+/** Where the builder keeps a `SettingsMemory`: read and written outside rendering's own state, so a dialog's scrolling draws nothing. */
+export type SettingsMemoryStore = { read: () => SettingsMemory; write: (memory: Partial<SettingsMemory>) => void; reset: () => void };
+
+/** A new store, on General at the top. */
+export function settingsMemoryStore(): SettingsMemoryStore {
+  let kept: SettingsMemory = { tab: "general", scroll: 0 };
+  return {
+    read: () => kept,
+    write: (memory) => {
+      kept = { ...kept, ...memory };
+    },
+    reset: () => {
+      kept = { tab: "general", scroll: 0 };
+    },
+  };
+}
+
+/**
+ * Given by the builder: a settings dialog opened while another part's was open shows the same tab, scrolled as far, so the same
+ * setting is at hand for the next part (D538). Without it each dialog opens on General, at the top.
+ */
+export const SettingsMemoryContext = createContext<SettingsMemoryStore | null>(null);
 
 /** A settings dialog's four tabs (D48, D128): what it holds, how it looks, how it moves, and its id and classes. */
 export function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
-  const [tab, setTab] = useState<SettingsTab>("general");
+  const memory = useContext(SettingsMemoryContext);
+  const [tab, setOwnTab] = useState<SettingsTab>(() => memory?.read().tab ?? "general");
+  const setTab = (next: SettingsTab) => {
+    setOwnTab(next);
+    // Another tab starts at its top.
+    memory?.write({ tab: next, scroll: 0 });
+  };
   const foot = useContext(GeneralFoot);
+  const head = useContext(StyleHead);
   const id = useId();
   const fw = useAdminText("builder").fields;
+  const root = useRef<HTMLDivElement>(null);
+  // The panel's scrolling body: scrolled back to where the last part's was, and followed as it scrolls.
+  useLayoutEffect(() => {
+    const body = root.current?.closest<HTMLElement>("[data-panel-body]");
+    if (!body || !memory) return;
+    const wanted = memory.read().scroll;
+    if (wanted > 0) body.scrollTop = wanted;
+    const follow = () => {
+      memory.write({ scroll: body.scrollTop });
+    };
+    // Fields fetched as the dialog opens (backdrops, layers) can make it taller a moment later: scrolled again then, and
+    // followed only after, so the first, shorter scroll does not become the one kept.
+    const frame = requestAnimationFrame(() => {
+      if (wanted > 0 && body.scrollTop < wanted) body.scrollTop = wanted;
+      body.addEventListener("scroll", follow, { passive: true });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      body.removeEventListener("scroll", follow);
+    };
+  }, [memory]);
   const select = (index: number) => {
     const next = SETTINGS_TABS[(index + SETTINGS_TABS.length) % SETTINGS_TABS.length].key;
     setTab(next);
     document.getElementById(`${id}-${next}`)?.focus();
   };
   return (
-    <div className="flex flex-col gap-5">
+    <div ref={root} className="flex flex-col gap-5">
       <div role="tablist" aria-label={fw.settings} className="sticky -top-5 z-10 -mx-5 -mt-5 flex border-b border-border bg-background px-3">
         {SETTINGS_TABS.map((t, index) => (
           <button
@@ -255,6 +314,7 @@ export function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
         ))}
       </div>
       <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab}`} className="flex flex-col gap-5">
+        {tab === "style" && head}
         {panels[tab]}
         {tab === "general" && foot}
       </div>

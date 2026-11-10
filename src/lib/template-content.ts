@@ -348,7 +348,9 @@ function editBackground<T extends Background | undefined>(background: T, resolve
  */
 export function mapTemplateMedia(kind: SavedPartKind, content: PartContent, resolve: MediaResolver): PartContent {
   return editPart(kind, content, {
-    block: (block) => {
+    block: (original) => {
+      // Its own background and the layers over it (D538) first, as a column's.
+      const block = blockBackgroundMedia(original, resolve);
       if (block.type === "image") return { ...block, image: block.image ? resolved(block.image, resolve) : null };
       if (block.type === "beforeAfter") return { ...block, before: block.before ? resolved(block.before, resolve) : null, after: block.after ? resolved(block.after, resolve) : null };
       if (block.type === "video") {
@@ -402,8 +404,17 @@ export function mapTemplateMedia(kind: SavedPartKind, content: PartContent, reso
   });
 }
 
+/** A component's own background (D538) and its picture layers through `resolve`; a background whose picture is left out goes with its motion. */
+function blockBackgroundMedia(block: PageBlock, resolve: MediaResolver): PageBlock {
+  if (!block.background && !block.backgroundLayers) return block;
+  const background = editBackground(block.background, resolve);
+  const next = background || !block.background ? block : (without(block, ["background", "backgroundMotion"]) as PageBlock);
+  const out = background && background !== block.background ? ({ ...next, background } as PageBlock) : next;
+  return withLayerPictures(out, resolve);
+}
+
 /** A row or column with its picture layers' addresses (D537) through `resolve`; a layer whose picture is left out goes, the other layers stay. */
-function withLayerPictures<P extends PageRow | PageColumn>(part: P, resolve: MediaResolver): P {
+function withLayerPictures<P extends PageRow | PageColumn | PageBlock>(part: P, resolve: MediaResolver): P {
   if (!part.backgroundLayers) return part;
   const layers = mapLayerPictures(part.backgroundLayers, resolve);
   return layers ? { ...part, backgroundLayers: layers } : (without(part, ["backgroundLayers"]) as P);

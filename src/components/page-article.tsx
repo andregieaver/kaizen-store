@@ -33,7 +33,7 @@ import { PlansSection } from "./plans-section";
 import { TableSection } from "./table-section";
 import { ThemeStoreSection } from "./theme-store-section";
 import { themePartDraws } from "@/lib/theme-store-parts";
-import { ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelClass, rowBox, rowGrid, rowInnerClass } from "./page-parts";
+import { BlockBackground, ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelClass, rowBox, rowGrid, rowInnerClass } from "./page-parts";
 import { PartStyles } from "./part-styles";
 import { SearchSection } from "./search-section";
 import { VisiblePart } from "./visible-part";
@@ -342,6 +342,7 @@ function RowMarkup({
             <VisiblePart key={block.id} show={block.visibility?.show} place={place} preview={preview}>
             <div id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs} {...(mark && { "data-kz-edit": mark, "data-kz-block": block.id })}>
               <FontLinks families={blockFonts(block)} />
+              <BlockBackground block={block} firstRow={first} eager={eager} />
               {own !== undefined ? (
                 own
               ) : block.type === "columns" ? (
@@ -433,6 +434,7 @@ function answerParts(blocks: PageBlock[]): ReactNode {
     return (
       <div key={child.id} id={b.id} className={b.className || undefined} style={b.style}>
         <FontLinks families={blockFonts(child)} />
+        <BlockBackground block={child} />
         <PageBlockView block={child} />
       </div>
     );

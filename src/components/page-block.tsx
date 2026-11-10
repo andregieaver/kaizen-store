@@ -35,7 +35,7 @@ import { embedUrl } from "@/lib/video-embed";
 
 import { SHAPES, buttonLook } from "./button-look";
 import { BeforeAfterSlider, EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo } from "./lazy/blocks";
-import { blockBox } from "./page-parts";
+import { BlockBackground, blockBox } from "./page-parts";
 import { IconListView } from "./icon-list-view";
 import { TimelineView } from "./timeline-view";
 import { TableView } from "./table-view";
@@ -370,6 +370,7 @@ const siteChildren: ChildRenderer = (blocks) =>
     const b = blockBox(child, "site");
     return (
       <div key={child.id} id={b.id} className={b.className || undefined} style={b.style}>
+        <BlockBackground block={child} />
         <PageBlockView block={child} />
       </div>
     );

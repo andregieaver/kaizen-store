@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { PageModal } from "@/components/page-modal";
 import { PageBlockView } from "@/components/page-block";
 import {
+  BlockBackground,
   PartBackground,
   blockBox,
   columnBox,
@@ -78,6 +79,7 @@ function PreviewRow({ row, lang }: { row: PageRow; lang: string | undefined }) {
           const b = blockBox(block, "canvas");
           return (
             <div key={block.id} className={b.className || undefined} style={b.style}>
+              <BlockBackground block={block} stillLayers motion={null} />
               {block.type === "columns" ? <PreviewNested block={block} renderColumn={renderColumn} /> : <PreviewBlock block={block} lang={lang} />}
             </div>
           );

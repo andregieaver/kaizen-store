@@ -27,7 +27,7 @@ import { FontLinks } from "@/components/font-links";
 import { PageBlockView } from "@/components/page-block";
 import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
-import { PartBackground, blockBox, columnBox, rowBox, rowFrame, rowGrid, rowInnerClass, rowInnerStyle } from "@/components/page-parts";
+import { BlockBackground, PartBackground, blockBox, columnBox, rowBox, rowFrame, rowGrid, rowInnerClass, rowInnerStyle } from "@/components/page-parts";
 import { ColumnDividers, RowWidthHandles } from "./row-resize";
 import { useAdminText, useHandedText } from "./admin-text";
 import { QuestionPartFields, QuotePlacementField } from "./product-question-fields";
@@ -94,7 +94,7 @@ import { Modal } from "./modal";
 import { RichTextEditor } from "./rich-text-editor";
 import { DisplayBadge, DisplayFields, DisplayLegend, ScheduleFields, showPatch, type DisplaySetup } from "./display-fields";
 import { displayLocked, factsOffered, type Show } from "@/lib/visibility";
-import { GeneralFoot, SpacingFields, ImageFields, SettingsTabs, BackgroundFields, ThemeRowWidths, ThemeSections, useStyleName, RowWidthChoices, RowFields, ColumnSizeFields, BackgroundAtSize, ColumnLinkFields, ShapeChoice, AdvancedFields, NumberField, FrameFields, HeadingFields, ButtonFields, ButtonStyleFields, GridPreview, ColumnsFields, ContentGridFields, GridStyleFields, field } from "./page-builder-fields";
+import { GeneralFoot, StyleHead, SettingsMemoryContext, settingsMemoryStore, SpacingFields, ImageFields, SettingsTabs, BackgroundFields, ThemeRowWidths, ThemeSections, useStyleName, RowWidthChoices, RowFields, ColumnSizeFields, BackgroundAtSize, ColumnLinkFields, ShapeChoice, AdvancedFields, NumberField, FrameFields, HeadingFields, ButtonFields, ButtonStyleFields, GridPreview, ColumnsFields, ContentGridFields, GridStyleFields, field } from "./page-builder-fields";
 import { BlockIcon, Icon, LayoutPreview } from "./page-builder-icons";
 
 /**
@@ -3142,6 +3142,7 @@ function BlockItem({
   const remove = () => actions.onRows((rows) => removeBlock(rows, block.id));
   const edit = () => actions.open({ kind: "edit-block", blockId: block.id });
   const box = blockBox(block, "canvas");
+  const backgroundOnCanvas = canvasBackground(actions.motionPreview, block.backgroundMotion);
   const fx = canvasFx(actions.motionPreview, block.motion, drawTarget({ kind: "block", blockType: block.type }), {
     index,
     parentStagger,
@@ -3234,6 +3235,8 @@ function BlockItem({
         }
       >
         <FontLinks families={blockFonts(block)} />
+        {/* Its background (D538) moves on the canvas only while the motion preview is on, as a column's. */}
+        <BlockBackground block={block} stillLayers={!actions.motionPreview} {...backgroundOnCanvas} motion={backgroundOnCanvas.motion ?? null} />
         {/* A block that takes its content from a custom field (D118): the canvas has no values, so it shows its own and says so. */}
         {bindingOf(block) && <BindBadge bind={bindingOf(block)!} />}
         {editingInline && block.type === "heading" ? (
@@ -3343,6 +3346,7 @@ function AnswerParts({ blocks, actions }: { blocks: PageBlock[]; actions: Action
       >
         <div className={box.className || undefined} style={box.style}>
           <FontLinks families={blockFonts(child)} />
+          <BlockBackground block={child} stillLayers motion={null} />
           {blockHasContent(child) ? <PageBlockView block={child} /> : <p className="rounded-md bg-surface p-3 text-sm text-muted">{w.emptyBlock[child.type]}</p>}
         </div>
       </div>
@@ -3445,6 +3449,12 @@ function Dialogs({
   const blockWords = useAdminText("blocks");
   // Who sees a part (D179 phase 4): the facts the page offers and the store's choices.
   const displaySetup = useDisplaySetup(grid, pageType);
+  // The tab and scroll the settings dialogs share while one part's gives way to another's (D538); closed, the next opens on General.
+  const [settingsMemory] = useState(settingsMemoryStore);
+  const settingsOpen = dialog !== null;
+  useEffect(() => {
+    if (!settingsOpen) settingsMemory.reset();
+  }, [settingsOpen, settingsMemory]);
   if (translate) return <TranslateDialogs dialog={dialog} rows={rows} onRows={onRows} onClose={onClose} translate={translate} />;
   /** A change made in a field at the size edited (`setAt()`), to the part as it is when it lands. */
   const sizedPatch = (target: Styled, patch: Partial<PartBase>) =>
@@ -3618,8 +3628,41 @@ function Dialogs({
       />
     );
   })();
+  /** A component's background at the head of its Style tab (D538): every kind a column takes (no video), its backdrops, hue and layers. */
+  const blockBackgroundHead = (() => {
+    if (!block) return null;
+    const target: Styled = { kind: "block", id: block.id };
+    const patch = (next: Partial<PageBlock>) => onRows((current) => patchPart(current, target, next as Partial<PartBase>));
+    return (
+      <div key={`background-${block.id}`} className="flex flex-col gap-4">
+        {backgroundFields(
+          target,
+          <BackgroundFields
+            value={block.background}
+            upload={upload}
+            onChange={(background) => patch({ background: background?.type === "video" ? undefined : background })}
+            backdropBlur={block.backdropBlur}
+            onBackdropBlur={(backdropBlur) => patch({ backdropBlur })}
+            target="column"
+            motion={block.backgroundMotion}
+            onMotion={(backgroundMotion) => patch({ backgroundMotion })}
+            backdrop={{
+              layers: block.backgroundLayers,
+              hue: block.backgroundHue,
+              onBackdrop: (next) => patch(next as Partial<PageBlock>),
+              onLayers: (backgroundLayers) => patch({ backgroundLayers }),
+              onHue: (backgroundHue) => patch({ backgroundHue }),
+            }}
+            mark={<SizeMark part={block} field="background" label={dw.background} onPatch={plainPatch(target)} />}
+          />,
+        )}
+      </div>
+    );
+  })();
 
   return (
+    <SettingsMemoryContext.Provider value={settingsMemory}>
+    <StyleHead.Provider value={blockBackgroundHead}>
     <GeneralFoot.Provider value={scheduleFoot}>
       <SettingsPanel
         open={block?.type === "richText"}
@@ -4412,6 +4455,8 @@ function Dialogs({
         />
       )}
     </GeneralFoot.Provider>
+    </StyleHead.Provider>
+    </SettingsMemoryContext.Provider>
   );
 }
 

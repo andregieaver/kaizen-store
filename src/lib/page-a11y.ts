@@ -281,17 +281,18 @@ function layered(background: { type: string; colors?: string[]; opacity?: number
 }
 
 /**
- * What is behind a block's text at a size, as far as is known: the column's solid colour, else the row's; for a gradient, a picture
- * or a video, the colours it can show (`layered()`).
+ * What is behind a block's text at a size, as far as is known: the block's own solid colour (D538), else the column's, else the
+ * row's; for a gradient, a picture or a video, the colours it can show (`layered()`).
  */
 function behindAt(
   row: PageRow,
   column: PageColumn,
   size: Size,
+  block?: PageBlock,
 ): { color: string | null; unknown: boolean; layers?: { colours: string[]; picture: boolean }; surface: Surface | null } {
-  // The part whose colour set the text is drawn in (D390): the column's own background's, else the row's.
-  const surface = partSurface(column) ?? partSurface(row);
-  for (const part of [column, row] as const) {
+  // The part whose colour set the text is drawn in (D390): the block's own background's, else the column's, else the row's.
+  const surface = (block && partSurface(block)) ?? partSurface(column) ?? partSurface(row);
+  for (const part of (block ? [block, column, row] : [column, row]) as (PageBlock | PageColumn | PageRow)[]) {
     // In the colours it is drawn in: its hue turned with the rest of the background (D534).
     const background = huedBackground(valueAt(part, "background", size) ?? undefined, part.backgroundHue);
     if (!background) continue;
@@ -439,7 +440,7 @@ export function pageIssues(
             themeText,
           );
         const behindOf = (size: Size) => {
-          const back = behindAt(row, column, size);
+          const back = behindAt(row, column, size, block);
           return { over: back.color, unknown: back.unknown, surface: back.surface, ...(back.layers && { layers: back.layers }) };
         };
         /** Words coloured in rich text (D180), each colour over the block's background. */

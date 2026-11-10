@@ -1,5 +1,5 @@
 import { layerPictureUrls, withLayerSmallCopies, type BackgroundLayer } from "./background-layers";
-import { innerColumns, mapChildBlocks, mapInnerColumns, withChildren, type Background, type PageBlock, type PageContent, type RowBackground } from "./page-content";
+import { mapChildBlocks, pageParts, mapInnerColumns, withChildren, type Background, type PageBlock, type PageContent, type RowBackground } from "./page-content";
 import { mapTexts } from "./page-translation";
 import { SMALL_COPY_WIDTH } from "./picture-sizes";
 
@@ -63,16 +63,15 @@ export function withLibraryAlts(content: PageContent, lookup: (url: string) => L
   return changed ? { ...filled, translations } : content;
 }
 
-/** The pictures behind the page's rows and columns (D48), and those that are layers over their backgrounds (D537), whose small copies a phone can be given. */
+/**
+ * The pictures behind the page's rows, columns and components (D48, D538), and those that are layers over their backgrounds
+ * (D537), whose small copies a phone can be given.
+ */
 export function backgroundImageUrls(content: PageContent): string[] {
   const urls = new Set<string>();
-  for (const row of content.rows) {
-    if (row.background?.type === "image") urls.add(row.background.image.url);
-    for (const url of layerPictureUrls(row.backgroundLayers)) urls.add(url);
-    for (const column of [...row.columns, ...row.columns.flatMap((c) => c.blocks.flatMap(innerColumns))]) {
-      if (column.background?.type === "image") urls.add(column.background.image.url);
-      for (const url of layerPictureUrls(column.backgroundLayers)) urls.add(url);
-    }
+  for (const part of pageParts(content.rows)) {
+    if (part.background?.type === "image") urls.add(part.background.image.url);
+    for (const url of layerPictureUrls(part.backgroundLayers)) urls.add(url);
   }
   return [...urls];
 }
@@ -101,6 +100,12 @@ export function withSmallCopies(content: PageContent, lookup: (url: string) => s
   // A picture component's (D336), and a Columns component's columns' backgrounds (D294), at every depth.
   const fillBlock = (block: PageBlock): PageBlock => {
     let out = block;
+    // Its own background's picture and layers (D538), written only where it has them.
+    if (out.background?.type === "image") {
+      const background = fill(out.background);
+      if (background !== out.background) out = { ...out, background };
+    }
+    if (out.backgroundLayers) out = { ...out, ...layered(out.backgroundLayers) };
     if (out.type === "image" && out.image) {
       const small = lookup(out.image.url);
       if (small && small !== out.image.url && out.image.small !== small) {

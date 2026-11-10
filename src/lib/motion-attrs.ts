@@ -276,6 +276,12 @@ function motionOf(motion: PartMotion | undefined, target: MotionTarget, first: b
   }
 }
 
+/** A component's own background (D538) that moves as the page scrolls, or layers that do, needs the runtime. */
+function backgroundNeeds(block: PageBlock, into: Flags) {
+  if (block.backgroundMotion && BACKGROUND_SCROLL.has(block.backgroundMotion.effect) && block.background) into.js = true;
+  if (layersScroll(block.backgroundLayers)) into.js = true;
+}
+
 /** What the rows of a page (or a header or footer) need. Rows in a modal are not in the flow: their entrances wait for the dialog to open. */
 export function motionNeeds(rows: readonly PageRow[]): MotionNeeds {
   const flags: Flags = { js: false, view: false, any: false };
@@ -292,13 +298,17 @@ export function motionNeeds(rows: readonly PageRow[]): MotionNeeds {
       if (layersScroll(column.backgroundLayers)) flags.js = true;
       for (const block of column.blocks) {
         motionOf(block.motion, blockTarget(block), first, flags);
+        backgroundNeeds(block, flags);
         // A Columns component's columns and what they hold (D294).
         if (block.type !== "columns") continue;
         for (const inner of block.columns) {
           motionOf(inner.motion, "column", first, flags);
           if (inner.backgroundMotion && BACKGROUND_SCROLL.has(inner.backgroundMotion.effect) && inner.background) flags.js = true;
           if (layersScroll(inner.backgroundLayers)) flags.js = true;
-          for (const child of inner.blocks) motionOf(child.motion, blockTarget(child), first, flags);
+          for (const child of inner.blocks) {
+            motionOf(child.motion, blockTarget(child), first, flags);
+            backgroundNeeds(child, flags);
+          }
         }
       }
     }

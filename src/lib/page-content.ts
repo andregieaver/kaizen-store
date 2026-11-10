@@ -454,6 +454,25 @@ export type PartBase = {
   typography?: TypographyGroups;
 };
 
+/**
+ * A component's own background (D538): every kind a column takes (a colour, a picture or a gradient; only rows take a video),
+ * how it moves, the layers over it, their hue, and what is behind blurred, drawn as a column's are (`PartBackground`).
+ */
+export type PartBackgroundFields = {
+  background?: Background;
+  /** How the background moves (D128), with a picture or gradient. */
+  backgroundMotion?: BackgroundMotion;
+  /** Layers drawn over the background and under what the component holds (D534); the first is the lowest. */
+  backgroundLayers?: BackgroundLayer[];
+  /** Every colour of the background and its layers turned by this many degrees (D534). */
+  backgroundHue?: number;
+  /** What is behind the component blurred, in pixels (D86); only with no background or a colour. */
+  backdropBlur?: number;
+};
+
+/** What every component has: a part's settings and a background of its own (D538). */
+export type BlockPartBase = PartBase & PartBackgroundFields;
+
 /** The one kind of background a part can take per screen size (D179): a colour; a picture, video or gradient is the part's own. */
 export type ColorBackground = { type: "color"; color: Color; opacity?: number };
 
@@ -613,12 +632,12 @@ export type Bindable = { bind?: FieldBinding };
 export type FieldSource = "store";
 
 /** Rich text (D42); its alignment, font and the rest of its look are its typography (D179). */
-export type RichTextBlock = PartBase & Bindable & { id: string; type: "richText"; doc: RichTextDoc };
+export type RichTextBlock = BlockPartBase & Bindable & { id: string; type: "richText"; doc: RichTextDoc };
 /**
  * A picture (D47): uploaded and shrunk in the browser; none yet while it is being set up. It is drawn at its own size and
  * never larger (D151), shrinking only to fit a narrower column or a phone; `maxWidth` makes it narrower and `align` places it.
  */
-export type ImageBlock = PartBase & Bindable & {
+export type ImageBlock = BlockPartBase & Bindable & {
   id: string;
   type: "image";
   /** `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`, D336), never saved. */
@@ -646,7 +665,7 @@ export const BEFORE_AFTER_LABEL_MAX = 40;
  * size, or the crop `shape` chooses, never enlarged (as an image block, D151), no wider than `maxWidth`; the after picture is fitted to it.
  * Each picture has its words in a corner, "Before" and "After" in the visitor's language unless the owner writes their own, or none.
  */
-export type BeforeAfterBlock = PartBase & {
+export type BeforeAfterBlock = BlockPartBase & {
   id: string;
   type: "beforeAfter";
   before: BlockPicture | null;
@@ -699,7 +718,7 @@ export type FontWeight = keyof typeof FONT_WEIGHTS;
 export const HEADING_MAX = 300;
 
 /** A heading (D49): one line of text at a level, with its look. */
-export type HeadingBlock = PartBase & Bindable & {
+export type HeadingBlock = BlockPartBase & Bindable & {
   id: string;
   type: "heading";
   text: string;
@@ -729,7 +748,7 @@ export const BUTTON_LABEL_MAX = 100;
  * A button (D49): a link that looks like a button. Shown once it has both
  * its text and its address; the defaults are filled, medium and rounded.
  */
-export type ButtonBlock = PartBase & Bindable & {
+export type ButtonBlock = BlockPartBase & Bindable & {
   id: string;
   type: "button";
   label: string;
@@ -879,7 +898,7 @@ export const customItemShows = (item: CustomGridItem): boolean =>
  * tile has a picture, heading, excerpt, price (products) and button,
  * each switched on or off, styled like the components they resemble.
  */
-export type ContentGridBlock = PartBase & {
+export type ContentGridBlock = BlockPartBase & {
   id: string;
   type: "contentGrid";
   /** The tiles' fonts and sizes are its typography (D179): the tiles' text, their titles, excerpts and prices. */
@@ -1015,7 +1034,7 @@ export type LoopConfig = {
  * information and related products in the shopper's language unless one
  * of the store's own is given.
  */
-export type ProductBlock = PartBase & {
+export type ProductBlock = BlockPartBase & {
   id: string;
   type: "product";
   part: ProductPart;
@@ -1119,7 +1138,7 @@ export const LOGO_HEIGHT = { min: 16, max: 160, header: 40, footer: 32 } as cons
  * drop-down list or as links, side by side or one under another. Menus are
  * menu components (`MenuBlock`, D85), which any page can have.
  */
-export type SiteBlock = PartBase & {
+export type SiteBlock = BlockPartBase & {
   id: string;
   type: "site";
   part: SitePart;
@@ -1145,7 +1164,7 @@ export type SiteBlock = PartBase & {
  * under another, optionally left out on phones (where the phone's menu has
  * the main one).
  */
-export type MenuBlock = PartBase & {
+export type MenuBlock = BlockPartBase & {
   id: string;
   type: "menu";
   /** The menu; none chosen yet shows nothing. */
@@ -1163,7 +1182,7 @@ export type MenuBlock = PartBase & {
  * only about finding something, such as the 404 page, takes just the box.
  * A store's pages only.
  */
-export type SearchBlock = PartBase & {
+export type SearchBlock = BlockPartBase & {
   id: string;
   type: "search";
   /** Show the results as well as the box (on by default); the box alone leads to the search page. */
@@ -1176,7 +1195,7 @@ export type SearchBlock = PartBase & {
  * (`commerce.plans`, `plan_prices`, `plan_features`), read where the page is shown, so a change to a
  * plan shows on the page with no edit to it. Kaizen's own pages only; stores sell their own things.
  */
-export type PlansBlock = PartBase & {
+export type PlansBlock = BlockPartBase & {
   id: string;
   type: "plans";
   /** The currency the prices show in; none: the platform's first. */
@@ -1204,7 +1223,7 @@ export type PlansBlock = PartBase & {
  * store on Kaizena Flow, from the same search and prices the admin uses, read as they search. Kaizena Flow's own pages only. The words are the
  * page's own; empty ones take the language's (`DOMAIN_SEARCH_WORDS`).
  */
-export type DomainSearchBlock = PartBase & {
+export type DomainSearchBlock = BlockPartBase & {
   id: string;
   type: "domainSearch";
   /** A line above the search box. */
@@ -1226,7 +1245,7 @@ export type DomainSearchBlock = PartBase & {
  * theme the address names. The themes are the platform's, read where the page is shown; the heading and the line are the page's own,
  * drawn only when the part has something to show. Kaizena Flow's own pages only.
  */
-export type ThemeStoreBlock = PartBase & {
+export type ThemeStoreBlock = BlockPartBase & {
   id: string;
   type: "themeStore";
   part: ThemeStorePart;
@@ -1241,7 +1260,7 @@ export type ThemeStoreBlock = PartBase & {
  * shopper's language, and it draws nothing when the page has no value for
  * them. A store's pages and articles only.
  */
-export type CustomFieldBlock = PartBase & {
+export type CustomFieldBlock = BlockPartBase & {
   id: string;
   type: "customField";
   /** The group; none chosen: every group that applies to the page. */
@@ -1264,7 +1283,7 @@ export type CustomFieldBlock = PartBase & {
  * builder's answer to ACF's repeater loop. It draws nothing when the field is
  * missing, private or has no rows. A store's pages and articles only.
  */
-export type FieldLoopBlock = PartBase & LoopConfig & {
+export type FieldLoopBlock = BlockPartBase & LoopConfig & {
   id: string;
   type: "fieldLoop";
 };
@@ -1278,7 +1297,7 @@ export type FieldLoopBlock = PartBase & LoopConfig & {
  * role, `src/lib/page-roles.ts`), so it does nothing elsewhere. A store's
  * pages only.
  */
-export type StorePartBlock = PartBase & {
+export type StorePartBlock = BlockPartBase & {
   id: string;
   type: "storePart";
   part: ShopPart;
@@ -1297,7 +1316,7 @@ export type SeparatorPosition = keyof typeof SEPARATOR_POSITIONS;
  * as a line of its own style, thickness, colour and width. The defaults
  * are a solid, one-pixel line in the site's border colour across the column.
  */
-export type SeparatorBlock = PartBase & {
+export type SeparatorBlock = BlockPartBase & {
   id: string;
   type: "separator";
   line?: SeparatorLine;
@@ -1320,7 +1339,7 @@ export type DualButtonSide = Pick<ButtonBlock, "label" | "href" | "newTab" | "va
  * their place; one under another on phones if set. Each shows once it has
  * both its text and its address.
  */
-export type DualButtonBlock = PartBase & {
+export type DualButtonBlock = BlockPartBase & {
   id: string;
   type: "dualButton";
   first: DualButtonSide;
@@ -1357,7 +1376,7 @@ export type AccordionLook = keyof typeof ACCORDION_LOOKS;
  * the browser's find opens the one holding what was searched for. The
  * first may start open, and only one may be open at a time if set.
  */
-export type AccordionBlock = PartBase & {
+export type AccordionBlock = BlockPartBase & {
   id: string;
   type: "accordion";
   items: PanelItem[];
@@ -1378,7 +1397,7 @@ export type TabsAlign = keyof typeof TABS_ALIGNS;
  * of tabs, as the ARIA tabs pattern has them. Each panel is in the page,
  * so search engines read them all; tabs without a title are left out.
  */
-export type TabsBlock = PartBase & {
+export type TabsBlock = BlockPartBase & {
   id: string;
   type: "tabs";
   items: PanelItem[];
@@ -1392,7 +1411,7 @@ export type TabsBlock = PartBase & {
  * engines and AI assistants as schema.org's FAQPage unless switched off.
  * A question shows once it has both.
  */
-export type FaqBlock = PartBase & {
+export type FaqBlock = BlockPartBase & {
   id: string;
   type: "faq";
   /** Each item's title is the question and its text the answer, with components under it (D208). */
@@ -1422,7 +1441,7 @@ export const isFaqChildType = (type: BlockType): type is FaqChildType => (FAQ_CH
  * like a row's with its own settings. One level deep: a nested column holds any component but another Columns, and it and what it
  * holds are the page's own (never global).
  */
-export type ColumnsBlock = PartBase & {
+export type ColumnsBlock = BlockPartBase & {
   id: string;
   type: "columns";
   layout: RowLayout;
@@ -1511,7 +1530,7 @@ export const VIDEO_TITLE_MAX = 200;
  * Its title names it to screen readers and the player. How the settings
  * play out is `videoPlay()` (`src/lib/video-play.ts`).
  */
-export type VideoBlock = PartBase & {
+export type VideoBlock = BlockPartBase & {
   id: string;
   type: "video";
   source: VideoSource;
@@ -1544,7 +1563,7 @@ export const HTML_HEIGHT_MAX = 4000;
  * other services can wait until the visitor presses Show. Its title names
  * the frame to screen readers.
  */
-export type HtmlBlock = PartBase & {
+export type HtmlBlock = BlockPartBase & {
   id: string;
   type: "html";
   html: string;
@@ -1579,7 +1598,7 @@ export type Testimonial = {
  * cards, plain or large quotes in up to four columns (one on phones), with
  * their stars if given. A testimonial shows once it has its words.
  */
-export type TestimonialsBlock = PartBase & {
+export type TestimonialsBlock = BlockPartBase & {
   id: string;
   type: "testimonials";
   /** The owner's own (`items`) unless Google's reviews of their business (set up under Integrations). */
@@ -1619,7 +1638,7 @@ export type SocialLink = { id: string; network: SocialNetwork; href: string };
  * in a new tab, as plain icons or in a filled or outlined circle, rounded
  * or square, in each network's own colour, the site's or one chosen.
  */
-export type SocialLinksBlock = PartBase & {
+export type SocialLinksBlock = BlockPartBase & {
   id: string;
   type: "socialLinks";
   links: SocialLink[];
@@ -1654,7 +1673,7 @@ export type IconListItem = { id: string; icon: IconName; text: string; href: str
  * each a link if given an address. The icons are decorative: the words
  * say what each line means.
  */
-export type IconListBlock = PartBase & {
+export type IconListBlock = BlockPartBase & {
   id: string;
   type: "iconList";
   items: IconListItem[];
@@ -1686,7 +1705,7 @@ export type TimelineItem = { id: string; date: string; title: string; text: stri
  * alternating sides on wide screens (one side on a phone). An ordered list, so a screen reader hears how many and which comes where. The line
  * and dots are the theme's accent unless a colour is chosen.
  */
-export type TimelineBlock = PartBase & {
+export type TimelineBlock = BlockPartBase & {
   id: string;
   type: "timeline";
   items: TimelineItem[];
@@ -1712,7 +1731,7 @@ export type TableMobile = keyof typeof TABLE_MOBILE;
  * A table: rows of cells (plain text that may hold inline markup), the first row its header when `header` is on. Every row has
  * as many cells as the first. On a phone it stacks (each row a card, cells labelled by their column's header) or scrolls sideways.
  */
-export type TableBlock = PartBase & {
+export type TableBlock = BlockPartBase & {
   id: string;
   type: "table";
   rows: string[][];
@@ -1773,7 +1792,7 @@ export const BRANDS_LIMITS = { logoHeight: { min: 16, max: 300 }, speed: { min: 
  * logos in a row are the block's `columns` and, per screen size, `at.*.columns` (how many are seen at once in a carousel). A carousel
  * either keeps moving (`speed`: seconds each logo takes to pass) or moves one logo at a time (`interval`: seconds between steps).
  */
-export type BrandsBlock = PartBase & {
+export type BrandsBlock = BlockPartBase & {
   id: string;
   type: "brands";
   items: BrandItem[];
@@ -1847,7 +1866,7 @@ export type GalleryItem = {
  * `at.*.columns`, read only through `galleryColumns()`) or a carousel of as many in view, with a lightbox that shows each full size,
  * with the previous and the next, unless `lightbox` is off.
  */
-export type GalleryBlock = PartBase & {
+export type GalleryBlock = BlockPartBase & {
   id: string;
   type: "gallery";
   items: GalleryItem[];
@@ -1926,7 +1945,7 @@ export type FormButton = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill"
  * visitor's email address to reply to when the form asks for one.
  * Texts left empty read in the page's language.
  */
-export type EmailFormBlock = PartBase & {
+export type EmailFormBlock = BlockPartBase & {
     id: string;
     type: "emailForm";
     /** Where submissions are emailed: 1 to 5 addresses. */
@@ -1952,7 +1971,7 @@ export type NewsletterLayout = keyof typeof NEWSLETTER_LAYOUTS;
  * with a link, and only then is the sign-up emailed to the `recipients`,
  * with the words consented to and when.
  */
-export type NewsletterBlock = PartBase & {
+export type NewsletterBlock = BlockPartBase & {
     id: string;
     type: "newsletter";
     recipients: string[];
@@ -2867,6 +2886,16 @@ const background = z
   .optional();
 const rowBackground = z.discriminatedUnion("type", [colorBackground, imageBackground, gradientBackground, videoBackground]).optional();
 
+/** A component's settings as stored: a part's, with a background of its own as a column's (D538). */
+const blockPart = {
+  ...partBase,
+  background,
+  backgroundMotion: backgroundMotionSchema,
+  backgroundLayers: backgroundLayersSchema,
+  backgroundHue: backgroundHueSchema,
+  backdropBlur,
+};
+
 
 /** A custom field's id, as the store's field groups make them (`newFieldId()`). */
 const FIELD_ID = /^f_[a-z0-9]{6,24}$/;
@@ -2891,7 +2920,7 @@ const richTextBlock = z.object({
     return z.NEVER;
   }),
   bind: bindRule,
-  ...partBase,
+  ...blockPart,
 });
 
 const imageBlock = z.object({
@@ -2917,7 +2946,7 @@ const imageBlock = z.object({
   maxWidth: pictureWidth,
   align: textAlign,
   bind: bindRule,
-  ...partBase,
+  ...blockPart,
 });
 
 const blockPicture = z
@@ -2943,7 +2972,7 @@ const beforeAfterBlock = z.object({
   shape: z.enum(Object.keys(IMAGE_SHAPES) as [ImageShape, ...ImageShape[]]).optional(),
   maxWidth: pictureWidth,
   align: textAlign,
-  ...partBase,
+  ...blockPart,
 });
 
 const headingBlock = z.object({
@@ -2954,7 +2983,7 @@ const headingBlock = z.object({
   second: z.string().trim().max(HEADING_MAX, `Keep a heading's second part under ${HEADING_MAX} characters.`).optional(),
   stack: z.boolean().optional(),
   bind: bindRule,
-  ...partBase,
+  ...blockPart,
 });
 
 const buttonBlock = z.object({
@@ -2974,7 +3003,7 @@ const buttonBlock = z.object({
   fill: color.optional(),
   hover: z.enum(BUTTON_HOVER_IDS).optional(),
   bind: bindRule,
-  ...partBase,
+  ...blockPart,
 });
 
 /** A custom item's text: trimmed, at most `max` characters. */
@@ -3110,7 +3139,7 @@ const contentGridBlock = z
     .max(CUSTOM_ITEMS_MAX, `A grid holds at most ${CUSTOM_ITEMS_MAX} custom items.`)
     .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again.")
     .optional(),
-  ...partBase,
+  ...blockPart,
   })
   .superRefine((block, ctx) => {
     const issue = (message: string, path: (string | number)[]) => ctx.addIssue({ code: "custom", message, path });
@@ -3186,7 +3215,7 @@ const productBlock = z.object({
     .max(5, "A copy goes to at most 5 addresses.")
     .refine((list) => new Set(list).size === list.length, "A copy goes to the same address twice.")
     .optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const siteBlock = z.object({
@@ -3205,7 +3234,7 @@ const siteBlock = z.object({
   switcher: z.enum(["row", "column", "dropdown"]).optional(),
   langText: z.enum(["name", "code", "none"]).optional(),
   langFlag: z.boolean().optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const menuBlock = z.object({
@@ -3215,14 +3244,14 @@ const menuBlock = z.object({
   direction: z.enum(["row", "column"]).optional(),
   align: textAlign,
   itemHover: menuHoverSchema,
-  ...partBase,
+  ...blockPart,
 });
 
 const searchBlock = z.object({
   id: itemId,
   type: z.literal("search"),
   results: z.boolean().optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const themeStoreBlock = z.object({
@@ -3231,7 +3260,7 @@ const themeStoreBlock = z.object({
   part: z.enum(THEME_STORE_PARTS),
   heading: z.string().trim().max(THEME_PART_HEADING_MAX, `Keep the heading under ${THEME_PART_HEADING_MAX} characters.`).optional(),
   text: z.string().trim().max(THEME_PART_TEXT_MAX, `Keep the line under ${THEME_PART_TEXT_MAX} characters.`).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const plansBlock = z.object({
@@ -3249,7 +3278,7 @@ const plansBlock = z.object({
     .trim()
     .refine((href) => href === "" || isLinkAddress(href), "A button's address must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.")
     .default(""),
-  ...partBase,
+  ...blockPart,
 });
 
 /** At most this many endings a domain search suggests first (D315). */
@@ -3279,7 +3308,7 @@ const domainSearchBlock = z.object({
     .trim()
     .refine((href) => href === "" || isLinkAddress(href), "A button's address must be https://…, a page like /sign-up, an anchor like #contact, mailto: or tel:.")
     .default(""),
-  ...partBase,
+  ...blockPart,
 });
 
 const customFieldBlock = z.object({
@@ -3292,7 +3321,7 @@ const customFieldBlock = z.object({
   showHeading: z.boolean().optional(),
   heading: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`).optional(),
   source: z.literal("store").optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const fieldLoopBlock = z.object({
@@ -3303,14 +3332,14 @@ const fieldLoopBlock = z.object({
   ...loopSettings.shape,
   showHeading: z.boolean().optional(),
   heading: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const storePartBlock = z.object({
   id: itemId,
   type: z.literal("storePart"),
   part: z.enum(SHOP_PART_KEYS as [ShopPart, ...ShopPart[]]),
-  ...partBase,
+  ...blockPart,
 });
 
 const separatorBlock = z.object({
@@ -3326,7 +3355,7 @@ const separatorBlock = z.object({
   color: color.optional(),
   width: z.number().int().min(10, "Make a line at least 10 % of its column.").max(100).optional(),
   position: z.enum(Object.keys(SEPARATOR_POSITIONS) as [SeparatorPosition, ...SeparatorPosition[]]).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const dualButtonSide = z.object({
@@ -3348,7 +3377,7 @@ const dualButtonBlock = z.object({
   stack: z.boolean().optional(),
   align: textAlign,
   hover: z.enum(BUTTON_HOVER_IDS).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const panelItems = z
@@ -3369,7 +3398,7 @@ const accordionBlock = z.object({
   openFirst: z.boolean().optional(),
   single: z.boolean().optional(),
   look: z.enum(Object.keys(ACCORDION_LOOKS) as [AccordionLook, ...AccordionLook[]]).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const tabsBlock = z.object({
@@ -3378,7 +3407,7 @@ const tabsBlock = z.object({
   items: panelItems,
   look: z.enum(Object.keys(TABS_LOOKS) as [TabsLook, ...TabsLook[]]).optional(),
   tabsAlign: z.enum(Object.keys(TABS_ALIGNS) as [TabsAlign, ...TabsAlign[]]).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const faqBlock = z.object({
@@ -3400,7 +3429,7 @@ const faqBlock = z.object({
   single: z.boolean().optional(),
   look: accordionBlock.shape.look,
   structuredData: z.boolean().optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const videoBlock = z
@@ -3423,7 +3452,7 @@ const videoBlock = z
     autoplay: z.boolean().optional(),
     loop: z.boolean().optional(),
     once: z.boolean().optional(),
-    ...partBase,
+    ...blockPart,
   })
   .refine((block) => block.source === "upload" || block.link === "" || embedUrl(block.source, block.link) !== null, {
     message: "Use the address of a video on YouTube or Vimeo, as its Share button gives it.",
@@ -3437,7 +3466,7 @@ const htmlBlock = z.object({
   title: z.string().trim().max(200, "Keep the HTML's title under 200 characters.").default(""),
   height: z.number().int().min(20, "Make the HTML at least 20 pixels tall.").max(HTML_HEIGHT_MAX, `Make the HTML at most ${HTML_HEIGHT_MAX} pixels tall.`).optional(),
   waitForClick: z.boolean().optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const testimonialsBlock = z.object({
@@ -3475,7 +3504,7 @@ const testimonialsBlock = z.object({
   showRating: z.boolean().optional(),
   display: z.literal("carousel", "Testimonials are shown in an unknown way.").optional(),
   carousel: carouselSettingsSchema.optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const socialLinksBlock = z.object({
@@ -3504,7 +3533,7 @@ const socialLinksBlock = z.object({
   gap: z.number().int().min(0).max(SOCIAL_GAP_MAX).optional(),
   position: z.enum(Object.keys(SEPARATOR_POSITIONS) as [SeparatorPosition, ...SeparatorPosition[]]).optional(),
   showNames: z.boolean().optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const iconListBlock = z.object({
@@ -3537,7 +3566,7 @@ const iconListBlock = z.object({
   iconSize: z.enum(Object.keys(BUTTON_SIZES) as [ButtonSize, ...ButtonSize[]]).optional(),
   gap: z.number().int().min(0).max(SOCIAL_GAP_MAX).optional(),
   position: z.enum(Object.keys(SEPARATOR_POSITIONS) as [SeparatorPosition, ...SeparatorPosition[]]).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const timelineBlock = z.object({
@@ -3557,7 +3586,7 @@ const timelineBlock = z.object({
     .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again."),
   layout: z.enum(Object.keys(TIMELINE_LAYOUTS) as [TimelineLayout, ...TimelineLayout[]]).optional(),
   markerColor: color.optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const tableColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase()).optional();
@@ -3604,7 +3633,7 @@ const galleryBlock = z.object({
   fadeMs: z.number().int().min(GALLERY_LIMITS.fadeMs.min, `A fade takes at least ${GALLERY_LIMITS.fadeMs.min} milliseconds.`).max(GALLERY_LIMITS.fadeMs.max, `A fade takes at most ${GALLERY_LIMITS.fadeMs.max} milliseconds.`).optional(),
   hoverZoom: z.number().int().min(GALLERY_LIMITS.hoverZoom.min).max(GALLERY_LIMITS.hoverZoom.max, `A picture grows at most ${GALLERY_LIMITS.hoverZoom.max} % on hover.`).optional(),
   hoverZoomMs: z.number().int().min(GALLERY_LIMITS.hoverZoomMs.min).max(GALLERY_LIMITS.hoverZoomMs.max, `Growing takes at most ${GALLERY_LIMITS.hoverZoomMs.max} milliseconds.`).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const brandsBlock = z.object({
@@ -3644,7 +3673,7 @@ const brandsBlock = z.object({
   colourOnHover: z.boolean().optional(),
   tint: z.enum(Object.keys(BRAND_TINTS) as [BrandTint, ...BrandTint[]]).optional(),
   tintColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase()).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const tableBlock = z.object({
@@ -3670,7 +3699,7 @@ const tableBlock = z.object({
   fixedHeader: z.enum(Object.keys(TABLE_FIXED) as [TableFixed, ...TableFixed[]]).optional(),
   maxHeight: z.number().int().min(120).max(TABLE_MAX_HEIGHT_MAX).optional(),
   sections: z.array(z.string().trim().max(200, "Keep a section title under 200 characters.").nullable()).max(TABLE_ROWS_MAX).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 const formText = (what: string, max = FORM_TEXT_MAX) => z.string().trim().max(max, `Keep ${what} under ${max} characters.`);
@@ -3724,7 +3753,7 @@ const emailFormBlock = z.object({
   successMessage: formText("the thank-you message").default(""),
   consent: formText("the tick box's words").optional(),
   button: formButton,
-  ...partBase,
+  ...blockPart,
 });
 
 const newsletterBlock = z.object({
@@ -3741,7 +3770,7 @@ const newsletterBlock = z.object({
   button: formButton,
   incentive: z.string().uuid().optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(SIGNUP_TAGS_MAX).optional(),
-  ...partBase,
+  ...blockPart,
 });
 
 /** The kinds of block but the Columns component (D294), each as stored now: what a nested column holds. */
@@ -3868,7 +3897,7 @@ const columnsBlock = z
     gap: partGap,
     equalHeight: z.boolean().optional(),
     verticalAlign: z.enum(["top", "middle", "bottom"]).optional(),
-    ...partBase,
+    ...blockPart,
   })
   .refine((block) => !block.global, { message: "A Columns component cannot be global: make the row or column that holds it global instead." })
   .refine((block) => block.columns.length === columnsOfLayouts(rowLayouts(block)), {

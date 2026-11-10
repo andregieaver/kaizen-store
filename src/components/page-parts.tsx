@@ -175,12 +175,19 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
       picture && "box-content max-w-(--picture-width)",
       // Its own font (D59) for all its text, from its typography (D179); the stylesheet comes with `FontLinks`.
       ...boxFamilies(block).map(fontClass),
+      // A background of its own (D538) is drawn behind what it holds, as a column's; text in the theme's colours reads on it (D390).
+      hasOwnBackground(block) && "relative isolate",
+      surfaceClass(block),
       block.type !== "button" && SIZES.some((size) => Boolean(valueAt(block, "radius", size))) && "overflow-clip",
       block.className,
     ),
     style: {},
   };
 }
+
+/** Whether a component has a background of its own to draw behind what it holds (D538): a picture, gradient or layers. */
+export const hasOwnBackground = (block: PageBlock): boolean =>
+  block.background?.type === "image" || block.background?.type === "gradient" || Boolean(block.backgroundLayers?.length);
 
 /** A blurred picture or video reaches past the edges by twice its blur, cut off there, so its soft rim does not show. */
 const blurredMedia = (blur: number): CSSProperties | undefined =>
@@ -370,6 +377,29 @@ export function PartBackground({
       <BaseBackground background={huedBackground(background, hue)} {...base} />
       <BackgroundLayers layers={layers} hue={hue} still={stillLayers} eager={base.eager} />
     </>
+  );
+}
+
+/** A component's own background (D538), drawn behind what it holds as a column's is; nothing when it has none but a colour. */
+export function BlockBackground({
+  block,
+  motion,
+  ...rest
+}: Omit<BackgroundProps, "background" | "motion"> & {
+  block: PageBlock;
+  /** How it moves; the component's own unless given (the canvas gives what its motion preview allows). */
+  motion?: BackgroundMotion | null;
+  stillLayers?: boolean;
+}) {
+  if (!hasOwnBackground(block)) return null;
+  return (
+    <PartBackground
+      background={block.background}
+      layers={block.backgroundLayers}
+      hue={block.backgroundHue}
+      motion={motion === null ? undefined : (motion ?? block.backgroundMotion)}
+      {...rest}
+    />
   );
 }
 
