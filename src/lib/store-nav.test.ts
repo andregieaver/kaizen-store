@@ -112,7 +112,8 @@ describe("the store admin's sections (D147)", () => {
     const href = (label: string) => tabs.find((t) => t.label === label)!.href;
     expect(href("Products")).toBe("/admin/s/fields");
     expect(href("Customers")).toBe("/admin/s/privacy");
-    expect(href("Marketing")).toBe("/admin/s/experiments");
+    // Since Marketing is in groups (code review step 0.11), Email comes before the site's own tools: a website opens it on Broadcasts.
+    expect(href("Marketing")).toBe("/admin/s/broadcasts");
     expect(href("Analytics")).toBe("/admin/s/analytics/traffic");
     expect(storeTabs("/admin/s", NONE).find((t) => t.label === "Products")!.href).toBe("/admin/s/products");
     const paths = storeSections(website).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.path)));

@@ -240,6 +240,16 @@ export const NAV_NB: Record<string, string> = {
   "Stop sales and take the shop off the web. Nothing is deleted, and you can reopen it for thirty days.":
     "Stopp salget og ta butikken av nettet. Ingenting slettes, og du kan åpne den igjen i tretti dager.",
   Selling: "Salg",
+  // The groups of Marketing, Analytics and Website (the code review's step 0.11).
+  Email: "E-post",
+  Channels: "Kanaler",
+  Loyalty: "Lojalitet",
+  "On the site": "På nettstedet",
+  Money: "Penger",
+  "Customers and products": "Kunder og produkter",
+  "The site": "Nettstedet",
+  Look: "Utseende",
+  Structure: "Struktur",
   Payments: "Betalinger",
   "Take payments through Stripe, and the methods shoppers can use.": "Ta imot betalinger gjennom Stripe, og betalingsmetodene kundene kan bruke.",
   Shipping: "Frakt",

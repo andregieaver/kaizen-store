@@ -133,22 +133,42 @@ export const STORE_SECTIONS: StoreSection[] = [
     intro: "Ways to get people to buy, and to come back.",
     groups: [
       {
-        heading: "Marketing",
+        heading: "Discounts",
         items: [
           item("/campaigns", "Campaigns", "Offers without a code, for a time: a percentage off, buy N pay for M, a free product.", { feature: "shop", icon: "badge-percent", basic: true }),
           item("/discounts", "Coupons", "Discount codes customers type at checkout.", { feature: "shop", icon: "ticket", basic: true }),
-          item("/recommendations", "Recommendations", "What the store suggests to each shopper, and how well it works.", { feature: "shop", icon: "thumbs-up" }),
-          item("/experiments", "A/B tests", "Try two versions of a page on real visitors and keep the one that works better.", { icon: "flask" }),
-          item("/automations", "Email automations", "Emails that go by themselves: a welcome, after a purchase, win-back, and back in stock.", { icon: "mail-check" }),
+        ],
+      },
+      {
+        heading: "Email",
+        items: [
           item("/broadcasts", "Broadcasts", "Emails with news and offers to everyone who wants them, or to a segment, with what happened after.", { icon: "send", basic: true }),
+          item("/automations", "Email automations", "Emails that go by themselves: a welcome, after a purchase, win-back, and back in stock.", { icon: "mail-check" }),
+          item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop", icon: "cart" }),
+          item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when.", { icon: "user-check" }),
           item("/segments", "Segments", "Groups of customers and subscribers by what they did, counted as you open them.", { icon: "chart-pie" }),
+        ],
+      },
+      {
+        heading: "Channels",
+        items: [
           item("/ads", "Ads and conversions", "Checkouts and purchases sent to your ad platforms from the server, for shoppers who allowed marketing.", { icon: "target" }),
           item("/feeds", "Product feeds", "Your products for Google Shopping, Meta, TikTok and Pinterest, at a secret address.", { icon: "rss" }),
-          item("/subscribers", "Subscribers", "People who asked for your emails with news and offers, with what they agreed to and when.", { icon: "user-check" }),
-          item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop", icon: "cart" }),
+          item("/creators", "Creators", "People with a channel who sell your goods with a code of their own, and the commission they earn.", { feature: "shop", icon: "video" }),
+        ],
+      },
+      {
+        heading: "Loyalty",
+        items: [
           item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction.", { feature: "bonus", icon: "coins", basic: true }),
           item("/affiliates", "Referral program", "Customers who refer their friends, and what both get.", { feature: "referrals", icon: "share", basic: true }),
-          item("/creators", "Creators", "People with a channel who sell your goods with a code of their own, and the commission they earn.", { feature: "shop", icon: "video" }),
+        ],
+      },
+      {
+        heading: "On the site",
+        items: [
+          item("/recommendations", "Recommendations", "What the store suggests to each shopper, and how well it works.", { feature: "shop", icon: "thumbs-up" }),
+          item("/experiments", "A/B tests", "Try two versions of a page on real visitors and keep the one that works better.", { icon: "flask" }),
         ],
       },
     ],
@@ -162,20 +182,35 @@ export const STORE_SECTIONS: StoreSection[] = [
     intro: "How the store is doing: sales and profit, why they change, which customers and products drive them, and what needs doing today.",
     groups: [
       {
-        heading: "Analytics",
+        heading: "Overview",
         items: [
           item("/analytics", "Overview", "The store's main figures against the last period and last year, its funnel, best sellers, channels and what needs you today.", { exact: true, feature: "shop", icon: "dashboard", basic: true }),
           item("/analytics/live", "Live", "Who is in the store right now, carts and checkouts in progress, and today's orders so far.", { feature: "shop", icon: "activity" }),
-          item("/analytics/finance", "Finance", "From gross sales to profit: discounts, refunds, costs, fees, marketing and what is left.", { feature: "shop", icon: "wallet" }),
           item("/analytics/reports", "Reports", "Your sales cut the way you need them: ready reports and your own, saved and downloaded.", { feature: "shop", icon: "file-spreadsheet" }),
+        ],
+      },
+      {
+        heading: "Money",
+        items: [
+          item("/analytics/finance", "Finance", "From gross sales to profit: discounts, refunds, costs, fees, marketing and what is left.", { feature: "shop", icon: "wallet" }),
           item("/analytics/payouts", "Payouts", "What Stripe paid to your bank, what each payout settles and whether it adds up.", { feature: "shop", icon: "landmark", basic: true }),
           item("/analytics/tax", "VAT", "VAT by country and rate, the quarterly OSS and monthly IOSS return data, and how they agree with your invoices and Finance.", { feature: "shop", icon: "percent" }),
+          item("/analytics/subscriptions", "Subscriptions", "Monthly recurring revenue, how it moves, churn and failed renewals.", { feature: "subscriptions", icon: "repeat" }),
+        ],
+      },
+      {
+        heading: "Customers and products",
+        items: [
           item("/analytics/customers", "Customers", "New and returning customers, repeat purchases, lifetime value, segments and cohorts.", { feature: "shop", icon: "users" }),
           item("/analytics/products", "Products", "What sells, what earns, what is refunded, and how fast each product moves.", { feature: "shop", icon: "tag" }),
           item("/analytics/inventory", "Inventory", "Stock, its value, how many days it lasts, what is about to run out and what does not sell.", { feature: "shop", icon: "warehouse" }),
           item("/analytics/marketing", "Marketing", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons.", { feature: "shop", icon: "megaphone" }),
           item("/analytics/sales", "Sales", "Deals: what they may bring and when, how they move from stage to stage, who won and lost, and how long a deal takes to win.", { feature: "sales", icon: "handshake" }),
-          item("/analytics/subscriptions", "Subscriptions", "Monthly recurring revenue, how it moves, churn and failed renewals.", { feature: "subscriptions", icon: "repeat" }),
+        ],
+      },
+      {
+        heading: "The site",
+        items: [
           item("/analytics/traffic", "Traffic", "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours.", { icon: "pointer" }),
           item("/analytics/speed", "Speed", "How fast your pages load for your visitors, measured in their browsers, and what to fix.", { icon: "gauge" }),
           item("/analytics/settings", "Analytics settings", "Costs, fees and targets that turn sales into profit, and whether visits are counted.", { icon: "sliders" }),
@@ -192,7 +227,7 @@ export const STORE_SECTIONS: StoreSection[] = [
     intro: "Everything that makes the store's site: its pages and blog, pictures, menus, header, footer, look and translations.",
     groups: [
       {
-        heading: "Website",
+        heading: "Content",
         items: [
           item("/dream-factory", "Dream Factory", "Say what you want and the AI does it: a new store, or changes to the one you have, shown to you before anything goes live.", { icon: "sparkles", basic: true }),
           item("/pages", "Pages", "The store's own pages, built in the page builder: draft, publish, and choose the front page and special pages.", { icon: "files", basic: true }),
@@ -201,11 +236,21 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/articles/comments", "Blog comments", "Visitors' comments on the articles: approve, refuse or mark them as spam.", { icon: "message-square" }),
           item("/content", "Content", "Your own kinds of content, such as team members or locations: entries listed on pages, each with a page if you like.", { icon: "library" }),
           item("/media", "Media", "Pictures and videos for the store, searchable, with alt texts.", { icon: "image", basic: true }),
-          item("/menus", "Menus", "Lists of links for the header, footer and pages.", { icon: "menu", basic: true }),
-          item("/redirects", "Redirects", "Redirects for addresses that changed and a report of the addresses shoppers could not find.", { icon: "signpost" }),
+        ],
+      },
+      {
+        heading: "Look",
+        items: [
+          item("/settings/design", "Design", "The store's look: template, colours, fonts, buttons and corners.", { icon: "palette", basic: true }),
           item("/headers", "Headers", "Headers built from components; choose the one the store shows.", { icon: "panel-top" }),
           item("/footers", "Footers", "Footers built from components; choose the one the store shows.", { icon: "panel-bottom" }),
-          item("/settings/design", "Design", "The store's look: template, colours, fonts, buttons and corners.", { icon: "palette", basic: true }),
+        ],
+      },
+      {
+        heading: "Structure",
+        items: [
+          item("/menus", "Menus", "Lists of links for the header, footer and pages.", { icon: "menu", basic: true }),
+          item("/redirects", "Redirects", "Redirects for addresses that changed and a report of the addresses shoppers could not find.", { icon: "signpost" }),
           item("/staging", "Staging", "Gather changes to pages, the look and menus, compare them with what visitors see, and make them live together.", { icon: "layers" }),
           // More than one language comes with Several languages or with countries of different languages (D178); the page says when there is one.
           item("/translate", "Translate the store", "Have AI suggest translations of the whole store, and read them before they are used.", { feature: ["languages", "countries"], icon: "languages", basic: true }),
