@@ -1,6 +1,6 @@
 {
-  "id": "385a5a94-ba88-46c6-83a5-23670a8091d7",
-  "prevId": "57fc9ced-cc24-46f3-b1b9-8ba94e2c951c",
+  "id": "f32d8f8d-7e2b-4763-9766-36b20028102b",
+  "prevId": "49f5138f-5b4a-46db-bc00-b524379a5b47",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -34618,6 +34618,12 @@
           "notNull": true,
           "default": true
         },
+        "supplier_id": {
+          "name": "supplier_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -34627,6 +34633,22 @@
         }
       },
       "indexes": {
+        "inventory_locations_supplier_key": {
+          "name": "inventory_locations_supplier_key",
+          "columns": [
+            {
+              "expression": "supplier_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"inventory_locations\".\"supplier_id\" is not null",
+          "concurrently": false
+        },
         "inventory_locations_active_name_key": {
           "name": "inventory_locations_active_name_key",
           "columns": [
@@ -34660,6 +34682,22 @@
           "tableTo": "stores",
           "schemaTo": "commerce",
           "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "inventory_locations_supplier_fk": {
+          "name": "inventory_locations_supplier_fk",
+          "tableFrom": "inventory_locations",
+          "columnsFrom": [
+            "store_id",
+            "supplier_id"
+          ],
+          "tableTo": "suppliers",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
             "id"
           ],
           "onUpdate": "no action",
@@ -58431,6 +58469,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "supplier_id": {
+          "name": "supplier_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "low_stock_threshold": {
           "name": "low_stock_threshold",
           "type": "integer",
@@ -58473,6 +58517,28 @@
         }
       },
       "indexes": {
+        "product_variants_supplier_idx": {
+          "name": "product_variants_supplier_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "supplier_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "where": "\"commerce\".\"product_variants\".\"supplier_id\" is not null",
+          "concurrently": false
+        },
         "product_variants_product_idx": {
           "name": "product_variants_product_idx",
           "columns": [
@@ -58511,6 +58577,22 @@
           ],
           "onUpdate": "no action",
           "onDelete": "cascade"
+        },
+        "product_variants_supplier_fk": {
+          "name": "product_variants_supplier_fk",
+          "tableFrom": "product_variants",
+          "columnsFrom": [
+            "store_id",
+            "supplier_id"
+          ],
+          "tableTo": "suppliers",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -58561,6 +58643,10 @@
         "product_variants_low_stock_threshold": {
           "name": "product_variants_low_stock_threshold",
           "value": "\"commerce\".\"product_variants\".\"low_stock_threshold\" is null or (\"commerce\".\"product_variants\".\"low_stock_threshold\" between 0 and 1000000 and \"commerce\".\"product_variants\".\"delivery\" = 'physical')"
+        },
+        "product_variants_supplier_goods": {
+          "name": "product_variants_supplier_goods",
+          "value": "\"commerce\".\"product_variants\".\"supplier_id\" is null or \"commerce\".\"product_variants\".\"delivery\" = 'physical'"
         },
         "product_variants_gtin_digits": {
           "name": "product_variants_gtin_digits",
@@ -77930,6 +78016,60 @@
           "primaryKey": false,
           "notNull": false
         },
+        "drop_ships": {
+          "name": "drop_ships",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "order_email": {
+          "name": "order_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ships_from": {
+          "name": "ships_from",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "order_language": {
+          "name": "order_language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'en'"
+        },
+        "dispatch_days": {
+          "name": "dispatch_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 2
+        },
+        "order_method": {
+          "name": "order_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'email'"
+        },
+        "return_address": {
+          "name": "return_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "order_note": {
+          "name": "order_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -78008,6 +78148,34 @@
         "suppliers_usual_kind": {
           "name": "suppliers_usual_kind",
           "value": "\"commerce\".\"suppliers\".\"usual_kind\" is null or \"commerce\".\"suppliers\".\"usual_kind\" ~ '^[a-z_]{2,30}$'"
+        },
+        "suppliers_drop_ship_set": {
+          "name": "suppliers_drop_ship_set",
+          "value": "not \"commerce\".\"suppliers\".\"drop_ships\" or (\"commerce\".\"suppliers\".\"order_email\" is not null and \"commerce\".\"suppliers\".\"ships_from\" is not null)"
+        },
+        "suppliers_order_email": {
+          "name": "suppliers_order_email",
+          "value": "\"commerce\".\"suppliers\".\"order_email\" is null or (length(\"commerce\".\"suppliers\".\"order_email\") between 3 and 254 and \"commerce\".\"suppliers\".\"order_email\" ~ '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+$')"
+        },
+        "suppliers_ships_from": {
+          "name": "suppliers_ships_from",
+          "value": "\"commerce\".\"suppliers\".\"ships_from\" is null or \"commerce\".\"suppliers\".\"ships_from\" ~ '^[A-Z]{2}$'"
+        },
+        "suppliers_order_language": {
+          "name": "suppliers_order_language",
+          "value": "\"commerce\".\"suppliers\".\"order_language\" ~ '^[a-z]{2}$'"
+        },
+        "suppliers_dispatch_days": {
+          "name": "suppliers_dispatch_days",
+          "value": "\"commerce\".\"suppliers\".\"dispatch_days\" between 1 and 30"
+        },
+        "suppliers_order_method": {
+          "name": "suppliers_order_method",
+          "value": "\"commerce\".\"suppliers\".\"order_method\" in ('email', 'connected', 'file')"
+        },
+        "suppliers_drop_ship_texts": {
+          "name": "suppliers_drop_ship_texts",
+          "value": "length(\"commerce\".\"suppliers\".\"return_address\") <= 500 and length(\"commerce\".\"suppliers\".\"order_note\") <= 500"
         }
       },
       "isRLSEnabled": false

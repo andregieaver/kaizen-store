@@ -3075,6 +3075,11 @@ export const productVariants = commerce.table(
      * unit sold is a pre-order, said with the date everywhere a shopper sees the variant and kept on the order line. Null: no pre-order.
      */
     preorderUntil: date("preorder_until", { mode: "string" }),
+    /**
+     * Drop shipping (D540, `docs/drop-shipping.md`): the supplier that sends this variant to the customer. Its stock is at the supplier's own
+     * location, which online orders take from after the store's own locations. Physical goods only. Null: the store sends it.
+     */
+    supplierId: uuid("supplier_id"),
     /** The owner's warning level (0 to 1,000,000): on hand over the active locations at or below it is one email per crossing. Null: no warning. */
     lowStockThreshold: integer("low_stock_threshold"),
     /**
@@ -3107,6 +3112,9 @@ export const productVariants = commerce.table(
     ),
     unique("product_variants_store_sku_key").on(t.storeId, t.sku),
     productRef("product_variants_product_fk", t),
+    foreignKey({ name: "product_variants_supplier_fk", columns: [t.storeId, t.supplierId], foreignColumns: [suppliers.storeId, suppliers.id] }),
+    index("product_variants_supplier_idx").on(t.storeId, t.supplierId).where(sql`${t.supplierId} is not null`),
+    check("product_variants_supplier_goods", sql`${t.supplierId} is null or ${t.delivery} = 'physical'`),
     index("product_variants_product_idx").on(t.storeId, t.productId),
     check("product_variants_gtin_digits", sql`${t.gtin} ~ '^[0-9]{8,14}$'`),
     check("product_variants_rental_period", sql`${t.rentalPeriod} in ('day', 'half_day', 'hour')`),
@@ -3964,10 +3972,17 @@ export const inventoryLocations = commerce.table(
      * (`variant_availability`) nor allocated to an order (`allocate()`), as a shop's back room or a market stall's.
      */
     fulfilsOnline: boolean("fulfils_online").notNull().default(true),
+    /**
+     * A supplier's own location (drop shipping, D540): made with the supplier and never shown among the store's own places; its stock is what
+     * the supplier says it has, and routing takes from it after every own location. Null: one of the store's own places.
+     */
+    supplierId: uuid("supplier_id"),
     createdAt: createdAt(),
   },
   (t) => [
     unique("inventory_locations_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "inventory_locations_supplier_fk", columns: [t.storeId, t.supplierId], foreignColumns: [suppliers.storeId, suppliers.id] }),
+    uniqueIndex("inventory_locations_supplier_key").on(t.supplierId).where(sql`${t.supplierId} is not null`),
     // Two active locations of one store cannot share a name (case-insensitively).
     uniqueIndex("inventory_locations_active_name_key")
       .on(t.storeId, sql`lower(${t.name})`)
@@ -18656,6 +18671,26 @@ export const suppliers = commerce.table(
     name: text("name").notNull(),
     organisationNumber: text("organisation_number"),
     usualKind: text("usual_kind"),
+    /**
+     * Drop shipping (D540, `docs/drop-shipping.md` 3): the supplier sends some of the store's goods straight to its customers. With it on, the
+     * order email and the country it ships from are set, and the supplier has one location of its own (`inventory_locations.supplier_id`).
+     * Switched on and edited only by `src/server/suppliers.ts`; switched off, its variants go back to the store and its location is closed.
+     */
+    dropShips: boolean("drop_ships").notNull().default(false),
+    /** Where its orders are sent. */
+    orderEmail: text("order_email"),
+    /** The country it ships from (ISO 3166-1 alpha-2): outside the EU, customs and IOSS apply to its parcels. */
+    shipsFrom: char("ships_from", { length: 2 }),
+    /** The language its orders are written in. */
+    orderLanguage: text("order_language").notNull().default("en"),
+    /** The working days it promises to send an order within, added to the delivery estimate. */
+    dispatchDays: integer("dispatch_days").notNull().default(2),
+    /** `email` (an email with a page to answer on), `connected` (its own system through the API) or `file` (a daily file). */
+    orderMethod: text("order_method").notNull().default("email"),
+    /** Where its customers' returns go; empty: the store's own address. */
+    returnAddress: text("return_address").notNull().default(""),
+    /** Put on every order it gets, such as "Send without your own branding". */
+    orderNote: text("order_note").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -18665,6 +18700,13 @@ export const suppliers = commerce.table(
     check("suppliers_name", sql`char_length(trim(${t.name})) between 1 and 120`),
     check("suppliers_organisation_number", sql`${t.organisationNumber} is null or ${t.organisationNumber} ~ '^[0-9A-Za-z -]{4,30}$'`),
     check("suppliers_usual_kind", sql`${t.usualKind} is null or ${t.usualKind} ~ '^[a-z_]{2,30}$'`),
+    check("suppliers_drop_ship_set", sql`not ${t.dropShips} or (${t.orderEmail} is not null and ${t.shipsFrom} is not null)`),
+    check("suppliers_order_email", sql`${t.orderEmail} is null or (length(${t.orderEmail}) between 3 and 254 and ${t.orderEmail} ~ '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+$')`),
+    check("suppliers_ships_from", sql`${t.shipsFrom} is null or ${t.shipsFrom} ~ '^[A-Z]{2}$'`),
+    check("suppliers_order_language", sql`${t.orderLanguage} ~ '^[a-z]{2}$'`),
+    check("suppliers_dispatch_days", sql`${t.dispatchDays} between 1 and 30`),
+    check("suppliers_order_method", sql`${t.orderMethod} in ('email', 'connected', 'file')`),
+    check("suppliers_drop_ship_texts", sql`length(${t.returnAddress}) <= 500 and length(${t.orderNote}) <= 500`),
   ],
 );
 

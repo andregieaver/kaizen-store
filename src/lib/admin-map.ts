@@ -296,6 +296,16 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["purchase order", "receive", "count in", "supplier delivery"],
     feature: "shop",
   }),
+  store("inventory.suppliers", "/inventory/suppliers", "Suppliers", "Main", "Suppliers that send the store's products straight to its customers in the store's name (drop shipping): the list with where each ships from, the days it sends within, its products and the stock it says it has, and a short form to add one (a name, the email its orders go to and the country it ships from). The store stays the seller.", {
+    tasks: ["Add a supplier that ships for me", "See which suppliers drop-ship for me", "Find a supplier outside the EU"],
+    keywords: ["drop shipping", "dropshipping", "supplier", "ships for me", "direktelevering", "leverandør"],
+    feature: "shop",
+  }),
+  store("inventory.supplier", "/inventory/suppliers/[id]", "Supplier", "Main", "One supplier that ships for the store: the products it sends (tick variants and mark them as sent by it, or send them yourself again), its details (order email, country, language, days to send within, how it gets orders, return address, a note on every order) and, for the owner, stopping drop shipping with it. The store's own stock always goes before the supplier's.", {
+    tasks: ["Choose the products this supplier sends", "Change the supplier's email or dispatch days", "Stop drop shipping with this supplier"],
+    keywords: ["drop shipping", "supplier products", "mark as drop-shipped", "dispatch days"],
+    feature: "shop",
+  }),
   store("inventory.import", "/inventory/import", "Import stock", "Main", "Sets stock from a counted CSV file: SKU, location and on hand, with an optional on-hand-was column so a row that is out of date becomes a conflict instead of undoing a sale. Upload the file, check it (a dry run that lists every row and changes nothing), then import. Never creates a variant or a location. Needs the right to change products.", {
     tasks: ["Upload a counted stock file", "Check a file before it is imported", "Import after the check", "Continue an open import"],
     keywords: ["import stock", "stock count", "csv", "inventory upload", "recount", "bulk stock", "importer lager"],

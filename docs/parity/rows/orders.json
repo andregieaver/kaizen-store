@@ -2324,5 +2324,56 @@
         "why": "Wave 3 run 2 (docs/wave-3-orders.md, D173 proposed; working tree not committed, migration not applied to production). Read gift.ts (`cleanShopperText()`, `cleanGift()`: no zod, refused not cut), cart.ts `setCartGift()`, the copy in `placeOrder()`, the frozen-gift trigger, the cart box, the order page's Gift card, `packingSlipData()` and the slip view, and `sendOrderConfirmation()`/`sendShipped()`; ran on a fresh database: gift.test.ts, gift-no-html.scan.test.ts, orders-ops.test.ts (PGlite: fields, limits, frozen, anonymised), gift.int.test.ts, checkout-kinds.int.test.ts (gift scenarios in krone and euro), packing-slip-views.test.ts, order-page-views.test.ts, order-export-ops.int.test.ts, and e2e/gift.spec.ts (4 passed) on a fresh production build of the final tree. The spec promised a test that `sendShipped()` never carries the message and that no email goes to anyone but the buyer; it did not exist, so `src/server/gift-shipping.int.test.ts` was added in this step (the confirmation repeats the message for the buyer, the shipping notice carries neither the message nor the recipient's name, every email of the order is to the order's own address) and passes. G2 and G1 are read as the spec's criteria changes say: no email to a recipient exists, and the lengths are 300 and 60. Caveat: the gift words are interface text hand-written in nb, sv, da and en and the buyer's text about a third party raises the GDPR questions of spec section 8 item 8; no test clicks the staff's order page or the slip route."
       }
     ]
+  },
+  {
+    "id": "orders.drop-shipping",
+    "domain": "orders",
+    "feature": "Drop shipping: a supplier ships to the customer",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Drop shipping on Shopify is done through apps from the App Store (DSers, Syncee and the like) that pass orders to suppliers; not read from a page in this run (the plan was written from the owner's question, D482).",
+      "url": null,
+      "fetched": false,
+      "checkedOn": null
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "weight": 3,
+    "gap": "Step 1 of 5 built (D540, docs/drop-shipping.md 10): suppliers that drop-ship with a location of their own ranked after every own location, variants marked as sent by them, own stock first and the supplier's after, the Suppliers pages. Not yet: supplier orders reaching the supplier after the wait, the supplier's page to post tracking, tracking to the customer (step 2); connected suppliers and stock by file or API, delivery estimates (step 3); late and problem handling, returns to the supplier, what the shop owes (step 4); reports and the AI manager (step 5).",
+    "bucket": "A",
+    "wave": null,
+    "criteria": [
+      "An owner adds a supplier, marks products, and an order with no own stock of them is allocated to the supplier's location while own stock goes first (integration test).",
+      "A paid order's supplier lines reach the supplier by email after the store's wait, and the tracking it posts on its page reaches the customer as the shop's own shipped email (integration test with a fake supplier).",
+      "A connected supplier reads only its own lines and posts tracking and stock; a late supplier is reminded once and the owner told."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/suppliers.ts",
+        "src/lib/drop-shipping.ts",
+        "src/lib/stock-routing.ts",
+        "src/components/admin/inventory/suppliers-view.tsx"
+      ],
+      "tests": [
+        "src/server/suppliers.int.test.ts",
+        "src/lib/stock-routing.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D482",
+      "D540"
+    ],
+    "history": [
+      {
+        "on": "2026-11-10",
+        "from": "missing",
+        "to": "partial",
+        "why": "D540: step 1 of docs/drop-shipping.md built and held by suppliers.int.test.ts (a supplier's location, marked variants, own stock first, the order drawn at the supplier's location, left out of a store's copy) and stock-routing.test.ts."
+      }
+    ]
   }
 ]
