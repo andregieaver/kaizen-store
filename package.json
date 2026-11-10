@@ -12,7 +12,7 @@
     "test:smoke": "vitest run src/lib/money.test.ts src/lib/cart.test.ts src/lib/checkout.test.ts src/lib/discounts.test.ts src/lib/vat.test.ts src/lib/vat-treatment.test.ts",
     "test:e2e": "playwright test",
     "perf": "node scripts/perf.mjs",
-    "db:generate": "drizzle-kit generate",
+    "db:generate": "drizzle-kit generate && node scripts/prune-snapshots.mjs",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:template": "node scripts/db-template.mjs",
     "db:clone": "node scripts/db-template.mjs clone",

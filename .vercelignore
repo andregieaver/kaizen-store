@@ -1,0 +1,2 @@
+# Drizzle snapshots (the whole schema as JSON) are for generating migrations, never for the build (D532).
+supabase/migrations/meta

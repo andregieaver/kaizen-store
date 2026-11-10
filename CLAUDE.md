@@ -65,7 +65,8 @@ stand-in is the only fake, and only it is told it is one.
   through `db()` in `src/db/client.ts` (needs `DATABASE_URL`).
 - Migrations are generated into `supabase/migrations`. Rules Drizzle cannot
   express (functions, triggers, reference data) go in a custom migration:
-  `pnpm exec drizzle-kit generate --custom --name <name>`.
+  `pnpm exec drizzle-kit generate --custom --name <name>`. Only the newest snapshot in `supabase/migrations/meta` is kept (D532): `pnpm db:generate` prunes
+  them, and after a custom migration run `node scripts/prune-snapshots.mjs`.
 - New migrations reach production through CI (`docs/ci-migrations.md`): push the file with the change; the
   `release` job applies it (a direct Postgres connection, so `DROP` and `DELETE` inside functions run as
   written) after the checks pass, and the deploy follows. **Never apply a migration to production by hand
