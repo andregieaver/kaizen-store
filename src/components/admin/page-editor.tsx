@@ -90,6 +90,7 @@ import { SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog"
 import { ScheduleButton } from "./schedule-dialog";
 import { ShareButton } from "./share-links";
 import { TextStylesProvider, useTextStylesState } from "./text-styles";
+import { SpellCheckScope } from "../spell-check-scope";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -700,7 +701,9 @@ export function PageEditor({
   };
 
   return (
-    // The site's text styles (D393): the Style menu's library, drawn on the canvas as it changes.
+    // Spell-check in the language of the version on screen: the main one, or the one it is being translated into.
+    <SpellCheckScope lang={language.locale}>
+    {/* The site's text styles (D393): the Style menu's library, drawn on the canvas as it changes. */}
     <TextStylesProvider value={context.textStyles} state={textStyles} starter={styleStarter}>
     {/* Every colour field offers the theme's colours (D180). */}
     <ColourSwatches value={context.colours}>
@@ -1376,6 +1379,7 @@ export function PageEditor({
     </MediaPickerProvider>
     </ColourSwatches>
     </TextStylesProvider>
+    </SpellCheckScope>
   );
 }
 

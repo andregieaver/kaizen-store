@@ -319,6 +319,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Lines of columns in a row (D187)
 - Nested columns (D294, `ColumnsBlock` in `src/lib/page-content.ts`)
 - Editing words where they are (D191, D192, D193)
+- Spell-check (D540, `src/lib/spell-check.ts`, `SpellCheckScope`)
 - Undo, redo and versions (D305), CSS on the live site (D306)
 - Dual page (D412, `docs/dual-page.md`, `src/lib/dual-page.ts`, `DualPageEditor`, `DualFrame`)
 - The page builder's sandbox (D457, `docs/builder-sandbox.md`, `src/lib/sandbox.ts`, `src/server/sandbox.ts`, `/admin/try`)

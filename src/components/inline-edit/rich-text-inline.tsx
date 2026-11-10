@@ -58,6 +58,7 @@ export function InlineRichEditor({
         "aria-label": label,
         "aria-multiline": "true",
         role: "textbox",
+        spellcheck: "true",
       },
       handleKeyDown: (_view, event) => {
         if (event.key === "Escape") {

@@ -10,6 +10,7 @@ import type { TextStyle } from "@/lib/text-styles";
 import { TextStylesView } from "../admin/text-styles";
 import { InlineMarkupEditor } from "./markup-editor";
 import { InlineRichEditor } from "./rich-text-inline";
+import { SpellCheckScope } from "../spell-check-scope";
 
 /**
  * "Edit text" on the live site (D192), for signed-in staff who may change the page's website: headings and texts of the page's own
@@ -177,7 +178,8 @@ export default function SiteTextEditor({ pageId, store, onNotice }: { pageId: st
   );
 
   return (
-    <>
+    // Spell-check the words as they are typed, in the page's own language (inherited from where they stand).
+    <SpellCheckScope>
       <style>{`
         article[data-kz-page="${pageId}"] [data-kz-edit]:not([data-kz-active]) { cursor: text; outline: 2px dashed transparent; outline-offset: 6px; transition: outline-color 0.15s; }
         article[data-kz-page="${pageId}"] [data-kz-edit]:not([data-kz-active]):hover { outline-color: rgb(37 99 235 / 0.65); }
@@ -219,6 +221,6 @@ export default function SiteTextEditor({ pageId, store, onNotice }: { pageId: st
           ),
           session.slot,
         )}
-    </>
+    </SpellCheckScope>
   );
 }

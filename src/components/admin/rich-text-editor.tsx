@@ -147,6 +147,7 @@ export function RichTextEditor({
         "aria-label": label,
         "aria-multiline": "true",
         role: "textbox",
+        spellcheck: "true",
       },
     },
     onUpdate: ({ editor }) => onChange(editor.getJSON() as RichTextDoc),
