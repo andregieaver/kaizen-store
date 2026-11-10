@@ -73,7 +73,7 @@ function PreviewRow({ row, lang }: { row: PageRow; lang: string | undefined }) {
     const col = columnBox(column, holder, "canvas");
     return (
       <div key={column.id} className={col.className} style={col.style}>
-        <PartBackground background={column.background} />
+        <PartBackground background={column.background} layers={column.backgroundLayers} hue={column.backgroundHue} stillLayers />
         {column.blocks.map((block) => {
           const b = blockBox(block, "canvas");
           return (
@@ -87,7 +87,7 @@ function PreviewRow({ row, lang }: { row: PageRow; lang: string | undefined }) {
   };
   return (
     <div className={box.className} style={box.style}>
-      <PartBackground background={row.background} />
+      <PartBackground background={row.background} layers={row.backgroundLayers} hue={row.backgroundHue} stillLayers />
       <div className={rowInnerClass(row, "canvas")}>
         <div className={grid.className} style={grid.style}>
           {lines.length === 1

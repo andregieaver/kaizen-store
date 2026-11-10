@@ -10,12 +10,18 @@
  * them behind it), under its overlay (PSI ACC-04). Text over a picture or a video cannot be measured, as the picture's colours
  * are not known here: it is held to the darkest and the lightest the picture could be under its overlay, and where it does not
  * read on both it is a warning (`text_on_picture`), never blocking: a strong enough overlay is the only sure way. A background
- * that is see-through is not checked. Text that is see-through
+ * that is see-through is not checked. A row or column whose own background is light or dark draws its text in the theme's
+ * colours made for that background (D390, `background-surface.ts`), so text with no colour of its own is held to those, whatever
+ * set the page shows; a background whose hue is turned (D534) is read in the colours it is drawn in. The layers over a
+ * background (D534: a glow, a pattern, a horizon) are not measured, as where they lie under the text is not known here: a strong
+ * glow right behind text is for the eye to check. Text that is see-through
  * (D180: a colour with an opacity) is blended over its background first (`blend()`), at every screen size where the text's
  * colour or the background differs (`valueAt()`, `colourAt()`); a block's text with no colour of its own takes its column's,
  * else its row's, as the browser passes it down. A passing check does not make a page accessible: it finds some of the
  * problems, the ones a machine can see.
  */
+import { huedBackground } from "./background-layers";
+import { partSurface, type Surface } from "./background-surface";
 import { withoutIcons } from "./table-icons";
 import { SIZES, SIZE_LABELS, type Size } from "./breakpoints";
 import { blend } from "./colour";
@@ -92,8 +98,11 @@ export type PageIssue = {
   message: string;
 };
 
-/** The colours of the theme, one set for each look the site shows (light, dark): where a text has no colour of its own it is the theme's. */
-export type ThemeSet = { name: string; text: string; background: string };
+/**
+ * The colours of the theme, one set for each look the site shows (light, dark): where a text has no colour of its own it is the theme's.
+ * `onLight` and `onDark` are the theme's text colours on a part whose own background is light or dark (D390), the same in every set.
+ */
+export type ThemeSet = { name: string; text: string; background: string; onLight?: string; onDark?: string };
 
 export type CheckContext = {
   /** The theme's colours, so text with no colour of its own is checked against its background. Left out: only explicit colours are. */
@@ -275,16 +284,23 @@ function layered(background: { type: string; colors?: string[]; opacity?: number
  * What is behind a block's text at a size, as far as is known: the column's solid colour, else the row's; for a gradient, a picture
  * or a video, the colours it can show (`layered()`).
  */
-function behindAt(row: PageRow, column: PageColumn, size: Size): { color: string | null; unknown: boolean; layers?: { colours: string[]; picture: boolean } } {
+function behindAt(
+  row: PageRow,
+  column: PageColumn,
+  size: Size,
+): { color: string | null; unknown: boolean; layers?: { colours: string[]; picture: boolean }; surface: Surface | null } {
+  // The part whose colour set the text is drawn in (D390): the column's own background's, else the row's.
+  const surface = partSurface(column) ?? partSurface(row);
   for (const part of [column, row] as const) {
-    const background = valueAt(part, "background", size);
+    // In the colours it is drawn in: its hue turned with the rest of the background (D534).
+    const background = huedBackground(valueAt(part, "background", size) ?? undefined, part.backgroundHue);
     if (!background) continue;
     const own = solid(background as { type: string; color?: string; opacity?: number });
-    if (own) return { color: own, unknown: false };
+    if (own) return { color: own, unknown: false, surface };
     const layers = layered(background as Parameters<typeof layered>[0]);
-    return layers ? { color: null, unknown: true, layers } : { color: null, unknown: true };
+    return layers ? { color: null, unknown: true, layers, surface } : { color: null, unknown: true, surface };
   }
-  return { color: null, unknown: false };
+  return { color: null, unknown: false, surface };
 }
 
 const TEXT_ROLE: Pick<RoleDef, "role"> = { role: "text" };
@@ -360,22 +376,25 @@ export function pageIssues(
          * some fail.
          */
         let contrastAdded = false;
-        type Behind = { ink: Ink | null; over: string | null; unknown: boolean; layers?: { colours: string[]; picture: boolean } };
+        type Behind = { ink: Ink | null; over: string | null; unknown: boolean; layers?: { colours: string[]; picture: boolean }; surface?: Surface | null };
         const textOver = (label: string, at: (size: Size) => Behind, themeText = true) => {
           if (contrastAdded) return;
           let first: { ratio: number; set: string | null; layer: "gradient" | "picture" | null; bg: string } | null = null;
           const failing: Size[] = [];
           for (const size of SIZES) {
-            const { ink, over, unknown, layers } = at(size);
+            const { ink, over, unknown, layers, surface } = at(size);
             const pairs: { text: string; bg: string; set: string | null }[] = [];
+            // The theme's text on a part whose own background is light or dark (D390): the colour made for that background, in every set.
+            const onSurface = (set: ThemeSet) => (surface ? hex6(surface === "dark" ? set.onDark : set.onLight) : null);
             if (layers) {
               // Over a gradient or a picture: the text against each colour that can be behind it, its own colour else the theme's.
               for (const bg of layers.colours) {
                 if (ink) pairs.push({ text: blend(ink.color, ink.opacity, bg), bg, set: null });
                 else if (context.theme && themeText) {
                   for (const set of context.theme.sets) {
-                    const text = hex6(set.text);
-                    if (text) pairs.push({ text, bg, set: set.name });
+                    const made = onSurface(set);
+                    const text = made ?? hex6(set.text);
+                    if (text) pairs.push({ text, bg, set: made ? null : set.name });
                   }
                 }
               }
@@ -384,8 +403,9 @@ export function pageIssues(
             else if (context.theme && (ink || over) && (ink || themeText)) {
               for (const set of context.theme.sets) {
                 const bg = over ?? hex6(set.background);
-                const text = ink ? (bg ? blend(ink.color, ink.opacity, bg) : null) : hex6(set.text);
-                if (text && bg) pairs.push({ text, bg, set: set.name });
+                const made = ink ? null : onSurface(set);
+                const text = ink ? (bg ? blend(ink.color, ink.opacity, bg) : null) : (made ?? hex6(set.text));
+                if (text && bg) pairs.push({ text, bg, set: made ? null : set.name });
               }
             }
             const layer: "picture" | "gradient" | null = layers ? (layers.picture ? "picture" : "gradient") : null;
@@ -420,7 +440,7 @@ export function pageIssues(
           );
         const behindOf = (size: Size) => {
           const back = behindAt(row, column, size);
-          return { over: back.color, unknown: back.unknown, ...(back.layers && { layers: back.layers }) };
+          return { over: back.color, unknown: back.unknown, surface: back.surface, ...(back.layers && { layers: back.layers }) };
         };
         /** Words coloured in rich text (D180), each colour over the block's background. */
         const marked = (facts: RichFacts) => {
@@ -686,5 +706,5 @@ export function groupIssues(issues: readonly PageIssue[]): { rule: PageIssueRule
 export function themeSetsOf(settings: { mode: "auto" | "light" | "dark"; visitorSwitch?: boolean; light: { text: string; background: string }; dark: { text: string; background: string } }): ThemeSet[] {
   const both = settings.mode === "auto" || Boolean(settings.visitorSwitch);
   const sets = both ? (["light", "dark"] as const) : ([settings.mode as "light" | "dark"] as const);
-  return sets.map((name) => ({ name, text: settings[name].text, background: settings[name].background }));
+  return sets.map((name) => ({ name, text: settings[name].text, background: settings[name].background, onLight: settings.light.text, onDark: settings.dark.text }));
 }

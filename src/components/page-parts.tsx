@@ -15,7 +15,8 @@ import { surfaceClass } from "@/lib/background-surface";
 import { fontClass } from "@/lib/fonts";
 import { backgroundSources } from "@/lib/page-images";
 import type { BackgroundMotion } from "@/lib/motion";
-import { backgroundFx } from "@/lib/motion-attrs";
+import { huedBackground, layerDraw, type BackgroundLayer } from "@/lib/background-layers";
+import { backgroundFx, layerFx } from "@/lib/motion-attrs";
 import { blockStyle, clipsAnywhere, columnStyle, inlineNowrap, panelStyle, partClass, rowGridStyle, rowStyle, rowWidthStyle, type PartsMode } from "@/lib/part-css";
 import { SIZES } from "@/lib/breakpoints";
 import { valueAt } from "@/lib/responsive";
@@ -272,24 +273,33 @@ export function GradientLayer({
 }
 
 /**
- * A background picture, video or gradient, softened if blurred, and the
- * colour over it, behind what the row or column holds. A video shows its
- * still until it plays, and instead of it for people who prefer less
- * motion. With `motion` (D128) the picture or video sits on a layer larger
- * than its frame that moves with the scroll or by itself; without it the
- * markup is the plain one. `firstRow` is the page's first row, and `preview`
- * the builder's canvas. `eager`: it may be on the first screen (a page's or a header's first row, never a footer's), so its
- * picture is loaded at once and before the others; any other is loaded only as it comes near.
+ * The layers over a part's background (D534, `src/lib/background-layers.ts`): a frame of their own over the background and under what
+ * the part holds, each layer a real element in it, so each travels by itself as the page scrolls (`layerFx()`), and the frame cuts off
+ * whatever moves past the part. Their colours are turned by the part's `hue`. `still` draws them without motion (the builder's canvas
+ * while its motion preview is off). Nothing is drawn where no layer shows.
  */
-export function PartBackground({
-  background,
-  motion,
-  firstRow,
-  preview,
-  fixed = false,
-  align = "middle",
-  eager = false,
-}: {
+export function BackgroundLayers({ layers, hue, still = false }: { layers: readonly BackgroundLayer[] | undefined; hue?: number; still?: boolean }) {
+  const drawn = (layers ?? []).flatMap((layer) => {
+    const draw = layerDraw(layer, hue);
+    return draw ? [{ layer, draw }] : [];
+  });
+  if (drawn.length === 0) return null;
+  return (
+    <div aria-hidden className={BACKGROUND_FRAME} data-fx-bgroot="" data-fx-layers="">
+      {drawn.map(({ layer, draw }) => {
+        const fx = layerFx(still ? undefined : layer);
+        return (
+          <div key={layer.id} {...draw.attrs} {...fx.attrs} style={{ ...draw.style, ...fx.style } as CSSProperties}>
+            {layer.type === "glow" && <span data-fx-glow="" />}
+            {layer.type === "horizon" && <span data-fx-disc="" />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+type BackgroundProps = {
   background: RowBackground | undefined;
   motion?: BackgroundMotion;
   firstRow?: boolean;
@@ -299,7 +309,45 @@ export function PartBackground({
   align?: "top" | "middle" | "bottom";
   /** The picture, video or gradient stays where it is on the screen while the page scrolls, and what is over it moves (D184). */
   fixed?: boolean;
+};
+
+/**
+ * A row's or column's background: its picture, video or gradient (`BaseBackground`; a colour is the part's own, from the part
+ * stylesheet), then the layers over it (D534, `BackgroundLayers`), every colour of both turned by the part's `hue`. `stillLayers`
+ * draws the layers without motion.
+ */
+export function PartBackground({
+  layers,
+  hue,
+  stillLayers,
+  background,
+  ...base
+}: BackgroundProps & {
+  /** The layers over the background (D534): the part's `backgroundLayers`. */
+  layers?: readonly BackgroundLayer[];
+  /** How far every colour of the background and its layers is turned (D534): the part's `backgroundHue`. */
+  hue?: number;
+  stillLayers?: boolean;
 }) {
+  return (
+    <>
+      <BaseBackground background={huedBackground(background, hue)} {...base} />
+      <BackgroundLayers layers={layers} hue={hue} still={stillLayers} />
+    </>
+  );
+}
+
+/**
+ * A background picture, video or gradient, softened if blurred, and the
+ * colour over it, behind what the row or column holds. A video shows its
+ * still until it plays, and instead of it for people who prefer less
+ * motion. With `motion` (D128) the picture or video sits on a layer larger
+ * than its frame that moves with the scroll or by itself; without it the
+ * markup is the plain one. `firstRow` is the page's first row, and `preview`
+ * the builder's canvas. `eager`: it may be on the first screen (a page's or a header's first row, never a footer's), so its
+ * picture is loaded at once and before the others; any other is loaded only as it comes near.
+ */
+function BaseBackground({ background, motion, firstRow, preview, fixed = false, align = "middle", eager = false }: BackgroundProps) {
   if (background?.type === "gradient") return <GradientLayer gradient={background} motion={motion} firstRow={firstRow} preview={preview} fixed={fixed} />;
   if (background?.type !== "image" && background?.type !== "video") return null;
   // A fixed one is not moved by the scroll or by effects: a layer that moves would hold it in the row.

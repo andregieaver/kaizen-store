@@ -26,6 +26,7 @@ import {
 import { carouselAnywhere, carouselAt, hiddenAt, neverStacks, spacingAt, stackAt, valueAt } from "./responsive";
 import { sizesWhere, type SwitcherLook } from "./language-switch";
 import { colourCss } from "./colour";
+import { shiftHue } from "./hue";
 import { brandColumns } from "./brands";
 import { galleryColumns } from "./gallery";
 import { INNER_KEYS, INNER_SELECTORS, type ThemedBlock } from "./theme-elements";
@@ -109,7 +110,8 @@ function colorDecl(part: PageRow | PageColumn, size: Size): Decl {
   const blur = valueAt(part, "backdropBlur", size);
   const out: Decl = {};
   if (background?.type === "color") {
-    out["background-color"] = colourCss(background.color, background.opacity);
+    // Its hue turned with the rest of the background's colours (D534).
+    out["background-color"] = colourCss(shiftHue(background.color, part.backgroundHue), background.opacity);
   }
   if (blur && (!background || background.type === "color")) {
     out["backdrop-filter"] = `blur(${blur}px)`;
@@ -293,10 +295,10 @@ export function rowWidthStyle(row: PageRow): ElementStyle {
   );
 }
 
-/** Whether a row's or column's corners clip a picture, video or gradient behind it: rounded at some size. */
+/** Whether a row's or column's corners clip a picture, video, gradient or layers (D534) behind it: rounded at some size. */
 export const clipsAnywhere = (part: PageRow | PageColumn): boolean =>
   SIZES.some((size) => Boolean(valueAt(part, "radius", size))) &&
-  (part.background?.type === "image" || part.background?.type === "video" || part.background?.type === "gradient");
+  (part.background?.type === "image" || part.background?.type === "video" || part.background?.type === "gradient" || Boolean(part.backgroundLayers?.length));
 
 /** A side-by-side column's components keep to one line in a row that never stacks (D80). */
 export const inlineNowrap = (row: PageRow): boolean => neverStacks(row);

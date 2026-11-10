@@ -255,7 +255,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 ## Motion (D128, `src/lib/motion.ts`, `src/lib/motion-attrs.ts`, `src/lib/motion-runtime.ts`, `src/app/motion.css`, `src/lib/motion-plan.ts`,…
 
-- Motion (D128, `src/lib/motion.ts`, `src/lib/motion-attrs.ts`, `src/lib/motion-runtime.ts`, `src/app/motion.css`, `src/lib/motion-plan.ts`, `src/server/motion-ai.ts`): owners choose effects from curated lists (`ENTER_EFFECTS`, `HOVER_EFFECTS`, `SCROLL_EFFECTS`, `BACKGROUND_EFFECTS`, gradient backgrounds) stored as names on `PartBase.motion` and `backgroundMotion`; never let owner data become CSS or script. Render motion only through `partFx()`/`backgroundFx()` (attributes and `--fx-*` properties, in `PageRowView`, `SiteRows`, `PartBackground` and the builder's canvas preview); a new effect is an id in the catalogue, its CSS in `motion.css` (a test fails if an id has none), its case in `motion-attrs.ts` and in the runtime if it needs JS. Content must stay reachable without JS, with reduced motion and after the failsafe; the first flow row uses CSS only and never starts a picture transparent; only `transform`, `opacity`, `filter` and `clip-path` move. The runtime loads only where `pageUsesMotion()` says so. "Make my page cool": the model only picks catalogue and part ids, `cleanMotionPlan()` validates everything, the summary is built in code, `ruleBasedPlan()` is the no-AI fallback, and a plan is applied to the editor unsaved (`applyMotionPlan()` keeps the owner's own motion). An entrance's `delay` (0–10 s) and `duration` (0.1–5 s, over its speed; D179 phase 3) are milliseconds on it, edited in the Advanced tab's Animation (`AnimationFields`) and drawn as `--fx-delay`/`--fx-duration` (registered as not inherited); a plan never sets a duration.
+- Motion (D128, `src/lib/motion.ts`, `src/lib/motion-attrs.ts`, `src/lib/motion-runtime.ts`, `src/app/motion.css`, `src/lib/motion-plan.ts`, `src/server/motion-ai.ts`): owners choose effects from curated lists (`ENTER_EFFECTS`, `HOVER_EFFECTS`, `SCROLL_EFFECTS`, `BACKGROUND_EFFECTS`, gradient backgrounds) stored as names on `PartBase.motion` and `backgroundMotion`; never let owner data become CSS or script. Render motion only through `partFx()`/`backgroundFx()`/`layerFx()` (attributes and `--fx-*` properties, in `PageRowView`, `SiteRows`, `PartBackground`, its layers (D534) and the builder's canvas preview); a new effect is an id in the catalogue, its CSS in `motion.css` (a test fails if an id has none), its case in `motion-attrs.ts` and in the runtime if it needs JS. Content must stay reachable without JS, with reduced motion and after the failsafe; the first flow row uses CSS only and never starts a picture transparent; only `transform`, `opacity`, `filter` and `clip-path` move. The runtime loads only where `pageUsesMotion()` says so. "Make my page cool": the model only picks catalogue and part ids, `cleanMotionPlan()` validates everything, the summary is built in code, `ruleBasedPlan()` is the no-AI fallback, and a plan is applied to the editor unsaved (`applyMotionPlan()` keeps the owner's own motion). An entrance's `delay` (0–10 s) and `duration` (0.1–5 s, over its speed; D179 phase 3) are milliseconds on it, edited in the Advanced tab's Animation (`AnimationFields`) and drawn as `--fx-delay`/`--fx-duration` (registered as not inherited); a plan never sets a duration.
 
 ## Kaizen's plans on its own pages (D142, `src/lib/plan-offer.ts` pure, `src/server/public-plans.ts`, `PlansView`/`PlansSection`, block `plans`)
 
@@ -387,12 +387,33 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   rows outside its layouts draws its styles too; a new place that edits words where they stand offers `StyleMenu`. The rich-text editor's
   HTML view reads HTML back only through the editor's schema and names what it left out (`htmlLeftOut()`); a rich text is never saved as HTML.
 
+## Layers over a background, backdrops and the hue (D534, `src/lib/background-layers.ts`, `src/lib/backdrops.ts`, `src/lib/hue.ts`)
+
+- **Layers over a background, backdrops and the hue (D534, `src/lib/background-layers.ts`, `src/lib/backdrops.ts`, `src/lib/hue.ts`)**: a row or
+  column keeps its `background` and takes up to `LAYERS_MAX` layers over it (`backgroundLayers`, the lowest first: a glow, a pattern, a
+  horizon), drawn by `BackgroundLayers` through `PartBackground` (pass `layers` and `hue` wherever a part's background is drawn) as real
+  elements in a frame of their own, never pseudo-elements. A layer is only names from the lists, `#rrggbb` colours and whole numbers inside
+  limits (`background-layers-schema.ts`); it reaches the page through `layerDraw()` (attributes and `--fx-*` properties, each value remade)
+  and `layerFx()` (its travel on the frame's scroll timeline as `--fx-sk`, its movement by itself as `data-fx-amb`), drawn by `motion.css`:
+  never write a layer's value into a style yourself. A new kind, pattern, fade or movement is an id in `background-layers.ts`, its CSS in
+  `motion.css` (a test fails without it), its words in `BACKDROP_WORDS` and `backdrops.nb.ts`, and its fields in `backdrop-fields.tsx`; only
+  `translate`, `scale` and `opacity` move, and a glow or a horizon is a gradient on a box no larger than the frame needs, never a blur
+  filter, a shadow or an element larger than the part. `backgroundHue` turns every colour of the
+  background and its layers (`shiftHue()`, Oklab: as light and as strong as before); whatever reads a part's background colours reads them
+  turned (`huedBackground()`: the part stylesheet, `surfaceOf()`, the page check). A ready-made backdrop (`BACKDROPS`) is plain page
+  content (`backdropPatch()`); a new one must keep its tone at every hue and pass the page check with theme text (`backdrops.test.ts`).
+  The builder's panel (`BackdropPicker` for Homer, `LayerFields` for Lisa) is loaded lazily and reads its words with
+  `useHandedText("backdrops")`, English from `backdrops.ts`: keep it out of `builder.en.ts`, which every admin screen loads first.
+
 ## Text on a part's own background (D390, `src/lib/background-surface.ts`)
 
 - **Text on a part's own background (D390, `src/lib/background-surface.ts`)**: a row or column whose own background hides what is behind it is
   marked `kz-on-light`/`kz-on-dark` by `rowBox()`/`columnBox()` (`surfaceClass()`), and `themeCss()` gives what it holds that colour set, so text
   in the theme's colours reads on it in both; a new box that draws a part's background takes the class too. A button disabled while it sends
   gets the focus back from `KeepFocusEverywhere` (one listener per page, storefront and Kaizena Flow's own site), so a new form needs nothing.
+  The page check reads the same (D534): text with no colour of its own on such a part is held to the theme's colour made for that
+  background (`ThemeSet.onLight`/`onDark`, filled by `themeSetsOf()`), whatever set the page shows, and a background whose hue is turned is
+  read in the colours it is drawn in.
 
 ## Text colour (D180, `docs/text-colour.md`)
 

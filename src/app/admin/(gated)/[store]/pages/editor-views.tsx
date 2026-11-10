@@ -27,7 +27,7 @@ import { PageDrawing } from "./drawing";
 import { saveStagedPageAction } from "./staging-actions";
 
 /** The catalogue areas the page editor's parts read (D312 A7): the builder, its components' fields, the font and picture pickers. */
-const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website", "blog", "schedules", "storeParts"] as const;
+const EDITOR_AREAS = ["builder", "blocks", "fields", "products", "design", "website", "blog", "schedules", "storeParts", "backdrops"] as const;
 
 /**
  * A store's page editor and preview (D53, D57), apart from its lists (`views.tsx`): a list's route loads every client component its

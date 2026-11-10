@@ -73,6 +73,8 @@ import { screensEn, type ScreensMessages } from "./admin-messages/screens.en";
 import { screensNb } from "./admin-messages/screens.nb";
 import { storePartsEn, type StorePartsMessages } from "./admin-messages/store-parts.en";
 import { storePartsNb } from "./admin-messages/store-parts.nb";
+import { backdropsEn, type BackdropsMessages } from "./admin-messages/backdrops.en";
+import { backdropsNb } from "./admin-messages/backdrops.nb";
 import { notificationsEn, type NotificationsMessages } from "./admin-messages/notifications.en";
 import { notificationsNb } from "./admin-messages/notifications.nb";
 import { legalEn, type LegalMessages } from "./admin-messages/legal.en";
@@ -169,6 +171,7 @@ export type AdminAreaMessages = {
   books: BooksMessages;
   screens: ScreensMessages;
   storeParts: StorePartsMessages;
+  backdrops: BackdropsMessages;
   notifications: NotificationsMessages;
   legal: LegalMessages;
   staff: StaffMessages;
@@ -210,16 +213,17 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "console", "business", "books"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "console", "business", "books"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
 
 /**
  * Server-only areas a page may hand down to a client part whose English is in its own module already (`useHandedText()`): the builder's
- * shop parts, named in `store-parts.ts`. Handed down only where a page draws that part, in another language than English.
+ * shop parts, named in `store-parts.ts`, and its backdrops and layers (D534), named in `backdrops.ts`. Handed down only where a page draws
+ * that part, in another language than English.
  */
-export type HandedArea = "storeParts";
+export type HandedArea = "storeParts" | "backdrops";
 
 const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } = {
   common: { en: commonEn, nb: commonNb },
@@ -255,6 +259,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   books: { en: booksEn, nb: booksNb },
   screens: { en: screensEn, nb: screensNb },
   storeParts: { en: storePartsEn, nb: storePartsNb },
+  backdrops: { en: backdropsEn, nb: backdropsNb },
   notifications: { en: notificationsEn, nb: notificationsNb },
   legal: { en: legalEn, nb: legalNb },
   staff: { en: staffEn, nb: staffNb },

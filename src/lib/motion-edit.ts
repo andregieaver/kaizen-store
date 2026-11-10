@@ -346,11 +346,16 @@ export function setGradientGrain(gradient: GradientBackground, grain: boolean): 
 // The page
 // ---------------------------------------------------------------------------
 
-/** What the canvas's motion preview depends on: every part's motion and background motion, so it starts again when one changes. */
+/**
+ * What the canvas's motion preview depends on: every part's motion and background motion, and how the layers over its background
+ * move (D534), so it starts again when one changes.
+ */
 export function motionSignature(rows: PageRow[]): string {
   const parts = pageParts(rows).flatMap((part) => {
     const backgroundMotion = "backgroundMotion" in part ? part.backgroundMotion : undefined;
-    return part.motion || backgroundMotion ? [[part.id, part.motion ?? null, backgroundMotion ?? null]] : [];
+    const layers = "backgroundLayers" in part ? (part.backgroundLayers ?? []).filter((layer) => !layer.hidden && (layer.scroll || layer.ambient)).map((layer) => [layer.id, layer.scroll ?? 0, layer.ambient ?? null]) : [];
+    if (!part.motion && !backgroundMotion && layers.length === 0) return [];
+    return [layers.length > 0 ? [part.id, part.motion ?? null, backgroundMotion ?? null, layers] : [part.id, part.motion ?? null, backgroundMotion ?? null]];
   });
   return JSON.stringify(parts);
 }

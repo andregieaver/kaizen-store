@@ -451,4 +451,15 @@ describe("the page's motion signature", () => {
     const rows = [{ ...row(), backgroundMotion: { effect: "drift" as const } }];
     expect(motionSignature(rows)).toContain("drift");
   });
+
+  it("counts how the layers over a background move (D534), and nothing else about them", () => {
+    const glow = { id: "g", type: "glow" as const, color: "#d946ef", x: 50, y: 50, width: 80, height: 60 };
+    // A layer that holds still changes nothing.
+    expect(motionSignature([{ ...row(), backgroundLayers: [glow] }])).toBe("[]");
+    const moving = motionSignature([{ ...row(), backgroundLayers: [{ ...glow, scroll: -40, ambient: "breathe" as const }] }]);
+    expect(moving).toContain("breathe");
+    expect(motionSignature([{ ...row(), backgroundLayers: [{ ...glow, scroll: -40, ambient: "breathe" as const, color: "#00ff00", x: 10 }] }])).toBe(moving);
+    expect(motionSignature([{ ...row(), backgroundLayers: [{ ...glow, scroll: 60, ambient: "breathe" as const }] }])).not.toBe(moving);
+    expect(motionSignature([{ ...row(), backgroundLayers: [{ ...glow, scroll: -40, ambient: "breathe" as const, hidden: true }] }])).toBe("[]");
+  });
 });

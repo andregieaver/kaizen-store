@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 
+import { LAYER_AMBIENTS, layerTravel, layersScroll, type BackgroundLayer } from "./background-layers";
 import { hoverTimingVars } from "./hover-timing";
 import {
   ENTER_EFFECTS,
@@ -28,8 +29,9 @@ import { flowRows } from "./page-modal";
  * Attributes (all on the part's own element): `data-fx-enter` (the entrance's name), `data-fx-trigger` (`view` or
  * `load`), `data-fx-start`, `data-fx-repeat`, `data-fx-now`, `data-fx-nofade`, `data-fx-text`, `data-fx-each` (a row or
  * column whose children enter one after another) and `data-fx-c` (such a child), `data-fx-scroll`, `data-fx-hover`,
- * and on a background's layer `data-fx-bgm`/`data-fx-tl`. The runtime adds `data-fx-in`, `data-fx-split` and
- * `data-fx-live`, and the document's `data-fx-ready`.
+ * and on a background's layer `data-fx-bgm`/`data-fx-tl`; on a layer over a background (D534) `data-fx-scroll="layer"` with
+ * `data-fx-tl` and `data-fx-amb`. The runtime adds `data-fx-in`, `data-fx-split` and `data-fx-live`, and the document's
+ * `data-fx-ready`.
  */
 
 /** What a page with waiting entrances adds inside `<noscript>`: with no scripts, nothing waits for a waypoint. */
@@ -217,6 +219,25 @@ export function backgroundFx(
   return { attrs, style: style as CSSProperties };
 }
 
+/**
+ * The attributes for a layer over a background (D534, `background-layers.ts`): how far it travels against the page as it scrolls
+ * (`--fx-sk`, -1 far to 1 close, measured on the layers' frame as a background's own layer is), and how it moves by itself. A layer
+ * moves apart from the others because each carries its own travel on the one timeline of their frame.
+ */
+export function layerFx(layer: Pick<BackgroundLayer, "scroll" | "ambient"> | undefined): FxProps {
+  if (!layer) return none();
+  const attrs: Record<string, string> = {};
+  const style: Record<string, string | number> = {};
+  const travel = layerTravel(layer.scroll);
+  if (travel !== 0) {
+    attrs["data-fx-scroll"] = "layer";
+    attrs["data-fx-tl"] = "parent";
+    style["--fx-sk"] = travel;
+  }
+  if (layer.ambient && layer.ambient in LAYER_AMBIENTS) attrs["data-fx-amb"] = layer.ambient;
+  return { attrs, style: style as CSSProperties };
+}
+
 /** The kind of part a block is, for its effects: headings and rich text take the text ones. */
 export const blockTarget = (block: Pick<PageBlock, "type">): MotionTarget =>
   block.type === "heading" || block.type === "richText" ? "text" : "block";
@@ -263,10 +284,12 @@ export function motionNeeds(rows: readonly PageRow[]): MotionNeeds {
     const first = row === firstFlow;
     motionOf(row.motion, "row", first, flags);
     if (row.backgroundMotion && BACKGROUND_SCROLL.has(row.backgroundMotion.effect) && row.background) flags.js = true;
+    if (layersScroll(row.backgroundLayers)) flags.js = true;
     for (const column of row.columns) {
       motionOf(column.motion, "column", first, flags);
       if (column.backgroundMotion && BACKGROUND_SCROLL.has(column.backgroundMotion.effect) && column.background)
         flags.js = true;
+      if (layersScroll(column.backgroundLayers)) flags.js = true;
       for (const block of column.blocks) {
         motionOf(block.motion, blockTarget(block), first, flags);
         // A Columns component's columns and what they hold (D294).
@@ -274,6 +297,7 @@ export function motionNeeds(rows: readonly PageRow[]): MotionNeeds {
         for (const inner of block.columns) {
           motionOf(inner.motion, "column", first, flags);
           if (inner.backgroundMotion && BACKGROUND_SCROLL.has(inner.backgroundMotion.effect) && inner.background) flags.js = true;
+          if (layersScroll(inner.backgroundLayers)) flags.js = true;
           for (const child of inner.blocks) motionOf(child.motion, blockTarget(child), first, flags);
         }
       }

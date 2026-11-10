@@ -512,3 +512,60 @@ describe("contrast from the owner's CSS", () => {
     expect(issues[0].message).toContain("dark colours");
   });
 });
+
+/** Text on a part's own background is drawn in the theme's colours made for that background (D390), and read so here; a hue turned (D534) too. */
+describe("text on a row's own light or dark background", () => {
+  const settings = { mode: "auto" as const, light: { text: "#171717", background: "#ffffff" }, dark: { text: "#ededed", background: "#0a0a0a" } };
+  const theme = { sets: themeSetsOf(settings) };
+  const lightOnly = { sets: themeSetsOf({ ...settings, mode: "light" }) };
+  const plain = () => text(doc(para("Words")));
+  const gradient = (colors: string[]) => ({ type: "gradient", style: "radial", colors }) as never;
+
+  it("hands the checker the theme's text colour on a light and on a dark part, in every set", () => {
+    expect(theme.sets).toEqual([
+      { name: "light", text: "#171717", background: "#ffffff", onLight: "#171717", onDark: "#ededed" },
+      { name: "dark", text: "#ededed", background: "#0a0a0a", onLight: "#171717", onDark: "#ededed" },
+    ]);
+  });
+
+  it("reads plain text on a dark colour or gradient as the light text the site draws there, also in a theme that only shows light", () => {
+    for (const context of [{ theme }, { theme: lightOnly }]) {
+      expect(pageIssues(page(row([col([plain()])], { background: { type: "color", color: "#07051a" } })), context)).toEqual([]);
+      expect(pageIssues(page(row([col([plain()])], { background: gradient(["#1d1250", "#0c0828", "#07051a"]) })), context)).toEqual([]);
+      // A light part in a site shown dark keeps dark text.
+      expect(pageIssues(page(row([col([plain()])], { background: gradient(["#ffffff", "#f5f3ff"]) })), context)).toEqual([]);
+    }
+  });
+
+  it("takes the colour set of the column's own background before the row's", () => {
+    const column = col([plain()], { background: { type: "color", color: "#ffffff" } });
+    expect(pageIssues(page(row([column], { background: { type: "color", color: "#07051a" } })), { theme })).toEqual([]);
+  });
+
+  it("still finds text that does not read: a gradient from dark to light, and a colour of the text's own", () => {
+    // Dark on average, so the text is light: lost where the gradient is pale. No colour set is named, as it reads the same in each.
+    const mixed = pageIssues(page(row([col([plain()])], { background: gradient(["#07051a", "#0c0828", "#07051a", "#9ca3af"]) })), { theme });
+    expect(mixed.map((i) => i.rule)).toEqual(["contrast"]);
+    expect(mixed[0].message).toMatch(/where it is #9ca3af \(\d\.\d:1; aim for 4\.5:1\)\.$/);
+    const own = text(doc(para("Words")), ink("#171717"));
+    expect(rules(pageIssues(page(row([col([own])], { background: { type: "color", color: "#07051a" } })), { theme }))).toEqual(["contrast"]);
+  });
+
+  it("without the made colours (a context built by hand), holds plain text to each set's own, as before", () => {
+    const sets = [{ name: "light", text: "#171717", background: "#ffffff" }];
+    const issues = pageIssues(page(row([col([plain()])], { background: { type: "color", color: "#07051a" } })), { theme: { sets } });
+    expect(issues.map((i) => i.rule)).toEqual(["contrast"]);
+    expect(issues[0].message).toContain("light colours");
+  });
+
+  it("reads a background in the colours its turned hue draws it in", () => {
+    // A white heading on a blue that reads; the same check holds whichever way the hue is turned, as a turn keeps how light it is.
+    const white = () => heading(2, "White", ink("#ffffff"));
+    for (const backgroundHue of [undefined, -120, 60, 180])
+      expect(pageIssues(page(row([col([white()])], { background: { type: "color", color: "#1e3a8a" }, backgroundHue })), { theme })).toEqual([]);
+    // The message names the colour as drawn, not as stored.
+    const pale = pageIssues(page(row([col([white()])], { background: gradient(["#1e3a8a", "#fde68a"]), backgroundHue: 90 })), { theme });
+    expect(pale.map((i) => i.rule)).toEqual(["contrast"]);
+    expect(pale[0].message).not.toContain("#fde68a");
+  });
+});

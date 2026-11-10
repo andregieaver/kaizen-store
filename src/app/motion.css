@@ -140,6 +140,104 @@
     background-size: 160px 160px;
   }
 
+  /* ---------------------------------------------------------------- layers over a background (D534, `background-layers.ts`) */
+
+  /* The layers' frame is a container: a layer's travel, and the room a pattern keeps for it, are measured in its height. */
+  [data-fx-layers] {
+    container-type: size;
+  }
+  [data-fx-bglayer] {
+    position: absolute;
+    inset: 0;
+    opacity: var(--fx-o, 1);
+    pointer-events: none;
+  }
+  /*
+   * A glow: one soft ellipse, its first colour at the heart and the second (half as solid) around it, placed by its centre and sized
+   * in the frame's own measures. It is a gradient on a box a quarter taller than the frame either way, so no edge of it shows when
+   * the layer travels, and however large the glow is asked to be, the browser keeps a surface no larger than that box.
+   */
+  [data-fx-glow] {
+    position: absolute;
+    inset: -25cqh 0;
+    background: radial-gradient(
+      ellipse calc(var(--fx-w, 60cqw) / 2) calc(var(--fx-h, 60cqh) / 2) at var(--fx-x, 50%) calc(25cqh + var(--fx-gy, 50cqh)),
+      var(--fx-lc1),
+      var(--fx-lc2) 46%,
+      transparent
+    );
+  }
+  /*
+   * A horizon: the top of a disc far wider than the part (its radius `--fx-r`), lit along its rim. Drawn as two gradients on a box
+   * that starts `--fx-rim` above the arc (room for the glow outside it) and reaches a quarter below the frame: the disc itself, and
+   * over it the rim (a glow inside the edge, the thin lit edge, the glow and the haze outside). A disc of that size as an element,
+   * with shadows for its glow, would be a surface many screens large.
+   */
+  [data-fx-disc] {
+    --fx-rim: 120px;
+    --fx-at: 50% calc(var(--fx-r, 125cqw) + var(--fx-rim));
+    position: absolute;
+    inset: calc(var(--fx-y, 64%) - var(--fx-rim)) 0 -25cqh;
+    background:
+      radial-gradient(
+        circle var(--fx-r, 125cqw) at var(--fx-at),
+        transparent calc(100% - 30px),
+        var(--fx-lc1) calc(100% - 2px),
+        var(--fx-lc3) calc(100% - 1px),
+        var(--fx-lc3) 100%,
+        var(--fx-lc1) calc(100% + 1px),
+        var(--fx-lc4) calc(100% + 34px),
+        transparent calc(100% + var(--fx-rim))
+      ),
+      radial-gradient(circle var(--fx-r, 125cqw) at var(--fx-at), var(--fx-lc2) calc(100% - 0.5px), transparent 100%);
+  }
+  /* Patterns: lines and dots of one colour, drawn as gradients on a tile of `--fx-size`. */
+  [data-fx-pattern="grid"] {
+    background-image:
+      linear-gradient(to right, var(--fx-lc1) 1px, transparent 1px), linear-gradient(to bottom, var(--fx-lc1) 1px, transparent 1px);
+    background-size: var(--fx-size, 52px) var(--fx-size, 52px);
+    background-position: center top;
+  }
+  [data-fx-pattern="dots"] {
+    background-image: radial-gradient(circle, var(--fx-lc1) 0 1.25px, transparent 1.9px);
+    background-size: var(--fx-size, 24px) var(--fx-size, 24px);
+    background-position: center top;
+  }
+  /*
+   * Stars: six dots, each on a tile of its own whose sizes share no measure, so together they repeat only far outside any screen and
+   * the eye finds neither rows nor columns; `--fx-u` is one two-hundredth of the pattern's size.
+   */
+  [data-fx-pattern="stars"] {
+    --fx-u: calc(var(--fx-size, 200px) / 200);
+    background-image:
+      radial-gradient(circle at calc(var(--fx-u) * 23) calc(var(--fx-u) * 41), var(--fx-lc1) 0 0.8px, transparent 1.5px),
+      radial-gradient(circle at calc(var(--fx-u) * 131) calc(var(--fx-u) * 117), var(--fx-lc1) 0 0.6px, transparent 1.3px),
+      radial-gradient(circle at calc(var(--fx-u) * 87) calc(var(--fx-u) * 69), var(--fx-lc1) 0 1.1px, transparent 1.8px),
+      radial-gradient(circle at calc(var(--fx-u) * 49) calc(var(--fx-u) * 151), var(--fx-lc1) 0 0.6px, transparent 1.2px),
+      radial-gradient(circle at calc(var(--fx-u) * 141) calc(var(--fx-u) * 63), var(--fx-lc1) 0 0.8px, transparent 1.5px),
+      radial-gradient(circle at calc(var(--fx-u) * 109) calc(var(--fx-u) * 19), var(--fx-lc1) 0 0.9px, transparent 1.6px);
+    background-size:
+      calc(var(--fx-u) * 211) calc(var(--fx-u) * 197),
+      calc(var(--fx-u) * 263) calc(var(--fx-u) * 157),
+      calc(var(--fx-u) * 293) calc(var(--fx-u) * 139),
+      calc(var(--fx-u) * 229) calc(var(--fx-u) * 181),
+      calc(var(--fx-u) * 251) calc(var(--fx-u) * 173),
+      calc(var(--fx-u) * 283) calc(var(--fx-u) * 127);
+  }
+  /* Where a pattern fades away. */
+  [data-fx-fade="edges"] {
+    -webkit-mask-image: radial-gradient(ellipse 72% 60% at 50% 50%, #000, transparent);
+    mask-image: radial-gradient(ellipse 72% 60% at 50% 50%, #000, transparent);
+  }
+  [data-fx-fade="down"] {
+    -webkit-mask-image: linear-gradient(to bottom, #000 10%, transparent 90%);
+    mask-image: linear-gradient(to bottom, #000 10%, transparent 90%);
+  }
+  [data-fx-fade="up"] {
+    -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 90%);
+    mask-image: linear-gradient(to top, #000 10%, transparent 90%);
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     /* How fast colours flow, by `data-fx-flow` on the gradient: a factor on each kind's own time. `still` has none. */
     [data-fx-flow="slow"] {
@@ -214,6 +312,7 @@
     [data-fx-enter],
     [data-fx-scroll],
     [data-fx-bgm],
+    [data-fx-amb],
     [data-fx-hover="float"] {
       --fx-en: none;
       --fx-sn-on: none;
@@ -459,6 +558,27 @@
       --fx-fn: fx-drift;
       --fx-fdur: calc(26s / var(--fx-sk));
     }
+    /*
+     * A layer over a background (D534) travels against the page by `--fx-sk`: -1 is far away (slower than the page), 1 close
+     * (faster), measured on the layers' frame, so every layer of a part keeps time with the others at its own distance.
+     */
+    [data-fx-scroll="layer"] {
+      --fx-sn: fx-s-layer;
+    }
+    /* A pattern that travels is taller than its frame by its travel, so no edge of it shows. */
+    [data-fx-pattern][data-fx-scroll="layer"] {
+      inset: calc(max(var(--fx-sk), var(--fx-sk) * -1) * -20cqh) 0;
+    }
+    /* By itself: a glimmer, or a slow swell from where the glow or the arc is. */
+    [data-fx-amb="twinkle"] {
+      --fx-fn: fx-l-twinkle;
+      --fx-fdur: 3.2s;
+    }
+    [data-fx-amb="breathe"] {
+      --fx-fn: fx-l-breathe;
+      --fx-fdur: 6s;
+      transform-origin: var(--fx-x, 50%) var(--fx-y, 50%);
+    }
 
     @keyframes fx-s-parallax {
       from {
@@ -542,6 +662,32 @@
       }
       to {
         translate: 0 calc(var(--fx-sk) * 9%);
+      }
+    }
+    @keyframes fx-s-layer {
+      from {
+        translate: 0 calc(var(--fx-sk) * 20cqh);
+      }
+      to {
+        translate: 0 calc(var(--fx-sk) * -20cqh);
+      }
+    }
+    @keyframes fx-l-twinkle {
+      from {
+        opacity: calc(var(--fx-o, 1) * 0.45);
+      }
+      to {
+        opacity: var(--fx-o, 1);
+      }
+    }
+    @keyframes fx-l-breathe {
+      from {
+        scale: 1;
+        opacity: calc(var(--fx-o, 1) * 0.8);
+      }
+      to {
+        scale: 1.07;
+        opacity: var(--fx-o, 1);
       }
     }
     @keyframes fx-s-bg-zoom {

@@ -7,8 +7,11 @@
  *
  * Only a background that hides what is behind it is read: a colour at least `SURFACE_OPACITY_MIN` solid, a gradient (its colours'
  * mean luminance) or a picture or video with an overlay at least that solid; a see-through one, a picture alone or a background that
- * changes lightness at another screen size gives none (the page's colours, as before). Pure, no zod: visitors' pages read it.
+ * changes lightness at another screen size gives none (the page's colours, as before). A part whose hue is turned (D534,
+ * `backgroundHue`) is read in the colours it is drawn in. Pure, no zod: visitors' pages read it.
  */
+
+import { shiftHue } from "./hue";
 
 type SurfaceBackground =
   | { type: "color"; color: string; opacity?: number }
@@ -38,16 +41,17 @@ const solid = (opacity: number | undefined) => opacity === undefined || opacity 
 
 const ofLuminance = (value: number): Surface => (value > LIGHT_ABOVE ? "light" : "dark");
 
-/** What a background is for the text over it: light, dark, or nothing to say. */
-export function surfaceOf(background: SurfaceBackground | null | undefined): Surface | null {
+/** What a background is for the text over it: light, dark, or nothing to say. `hue` is the part's turn of its colours (D534). */
+export function surfaceOf(background: SurfaceBackground | null | undefined, hue?: number): Surface | null {
   if (!background) return null;
+  const drawn = (colour: string) => luminance(shiftHue(colour, hue));
   const overlay = "overlay" in background ? background.overlay : null;
-  if (overlay && HEX.test(overlay.color) && overlay.opacity >= SURFACE_OPACITY_MIN) return ofLuminance(luminance(overlay.color));
-  if (background.type === "color") return solid(background.opacity) && HEX.test(background.color) ? ofLuminance(luminance(background.color)) : null;
+  if (overlay && HEX.test(overlay.color) && overlay.opacity >= SURFACE_OPACITY_MIN) return ofLuminance(drawn(overlay.color));
+  if (background.type === "color") return solid(background.opacity) && HEX.test(background.color) ? ofLuminance(drawn(background.color)) : null;
   if (background.type === "gradient") {
     const colours = background.colors.filter((c) => HEX.test(c));
     if (!solid(background.opacity) || colours.length === 0) return null;
-    return ofLuminance(colours.reduce((sum, c) => sum + luminance(c), 0) / colours.length);
+    return ofLuminance(colours.reduce((sum, c) => sum + drawn(c), 0) / colours.length);
   }
   return null;
 }
@@ -58,13 +62,14 @@ export function surfaceOf(background: SurfaceBackground | null | undefined): Sur
  */
 export function partSurface(part: {
   background?: SurfaceBackground | null;
+  backgroundHue?: number;
   at?: Partial<Record<string, { background?: { type: "color"; color: string; opacity?: number } | null } | undefined>>;
 }): Surface | null {
-  const own = surfaceOf(part.background);
+  const own = surfaceOf(part.background, part.backgroundHue);
   for (const size of Object.values(part.at ?? {})) {
     if (!size || size.background === undefined) continue;
     if (size.background === null) return null;
-    if (surfaceOf(size.background) !== own) return null;
+    if (surfaceOf(size.background, part.backgroundHue) !== own) return null;
   }
   return own;
 }

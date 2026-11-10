@@ -338,6 +338,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Compressing pictures and videos (D213, `docs/media-compression.md`)
 - Icon list gradient (D199)
 - Text styles (D393, `docs/text-styles.md`, `src/lib/text-styles.ts`, `src/server/text-styles.ts`, `src/components/admin/text-styles.tsx`)
+- Layers over a background, backdrops and the hue (D534, `src/lib/background-layers.ts`, `src/lib/backdrops.ts`, `src/lib/hue.ts`)
 - Text on a part's own background (D390, `src/lib/background-surface.ts`)
 - Text colour (D180, `docs/text-colour.md`)
 - Duplicating pages (D126, `src/lib/page-duplicate.ts`, `src/server/page-duplicate.ts`, `DuplicateButton`)

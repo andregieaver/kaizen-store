@@ -8,6 +8,7 @@ import { sectionStyleChoices, sectionStyleLabel } from "@/lib/section-styles";
 import { MarkupInput } from "@/components/admin/markup-input";
 import { carouselAnywhere, carouselAt, clearAt, inheritedAt, setAt, sizeSource, stackAt, stackPatchAt, valueAt } from "@/lib/responsive";
 import { createContext, useContext, useEffect, useEffectEvent, useId, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { ContentGridView } from "@/components/content-grid";
 import { t } from "@/lib/i18n";
 import { PartBackground } from "@/components/page-parts";
@@ -18,6 +19,8 @@ import { BackgroundMotionFields, GradientFields } from "./gradient-fields";
 import { ROW_LAYOUTS, BACKDROP_BLUR_MAX, BLUR_MAX, BORDER_MAX, BORDER_STYLES, BUTTON_LABEL_MAX, GRID_COLUMNS_MAX, GRID_CONTENT, GRID_ELEMENTS, GRID_GAP_MAX, GRID_LIMIT_MAX, GRID_SORTS, PRICE_SORTS, PRODUCT_SORTS, HEADING_MAX, HTML_ID_MAX, IMAGE_SHAPES, RADIUS_MAX, CONTENT_MAX_MAX, CONTENT_MAX_MIN, COLUMN_SHARE_MAX, ROW_HEIGHT_VH, SHADOWS, shadowOpacityOf, SPACING_MAX, classNameProblem, htmlIdProblem, isLinkAddress, gridImageShape, DEFAULT_GRID_RECOMMEND, type RowBackground, type BorderStyle, type ButtonBlock, type HeadingBlock, type HeadingLevel, isDualHeading, type Shadow, type ColumnLink, type ContentGridBlock, type GridContent, type GridElement, type GridSort, type GridSource, type ImageShape, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageRow, type Sides, type Spacing, contentSides } from "@/lib/page-content";
 import { type BackgroundMotion } from "@/lib/motion";
 import { backgroundMoves, switchBackground } from "@/lib/motion-edit";
+import type { BackgroundLayer } from "@/lib/background-layers";
+import type { BackdropPatch } from "@/lib/backdrops";
 import { partFeatureOn } from "@/lib/part-features";
 import { linesOf, locateColumn, type BlockPatch, type ColumnPatch, type RowPatch } from "@/lib/page-rows";
 import type { GridData } from "@/lib/content-grid";
@@ -262,13 +265,19 @@ export function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
 
 
 
+// Backdrops, the hue and the layers (D534) are fetched when a background's settings are first opened: the builder's first scripts do not carry them.
+const BackdropPicker = dynamic(() => import("./backdrop-fields").then((m) => m.BackdropPicker), { ssr: false, loading: () => null });
+const LayerFields = dynamic(() => import("./backdrop-fields").then((m) => m.LayerFields), { ssr: false, loading: () => null });
+
 /**
  * A row's or column's background (D48): none, a colour, or a picture (or,
  * for rows, given `startVideo`, a video) with a colour and blur over it,
  * previewed as the page draws it. With none or a colour (see-through if
- * wanted), what is behind the part can be blurred (D86).
+ * wanted), what is behind the part can be blurred (D86). Given `backdrop`, the ready-made backdrops and the hue of the whole
+ * background come right under the kind (Homer's), and the layers over the background last, behind one press (Lisa's; D534).
  */
 export function BackgroundFields({
+  backdrop,
   value,
   upload,
   startVideo,
@@ -284,6 +293,15 @@ export function BackgroundFields({
   align,
   onAlign,
 }: {
+  /** The layers over the background and the hue of the whole (D534), and what changing them does; left out, neither is offered. */
+  backdrop?: {
+    layers: BackgroundLayer[] | undefined;
+    hue: number | undefined;
+    /** A ready-made backdrop put on: the background, layers and hue together, as one change. */
+    onBackdrop: (patch: BackdropPatch) => void;
+    onLayers: (layers: BackgroundLayer[] | undefined) => void;
+    onHue: (hue: number | undefined) => void;
+  };
   /** Which part of a picture or video shows where it is cut to fit, for a fixed background (D184). */
   align?: "top" | "middle" | "bottom";
   onAlign?: (align: "top" | "middle" | "bottom" | undefined) => void;
@@ -335,6 +353,19 @@ export function BackgroundFields({
         value={kind}
         onChange={choose}
       />
+      {backdrop && (
+        <BackdropPicker
+          background={value}
+          layers={backdrop.layers}
+          hue={backdrop.hue}
+          onBackdrop={(patch) => {
+            // The kind follows the backdrop's own background, so its fields show under it.
+            setKind(patch.background?.type ?? "none");
+            backdrop.onBackdrop(patch);
+          }}
+          onHue={backdrop.onHue}
+        />
+      )}
       {kind === "color" && value?.type === "color" && (
         <ColorField
           label={bw.colour}
@@ -377,7 +408,7 @@ export function BackgroundFields({
           {media?.type === kind ? (
             // The picture or video as the page draws it, with its colour and blur, so changes show here at once.
             <div className="relative isolate h-48 w-full overflow-hidden rounded-md border border-border">
-              <PartBackground background={media} motion={motion} preview />
+              <PartBackground background={media} motion={motion} layers={backdrop?.layers} hue={backdrop?.hue} preview />
             </div>
           ) : (
             <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-surface text-sm text-muted">
@@ -437,7 +468,7 @@ export function BackgroundFields({
         <div className="flex flex-col gap-4">
           {/* The gradient as the page draws it, moving as it will. */}
           <div className="relative isolate h-40 w-full overflow-hidden rounded-md border border-border">
-            <PartBackground background={value} motion={motion} preview />
+            <PartBackground background={value} motion={motion} layers={backdrop?.layers} hue={backdrop?.hue} preview />
           </div>
           <GradientFields value={value} onChange={onChange} />
         </div>
@@ -465,6 +496,7 @@ export function BackgroundFields({
       )}
       {/* A picture, video or gradient can move; a colour cannot. */}
       {backgroundMoves(value) && !fixed && <BackgroundMotionFields target={target} value={motion} onChange={onMotion} />}
+      {backdrop && <LayerFields layers={backdrop.layers} hue={backdrop.hue} onLayers={backdrop.onLayers} />}
     </div>
   );
 }

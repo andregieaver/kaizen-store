@@ -17,6 +17,8 @@ import {
   type GradientStyle,
   type PartMotion,
 } from "./motion";
+import { layersShow, type BackgroundLayer } from "./background-layers";
+import { backgroundHueSchema, backgroundLayersSchema } from "./background-layers-schema";
 import { type CarouselSettings } from "./carousel-settings";
 import { carouselSettingsSchema } from "./carousel-settings-schema";
 import { HEX6, isOpacity } from "./colour";
@@ -2024,6 +2026,10 @@ export type PageColumn = PartBase & {
   background?: Background;
   /** How the background moves (D128), with a picture, video or gradient. */
   backgroundMotion?: BackgroundMotion;
+  /** Layers drawn over the background and under what the column holds (D534, `src/lib/background-layers.ts`); the first is the lowest. */
+  backgroundLayers?: BackgroundLayer[];
+  /** Every colour of the background and its layers turned by this many degrees (D534, `src/lib/hue.ts`). */
+  backgroundHue?: number;
   /** What is behind the column blurred, in pixels (D86); only with no background or a colour. */
   backdropBlur?: number;
   link?: ColumnLink;
@@ -2089,6 +2095,10 @@ export type PageRow = PartBase & {
   background?: RowBackground;
   /** How the background moves (D128), with a picture, video or gradient. */
   backgroundMotion?: BackgroundMotion;
+  /** Layers drawn over the background and under what the row holds (D534, `src/lib/background-layers.ts`); the first is the lowest. */
+  backgroundLayers?: BackgroundLayer[];
+  /** Every colour of the background and its layers turned by this many degrees (D534, `src/lib/hue.ts`). */
+  backgroundHue?: number;
   /** What is behind the row blurred, in pixels (D86): a header over a picture, say. Only with no background or a colour. */
   backdropBlur?: number;
   /**
@@ -2153,7 +2163,9 @@ export function blockShowsUnbound(block: PageBlock): boolean {
  * open (a row whose only component is a form with no address to send to).
  */
 export const rowShows = (row: PageRow): boolean =>
-  Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockShowsUnbound));
+  Boolean(row.background) ||
+  layersShow(row.backgroundLayers) ||
+  row.columns.some((c) => c.background || layersShow(c.backgroundLayers) || c.blocks.some(blockShowsUnbound));
 
 /** Whether a block has content of its own, whatever it is bound to. */
 export function blockOwnContent(block: PageBlock): boolean {
@@ -2231,7 +2243,7 @@ export function blockOwnContent(block: PageBlock): boolean {
       return block.source === "google" || block.items.some(testimonialShows);
     case "columns":
       // As a row: something in a column shows, or a column has a background of its own (D294).
-      return block.columns.some((c) => Boolean(c.background) || c.blocks.some(blockShowsUnbound));
+      return block.columns.some((c) => Boolean(c.background) || layersShow(c.backgroundLayers) || c.blocks.some(blockShowsUnbound));
   }
 }
 
@@ -3809,6 +3821,8 @@ function columnSchemaOf<B extends z.ZodType>(blocks: B) {
   blocks: z.preprocess(dropStrandedItems, z.array(blocks)),
   background,
   backgroundMotion: backgroundMotionSchema,
+  backgroundLayers: backgroundLayersSchema,
+  backgroundHue: backgroundHueSchema,
   backdropBlur,
   link: z
     .object({
@@ -3887,6 +3901,8 @@ export const pageRowSchema = z.preprocess(upgradeRow, z
     align: z.enum(["top", "middle", "bottom"]).optional(),
     background: rowBackground,
     backgroundMotion: backgroundMotionSchema,
+    backgroundLayers: backgroundLayersSchema,
+    backgroundHue: backgroundHueSchema,
     backdropBlur,
     modal: rowModalSchema.optional(),
     ...partBase,

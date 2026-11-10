@@ -2814,7 +2814,7 @@ function RowItem({
           is a container (its screen sizes are container queries), which a pinned layer takes as its window, so it would lie at the top of
           the whole canvas and the row's frame would cut it away: here it fills its row as any background does.
         */}
-        <PartBackground background={row.background} align={row.backgroundAlign} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
+        <PartBackground background={row.background} align={row.backgroundAlign} layers={row.backgroundLayers} hue={row.backgroundHue} stillLayers={!actions.motionPreview} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
         <div className={rowInnerClass(row, "canvas")} style={rowInnerStyle(row, "canvas")}>
           {resizable && widthLimited && row.width === "full" && (
             <RowWidthHandles inset={24} value={contentMax} label={name} onWidth={setWidth} onReset={resetWidth} />
@@ -3040,7 +3040,7 @@ function ColumnItem({
       <DisplayBadge show={column.visibility?.show} />
       {/* The column itself, as the site draws it, inside its band for pointing. */}
       <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
-      <PartBackground background={column.background} {...canvasBackground(actions.motionPreview, column.backgroundMotion)} />
+      <PartBackground background={column.background} layers={column.backgroundLayers} hue={column.backgroundHue} stillLayers={!actions.motionPreview} {...canvasBackground(actions.motionPreview, column.backgroundMotion)} />
       {column.link && (
         <span className="pointer-events-none absolute top-0 right-0 z-10 max-w-[80%] -translate-y-full truncate rounded-t bg-foreground/80 px-1.5 py-0.5 text-[11px] text-background">
           {fillWords(tw.linksTo, { href: column.link.href || "…" })}
@@ -4271,6 +4271,13 @@ function Dialogs({
                     target="column"
                     motion={column.backgroundMotion}
                     onMotion={(backgroundMotion) => onRows((current) => patchColumn(current, column.id, { backgroundMotion }))}
+                    backdrop={{
+                      layers: column.backgroundLayers,
+                      hue: column.backgroundHue,
+                      onBackdrop: (patch) => onRows((current) => patchColumn(current, column.id, patch)),
+                      onLayers: (backgroundLayers) => onRows((current) => patchColumn(current, column.id, { backgroundLayers })),
+                      onHue: (backgroundHue) => onRows((current) => patchColumn(current, column.id, { backgroundHue })),
+                    }}
                     mark={<SizeMark part={column} field="background" label={dw.background} onPatch={plainPatch({ kind: "column", id: column.id })} />}
                   />,
                 )}
@@ -4312,6 +4319,13 @@ function Dialogs({
                     target="row"
                     motion={row.backgroundMotion}
                     onMotion={(backgroundMotion) => onRows((current) => patchRow(current, row.id, { backgroundMotion }))}
+                    backdrop={{
+                      layers: row.backgroundLayers,
+                      hue: row.backgroundHue,
+                      onBackdrop: (patch) => onRows((current) => patchRow(current, row.id, patch)),
+                      onLayers: (backgroundLayers) => onRows((current) => patchRow(current, row.id, { backgroundLayers })),
+                      onHue: (backgroundHue) => onRows((current) => patchRow(current, row.id, { backgroundHue })),
+                    }}
                     mark={<SizeMark part={row} field="background" label={dw.background} onPatch={plainPatch({ kind: "row", id: row.id })} />}
                   />,
                 )}

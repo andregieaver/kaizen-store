@@ -322,7 +322,7 @@ function RowMarkup({
       <VisiblePart key={column.id} show={column.visibility?.show} place={place} preview={preview}>
       <div id={col.id} className={col.className} style={{ ...col.style, ...colFx.style }} {...colFx.attrs}>
         <FontLinks families={partFonts(column)} />
-        <PartBackground background={column.background} motion={column.backgroundMotion} firstRow={first} eager={eager} />
+        <PartBackground background={column.background} motion={column.backgroundMotion} layers={column.backgroundLayers} hue={column.backgroundHue} firstRow={first} eager={eager} />
         <ColumnLinkCover column={column} />
         {column.blocks.filter(blockShowsUnbound).map((block, blockIndex) => {
           const b = blockBox(block, "site");
@@ -409,7 +409,7 @@ function RowMarkup({
         <FontLinks families={partFonts(row)} />
         {/* Its picture, video or gradient in a box of no layout of its own, so a header's stage can set it aside (D533, globals.css). */}
         <div data-row-bg="" className="contents">
-          <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} eager={eager} fixed={row.backgroundFixed} align={row.backgroundAlign} />
+          <PartBackground background={row.background} motion={row.backgroundMotion} layers={row.backgroundLayers} hue={row.backgroundHue} firstRow={first} eager={eager} fixed={row.backgroundFixed} align={row.backgroundAlign} />
         </div>
         <div className={rowInnerClass(row, "site")}>
           <div className={grid.className} style={grid.style}>
