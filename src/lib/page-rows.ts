@@ -138,6 +138,8 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       return { id: id(), type, image: null, caption: "" };
     case "beforeAfter":
       return { id: id(), type, before: null, after: null };
+    case "animation":
+      return { id: id(), type, animation: null, alt: "" };
     case "heading":
       return { id: id(), type, text: "", level: 2 };
     case "button":

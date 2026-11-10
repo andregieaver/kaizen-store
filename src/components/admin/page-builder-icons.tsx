@@ -16,6 +16,8 @@ export function BlockIcon({ type }: { type: BlockType }) {
       return <ImageIcon />;
     case "beforeAfter":
       return <BeforeAfterIcon />;
+    case "animation":
+      return <AnimationIcon />;
     case "timeline":
       return <TimelineIcon />;
     case "heading":
@@ -159,6 +161,18 @@ function BeforeAfterIcon() {
         <path d="M12 3v18" />
         <path d="M3 5h9v14H3z" fill="currentColor" fillOpacity="0.35" stroke="none" />
         <path d="m9.5 12-1.5 1.5M9.5 12 8 10.5M14.5 12l1.5 1.5M14.5 12l1.5-1.5" />
+      </svg>
+    </span>
+  );
+}
+
+/** A picture in motion: a shape with the lines its movement leaves. */
+function AnimationIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round">
+        <path d="M3 8h4M2 12h5M3 16h4" />
+        <path d="m11 6 9 6-9 6z" fill="currentColor" fillOpacity="0.35" />
       </svg>
     </span>
   );

@@ -337,6 +337,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - What a visitor loads (D211, `docs/performance.md`)
 - Compressing pictures and videos (D213, `docs/media-compression.md`)
 - A video that plays once, and uploads that arrive (D536, `src/lib/video-play.ts`, `src/lib/upload-retry.ts`)
+- An animation, and a logo that is one (D538, `src/lib/animation.ts`, `src/lib/animation-make.ts`, `src/components/animation-view.tsx`)
 - Icon list gradient (D199)
 - Text styles (D393, `docs/text-styles.md`, `src/lib/text-styles.ts`, `src/server/text-styles.ts`, `src/components/admin/text-styles.tsx`)
 - Layers over a background, backdrops and the hue (D534, `src/lib/background-layers.ts`, `src/lib/backdrops.ts`, `src/lib/hue.ts`)

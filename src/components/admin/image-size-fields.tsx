@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 
-import { BOUND_PICTURE_SIZE, IMAGE_WIDTH_MIN, imageDisplaySize, type BeforeAfterBlock, type ImageBlock } from "@/lib/page-content";
+import { BOUND_PICTURE_SIZE, IMAGE_WIDTH_MIN, animationPicture, imageDisplaySize, type AnimationBlock, type BeforeAfterBlock, type ImageBlock } from "@/lib/page-content";
 import { setAt, sizeSource, valueAt } from "@/lib/responsive";
 import { fillWords } from "@/lib/admin-fill";
 
@@ -12,7 +12,7 @@ import { TextAlignFields } from "./block-fields";
 import { SizeMark, inheritedClass, useSizeEdit } from "./responsive-edit";
 
 /**
- * A picture's width and position (D151), on its Style tab; a Before and after's too, by its before picture. A picture is drawn at its own size and never larger; Width makes it
+ * A picture's width and position (D151), on its Style tab; a Before and after's too, by its before picture, and an animation's (D538), by its last frame. A picture is drawn at its own size and never larger; Width makes it
  * narrower, in pixels, and Position says where it sits when it is narrower than its column. What is stored is only what differs
  * from the picture's own size and from the left, so a picture left alone keeps no setting. Both can differ by screen size
  * (D179): they edit the size the builder is at, and below Extra large a width set larger can be given back or made the own
@@ -29,7 +29,7 @@ export function widthPatch(px: number, natural: number, min: number): number | u
 /** What these fields change: the same keys on a picture and a Before and after. */
 type SizePatch = Partial<Pick<ImageBlock, "maxWidth" | "align" | "at">>;
 
-export function ImageSizeFields({ block, onChange }: { block: ImageBlock | BeforeAfterBlock; onChange: (patch: SizePatch) => void }) {
+export function ImageSizeFields({ block, onChange }: { block: ImageBlock | BeforeAfterBlock | AnimationBlock; onChange: (patch: SizePatch) => void }) {
   const id = useId();
   const hintId = `${id}-hint`;
   const w = useAdminText("blocks").imageSize;
@@ -37,12 +37,14 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock | Befor
   // picture the block keeps of its own for when the field is empty.
   const bound = block.type === "image" && Boolean(block.bind);
   // A Before and after is drawn at its before picture's size, the after picture fitted to it.
-  const own = bound ? { url: "", ...BOUND_PICTURE_SIZE, alt: "" } : block.type === "image" ? block.image : block.before;
+  const own = bound ? { url: "", ...BOUND_PICTURE_SIZE, alt: "" } : block.type === "image" ? block.image : block.type === "animation" ? animationPicture(block) : block.before;
+  // An animation keeps its own shape: it is never cropped.
+  const shape = block.type === "animation" ? undefined : block.shape;
   const { size } = useSizeEdit();
   const maxWidth = valueAt(block, "maxWidth", size) ?? undefined;
   const source = sizeSource(block, size, "maxWidth");
-  const natural = own ? imageDisplaySize({ image: own, shape: block.shape }) : null;
-  const shown = own ? imageDisplaySize({ image: own, shape: block.shape, maxWidth }) : null;
+  const natural = own ? imageDisplaySize({ image: own, shape }) : null;
+  const shown = own ? imageDisplaySize({ image: own, shape, maxWidth }) : null;
   const min = natural ? Math.min(IMAGE_WIDTH_MIN, natural.width) : IMAGE_WIDTH_MIN;
   const tooSmall = natural !== null && natural.width <= IMAGE_WIDTH_MIN;
   const [draft, setDraft] = useState<string | null>(null);
@@ -121,7 +123,7 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock | Befor
             ? w.addPicture
             : tooSmall
               ? w.tooSmall
-              : `${fillWords(w.natural, { own: block.shape ? w.ownShape : w.own, w: natural.width, h: natural.height })}${bound ? w.bound : ""}`}
+              : `${fillWords(w.natural, { own: shape ? w.ownShape : w.own, w: natural.width, h: natural.height })}${bound ? w.bound : ""}`}
         </p>
       </fieldset>
       <div className="flex flex-col gap-2">

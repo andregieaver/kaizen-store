@@ -17,6 +17,7 @@ import {
   type GradientStyle,
   type PartMotion,
 } from "./motion";
+import { ANIMATION_SIDE_MIN, type AnimationFile } from "./animation";
 import { layersShow, type BackgroundLayer } from "./background-layers";
 import { backgroundHueSchema, backgroundLayersSchema } from "./background-layers-schema";
 import { type CarouselSettings } from "./carousel-settings";
@@ -668,6 +669,38 @@ export type BeforeAfterBlock = PartBase & {
 export const beforeAfterShows = (block: Pick<BeforeAfterBlock, "before" | "after">): boolean => Boolean(block.before && block.after);
 
 /**
+ * An animation (D538, `src/lib/animation.ts`): a picture that moves, with a see-through background, such as an animated logo. It plays
+ * by itself without sound or controls when it comes into view, once unless `loop` is set, and rests on its last frame; visitors who
+ * prefer less motion, and browsers that cannot play it, get that last frame as a picture. Its description names it to screen
+ * readers. It is sized, placed and linked as a picture is, by its still.
+ */
+export type AnimationBlock = PartBase & {
+  id: string;
+  type: "animation";
+  /** What the owner's browser made of the WebM they chose (`makeAnimation()`); none until one is uploaded. */
+  animation: AnimationFile | null;
+  /** What it shows, for screen readers. */
+  alt: string;
+  /** Goes round and round instead of playing once. */
+  loop?: boolean;
+  /** Where it leads when pressed, as a picture's link; none unless set. */
+  href?: string;
+  newTab?: boolean;
+  /** The widest it is drawn, in pixels; its own width unless set. Never enlarges. */
+  maxWidth?: number;
+  /** Where it sits when narrower than its column; left unless set. */
+  align?: TextAlign;
+};
+
+/** An animation as the picture it is sized and placed as: its still, with its description. Null without one. */
+export const animationPicture = (block: Pick<AnimationBlock, "animation" | "alt">): BlockPicture | null =>
+  block.animation ? { url: block.animation.still.url, width: block.animation.still.width, height: block.animation.still.height, alt: block.alt } : null;
+
+/** How big an animation is drawn: as a picture block of its still would be. */
+export const animationDisplaySize = (block: Pick<AnimationBlock, "animation" | "alt" | "maxWidth">): { width: number; height: number } | null =>
+  imageDisplaySize({ image: animationPicture(block), maxWidth: block.maxWidth });
+
+/**
  * How big a picture block draws its picture, in pixels, and the only place that is worked out: the picture's own size (for a
  * crop, the largest crop of that shape inside it, so a crop is never enlarged), no wider than `maxWidth`. Null without a picture.
  */
@@ -683,9 +716,11 @@ export function imageDisplaySize(block: Pick<ImageBlock, "image" | "shape" | "ma
 export const beforeAfterDisplaySize = (block: Pick<BeforeAfterBlock, "before" | "shape" | "maxWidth">): { width: number; height: number } | null =>
   imageDisplaySize({ image: block.before, shape: block.shape, maxWidth: block.maxWidth });
 
-/** Whether a block draws a picture whose own width is its box's (D151): a picture, or a Before and after with its before picture. */
+/** Whether a block draws a picture whose own width is its box's (D151): a picture, a Before and after with its before picture, or an animation. */
 export const hasPictureBox = (block: PageBlock): boolean =>
-  (block.type === "image" && block.image !== null) || (block.type === "beforeAfter" && block.before !== null);
+  (block.type === "image" && block.image !== null) ||
+  (block.type === "beforeAfter" && block.before !== null) ||
+  (block.type === "animation" && block.animation !== null);
 
 /** Heading levels: 1 is the page's main heading, used once (D49). */
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
@@ -1126,6 +1161,11 @@ export type SiteBlock = PartBase & {
   align?: TextAlign;
   /** The logo's height in pixels; the header's or footer's usual one unless set. */
   height?: number;
+  /**
+   * The logo as an animation (D538): played once a visit where the logo part is, then resting on its last frame, which is the logo
+   * there. It is drawn at the logo's height, so it is framed on the logo itself. The site's logo stays what every other place shows.
+   */
+  animation?: AnimationFile;
   /** The countries as links: side by side (the default) or one under another. */
   direction?: "row" | "column";
   /** The countries: a drop-down list (the default) or links to each. */
@@ -1985,6 +2025,7 @@ export type PageBlock =
   | RichTextBlock
   | ImageBlock
   | BeforeAfterBlock
+  | AnimationBlock
   | HeadingBlock
   | ButtonBlock
   | ContentGridBlock
@@ -2180,6 +2221,8 @@ export function blockOwnContent(block: PageBlock): boolean {
       return block.image !== null;
     case "beforeAfter":
       return beforeAfterShows(block);
+    case "animation":
+      return block.animation !== null;
     case "heading":
       return block.text.trim() !== "" || isDualHeading(block);
     case "button":
@@ -2264,6 +2307,8 @@ export function blockText(block: PageBlock): string {
       return [block.image?.alt, block.caption && inlinePlain(block.caption)].filter(Boolean).join(" ");
     case "beforeAfter":
       return [block.before?.alt, block.after?.alt].filter(Boolean).join(" ");
+    case "animation":
+      return block.alt;
     case "heading":
       return [inlinePlain(block.text), isDualHeading(block) ? inlinePlain(block.second!) : ""].filter(Boolean).join(" ");
     case "accordion":
@@ -2929,6 +2974,34 @@ const blockPicture = z
   })
   .nullable();
 
+const animationAddress = (what: string) => z.url({ protocol: /^https?$/, error: `An animation's ${what} has an invalid address.` }).max(1000);
+const animationSide = z.number().int().min(ANIMATION_SIDE_MIN).max(10_000);
+
+const animationFile = z.object({
+  video: z.object({ url: animationAddress("video") }),
+  still: z.object({ url: animationAddress("picture"), width: z.number().int().min(1).max(10_000), height: z.number().int().min(1).max(10_000) }),
+  width: animationSide,
+  height: animationSide,
+});
+
+const animationBlock = z.object({
+  id: itemId,
+  type: z.literal("animation"),
+  animation: animationFile.nullable(),
+  alt: z.string().trim().max(ALT_MAX, `Keep an animation's description under ${ALT_MAX} characters.`).default(""),
+  loop: z.boolean().optional(),
+  href: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine((href) => href === "" || isLinkAddress(href), "An animation's link must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.")
+    .optional(),
+  newTab: z.boolean().optional(),
+  maxWidth: pictureWidth,
+  align: textAlign,
+  ...partBase,
+});
+
 const beforeAfterLabel = z.string().trim().max(BEFORE_AFTER_LABEL_MAX, `Keep the words on a picture under ${BEFORE_AFTER_LABEL_MAX} characters.`).optional();
 
 const beforeAfterBlock = z.object({
@@ -3200,6 +3273,7 @@ const siteBlock = z.object({
     .min(LOGO_HEIGHT.min, `Make the logo at least ${LOGO_HEIGHT.min} pixels tall.`)
     .max(LOGO_HEIGHT.max, `Keep the logo at most ${LOGO_HEIGHT.max} pixels tall.`)
     .optional(),
+  animation: animationFile.optional(),
   direction: z.enum(["row", "column"]).optional(),
   display: z.enum(["dropdown", "list"]).optional(),
   switcher: z.enum(["row", "column", "dropdown"]).optional(),
@@ -3749,6 +3823,7 @@ const BLOCK_KINDS = [
   richTextBlock,
   imageBlock,
   beforeAfterBlock,
+  animationBlock,
   headingBlock,
   buttonBlock,
   contentGridBlock,

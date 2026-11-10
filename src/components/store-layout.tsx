@@ -8,6 +8,7 @@ import { currencyChoices, currencyName, languageChoices, languageName } from "@/
 import { flagOf, languageCode } from "@/lib/language-flags";
 import { languageSlug } from "@/lib/language-view";
 import { marketSlug } from "@/lib/market-slug";
+import type { AnimationFile } from "@/lib/animation";
 import type { Market } from "@/lib/markets";
 import { linkExists, menuHref, menuLabel, menuTree, shopLink, termNames, type MenuEntry, type MenuNode } from "@/lib/navigation";
 import { marketHome, marketLink, marketPath } from "@/lib/paths";
@@ -22,6 +23,7 @@ import { BuyerSwitch } from "./buyer";
 import { CartLink, CartLinkShell } from "./cart-link";
 import { WishlistCount } from "./wishlist-heart";
 import { Icon } from "./icons";
+import { AnimatedLogo } from "./animated-logo";
 import { LogoPicture } from "./logo-picture";
 import { StoreColorSwitch } from "./store-color-switch";
 import { ViewMenu, type ViewItem } from "./view-menu";
@@ -108,6 +110,8 @@ export async function MenuLinks({
 /**
  * The logo, or the store's name without one. Where the theme puts it on a
  * dark background, the logo for dark backgrounds is shown instead (D60).
+ * `animation`: a logo part's own animation (D538), played once a visit and
+ * then the logo there.
  */
 export function Brand({
   store,
@@ -115,11 +119,14 @@ export function Brand({
   size,
   place = size === "header" ? "header" : "page",
   height,
-}: Props & { size: "header" | "footer"; place?: LogoPlace; height?: number }) {
+  animation,
+}: Props & { size: "header" | "footer"; place?: LogoPlace; height?: number; animation?: AnimationFile }) {
   const logo = store.navigation.logo;
   return (
     <Link href={marketHome(store.slug, market.slug)} className="flex min-w-0 items-center">
-      {logo ? (
+      {animation ? (
+        <AnimatedLogo animation={animation} alt={store.name} name={store.slug} height={height} size={size} />
+      ) : logo ? (
         <LogoPicture
           logo={logo}
           logoDark={store.navigation.logoDark}

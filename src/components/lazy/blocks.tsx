@@ -17,6 +17,7 @@ export const BrandsCarousel = lazyView(dynamic(() => import("../brands-carousel"
 export const TabsView = lazyView(dynamic(() => import("../tabs-view").then((m) => m.TabsView)));
 export const TableScroll = lazyView(dynamic(() => import("../table-scroll").then((m) => m.TableScroll)), showChildren);
 export const UploadedVideo = lazyView(dynamic(() => import("../video-view").then((m) => m.UploadedVideo)));
+export const AnimationPlayer = lazyView(dynamic(() => import("../animation-view").then((m) => m.AnimationPlayer)));
 export const EmbeddedVideo = lazyView(dynamic(() => import("../video-view").then((m) => m.EmbeddedVideo)));
 export const BackgroundVideo = lazyView(dynamic(() => import("../background-video").then((m) => m.BackgroundVideo)));
 export const HtmlFrame = lazyView(dynamic(() => import("../html-frame").then((m) => m.HtmlFrame)));

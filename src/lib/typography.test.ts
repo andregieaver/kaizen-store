@@ -117,8 +117,8 @@ describe("every text a component draws has a size (owner's addition to phase 3) 
   });
 
   it("knows every kind of component that draws text (none is forgotten in TEXT_FIELDS)", () => {
-    // A Columns component (D294) draws no text of its own: its columns' components do.
-    const silent = ["separator", "video", "html", "columns"];
+    // A Columns component (D294) draws no text of its own: its columns' components do. An animation (D538) draws its picture only.
+    const silent = ["separator", "video", "animation", "html", "columns"];
     for (const type of BLOCK_TYPES) {
       if (silent.includes(type)) expect(textRoles({ type })).toEqual([]);
       else expect(Object.keys(TEXT_FIELDS[type] ?? {}).length, type).toBeGreaterThan(0);

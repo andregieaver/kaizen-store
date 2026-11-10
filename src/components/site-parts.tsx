@@ -124,7 +124,7 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
   const column = block.direction === "column";
   switch (block.part) {
     case "logo":
-      return <StoreBrand store={store} market={market} size={place} height={logoHeight(block)} />;
+      return <StoreBrand store={store} market={market} size={place} height={logoHeight(block)} animation={block.animation} />;
     case "menuButton":
       return <MenuButton label={m.openMenu} />;
     case "search":
@@ -229,7 +229,7 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
   const nav = builtIn(lang);
   switch (block.part) {
     case "logo":
-      return <KaizenBrand chrome={chrome} size={place} height={logoHeight(block)} lang={lang} />;
+      return <KaizenBrand chrome={chrome} size={place} height={logoHeight(block)} animation={block.animation} lang={lang} />;
     case "menuButton":
       return <MenuButton label={m.openMenu} />;
     case "account":

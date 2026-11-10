@@ -177,6 +177,7 @@ export const blocksNb: BlocksMessages = {
   titles: {
     columns: "Kolonner",
     beforeAfter: "Før og etter",
+    animation: "Animasjon",
     timeline: "Tidslinje",
     separator: "Skillelinje",
     accordion: "Trekkspill",

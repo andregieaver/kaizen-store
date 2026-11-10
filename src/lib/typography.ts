@@ -441,6 +441,8 @@ export function textRoles(part: TypedPart): RoleDef[] {
       return [{ ...TEXT, align: ALIGNED_PRODUCT_PARTS.includes(part.part ?? "") ? "box" : false, flatten: true }, role("heading", "Heading", "& h2")];
     case "separator":
     case "video":
+    // An animation (D538) is its picture alone.
+    case "animation":
     case "html":
     // A Columns component (D294): its columns carry the text's look, as a row's do.
     case "columns":
@@ -515,6 +517,7 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
 export const UNDRAWN_TEXTS: Record<string, readonly string[]> = {
   image: ["alt"],
   beforeAfter: ["beforeAlt", "afterAlt"],
+  animation: ["alt"],
   contentGrid: ["*.alt"],
   video: ["title"],
   html: ["title"],

@@ -4,6 +4,7 @@ import {
   ROW_PADDING,
   shadowCss,
   columnLines,
+  animationDisplaySize,
   beforeAfterDisplaySize,
   hasPictureBox,
   imageDisplaySize,
@@ -536,9 +537,14 @@ export function blockStyle(block: PageBlock, mode: PartsMode): ElementStyle {
     where: true,
     sizes: perSize((size) => {
       const out: Decl = { ...spacingDecl(spacingAt(block, size)), ...(block.type === "button" ? {} : frameAt(block, size)) };
-      if (picture && (block.type === "image" || block.type === "beforeAfter")) {
+      if (picture && (block.type === "image" || block.type === "beforeAfter" || block.type === "animation")) {
         const maxWidth = valueAt(block, "maxWidth", size) ?? undefined;
-        const shown = block.type === "image" ? imageDisplaySize({ ...block, maxWidth }) : beforeAfterDisplaySize({ ...block, maxWidth });
+        const shown =
+          block.type === "image"
+            ? imageDisplaySize({ ...block, maxWidth })
+            : block.type === "animation"
+              ? animationDisplaySize({ ...block, maxWidth })
+              : beforeAfterDisplaySize({ ...block, maxWidth });
         if (shown) out["--picture-width"] = `${shown.width}px`;
       }
       if (block.type === "product" && block.part === "related") out["--grid-cols"] = String(valueAt(block, "columns", size) ?? RELATED_COLUMNS[size]);

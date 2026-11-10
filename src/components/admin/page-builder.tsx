@@ -87,6 +87,7 @@ import { type InstallFont } from "./font-picker";
 import { TypographyFields } from "./typography-fields";
 import { ImageSizeFields } from "./image-size-fields";
 import { type Upload } from "./image-upload";
+import { AnimatedLogoFields } from "./animation-fields";
 import { type StartVideo } from "./video-upload";
 import type { PageOwnerContext } from "./page-context";
 import { FloatingPanel as SettingsPanel } from "./floating-panel";
@@ -248,7 +249,18 @@ function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: 
 }
 
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "timeline", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "animation", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "timeline", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+
+/**
+ * Components that get what they lack in their settings: the canvas says what each lacks (`emptyBlock`) and then, once for all
+ * of them, how to open the settings (`emptyHow`), so the sentence is in the words once (the admin's first scripts carry them).
+ */
+const OPENED_TO_FILL: ReadonlySet<BlockType> = new Set<BlockType>([
+  "beforeAfter", "animation", "timeline", "button", "dualButton", "accordion", "tabs", "faq", "testimonials", "socialLinks", "iconList", "brands", "gallery", "table", "emailForm", "newsletter",
+]);
+/** What the canvas shows for a component with nothing to show yet. */
+const emptyWords = (w: { emptyBlock: Record<BlockType, string>; emptyHow: string }, type: BlockType): string =>
+  OPENED_TO_FILL.has(type) ? `${w.emptyBlock[type]} ${w.emptyHow}` : w.emptyBlock[type];
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
 const columnHasText = (column: PageColumn) => column.blocks.some(blockHasText);
@@ -3300,7 +3312,7 @@ function BlockItem({
         ) : bindingOf(block) ? (
           <p className="rounded-md bg-surface p-3 text-sm text-muted">{w.canvas.bound}</p>
         ) : (
-          <p className="rounded-md bg-surface p-3 text-sm text-muted">{w.emptyBlock[block.type]}</p>
+          <p className="rounded-md bg-surface p-3 text-sm text-muted">{emptyWords(w, block.type)}</p>
         )}
       </div>
     </div>
@@ -3343,7 +3355,7 @@ function AnswerParts({ blocks, actions }: { blocks: PageBlock[]; actions: Action
       >
         <div className={box.className || undefined} style={box.style}>
           <FontLinks families={blockFonts(child)} />
-          {blockHasContent(child) ? <PageBlockView block={child} /> : <p className="rounded-md bg-surface p-3 text-sm text-muted">{w.emptyBlock[child.type]}</p>}
+          {blockHasContent(child) ? <PageBlockView block={child} /> : <p className="rounded-md bg-surface p-3 text-sm text-muted">{emptyWords(w, child.type)}</p>}
         </div>
       </div>
     );
@@ -3892,7 +3904,7 @@ function Dialogs({
         {block?.type === "site" && (
           <SettingsTabs
             key={block.id}
-            general={<SiteFields block={block} onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))} />}
+            general={<SiteFields block={block} context={{ upload, startVideo }} onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))} />}
             style={
               <>
                 {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
@@ -5629,7 +5641,7 @@ function MenuStandIn({ block, menus }: { block: MenuBlock; menus: MenuPreview[] 
 
 
 /** A site component's own settings (D80): only those its part has. */
-function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: BlockPatch<SiteBlock>) => void }) {
+function SiteFields({ block, onChange, context }: { block: SiteBlock; onChange: (patch: BlockPatch<SiteBlock>) => void; context: { upload: Upload | null; startVideo: StartVideo | null } }) {
   const lined = block.part === "markets" && block.display === "list";
   const w = useAdminText("builder");
   const sw = w.site;
@@ -5645,6 +5657,7 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
           onChange={(height) => onChange({ height: height >= LOGO_HEIGHT.min ? height : undefined })}
         />
       )}
+      {block.part === "logo" && <AnimatedLogoFields animation={block.animation} context={context} onChange={(animation) => onChange({ animation })} />}
       {block.part === "markets" && (
         <Choices
           legend={sw.shownAs}

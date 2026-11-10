@@ -36,6 +36,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   heading: "heading",
   image: "picture",
   beforeAfter: "before and after",
+  animation: "animation",
   button: "button",
   contentGrid: "grid",
   product: "product part",
@@ -351,6 +352,19 @@ export function mapTemplateMedia(kind: SavedPartKind, content: PartContent, reso
     block: (block) => {
       if (block.type === "image") return { ...block, image: block.image ? resolved(block.image, resolve) : null };
       if (block.type === "beforeAfter") return { ...block, before: block.before ? resolved(block.before, resolve) : null, after: block.after ? resolved(block.after, resolve) : null };
+      if (block.type === "site" && block.animation) {
+        // An animated logo (D538): both files, or the part goes back to the site's logo.
+        const video = resolved(block.animation.video, resolve);
+        const still = resolved(block.animation.still, resolve);
+        const { animation, ...plain } = block;
+        return video && still ? { ...plain, animation: { ...animation, video, still } } : plain;
+      }
+      if (block.type === "animation") {
+        // Its video and its still go together: without either there is no animation.
+        const video = block.animation ? resolved(block.animation.video, resolve) : null;
+        const still = block.animation ? resolved(block.animation.still, resolve) : null;
+        return { ...block, animation: block.animation && video && still ? { ...block.animation, video, still } : null };
+      }
       if (block.type === "video") {
         return {
           ...block,

@@ -13,6 +13,7 @@ import {
   blockHasContent,
   buttonShows,
   imageDisplaySize,
+  animationDisplaySize,
   beforeAfterDisplaySize,
   BEFORE_AFTER_START,
   type ButtonBlock,
@@ -34,7 +35,7 @@ import { fixedSizes } from "@/lib/picture-sizes";
 import { embedUrl } from "@/lib/video-embed";
 
 import { SHAPES, buttonLook } from "./button-look";
-import { BeforeAfterSlider, EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo } from "./lazy/blocks";
+import { AnimationPlayer, BeforeAfterSlider, EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo } from "./lazy/blocks";
 import { blockBox } from "./page-parts";
 import { IconListView } from "./icon-list-view";
 import { TimelineView } from "./timeline-view";
@@ -140,6 +141,32 @@ export function PageBlockView({
       return block.source === "google" ? null : <Testimonials block={block} />;
     case "html":
       return block.html.trim() ? <HtmlFrame html={block.html} title={block.title} height={block.height} waitForClick={Boolean(block.waitForClick)} /> : null;
+    case "animation": {
+      // Sized and placed as a picture is (D151), by its still; the box `blockBox()` draws hugs it.
+      const size = animationDisplaySize(block);
+      if (!block.animation || !size) return null;
+      const player = (
+        <AnimationPlayer
+          video={block.animation.video.url}
+          still={block.animation.still.url}
+          alt={block.alt}
+          width={size.width}
+          height={size.height}
+          pictureWidth={block.animation.width}
+          pictureHeight={block.animation.height}
+          loop={Boolean(block.loop)}
+        />
+      );
+      const href = block.href?.trim() ?? "";
+      return href !== "" && isLinkAddress(href) ? (
+        <a href={href} className="inline-block max-w-full focus-visible:outline-2" {...(block.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+          {player}
+          {block.newTab && <span className="sr-only"> (opens in a new tab)</span>}
+        </a>
+      ) : (
+        player
+      );
+    }
     case "beforeAfter": {
       // At the before picture's size or its crop, never enlarged (as a picture, D151); the after picture is cut to the same box.
       const size = beforeAfterDisplaySize(block);

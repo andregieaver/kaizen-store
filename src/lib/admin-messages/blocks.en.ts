@@ -183,6 +183,7 @@ export const blocksEn = {
   titles: {
     columns: "Columns",
     beforeAfter: "Before and after",
+    animation: "Animation",
     timeline: "Timeline",
     separator: "Separator line",
     accordion: "Accordion",

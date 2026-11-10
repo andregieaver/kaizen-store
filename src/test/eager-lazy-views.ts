@@ -21,6 +21,7 @@ vi.mock("@/components/lazy/blocks", async () => ({
   TabsView: await pick(() => import("@/components/tabs-view"), "TabsView"),
   TableScroll: await pick(() => import("@/components/table-scroll"), "TableScroll"),
   UploadedVideo: await pick(() => import("@/components/video-view"), "UploadedVideo"),
+  AnimationPlayer: await pick(() => import("@/components/animation-view"), "AnimationPlayer"),
   EmbeddedVideo: await pick(() => import("@/components/video-view"), "EmbeddedVideo"),
   BackgroundVideo: await pick(() => import("@/components/background-video"), "BackgroundVideo"),
   HtmlFrame: await pick(() => import("@/components/html-frame"), "HtmlFrame"),

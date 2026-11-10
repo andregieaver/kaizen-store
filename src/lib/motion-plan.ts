@@ -109,6 +109,7 @@ const ENTER_BLOCKS: ReadonlySet<BlockType> = new Set<BlockType>([
   "heading",
   "image",
   "beforeAfter",
+  "animation",
   "button",
   "dualButton",
   "video",

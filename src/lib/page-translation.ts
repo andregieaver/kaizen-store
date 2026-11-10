@@ -51,6 +51,8 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         caption: str("caption", b.caption, 300, "Caption"),
         image: b.image && { ...b.image, alt: str("alt", b.image.alt, 300, "Description of the picture") },
       };
+    case "animation":
+      return { ...b, alt: str("alt", b.alt, 300, "Description of the animation") };
     case "beforeAfter":
       // Each picture's description, and the words on it where the owner wrote their own (unset, the visitor's language says them).
       return {

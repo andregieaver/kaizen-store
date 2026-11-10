@@ -75,6 +75,8 @@ import { storePartsEn, type StorePartsMessages } from "./admin-messages/store-pa
 import { storePartsNb } from "./admin-messages/store-parts.nb";
 import { backdropsEn, type BackdropsMessages } from "./admin-messages/backdrops.en";
 import { backdropsNb } from "./admin-messages/backdrops.nb";
+import { animationEn, type AnimationMessages } from "./admin-messages/animation.en";
+import { animationNb } from "./admin-messages/animation.nb";
 import { notificationsEn, type NotificationsMessages } from "./admin-messages/notifications.en";
 import { notificationsNb } from "./admin-messages/notifications.nb";
 import { legalEn, type LegalMessages } from "./admin-messages/legal.en";
@@ -172,6 +174,7 @@ export type AdminAreaMessages = {
   screens: ScreensMessages;
   storeParts: StorePartsMessages;
   backdrops: BackdropsMessages;
+  animation: AnimationMessages;
   notifications: NotificationsMessages;
   legal: LegalMessages;
   staff: StaffMessages;
@@ -213,17 +216,18 @@ export type AdminArea = keyof AdminAreaMessages;
  * (`useAdminText()` in `admin-text.tsx`) leaves them out, so they are not in every admin screen's first scripts (PSI PERF-01,
  * `admin-catalogues.scan.test.ts`), and a client part cannot ask for one.
  */
-export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "console", "business", "books"] as const;
+export const SERVER_AREAS = ["carriers", "sandbox", "fiken", "deals", "screens", "storeParts", "backdrops", "animation", "console", "business", "books"] as const;
 
 /** An area a client part may read with `useAdminText()`. */
 export type ClientArea = Exclude<AdminArea, (typeof SERVER_AREAS)[number]>;
 
 /**
  * Server-only areas a page may hand down to a client part whose English is in its own module already (`useHandedText()`): the builder's
- * shop parts, named in `store-parts.ts`, and its backdrops and layers (D534), named in `backdrops.ts`. Handed down only where a page draws
+ * shop parts, named in `store-parts.ts`, its backdrops and layers (D534), named in `backdrops.ts`, and its Animation component (D538), named
+ * in `animation-words.ts`. Handed down only where a page draws
  * that part, in another language than English.
  */
-export type HandedArea = "storeParts" | "backdrops";
+export type HandedArea = "storeParts" | "backdrops" | "animation";
 
 const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } = {
   common: { en: commonEn, nb: commonNb },
@@ -260,6 +264,7 @@ const CATALOGUES: { [A in AdminArea]: Record<AdminLang, AdminAreaMessages[A]> } 
   screens: { en: screensEn, nb: screensNb },
   storeParts: { en: storePartsEn, nb: storePartsNb },
   backdrops: { en: backdropsEn, nb: backdropsNb },
+  animation: { en: animationEn, nb: animationNb },
   notifications: { en: notificationsEn, nb: notificationsNb },
   legal: { en: legalEn, nb: legalNb },
   staff: { en: staffEn, nb: staffNb },

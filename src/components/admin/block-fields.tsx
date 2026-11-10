@@ -180,6 +180,7 @@ import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { useAdminLang, useAdminText } from "./admin-text";
 import { ImageUploadButton, type Upload } from "./image-upload";
+import { AnimationBlockFields, AnimationStyleFields } from "./animation-fields";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
 import { ImageSizeFields } from "./image-size-fields";
 
@@ -224,6 +225,7 @@ export const BLOCK_EDITORS: Editors = {
     General: TimelineFields,
     Style: TimelineStyleFields,
   },
+  animation: { title: "Animation", General: AnimationBlockFields, Style: AnimationStyleFields },
   beforeAfter: {
     title: "Before and after",
     font: { label: "Font", fallback: "The site's body font" },

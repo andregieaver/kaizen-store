@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { ReportContentLink } from "@/components/report-content-link";
 import { t } from "@/lib/i18n";
+import type { AnimationFile } from "@/lib/animation";
 import { menuTree, platformMenuLink, type MenuNode, type PlatformMenuEntry } from "@/lib/navigation";
 import { PLATFORM_LANG_FACTS, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
 import { PLATFORM_LEGAL_KINDS, PLATFORM_LEGAL_SLUGS } from "@/lib/platform-legal-slugs";
@@ -11,6 +12,7 @@ import type { PlatformChrome } from "@/server/platform-navigation";
 
 import { Icon } from "./icons";
 import { LanguageSwitch } from "./language-switch";
+import { AnimatedLogo } from "./animated-logo";
 import { LogoPicture } from "./logo-picture";
 import type { MenuHover } from "@/lib/menu-hover";
 import { MenuTreeView, type MenuLayout, type MenuLinkNode } from "./menu-view";
@@ -68,12 +70,14 @@ export function MenuLinks({
   return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={words(lang).m.opensInNewTab} subLinksLabel={words(lang).m.subLinksUnder} justify={justify} hover={hover} />;
 }
 
-/** The logo, or Kaizen's name without one; `height` is one set in a header or footer layout (D80). */
-export function Brand({ chrome, size, height, lang = "en" }: Props & { size: "header" | "footer"; height?: number }) {
+/** The logo, or Kaizen's name without one; `height` is one set in a header or footer layout (D80), `animation` the logo part's own (D538). */
+export function Brand({ chrome, size, height, animation, lang = "en" }: Props & { size: "header" | "footer"; height?: number; animation?: AnimationFile }) {
   const logo = chrome.navigation.logo;
   return (
     <Link href={platformPath(lang, "/")} className="flex min-w-0 items-center">
-      {logo ? (
+      {animation ? (
+        <AnimatedLogo animation={animation} alt="Kaizena Flow" name="kaizena-flow" height={height} size={size} />
+      ) : logo ? (
         // Kaizen's pages follow the device's light or dark mode, so its dark-background logo does too (D60).
         <LogoPicture
           logo={logo}

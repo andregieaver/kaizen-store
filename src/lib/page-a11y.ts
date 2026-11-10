@@ -160,6 +160,7 @@ function solid(background: { type: string; color?: string; opacity?: number } | 
 const BLOCK_WORDS: Partial<Record<PageBlock["type"], string>> = {
   richText: "Text",
   image: "Picture",
+  animation: "Animation",
   heading: "Heading",
   button: "Button",
   dualButton: "Buttons",
@@ -510,6 +511,16 @@ export function pageIssues(
             ownColours();
             break;
           }
+          case "animation": {
+            // It is a picture to a screen reader, which hears its description while it plays and after (D538).
+            if (block.animation) {
+              const alt = block.alt.trim();
+              if (alt === "") add("image_alt", place, where, "This animation has no description, so a screen reader cannot say what it shows.");
+              else if (alt.length > ALT_ADVISED_MAX) add("alt_long", place, where, `The description is ${alt.length} characters; aim for under ${ALT_ADVISED_MAX}.`);
+            }
+            ownColours();
+            break;
+          }
           case "image": {
             if (block.bind) break;
             if (block.image) {
@@ -649,6 +660,8 @@ function blockWords(block: PageBlock): string[] {
       return [block.caption, block.image?.alt ?? ""];
     case "beforeAfter":
       return [block.before?.alt ?? "", block.after?.alt ?? "", block.beforeLabel ?? "", block.afterLabel ?? ""];
+    case "animation":
+      return [block.alt];
     case "accordion":
     case "faq":
     case "tabs":

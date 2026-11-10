@@ -37,6 +37,11 @@ as it was. So does a video with a see-through background (D536, `canBeTransparen
 compressing would paint its background black. With compressing possible, a video of up to 500 MB may be chosen; what is
 stored is still at most 50 MB. What goes up is held in the tab's memory and sent twice before it fails (`putWithRetry()`).
 
+An animation (D538, `src/lib/animation-make.ts`) is made in the browser the same way: the owner's WebM with a see-through
+background becomes an H.264 MP4 holding the picture above its mask, which every browser plays, and its last frame a
+see-through picture. That video is marked as compressed when it goes up, and Compress never touches it: made smaller again,
+the picture would no longer sit on its mask.
+
 ## Files from before: Compress
 
 `media.compressed_at` marks a file compressed at upload or by Compress, and a marked file is never compressed again, so a

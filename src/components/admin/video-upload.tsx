@@ -94,31 +94,46 @@ export async function uploadVideoFile(
     if ((compressed?.file ?? chosen).size > VIDEO_MAX_BYTES) return { ok: false, problem: w.videoTooLargeCompressed };
     const file = compressed?.file ?? (await heldInMemory(chosen));
     if (!file) return { ok: false, problem: fillWords(w.notUploaded, { name: chosen.name }) };
-    const started = await startVideo({ name: chosen.name, type: file.type, size: file.size, compressed: compressed !== null });
-    if (!started.ok) return { ok: false, problem: started.problem };
-    const storage = createClient().storage.from(started.bucket);
-    const [stored, still] = await Promise.all([
-      putWithRetry(
-        () => storage.uploadToSignedUrl(started.path, started.token, file, { contentType: file.type }),
-        (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-      ),
+    const [sent, still] = await Promise.all([
+      sendVideo(startVideo, file, { name: chosen.name, compressed: compressed !== null }),
       upload ? takeStill(file) : Promise.resolve(null),
     ]);
-    if (!stored.ok) {
-      // The library kept the video as its upload started (D88); it never arrived, so it is forgotten again.
-      void startVideo({ type: file.type, size: file.size, abandoned: started.path }).catch(() => undefined);
-      return { ok: false, problem: fillWords(w.notUploaded, { name: chosen.name }) };
-    }
+    if (!sent.ok) return { ok: false, problem: sent.problem ?? fillWords(w.notUploaded, { name: chosen.name }) };
     // The video is stored by now: a still that cannot be kept leaves it without a picture, not without the video.
     const poster = still && upload ? await uploadPicture(upload, still).catch(() => null) : null;
     return {
       ok: true,
-      video: { video: { url: started.url }, poster: poster?.ok ? poster.image : null },
+      video: { video: { url: sent.url }, poster: poster?.ok ? poster.image : null },
       saving: { before: chosen.size, after: file.size },
     };
   } catch {
     return { ok: false, problem: fillWords(w.notUploaded, { name: chosen.name }) };
   }
+}
+
+/**
+ * A video's bytes to Storage: the server starts the upload (which keeps the video in the media library, D88), the browser
+ * sends the file straight to the bucket, twice if the first try does not arrive (D536, `putWithRetry()`), and a video that
+ * never arrived is taken out of the library again. `problem` is the server's own words when it refused to start, and null
+ * when the file did not arrive, which each caller says in its own words. An animation's video (D538) goes up this way too.
+ */
+export async function sendVideo(
+  startVideo: StartVideo,
+  file: File,
+  details: { name: string; compressed: boolean },
+): Promise<{ ok: true; url: string } | { ok: false; problem: string | null }> {
+  const started = await startVideo({ name: details.name, type: file.type, size: file.size, compressed: details.compressed });
+  if (!started.ok) return { ok: false, problem: started.problem };
+  const storage = createClient().storage.from(started.bucket);
+  const stored = await putWithRetry(
+    () => storage.uploadToSignedUrl(started.path, started.token, file, { contentType: file.type }),
+    (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  );
+  if (!stored.ok) {
+    void startVideo({ type: file.type, size: file.size, abandoned: started.path }).catch(() => undefined);
+    return { ok: false, problem: null };
+  }
+  return { ok: true, url: started.url };
 }
 
 /** The chosen file as bytes this tab holds, so sending it no longer depends on the phone's own file; null when it cannot be read. */
