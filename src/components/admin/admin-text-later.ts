@@ -78,10 +78,22 @@ const fetched = new Map<LaterArea, Thenable<unknown>>();
 export function englishLater<A extends LaterArea>(area: A): Promise<AdminAreaMessages[A]> {
   let found = fetched.get(area);
   if (!found) {
-    found = LATER[area]();
+    const loading: Thenable<unknown> = LATER[area]();
+    // Marked when it arrives, as React marks what `use()` reads, so a later read is at once.
+    loading.then(
+      (value) => Object.assign(loading, { status: "fulfilled" as const, value }),
+      () => Object.assign(loading, { status: "rejected" as const }),
+    );
+    found = loading;
     fetched.set(area, found);
   }
   return found as Promise<AdminAreaMessages[A]>;
+}
+
+/** An area's English if it has arrived already, read at once (no `use()`, so it works outside a render too); else undefined. */
+export function arrivedEnglish<A extends LaterArea>(area: A): AdminAreaMessages[A] | undefined {
+  const found = fetched.get(area);
+  return found?.status === "fulfilled" ? (found.value as AdminAreaMessages[A]) : undefined;
 }
 
 /** Every area that has its English fetched later: the unit tests settle them all first. */

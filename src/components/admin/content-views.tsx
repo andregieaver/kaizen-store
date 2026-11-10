@@ -104,7 +104,7 @@ export async function NewContentTypeView({ site, preset }: { site: ContentSite; 
   const taken = (await listContentTypes(site.owner)).map((t) => t.slug);
   const initial = (typeof preset === "string" && typeFromPreset(preset, site.lang, taken)) || emptyType(site.lang, taken);
   return (
-    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields"])}>
+    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields", "website"])}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: site.base, label: w.type.backToList }} title={w.type.newTitle} />
         <ContentTypeChoices types={await contentTypeChoices(site.owner)}>
@@ -124,7 +124,7 @@ export async function ContentTypeSettingsView({ site, typeId }: { site: ContentS
   const layout = type.layoutId ? await getPageForEdit(site.owner, type.layoutId, "entry_layout") : null;
   const design = site.actions.designLayout;
   return (
-    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields", "builder"])}>
+    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields", "builder", "website"])}>
       <div className="flex flex-col gap-6">
         <PageHeader back={{ href: `${base}/${type.id}`, label: w.type.back }} title={fillWords(w.type.settingsTitle, { type: type.name })} />
         <ContentTypeChoices types={await contentTypeChoices(site.owner)}>
@@ -263,7 +263,7 @@ export async function EntryView({ site, typeId, entryId }: { site: ContentSite; 
   const base = `${site.base}/${type.id}`;
 
   return (
-    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields", "builder"])}>
+    <AdminTextScope texts={adminTexts(site.lang, ["content", "fields", "builder", "website"])}>
       <div className="flex flex-col gap-6">
         <PageHeader
           back={{ href: base, label: fillWords(w.entry.back, { type: type.name }) }}

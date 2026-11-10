@@ -9,7 +9,7 @@ import { signInEn } from "@/lib/admin-messages/sign-in.en";
 import type { AdminAreaMessages, ClientArea, HandedArea } from "@/lib/admin-text";
 
 import { AdminTextContext } from "./admin-text-context";
-import { englishLater, noteFallback, type LaterArea } from "./admin-text-later";
+import { arrivedEnglish, englishLater, noteFallback, type LaterArea } from "./admin-text-later";
 
 /**
  * The admin's words in the browser (D312 A0, `docs/platform-admin-i18n.md` 3.3): the signed-in layout hands its client parts the account's
@@ -44,7 +44,7 @@ export function useAdminText<A extends ClientArea>(area: A): AreaWords<A> {
   if (handed) return handed;
   if (area in ENGLISH) return ENGLISH[area as AtHand] as AreaWords<A>;
   noteFallback(area);
-  return use(englishLater(area as LaterArea)) as AreaWords<A>;
+  return (arrivedEnglish(area as LaterArea) ?? use(englishLater(area as LaterArea))) as AreaWords<A>;
 }
 
 /**

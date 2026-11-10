@@ -8,7 +8,8 @@ import { ADMIN, E2E_STORE, OWNER } from "./accounts";
  * Every admin screen hands down the areas of words its parts read (PSI PERF-01, `src/components/admin/admin-text-later.ts`). An area that
  * nothing handed down is fetched in English when a part first reads it, and the part is not interactive until it arrives: an early press
  * could submit a form without its script. So any such read is a fault, noted on the page (`window.__adminTextFallbacks`), and this test
- * visits each screen without an id in its address, as the person it is for, and fails on any. Fix one by handing its area down where the
+ * visits each screen without an id in its address, as the person it is for, then one screen of each kind its links lead to (an order,
+ * a product, a type made from a preset), and fails on any. Fix one by handing its area down where the
  * page is drawn (`AdminAreas` or `AdminTextScope`), never by putting the English back into every screen.
  */
 
@@ -22,9 +23,32 @@ async function fallbacksOn(page: Page, address: string): Promise<string[]> {
   return page.evaluate(() => (window as unknown as { __adminTextFallbacks?: string[] }).__adminTextFallbacks ?? []);
 }
 
-async function visitAll(page: Page, addresses: string[]) {
+/** An address with its ids taken out, so one screen of each kind is visited: `/admin/x/orders/1042` and `/orders/1043` are one. */
+const kindOf = (href: string) => href.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, ":id").replace(/\/\d+(?=\/|\?|$)/g, "/:n").replace(/[?#](?!preset=).*$/, "");
+/** Links that are not a screen to look at, or that change something when followed. */
+const SKIP = /sign-out|logout|download|export|\.csv|\/api\/|print|preview|\/try(\/|$)/;
+
+/** The links a screen offers into screens with an id (or a `?preset=`) in their address, within `base`. */
+async function deeperLinks(page: Page, base: string): Promise<string[]> {
+  const hrefs = await page.$$eval("main a[href]", (links) => links.map((a) => a.getAttribute("href") ?? ""));
+  return hrefs.filter((href) => href.startsWith(base) && !SKIP.test(href) && kindOf(href) !== href.replace(/[?#].*$/, ""));
+}
+
+async function visitAll(page: Page, addresses: string[], base: string) {
   const found: string[] = [];
+  const kinds = new Set(addresses.map(kindOf));
+  const deeper: string[] = [];
   for (const address of addresses) {
+    const areas = await fallbacksOn(page, address);
+    if (areas.length > 0) found.push(`${address}: ${areas.join(", ")}`);
+    // The screens behind this one's links (an order, a product, a type made from a preset), one of each kind, at most 150 in all.
+    for (const href of await deeperLinks(page, base).catch(() => [])) {
+      if (deeper.length >= 150 || kinds.has(kindOf(href))) continue;
+      kinds.add(kindOf(href));
+      deeper.push(href);
+    }
+  }
+  for (const address of deeper) {
     const areas = await fallbacksOn(page, address);
     if (areas.length > 0) found.push(`${address}: ${areas.join(", ")}`);
   }
@@ -38,6 +62,7 @@ test.describe("a store's screens, as its owner", () => {
     await visitAll(
       page,
       plain.filter((p) => p.area === "store").map((p) => `/admin/${E2E_STORE}${p.path}`),
+      `/admin/${E2E_STORE}/`,
     );
   });
 });
@@ -49,6 +74,7 @@ test.describe("the platform's and the account's screens, as a platform admin", (
     await visitAll(
       page,
       plain.filter((p) => p.area !== "store").map((p) => `${p.area === "platform" ? "/admin/platform" : "/admin"}${p.path}`),
+      "/admin/platform/",
     );
   });
 });
