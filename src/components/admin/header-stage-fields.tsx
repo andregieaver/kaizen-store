@@ -24,7 +24,6 @@ export function HeaderStageFields({ value, onChange }: { value: HeaderOverlay; o
           key={stage}
           name={stage}
           title={stage === "top" ? w.top : w.revealed}
-          hint={stage === "top" ? w.topHint : w.revealedHint}
           value={headerStage(value, stage)}
           onChange={(next) => onChange(withHeaderStage(value, stage, next))}
         />
@@ -40,18 +39,19 @@ type BlurChoice = "row" | "none" | "blur";
 function StageFields({
   name,
   title,
-  hint,
   value,
   onChange,
 }: {
   name: HeaderStageName;
   title: string;
-  hint: string;
   value: HeaderStage;
   onChange: (stage: HeaderStage) => void;
 }) {
   const id = useId();
-  const w = useAdminText("builder").editor.overlay.stages;
+  const words = useAdminText("builder");
+  const w = words.editor.overlay.stages;
+  // The row background editor's own words, which every screen already carries: only what is new to the stages is in `stages`.
+  const bw = words.background;
   const background = value.background;
   const backgroundChoice: BackgroundChoice = background?.type ?? "row";
   const blurChoice: BlurChoice = value.blur === undefined ? "row" : value.blur === 0 ? "none" : "blur";
@@ -71,24 +71,23 @@ function StageFields({
   return (
     <fieldset className="flex flex-col gap-4 rounded-md border border-line p-3" data-header-stage-fields={name}>
       <legend className="px-1 text-sm font-medium text-ink">{title}</legend>
-      <p className="-mt-2 text-xs text-muted">{hint}</p>
       <Choices
-        legend={w.background}
+        legend={bw.legend}
         options={[
           { value: "row", label: w.fromRow },
           { value: "none", label: w.clear },
-          { value: "color", label: w.colour },
-          { value: "gradient", label: w.gradient },
+          { value: "color", label: bw.kinds.color },
+          { value: "gradient", label: bw.kinds.gradient },
         ]}
         value={backgroundChoice}
         onChange={setBackground}
       />
       {background?.type === "color" && (
         <div className="flex flex-wrap items-end gap-6 pl-1">
-          <ColorField label={w.colourLabel} value={background.color} onChange={(color) => set({ background: { ...background, color } })} />
+          <ColorField label={bw.colour} value={background.color} onChange={(color) => set({ background: { ...background, color } })} />
           <div className="flex flex-col gap-1">
             <label htmlFor={`${id}-opacity`} className="text-sm font-medium">
-              {w.opacity}
+              {bw.opacity}
             </label>
             <div className="flex min-h-10 items-center gap-3">
               <input
@@ -120,12 +119,12 @@ function StageFields({
         </div>
       )}
       <Choices
-        legend={w.blur}
-        hint={w.blurHint}
+        legend={bw.blurBehind}
+        hint={bw.blurBehindShort}
         options={[
           { value: "row", label: w.fromRow },
-          { value: "none", label: w.noBlur },
-          { value: "blur", label: w.ownBlur },
+          { value: "none", label: bw.kinds.none },
+          { value: "blur", label: bw.blur },
         ]}
         value={blurChoice}
         onChange={(choice) => set({ blur: choice === "row" ? undefined : choice === "none" ? 0 : (value.blur || 8) })}
@@ -133,7 +132,7 @@ function StageFields({
       {blurChoice === "blur" && (
         <div className="flex flex-col gap-1 pl-1">
           <label htmlFor={`${id}-blur`} className="text-sm font-medium">
-            {w.blurAmount}
+            {bw.blur}
           </label>
           <div className="flex min-h-10 items-center gap-3">
             <input
@@ -155,13 +154,12 @@ function StageFields({
       )}
       <Check
         label={w.ownText}
-        hint={name === "top" ? w.ownTextTopHint : w.ownTextRevealedHint}
         checked={Boolean(value.textColor)}
         onChange={(on) => set({ textColor: on ? (name === "top" ? "#ffffff" : "#111111") : undefined })}
       />
       {value.textColor && (
         <div className="pl-7">
-          <ColorField label={w.textColour} value={value.textColor} onChange={(textColor) => set({ textColor })} />
+          <ColorField label={words.richText.colour} value={value.textColor} onChange={(textColor) => set({ textColor })} />
         </div>
       )}
     </fieldset>
