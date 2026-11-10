@@ -49,7 +49,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 0.8 | Give the AI manager's turn a deadline and a cost ceiling | FA2, FA5 | M | Open | |
 | 0.9 | Let shoppers reach every product | FF1 | M | In progress | 10 Nov 2026: built for category, tag and *All products* listings. `listingPage()` returns the first `page` pages and the full count; the listing says "48 of 65 products" and offers *Show more products* as a plain link (`?page=2`, up to 20 pages, 960 products), in en, nb, sv and da. The test found a second cap: `listGridProducts()` cut any list at 48 by itself (now `GRID_PRODUCTS_MAX`). The page builder's product grid, which draws a store's listing pages (`FilterableGrid`), is paged the same way in steps of its own number; past its first page it reads in the listing's order, which may differ from the grid's own. Seen in a browser on a local build with 64 products: "48 av 64 produkter", *Vis flere produkter*, then all 64. `listing.int.test.ts` builds a store of 60 or more products and checks the count, the order and that nothing repeats. Live 10 Nov 2026 (CI run green, production on the commit). Search results are paged too: the search is asked for `page` times 48, and *Show more* is offered while it fills that (a search ranks at most about 150 candidates, so it has no total to show); not seen in a browser. Still open: the theme store's list, and a look at a real store with more than 48 products. |
 | 0.10 | Show that a click worked | FS1 | S | In progress | 10 Nov 2026: one `loading.tsx` at `S/` and one at `P/`, drawn on the server (its words are the only script). The signed-in suite (209 tests) passes on a local build made as CI's. The Products page went 9 bytes over its script budget, which is now Home's and Orders' (2,470,000); Home itself has about 550 bytes of room left, so the admin's first load needs trimming before much else is added. Still open: the pending bar on sidebar links (`useLinkStatus`). Not yet seen in production. |
-| 0.11 | Group Marketing, Analytics and Website | FN5 | S | Open | |
+| 0.11 | Group Marketing, Analytics and Website | FN5 | S | In progress | 10 Nov 2026: Marketing is Discounts, Email, Channels, Loyalty, On the site; Analytics is Overview, Money, Customers and products, The site; Website is Content, Look, Structure. No address moves; the headings have Norwegian words. `permissions.baseline.json` is unchanged; one line of `store-nav.test.ts` changed: a website without the shop opens Marketing on Broadcasts, where it opened on A/B tests. Seen in a browser on a local build; the signed-in suite passes (one unrelated test timed out under load and passed alone). The Analytics group is named Money (open question 3). Not yet seen in production. |
 
 **Phase 1: Foundations**
 
@@ -147,6 +147,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 10 November 2026: step 0.9 built for listings; search still to do.
 - 10 November 2026: step 0.9 live for listings; search paged.
 - 10 November 2026: step 0.10: the shared loading outline for store and platform admin pages.
+- 10 November 2026: step 0.11: Marketing, Analytics and Website in groups.
 
 ## 1. The headline
 
