@@ -39,9 +39,11 @@ describe("the layers over a background, as drawn (D534)", () => {
     const out = layers({ layers: [grid, glow, horizon, stars] });
     expect(out).toMatch(/^<div aria-hidden="true" class="absolute inset-0 -z-10 overflow-hidden \[border-radius:inherit\]" data-fx-bgroot="" data-fx-layers="">/);
     expect([...out.matchAll(/data-fx-bglayer="(\w+)"/g)].map((m) => m[1])).toEqual(["pattern", "glow", "horizon", "pattern"]);
-    expect(out).toContain('data-fx-pattern="grid" data-fx-fade="edges"');
+    // Each layer is the element that travels and, inside it, the one that draws.
+    expect(out).toContain('<span data-fx-pattern="grid" data-fx-fade="edges"></span>');
     expect(out).toContain("<span data-fx-glow=\"\"></span>");
     expect(out).toContain("<span data-fx-disc=\"\"></span>");
+    expect([...out.matchAll(/<div data-fx-bglayer="\w+"[^>]*><span [^>]*><\/span><\/div>/g)]).toHaveLength(4);
     // Nothing a visitor can press or a screen reader reads.
     expect(out).not.toMatch(/<(a|button|img)\b/);
   });
@@ -57,6 +59,15 @@ describe("the layers over a background, as drawn (D534)", () => {
     const out = layers({ layers: [grid, glow, horizon, stars], still: true });
     expect(out).not.toMatch(/data-fx-scroll|data-fx-amb|data-fx-tl|--fx-sk/);
     expect([...out.matchAll(/data-fx-bglayer/g)]).toHaveLength(4);
+  });
+
+  it("marks a blurred layer soft with its blur as a property, on the element that travels, and writes no filter itself (D535)", () => {
+    const out = layers({ layers: [{ ...stars, blur: 3 }, glow] });
+    expect(out).toMatch(/<div data-fx-bglayer="pattern" data-fx-soft=""[^>]*style="[^"]*--fx-blur:3px[^"]*"><span data-fx-pattern="stars"><\/span><\/div>/);
+    // The stylesheet blurs what draws; a sharp layer carries nothing of it.
+    expect(out).not.toContain("filter");
+    expect([...out.matchAll(/data-fx-soft/g)]).toHaveLength(1);
+    expect([...out.matchAll(/--fx-blur/g)]).toHaveLength(1);
   });
 
   it("draws nothing for no layers, or layers all switched off", () => {

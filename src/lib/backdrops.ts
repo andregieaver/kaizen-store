@@ -54,7 +54,8 @@ export const BACKDROPS = {
     layers: [
       { id: "glow", type: "glow", color: "#6366f1", outer: "#312e81", x: 50, y: 100, width: 170, height: 90, opacity: 55, scroll: -60, ambient: "breathe" },
       { id: "far", type: "pattern", pattern: "stars", color: "#c7d2fe", size: 130, opacity: 60, scroll: -35 },
-      { id: "near", type: "pattern", pattern: "stars", color: "#ffffff", size: 260, opacity: 95, scroll: 55, ambient: "twinkle" },
+      // The near stars are out of focus (D535): with their travel, that is what sets them in front of the far ones.
+      { id: "near", type: "pattern", pattern: "stars", color: "#ffffff", size: 260, opacity: 95, blur: 2, scroll: 55, ambient: "twinkle" },
     ],
   },
   dots: {
@@ -137,7 +138,7 @@ export const BACKDROP_WORDS = {
   presets: {
     horizon: { name: "Horizon", hint: "A glow setting behind a dark horizon, over a grid and stars." },
     grid: { name: "Grid", hint: "A fine grid fading down from a light at the top." },
-    starfield: { name: "Starfield", hint: "Stars at two depths over a glow from below." },
+    starfield: { name: "Starfield", hint: "Stars at two depths, the near ones out of focus, over a glow from below." },
     dots: { name: "Soft dots", hint: "Light, with dots and two soft glows in the corners." },
     sunrise: { name: "Sunrise", hint: "Light, with a warm glow rising behind a pale horizon." },
   } as Record<BackdropId, { name: string; hint: string }>,
@@ -179,6 +180,8 @@ export const BACKDROP_WORDS = {
   curve: "Curve",
   curves: { flat: "Flat", gentle: "Gentle", round: "Round" },
   opacity: "Opacity",
+  blur: "Blur",
+  blurHint: "Out of focus, for depth: a little for what is far away, more for what is very close.",
   scroll: "As the page scrolls",
   scrollHint: "Far layers fall behind the page, close ones run ahead of it.",
   far: "Far",

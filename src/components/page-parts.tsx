@@ -275,7 +275,7 @@ export function GradientLayer({
 /**
  * The layers over a part's background (D534, `src/lib/background-layers.ts`): a frame of their own over the background and under what
  * the part holds, each layer a real element in it, so each travels by itself as the page scrolls (`layerFx()`), and the frame cuts off
- * whatever moves past the part. Their colours are turned by the part's `hue`. `still` draws them without motion (the builder's canvas
+ * whatever moves past the part. A layer is two elements: the one that travels, and inside it the one that draws. Their colours are turned by the part's `hue`. `still` draws them without motion (the builder's canvas
  * while its motion preview is off). Nothing is drawn where no layer shows.
  */
 export function BackgroundLayers({ layers, hue, still = false }: { layers: readonly BackgroundLayer[] | undefined; hue?: number; still?: boolean }) {
@@ -289,9 +289,9 @@ export function BackgroundLayers({ layers, hue, still = false }: { layers: reado
       {drawn.map(({ layer, draw }) => {
         const fx = layerFx(still ? undefined : layer);
         return (
+          // The layer travels; the element inside it draws, and is what a blur (D535) is on, so the blur is painted once and only moved.
           <div key={layer.id} {...draw.attrs} {...fx.attrs} style={{ ...draw.style, ...fx.style } as CSSProperties}>
-            {layer.type === "glow" && <span data-fx-glow="" />}
-            {layer.type === "horizon" && <span data-fx-disc="" />}
+            <span {...draw.inner} />
           </div>
         );
       })}

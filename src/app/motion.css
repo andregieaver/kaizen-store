@@ -146,11 +146,23 @@
   [data-fx-layers] {
     container-type: size;
   }
+  /* A layer is the element that travels; the one inside it draws. */
   [data-fx-bglayer] {
     position: absolute;
     inset: 0;
     opacity: var(--fx-o, 1);
     pointer-events: none;
+  }
+  /*
+   * A soft layer (D535): out of focus, as what is far away or very close is. What draws inside the layer is blurred, never the layer
+   * itself, so the browser paints the blur once and the layer that travels only moves the result. What draws reaches past the frame
+   * by twice the blur (`--fx-e`) on every side, so its soft rim never shows.
+   */
+  [data-fx-soft] {
+    --fx-e: calc(var(--fx-blur, 0px) * 2);
+  }
+  [data-fx-soft] > * {
+    filter: blur(var(--fx-blur, 0px));
   }
   /*
    * A glow: one soft ellipse, its first colour at the heart and the second (half as solid) around it, placed by its centre and sized
@@ -159,9 +171,10 @@
    */
   [data-fx-glow] {
     position: absolute;
-    inset: -25cqh 0;
+    inset: calc(-25cqh - var(--fx-e, 0px)) calc(var(--fx-e, 0px) * -1);
     background: radial-gradient(
-      ellipse calc(var(--fx-w, 60cqw) / 2) calc(var(--fx-h, 60cqh) / 2) at var(--fx-x, 50%) calc(25cqh + var(--fx-gy, 50cqh)),
+      ellipse calc(var(--fx-w, 60cqw) / 2) calc(var(--fx-h, 60cqh) / 2) at calc(var(--fx-e, 0px) + var(--fx-gx, 50cqw))
+        calc(25cqh + var(--fx-e, 0px) + var(--fx-gy, 50cqh)),
       var(--fx-lc1),
       var(--fx-lc2) 46%,
       transparent
@@ -175,9 +188,9 @@
    */
   [data-fx-disc] {
     --fx-rim: 120px;
-    --fx-at: 50% calc(var(--fx-r, 125cqw) + var(--fx-rim));
+    --fx-at: 50% calc(var(--fx-r, 125cqw) + var(--fx-rim) + var(--fx-e, 0px));
     position: absolute;
-    inset: calc(var(--fx-y, 64%) - var(--fx-rim)) 0 -25cqh;
+    inset: calc(var(--fx-y, 64%) - var(--fx-rim) - var(--fx-e, 0px)) calc(var(--fx-e, 0px) * -1) calc(-25cqh - var(--fx-e, 0px));
     background:
       radial-gradient(
         circle var(--fx-r, 125cqw) at var(--fx-at),
@@ -191,7 +204,11 @@
       ),
       radial-gradient(circle var(--fx-r, 125cqw) at var(--fx-at), var(--fx-lc2) calc(100% - 0.5px), transparent 100%);
   }
-  /* Patterns: lines and dots of one colour, drawn as gradients on a tile of `--fx-size`. */
+  /* Patterns: lines and dots of one colour, drawn as gradients on a tile of `--fx-size`, over the whole layer. */
+  [data-fx-bglayer] > [data-fx-pattern] {
+    position: absolute;
+    inset: calc(var(--fx-e, 0px) * -1);
+  }
   [data-fx-pattern="grid"] {
     background-image:
       linear-gradient(to right, var(--fx-lc1) 1px, transparent 1px), linear-gradient(to bottom, var(--fx-lc1) 1px, transparent 1px);
@@ -565,9 +582,9 @@
     [data-fx-scroll="layer"] {
       --fx-sn: fx-s-layer;
     }
-    /* A pattern that travels is taller than its frame by its travel, so no edge of it shows. */
-    [data-fx-pattern][data-fx-scroll="layer"] {
-      inset: calc(max(var(--fx-sk), var(--fx-sk) * -1) * -20cqh) 0;
+    /* A pattern in a layer that travels is taller than its frame by the travel, so no edge of it shows. */
+    [data-fx-scroll="layer"] > [data-fx-pattern] {
+      inset: calc(max(var(--fx-sk), var(--fx-sk) * -1) * -20cqh - var(--fx-e, 0px)) calc(var(--fx-e, 0px) * -1);
     }
     /* By itself: a glimmer, or a slow swell from where the glow or the arc is. */
     [data-fx-amb="twinkle"] {

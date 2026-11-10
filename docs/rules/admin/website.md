@@ -397,8 +397,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   and `layerFx()` (its travel on the frame's scroll timeline as `--fx-sk`, its movement by itself as `data-fx-amb`), drawn by `motion.css`:
   never write a layer's value into a style yourself. A new kind, pattern, fade or movement is an id in `background-layers.ts`, its CSS in
   `motion.css` (a test fails without it), its words in `BACKDROP_WORDS` and `backdrops.nb.ts`, and its fields in `backdrop-fields.tsx`; only
-  `translate`, `scale` and `opacity` move, and a glow or a horizon is a gradient on a box no larger than the frame needs, never a blur
-  filter, a shadow or an element larger than the part. `backgroundHue` turns every colour of the
+  `translate`, `scale` and `opacity` move, and a glow or a horizon is a gradient on a box no larger than the frame needs, never a
+  shadow or an element larger than the part. A layer is two elements, the one that travels and inside it the one that draws; a layer's
+  `blur` (D535, depth) is a filter on the one that draws (`[data-fx-soft] > *`), never on the one that travels and never animated, so it
+  is painted once and only moved, and whatever draws reaches past the frame by twice the blur (`--fx-e`). `backgroundHue` turns every colour of the
   background and its layers (`shiftHue()`, Oklab: as light and as strong as before); whatever reads a part's background colours reads them
   turned (`huedBackground()`: the part stylesheet, `surfaceOf()`, the page check). A ready-made backdrop (`BACKDROPS`) is plain page
   content (`backdropPatch()`); a new one must keep its tone at every hue and pass the page check with theme text (`backdrops.test.ts`).

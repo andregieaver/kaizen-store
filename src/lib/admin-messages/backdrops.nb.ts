@@ -8,7 +8,7 @@ export const backdropsNb: BackdropsMessages = {
   presets: {
     horizon: { name: "Horisont", hint: "En glød som går ned bak en mørk horisont, over et rutenett og stjerner." },
     grid: { name: "Rutenett", hint: "Et fint rutenett som toner ut nedover fra et lys øverst." },
-    starfield: { name: "Stjernehimmel", hint: "Stjerner i to dybder over en glød nedenfra." },
+    starfield: { name: "Stjernehimmel", hint: "Stjerner i to dybder, de nære ute av fokus, over en glød nedenfra." },
     dots: { name: "Myke prikker", hint: "Lys, med prikker og to myke gløder i hjørnene." },
     sunrise: { name: "Soloppgang", hint: "Lys, med en varm glød som stiger bak en blek horisont." },
   },
@@ -50,6 +50,8 @@ export const backdropsNb: BackdropsMessages = {
   curve: "Kurve",
   curves: { flat: "Flat", gentle: "Slak", round: "Rund" },
   opacity: "Dekkevne",
+  blur: "Uskarphet",
+  blurHint: "Ute av fokus, for dybde: litt for det som er langt unna, mer for det som er helt nært.",
   scroll: "Når siden rulles",
   scrollHint: "Lag langt unna blir hengende etter siden, nære lag løper foran den.",
   far: "Langt unna",

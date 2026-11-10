@@ -6,6 +6,7 @@ import {
   HORIZON_CURVES,
   LAYERS_MAX,
   LAYER_AMBIENTS,
+  LAYER_BLUR_MAX,
   LAYER_FADES,
   LAYER_PATTERNS,
   LAYER_SCROLL_MAX,
@@ -32,6 +33,7 @@ const common = {
   id,
   hidden: z.boolean().optional(),
   opacity: z.number().int().min(1).max(100).optional(),
+  blur: z.number().int().min(1).max(LAYER_BLUR_MAX).optional(),
   scroll: z.number().int().min(-LAYER_SCROLL_MAX).max(LAYER_SCROLL_MAX).optional(),
   ambient: z.enum(keys<LayerAmbient>(LAYER_AMBIENTS)).optional(),
 };

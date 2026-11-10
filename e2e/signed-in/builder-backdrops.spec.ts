@@ -4,8 +4,8 @@ import { E2E_STORE, OWNER } from "./accounts";
 
 /**
  * Backdrops (D534): a ready-made backdrop goes on a row in one press, one slider turns the hue of every colour of it, the layers are
- * one press further for whoever wants them, and the page publishes as it is: its text drawn to read on the backdrop, and the layers
- * moving apart as a visitor scrolls.
+ * one press further for whoever wants them (each with its blur, D535), and the page publishes as it is: its text drawn to read on the
+ * backdrop, and the layers moving apart as a visitor scrolls.
  */
 test.use({ storageState: OWNER.state, viewport: { width: 1600, height: 1000 } });
 
@@ -57,6 +57,14 @@ test("a ready-made backdrop goes on in one press, turns its hue with one slider,
   await expect(layers).toHaveCount(4);
   await list.filter({ hasText: "Stars" }).getByRole("button", { name: "Settings" }).click();
   await expect(page.getByRole("slider", { name: "As the page scrolls" })).toHaveAttribute("aria-valuetext", "Close 60");
+  // Out of focus, for depth (D535): the layer is marked soft, and what draws inside it is blurred, not the layer that travels.
+  const blur = page.getByRole("slider", { name: "Blur" });
+  await blur.focus();
+  for (let i = 0; i < 3; i++) await blur.press("ArrowRight");
+  await expect(blur).toHaveAttribute("aria-valuetext", "3 px");
+  const soft = row.locator("[data-fx-bglayer]").filter({ has: page.locator('[data-fx-pattern="stars"]') });
+  await expect(soft).toHaveAttribute("data-fx-soft", "");
+  await expect.poll(() => soft.locator("[data-fx-pattern]").evaluate((el) => getComputedStyle(el).filter)).toBe("blur(3px)");
   await page.getByRole("button", { name: "Done" }).click();
 
   // It publishes as it is: the page check finds the text readable, as the site draws it light on the dark backdrop.
@@ -78,9 +86,14 @@ test("a ready-made backdrop goes on in one press, turns its hue with one slider,
   await expect(drawn).toHaveCount(4);
   expect(await property(published.locator('[data-fx-layers] > [data-fx-bglayer="glow"]').last(), "--fx-lc1")).toBe(turned);
 
+  // The stars are drawn soft: the blur is on what draws them, so it is painted once, and the layer that travels carries none.
+  const stars = published.locator("[data-fx-bglayer]").filter({ has: page.locator('[data-fx-pattern="stars"]') });
+  expect(await stars.locator("[data-fx-pattern]").evaluate((el) => getComputedStyle(el).filter)).toBe("blur(3px)");
+  expect(await stars.evaluate((el) => getComputedStyle(el).filter)).toBe("none");
+
   // Scrolled, the glow has fallen behind the page and the stars have run ahead of it: they move apart.
   await page.evaluate(() => window.scrollTo(0, 320));
   const travel = (layer: Locator) => layer.evaluate((el) => Number.parseFloat(getComputedStyle(el).translate.split(" ")[1] ?? "0"));
   await expect.poll(() => travel(published.locator('[data-fx-bglayer="glow"]').last())).toBeGreaterThan(10);
-  await expect.poll(() => travel(published.locator('[data-fx-pattern="stars"]'))).toBeLessThan(-5);
+  await expect.poll(() => travel(stars)).toBeLessThan(-5);
 });

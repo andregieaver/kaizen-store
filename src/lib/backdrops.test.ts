@@ -46,6 +46,12 @@ describe("the ready-made backdrops (D534)", () => {
     }
   });
 
+  it("sets the Starfield's near stars out of focus and its far ones sharp (D535)", () => {
+    const stars = BACKDROPS.starfield.layers.filter((layer) => layer.type === "pattern");
+    expect(stars.map((layer) => [layer.id, "blur" in layer ? layer.blur : 0])).toEqual([["far", 0], ["near", 2]]);
+    expect(layerDraw(BACKDROPS.starfield.layers[2])?.attrs["data-fx-soft"]).toBe("");
+  });
+
   it("has a main colour with a hue, for matching a theme", () => {
     for (const [id, backdrop] of all) expect(hueOf(backdrop.accent), id).not.toBeNull();
   });

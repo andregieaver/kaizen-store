@@ -12,6 +12,7 @@ import {
   HORIZON_CURVE_DEFAULT,
   LAYERS_MAX,
   LAYER_AMBIENTS,
+  LAYER_BLUR_MAX,
   LAYER_FADES,
   LAYER_KINDS,
   LAYER_PATTERNS,
@@ -376,7 +377,7 @@ function choices<K extends string>(words: { [key in NoInfer<K>]: string }, list:
   return (Object.keys(list) as K[]).map((value) => ({ value, label: words[value] }));
 }
 
-/** One layer's settings: its own by kind, then what every layer has (how solid it is and how it moves). */
+/** One layer's settings: its own by kind, then what every layer has (how solid and how soft it is, and how it moves). */
 function OneLayer({
   layer,
   w,
@@ -439,11 +440,13 @@ function OneLayer({
     );
   }
   const opacity = layer.opacity ?? 100;
+  const blur = layer.blur ?? 0;
   const scroll = layer.scroll ?? 0;
   return (
     <>
       {own}
       <Slider label={w.opacity} min={1} max={100} value={opacity} shown={`${opacity}%`} onChange={(next) => patch({ opacity: next >= 100 ? undefined : next })} />
+      <Slider label={w.blur} hint={w.blurHint} min={0} max={LAYER_BLUR_MAX} value={blur} shown={`${blur} px`} onChange={(next) => patch({ blur: next > 0 ? next : undefined })} />
       <Slider
         label={w.scroll}
         hint={w.scrollHint}

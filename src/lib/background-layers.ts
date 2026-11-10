@@ -7,6 +7,10 @@ import { cleanHue, shiftHue } from "./hue";
  * placed), a *pattern* (a grid, dots or stars, fading where asked) and a *horizon* (a dark disc with a lit rim, which a glow can set
  * behind). `backgroundHue` on the part turns every colour of the background and its layers together.
  *
+ * A layer can be blurred (`blur`, D535): out of focus, as what is far away or very close is, which with its travel is what gives a
+ * backdrop depth. The blur is drawn on the layer's inner element, so the browser paints it once and the layer that travels only moves
+ * the result.
+ *
  * What an owner keeps is only names from the lists below, `#rrggbb` colours and a few whole numbers inside limits, checked by
  * `background-layers-schema.ts`; they reach the page as `data-fx-*` attributes and `--fx-*` custom properties (`layerDraw()`, and
  * `layerFx()` in `motion-attrs.ts` for how a layer moves), drawn by `motion.css`. Nothing an owner types becomes CSS. Pure, no zod: the
@@ -44,6 +48,8 @@ export const HORIZON_CURVE_DEFAULT: HorizonCurve = "gentle";
 
 /** A layer's travel against the page: -100 (far away: slower than the page) to 100 (close: faster); 0 moves with the page. */
 export const LAYER_SCROLL_MAX = 100;
+/** How soft a layer may be drawn, in pixels (D535). */
+export const LAYER_BLUR_MAX = 40;
 /** A glow's width and height, as a per cent of the part's. */
 export const GLOW_SIZE_MIN = 10;
 export const GLOW_SIZE_MAX = 300;
@@ -54,6 +60,8 @@ type LayerCommon = {
   hidden?: boolean;
   /** How solid it is, 1 to 100; solid unless set. */
   opacity?: number;
+  /** How soft it is drawn, in pixels up to `LAYER_BLUR_MAX` (D535): out of focus, for depth. Sharp unless set. */
+  blur?: number;
   /** How it travels against the page as it scrolls (`LAYER_SCROLL_MAX`); with the page unless set. */
   scroll?: number;
   /** How it moves by itself. */
@@ -101,12 +109,14 @@ export function patternSize(layer: Pick<PatternLayer, "pattern" | "size">): numb
   return within(layer.size, limits.min, limits.max, limits.start);
 }
 
-export type LayerDraw = { attrs: Record<string, string>; style: Record<string, string | number> };
+/** A layer as it is written: the element that travels (`attrs`, `style`) and the one inside it that draws (`inner`). */
+export type LayerDraw = { attrs: Record<string, string>; style: Record<string, string | number>; inner: Record<string, string> };
 
 /**
- * What a layer's element carries: its kind as attributes, and its colours (turned by the part's `hue`), place and size as custom
+ * What a layer's elements carry: its kind as attributes, and its colours (turned by the part's `hue`), place, size and blur as custom
  * properties, each remade here from what is kept (a colour that is not `#rrggbb` leaves the layer out, a number is held inside its
- * limits). Null for a layer that is switched off or cannot be drawn.
+ * limits). The custom properties are on the layer, which the element that draws inherits them from. Null for a layer that is switched
+ * off or cannot be drawn.
  */
 export function layerDraw(layer: BackgroundLayer, hue?: number): LayerDraw | null {
   if (layer.hidden) return null;
@@ -116,26 +126,32 @@ export function layerDraw(layer: BackgroundLayer, hue?: number): LayerDraw | nul
   const style: Record<string, string | number> = {};
   const opacity = within(layer.opacity, 1, 100, 100);
   if (opacity < 100) style["--fx-o"] = opacity / 100;
+  // Out of focus (D535): the layer is marked soft, and what draws inside it is blurred by this much.
+  const blur = within(layer.blur, 0, LAYER_BLUR_MAX, 0);
+  const soft: Record<string, string> = blur > 0 ? { "data-fx-soft": "" } : {};
+  if (blur > 0) style["--fx-blur"] = `${blur}px`;
   if (layer.type === "glow") {
     style["--fx-lc1"] = main;
     // Half as solid where the heart ends, so one colour fades evenly and two blend into each other.
     style["--fx-lc2"] = withAlpha(colour(layer.outer) ?? main, 0.54);
     // Its place in per cent of the layer (where it swells from), and again with its size in the frame's own measures, which its gradient is drawn in.
+    const x = within(layer.x, 0, 100, 50);
     const y = within(layer.y, 0, 100, 50);
-    style["--fx-x"] = `${within(layer.x, 0, 100, 50)}%`;
+    style["--fx-x"] = `${x}%`;
     style["--fx-y"] = `${y}%`;
+    style["--fx-gx"] = `${x}cqw`;
     style["--fx-gy"] = `${y}cqh`;
     style["--fx-w"] = `${within(layer.width, GLOW_SIZE_MIN, GLOW_SIZE_MAX, 60)}cqw`;
     style["--fx-h"] = `${within(layer.height, GLOW_SIZE_MIN, GLOW_SIZE_MAX, 60)}cqh`;
-    return { attrs: { "data-fx-bglayer": "glow" }, style };
+    return { attrs: { "data-fx-bglayer": "glow", ...soft }, style, inner: { "data-fx-glow": "" } };
   }
   if (layer.type === "pattern") {
     if (!(layer.pattern in LAYER_PATTERNS)) return null;
     style["--fx-lc1"] = main;
     style["--fx-size"] = `${patternSize(layer)}px`;
-    const attrs: Record<string, string> = { "data-fx-bglayer": "pattern", "data-fx-pattern": layer.pattern };
-    if (layer.fade && layer.fade in LAYER_FADES) attrs["data-fx-fade"] = layer.fade;
-    return { attrs, style };
+    const inner: Record<string, string> = { "data-fx-pattern": layer.pattern };
+    if (layer.fade && layer.fade in LAYER_FADES) inner["data-fx-fade"] = layer.fade;
+    return { attrs: { "data-fx-bglayer": "pattern", ...soft }, style, inner };
   }
   if (layer.type === "horizon") {
     const fill = colour(layer.fill);
@@ -149,7 +165,7 @@ export function layerDraw(layer: BackgroundLayer, hue?: number): LayerDraw | nul
     style["--fx-y"] = `${within(layer.y, 0, 100, 64)}%`;
     // The disc's radius: half its width, in the frame's width.
     style["--fx-r"] = `${(HORIZON_WIDTHS[layer.curve ?? HORIZON_CURVE_DEFAULT] ?? HORIZON_WIDTHS[HORIZON_CURVE_DEFAULT]) / 2}cqw`;
-    return { attrs: { "data-fx-bglayer": "horizon" }, style };
+    return { attrs: { "data-fx-bglayer": "horizon", ...soft }, style, inner: { "data-fx-disc": "" } };
   }
   return null;
 }

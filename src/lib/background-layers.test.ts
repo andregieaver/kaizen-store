@@ -8,6 +8,7 @@ import {
   HORIZON_WIDTHS,
   LAYERS_MAX,
   LAYER_AMBIENTS,
+  LAYER_BLUR_MAX,
   LAYER_FADES,
   LAYER_KINDS,
   LAYER_PATTERNS,
@@ -50,7 +51,8 @@ describe("drawing a layer over a background (D534)", () => {
   it("gives a glow its two colours, the outer half as solid, and its place and size", () => {
     expect(layerDraw(glow)).toEqual({
       attrs: { "data-fx-bglayer": "glow" },
-      style: { "--fx-lc1": "#d946ef", "--fx-lc2": "#7c3aed8a", "--fx-x": "50%", "--fx-y": "63%", "--fx-gy": "63cqh", "--fx-w": "150cqw", "--fx-h": "40cqh" },
+      style: { "--fx-lc1": "#d946ef", "--fx-lc2": "#7c3aed8a", "--fx-x": "50%", "--fx-y": "63%", "--fx-gx": "50cqw", "--fx-gy": "63cqh", "--fx-w": "150cqw", "--fx-h": "40cqh" },
+      inner: { "data-fx-glow": "" },
     });
     // One colour fades evenly: the same colour, half as solid, where its heart ends.
     expect(layerDraw({ ...glow, outer: undefined })?.style["--fx-lc2"]).toBe("#d946ef8a");
@@ -58,18 +60,21 @@ describe("drawing a layer over a background (D534)", () => {
 
   it("gives a pattern its kind, colour, size and fade, and how solid it is", () => {
     expect(layerDraw(grid)).toEqual({
-      attrs: { "data-fx-bglayer": "pattern", "data-fx-pattern": "grid", "data-fx-fade": "edges" },
+      attrs: { "data-fx-bglayer": "pattern" },
       style: { "--fx-o": 0.09, "--fx-lc1": "#ffffff", "--fx-size": "52px" },
+      inner: { "data-fx-pattern": "grid", "data-fx-fade": "edges" },
     });
     expect(layerDraw({ ...grid, pattern: "stars", fade: undefined, opacity: undefined })).toEqual({
-      attrs: { "data-fx-bglayer": "pattern", "data-fx-pattern": "stars" },
+      attrs: { "data-fx-bglayer": "pattern" },
       style: { "--fx-lc1": "#ffffff", "--fx-size": "200px" },
+      inner: { "data-fx-pattern": "stars" },
     });
   });
 
   it("gives a horizon its rim, disc, lit edge and haze, and the disc's width by its curve", () => {
     const drawn = layerDraw(horizon);
     expect(drawn?.attrs).toEqual({ "data-fx-bglayer": "horizon" });
+    expect(drawn?.inner).toEqual({ "data-fx-disc": "" });
     expect(drawn?.style).toMatchObject({ "--fx-lc1": "#d946efd1", "--fx-lc2": "#07051a", "--fx-lc4": "#d946ef80", "--fx-y": "64%", "--fx-r": "125cqw" });
     expect(drawn?.style["--fx-lc3"]).toMatch(/^#f[0-9a-f]{5}$/);
     for (const curve of Object.keys(HORIZON_CURVES) as (keyof typeof HORIZON_CURVES)[])
@@ -78,7 +83,7 @@ describe("drawing a layer over a background (D534)", () => {
 
   it("holds what it is given inside its limits, and leaves out a layer it cannot draw", () => {
     const wild = layerDraw({ ...glow, x: 400, y: -20, width: 9999, height: 1, opacity: 500 });
-    expect(wild?.style).toMatchObject({ "--fx-x": "100%", "--fx-y": "0%", "--fx-gy": "0cqh", "--fx-w": "300cqw", "--fx-h": "10cqh" });
+    expect(wild?.style).toMatchObject({ "--fx-x": "100%", "--fx-y": "0%", "--fx-gx": "100cqw", "--fx-gy": "0cqh", "--fx-w": "300cqw", "--fx-h": "10cqh" });
     expect(wild?.style["--fx-o"]).toBeUndefined();
     expect(layerDraw({ ...grid, size: 5000 })?.style["--fx-size"]).toBe(`${PATTERN_SIZES.grid.max}px`);
     expect(layerDraw({ ...glow, color: "red; background: url(x)" })).toBeNull();
@@ -87,14 +92,28 @@ describe("drawing a layer over a background (D534)", () => {
     expect(layerDraw({ ...glow, hidden: true })).toBeNull();
     expect(layerDraw({ id: "x", type: "blob", color: "#ffffff" } as never)).toBeNull();
     // An unknown fade is left out, never written.
-    expect(layerDraw({ ...grid, fade: "sideways" as never })?.attrs["data-fx-fade"]).toBeUndefined();
+    expect(layerDraw({ ...grid, fade: "sideways" as never })?.inner["data-fx-fade"]).toBeUndefined();
+  });
+
+  it("marks a blurred layer soft and says by how much, held to its limit; a sharp one carries neither (D535)", () => {
+    for (const layer of [glow, grid, horizon]) {
+      const soft = layerDraw({ ...layer, blur: 12 })!;
+      expect(soft.attrs["data-fx-soft"], layer.type).toBe("");
+      expect(soft.style["--fx-blur"], layer.type).toBe("12px");
+      // The blur is for the element that draws: its attributes are the same, blurred or not.
+      expect(soft.inner).toEqual(layerDraw(layer)!.inner);
+      const sharp = layerDraw(layer)!;
+      expect("data-fx-soft" in sharp.attrs || "--fx-blur" in sharp.style, layer.type).toBe(false);
+    }
+    expect(layerDraw({ ...glow, blur: 900 })?.style["--fx-blur"]).toBe(`${LAYER_BLUR_MAX}px`);
+    for (const none of [0, -5, Number.NaN]) expect(layerDraw({ ...glow, blur: none })?.attrs["data-fx-soft"]).toBeUndefined();
   });
 
   it("writes only names from its lists, colours and numbers with a unit", () => {
-    const layers: BackgroundLayer[] = [glow, grid, horizon, { ...grid, id: "s", pattern: "stars" }, { ...grid, id: "d", pattern: "dots", fade: "up" }];
+    const layers: BackgroundLayer[] = [glow, grid, horizon, { ...grid, id: "s", pattern: "stars", blur: 3 }, { ...grid, id: "d", pattern: "dots", fade: "up" }];
     for (const layer of layers) {
       const drawn = layerDraw(layer, 40)!;
-      for (const value of Object.values(drawn.attrs)) expect(value).toMatch(/^[a-z]+$/);
+      for (const value of Object.values({ ...drawn.attrs, ...drawn.inner })) expect(value).toMatch(/^[a-z]*$/);
       for (const value of Object.values(drawn.style)) expect(String(value)).toMatch(/^(#[0-9a-f]{6}([0-9a-f]{2})?|\d+(\.\d+)?(%|px|cqw|cqh)?)$/);
     }
   });
@@ -141,8 +160,23 @@ describe("how a layer moves", () => {
     for (const fade of Object.keys(LAYER_FADES)) expect(css).toContain(`[data-fx-fade="${fade}"]`);
     for (const ambient of Object.keys(LAYER_AMBIENTS)) expect(css).toContain(`[data-fx-amb="${ambient}"]`);
     for (const selector of ["[data-fx-layers]", "[data-fx-bglayer]", "[data-fx-glow]", "[data-fx-disc]", '[data-fx-scroll="layer"]']) expect(css).toContain(selector);
+    // A pattern that travels keeps room for its travel, whatever element of the layer draws it.
+    expect(css).toContain('[data-fx-scroll="layer"] > [data-fx-pattern]');
     // A layer that moves by itself needs the three animation slots, as every part that moves does.
     expect(css).toMatch(/\[data-fx-bgm\],\s*\[data-fx-amb\],/);
+  });
+
+  it("blurs what draws inside a soft layer, never the layer that travels, and nothing animates the blur (D535)", () => {
+    // On the inner element the blur is painted once and the layer only moves it; on the layer it would be blurred again every frame.
+    expect(css).toMatch(/\[data-fx-soft\] > \* \{\s*filter: blur\(var\(--fx-blur, 0px\)\);\s*\}/);
+    expect(css).not.toMatch(/\[data-fx-(?:soft|bglayer)\] \{[^}]*filter:/);
+    // What draws reaches past the frame by twice the blur, so its soft rim does not show.
+    expect(css).toMatch(/\[data-fx-soft\] \{\s*--fx-e: calc\(var\(--fx-blur, 0px\) \* 2\);/);
+    for (const box of ["[data-fx-glow]", "[data-fx-disc]", "[data-fx-bglayer] > [data-fx-pattern]"]) {
+      const rule = css.slice(css.indexOf(`  ${box} {`), css.indexOf("}", css.indexOf(`  ${box} {`)));
+      expect(rule, box).toMatch(/inset: [^;]*var\(--fx-e, 0px\)/);
+    }
+    for (const keyframes of css.matchAll(/@keyframes fx-(?:s-layer|l-[\w-]+) \{([\s\S]*?)\n {4}\}\n/g)) expect(keyframes[1]).not.toContain("filter");
   });
 
   it("moves only where 'reduce motion' is not asked for", () => {
@@ -230,7 +264,7 @@ describe("editing the layers", () => {
 
 describe("the layers as a page stores them", () => {
   it("reads a row and a column with layers and a hue, and keeps them", () => {
-    const stored = row({ backgroundLayers: [glow, { ...grid, scroll: -20 }, horizon], backgroundHue: -45, columns: [{ id: "c", blocks: [], backgroundLayers: [grid], backgroundHue: 20 }] });
+    const stored = row({ backgroundLayers: [glow, { ...grid, scroll: -20, blur: 4 }, { ...horizon, blur: LAYER_BLUR_MAX }], backgroundHue: -45, columns: [{ id: "c", blocks: [], backgroundLayers: [grid], backgroundHue: 20 }] });
     const read = pageRowSchema.parse(stored);
     expect(read.backgroundLayers).toEqual(stored.backgroundLayers);
     expect(read.backgroundHue).toBe(-45);
@@ -252,6 +286,9 @@ describe("the layers as a page stores them", () => {
       { ...glow, x: 101 },
       { ...glow, width: 5 },
       { ...glow, opacity: 0 },
+      { ...glow, blur: 0 },
+      { ...glow, blur: 41 },
+      { ...glow, blur: 2.5 },
       { ...glow, scroll: 150 },
       { ...glow, scroll: 12.5 },
       { ...glow, ambient: "spin" },
