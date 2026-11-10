@@ -24,7 +24,7 @@ import {
   type ShotFacts,
 } from "@/lib/page-look";
 import type { LookShot } from "@/lib/page-look-shoot";
-import { APPEARANCE_PAGES_MAX, appearancePrompt, appearanceSchema, readAppearance, type SiteAppearance } from "@/lib/site-appearance";
+import { APPEARANCE_PAGES_MAX, appearancePrompt, appearanceSchema, menuPageSlugs, readAppearance, readAspects, type AppearanceAspect, type SiteAppearance } from "@/lib/site-appearance";
 import { mapTexts } from "@/lib/page-translation";
 import { marketUrl } from "@/lib/paths";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
@@ -63,7 +63,7 @@ export type LookDeps = {
   /** The model's findings for the pictures; null when it could not answer, `no_model` when the store's AI sees no pictures. */
   judge?: (store: { id: string }, accountId: string | null, pictures: LookPicture[]) => Promise<Finding[] | null | "no_model">;
   /** How the site looks, from the pictures (D528); null when the model could not answer, `no_model` when the store's AI sees no pictures. */
-  assess?: (store: { id: string }, accountId: string | null, pictures: LookPicture[]) => Promise<SiteAppearance | null | "no_model">;
+  assess?: (store: { id: string }, accountId: string | null, pictures: LookPicture[], aspects: AppearanceAspect[]) => Promise<SiteAppearance | null | "no_model">;
   /** Where the page's draft is opened: this site, unless told (tests, the route's own address). */
   origin?: string;
   /** Asks for the look to be run at once; the looks route over HTTP unless told. */
@@ -98,7 +98,7 @@ export async function findLookPage(store: Store, ref: string, type: Extract<Page
  * Queues a look: a page's draft (`page`) or the store as shoppers see it (`store`). At most `LOOKS_PER_PAGE` an hour of the same page (or
  * of the store): the look and at most two rounds after a change, so the agent never circles.
  */
-export async function requestLook(ctx: LookContext, kind: LookKind, pageId: string | null = null): Promise<string> {
+export async function requestLook(ctx: LookContext, kind: LookKind, pageId: string | null = null, aspects: readonly AppearanceAspect[] = []): Promise<string> {
   if (ctx.store.starter || ctx.store.isTemplate) fail("A demo store or template is not looked at here.");
   if (ctx.store.status !== "active") fail("The store is not open, so it is not looked at.");
   const recent = await typedRow(
@@ -116,8 +116,8 @@ export async function requestLook(ctx: LookContext, kind: LookKind, pageId: stri
   }
   const row = await typedRow(
     ID,
-    sql`insert into commerce.page_looks (store_id, account_id, kind, page_id, acted_by)
-      values (${ctx.store.id}::uuid, ${ctx.account.id}::uuid, ${kind}, ${pageId}::uuid, ${currentActor()}) returning id`,
+    sql`insert into commerce.page_looks (store_id, account_id, kind, page_id, acted_by, aspects)
+      values (${ctx.store.id}::uuid, ${ctx.account.id}::uuid, ${kind}, ${pageId}::uuid, ${currentActor()}, ${`{${aspects.join(",")}}`}::text[]) returning id`,
   );
   return row?.id ?? fail("The look could not be asked for.");
 }
@@ -228,6 +228,7 @@ const CLAIMED = z.object({
   page_id: col.uuid.nullable(),
   acted_by: z.enum(ACTORS),
   tries: col.int,
+  aspects: z.array(z.string()),
 });
 type Claimed = z.output<typeof CLAIMED>;
 
@@ -240,7 +241,7 @@ async function claim(id: string | null): Promise<Claimed | null> {
         where ${id ? sql`id = ${id}::uuid and` : sql``} (status = 'queued' or (status = 'running' and claimed_until < now()))
         order by created_at limit 1 for update skip locked
       )
-      returning id, store_id, account_id, kind, page_id, acted_by, tries`,
+      returning id, store_id, account_id, kind, page_id, acted_by, tries, aspects`,
   );
 }
 
@@ -256,13 +257,17 @@ async function targetsOf(look: Claimed, store: Store, origin: string): Promise<T
   );
   // How the site looks (D528): the front page, a product page and the pages a visitor is most likely to open, never the cart.
   if (look.kind === "appearance") {
-    const pages = await typedRows(
+    // The pages the header's menu links to, then the footer's, in their order; the oldest published pages fill what is left.
+    const linked = menuPageSlugs(store.menus, store.headerMenuId, store.footerMenuId);
+    const published = await typedRows(
       z.object({ slug: col.text, title: col.text }),
       sql`select p.slug, coalesce(p.published ->> 'title', p.slug) as title from commerce.pages p
           where p.store_id = ${store.id}::uuid and p.type = 'page' and p.published_at is not null and p.id is distinct from ${store.frontPageId}::uuid
             and not exists (select 1 from commerce.page_roles r where r.page_id = p.id)
-          order by p.created_at limit ${APPEARANCE_PAGES_MAX}`,
+          order by p.created_at limit 200`,
     );
+    const inMenu = linked.flatMap((slug) => published.filter((p) => p.slug === slug));
+    const pages = [...inMenu, ...published.filter((p) => !inMenu.includes(p))].slice(0, APPEARANCE_PAGES_MAX);
     return [
       { place: "the front page", url: marketUrl(store.slug, market.slug) },
       ...(product ? [{ place: "a product page", url: marketUrl(store.slug, market.slug, `/p/${product.handle}`) }] : []),
@@ -316,7 +321,7 @@ async function judgeWithModel(store: { id: string }, accountId: string | null, p
 }
 
 /** The store's model that sees pictures, saying how the site looks (D528, `appearancePrompt()`, feature `page_look`). */
-async function assessWithModel(store: { id: string }, accountId: string | null, pictures: LookPicture[]): Promise<SiteAppearance | null | "no_model"> {
+async function assessWithModel(store: { id: string }, accountId: string | null, pictures: LookPicture[], aspects: AppearanceAspect[]): Promise<SiteAppearance | null | "no_model"> {
   const connection = seeing(await aiFor(store.id, { feature: "page_look", accountId }));
   if (!connection) return "no_model";
   const parts = await Promise.all(pictures.map(async (p) => imagePart(connection, await forModel(p.picture), "image/jpeg")));
@@ -325,7 +330,7 @@ async function assessWithModel(store: { id: string }, accountId: string | null, 
     const { text } = await completeText(
       connection,
       [
-        { role: "system", content: appearancePrompt() },
+        { role: "system", content: appearancePrompt(aspects) },
         { role: "user", content: [{ type: "text", text: legend }, ...parts] },
       ],
       { maxTokens: 1800, timeoutMs: 120_000 },
@@ -377,7 +382,7 @@ async function takeLook(look: Claimed, deps: LookDeps): Promise<boolean> {
       for (const target of targets) {
         for (const width of Object.keys(LOOK_WIDTHS) as LookWidth[]) pictures.push({ place: target.place, width, picture: (await deps.photograph(target.url, width)).picture });
       }
-      const assessed = await (deps.assess ?? assessWithModel)({ id: store.id }, look.account_id, pictures);
+      const assessed = await (deps.assess ?? assessWithModel)({ id: store.id }, look.account_id, pictures, readAspects(look.aspects));
       if (assessed === "no_model") throw new OwnerToolError("The store's AI has no model that sees pictures: choose one under Settings, AI (Model that sees pictures), then analyse again.");
       if (!assessed) throw new OwnerToolError("The model that sees pictures could not say how the site looks just now: try again.");
       await db().execute(sql`
@@ -515,17 +520,23 @@ export async function lookOutcome(
 
 // How the site looks, for the Dream Factory (D528) ---------------------------------------------------------------------------------------
 
-export type AppearanceLook = { id: string; status: Look["status"]; at: string; appearance: SiteAppearance | null; problem: string | null };
+export type AppearanceLook = { id: string; status: Look["status"]; at: string; aspects: AppearanceAspect[]; appearance: SiteAppearance | null; problem: string | null };
 
 /**
  * *Analyse existing* (D528): asks for the store's site to be photographed and assessed, and for the looks route to take it at once
  * without waiting for it (`later`, the request's `after()`); the page reads `latestAppearance()` until it is done. Refused for a private
  * store, which no browser from outside can see, and as any look is (a demo store, three an hour).
  */
-export async function startAppearance(ctx: LookContext, later: (task: () => Promise<unknown>) => void, deps: LookDeps = {}): Promise<{ ok: true; id: string } | { ok: false; problem: string }> {
+export async function startAppearance(
+  ctx: LookContext,
+  later: (task: () => Promise<unknown>) => void,
+  deps: LookDeps = {},
+  /** What to judge, of design, copy and images (the owner's ticks); all three when none is given. */
+  aspects: readonly unknown[] = [],
+): Promise<{ ok: true; id: string } | { ok: false; problem: string }> {
   try {
     if (ctx.store.privateMode) fail("The store is private, so its pages cannot be photographed: make it public under Settings first, or describe what to change yourself.");
-    const id = await requestLook(ctx, "appearance");
+    const id = await requestLook(ctx, "appearance", null, readAspects(aspects));
     later(() => (deps.trigger ?? triggerLook)(id));
     return { ok: true, id };
   } catch (error) {
@@ -537,12 +548,12 @@ export async function startAppearance(ctx: LookContext, later: (task: () => Prom
 /** The store's newest analysis of the last day: waiting, being taken, done with what the model said, or failed with why. */
 export async function latestAppearance(storeId: string): Promise<AppearanceLook | null> {
   const row = await typedRow(
-    z.object({ id: col.uuid, status: col.text, findings: z.unknown(), problem: col.textOrNull, created_at: col.timestamp }),
-    sql`select id, status, findings, problem, created_at from commerce.page_looks
+    z.object({ id: col.uuid, status: col.text, findings: z.unknown(), problem: col.textOrNull, created_at: col.timestamp, aspects: z.array(z.string()) }),
+    sql`select id, status, findings, problem, created_at, aspects from commerce.page_looks
         where store_id = ${storeId}::uuid and kind = 'appearance' and created_at > now() - interval '1 day'
         order by created_at desc limit 1`,
   );
   if (!row) return null;
   const read = appearanceSchema.safeParse(row.findings);
-  return { id: row.id, status: row.status as Look["status"], at: row.created_at, appearance: row.status === "done" && read.success ? read.data : null, problem: row.problem };
+  return { id: row.id, status: row.status as Look["status"], at: row.created_at, aspects: readAspects(row.aspects), appearance: row.status === "done" && read.success ? read.data : null, problem: row.problem };
 }

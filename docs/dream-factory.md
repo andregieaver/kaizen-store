@@ -108,8 +108,10 @@ links there); on a store not yet open the form that builds is first and *Change 
 has ended (a build or a rework) the same form starts the next. One run a store at a time, of either kind.
 
 **Analyse existing (D528):** beside the form, one press has the AI look at the site first. The looks route photographs the front page, a
-product page and up to two other published pages (never the cart or a legal page) on a phone and a computer; the store's model that sees
-pictures says how the site looks (`appearancePrompt()`: a summary, what works, what would make it better) and writes a suggestion in the
+product page and up to two other published pages on a phone and a computer: the pages the header's menu links to, in its order, then the
+footer's (`menuPageSlugs()`), the oldest published pages filling what is left, never the cart or a legal page. The owner ticks what to look
+at, of **Design**, **Copy** and **Images** (`APPEARANCE_ASPECTS`, kept in `page_looks.aspects`; all three at first, at least one). The store's
+model that sees pictures says how the site does on those only (`appearancePrompt(aspects)`: a summary, what works, what would make it better) and writes a suggestion in the
 owner's voice, which fills the field for the owner to change before they plan. It is a look of kind `appearance` in `commerce.page_looks`
 (`startAppearance()`, `latestAppearance()`; three an hour, kept 30 days, the photographs never kept), shown as an AI's view. A private
 store cannot be photographed and says so; a store whose AI has no model that sees pictures is told where to choose one.

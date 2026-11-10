@@ -10,6 +10,7 @@ import type { HomeMessages } from "@/lib/admin-messages/home.en";
 import { PROMPT_MAX, PROMPT_MIN, REVIEW_ROUNDS, REWORK_STEPS, passed } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
 import type { DreamRun } from "@/server/dream-factory";
+import { APPEARANCE_ASPECTS } from "@/lib/site-appearance";
 import { latestAppearance } from "@/server/page-looks";
 import { reworkPrepared, type ReworkPrepared } from "@/server/dream-showcase";
 import type { Store } from "@/server/stores";
@@ -43,9 +44,21 @@ export async function ReworkStart({ slug, storeId, words: w, title }: { slug: st
             <span>{a.working}</span>
           </p>
         ) : (
-          <ActionForm action={analyseExistingAction.bind(null, slug)} className="flex flex-wrap items-center gap-3">
-            <SubmitButton variant="secondary">{seen ? a.again : a.button}</SubmitButton>
-            <span className="text-sm text-ink-2">{a.hint}</span>
+          <ActionForm action={analyseExistingAction.bind(null, slug)} className="flex flex-col gap-3">
+            <fieldset className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <legend className="mb-1 text-sm font-medium text-ink-2">{a.aspectsLabel}</legend>
+              {APPEARANCE_ASPECTS.map((aspect) => (
+                <label key={aspect} className="flex min-h-11 items-center gap-2 text-body">
+                  {/* Ticked as the last analysis was, all three the first time. */}
+                  <input type="checkbox" name="aspects" value={aspect} defaultChecked={analysis ? analysis.aspects.includes(aspect) : true} className="size-5" />
+                  {a.aspects[aspect]}
+                </label>
+              ))}
+            </fieldset>
+            <div className="flex flex-wrap items-center gap-3">
+              <SubmitButton variant="secondary">{seen ? a.again : a.button}</SubmitButton>
+              <span className="text-sm text-ink-2">{a.hint}</span>
+            </div>
           </ActionForm>
         )}
         {analysis?.status === "failed" && <p className="text-body text-danger-text">{analysis.problem ?? a.failed}</p>}
@@ -78,7 +91,9 @@ export async function ReworkStart({ slug, storeId, words: w, title }: { slug: st
               </div>
             )}
           </div>
-          <p className="text-sm text-ink-2">{a.byAi}</p>
+          <p className="text-sm text-ink-2">
+            {fillWords(a.lookedAt, { aspects: (analysis?.aspects ?? []).map((aspect) => a.aspects[aspect].toLowerCase()).join(", ") })} {a.byAi}
+          </p>
         </section>
       )}
       <ActionForm action={startReworkAction.bind(null, slug)} className="flex flex-col gap-4">

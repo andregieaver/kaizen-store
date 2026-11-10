@@ -171,11 +171,13 @@ describe("how the site looks, for the Dream Factory (D528)", () => {
     shotsAt.length = 0;
     await db().execute(sql`delete from commerce.page_looks where store_id = ${store.member.store.id}::uuid and kind = 'appearance'`);
     const pictured: string[] = [];
-    const deps = taking(async (_store, _account, pictures) => {
+    const judged: string[][] = [];
+    const deps = taking(async (_store, _account, pictures, aspects) => {
       pictured.push(...pictures.map((p) => `${p.place} ${p.width}`));
+      judged.push(aspects);
       return seen;
     });
-    const started = await looks.startAppearance(ctxOf(store), later, deps);
+    const started = await looks.startAppearance(ctxOf(store), later, deps, ["copy", "images"]);
     expect(started.ok).toBe(true);
     await vi.waitFor(async () => expect((await looks.latestAppearance(store.member.store.id))?.status).toBe("done"), { timeout: 10_000 });
     const latest = (await looks.latestAppearance(store.member.store.id))!;
@@ -184,6 +186,9 @@ describe("how the site looks, for the Dream Factory (D528)", () => {
     expect(urls.some((u) => /\/cart$/.test(u))).toBe(false);
     expect(urls.some((u) => /\/p\/[^/]+$/.test(u))).toBe(true);
     expect(pictured).toEqual(expect.arrayContaining(["the front page phone", "the front page computer"]));
+    // What the owner ticked is kept with the look and is what the model was asked to judge.
+    expect(judged).toEqual([["copy", "images"]]);
+    expect(latest.aspects).toEqual(["copy", "images"]);
   });
 
   it("says why when the store's AI sees no pictures, and refuses a private store", async () => {

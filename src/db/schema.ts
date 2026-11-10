@@ -16927,6 +16927,8 @@ export const pageLooks = commerce.table(
      */
     kind: text("kind").notNull(),
     pageId: uuid("page_id").references(() => pages.id, { onDelete: "cascade" }),
+    /** What an `appearance` look was asked to judge (D528): of `design`, `copy`, `images`; empty for the other kinds. */
+    aspects: text("aspects").array().notNull().default(sql`'{}'::text[]`),
     /** Who asked for it (`currentActor()`): the look is taken as them, so the judge's AI usage counts where it should. */
     actedBy: text("acted_by").notNull().default("person"),
     status: text("status").notNull().default("queued"),

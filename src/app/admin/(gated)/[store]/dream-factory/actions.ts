@@ -142,9 +142,11 @@ export async function applyReworkAction(storeSlug: string, runId: string): Promi
 }
 
 /** *Analyse existing* (D528): the site is photographed and assessed after this answer; the page shows it when it is done. */
-export async function analyseExistingAction(storeSlug: string): Promise<FormState> {
+export async function analyseExistingAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await owner(storeSlug);
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const started = await startAppearance({ account: member.account, store: member.store }, after);
+  const aspects = formData.getAll("aspects").map(String);
+  if (aspects.length === 0) return { status: "error", messages: ["Tick at least one of design, copy and images."] };
+  const started = await startAppearance({ account: member.account, store: member.store }, after, {}, aspects);
   return answer(started.ok ? { ok: true } : started, storeSlug);
 }

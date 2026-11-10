@@ -542,7 +542,10 @@ export const homeNb: HomeMessages = {
       analyse: {
         button: "Analyser det eksisterende",
         again: "Analyser på nytt",
-        hint: "KI fotograferer forsiden og andre viktige sider, sier hvordan nettstedet ser ut og foreslår hva du kan be om.",
+        hint: "KI fotograferer forsiden og sidene menyen din lenker til, sier hvordan nettstedet fungerer og foreslår hva du kan be om.",
+        aspectsLabel: "Se på",
+        aspects: { design: "Design", copy: "Tekst", images: "Bilder" },
+        lookedAt: "Så på: {aspects}.",
         working: "Fotograferer sidene dine og ser på dem. Det tar et minutt eller to; siden oppdaterer seg selv.",
         failed: "Nettstedet kunne ikke analyseres akkurat nå. Prøv igjen.",
         title: "Slik ser nettstedet ditt ut",

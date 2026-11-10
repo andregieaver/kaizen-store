@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."page_looks" ADD COLUMN "aspects" text[] DEFAULT '{}'::text[] NOT NULL;

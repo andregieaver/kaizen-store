@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { PROMPT_MAX } from "./dream-factory";
-import { APPEARANCE_POINTS_MAX, appearancePrompt, readAppearance } from "./site-appearance";
+import { APPEARANCE_POINTS_MAX, appearancePrompt, menuPageSlugs, readAppearance, readAspects } from "./site-appearance";
 
 const answer = (over: Record<string, unknown> = {}) =>
   JSON.stringify({
@@ -31,6 +31,33 @@ describe("how the site looks (D528)", () => {
     expect(readAppearance(answer({ summary: "" }))).toBeNull();
     // A suggestion too short to start a rework from is no suggestion.
     expect(readAppearance(answer({ suggestion: "Nicer." }))).toBeNull();
+  });
+
+  it("judges only the aspects the owner ticked, all three unless they say", () => {
+    expect(readAspects([])).toEqual(["design", "copy", "images"]);
+    expect(readAspects(["images", "nonsense", "design"])).toEqual(["design", "images"]);
+    const all = appearancePrompt();
+    expect(all).toContain("- Design:");
+    expect(all).toContain("- Copy");
+    expect(all).toContain("- Images:");
+    const copyOnly = appearancePrompt(["copy"]);
+    expect(copyOnly).toContain("- Copy");
+    expect(copyOnly).not.toContain("- Design:");
+    expect(copyOnly).not.toContain("- Images:");
+    expect(copyOnly).toContain("The owner did not ask about design or images: say nothing about them");
+    expect(appearancePrompt(["design", "copy"])).toContain("did not ask about images: say nothing about it");
+  });
+
+  it("takes the pages the header's menu links to, in its order, then the footer's, each once", () => {
+    const page = (slug: string) => ({ link: { kind: "page", slug } });
+    const menus = [
+      { id: "main", items: [{ link: { kind: "home" } }, page("about"), { link: { kind: "products" } }, page("contact")] },
+      { id: "foot", items: [page("contact"), page("delivery")] },
+    ];
+    expect(menuPageSlugs(menus, "main", "foot")).toEqual(["about", "contact", "delivery"]);
+    // With no header menu chosen, the first menu is the header's, as the standard header takes it.
+    expect(menuPageSlugs(menus, null, null)).toEqual(["about", "contact"]);
+    expect(menuPageSlugs([], null, null)).toEqual([]);
   });
 
   it("tells the model the pictures' words are data and keeps the suggestion to what a rework changes", () => {

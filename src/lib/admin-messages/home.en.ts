@@ -547,7 +547,10 @@ export const homeEn = {
       analyse: {
         button: "Analyse existing",
         again: "Analyse again",
-        hint: "The AI photographs your front page and other important pages, says how the site looks and suggests what to ask for.",
+        hint: "The AI photographs your front page and the pages your menu links to, says how the site does and suggests what to ask for.",
+        aspectsLabel: "Look at",
+        aspects: { design: "Design", copy: "Copy", images: "Images" },
+        lookedAt: "Looked at: {aspects}.",
         working: "Photographing your pages and looking at them. This takes a minute or two; the page updates by itself.",
         failed: "The site could not be analysed just now. Try again.",
         title: "How your site looks",
