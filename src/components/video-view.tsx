@@ -4,13 +4,18 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { browserText as t } from "@/lib/browser-text";
 import { EMBED_NAMES, type EmbedSource } from "@/lib/video-embed";
+import { restingTime, videoPlay, videoPoster } from "@/lib/video-play";
 
 import { usePageLanguage } from "./page-language";
 
 /**
  * A video uploaded to the site (D91), played by the browser. One set to
  * start by itself starts muted (browsers only start muted videos) and
- * stays still for visitors who prefer less motion.
+ * stays still for visitors who prefer less motion. One set to play once
+ * (D536: an animated logo, an intro) stops on its last frame, and shows
+ * that frame to visitors who prefer less motion and where the browser
+ * will not start it. Nothing is drawn behind the video, so one with a
+ * see-through background shows the page through it.
  */
 export function UploadedVideo({
   src,
@@ -19,6 +24,7 @@ export function UploadedVideo({
   controls,
   autoplay,
   loop,
+  once = false,
   style,
 }: {
   src: string;
@@ -27,37 +33,59 @@ export function UploadedVideo({
   controls: boolean;
   autoplay: boolean;
   loop: boolean;
+  once?: boolean;
   style: CSSProperties;
 }) {
+  const play = videoPlay({ controls, autoplay, loop, once });
+  const rests = play.once;
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const video = ref.current;
     if (!video || !autoplay) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const toEnd = () => {
+      const end = restingTime(video.duration);
+      if (end !== null) video.currentTime = end;
+    };
+    // The last frame, without playing up to it.
+    const rest = () => {
+      video.pause();
+      if (video.readyState >= 1) toEnd();
+      else video.addEventListener("loadedmetadata", toEnd, { once: true });
+    };
     const follow = () => {
-      if (reduce.matches) video.pause();
-      else {
-        // React does not write `muted` into the page, and browsers only start muted videos by themselves.
-        video.muted = true;
-        void video.play().catch(() => undefined);
+      video.removeEventListener("loadedmetadata", toEnd);
+      if (reduce.matches) {
+        if (rests) rest();
+        else video.pause();
+        return;
       }
+      // React does not write `muted` into the page, and browsers only start muted videos by themselves.
+      video.muted = true;
+      void video.play().catch(() => {
+        // A browser that will not start it (a phone saving power): the finished picture rather than nothing.
+        if (rests) rest();
+      });
     };
     follow();
     reduce.addEventListener("change", follow);
-    return () => reduce.removeEventListener("change", follow);
-  }, [autoplay]);
+    return () => {
+      reduce.removeEventListener("change", follow);
+      video.removeEventListener("loadedmetadata", toEnd);
+    };
+  }, [autoplay, rests]);
   return (
     <video
       ref={ref}
       src={src}
-      poster={poster}
-      controls={controls || !autoplay}
-      muted={autoplay}
-      loop={loop || autoplay}
+      poster={videoPoster(play, poster)}
+      controls={play.controls}
+      muted={play.muted}
+      loop={play.loop}
       playsInline
       preload="metadata"
       aria-label={title || undefined}
-      className="h-full w-full rounded-lg bg-black object-cover"
+      className="h-full w-full rounded-lg object-cover"
       style={style}
     />
   );

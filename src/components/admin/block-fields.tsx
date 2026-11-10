@@ -22,6 +22,7 @@ import { t } from "@/lib/i18n";
 import { ICONS, type IconName } from "@/lib/icons";
 import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
+import { videoPlay } from "@/lib/video-play";
 
 import { iconToken } from "@/lib/table-icons";
 import { addColumn, addRowTo, entriesOf, moveEntry, removeColumn, removeRowFrom, setCell, setSection, type TableData } from "@/lib/table-edit";
@@ -1274,6 +1275,7 @@ function VideoFields({ block, onChange, context }: BlockEditorProps<VideoBlock>)
               startVideo={context.startVideo}
               upload={context.upload}
               label={block.video ? w.another : w.upload}
+              keepSound
               onUploaded={({ video, poster }) => onChange({ video, ...(poster && !block.poster ? { poster } : {}) })}
             />
             {block.video && (
@@ -1292,29 +1294,32 @@ function VideoFields({ block, onChange, context }: BlockEditorProps<VideoBlock>)
         hint={w.titleHint}
         onChange={(title) => onChange({ title })}
       />
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium">{w.poster}</p>
-        {block.poster && (
-          // eslint-disable-next-line @next/next/no-img-element -- the site's own picture, shown as it is
-          <img src={block.poster.url} alt="" className="h-24 w-fit rounded-md border border-line object-cover" />
-        )}
-        <div className="flex flex-wrap items-center gap-3">
-          <ImageUploadButton
-            upload={context.upload}
-            label={block.poster ? w.anotherPicture : w.choosePicture}
-            current={block.poster}
-            onUploaded={(poster) => onChange({ poster })}
-          />
+      {/* A video that plays once opens on its first frame and shows no picture before it (D536), so none is asked for. */}
+      {!(block.source === "upload" && block.autoplay && block.once) && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium">{w.poster}</p>
           {block.poster && (
-            <button type="button" onClick={() => onChange({ poster: null })} className={smallButton}>
-              {w.remove}
-            </button>
+            // eslint-disable-next-line @next/next/no-img-element -- the site's own picture, shown as it is
+            <img src={block.poster.url} alt="" className="h-24 w-fit rounded-md border border-line object-cover" />
           )}
+          <div className="flex flex-wrap items-center gap-3">
+            <ImageUploadButton
+              upload={context.upload}
+              label={block.poster ? w.anotherPicture : w.choosePicture}
+              current={block.poster}
+              onUploaded={(poster) => onChange({ poster })}
+            />
+            {block.poster && (
+              <button type="button" onClick={() => onChange({ poster: null })} className={smallButton}>
+                {w.remove}
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-muted">
+            {embedded ? w.posterEmbedded : w.posterUpload}
+          </p>
         </div>
-        <p className="text-xs text-muted">
-          {embedded ? w.posterEmbedded : w.posterUpload}
-        </p>
-      </div>
+      )}
     </>
   );
 }
@@ -1323,6 +1328,7 @@ function VideoFields({ block, onChange, context }: BlockEditorProps<VideoBlock>)
 function VideoStyleFields({ block, onChange }: BlockEditorProps<VideoBlock>) {
   const all = useAdminText("blocks");
   const w = all.video;
+  const play = videoPlay({ controls: block.controls !== false, autoplay: Boolean(block.autoplay), loop: Boolean(block.loop), once: Boolean(block.once) });
   return (
     <>
       <Choices legend={w.shape} options={optionsOf(VIDEO_RATIOS, all.lists.videoRatios)} value={block.ratio ?? "16:9"} onChange={(ratio) => onChange({ ratio: ratio === "16:9" ? undefined : ratio })} />
@@ -1334,11 +1340,16 @@ function VideoStyleFields({ block, onChange }: BlockEditorProps<VideoBlock>) {
             checked={Boolean(block.autoplay)}
             onChange={(autoplay) => onChange({ autoplay: autoplay || undefined })}
           />
-          <Check label={w.loop} checked={Boolean(block.loop) || Boolean(block.autoplay)} disabled={Boolean(block.autoplay)} onChange={(loop) => onChange({ loop: loop || undefined })} />
+          <Check
+            label={w.loop}
+            checked={play.loop}
+            // One that starts by itself loops unless it is told to play once (D536); one the visitor starts loops only when told to.
+            onChange={(loop) => onChange(block.autoplay ? { once: loop ? undefined : true } : { loop: loop || undefined })}
+          />
           <Check
             label={w.controls}
             hint={w.controlsHint}
-            checked={block.controls !== false || !block.autoplay}
+            checked={play.controls}
             disabled={!block.autoplay}
             onChange={(controls) => onChange({ controls: controls ? undefined : false })}
           />
@@ -1670,6 +1681,7 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
                           startVideo={context.startVideo}
                           upload={context.upload}
                           label={item.video ? v.another : v.upload}
+                          keepSound
                           onUploaded={({ video, poster }) => change({ video, ...(poster && !item.picture ? { picture: poster } : {}) })}
                         />
                         {item.video && (

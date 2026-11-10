@@ -1107,6 +1107,8 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
         controls: media.controls,
         autoplay: media.autoplay,
         loop: media.loop,
+        // The source's video started by itself and did not loop: ours plays once too (D536), where it would otherwise loop.
+        ...(media.autoplay && !media.loop ? { once: true } : {}),
       };
       return block;
     }

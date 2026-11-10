@@ -3,7 +3,8 @@
  * mediabunny, loaded only when a video is chosen): at most 1080p (1920 × 1080 either way round), H.264 in MP4 at mediabunny's
  * "very high" quality for its size and frame rate, without its sound for a row's background, which never plays it. The
  * result is used only when it is clearly smaller (`WORTH`); otherwise, or when the browser cannot encode, the video goes up
- * as it was chosen. Browser only.
+ * as it was chosen. So does a video with a see-through background (D536): H.264 has no transparency, and compressing it
+ * would paint its background black. Browser only.
  */
 
 /** A compressed video is used only when it is at most this share of the original. */
@@ -51,6 +52,7 @@ export async function compressVideo(
     const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
     const track = await input.getPrimaryVideoTrack();
     if (!track) return null;
+    if (await track.canBeTransparent()) return null;
     const size = videoTarget(track.displayWidth, track.displayHeight);
     const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target: new BufferTarget() });
     const conversion = await Conversion.init({

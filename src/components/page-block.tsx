@@ -444,6 +444,7 @@ function Video({ block }: { block: VideoBlock }) {
         controls={block.controls !== false}
         autoplay={Boolean(block.autoplay)}
         loop={Boolean(block.loop)}
+        once={Boolean(block.once)}
         style={style}
       />
     );

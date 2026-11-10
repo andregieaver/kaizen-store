@@ -273,6 +273,20 @@ describe("pictures keep the size of the original (D151)", () => {
     });
   });
 
+  describe("a video that was copied", () => {
+    const copied = (over: Parameters<typeof video>[3]) =>
+      blocksOf(
+        buildReplica(input(capture(page(section("0", [0, 0, 1440, 500], [video("0/0", [100, 40, 640, 360], {}, over)]))), null, { video: () => ({ url: "https://files.test/hero.mp4" }) }), newId).rows,
+      ).find((block) => block.type === "video");
+
+    it("plays once here too when the source's started by itself and did not loop (D536), and loops where the source's did", () => {
+      expect(copied({ autoplay: true, loop: false, controls: false })).toMatchObject({ autoplay: true, loop: false, once: true, controls: false });
+      expect(copied({ autoplay: true, loop: true })).not.toHaveProperty("once");
+      // One the visitor starts stops at its end by itself: nothing to say.
+      expect(copied({ autoplay: false, loop: false })).not.toHaveProperty("once");
+    });
+  });
+
   describe("a video that could not be copied, whose still picture could", () => {
     it("is a picture told to fill the video's box, at the video's shape", () => {
       const built = buildReplica(input(capture(page(section("0", [0, 0, 1440, 500], [video("0/0", [100, 40, 640, 360])])))), newId);

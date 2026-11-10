@@ -36,7 +36,7 @@ import {
   type UploadResult,
   type VideoUpload,
 } from "@/server/media";
-import { registerModel, registerVideo, uploadToLibrary } from "@/server/media-library";
+import { forgetUnstoredVideo, registerModel, registerVideo, uploadToLibrary } from "@/server/media-library";
 import { TERM_ORDER_MAX, createTerm, deleteTerm, setTermOrder, termProducts, termsTag, updateTerm, type TermProduct, type TermsResult } from "@/server/taxonomy";
 import { storageRefusal } from "@/server/limits";
 import { checkedRules, countRuleMembers, ruleChoices, type RuleChoices, type RuleCount } from "@/server/term-rules";
@@ -153,7 +153,14 @@ export async function archiveProductAction(storeSlug: string, productId: string,
 }
 
 /** The video the browser means to upload: its name, type and size, checked again by the bucket. */
-const videoFile = z.object({ name: z.string().max(255).optional(), type: z.string().max(100), size: z.number().int().nonnegative(), compressed: z.boolean().optional() });
+const videoFile = z.object({
+  name: z.string().max(255).optional(),
+  type: z.string().max(100),
+  size: z.number().int().nonnegative(),
+  compressed: z.boolean().optional(),
+  /** The path an earlier start gave, when the browser's upload to it never arrived (D536). */
+  abandoned: z.string().max(300).optional(),
+});
 
 /** Starts an upload of a row's background video straight from the browser to the public bucket. */
 export async function startVideoUploadAction(storeSlug: string, file: unknown): Promise<VideoUpload> {
@@ -162,6 +169,10 @@ export async function startVideoUploadAction(storeSlug: string, file: unknown): 
   const { account, store } = member;
   const parsed = videoFile.safeParse(file);
   if (!parsed.success) return { ok: false, problem: "Choose a video to upload." };
+  if (parsed.data.abandoned !== undefined) {
+    await forgetUnstoredVideo({ storeId: store.id }, parsed.data.abandoned);
+    return { ok: false, problem: "" };
+  }
   const full = await storageRefusal(store.id, parsed.data.size);
   if (full) return { ok: false, problem: full };
   const started = await startVideoUpload(store.id, parsed.data);

@@ -18,7 +18,7 @@ import { chooseWorkspaceLayout, designTags, workspaceOf, type DesignWorkspace } 
 import { installFont } from "@/server/fonts";
 import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
 import { startVideoUpload, type UploadResult, type VideoUpload } from "@/server/media";
-import { registerVideo, uploadToLibrary } from "@/server/media-library";
+import { forgetUnstoredVideo, registerVideo, uploadToLibrary } from "@/server/media-library";
 import { getPageForEdit, savePage } from "@/server/pages";
 import { recommendedGridData } from "@/server/recommend-grid";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
@@ -181,13 +181,23 @@ export async function uploadWorkspaceImageAction(presetId: string, formData: For
   return uploadToLibrary({ storeId: found.workspace.store.id, accountId: found.admin.id }, formData);
 }
 
-const videoFile = z.object({ name: z.string().max(255).optional(), type: z.string().max(100), size: z.number().int().nonnegative() });
+const videoFile = z.object({
+  name: z.string().max(255).optional(),
+  type: z.string().max(100),
+  size: z.number().int().nonnegative(),
+  /** The path an earlier start gave, when the browser's upload to it never arrived (D536). */
+  abandoned: z.string().max(300).optional(),
+});
 
 export async function startWorkspaceVideoAction(presetId: string, file: unknown): Promise<VideoUpload> {
   const found = await workspace(presetId);
   if (!found) return { ok: false, problem: (await platformActionWords()).notYours };
   const parsed = videoFile.safeParse(file);
   if (!parsed.success) return { ok: false, problem: (await platformActionWords()).chooseVideo };
+  if (parsed.data.abandoned !== undefined) {
+    await forgetUnstoredVideo({ storeId: found.workspace.store.id }, parsed.data.abandoned);
+    return { ok: false, problem: "" };
+  }
   const started = await startVideoUpload(found.workspace.store.id, parsed.data);
   if (started.ok) await registerVideo({ storeId: found.workspace.store.id, accountId: found.admin.id }, started, parsed.data);
   return started;

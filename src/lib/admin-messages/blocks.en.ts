@@ -359,10 +359,10 @@ export const blocksEn = {
     posterUpload: "Shown until the video plays.",
     shape: "Shape",
     autoplay: "Start by itself",
-    autoplayHint: "Starts muted and loops, as browsers only start videos without sound; stays still for visitors who prefer less motion.",
+    autoplayHint: "Starts muted (browsers only start silent videos); still for those who prefer less motion. Loop off: plays once, resting on its last frame.",
     loop: "Loop",
     controls: "Show the player's controls",
-    controlsHint: "A video that does not start by itself always has them, so it can be played.",
+    controlsHint: "A video that does not start by itself always has them.",
   },
   html: {
     html: "HTML",

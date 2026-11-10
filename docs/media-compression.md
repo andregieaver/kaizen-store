@@ -31,9 +31,11 @@ social networks and AI models read them. The site icon (a PNG, D62) is not compr
 
 `compressVideo()` (`src/lib/video-compress.ts`) re-encodes with the browser's own encoder (WebCodecs through `mediabunny`,
 loaded only when a video is chosen): at most 1080p either way round, H.264 in MP4 at "very high" quality, without its sound
-for a row's background. It is used only when at most 80 % of the original; otherwise, and where the browser cannot encode
-H.264 (Chromium as Playwright ships it cannot), the video goes up as it was. With compressing possible, a video of up to
-500 MB may be chosen; what is stored is still at most 50 MB.
+for a row's background (the Video component and the gallery keep it, D536). It is used only when at most 80 % of the
+original; otherwise, and where the browser cannot encode H.264 (Chromium as Playwright ships it cannot), the video goes up
+as it was. So does a video with a see-through background (D536, `canBeTransparent()`): H.264 has no transparency, and
+compressing would paint its background black. With compressing possible, a video of up to 500 MB may be chosen; what is
+stored is still at most 50 MB. What goes up is held in the tab's memory and sent twice before it fails (`putWithRetry()`).
 
 ## Files from before: Compress
 

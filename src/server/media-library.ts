@@ -16,7 +16,7 @@ import { vectorLiteral } from "@/lib/vectors";
 
 import { aiFor, AiError, embedTexts, type AiConnection } from "./ai";
 import { audit } from "./auth";
-import { copyStoredFile, removeStoredFiles, uploadProductImage, type UploadResult } from "./media";
+import { copyStoredFile, removeStoredFiles, storedVideo, uploadProductImage, type UploadResult } from "./media";
 import { storageRefusal } from "./limits";
 import { getStore } from "./stores";
 
@@ -160,6 +160,19 @@ export async function registerVideo(
       ${file.compressed ? sql`now()` : null}
     )
     on conflict (url) do nothing
+  `);
+}
+
+/**
+ * Forgets a video whose upload never arrived (D536): the row `registerVideo()` kept as the upload started, the owner's own,
+ * and only while Storage holds no file at its path, so a video that did arrive is never taken out of the library here.
+ */
+export async function forgetUnstoredVideo(owner: { storeId: string | null }, path: string): Promise<void> {
+  if (await storedVideo(path)) return;
+  await db().execute(sql`
+    delete from commerce.media
+    where kind = 'video' and bucket = 'page-videos' and path = ${path}
+      and store_id is not distinct from ${owner.storeId}::uuid
   `);
 }
 

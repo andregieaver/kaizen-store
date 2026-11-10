@@ -1505,9 +1505,11 @@ export const VIDEO_TITLE_MAX = 200;
 /**
  * A video (D91): one uploaded to the site, played by the browser with or
  * without controls (and, if set, starting muted and looping, still for
- * those who prefer less motion); or one on YouTube or Vimeo, shown as its
- * poster and a play button, whose player loads only when pressed. Its
- * title names it to screen readers and the player.
+ * those who prefer less motion; or, D536, playing once and resting on its
+ * last frame, as an animated logo does); or one on YouTube or Vimeo, shown
+ * as its poster and a play button, whose player loads only when pressed.
+ * Its title names it to screen readers and the player. How the settings
+ * play out is `videoPlay()` (`src/lib/video-play.ts`).
  */
 export type VideoBlock = PartBase & {
   id: string;
@@ -1527,6 +1529,8 @@ export type VideoBlock = PartBase & {
   /** An uploaded video: starts by itself, muted, looping. */
   autoplay?: boolean;
   loop?: boolean;
+  /** One that starts by itself plays once and rests on its last frame instead of looping (D536). */
+  once?: boolean;
 };
 
 export const HTML_MAX = 50_000;
@@ -3418,6 +3422,7 @@ const videoBlock = z
     controls: z.boolean().optional(),
     autoplay: z.boolean().optional(),
     loop: z.boolean().optional(),
+    once: z.boolean().optional(),
     ...partBase,
   })
   .refine((block) => block.source === "upload" || block.link === "" || embedUrl(block.source, block.link) !== null, {

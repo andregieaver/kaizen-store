@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { savingWords } from "@/lib/image-quality";
 import { createClient } from "@/lib/supabase/client";
+import { putWithRetry } from "@/lib/upload-retry";
 import { canCompressVideo, compressVideo, VIDEO_CHOOSE_MAX_BYTES, VIDEO_MAX_BYTES } from "@/lib/video-compress";
 
 import { uploadPicture, type Saving, type Upload, type Uploaded } from "./image-upload";
@@ -11,14 +12,19 @@ import { useAdminText } from "@/components/admin/admin-text";
 import { fillWords } from "@/lib/admin-fill";
 import type { CommonMessages } from "@/lib/admin-messages/common.en";
 
-/** Starts a video's upload: a signed upload to the public bucket and the address it will have. */
-export type StartVideo = (file: { name?: string; type: string; size: number; compressed?: boolean }) => Promise<
+/**
+ * Starts a video's upload: a signed upload to the public bucket and the address it will have. Called again with
+ * `abandoned` (the path it gave) when the file never arrived, so the media library forgets the video it had kept (D536).
+ */
+export type StartVideo = (file: { name?: string; type: string; size: number; compressed?: boolean; abandoned?: string }) => Promise<
   { ok: true; path: string; token: string; bucket: string; url: string } | { ok: false; problem: string }
 >;
 
 export type UploadedVideo = { video: { url: string }; poster: Uploaded | null };
 
 const VIDEO_TYPES = ["video/mp4", "video/webm"];
+/** How long taking a still may take before the upload goes on without one. */
+const STILL_WAIT_MS = 8000;
 
 /**
  * A still from early in the video, as a picture: shown until the video
@@ -29,10 +35,16 @@ export function takeStill(file: File): Promise<File | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const video = document.createElement("video");
+    let settled = false;
     const done = (still: File | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       URL.revokeObjectURL(url);
       resolve(still);
     };
+    // A browser that neither plays the file nor says it cannot must not hold the upload up for ever.
+    const timer = setTimeout(() => done(null), STILL_WAIT_MS);
     video.muted = true;
     video.playsInline = true;
     video.preload = "auto";
@@ -58,6 +70,9 @@ export function takeStill(file: File): Promise<File | null> {
  * `keepSound` is false, used only when clearly smaller) and uploads it straight from the browser to Storage (after the
  * server starts it, which keeps it in the media library, D88), with a still from it as its poster where `upload` is given.
  * A video larger than may be stored is accepted while this browser can compress it, and refused if it is still too large.
+ * What is sent is held in this tab's memory first and sent twice if the first try does not arrive (D536, `putWithRetry()`):
+ * a phone can lose its hold on a chosen file between choosing and sending, and then nothing leaves it. A video that never
+ * arrived is taken out of the media library again.
  */
 /** The words an upload says (`common.ui`), in the account's language: each caller hands in `useAdminText("common").ui`. */
 export type UploadWords = CommonMessages["ui"];
@@ -76,16 +91,26 @@ export async function uploadVideoFile(
   }
   try {
     const compressed = compressing ? await compressVideo(chosen, { keepSound: options.keepSound ?? true, onProgress: options.onProgress }) : null;
-    const file = compressed?.file ?? chosen;
-    if (file.size > VIDEO_MAX_BYTES) return { ok: false, problem: w.videoTooLargeCompressed };
+    if ((compressed?.file ?? chosen).size > VIDEO_MAX_BYTES) return { ok: false, problem: w.videoTooLargeCompressed };
+    const file = compressed?.file ?? (await heldInMemory(chosen));
+    if (!file) return { ok: false, problem: fillWords(w.notUploaded, { name: chosen.name }) };
     const started = await startVideo({ name: chosen.name, type: file.type, size: file.size, compressed: compressed !== null });
     if (!started.ok) return { ok: false, problem: started.problem };
+    const storage = createClient().storage.from(started.bucket);
     const [stored, still] = await Promise.all([
-      createClient().storage.from(started.bucket).uploadToSignedUrl(started.path, started.token, file, { contentType: file.type }),
+      putWithRetry(
+        () => storage.uploadToSignedUrl(started.path, started.token, file, { contentType: file.type }),
+        (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      ),
       upload ? takeStill(file) : Promise.resolve(null),
     ]);
-    if (stored.error) return { ok: false, problem: fillWords(w.notUploaded, { name: chosen.name }) };
-    const poster = still && upload ? await uploadPicture(upload, still) : null;
+    if (!stored.ok) {
+      // The library kept the video as its upload started (D88); it never arrived, so it is forgotten again.
+      void startVideo({ type: file.type, size: file.size, abandoned: started.path }).catch(() => undefined);
+      return { ok: false, problem: fillWords(w.notUploaded, { name: chosen.name }) };
+    }
+    // The video is stored by now: a still that cannot be kept leaves it without a picture, not without the video.
+    const poster = still && upload ? await uploadPicture(upload, still).catch(() => null) : null;
     return {
       ok: true,
       video: { video: { url: started.url }, poster: poster?.ok ? poster.image : null },
@@ -96,15 +121,27 @@ export async function uploadVideoFile(
   }
 }
 
+/** The chosen file as bytes this tab holds, so sending it no longer depends on the phone's own file; null when it cannot be read. */
+async function heldInMemory(file: File): Promise<File | null> {
+  try {
+    return new File([await file.arrayBuffer()], file.name, { type: file.type, lastModified: file.lastModified });
+  } catch {
+    return null;
+  }
+}
+
 export function VideoUploadButton({
   startVideo,
   upload,
   label,
+  keepSound = false,
   onUploaded,
 }: {
   startVideo: StartVideo | null;
   upload: Upload | null;
   label: string;
+  /** A row's background plays without sound, so its sound is left out; a video people play keeps it. */
+  keepSound?: boolean;
   onUploaded: (video: UploadedVideo) => void;
 }) {
   const ui = useAdminText("common").ui;
@@ -118,9 +155,8 @@ export function VideoUploadButton({
     setBusy(ui.compressing);
     setProblem(null);
     setSaved(null);
-    // A row's background plays without sound, so its sound is left out.
     const outcome = await uploadVideoFile(startVideo, upload, file, {
-      keepSound: false,
+      keepSound,
       onProgress: (progress) => setBusy(progress < 1 ? fillWords(ui.compressingPercent, { percent: Math.round(progress * 100) }) : ui.uploading),
       words: ui,
     });
@@ -147,7 +183,8 @@ export function VideoUploadButton({
           }}
         />
       </label>
-      <p className="text-xs text-muted">{ui.videoHint}</p>
+      {/* The hint is a row background's: without sound, on a loop. A video people play says its own beside the button. */}
+      {!keepSound && <p className="text-xs text-muted">{ui.videoHint}</p>}
       {saved && (
         <p role="status" className="text-xs text-muted">
           {saved}.

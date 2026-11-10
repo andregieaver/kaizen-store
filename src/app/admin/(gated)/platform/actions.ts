@@ -25,7 +25,7 @@ import {
 } from "@/server/billing";
 import { connectPlatformWebhooks, setCheckoutUi, setSaleFeeBps } from "@/server/connect";
 import { startVideoUpload, type UploadResult, type VideoUpload } from "@/server/media";
-import { registerVideo, uploadToLibrary } from "@/server/media-library";
+import { forgetUnstoredVideo, registerVideo, uploadToLibrary } from "@/server/media-library";
 import { contentForLook, designTags } from "@/server/design-presets";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
 import { setSelfServe } from "@/server/self-signup";
@@ -310,9 +310,20 @@ export async function uploadPlatformImageAction(formData: FormData): Promise<Upl
 export async function startPlatformVideoUploadAction(file: unknown): Promise<VideoUpload> {
   const admin = await requirePlatform("website");
   const parsed = z
-    .object({ name: z.string().max(255).optional(), type: z.string().max(100), size: z.number().int().nonnegative(), compressed: z.boolean().optional() })
+    .object({
+      name: z.string().max(255).optional(),
+      type: z.string().max(100),
+      size: z.number().int().nonnegative(),
+      compressed: z.boolean().optional(),
+      /** The path an earlier start gave, when the browser's upload to it never arrived (D536). */
+      abandoned: z.string().max(300).optional(),
+    })
     .safeParse(file);
   if (!parsed.success) return { ok: false, problem: (await said()).chooseAVideoToUpload };
+  if (parsed.data.abandoned !== undefined) {
+    await forgetUnstoredVideo({ storeId: null }, parsed.data.abandoned);
+    return { ok: false, problem: "" };
+  }
   const started = await startVideoUpload("platform", parsed.data);
   // Kept in Kaizen's media library as its upload starts (D88).
   if (started.ok) await registerVideo({ storeId: null, accountId: admin.id }, started, parsed.data);

@@ -163,6 +163,14 @@ describe("videos", () => {
     expect(blockHasContent(parse({ ...youtube, source: "upload", video: { url: "https://example.com/film.mp4" } }))).toBe(true);
   });
 
+  it("keeps how an uploaded video plays, play once among it, and takes only yes or no", () => {
+    const upload = { ...youtube, source: "upload", link: "", video: { url: "https://example.com/logo.webm" } };
+    expect(parse({ ...upload, autoplay: true, controls: false, once: true })).toMatchObject({ autoplay: true, controls: false, once: true });
+    // Videos from before have no `once`, and none is written for them.
+    expect(parse({ ...upload, autoplay: true })).not.toHaveProperty("once");
+    expect(problems({ ...upload, once: "yes" })).toHaveLength(1);
+  });
+
   it("takes only a YouTube or Vimeo video's address", () => {
     expect(parse({ ...youtube, source: "vimeo", link: "https://vimeo.com/76979871" })).toMatchObject({ link: "https://vimeo.com/76979871" });
     expect(problems({ ...youtube, link: "https://example.com/film" })).toEqual(["Use the address of a video on YouTube or Vimeo, as its Share button gives it."]);

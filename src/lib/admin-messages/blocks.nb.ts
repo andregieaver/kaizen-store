@@ -353,10 +353,10 @@ export const blocksNb: BlocksMessages = {
     posterUpload: "Vises til videoen spilles av.",
     shape: "Form",
     autoplay: "Start av seg selv",
-    autoplayHint: "Starter uten lyd og går i løkke, fordi nettlesere bare starter videoer uten lyd; står stille for besøkende som foretrekker mindre bevegelse.",
+    autoplayHint: "Starter uten lyd, fordi nettlesere bare starter videoer uten lyd; står stille for besøkende som foretrekker mindre bevegelse. Med Løkke av spilles den én gang og blir stående på siste bilde.",
     loop: "Løkke",
     controls: "Vis spillerens kontroller",
-    controlsHint: "En video som ikke starter av seg selv har dem alltid, så den kan spilles av.",
+    controlsHint: "En video som ikke starter av seg selv har dem alltid.",
   },
   html: {
     html: "HTML",
