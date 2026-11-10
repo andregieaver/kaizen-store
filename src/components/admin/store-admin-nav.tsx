@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -94,11 +94,12 @@ export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallba
             <Link
               href={item.href}
               aria-current={isCurrent(item) ? "page" : undefined}
-              className="flex h-9 items-center rounded-pill px-3 text-body text-ink-2 hover:bg-card hover:text-ink aria-[current=page]:bg-card aria-[current=page]:text-body-strong aria-[current=page]:text-ink"
+              className="relative flex h-9 items-center rounded-pill px-3 text-body text-ink-2 hover:bg-card hover:text-ink aria-[current=page]:bg-card aria-[current=page]:text-body-strong aria-[current=page]:text-ink"
             >
               {item.icon && <NavIcon name={item.icon} className="mr-1.5 size-4" />}
               {item.label}
               <Badge count={item.badge} />
+              <LinkPending />
             </Link>
           </li>
         ))}
@@ -130,16 +131,33 @@ export function StoreTabs({ items, label }: { items: NavItem[]; label: string })
             <Link
               href={item.href}
               aria-current={isCurrent(item) ? "page" : undefined}
-              className="flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm text-muted hover:text-ink aria-[current=page]:border-brand aria-[current=page]:font-medium aria-[current=page]:text-ink"
+              className="relative flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm text-muted hover:text-ink aria-[current=page]:border-brand aria-[current=page]:font-medium aria-[current=page]:text-ink"
             >
               {item.icon && <NavIcon name={item.icon} className="mr-1.5 size-4" />}
               {item.label}
               <Badge count={item.badge} />
+              <LinkPending />
             </Link>
           </li>
         ))}
       </ul>
     </nav>
+  );
+}
+
+/**
+ * That a pressed link is on its way (code review FS1): a thin bar along the link's foot while its page loads, always drawn and only
+ * shown, so nothing moves. The page's own outline (`loading.tsx`) follows once the address changes; this answers the press itself, for
+ * a page that was not fetched ahead. Its link is `relative`. `data-pending` is for the tests.
+ */
+export function LinkPending({ className = "inset-x-3 bottom-1" }: { className?: string }) {
+  const { pending } = useLinkStatus();
+  return (
+    <span
+      aria-hidden
+      data-pending={pending || undefined}
+      className={`pointer-events-none absolute h-0.5 rounded-pill bg-brand opacity-0 transition-opacity delay-100 data-pending:opacity-100 motion-safe:data-pending:animate-pulse ${className}`}
+    />
   );
 }
 
@@ -177,11 +195,12 @@ export function StoreSidebar({ groups, label, hint = true }: { groups: NavGroup[
                 <Link
                   href={item.href}
                   aria-current={isCurrent(item) ? "page" : undefined}
-                  className="flex min-h-10 items-center rounded-pill px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium"
+                  className="relative flex min-h-10 items-center rounded-pill px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium"
                 >
                   {item.icon && <NavIcon name={item.icon} className="mr-2 size-4 text-ink-2" />}
                   {item.label}
                   <Badge count={item.badge} />
+                  <LinkPending />
                 </Link>
               </li>
             ))}
