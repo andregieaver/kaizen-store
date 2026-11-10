@@ -523,6 +523,8 @@ export const inventoryEn = {
   },
   /** Drop shipping (D540, `docs/drop-shipping.md`): the suppliers that send your goods to your customers. */
   suppliers: {
+    sentByColumn: "Sent by",
+    subtitle: "Orders go to {email}. Ships from {country}, within {days}.",
     caption: "Suppliers that ship for you",
     none: "No supplier ships for you yet. Add one below, then choose the products it sends.",
     name: "Supplier",

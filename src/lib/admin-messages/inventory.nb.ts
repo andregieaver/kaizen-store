@@ -561,6 +561,8 @@ export const inventoryNb: InventoryMessages = {
     incomingHint: "Enheter på vei hit: sendte overføringer og innkjøpsordrer som ikke er telt inn. De er ikke til salgs før de kommer.",
   },
   suppliers: {
+    sentByColumn: "Sendes av",
+    subtitle: "Ordrene går til {email}. Sender fra {country}, innen {days}.",
     caption: "Leverandører som sender for deg",
     none: "Ingen leverandør sender for deg ennå. Legg til en under, og velg så produktene den sender.",
     name: "Leverandør",

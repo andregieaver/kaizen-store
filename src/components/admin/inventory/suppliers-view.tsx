@@ -262,7 +262,7 @@ export function SupplierProducts({
                   SKU
                 </th>
                 <th scope="col" className={th}>
-                  {w.dispatch}
+                  {w.sentByColumn}
                 </th>
                 <th scope="col" className={`${th} text-right`}>
                   {w.stock}

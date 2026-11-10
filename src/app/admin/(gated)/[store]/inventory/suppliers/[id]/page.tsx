@@ -7,10 +7,10 @@ import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { requireFeature } from "@/components/admin/feature-off";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { StopSupplier, SupplierFormCard, SupplierProducts } from "@/components/admin/inventory/suppliers-view";
-import { fillWords } from "@/lib/admin-fill";
+import { countWords, fillWords } from "@/lib/admin-fill";
 import { adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
-import { supplierCountries } from "@/lib/drop-shipping";
+import { countryName, supplierCountries } from "@/lib/drop-shipping";
 import { inventoryPaths } from "@/lib/inventory-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getDropShipSupplier, supplierVariants } from "@/server/suppliers";
@@ -34,13 +34,13 @@ export default async function SupplierPage({ params, searchParams }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <Suspense fallback={<DataSkeleton />}>
-        <Body storeSlug={store.slug} id={id} search={typeof query.q === "string" ? query.q.slice(0, 100) : ""} added={query.added === "1"} title={w.pages.suppliers.title} back={w.suppliers.back} />
+        <Body storeSlug={store.slug} id={id} search={typeof query.q === "string" ? query.q.slice(0, 100) : ""} added={query.added === "1"} back={w.suppliers.back} />
       </Suspense>
     </div>
   );
 }
 
-async function Body({ storeSlug, id, search, added, title, back }: { storeSlug: string; id: string; search: string; added: boolean; title: string; back: string }) {
+async function Body({ storeSlug, id, search, added, back }: { storeSlug: string; id: string; search: string; added: boolean; back: string }) {
   const member = await requirePermission(storeSlug, "products:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
@@ -53,7 +53,7 @@ async function Body({ storeSlug, id, search, added, title, back }: { storeSlug: 
   return (
     <AdminTextScope texts={adminTexts(lang, ["inventory"])}>
       <div className="flex flex-col gap-6">
-        <InventoryHead slug={store.slug} active="suppliers" title={supplier.name} intro={supplier.outsideEu ? w.outsideEu : title} lang={lang} back={{ href: base, label: back }} />
+        <InventoryHead slug={store.slug} active="suppliers" title={supplier.name} intro={`${fillWords(w.subtitle, { email: supplier.orderEmail, country: countryName(supplier.shipsFrom), days: countWords(supplier.dispatchDays, w.days) })}${supplier.outsideEu ? ` ${w.outsideEu}` : ""}`} lang={lang} back={{ href: base, label: back }} />
         {added && (
           <p role="status" className="text-sm">
             {fillWords(w.added, { name: supplier.name })}
