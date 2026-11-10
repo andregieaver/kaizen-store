@@ -361,6 +361,113 @@ describe("the owner assistant (D94)", () => {
     expect(await assistant.decideApproval(member, fresh.approval.id, false, () => {})).toMatchObject({ status: "declined" });
   });
 
+  it("ends a slow turn by its deadline with a saved answer and its tool trail (code review 0.8, FA2)", async () => {
+    // A slow connection: every round takes 250 ms, and the model keeps asking for tools while it is offered any.
+    const requests: { tools?: unknown[] }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(String(init.body)) as { tools?: unknown[] };
+        requests.push(body);
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        return body.tools ? calls({ name: "store_overview", args: {} }) : says("Butikken er åpen; mer rakk jeg ikke.");
+      }),
+    );
+    const events: AssistantEvent[] = [];
+    await assistant.runTurn({
+      member,
+      conversationId: null,
+      message: "Gå gjennom alt",
+      emit: (e) => events.push(e),
+      invalidate: () => {},
+      connection,
+      limits: { deadlineMs: 1_500, lastRoundMs: 600 },
+    });
+    // It went round with tools, then was made to answer without them, inside its time and far short of eleven rounds.
+    expect(requests.length).toBeGreaterThan(1);
+    expect(requests.length).toBeLessThan(11);
+    expect(requests.at(-1)!.tools).toBeUndefined();
+    const done = events.at(-1) as { type: "done"; message: { id: string; content: string; tools: { name: string; ok: boolean }[] } };
+    expect(done).toMatchObject({ type: "done", message: { content: "Butikken er åpen; mer rakk jeg ikke." } });
+    expect(done.message.tools.length).toBe(requests.length - 1);
+    expect(done.message.tools.every((t) => t.name === "store_overview")).toBe(true);
+    const started = events.find((e) => e.type === "conversation") as { id: string };
+    const saved = (await assistant.getConversation(member, started.id))!;
+    expect(saved.messages.at(-1)).toMatchObject({ role: "assistant", content: done.message.content, tools: done.message.tools });
+    expect(await assistant.deleteConversation(member, started.id)).toBe(true);
+  });
+
+  it("saves what ran when the provider stops answering, never hanging past the round's time (FA2)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(String(init.body)) as { messages: unknown[] };
+        // The first round answers; the second never does, until the round's time aborts it.
+        if (body.messages.length <= 3) return calls({ name: "store_overview", args: {} });
+        return new Promise<Response>((_resolve, reject) => init.signal?.addEventListener("abort", () => reject(init.signal?.reason)));
+      }),
+    );
+    const events: AssistantEvent[] = [];
+    const began = Date.now();
+    await assistant.runTurn({
+      member,
+      conversationId: null,
+      message: "Hei",
+      emit: (e) => events.push(e),
+      invalidate: () => {},
+      connection,
+      limits: { deadlineMs: 1_000, lastRoundMs: 400 },
+    });
+    expect(Date.now() - began).toBeLessThan(3_000);
+    expect(events.find((e) => e.type === "error")).toMatchObject({ message: expect.stringContaining("No answer within") });
+    const done = events.at(-1) as { type: "done"; message: { tools: { name: string; ok: boolean }[] } };
+    expect(done).toMatchObject({ type: "done", message: { tools: [{ name: "store_overview", ok: true }] } });
+    const started = events.find((e) => e.type === "conversation") as { id: string };
+    expect(await assistant.deleteConversation(member, started.id)).toBe(true);
+  });
+
+  it("stops a turn over its ceiling of tokens with a plain message, keeping what ran (FA5)", async () => {
+    const requests = fakeModel(calls({ name: "store_overview", args: {} }), says("Never asked."));
+    const events: AssistantEvent[] = [];
+    await assistant.runTurn({
+      member,
+      conversationId: null,
+      message: "Hei",
+      emit: (e) => events.push(e),
+      invalidate: () => {},
+      connection,
+      // The system prompt alone is more than this: the first round passes it, so no second is asked for.
+      limits: { tokens: 100 },
+    });
+    expect(requests).toHaveLength(1);
+    const done = events.at(-1) as { type: "done"; message: { content: string; tools: { name: string; ok: boolean }[] } };
+    expect(done).toMatchObject({ type: "done", message: { content: expect.stringContaining("more work than one turn allows"), tools: [{ name: "store_overview", ok: true }] } });
+    const started = events.find((e) => e.type === "conversation") as { id: string };
+    const saved = (await assistant.getConversation(member, started.id))!;
+    expect(saved.messages.at(-1)).toMatchObject({ role: "assistant", content: done.message.content });
+    expect(await assistant.deleteConversation(member, started.id)).toBe(true);
+  });
+
+  it("holds a platform admin to a cost a day (FA5)", async () => {
+    const admin = { account: { ...member.account, platformAdmin: true }, store: null };
+    // A day's spending already recorded for this person on the platform, at a price that makes it more than the ceiling.
+    await db().execute(sql`
+      insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, effective_from)
+      values ('openai', ${`ceiling-model-${run}`}, 10, 10, now() - interval '1 day')
+    `);
+    await db().execute(sql`
+      insert into commerce.ai_usage (store_id, actor_account_id, source, provider, model, kind, feature, requests, input_tokens, output_tokens)
+      values (null, ${member.account.id}::uuid, 'platform', 'openai', ${`ceiling-model-${run}`}, 'text', 'ai_manager', 1, 3000000, 0)
+    `);
+    const requests = fakeModel(says("Never asked."));
+    const events: AssistantEvent[] = [];
+    await assistant.runTurn({ member: admin, conversationId: null, message: "Hei", emit: (e) => events.push(e), invalidate: () => {}, connection });
+    expect(requests).toHaveLength(0);
+    expect(events).toEqual([{ type: "error", message: expect.stringContaining("today's limit") }]);
+    await db().execute(sql`delete from commerce.ai_usage where model = ${`ceiling-model-${run}`}`);
+    await db().execute(sql`delete from commerce.ai_model_prices where model = ${`ceiling-model-${run}`}`);
+  });
+
   it("is each owner's own, and says so when there is no text model", async () => {
     const other = { ...member, account: { ...member.account, id: "00000000-0000-4000-8000-000000000000" } };
     expect(await assistant.getConversation(other, conversationId)).toBeNull();

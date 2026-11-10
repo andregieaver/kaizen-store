@@ -661,11 +661,16 @@ export async function streamWithTools(
   messages: ToolChatMessage[],
   tools: ToolDefinition[],
   onText: (delta: string) => void,
-  options: { maxTokens?: number; timeoutMs?: number; signal?: AbortSignal } = {},
+  options: { maxTokens?: number; timeoutMs?: number; signal?: AbortSignal; onTokens?: (tokens: number) => void } = {},
 ): Promise<{ content: string | null; toolCalls: ToolCall[] }> {
   const textModel = connection.textModel;
   if (!textModel) throw new AiError("No text model is set.");
-  return metered(connection, { kind: "text", provider: connection.provider, model: textModel }, () => streamWithToolsOnce(connection, messages, tools, onText, options));
+  return metered(connection, { kind: "text", provider: connection.provider, model: textModel }, async () => {
+    const answer = await streamWithToolsOnce(connection, messages, tools, onText, options);
+    // The tokens the round used, in and out (reported, or estimated as usage records them), for a turn's ceiling (code review 0.8).
+    options.onTokens?.((answer.amounts?.inputTokens ?? 0) + (answer.amounts?.outputTokens ?? 0));
+    return answer;
+  });
 }
 
 /** Providers known to send the tokens used with a streamed answer when asked (`stream_options`); others are asked nothing new. */
@@ -701,7 +706,7 @@ async function streamWithToolsOnce(
     });
   } catch (error) {
     if (options.signal?.aborted) throw error;
-    throw new AiError("The provider could not be reached.");
+    throw new AiError(timeout.aborted ? `No answer within ${Math.round((options.timeoutMs ?? 60_000) / 1000)} seconds.` : "The provider could not be reached.");
   }
   if (!response.ok || !response.body) {
     const text = await response.text().catch(() => "");
@@ -720,7 +725,15 @@ async function streamWithToolsOnce(
   let buffer = "";
   let usage: unknown = null;
   for (;;) {
-    const { done, value } = await reader.read();
+    let read: ReadableStreamReadResult<string>;
+    try {
+      read = await reader.read();
+    } catch (error) {
+      // Cut while streaming: by the round's time it is the provider's slowness, said as such; a Stop is thrown on as it was.
+      if (timeout.aborted && !options.signal?.aborted) throw new AiError(`No answer within ${Math.round((options.timeoutMs ?? 60_000) / 1000)} seconds.`);
+      throw error;
+    }
+    const { done, value } = read;
     if (done) break;
     buffer += value;
     const lines = buffer.split("\n");

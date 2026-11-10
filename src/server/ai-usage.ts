@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { AI_FEATURES, NO_USAGE, type AiFeature, type AiKind, type AiSource, type UsageAmounts, type UsageRow } from "@/lib/ai-usage";
@@ -8,6 +9,7 @@ import { AI_FEATURES, NO_USAGE, type AiFeature, type AiKind, type AiSource, type
 import { currentActor } from "./actor";
 import { costMicrosSql, priceFor, unpricedSql } from "./ai-price-sql";
 import { log } from "./log";
+import { col, typedRow } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 
@@ -38,6 +40,25 @@ export type UsageEvent = {
   amounts?: Partial<UsageAmounts>;
   sessionRef?: string | null;
 };
+
+/**
+ * What one person's AI manager turns on the platform (store null) cost in the last 24 hours, in millionths of a dollar: the daily
+ * ceiling per platform admin (code review 0.8, FA5). Calls without a price count nothing; the rounds that answered from a report are
+ * the manager's too.
+ */
+export async function platformManagerCostToday(accountId: string): Promise<number> {
+  const row = await typedRow(
+    z.object({ cost_micros: col.minor }),
+    sql`
+      select coalesce(sum(${costMicrosSql}), 0)::bigint as cost_micros
+      from commerce.ai_usage u
+      ${priceFor}
+      where u.store_id is null and u.actor_account_id = ${accountId}::uuid
+        and u.feature in ('ai_manager', 'analytics_question') and u.created_at > now() - interval '1 day'
+    `,
+  );
+  return row?.cost_micros ?? 0;
+}
 
 /** Days usage is kept. */
 export const USAGE_KEEP_DAYS = 400;

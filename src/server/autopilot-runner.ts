@@ -309,6 +309,8 @@ async function runTaskStep(
       },
       invalidate: refreshTag,
       signal: AbortSignal.timeout(TURN_MS),
+      // Inside the step's own time, so the model answers from what it did rather than being cut off (code review 0.8).
+      limits: { deadlineMs: TURN_MS - 10_000, lastRoundMs: 30_000 },
       scheduled: true,
       autopilot: { stepId: step.id, tools: step.spec.kind === "task" ? step.spec.tools : [], settings, told },
       connection,

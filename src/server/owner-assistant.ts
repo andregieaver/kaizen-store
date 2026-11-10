@@ -19,13 +19,14 @@ import { approvalSummary, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, ty
 
 import { savedSkillsText } from "./assistant-saved-skills";
 import { noticeApproval } from "./assistant-notices";
-import { AiError, aiFor, canSpeak, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
+import { AiError, aiFor, aiRoomLeft, canSpeak, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { learnFromTurn, memoriesFor, type Memory } from "./assistant-memory";
 import type { Account, Membership, Role } from "./auth";
 import { actingAs, currentActor } from "./actor";
 import { afterAnswer } from "./after-answer";
 import { askLifeAssistant, assistantsOn, LifeAssistantError } from "./kaizen-life-accounts";
 import { cancelToLife, handToLife, lifeHandoffsOf, settleHandoffAfterApproval } from "./kaizen-life-handoffs";
+import { platformManagerCostToday } from "./ai-usage";
 import { log } from "./log";
 import { platformGateNeeded, preflightPlatformTool, runManagerTool, runPlatformTool, type ManagerContext, type OutsideAsker } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
@@ -63,6 +64,7 @@ import type { MakeThemeLiveInput } from "@/lib/design-tools";
 import { SETUP_TOOLS } from "@/lib/setup-tools";
 import type { Store } from "./stores";
 import { effectiveFeatures } from "@/lib/store-features";
+import { nextRound, PLATFORM_DAILY_COST_MICROS, TOOL_OUT_OF_TIME, toolMayRun, TURN_LIMITS, TURN_STOP_WORDS, type TurnLimits, type TurnStop } from "@/lib/turn-budget";
 import { can, canOpenPath, type PermissionHolder } from "@/lib/permissions";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
 import { EVENT_LINES, type EventKind } from "@/lib/autopilot-events";
@@ -539,6 +541,11 @@ export type TurnInput = {
   emit: (event: AssistantEvent) => void;
   invalidate: (tag: string) => void;
   signal?: AbortSignal;
+  /**
+   * What the turn may spend (code review 0.8): its time and tokens. `TURN_LIMITS` unless given: the autopilot's shorter turns give their
+   * own time, tests small ones.
+   */
+  limits?: Partial<TurnLimits>;
   /** The admin page the person is on, so it knows where they are. */
   path?: string | null;
   /** Runs work after the answer is sent (the route's `after()`): learning from the turn. Without it, nothing is learned. */
@@ -602,6 +609,15 @@ async function overLimit(p: Principal): Promise<boolean> {
 }
 
 /**
+ * A limit met between two rounds of a turn (FA5): a store on Kaizena Flow's key whose month's AI is used up, or a platform admin past
+ * today's cost. A store's own key is never limited.
+ */
+async function overBudgetBetweenRounds(p: Principal, connection: AiConnection): Promise<TurnStop | null> {
+  if (p.store) return connection.source === "platform" && !(await aiRoomLeft(p.store.id)) ? "allowance" : null;
+  return (await platformManagerCostToday(p.account.id)) >= PLATFORM_DAILY_COST_MICROS ? "platform_cost" : null;
+}
+
+/**
  * The person's message, answered: kept, run through the tool loop with the
  * conversation so far, and the answer kept. Events stream as it goes; what
  * was lasting in it is learned afterwards.
@@ -620,6 +636,10 @@ export async function runTurn(input: TurnInput): Promise<void> {
   }
   if (await overLimit(p)) {
     return emit({ type: "error", message: `The AI manager has answered ${DAILY_TURNS} messages ${store ? "for this store" : "for you"} today. It is back tomorrow.` });
+  }
+  // A platform admin's turns are paid by Kaizena Flow and held to a cost a day (FA5); a store's by its plan's monthly allowance.
+  if (!store && (await platformManagerCostToday(account.id)) >= PLATFORM_DAILY_COST_MICROS) {
+    return emit({ type: "error", message: TURN_STOP_WORDS.platform_cost });
   }
 
   let conversationId = input.conversationId;
@@ -750,12 +770,32 @@ export async function runTurn(input: TurnInput): Promise<void> {
   let reply = "";
   // The rounds that answer from a report are metered as their own feature (D346), so the owner sees what questions about the figures cost.
   let metered = connection;
+  // The turn's budget (code review 0.8, FA2 and FA5): a deadline inside the route's limit, a ceiling of tokens, and the month's allowance
+  // looked at again between rounds. With time short the model answers without tools; past a limit the turn stops with a plain message.
+  const limits: TurnLimits = { ...TURN_LIMITS, ...input.limits };
+  const deadline = Date.now() + limits.deadlineMs;
+  let tokens = 0;
+  let stopped: TurnStop | null = null;
   try {
     for (let step = 0; step <= MAX_STEPS; step++) {
       if (input.signal?.aborted) throw new AiError("Stopped.");
-      const last = step === MAX_STEPS;
+      let round = nextRound({ step, maxSteps: MAX_STEPS, now: Date.now(), deadline, tokens, limits });
+      if (round.kind !== "stop" && step > 0) {
+        const stop = await overBudgetBetweenRounds(p, connection);
+        if (stop) round = { kind: "stop", reason: stop };
+      }
+      if (round.kind === "stop") {
+        stopped = round.reason;
+        log("info", "ai_manager.turn_cut", { reason: round.reason, step, tokens, tools: trail.length });
+        break;
+      }
+      const last = round.kind === "last";
       const answer = await streamWithTools(metered, messages, last ? [] : tools, (delta) => emit({ type: "text", delta }), {
         signal: input.signal,
+        timeoutMs: round.timeoutMs,
+        onTokens: (used) => {
+          tokens += used;
+        },
       });
       if (answer.toolCalls.length === 0 || last) {
         reply = answer.content ?? "";
@@ -765,6 +805,12 @@ export async function runTurn(input: TurnInput): Promise<void> {
       messages.push({ role: "assistant", content: answer.content, tool_calls: answer.toolCalls });
       for (const call of answer.toolCalls) {
         if (input.signal?.aborted) throw new AiError("Stopped.");
+        // Once the last round's time has begun, the calls left are answered as not run, so the model can still say what it did.
+        if (!toolMayRun(Date.now(), deadline, limits)) {
+          trail.push({ name: call.function.name, ok: false });
+          messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ error: TOOL_OUT_OF_TIME }) });
+          continue;
+        }
         const loading = call.function.name === LOAD_TOOLS && tools.some((t) => t.name === LOAD_TOOLS);
         const result = loading
           ? loadTools(call.function.arguments)
@@ -789,12 +835,12 @@ export async function runTurn(input: TurnInput): Promise<void> {
     emit({ type: "done", message: saved });
     return;
   }
-  const answered = reply.trim() || "(No answer.)";
+  const answered = stopped ? TURN_STOP_WORDS[stopped] : reply.trim() || "(No answer.)";
   const saved = input.live
     ? { id: "live", role: "assistant" as const, content: answered, tools: trail, feedback: null, createdAt: new Date().toISOString() }
     : await addMessage(p, conversationId, "assistant", answered, trail);
   emit({ type: "done", message: saved });
-  if (input.later && !input.fromKaizenLife && !input.outside && reply.trim()) {
+  if (input.later && !input.fromKaizenLife && !input.outside && !stopped && reply.trim()) {
     input.later(() =>
       learnFromTurn({ accountId: account.id, storeId: store?.id ?? null, connection, said: text, answered }).catch((error) =>
         log("error", "ai_manager.learning_failed", {}, error),

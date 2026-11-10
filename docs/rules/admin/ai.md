@@ -17,7 +17,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   (`src/lib/manager-tools.ts`, `src/server/manager-tools.ts`: find and open
   admin pages, skills, memory). A round sends at most `TOOLS_PER_TURN` tools (D333, `chooseTools()`
   in `src/lib/tool-budget.ts`; providers refuse more than 128): the rest are one `load_tools` call away by area, so a new
-  store tool needs a permission key (its area) and nothing else; a new tool that most questions need goes in `CORE_TOOLS`. A new tool has zod arguments and a
+  store tool needs a permission key (its area) and nothing else; a new tool that most questions need goes in `CORE_TOOLS`. A turn has a budget (D539, `src/lib/turn-budget.ts`): 240 s from its first round, with the last 45 s for a round without tools in which the model must answer, 400,000 tokens, the store's month of AI on Kaizena Flow's key looked at again between rounds, and US$25 a day of the platform's AI manager per platform admin; past a limit the turn stops with a plain message and keeps the tools that ran. A caller with less time (the autopilot's steps) passes its own `limits`. A new tool has zod arguments and a
   description, answers from the site's own data with amounts written by
   `formatMoney` and sums done in code, a line in `TOOL_WORDS`, and a `gate`
   (`send`, `public`, `spend`) if it emails, changes a site or costs money:
