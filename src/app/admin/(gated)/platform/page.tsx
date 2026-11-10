@@ -12,6 +12,7 @@ import { platformCan, requirePlatformReader } from "@/server/auth";
 import { alertText, platformBriefingSetting, platformSnapshot } from "@/server/platform-briefing";
 import { platformOverview } from "@/server/platform-overview";
 import { cronJobRows } from "@/server/cron-runs";
+import { failedWebhookEvents } from "@/server/stripe-webhooks";
 import { jobsNeedingLook } from "@/lib/cron-health";
 import { PageHeader } from "@/components/admin/ui";
 import { countWords, fillWords } from "@/lib/admin-fill";
@@ -34,7 +35,13 @@ export default async function PlatformOverviewPage() {
   const locale = ADMIN_LANG_FACTS[lang].locale;
   const w = adminText(lang, "platform").overview;
   const bw = adminText(lang, "platform").briefing;
-  const [o, jobs, snapshot, briefing] = await Promise.all([platformOverview(), cronJobRows(), platformSnapshot(), platformBriefingSetting()]);
+  const [o, jobs, snapshot, briefing, failedEvents] = await Promise.all([
+    platformOverview(),
+    cronJobRows(),
+    platformSnapshot(),
+    platformBriefingSetting(),
+    failedWebhookEvents(),
+  ]);
   const lateJobs = jobsNeedingLook(jobs);
   const money = (minor: number, currency: string) => formatMoney(minor, currency, locale);
   const signed = (minor: number, currency: string) => `${minor >= 0 ? "+" : "−"}${money(Math.abs(minor), currency)}`;
@@ -55,6 +62,7 @@ export default async function PlatformOverviewPage() {
   if (lateJobs.length > 0) {
     attention.push({ text: countWords(lateJobs.length, w.jobs), href: "/admin/platform/capacity#jobs", action: w.seeJobs, urgent: lateJobs.some((j) => j.health === "failing") });
   }
+  if (failedEvents > 0) attention.push({ text: countWords(failedEvents, w.paymentEvents), href: "/admin/platform/stripe", action: w.seeStripe, urgent: true });
   if (o.stores.overdue > 0) attention.push({ text: countWords(o.stores.overdue, w.overdue), href: "/admin/platform/stores", action: w.openStores, urgent: true });
   if (o.emails.failed > 0) attention.push({ text: countWords(o.emails.failed, w.emailsFailed), href: "/admin/platform/emails", action: w.openEmails });
   if (o.stores.suspended > 0) attention.push({ text: countWords(o.stores.suspended, w.suspended), href: "/admin/platform/stores", action: w.openStores });

@@ -445,6 +445,11 @@ export const platformNb: PlatformMessages = {
       many: "{n} planlagte jobber er forsinket eller feiler.",
     },
     seeJobs: "Se jobbene",
+    paymentEvents: {
+      one: "{n} betalingshendelse fra Stripe feilet de siste 7 dagene og er fortsatt ikke behandlet.",
+      many: "{n} betalingshendelser fra Stripe feilet de siste 7 dagene og er fortsatt ikke behandlet.",
+    },
+    seeStripe: "Åpne Stripe",
     empty:
       "Ingenting venter. Ingen forespørsler, forfalte abonnementer eller feilede e-poster.",
     storesAndPlans: "Butikker og abonnementer",

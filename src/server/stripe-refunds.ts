@@ -10,6 +10,7 @@ import { FULFILMENT_EVENTS } from "@/lib/order-ops-events";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { reverseHostCommission } from "./host-payments";
+import { log } from "./log";
 import { sendCreditNoteNotice } from "./invoice-notices";
 import { platformStripe } from "./stripe";
 
@@ -105,16 +106,18 @@ export async function paymentOfIntent(
       const found = await lookup(session.id);
       if (found) return found;
     }
-  } catch {
-    // Not a Checkout payment, or Stripe could not be asked: the invoice lookup is next.
+  } catch (error) {
+    // Stripe could not be asked (a payment that is not Checkout's answers with an empty list, not an error): the invoice lookup is next.
+    log("warn", "stripe.payment_lookup_failed", { storeId, by: "session" }, error);
   }
   try {
     // A subscription's renewal is kept by its invoice.
     const payments = await stripe.invoicePayments.list({ payment: { type: "payment_intent", payment_intent: intent }, limit: 1 }, options);
     const invoice = idOf(payments.data[0]?.invoice as string | { id: string } | null | undefined);
     if (invoice) return await lookup(invoice);
-  } catch {
-    // Unmatched.
+  } catch (error) {
+    // Unmatched because Stripe could not be asked, which is not the same as no match.
+    log("warn", "stripe.payment_lookup_failed", { storeId, by: "invoice" }, error);
   }
   return null;
 }
@@ -311,7 +314,9 @@ export async function reconcilePendingRefunds(limit = 20, deps: { stripeFor?: (m
       order by r.created_at
       limit ${limit}
     `);
-  } catch {
+  } catch (error) {
+    // The job never throws, but a read that failed is not "nothing to check".
+    log("error", "refunds.pending_read_failed", {}, error);
     return result;
   }
   for (const row of rows) {
@@ -322,7 +327,8 @@ export async function reconcilePendingRefunds(limit = 20, deps: { stripeFor?: (m
       const refund = await stripe.refunds.retrieve(String(row.provider_reference), {}, { stripeAccount: String(row.provider_account) });
       const applied = await applyStripeRefund(String(row.store_id), refund, { stripe, account: String(row.provider_account), now: clock });
       if (applied.outcome === "updated") result.updated += 1;
-    } catch {
+    } catch (error) {
+      log("warn", "refunds.pending_check_failed", { storeId: String(row.store_id), refund: String(row.provider_reference) }, error);
       result.failed += 1;
     }
   }

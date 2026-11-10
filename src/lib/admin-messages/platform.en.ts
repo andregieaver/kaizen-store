@@ -445,6 +445,11 @@ export const platformEn = {
       many: "{n} scheduled jobs are late or failing.",
     },
     seeJobs: "See jobs",
+    paymentEvents: {
+      one: "{n} payment event from Stripe failed in the last 7 days and is still not done.",
+      many: "{n} payment events from Stripe failed in the last 7 days and are still not done.",
+    },
+    seeStripe: "Open Stripe",
     empty: "Nothing is waiting. No requests, overdue plans or failed emails.",
     storesAndPlans: "Stores and plans",
     allStores: "All stores",

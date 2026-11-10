@@ -43,7 +43,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 0.2 | Put a cheap gate before the fast deploy, and go back by itself | FH1 | M | In progress | 9 Nov 2026, D526: the gate is built (lint, type check and `pnpm test:smoke` in the `pending` job before the deploy hook). Seen working on CI run 1160 (commit 15eb8ec): lint, type check and smoke tests took 5 min 11 s, then the deploy went out and `/api/health` reported the commit. Still open: going back by itself when a full check fails after a deploy. It needs a Vercel token as a repository secret and a check that production still runs the failing commit. |
 | 0.3 | Drop the old snapshots | FD1, FH3 | S | Open | |
 | 0.4 | Build the test database once | FD2 | S | Open | |
-| 0.5 | Log every failed payment webhook | FV2 | M | In progress | 9 Nov 2026: a failed store webhook writes `stripe.webhook_failed` (store, event, type) in `handleStripeEvent`, and Kaizena Flow's own plan-billing webhook writes `stripe.platform_webhook_failed`; `stripe-webhook-log.scan.test.ts` fails on a new silent 500 in a Stripe route. Still open: the count of failed events on the platform home, and the warn logs in the catches of `stripe-refunds.ts`, `payment-capture.ts` and `connect.ts`. Not yet seen on a real failure in production. |
+| 0.5 | Log every failed payment webhook | FV2 | M | In progress | 9 Nov 2026: a failed store webhook writes `stripe.webhook_failed` (store, event, type) in `handleStripeEvent`, and Kaizena Flow's own plan-billing webhook writes `stripe.platform_webhook_failed`; `stripe-webhook-log.scan.test.ts` fails on a new silent 500 in a Stripe route. 10 Nov 2026: the platform home lists Stripe events of the last 7 days that failed and are still not done (`failedWebhookEvents()`), and the four silent catches in `stripe-refunds.ts` log (a failed read of pending refunds is an error, not "nothing to check"). Still open: the catches in `payment-capture.ts` and `connect.ts`. Not yet seen on a real failure in production. |
 | 0.6 | Claim a webhook event before working on it | FV6 | S | Open | |
 | 0.7 | Make two money writes all-or-nothing | FV7, FV11 | S | Open | |
 | 0.8 | Give the AI manager's turn a deadline and a cost ceiling | FA2, FA5 | M | Open | |
@@ -139,6 +139,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 9 November 2026: step 0.1 done and the gate half of step 0.2 built (D526).
 - 9 November 2026: the gate seen working on its first live run (CI run 1160).
 - 9 November 2026: step 0.5 begun: failed Stripe webhooks are logged, for stores and for the platform.
+- 10 November 2026: step 0.5: the failed-events count on the platform home and the refund code's logs.
 
 ## 1. The headline
 

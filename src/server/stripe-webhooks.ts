@@ -3,12 +3,14 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { after } from "next/server";
 import type Stripe from "stripe";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 
 import type { PaymentAnswer, PaymentState, ShopperAddress, ShopperDetails } from "@/lib/payment-providers";
 
 import { log } from "./log";
+import { col, typedRows } from "./typed-rows";
 import { applyPaymentAnswer } from "./payment-outcome";
 import { adoptDeliveryCard } from "./standing-orders";
 import { sendOrderConfirmation } from "./shopper-emails";
@@ -43,6 +45,19 @@ async function markProcessed(storeId: string, eventId: string, error?: string) {
        set processed_at = ${error ? null : sql`now()`}, last_error = ${error ?? null}
      where store_id = ${storeId}::uuid and provider = 'stripe' and event_id = ${eventId}
   `);
+}
+
+/**
+ * Stripe events of the last week that failed and are still not done, over every store, for the platform home (code review FV2):
+ * Stripe retries for three days, so a count that stays is an event nobody will deliver again.
+ */
+export async function failedWebhookEvents(): Promise<number> {
+  const [row] = await typedRows(
+    z.object({ failed: col.int }),
+    sql`select count(*)::int as failed from commerce.webhook_events
+        where provider = 'stripe' and processed_at is null and last_error is not null and received_at > now() - interval '7 days'`,
+  );
+  return row?.failed ?? 0;
 }
 
 /** Applies a verified Stripe event to the store's orders and subscriptions. */
