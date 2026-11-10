@@ -303,8 +303,19 @@ jobs:
       - name: "Quick gate: money, cart, checkout and VAT tests"
         if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'
         run: pnpm test:smoke
-      - name: No migration to apply and the quick gate passed, so ask Vercel to deploy the head of main now
+      # The deploy hook builds the head of main at the moment it is called, not this commit (D530). A later push may have
+      # brought a migration that production has not had: deploying the head then puts new code on the old schema (it
+      # happened on 10 November 2026). So the ledger is read again against the head's files just before the call, and
+      # a head with a pending migration is left to its own run's `release`.
+      - name: Is a migration pending at the head of main by now?
+        id: head
         if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'
+        run: |
+          git fetch --depth=1 origin main
+          git checkout FETCH_HEAD -- supabase/migrations
+          node scripts/db-migrate.mjs --status
+      - name: No migration to apply and the quick gate passed, so ask Vercel to deploy the head of main now
+        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false'
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
@@ -313,7 +324,7 @@ jobs:
           curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
       - name: Wait until production runs this commit
-        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'
+        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending == 'false'
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.
@@ -358,8 +369,19 @@ jobs:
       - name: Nothing is left pending
         if: needs.pending.outputs.pending == 'true'
         run: node scripts/db-migrate.mjs --status
+      # The deploy hook builds the head of main at the moment it is called, not this commit (D530). A later push may have
+      # brought a migration that production has not had: deploying the head then puts new code on the old schema (it
+      # happened on 10 November 2026). So the ledger is read again against the head's files just before the call, and
+      # a head with a pending migration is left to its own run's `release`.
+      - name: Is a migration pending at the head of main by now?
+        id: head
+        if: vars.DEPLOY_VIA_CI == 'true' && needs.pending.outputs.pending == 'true'
+        run: |
+          git fetch --depth=1 origin main
+          git checkout FETCH_HEAD -- supabase/migrations
+          node scripts/db-migrate.mjs --status
       - name: Ask Vercel to deploy the head of main
-        if: vars.DEPLOY_VIA_CI == 'true'
+        if: vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending != 'true'
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
@@ -368,7 +390,7 @@ jobs:
           curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
       - name: Wait until production runs this commit
-        if: vars.DEPLOY_VIA_CI == 'true'
+        if: vars.DEPLOY_VIA_CI == 'true' && steps.head.outputs.pending != 'true'
         env:
           PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://kaizenaflow.com' }}
         # The deploy is verified (D389): /api/health reports the deployment's commit; a later push's deployment that includes it counts.

@@ -82,6 +82,10 @@ check (D378), so this is the only type check between a push and production. A fa
 production stays on the commit it has. The full checks (`static`, `integration`, `e2e`, `hosts`, `signed-in`) still run beside
 the deploy and report after it. A push with a migration waits for every one of them, `hosts` and `signed-in` included.
 
+**The head is checked before every deploy (D530).** The hook builds the head of `main`, which may be newer than the commit whose
+run calls it. Just before the call, `pending` and `release` fetch the head and read the ledger against its migration files; a
+head with a migration production has not had is not deployed by this run, and waits for its own run's `release`.
+
 A deploy that should not have gone out: roll back in Vercel (*Deployments → the earlier one → Promote to
 Production*, seconds) and push the fix.
 

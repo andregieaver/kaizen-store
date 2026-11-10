@@ -8123,7 +8123,7 @@ describe("Kaizen Life's account link (docs/life-work-summary.md 3.3)", () => {
   });
 });
 
-describe("a webhook event is claimed before it is worked on (D528)", () => {
+describe("a webhook event is claimed before it is worked on (D529)", () => {
   const claim = async (eventId: string) => {
     const { rows } = await db.query<{ mine: boolean }>(
       "select commerce.claim_webhook_event($1, 'stripe', $2, 'checkout.session.completed', '{}'::jsonb) as mine",

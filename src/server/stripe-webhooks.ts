@@ -24,7 +24,7 @@ import { applyStripeRefund, isRefundEvent, paymentOfIntent, stripeForAccount } f
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
 /**
- * Records a Stripe event for a store and claims it (D528). False for an event that is done, or that another delivery
+ * Records a Stripe event for a store and claims it (D529). False for an event that is done, or that another delivery
  * is working on now (Stripe retries and may send duplicates, also at the same moment): `commerce.claim_webhook_event()`.
  */
 async function recordEvent(storeId: string, event: Stripe.Event): Promise<boolean> {
