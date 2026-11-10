@@ -2342,7 +2342,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Step 1 of 5 built (D540, docs/drop-shipping.md 10): suppliers that drop-ship with a location of their own ranked after every own location, variants marked as sent by them, own stock first and the supplier's after, the Suppliers pages. Not yet: supplier orders reaching the supplier after the wait, the supplier's page to post tracking, tracking to the customer (step 2); connected suppliers and stock by file or API, delivery estimates (step 3); late and problem handling, returns to the supplier, what the shop owes (step 4); reports and the AI manager (step 5).",
+    "gap": "Steps 1 and 2 of 5 built (D540, D541, docs/drop-shipping.md 10): suppliers that drop-ship with a location of their own ranked after every own location, variants marked as sent by them, own stock first; a paid order's supplier lines reach the supplier by email after the store's wait, in its language, and the tracking it posts on its page reaches the customer as the shop's shipped email; a supplier that cannot send tells the owners. Not yet: connected suppliers and stock by file or API, delivery estimates (step 3); late reminders, the owner's choices on a problem, returns to the supplier, what the shop owes (step 4); reports and the AI manager (step 5).",
     "bucket": "A",
     "wave": null,
     "criteria": [
@@ -2355,17 +2355,23 @@
         "src/server/suppliers.ts",
         "src/lib/drop-shipping.ts",
         "src/lib/stock-routing.ts",
-        "src/components/admin/inventory/suppliers-view.tsx"
+        "src/components/admin/inventory/suppliers-view.tsx",
+        "src/server/supplier-orders.ts",
+        "src/lib/supplier-orders.ts",
+        "src/app/supply/[token]/page.tsx"
       ],
       "tests": [
         "src/server/suppliers.int.test.ts",
-        "src/lib/stock-routing.test.ts"
+        "src/lib/stock-routing.test.ts",
+        "src/server/supplier-orders.int.test.ts",
+        "src/lib/supplier-orders.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D482",
-      "D540"
+      "D540",
+      "D541"
     ],
     "history": [
       {

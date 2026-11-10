@@ -99,6 +99,8 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("refunds", "shopper", via("order", "payment_id"), ["reason"], "orders", "keep", "Amount and status are kept; the reason is text staff typed (it can hold a name), so it is exported and replaced by a marker when the order is anonymised. " + KEEP_ORDER),
   entry("shipments", "shopper", via("order", "order_id"), ["tracking_number", "tracking_url", "label_url", "undo_reason"], "orders", "keep", "A parcel's carrier and tracking number, linked to a person only through the order. " + "Kept with it. The reason staff gave for undoing a parcel (D174 follow-up) is their own text (it can hold a name): exported with the parcel and replaced by a marker when the order is anonymised."),
   entry("carrier_labels", "shopper", via("order", "order_id"), ["pdf"], "orders", "delete", "A shipping label a carrier gives only once (DHL Express, D458): a PDF with the recipient's name and address, kept so staff can print it. Deleted 30 days after the parcel was booked (retention kind carrier_labels) and when the person's data is erased; not exported (the parcel and its address are, with the order)."),
+  entry("supplier_orders", "shopper", via("order", "order_id"), ["problem"], "orders", "keep", "What a drop-shipping supplier was asked to send for an order (D541): its state, times and the hash of its page's link; the words the supplier gave when it could not send (its own text, which can name the customer) are exported with the order and kept with it. The delivery address is the order's, read when the supplier is emailed and on its page while there is something to send, never copied here. " + KEEP_ORDER),
+  entry("supplier_order_lines", "shopper", via("order", "supplier_order_id"), ["order_line_id"], "orders", "keep", "Which order lines and units a supplier was asked to send (D541); no personal field. " + KEEP_ORDER),
   entry("shipment_tracking", "shopper", via("order", "order_id"), ["events"], "orders", "anonymise", "A parcel's carrier events (D238): times, codes and the carrier's own descriptions and places, which can name who signed for it. Exported with the parcel, cleared when the order is anonymised (commerce.anonymise_order(), an update) and 90 days after the parcel stopped being followed."),
   entry("order_rule_runs", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "An automation rule's run for an order (D238): the rule's name, ids and which conditions and actions held, never a person's data; deleted 12 months after it ran. " + KEEP_ORDER),
   entry("bookings", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A time slot of an appointment, stay or rental; " + KEEP_ORDER),
@@ -547,6 +549,9 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "order.out_for_delivery": "shopper",
   // Order and return notifications (D238): kinds passed to orderNotice() and returnMail() as an argument, and the carrier-event emails.
   "order.sent": "shopper",
+  // What a drop-shipping supplier is asked to send (D541): the customer's name and delivery address go to the supplier, a recipient the privacy
+  // notice names; blanked with the person's other emails.
+  "supplier.order": "shopper",
   "order.refunded": "shopper",
   "order.cancelled": "shopper",
   // Payment terms (D293): the reminder before the due day and the notice after it, to the order's own address.
@@ -581,6 +586,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   /** The customer asked for an exchange on a return (D239): the order and return numbers and a link, never the wish's words. */
   "return.exchange_wished": "staff",
   "stock.low": "staff",
+  "supplier.problem": "staff",
   "experiment.guardrail": "staff",
   "integration.endpoint_off": "staff",
   /** A follow-up the AI manager was asked for ran (PSI AGT-04): the person's own task and a link, never the answer. */

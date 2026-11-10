@@ -14393,9 +14393,15 @@ export const orderSettings = commerce.table(
      * business (D63), or a signed-in customer of a company account or customer group, D108). A product priced on request offers it whatever this says.
      */
     quoteRequests: text("quote_requests").notNull().default("off"),
+    /**
+     * Drop shipping (D541, `docs/drop-shipping.md` 4): the minutes a paid order's supplier lines wait before they go to the supplier, so a
+     * quick cancellation or change never reaches it (30 unless changed, 0 to 24 hours).
+     */
+    dropShipWaitMinutes: integer("drop_ship_wait_minutes").notNull().default(30),
     updatedAt: updatedAt(),
   },
   (t) => [
+    check("order_settings_drop_ship_wait", sql`${t.dropShipWaitMinutes} between 0 and 1440`),
     check(
       "order_settings_auto_archive",
       sql`${t.autoArchiveDays} is null or ${t.autoArchiveDays} between ${lit(AUTO_ARCHIVE_MIN_DAYS)} and ${lit(AUTO_ARCHIVE_MAX_DAYS)}`,
@@ -14405,6 +14411,69 @@ export const orderSettings = commerce.table(
     check("order_settings_next_draft", sql`${t.nextDraftNumber} >= 1`),
     check("order_settings_capture", sql`${t.capture} in (${sqlList(CAPTURE_SETTINGS)})`),
     check("order_settings_quote_requests", sql`${t.quoteRequests} in ('off', 'everyone', 'business')`),
+  ],
+);
+
+/**
+ * What a supplier is asked to send for one paid order (drop shipping, D541, `docs/drop-shipping.md` 4 and 5): one per order and supplier, made
+ * from the units the payment drew at the supplier's location (`inventory_movements` of reason `sale`). It waits until `send_after` (the
+ * store's wait), is then sent to the supplier with a link to its page (`/supply/{token}`, only the token's SHA-256 kept, valid 60 days), and
+ * is `shipped` when the supplier posts the parcel (its shipment), `problem` when it says it cannot send a line, `cancelled` when the order is
+ * cancelled first. Written only by `src/server/supplier-orders.ts`.
+ */
+export const supplierOrders = commerce.table(
+  "supplier_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    orderId: uuid("order_id").notNull(),
+    supplierId: uuid("supplier_id").notNull(),
+    /** `waiting`, `sent`, `shipped`, `problem` or `cancelled`. */
+    state: text("state").notNull().default("waiting"),
+    sendAfter: timestamp("send_after", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    shippedAt: timestamp("shipped_at", { withTimezone: true }),
+    /** The parcel the supplier posted (`markSent()`). */
+    shipmentId: uuid("shipment_id"),
+    /** The SHA-256 (hex) of the supplier page's token, and when it ends. */
+    tokenHash: text("token_hash"),
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+    /** What the supplier said it cannot send, as it wrote it (data, never instructions). */
+    problem: text("problem"),
+    /** When the owners were told of the problem. */
+    problemNotifiedAt: timestamp("problem_notified_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("supplier_orders_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("supplier_orders_order_supplier_key").on(t.storeId, t.orderId, t.supplierId),
+    uniqueIndex("supplier_orders_token_key").on(t.tokenHash).where(sql`${t.tokenHash} is not null`),
+    orderRef("supplier_orders_order_fk", t),
+    foreignKey({ name: "supplier_orders_supplier_fk", columns: [t.storeId, t.supplierId], foreignColumns: [suppliers.storeId, suppliers.id] }),
+    index("supplier_orders_due_idx").on(t.sendAfter).where(sql`${t.state} = 'waiting'`),
+    index("supplier_orders_supplier_idx").on(t.storeId, t.supplierId, t.createdAt.desc()),
+    check("supplier_orders_state", sql`${t.state} in ('waiting', 'sent', 'shipped', 'problem', 'cancelled')`),
+    check("supplier_orders_token", sql`(${t.tokenHash} is null) = (${t.tokenExpiresAt} is null) and (${t.tokenHash} is null or ${t.tokenHash} ~ '^[0-9a-f]{64}$')`),
+    check("supplier_orders_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),
+  ],
+);
+
+export const supplierOrderLines = commerce.table(
+  "supplier_order_lines",
+  {
+    storeId: storeId(),
+    supplierOrderId: uuid("supplier_order_id").notNull(),
+    orderLineId: uuid("order_line_id").notNull(),
+    quantity: integer("quantity").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.supplierOrderId, t.orderLineId] }),
+    foreignKey({ name: "supplier_order_lines_order_fk", columns: [t.storeId, t.supplierOrderId], foreignColumns: [supplierOrders.storeId, supplierOrders.id] }).onDelete("cascade"),
+    orderLineRef("supplier_order_lines_line_fk", t),
+    index("supplier_order_lines_line_idx").on(t.storeId, t.orderLineId),
+    index("supplier_order_lines_order_idx").on(t.storeId, t.supplierOrderId),
+    check("supplier_order_lines_quantity", sql`${t.quantity} between 1 and 1000000`),
   ],
 );
 

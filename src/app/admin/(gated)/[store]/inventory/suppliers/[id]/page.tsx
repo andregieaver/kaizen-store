@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AdminTextScope } from "@/components/admin/admin-text";
+import { hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { requireFeature } from "@/components/admin/feature-off";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
@@ -13,6 +15,7 @@ import { adminText, adminTexts } from "@/lib/admin-text";
 import { countryName, supplierCountries } from "@/lib/drop-shipping";
 import { inventoryPaths } from "@/lib/inventory-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { listSupplierOrders } from "@/server/supplier-orders";
 import { getDropShipSupplier, supplierVariants } from "@/server/suppliers";
 
 import { markVariantsAction, saveSupplierAction, stopSupplierAction } from "../actions";
@@ -47,7 +50,7 @@ async function Body({ storeSlug, id, search, added, back }: { storeSlug: string;
   const w = adminText(lang, "inventory").suppliers;
   const supplier = await getDropShipSupplier(store.id, id);
   if (!supplier) notFound();
-  const variants = await supplierVariants(store.id, supplier.id, search);
+  const [variants, orders] = await Promise.all([supplierVariants(store.id, supplier.id, search), listSupplierOrders(store.id, supplier.id)]);
   const canWrite = memberCan(member, "products:write");
   const base = inventoryPaths(store.slug).suppliers;
   return (
@@ -59,6 +62,40 @@ async function Body({ storeSlug, id, search, added, back }: { storeSlug: string;
             {fillWords(w.added, { name: supplier.name })}
           </p>
         )}
+        <section className="flex flex-col gap-3" aria-labelledby="supplier-orders">
+          <h2 id="supplier-orders" className="text-title text-ink">
+            {w.ordersTitle}
+          </h2>
+          {orders.length === 0 ? (
+            <p className={hint}>{w.ordersNone}</p>
+          ) : (
+            <div className={tableShell}>
+              <table className="w-full text-sm">
+                <caption className="sr-only">{w.ordersTitle}</caption>
+                <thead>
+                  <tr className="border-b border-line">
+                    <th scope="col" className={th}>{w.order}</th>
+                    <th scope="col" className={th}>{w.products}</th>
+                    <th scope="col" className={th}>{w.state}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((o) => (
+                    <tr key={o.id} className="border-b border-line last:border-0">
+                      <td className={`${td} font-medium`}>
+                        <Link href={`/admin/${store.slug}/orders/${o.orderId}`} className="underline underline-offset-2">
+                          {o.number}
+                        </Link>
+                      </td>
+                      <td className={td}>{countWords(o.units, w.units)}</td>
+                      <td className={td}>{fillWords(w.states[o.state], { problem: o.problem ?? "" })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
         <SupplierProducts
           supplierId={supplier.id}
           supplierName={supplier.name}
