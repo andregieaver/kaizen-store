@@ -803,8 +803,11 @@ export const builderEn = {
     monthlyYearly: "Monthly, with the yearly price under it",
     monthly: "Monthly only",
     yearly: "Yearly only",
-    switchMonthly: "Visitors switch, starting on monthly",
-    switchYearly: "Visitors switch, starting on yearly",
+    switcher: "Visitors switch between monthly and yearly",
+    /** Which side of the switch shows first (D481). */
+    shownFirst: "Shown first",
+    firstMonthly: "Monthly",
+    firstYearly: "Yearly",
     wholeAmounts: "Whole amounts without decimals",
     wholeAmountsHint: "€20 instead of €20.00. A price with cents keeps them, so nothing is rounded.",
     recommend: "Plan to recommend",

@@ -5247,21 +5247,32 @@ function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: Pla
         {pw.prices}
         <select
           id={`${id}-interval`}
-          value={block.switcher ? `switch-${block.interval ?? "month"}` : (block.interval ?? "")}
+          value={block.switcher ? "switch" : (block.interval ?? "")}
           onChange={(event) => {
-            // A switch (D481) starts on the interval after its dash; the others show one interval, or both.
-            const [kind, start] = event.target.value.split("-");
-            onChange(kind === "switch" ? { switcher: true, interval: start === "year" ? "year" : undefined } : { switcher: undefined, interval: (kind || undefined) as PlansBlock["interval"] });
+            // A switch (D481) keeps a yearly choice as where it starts; the others show one interval, or both.
+            const kind = event.target.value;
+            onChange(kind === "switch" ? { switcher: true, interval: block.interval === "year" ? "year" : undefined } : { switcher: undefined, interval: (kind || undefined) as PlansBlock["interval"] });
           }}
           className={input}
         >
           <option value="">{pw.monthlyYearly}</option>
           <option value="month">{pw.monthly}</option>
           <option value="year">{pw.yearly}</option>
-          <option value="switch-month">{pw.switchMonthly}</option>
-          <option value="switch-year">{pw.switchYearly}</option>
+          <option value="switch">{pw.switcher}</option>
         </select>
       </label>
+      {/* Which side of the switch a visitor sees first (D481): monthly unless yearly is chosen. */}
+      {block.switcher && (
+        <Choices
+          legend={pw.shownFirst}
+          options={[
+            { value: "month", label: pw.firstMonthly },
+            { value: "year", label: pw.firstYearly },
+          ]}
+          value={block.interval === "year" ? "year" : "month"}
+          onChange={(start) => onChange({ interval: start === "year" ? "year" : undefined })}
+        />
+      )}
       <Check
         label={pw.wholeAmounts}
         hint={pw.wholeAmountsHint}
