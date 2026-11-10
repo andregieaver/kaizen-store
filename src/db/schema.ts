@@ -16921,7 +16921,10 @@ export const pageLooks = commerce.table(
       .notNull()
       .references(() => stores.id, { onDelete: "cascade" }),
     accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
-    /** `page`: a page's draft; `store`: the home, a product page and the cart, live. */
+    /**
+     * `page`: a page's draft; `store`: the home, a product page and the cart, live; `appearance` (D528): the front page and other
+     * important pages, live, for how the site looks (`findings` then holds a `SiteAppearance`).
+     */
     kind: text("kind").notNull(),
     pageId: uuid("page_id").references(() => pages.id, { onDelete: "cascade" }),
     /** Who asked for it (`currentActor()`): the look is taken as them, so the judge's AI usage counts where it should. */
@@ -16940,7 +16943,7 @@ export const pageLooks = commerce.table(
     index("page_looks_page_idx").on(t.pageId, t.createdAt),
     index("page_looks_store_idx").on(t.storeId, t.createdAt),
     index("page_looks_account_idx").on(t.accountId),
-    check("page_looks_kind", sql`${t.kind} in ('page', 'store')`),
+    check("page_looks_kind", sql`${t.kind} in ('page', 'store', 'appearance')`),
     check("page_looks_acted_by", sql`${t.actedBy} in ('person', 'ai_manager', 'autopilot')`),
     check("page_looks_status", sql`${t.status} in ('queued', 'running', 'done', 'failed')`),
     check("page_looks_page", sql`(${t.kind} = 'page') = (${t.pageId} is not null)`),

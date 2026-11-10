@@ -10,10 +10,11 @@ import type { HomeMessages } from "@/lib/admin-messages/home.en";
 import { PROMPT_MAX, PROMPT_MIN, REVIEW_ROUNDS, REWORK_STEPS, passed } from "@/lib/dream-factory";
 import { marketPath, storeHref } from "@/lib/paths";
 import type { DreamRun } from "@/server/dream-factory";
+import { latestAppearance } from "@/server/page-looks";
 import { reworkPrepared, type ReworkPrepared } from "@/server/dream-showcase";
 import type { Store } from "@/server/stores";
 
-import { agreeReworkAction, applyReworkAction, askReworkAction, retryDreamAction, startReworkAction, stopDreamAction } from "./actions";
+import { analyseExistingAction, agreeReworkAction, applyReworkAction, askReworkAction, retryDreamAction, startReworkAction, stopDreamAction } from "./actions";
 
 type Words = HomeMessages["dream"];
 
@@ -22,20 +23,76 @@ const control = "min-h-11 rounded-md border border-line bg-card px-3 font-normal
 const REFRESH_SECONDS = 6;
 const OWNER_STEPS = new Set<string>(REWORK_STEPS.filter((step) => step.who === "owner").map((step) => step.id));
 
-/** The form a rework starts from (D527): what the owner wants changed, in their own words. */
-export function ReworkStart({ slug, words: w, title }: { slug: string; words: Words; title?: string }) {
+/**
+ * The form a rework starts from (D527): what the owner wants changed, in their own words. *Analyse existing* (D528) is one press beside
+ * it: the AI photographs the site, says how it looks and puts a suggestion in the field, for the owner to change before they use it.
+ */
+export async function ReworkStart({ slug, storeId, words: w, title }: { slug: string; storeId: string; words: Words; title?: string }) {
   const r = w.rework;
+  const a = r.analyse;
+  const analysis = await latestAppearance(storeId);
+  const working = analysis?.status === "queued" || analysis?.status === "running";
+  const seen = analysis?.appearance ?? null;
   return (
-    <ActionForm action={startReworkAction.bind(null, slug)} className="flex flex-col gap-4">
-      <label className={field}>
-        {title ?? r.startLabel}
-        <textarea name="prompt" required minLength={PROMPT_MIN} maxLength={PROMPT_MAX} rows={5} className={`${control} py-2`} />
-        <span className="font-normal text-ink-2">{r.startHint}</span>
-      </label>
-      <div>
-        <SubmitButton>{r.start}</SubmitButton>
+    <div className="flex flex-col gap-5">
+      {working && <RefreshWhile seconds={REFRESH_SECONDS} />}
+      <div className="flex flex-col gap-2">
+        {working ? (
+          <p role="status" className="flex items-start gap-3 text-body text-ink">
+            <span aria-hidden="true" className="mt-1 size-4 shrink-0 animate-spin rounded-full border-2 border-brand border-r-transparent" />
+            <span>{a.working}</span>
+          </p>
+        ) : (
+          <ActionForm action={analyseExistingAction.bind(null, slug)} className="flex flex-wrap items-center gap-3">
+            <SubmitButton variant="secondary">{seen ? a.again : a.button}</SubmitButton>
+            <span className="text-sm text-ink-2">{a.hint}</span>
+          </ActionForm>
+        )}
+        {analysis?.status === "failed" && <p className="text-body text-danger-text">{analysis.problem ?? a.failed}</p>}
       </div>
-    </ActionForm>
+      {seen && (
+        <section aria-labelledby="dream-analysis" className="flex flex-col gap-3 rounded-lg border border-line bg-card p-5">
+          <h2 id="dream-analysis" className="text-title text-ink">
+            {a.title}
+          </h2>
+          <p className="text-body text-ink">{seen.summary}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {seen.strengths.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-medium text-ink-2">{a.strengths}</h3>
+                <ul className="list-disc pl-5 text-body">
+                  {seen.strengths.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {seen.improvements.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-medium text-ink-2">{a.improvements}</h3>
+                <ul className="list-disc pl-5 text-body">
+                  {seen.improvements.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-ink-2">{a.byAi}</p>
+        </section>
+      )}
+      <ActionForm action={startReworkAction.bind(null, slug)} className="flex flex-col gap-4">
+        <label className={field}>
+          {title ?? r.startLabel}
+          {/* Keyed by the analysis, so its suggestion fills the field when it arrives; the owner changes it before using it. */}
+          <textarea key={seen ? analysis?.id : "own"} name="prompt" required minLength={PROMPT_MIN} maxLength={PROMPT_MAX} rows={seen ? 9 : 5} defaultValue={seen?.suggestion ?? ""} className={`${control} py-2`} />
+          <span className="font-normal text-ink-2">{seen ? a.suggested : r.startHint}</span>
+        </label>
+        <div>
+          <SubmitButton>{r.start}</SubmitButton>
+        </div>
+      </ActionForm>
+    </div>
   );
 }
 
@@ -161,7 +218,7 @@ export async function ReworkRun({ store, run, words: w }: { store: Store; run: D
 
         {!going && (
           <Card title={r.another}>
-            <ReworkStart slug={slug} words={w} />
+            <ReworkStart slug={slug} storeId={store.id} words={w} />
           </Card>
         )}
       </div>

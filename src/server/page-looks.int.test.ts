@@ -162,6 +162,43 @@ describe("a look at the store", () => {
   });
 });
 
+describe("how the site looks, for the Dream Factory (D528)", () => {
+  const seen = { summary: "Calm and tidy.", strengths: ["Clear photographs"], improvements: ["Say what you sell at the top"], suggestion: "Give the front page a headline that says what we sell." };
+  const later = (task: () => Promise<unknown>) => void task().catch(() => undefined);
+  const taking = (assess: LookDeps["assess"]): LookDeps => ({ trigger: async (id) => void (await looks.runLook(id, { photograph, assess, origin: "https://admin.example" })) });
+
+  it("photographs the front page and a product page, never the cart, and keeps what the model said", async () => {
+    shotsAt.length = 0;
+    await db().execute(sql`delete from commerce.page_looks where store_id = ${store.member.store.id}::uuid and kind = 'appearance'`);
+    const pictured: string[] = [];
+    const deps = taking(async (_store, _account, pictures) => {
+      pictured.push(...pictures.map((p) => `${p.place} ${p.width}`));
+      return seen;
+    });
+    const started = await looks.startAppearance(ctxOf(store), later, deps);
+    expect(started.ok).toBe(true);
+    await vi.waitFor(async () => expect((await looks.latestAppearance(store.member.store.id))?.status).toBe("done"), { timeout: 10_000 });
+    const latest = (await looks.latestAppearance(store.member.store.id))!;
+    expect(latest.appearance).toEqual(seen);
+    const urls = [...new Set(shotsAt.map((s) => s.split(" ")[1]))];
+    expect(urls.some((u) => /\/cart$/.test(u))).toBe(false);
+    expect(urls.some((u) => /\/p\/[^/]+$/.test(u))).toBe(true);
+    expect(pictured).toEqual(expect.arrayContaining(["the front page phone", "the front page computer"]));
+  });
+
+  it("says why when the store's AI sees no pictures, and refuses a private store", async () => {
+    await db().execute(sql`delete from commerce.page_looks where store_id = ${store.member.store.id}::uuid and kind = 'appearance'`);
+    const deps = taking(async () => "no_model");
+    expect((await looks.startAppearance(ctxOf(store), later, deps)).ok).toBe(true);
+    await vi.waitFor(async () => expect((await looks.latestAppearance(store.member.store.id))?.status).toBe("failed"), { timeout: 10_000 });
+    const failed = (await looks.latestAppearance(store.member.store.id))!;
+    expect(failed.appearance).toBeNull();
+    expect(failed.problem).toContain("Model that sees pictures");
+    const hidden = { ...ctxOf(store), store: { ...ctxOf(store).store, privateMode: true } };
+    expect(await looks.startAppearance(hidden, later, deps)).toMatchObject({ ok: false, problem: expect.stringContaining("private") });
+  });
+});
+
 describe("the autopilot's page check that looks", () => {
   it("fails the try with the findings on a blocking one, and passes a fine look", async () => {
     const [{ slug }] = await db().execute<Row>(sql`select slug from commerce.pages where id = ${brokenPage}::uuid`);

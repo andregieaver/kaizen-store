@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."page_looks" DROP CONSTRAINT "page_looks_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."page_looks" ADD CONSTRAINT "page_looks_kind" CHECK ("commerce"."page_looks"."kind" in ('page', 'store', 'appearance'));

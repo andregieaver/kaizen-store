@@ -107,6 +107,13 @@ build may not.
 links there); on a store not yet open the form that builds is first and *Change it as it is instead* is one step away; under a run that
 has ended (a build or a rework) the same form starts the next. One run a store at a time, of either kind.
 
+**Analyse existing (D528):** beside the form, one press has the AI look at the site first. The looks route photographs the front page, a
+product page and up to two other published pages (never the cart or a legal page) on a phone and a computer; the store's model that sees
+pictures says how the site looks (`appearancePrompt()`: a summary, what works, what would make it better) and writes a suggestion in the
+owner's voice, which fills the field for the owner to change before they plan. It is a look of kind `appearance` in `commerce.page_looks`
+(`startAppearance()`, `latestAppearance()`; three an hour, kept 30 days, the photographs never kept), shown as an AI's view. A private
+store cannot be photographed and says so; a store whose AI has no model that sees pictures is told where to choose one.
+
 | # | Step | Who | Done when (checked by code) |
 |---|---|---|---|
 | 1 | **Plan** (`outline`) | AI | One answer of the model, from the owner's words and the store's facts read by code (`reworkFacts()`: its pages by id, its own products by handle, the live look), held to those facts by `readReworkPlan()`: a page or product the store does not have is dropped, never guessed at. The plan names a change to the look, to the header and to the footer, up to 6 pages (changed or new), up to 6 new products, up to 8 changes to products, and what was asked for that a rework does not do (`outside`). An empty plan asks at once |

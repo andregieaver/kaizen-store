@@ -538,6 +538,19 @@ export const homeNb: HomeMessages = {
         discardHint: "Det som ble forberedt, blir liggende som utkast under Sider, Produkter og i temabiblioteket. Ingenting publiseres.",
       },
       done: { title: "Endringene dine er publisert", visit: "Se butikken din" },
+      /** *Analyse existing* (D528): the AI photographs the site, says how it looks and suggests what to ask for. */
+      analyse: {
+        button: "Analyser det eksisterende",
+        again: "Analyser på nytt",
+        hint: "KI fotograferer forsiden og andre viktige sider, sier hvordan nettstedet ser ut og foreslår hva du kan be om.",
+        working: "Fotograferer sidene dine og ser på dem. Det tar et minutt eller to; siden oppdaterer seg selv.",
+        failed: "Nettstedet kunne ikke analyseres akkurat nå. Prøv igjen.",
+        title: "Slik ser nettstedet ditt ut",
+        strengths: "Det som fungerer",
+        improvements: "Det som ville gjort det bedre",
+        byAi: "En KIs vurdering ut fra bilder av sidene dine på mobil og datamaskin. Bildene blir ikke lagret.",
+        suggested: "Et forslag fra analysen. Endre det til det sier det du vil, og planlegg endringene. 20 til 2 000 tegn.",
+      },
     },
   },
 };

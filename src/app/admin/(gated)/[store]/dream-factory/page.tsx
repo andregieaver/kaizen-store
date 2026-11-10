@@ -59,7 +59,7 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
           <div className="flex max-w-2xl flex-col gap-6">
             <PageHeader title={w.rework.title} description={<>{w.rework.description}</>} />
             {run && <p className="text-body text-ink-2">{run.kind === "rework" ? w.rework.run.stopped : w.run.stopped}</p>}
-            <ReworkStart slug={slug} words={w} />
+            <ReworkStart slug={slug} storeId={store.id} words={w} />
           </div>
         </AdminTextScope>
       );
@@ -84,7 +84,7 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
             <summary className="cursor-pointer text-title text-ink">{w.rework.instead}</summary>
             <div className="mt-3 flex flex-col gap-3">
               <p className="text-body text-ink-2">{w.rework.description}</p>
-              <ReworkStart slug={slug} words={w} />
+              <ReworkStart slug={slug} storeId={store.id} words={w} />
             </div>
           </details>
         </div>
@@ -269,7 +269,7 @@ export default async function DreamFactoryPage({ params }: { params: Promise<{ s
         {!going && (
           <Card title={w.rework.title}>
             <p className="mb-3 text-body text-ink-2">{w.rework.description}</p>
-            <ReworkStart slug={slug} words={w} />
+            <ReworkStart slug={slug} storeId={store.id} words={w} />
           </Card>
         )}
 

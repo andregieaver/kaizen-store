@@ -24,6 +24,7 @@ import {
   type ShotFacts,
 } from "@/lib/page-look";
 import type { LookShot } from "@/lib/page-look-shoot";
+import { APPEARANCE_PAGES_MAX, appearancePrompt, appearanceSchema, readAppearance, type SiteAppearance } from "@/lib/site-appearance";
 import { mapTexts } from "@/lib/page-translation";
 import { marketUrl } from "@/lib/paths";
 import { UNTRUSTED_TEXT } from "@/lib/prompt-safety";
@@ -50,7 +51,7 @@ import { col, typedRow, typedRows } from "./typed-rows";
  * accessibility checker's blocking issues and claims in its words. Nothing here changes a page; the photographs are never kept.
  */
 
-export type LookKind = "page" | "store";
+export type LookKind = "page" | "store" | "appearance";
 export type LookContext = { account: Account; store: Store; invalidate?: (tag: string) => void };
 
 /** A picture of one place at one width, for the judge. */
@@ -61,6 +62,8 @@ export type LookDeps = {
   photograph?: (url: string, width: LookWidth) => Promise<LookShot>;
   /** The model's findings for the pictures; null when it could not answer, `no_model` when the store's AI sees no pictures. */
   judge?: (store: { id: string }, accountId: string | null, pictures: LookPicture[]) => Promise<Finding[] | null | "no_model">;
+  /** How the site looks, from the pictures (D528); null when the model could not answer, `no_model` when the store's AI sees no pictures. */
+  assess?: (store: { id: string }, accountId: string | null, pictures: LookPicture[]) => Promise<SiteAppearance | null | "no_model">;
   /** Where the page's draft is opened: this site, unless told (tests, the route's own address). */
   origin?: string;
   /** Asks for the look to be run at once; the looks route over HTTP unless told. */
@@ -105,7 +108,11 @@ export async function requestLook(ctx: LookContext, kind: LookKind, pageId: stri
         and created_at > now() - interval '1 hour'`,
   );
   if ((recent?.n ?? 0) >= LOOKS_PER_PAGE) {
-    fail(`${kind === "page" ? "This page" : "The store"} was looked at ${LOOKS_PER_PAGE} times in the last hour. Ask the person to look at it now, rather than looking again.`);
+    fail(
+      kind === "appearance"
+        ? `The site was analysed ${LOOKS_PER_PAGE} times in the last hour: use the latest analysis, or try again later.`
+        : `${kind === "page" ? "This page" : "The store"} was looked at ${LOOKS_PER_PAGE} times in the last hour. Ask the person to look at it now, rather than looking again.`,
+    );
   }
   const row = await typedRow(
     ID,
@@ -247,6 +254,21 @@ async function targetsOf(look: Claimed, store: Store, origin: string): Promise<T
     z.object({ handle: col.text }),
     sql`select handle from commerce.products where store_id = ${store.id}::uuid and status = 'active' order by created_at limit 1`,
   );
+  // How the site looks (D528): the front page, a product page and the pages a visitor is most likely to open, never the cart.
+  if (look.kind === "appearance") {
+    const pages = await typedRows(
+      z.object({ slug: col.text, title: col.text }),
+      sql`select p.slug, coalesce(p.published ->> 'title', p.slug) as title from commerce.pages p
+          where p.store_id = ${store.id}::uuid and p.type = 'page' and p.published_at is not null and p.id is distinct from ${store.frontPageId}::uuid
+            and not exists (select 1 from commerce.page_roles r where r.page_id = p.id)
+          order by p.created_at limit ${APPEARANCE_PAGES_MAX}`,
+    );
+    return [
+      { place: "the front page", url: marketUrl(store.slug, market.slug) },
+      ...(product ? [{ place: "a product page", url: marketUrl(store.slug, market.slug, `/p/${product.handle}`) }] : []),
+      ...pages.map((p) => ({ place: `the page "${p.title.replace(/\s+/g, " ").slice(0, 60)}"`, url: marketUrl(store.slug, market.slug, `/${p.slug}`) })),
+    ];
+  }
   return [
     { place: "the home page", url: marketUrl(store.slug, market.slug) },
     ...(product ? [{ place: "a product page", url: marketUrl(store.slug, market.slug, `/p/${product.handle}`) }] : []),
@@ -293,6 +315,28 @@ async function judgeWithModel(store: { id: string }, accountId: string | null, p
   }
 }
 
+/** The store's model that sees pictures, saying how the site looks (D528, `appearancePrompt()`, feature `page_look`). */
+async function assessWithModel(store: { id: string }, accountId: string | null, pictures: LookPicture[]): Promise<SiteAppearance | null | "no_model"> {
+  const connection = seeing(await aiFor(store.id, { feature: "page_look", accountId }));
+  if (!connection) return "no_model";
+  const parts = await Promise.all(pictures.map(async (p) => imagePart(connection, await forModel(p.picture), "image/jpeg")));
+  const legend = pictures.map((p, i) => `Picture ${i + 1}: ${p.place} on a ${p.width} (${LOOK_WIDTHS[p.width].width} pixels wide).`).join("\n");
+  try {
+    const { text } = await completeText(
+      connection,
+      [
+        { role: "system", content: appearancePrompt() },
+        { role: "user", content: [{ type: "text", text: legend }, ...parts] },
+      ],
+      { maxTokens: 1800, timeoutMs: 120_000 },
+    );
+    return readAppearance(text);
+  } catch (error) {
+    if (!(error instanceof AiError)) log("error", "page_look.assess_failed", { store: store.id }, error);
+    return null;
+  }
+}
+
 /** What the checker and the claims filter find in a page's draft, as blocking findings. */
 async function draftFindings(store: Store, pageId: string): Promise<Finding[]> {
   const type = (await typedRow(z.object({ type: col.text }), sql`select type from commerce.pages where id = ${pageId}::uuid`))?.type;
@@ -328,6 +372,20 @@ async function takeLook(look: Claimed, deps: LookDeps): Promise<boolean> {
     const store = slug ? await currentStore(slug) : null;
     if (!store || store.status !== "active") throw new OwnerToolError("The store is not open, so it was not looked at.");
     const targets = await targetsOf(look, store, deps.origin ?? siteUrl());
+    if (look.kind === "appearance") {
+      const pictures: LookPicture[] = [];
+      for (const target of targets) {
+        for (const width of Object.keys(LOOK_WIDTHS) as LookWidth[]) pictures.push({ place: target.place, width, picture: (await deps.photograph(target.url, width)).picture });
+      }
+      const assessed = await (deps.assess ?? assessWithModel)({ id: store.id }, look.account_id, pictures);
+      if (assessed === "no_model") throw new OwnerToolError("The store's AI has no model that sees pictures: choose one under Settings, AI (Model that sees pictures), then analyse again.");
+      if (!assessed) throw new OwnerToolError("The model that sees pictures could not say how the site looks just now: try again.");
+      await db().execute(sql`
+        update commerce.page_looks set status = 'done', findings = ${JSON.stringify(assessed)}::jsonb, problem = null, claimed_until = null, finished_at = now()
+        where id = ${look.id}::uuid
+      `);
+      return true;
+    }
     const pictures: LookPicture[] = [];
     const findings: Finding[] = [];
     for (const target of targets) {
@@ -453,4 +511,38 @@ export async function lookOutcome(
     if (error instanceof OwnerToolError) return { ok: false, problem: error.message };
     throw error;
   }
+}
+
+// How the site looks, for the Dream Factory (D528) ---------------------------------------------------------------------------------------
+
+export type AppearanceLook = { id: string; status: Look["status"]; at: string; appearance: SiteAppearance | null; problem: string | null };
+
+/**
+ * *Analyse existing* (D528): asks for the store's site to be photographed and assessed, and for the looks route to take it at once
+ * without waiting for it (`later`, the request's `after()`); the page reads `latestAppearance()` until it is done. Refused for a private
+ * store, which no browser from outside can see, and as any look is (a demo store, three an hour).
+ */
+export async function startAppearance(ctx: LookContext, later: (task: () => Promise<unknown>) => void, deps: LookDeps = {}): Promise<{ ok: true; id: string } | { ok: false; problem: string }> {
+  try {
+    if (ctx.store.privateMode) fail("The store is private, so its pages cannot be photographed: make it public under Settings first, or describe what to change yourself.");
+    const id = await requestLook(ctx, "appearance");
+    later(() => (deps.trigger ?? triggerLook)(id));
+    return { ok: true, id };
+  } catch (error) {
+    if (error instanceof OwnerToolError) return { ok: false, problem: error.message };
+    throw error;
+  }
+}
+
+/** The store's newest analysis of the last day: waiting, being taken, done with what the model said, or failed with why. */
+export async function latestAppearance(storeId: string): Promise<AppearanceLook | null> {
+  const row = await typedRow(
+    z.object({ id: col.uuid, status: col.text, findings: z.unknown(), problem: col.textOrNull, created_at: col.timestamp }),
+    sql`select id, status, findings, problem, created_at from commerce.page_looks
+        where store_id = ${storeId}::uuid and kind = 'appearance' and created_at > now() - interval '1 day'
+        order by created_at desc limit 1`,
+  );
+  if (!row) return null;
+  const read = appearanceSchema.safeParse(row.findings);
+  return { id: row.id, status: row.status as Look["status"], at: row.created_at, appearance: row.status === "done" && read.success ? read.data : null, problem: row.problem };
 }

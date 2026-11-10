@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
@@ -19,6 +20,7 @@ import {
   startDreamRun,
   stopDreamRun,
 } from "@/server/dream-factory";
+import { startAppearance } from "@/server/page-looks";
 import { closeStore } from "@/server/store-closure";
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 
@@ -137,4 +139,12 @@ export async function applyReworkAction(storeSlug: string, runId: string): Promi
   const member = await owner(storeSlug);
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   return answer(await applyRework(member, runId), storeSlug);
+}
+
+/** *Analyse existing* (D528): the site is photographed and assessed after this answer; the page shows it when it is done. */
+export async function analyseExistingAction(storeSlug: string): Promise<FormState> {
+  const member = await owner(storeSlug);
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const started = await startAppearance({ account: member.account, store: member.store }, after);
+  return answer(started.ok ? { ok: true } : started, storeSlug);
 }

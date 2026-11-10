@@ -543,6 +543,19 @@ export const homeEn = {
         discardHint: "What was prepared stays as drafts in Pages, Products and your theme library. Nothing goes live.",
       },
       done: { title: "Your changes are live", visit: "See your store" },
+      /** *Analyse existing* (D528): the AI photographs the site, says how it looks and suggests what to ask for. */
+      analyse: {
+        button: "Analyse existing",
+        again: "Analyse again",
+        hint: "The AI photographs your front page and other important pages, says how the site looks and suggests what to ask for.",
+        working: "Photographing your pages and looking at them. This takes a minute or two; the page updates by itself.",
+        failed: "The site could not be analysed just now. Try again.",
+        title: "How your site looks",
+        strengths: "What works",
+        improvements: "What would make it better",
+        byAi: "An AI's view from photographs of your pages on a phone and a computer. The photographs are not kept.",
+        suggested: "A suggestion from the analysis. Change it until it says what you want, then plan your changes. 20 to 2,000 characters.",
+      },
     },
   },
 };
