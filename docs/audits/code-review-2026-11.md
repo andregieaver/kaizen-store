@@ -44,7 +44,7 @@ This report is a working document: the plan below is the list of work, and this 
 | 0.3 | Drop the old snapshots | FD1, FH3 | S | Open | |
 | 0.4 | Build the test database once | FD2 | S | Open | |
 | 0.5 | Log every failed payment webhook | FV2 | M | Done | 9 Nov 2026: a failed store webhook writes `stripe.webhook_failed` (store, event, type) in `handleStripeEvent`, and Kaizena Flow's own plan-billing webhook writes `stripe.platform_webhook_failed`; `stripe-webhook-log.scan.test.ts` fails on a new silent 500 in a Stripe route. 10 Nov 2026: the platform home lists Stripe events of the last 7 days that failed and are still not done (`failedWebhookEvents()`), and the four silent catches in `stripe-refunds.ts` log (a failed read of pending refunds is an error, not "nothing to check"). 10 Nov 2026: the six silent failures in `payment-capture.ts` (a capture, a void, reading the hold, the capture-due alert) and the account refresh in `connect.ts` log at warn. Left as they are, on purpose: catches whose silence is the answer (`requestIp()` outside a request, a payment domain already registered, payment facts read after a capture). The scan test covers the Stripe routes, not every catch in these files. Not yet seen on a real failure in production. |
-| 0.6 | Claim a webhook event before working on it | FV6 | S | Open | |
+| 0.6 | Claim a webhook event before working on it | FV6 | S | In progress | 10 Nov 2026, D528: built. `commerce.claim_webhook_event()` records and claims in one statement; the handler gives the claim up when it fails. Five cases tested against the migrations. The step's "done when" (one event delivered twice at once against a real database) is not written: no database could be run here. Awaiting the release and the advisors' check. |
 | 0.7 | Make two money writes all-or-nothing | FV7, FV11 | S | Open | |
 | 0.8 | Give the AI manager's turn a deadline and a cost ceiling | FA2, FA5 | M | Open | |
 | 0.9 | Let shoppers reach every product | FF1 | M | Open | |
@@ -141,6 +141,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 9 November 2026: step 0.5 begun: failed Stripe webhooks are logged, for stores and for the platform.
 - 10 November 2026: step 0.5: the failed-events count on the platform home and the refund code's logs.
 - 10 November 2026: step 0.5 done: the capture and Connect code log their failures.
+- 10 November 2026: step 0.6 built (D528), with a migration.
 
 ## 1. The headline
 

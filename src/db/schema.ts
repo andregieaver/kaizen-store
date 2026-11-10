@@ -7127,6 +7127,9 @@ export const webhookEvents = commerce.table(
     payload: jsonb("payload").notNull(),
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
     processedAt: timestamp("processed_at", { withTimezone: true }),
+    // Who is working on it now (D528): set by `commerce.claim_webhook_event()`, cleared when the work fails, so a second
+    // delivery of an event still being worked on is not worked on twice.
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
     attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),
   },

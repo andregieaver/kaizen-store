@@ -23,26 +23,23 @@ import { readPaymentFacts } from "./payment-facts";
 import { applyStripeRefund, isRefundEvent, paymentOfIntent, stripeForAccount } from "./stripe-refunds";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
-type Row = Record<string, unknown>;
-
 /**
- * Records a Stripe event for a store, once. Returns false for an event that
- * was already processed (Stripe retries and may send duplicates).
+ * Records a Stripe event for a store and claims it (D528). False for an event that is done, or that another delivery
+ * is working on now (Stripe retries and may send duplicates, also at the same moment): `commerce.claim_webhook_event()`.
  */
 async function recordEvent(storeId: string, event: Stripe.Event): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`
-    insert into commerce.webhook_events (store_id, provider, event_id, type, payload)
-    values (${storeId}::uuid, 'stripe', ${event.id}, ${event.type}, ${JSON.stringify(event)}::jsonb)
-    on conflict (store_id, provider, event_id) do update set attempts = commerce.webhook_events.attempts + 1
-    returning processed_at
-  `);
-  return row.processed_at === null;
+  const [row] = await typedRows(
+    z.object({ mine: col.bool }),
+    sql`select commerce.claim_webhook_event(${storeId}::uuid, 'stripe', ${event.id}, ${event.type}, ${JSON.stringify(event)}::jsonb) as mine`,
+  );
+  return row?.mine === true;
 }
 
+/** Done, or failed with its error kept and its claim given up, so Stripe's retry can take it at once. */
 async function markProcessed(storeId: string, eventId: string, error?: string) {
   await db().execute(sql`
     update commerce.webhook_events
-       set processed_at = ${error ? null : sql`now()`}, last_error = ${error ?? null}
+       set processed_at = ${error ? null : sql`now()`}, last_error = ${error ?? null}, claimed_at = ${error ? null : sql`claimed_at`}
      where store_id = ${storeId}::uuid and provider = 'stripe' and event_id = ${eventId}
   `);
 }

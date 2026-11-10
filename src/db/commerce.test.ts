@@ -8122,3 +8122,46 @@ describe("Kaizen Life's account link (docs/life-work-summary.md 3.3)", () => {
     }
   });
 });
+
+describe("a webhook event is claimed before it is worked on (D528)", () => {
+  const claim = async (eventId: string) => {
+    const { rows } = await db.query<{ mine: boolean }>(
+      "select commerce.claim_webhook_event($1, 'stripe', $2, 'checkout.session.completed', '{}'::jsonb) as mine",
+      [store, eventId],
+    );
+    return rows[0].mine;
+  };
+  const row = async (eventId: string) =>
+    (await db.query<{ attempts: number; claimed: boolean }>("select attempts, claimed_at is not null as claimed from commerce.webhook_events where store_id = $1 and event_id = $2", [store, eventId])).rows[0];
+
+  it("gives a new event to its first delivery and refuses a second while the first is at work", async () => {
+    expect(await claim("evt_claim_1")).toBe(true);
+    expect(await claim("evt_claim_1")).toBe(false);
+    expect(await row("evt_claim_1")).toEqual({ attempts: 1, claimed: true });
+  });
+
+  it("refuses an event that is done", async () => {
+    expect(await claim("evt_claim_2")).toBe(true);
+    await db.query("update commerce.webhook_events set processed_at = now() where store_id = $1 and event_id = 'evt_claim_2'", [store]);
+    expect(await claim("evt_claim_2")).toBe(false);
+  });
+
+  it("gives a failed event, whose claim was given up, to the retry", async () => {
+    expect(await claim("evt_claim_3")).toBe(true);
+    await db.query("update commerce.webhook_events set claimed_at = null, last_error = 'boom' where store_id = $1 and event_id = 'evt_claim_3'", [store]);
+    expect(await claim("evt_claim_3")).toBe(true);
+    expect(await claim("evt_claim_3")).toBe(false);
+  });
+
+  it("takes over a claim more than five minutes old, whose worker died", async () => {
+    expect(await claim("evt_claim_4")).toBe(true);
+    await db.query("update commerce.webhook_events set claimed_at = now() - interval '6 minutes' where store_id = $1 and event_id = 'evt_claim_4'", [store]);
+    expect(await claim("evt_claim_4")).toBe(true);
+  });
+
+  it("keeps one store's event apart from another's of the same id", async () => {
+    expect(await claim("evt_claim_5")).toBe(true);
+    const { rows } = await db.query<{ mine: boolean }>("select commerce.claim_webhook_event($1, 'stripe', 'evt_claim_5', 't', '{}'::jsonb) as mine", [other]);
+    expect(rows[0].mine).toBe(true);
+  });
+});

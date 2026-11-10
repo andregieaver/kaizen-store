@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."webhook_events" ADD COLUMN "claimed_at" timestamp with time zone;
