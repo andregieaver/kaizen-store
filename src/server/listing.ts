@@ -207,8 +207,11 @@ export async function listingPage(
   filters: ListingFilters,
   viewer: Viewer,
   page: number,
+  /** How many a page adds: a product grid's own number (its owner's choice), else the listing's. */
+  perPage: number = LISTING_LIMIT,
 ): Promise<{ products: GridProduct[]; total: number }> {
-  const shown = LISTING_LIMIT * Math.max(1, Math.min(LISTING_PAGES_MAX, Math.floor(page) || 1));
+  const size = Math.max(1, Math.min(LISTING_LIMIT, Math.floor(perPage) || LISTING_LIMIT));
+  const shown = size * Math.max(1, Math.min(LISTING_PAGES_MAX, Math.floor(page) || 1));
   // A product priced on request (D431) sorts after the priced ones either way, its hidden price telling nothing.
   const lowest = sql`(case when p.price_on_request then null else (select min(${shownPrice(market.code, viewer.buyer === "business")})
     from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id

@@ -1,17 +1,18 @@
+import Link from "next/link";
 import { Suspense } from "react";
 
 import type { CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import { t } from "@/lib/i18n";
 import { sourceTraits } from "@/lib/grid-source";
-import { chosenFilters, parseListingParams } from "@/lib/listing-filters";
+import { chosenFilters, listingQuery, parseListingParams } from "@/lib/listing-filters";
 import type { ContentGridBlock } from "@/lib/page-content";
 import { tileFieldIds } from "@/lib/tile-fields";
 import { getBuyer } from "@/server/b2b";
 import { campaignNoticesAt } from "@/server/campaign-notices";
 import { gridData, gridScope, ownerSells, productItem, storeAndMarket, withTileFields, type GridPlace, type ListingPlace } from "@/server/content-grid";
 import { recommendBlockOf, recommendingGrid, recommendPlaceOf, recommends } from "@/server/recommend-grid";
-import { listingFacets, listingProducts } from "@/server/listing";
+import { listingFacets, listingPage, listingPageOf, LISTING_PAGES_MAX } from "@/server/listing";
 import { siteTerms } from "@/server/taxonomy";
 
 import { ContentGridView } from "./content-grid";
@@ -72,20 +73,26 @@ async function FilterableGrid({
   const viewer = { buyer, audienceBoth: store.audience === "both" };
   // Without choices the grid keeps its own order; with them, the listing's (D78).
   const unfiltered = chosenFilters(filters).length === 0 && filters.sort === "featured";
-  const [facets, products, terms] = await Promise.all([
+  // How far *Show more* has been followed (code review FF1): the grid shows its first `page` times its own number.
+  const page = listingPageOf(query.page);
+  const [facets, listed, terms] = await Promise.all([
     listingFacets(store.id, market, scope, viewer, m.options as Record<string, string>),
-    unfiltered ? null : listingProducts(store.id, market, scope, filters, viewer),
+    // The first page without choices is the grid as built, in its own order; anything else is read as the listing reads it.
+    unfiltered && page === 1 ? null : listingPage(store.id, market, scope, filters, viewer, page, block.limit),
     siteTerms(store.id, "product"),
   ]);
-  const items = products
+  const items = listed
     ? await withTileFields(
         store.id,
         "product",
         market,
         tileFieldIds(block),
-        products.slice(0, block.limit).map((product) => productItem(store.slug, market.slug, product)),
+        listed.products.map((product) => productItem(store.slug, market.slug, product)),
       )
     : data.items;
+  // How many there are in all: the listing's own count, or, for the grid as built, the page's products before filters.
+  const total = Math.max(listed ? listed.total : facets.total, items.length);
+  const more = total > items.length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,13 +102,21 @@ async function FilterableGrid({
         facets={facets}
         terms={terms}
         path={listing.path}
-        count={m.listing.count(items.length)}
+        count={more ? m.listing.countOf(items.length, total) : m.listing.count(items.length)}
         live
       />
       {items.length === 0 && !unfiltered ? (
         <p>{m.listing.none}</p>
       ) : (
         <ContentGridView block={block} data={{ ...data, items }} notices={notices} eager={eager} />
+      )}
+      {more && page < LISTING_PAGES_MAX && (
+        <div className="flex flex-col items-center gap-2 pt-2">
+          <p className="text-sm text-muted">{m.listing.countOf(items.length, total)}</p>
+          <Link href={`${listing.path}${listingQuery(filters, { page: String(page + 1) })}`} scroll={false} className="rounded-button flex min-h-12 items-center justify-center border border-border px-6 font-medium">
+            {m.listing.showMore}
+          </Link>
+        </div>
       )}
     </div>
   );
