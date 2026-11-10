@@ -20,7 +20,7 @@ import type { Term } from "@/lib/taxonomy";
 import { getBuyer } from "@/server/b2b";
 import { campaignNotices } from "@/server/campaign-notices";
 import type { GridProduct } from "@/server/catalog";
-import { listingFacets, listingProducts, type ListingFacets, type ListingScope } from "@/server/listing";
+import { listingFacets, listingPage, listingPageOf, LISTING_PAGES_MAX, type ListingFacets, type ListingScope } from "@/server/listing";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
 import { termsIn } from "@/lib/term-texts";
@@ -47,6 +47,7 @@ export async function ProductListing({
   hrefFor,
   tracked = false,
   countText,
+  page = 1,
 }: {
   store: Store;
   market: Market;
@@ -64,18 +65,27 @@ export async function ProductListing({
   tracked?: boolean;
   /** How the number of products shown reads, if not "N products". */
   countText?: (n: number) => string;
+  /** How far *Show more* has been followed (`?page=`): the listing shows its first `page` pages. */
+  page?: number;
 }) {
   const m = t(market.lang);
   const buyer = await getBuyer(store);
   const viewer = { buyer, audienceBoth: store.audience === "both" };
   const chosen = chosenFilters(filters);
-  const [facets, products, terms, notices] = await Promise.all([
+  const [facets, listed, terms, notices] = await Promise.all([
     listingFacets(store.id, market, scope, viewer, m.options as Record<string, string>),
-    given && chosen.length === 0 && filters.sort === "featured" ? given : listingProducts(store.id, market, scope, filters, viewer),
+    given && chosen.length === 0 && filters.sort === "featured"
+      ? { products: given, total: given.length }
+      : listingPage(store.id, market, scope, filters, viewer, page),
     // Names as this language has them (D319), for the filters' words.
     siteTerms(store.id, "product").then((list) => termsIn(list, market.locale)),
     campaignNotices(store.id, market),
   ]);
+
+  const { products, total } = listed;
+  // More than shows (code review FF1): say so, and offer the rest as a plain link that works without JavaScript.
+  const more = total > products.length;
+  const count = more && !countText ? m.listing.countOf(products.length, total) : (countText ?? m.listing.count)(more ? total : products.length);
 
   return (
     <div className="flex flex-col gap-4">
@@ -86,7 +96,7 @@ export async function ProductListing({
         terms={terms}
         path={path}
         keep={keep}
-        count={(countText ?? m.listing.count)(products.length)}
+        count={count}
         live={!tracked}
       />
       {/* The list's first products, for the store's tags (D303 I1), only while it has one. */}
@@ -105,6 +115,14 @@ export async function ProductListing({
       ) : (
         <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} hrefFor={hrefFor} tracked={tracked} notices={notices} />
       )}
+      {more && page < LISTING_PAGES_MAX && (
+        <div className="flex flex-col items-center gap-2 pt-2">
+          <p className="text-sm text-muted">{m.listing.countOf(products.length, total)}</p>
+          <Link href={`${path}${listingQuery(filters, { ...keep, page: String(page + 1) })}`} scroll={false} className="rounded-button flex min-h-12 items-center justify-center border border-border px-6 font-medium">
+            {m.listing.showMore}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
@@ -116,7 +134,8 @@ export async function ProductListingFor({
 }: Omit<Parameters<typeof ProductListing>[0], "filters"> & {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  return <ProductListing {...props} filters={parseListingParams(await searchParams)} />;
+  const params = await searchParams;
+  return <ProductListing {...props} filters={parseListingParams(params)} page={listingPageOf(params.page)} />;
 }
 
 /**

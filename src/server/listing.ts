@@ -183,6 +183,32 @@ export async function listingProducts(
   filters: ListingFilters,
   viewer: Viewer,
 ): Promise<GridProduct[]> {
+  return (await listingPage(storeId, market, scope, filters, viewer, 1)).products;
+}
+
+/** How many times a shopper may ask a listing for more (so an address cannot ask for the whole catalogue at once). */
+export const LISTING_PAGES_MAX = 20;
+
+/** The page number in a listing's address (`?page=3`): 1 for none or nonsense, never above the most a listing shows. */
+export function listingPageOf(value: string | string[] | undefined): number {
+  const page = Number(Array.isArray(value) ? value[0] : value);
+  return Number.isInteger(page) && page >= 1 ? Math.min(page, LISTING_PAGES_MAX) : 1;
+}
+
+/**
+ * A listing's products up to its `page` (the first `page` times `LISTING_LIMIT`: *Show more* grows the list, so an address shows
+ * everything above it too), and `total`, how many products meet the filters in all. Until November 2026 a listing stopped at
+ * `LISTING_LIMIT` and counted what came back, so a shopper could not reach, or learn of, the rest (code review FF1).
+ */
+export async function listingPage(
+  storeId: string,
+  market: Market,
+  scope: ListingScope,
+  filters: ListingFilters,
+  viewer: Viewer,
+  page: number,
+): Promise<{ products: GridProduct[]; total: number }> {
+  const shown = LISTING_LIMIT * Math.max(1, Math.min(LISTING_PAGES_MAX, Math.floor(page) || 1));
   // A product priced on request (D431) sorts after the priced ones either way, its hidden price telling nothing.
   const lowest = sql`(case when p.price_on_request then null else (select min(${shownPrice(market.code, viewer.buyer === "business")})
     from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
@@ -206,14 +232,15 @@ export async function listingProducts(
   const fieldDefs = filters.fields.length > 0 || filters.ranges.length > 0 ? filterableFields(await activeFieldGroups(storeId, "product")) : [];
   const attributes = (filters.attributes ?? []).length > 0 ? attributeFilters(await taxonomy(), filters.attributes) : [];
   const rows = await readDb().execute<Row>(sql`
-    select p.id from commerce.products p
+    select p.id, count(*) over ()::int as total from commerce.products p
     where ${scopeClause(storeId, market.code, scope, viewer)} and ${filtersClause(filters, market, viewer, fieldDefs, attributes)}
     order by ${order}
-    limit ${LISTING_LIMIT}
+    limit ${shown}
   `);
   const ids = rows.map((row) => String(row.id));
-  if (ids.length === 0) return [];
-  return listGridProducts(storeId, market, { categoryIds: [], tagIds: [], ids, sort: "given", limit: LISTING_LIMIT });
+  if (ids.length === 0) return { products: [], total: 0 };
+  const products = await listGridProducts(storeId, market, { categoryIds: [], tagIds: [], ids, sort: "given", limit: shown });
+  return { products, total: Math.max(Number(rows[0].total) || 0, products.length) };
 }
 
 export type FacetValue = { value: string; label: string; count: number };

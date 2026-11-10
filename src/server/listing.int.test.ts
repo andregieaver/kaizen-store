@@ -12,6 +12,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {} }));
 
 const listing = await import("./listing");
+const { GRID_PRODUCTS_MAX } = await import("./catalog");
 type Viewer = import("./listing").Viewer;
 
 const run = Date.now().toString(36);
@@ -142,5 +143,80 @@ describe("product listings' sort and filters (D78)", () => {
       await db().execute(sql`update commerce.products set audience = 'all' where store_id = ${storeId}::uuid and handle = 'demo-bordlampe'`);
       await db().execute(sql`update commerce.stores set audience = 'consumers', features = array_remove(features, 'business') where id = ${storeId}::uuid`);
     }
+  });
+});
+
+describe("a listing longer than one page (code review FF1)", () => {
+  /** 55 more products in the store, copies of the tote bag: with the demo's own, more than a page shows. */
+  const manyProducts = async () => {
+    const cols = async (table: string) => {
+      const [row] = await db().execute<Row>(sql`
+        select string_agg(quote_ident(column_name), ', ' order by ordinal_position) as cols from information_schema.columns
+        where table_schema = 'commerce' and table_name = ${table} and is_generated = 'NEVER' and identity_generation is null
+      `);
+      return sql.raw(String(row.cols));
+    };
+    const [products, translations, variants, media] = await Promise.all(["products", "product_translations", "product_variants", "product_media"].map(cols));
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`create temp table paged_src on commit drop as select id from commerce.products where store_id = ${storeId}::uuid and handle = 'demo-handlenett'`);
+      await tx.execute(sql`create temp table paged on commit drop as select gen_random_uuid() as id, n from generate_series(1, 55) n`);
+      await tx.execute(sql`
+        insert into commerce.products (${products}) select ${products} from (
+          select (jsonb_populate_record(null::commerce.products, to_jsonb(p) || jsonb_build_object('id', c.id, 'handle', 'paged-' || c.n, 'status', 'draft'))).*
+          from commerce.products p, paged_src s, paged c where p.id = s.id) x
+      `);
+      await tx.execute(sql`
+        insert into commerce.product_translations (${translations}) select ${translations} from (
+          select (jsonb_populate_record(null::commerce.product_translations, to_jsonb(t) || jsonb_build_object('product_id', c.id, 'title', 'Paged ' || lpad(c.n::text, 2, '0')))).*
+          from commerce.product_translations t, paged_src s, paged c where t.product_id = s.id) x
+      `);
+      await tx.execute(sql`
+        create temp table paged_v on commit drop as
+        select gen_random_uuid() as id, c.id as product_id, c.n, pv.id as old from commerce.product_variants pv, paged_src s, paged c where pv.product_id = s.id
+      `);
+      await tx.execute(sql`
+        insert into commerce.product_variants (${variants}) select ${variants} from (
+          select (jsonb_populate_record(null::commerce.product_variants, to_jsonb(pv) || jsonb_build_object('id', v.id, 'product_id', v.product_id, 'sku', 'PAGED-' || v.n || '-' || left(v.id::text, 6)))).*
+          from commerce.product_variants pv join paged_v v on v.old = pv.id) x
+      `);
+      await tx.execute(sql`select commerce.set_price(v.id, cp.market_code, cp.amount_minor) from paged_v v join commerce.current_prices cp on cp.variant_id = v.old`);
+      await tx.execute(sql`
+        insert into commerce.product_media (${media}) select ${media} from (
+          select (jsonb_populate_record(null::commerce.product_media, to_jsonb(i) || jsonb_build_object('id', gen_random_uuid(), 'product_id', c.id))).*
+          from commerce.product_media i, paged_src s, paged c where i.product_id = s.id) x
+      `);
+      await tx.execute(sql`update commerce.products set status = 'active' where store_id = ${storeId}::uuid and handle like 'paged-%'`);
+    });
+  };
+
+  it("says how many there are in all, shows a page more each time, and never repeats or skips a product", async () => {
+    await manyProducts();
+    const page = (n: number, filters: Partial<ListingFilters> = {}) => listing.listingPage(storeId, no, {}, { ...NO_FILTERS, ...filters }, privateBuyer, n);
+
+    const first = await page(1, { sort: "title" });
+    expect(first.products).toHaveLength(listing.LISTING_LIMIT);
+    expect(first.total).toBeGreaterThanOrEqual(55 + 5);
+
+    const second = await page(2, { sort: "title" });
+    expect(second.total).toBe(first.total);
+    expect(second.products).toHaveLength(Math.min(first.total, 2 * listing.LISTING_LIMIT));
+    // The second page starts with the first, in the same order, and repeats nothing.
+    expect(second.products.slice(0, listing.LISTING_LIMIT).map((p) => p.id)).toEqual(first.products.map((p) => p.id));
+    expect(new Set(second.products.map((p) => p.id)).size).toBe(second.products.length);
+
+    // The count follows the filters, not the page.
+    const narrowed = await page(1, { tags: ["nyhet"] });
+    expect(narrowed.total).toBe(narrowed.products.length);
+    expect(listing.LISTING_LIMIT * listing.LISTING_PAGES_MAX).toBe(GRID_PRODUCTS_MAX);
+    // A page past the end shows everything, and the one function older callers use still gives the first page.
+    expect((await page(9, { sort: "title" })).products).toHaveLength(first.total);
+    expect(await listing.listingProducts(storeId, no, {}, { ...NO_FILTERS, sort: "title" }, privateBuyer)).toHaveLength(listing.LISTING_LIMIT);
+  });
+
+  it("reads the page from the address: 1 for none or nonsense, never past the most a listing shows", () => {
+    expect([undefined, "", "0", "-2", "abc", "1.5"].map(listing.listingPageOf)).toEqual([1, 1, 1, 1, 1, 1]);
+    expect(listing.listingPageOf("3")).toBe(3);
+    expect(listing.listingPageOf(["2", "9"])).toBe(2);
+    expect(listing.listingPageOf("999")).toBe(listing.LISTING_PAGES_MAX);
   });
 });

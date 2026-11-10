@@ -1191,6 +1191,9 @@ export const da: Messages = {
     clear: "Nulstil",
     apply: "Vis produkterne",
     count: (n: number): string => (n === 1 ? "1 produkt" : `${n} produkter`),
+    /** When a listing has more than it shows (code review FF1): how many show, of how many. */
+    countOf: (shown: number, total: number): string => `${shown} af ${total} produkter`,
+    showMore: "Vis flere produkter",
     chosen: "Valgte filtre",
     remove: (what: string): string => `Fjern ${what}`,
     clearAll: "Fjern alle",

@@ -1166,6 +1166,9 @@ export const en = {
     clear: "Clear",
     apply: "Show products",
     count: (n: number): string => (n === 1 ? "1 product" : `${n} products`),
+    /** When a listing has more than it shows (code review FF1): how many show, of how many. */
+    countOf: (shown: number, total: number): string => `${shown} of ${total} products`,
+    showMore: "Show more products",
     chosen: "Chosen filters",
     remove: (what: string): string => `Remove ${what}`,
     clearAll: "Remove all",

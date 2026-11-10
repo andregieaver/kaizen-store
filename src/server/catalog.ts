@@ -486,6 +486,9 @@ function summaryImage(row: Row): ProductSummary["image"] {
 
 export type GridProduct = ProductSummary & { description: string; /** Its own short text, when it has one (else a tile summarises the description). */ excerpt?: string };
 
+/** The most product cards one read gives: a listing's pages together (`LISTING_LIMIT` times `LISTING_PAGES_MAX` in `listing.ts`). It was 48, which silently cut a longer list. */
+export const GRID_PRODUCTS_MAX = 960;
+
 /**
  * Active products with a price in the market for a content grid (D51):
  * only those in one of `categoryIds` (when given) and one of `tagIds`
@@ -572,7 +575,7 @@ export async function listGridProducts(
       and ${inTerms(filter.tagIds)}
       and ${given ? sql`p.id = any(${given}::uuid[])` : sql`true`}
     order by ${order}
-    limit ${Math.max(1, Math.min(48, filter.limit))}
+    limit ${Math.max(1, Math.min(GRID_PRODUCTS_MAX, filter.limit))}
   `);
 
   return rows.map((row) => {

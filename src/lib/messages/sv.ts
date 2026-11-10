@@ -1193,6 +1193,9 @@ export const sv: Messages = {
     clear: "Rensa",
     apply: "Visa produkterna",
     count: (n: number): string => (n === 1 ? "1 produkt" : `${n} produkter`),
+    /** When a listing has more than it shows (code review FF1): how many show, of how many. */
+    countOf: (shown: number, total: number): string => `${shown} av ${total} produkter`,
+    showMore: "Visa fler produkter",
     chosen: "Valda filter",
     remove: (what: string): string => `Ta bort ${what}`,
     clearAll: "Ta bort alla",
