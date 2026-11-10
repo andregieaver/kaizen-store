@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bestYearlySaving, comparisonTable, offerCurrency, planCards, yearlySaving, type PublicPlans } from "./plan-offer";
+import { bestYearlySaving, cardDisplay, comparisonTable, offerCurrency, planCards, yearlySaving, type PublicPlans } from "./plan-offer";
 
 const feature = (id: string, category: string, name: string, position: number) => ({ id, category, name, description: "", position });
 const data: PublicPlans = {
@@ -48,6 +48,24 @@ describe("yearlySaving", () => {
     expect(yearlySaving(1000, 12000)).toBeNull();
     expect(yearlySaving(1000, 13000)).toBeNull();
     expect(yearlySaving(0, 100)).toBeNull();
+  });
+});
+
+describe("cardDisplay (the pricing table led by the month, D481)", () => {
+  const month = { currency: "NOK", interval: "month" as const, amountMinor: 79900 };
+  const year = { currency: "NOK", interval: "year" as const, amountMinor: 799000 };
+  it("leads a monthly price with the month and twelve of them under it", () => {
+    expect(cardDisplay(month, null)).toEqual({ monthMinor: 79900, regularMonthMinor: 79900, yearMinor: 958800, billed: "month" });
+  });
+  it("leads a yearly price with its twelfth, rounded to the minor unit, and the yearly price under it", () => {
+    expect(cardDisplay(year, null)).toEqual({ monthMinor: 66583, regularMonthMinor: 66583, yearMinor: 799000, billed: "year" });
+  });
+  it("counts a campaign's price for as long as it lasts in the first year", () => {
+    expect(cardDisplay(month, { amountMinor: 39900, lasts: "once" }).yearMinor).toBe(39900 + 79900 * 11);
+    expect(cardDisplay(month, { amountMinor: 39900, lasts: 3 }).yearMinor).toBe(39900 * 3 + 79900 * 9);
+    expect(cardDisplay(month, { amountMinor: 39900, lasts: 24 }).yearMinor).toBe(39900 * 12);
+    expect(cardDisplay(month, { amountMinor: 39900, lasts: "forever" })).toEqual({ monthMinor: 39900, regularMonthMinor: 79900, yearMinor: 478800, billed: "month" });
+    expect(cardDisplay(year, { amountMinor: 600000, lasts: "once" })).toEqual({ monthMinor: 50000, regularMonthMinor: 66583, yearMinor: 600000, billed: "year" });
   });
 });
 

@@ -1096,6 +1096,8 @@ export const da: Messages = {
     notIncluded: "Ikke inkluderet",
     choose: "Kom i gang",
     yearlyPrice: (price: string): string => `eller ${price} pr. år`,
+    billedMonthly: (price: string): string => `${price} pr. år, faktureres månedligt`,
+    billedYearly: (price: string): string => `${price} pr. år, faktureres årligt`,
     period: "Betalingsperiode",
     monthly: "Månedlig",
     yearly: "Årlig",
