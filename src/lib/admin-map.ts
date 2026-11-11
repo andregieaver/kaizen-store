@@ -1480,20 +1480,9 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
 }
 
 /** The map as the AI reads it: every page without params, one line each, by group. */
-/**
- * Pages kept out of the AI manager's prompt for one deploy (`docs/ci-migrations.md`, D391): they arrived on main in the same push as a
- * migration, which deploys only once the agents' eval replay passes, and the replay can only be recorded again on production running the
- * new prompt. The pages themselves are live; the manager learns of them in the next push, which takes this list out, and the eval is then
- * recorded again on Platform → AI. Empty but for that.
- */
-const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set(["store:products.settings", "store:integrations.instagram", "platform:instagram"]);
-
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {
   const pages = pagesFor(area, flags).filter(
-    (page) =>
-      pageParams(page).length === 0 &&
-      (page.area === area || (page.area === "account" && page.group === "Work")) &&
-      !NOT_YET_IN_PROMPT.has(`${page.area}:${page.id}`),
+    (page) => pageParams(page).length === 0 && (page.area === area || (page.area === "account" && page.group === "Work")),
   );
   const groups = new Map<string, AdminPage[]>();
   for (const page of pages) groups.set(page.group, [...(groups.get(page.group) ?? []), page]);
