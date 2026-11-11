@@ -1,4 +1,4 @@
--- Drop shipping (D540, docs/drop-shipping.md): a supplier's own location belongs to the original store's supplier, so a store's copies
+-- Drop shipping (D550, docs/drop-shipping.md): a supplier's own location belongs to the original store's supplier, so a store's copies
 -- (clone_store, duplicate_store) leave it out with the stock kept there. A copy's variants are the store's own (`supplier_id` is not in their
 -- column lists), and suppliers are never copied (store-copy-rules.ts).
 DO $patch$

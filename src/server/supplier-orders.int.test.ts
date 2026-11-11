@@ -64,7 +64,7 @@ const tokenOfLastEmail = (): string => {
   return match[1];
 };
 
-describe("supplier orders (D541, step 2)", () => {
+describe("supplier orders (D551, step 2)", () => {
   let first: { orderId: string; supplierOrderId: string };
   let token = "";
 

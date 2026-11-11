@@ -4,7 +4,7 @@ import { testDb } from "../db";
 import { E2E_STORE, OWNER } from "./accounts";
 
 /**
- * Drop shipping as the owner sets it up (D540, step 1 of `docs/drop-shipping.md`; row orders.drop-shipping): a supplier added from Inventory →
+ * Drop shipping as the owner sets it up (D550, step 1 of `docs/drop-shipping.md`; row orders.drop-shipping): a supplier added from Inventory →
  * Suppliers with three fields, its page opened, a product ticked and marked as sent by it, and the list showing it. The rules (own stock first,
  * the order drawn at the supplier's location, the copies) are held by suppliers.int.test.ts; this holds the screens that drive them.
  */

@@ -521,7 +521,7 @@ export const inventoryEn = {
     incoming: "Incoming",
     incomingHint: "Units on their way here: sent transfers and purchase orders not yet counted in. They are not for sale until they arrive.",
   },
-  /** Drop shipping (D540, `docs/drop-shipping.md`): the suppliers that send your goods to your customers. */
+  /** Drop shipping (D550, `docs/drop-shipping.md`): the suppliers that send your goods to your customers. */
   suppliers: {
     sentByColumn: "Sent by",
     subtitle: "Orders go to {email}. Ships from {country}, within {days}.",

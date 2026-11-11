@@ -3076,7 +3076,7 @@ export const productVariants = commerce.table(
      */
     preorderUntil: date("preorder_until", { mode: "string" }),
     /**
-     * Drop shipping (D540, `docs/drop-shipping.md`): the supplier that sends this variant to the customer. Its stock is at the supplier's own
+     * Drop shipping (D550, `docs/drop-shipping.md`): the supplier that sends this variant to the customer. Its stock is at the supplier's own
      * location, which online orders take from after the store's own locations. Physical goods only. Null: the store sends it.
      */
     supplierId: uuid("supplier_id"),
@@ -3973,7 +3973,7 @@ export const inventoryLocations = commerce.table(
      */
     fulfilsOnline: boolean("fulfils_online").notNull().default(true),
     /**
-     * A supplier's own location (drop shipping, D540): made with the supplier and never shown among the store's own places; its stock is what
+     * A supplier's own location (drop shipping, D550): made with the supplier and never shown among the store's own places; its stock is what
      * the supplier says it has, and routing takes from it after every own location. Null: one of the store's own places.
      */
     supplierId: uuid("supplier_id"),
@@ -14394,7 +14394,7 @@ export const orderSettings = commerce.table(
      */
     quoteRequests: text("quote_requests").notNull().default("off"),
     /**
-     * Drop shipping (D541, `docs/drop-shipping.md` 4): the minutes a paid order's supplier lines wait before they go to the supplier, so a
+     * Drop shipping (D551, `docs/drop-shipping.md` 4): the minutes a paid order's supplier lines wait before they go to the supplier, so a
      * quick cancellation or change never reaches it (30 unless changed, 0 to 24 hours).
      */
     dropShipWaitMinutes: integer("drop_ship_wait_minutes").notNull().default(30),
@@ -14415,7 +14415,7 @@ export const orderSettings = commerce.table(
 );
 
 /**
- * What a supplier is asked to send for one paid order (drop shipping, D541, `docs/drop-shipping.md` 4 and 5): one per order and supplier, made
+ * What a supplier is asked to send for one paid order (drop shipping, D551, `docs/drop-shipping.md` 4 and 5): one per order and supplier, made
  * from the units the payment drew at the supplier's location (`inventory_movements` of reason `sale`). It waits until `send_after` (the
  * store's wait), is then sent to the supplier with a link to its page (`/supply/{token}`, only the token's SHA-256 kept, valid 60 days), and
  * is `shipped` when the supplier posts the parcel (its shipment), `problem` when it says it cannot send a line, `cancelled` when the order is
@@ -18741,7 +18741,7 @@ export const suppliers = commerce.table(
     organisationNumber: text("organisation_number"),
     usualKind: text("usual_kind"),
     /**
-     * Drop shipping (D540, `docs/drop-shipping.md` 3): the supplier sends some of the store's goods straight to its customers. With it on, the
+     * Drop shipping (D550, `docs/drop-shipping.md` 3): the supplier sends some of the store's goods straight to its customers. With it on, the
      * order email and the country it ships from are set, and the supplier has one location of its own (`inventory_locations.supplier_id`).
      * Switched on and edited only by `src/server/suppliers.ts`; switched off, its variants go back to the store and its location is closed.
      */

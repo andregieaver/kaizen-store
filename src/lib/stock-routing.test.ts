@@ -311,7 +311,7 @@ describe("properties of the rule (4.3)", () => {
   });
 });
 
-describe("a drop-shipping supplier's location (D540)", () => {
+describe("a drop-shipping supplier's location (D550)", () => {
   const own = { id: "own", priority: 2, createdAt: "2026-01-02T00:00:00.000Z", active: true, country: "NO" };
   const far = { id: "far", priority: 3, createdAt: "2026-01-03T00:00:00.000Z", active: true, country: "SE" };
   // Ranked first by number, and in the delivery country: still after every own place.

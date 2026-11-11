@@ -27,7 +27,7 @@ import { sendShipped } from "./shopper-emails";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
- * Supplier orders (drop shipping, D541, `docs/drop-shipping.md` 4 and 5, step 2). The five-minute job (`runSupplierOrders()`) makes one per
+ * Supplier orders (drop shipping, D551, `docs/drop-shipping.md` 4 and 5, step 2). The five-minute job (`runSupplierOrders()`) makes one per
  * paid order and supplier from the units the payment drew at the supplier's location (`inventory_movements` of reason `sale`), holds it for the
  * store's wait, then emails the supplier what to send and where, in the store's name and the supplier's language, with a link to its page. On
  * that page (`/supply/{token}`) the supplier posts the parcel, which is recorded by `markSent()` for exactly its lines and emailed to the customer

@@ -23,7 +23,7 @@ export const metadata: Metadata = { title: "Suppliers" };
 type Props = PageProps<"/admin/[store]/inventory/suppliers">;
 
 /**
- * Suppliers that ship for the store (drop shipping, D540, `docs/drop-shipping.md` 8): the list, and a short form to add one for staff who may change
+ * Suppliers that ship for the store (drop shipping, D550, `docs/drop-shipping.md` 8): the list, and a short form to add one for staff who may change
  * products. Everyone who can read products sees the list. Read per request.
  */
 export default async function SuppliersPage({ params }: Props) {

@@ -24,7 +24,7 @@ import { setStockContext } from "./stock-context";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
- * Drop shipping (D540, `docs/drop-shipping.md` 3, step 1): suppliers that send the store's goods to its customers. A supplier is a row of
+ * Drop shipping (D550, `docs/drop-shipping.md` 3, step 1): suppliers that send the store's goods to its customers. A supplier is a row of
  * `commerce.suppliers` (the same row its bills are booked on, D492) with `drop_ships` on, and one stock location of its own
  * (`inventory_locations.supplier_id`), ranked after every own location so online orders take the store's own stock first. A variant the
  * supplier sends names it (`product_variants.supplier_id`). This module is the only writer of those columns.

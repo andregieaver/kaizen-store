@@ -21,7 +21,7 @@
  * first and the others after, each group in rank order; every step above reads that order. A location that does not fulfil online orders
  * is never a candidate: the caller passes only those that do.
  *
- * DROP SHIPPING (D540): a supplier's own location comes after every own location in either order, and keeps an order together (step 2) only
+ * DROP SHIPPING (D550): a supplier's own location comes after every own location in either order, and keeps an order together (step 2) only
  * when no own location has a free unit of anything wanted; otherwise own units go first and the supplier sends the rest.
  */
 
@@ -29,7 +29,7 @@ import { inRankOrder, type Rankable } from "./inventory";
 
 /**
  * A candidate location; `country` (ISO 3166-1 alpha-2) is read only for the nearest-first order. `supplier`: a drop-shipping supplier's own
- * location (D540), always taken after every own location, whatever the order says.
+ * location (D550), always taken after every own location, whatever the order says.
  */
 export type RoutingLocation = Rankable & { active: boolean; country?: string; supplier?: boolean };
 
@@ -76,7 +76,7 @@ export function wantsOf(lines: readonly WantedLine[]): Want[] {
 /** The candidates in the order the steps read them: rank order, or the delivery country's first (each group in rank) when one is given. */
 export function routingOrder<L extends RoutingLocation>(locations: readonly L[], nearCountry?: string | null): L[] {
   const all = inRankOrder(locations.filter((l) => l.active));
-  // The store's own places first, a supplier's after them (drop shipping, D540): own stock is sent before a supplier is asked.
+  // The store's own places first, a supplier's after them (drop shipping, D550): own stock is sent before a supplier is asked.
   const ranked = [...all.filter((l) => !l.supplier), ...all.filter((l) => l.supplier)];
   if (!nearCountry) return ranked;
   const near = nearCountry.toUpperCase();
@@ -100,7 +100,7 @@ export function allocate(args: {
   const cell = (variantId: string, locationId: string) => cellAt.get(`${variantId}\u0000${locationId}`);
   const free = (variantId: string, locationId: string) => freeUnits(cell(variantId, locationId));
 
-  // Step 2: the first location that has every want in full from its free units. A supplier's location (D540) is a candidate only when no own
+  // Step 2: the first location that has every want in full from its free units. A supplier's location (D550) is a candidate only when no own
   // location has a free unit of anything wanted, so the store's own stock is always sent before a supplier is asked.
   const ownHasSome = ranked.some((l) => !l.supplier && wants.some((w) => free(w.variantId, l.id) > 0));
   for (const location of ranked) {

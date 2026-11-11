@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { postSupplierParcel, reportSupplierProblem } from "@/server/supplier-orders";
 
 /**
- * A drop-shipping supplier's two answers on its page (D541): the parcel it sent, or why it cannot send. The token in the address is the only key;
+ * A drop-shipping supplier's two answers on its page (D551): the parcel it sent, or why it cannot send. The token in the address is the only key;
  * each answer goes back to the page with what happened (`?done=` or `?problem=`), so the page works without a script.
  */
 

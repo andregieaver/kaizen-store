@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { isTrackingNumber, supplierLines, supplierWords } from "./supplier-orders";
 
-describe("supplier orders' pure parts (D541)", () => {
+describe("supplier orders' pure parts (D551)", () => {
   it("lays the units sold at a supplier over the order's lines of each variant, in order, never more than was bought", () => {
     const lines = [
       { id: "l1", variantId: "a", quantity: 2 },

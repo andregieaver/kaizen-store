@@ -24,7 +24,7 @@ export const metadata: Metadata = { title: "Supplier" };
 
 type Props = PageProps<"/admin/[store]/inventory/suppliers/[id]">;
 
-/** One supplier that ships for the store (drop shipping, D540): its details, the products it sends and, for the owner, stopping it. Read per request. */
+/** One supplier that ships for the store (drop shipping, D550): its details, the products it sends and, for the owner, stopping it. Read per request. */
 export default async function SupplierPage({ params, searchParams }: Props) {
   const { store: slug, id } = await params;
   const gated = await requirePermission(slug, "products:read");

@@ -31,7 +31,7 @@ const wool = { name: "Nordic Wool", orderEmail: "Orders@NordicWool.example", shi
 const staff = () => ({ ...store.member, role: "admin" as const, permissions: ["products:read", "products:write"] });
 const readOnly = () => ({ ...store.member, role: "viewer" as const, permissions: ["products:read"] });
 
-describe("a drop-shipping supplier (D540, step 1)", () => {
+describe("a drop-shipping supplier (D550, step 1)", () => {
   let supplierId = "";
 
   it("is added with a location of its own, kept off the store's own places and ranked after them", async () => {

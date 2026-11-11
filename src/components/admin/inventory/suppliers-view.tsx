@@ -9,7 +9,7 @@ import { countWords, fillWords } from "@/lib/admin-fill";
 import { ORDER_LANGUAGES, ORDER_METHODS } from "@/lib/drop-shipping";
 
 /**
- * The Suppliers pages' parts (drop shipping, D540, `docs/drop-shipping.md` 8): the form that adds or edits a supplier that ships for the store, the list
+ * The Suppliers pages' parts (drop shipping, D550, `docs/drop-shipping.md` 8): the form that adds or edits a supplier that ships for the store, the list
  * of products it sends, and the owner's stop. Homer gives a name, an email and a country and presses Add; the rest has sensible defaults one look away.
  * In the admin's language (`useAdminText("inventory")`); the server's refusals keep the server's words. The server checks every permission again.
  */

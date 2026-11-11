@@ -20,7 +20,7 @@ type Row = Record<string, unknown>;
  * puts it back. A location is never deleted: levels, movements and refunds refer to it. The database holds the rules that cannot be raced (one active
  * location always, no deactivation while a checkout holds stock there, no two active locations with one name); this module gives the sentences.
  *
- * A drop-shipping supplier's own location (D540, `supplier_id` set) is not one of the store's places: it is left out of every list and change
+ * A drop-shipping supplier's own location (D550, `supplier_id` set) is not one of the store's places: it is left out of every list and change
  * here and written only by `src/server/suppliers.ts`.
  */
 

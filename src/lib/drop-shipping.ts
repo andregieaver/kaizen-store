@@ -1,5 +1,5 @@
 /**
- * Drop shipping (D540, `docs/drop-shipping.md`): what a supplier that sends the store's goods is, as typed by staff, and the fixed numbers
+ * Drop shipping (D550, `docs/drop-shipping.md`): what a supplier that sends the store's goods is, as typed by staff, and the fixed numbers
  * around it. Pure; `src/server/suppliers.ts` is the only writer and applies these rules again.
  */
 

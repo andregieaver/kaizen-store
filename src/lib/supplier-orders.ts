@@ -1,5 +1,5 @@
 /**
- * Supplier orders (drop shipping, D541, `docs/drop-shipping.md` 4 and 5), the pure parts: which order lines a supplier is asked to send from
+ * Supplier orders (drop shipping, D551, `docs/drop-shipping.md` 4 and 5), the pure parts: which order lines a supplier is asked to send from
  * the units a payment drew at its location, the supplier's states, and the words of its email and page in the language the store chose for it
  * (the store's document languages). `src/server/supplier-orders.ts` is the only writer.
  */

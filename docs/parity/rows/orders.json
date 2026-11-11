@@ -2342,7 +2342,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Steps 1 and 2 of 5 built (D540, D541, docs/drop-shipping.md 10): suppliers that drop-ship with a location of their own ranked after every own location, variants marked as sent by them, own stock first; a paid order's supplier lines reach the supplier by email after the store's wait, in its language, and the tracking it posts on its page reaches the customer as the shop's shipped email; a supplier that cannot send tells the owners. Not yet: connected suppliers and stock by file or API, delivery estimates (step 3); late reminders, the owner's choices on a problem, returns to the supplier, what the shop owes (step 4); reports and the AI manager (step 5).",
+    "gap": "Steps 1 and 2 of 5 built (D550, D551, docs/drop-shipping.md 10): suppliers that drop-ship with a location of their own ranked after every own location, variants marked as sent by them, own stock first; a paid order's supplier lines reach the supplier by email after the store's wait, in its language, and the tracking it posts on its page reaches the customer as the shop's shipped email; a supplier that cannot send tells the owners. Not yet: connected suppliers and stock by file or API, delivery estimates (step 3); late reminders, the owner's choices on a problem, returns to the supplier, what the shop owes (step 4); reports and the AI manager (step 5).",
     "bucket": "A",
     "wave": null,
     "criteria": [
@@ -2370,15 +2370,15 @@
     },
     "decisions": [
       "D482",
-      "D540",
-      "D541"
+      "D550",
+      "D551"
     ],
     "history": [
       {
         "on": "2026-11-10",
         "from": "missing",
         "to": "partial",
-        "why": "D540: step 1 of docs/drop-shipping.md built and held by suppliers.int.test.ts (a supplier's location, marked variants, own stock first, the order drawn at the supplier's location, left out of a store's copy) and stock-routing.test.ts."
+        "why": "D550: step 1 of docs/drop-shipping.md built and held by suppliers.int.test.ts (a supplier's location, marked variants, own stock first, the order drawn at the supplier's location, left out of a store's copy) and stock-routing.test.ts."
       }
     ]
   }

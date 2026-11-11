@@ -8,7 +8,7 @@ import { checkOwnerRole, checkPermission } from "@/server/permissions";
 import { saveDropShipSupplier, setVariantsSupplier, stopDropShipping } from "@/server/suppliers";
 
 /**
- * The Suppliers pages' steps (drop shipping, D540), each with the store's slug as its bound first argument. Adding, editing and marking products are for
+ * The Suppliers pages' steps (drop shipping, D550), each with the store's slug as its bound first argument. Adding, editing and marking products are for
  * a member with `products:write`; stopping a supplier takes its stock off sale, so it is the OWNER's (`checkOwnerRole`, checked again by the server).
  */
 

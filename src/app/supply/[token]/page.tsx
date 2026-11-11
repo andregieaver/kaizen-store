@@ -18,7 +18,7 @@ const field = "min-h-11 rounded-md border border-line bg-card px-3";
 const button = "min-h-11 self-start rounded-full bg-foreground px-5 font-medium text-background";
 
 /**
- * A drop-shipping supplier's page (D541, `docs/drop-shipping.md` 5), reached from its order email's link: what to send and where, the store's
+ * A drop-shipping supplier's page (D551, `docs/drop-shipping.md` 5), reached from its order email's link: what to send and where, the store's
  * note, and two answers, the parcel sent (carrier and tracking) or why it cannot send. Nothing else of the store and no other order; the link is
  * the only key and ends after 60 days. In the language the store chose for the supplier. Read per request, never cached.
  */

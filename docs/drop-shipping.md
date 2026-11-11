@@ -1,8 +1,8 @@
-# Drop shipping: a supplier ships it for you (D482 planned; D540 and D541, steps 1 and 2, built)
+# Drop shipping: a supplier ships it for you (D482 planned; D550 and D551, steps 1 and 2, built)
 
 The owner (5 November 2026): "We haven't made a plan for how drop shipping should work. Do that as part of this [the
 `/selling-drop-shipping` page], but explain to me how this would work first." The plan below was explained first, and the owner chose the
-recommended answer to each of the three questions (section 11). **Steps 1 and 2 are built (D540, D541, 10 November 2026); steps 3 to 5 are a plan.**
+recommended answer to each of the three questions (section 11). **Steps 1 and 2 are built (D550, D551, 10 November 2026); steps 3 to 5 are a plan.**
 Code, tests and texts follow it; where they disagree, this file is corrected first. Section 3 was corrected when step 1 was built: a
 supplier is the row its bills are already booked on, a location points at its supplier, and own stock always goes first.
 
@@ -62,7 +62,7 @@ Most of what drop shipping needs is built and tested. The plan adds to it and re
   supplier, a file (SKU and quantity, with the existing dry run) and *Always available*. A level not refreshed in a set time is flagged,
   never guessed.
 - **Cost** is the supplier's price: the variant's cost as today; changing it writes the cost history, never rewriting old orders.
-- **A supplier order** (step 2, built in D541, `commerce.supplier_orders` and its lines): one per customer order and supplier, made when the order is
+- **A supplier order** (step 2, built in D551, `commerce.supplier_orders` and its lines): one per customer order and supplier, made when the order is
   paid, from the lines `allocate()` placed at that supplier's location. It carries the delivery address, the lines (SKU, name, quantity,
   cost), the order number and its state: `waiting`, `sent`, `shipped`, `cancelled`, `problem`. It is made by the five-minute job from the units the
   payment drew at the supplier's location (`inventory_movements` of reason `sale`), not inside the payment, so a payment never waits on it.
@@ -134,8 +134,8 @@ refunds). A supplier's emails and notes reach the AI only as data under `UNTRUST
 
 | Step | Builds | Done when |
 |---|---|---|
-| 1 | Suppliers, supplier locations (`supplier_id`), drop-shipped variants, the admin's supplier pages. **Built (D540)** | An owner adds a supplier, marks products, and a test order is allocated to the supplier's location (`suppliers.int.test.ts`, `e2e/signed-in/suppliers.spec.ts`) |
-| 2 | Supplier orders, the wait, the email, the supplier's page, tracking back to the customer, partial parcels. **Built (D541)**; the wait has no settings screen yet (30 minutes holds) | A paid test order reaches a supplier by email and its tracking reaches the customer's inbox |
+| 1 | Suppliers, supplier locations (`supplier_id`), drop-shipped variants, the admin's supplier pages. **Built (D550)** | An owner adds a supplier, marks products, and a test order is allocated to the supplier's location (`suppliers.int.test.ts`, `e2e/signed-in/suppliers.spec.ts`) |
+| 2 | Supplier orders, the wait, the email, the supplier's page, tracking back to the customer, partial parcels. **Built (D551)**; the wait has no settings screen yet (30 minutes holds) | A paid test order reaches a supplier by email and its tracking reaches the customer's inbox |
 | 3 | Connected suppliers (scoped token, `supplier_order.created`), stock by file and API, *Always available*, delivery estimates | A connected test supplier reads only its lines, posts tracking and stock |
 | 4 | Late and problem handling, returns to the supplier's address, what the shop owes | A late supplier is reminded once and the owner told |
 | 5 | Reports, workflows' trigger, the AI manager's tools and eval cases | The briefing names a late supplier |
