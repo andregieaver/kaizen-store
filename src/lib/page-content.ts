@@ -1207,6 +1207,8 @@ export type MenuDrawer = {
   backgroundHue?: number;
   /** What is behind the menu blurred, in pixels (D86): with no background or a see-through colour, the page shows through as frosted glass. */
   backdropBlur?: number;
+  /** The phone menu button's: which of the owner's menus (D85) it opens; unset, the header's menu (`phoneMenuIds()`). */
+  menuId?: string;
 };
 
 /**
@@ -3398,6 +3400,7 @@ const siteBlock = z.object({
       backgroundLayers: backgroundLayersSchema,
       backgroundHue: backgroundHueSchema,
       backdropBlur,
+      menuId: z.uuid("Choose a menu for the phone menu button.").optional(),
     })
     .optional()
     // A drawer with nothing set is left out (the builder leaves out what equals the part's standard look, `ownDrawer()`).

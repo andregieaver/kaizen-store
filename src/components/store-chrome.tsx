@@ -183,6 +183,11 @@ export function MobileMenu({
     backdrop.current?.replaceChildren(...(holder ? Array.from((holder.cloneNode(true) as HTMLElement).childNodes) : []));
     setSurface(holder?.dataset.menuSurface ?? "");
     setBlur(Number(holder?.dataset.menuBlur) || 0);
+    // The menu the button chose (D573), else the header's; one the page does not have shows the header's.
+    const navs = Array.from(d.querySelectorAll<HTMLElement>("[data-menu-nav]"));
+    const asked = opener?.dataset.menuNav ?? "";
+    const shown = navs.some((nav) => nav.dataset.menuNav === asked) ? asked : "";
+    for (const nav of navs) nav.hidden = nav.dataset.menuNav !== shown;
     // A dropdown hangs from the bottom of the header the button is in.
     if (next.type === "dropdown" && opener) {
       setTop(Math.max(0, Math.round((opener.closest("header") ?? opener).getBoundingClientRect().bottom)));

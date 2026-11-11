@@ -3932,9 +3932,19 @@ function Dialogs({
         {block?.type === "site" && (
           <SettingsTabs
             key={block.id}
-            general={<SiteFields block={block} context={{ upload, startVideo }} onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))} />}
+            general={
+              <SiteFields
+                block={block}
+                context={{ upload, startVideo, menus: grid.menus, menusHref: grid.menusHref }}
+                onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))}
+              />
+            }
             style={
               <>
+                {/* The phone menu button's place in its column (D573): left, centre or right on phones. */}
+                {block.part === "menuButton" && (
+                  <TextAlignFields what={dw.position} value={block} onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))} />
+                )}
                 {typographyFields({ kind: "block", id: block.id }, dw.fonts.site)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
@@ -5676,7 +5686,15 @@ function MenuStandIn({ block, menus }: { block: MenuBlock; menus: MenuPreview[] 
 
 
 /** A site component's own settings (D80): only those its part has. */
-function SiteFields({ block, onChange, context }: { block: SiteBlock; onChange: (patch: BlockPatch<SiteBlock>) => void; context: { upload: Upload | null; startVideo: StartVideo | null } }) {
+function SiteFields({
+  block,
+  onChange,
+  context,
+}: {
+  block: SiteBlock;
+  onChange: (patch: BlockPatch<SiteBlock>) => void;
+  context: { upload: Upload | null; startVideo: StartVideo | null; menus?: MenuPreview[]; menusHref?: string };
+}) {
   const lined = block.part === "markets" && block.display === "list";
   const w = useAdminText("builder");
   const sw = w.site;
@@ -5705,7 +5723,9 @@ function SiteFields({ block, onChange, context }: { block: SiteBlock; onChange: 
         />
       )}
       {block.part === "languages" && <LanguageSwitcherFields block={block} onChange={onChange} />}
-      {isDrawerPart(block.part) && <MenuDrawerFields part={block.part} drawer={block.drawer} upload={context.upload} onChange={(drawer) => onChange({ drawer })} />}
+      {isDrawerPart(block.part) && (
+        <MenuDrawerFields part={block.part} drawer={block.drawer} upload={context.upload} menus={context.menus} onChange={(drawer) => onChange({ drawer })} />
+      )}
       {lined && (
         <Choices
           legend={w.menu.linksLegend}
@@ -5735,13 +5755,17 @@ function MenuDrawerFields({
   part,
   drawer,
   upload,
+  menus,
   onChange,
 }: {
   part: DrawerPart;
   drawer: MenuDrawer | undefined;
   upload: Upload | null;
+  /** The owner's menus, for the menu button's choice of which it opens (D573). */
+  menus?: MenuPreview[];
   onChange: (drawer: MenuDrawer | undefined) => void;
 }) {
+  const id = useId();
   const dw = useAdminText("builder").site.drawer;
   const words = dw.parts[part];
   const standard = DRAWER_PARTS[part];
@@ -5749,6 +5773,25 @@ function MenuDrawerFields({
   const patch = (changes: Partial<MenuDrawer>) => onChange(ownDrawer({ ...drawer, ...changes }, standard));
   return (
     <div className="flex flex-col gap-5 border-t border-border pt-4">
+      {part === "menuButton" && menus && menus.length > 0 && (
+        <label htmlFor={`${id}-menu`} className="flex flex-col gap-1 text-sm font-medium">
+          {dw.menu}
+          <select
+            id={`${id}-menu`}
+            value={menus.some((menu) => menu.id === drawer?.menuId) ? drawer?.menuId : ""}
+            onChange={(event) => patch({ menuId: event.target.value || undefined })}
+            className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
+          >
+            <option value="">{dw.headerMenu}</option>
+            {menus.map((menu) => (
+              <option key={menu.id} value={menu.id}>
+                {menu.name}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs font-normal text-muted">{dw.menuHint}</span>
+        </label>
+      )}
       <Choices
         legend={words.type}
         hint={dw.typeHint[look.type]}

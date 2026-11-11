@@ -117,6 +117,7 @@ function MenuButton({ label, block }: { label: string; block: SiteBlock }) {
         data-open-menu
         {...menuLookAttrs(drawer)}
         {...(look && { "data-menu-look": look })}
+        {...(drawer?.menuId && { "data-menu-nav": drawer.menuId })}
         aria-haspopup="dialog"
         aria-controls="store-menu"
         className="flex size-11 items-center justify-center rounded-full kzb-md-hidden"

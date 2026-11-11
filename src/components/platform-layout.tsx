@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { PageContent } from "@/lib/page-content";
+import { phoneMenuIds } from "@/lib/site-layout";
 import { Suspense } from "react";
 
 import { ReportContentLink } from "@/components/report-content-link";
@@ -146,21 +148,24 @@ export function PlatformHeader({ chrome, lang = "en" }: Props) {
 }
 
 /** The phone's slide-out menu, placed after the page's content (see `MobileMenu`). */
-export function PlatformMenu({ chrome, lang = "en" }: Props) {
+export function PlatformMenu({ chrome, lang = "en", header }: Props & { header?: Pick<PageContent, "rows"> | null }) {
   const { m, nav } = words(lang);
+  // The header's menu and each other menu a menu button in it opens (D573), as a store's (`StoreMenu`).
+  const { standard, chosen } = phoneMenuIds(header, chrome.headerMenuId);
+  const menuNav = (id: string | null, own: boolean) => {
+    const items = platformMenu(chrome, id);
+    return (
+      items.length > 0 && (
+        <nav key={id ?? ""} aria-label={m.mainMenu} data-menu-nav={own ? id : ""} hidden={own}>
+          <MenuLinks items={items} chrome={chrome} lang={lang} layout="drawer" linkClassName="flex min-h-12 items-center border-b border-border text-lg" />
+        </nav>
+      )
+    );
+  };
   return (
     <MobileMenu title={<Brand chrome={chrome} size="header" lang={lang} />} labels={{ close: m.closeMenu, menu: m.menu }}>
-      {platformMenu(chrome, chrome.headerMenuId).length > 0 && (
-        <nav aria-label={m.mainMenu}>
-          <MenuLinks
-            items={platformMenu(chrome, chrome.headerMenuId)}
-            chrome={chrome}
-            lang={lang}
-            layout="drawer"
-            linkClassName="flex min-h-12 items-center border-b border-border text-lg"
-          />
-        </nav>
-      )}
+      {menuNav(standard, false)}
+      {chosen.map((id) => menuNav(id, true))}
       <ul className="flex flex-col">
         <li>
           <Link href={platformPath(lang, "/sign-up")} className="flex min-h-12 items-center gap-3">
