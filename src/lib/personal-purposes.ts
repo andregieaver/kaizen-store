@@ -167,6 +167,7 @@ export const PURPOSE_OF: Readonly<Record<string, PurposeKey>> = {
   refunds: "bookkeeping",
   shipments: "orders",
   supplier_orders: "orders",
+  marketplace_orders: "orders",
   supplier_order_lines: "orders",
   shipment_tracking: "orders",
   carrier_labels: "orders",

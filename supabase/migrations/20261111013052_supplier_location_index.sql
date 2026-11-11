@@ -1,0 +1,1 @@
+CREATE INDEX "inventory_locations_store_supplier_idx" ON "commerce"."inventory_locations" USING btree ("store_id","supplier_id") WHERE "commerce"."inventory_locations"."supplier_id" is not null;

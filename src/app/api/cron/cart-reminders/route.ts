@@ -1,3 +1,4 @@
+import { runEbayJobs } from "@/server/ebay";
 import { runSupplierOrders } from "@/server/supplier-orders";
 import { revalidateTag } from "next/cache";
 import { connection } from "next/server";
@@ -184,6 +185,8 @@ async function dispatch() {
     lowStock: () => sendLowStockNotices(),
     // Drop shipping (D551): supplier orders made for paid orders' supplier lines, and those whose wait is over emailed to their suppliers.
     supplierOrders: () => runSupplierOrders(),
+    // eBay as a sales channel (D555): each connected store's new eBay orders fetched (drawing its stock) and its listings sent, ten stores a run.
+    ebay: () => runEbayJobs(),
     draftExpiry: () => expireDrafts(),
     // Company orders (D321 C.2) that waited for approval, or for payment after it, longer than the window: cancelled, their stock let go.
     approvalExpiry: () => expireApprovals(),

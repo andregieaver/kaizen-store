@@ -2390,5 +2390,54 @@
         "why": "D553: a connected supplier with its key reads only its own orders and posts tracking and stock (supplier-steps.int.test.ts drives the API route), a late supplier is reminded once and the owners told once, and the briefing names it; criteria 1 and 2 held since D550 and D551. Still not done (outside the criteria): the customer's return address per supplier and the AI manager's own tools."
       }
     ]
+  },
+  {
+    "id": "orders.marketplace-channels",
+    "domain": "orders",
+    "feature": "Selling on marketplaces (eBay, Amazon and others)",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify's own Marketplace Connect app lists products on Amazon, eBay, Walmart and others and brings their orders into the admin; not read from a page in this run.",
+      "url": null,
+      "fetched": false,
+      "checkedOn": null
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "weight": 3,
+    "gap": "eBay only (D555), built against eBay's published OpenAPI documents and a stand-in, not yet against eBay itself (it needs Kaizena Flow's app at eBay: a bucket B credential). Amazon, Zalando and others are not connected; eBay's payouts and fees are not booked; listings are not ended at eBay from here.",
+    "bucket": "B",
+    "wave": null,
+    "criteria": [
+      "An owner connects a marketplace account, lists chosen products at the store's price and stock, and their quantities follow the store's stock (integration test against a stand-in).",
+      "The marketplace's orders arrive once each, draw the store's stock, and their tracking goes back when marked sent.",
+      "At least two marketplaces, and their payouts and fees reach the books."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/ebay.ts",
+        "src/lib/ebay.ts",
+        "src/app/admin/(gated)/[store]/integrations/ebay/page.tsx"
+      ],
+      "tests": [
+        "src/server/ebay.int.test.ts",
+        "src/lib/ebay.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D555"
+    ],
+    "history": [
+      {
+        "on": "2026-11-11",
+        "from": "missing",
+        "to": "partial",
+        "why": "D555: eBay connected through its consent page, listings sent and orders imported against a stand-in built from eBay's OpenAPI documents (ebay.int.test.ts); criteria 1 and 2 hold against the stand-in, criterion 3 not."
+      }
+    ]
   }
 ]

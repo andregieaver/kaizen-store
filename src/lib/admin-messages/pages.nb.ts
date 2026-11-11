@@ -606,6 +606,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "store:integrations.tripletex": { title: "Tripletex", keywords: ["tripletex", "regnskap", "bokføring", "bilag", "regnskapsfører", "faktura", "kreditnota"] },
   "store:books": { title: "Regnskap", keywords: ["regnskap", "hovedbok", "saldobalanse", "bilag", "bokføring", "resultat", "lås periode", "regnskapsfører"] },
   "store:books.vat": { title: "Mva-melding", keywords: ["mva-melding", "mva", "merverdiavgift", "termin", "skatteetaten", "altinn", "mva å betale", "regnskapsfører"] },
+  "store:integrations.ebay": { title: "eBay", keywords: ["ebay", "markedsplass", "salgskanal", "selg på ebay"] },
   "store:integrations.fiken": { title: "Fiken", keywords: ["fiken", "regnskap", "bokføring", "annet salg", "bilag", "regnskapsfører", "faktura", "kreditnota"] },
   "store:staging": { title: "Klargjøring", keywords: ["klargjøring", "lansering", "publiser samlet", "sammenlign", "versjoner", "forhåndsvisning"] },
   "store:checkout-rules": { title: "Regler i kassen", keywords: ["kasse", "regler", "skjul frakt", "betalingsmåter", "spørsmål", "egne felt", "bestillingsnotat"] },

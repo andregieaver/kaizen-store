@@ -10,4 +10,4 @@ Read the rule of the part you change before changing it; a rule changes in its f
 - [`commerce.md`](commerce.md): Orders, payments, tax, shipping and selling (50 rules)
 - [`marketing.md`](marketing.md): Customers, marketing and analytics (25 rules)
 - [`website.md`](website.md): The website, the builder, themes and the docs portal (76 rules)
-- [`integrations.md`](integrations.md): Data in and out, APIs and integrations (29 rules)
+- [`integrations.md`](integrations.md): Data in and out, APIs and integrations (30 rules)

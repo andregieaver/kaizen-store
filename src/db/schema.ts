@@ -4011,6 +4011,8 @@ export const inventoryLocations = commerce.table(
     unique("inventory_locations_store_id_key").on(t.storeId, t.id),
     foreignKey({ name: "inventory_locations_supplier_fk", columns: [t.storeId, t.supplierId], foreignColumns: [suppliers.storeId, suppliers.id] }),
     uniqueIndex("inventory_locations_supplier_key").on(t.supplierId).where(sql`${t.supplierId} is not null`),
+    // The foreign key to its supplier, store first (the performance advisor found it uncovered, 11 November 2026).
+    index("inventory_locations_store_supplier_idx").on(t.storeId, t.supplierId).where(sql`${t.supplierId} is not null`),
     // Two active locations of one store cannot share a name (case-insensitively).
     uniqueIndex("inventory_locations_active_name_key")
       .on(t.storeId, sql`lower(${t.name})`)
@@ -14504,6 +14506,110 @@ export const supplierOrderLines = commerce.table(
     index("supplier_order_lines_line_idx").on(t.storeId, t.orderLineId),
     index("supplier_order_lines_order_idx").on(t.storeId, t.supplierOrderId),
     check("supplier_order_lines_quantity", sql`${t.quantity} between 1 and 1000000`),
+  ],
+);
+
+/**
+ * A store's connection to a marketplace (D555, sales channels): today eBay, through its seller APIs with the owner's consent. The grant is kept
+ * encrypted with `SETTINGS_ENCRYPTION_KEY`; `settings` holds the marketplace (such as `EBAY_DE`) and the seller's business policies, location
+ * and category that eBay asks every offer to name. Written only by `src/server/ebay.ts`.
+ */
+export const marketplaceConnections = commerce.table(
+  "marketplace_connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    channel: text("channel").notNull(),
+    /** `connected` (the grant works), `refused` (the marketplace no longer takes it: connect again) or `off`. */
+    state: text("state").notNull().default("connected"),
+    accessTokenEncrypted: text("access_token_encrypted"),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }),
+    refreshTokenEncrypted: text("refresh_token_encrypted"),
+    settings: jsonb("settings").notNull().default({}),
+    ordersSince: timestamp("orders_since", { withTimezone: true }),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("marketplace_connections_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("marketplace_connections_channel_key").on(t.storeId, t.channel),
+    index("marketplace_connections_updated_by_idx").on(t.updatedBy),
+    check("marketplace_connections_channel", sql`${t.channel} in ('ebay')`),
+    check("marketplace_connections_state", sql`${t.state} in ('connected', 'refused', 'off')`),
+    check("marketplace_connections_error", sql`${t.lastError} is null or length(${t.lastError}) <= 500`),
+  ],
+);
+
+/** A variant listed on a marketplace (D555): its offer and listing there, and what was last sent (price, quantity) or why it failed. */
+export const marketplaceListings = commerce.table(
+  "marketplace_listings",
+  {
+    storeId: storeId(),
+    connectionId: uuid("connection_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    offerId: text("offer_id"),
+    listingId: text("listing_id"),
+    /** `pending` (to send), `listed`, `error` (see `error`) or `ended`. */
+    state: text("state").notNull().default("pending"),
+    priceMinor: bigint("price_minor", { mode: "number" }),
+    currency: char("currency", { length: 3 }),
+    quantity: integer("quantity"),
+    error: text("error"),
+    syncedAt: timestamp("synced_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.connectionId, t.variantId] }),
+    foreignKey({ name: "marketplace_listings_connection_fk", columns: [t.storeId, t.connectionId], foreignColumns: [marketplaceConnections.storeId, marketplaceConnections.id] }).onDelete("cascade"),
+    variantRef("marketplace_listings_variant_fk", t),
+    index("marketplace_listings_variant_idx").on(t.storeId, t.variantId),
+    index("marketplace_listings_connection_idx").on(t.storeId, t.connectionId),
+    check("marketplace_listings_state", sql`${t.state} in ('pending', 'listed', 'error', 'ended')`),
+    check("marketplace_listings_error", sql`${t.error} is null or length(${t.error}) <= 500`),
+  ],
+);
+
+/**
+ * An order a buyer placed on a marketplace (D555): kept as the marketplace sent it (its lines and the delivery address) with the stock it drew
+ * from the store's own locations, and marked sent with its tracking, which goes back to the marketplace. The marketplace takes the buyer's
+ * payment and gives the receipt; it is not a shop order.
+ */
+export const marketplaceOrders = commerce.table(
+  "marketplace_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    connectionId: uuid("connection_id").notNull(),
+    externalId: text("external_id").notNull(),
+    placedAt: timestamp("placed_at", { withTimezone: true }).notNull(),
+    totalMinor: bigint("total_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    buyerName: text("buyer_name").notNull().default(""),
+    buyerEmail: text("buyer_email"),
+    shipTo: jsonb("ship_to").notNull().default({}),
+    /** `[{ lineItemId, sku, title, quantity, variantId, totalMinor }]`, as the marketplace sent them, matched to variants by SKU. */
+    lines: jsonb("lines").notNull().default([]),
+    /** `open`, `sent` (tracking posted), or `cancelled` (by the marketplace). */
+    state: text("state").notNull().default("open"),
+    stockDrawn: boolean("stock_drawn").notNull().default(false),
+    carrier: text("carrier"),
+    trackingNumber: text("tracking_number"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    error: text("error"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("marketplace_orders_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("marketplace_orders_external_key").on(t.connectionId, t.externalId),
+    foreignKey({ name: "marketplace_orders_connection_fk", columns: [t.storeId, t.connectionId], foreignColumns: [marketplaceConnections.storeId, marketplaceConnections.id] }),
+    index("marketplace_orders_store_idx").on(t.storeId, t.placedAt.desc()),
+    index("marketplace_orders_connection_idx").on(t.storeId, t.connectionId),
+    check("marketplace_orders_state", sql`${t.state} in ('open', 'sent', 'cancelled')`),
+    check("marketplace_orders_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("marketplace_orders_texts", sql`length(${t.externalId}) between 1 and 100 and length(${t.buyerName}) <= 200 and coalesce(length(${t.error}) <= 500, true)`),
   ],
 );
 

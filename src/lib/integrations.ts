@@ -7,7 +7,7 @@
 export type Provider = "zapier" | "make" | "slack";
 
 export type IntegrationInfo = {
-  id: Provider | "tripletex" | "fiken";
+  id: Provider | "tripletex" | "fiken" | "ebay";
   name: string;
   /** What connecting it does, in a line. */
   summary: string;
@@ -71,6 +71,12 @@ export const INTEGRATIONS: IntegrationInfo[] = [
     name: "Fiken",
     // Not a webhook (D460): its own page, `/integrations/fiken`, connected through Fiken's own consent page.
     summary: "Your invoices and credit notes go straight into Fiken.",
+  },
+  {
+    id: "ebay",
+    name: "eBay",
+    // A sales channel (D555): its own page, `/integrations/ebay`, connected through eBay's own consent page.
+    summary: "List your products on eBay's European marketplaces and handle their orders here.",
   },
 ];
 

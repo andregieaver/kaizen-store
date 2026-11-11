@@ -952,6 +952,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["vat return", "mva-melding", "mva melding", "merverdiavgift", "vat", "mva", "termin", "skatteetaten", "altinn", "vat to pay"],
     tasks: ["See what VAT to pay this term", "Download the VAT return for Skatteetaten", "Compare the VAT return with Tripletex"],
   }),
+  store("integrations.ebay", "/integrations/ebay", "eBay", "Store", "Sells the store's products on eBay's European marketplaces: connect the eBay seller account on eBay's own page, give the policies, location and category eBay needs, tick the products to list (at the store's price in the marketplace's currency, with its own stock), and handle eBay's orders here, marking each sent with its tracking, which goes back to eBay.", {
+    tasks: ["Connect eBay", "List products on eBay", "Mark an eBay order as sent"],
+    keywords: ["ebay", "marketplace", "sales channel", "sell on ebay", "markedsplass", "salgskanal"],
+    feature: "shop",
+  }),
   store("integrations.fiken", "/integrations/fiken", "Fiken", "Store", "Connects the store's Fiken company through Fiken's own page and books its invoices and credit notes there as sales; where they are booked, what needs the owner, Try again.", {
     keywords: ["fiken", "accounting", "bookkeeping", "regnskap", "bokføring", "annet salg", "bilag", "accountant"],
   }),

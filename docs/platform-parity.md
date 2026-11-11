@@ -101,6 +101,6 @@ Nothing left: the platform home shows this month's revenue and sales, what needs
 Kaizena Flow sells plans, premium themes and domains through Stripe Billing (D18, D35), not goods: it has no catalogue, stock, carts,
 parcels or returns. So these stay store-only: products, inventory, orders, draft orders, deliveries, returns, the store's invoices and
 credit notes, gift cards, reviews of products, price lists, customer groups and company accounts, wishlists, bookings, hosts,
-subscription boxes, recommendations, product layouts, product feeds, the bonus program, creators, drop shipping and its suppliers (D550), product passports (D554), the Dream Factory, and a store's
+subscription boxes, recommendations, product layouts, product feeds, the bonus program, creators, drop shipping and its suppliers (D550), product passports (D554), marketplace channels such as eBay (D555), the Dream Factory, and a store's
 setup, moving in, features, countries, closing and billing (the platform is what bills). Analytics of products and inventory follow
 them. Its own domain is set in Vercel (D240), not on a Domains page.

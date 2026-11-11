@@ -266,6 +266,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Kaizena Flow's own money in the books (C3 step 2, D508, `src/lib/platform-books.ts`, `src/server/platform-books.ts`)
 - Accountants (B6, D512, `src/lib/books-clients.ts`, `src/server/books-clients.ts`, `ROLE_TEMPLATES.accountant`)
 - The threshold watch (D514, `src/lib/turnover-watch.ts`, `src/server/turnover-watch.ts`, `TurnoverWatchCard`)
+- eBay as a sales channel (D555, `src/lib/ebay.ts`, `src/server/ebay.ts`, `/admin/{store}/integrations/ebay`)
 - E-invoices through Peppol (D463, B1 of `docs/own-books-and-sales.md`, `src/lib/peppol.ts`, `src/lib/work-einvoice.ts`, `src/server/einvoice-sending.ts`)
 - Moving in from another shop (wave 11 unit E, D384, `src/lib/product-csv-woocommerce.ts`, `src/lib/order-history.ts`,…
 - Sign in with Google (wave 10 unit L, D375, `src/lib/google-sign-in.ts`, `src/server/google-sign-in.ts`)

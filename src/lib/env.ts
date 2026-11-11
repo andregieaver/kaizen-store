@@ -192,3 +192,20 @@ export function sendcloudPartnerId(source: Record<string, string | undefined> = 
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new Error("SENDCLOUD_PARTNER_ID must be the partner UUID Sendcloud gave.");
   return id;
 }
+
+/**
+ * Kaizena Flow's own app at eBay (D555): its client id and secret from eBay's developer program, and its RuName (eBay's name for the app's
+ * registered return address, `{SITE_URL}/api/integrations/ebay/callback`). Null without all three: eBay is not offered.
+ */
+export function ebayApp(
+  source: Record<string, string | undefined> = { EBAY_CLIENT_ID: process.env.EBAY_CLIENT_ID, EBAY_CLIENT_SECRET: process.env.EBAY_CLIENT_SECRET, EBAY_RU_NAME: process.env.EBAY_RU_NAME },
+): { clientId: string; clientSecret: string; ruName: string } | null {
+  const clientId = source.EBAY_CLIENT_ID?.trim();
+  const clientSecret = source.EBAY_CLIENT_SECRET?.trim();
+  const ruName = source.EBAY_RU_NAME?.trim();
+  if (!clientId || !clientSecret || !ruName) return null;
+  if (!/^[A-Za-z0-9._-]{8,128}$/.test(clientId)) throw new Error("EBAY_CLIENT_ID must be the App ID of Kaizena Flow's app at eBay.");
+  if (clientSecret.length < 8 || clientSecret.length > 256 || /\s/.test(clientSecret)) throw new Error("EBAY_CLIENT_SECRET must be the Cert ID of Kaizena Flow's app at eBay.");
+  if (!/^[A-Za-z0-9._-]{4,200}$/.test(ruName)) throw new Error("EBAY_RU_NAME must be the RuName eBay gave the app's return address.");
+  return { clientId, clientSecret, ruName };
+}

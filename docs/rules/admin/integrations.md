@@ -554,3 +554,6 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   `turnover` finding and the Books card word it with `watchText()`; a threshold of one's own is added and taken away only through
   `addOwnThreshold()` and `removeOwnThreshold()`, by a member with `books:write`.
 
+## eBay as a sales channel (D555, `src/lib/ebay.ts`, `src/server/ebay.ts`, `/admin/{store}/integrations/ebay`)
+
+- **eBay as a sales channel (D555, `src/lib/ebay.ts`, `src/server/ebay.ts`, `/admin/{store}/integrations/ebay`)**: a marketplace connection is a row of `commerce.marketplace_connections`, written only by `src/server/ebay.ts` with every action the owner's (D41); its grant is encrypted with `SETTINGS_ENCRYPTION_KEY` and never leaves the module. Every call to eBay goes through `ebayCall()` with an injectable `fetch` (the tests' stand-in), and what is sent follows eBay's published OpenAPI documents (`src/lib/ebay.ts`). A listing's price is the store's own for a market in the marketplace's currency, its quantity the store's own stock; an eBay order draws stock from own locations with a stock context and is never a shop order (eBay takes the payment and gives the receipt). Another marketplace gets its own module beside it and its own `channel` value.
