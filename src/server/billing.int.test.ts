@@ -307,15 +307,39 @@ describe("plans", () => {
     expect(await billing.storeFeeBps(storeId)).toBe(150);
   });
 
+  it("starts one subscription when the same store is put on a plan twice at once (code review FV11)", async () => {
+    const [request] = await db().execute<Row>(sql`
+      insert into commerce.access_requests (email, name, store_name) values (${`${slug}-twice@example.com`}, 'Test', 'Billing twice') returning id
+    `);
+    const [store] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`${slug}-twice`}, 'Billing twice', null) as id`);
+    const twiceId = String(store.id);
+    await db().execute(sql`update commerce.stores set country = 'NO' where id = ${twiceId}::uuid`);
+    const price = (await billing.listPlans()).find((p) => p.id === planId)?.prices.find((p) => p.active);
+    const startedFor = () => calls("subscriptions.create").filter((call) => (call.params.metadata as Record<string, unknown>)?.kaizen_store_id === twiceId);
+
+    const accountsBefore = calls("accounts.create").length;
+    // Two presses in flight together: the second waits for the first's lock, then finds its subscription and changes it.
+    const results = await Promise.all([
+      billing.assignPlan(admin, `${slug}-twice`, price?.id as string, 0, "https://kaizen.test"),
+      billing.assignPlan(admin, `${slug}-twice`, price?.id as string, 0, "https://kaizen.test"),
+    ]);
+    expect(results).toEqual([{ ok: true }, { ok: true }]);
+    expect(startedFor()).toHaveLength(1);
+    // And one Stripe account for the store: the second call found the first one's.
+    expect(calls("accounts.create").length - accountsBefore).toBe(1);
+    expect((await billing.getStoreBilling(twiceId))?.planId).toBe(planId);
+  });
+
   it("brings Kaizena Flow's own test account up to date instead of making another", async () => {
     const { ensureTestAccount } = await import("./connect");
     await db().execute(sql`
       update commerce.stripe_accounts set card_payments = 'pending' where store_id = ${storeId}::uuid and mode = 'test'
     `);
+    const made = calls("accounts.create").length;
     // As at checkout: no owner at hand, so only Stripe's latest state is read.
     const result = await ensureTestAccount(storeId);
     expect(result).toMatchObject({ ok: true, ready: true });
-    expect(calls("accounts.create")).toHaveLength(1);
+    expect(calls("accounts.create")).toHaveLength(made);
     const [row] = await db().execute<Row>(sql`
       select card_payments, managed_by_kaizen, requirements from commerce.stripe_accounts
       where store_id = ${storeId}::uuid and mode = 'test'
