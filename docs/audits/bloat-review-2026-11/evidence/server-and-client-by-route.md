@@ -1,0 +1,320 @@
+# What is inside each route's bundles (from `next analyze`, production build of commit 0bd814c)
+
+Sizes are bytes of each source module as it sits in the built output (minified), from Next's bundle analyzer
+(`next analyze --output`, then `next analyze export --route`). "First load" is the client chunks every page of the route loads; "later" is client code loaded only when a client component is
+drawn on the page (the analyzer's render-dependent groups) or by an import() or next/dynamic (its async groups). The analyzer's
+build has its own chunk names, so they do not match .next/static. A catch-all route that can draw any component of the page
+builder has a large "later" set of which one page loads a small part.
+"Server (loaded with the route)" is every module in the server chunks the route's entry loads; "behind a dynamic import" is server code in chunks that only an import() loads; "traced" is files copied beside the function (native libraries, JSON data). Package rows group
+node_modules by package and src by folder. The full per-module lists are in `analyze/<route>.json`.
+
+## /s/[store]/[market]
+
+Client: first load 544 KB (200 KB compressed), loadable later 3378 KB. Server: 11944 KB in 2419 modules loaded with the route, 4032 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: next 532, (runtime) 11, @swc/helpers 1.
+
+Largest first-load modules: `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, `~/next/dist/client/components/router-reducer/reducers/server-action-reducer.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1288, src/lib 452, src/lib/messages 363, @codemirror/view 174, src/components 165, zod 113, prosemirror-view 95, @tiptap/core 91, next 48, @codemirror/state 46, src/components/admin 44, prosemirror-model 43, @supabase/realtime-js 31, @codemirror/autocomplete 31.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2911, src/server 2691, src/lib 2655, next 781, src/db 599, src/lib/messages 442, src/components 244, opentype.js 229, stripe 212, (runtime) 188, src/lib/signature 127, zod 114, src/lib/legal-starters 95, drizzle-orm 92, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `[output]/.next/server/app/s/[store]/[market]/page_client-reference-manifest.js` 115, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/server/owner-tools.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/messages 339, src/lib 260, src/server 136, zod 113, src/components 87, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /s/[store]/[market]/p/[handle]
+
+Client: first load 7659 KB (5936 KB compressed), loadable later 2310 KB. Server: 12289 KB in 2516 modules loaded with the route, 5160 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: (runtime) 7125, next 532, @swc/helpers 1.
+
+Largest first-load modules: `[client-fs]/_next/static/media/avif_enc.10_zpntngbd3m.wasm` 3404, `[client-fs]/_next/static/media/draco_decoder.3fxh80hta8g-w.js` 1405, `[client-fs]/_next/static/media/basis_transcoder.3fksty7ghxqg8.wasm` 1030, `[client-fs]/_next/static/media/draco_decoder.1bybcc4ldd_qd.wasm` 558, `[client-fs]/_next/static/media/draco_decoder.0b9du-p-095or.wasm` 376, `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `[client-fs]/_next/static/media/draco_wasm_wrapper.12tceh-ordsvm.js` 115, `[client-fs]/_next/static/media/draco_wasm_wrapper.17xdiksd57u-k.js` 114, `[client-fs]/_next/static/media/basis_transcoder.1nyhl65_x6yw2.js` 112, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, and 14 more.
+
+Loadable later, by package or folder: three 814, src/lib/messages 363, src/lib 301, src/components 268, @google/model-viewer 180, zod 113, next 71, @stripe/react-stripe-js 35, @supabase/realtime-js 31, @supabase/phoenix 25, @monogrid/gainmap-js 15, src/app/s 13, @lit/reactive-element 10, src/components/consent 9.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2911, src/server 2714, src/lib 2680, next 782, src/db 599, src/lib/messages 442, src/components 359, (runtime) 308, opentype.js 229, stripe 212, src/lib/signature 127, zod 114, src/lib/legal-starters 95, drizzle-orm 92, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `[output]/.next/server/app/s/[store]/[market]/p/[handle]/page_client-reference-manifest.js` 220, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/server/owner-tools.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, three 814, src/lib/messages 339, src/lib 268, @google/model-viewer 180, src/server 136, src/components 119, zod 113, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /s/[store]/[market]/category/[slug]
+
+Client: first load 3948 KB (3605 KB compressed), loadable later 3596 KB. Server: 12358 KB in 2545 modules loaded with the route, 4122 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: (runtime) 3415, next 532, @swc/helpers 1.
+
+Largest first-load modules: `[client-fs]/_next/static/media/avif_enc.10_zpntngbd3m.wasm` 3404, `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1288, src/lib 504, src/lib/messages 363, src/components 261, @codemirror/view 174, zod 113, prosemirror-view 95, @tiptap/core 91, next 48, @codemirror/state 46, src/components/admin 44, prosemirror-model 43, @stripe/react-stripe-js 35, @supabase/realtime-js 31.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2911, src/server 2713, src/lib 2678, next 782, src/db 599, src/lib/messages 442, src/components 346, (runtime) 321, opentype.js 229, stripe 212, src/app/s 146, src/lib/signature 127, zod 114, src/lib/legal-starters 95, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `[output]/.next/server/app/s/[store]/[market]/category/[slug]/page_client-reference-manifest.js` 222, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/server/owner-tools.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/messages 339, src/lib 268, src/server 136, src/components 119, zod 113, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /s/[store]/[market]/cart
+
+Client: first load 3948 KB (3605 KB compressed), loadable later 3596 KB. Server: 12359 KB in 2546 modules loaded with the route, 4122 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: (runtime) 3415, next 532, @swc/helpers 1.
+
+Largest first-load modules: `[client-fs]/_next/static/media/avif_enc.10_zpntngbd3m.wasm` 3404, `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1288, src/lib 504, src/lib/messages 363, src/components 261, @codemirror/view 174, zod 113, prosemirror-view 95, @tiptap/core 91, next 48, @codemirror/state 46, src/components/admin 44, prosemirror-model 43, @stripe/react-stripe-js 35, @supabase/realtime-js 31.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2911, src/server 2713, src/lib 2678, next 782, src/db 599, src/lib/messages 442, src/components 346, (runtime) 321, opentype.js 229, stripe 212, src/app/s 147, src/lib/signature 127, zod 114, src/lib/legal-starters 95, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `[output]/.next/server/app/s/[store]/[market]/cart/page_client-reference-manifest.js` 224, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/server/owner-tools.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/messages 339, src/lib 268, src/server 136, src/components 119, zod 113, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /s/[store]/[market]/checkout
+
+Client: first load 3948 KB (3605 KB compressed), loadable later 3596 KB. Server: 12359 KB in 2545 modules loaded with the route, 4122 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: (runtime) 3415, next 532, @swc/helpers 1.
+
+Largest first-load modules: `[client-fs]/_next/static/media/avif_enc.10_zpntngbd3m.wasm` 3404, `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1288, src/lib 504, src/lib/messages 363, src/components 261, @codemirror/view 174, zod 113, prosemirror-view 95, @tiptap/core 91, next 48, @codemirror/state 46, src/components/admin 44, prosemirror-model 43, @stripe/react-stripe-js 35, @supabase/realtime-js 31.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2911, src/server 2713, src/lib 2678, next 782, src/db 599, src/lib/messages 442, src/components 346, (runtime) 321, opentype.js 229, stripe 212, src/app/s 146, src/lib/signature 127, zod 114, src/lib/legal-starters 95, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `[output]/.next/server/app/s/[store]/[market]/checkout/page_client-reference-manifest.js` 224, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/server/owner-tools.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/messages 339, src/lib 268, src/server 136, src/components 119, zod 113, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /
+
+Client: first load 544 KB (200 KB compressed), loadable later 3394 KB. Server: 11879 KB in 2390 modules loaded with the route, 4031 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: next 532, (runtime) 11, @swc/helpers 1.
+
+Largest first-load modules: `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, `~/next/dist/client/components/router-reducer/reducers/server-action-reducer.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1288, src/lib 453, src/lib/messages 363, @codemirror/view 174, src/components 166, zod 113, prosemirror-view 95, @tiptap/core 91, next 48, @codemirror/state 46, src/components/inline-edit 45, src/components/admin 44, prosemirror-model 43, @supabase/realtime-js 31.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2911, src/server 2690, src/lib 2646, next 778, src/db 599, src/lib/messages 442, src/components 246, opentype.js 229, stripe 212, (runtime) 149, src/lib/signature 127, zod 114, src/lib/legal-starters 95, drizzle-orm 92, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `[output]/.next/server/app/(platform)/page_client-reference-manifest.js` 81, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/server/owner-tools.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/messages 339, src/lib 260, src/server 136, zod 113, src/components 86, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /docs
+
+Client: first load 544 KB (200 KB compressed), loadable later 88 KB. Server: 11423 KB in 2169 modules loaded with the route, 3222 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 34779 KB.
+
+First load by package or folder: next 532, (runtime) 11, @swc/helpers 1.
+
+Largest first-load modules: `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, `~/next/dist/client/components/router-reducer/reducers/server-action-reducer.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/components/docs 42, next 29, src/lib 7, src/components 5, lucide-react 2, src/app 1.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2905, src/lib 2669, src/server 2653, next 709, src/db 599, src/lib/messages 418, opentype.js 229, stripe 212, src/lib/signature 127, zod 114, src/lib/legal-starters 95, drizzle-orm 92, @supabase/auth-js 92, src/data/ledger 80, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/server/owner-tools.ts` 65, `src/lib/messages/en.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/server 136, src/lib 69, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, asn1.js 24, readable-stream 23, underscore 21.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /admin/sign-in
+
+Client: first load 544 KB (200 KB compressed), loadable later 60 KB. Server: 11301 KB in 2145 modules loaded with the route, 3218 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: next 532, (runtime) 11, @swc/helpers 1.
+
+Largest first-load modules: `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, `~/next/dist/client/components/router-reducer/reducers/server-action-reducer.js` 4, and 14 more.
+
+Loadable later, by package or folder: next 29, src/lib/admin-messages 14, web-vitals 6, src/components/admin 5, lucide-react 2, src/lib 2, src/app 1, src/components 1.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2919, src/server 2654, src/lib 2513, next 760, src/db 599, src/lib/messages 418, opentype.js 229, stripe 212, src/lib/signature 127, zod 114, src/lib/legal-starters 95, drizzle-orm 92, @supabase/auth-js 92, src/data/ledger 80, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/server/owner-tools.ts` 65, `src/lib/messages/en.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/server 136, src/lib 68, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, asn1.js 24, readable-stream 23, underscore 21.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /admin/[store]
+
+Client: first load 544 KB (200 KB compressed), loadable later 2887 KB. Server: 12316 KB in 2414 modules loaded with the route, 5324 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: next 532, (runtime) 11, @swc/helpers 1.
+
+Largest first-load modules: `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, `~/next/dist/client/components/router-reducer/reducers/server-action-reducer.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1460, src/lib 848, src/components/admin 128, zod 113, @supabase/auth-js 101, next 51, lucide-react 37, @supabase/realtime-js 31, @supabase/phoenix 25, @supabase/storage-js 23, @supabase/postgrest-js 17, src/components 12, @supabase/supabase-js 11, @supabase/ssr 10.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2958, src/server 2769, src/lib 2659, next 761, src/db 599, src/lib/messages 418, opentype.js 229, zod 227, stripe 212, (runtime) 209, @supabase/auth-js 184, src/components/admin 177, src/lib/signature 127, src/lib/legal-starters 95, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `[output]/.next/server/app/admin/(gated)/[store]/page_client-reference-manifest.js` 116, `~/@supabase/auth-js/dist/module/GoTrueClient.js` 115, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `~/zod/v4/core/schemas.js` 66, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/admin-messages 1324, src/lib 821, src/server 136, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, src/components/admin 30, asn1.js 24.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /admin/[store]/orders
+
+Client: first load 544 KB (200 KB compressed), loadable later 2879 KB. Server: 12068 KB in 2349 modules loaded with the route, 5324 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: next 532, (runtime) 11, @swc/helpers 1.
+
+Largest first-load modules: `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, `~/next/dist/client/components/router-reducer/reducers/server-action-reducer.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1452, src/lib 841, src/components/admin 135, zod 113, @supabase/auth-js 101, next 51, lucide-react 37, @supabase/realtime-js 31, @supabase/phoenix 25, @supabase/storage-js 23, @supabase/postgrest-js 17, src/components 12, @supabase/supabase-js 11, @supabase/ssr 10.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2958, src/server 2669, src/lib 2575, next 761, src/db 599, src/lib/messages 418, opentype.js 229, zod 227, stripe 212, @supabase/auth-js 184, (runtime) 177, src/components/admin 162, src/lib/signature 127, src/lib/legal-starters 95, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `~/@supabase/auth-js/dist/module/GoTrueClient.js` 115, `[output]/.next/server/app/admin/(gated)/[store]/orders/page_client-reference-manifest.js` 95, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `~/zod/v4/core/schemas.js` 66, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/admin-messages 1324, src/lib 821, src/server 136, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, src/components/admin 30, asn1.js 24.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /admin/[store]/products/[productId]
+
+Client: first load 7352 KB (7009 KB compressed), loadable later 4579 KB. Server: 12789 KB in 2451 modules loaded with the route, 5906 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: (runtime) 6819, next 532, @swc/helpers 1.
+
+Largest first-load modules: `[client-fs]/_next/static/media/avif_enc.10_zpntngbd3m.wasm` 6808, `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1480, src/lib 886, mediabunny 562, src/components/admin 350, @codemirror/view 174, zod 113, @supabase/auth-js 101, prosemirror-view 95, @tiptap/core 91, next 56, @codemirror/state 46, prosemirror-model 43, @dnd-kit/core 39, lucide-react 38.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2958, src/server 2671, src/lib 2617, next 765, src/db 599, src/lib/messages 418, src/components/admin 361, opentype.js 229, zod 227, stripe 212, (runtime) 195, @supabase/auth-js 184, src/lib/signature 127, prosemirror-view 96, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `~/@supabase/auth-js/dist/module/GoTrueClient.js` 115, `[output]/.next/server/app/admin/(gated)/[store]/products/[productId]/page_client-reference-manifest.js` 106, `~/prosemirror-view/dist/index.js` 96, `~/@tiptap/core/dist/index.js` 90, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/components/admin/product-editor.tsx` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/admin-messages 1324, src/lib 822, mediabunny 562, src/server 136, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, src/components/admin 30.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /admin/[store]/pages/[pageId]
+
+Client: first load 11063 KB (9340 KB compressed), loadable later 6905 KB. Server: 14888 KB in 2852 modules loaded with the route, 7055 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: (runtime) 10530, next 532, @swc/helpers 1.
+
+Largest first-load modules: `[client-fs]/_next/static/media/avif_enc.10_zpntngbd3m.wasm` 6808, `[client-fs]/_next/static/media/draco_decoder.3fxh80hta8g-w.js` 1405, `[client-fs]/_next/static/media/basis_transcoder.3fksty7ghxqg8.wasm` 1030, `[client-fs]/_next/static/media/draco_decoder.1bybcc4ldd_qd.wasm` 558, `[client-fs]/_next/static/media/draco_decoder.0b9du-p-095or.wasm` 376, `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `[client-fs]/_next/static/media/draco_wasm_wrapper.12tceh-ordsvm.js` 115, `[client-fs]/_next/static/media/draco_wasm_wrapper.17xdiksd57u-k.js` 114, `[client-fs]/_next/static/media/basis_transcoder.1nyhl65_x6yw2.js` 112, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1514, src/lib 1039, three 814, src/components/admin 728, mediabunny 562, src/lib/messages 363, src/components 254, @google/model-viewer 180, @codemirror/view 174, zod 113, @supabase/auth-js 101, prosemirror-view 95, @tiptap/core 91, next 71.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2958, src/lib 2816, src/server 2778, src/lib/messages 781, next 778, src/components/admin 730, (runtime) 633, src/db 599, src/components 400, opentype.js 229, zod 227, stripe 212, @supabase/auth-js 184, src/lib/signature 127, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `[output]/.next/server/app/admin/(gated)/[store]/pages/[pageId]/page_client-reference-manifest.js` 494, `~/opentype.js/dist/opentype.mjs` 229, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `src/lib/messages/sv.ts` 140, `src/lib/messages/nb.ts` 136, `src/lib/messages/da.ts` 135, `src/components/admin/page-builder.tsx` 130, `src/lib/messages/en.ts` 130, `~/@supabase/auth-js/dist/module/GoTrueClient.js` 115, `~/prosemirror-view/dist/index.js` 96, `~/@tiptap/core/dist/index.js` 90, `src/data/ledger/no-saft.json.[json].cjs` 80, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/admin-messages 1324, src/lib 824, three 814, mediabunny 562, @google/model-viewer 180, src/server 136, src/components 70, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /admin/[store]/settings
+
+Client: first load 544 KB (200 KB compressed), loadable later 2833 KB. Server: 12015 KB in 2336 modules loaded with the route, 5324 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: next 532, (runtime) 11, @swc/helpers 1.
+
+Largest first-load modules: `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, `~/next/dist/client/components/router-reducer/reducers/server-action-reducer.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1438, src/lib 827, src/components/admin 118, zod 113, @supabase/auth-js 101, next 51, lucide-react 37, @supabase/realtime-js 31, @supabase/phoenix 25, @supabase/storage-js 23, @supabase/postgrest-js 17, src/components 12, @supabase/supabase-js 11, @supabase/ssr 10.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2958, src/server 2669, src/lib 2571, next 761, src/db 599, src/lib/messages 418, opentype.js 229, zod 227, stripe 212, @supabase/auth-js 184, (runtime) 166, src/components/admin 132, src/lib/signature 127, src/lib/legal-starters 95, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `~/@supabase/auth-js/dist/module/GoTrueClient.js` 115, `[output]/.next/server/app/admin/(gated)/[store]/settings/page_client-reference-manifest.js` 85, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `~/zod/v4/core/schemas.js` 66, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/admin-messages 1324, src/lib 821, src/server 136, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, src/components/admin 30, asn1.js 24.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /admin/platform
+
+Client: first load 544 KB (200 KB compressed), loadable later 2842 KB. Server: 12067 KB in 2354 modules loaded with the route, 5326 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 33914 KB.
+
+First load by package or folder: next 532, (runtime) 11, @swc/helpers 1.
+
+Largest first-load modules: `~/next/dist/compiled/react-dom/cjs/react-dom-client.production.js` 199, `~/next/dist/build/polyfills/polyfill-nomodule.js` 110, `~/next/dist/compiled/react-server-dom-turbopack/cjs/react-server-dom-turbopack-client.browser.production.js` 23, `~/next/dist/client/components/segment-cache/cache.js` 20, `~/next/dist/client/components/segment-cache/scheduler.js` 14, `~/next/dist/client/components/render-tree.js` 10, `~/next/dist/compiled/react/cjs/react.production.js` 8, `~/next/dist/lib/constants.js` 6, `~/next/dist/client/components/app-router.js` 5, `~/next/dist/client/components/segment-cache/optimistic-routes.js` 5, `~/next/dist/client/components/router-reducer/fetch-server-response.js` 5, `[turbopack]/shared/runtime/runtime-utils.ts` 5, `~/next/dist/client/components/segment-cache/decode-server-response.js` 4, `~/next/dist/client/components/router-reducer/reducers/server-action-reducer.js` 4, and 14 more.
+
+Loadable later, by package or folder: src/lib/admin-messages 1438, src/lib 834, src/components/admin 119, zod 113, @supabase/auth-js 101, next 51, lucide-react 37, @supabase/realtime-js 31, @supabase/phoenix 25, @supabase/storage-js 23, @supabase/postgrest-js 17, src/components 12, @supabase/supabase-js 11, @supabase/ssr 10.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2958, src/server 2693, src/lib 2587, next 761, src/db 599, src/lib/messages 418, opentype.js 229, zod 227, stripe 212, @supabase/auth-js 184, (runtime) 169, src/components/admin 134, src/lib/signature 127, src/lib/legal-starters 95, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 229, `src/lib/owner-tools.ts` 156, `src/lib/admin-map.ts` 149, `~/@supabase/auth-js/dist/module/GoTrueClient.js` 115, `[output]/.next/server/app/admin/(gated)/platform/page_client-reference-manifest.js` 87, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `~/zod/v4/core/schemas.js` 66, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/lib/admin-messages 1324, src/lib 821, src/server 138, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, src/components/admin 30, asn1.js 24.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /api/visit
+
+Client: first load 0 KB (0 KB compressed), loadable later 0 KB. Server: 10475 KB in 1890 modules loaded with the route, 3164 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 34097 KB.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2903, src/lib 2412, src/server 2381, src/db 599, src/lib/messages 413, next 389, opentype.js 226, stripe 212, src/lib/signature 127, zod 114, src/lib/legal-starters 95, drizzle-orm 92, @supabase/auth-js 92, src/data/ledger 80, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 226, `src/lib/owner-tools.ts` 176, `src/lib/admin-map.ts` 149, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/server/owner-tools.ts` 71, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/lib/messages/en.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/server 97, src/lib 59, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, asn1.js 24, readable-stream 23, underscore 21.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /api/health
+
+Client: first load 0 KB (0 KB compressed), loadable later 0 KB. Server: 1155 KB in 308 modules loaded with the route, 0 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 14677 KB.
+
+Server (loaded with the route) by package or folder: src/db 599, next 161, src/lib 140, zod 114, drizzle-orm 92, (runtime) 30, @vercel/functions 19, src/app/api 0.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/zod/v4/core/schemas.js` 33, `~/next/dist/compiled/@opentelemetry/api/index.js` 24, `src/lib/shipping-carriers.ts` 23, `[turbopack]/shared/runtime/runtime-utils.ts` 17, `~/next/dist/compiled/ua-parser-js/ua-parser.js` 17, `~/zod/v4/classic/schemas.js` 15, `src/lib/retention.ts` 14, `~/zod/v4/core/util.js` 13, `~/zod/v4/core/json-schema-processors.js` 12, `~/drizzle-orm/pg-core/dialect.js` 11, `~/next/dist/esm/server/lib/patch-fetch.js` 10, `src/lib/audit.ts` 10, `~/zod/v4/core/to-json-schema.js` 9, and 12 more.
+
+Traced files: `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/next/dist/compiled/next-server/app-route-turbo.runtime.prod.js` 183, `~/next/dist/compiled/jsonwebtoken/index.js` 118.
+
+## /api/cron/cart-reminders
+
+Client: first load 0 KB (0 KB compressed), loadable later 0 KB. Server: 11103 KB in 2019 modules loaded with the route, 3174 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 37121 KB.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2903, src/lib 2736, src/server 2650, src/db 600, src/lib/messages 413, next 390, opentype.js 226, stripe 212, src/lib/signature 127, zod 114, src/lib/legal-starters 95, drizzle-orm 92, @supabase/auth-js 92, src/data/ledger 80, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 226, `src/lib/owner-tools.ts` 176, `src/lib/admin-map.ts` 149, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/server/owner-tools.ts` 71, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/lib/messages/en.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/server 107, src/lib 59, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, asn1.js 24, readable-stream 23, underscore 21.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/wawoff2/build/compress_binding.js` 926, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690.
+
+## /api/cron/page-jobs
+
+Client: first load 0 KB (0 KB compressed), loadable later 0 KB. Server: 10478 KB in 1891 modules loaded with the route, 3166 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 34097 KB.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2903, src/lib 2413, src/server 2383, src/db 599, src/lib/messages 413, next 389, opentype.js 226, stripe 212, src/lib/signature 127, zod 114, src/lib/legal-starters 95, drizzle-orm 92, @supabase/auth-js 92, src/data/ledger 80, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 226, `src/lib/owner-tools.ts` 176, `src/lib/admin-map.ts` 149, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/server/owner-tools.ts` 71, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/lib/messages/en.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/server 99, src/lib 59, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, asn1.js 24, readable-stream 23, underscore 21.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
+## /api/shop/tiles
+
+Client: first load 0 KB (0 KB compressed), loadable later 0 KB. Server: 10478 KB in 1893 modules loaded with the route, 3164 KB more behind a dynamic import. Files traced beside the function (native libraries, data): 34097 KB.
+
+Server (loaded with the route) by package or folder: src/lib/admin-messages 2903, src/lib 2413, src/server 2383, src/db 599, src/lib/messages 413, next 389, opentype.js 226, stripe 212, src/lib/signature 127, zod 114, src/lib/legal-starters 95, drizzle-orm 92, @supabase/auth-js 92, src/data/ledger 80, and 12 more.
+
+Largest server modules loaded with the route: `src/db/schema.ts` 598, `~/opentype.js/dist/opentype.mjs` 226, `src/lib/owner-tools.ts` 176, `src/lib/admin-map.ts` 149, `src/data/ledger/no-saft.json.[json].cjs` 80, `src/lib/admin-messages/builder.nb.ts` 72, `src/server/owner-tools.ts` 71, `src/lib/messages/sv.ts` 70, `src/lib/admin-messages/builder.en.ts` 70, `src/lib/fonts/google-fonts.json.[json].cjs` 68, `src/lib/messages/nb.ts` 68, `src/lib/messages/da.ts` 68, `src/lib/email-text.ts` 66, `src/lib/messages/en.ts` 65, and 12 more.
+
+Server, behind a dynamic import: unpdf 2572, src/server 97, src/lib 59, @xmldom/xmldom 57, mammoth 55, xmlbuilder 47, pako 43, bn.js 42, jszip 41, asn1.js 24, readable-stream 23, underscore 21.
+
+Traced files: `~/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.7` 18261, `src/data/product-taxonomy/structure.json` 3107, `src/data/product-taxonomy/names-sv.json` 2496, `src/data/product-taxonomy/names-da.json` 2489, `src/data/product-taxonomy/names-nb.json` 2462, `src/data/product-taxonomy/names-en.json` 2416, `~/next/dist/compiled/next-server/app-page-turbo.runtime.prod.js` 690, `~/@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.5.node` 405.
+
