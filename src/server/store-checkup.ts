@@ -14,6 +14,7 @@ import { inventoryCounts, ledgerProblems } from "./inventory";
 import { invoiceCheckupFindings } from "./invoices";
 import { orderNumberAudit } from "./order-numbers";
 import { restockSuggestions } from "./owner-insights";
+import { greenClaimsReport } from "./green-claims";
 import { getSetupProgress } from "./setup";
 import { onHandActive } from "./stock-sql";
 import type { Store } from "./stores";
@@ -53,13 +54,15 @@ export const CHECKUP_KEYS = [
   "accounting_token",
   // The threshold watch (D514): the books' turnover over twelve months near or past a threshold that changes the owner's duties.
   "turnover",
+  // Environmental claims (D552): vague green claims on the live site, which the ECGT bans since 27 September 2026.
+  "green_claims",
 ] as const;
 export type CheckupKey = (typeof CHECKUP_KEYS)[number];
 
 export type CheckupFinding = { key: CheckupKey; count: number; what: string; page: string };
 
 export async function checkupFindings(store: Store, accountId: string): Promise<CheckupFinding[]> {
-  const [[counts], [low], progress, integrations, restock, numbering, taxFindings, documentFindings, ledger, levels, accounting, turnover] = await Promise.all([
+  const [[counts], [low], progress, integrations, restock, numbering, taxFindings, documentFindings, ledger, levels, accounting, turnover, green] = await Promise.all([
     db().execute<Row>(sql`
       select
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
@@ -95,6 +98,7 @@ export async function checkupFindings(store: Store, accountId: string): Promise<
     inventoryCounts(store.id),
     accountingAttention(store.id),
     turnoverWatch(store.id, todayIn(new Date(), store.timeZone)),
+    greenClaimsReport(store.id, 100),
   ]);
   const findings: CheckupFinding[] = [];
   const add = (when: boolean, key: CheckupKey, count: number, what: string, page: string) => when && findings.push({ key, count, what, page });
@@ -128,6 +132,7 @@ export async function checkupFindings(store: Store, accountId: string): Promise<
   // The threshold watch (D514): each threshold the turnover is near or has just passed, in one finding.
   const watches = turnover?.watches ?? [];
   add(watches.length > 0, "turnover", watches.length, watches.map((w) => watchText(w, booksEn.watch, "en-GB")).join(" "), "/settings/books");
+  add(green.claims > 0, "green_claims", green.claims, `${green.claims} vague environmental claim(s) ("eco-friendly", "sustainable", "climate neutral") are on the live site; EU law bans them since 27 September 2026 unless proven. Environmental claims lists each.`, "/products/claims");
   return findings;
 }
 

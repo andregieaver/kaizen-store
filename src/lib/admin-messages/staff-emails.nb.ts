@@ -159,6 +159,7 @@ export const staffEmailsNb: StaffEmailsMessages = {
         accounting: { one: "{n} faktura eller kreditnota venter på deg før den kan gå til regnskapet.", many: "{n} fakturaer og kreditnotaer venter på deg før de kan gå til regnskapet." },
         accounting_token: { one: "Regnskapet sluttet å slippe inn Kaizena Flow: ingenting sendes før det er koblet til igjen.", many: "Regnskapet sluttet å slippe inn Kaizena Flow: ingenting sendes før det er koblet til igjen." },
         turnover: { one: "Omsetningen er nær eller over en terskel som endrer pliktene dine: se Regnskap.", many: "Omsetningen er nær eller over {n} terskler som endrer pliktene dine: se Regnskap." },
+        green_claims: { one: "{n} vag miljøpåstand ligger på nettstedet ditt, og EU-retten forbyr den uten dokumentasjon: se Miljøpåstander.", many: "{n} vage miljøpåstander ligger på nettstedet ditt, og EU-retten forbyr dem uten dokumentasjon: se Miljøpåstander." },
       },
     },
     analyticsAlerts: {

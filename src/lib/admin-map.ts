@@ -225,6 +225,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["export products", "csv", "download products", "spreadsheet", "excel", "backup", "product file", "eksporter produkter"],
     feature: "shop",
   }),
+  store("products.claims", "/products/claims", "Environmental claims", "Main", "Lists every vague environmental claim (eco-friendly, sustainable, climate neutral, carbon offset) in the store's live products, published pages and articles, with the words around it and a link to edit it. EU law (the Empowering Consumers Directive) bans such claims since 27 September 2026 unless proven, and claims that rest on offsetting outright. Read-only.", {
+    tasks: ["Find vague green claims on my site", "Check my product texts for greenwashing", "See which pages say eco-friendly"],
+    keywords: ["green claims", "greenwashing", "eco-friendly", "sustainable", "climate neutral", "ecgt", "miljøpåstander", "grønnvasking", "miljøvennlig", "bærekraftig"],
+    feature: "shop",
+  }),
   store("products.import", "/products/import", "Import products", "Main", "Brings products in from a CSV file: Kaizena Flow's own file or a Shopify product file. Upload the file, choose what the import does, check it (a dry run that lists every row's problem and changes nothing), then import. Never deletes a product or changes an address. Needs the right to change products.", {
     tasks: ["Upload a product file", "Import a Shopify product file", "Continue an open import", "See the recent imports"],
     keywords: ["import products", "csv", "upload products", "shopify", "migrate", "bulk add", "product file", "importer produkter"],
@@ -294,6 +299,16 @@ const PAGES: readonly AdminPage[] = [
   store("inventory.purchase_order", "/inventory/purchase-orders/[id]", "Purchase order", "Main", "One purchase order: its lines and unit costs, what has arrived and what is still to come, and its next step (mark as ordered, count in, cancel).", {
     tasks: ["Mark this order as ordered", "Count units in", "Cancel this order"],
     keywords: ["purchase order", "receive", "count in", "supplier delivery"],
+    feature: "shop",
+  }),
+  store("inventory.suppliers", "/inventory/suppliers", "Suppliers", "Main", "Suppliers that send the store's products straight to its customers in the store's name (drop shipping): the list with where each ships from, the days it sends within, its products and the stock it says it has, and a short form to add one (a name, the email its orders go to and the country it ships from). The store stays the seller.", {
+    tasks: ["Add a supplier that ships for me", "See which suppliers drop-ship for me", "Find a supplier outside the EU"],
+    keywords: ["drop shipping", "dropshipping", "supplier", "ships for me", "direktelevering", "leverandør"],
+    feature: "shop",
+  }),
+  store("inventory.supplier", "/inventory/suppliers/[id]", "Supplier", "Main", "One supplier that ships for the store: the products it sends (tick variants and mark them as sent by it, or send them yourself again), its details (order email, country, language, days to send within, how it gets orders, return address, a note on every order) and, for the owner, stopping drop shipping with it. The store's own stock always goes before the supplier's.", {
+    tasks: ["Choose the products this supplier sends", "Change the supplier's email or dispatch days", "Stop drop shipping with this supplier"],
+    keywords: ["drop shipping", "supplier products", "mark as drop-shipped", "dispatch days"],
     feature: "shop",
   }),
   store("inventory.import", "/inventory/import", "Import stock", "Main", "Sets stock from a counted CSV file: SKU, location and on hand, with an optional on-hand-was column so a row that is out of date becomes a conflict instead of undoing a sale. Upload the file, check it (a dry run that lists every row and changes nothing), then import. Never creates a variant or a location. Needs the right to change products.", {

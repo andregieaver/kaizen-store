@@ -72,6 +72,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Eksporter produkter",
     keywords: ["eksporter produkter", "csv", "last ned produkter", "regneark", "excel", "sikkerhetskopi", "produktfil"],
   },
+  "store:products.claims": { title: "Miljøpåstander", keywords: ["miljøpåstander", "grønnvasking", "miljøvennlig", "bærekraftig", "klimanøytral"] },
   "store:products.import": {
     title: "Importer produkter",
     keywords: ["importer produkter", "csv", "last opp produkter", "shopify", "flytte butikken", "produktfil"],
@@ -117,6 +118,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["innkjøpsordre", "leverandør", "varemottak", "bestilling", "kostpris", "påfyll"],
   },
   "store:inventory.purchase_order": { title: "Innkjøpsordre", keywords: ["innkjøpsordre", "tell inn", "varemottak", "levering fra leverandør"] },
+  "store:inventory.suppliers": { title: "Leverandører", keywords: ["direktelevering", "dropshipping", "leverandør", "sender for meg", "utenfor eu"] },
+  "store:inventory.supplier": { title: "Leverandør", keywords: ["direktelevering", "leverandørens produkter", "merk som direktelevert", "sendetid"] },
   "store:inventory.import": { title: "Importer lager", keywords: ["importer lager", "lagertelling", "varetelling", "csv", "telling"] },
   "store:inventory.import.job": { title: "Lagerimport", keywords: ["lagerimport", "prøvekjøring", "konflikt", "importresultat", "avbryt import"] },
   "store:inventory.export": { title: "Eksporter lager", keywords: ["eksporter lager", "lagerfil", "csv", "last ned lager", "telleliste"] },

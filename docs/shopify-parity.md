@@ -11,10 +11,10 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 <!-- parity:generated:start since -->
 
 - **Headline now 89.3%** (first report 59.5%), **must-have 90.6%** (first report 69.1%), over 201 core rows (first report 232).
-- Where the change comes from: +29.5 points from the 151 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 231 rows, the first report 232 core ones).
-- 230 of 231 rows have their Shopify side read from a page; the others are listed under evidence debt.
+- Where the change comes from: +29.5 points from the 151 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 232 rows, the first report 232 core ones).
+- 230 of 232 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (146):
+Rated higher (147):
 
 - Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
 - Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
@@ -140,6 +140,7 @@ Rated higher (146):
 - Order export to CSV (Orders): missing to full. Wave 2, first run (docs/wave-2-data.md; working tree not yet committed).
 - Credit notes for refunds (Orders, not core): missing to partial. Unit 1b (D159 proposed) read in the working tree and run in a fresh database on 2026-10-04: invoices.test.ts and invoices-money-review.test.ts (every refund path P1 to P10, one note per refund, own series, over-invoice refused, no credit f…
 - Gift receipts and messages (Orders, not core): missing to full. Wave 3 run 2 (docs/wave-3-orders.md, D173 proposed; working tree not committed, migration not applied to production).
+- Drop shipping: a supplier ships to the customer (Orders, not core): missing to partial. D550: step 1 of docs/drop-shipping.md built and held by suppliers.int.test.ts (a supplier's location, marked variants, own stock first, the order drawn at the supplier's location, left out of a store's copy) and stock-routing.test.ts.
 - Public Admin API and custom apps (Platform): missing to full. Built D355 (wave 9 unit B): commerce.api_tokens written only by src/server/api-tokens.ts (hash only, scopes, revocation, the maker's membership read again each call) and /api/admin/v1 over the screens' functions (src/server/admin-api.ts).
 - Storefront API and headless (Platform): missing to partial. Read src/app/api/wordpress/v1/stores/[slug]/{products,product,terms,view,cart/quote,cart/handoff}/route.ts, src/server/wordpress-route.ts, src/server/wordpress-shop.ts and src/server/cart-handoff.ts (D169, D170): a token-gated, rate-limite…
 - Storefront API and headless (Platform): partial to full. Criterion 3 changed by the owner's decision of 29 October 2026 (D405): the API may show the same capped stock the store's own quantity picker shows, never more.
@@ -196,7 +197,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **89.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 88.8% overall and 90.4% for must-haves. Counting app-only features gives 89.0%; counting Plus-only as well gives 88.6%. Kaizena Flow is strongest on catalogue and products (96.3%) and weakest on platform, extensibility and operations (75.8%), international, compliance and trust (77.7%), orders, shipping, fulfilment and returns (84.0%). Of the 201 core features, 161 are full, 35 partial and 5 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **89.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 88.8% overall and 90.4% for must-haves. Counting app-only features gives 88.8%; counting Plus-only as well gives 88.5%. Kaizena Flow is strongest on catalogue and products (96.3%) and weakest on platform, extensibility and operations (75.8%), international, compliance and trust (77.7%), orders, shipping, fulfilment and returns (84.0%). Of the 201 core features, 161 are full, 35 partial and 5 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -208,8 +209,8 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 | --- | --- | --- | --- | --- |
 | Headline: core (Shopify native, Basic to Advanced) | 201 | **89.3%** | 88.8% | 161 / 35 / 5 |
 | Must-have (core, weight 4 or 5) | 83 | **90.6%** | 90.4% | 67 / 16 / 0 |
-| Core plus app-only features | 225 | 89.0% | 88.7% | 179 / 41 / 5 |
-| Everything, including Plus-only | 231 | 88.6% | 87.9% | 182 / 42 / 7 |
+| Core plus app-only features | 226 | 88.8% | 88.5% | 179 / 42 / 5 |
+| Everything, including Plus-only | 232 | 88.5% | 87.7% | 182 / 43 / 7 |
 
 <!-- parity:generated:end headline -->
 
@@ -244,14 +245,14 @@ A row is Full only when it lists code and tests that exist (or says it is untest
 | --- | ---: |
 | Full, with tests | 176 |
 | Full, untested (debt, not hidden) | 6 |
-| Shopify side not read from a page | 1 |
-| Rows in the tracker | 231 |
+| Shopify side not read from a page | 2 |
+| Rows in the tracker | 232 |
 
-Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-recovery-emails`, `customers.seo-fundamentals`, `orders.order-statuses-timeline-notes`, `orders.cancel-order-with-refund-and-restock`, `storefront.automatic-sitemap-xml`. Shopify side not read: `international.br-nn-ysund-lookup-and-angrerett`.
+Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-recovery-emails`, `customers.seo-fundamentals`, `orders.order-statuses-timeline-notes`, `orders.cancel-order-with-refund-and-restock`, `storefront.automatic-sitemap-xml`. Shopify side not read: `international.br-nn-ysund-lookup-and-angrerett`, `orders.drop-shipping`.
 
 | Bucket | What it means | Rows not Full | Core rows | Core headline points lacking |
 | --- | --- | ---: | ---: | ---: |
-| A | Build in-house | 15 | 11 | 2.9 |
+| A | Build in-house | 16 | 11 | 2.9 |
 | B | Build, live only with a third party | 13 | 11 | 2.8 |
 | C | Strategy decision first | 7 | 6 | 1.6 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
@@ -264,7 +265,7 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **89.3%** core, 90.6% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 17 rows (13 core) have no wave yet and are not in them.
+Now: **89.3%** core, 90.6% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 18 rows (13 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -496,6 +497,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Invoices and VAT receipts for orders | App. [page](https://apps.shopify.com/shopify-order-printer) | Partial | 4 | A, wave 1 | Built and held by tests (D159): `commerce.issue_order_invoice()` inside `complete_order_payment()` gives every paid path one invoice in the store's gap-free series, a frozen immutable snapshot; copied, host, Stripe-test-mode, Mollie test-mode and invoicing-off orders get none, and a store missing details or a rate waits; the shopper's order page and `/account/documents/{token}` draw it, the PDF is the same view rendered by Chromium, emails link and attach it, staff list, reprint, export and resend; reverse charge and IOSS state the numbers; money taken outside is stated (D173), an order on terms carries its due date (D293), an edit gets an additional invoice (D174). Still short of Full: (1) every consumer-visible invoice text (`src/lib/invoice-text.ts`, marked `legal: needs review`) is hand-written and unreviewed, and the content list rests on a partly secondary reading of Art. 226 and the Nordic and German rules (WAVES.md step 4); (2) `e2e/invoices.spec.ts` pays a fixture order built by SQL, no spec presses Checkout; (3) never exercised in production: a PDF stored in Supabase Storage and Chromium on Vercel for the PDF routes, and `/api/cron/document-pdfs` has no schedule of its own (`cron-routes.scan.test.ts`: run by staff and the dispatcher's invoice job), so PDFs are made only when someone asks; (4) invoicing is off for stores with earlier real orders until the owner turns it on, with nothing issued for those orders; (5) not built by the spec: simplified invoices, exemption references, custom templates, structured e-invoices sent through Peppol (the documents themselves are EN 16931 UBL since D403, fetched by staff and the Admin API), and countries beyond NO, SE, DK, DE and the Directive. Code: `docs/wave-1b-invoices.md`, `src/app/admin/(gated)/[store]/invoices/actions.ts`. |
 | Credit notes for refunds | App. [page](https://apps.shopify.com/shopify-order-printer) | Partial (was missing) | 3 | A, wave 1 | Built and held by tests (D159): a deferred constraint trigger on refunds issues one credit note, in its own gap-free series, at commit for every refund that becomes `succeeded` by any path (`refundOrder()`, cancels, returns, the Stripe `refund.*` handler `applyStripeRefund()`, a refund made in Stripe's Dashboard, a Mollie refund through `applyRefundReport()` (D292), a manual refund of money taken outside (D173)), allocated over the invoice's rates (`creditAllocation()`), never above what is left per rate (a trigger); a return's refund carries its working; the refund email links and attaches it; an edit's refund gets none and the edit's own documents are issued instead (D174). Still short of Full: (1) the credit note's wording, the treatment of deductions and return shipping, and the not-registered rendering are hand-written and unreviewed (WAVES.md step 4); (2) the five-minute job adds missing refund events to the platform's Stripe webhook endpoint (`ensureSubscriptionEvents()` in `invoiceJobs()`), but that is untested and unchecked in Stripe's Dashboard, and the handler was tested against a fake Stripe only; (3) the rule that a refund of a payment not on the invoice gets no credit note (`payment_on_invoice()`) is a heuristic; (4) a refund Stripe reports as failed after it succeeded has no corrective document; (5) no manual credit note and no credit for a cancelled order never refunded; (6) PDFs, Storage and Chromium on Vercel are unproven as for the invoice row. Code: `supabase/migrations/20261004125309_order_invoices.sql`, `supabase/migrations/20261004125337_order_invoices_rules.sql`. |
 | Gift receipts and messages | App. [page](https://help.shopify.com/en/manual/sell-in-person/shopify-pos/receipt-management/managing-receipts) | Full (was missing) | 1 |  | Evidence: `src/lib/gift.ts`, `src/lib/order-limits.ts`, `src/server/cart.ts` and 10 more; 12 test files; D173. |
+| Drop shipping: a supplier ships to the customer | App. not read | Partial (was missing) | 3 | A, no wave yet | Steps 1 and 2 of 5 built (D550, D551, docs/drop-shipping.md 10): suppliers that drop-ship with a location of their own ranked after every own location, variants marked as sent by them, own stock first; a paid order's supplier lines reach the supplier by email after the store's wait, in its language, and the tracking it posts on its page reaches the customer as the shop's shipped email; a supplier that cannot send tells the owners. Not yet: connected suppliers and stock by file or API, delivery estimates (step 3); late reminders, the owner's choices on a problem, returns to the supplier, what the shop owes (step 4); reports and the AI manager (step 5). Code: `src/server/suppliers.ts`, `src/lib/drop-shipping.ts`. |
 
 <!-- parity:generated:end detail-orders -->
 
