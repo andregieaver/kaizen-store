@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql, type SQL } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
+import { z } from "zod";
 
 import { readDb } from "@/db/client";
 import type { Buyer } from "@/lib/b2b";
@@ -20,6 +21,7 @@ import { activeFieldGroups, fieldsTag } from "./custom-fields";
 import { convertedSql, inCategories, inStockNow, inTerms, manualPlace, OFFERED, shownPrice, textList, withTags } from "./product-conditions";
 import { siteTerms, termsTag } from "./taxonomy";
 import { taxonomy, taxonomyWords } from "./product-taxonomy";
+import { col, typedRows } from "./typed-rows";
 
 /**
  * Sorting and filtering product listings (D78): which of a page's products
@@ -30,7 +32,22 @@ import { taxonomy, taxonomyWords } from "./product-taxonomy";
  * in their order), or the whole store.
  */
 
-type Row = Record<string, unknown>;
+const PAGE_ROW = z.object({ id: col.uuid, total: col.int });
+
+/** A page's product with its lowest and highest price as shown (a business's price without VAT is a whole `numeric`). */
+const FACET_PRODUCT_ROW = z.object({ id: col.uuid, kind: col.text, low: col.minorOrNull, high: col.minorOrNull });
+
+const TERM_LINK_ROW = z.object({ product_id: col.uuid, term_id: col.uuid });
+
+const OPTION_COUNT_ROW = z.object({ name: col.text, value: col.text, count: col.int });
+
+const FIELD_VALUE_ROW = z.object({ field_id: col.text, value: z.unknown() });
+
+const FIELD_SPAN_ROW = z.object({ field_id: col.text, low: col.decimal, high: col.decimal });
+
+const ATTRIBUTE_COUNT_ROW = z.object({ attribute: col.text, value: col.text, count: col.int });
+
+const ID_ROW = z.object({ id: col.uuid });
 
 /** A listing's products: in these categories and tags, or these ids; `orderTerm` is the category or tag whose owner's order "featured" follows (D319). */
 export type ListingScope = { categoryIds?: string[]; tagIds?: string[]; ids?: string[]; orderTerm?: string };
@@ -234,12 +251,16 @@ export async function listingPage(
                 : sql`p.created_at, p.handle`;
   const fieldDefs = filters.fields.length > 0 || filters.ranges.length > 0 ? filterableFields(await activeFieldGroups(storeId, "product")) : [];
   const attributes = (filters.attributes ?? []).length > 0 ? attributeFilters(await taxonomy(), filters.attributes) : [];
-  const rows = await readDb().execute<Row>(sql`
+  const rows = await typedRows(
+    PAGE_ROW,
+    sql`
     select p.id, count(*) over ()::int as total from commerce.products p
     where ${scopeClause(storeId, market.code, scope, viewer)} and ${filtersClause(filters, market, viewer, fieldDefs, attributes)}
     order by ${order}
     limit ${shown}
-  `);
+  `,
+    readDb(),
+  );
   const ids = rows.map((row) => String(row.id));
   if (ids.length === 0) return { products: [], total: 0 };
   const products = await listGridProducts(storeId, market, { categoryIds: [], tagIds: [], ids, sort: "given", limit: shown });
@@ -306,7 +327,9 @@ export async function listingFacets(
   cacheTag(CATALOG_TAG, catalogTag(storeId), termsTag({ storeId, contentType: "product" }), fieldsTag(storeId));
 
   const business = viewer.buyer === "business";
-  const products = await readDb().execute<Row>(sql`
+  const products = await typedRows(
+    FACET_PRODUCT_ROW,
+    sql`
     select p.id, p.kind,
       -- A product priced on request (D431) adds nothing to the price range a shopper is offered.
       (select min(${shownPrice(market.code, business)}) from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
@@ -316,7 +339,9 @@ export async function listingFacets(
     from commerce.products p
     where ${scopeClause(storeId, market.code, scope, viewer)}
     limit ${FACET_LIMIT}
-  `);
+  `,
+    readDb(),
+  );
   const total = products.length;
   const empty: ListingFacets = { total, kinds: [], categories: [], tags: [], options: [], fields: [], fieldLabels: [], ranges: [], rangeLabels: [], attributes: [], attributeLabels: [], price: null };
   if (total === 0) return empty;
@@ -326,7 +351,9 @@ export async function listingFacets(
   const fieldDefs = choiceFields(allDefs);
   const rangeDefs = rangeFields(allDefs);
   const [links, optionRows, terms, fieldRows, rangeRows, attributeRows] = await Promise.all([
-    readDb().execute<Row>(sql`
+    typedRows(
+      TERM_LINK_ROW,
+      sql`
       select pt.product_id, pt.term_id from commerce.product_terms pt
       where pt.store_id = ${storeId}::uuid and pt.product_id = any(${ids}::uuid[])
       union
@@ -334,26 +361,38 @@ export async function listingFacets(
       select p.id, rt.id from commerce.products p
       join commerce.terms rt on rt.store_id = p.store_id and rt.content_type = 'product' and rt.rules is not null
       where p.store_id = ${storeId}::uuid and p.id = any(${ids}::uuid[]) and commerce.product_matches_rules(p.store_id, p.id, rt.rules)
-    `),
-    readDb().execute<Row>(sql`
+    `,
+      readDb(),
+    ),
+    typedRows(
+      OPTION_COUNT_ROW,
+      sql`
       select o.key as name, o.value, count(distinct v.product_id)::int as count
       from commerce.product_variants v, jsonb_each_text(v.options) o
       where v.product_id = any(${ids}::uuid[]) and v.active
       group by o.key, o.value
-    `),
+    `,
+      readDb(),
+    ),
     siteTerms(storeId, "product"),
     fieldDefs.length === 0
       ? Promise.resolve([])
-      : readDb().execute<Row>(sql`
+      : typedRows(
+          FIELD_VALUE_ROW,
+          sql`
           select f.id as field_id, fv.values -> f.id as value
           from commerce.field_values fv
           cross join unnest(${textList(fieldDefs.map((d) => d.id))}) as f(id)
           where fv.store_id = ${storeId}::uuid and fv.entity = 'product' and fv.locale = ''
             and fv.entity_id = any(${ids}::uuid[]) and jsonb_exists(fv.values, f.id)
-        `),
+        `,
+          readDb(),
+        ),
     rangeDefs.length === 0
       ? Promise.resolve([])
-      : readDb().execute<Row>(sql`
+      : typedRows(
+          FIELD_SPAN_ROW,
+          sql`
           select f.id as field_id, min(x.n)::float8 as low, max(x.n)::float8 as high
           from commerce.field_values fv
           cross join unnest(${textList(rangeDefs.map((r) => r.def.id))}, ${textList(rangeDefs.map((r) => r.kind))}, ${textList(rangeDefs.map((r) => r.unit))})
@@ -367,16 +406,22 @@ export async function listingFacets(
           where fv.store_id = ${storeId}::uuid and fv.entity = 'product' and fv.locale = ''
             and fv.entity_id = any(${ids}::uuid[]) and x.n between -1000000000000 and 1000000000000
           group by f.id
-        `),
+        `,
+          readDb(),
+        ),
     // The standard taxonomy's attributes (D327): each value with how many of the page's products carry it.
-    readDb().execute<Row>(sql`
+    typedRows(
+      ATTRIBUTE_COUNT_ROW,
+      sql`
       select a.key as attribute, v.value as value, count(distinct p.id)::int as count
       from commerce.products p
       cross join lateral jsonb_each(p.standard_attributes) a
       cross join lateral jsonb_array_elements_text(case when jsonb_typeof(a.value) = 'array' then a.value else '[]'::jsonb end) v
       where p.store_id = ${storeId}::uuid and p.id = any(${ids}::uuid[]) and p.standard_attributes <> '{}'::jsonb
       group by a.key, v.value
-    `),
+    `,
+      readDb(),
+    ),
   ]);
 
   const narrows = (count: number) => count > 0 && count < total;
@@ -503,7 +548,9 @@ export async function relatedProducts(storeId: string, market: Market, productId
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId));
 
-  const rows = await readDb().execute<Row>(sql`
+  const rows = await typedRows(
+    ID_ROW,
+    sql`
     select p.id
     from commerce.products p
     left join lateral (
@@ -515,14 +562,16 @@ export async function relatedProducts(storeId: string, market: Market, productId
     where ${scopeClause(storeId, market.code, {}, { buyer: "private", audienceBoth: false })} and p.id <> ${productId}::uuid
     order by s.shared desc, p.created_at desc, p.handle
     limit ${Math.max(1, Math.min(LISTING_LIMIT, limit))}
-  `);
+  `,
+    readDb(),
+  );
   const ids = rows.map((row) => String(row.id));
   if (ids.length === 0) return [];
   return listGridProducts(storeId, market, { categoryIds: [], tagIds: [], ids, sort: "given", limit: LISTING_LIMIT });
 }
 
 /** The attributes' counts as facets: handles and names from the release, values by name, attributes by how many products carry one. */
-async function attributeFacetsOf(rows: Row[], locale: string): Promise<{ name: string; label: string; carried: number; all: FacetValue[] }[]> {
+async function attributeFacetsOf(rows: z.output<typeof ATTRIBUTE_COUNT_ROW>[], locale: string): Promise<{ name: string; label: string; carried: number; all: FacetValue[] }[]> {
   const [t, words] = await Promise.all([taxonomy(), taxonomyWords(locale)]);
   const byAttribute = new Map<number, FacetValue[]>();
   for (const row of rows) {

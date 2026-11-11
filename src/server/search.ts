@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql, type SQL } from "drizzle-orm";
+import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import type { Market } from "@/lib/markets";
@@ -16,6 +17,7 @@ import { listGridProducts, type GridProduct } from "./catalog";
 import { convertedSql, inCategories, inStockNow, OFFERED, withTags } from "./product-conditions";
 import { rulesOf, termFacts } from "./search-rules";
 import { synonymsFor } from "./search-synonyms";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * Keyword search (Phase 2, S1): in Postgres, with no AI. A product matches
@@ -30,7 +32,17 @@ import { synonymsFor } from "./search-synonyms";
  * the market's language where it has one.
  */
 
-type Row = Record<string, unknown>;
+const ID_ROW = z.object({ id: col.uuid });
+
+/** A product's closest translation by meaning: `similarity` a `double precision` score. */
+const MEANING_ROW = z.object({ product_id: col.uuid, similarity: col.decimal });
+
+const SEARCH_TOTALS_ROW = z.object({ searches: col.int, zero: col.int, meaning: col.int, helped: col.int });
+
+const TOP_SEARCH_ROW = z.object({ query: col.text, count: col.int, results: col.int, redirected: col.bool.nullable() });
+
+/** A search that found nothing, with how close meaning came on average (null where it was never asked). */
+const ZERO_SEARCH_ROW = z.object({ query: col.text, count: col.int, closest: col.decimal.nullable() });
 type Shop = { storeId: string; market: Market };
 
 /** How close a title (or category name) must be to what was typed, from 0 to 1. */
@@ -64,9 +76,13 @@ function filterClause(filters: SearchFilters | null, market: Market): SQL {
 /** Whether words hold anything to search for in the market's language, rather than only stop words. */
 async function searchable(shop: Shop, words: string): Promise<boolean> {
   if (!words) return false;
-  const [row] = await readDb().execute<Row>(sql`
+  const row = await typedRow(
+    z.object({ searchable: col.bool.nullable() }),
+    sql`
     select numnode(websearch_to_tsquery(commerce.search_config(${shop.market.locale}), ${words})) > 0 as searchable
-  `);
+  `,
+    readDb(),
+  );
   return Boolean(row?.searchable);
 }
 
@@ -92,7 +108,9 @@ export async function matchingIds(
         sql` || `,
       )
     : sql.join([text, ...alternatives].map((w) => sql`websearch_to_tsquery(${config}, ${w})`), sql` || `);
-  const rows = await readDb().execute<Row>(sql`
+  const rows = await typedRows(
+    ID_ROW,
+    sql`
     with q as (
       select ${tsq} as tsq, ${text}::text as text, array(select jsonb_array_elements_text(${JSON.stringify(alternatives)}::jsonb)) as alts
     ),
@@ -150,7 +168,9 @@ export async function matchingIds(
     select id from scored where found
     order by score desc, created_at desc
     limit ${limit}
-  `);
+  `,
+    readDb(),
+  );
   return rows.map((row) => String(row.id));
 }
 
@@ -186,7 +206,9 @@ export async function meaningMatches(
   filters: SearchFilters | null = null,
 ): Promise<{ id: string; similarity: number }[]> {
   const { storeId, market } = shop;
-  const rows = await readDb().execute<Row>(sql`
+  const rows = await typedRows(
+    MEANING_ROW,
+    sql`
     with q as (select ${vectorLiteral(meaning.vector)}::extensions.vector as v)
     select e.product_id, max(1 - (e.embedding OPERATOR(extensions.<=>) q.v)) as similarity
     from commerce.product_embeddings e
@@ -204,7 +226,9 @@ export async function meaningMatches(
     group by e.product_id
     order by similarity desc, e.product_id
     limit ${limit}
-  `);
+  `,
+    readDb(),
+  );
   return rows.map((row) => ({ id: String(row.product_id), similarity: Number(row.similarity) }));
 }
 
@@ -215,7 +239,9 @@ export async function meaningMatches(
  */
 export async function filteredIds(shop: Shop, filters: SearchFilters, limit: number): Promise<string[]> {
   const { storeId, market } = shop;
-  const rows = await readDb().execute<Row>(sql`
+  const rows = await typedRows(
+    ID_ROW,
+    sql`
     select p.id from commerce.products p
     where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
       and exists (
@@ -226,7 +252,9 @@ export async function filteredIds(shop: Shop, filters: SearchFilters, limit: num
       and ${filterClause(filters, market)}
     order by p.created_at desc, p.id
     limit ${limit}
-  `);
+  `,
+    readDb(),
+  );
   return rows.map((row) => String(row.id));
 }
 
@@ -401,9 +429,12 @@ export const SEARCH_LOG_DAYS = 90;
 
 /** Forgets searches older than `SEARCH_LOG_DAYS`; from the five-minute cron. */
 export async function pruneSearchLog(): Promise<number> {
-  const rows = await db().execute<Row>(sql`
-    delete from commerce.search_queries where created_at < now() - make_interval(days => ${SEARCH_LOG_DAYS}) returning 1
-  `);
+  const rows = await typedRows(
+    z.object({ one: col.int }),
+    sql`
+    delete from commerce.search_queries where created_at < now() - make_interval(days => ${SEARCH_LOG_DAYS}) returning 1 as one
+  `,
+  );
   return rows.length;
 }
 
@@ -425,29 +456,41 @@ export type SearchStats = {
 /** A store's searches over the last days: how many, how many found nothing, and which. */
 export async function searchStats(storeId: string, days = 30): Promise<SearchStats> {
   const since = sql`now() - make_interval(days => ${days})`;
-  const [[totals], top, zero] = await Promise.all([
-    readDb().execute<Row>(sql`
+  const [totals, top, zero] = await Promise.all([
+    typedRow(
+      SEARCH_TOTALS_ROW,
+      sql`
       select count(*)::int as searches, count(*) filter (where results = 0 and not redirected)::int as zero,
         count(*) filter (where semantic_best is not null)::int as meaning,
         count(*) filter (where meaning_results > 0)::int as helped
       from commerce.search_queries where store_id = ${storeId}::uuid and created_at >= ${since}
-    `),
-    readDb().execute<Row>(sql`
+    `,
+      readDb(),
+    ),
+    typedRows(
+      TOP_SEARCH_ROW,
+      sql`
       select query, count(*)::int as count, round(avg(results))::int as results, bool_or(redirected) as redirected
       from commerce.search_queries where store_id = ${storeId}::uuid and created_at >= ${since}
       group by query order by count(*) desc, query limit 20
-    `),
-    readDb().execute<Row>(sql`
+    `,
+      readDb(),
+    ),
+    typedRows(
+      ZERO_SEARCH_ROW,
+      sql`
       select query, count(*)::int as count, avg(semantic_best) as closest
       from commerce.search_queries where store_id = ${storeId}::uuid and created_at >= ${since} and results = 0 and not redirected
       group by query order by count(*) desc, query limit 20
-    `),
+    `,
+      readDb(),
+    ),
   ]);
   const searches = Number(totals?.searches ?? 0);
   return {
     days,
     searches,
-    zeroRate: searches === 0 ? 0 : Number(totals.zero) / searches,
+    zeroRate: searches === 0 ? 0 : Number(totals?.zero ?? 0) / searches,
     meaningSearches: Number(totals?.meaning ?? 0),
     meaningHelped: Number(totals?.helped ?? 0),
     top: top.map((r) => ({ query: String(r.query), count: Number(r.count), results: Number(r.results), redirected: Boolean(r.redirected) })),
