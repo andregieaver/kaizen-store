@@ -34,7 +34,7 @@ export default async function DocsGuidePage() {
   const ready = Boolean(ai?.textModel);
   const days = keeping.transcriptDays === 1 ? w.oneDay : fillWords(w.days, { n: keeping.transcriptDays });
   return (
-    <AdminTextScope texts={adminTexts(lang, ["platform", "platformTools"])}>
+    <AdminTextScope texts={adminTexts(lang, ["platform", "platformTools", "website"])}>
       <div className="flex max-w-3xl flex-col gap-6">
         <PageHeader title={w.title} description={guide.enabled ? (ready ? fillWords(w.onReady, { name: guide.name }) : w.onNoModel) : w.off} />
         <Card title={w.how}>

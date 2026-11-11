@@ -10,9 +10,10 @@ const ROOT = join(__dirname, "../../..");
  * (PSI PERF-01). The biggest is `admin-text.tsx`: `useAdminText()` reads English for an area a page did not hand down, so it imports every
  * area, about 1 MB of the 3.0 MB every admin screen loads first. Fetching that fallback per area instead was tried on 31 October 2026 and
  * backed out: a part waiting for its area's words is not yet interactive when the page has loaded, so a press that early submitted a form
- * without its script (the content type editor's Save, caught by `e2e/signed-in/content-types.spec.ts`). The way there is for each page to
- * hand down every area its parts read, then the fallback can go. Until then: the modules below already import one, the list may only
- * shrink, and no new client module may join it. `import type` is free.
+ * without its script (the content type editor's Save, caught by `e2e/signed-in/content-types.spec.ts`). Since 10 November 2026 the fallback
+ * is fetched per area again (`admin-text-later.ts`, D540), with `e2e/signed-in/admin-text-fallbacks.spec.ts` failing on any screen that
+ * needs it; `admin-text.tsx` keeps only `common` and `signIn`. The modules below import one, the list may only shrink, and no new client
+ * module may join it. `import type` is free.
  */
 const ALREADY: readonly string[] = [
   "src/components/admin/admin-text.tsx",
