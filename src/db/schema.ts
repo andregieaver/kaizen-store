@@ -10698,6 +10698,39 @@ export const googlePlaces = commerce.table(
 );
 
 /**
+ * An Instagram professional account connected for a feed (D543): a store's, or Kaizena Flow's with a null store, connected through Instagram
+ * Login (scope `instagram_business_basic` only: it reads the account's own posts, nothing else). The long-lived token is encrypted like
+ * payment secrets and refreshed before its 60 days run out; the account's latest posts are kept in `posts` (id, caption, kind, permalink,
+ * time; the picture's address on Instagram's servers only for the proxy, `/api/instagram/…`, so visitors never load from Meta).
+ */
+export const instagramAccounts = commerce.table(
+  "instagram_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    igUserId: text("ig_user_id").notNull(),
+    username: text("username").notNull(),
+    tokenEncrypted: text("token_encrypted").notNull(),
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }).notNull(),
+    posts: jsonb("posts").notNull().default(sql`'[]'::jsonb`),
+    postsFetchedAt: timestamp("posts_fetched_at", { withTimezone: true }),
+    /** What went wrong at the last refresh, in the owner's words; null when it went well. */
+    problem: text("problem"),
+    connectedBy: uuid("connected_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("instagram_accounts_store_key").on(t.storeId).nullsNotDistinct(),
+    index("instagram_accounts_connected_by_idx").on(t.connectedBy),
+    check("instagram_accounts_user", sql`${t.igUserId} ~ '^[0-9]{1,40}$'`),
+    check("instagram_accounts_username", sql`char_length(${t.username}) between 1 and 60`),
+    check("instagram_accounts_posts", sql`jsonb_typeof(${t.posts}) = 'array' and octet_length(${t.posts}::text) < 400000`),
+    check("instagram_accounts_problem", sql`${t.problem} is null or char_length(${t.problem}) <= 300`),
+  ],
+);
+
+/**
  * A site's chat agent (D81): Kaizen's (`store_id` null) or a store's. It
  * answers visitors in text and voice from the site's published content,
  * its products and its knowledge base, and opens pages for them; only

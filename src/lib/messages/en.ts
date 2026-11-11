@@ -722,6 +722,14 @@ export const en = {
     switchToBusiness: "Shop as a business",
   },
   /** The shop's notes about a basket (D541): free shipping and what is saved today. A saving is against the 30-day lowest price only. */
+  /** The Instagram feed (D543): the owner's own posts, linking to Instagram. */
+  instagram: {
+    feed: (name: string) => `Instagram posts by @${name}`,
+    follow: (name: string) => `Follow @${name} on Instagram`,
+    video: "A video on Instagram",
+    post: "A post on Instagram",
+    opens: "(opens Instagram)",
+  },
   shopNotes: {
     freeShippingLeft: (amount: string) => `Add ${amount} more for free shipping`,
     freeShippingReached: "You have free shipping",

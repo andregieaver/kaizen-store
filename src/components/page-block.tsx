@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { Inline } from "@/components/inline-text";
 import { inlinePlain } from "@/lib/inline-text";
@@ -87,6 +87,9 @@ export function PageBlockView({
     case "menu":
       // Its links are looked up where it is shown (`MenuSection`, D85); the editor shows a stand-in.
       return null;
+    case "instagram":
+      // The owner's posts are read where the page is shown (`InstagramSection`, D543); the editor shows squares where they go.
+      return <InstagramStandIn block={block} />;
     case "search":
       // The store's search is looked up where it is shown (`SearchSection`, D112); the editor shows a stand-in.
       return null;
@@ -501,3 +504,22 @@ function Testimonials({ block }: { block: TestimonialsBlock }) {
     />
   );
 }
+
+/** Where an Instagram feed's posts go (D543), in the builder: as many squares as it shows, in its columns, with the hashtags it keeps to. */
+function InstagramStandIn({ block }: { block: Extract<PageBlock, { type: "instagram" }> }) {
+  return (
+    <div className="flex flex-col gap-2" data-instagram-stand-in="">
+      <div
+        className="grid grid-cols-[repeat(var(--cols),minmax(0,1fr))] gap-2 [--cols:var(--ig-phone)] md:[--cols:var(--ig-cols)]"
+        style={{ "--ig-cols": block.columns, "--ig-phone": Math.min(block.phoneColumns ?? 2, block.columns) } as CSSProperties}
+      >
+        {/* A carousel shows a screen's worth of its posts, the rest further along the row. */}
+        {Array.from({ length: block.display === "carousel" ? Math.min(block.columns, block.limit) : block.limit }, (_, i) => (
+          <span key={i} className="aspect-square rounded-md bg-gradient-to-br from-surface to-border" />
+        ))}
+      </div>
+      {block.hashtags.length > 0 && <p className="text-sm text-muted">{block.hashtags.map((tag) => `#${tag}`).join(" ")}</p>}
+    </div>
+  );
+}
+

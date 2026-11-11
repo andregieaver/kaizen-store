@@ -731,3 +731,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - Goes well with: upsells from the cart (D542, `recommendForCart()`, `src/components/cart-upsell.tsx`): the recommendations engine anchored on the cart, plain ranking only (never the AI, never a session), through the same pipeline and its exclusions; a new placement of it goes through `recommendForCart()`, and the standard cart draws it only while the store's recommendations are on.
 
+## An Instagram feed (D543, `src/lib/instagram.ts`, `src/server/instagram.ts`, `InstagramBlock`, `InstagramSection`)
+
+- An Instagram feed (D543, `src/lib/instagram.ts`, `src/server/instagram.ts`, `InstagramBlock`, `InstagramSection`): only the connected account's own posts (one per store, or Kaizena Flow's with a null store), never a public hashtag search; a page reads the posts kept in `instagram_accounts` (never Instagram), refreshed by the dispatcher's `instagram` job; every picture goes through `/api/instagram/…` from Instagram's hosts only (`isInstagramPicture()`), so a visitor's browser never loads from Meta; the token stays encrypted and is never logged or audited.
+

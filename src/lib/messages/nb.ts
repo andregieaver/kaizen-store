@@ -697,6 +697,13 @@ export const nb: Messages = {
     businessOnly: "Denne varen selges bare til bedrifter.",
     switchToBusiness: "Handle som bedrift",
   },
+  instagram: {
+    feed: (name: string) => `Instagram-innlegg fra @${name}`,
+    follow: (name: string) => `Følg @${name} på Instagram`,
+    video: "En video på Instagram",
+    post: "Et innlegg på Instagram",
+    opens: "(åpner Instagram)",
+  },
   shopNotes: {
     freeShippingLeft: (amount: string) => `Handle for ${amount} til for fri frakt`,
     freeShippingReached: "Du har fri frakt",

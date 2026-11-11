@@ -926,6 +926,10 @@ const PAGES: readonly AdminPage[] = [
     feature: "shop",
   }),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
+  store("integrations.instagram", "/integrations/instagram", "Instagram", "Store", "Connects the store's Instagram professional account, whose own posts Instagram feed components show on its pages, narrowed by hashtags.", {
+    keywords: ["instagram", "instagram feed", "hashtag", "social feed", "photos from instagram"],
+    tasks: ["Connect the store's Instagram account", "See the latest posts read from Instagram", "Disconnect Instagram"],
+  }),
   store("integrations.tripletex", "/integrations/tripletex", "Tripletex", "Store", "Connects the store's Tripletex company with one pasted token and books its invoices and credit notes there; where they are booked, what needs the owner, Try again.", {
     keywords: ["tripletex", "accounting", "bookkeeping", "regnskap", "bokføring", "vouchers", "bilag", "accountant"],
   }),
@@ -1291,6 +1295,7 @@ const PAGES: readonly AdminPage[] = [
   platform("workflows", "/workflows", "Workflows", "Platform", "Kaizena Flow's workflows (D516): a trigger (a platform event, such as a store requested or a plan started, or a schedule in Oslo's time), conditions on its fields and actions (email the platform's owners, post in its Slack, send to its own endpoint), saved off, tested on the latest event, then switched on; each one's recent runs.", { keywords: ["workflows", "automation", "rules", "triggers"] }),
   platform("integration", "/integrations/[provider]", "Integration", "Platform", "Connects one of Kaizena Flow's integrations with the service's webhook address, chooses its platform events, tests it, and shows recent sends."),
   platform("google-reviews", "/google-reviews", "Google reviews", "Kaizena Flow site", "Kaizena Flow's own Google reviews for testimonials."),
+  platform("instagram", "/instagram", "Instagram", "Kaizena Flow site", "Kaizena Flow's own Instagram account, whose posts the Instagram feeds on its own pages show."),
   platform("experiments", "/experiments", "A/B tests", "Platform", "Every store's A/B tests, read-only: what is running, which need a look (a version lowering orders, visitors nobody sees, a test past its end or forgotten) and what waits for a decision.", {
     keywords: ["experiment", "a/b", "test", "split", "guardrail"],
   }),

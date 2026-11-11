@@ -2000,6 +2000,38 @@ export type NewsletterLayout = keyof typeof NEWSLETTER_LAYOUTS;
  * with a link, and only then is the sign-up emailed to the `recipients`,
  * with the words consented to and when.
  */
+/**
+ * An Instagram feed (D543, `src/lib/instagram.ts`): the owner's own latest posts (a store's connected account, or Kaizena Flow's), as square
+ * pictures linking to each post on Instagram, narrowed by hashtags in their captions (`hashtags`, any of them unless `match` is `all`).
+ * Nothing shows without a connected account or a matching post. The pictures come through the site, so visitors load nothing from Meta.
+ */
+export type InstagramBlock = PartBase & {
+  id: string;
+  type: "instagram";
+  /** Hashtags without `#`, lower case (`cleanHashtags()`); empty shows every post. */
+  hashtags: string[];
+  /** A post must carry every hashtag; any of them unless set. */
+  match?: "all";
+  /** Posts at most, in all. */
+  limit: number;
+  /** Posts across on larger screens: a grid's columns, or how many a carousel shows at a time. */
+  columns: number;
+  /** Posts across on phones; two unless set. */
+  phoneColumns?: number;
+  /** A row that scrolls sideways (`Carousel`); a grid unless set. */
+  display?: "carousel";
+  /** A carousel shows part of the next post, so it is seen to scroll. */
+  peek?: boolean;
+  /** A carousel's arrows, dots, rest, going round and autoplay (D155); arrows only unless set. */
+  carousel?: CarouselSettings;
+  /** Video posts play in place when pressed (with controls, sound off until turned on); off shows their cover linking to Instagram. On unless off. */
+  videos?: boolean;
+  /** The start of each post's caption under its picture; off unless set. */
+  captions?: boolean;
+  /** A *Follow @account* link under the feed; on unless off. */
+  follow?: boolean;
+};
+
 export type NewsletterBlock = PartBase & {
     id: string;
     type: "newsletter";
@@ -2063,6 +2095,7 @@ export type PageBlock =
   | GalleryBlock
   | EmailFormBlock
   | NewsletterBlock
+  | InstagramBlock
   | ColumnsBlock;
 export type BlockType = PageBlock["type"];
 
@@ -2293,6 +2326,9 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "emailForm":
     case "newsletter":
       return formShows(block);
+    // The owner's posts are known only when the page is shown (D543).
+    case "instagram":
+      return true;
     case "testimonials":
       // Google's reviews are known only when the page is shown.
       return block.source === "google" || block.items.some(testimonialShows);
@@ -2375,6 +2411,8 @@ export function blockText(block: PageBlock): string {
     case "newsletter":
     // Its words are in its own frame, not the page's.
     case "html":
+    // The posts' captions are Instagram's, not the page's (D543).
+    case "instagram":
       return "";
   }
 }
@@ -3812,6 +3850,26 @@ const emailFormBlock = z.object({
   ...partBase,
 });
 
+const instagramBlock = z.object({
+  id: itemId,
+  type: z.literal("instagram"),
+  hashtags: z
+    .array(z.string().regex(/^[\p{L}\p{N}_]{1,60}$/u, "A hashtag holds letters, digits and underscores only."))
+    .max(10, "An Instagram feed narrows by at most 10 hashtags.")
+    .default([]),
+  match: z.literal("all").optional(),
+  limit: z.number().int().min(1, "An Instagram feed shows at least one post.").max(24, "An Instagram feed shows at most 24 posts."),
+  columns: z.number().int().min(1, "An Instagram feed shows at least one post across.").max(6, "An Instagram feed shows at most six posts across."),
+  phoneColumns: z.number().int().min(1).max(3, "On phones an Instagram feed shows at most three posts across.").optional(),
+  display: z.literal("carousel", "An Instagram feed is shown in an unknown way.").optional(),
+  peek: z.boolean().optional(),
+  carousel: carouselSettingsSchema.optional(),
+  videos: z.boolean().optional(),
+  captions: z.boolean().optional(),
+  follow: z.boolean().optional(),
+  ...partBase,
+});
+
 const newsletterBlock = z.object({
   id: itemId,
   type: z.literal("newsletter"),
@@ -3864,6 +3922,7 @@ const BLOCK_KINDS = [
   galleryBlock,
   emailFormBlock,
   newsletterBlock,
+  instagramBlock,
 ] as const;
 
 /**

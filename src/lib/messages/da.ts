@@ -694,6 +694,13 @@ export const da: Messages = {
     businessOnly: "Denne vare sælges kun til virksomheder.",
     switchToBusiness: "Handl som virksomhed",
   },
+  instagram: {
+    feed: (name: string) => `Instagram-opslag fra @${name}`,
+    follow: (name: string) => `Følg @${name} på Instagram`,
+    video: "En video på Instagram",
+    post: "Et opslag på Instagram",
+    opens: "(åbner Instagram)",
+  },
   shopNotes: {
     freeShippingLeft: (amount: string) => `Køb for ${amount} mere for gratis fragt`,
     freeShippingReached: "Du har gratis fragt",

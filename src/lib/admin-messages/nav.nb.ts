@@ -29,6 +29,7 @@ export const NAV_NB: Record<string, string> = {
 
   // Store: Products
   Products: "Produkter",
+  Instagram: "Instagram",
   "What the store sells: the products, how their pages look and what more is said about them.":
     "Det butikken selger: produktene, hvordan sidene deres ser ut og hva mer som sies om dem.",
   "The catalogue: prices, stock, variants, pictures, categories and tags.": "Sortimentet: priser, lager, varianter, bilder, kategorier og stikkord.",
@@ -403,6 +404,7 @@ export const NAV_NB: Record<string, string> = {
     "Når noe skjer på plattformen, eller til en fast tid: sjekk og gjør noe. En e-post til eierne, en melding i Slack eller en signert forespørsel.",
   "Google reviews": "Google-omtaler",
   "Kaizena Flow's own Google reviews for testimonials.": "Kaizena Flows egne Google-omtaler til anbefalinger.",
+  "Kaizena Flow's own Instagram account, for the Instagram feeds on its pages.": "Kaizena Flows egen Instagram-konto, til Instagram-feedene på sidene.",
   Stripe: "Stripe",
   "Kaizena Flow's Stripe webhooks per mode, the default fee per sale and the checkout's look.":
     "Kaizena Flows Stripe-webhooks per modus, standardgebyret per salg og utseendet på kassen.",

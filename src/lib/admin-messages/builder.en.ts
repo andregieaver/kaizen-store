@@ -44,6 +44,7 @@ export const builderEn = {
     gallery: "Gallery",
     emailForm: "Email form",
     newsletter: "Newsletter",
+    instagram: "Instagram feed",
   },
   /** A component as the question before deleting it names it. */
   blockThis: {
@@ -81,6 +82,7 @@ export const builderEn = {
     gallery: "this gallery",
     emailForm: "this form",
     newsletter: "this newsletter sign-up",
+    instagram: "this Instagram feed",
   },
   /** `PRODUCT_PARTS`. */
   productParts: {
@@ -265,7 +267,7 @@ export const builderEn = {
     more: "More",
     shopPages: "Shop pages",
     basketNotes: "Basket notes",
-    basketNotesHint: "Free shipping and what the shopper saves, for this cart, checkout, category or tag page.",
+    basketNotesHint: "Free shipping, what the shopper saves and what goes with the cart, for this cart, checkout, category or tag page.",
     shopPagesHint: "Each draws its working page where the page you choose for it is shown, and nothing elsewhere.",
     themeStore: "Theme store",
     themeStoreParts: "Each draws the theme the page's address names, and nothing for a theme it has nothing for.",
@@ -376,6 +378,7 @@ export const builderEn = {
     table: "An empty table: write in its cells.",
     emailForm: "An email form: it needs its questions and where to send.",
     newsletter: "A newsletter sign-up: it needs where to send.",
+    instagram: "No Instagram account is connected yet: connect it under Integrations, Instagram. The feed then shows your posts here.",
   },
   /** How a component gets what it lacks, said after what it lacks on the canvas (`OPENED_TO_FILL` in the page builder). */
   emptyHow: "Double-click or use the wrench.",

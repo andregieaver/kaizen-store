@@ -204,6 +204,9 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         successMessage: str("successMessage", b.successMessage, 500, "Thank-you message"),
         ...(b.consent !== undefined && { consent: str("consent", b.consent, 500, "Tick box") }),
       };
+    // Hashtags are the owner's keys to their posts, never translated (D543).
+    case "instagram":
+      return b;
     case "newsletter":
       return {
         ...b,

@@ -1,6 +1,6 @@
 {
-  "id": "ead04e7b-3c34-4e7a-adcc-51fdbd810f09",
-  "prevId": "8e2bcf98-8c38-48d4-ab96-2d6838c8d439",
+  "id": "c5c13d1a-0fd5-48bd-ad79-08da4671476e",
+  "prevId": "48271a31-1065-4013-ac8b-9f0b04bf2e5e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -34192,6 +34192,165 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "commerce.instagram_accounts": {
+      "name": "instagram_accounts",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ig_user_id": {
+          "name": "ig_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_encrypted": {
+          "name": "token_encrypted",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_expires_at": {
+          "name": "token_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "posts": {
+          "name": "posts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "posts_fetched_at": {
+          "name": "posts_fetched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "problem": {
+          "name": "problem",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "connected_by": {
+          "name": "connected_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "instagram_accounts_connected_by_idx": {
+          "name": "instagram_accounts_connected_by_idx",
+          "columns": [
+            {
+              "expression": "connected_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "instagram_accounts_store_id_stores_id_fk": {
+          "name": "instagram_accounts_store_id_stores_id_fk",
+          "tableFrom": "instagram_accounts",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "instagram_accounts_connected_by_accounts_id_fk": {
+          "name": "instagram_accounts_connected_by_accounts_id_fk",
+          "tableFrom": "instagram_accounts",
+          "columnsFrom": [
+            "connected_by"
+          ],
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "instagram_accounts_store_key": {
+          "name": "instagram_accounts_store_key",
+          "columns": [
+            "store_id"
+          ],
+          "nullsNotDistinct": true
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "instagram_accounts_user": {
+          "name": "instagram_accounts_user",
+          "value": "\"commerce\".\"instagram_accounts\".\"ig_user_id\" ~ '^[0-9]{1,40}$'"
+        },
+        "instagram_accounts_username": {
+          "name": "instagram_accounts_username",
+          "value": "char_length(\"commerce\".\"instagram_accounts\".\"username\") between 1 and 60"
+        },
+        "instagram_accounts_posts": {
+          "name": "instagram_accounts_posts",
+          "value": "jsonb_typeof(\"commerce\".\"instagram_accounts\".\"posts\") = 'array' and octet_length(\"commerce\".\"instagram_accounts\".\"posts\"::text) < 400000"
+        },
+        "instagram_accounts_problem": {
+          "name": "instagram_accounts_problem",
+          "value": "\"commerce\".\"instagram_accounts\".\"problem\" is null or char_length(\"commerce\".\"instagram_accounts\".\"problem\") <= 300"
+        }
+      },
       "isRLSEnabled": false
     },
     "commerce.integration_deliveries": {

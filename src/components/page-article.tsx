@@ -26,6 +26,7 @@ import { MotionSupport } from "./motion-support";
 import { FontLinks } from "./font-links";
 import { FormSection } from "./form-section";
 import { GoogleReviewsSection } from "./google-reviews-section";
+import { InstagramSection } from "./instagram-section";
 import { PageBlockView } from "./page-block";
 import { PageModal } from "./lazy/blocks";
 import { DomainSearchSection } from "./domain-search-section";
@@ -369,6 +370,11 @@ function RowMarkup({
                 StorePart && <StorePart block={block} place={place} />
               ) : block.type === "emailForm" || block.type === "newsletter" ? (
                 <FormSection block={block} place={place} />
+              ) : block.type === "instagram" ? (
+                // The owner's kept posts (D543), read with the page's cache; the rest of the page does not wait.
+                <Suspense fallback={null}>
+                  <InstagramSection block={block} place={place} />
+                </Suspense>
               ) : block.type === "testimonials" && block.source === "google" ? (
                 // Asked of Google as the page is shown (never kept): the rest of the page does not wait.
                 <Suspense fallback={null}>

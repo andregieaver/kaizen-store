@@ -177,6 +177,11 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
           })}
         </ul>
       </section>
+      <Card title={w.instagramTitle} description={w.instagramDescription} className="flex flex-col gap-3" compact>
+        <Link href={`${base}/instagram`} className="inline-flex min-h-10 w-fit items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
+          {w.instagramSetUp}
+        </Link>
+      </Card>
       <Card title={w.googleTitle} description={w.googleDescription} className="flex flex-col gap-3" compact>
         <Link href={`${base}/google-reviews`} className="inline-flex min-h-10 w-fit items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
           {w.googleSetUp}

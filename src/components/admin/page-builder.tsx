@@ -249,7 +249,7 @@ function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: 
 }
 
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "animation", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "timeline", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "beforeAfter", "animation", "video", "button", "dualButton", "columns", "tabs", "accordion", "faq", "testimonials", "iconList", "timeline", "table", "brands", "gallery", "socialLinks", "emailForm", "newsletter", "instagram", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 
 /**
  * Components that get what they lack in their settings: the canvas says what each lacks (`emptyBlock`) and then, once for all

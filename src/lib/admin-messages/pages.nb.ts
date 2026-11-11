@@ -602,6 +602,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Fraktselskap",
     keywords: ["fraktselskap", "posten", "bring", "postnord", "porterbuddy", "helthjem", "instabox", "ups", "dhl", "dhl paket", "nshift", "unifaun", "etiketter", "sporing"],
   },
+  "store:integrations.instagram": { title: "Instagram", keywords: ["instagram", "instagram-feed", "emneknagg", "sosiale medier", "bilder fra instagram"] },
   "store:integrations.google-reviews": { title: "Google-omtaler", keywords: ["google-omtaler", "google", "omtaler", "anmeldelser", "vurdering"] },
   "store:integrations.tripletex": { title: "Tripletex", keywords: ["tripletex", "regnskap", "bokføring", "bilag", "regnskapsfører", "faktura", "kreditnota"] },
   "store:books": { title: "Regnskap", keywords: ["regnskap", "hovedbok", "saldobalanse", "bilag", "bokføring", "resultat", "lås periode", "regnskapsfører"] },
@@ -870,6 +871,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
   "platform:integrations.api": { title: "API", keywords: ["api", "nøkler", "utviklere", "integrasjon"] },
   "platform:integrations.endpoints": { title: "Dine egne endepunkter", keywords: ["webhooks", "endepunkter", "signerte hendelser", "hmac", "utviklere"] },
   "platform:integration": { title: "Integrasjon", keywords: ["integrasjon", "koble til", "hendelser", "test"] },
+  "platform:instagram": { title: "Instagram", keywords: ["instagram", "instagram-feed", "emneknagg"] },
   "platform:google-reviews": { title: "Google-omtaler", keywords: ["google-omtaler", "google", "omtaler", "anmeldelser", "attester"] },
   "platform:experiments": { title: "A/B-tester", keywords: ["a/b-tester", "a/b-test", "eksperiment", "splittest", "test", "sikkerhetsgrense"] },
   "platform:retention": {

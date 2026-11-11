@@ -65,6 +65,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   gallery: "gallery",
   emailForm: "email form",
   newsletter: "newsletter",
+  instagram: "Instagram feed",
 };
 
 /** The blocks a saved part holds, in reading order. */

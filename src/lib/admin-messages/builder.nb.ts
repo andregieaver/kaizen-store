@@ -37,6 +37,7 @@ export const builderNb: BuilderMessages = {
     gallery: "Galleri",
     emailForm: "E-postskjema",
     newsletter: "Nyhetsbrev",
+    instagram: "Instagram-feed",
   },
   blockThis: {
     richText: "denne teksten",
@@ -73,6 +74,7 @@ export const builderNb: BuilderMessages = {
     gallery: "dette galleriet",
     emailForm: "dette skjemaet",
     newsletter: "denne påmeldingen til nyhetsbrev",
+    instagram: "denne Instagram-feeden",
   },
   productParts: {
     back: "Tilbakelenke",
@@ -248,7 +250,7 @@ export const builderNb: BuilderMessages = {
     more: "Mer",
     shopPages: "Butikksider",
     basketNotes: "Merknader om handlekurven",
-    basketNotesHint: "Fri frakt og hva kunden sparer, for denne siden for handlekurv, kasse, kategori eller stikkord.",
+    basketNotesHint: "Fri frakt, hva kunden sparer og hva som passer med handlekurven, for denne siden for handlekurv, kasse, kategori eller stikkord.",
     shopPagesHint: "Hver tegner sin arbeidsside der siden du velger for den vises, og ingenting andre steder.",
     themeStore: "Temabutikk",
     themeStoreParts: "Hver tegner temaet som sidens adresse nevner, og ingenting for et tema den ikke har noe for.",
@@ -354,6 +356,7 @@ export const builderNb: BuilderMessages = {
     table: "En tom tabell: skriv i cellene.",
     emailForm: "Et e-postskjema: det trenger spørsmål og hvor det skal sendes.",
     newsletter: "En påmelding til nyhetsbrev: den trenger hvor det skal sendes.",
+    instagram: "Ingen Instagram-konto er koblet til ennå: koble den til under Integrasjoner, Instagram. Feeden viser da innleggene dine her.",
   },
   emptyHow: "Dobbeltklikk eller bruk skiftenøkkelen.",
   dialogs: {

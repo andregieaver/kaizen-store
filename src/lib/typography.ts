@@ -508,6 +508,8 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   search: { "search box": "input", results: "text" },
   site: { "the site's words": "text" },
   storePart: { "the shop's words": "text" },
+  // An Instagram feed (D543): its posts' captions and the Follow link.
+  instagram: { "captions and the Follow link": "text" },
 };
 
 /**

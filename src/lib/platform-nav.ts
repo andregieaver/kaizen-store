@@ -76,6 +76,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/retention", "Data retention", "How long each kind of personal data is kept, where each period comes from, and what the daily job removed.", "clock"),
   item("/processing", "Record of processing", "What Kaizena Flow does with personal data, purpose by purpose (GDPR Art. 30), drawn from the register.", "shield-check"),
   item("/google-reviews", "Google reviews", "Kaizena Flow's own Google reviews for testimonials.", "star"),
+  item("/instagram", "Instagram", "Kaizena Flow's own Instagram account, for the Instagram feeds on its pages.", "image"),
   item("/stripe", "Stripe", "Kaizena Flow's Stripe webhooks per mode, the default fee per sale and the checkout's look.", "credit-card"),
   item("/ai", "AI", "Kaizena Flow's default AI provider and models.", "sparkles", true),
   item("/ai/usage", "AI usage", "What every store, owner and Kaizena Flow itself used of the AI.", "chart-column"),

@@ -694,6 +694,13 @@ export const sv: Messages = {
     businessOnly: "Den här varan säljs bara till företag.",
     switchToBusiness: "Handla som företag",
   },
+  instagram: {
+    feed: (name: string) => `Instagraminlägg från @${name}`,
+    follow: (name: string) => `Följ @${name} på Instagram`,
+    video: "En video på Instagram",
+    post: "Ett inlägg på Instagram",
+    opens: "(öppnar Instagram)",
+  },
   shopNotes: {
     freeShippingLeft: (amount: string) => `Handla för ${amount} till för fri frakt`,
     freeShippingReached: "Du har fri frakt",

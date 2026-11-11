@@ -5433,6 +5433,20 @@
       "when": 1794351051092,
       "tag": "20261110225051_product_settings_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 776,
+      "version": "7",
+      "when": 1794353238051,
+      "tag": "20261110232718_instagram_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 777,
+      "version": "7",
+      "when": 1794353240174,
+      "tag": "20261110232720_instagram_accounts_rules",
+      "breakpoints": true
     }
   ]
 }

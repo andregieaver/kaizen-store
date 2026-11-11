@@ -129,6 +129,9 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       };
     case "newsletter":
       return { id: id(), type, recipients: [], placeholder: "", submitLabel: "", successMessage: "", consent: "" };
+    case "instagram":
+      // The latest eight posts, four across, with a Follow link (D543).
+      return { id: id(), type, hashtags: [], limit: 8, columns: 4 };
     case "columns":
       // Two columns side by side (D294), as the Rows tab's first two-column row.
       return { id: id(), type, layout: "2", columns: [{ id: id(), blocks: [] }, { id: id(), blocks: [] }] };
@@ -741,6 +744,9 @@ export const ON_UNLESS_OFF: ReadonlySet<string> = new Set([
   "controls",
   "showRating",
   "confirm",
+  // An Instagram feed's Follow link and its videos playing in place (D543).
+  "follow",
+  "videos",
 ]);
 
 /** Merges settings in; one set to undefined or false is taken out, so the page stays as small as it can (`false` stays for the settings that are on unless off). */

@@ -66,6 +66,7 @@ import {
   type FormField,
   type FormFieldKind,
   type NewsletterBlock,
+  type InstagramBlock,
   SIGNUP_TAGS_MAX,
   ICON_LIST_LAYOUTS,
   ICON_LIST_TEXT_MAX,
@@ -178,6 +179,7 @@ import type { BlocksMessages } from "@/lib/admin-messages/blocks.en";
 import { fillWords } from "@/lib/admin-fill";
 
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
+import { cleanHashtags, FEED_MAX } from "@/lib/instagram";
 import { useAdminLang, useAdminText } from "./admin-text";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { AnimationBlockFields, AnimationStyleFields } from "./animation-fields";
@@ -233,6 +235,7 @@ export const BLOCK_EDITORS: Editors = {
     Style: BeforeAfterStyleFields,
   },
   separator: { title: "Separator line", General: SeparatorFields },
+  instagram: { title: "Instagram feed", General: InstagramFields },
   accordion: {
     title: "Accordion",
     font: { label: "Font", fallback: "The site's body font" },
@@ -872,6 +875,67 @@ function SeparatorFields({ block, onChange }: BlockEditorProps<SeparatorBlock>) 
       {(block.width ?? 100) < 100 && (
         <Choices legend={w.separator.position} options={optionsOf(SEPARATOR_POSITIONS, w.lists.positions)} value={block.position ?? "center"} onChange={(position) => onChange({ position })} />
       )}
+    </>
+  );
+}
+
+/**
+ * An Instagram feed (D543): the hashtags it keeps to (typed freely, cleaned as they are saved), whether a post needs any or all of them, how
+ * many posts in how many columns, and the captions and Follow link. The account is connected under Integrations, Instagram.
+ */
+function InstagramFields({ block, onChange }: BlockEditorProps<InstagramBlock>) {
+  const w = useAdminText("blocks").instagram;
+  const [typed, setTyped] = useState(() => block.hashtags.map((tag) => `#${tag}`).join(" "));
+  return (
+    <>
+      <p className="text-sm text-muted">{w.intro}</p>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        {w.hashtags}
+        <input
+          value={typed}
+          onChange={(event) => setTyped(event.target.value)}
+          onBlur={() => {
+            const hashtags = cleanHashtags(typed);
+            onChange({ hashtags });
+            setTyped(hashtags.map((tag) => `#${tag}`).join(" "));
+          }}
+          placeholder={w.hashtagsExample}
+          className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal"
+        />
+        <span className="text-xs font-normal text-muted">{w.hashtagsHint}</span>
+      </label>
+      {block.hashtags.length > 1 && (
+        <Choices
+          legend={w.match}
+          options={[
+            { value: "any", label: w.any },
+            { value: "all", label: w.all },
+          ]}
+          value={block.match ?? "any"}
+          onChange={(match) => onChange({ match: match === "all" ? "all" : undefined })}
+        />
+      )}
+      <Choices
+        legend={w.display}
+        options={[
+          { value: "grid", label: w.grid },
+          { value: "carousel", label: w.carousel },
+        ]}
+        value={block.display ?? "grid"}
+        onChange={(display) => onChange({ display: display === "carousel" ? "carousel" : undefined })}
+      />
+      <NumberField label={w.limit} value={block.limit} min={1} max={FEED_MAX} onChange={(limit) => onChange({ limit })} />
+      <NumberField label={block.display === "carousel" ? w.atATime : w.columns} value={block.columns} min={1} max={6} onChange={(columns) => onChange({ columns })} />
+      <NumberField label={block.display === "carousel" ? w.atATimePhones : w.phoneColumns} value={block.phoneColumns ?? 2} min={1} max={3} onChange={(phoneColumns) => onChange({ phoneColumns: phoneColumns === 2 ? undefined : phoneColumns })} />
+      {block.display === "carousel" && (
+        <>
+          <Check label={w.peek} checked={block.peek === true} onChange={(on) => onChange({ peek: on || undefined })} />
+          <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />
+        </>
+      )}
+      <Check label={w.videos} hint={w.videosHint} checked={block.videos !== false} onChange={(on) => onChange({ videos: on ? undefined : false })} />
+      <Check label={w.captions} checked={block.captions === true} onChange={(on) => onChange({ captions: on || undefined })} />
+      <Check label={w.follow} checked={block.follow !== false} onChange={(on) => onChange({ follow: on ? undefined : false })} />
     </>
   );
 }
