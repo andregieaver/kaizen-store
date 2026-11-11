@@ -933,6 +933,12 @@ export const da: Messages = {
   /** Sms-markedsføring (D565): skrevet i hånden, kræver juridisk gennemlæsning. */
   // legal: needs review
   sms: {
+    heading: "Sms med tilbud",
+    on: (phone: string) => `Du får sms med tilbud på ${phone}.`,
+    off: "Du får ikke sms med tilbud.",
+    subscribe: "Send mig tilbud på sms",
+    unsubscribe: "Stop sms",
+    badPhone: "Tjek mobilnummeret. Et nummer fra et andet land starter med + og landekoden.",
     consent: (store: string) => `Send mig tilbud fra ${store} på sms til dette nummer. Jeg kan altid stoppe med linket i hver besked.`,
     phone: "Mobilnummer",
     phoneHint: "Kun til tilbud på sms.",

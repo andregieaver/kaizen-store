@@ -11,13 +11,13 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "No app model: no installable third-party apps, no app directory, no OAuth apps with scopes and no extension points inside the admin or the page builder. Integrations are a fixed list Kaizena Flow builds (Zapier, Make, Slack: D41, D101; shipping carriers D133 to D138; Mollie D292; the WordPress plugin D169), and the owner's own code is limited to CSS (D100, D306), an HTML block (D91) and consent-gated head and body code (D61). Understated by the weight: this is the structural gap. Plan section 5 decision 2: API, webhooks and scoped custom apps first, a public directory only when outside developers ask. Decided again on 29 October 2026 (D405): deferred until outside developers ask for a directory.",
-    "bucket": "C",
+    "gap": "Since D441 (wave 14 unit D, 4 November 2026) a developer registers an app (name, logo, redirect URIs, the scopes and Admin API powers it asks for, its events address) at Account → Developer; an owner installs it on one store through a consent screen that lists exactly those scopes; its `kfa_` tokens reach only that store and only those scopes, checked against the installer's permission at every call; Remove, or the installer leaving, ends the tokens at once, switches the app's endpoint off and sends `app.uninstalled` and, 48 hours later, `store.erase_requested`. A listed app waits for Kaizena Flow's review on Platform → App listings. Not live: the public directory (`/apps`) answers nothing while `APP_DIRECTORY_OPEN` is off, because the developer terms, the data processing terms an app accepts and the review checklist are drafts waiting for a lawyer (bucket B: the owner's legal approval). Not built: extension points inside the admin or the page builder (criterion 4), app billing through Kaizena Flow, and a platform admin's Suspend separate from a declined listing. D405 (29 October 2026) still holds for the directory: opened when outside developers ask, after the legal reading. The plan is `docs/app-ecosystem-plan.md`.",
+    "bucket": "B",
     "wave": null,
     "criteria": [
       "A developer registers an app with a name, a redirect URL and the scopes it asks for; an owner installs it through a consent screen that lists exactly those scopes.",
@@ -26,14 +26,31 @@
       "An app can add a settings page or a builder block through a declared extension point without running its code in the storefront's origin."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/server/developer-apps.ts",
+        "src/server/app-endpoints.ts",
+        "src/lib/apps.ts",
+        "src/app/admin/(gated)/(owner)/account/developer/page.tsx",
+        "src/app/admin/(gated)/platform/apps/page.tsx"
+      ],
+      "tests": [
+        "src/lib/apps.test.ts",
+        "src/server/apps.int.test.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D405"
+      "D405",
+      "D441"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-11-11",
+        "from": "missing",
+        "to": "partial",
+        "why": "Rechecked against the code: D441 (wave 14 unit D) built developer apps, the consent screen, per-store tokens with their scopes, removal with its events, and the listing review; the directory waits for the legal texts and no extension point inside the admin or builder exists."
+      }
+    ]
   },
   {
     "id": "platform.public-admin-api-and-custom-apps",

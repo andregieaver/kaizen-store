@@ -310,6 +310,43 @@ export async function confirmPaidSmsConsents(options: { storeId?: string } = {})
   return { subscribed: subscribed.length, dropped: dropped.length };
 }
 
+/** A signed-in customer's own SMS consent, for My account (D565): whether the store offers it, and their number's state (masked). */
+export async function accountSms(storeId: string, customerId: string): Promise<{ offered: boolean; status: SmsSubscriberStatus | null; phone: string | null }> {
+  if (!(await smsOffered(storeId))) return { offered: false, status: null, phone: null };
+  const row = await typedRow(
+    z.object({ status: z.enum(["pending", "subscribed", "unsubscribed"]), phone: col.text }),
+    sql`select status, phone from commerce.sms_subscribers where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid
+        order by (status = 'subscribed') desc, updated_at desc limit 1`,
+  );
+  return { offered: true, status: row?.status ?? null, phone: row ? maskedPhone(row.phone) : null };
+}
+
+/**
+ * My account's switch (D565): on, the signed-in customer's typed number agrees at once with the words shown (their own account, signed in, is
+ * the proof; source `account`); off, every number of theirs stops. False when the number is not one a store may text.
+ */
+export async function setAccountSms(
+  input: { storeId: string; customerId: string; email: string; on: boolean; typed: string; country: string; locale: string; marketCode: string; consentText: string },
+): Promise<boolean> {
+  if (!input.on) {
+    await stopNumber(input.storeId, sql`customer_id = ${input.customerId}::uuid`, "account");
+    return true;
+  }
+  const phone = normalisePhone(input.typed, input.country);
+  const country = phone ? phoneCountry(phone) : null;
+  if (!phone || !country || !(await smsOffered(input.storeId))) return false;
+  const email = normaliseEmail(input.email).slice(0, 254) || null;
+  await db().execute(sql`
+    insert into commerce.sms_subscribers (store_id, phone, country, customer_id, email, locale, market_code, status, source, consent_text, consented_at, token)
+    values (${input.storeId}::uuid, ${phone}, ${country}, ${input.customerId}::uuid, ${email}, ${input.locale}, ${input.marketCode}, 'subscribed', 'account',
+            ${input.consentText.slice(0, 1000)}, now(), ${randomBytes(16).toString("base64url")})
+    on conflict (store_id, phone) do update set status = 'subscribed', source = 'account', source_ref = null, consent_text = excluded.consent_text,
+      consented_at = now(), locale = excluded.locale, market_code = excluded.market_code, email = excluded.email, customer_id = excluded.customer_id
+    where commerce.sms_subscribers.status <> 'subscribed'
+  `);
+  return true;
+}
+
 async function stopNumber(storeId: string, where: ReturnType<typeof sql>, source: SmsStopSource): Promise<number> {
   const rows = await db().transaction(async (tx) => {
     const stopped = await tx.execute(sql`

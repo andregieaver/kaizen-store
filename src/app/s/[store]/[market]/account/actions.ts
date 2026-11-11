@@ -31,6 +31,7 @@ import {
   verifySignInCode,
 } from "@/server/customers";
 import { setAccountSubscription } from "@/server/marketing-subscribers";
+import { setAccountSms } from "@/server/sms";
 import { getShopperOrder } from "@/server/orders";
 import { sendPasswordResetCode, sendSignInCode, sendWelcome } from "@/server/shopper-emails";
 import { resolveSellingShop, resolveShop } from "@/server/shop";
@@ -327,6 +328,30 @@ export async function newsAction(storeSlug: string, marketSlug: string, on: bool
     locale: shop.market.locale,
     marketCode: shop.market.code,
   });
+  refresh();
+}
+
+/**
+ * My account's text messages (D565): the signed-in customer's number agrees with the words shown, or every number of theirs stops. A number
+ * the store cannot text comes back to the page as `?sms=number`, so it says so; works without a script.
+ */
+export async function smsAction(storeSlug: string, marketSlug: string, on: boolean, form: FormData): Promise<void> {
+  const shop = await resolveShop(storeSlug, marketSlug);
+  if (!shop) return;
+  const customer = await getCustomer(shop.store.id);
+  if (!customer) return;
+  const kept = await setAccountSms({
+    storeId: shop.store.id,
+    customerId: customer.id,
+    email: customer.email,
+    on: on === true,
+    typed: String(form.get("phone") ?? ""),
+    country: shop.market.code,
+    locale: shop.market.locale,
+    marketCode: shop.market.code,
+    consentText: t(shop.market.lang).sms.consent(shop.store.name),
+  });
+  if (!kept) redirect(`${marketPath(shop.store.slug, shop.market.slug, "/account")}?sms=number#sms-heading`);
   refresh();
 }
 

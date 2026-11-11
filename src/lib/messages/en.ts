@@ -970,6 +970,12 @@ export const en = {
   /** SMS marketing (D565): hand-written, never machine-translated, needs legal review. */
   // legal: needs review
   sms: {
+    heading: "Text messages with offers",
+    on: (phone: string) => `You get text messages with offers at ${phone}.`,
+    off: "You do not get text messages with offers.",
+    subscribe: "Text me offers",
+    unsubscribe: "Stop text messages",
+    badPhone: "Check the mobile number. A number from another country starts with + and its code.",
     consent: (store: string) => `Text me offers from ${store} at this number. I can stop at any time with the link in each message.`,
     phone: "Mobile number",
     phoneHint: "For offers by text message only.",
