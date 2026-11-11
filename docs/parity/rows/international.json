@@ -72,7 +72,7 @@
     "evidence": {
       "files": [
         "src/db/schema.ts",
-        "supabase/migrations/20261027095217_market_availability_sql.sql",
+        "supabase/archive/20261111172838/20261027095217_market_availability_sql.sql",
         "src/server/products.ts",
         "src/components/admin/product-editor.tsx",
         "src/server/catalog.ts",
@@ -150,7 +150,7 @@
         "src/server/market-prices.ts",
         "src/components/admin/market-price-rules.tsx",
         "src/server/market-price-tools.ts",
-        "supabase/migrations/20261027101945_market_price_rules_sql.sql"
+        "supabase/archive/20261111172838/20261027101945_market_price_rules_sql.sql"
       ],
       "tests": [
         "src/db/commerce.test.ts",
@@ -504,8 +504,8 @@
         "src/app/s/[store]/[market]/checkout/terms-actions.ts",
         "src/components/admin/legal-pages-panel.tsx",
         "src/app/admin/(gated)/[store]/settings/legal/page.tsx",
-        "supabase/migrations/20261003194725_legal_terms.sql",
-        "supabase/migrations/20261003194748_legal_terms_rules.sql",
+        "supabase/archive/20261111172838/20261003194725_legal_terms.sql",
+        "supabase/archive/20261111172838/20261003194748_legal_terms_rules.sql",
         "src/lib/legal-sources.ts",
         "src/lib/legal-passages.ts",
         "src/server/legal-sources.ts",
@@ -591,9 +591,9 @@
         "src/app/admin/(gated)/[store]/customers/[customerId]/export/route.ts",
         "src/app/s/[store]/[market]/account/privacy/export/route.ts",
         "src/app/api/cron/subscription-reminders/route.ts",
-        "supabase/migrations/20261004174355_gdpr.sql",
-        "supabase/migrations/20261004174402_gdpr_rules.sql",
-        "supabase/migrations/20261004174410_gdpr_audit.sql"
+        "supabase/archive/20261111172838/20261004174355_gdpr.sql",
+        "supabase/archive/20261111172838/20261004174402_gdpr_rules.sql",
+        "supabase/archive/20261111172838/20261004174410_gdpr_audit.sql"
       ],
       "tests": [
         "src/db/privacy.test.ts",
@@ -833,7 +833,7 @@
     "evidence": {
       "files": [
         "src/db/schema.ts",
-        "supabase/migrations/20260923235847_platform_rules.sql",
+        "supabase/archive/20261111172838/20260923235847_platform_rules.sql",
         "src/lib/product-input.ts",
         "src/server/products.ts",
         "src/components/admin/product-editor.tsx",
@@ -880,13 +880,13 @@
     "evidence": {
       "files": [
         "src/db/schema.ts",
-        "supabase/migrations/20260923235847_platform_rules.sql",
+        "supabase/archive/20261111172838/20260923235847_platform_rules.sql",
         "src/lib/store-copy-rules.ts",
         "src/lib/product-input.ts",
         "src/server/products.ts",
         "src/components/admin/product-editor.tsx",
-        "supabase/migrations/20261027135524_producer_registrations.sql",
-        "supabase/migrations/20261027135554_producer_registrations_sql.sql",
+        "supabase/archive/20261111172838/20261027135524_producer_registrations.sql",
+        "supabase/archive/20261111172838/20261027135554_producer_registrations_sql.sql",
         "src/lib/producer-registrations.ts",
         "src/server/producer-registrations.ts",
         "src/server/producer-tools.ts",
@@ -895,7 +895,7 @@
         "src/server/cart.ts",
         "src/server/checkout.ts",
         "src/components/product-parts.tsx",
-        "supabase/migrations/20261027200756_producer_strict.sql",
+        "supabase/archive/20261111172838/20261027200756_producer_strict.sql",
         "src/server/content-packs.ts"
       ],
       "tests": [
@@ -974,8 +974,8 @@
         "src/app/s/[store]/[market]/cart/cart-contents.tsx",
         "src/app/s/[store]/[market]/checkout/checkout-section.tsx",
         "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx",
-        "supabase/migrations/20261004171452_unit_price.sql",
-        "supabase/migrations/20261004171501_unit_price_rules.sql",
+        "supabase/archive/20261111172838/20261004171452_unit_price.sql",
+        "supabase/archive/20261111172838/20261004171501_unit_price_rules.sql",
         "src/lib/feeds.ts"
       ],
       "tests": [
@@ -1221,8 +1221,8 @@
         "src/components/admin/two-step-panel.tsx",
         "src/app/admin/sign-in/two-step/page.tsx",
         "src/app/admin/sign-in/two-step/set-up/page.tsx",
-        "supabase/migrations/20261003195103_staff_security.sql",
-        "supabase/migrations/20261003195109_staff_security_rules.sql",
+        "supabase/archive/20261111172838/20261003195103_staff_security.sql",
+        "supabase/archive/20261111172838/20261003195109_staff_security_rules.sql",
         "src/server/sign-in-limit.ts",
         "e2e/fixtures/auth-stub.mjs",
         "e2e/fixtures/totp.mjs"
@@ -1293,8 +1293,8 @@
         "src/server/auth.ts",
         "src/server/settings.ts",
         "src/lib/store-copy-rules.ts",
-        "supabase/migrations/20261003195103_staff_security.sql",
-        "supabase/migrations/20261003195109_staff_security_rules.sql"
+        "supabase/archive/20261111172838/20261003195103_staff_security.sql",
+        "supabase/archive/20261111172838/20261003195109_staff_security_rules.sql"
       ],
       "tests": [
         "src/server/activity.int.test.ts",
@@ -1390,10 +1390,10 @@
         "src/server/returns.ts",
         "src/server/stripe-refunds.ts",
         "src/server/stripe-webhooks.ts",
-        "supabase/migrations/20261004125309_order_invoices.sql",
-        "supabase/migrations/20261004125337_order_invoices_rules.sql",
-        "supabase/migrations/20261004125343_order_invoices_audit.sql",
-        "supabase/migrations/20261004152302_order_invoices_fixes.sql"
+        "supabase/archive/20261111172838/20261004125309_order_invoices.sql",
+        "supabase/archive/20261111172838/20261004125337_order_invoices_rules.sql",
+        "supabase/archive/20261111172838/20261004125343_order_invoices_audit.sql",
+        "supabase/archive/20261111172838/20261004152302_order_invoices_fixes.sql"
       ],
       "tests": [
         "e2e/invoices.spec.ts",

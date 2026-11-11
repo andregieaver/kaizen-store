@@ -1,10 +1,9 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createTestDatabase } from "./testing";
+import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's four rows for data in and out (D165, `docs/wave-2-data.md` 5.5; migration `*_data_plan_features.sql`): described once, in the
@@ -14,7 +13,7 @@ import { createTestDatabase } from "./testing";
 let db: PGlite;
 
 const NAMES = ["Product CSV import and export", "Order and customer CSV export", "Bulk product editing", "CSV for every analytics table"];
-const MIGRATION = readFileSync(path.join(process.cwd(), "supabase", "migrations", "20261005132729_data_plan_features.sql"), "utf8");
+const MIGRATION = readMigration("20261005132729_data_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();

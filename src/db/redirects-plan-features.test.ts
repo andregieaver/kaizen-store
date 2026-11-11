@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { REDIRECTS_MAX } from "@/lib/data-limits";
 
 import { createTestDatabase } from "./testing";
+import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's two rows for redirects and categories' SEO texts (D168, `docs/wave-2-redirects.md` 5.5; migration `*_redirects_plan_features.sql`):
@@ -17,7 +16,7 @@ import { createTestDatabase } from "./testing";
 let db: PGlite;
 
 const NAMES = ["Redirects and 404 report", "SEO title and description for categories and tags"];
-const MIGRATION = readFileSync(path.join(process.cwd(), "supabase", "migrations", "20261005171916_redirects_plan_features.sql"), "utf8");
+const MIGRATION = readMigration("20261005171916_redirects_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();

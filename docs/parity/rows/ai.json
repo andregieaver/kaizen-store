@@ -241,7 +241,7 @@
         "src/server/assistant-memory.ts",
         "src/server/assistant-saved-skills.ts",
         "src/server/manager-tools.ts",
-        "supabase/migrations/20261028023445_assistant_notices_skills.sql"
+        "supabase/archive/20261111172838/20261028023445_assistant_notices_skills.sql"
       ],
       "tests": [
         "src/lib/saved-skills.test.ts",
@@ -425,7 +425,7 @@
         "src/server/picture-maker.ts",
         "src/server/picture-route.ts",
         "src/server/product-tools.ts",
-        "supabase/migrations/20261028020002_media_made.sql"
+        "supabase/archive/20261111172838/20261028020002_media_made.sql"
       ],
       "tests": [
         "src/db/commerce.test.ts",
@@ -489,7 +489,7 @@
         "src/server/ai.ts",
         "src/server/picture-editor.ts",
         "src/server/picture-route.ts",
-        "supabase/migrations/20261028020002_media_made.sql"
+        "supabase/archive/20261111172838/20261028020002_media_made.sql"
       ],
       "tests": [
         "src/db/commerce.test.ts",
@@ -1199,7 +1199,7 @@
         "src/app/s/[store]/.well-known/ucp/route.ts",
         "src/app/s/[store]/agents.md/route.ts",
         "src/server/cart-handoff.ts",
-        "supabase/migrations/20261028075823_shopping_agents.sql"
+        "supabase/archive/20261111172838/20261028075823_shopping_agents.sql"
       ],
       "tests": [
         "src/server/store-mcp.int.test.ts",

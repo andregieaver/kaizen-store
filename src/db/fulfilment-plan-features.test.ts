@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { EDIT_PAY_DAYS, PICK_LIST_MAX } from "@/lib/fulfilment-limits";
 
 import { createTestDatabase } from "./testing";
+import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's rows for wave 3, run 3 (D174, `docs/wave-3-fulfilment.md` 5.5; migration `*_fulfilment_plan_features.sql`): three rows described once in the
@@ -17,7 +16,7 @@ import { createTestDatabase } from "./testing";
 let db: PGlite;
 
 const NAMES = ["Order editing after purchase", "Partial fulfilment", "Pick lists"] as const;
-const MIGRATION = readFileSync(path.join(process.cwd(), "supabase", "migrations", "20261007022211_fulfilment_plan_features.sql"), "utf8");
+const MIGRATION = readMigration("20261007022211_fulfilment_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();

@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CARRIERS, carrierInfo as carrierInfoOf } from "@/lib/shipping-carriers";
 
 import { createTestDatabase } from "./testing";
+import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's rows for exchanges and return labels (D239, `docs/wave-3-exchanges.md` 3.8 item 3 and 5.5; migration `*_exchanges_plan_features.sql`):
@@ -17,7 +16,7 @@ import { createTestDatabase } from "./testing";
 let db: PGlite;
 
 const NAMES = ["Exchanges", "Return labels from your carrier"] as const;
-const MIGRATION = readFileSync(path.join(process.cwd(), "supabase", "migrations", "20261015065442_exchanges_plan_features.sql"), "utf8");
+const MIGRATION = readMigration("20261015065442_exchanges_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();

@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { BULK_MAX, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, GIFT_MESSAGE_MAX, TAGS_PER_ORDER, TAG_MAX_LENGTH, VIEWS_MAX } from "@/lib/order-limits";
 
 import { createTestDatabase } from "./testing";
+import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's rows for the order work of wave 3, run 2 (D173, `docs/wave-3-orders.md` 5.5; migration `*_orders_ops_plan_features.sql`): four rows described once in the
@@ -22,7 +21,7 @@ const NAMES = [
   "Draft orders and payment links",
   "Gift messages",
 ] as const;
-const MIGRATION = readFileSync(path.join(process.cwd(), "supabase", "migrations", "20261006172421_orders_ops_plan_features.sql"), "utf8");
+const MIGRATION = readMigration("20261006172421_orders_ops_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();
