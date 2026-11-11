@@ -165,6 +165,10 @@ export const commonNb: CommonMessages = {
     culture_events: { label: "Kultur og arrangementer", hint: "Inngang til kulturarrangementer, kino og attraksjoner, der landet har redusert sats." },
     children_goods: { label: "Barneartikler", hint: "Klær, sko og bilseter til barn, der landet har redusert sats." },
   },
+  action: {
+    noAccess: "Du har ikke tilgang til dette.",
+    failed: "Det gikk ikke gjennom. Prøv igjen, og kontakt Kaizena Flow-støtten hvis det skjer igjen.",
+  },
   snippet: {
     count: "{length} av omtrent {advice} tegn",
     cut: ": søkemotorer kan kutte slutten",

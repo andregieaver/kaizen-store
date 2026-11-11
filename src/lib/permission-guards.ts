@@ -23,6 +23,8 @@ export const GUARDS = [
  * checks that the file calls a guard). Add a wrapper here only after it does.
  */
 export const DELEGATED_GUARDS: Record<string, string> = {
+  /** A store admin's server action (code review 1.4): `checkPermission()` with the key it is given, then the handler inside a catch. */
+  storeAction: "src/server/store-action.ts",
   /** The analytics pages' first call: `analytics:read` by default, and the settings page passes `owner`. */
   analyticsContext: "src/server/analytics-context.ts",
   /** The page replicator's routes (D150): `website:read` to look at a job, `website:write` to start, nudge or stop one. */
