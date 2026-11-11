@@ -404,7 +404,7 @@ async function closeOpenCheckouts(subject: PrivacySubject): Promise<void> {
   for (const row of open) {
     const outcome = await closeSession(stripe, String(row.provider_account), String(row.provider_reference));
     if (outcome === "processing") throw new ExternalFailure(`order ${String(row.id)}: a payment is still being processed`);
-    if (outcome === "paid") await completeOrderPayment(String(row.id), String(row.provider_reference));
+    if (outcome === "paid") await completeOrderPayment(subject.storeId, String(row.id), String(row.provider_reference));
   }
 }
 

@@ -1122,7 +1122,7 @@ export async function cancelOrder(
   if (order.copied) return { ok: false, problem: COPIED_ORDER_MESSAGE };
   // A weekly delivery not yet sent (D102) is not charged yet: cancelling it lets its stock go.
   if (order.status === "pending_payment" && (await isDeliveryOrder(storeId, orderId))) {
-    await cancelUnpaidOrder(orderId, `cancelled by staff: ${reason}`);
+    await cancelUnpaidOrder(storeId, orderId, `cancelled by staff: ${reason}`);
     await event(storeId, orderId, "order.cancelled_by_staff", { reason, refunded: 0 }, "staff");
     return { ok: true, refundId: "", amountMinor: 0, unpaid: true };
   }
@@ -1186,7 +1186,7 @@ export async function cancelUnpaidByStaff(storeId: string, orderId: string, reas
   const settled = await settleOrderSessions(storeId, orderId);
   if (settled === "paid") return { ok: false, refused: "paid" };
   if (settled === "processing") return { ok: false, refused: "processing" };
-  if (!(await cancelUnpaidOrder(orderId, `cancelled by staff: ${reason}`))) return { ok: false, refused: "not_unpaid" };
+  if (!(await cancelUnpaidOrder(storeId, orderId, `cancelled by staff: ${reason}`))) return { ok: false, refused: "not_unpaid" };
   await event(storeId, orderId, "order.cancelled_by_staff", { reason, refunded: 0 }, "staff");
   return { ok: true };
 }

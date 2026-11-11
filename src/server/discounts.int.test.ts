@@ -199,7 +199,7 @@ describe("placing an order with a code", () => {
       ok: false,
       problem: "discount",
     });
-    await cancelUnpaidOrder(first.order.orderId, "checkout expired");
+    await cancelUnpaidOrder(storeId, first.order.orderId, "checkout expired");
     expect((await placeOrder({ storeId, market: no }, await cart([["DEMO-TOTE", 1, null]], "EN-GANG"))).ok).toBe(true);
   });
 

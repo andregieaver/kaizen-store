@@ -209,7 +209,7 @@ export async function capturePayment(
   }
   if (!pi) return { ok: false, problem: "stripe" };
   if (pi.status === "canceled") {
-    await cancelUnpaidOrder(orderId, "authorization ended");
+    await cancelUnpaidOrder(storeId, orderId, "authorization ended");
     await setPaymentStatus(storeId, held.paymentId, "cancelled");
     return { ok: false, problem: "expired" };
   }
@@ -272,7 +272,7 @@ export async function voidAuthorization(storeId: string, orderId: string, accoun
     log("warn", "capture.void_failed", { storeId, orderId, reason: "released by staff" }, error);
     return { ok: false, problem: "stripe" };
   }
-  await cancelUnpaidOrder(orderId, "authorization released by staff");
+  await cancelUnpaidOrder(storeId, orderId, "authorization released by staff");
   await setPaymentStatus(storeId, held.paymentId, "cancelled");
   if (accountId) await audit(accountId, storeId, "order.authorization_released", { orderId }, { area: "orders", target: { type: "order", id: orderId } });
   return { ok: true };
@@ -285,7 +285,7 @@ export async function applyIntentCanceled(storeId: string, pi: Pick<Stripe.Payme
   if (!payment) return false;
   const [order] = await db().execute<Row>(sql`select status from commerce.orders where store_id = ${storeId}::uuid and id = ${payment.orderId}::uuid`);
   if (order?.status !== "authorized") return false;
-  await cancelUnpaidOrder(payment.orderId, "authorization ended");
+  await cancelUnpaidOrder(storeId, payment.orderId, "authorization ended");
   await setPaymentStatus(storeId, payment.id, "cancelled");
   return true;
 }
@@ -343,7 +343,7 @@ export async function runCaptureJobs(
       });
       if (!pi) continue;
       if (pi.status === "canceled") {
-        await cancelUnpaidOrder(orderId, "authorization ended");
+        await cancelUnpaidOrder(storeId, orderId, "authorization ended");
         await setPaymentStatus(storeId, held.paymentId, "cancelled");
         run.ended += 1;
       } else if (pi.status === "succeeded") {

@@ -527,7 +527,7 @@ describe("a store's documents, posted to its books", () => {
       where id = ${placed.order.orderId}::uuid`);
     const [token] = await db().execute<Row>(sql`
       select id, provider_reference from commerce.payments where store_id = ${shop.storeId}::uuid and order_id = ${placed.order.orderId}::uuid and provider = 'gift_card'`);
-    await completeOrderPayment(placed.order.orderId, String(token.provider_reference));
+    await completeOrderPayment(shop.storeId, placed.order.orderId, String(token.provider_reference));
     const spent = placed.order.totalMinor;
     expect(spent).toBeLessThan(first.total);
 

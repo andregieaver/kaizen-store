@@ -1741,7 +1741,7 @@ describe("a price worked out from another country's, in euro (D335 A.2)", () => 
         vat: summary.vat,
         unit: shown(seInEuro, want),
       });
-      await cancelUnpaidOrder(placed.order.orderId, "test");
+      await cancelUnpaidOrder(storeId, placed.order.orderId, "test");
     } finally {
       view = no;
       await removeMarketPriceRule({ id: storeId }, member.account.id, "SE");
@@ -1896,7 +1896,7 @@ describe("customs and duties collected at checkout, in euro (D343)", () => {
       const dapOrder = (await getOrder(storeId, placed.order.orderId))!;
       expect({ total: dapOrder.totalMinor, duties: dapOrder.dutiesMinor, due: placed.order.dueNowMinor }).toEqual({ total: dap.total, duties: 0, due: dap.total });
       expect(dapOrder.customs).toMatchObject({ mode: "dap", collectedMinor: 0, estimate: { dapMinor: dap.customs.estimate.kind === "estimate" ? dap.customs.estimate.dapMinor : -1 } });
-      await cancelUnpaidOrder(placed.order.orderId, "test");
+      await cancelUnpaidOrder(storeId, placed.order.orderId, "test");
     } finally {
       view = no;
       await db().execute(sql`delete from commerce.duty_rates where id in (${String(rows[0].id)}::uuid, ${String(rows[1].id)}::uuid)`);
@@ -1924,7 +1924,7 @@ describe("the unit price with the country table as read (D160)", () => {
       const placed = await placeOrder({ storeId, market: no }, cartId());
       if (!placed.ok) throw new Error(placed.problem);
       const order = (await getOrder(storeId, placed.order.orderId))!;
-      await (await import("./checkout")).cancelUnpaidOrder(placed.order.orderId, "test");
+      await (await import("./checkout")).cancelUnpaidOrder(storeId, placed.order.orderId, "test");
       return { cart, order, orderId: placed.order.orderId };
     };
     const open = await totalOf();
@@ -1989,7 +1989,7 @@ describe("a code and a campaign for a segment's people (D380)", () => {
         expect(order.currency).toBe(euro ? "EUR" : "NOK");
         expect(order.totalMinor).toBe(summary.total);
         expect(order.discountCode).toBe(code);
-        await (await import("./checkout")).cancelUnpaidOrder(open!.orderId, "test");
+        await (await import("./checkout")).cancelUnpaidOrder(storeId, open!.orderId, "test");
 
         // A buyer outside the segment, and a guest, get neither.
         jar.clear();
@@ -2017,7 +2017,7 @@ describe("a code and a campaign for a segment's people (D380)", () => {
 });
 
 describe("campaigns with limits (D115)", () => {
-  const cancel = async (orderId: string) => (await import("./checkout")).cancelUnpaidOrder(orderId, "test");
+  const cancel = async (orderId: string) => (await import("./checkout")).cancelUnpaidOrder(storeId, orderId, "test");
 
   it("go only to the customer groups they are for, and to no one who is not signed in", async () => {
     jar.clear();
@@ -2066,7 +2066,7 @@ describe("campaigns with limits (D115)", () => {
     await add("DEMO-MUG-WHITE", 1);
     expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBeGreaterThan(0);
     // A cancelled checkout gives the use back.
-    await (await import("./checkout")).cancelUnpaidOrder(open!.orderId, "test");
+    await (await import("./checkout")).cancelUnpaidOrder(storeId, open!.orderId, "test");
     jar.clear();
     await startSession(storeId, customerId);
     await add("DEMO-MUG-WHITE", 1);
@@ -2127,7 +2127,7 @@ describe("campaigns with limits (D115)", () => {
 describe("checkout with bonus credits (D130)", () => {
   const rates = new Map([["NOK", { rate: 11.5 }], ["EUR", { rate: 1 }]]);
   const START = 500_000; // 5 000 NOK of credits, usable now
-  const cancel = async (orderId: string) => (await import("./checkout")).cancelUnpaidOrder(orderId, "test");
+  const cancel = async (orderId: string) => (await import("./checkout")).cancelUnpaidOrder(storeId, orderId, "test");
 
   const program = (over: { enabled?: boolean; maxPercent?: number; minRedeem?: number; earnBps?: number; pendingDays?: number } = {}) =>
     db().execute(sql`
@@ -2501,7 +2501,7 @@ describe("checkout with bonus credits (D130)", () => {
     const second = (await getOpenCheckout(storeId, placed.cart))!;
     // The first one is paid after all (the session had been completed while we thought it expired): its credits are taken again.
     const { completeOrderPayment } = await import("./checkout");
-    expect(await completeOrderPayment(orderId, "late")).toBe(true);
+    expect(await completeOrderPayment(storeId, orderId, "late")).toBe(true);
     expect((await ledger(buyer)).available).toBe(START - 2 * 24_900);
     expect((await getOrder(storeId, orderId))?.bonus).toMatchObject({ usedMinor: 24_900 });
     expect(await verified(buyer)).toBe(true);

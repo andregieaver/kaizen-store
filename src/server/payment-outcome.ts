@@ -98,7 +98,7 @@ export async function applyPaymentAnswer(storeId: string, answer: PaymentAnswer,
   }
 
   if (fate.kind === "paid") {
-    await completeOrderPayment(orderId, answer.reference);
+    await completeOrderPayment(storeId, orderId, answer.reference);
     await setPaymentStatus(storeId, answer, "captured");
     if (hooks.afterPaid) await hooks.afterPaid({ orderId, delivery });
     // A host's booking (D71): the store's commission is owed to it now.
@@ -122,7 +122,7 @@ export async function applyPaymentAnswer(storeId: string, answer: PaymentAnswer,
   if (fate.kind === "ended") {
     // A staff-made order (D173) lives until its draft expires: a payment that lapses (Stripe's sessions last at most a day, the link a week or more) or a bank payment that
     // failed leaves the order and its held stock as they are, and the pay link makes a new payment on the next press. `expireDrafts()` cancels it at the draft's expiry.
-    if (fate.cancel) await cancelUnpaidOrder(orderId, fate.status === "failed" ? "payment failed" : "checkout expired");
+    if (fate.cancel) await cancelUnpaidOrder(storeId, orderId, fate.status === "failed" ? "payment failed" : "checkout expired");
     await setPaymentStatus(storeId, answer, fate.status);
   }
 }

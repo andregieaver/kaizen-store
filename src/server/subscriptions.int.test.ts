@@ -142,7 +142,7 @@ describe("placing a subscription order", () => {
       subscription: true,
     });
     if (!result.ok) throw new Error(result.problem);
-    await cancelUnpaidOrder(result.order.orderId, "checkout expired");
+    await cancelUnpaidOrder(storeId, result.order.orderId, "checkout expired");
     expect((await getSubscription(storeId, result.order.subscription!.id))?.status).toBe("expired");
   });
 });

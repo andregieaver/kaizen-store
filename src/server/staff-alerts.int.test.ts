@@ -82,7 +82,7 @@ describe("new orders (6.3 C1)", () => {
     expect(String(mails[0].subject)).toBe(`New order ${order.number}: ${formatMoney(order.totalMinor, "NOK", "nb-NO")}`);
     expect(String(mails[0].text)).toContain(`/admin/${store.slug}/orders/${order.orderId}`);
     // A retried webhook: the payment completed again, and the queue and the emails run again.
-    await completeOrderPayment(order.orderId, `cs_${order.orderId}`).catch(() => null);
+    await completeOrderPayment(store.storeId, order.orderId, `cs_${order.orderId}`).catch(() => null);
     await db().execute(sql`select commerce.queue_store_event(${store.storeId}::uuid, 'order.paid', ${order.orderId}::uuid)`);
     await drain();
     expect(await db().execute(sql`select 1 from commerce.store_events where store_id = ${store.storeId}::uuid and subject_id = ${order.orderId}::uuid`)).toHaveLength(1);
@@ -117,7 +117,7 @@ describe("new orders (6.3 C1)", () => {
       const [o] = await db().execute<Row>(sql`select total_minor, number from commerce.orders where id = ${id}::uuid`);
       const total = Number(o.total_minor);
       await db().execute(sql`update commerce.orders set balance_minor = ${balanceOf(total)} where store_id = ${store.storeId}::uuid and id = ${id}::uuid`);
-      expect(await completeOrderPayment(id, `cs_${id}`)).toBe(true);
+      expect(await completeOrderPayment(store.storeId, id, `cs_${id}`)).toBe(true);
       return { id, total, number: String(o.number), currency: market.currency };
     };
     const venue = await placeWithBalance(NO_EUR, (total) => total);
@@ -296,7 +296,7 @@ describe("no shopper's personal field in a staff email (4.8, 6.3 C4)", () => {
       { recipients: [{ accountId: fx.accountId, events: ["new_order", "return_requested", "refund_overdue", "summary", "automation"] }], contactEvents: [], summary: "daily", summaryWeekday: 1, summaryHour: 0 },
       fx.accountId,
     );
-    await completeOrderPayment(orderId, `cs_${orderId}`);
+    await completeOrderPayment(fx.storeId, orderId, `cs_${orderId}`);
     await drain();
     // The daily briefing covers yesterday and is sent only for a period with a paid order (D348): the order is yesterday's.
     await db().execute(sql`update commerce.orders set placed_at = now() - interval '1 day' where id = ${orderId}::uuid`);

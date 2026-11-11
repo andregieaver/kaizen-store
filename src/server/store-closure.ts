@@ -282,7 +282,7 @@ export async function cancelOpenCheckouts(
           String(row.provider_reference),
         );
         if (outcome === "paid") {
-          await completeOrderPayment(id, String(row.provider_reference));
+          await completeOrderPayment(storeId, id, String(row.provider_reference));
           continue;
         }
         if (outcome === "processing") {

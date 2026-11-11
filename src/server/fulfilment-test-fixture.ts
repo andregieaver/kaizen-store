@@ -115,7 +115,7 @@ export async function paidOrder(
       values (${store.storeId}::uuid, ${orderId}::uuid, 'stripe', ${reference}, ${store.stripeAccount}, ${Number(o.total_minor)}, ${String(o.currency).trim()}, 'captured')
     `);
   }
-  await completeOrderPayment(orderId, reference);
+  await completeOrderPayment(store.storeId, orderId, reference);
   await db().execute(sql`update commerce.orders set email = ${email} where id = ${orderId}::uuid`);
   return readOrder(store, orderId, email);
 }

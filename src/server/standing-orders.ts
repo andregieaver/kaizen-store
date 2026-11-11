@@ -783,7 +783,7 @@ export async function prepareDelivery(storeId: string, listId: string, round: De
     const orderId = placed.order.orderId;
     if (!(await record("ordered", orderId, leftOut))) {
       // Another run made this delivery meanwhile.
-      await cancelUnpaidOrder(orderId, "delivery already prepared");
+      await cancelUnpaidOrder(storeId, orderId, "delivery already prepared");
       return null;
     }
     const address = (list.shipping_address ?? {}) as Address;
@@ -880,7 +880,7 @@ export async function chargeDelivery(storeId: string, orderId: string): Promise<
           update commerce.payments set status = 'captured', updated_at = now()
           where store_id = ${storeId}::uuid and provider_reference = ${reference}
         `);
-        await completeOrderPayment(orderId, reference);
+        await completeOrderPayment(storeId, orderId, reference);
         return { ok: true, paymentId: reference };
       }
       if (session.status === "open") await stripe.checkout.sessions.expire(reference, {}, { stripeAccount });
@@ -938,7 +938,7 @@ export async function chargeDelivery(storeId: string, orderId: string): Promise<
     values (${storeId}::uuid, ${orderId}::uuid, 'stripe', ${intent.id}, ${stripeAccount}, ${amount}, ${currency}, 'captured', ${fee ?? 0})
     returning id
   `);
-  await completeOrderPayment(orderId, intent.id);
+  await completeOrderPayment(storeId, orderId, intent.id);
   return { ok: true, paymentId: String(payment.id) };
 }
 

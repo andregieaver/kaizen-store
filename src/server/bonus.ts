@@ -578,7 +578,7 @@ export async function runBonusJobs(): Promise<{ expired: number; reminded: numbe
 /** Unpaid orders that hold credits and have lapsed are cancelled, which gives their credits back. */
 async function releaseHeldCredits(): Promise<number> {
   const rows = await db().execute<Row>(sql`
-    select id from commerce.orders
+    select id, store_id from commerce.orders
     where status = 'pending_payment' and credit_minor > 0 and copied_from is null
       -- An order waiting for its company's approval, or for payment after it, keeps them until expireApprovals() (D321 C.2).
       and approval is null
@@ -590,7 +590,7 @@ async function releaseHeldCredits(): Promise<number> {
   const { cancelUnpaidOrder } = await import("./checkout");
   let released = 0;
   for (const row of rows) {
-    if (await cancelUnpaidOrder(String(row.id), "the credits were held too long without a payment")) released++;
+    if (await cancelUnpaidOrder(String(row.store_id), String(row.id), "the credits were held too long without a payment")) released++;
   }
   return released;
 }

@@ -85,7 +85,7 @@ async function paidOrder(sku: string, quantity: number): Promise<string> {
     insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
     values (${storeId}::uuid, ${orderId}::uuid, 'stripe', ${`cs_${orderId}`}, ${`acct_${run}`}, ${totalMinor}, 'NOK', 'captured')
   `);
-  await completeOrderPayment(orderId, `cs_${orderId}`);
+  await completeOrderPayment(storeId, orderId, `cs_${orderId}`);
   await db().execute(sql`
     update commerce.orders set email = 'kari@example.com',
       shipping_address = '{"name": "Kari Nordmann", "line1": "Storgata 1", "postalCode": "0155", "city": "Oslo"}'

@@ -158,7 +158,7 @@ async function paidOrder(pick?: (options: Listed[]) => { id: string; point?: str
   if (!result.ok) throw new Error(result.problem);
   const { orderId, totalMinor } = result.order;
   await db().execute(sql`insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status) values (${storeId}::uuid, ${orderId}::uuid, 'stripe', ${`cs_${orderId}`}, ${`acct_${run}`}, ${totalMinor}, 'NOK', 'captured')`);
-  await completeOrderPayment(orderId, `cs_${orderId}`);
+  await completeOrderPayment(storeId, orderId, `cs_${orderId}`);
   await db().execute(sql`update commerce.orders set email = 'kari@example.com', shipping_address = ${JSON.stringify(address)}::jsonb where id = ${orderId}::uuid`);
   return orderId;
 }

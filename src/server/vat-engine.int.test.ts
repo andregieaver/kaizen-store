@@ -533,7 +533,7 @@ describe("what never takes the VAT off", () => {
     expect(vies.calls).toHaveLength(0);
     if (placed.ok) {
       expect((await getOrderTreatment(storeId, placed.order.orderId))?.reason).toBe("number_stale");
-      await cancelUnpaidOrder(placed.order.orderId, "test");
+      await cancelUnpaidOrder(storeId, placed.order.orderId, "test");
     }
     // Starting checkout asks again first (once), and places the order with a current answer: the shopper pays less than the stale cart page said.
     const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, {});

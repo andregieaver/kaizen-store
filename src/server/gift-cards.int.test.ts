@@ -247,7 +247,7 @@ describe("spending gift cards (D300 F3)", () => {
     expect(placed.order.giftCardsMinor).toBe(5_000);
     expect(placed.order.dueNowMinor).toBe(placed.order.totalMinor - 5_000);
     expect(await balanceOf(card.id)).toBe(0);
-    await cancelUnpaidOrder(placed.order.orderId, "test");
+    await cancelUnpaidOrder(store.storeId, placed.order.orderId, "test");
     expect(await balanceOf(card.id)).toBe(5_000);
   });
 });
@@ -383,7 +383,7 @@ describe("the owner's screens and figures (D300 F4)", () => {
       values (${fx.storeId}::uuid, ${placed.order.orderId}::uuid, 'stripe', ${`cs_${placed.order.orderId}`}, ${fx.account}, ${rest}, 'NOK', 'captured')
     `);
     const { completeOrderPayment } = await import("./checkout");
-    await completeOrderPayment(placed.order.orderId, `cs_${placed.order.orderId}`);
+    await completeOrderPayment(fx.storeId, placed.order.orderId, `cs_${placed.order.orderId}`);
 
     const [o] = await db().execute<Row>(sql`select total_minor, tax_minor from commerce.orders where id = ${placed.order.orderId}::uuid`);
     const day = await today(fx.storeId);

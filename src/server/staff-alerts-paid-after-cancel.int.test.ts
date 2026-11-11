@@ -35,8 +35,8 @@ describe("an order paid after it was cancelled", () => {
     const placed = await placeOrder({ storeId: fx.storeId, market: NO }, String(cart.id), {}, { customerId: null });
     if (!placed.ok) throw new Error(placed.problem);
     const orderId = placed.order.orderId;
-    expect(await cancelUnpaidOrder(orderId, "expired")).toBe(true);
-    expect(await completeOrderPayment(orderId, `cs_${orderId}`)).toBe(true);
+    expect(await cancelUnpaidOrder(fx.storeId, orderId, "expired")).toBe(true);
+    expect(await completeOrderPayment(fx.storeId, orderId, `cs_${orderId}`)).toBe(true);
     const [order] = await db().execute<Row>(sql`select status::text as status from commerce.orders where id = ${orderId}::uuid`);
     expect(order.status).toBe("paid");
     const events = await db().execute<Row>(sql`select event from commerce.store_events where store_id = ${fx.storeId}::uuid and subject_id = ${orderId}::uuid`);

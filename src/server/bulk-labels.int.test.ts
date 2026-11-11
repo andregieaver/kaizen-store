@@ -113,7 +113,7 @@ async function order(options: { also?: string; unpaid?: boolean; to?: Record<str
   if (options.delivery) await db().execute(sql`update commerce.orders set delivery = ${JSON.stringify(options.delivery)}::jsonb where id = ${orderId}::uuid`);
   if (!options.unpaid) {
     await db().execute(sql`insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status) values (${storeId}::uuid, ${orderId}::uuid, 'stripe', ${`cs_${orderId}`}, ${`acct_${run}`}, ${totalMinor}, 'NOK', 'captured')`);
-    await completeOrderPayment(orderId, `cs_${orderId}`);
+    await completeOrderPayment(storeId, orderId, `cs_${orderId}`);
   }
   await db().execute(sql`update commerce.orders set email = 'kari@example.com', shipping_address = ${JSON.stringify(options.to ?? address)}::jsonb where id = ${orderId}::uuid`);
   const [row] = await db().execute<Row>(sql`select number from commerce.orders where id = ${orderId}::uuid`);

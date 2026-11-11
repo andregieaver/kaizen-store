@@ -136,7 +136,7 @@ export async function decideOrder(shop: { store: Pick<Store, "id">; market: Mark
     return { ok: false, problem: known ? "decided" : "not_found" };
   }
   if (!approve) {
-    await cancelUnpaidOrder(orderId, "declined by the company");
+    await cancelUnpaidOrder(storeId, orderId, "declined by the company");
   } else if (decided.terms) {
     const order = await getOrder(storeId, orderId);
     if (order) await confirmOnTerms(storeId, { orderId, balanceMinor: order.balanceMinor, currency: order.currency });
@@ -209,8 +209,8 @@ export async function startApprovedPayment(shop: { store: Store; market: Market 
 
 /** Cancels the orders that waited for approval, or for payment after it, longer than `APPROVAL_DAYS`: their stock and anything held go back. */
 export async function expireApprovals({ limit = 100 }: { limit?: number } = {}): Promise<number> {
-  const rows = await typedRows(z.object({ id: col.uuid }), sql`
-    select id from commerce.orders
+  const rows = await typedRows(z.object({ id: col.uuid, store_id: col.uuid }), sql`
+    select id, store_id from commerce.orders
     where status = 'pending_payment' and approval in ('waiting', 'approved') and copied_from is null
       and placed_at < now() - make_interval(days => ${APPROVAL_DAYS})
     order by placed_at
@@ -219,7 +219,7 @@ export async function expireApprovals({ limit = 100 }: { limit?: number } = {}):
   let cancelled = 0;
   for (const row of rows) {
     try {
-      if (await cancelUnpaidOrder(row.id, "the company's approval or payment took too long")) cancelled++;
+      if (await cancelUnpaidOrder(row.store_id, row.id, "the company's approval or payment took too long")) cancelled++;
     } catch (error) {
       log("error", "approvals.expire_failed", { orderId: row.id }, error);
     }

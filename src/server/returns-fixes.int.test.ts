@@ -124,7 +124,7 @@ async function paid(
     insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
     values (${storeId}::uuid, ${orderId}::uuid, 'stripe', ${`cs_${orderId}`}, ${`acct_fix${run}`}, ${Number(o.total_minor)}, ${String(o.currency).trim()}, 'captured')
   `);
-  await completeOrderPayment(orderId, `cs_${orderId}`);
+  await completeOrderPayment(storeId, orderId, `cs_${orderId}`);
   await db().execute(sql`update commerce.orders set email = ${email} where id = ${orderId}::uuid`);
   if (over.ship !== false) await markSent(storeId, orderId, { carrier: "other", trackingNumber: `T-${orderId.slice(0, 8)}`, trackingUrl: null }, null);
   const [order] = await db().execute<Row>(sql`select number from commerce.orders where id = ${orderId}::uuid`);

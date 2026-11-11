@@ -153,7 +153,7 @@ export async function paidOrder(fx: Fixture, items: [sku: string, quantity: numb
     where id = ${orderId}::uuid
   `);
   if (o.pay !== false) {
-    await completeOrderPayment(orderId, sessionId);
+    await completeOrderPayment(fx.storeId, orderId, sessionId);
     await db().execute(sql`update commerce.payments set status = 'captured' where store_id = ${fx.storeId}::uuid and provider_reference = ${sessionId}`);
   }
   const [order] = await db().execute<Row>(sql`select number, currency, total_minor, tax_minor, shipping_minor from commerce.orders where id = ${orderId}::uuid`);
@@ -173,7 +173,7 @@ export async function paidOrder(fx: Fixture, items: [sku: string, quantity: numb
 
 /** Pays an order that was placed with `pay: false`, as Checkout's session leaves it. */
 export async function payPlaced(fx: Fixture, placed: Placed): Promise<void> {
-  await completeOrderPayment(placed.orderId, placed.sessionId);
+  await completeOrderPayment(fx.storeId, placed.orderId, placed.sessionId);
   await db().execute(sql`update commerce.payments set status = 'captured' where store_id = ${fx.storeId}::uuid and provider_reference = ${placed.sessionId}`);
 }
 

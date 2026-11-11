@@ -137,7 +137,7 @@ export async function pay(storeId: string, order: PlacedOrder, account: string):
     insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
     values (${storeId}::uuid, ${order.orderId}::uuid, 'stripe', ${`cs_${order.orderId}`}, ${account}, ${order.totalMinor}, ${order.currency}, 'captured')
   `);
-  await completeOrderPayment(order.orderId, `cs_${order.orderId}`);
+  await completeOrderPayment(storeId, order.orderId, `cs_${order.orderId}`);
   await db().execute(sql`
     update commerce.orders set email = 'kari@example.com',
       shipping_address = '{"name": "Kari Nordmann", "line1": "Storgata 1", "postalCode": "0155", "city": "Oslo"}'

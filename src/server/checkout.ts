@@ -1341,7 +1341,7 @@ async function confirmPaidByGiftCards(storeId: string, order: PlacedOrder): Prom
   );
   if (!first) throw new Error("The order has no gift card payment waiting.");
   const token = first.provider_reference;
-  await completeOrderPayment(order.orderId, token);
+  await completeOrderPayment(storeId, order.orderId, token);
   const notify = () => sendOrderConfirmation(storeId, order.orderId);
   try {
     after(notify);
@@ -1414,28 +1414,33 @@ async function writePayer(storeId: string, orderId: string, payer: PayerDetails,
   await flagDeliveryMismatch(storeId, orderId);
 }
 
-/** Cancels an unpaid order and releases its stock. */
-export async function cancelUnpaidOrder(orderId: string, reason: string): Promise<boolean> {
+/** Cancels an unpaid order of this store and releases its stock. The store's id is checked: another store's order is never touched (false). */
+export async function cancelUnpaidOrder(storeId: string, orderId: string, reason: string): Promise<boolean> {
   const row = await typedRow(
     CANCELLED_ROW,
     sql`
-    select commerce.cancel_unpaid_order(${orderId}::uuid, ${reason}) as cancelled
+    select commerce.cancel_unpaid_order(o.id, ${reason}) as cancelled
+    from commerce.orders o
+    where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
   `,
   );
+  if (!row) return false;
   // A subscription that never got its first payment never started (D25).
   await db().execute(sql`
     update commerce.subscriptions set status = 'expired', updated_at = now()
-    where first_order_id = ${orderId}::uuid and status = 'pending'
+    where first_order_id = ${orderId}::uuid and store_id = ${storeId}::uuid and status = 'pending'
   `);
-  return Boolean(row?.cancelled);
+  return Boolean(row.cancelled);
 }
 
-/** Marks an order paid and draws its items from stock. False if it already was. */
-export async function completeOrderPayment(orderId: string, reference: string): Promise<boolean> {
+/** Marks an order of this store paid and draws its items from stock. False if it already was, or if the order is not this store's (the store's id is checked). */
+export async function completeOrderPayment(storeId: string, orderId: string, reference: string): Promise<boolean> {
   const row = await typedRow(
     COMPLETED_ROW,
     sql`
-    select commerce.complete_order_payment(${orderId}::uuid, ${reference}) as completed
+    select commerce.complete_order_payment(o.id, ${reference}) as completed
+    from commerce.orders o
+    where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
   `,
   );
   return Boolean(row?.completed);
@@ -1529,7 +1534,7 @@ export async function startCheckout(
     if (row.provider === "stripe" && row.provider_reference && row.provider_account && connected) {
       const outcome = await closeSession(connected.stripe, String(row.provider_account), String(row.provider_reference));
       if (outcome === "paid") {
-        await completeOrderPayment(orderId, String(row.provider_reference));
+        await completeOrderPayment(shop.storeId, orderId, String(row.provider_reference));
         return { ok: false, problem: "already_paid", orderId };
       }
       if (outcome === "processing") return { ok: false, problem: "processing", orderId };
@@ -1547,7 +1552,7 @@ export async function startCheckout(
       if (outcome === "paid") return { ok: false, problem: "already_paid", orderId };
       if (outcome === "processing" || outcome === "unknown") return { ok: false, problem: "processing", orderId };
     }
-    await cancelUnpaidOrder(orderId, "replaced by a new checkout");
+    await cancelUnpaidOrder(shop.storeId, orderId, "replaced by a new checkout");
   }
   // On Mollie, who pays must be given before anything is placed (D292); a booking paid wholly at the venue gives its contact instead (D66). On terms always.
   if ((mollieMode || onTerms) && !cleanedPayer && (onTerms || payer || !contact)) return { ok: false, problem: "payer" };
@@ -1565,7 +1570,7 @@ export async function startCheckout(
   if (order.approval === "waiting") {
     if (order.terms) {
       if (recordTerms && !(await recordTerms(order.orderId)).ok) {
-        await cancelUnpaidOrder(order.orderId, "the terms could not be recorded");
+        await cancelUnpaidOrder(shop.storeId, order.orderId, "the terms could not be recorded");
         return { ok: false, problem: "consent" };
       }
       await writePayer(shop.storeId, order.orderId, cleanedPayer!, shop.market.code);
@@ -1586,7 +1591,7 @@ export async function startCheckout(
   // On the company's payment terms (D293): who pays is kept on the order, and it is confirmed at once with nothing paid.
   if (order.terms) {
     if (recordTerms && !(await recordTerms(order.orderId)).ok) {
-      await cancelUnpaidOrder(order.orderId, "the terms could not be recorded");
+      await cancelUnpaidOrder(shop.storeId, order.orderId, "the terms could not be recorded");
       return { ok: false, problem: "consent" };
     }
     await writePayer(shop.storeId, order.orderId, cleanedPayer!, shop.market.code);
@@ -1598,12 +1603,12 @@ export async function startCheckout(
   if (order.dueNowMinor === 0 && order.balanceMinor > 0) {
     contact = contact ?? (cleanedPayer ? { name: cleanedPayer.name, email: cleanedPayer.email, phone: cleanedPayer.phone } : null);
     if (!contact) {
-      await cancelUnpaidOrder(order.orderId, "no contact details");
+      await cancelUnpaidOrder(shop.storeId, order.orderId, "no contact details");
       return { ok: false, problem: "contact" };
     }
     // No payment page follows either (D379): the store's terms of sale shown on the cart are recorded with the order before it is confirmed.
     if (recordTerms && !(await recordTerms(order.orderId)).ok) {
-      await cancelUnpaidOrder(order.orderId, "the terms could not be recorded");
+      await cancelUnpaidOrder(shop.storeId, order.orderId, "the terms could not be recorded");
       return { ok: false, problem: "consent" };
     }
     const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
@@ -1613,11 +1618,11 @@ export async function startCheckout(
   // Gift cards pay it all (D300 F3): no provider is asked; who pays is kept on the order, the store's terms recorded, and it is paid at once.
   if (order.dueNowMinor === 0 && (order.giftCardsMinor ?? 0) > 0) {
     if (!cleanedPayer) {
-      await cancelUnpaidOrder(order.orderId, "who pays was not given");
+      await cancelUnpaidOrder(shop.storeId, order.orderId, "who pays was not given");
       return { ok: false, problem: "payer" };
     }
     if (recordTerms && !(await recordTerms(order.orderId)).ok) {
-      await cancelUnpaidOrder(order.orderId, "the terms could not be recorded");
+      await cancelUnpaidOrder(shop.storeId, order.orderId, "the terms could not be recorded");
       return { ok: false, problem: "consent" };
     }
     await writePayer(shop.storeId, order.orderId, cleanedPayer, shop.market.code);
@@ -1629,17 +1634,17 @@ export async function startCheckout(
   const onMollie = mollieMode !== null && !order.subscription && !order.hostId && !order.lines.some((line) => line.deposit);
   if (onMollie) {
     if (!cleanedPayer) {
-      await cancelUnpaidOrder(order.orderId, "who pays was not given");
+      await cancelUnpaidOrder(shop.storeId, order.orderId, "who pays was not given");
       return { ok: false, problem: "payer" };
     }
     await writePayer(shop.storeId, order.orderId, cleanedPayer, shop.market.code);
     const opened = await openMolliePayment(shop, order, origin, mollieMode!, cleanedPayer);
     if (opened.ok) return { ok: true, url: opened.url };
-    await cancelUnpaidOrder(order.orderId, "mollie payment could not be created");
+    await cancelUnpaidOrder(shop.storeId, order.orderId, "mollie payment could not be created");
     return { ok: false, problem: opened.problem };
   }
   if (!connected) {
-    await cancelUnpaidOrder(order.orderId, "stripe is not set up for this order");
+    await cancelUnpaidOrder(shop.storeId, order.orderId, "stripe is not set up for this order");
     return { ok: false, problem: "payments_off" };
   }
   const { connection, stripe } = connected;
@@ -1648,7 +1653,7 @@ export async function startCheckout(
   const opened = await openPaymentSession(shop, order, origin, shippingLabel, { connection, ui, stripe, captureLater });
   if (opened.ok) return { ok: true, url: opened.url };
   // The session could not be made: nothing was paid and nothing will be, so the order waiting for it is cancelled and its stock goes back.
-  await cancelUnpaidOrder(order.orderId, opened.problem === "host_payments_off" ? "the host cannot take payments" : "stripe session could not be created");
+  await cancelUnpaidOrder(shop.storeId, order.orderId, opened.problem === "host_payments_off" ? "the host cannot take payments" : "stripe session could not be created");
   return { ok: false, problem: opened.problem };
 }
 

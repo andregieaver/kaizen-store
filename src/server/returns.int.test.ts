@@ -117,7 +117,7 @@ async function paidOrder(
             ${provider === "stripe" ? accountOf(String((await db().execute<Row>(sql`select slug from commerce.stores where id = ${store}::uuid`))[0].slug)) : null},
             ${totalMinor}, 'NOK', 'captured')
   `);
-  await completeOrderPayment(orderId, `${provider === "venue" ? "venue" : "cs"}_${orderId}`);
+  await completeOrderPayment(store, orderId, `${provider === "venue" ? "venue" : "cs"}_${orderId}`);
   await db().execute(sql`update commerce.orders set email = ${email} where id = ${orderId}::uuid`);
   // Sent, as most withdrawals are made after the parcel left (a withdrawal before it is its own case).
   if (options.ship !== false) await markSent(store, orderId, { carrier: "other", trackingNumber: `T-${orderId.slice(0, 8)}`, trackingUrl: null }, null);

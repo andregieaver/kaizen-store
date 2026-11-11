@@ -22,7 +22,7 @@ try {
 } catch {
   // No baseline yet: the first is written as things stand.
 }
-if (before && !process.argv.includes("--first") && !process.argv.includes("--add-writes")) {
+if (before && !process.argv.includes("--first")) {
   const raised = [];
   for (const [file, n] of Object.entries(now.untypedReads)) if (n > (before.untypedReads[file] ?? 0)) raised.push(`${file}: ${before.untypedReads[file] ?? 0} → ${n} unchecked reads`);
   for (const [file, n] of Object.entries(now.byIdWrites)) if (n > (before.byIdWrites?.[file] ?? 0)) raised.push(`${file}: ${before.byIdWrites?.[file] ?? 0} → ${n} writes by id without the store`);
