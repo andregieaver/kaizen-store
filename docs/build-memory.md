@@ -41,3 +41,6 @@ What held the memory, measured without the cap:
   - switch the project to Vercel's Enhanced build machine (16 GB, a paid setting the owner changes under Project Settings → Build and Deployment);
   - or cut what the compile holds.
 - **Vercel environment variables:** a `NODE_OPTIONS` set there overrides none of this, but a large heap set there would let the compile hold more.
+- **11 November 2026: the margin was crossed once.** Vercel's build of `f5c1ec8` (D555) was killed for memory while collecting page data
+  with one worker; the same commit built when the deploy hook was asked again a few minutes later. The build is now at the edge: the
+  Enhanced build machine (above) is the lasting answer, or the compile cut down.
