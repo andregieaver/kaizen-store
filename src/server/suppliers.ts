@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash, randomBytes } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -13,6 +15,7 @@ import {
   type OrderMethod,
 } from "@/lib/drop-shipping";
 import type { DocumentLanguage } from "@/lib/invoice-text";
+import { SUPPLIER_KEY_PREFIX } from "@/lib/supplier-orders";
 import { variantLabel } from "@/lib/product-input";
 
 import { audit, type Membership } from "./auth";
@@ -44,6 +47,9 @@ export type DropShipSupplier = {
   returnAddress: string;
   orderNote: string;
   locationId: string | null;
+  alwaysAvailable: boolean;
+  /** The last four characters of its API key (D553), or null without one. */
+  apiKeyHint: string | null;
   /** Variants marked as sent by this supplier, and the units its location says it has of them. */
   variants: number;
   units: number;
@@ -60,6 +66,8 @@ const supplierRow = z.object({
   return_address: col.text,
   order_note: col.text,
   location_id: col.textOrNull,
+  always_available: col.bool,
+  api_key_hint: col.textOrNull,
   variants: col.int,
   units: col.int,
 });
@@ -76,13 +84,15 @@ const toSupplier = (r: z.output<typeof supplierRow>): DropShipSupplier => ({
   returnAddress: r.return_address,
   orderNote: r.order_note,
   locationId: r.location_id,
+  alwaysAvailable: r.always_available,
+  apiKeyHint: r.api_key_hint,
   variants: r.variants,
   units: r.units,
 });
 
 const SUPPLIER_SELECT = (storeId: string) => sql`
   select s.id, s.name, s.order_email, s.ships_from, s.order_language, s.dispatch_days, s.order_method, s.return_address, s.order_note,
-         loc.id::text as location_id,
+         loc.id::text as location_id, s.always_available, s.api_key_hint,
          (select count(*)::int from commerce.product_variants v where v.store_id = s.store_id and v.supplier_id = s.id) as variants,
          coalesce((select sum(greatest(l.on_hand, 0))::int from commerce.inventory_levels l where l.store_id = s.store_id and l.location_id = loc.id), 0) as units
   from commerce.suppliers s
@@ -133,7 +143,7 @@ export async function saveDropShipSupplier(member: Membership, raw: unknown, id:
           z.object({ id: col.uuid }),
           sql`update commerce.suppliers set name = ${name}, order_email = ${input.orderEmail}, ships_from = ${input.shipsFrom},
                 order_language = ${input.orderLanguage}, dispatch_days = ${input.dispatchDays}, order_method = ${input.orderMethod},
-                return_address = ${input.returnAddress}, order_note = ${input.orderNote}, updated_at = now()
+                return_address = ${input.returnAddress}, order_note = ${input.orderNote}, always_available = ${input.alwaysAvailable}, updated_at = now()
               where store_id = ${storeId}::uuid and id = ${id}::uuid and drop_ships
               returning id`,
           tx,
@@ -154,11 +164,11 @@ export async function saveDropShipSupplier(member: Membership, raw: unknown, id:
           existing
             ? sql`update commerce.suppliers set drop_ships = true, order_email = ${input.orderEmail}, ships_from = ${input.shipsFrom},
                     order_language = ${input.orderLanguage}, dispatch_days = ${input.dispatchDays}, order_method = ${input.orderMethod},
-                    return_address = ${input.returnAddress}, order_note = ${input.orderNote}, updated_at = now()
+                    return_address = ${input.returnAddress}, order_note = ${input.orderNote}, always_available = ${input.alwaysAvailable}, updated_at = now()
                   where store_id = ${storeId}::uuid and id = ${existing.id}::uuid returning id`
-            : sql`insert into commerce.suppliers (store_id, name, drop_ships, order_email, ships_from, order_language, dispatch_days, order_method, return_address, order_note)
+            : sql`insert into commerce.suppliers (store_id, name, drop_ships, order_email, ships_from, order_language, dispatch_days, order_method, return_address, order_note, always_available)
                   values (${storeId}::uuid, ${name}, true, ${input.orderEmail}, ${input.shipsFrom}, ${input.orderLanguage}, ${input.dispatchDays},
-                          ${input.orderMethod}, ${input.returnAddress}, ${input.orderNote})
+                          ${input.orderMethod}, ${input.returnAddress}, ${input.orderNote}, ${input.alwaysAvailable})
                   returning id`,
           tx,
         );
@@ -327,4 +337,56 @@ export async function setVariantsSupplier(
     refreshTag(catalogTag(storeId));
   }
   return { ok: true, changed };
+}
+
+/**
+ * Makes a new API key for a supplier (D553), replacing any it had: the key is returned once, to be given to the supplier, and only its SHA-256
+ * is kept. It reads the supplier's open orders with customers' addresses, so it is the OWNER's to make or revoke.
+ */
+export async function makeSupplierKey(member: Membership, supplierId: string): Promise<{ ok: true; key: string } | { ok: false; problem: string }> {
+  if (!memberCan(member, "owner")) return { ok: false, problem: NO_ACCESS };
+  if (!UUID.test(supplierId)) return { ok: false, problem: "This supplier is not in this store." };
+  const key = `${SUPPLIER_KEY_PREFIX}${randomBytes(32).toString("base64url")}`;
+  const hash = createHash("sha256").update(key).digest("hex");
+  const row = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`update commerce.suppliers set api_key_hash = ${hash}, api_key_hint = ${key.slice(-4)}, updated_at = now()
+        where store_id = ${member.store.id}::uuid and id = ${supplierId}::uuid and drop_ships returning id`,
+  );
+  if (!row) return { ok: false, problem: "This supplier is not in this store." };
+  await audit(member.account.id, member.store.id, "products.supplier_key_made", {}, { area: "products", target: { type: "supplier", id: supplierId } }).catch((error) => log("error", "suppliers.key_audit_failed", {}, error));
+  return { ok: true, key };
+}
+
+/** Revokes a supplier's API key at once (the OWNER's). */
+export async function revokeSupplierKey(member: Membership, supplierId: string): Promise<{ ok: true } | { ok: false; problem: string }> {
+  if (!memberCan(member, "owner")) return { ok: false, problem: NO_ACCESS };
+  if (!UUID.test(supplierId)) return { ok: false, problem: "This supplier is not in this store." };
+  const row = await typedRow(
+    z.object({ id: col.uuid }),
+    sql`update commerce.suppliers set api_key_hash = null, api_key_hint = null, updated_at = now()
+        where store_id = ${member.store.id}::uuid and id = ${supplierId}::uuid and api_key_hash is not null returning id`,
+  );
+  if (!row) return { ok: false, problem: "This supplier has no key." };
+  await audit(member.account.id, member.store.id, "products.supplier_key_revoked", {}, { area: "products", target: { type: "supplier", id: supplierId } }).catch((error) => log("error", "suppliers.key_audit_failed", {}, error));
+  return { ok: true };
+}
+
+/** The minutes a paid order's supplier lines wait before they go to the supplier (D551, D553): 30 unless the store changed it. */
+export async function dropShipWait(storeId: string): Promise<number> {
+  const row = await typedRow(z.object({ m: col.int }), sql`select drop_ship_wait_minutes as m from commerce.order_settings where store_id = ${storeId}::uuid`);
+  return row?.m ?? 30;
+}
+
+/** Sets that wait, 0 to 1,440 minutes (a day). `products:write`, as the suppliers are. */
+export async function saveDropShipWait(member: Membership, raw: unknown): Promise<{ ok: true } | { ok: false; problem: string }> {
+  if (!memberCan(member, "products:write")) return { ok: false, problem: NO_ACCESS };
+  const minutes = Number(raw);
+  if (!Number.isInteger(minutes) || minutes < 0 || minutes > 1440) return { ok: false, problem: "Between 0 and 1440 minutes (a day)." };
+  await db().execute(sql`
+    insert into commerce.order_settings (store_id, drop_ship_wait_minutes) values (${member.store.id}::uuid, ${minutes})
+    on conflict (store_id) do update set drop_ship_wait_minutes = excluded.drop_ship_wait_minutes, updated_at = now()
+  `);
+  await audit(member.account.id, member.store.id, "products.supplier_wait_saved", { minutes }, { area: "products" }).catch((error) => log("error", "suppliers.wait_audit_failed", {}, error));
+  return { ok: true };
 }

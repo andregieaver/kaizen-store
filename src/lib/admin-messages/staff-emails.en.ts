@@ -164,6 +164,7 @@ export const staffEmailsEn = {
         accounting_token: { one: "Your accounting stopped letting Kaizena Flow in: nothing is sent until it is connected again.", many: "Your accounting stopped letting Kaizena Flow in: nothing is sent until it is connected again." },
         turnover: { one: "Turnover is near or past a threshold that changes your duties: see Books.", many: "Turnover is near or past {n} thresholds that change your duties: see Books." },
         green_claims: { one: "{n} vague environmental claim is on your live site, which EU law bans unless proven: see Environmental claims.", many: "{n} vague environmental claims are on your live site, which EU law bans unless proven: see Environmental claims." },
+        supplier_late: { one: "{n} order has not been sent by its drop-shipping supplier in time: see Suppliers.", many: "{n} orders have not been sent by their drop-shipping suppliers in time: see Suppliers." },
       },
     },
     analyticsAlerts: {

@@ -14442,6 +14442,8 @@ export const supplierOrders = commerce.table(
     problem: text("problem"),
     /** When the owners were told of the problem. */
     problemNotifiedAt: timestamp("problem_notified_at", { withTimezone: true }),
+    /** A late supplier (D553): reminded once, and the owners told once, when it has not sent within its dispatch days. */
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -18760,6 +18762,14 @@ export const suppliers = commerce.table(
     returnAddress: text("return_address").notNull().default(""),
     /** Put on every order it gets, such as "Send without your own branding". */
     orderNote: text("order_note").notNull().default(""),
+    /**
+     * Its key for the supplier API (D553, `/api/supply/v1`): the SHA-256 (hex) of the key, shown once when made, and its last four characters to
+     * tell keys apart. A supplier that takes orders through its own system or a daily file reads them and posts tracking and stock with it.
+     */
+    apiKeyHash: text("api_key_hash"),
+    apiKeyHint: text("api_key_hint"),
+    /** Its stock is never counted down to nothing (D553): its location's levels are kept topped up, for a supplier that always has the goods. */
+    alwaysAvailable: boolean("always_available").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -18776,6 +18786,8 @@ export const suppliers = commerce.table(
     check("suppliers_dispatch_days", sql`${t.dispatchDays} between 1 and 30`),
     check("suppliers_order_method", sql`${t.orderMethod} in ('email', 'connected', 'file')`),
     check("suppliers_drop_ship_texts", sql`length(${t.returnAddress}) <= 500 and length(${t.orderNote}) <= 500`),
+    uniqueIndex("suppliers_api_key_key").on(t.apiKeyHash).where(sql`${t.apiKeyHash} is not null`),
+    check("suppliers_api_key", sql`(${t.apiKeyHash} is null) = (${t.apiKeyHint} is null) and (${t.apiKeyHash} is null or ${t.apiKeyHash} ~ '^[0-9a-f]{64}$')`),
   ],
 );
 

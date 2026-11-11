@@ -64,6 +64,8 @@ export const supplierInput = z.object({
   orderMethod: z.enum(ORDER_METHODS).default("email"),
   returnAddress: trimmed(500, "A return address is at most 500 characters.").default(""),
   orderNote: trimmed(500, "A note is at most 500 characters.").default(""),
+  /** Its stock is kept topped up (D553): for a supplier that always has the goods. */
+  alwaysAvailable: z.union([z.boolean(), z.literal("on"), z.literal("")]).transform((v) => v === true || v === "on").default(false),
 });
 export type SupplierInput = z.infer<typeof supplierInput>;
 

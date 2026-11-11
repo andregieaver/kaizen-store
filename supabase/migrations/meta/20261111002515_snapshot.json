@@ -1,6 +1,6 @@
 {
-  "id": "dd7f7f3c-9441-40f3-9718-73c1b9d5e223",
-  "prevId": "f32d8f8d-7e2b-4763-9766-36b20028102b",
+  "id": "25c1659a-9ce1-4f01-aef1-1932e38586b6",
+  "prevId": "dd7f7f3c-9441-40f3-9718-73c1b9d5e223",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -78202,6 +78202,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "reminded_at": {
+          "name": "reminded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -78456,6 +78462,25 @@
           "notNull": true,
           "default": "''"
         },
+        "api_key_hash": {
+          "name": "api_key_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "api_key_hint": {
+          "name": "api_key_hint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "always_available": {
+          "name": "always_available",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -78489,6 +78514,22 @@
             }
           ],
           "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "suppliers_api_key_key": {
+          "name": "suppliers_api_key_key",
+          "columns": [
+            {
+              "expression": "api_key_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"commerce\".\"suppliers\".\"api_key_hash\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -78562,6 +78603,10 @@
         "suppliers_drop_ship_texts": {
           "name": "suppliers_drop_ship_texts",
           "value": "length(\"commerce\".\"suppliers\".\"return_address\") <= 500 and length(\"commerce\".\"suppliers\".\"order_note\") <= 500"
+        },
+        "suppliers_api_key": {
+          "name": "suppliers_api_key",
+          "value": "(\"commerce\".\"suppliers\".\"api_key_hash\" is null) = (\"commerce\".\"suppliers\".\"api_key_hint\" is null) and (\"commerce\".\"suppliers\".\"api_key_hash\" is null or \"commerce\".\"suppliers\".\"api_key_hash\" ~ '^[0-9a-f]{64}$')"
         }
       },
       "isRLSEnabled": false

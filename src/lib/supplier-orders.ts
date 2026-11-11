@@ -74,6 +74,8 @@ export type SupplierWords = {
   badLink: string;
   refused: string;
   badReason: string;
+  reminderSubject: string;
+  reminderIntro: string;
 };
 
 const WORDS: Record<DocumentLanguage, SupplierWords> = {
@@ -109,6 +111,8 @@ const WORDS: Record<DocumentLanguage, SupplierWords> = {
     badLink: "A tracking link starts with https://.",
     refused: "The parcel could not be recorded. Please tell {store}.",
     badReason: "Write a few words about what is wrong.",
+    reminderSubject: "Reminder: order {number} from {store} is not marked as sent",
+    reminderIntro: "{store} has not had tracking for this order within the {days} working days you send within. Send it, or tell them on the order's page why you cannot.",
   },
   nb: {
     subject: "Ordre {number} fra {store}: vennligst send",
@@ -142,6 +146,8 @@ const WORDS: Record<DocumentLanguage, SupplierWords> = {
     badLink: "En sporingslenke begynner med https://.",
     refused: "Pakken kunne ikke registreres. Gi beskjed til {store}.",
     badReason: "Skriv noen ord om hva som er galt.",
+    reminderSubject: "Påminnelse: ordre {number} fra {store} er ikke merket som sendt",
+    reminderIntro: "{store} har ikke fått sporing for denne ordren innen de {days} virkedagene du sender innen. Send den, eller fortell dem på ordrens side hvorfor du ikke kan.",
   },
   sv: {
     subject: "Order {number} från {store}: vänligen skicka",
@@ -175,6 +181,8 @@ const WORDS: Record<DocumentLanguage, SupplierWords> = {
     badLink: "En spårningslänk börjar med https://.",
     refused: "Paketet kunde inte registreras. Meddela {store}.",
     badReason: "Skriv några ord om vad som är fel.",
+    reminderSubject: "Påminnelse: order {number} från {store} är inte markerad som skickad",
+    reminderIntro: "{store} har inte fått spårning för den här ordern inom de {days} arbetsdagar du skickar inom. Skicka den, eller berätta på orderns sida varför du inte kan.",
   },
   da: {
     subject: "Ordre {number} fra {store}: send venligst",
@@ -208,11 +216,19 @@ const WORDS: Record<DocumentLanguage, SupplierWords> = {
     badLink: "Et trackinglink begynder med https://.",
     refused: "Pakken kunne ikke registreres. Giv {store} besked.",
     badReason: "Skriv et par ord om, hvad der er galt.",
+    reminderSubject: "Påmindelse: ordre {number} fra {store} er ikke markeret som sendt",
+    reminderIntro: "{store} har ikke fået tracking for denne ordre inden for de {days} hverdage, du sender inden for. Send den, eller fortæl dem på ordrens side, hvorfor du ikke kan.",
   },
 };
 
 /** A supplier's words in its order language (English for any other). */
 export const supplierWords = (lang: string): SupplierWords => WORDS[(lang in WORDS ? lang : "en") as DocumentLanguage];
+
+/** The calendar days that cover a supplier's working days to send within, with a day's grace: a supplier is late after them. */
+export const lateAfterDays = (dispatchDays: number): number => Math.ceil((Math.max(1, dispatchDays) * 7) / 5) + 1;
+
+/** The prefix of a supplier API key (D553), so a key found in a log or a repository is known for what it is. */
+export const SUPPLIER_KEY_PREFIX = "kzsp_";
 
 /** Whether a tracking number as typed can be kept: 3 to 60 characters of letters, digits, spaces and dashes. */
 export const isTrackingNumber = (value: string): boolean => /^[A-Za-z0-9][A-Za-z0-9 -]{1,58}[A-Za-z0-9]$/.test(value.trim());

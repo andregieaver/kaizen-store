@@ -2337,13 +2337,13 @@
       "checkedOn": null
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Steps 1 and 2 of 5 built (D550, D551, docs/drop-shipping.md 10): suppliers that drop-ship with a location of their own ranked after every own location, variants marked as sent by them, own stock first; a paid order's supplier lines reach the supplier by email after the store's wait, in its language, and the tracking it posts on its page reaches the customer as the shop's shipped email; a supplier that cannot send tells the owners. Not yet: connected suppliers and stock by file or API, delivery estimates (step 3); late reminders, the owner's choices on a problem, returns to the supplier, what the shop owes (step 4); reports and the AI manager (step 5).",
-    "bucket": "A",
+    "gap": "",
+    "bucket": null,
     "wave": null,
     "criteria": [
       "An owner adds a supplier, marks products, and an order with no own stock of them is allocated to the supplier's location while own stock goes first (integration test).",
@@ -2358,20 +2358,23 @@
         "src/components/admin/inventory/suppliers-view.tsx",
         "src/server/supplier-orders.ts",
         "src/lib/supplier-orders.ts",
-        "src/app/supply/[token]/page.tsx"
+        "src/app/supply/[token]/page.tsx",
+        "src/app/api/supply/v1/[...path]/route.ts"
       ],
       "tests": [
         "src/server/suppliers.int.test.ts",
         "src/lib/stock-routing.test.ts",
         "src/server/supplier-orders.int.test.ts",
-        "src/lib/supplier-orders.test.ts"
+        "src/lib/supplier-orders.test.ts",
+        "src/server/supplier-steps.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D482",
       "D550",
-      "D551"
+      "D551",
+      "D553"
     ],
     "history": [
       {
@@ -2379,6 +2382,12 @@
         "from": "missing",
         "to": "partial",
         "why": "D550: step 1 of docs/drop-shipping.md built and held by suppliers.int.test.ts (a supplier's location, marked variants, own stock first, the order drawn at the supplier's location, left out of a store's copy) and stock-routing.test.ts."
+      },
+      {
+        "on": "2026-11-11",
+        "from": "partial",
+        "to": "full",
+        "why": "D553: a connected supplier with its key reads only its own orders and posts tracking and stock (supplier-steps.int.test.ts drives the API route), a late supplier is reminded once and the owners told once, and the briefing names it; criteria 1 and 2 held since D550 and D551. Still not done (outside the criteria): the customer's return address per supplier and the AI manager's own tools."
       }
     ]
   }

@@ -726,6 +726,7 @@ export const en = {
   /** A buyer's own price from their price list (D321): never a reduction, so no prior price beside it. */
   yourPrice: "Your price",
   inStock: "In stock",
+  fromSupplier: (days: number) => `In stock: sent within ${days} working ${days === 1 ? "day" : "days"}`,
   lowStock: (n: number) => `Only ${n} left`,
   outOfStock: "Sold out",
   checkingStock: "Checking stock …",

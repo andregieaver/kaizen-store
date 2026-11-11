@@ -5440,6 +5440,13 @@
       "when": 1794353860023,
       "tag": "20261110233739_supplier_orders",
       "breakpoints": true
+    },
+    {
+      "idx": 777,
+      "version": "7",
+      "when": 1794356715708,
+      "tag": "20261111002515_supplier_api",
+      "breakpoints": true
     }
   ]
 }

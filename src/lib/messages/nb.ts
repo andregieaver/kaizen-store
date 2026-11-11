@@ -701,6 +701,7 @@ export const nb: Messages = {
   fromPrice: "Fra",
   yourPrice: "Din pris",
   inStock: "På lager",
+  fromSupplier: (days: number) => `På lager: sendes innen ${days} ${days === 1 ? "virkedag" : "virkedager"}`,
   lowStock: (n: number) => `Kun ${n} igjen`,
   outOfStock: "Utsolgt",
   checkingStock: "Sjekker lager …",

@@ -39,3 +39,23 @@ describe("supplier orders' pure parts (D551)", () => {
     expect(isTrackingNumber("<script>")).toBe(false);
   });
 });
+
+describe("a late supplier and the shopper's promise (D553)", () => {
+  it("counts weekends and a day's grace into the days before a supplier is late", async () => {
+    const { lateAfterDays } = await import("./supplier-orders");
+    expect(lateAfterDays(1)).toBe(3);
+    expect(lateAfterDays(2)).toBe(4);
+    expect(lateAfterDays(5)).toBe(8);
+    expect(lateAfterDays(0)).toBe(3);
+  });
+
+  it("says the supplier's days beside in stock, in every language", async () => {
+    const { stockNote } = await import("./stock-words");
+    const { t } = await import("./i18n");
+    const stock = { inStock: 25, rawAvailable: 25, stockPolicy: "deny" as const, backorderDays: null, canBuy: true, preorderUntil: null, supplierDays: 3 };
+    expect(stockNote(stock, t("en"))).toBe("In stock: sent within 3 working days");
+    expect(stockNote(stock, t("nb"))).toBe("På lager: sendes innen 3 virkedager");
+    expect(stockNote({ ...stock, supplierDays: 1 }, t("sv"))).toBe("I lager: skickas inom 1 arbetsdag");
+    expect(stockNote({ ...stock, supplierDays: null }, t("da"))).toBe(t("da").inStock);
+  });
+});

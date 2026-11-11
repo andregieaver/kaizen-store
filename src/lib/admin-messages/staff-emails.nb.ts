@@ -160,6 +160,7 @@ export const staffEmailsNb: StaffEmailsMessages = {
         accounting_token: { one: "Regnskapet sluttet å slippe inn Kaizena Flow: ingenting sendes før det er koblet til igjen.", many: "Regnskapet sluttet å slippe inn Kaizena Flow: ingenting sendes før det er koblet til igjen." },
         turnover: { one: "Omsetningen er nær eller over en terskel som endrer pliktene dine: se Regnskap.", many: "Omsetningen er nær eller over {n} terskler som endrer pliktene dine: se Regnskap." },
         green_claims: { one: "{n} vag miljøpåstand ligger på nettstedet ditt, og EU-retten forbyr den uten dokumentasjon: se Miljøpåstander.", many: "{n} vage miljøpåstander ligger på nettstedet ditt, og EU-retten forbyr dem uten dokumentasjon: se Miljøpåstander." },
+        supplier_late: { one: "{n} ordre er ikke sendt av leverandøren i tide: se Leverandører.", many: "{n} ordrer er ikke sendt av leverandørene i tide: se Leverandører." },
       },
     },
     analyticsAlerts: {

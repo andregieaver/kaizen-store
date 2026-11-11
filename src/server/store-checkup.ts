@@ -56,6 +56,8 @@ export const CHECKUP_KEYS = [
   "turnover",
   // Environmental claims (D552): vague green claims on the live site, which the ECGT bans since 27 September 2026.
   "green_claims",
+  // Drop shipping (D553): supplier orders not sent within the supplier's dispatch days.
+  "supplier_late",
 ] as const;
 export type CheckupKey = (typeof CHECKUP_KEYS)[number];
 
@@ -80,7 +82,13 @@ export async function checkupFindings(store: Store, accountId: string): Promise<
            where q.store_id = ${store.id}::uuid and q.results = 0 and not q.redirected and q.created_at > now() - interval '7 days') as searches_missed,
         (select count(*)::int from commerce.assistant_approvals a
            where a.store_id = ${store.id}::uuid and a.account_id = ${accountId}::uuid and a.status = 'pending') as approvals,
-        (select count(*)::int from commerce.products p where p.store_id = ${store.id}::uuid and p.status = 'draft') as drafts
+        (select count(*)::int from commerce.products p where p.store_id = ${store.id}::uuid and p.status = 'draft') as drafts,
+        (select count(*)::int from commerce.supplier_orders so join commerce.suppliers s on s.store_id = so.store_id and s.id = so.supplier_id
+           where so.store_id = ${store.id}::uuid and so.state = 'sent'
+             and so.sent_at < now() - make_interval(days => (ceil(s.dispatch_days * 7 / 5.0) + 1)::int)) as supplier_late,
+        (select string_agg(distinct s.name, ', ') from commerce.supplier_orders so join commerce.suppliers s on s.store_id = so.store_id and s.id = so.supplier_id
+           where so.store_id = ${store.id}::uuid and so.state = 'sent'
+             and so.sent_at < now() - make_interval(days => (ceil(s.dispatch_days * 7 / 5.0) + 1)::int)) as late_suppliers
     `),
     db().execute<Row>(sql`
       select count(*)::int as n from commerce.product_variants v
@@ -132,6 +140,7 @@ export async function checkupFindings(store: Store, accountId: string): Promise<
   // The threshold watch (D514): each threshold the turnover is near or has just passed, in one finding.
   const watches = turnover?.watches ?? [];
   add(watches.length > 0, "turnover", watches.length, watches.map((w) => watchText(w, booksEn.watch, "en-GB")).join(" "), "/settings/books");
+  add(Number(counts.supplier_late) > 0, "supplier_late", Number(counts.supplier_late), `${counts.supplier_late} order(s) have not been sent by their drop-shipping supplier within its working days (${String(counts.late_suppliers ?? "")}). Each supplier's page under Inventory, Suppliers shows them, to send again or cancel.`, "/inventory/suppliers");
   add(green.claims > 0, "green_claims", green.claims, `${green.claims} vague environmental claim(s) ("eco-friendly", "sustainable", "climate neutral") are on the live site; EU law bans them since 27 September 2026 unless proven. Environmental claims lists each.`, "/products/claims");
   return findings;
 }

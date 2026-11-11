@@ -27,6 +27,11 @@ export type VariantStock = {
    * with this date; null otherwise.
    */
   preorderUntil: string | null;
+  /**
+   * Drop shipping (D553): the working days its supplier sends within, when the store's own stock of it is gone and the supplier sends it; the
+   * product page says so beside "in stock". Absent or null otherwise.
+   */
+  supplierDays?: number | null;
 };
 
 /** What the view's columns arrive as (a driver may give bigint sums as strings). */

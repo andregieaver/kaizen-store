@@ -11,6 +11,7 @@ import { renderEmail } from "@/lib/email-layout";
 import { siteUrl } from "@/lib/site";
 import {
   SUPPLIER_CARRIERS,
+  SUPPLIER_KEY_PREFIX,
   SUPPLIER_LINK_DAYS,
   SUPPLIER_PROBLEM_MAX,
   isTrackingNumber,
@@ -19,11 +20,18 @@ import {
   type SupplierOrderState,
 } from "@/lib/supplier-orders";
 
-import { audit } from "./auth";
+import { writeCsv } from "@/lib/csv";
+import { STOCK_MAX } from "@/lib/inventory";
+
+import { audit, type Membership } from "./auth";
+import { catalogTag } from "./catalog";
 import { sendEmail } from "./email";
 import { log } from "./log";
 import { markSent } from "./order-admin";
+import { NO_ACCESS, memberCan } from "./permissions";
+import { refreshTag } from "./refresh";
 import { sendShipped } from "./shopper-emails";
+import { setStockContext } from "./stock-context";
 import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
@@ -120,6 +128,8 @@ type DueRow = {
   order_language: string;
   order_note: string;
   shipping_address: Record<string, unknown> | null;
+  order_method: string;
+  has_key: boolean;
 };
 
 const dueRow = z.object({
@@ -134,6 +144,8 @@ const dueRow = z.object({
   order_language: col.text,
   order_note: col.text,
   shipping_address: z.record(z.string(), z.unknown()).nullable(),
+  order_method: col.text,
+  has_key: col.bool,
 });
 
 const text = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
@@ -153,7 +165,7 @@ export async function sendDueSupplierOrders({ limit = 50, storeId: only }: { lim
     dueRow,
     sql`
       select so.id, so.store_id, so.order_id, o.number, o.status, st.name as store_name, s.name as supplier, s.order_email, s.order_language, s.order_note,
-             o.shipping_address
+             o.shipping_address, s.order_method, s.api_key_hash is not null as has_key
       from commerce.supplier_orders so
       join commerce.orders o on o.store_id = so.store_id and o.id = so.order_id
       join commerce.stores st on st.id = so.store_id
@@ -171,6 +183,15 @@ export async function sendDueSupplierOrders({ limit = 50, storeId: only }: { lim
       if (!["paid", "fulfilled"].includes(row.status)) {
         await db().execute(sql`update commerce.supplier_orders set state = 'cancelled', updated_at = now() where id = ${row.id}::uuid and state = 'waiting'`);
         cancelled += 1;
+        continue;
+      }
+      // A supplier with its own system or a daily file (D553) reads its orders with its key: no email, no link. Without a key it gets the email.
+      if (row.order_method !== "email" && row.has_key) {
+        const marked = await typedRow(
+          z.object({ id: col.uuid }),
+          sql`update commerce.supplier_orders set state = 'sent', sent_at = now(), updated_at = now() where id = ${row.id}::uuid and state = 'waiting' returning id`,
+        );
+        if (marked) sent += 1;
         continue;
       }
       const token = randomBytes(32).toString("base64url");
@@ -309,6 +330,11 @@ export async function postSupplierParcel(token: string, raw: { carrier?: unknown
   if (link && !/^https:\/\/[^\s]{4,500}$/.test(link)) return { ok: false, problem: "link" };
   const row = await byToken(token);
   if (!row) return { ok: false, problem: "gone" };
+  return recordParcel(row, carrier, trackingNumber, link);
+}
+
+/** The parcel of a supplier order the supplier has proved it may answer (by its page's link, or by its API key). */
+async function recordParcel(row: z.output<typeof viewRow>, carrier: string, trackingNumber: string, link: string): Promise<SupplierPost> {
   if (row.state === "shipped") return { ok: false, problem: "done" };
   if (row.state === "cancelled" || !["paid", "fulfilled"].includes(row.status)) return { ok: false, problem: "cancelled" };
   // Claimed first, so two presses cannot record two parcels; given back if the parcel is refused.
@@ -402,7 +428,7 @@ async function notifyOwnersOfProblem(storeId: string, orderId: string, number: s
   }
 }
 
-export type SupplierOrderRow = { id: string; orderId: string; number: string; state: SupplierOrderState; sendAfter: string; sentAt: string | null; shippedAt: string | null; problem: string | null; units: number };
+export type SupplierOrderRow = { id: string; orderId: string; number: string; state: SupplierOrderState; sendAfter: string; sentAt: string | null; shippedAt: string | null; problem: string | null; units: number; /** Sent and not shipped within the supplier's working days (D553). */ late: boolean };
 
 /** A supplier's orders for its page in the admin, newest first. */
 export async function listSupplierOrders(storeId: string, supplierId: string, limit = 50): Promise<SupplierOrderRow[]> {
@@ -418,19 +444,359 @@ export async function listSupplierOrders(storeId: string, supplierId: string, li
       shipped_at: col.timestampOrNull,
       problem: col.textOrNull,
       units: col.int,
+      late: col.bool,
     }),
     sql`select so.id, so.order_id, o.number, so.state, so.send_after, so.sent_at, so.shipped_at, so.problem,
+               (so.state = 'sent' and so.sent_at < now() - make_interval(days => (ceil(s.dispatch_days * 7 / 5.0) + 1)::int)) as late,
                coalesce((select sum(l.quantity) from commerce.supplier_order_lines l where l.store_id = so.store_id and l.supplier_order_id = so.id), 0)::int as units
         from commerce.supplier_orders so join commerce.orders o on o.store_id = so.store_id and o.id = so.order_id
+        join commerce.suppliers s on s.store_id = so.store_id and s.id = so.supplier_id
         where so.store_id = ${storeId}::uuid and so.supplier_id = ${supplierId}::uuid
         order by so.created_at desc limit ${Math.min(Math.max(limit, 1), 200)}`,
   );
-  return rows.map((r) => ({ id: r.id, orderId: r.order_id, number: r.number, state: r.state, sendAfter: r.send_after, sentAt: r.sent_at, shippedAt: r.shipped_at, problem: r.problem, units: r.units }));
+  return rows.map((r) => ({ id: r.id, orderId: r.order_id, number: r.number, state: r.state, sendAfter: r.send_after, sentAt: r.sent_at, shippedAt: r.shipped_at, problem: r.problem, units: r.units, late: r.late }));
 }
 
 /** The five-minute job: new supplier orders made, then those whose wait is over sent. */
-export async function runSupplierOrders(): Promise<{ made: number; sent: number; cancelled: number }> {
+export async function runSupplierOrders(): Promise<{ made: number; sent: number; cancelled: number; reminded: number; toppedUp: number }> {
   const made = await collectSupplierOrders();
   const { sent, cancelled } = await sendDueSupplierOrders();
-  return { made, sent, cancelled };
+  const reminded = await remindLateSuppliers();
+  const toppedUp = await topUpAlwaysAvailable();
+  return { made, sent, cancelled, reminded, toppedUp };
+}
+
+// ---------------------------------------------------------------------------
+// Step 3 (D553): the supplier API, stock from the supplier, and suppliers that always have the goods.
+// ---------------------------------------------------------------------------
+
+/** The supplier a key belongs to, while it drop-ships; null for a key that is wrong or revoked. */
+export async function supplierByKey(key: string): Promise<{ storeId: string; supplierId: string; method: string } | null> {
+  if (typeof key !== "string" || !key.startsWith(SUPPLIER_KEY_PREFIX) || key.length > 100) return null;
+  const row = await typedRow(
+    z.object({ store_id: col.uuid, id: col.uuid, order_method: col.text }),
+    sql`select store_id, id, order_method from commerce.suppliers where api_key_hash = ${tokenHash(key)} and drop_ships`,
+  );
+  return row ? { storeId: row.store_id, supplierId: row.id, method: row.order_method } : null;
+}
+
+export type ApiSupplierOrder = {
+  id: string;
+  number: string;
+  state: "sent" | "problem";
+  sentAt: string | null;
+  shipTo: Record<string, string>;
+  note: string;
+  lines: { sku: string | null; title: string; quantity: number }[];
+};
+
+/** A supplier's orders still to send (sent to it, or with a problem it reported), oldest first: what its system reads. */
+export async function openOrdersForSupplier(storeId: string, supplierId: string, limit = 200): Promise<ApiSupplierOrder[]> {
+  const rows = await typedRows(
+    z.object({ id: col.uuid, number: col.text, state: z.enum(["sent", "problem"]), sent_at: col.timestampOrNull, order_note: col.text, shipping_address: z.record(z.string(), z.unknown()).nullable() }),
+    sql`select so.id, o.number, so.state, so.sent_at, s.order_note, o.shipping_address
+        from commerce.supplier_orders so
+        join commerce.orders o on o.store_id = so.store_id and o.id = so.order_id and o.status in ('paid', 'fulfilled')
+        join commerce.suppliers s on s.store_id = so.store_id and s.id = so.supplier_id
+        where so.store_id = ${storeId}::uuid and so.supplier_id = ${supplierId}::uuid and so.state in ('sent', 'problem')
+        order by so.sent_at nulls last, so.id limit ${Math.min(Math.max(limit, 1), 500)}`,
+  );
+  const out: ApiSupplierOrder[] = [];
+  for (const r of rows) {
+    const a = r.shipping_address ?? {};
+    const shipTo = Object.fromEntries(["name", "company", "line1", "line2", "postalCode", "city", "country", "phone"].map((k) => [k, text(a[k])]).filter(([, v]) => v !== ""));
+    out.push({ id: r.id, number: r.number, state: r.state, sentAt: r.sent_at, shipTo, note: r.order_note, lines: (await linesOf(storeId, r.id)).map((l) => ({ sku: l.sku, title: l.title, quantity: l.quantity })) });
+  }
+  return out;
+}
+
+/** The open orders as one CSV for a supplier that takes a daily file: a row per line, the address on each. */
+export function supplierOrdersCsv(orders: readonly ApiSupplierOrder[]): string {
+  const head = ["order_id", "order_number", "sku", "title", "quantity", "name", "company", "line1", "line2", "postal_code", "city", "country", "phone", "note"];
+  const rows = orders.flatMap((o) =>
+    o.lines.map((l) => [o.id, o.number, l.sku ?? "", l.title, l.quantity, o.shipTo.name ?? "", o.shipTo.company ?? "", o.shipTo.line1 ?? "", o.shipTo.line2 ?? "", o.shipTo.postalCode ?? "", o.shipTo.city ?? "", o.shipTo.country ?? "", o.shipTo.phone ?? "", o.note]),
+  );
+  return writeCsv([head, ...rows]);
+}
+
+/** A parcel posted by a supplier's system for one of its own supplier orders. */
+export async function postParcelByKey(
+  storeId: string,
+  supplierId: string,
+  supplierOrderId: string,
+  raw: { carrier?: unknown; trackingNumber?: unknown; trackingUrl?: unknown },
+): Promise<SupplierPost> {
+  const carrier = typeof raw.carrier === "string" ? raw.carrier : "";
+  const trackingNumber = typeof raw.trackingNumber === "string" ? raw.trackingNumber.trim() : "";
+  const link = typeof raw.trackingUrl === "string" ? raw.trackingUrl.trim() : "";
+  if (!(SUPPLIER_CARRIERS as readonly string[]).includes(carrier)) return { ok: false, problem: "carrier" };
+  if (!isTrackingNumber(trackingNumber)) return { ok: false, problem: "tracking" };
+  if (link && !/^https:\/\/[^\s]{4,500}$/.test(link)) return { ok: false, problem: "link" };
+  if (!UUID.test(supplierOrderId)) return { ok: false, problem: "gone" };
+  const row = await typedRow(
+    viewRow,
+    sql`select so.id, so.store_id, so.order_id, so.state, st.name as store_name, o.number, o.status, s.order_language, s.order_note, o.shipping_address
+        from commerce.supplier_orders so
+        join commerce.orders o on o.store_id = so.store_id and o.id = so.order_id
+        join commerce.stores st on st.id = so.store_id
+        join commerce.suppliers s on s.store_id = so.store_id and s.id = so.supplier_id
+        where so.store_id = ${storeId}::uuid and so.supplier_id = ${supplierId}::uuid and so.id = ${supplierOrderId}::uuid`,
+  );
+  if (!row) return { ok: false, problem: "gone" };
+  return recordParcel(row, carrier, trackingNumber, link);
+}
+
+/**
+ * Stock as the supplier says it has it: SKU and units, for the variants it sends, written at its own location (a correction from the API in
+ * the stock history). A SKU that is not one of its variants is listed back as unknown and changes nothing.
+ */
+export async function setSupplierStock(
+  storeId: string,
+  supplierId: string,
+  items: readonly { sku?: unknown; quantity?: unknown }[],
+): Promise<{ ok: true; set: number; unknown: string[] } | { ok: false; problem: string }> {
+  if (!Array.isArray(items) || items.length === 0 || items.length > 2000) return { ok: false, problem: "Send 1 to 2000 items, each { sku, quantity }." };
+  const wanted = new Map<string, number>();
+  for (const item of items) {
+    const sku = typeof item?.sku === "string" ? item.sku.trim() : "";
+    const quantity = Number(item?.quantity);
+    if (!sku || !Number.isInteger(quantity) || quantity < 0 || quantity > STOCK_MAX) return { ok: false, problem: `Each item needs a sku and a whole quantity from 0 to ${STOCK_MAX}.` };
+    wanted.set(sku, quantity);
+  }
+  const unknown: string[] = [];
+  const set = await db().transaction(async (tx) => {
+    const found = await typedRows(
+      z.object({ variant_id: col.uuid, sku: col.text, location_id: col.uuid }),
+      sql`select v.id as variant_id, v.sku, loc.id as location_id
+          from commerce.product_variants v
+          join commerce.inventory_locations loc on loc.store_id = v.store_id and loc.supplier_id = v.supplier_id
+          where v.store_id = ${storeId}::uuid and v.supplier_id = ${supplierId}::uuid and v.sku in (${sql.join([...wanted.keys()].map((k) => sql`${k}`), sql`, `)})
+          order by v.id`,
+      tx,
+    );
+    const known = new Set(found.map((f) => f.sku));
+    for (const sku of wanted.keys()) if (!known.has(sku)) unknown.push(sku);
+    if (found.length === 0) return 0;
+    await setStockContext(tx, { reason: "correction", source: "api", note: "Stock from the supplier" });
+    const rows = found.map((f) => ({ id: f.variant_id, location_id: f.location_id, on_hand: wanted.get(f.sku)! }));
+    await tx.execute(sql`
+      insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+      select ${storeId}::uuid, r.id, r.location_id, r.on_hand
+      from jsonb_to_recordset(${JSON.stringify(rows)}::jsonb) as r(id uuid, location_id uuid, on_hand integer)
+      order by r.id, r.location_id
+      on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
+    `);
+    return found.length;
+  });
+  if (set > 0) refreshTag(catalogTag(storeId));
+  return { ok: true, set, unknown };
+}
+
+/** The level an always-available supplier's variants are kept at, and the level below which they are topped up again. */
+const ALWAYS_LEVEL = 10_000;
+const ALWAYS_REFILL_BELOW = 5_000;
+
+/** Tops up the stock of suppliers that always have the goods (D553): one movement now and then, never a level that runs out. */
+export async function topUpAlwaysAvailable(): Promise<number> {
+  const due = await typedRows(
+    z.object({ store_id: col.uuid, variant_id: col.uuid, location_id: col.uuid }),
+    sql`select v.store_id, v.id as variant_id, loc.id as location_id
+        from commerce.suppliers s
+        join commerce.inventory_locations loc on loc.store_id = s.store_id and loc.supplier_id = s.id and loc.active
+        join commerce.product_variants v on v.store_id = s.store_id and v.supplier_id = s.id
+        left join commerce.inventory_levels l on l.variant_id = v.id and l.location_id = loc.id
+        where s.drop_ships and s.always_available and coalesce(l.on_hand, 0) < ${ALWAYS_REFILL_BELOW}
+        order by v.store_id, v.id limit 2000`,
+  );
+  const byStore = new Map<string, typeof due>();
+  for (const row of due) byStore.set(row.store_id, [...(byStore.get(row.store_id) ?? []), row]);
+  for (const [storeId, rows] of byStore) {
+    try {
+      await db().transaction(async (tx) => {
+        await setStockContext(tx, { reason: "correction", source: "system", note: "Always available from the supplier" });
+        await tx.execute(sql`
+          insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+          select ${storeId}::uuid, r.id, r.location_id, ${ALWAYS_LEVEL}
+          from jsonb_to_recordset(${JSON.stringify(rows.map((r) => ({ id: r.variant_id, location_id: r.location_id })))}::jsonb) as r(id uuid, location_id uuid)
+          order by r.id, r.location_id
+          on conflict (variant_id, location_id) do update set on_hand = ${ALWAYS_LEVEL}, updated_at = now()
+        `);
+      });
+      refreshTag(catalogTag(storeId));
+    } catch (error) {
+      log("error", "supplier_orders.top_up_failed", { storeId }, error);
+    }
+  }
+  return due.length;
+}
+
+// ---------------------------------------------------------------------------
+// Step 4 (D553): late suppliers, the owner's answers to a problem, and what the shop owes.
+// ---------------------------------------------------------------------------
+
+/**
+ * Suppliers that have not sent within their dispatch days (and a day's grace, weekends counted): each supplier order gets one reminder, by email
+ * with a fresh link for a supplier that takes email, and the store's owners are told once. Never more than once per supplier order.
+ */
+export async function remindLateSuppliers({ storeId: only }: { storeId?: string } = {}): Promise<number> {
+  const late = await typedRows(
+    dueRow.extend({ dispatch_days: col.int, supplier_id: col.uuid }),
+    sql`select so.id, so.store_id, so.order_id, o.number, o.status, st.name as store_name, s.name as supplier, s.order_email, s.order_language, s.order_note,
+               o.shipping_address, s.order_method, s.api_key_hash is not null as has_key, s.dispatch_days, s.id as supplier_id
+        from commerce.supplier_orders so
+        join commerce.orders o on o.store_id = so.store_id and o.id = so.order_id and o.status in ('paid', 'fulfilled')
+        join commerce.stores st on st.id = so.store_id
+        join commerce.suppliers s on s.store_id = so.store_id and s.id = so.supplier_id
+        where so.state = 'sent' and so.reminded_at is null
+          and so.sent_at < now() - make_interval(days => (ceil(s.dispatch_days * 7 / 5.0) + 1)::int)
+          and (${only ?? null}::uuid is null or so.store_id = ${only ?? null}::uuid)
+        order by so.sent_at limit 100`,
+  );
+  let reminded = 0;
+  for (const row of late) {
+    try {
+      const claimed = await typedRow(
+        z.object({ id: col.uuid }),
+        sql`update commerce.supplier_orders set reminded_at = now(), updated_at = now() where id = ${row.id}::uuid and reminded_at is null returning id`,
+      );
+      if (!claimed) continue;
+      reminded += 1;
+      if (row.order_email && !(row.order_method !== "email" && row.has_key)) {
+        const token = randomBytes(32).toString("base64url");
+        await db().execute(sql`update commerce.supplier_orders set token_hash = ${tokenHash(token)}, token_expires_at = now() + make_interval(days => ${SUPPLIER_LINK_DAYS}) where id = ${row.id}::uuid`);
+        const w = supplierWords(row.order_language);
+        const facts = { store: row.store_name, number: row.number, days: row.dispatch_days };
+        await sendEmail({
+          storeId: row.store_id,
+          kind: "supplier.reminder",
+          to: row.order_email,
+          email: renderEmail({
+            subject: fillWords(w.reminderSubject, facts),
+            preview: fillWords(w.reminderIntro, facts),
+            lang: row.order_language,
+            footer: [fillWords(w.footer, { ...facts, days: SUPPLIER_LINK_DAYS })],
+            blocks: [
+              { type: "heading", text: fillWords(w.reminderSubject, facts) },
+              { type: "paragraph", text: fillWords(w.reminderIntro, facts) },
+              { type: "button", text: w.button, url: `${siteUrl()}/supply/${token}` },
+            ],
+          }),
+          fromName: row.store_name,
+          idempotencyKey: `supplier.reminder:${row.id}`,
+          orderId: row.order_id,
+          secrets: [token],
+        });
+      }
+      await notifyOwners(row.store_id, row.order_id, `supplier.late:${row.id}`, "supplier.late", {
+        subject: `${row.supplier} has not sent order ${row.number}`,
+        heading: `${row.supplier} has not sent order ${row.number} within its ${row.dispatch_days} working days`,
+        body: "It has been reminded once. If it does not answer, you can send the order again to it, cancel its part and send the goods from elsewhere, or refund the customer from the order.",
+      });
+    } catch (error) {
+      log("error", "supplier_orders.remind_failed", { storeId: row.store_id, supplierOrderId: row.id }, error);
+    }
+  }
+  return reminded;
+}
+
+/** One email to each of the store's owners about an order (English, as the problem email). Never throws. */
+async function notifyOwners(storeId: string, orderId: string, key: string, kind: string, words: { subject: string; heading: string; body: string }): Promise<void> {
+  try {
+    const store = await typedRow(z.object({ slug: col.text, name: col.text }), sql`select slug, name from commerce.stores where id = ${storeId}::uuid`);
+    if (!store) return;
+    const owners = await typedRows(
+      z.object({ id: col.uuid, email: col.text }),
+      sql`select distinct on (a.id) a.id, a.email from commerce.store_members m join commerce.accounts a on a.id = m.account_id and a.disabled_at is null
+          where m.store_id = ${storeId}::uuid and m.disabled_at is null and m.role = 'owner' and a.email <> ''`,
+    );
+    const email = renderEmail({
+      subject: words.subject,
+      preview: words.body,
+      lang: "en",
+      footer: [`Kaizena Flow, for ${store.name}`],
+      blocks: [
+        { type: "heading", text: words.heading },
+        { type: "paragraph", text: words.body },
+        { type: "button", text: "Open the order", url: `${siteUrl()}/admin/${store.slug}/orders/${orderId}` },
+      ],
+    });
+    for (const owner of owners) await sendEmail({ storeId, kind, to: owner.email, email, fromName: "Kaizena Flow", idempotencyKey: `${key}:${owner.id}`, orderId });
+  } catch (error) {
+    log("error", "supplier_orders.owner_email_failed", { storeId }, error);
+  }
+}
+
+export type OwnerStep = { ok: true } | { ok: false; problem: string };
+
+/**
+ * The owner's answers to a supplier order that has a problem or is late (step 4): send it to the supplier again (a fresh email and link, at once),
+ * or cancel the supplier's part (it is not asked again; the owner sends the goods from elsewhere or refunds from the order, which stays as it is).
+ * `products:write`, as the supplier's page is.
+ */
+export async function answerSupplierOrder(member: Membership, supplierOrderId: string, answer: "resend" | "cancel"): Promise<OwnerStep> {
+  if (!memberCan(member, "products:write")) return { ok: false, problem: NO_ACCESS };
+  if (!UUID.test(supplierOrderId) || (answer !== "resend" && answer !== "cancel")) return { ok: false, problem: "This supplier order is not in this store." };
+  const storeId = member.store.id;
+  const row = await typedRow(
+    z.object({ id: col.uuid, order_id: col.uuid }),
+    answer === "resend"
+      ? sql`update commerce.supplier_orders set state = 'waiting', send_after = now(), token_hash = null, token_expires_at = null, problem = null,
+              problem_notified_at = null, reminded_at = null, updated_at = now()
+            where store_id = ${storeId}::uuid and id = ${supplierOrderId}::uuid and state in ('sent', 'problem') returning id, order_id`
+      : sql`update commerce.supplier_orders set state = 'cancelled', token_hash = null, token_expires_at = null, updated_at = now()
+            where store_id = ${storeId}::uuid and id = ${supplierOrderId}::uuid and state in ('waiting', 'sent', 'problem') returning id, order_id`,
+  );
+  if (!row) return { ok: false, problem: "This supplier order has been sent or cancelled already." };
+  await audit(member.account.id, storeId, answer === "resend" ? "order.supplier_resent" : "order.supplier_cancelled", {}, { area: "orders", target: { type: "order", id: row.order_id } }).catch((error) =>
+    log("error", "supplier_orders.answer_audit_failed", {}, error),
+  );
+  if (answer === "resend") await sendDueSupplierOrders({ storeId, limit: 20 });
+  return { ok: true };
+}
+
+export type OwedRow = { orderId: string; number: string; shippedAt: string; units: number; costMinor: number; missingCost: boolean };
+
+/**
+ * What the shop owes a supplier for the parcels it sent in a month (the store's main currency, without VAT): each shipped supplier order's units
+ * at the cost the order line froze when it was sold (D152). A line sold without a cost is counted at 0 and marked, so the owner sees what is
+ * missing. Paying it stays outside Kaizena Flow.
+ */
+export async function owedToSupplier(storeId: string, supplierId: string, month: string): Promise<{ rows: OwedRow[]; totalMinor: number }> {
+  if (!UUID.test(supplierId) || !/^\d{4}-\d{2}$/.test(month)) return { rows: [], totalMinor: 0 };
+  const rows = await typedRows(
+    z.object({ order_id: col.uuid, number: col.text, shipped_at: col.timestamp, units: col.int, cost_minor: col.minor, missing: col.bool }),
+    sql`select so.order_id, o.number, so.shipped_at, sum(l.quantity)::int as units,
+               coalesce(sum(l.quantity * coalesce(ol.unit_cost_minor, 0)), 0)::bigint as cost_minor,
+               bool_or(ol.unit_cost_minor is null) as missing
+        from commerce.supplier_orders so
+        join commerce.orders o on o.store_id = so.store_id and o.id = so.order_id
+        join commerce.supplier_order_lines l on l.store_id = so.store_id and l.supplier_order_id = so.id
+        join commerce.order_lines ol on ol.store_id = l.store_id and ol.id = l.order_line_id
+        where so.store_id = ${storeId}::uuid and so.supplier_id = ${supplierId}::uuid and so.state = 'shipped'
+          and so.shipped_at >= ${`${month}-01`}::date and so.shipped_at < (${`${month}-01`}::date + interval '1 month')
+        group by so.id, so.order_id, o.number, so.shipped_at
+        order by so.shipped_at`,
+  );
+  const out = rows.map((r) => ({ orderId: r.order_id, number: r.number, shippedAt: r.shipped_at, units: r.units, costMinor: r.cost_minor, missingCost: r.missing }));
+  return { rows: out, totalMinor: out.reduce((sum, r) => sum + r.costMinor, 0) };
+}
+
+export type SupplierPerformance = { supplierId: string; shipped: number; onTime: number; late: number; open: number; problems: number };
+
+/** How each supplier sends, over the last 90 days (step 5): parcels sent, sent within its dispatch days, late ones still open, problems. */
+export async function supplierPerformance(storeId: string): Promise<SupplierPerformance[]> {
+  const rows = await typedRows(
+    z.object({ supplier_id: col.uuid, shipped: col.int, on_time: col.int, late: col.int, open: col.int, problems: col.int }),
+    sql`select s.id as supplier_id,
+               count(*) filter (where so.state = 'shipped')::int as shipped,
+               count(*) filter (where so.state = 'shipped' and so.shipped_at <= so.sent_at + make_interval(days => (ceil(s.dispatch_days * 7 / 5.0) + 1)::int))::int as on_time,
+               count(*) filter (where so.state = 'sent' and so.sent_at < now() - make_interval(days => (ceil(s.dispatch_days * 7 / 5.0) + 1)::int))::int as late,
+               count(*) filter (where so.state in ('waiting', 'sent'))::int as open,
+               count(*) filter (where so.state = 'problem')::int as problems
+        from commerce.suppliers s
+        left join commerce.supplier_orders so on so.store_id = s.store_id and so.supplier_id = s.id and so.created_at > now() - interval '90 days'
+        where s.store_id = ${storeId}::uuid and s.drop_ships
+        group by s.id`,
+  );
+  return rows.map((r) => ({ supplierId: r.supplier_id, shipped: r.shipped, onTime: r.on_time, late: r.late, open: r.open, problems: r.problems }));
 }

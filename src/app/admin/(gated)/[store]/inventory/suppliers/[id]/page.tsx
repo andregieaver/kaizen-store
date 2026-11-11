@@ -8,17 +8,19 @@ import { hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { requireFeature } from "@/components/admin/feature-off";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
-import { StopSupplier, SupplierFormCard, SupplierProducts } from "@/components/admin/inventory/suppliers-view";
+import { AnswerSupplierOrder, StopSupplier, SupplierFormCard, SupplierKeyCard, SupplierProducts } from "@/components/admin/inventory/suppliers-view";
 import { countWords, fillWords } from "@/lib/admin-fill";
-import { adminLangOf } from "@/lib/admin-lang";
+import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
 import { adminText, adminTexts } from "@/lib/admin-text";
 import { countryName, supplierCountries } from "@/lib/drop-shipping";
 import { inventoryPaths } from "@/lib/inventory-admin";
+import { mainCurrency } from "@/lib/markets";
+import { formatMoney } from "@/lib/money";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { listSupplierOrders } from "@/server/supplier-orders";
+import { listSupplierOrders, owedToSupplier } from "@/server/supplier-orders";
 import { getDropShipSupplier, supplierVariants } from "@/server/suppliers";
 
-import { markVariantsAction, saveSupplierAction, stopSupplierAction } from "../actions";
+import { answerOrderAction, makeKeyAction, markVariantsAction, revokeKeyAction, saveSupplierAction, stopSupplierAction } from "../actions";
 
 export const metadata: Metadata = { title: "Supplier" };
 
@@ -37,20 +39,28 @@ export default async function SupplierPage({ params, searchParams }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <Suspense fallback={<DataSkeleton />}>
-        <Body storeSlug={store.slug} id={id} search={typeof query.q === "string" ? query.q.slice(0, 100) : ""} added={query.added === "1"} back={w.suppliers.back} />
+        <Body
+          storeSlug={store.slug}
+          id={id}
+          search={typeof query.q === "string" ? query.q.slice(0, 100) : ""}
+          added={query.added === "1"}
+          month={typeof query.month === "string" && /^\d{4}-\d{2}$/.test(query.month) ? query.month : new Date().toISOString().slice(0, 7)}
+          back={w.suppliers.back}
+        />
       </Suspense>
     </div>
   );
 }
 
-async function Body({ storeSlug, id, search, added, back }: { storeSlug: string; id: string; search: string; added: boolean; back: string }) {
+async function Body({ storeSlug, id, search, added, month, back }: { storeSlug: string; id: string; search: string; added: boolean; month: string; back: string }) {
   const member = await requirePermission(storeSlug, "products:read");
   const { store } = member;
   const lang = adminLangOf(member.account.adminLocale);
   const w = adminText(lang, "inventory").suppliers;
   const supplier = await getDropShipSupplier(store.id, id);
   if (!supplier) notFound();
-  const [variants, orders] = await Promise.all([supplierVariants(store.id, supplier.id, search), listSupplierOrders(store.id, supplier.id)]);
+  const [variants, orders, owed] = await Promise.all([supplierVariants(store.id, supplier.id, search), listSupplierOrders(store.id, supplier.id), owedToSupplier(store.id, supplier.id, month)]);
+  const money = (minor: number) => formatMoney(minor, mainCurrency(store), ADMIN_LANG_FACTS[lang].locale);
   const canWrite = memberCan(member, "products:write");
   const base = inventoryPaths(store.slug).suppliers;
   return (
@@ -77,6 +87,9 @@ async function Body({ storeSlug, id, search, added, back }: { storeSlug: string;
                     <th scope="col" className={th}>{w.order}</th>
                     <th scope="col" className={th}>{w.products}</th>
                     <th scope="col" className={th}>{w.state}</th>
+                    <th scope="col" className={th}>
+                      <span className="sr-only">{w.resend}</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -88,7 +101,15 @@ async function Body({ storeSlug, id, search, added, back }: { storeSlug: string;
                         </Link>
                       </td>
                       <td className={td}>{countWords(o.units, w.units)}</td>
-                      <td className={td}>{fillWords(w.states[o.state], { problem: o.problem ?? "" })}</td>
+                      <td className={td}>
+                        {fillWords(w.states[o.state], { problem: o.problem ?? "" })}
+                        {o.late && <span className="block text-xs text-danger-text">{w.late}</span>}
+                      </td>
+                      <td className={`${td} text-right`}>
+                        {canWrite && (o.state === "problem" || o.late) && (
+                          <AnswerSupplierOrder answer={answerOrderAction.bind(null, store.slug, o.id)} />
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -116,6 +137,7 @@ async function Body({ storeSlug, id, search, added, back }: { storeSlug: string;
               orderMethod: supplier.orderMethod,
               returnAddress: supplier.returnAddress,
               orderNote: supplier.orderNote,
+              alwaysAvailable: supplier.alwaysAvailable,
             }}
             countries={supplierCountries()}
             defaultCountry={supplier.shipsFrom}
@@ -123,6 +145,58 @@ async function Body({ storeSlug, id, search, added, back }: { storeSlug: string;
             supplierBase={base}
           />
         )}
+        <section className="flex flex-col gap-3" aria-labelledby="supplier-owed">
+          <h2 id="supplier-owed" className="text-title text-ink">
+            {w.owedTitle}
+          </h2>
+          <form method="get" className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              {w.month}
+              <input type="month" name="month" defaultValue={month} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm" />
+            </label>
+            <button type="submit" className="min-h-10 rounded-pill border border-edge px-4 text-sm">
+              {w.show}
+            </button>
+          </form>
+          <p className={hint}>{fillWords(w.owedIntro, { month })}</p>
+          {owed.rows.length === 0 ? (
+            <p className={hint}>{w.owedNone}</p>
+          ) : (
+            <div className={tableShell}>
+              <table className="w-full text-sm">
+                <caption className="sr-only">{w.owedTitle}</caption>
+                <thead>
+                  <tr className="border-b border-line">
+                    <th scope="col" className={th}>{w.order}</th>
+                    <th scope="col" className={th}>{w.products}</th>
+                    <th scope="col" className={`${th} text-right`}>{w.owedTotal}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {owed.rows.map((r) => (
+                    <tr key={r.orderId} className="border-b border-line">
+                      <td className={td}>{r.number}</td>
+                      <td className={td}>
+                        {countWords(r.units, w.units)}
+                        {r.missingCost && <span className={`${hint} block`}>{w.owedMissing}</span>}
+                      </td>
+                      <td className={`${td} text-right tabular-nums`}>{money(r.costMinor)}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td className={`${td} font-medium`} colSpan={2}>
+                      {w.owedTotal}
+                    </td>
+                    <td className={`${td} text-right font-medium tabular-nums`} data-owed-total>
+                      {money(owed.totalMinor)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+        <SupplierKeyCard hint={supplier.apiKeyHint} isOwner={memberCan(member, "owner")} make={makeKeyAction.bind(null, store.slug, supplier.id)} revoke={revokeKeyAction.bind(null, store.slug, supplier.id)} />
         <StopSupplier supplierName={supplier.name} isOwner={memberCan(member, "owner")} stop={stopSupplierAction.bind(null, store.slug, supplier.id)} back={base} />
       </div>
     </AdminTextScope>

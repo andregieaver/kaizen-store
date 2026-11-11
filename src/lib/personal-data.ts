@@ -552,6 +552,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   // What a drop-shipping supplier is asked to send (D551): the customer's name and delivery address go to the supplier, a recipient the privacy
   // notice names; blanked with the person's other emails.
   "supplier.order": "shopper",
+  "supplier.reminder": "shopper",
   "order.refunded": "shopper",
   "order.cancelled": "shopper",
   // Payment terms (D293): the reminder before the due day and the notice after it, to the order's own address.
@@ -587,6 +588,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "return.exchange_wished": "staff",
   "stock.low": "staff",
   "supplier.problem": "staff",
+  "supplier.late": "staff",
   "experiment.guardrail": "staff",
   "integration.endpoint_off": "staff",
   /** A follow-up the AI manager was asked for ran (PSI AGT-04): the person's own task and a link, never the answer. */

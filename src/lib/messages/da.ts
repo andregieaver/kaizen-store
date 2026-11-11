@@ -698,6 +698,7 @@ export const da: Messages = {
   fromPrice: "Fra",
   yourPrice: "Din pris",
   inStock: "På lager",
+  fromSupplier: (days: number) => `På lager: sendes inden for ${days} ${days === 1 ? "hverdag" : "hverdage"}`,
   lowStock: (n: number) => `Kun ${n} tilbage`,
   outOfStock: "Udsolgt",
   checkingStock: "Tjekker lager …",

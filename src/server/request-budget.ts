@@ -30,6 +30,8 @@ export const BUDGETS = {
   agent: { window: "minute", visitor: 60, store: 1200 },
   // The Admin API (D355): 120 calls a minute per token (the visitor is the token's id), a store's tokens together ten times that.
   api: { window: "minute", visitor: 120, store: 1200 },
+  // The supplier API (D553): a drop-shipping supplier's system polls its orders and posts tracking and stock (the visitor is the supplier's id).
+  supply: { window: "minute", visitor: 60, store: 600 },
   // The storefront API (D362): a headless site's calls, its visitors' together under one token (the visitor is the token's id).
   storefront: { window: "minute", visitor: 1200, store: 6000 },
   // A cookie choice (D58, D389 SEC-10): a visitor makes a few; the store's ceiling stops a flood of records from many.

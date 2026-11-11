@@ -449,7 +449,14 @@ export async function variantStockOf(
 ): Promise<Map<string, VariantStock>> {
   if (variantIds.length === 0) return new Map();
   const rows = await reader.execute<Row>(sql`
-    select va.variant_id, va.delivery, va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, va.can_buy, va.preorder_until::text as preorder_until
+    select va.variant_id, va.delivery, va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, va.can_buy, va.preorder_until::text as preorder_until,
+      -- Drop shipping (D553): the supplier's days, when the store's own stock of it is gone.
+      (select s.dispatch_days from commerce.product_variants v
+         join commerce.suppliers s on s.store_id = v.store_id and s.id = v.supplier_id and s.drop_ships
+        where v.store_id = va.store_id and v.id = va.variant_id
+          and not exists (select 1 from commerce.inventory_levels l
+                            join commerce.inventory_locations loc on loc.store_id = l.store_id and loc.id = l.location_id and loc.active and loc.fulfils_online and loc.supplier_id is null
+                           where l.store_id = va.store_id and l.variant_id = va.variant_id and l.on_hand > 0)) as supplier_days
     from commerce.variant_availability va
     where va.store_id = ${storeId}::uuid and va.variant_id in (${sql.join(
       variantIds.map((id) => sql`${id}::uuid`),
@@ -457,19 +464,19 @@ export async function variantStockOf(
     )})
   `);
   return new Map(
-    rows.map((r) => [
-      str(r.variant_id),
-      r.delivery === "physical"
-        ? stockOf({
-            in_stock: num(r.in_stock),
-            raw_available: num(r.raw_available),
-            stock_policy: str(r.stock_policy),
-            backorder_days: r.backorder_days === null ? null : num(r.backorder_days),
-            can_buy: Boolean(r.can_buy),
-            preorder_until: r.preorder_until === null || r.preorder_until === undefined ? null : str(r.preorder_until),
-          })
-        : UNLIMITED,
-    ]),
+    rows.map((r): [string, VariantStock] => {
+      if (r.delivery !== "physical") return [str(r.variant_id), UNLIMITED];
+      const stock = stockOf({
+        in_stock: num(r.in_stock),
+        raw_available: num(r.raw_available),
+        stock_policy: str(r.stock_policy),
+        backorder_days: r.backorder_days === null ? null : num(r.backorder_days),
+        can_buy: Boolean(r.can_buy),
+        preorder_until: r.preorder_until === null || r.preorder_until === undefined ? null : str(r.preorder_until),
+      });
+      const supplierDays = r.supplier_days === null || r.supplier_days === undefined ? null : num(r.supplier_days);
+      return [str(r.variant_id), supplierDays && stock.inStock > 0 ? { ...stock, supplierDays } : stock];
+    }),
   );
 }
 

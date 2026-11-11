@@ -23,9 +23,10 @@ export type SupplierFormValues = {
   orderMethod: string;
   returnAddress: string;
   orderNote: string;
+  alwaysAvailable: boolean;
 };
 
-const BLANK: SupplierFormValues = { name: "", orderEmail: "", shipsFrom: "", orderLanguage: "en", dispatchDays: "2", orderMethod: "email", returnAddress: "", orderNote: "" };
+const BLANK: SupplierFormValues = { name: "", orderEmail: "", shipsFrom: "", orderLanguage: "en", dispatchDays: "2", orderMethod: "email", returnAddress: "", orderNote: "", alwaysAvailable: false };
 
 function Message({ message }: { message: { tone: "ok" | "problem"; text: string } | null }) {
   return (
@@ -151,6 +152,13 @@ export function SupplierFormCard({
             <p id={`${prefix}-method-hint`} className={hint}>
               {w.methodSoon}
             </p>
+          </div>
+          <div className="flex flex-col gap-1 sm:col-span-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={values.alwaysAvailable} onChange={(e) => setValues({ ...values, alwaysAvailable: e.target.checked })} className="size-5" />
+              {w.alwaysAvailable}
+            </label>
+            <p className={hint}>{w.alwaysHint}</p>
           </div>
           <div className="flex flex-col gap-1 sm:col-span-3">
             <label htmlFor={`${prefix}-note`} className={label}>
@@ -359,3 +367,142 @@ export function StopSupplier({
   );
 }
 
+
+/** The owner's key for the supplier's own system (D553): made and shown once, or revoked. */
+export function SupplierKeyCard({
+  hint: keyHint,
+  isOwner,
+  make,
+  revoke,
+}: {
+  hint: string | null;
+  isOwner: boolean;
+  make: () => Promise<{ ok: true; key: string } | { ok: false; problem: string }>;
+  revoke: () => Promise<{ ok: true } | { ok: false; problem: string }>;
+}) {
+  const w = useAdminText("inventory").suppliers;
+  const router = useRouter();
+  const [key, setKey] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ tone: "ok" | "problem"; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <section className={`${card} flex flex-col gap-3`} aria-labelledby="supplier-key">
+      <h2 id="supplier-key" className="text-title text-ink">
+        {w.keyTitle}
+      </h2>
+      <p className="text-sm">{w.keyIntro}</p>
+      <p className="text-sm">{keyHint ? fillWords(w.keyHas, { hint: keyHint }) : w.keyNone}</p>
+      {key && (
+        <div className="flex flex-col gap-1">
+          <code className="break-all rounded-md border border-line bg-card px-3 py-2 text-sm" data-supplier-key>
+            {key}
+          </code>
+          <p className={hint}>{w.keyShown}</p>
+        </div>
+      )}
+      <p className={hint}>{w.keyDocs}</p>
+      {isOwner ? (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            className={keyHint ? secondary : primary}
+            onClick={() =>
+              start(async () => {
+                setMessage(null);
+                const result = await make();
+                if (result.ok) {
+                  setKey(result.key);
+                  router.refresh();
+                } else setMessage({ tone: "problem", text: result.problem });
+              })
+            }
+          >
+            {keyHint ? w.keyRemake : w.keyMake}
+          </button>
+          {keyHint && (
+            <button
+              type="button"
+              disabled={pending}
+              className={secondary}
+              onClick={() =>
+                start(async () => {
+                  const result = await revoke();
+                  setKey(null);
+                  setMessage(result.ok ? { tone: "ok", text: w.keyRevoked } : { tone: "problem", text: result.problem });
+                  router.refresh();
+                })
+              }
+            >
+              {w.keyRevoke}
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className={hint}>{w.keyOwnerOnly}</p>
+      )}
+      <Message message={message} />
+    </section>
+  );
+}
+
+/** Send a supplier order with a problem (or a late one) again, or cancel the supplier's part (D553). */
+export function AnswerSupplierOrder({ answer }: { answer: (choice: "resend" | "cancel") => Promise<{ ok: true } | { ok: false; problem: string }> }) {
+  const w = useAdminText("inventory").suppliers;
+  const router = useRouter();
+  const [message, setMessage] = useState<{ tone: "ok" | "problem"; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  const run = (choice: "resend" | "cancel") =>
+    start(async () => {
+      const result = await answer(choice);
+      setMessage(result.ok ? { tone: "ok", text: w.answered } : { tone: "problem", text: result.problem });
+      if (result.ok) router.refresh();
+    });
+  return (
+    <span className="flex flex-wrap gap-2">
+      <button type="button" disabled={pending} onClick={() => run("resend")} className="min-h-9 rounded-pill border border-edge px-2 text-xs">
+        {w.resend}
+      </button>
+      <button type="button" disabled={pending} onClick={() => run("cancel")} className="min-h-9 rounded-pill border border-line px-2 text-xs">
+        {w.cancelPart}
+      </button>
+      <Message message={message} />
+    </span>
+  );
+}
+
+/** The store's wait before a paid order's supplier lines go to the supplier (D553). */
+export function DropShipWaitForm({ minutes, save }: { minutes: number; save: (minutes: number) => Promise<{ ok: true } | { ok: false; problem: string }> }) {
+  const w = useAdminText("inventory").suppliers;
+  const [value, setValue] = useState(String(minutes));
+  const [message, setMessage] = useState<{ tone: "ok" | "problem"; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <form
+      className={`${card} flex flex-wrap items-end gap-3`}
+      aria-label={w.waitTitle}
+      onSubmit={(e) => {
+        e.preventDefault();
+        start(async () => {
+          const result = await save(Number(value));
+          setMessage(result.ok ? { tone: "ok", text: w.waitSaved } : { tone: "problem", text: result.problem });
+        });
+      }}
+    >
+      <div className="flex w-full flex-col gap-1">
+        <h2 className="text-title text-ink">{w.waitTitle}</h2>
+        <p className={hint}>{w.waitIntro}</p>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="drop-ship-wait" className={label}>
+          {w.waitMinutes}
+        </label>
+        <input id="drop-ship-wait" type="number" min={0} max={1440} step={1} value={value} onChange={(e) => setValue(e.target.value)} className={`${field} w-32`} />
+      </div>
+      <button type="submit" disabled={pending} className={secondary}>
+        {w.save}
+      </button>
+      <Message message={message} />
+    </form>
+  );
+}
