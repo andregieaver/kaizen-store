@@ -14,7 +14,7 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 - Where the change comes from: +29.7 points from the 152 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
 - 230 of 233 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (150):
+Rated higher (151):
 
 - Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
 - Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
@@ -66,6 +66,7 @@ Rated higher (150):
 - Search merchandising: synonyms, boosts, pins (Catalogue): missing to full. Wave 6 unit F (D324, docs/wave-6-catalogue.md Unit F): synonym groups per language, one-way and two-way, used by keyword search and query understanding (search-synonyms.int.test.ts); pins, boosts and buries of products or categories and ta…
 - Product feeds to Google and other channels (Catalogue): missing to partial. Wave 5 unit H (D302): the Google feed, the admin's left-out list and the euro scenario are built; custom labels and the API sync are not, so partial.
 - Standard product taxonomy (Catalogue): missing to full. Wave 6 unit I (D327, docs/wave-6-catalogue.md Unit I): Shopify's open Standard Product Taxonomy v2026-10 (MIT, 14,606 categories with attributes and values, names in en, nb, sv, da, Google's ids) kept in the repository; a product gets a ca…
+- Combined listings (Catalogue, not core): missing to partial. D566 built combined listings: grouping, the product page's chooser and the cards' links.
 - Checkout branding (Checkout): partial to full. D337 (wave 7 unit C, docs/wave-7-storefront.md C).
 - Checkout extensibility (UI extensions, Functions) (Checkout, not core): partial to full. The two missing parts the row named are built (D399): a rule that reorders delivery options (checkout-rules.test.ts and checkout-rules.int.test.ts, the cart and the order agreeing on what is charged) and Admin API routes for the rules and…
 - Guest checkout and optional account (Checkout): partial to full. D365: customer accounts optional, required or off, obeyed by the cart, checkout and placeOrder(), held by an integration test (criterion 5).
@@ -213,7 +214,7 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 | Headline: core (Shopify native, Basic to Advanced) | 201 | **89.5%** | 89.1% | 161 / 36 / 4 |
 | Must-have (core, weight 4 or 5) | 83 | **90.6%** | 90.4% | 67 / 16 / 0 |
 | Core plus app-only features | 227 | 89.0% | 88.8% | 180 / 43 / 4 |
-| Everything, including Plus-only | 233 | 88.7% | 88.0% | 183 / 44 / 6 |
+| Everything, including Plus-only | 233 | 88.7% | 88.2% | 183 / 45 / 5 |
 
 <!-- parity:generated:end headline -->
 
@@ -389,7 +390,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Search analytics | Native. [page](https://apps.shopify.com/search-and-discovery) | Full | 2 |  | Evidence: `src/server/search.ts`, `src/server/analytics-search-data.ts`, `src/app/admin/(gated)/[store]/search/page.tsx` and 1 more; 3 test files; D72, D77, D152. |
 | Product feeds to Google and other channels | Native. [page](https://help.shopify.com/en/manual/online-sales-channels/google) | Partial (was missing) | 3 | B, wave 5 | Built (D302): a secret feed address per store (`feed_settings`) serves each offered market view (country, language, currency) as a Google Merchant Center RSS file and as Meta, TikTok and Pinterest CSVs (`FEED_CHANNELS`, `feedFile()` in `src/lib/feeds.ts`), from the storefront's own cached reads (`storeFeed()`), cached 15 minutes under the `feed` budget: availability from stock, price with VAT in the market's currency (the 30-day reference as `price` and the current as `sale_price` for a genuine reduction), brand, GTIN or `identifier_exists`, unit pricing and shipping by country; a euro view is held to `shown()` (`feeds.int.test.ts`) and Google's required attributes by `feeds.test.ts`; products left out are listed on the Product feeds page with a `FEED_PROBLEMS` reason. Google's product category, colour, material and pattern come from the standard taxonomy (D327). Missing: custom label mapping and any API sync: the owner adds the address in Merchant Center or Meta's Commerce Manager as a scheduled fetch (a Content API connection needs Google's credentials, bucket B). Code: `src/lib/feeds.ts`, `src/server/feeds.ts`. |
 | Standard product taxonomy | Native. [page](https://help.shopify.com/en/manual/products/details/product-category) | Full (was missing) | 2 |  | Evidence: `src/data/product-taxonomy/structure.json`, `src/data/product-taxonomy/LICENSE`, `scripts/product-taxonomy.mjs` and 9 more; 6 test files; D50, D302, D327. |
-| Combined listings | Plus. [page](https://help.shopify.com/en/manual/products/combined-listings-app) | Missing | 1 | A, no wave yet | No way to show separate products as one listing with a shared option (verified 2026-10-25: variants live inside one product only, no product group or sibling table). Not planned: decision 6 of `docs/wave-6-catalogue.md` leaves it (Plus only on Shopify, weight 1; unit B's 2,048 variants cover most of the need). |
+| Combined listings | Plus. [page](https://help.shopify.com/en/manual/products/combined-listings-app) | Partial (was missing) | 1 | A, no wave yet | Built (D566, docs/combined-listings.md): separate products grouped into one listing with a shared option (its name and each product's value, an optional colour dot); the product page shows every offered product of the listing as a link, this one marked, and a listing card links to up to six of them; each product keeps its own page, canonical, price, stock and reviews, so search, feeds and the cart list it once. Partial because the option's words are kept in the main language only, the product CSV and content grids' own tiles do not carry the listing, and a listing is never one card. Code: `src/server/product-groups.ts`, `src/server/catalog.ts`. |
 
 <!-- parity:generated:end detail-catalogue -->
 

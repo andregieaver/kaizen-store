@@ -219,7 +219,10 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
       );
     case "host":
       return product.hostName ? <p className="text-sm">{m.stay.hostedBy(product.hostName)}</p> : null;
-    case "buy":
+    case "buy": {
+      // Its combined listing (D566): the other products, chosen like an option, above whatever buys this one.
+      const chooser = product.group ? <GroupChooser group={product.group} base={base} m={m} /> : null;
+      const part = (() => {
       if (product.kind === "appointment") {
         // Booked for a time (D65): free times are read per request, like stock.
         return (
@@ -285,6 +288,16 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           </Suspense>
         </section>
       );
+      })();
+      return chooser ? (
+        <>
+          {chooser}
+          {part}
+        </>
+      ) : (
+        part
+      );
+    }
     case "question": {
       // The product question (D431): a question to the store's inbox, or a request for a quote of this product.
       const kind = questionKindOf(block);
@@ -1307,5 +1320,40 @@ export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: Pa
         block.type === "product" && productPartShows(block, product, ctx.campaigns, store, ctx.reviews) ? <ProductPartView block={block} ctx={ctx} /> : null
       }
     />
+  );
+}
+
+/**
+ * A combined listing's chooser on a product's page (D566): the shared option's name and the value of this product, then each product of the
+ * listing as a link (a dot of its colour, or its value), this one marked as the page. Each is its own page, price, stock and reviews.
+ */
+function GroupChooser({ group, base, m }: { group: NonNullable<ProductDetail["group"]>; base: string; m: Messages }) {
+  const current = group.items.find((item) => item.current);
+  return (
+    <nav aria-label={m.group.choose(group.option)} className="mb-6 flex flex-col gap-2" data-group-chooser>
+      <p className="text-sm">
+        <span className="font-medium">{group.option}:</span> {current?.value}
+      </p>
+      <ul className="flex flex-wrap gap-2">
+        {group.items.map((item) => (
+          <li key={item.handle}>
+            <Link
+              href={`${base}/p/${item.handle}`}
+              aria-current={item.current ? "page" : undefined}
+              aria-label={item.swatch ? item.value : undefined}
+              title={item.value}
+              className={
+                item.swatch
+                  ? `block size-9 rounded-full border-2 ${item.current ? "border-foreground" : "border-line"} focus-visible:outline-2`
+                  : `block min-h-9 rounded-full border px-4 leading-8 ${item.current ? "border-foreground font-medium" : "border-line"} focus-visible:outline-2`
+              }
+              style={item.swatch ? { backgroundColor: item.swatch, boxShadow: "inset 0 0 0 2px var(--background)" } : undefined}
+            >
+              {item.swatch ? null : item.value}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }

@@ -357,6 +357,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Goes well with: upsells from the cart (D559, `recommendForCart()`, `src/components/cart-upsell.tsx`)
 - An Instagram feed (D560, `src/lib/instagram.ts`, `src/server/instagram.ts`, `InstagramBlock`, `InstagramSection`)
 - A countdown timer and animated stats (D561, `src/lib/countdown.ts`, `src/lib/stats-count.ts`, `CountdownView`, `StatsView`)
+- Combined listings (D566, `docs/combined-listings.md`, `src/server/product-groups.ts`, `/admin/{store}/products/{id}/listing`)
 - Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`, `src/server/product-layouts.ts`)
 - Custom fields (D118, `docs/custom-fields.md`, `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`)
 - Modals (D121, `src/lib/page-modal.ts`, `src/components/page-modal.tsx`, `ModalFields`)

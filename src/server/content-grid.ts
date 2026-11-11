@@ -356,6 +356,9 @@ export function productItem(storeSlug: string, marketSlug: string, product: Grid
     ...(product.priceOnRequest ? { priceOnRequest: true } : {}),
     audience: product.audience,
     ...(product.preorderUntil ? { preorderUntil: product.preorderUntil } : {}),
+    ...(product.group
+      ? { group: { option: product.group.option, items: product.group.items.map((i) => ({ href: marketPath(storeSlug, marketSlug, `/p/${i.handle}`), value: i.value, swatch: i.swatch })) } }
+      : {}),
   };
 }
 

@@ -138,6 +138,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   product_translations: catalogue("Product titles and texts in every language."),
   product_variants: catalogue("Variants, with their pictures and options."),
   products: catalogue("Not archived products; a download whose files stay behind waits as a draft."),
+  product_groups: never("Combined listings (D566) name the original's products; the copy's products start on their own and are grouped again there."),
   selling_plans: catalogue("A product's subscription plans (no customer's subscription is copied)."),
 
   // Pages ------------------------------------------------------------------------------------------------------

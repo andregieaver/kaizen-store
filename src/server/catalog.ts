@@ -35,7 +35,15 @@ import { col, typedRow, typedRows } from "./typed-rows";
 export const CATALOG_TAG = "catalog";
 export const catalogTag = (storeId: string) => `catalog:${storeId}`;
 
+/**
+ * A combined listing (D566) a product is in, as a shopper sees it: the shared option's name and each offered product's value, colour and
+ * address, in the owner's order; `current` marks the product itself on its own page. Null when it is in none, or alone among the offered.
+ */
+export type ProductGroupView = { option: string; items: { handle: string; value: string; swatch: string | null; current?: boolean }[] };
+
 export type ProductSummary = {
+  /** Its combined listing (D566), or null. */
+  group?: ProductGroupView | null;
   id: string;
   handle: string;
   title: string;
@@ -100,6 +108,8 @@ export type SellingPlan = {
 };
 
 export type ProductDetail = {
+  /** Its combined listing (D566), with this product `current`, or null. */
+  group?: ProductGroupView | null;
   id: string;
   handle: string;
   title: string;
@@ -161,6 +171,36 @@ const SUMMARY_ROW = z.looseObject({
   currency: col.currency,
   prior_30d: col.minorOrNull,
 });
+
+/**
+ * The combined listings (D566) of `groupIds`, read inside a cached reader (so under its tags): each offered, active product's value in the
+ * market's language (else its first), in the owner's order. A listing with fewer than two offered products is left out.
+ */
+async function groupsFor(storeId: string, locale: string, groupIds: readonly string[]): Promise<Map<string, ProductGroupView>> {
+  const ids = [...new Set(groupIds)].filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+  if (ids.length === 0) return new Map();
+  const rows = await typedRows(
+    z.object({ group_id: col.uuid, handle: col.text, value: col.textOrNull, swatch: col.textOrNull, option: col.textOrNull }),
+    sql`
+    select p.group_id, p.handle, p.group_swatch as swatch,
+      coalesce(nullif(p.group_value ->> ${locale}, ''), (select v.value from jsonb_each_text(p.group_value) v order by v.key limit 1)) as value,
+      coalesce(nullif(g.option ->> ${locale}, ''), (select v.value from jsonb_each_text(g.option) v order by v.key limit 1)) as option
+    from commerce.products p
+    join commerce.product_groups g on g.store_id = p.store_id and g.id = p.group_id
+    where p.store_id = ${storeId}::uuid and p.group_id = any(${`{${ids.join(",")}}`}::uuid[]) and p.status = 'active' and ${OFFERED}
+    order by p.group_id, p.group_position, p.handle
+  `,
+    readDb(),
+  );
+  const groups = new Map<string, ProductGroupView>();
+  for (const r of rows) {
+    const group = groups.get(r.group_id) ?? { option: r.option ?? "", items: [] };
+    group.items.push({ handle: r.handle, value: r.value ?? r.handle, swatch: r.swatch });
+    groups.set(r.group_id, group);
+  }
+  for (const [id, group] of groups) if (group.items.length < 2) groups.delete(id);
+  return groups;
+}
 
 /** A product page's product (`getProduct()`): wide, read as `Row`; it carries no money. */
 const PRODUCT_ROW = z.looseObject({ id: col.uuid });
@@ -253,6 +293,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
     select
       p.id,
       p.handle,
+      p.group_id::text as group_id,
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url,
       coalesce(nullif(m.alt ->> ${locale}, ''), commerce.media_alt(m.url, ${locale}), '') as image_alt,
@@ -299,11 +340,13 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
     readDb(),
   );
 
+  const groups = await groupsFor(storeId, locale, rows.flatMap((row) => (typeof row.group_id === "string" ? [row.group_id] : [])));
   return rows.map((row) => {
     // Sold only by subscription: the best subscriber's price, as "from".
     const discount = numOrNull(row.subscriber_discount);
     const vat = priceVat(row.store_audience, row.vat_rate);
     return {
+      group: typeof row.group_id === "string" ? (groups.get(row.group_id) ?? null) : null,
       id: str(row.id),
       handle: str(row.handle),
       title: str(row.title),
@@ -336,7 +379,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     PRODUCT_ROW,
     sql`
     select
-      p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes, p.price_on_request,
+      p.id, p.handle, p.group_id::text as group_id, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes, p.price_on_request,
       p.audience, p.price_words, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
       -- The country's own description over its language's (D338), else the language's. A country whose language the product is not
@@ -434,7 +477,9 @@ export async function getProduct(storeId: string, market: Market, handle: string
         }
       : null;
 
+  const group = typeof product.group_id === "string" ? (await groupsFor(storeId, locale, [product.group_id])).get(product.group_id) ?? null : null;
   return {
+    group: group ? { option: group.option, items: group.items.map((item) => ({ ...item, current: item.handle === str(product.handle) })) } : null,
     id: str(product.id),
     handle: str(product.handle),
     title: str(product.title),
@@ -623,6 +668,7 @@ export async function listGridProducts(
     select
       p.id,
       p.handle,
+      p.group_id::text as group_id,
       coalesce(tl.title, tf.title) as title,
       coalesce(nullif(tl.description, ''), tf.description, '') as description,
       coalesce(nullif(tl.excerpt, ''), tf.excerpt, '') as excerpt,
@@ -675,10 +721,12 @@ export async function listGridProducts(
     readDb(),
   );
 
+  const groups = await groupsFor(storeId, locale, rows.flatMap((row) => (typeof row.group_id === "string" ? [row.group_id] : [])));
   return rows.map((row) => {
     const discount = numOrNull(row.subscriber_discount);
     const vat = priceVat(row.store_audience, row.vat_rate);
     return {
+      group: typeof row.group_id === "string" ? (groups.get(row.group_id) ?? null) : null,
       id: str(row.id),
       handle: str(row.handle),
       title: str(row.title),

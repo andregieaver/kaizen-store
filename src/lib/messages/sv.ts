@@ -926,6 +926,10 @@ export const sv: Messages = {
     stripeLine: (number) => `Faktura för order ${number}`,
     dueShort: (day) => `Förfaller ${day}`,
   },
+  /** Combined listings (D566): the shared option's chooser on a product's card and page. */
+  group: {
+    choose: (option: string) => `Välj: ${option}`,
+  },
   /** Sms-marknadsföring (D565): skrivet för hand, behöver juridisk granskning. */
   // legal: needs review
   sms: {

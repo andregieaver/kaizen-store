@@ -1,6 +1,6 @@
 {
-  "id": "b00d4bb4-83a0-42da-b6e3-06cc5411c277",
-  "prevId": "ad971fc6-98ce-4819-a69e-cd953da8dee7",
+  "id": "45a8dc64-4e55-45d8-b8d7-030719c1f8ad",
+  "prevId": "b00d4bb4-83a0-42da-b6e3-06cc5411c277",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -57783,6 +57783,82 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.product_groups": {
+      "name": "product_groups",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "option": {
+          "name": "option",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "product_groups_store_id_stores_id_fk": {
+          "name": "product_groups_store_id_stores_id_fk",
+          "tableFrom": "product_groups",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "product_groups_store_id_key": {
+          "name": "product_groups_store_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "product_groups_option": {
+          "name": "product_groups_option",
+          "value": "jsonb_typeof(\"commerce\".\"product_groups\".\"option\") = 'object' and length(\"commerce\".\"product_groups\".\"option\"::text) <= 2000"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.product_market_texts": {
       "name": "product_market_texts",
       "schema": "commerce",
@@ -59930,6 +60006,32 @@
           "notNull": true,
           "default": false
         },
+        "group_id": {
+          "name": "group_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "group_value": {
+          "name": "group_value",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "group_swatch": {
+          "name": "group_swatch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "group_position": {
+          "name": "group_position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "first_active_at": {
           "name": "first_active_at",
           "type": "timestamp with time zone",
@@ -59963,6 +60065,27 @@
             },
             {
               "expression": "host_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "products_group_idx": {
+          "name": "products_group_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "group_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -60141,6 +60264,22 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
+        "products_group_fk": {
+          "name": "products_group_fk",
+          "tableFrom": "products",
+          "tableTo": "product_groups",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "group_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "products_manufacturer_fk": {
           "name": "products_manufacturer_fk",
           "tableFrom": "products",
@@ -60225,6 +60364,14 @@
       },
       "policies": {},
       "checkConstraints": {
+        "products_group_value": {
+          "name": "products_group_value",
+          "value": "jsonb_typeof(\"commerce\".\"products\".\"group_value\") = 'object' and length(\"commerce\".\"products\".\"group_value\"::text) <= 1000"
+        },
+        "products_group_swatch": {
+          "name": "products_group_swatch",
+          "value": "\"commerce\".\"products\".\"group_swatch\" is null or \"commerce\".\"products\".\"group_swatch\" ~ '^#[0-9a-f]{6}$'"
+        },
         "products_audience": {
           "name": "products_audience",
           "value": "\"commerce\".\"products\".\"audience\" in ('all', 'consumers', 'businesses')"
