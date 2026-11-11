@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."suppliers" ADD COLUMN "return_to" jsonb;

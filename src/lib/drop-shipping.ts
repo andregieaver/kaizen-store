@@ -62,12 +62,36 @@ export const supplierInput = z.object({
   orderLanguage: z.enum(ORDER_LANGUAGES as [DocumentLanguage, ...DocumentLanguage[]]).default("en"),
   dispatchDays: z.coerce.number().int("Whole days.").min(1, "Between 1 and 30 days.").max(30, "Between 1 and 30 days.").default(2),
   orderMethod: z.enum(ORDER_METHODS).default("email"),
-  returnAddress: trimmed(500, "A return address is at most 500 characters.").default(""),
+  /** Where returns of its goods go (D562): all five parts, so a carrier can make the label, or none for the store's own address. */
+  returnName: trimmed(120, "A name is at most 120 characters.").default(""),
+  returnStreet: trimmed(200, "A street is at most 200 characters.").default(""),
+  returnPostalCode: trimmed(20, "A postal code is at most 20 characters.").default(""),
+  returnCity: trimmed(100, "A city is at most 100 characters.").default(""),
+  returnCountry: z.string().trim().toUpperCase().default(""),
   orderNote: trimmed(500, "A note is at most 500 characters.").default(""),
   /** Its stock is kept topped up (D553): for a supplier that always has the goods. */
   alwaysAvailable: z.union([z.boolean(), z.literal("on"), z.literal("")]).transform((v) => v === true || v === "on").default(false),
-});
+})
+  .superRefine((v, ctx) => {
+    const parts = [v.returnName, v.returnStreet, v.returnPostalCode, v.returnCity, v.returnCountry];
+    if (parts.every((p) => p === "")) return;
+    if (parts.some((p) => p === "")) ctx.addIssue({ code: "custom", path: ["returnStreet"], message: "Fill in the whole return address, or leave all of it empty." });
+    else if (!isCountryCode(v.returnCountry)) ctx.addIssue({ code: "custom", path: ["returnCountry"], message: "Choose the return address's country." });
+  })
+  .transform(({ returnName, returnStreet, returnPostalCode, returnCity, returnCountry, ...rest }) => ({
+    ...rest,
+    returnTo: returnStreet ? { name: returnName, street: returnStreet, postalCode: returnPostalCode, city: returnCity, country: returnCountry } : null,
+  }));
 export type SupplierInput = z.infer<typeof supplierInput>;
+
+/** A supplier's return address as kept (D562), or null unless every part is there. */
+export function readReturnTo(value: unknown): { name: string; street: string; postalCode: string; city: string; country: string } | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  const text = (key: string) => (typeof v[key] === "string" ? (v[key] as string).trim() : "");
+  const out = { name: text("name"), street: text("street"), postalCode: text("postalCode"), city: text("city"), country: text("country").toUpperCase() };
+  return Object.values(out).every((p) => p !== "") ? out : null;
+}
 
 /** The supplier location's name: the supplier's, cut to the 60 characters a location name may have. */
 export const supplierLocationName = (name: string): string => name.trim().replace(/\s+/g, " ").slice(0, 60);

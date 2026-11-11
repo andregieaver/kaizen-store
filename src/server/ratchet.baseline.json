@@ -436,7 +436,7 @@
     "src/server/wishlist-admin.ts": 7,
     "src/server/wishlists.ts": 18,
     "src/server/withdraw-link.ts": 3,
-    "src/server/withdrawals.ts": 26,
+    "src/server/withdrawals.ts": 25,
     "src/server/wordpress-shop.ts": 3,
     "src/server/wordpress.ts": 10,
     "src/server/work-attention.ts": 3,

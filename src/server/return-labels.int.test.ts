@@ -177,6 +177,23 @@ describe("booking a return label (6.2 criterion 1)", () => {
     expect(events.length).toBe(1);
   });
 
+  it("books to the return's own address when it has one: a drop-shipping supplier's (D562), else the store's return address", async () => {
+    const store = await labelStore("lbl-supplier");
+    const order = await paidOrder(store, [["DEMO-THERMOS", 1]]);
+    const returnId = await voluntaryReturn(store, order);
+    const supplier = { name: "Nordic Wool Retur", street: "Lagervegen 9", postalCode: "2000", city: "Lillestrøm", country: "NO" };
+    await db().execute(sql`update commerce.returns set return_address = ${JSON.stringify(supplier)}::jsonb where id = ${returnId}::uuid`);
+    const done = await labels.bookReturnLabel(store.storeId, returnId, {}, staffActor(store.accountId));
+    if (!done.ok) throw new Error(JSON.stringify(done));
+    expect(carrier.booked.at(-1)).toMatchObject({ to: supplier });
+    // Half an address on the return (the old free-text kind) is never sent to a carrier: the store's whole one is.
+    const other = await voluntaryReturn(store, await paidOrder(store, [["DEMO-THERMOS", 1]]));
+    await db().execute(sql`update commerce.returns set return_address = ${JSON.stringify({ name: "", street: "Somewhere", postalCode: "", city: "", country: "" })}::jsonb where id = ${other}::uuid`);
+    const again = await labels.bookReturnLabel(store.storeId, other, {}, staffActor(store.accountId));
+    if (!again.ok) throw new Error(JSON.stringify(again));
+    expect(carrier.booked.at(-1)).toMatchObject({ to: { name: "Lager AS", street: "Lagerveien 2" } });
+  });
+
   it("books a withdrawal return's label in the five-minute job when the owner turned automatic labels on, never in the confirmation", async () => {
     const store = await labelStore("lbl-auto", { auto: true });
     const order = await paidOrder(store, [["DEMO-MUG-WHITE", 1]]);

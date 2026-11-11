@@ -8,6 +8,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { registerWithdrawal as registerSchema, returnRequest, withdrawalConfirm, withdrawalStart } from "@/lib/return-input";
 import { noonOf, dayIn } from "@/lib/work-dates";
+import { readReturnTo } from "@/lib/drop-shipping";
 import { refundDeadline, sendBackDay, serviceShare } from "@/lib/withdrawal";
 import {
   declaredProblems,
@@ -28,6 +29,7 @@ import { refreshFulfilment } from "./fulfilment";
 import { cancelEditsForWithdrawal, closeEditSessionsAfterWithdrawal } from "./order-edits";
 import { NOTHING_SENT_SQL } from "./return-sql";
 import { log } from "./log";
+import { col, typedRows } from "./typed-rows";
 import { sendBookingStaffChange } from "./shopper-emails";
 import { normaliseEmail } from "@/lib/email-address";
 
@@ -983,22 +985,26 @@ export async function startReturnRequest(storeId: string, input: unknown, option
 const jsonOrNull = (value: unknown): string | null => (value ? JSON.stringify(value) : null);
 
 /**
- * Drop shipping (D550, `docs/drop-shipping.md` 6): where a return goes when every line returned was sent by one supplier that gave a return
- * address: that supplier's, as it wrote it. Otherwise null, and the store's own (its return settings, else its postal address) is used.
+ * Drop shipping (D550, D562, `docs/drop-shipping.md` 6): where a return goes when every line returned was sent by one supplier that gave a return
+ * address: that supplier's, in its parts, so a return label is booked to it. Otherwise null, and the store's own (its return settings, else its postal
+ * address) is used.
  */
 export async function supplierReturnAddress(tx: Tx, storeId: string, orderLineIds: readonly string[]): Promise<ReturnAddress | null> {
   const ids = [...new Set(orderLineIds)].filter((id) => /^[0-9a-f-]{36}$/i.test(id));
   if (ids.length === 0) return null;
-  const rows = await tx.execute<Row>(sql`
-    select l.order_line_id, s.id as supplier_id, s.return_address
-    from commerce.supplier_order_lines l
-    join commerce.supplier_orders so on so.store_id = l.store_id and so.id = l.supplier_order_id and so.state <> 'cancelled'
-    join commerce.suppliers s on s.store_id = so.store_id and s.id = so.supplier_id
-    where l.store_id = ${storeId}::uuid and l.order_line_id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
-  `);
-  const lines = new Set(rows.map((r) => String(r.order_line_id)));
-  const suppliers = new Set(rows.map((r) => String(r.supplier_id)));
-  const text = String(rows[0]?.return_address ?? "").trim();
-  if (ids.some((id) => !lines.has(id)) || suppliers.size !== 1 || !text) return null;
-  return { name: "", street: text, postalCode: "", city: "", country: "" };
+  const rows = await typedRows(
+    z.object({ order_line_id: col.uuid, supplier_id: col.uuid, return_to: z.unknown() }),
+    sql`
+      select l.order_line_id, s.id as supplier_id, s.return_to
+      from commerce.supplier_order_lines l
+      join commerce.supplier_orders so on so.store_id = l.store_id and so.id = l.supplier_order_id and so.state <> 'cancelled'
+      join commerce.suppliers s on s.store_id = so.store_id and s.id = so.supplier_id
+      where l.store_id = ${storeId}::uuid and l.order_line_id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
+    `,
+    tx,
+  );
+  const lines = new Set(rows.map((r) => r.order_line_id));
+  const suppliers = new Set(rows.map((r) => r.supplier_id));
+  if (ids.some((id) => !lines.has(id)) || suppliers.size !== 1) return null;
+  return readReturnTo(rows[0].return_to);
 }

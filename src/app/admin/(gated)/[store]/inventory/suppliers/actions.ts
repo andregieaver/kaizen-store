@@ -22,7 +22,11 @@ export type SupplierForm = {
   orderLanguage: string;
   dispatchDays: string;
   orderMethod: string;
-  returnAddress: string;
+  returnName: string;
+  returnStreet: string;
+  returnPostalCode: string;
+  returnCity: string;
+  returnCountry: string;
   orderNote: string;
   alwaysAvailable: boolean;
 };

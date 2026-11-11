@@ -135,7 +135,11 @@ async function Body({ storeSlug, id, search, added, month, back }: { storeSlug: 
               orderLanguage: supplier.orderLanguage,
               dispatchDays: String(supplier.dispatchDays),
               orderMethod: supplier.orderMethod,
-              returnAddress: supplier.returnAddress,
+              returnName: supplier.returnTo?.name ?? "",
+              returnStreet: supplier.returnTo?.street ?? "",
+              returnPostalCode: supplier.returnTo?.postalCode ?? "",
+              returnCity: supplier.returnTo?.city ?? "",
+              returnCountry: supplier.returnTo?.country ?? "",
               orderNote: supplier.orderNote,
               alwaysAvailable: supplier.alwaysAvailable,
             }}

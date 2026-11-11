@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { readReturnTo } from "@/lib/drop-shipping";
 import { isReturnService, returnServiceFor } from "@/lib/return-services";
 import { LABEL_FETCHES_PER_HOUR, LABEL_TRIES, LABEL_TRY_AFTER_MINUTES } from "@/lib/exchange-limits";
 import { addressComplete, labelBlock, labelCostIn, LABEL_PROBLEMS, type LabelAddress, type LabelProblemCode } from "@/lib/return-label";
@@ -91,7 +92,9 @@ async function load(storeId: string, returnId: string): Promise<Loaded | null> {
   `);
   if (!ret) return null;
   const [settings, carrier, store] = await Promise.all([getReturnSettings(storeId), chosenCarrier(storeId), storeById(storeId)]);
-  const returnAddress = settings.returnAddress;
+  // The return's own address first (D562): the one the shopper was told, a supplier's when it alone sent every line returned (drop shipping), or
+  // one staff gave the return; the store's return address when the return's is not whole.
+  const returnAddress = readReturnTo(ret.return_address) ?? settings.returnAddress;
   const to: ShippingAddress | null =
     returnAddress && addressComplete(returnAddress)
       ? {

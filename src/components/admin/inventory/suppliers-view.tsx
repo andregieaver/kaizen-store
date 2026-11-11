@@ -21,12 +21,16 @@ export type SupplierFormValues = {
   orderLanguage: string;
   dispatchDays: string;
   orderMethod: string;
-  returnAddress: string;
+  returnName: string;
+  returnStreet: string;
+  returnPostalCode: string;
+  returnCity: string;
+  returnCountry: string;
   orderNote: string;
   alwaysAvailable: boolean;
 };
 
-const BLANK: SupplierFormValues = { name: "", orderEmail: "", shipsFrom: "", orderLanguage: "en", dispatchDays: "2", orderMethod: "email", returnAddress: "", orderNote: "", alwaysAvailable: false };
+const BLANK: SupplierFormValues = { name: "", orderEmail: "", shipsFrom: "", orderLanguage: "en", dispatchDays: "2", orderMethod: "email", returnName: "", returnStreet: "", returnPostalCode: "", returnCity: "", returnCountry: "", orderNote: "", alwaysAvailable: false };
 
 function Message({ message }: { message: { tone: "ok" | "problem"; text: string } | null }) {
   return (
@@ -166,15 +170,49 @@ export function SupplierFormCard({
             </label>
             <input id={`${prefix}-note`} maxLength={500} value={values.orderNote} onChange={set("orderNote")} placeholder={w.notePlaceholder} className={field} />
           </div>
-          <div className="flex flex-col gap-1 sm:col-span-3">
-            <label htmlFor={`${prefix}-return`} className={label}>
-              {w.returnAddress}
-            </label>
-            <textarea id={`${prefix}-return`} rows={3} maxLength={500} value={values.returnAddress} onChange={set("returnAddress")} className={`${field} py-2`} aria-describedby={`${prefix}-return-hint`} />
-            <p id={`${prefix}-return-hint`} className={hint}>
+          <fieldset className="grid gap-3 sm:col-span-3 sm:grid-cols-2" aria-describedby={`${prefix}-return-hint`}>
+            <legend className={label}>{w.returnAddress}</legend>
+            <p id={`${prefix}-return-hint`} className={`${hint} sm:col-span-2`}>
               {w.returnHint}
             </p>
-          </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor={`${prefix}-return-name`} className={label}>
+                {w.returnName}
+              </label>
+              <input id={`${prefix}-return-name`} maxLength={120} value={values.returnName} onChange={set("returnName")} className={field} autoComplete="off" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor={`${prefix}-return-street`} className={label}>
+                {w.returnStreet}
+              </label>
+              <input id={`${prefix}-return-street`} maxLength={200} value={values.returnStreet} onChange={set("returnStreet")} className={field} autoComplete="off" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor={`${prefix}-return-postal`} className={label}>
+                {w.returnPostalCode}
+              </label>
+              <input id={`${prefix}-return-postal`} maxLength={20} value={values.returnPostalCode} onChange={set("returnPostalCode")} className={field} autoComplete="off" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor={`${prefix}-return-city`} className={label}>
+                {w.returnCity}
+              </label>
+              <input id={`${prefix}-return-city`} maxLength={100} value={values.returnCity} onChange={set("returnCity")} className={field} autoComplete="off" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor={`${prefix}-return-country`} className={label}>
+                {w.returnCountry}
+              </label>
+              <select id={`${prefix}-return-country`} value={values.returnCountry} onChange={set("returnCountry")} className={field}>
+                <option value="">{w.returnCountryNone}</option>
+                {countries.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </fieldset>
         </div>
       )}
       <div className="flex flex-wrap items-center gap-3">

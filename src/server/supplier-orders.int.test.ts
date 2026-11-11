@@ -127,8 +127,12 @@ describe("supplier orders (D551, step 2)", () => {
     const tote = String(lines.find((l) => l.sku === "DEMO-TOTE")!.id);
     const within = (ids: string[]) => db().transaction((tx) => supplierReturnAddress(tx, store.storeId, ids));
     expect(await within([mug])).toBeNull(); // no return address given yet
-    await db().execute(sql`update commerce.suppliers set return_address = 'Nordic Wool Retur\nLagervej 2\n8000 Aarhus\nDanmark' where id = ${supplierId}::uuid`);
-    expect(await within([mug])).toEqual({ name: "", street: "Nordic Wool Retur\nLagervej 2\n8000 Aarhus\nDanmark", postalCode: "", city: "", country: "" });
+    // Saved through the form, in its parts (D562): half an address is refused, a whole one kept.
+    const form = { name: "Nordic Wool", orderEmail: "orders@nordicwool.example", shipsFrom: "DK", orderLanguage: "da", orderNote: "Send uden eget logo." };
+    expect(await saveDropShipSupplier(store.member, { ...form, returnStreet: "Lagervej 2" }, supplierId)).toMatchObject({ ok: false, problem: "Fill in the whole return address, or leave all of it empty." });
+    const whole = { returnName: "Nordic Wool Retur", returnStreet: "Lagervej 2", returnPostalCode: "8000", returnCity: "Aarhus", returnCountry: "dk" };
+    expect(await saveDropShipSupplier(store.member, { ...form, ...whole }, supplierId)).toMatchObject({ ok: true });
+    expect(await within([mug])).toEqual({ name: "Nordic Wool Retur", street: "Lagervej 2", postalCode: "8000", city: "Aarhus", country: "DK" });
     expect(await within([mug, tote])).toBeNull();
     expect(await within([tote])).toBeNull();
   });

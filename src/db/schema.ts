@@ -18941,6 +18941,8 @@ export const suppliers = commerce.table(
     orderMethod: text("order_method").notNull().default("email"),
     /** Where its customers' returns go; empty: the store's own address. */
     returnAddress: text("return_address").notNull().default(""),
+    /** Where a return of its goods goes (D562): name, street, postal code, city and country, for a carrier's label; null for the store's own. */
+    returnTo: jsonb("return_to"),
     /** Put on every order it gets, such as "Send without your own branding". */
     orderNote: text("order_note").notNull().default(""),
     /**

@@ -9,12 +9,14 @@ import { db } from "@/db/client";
 import {
   DROP_SHIP_SUPPLIERS_MAX,
   SUPPLIER_PRIORITY_BASE,
+  readReturnTo,
   shipsFromOutsideEu,
   supplierInput,
   supplierLocationName,
   type OrderMethod,
 } from "@/lib/drop-shipping";
 import type { DocumentLanguage } from "@/lib/invoice-text";
+import type { ReturnAddress } from "@/lib/withdrawal";
 import { SUPPLIER_KEY_PREFIX } from "@/lib/supplier-orders";
 import { variantLabel } from "@/lib/product-input";
 
@@ -25,6 +27,8 @@ import { NO_ACCESS, memberCan } from "./permissions";
 import { refreshTag } from "./refresh";
 import { setStockContext } from "./stock-context";
 import { col, typedRow, typedRows } from "./typed-rows";
+
+const jsonOrNull = (value: unknown): string | null => (value ? JSON.stringify(value) : null);
 
 /**
  * Drop shipping (D550, `docs/drop-shipping.md` 3, step 1): suppliers that send the store's goods to its customers. A supplier is a row of
@@ -44,7 +48,8 @@ export type DropShipSupplier = {
   orderLanguage: DocumentLanguage;
   dispatchDays: number;
   orderMethod: OrderMethod;
-  returnAddress: string;
+  /** Where returns of its goods go (D562), or null for the store's own address. */
+  returnTo: ReturnAddress | null;
   orderNote: string;
   locationId: string | null;
   alwaysAvailable: boolean;
@@ -63,7 +68,7 @@ const supplierRow = z.object({
   order_language: z.enum(["nb", "sv", "da", "en"]),
   dispatch_days: col.int,
   order_method: z.enum(["email", "connected", "file"]),
-  return_address: col.text,
+  return_to: z.unknown(),
   order_note: col.text,
   location_id: col.textOrNull,
   always_available: col.bool,
@@ -81,7 +86,7 @@ const toSupplier = (r: z.output<typeof supplierRow>): DropShipSupplier => ({
   orderLanguage: r.order_language,
   dispatchDays: r.dispatch_days,
   orderMethod: r.order_method,
-  returnAddress: r.return_address,
+  returnTo: readReturnTo(r.return_to),
   orderNote: r.order_note,
   locationId: r.location_id,
   alwaysAvailable: r.always_available,
@@ -91,7 +96,7 @@ const toSupplier = (r: z.output<typeof supplierRow>): DropShipSupplier => ({
 });
 
 const SUPPLIER_SELECT = (storeId: string) => sql`
-  select s.id, s.name, s.order_email, s.ships_from, s.order_language, s.dispatch_days, s.order_method, s.return_address, s.order_note,
+  select s.id, s.name, s.order_email, s.ships_from, s.order_language, s.dispatch_days, s.order_method, s.return_to, s.order_note,
          loc.id::text as location_id, s.always_available, s.api_key_hint,
          (select count(*)::int from commerce.product_variants v where v.store_id = s.store_id and v.supplier_id = s.id) as variants,
          coalesce((select sum(greatest(l.on_hand, 0))::int from commerce.inventory_levels l where l.store_id = s.store_id and l.location_id = loc.id), 0) as units
@@ -143,7 +148,7 @@ export async function saveDropShipSupplier(member: Membership, raw: unknown, id:
           z.object({ id: col.uuid }),
           sql`update commerce.suppliers set name = ${name}, order_email = ${input.orderEmail}, ships_from = ${input.shipsFrom},
                 order_language = ${input.orderLanguage}, dispatch_days = ${input.dispatchDays}, order_method = ${input.orderMethod},
-                return_address = ${input.returnAddress}, order_note = ${input.orderNote}, always_available = ${input.alwaysAvailable}, updated_at = now()
+                return_to = ${jsonOrNull(input.returnTo)}::jsonb, order_note = ${input.orderNote}, always_available = ${input.alwaysAvailable}, updated_at = now()
               where store_id = ${storeId}::uuid and id = ${id}::uuid and drop_ships
               returning id`,
           tx,
@@ -164,11 +169,11 @@ export async function saveDropShipSupplier(member: Membership, raw: unknown, id:
           existing
             ? sql`update commerce.suppliers set drop_ships = true, order_email = ${input.orderEmail}, ships_from = ${input.shipsFrom},
                     order_language = ${input.orderLanguage}, dispatch_days = ${input.dispatchDays}, order_method = ${input.orderMethod},
-                    return_address = ${input.returnAddress}, order_note = ${input.orderNote}, always_available = ${input.alwaysAvailable}, updated_at = now()
+                    return_to = ${jsonOrNull(input.returnTo)}::jsonb, order_note = ${input.orderNote}, always_available = ${input.alwaysAvailable}, updated_at = now()
                   where store_id = ${storeId}::uuid and id = ${existing.id}::uuid returning id`
-            : sql`insert into commerce.suppliers (store_id, name, drop_ships, order_email, ships_from, order_language, dispatch_days, order_method, return_address, order_note, always_available)
+            : sql`insert into commerce.suppliers (store_id, name, drop_ships, order_email, ships_from, order_language, dispatch_days, order_method, return_to, order_note, always_available)
                   values (${storeId}::uuid, ${name}, true, ${input.orderEmail}, ${input.shipsFrom}, ${input.orderLanguage}, ${input.dispatchDays},
-                          ${input.orderMethod}, ${input.returnAddress}, ${input.orderNote}, ${input.alwaysAvailable})
+                          ${input.orderMethod}, ${jsonOrNull(input.returnTo)}::jsonb, ${input.orderNote}, ${input.alwaysAvailable})
                   returning id`,
           tx,
         );
