@@ -230,6 +230,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["green claims", "greenwashing", "eco-friendly", "sustainable", "climate neutral", "ecgt", "miljøpåstander", "grønnvasking", "miljøvennlig", "bærekraftig"],
     feature: "shop",
   }),
+  store("products.passport", "/products/[productId]/passport", "Product passport", "Main", "A product's Digital Product Passport: its materials with their recycled share, care, repair and spare parts, end of life, origin, substances of concern, durability, certifications, carbon footprint and documents, saved as a draft or published at a lasting address, with the QR code to print on the product. The identifiers, manufacturer and responsible person come from the product.", {
+    tasks: ["Make a product passport", "Get the QR code for a product's passport", "Publish a product passport"],
+    keywords: ["digital product passport", "dpp", "espr", "product passport", "qr code", "materials", "recycled", "repair", "produktpass"],
+    feature: "shop",
+  }),
   store("products.import", "/products/import", "Import products", "Main", "Brings products in from a CSV file: Kaizena Flow's own file or a Shopify product file. Upload the file, choose what the import does, check it (a dry run that lists every row's problem and changes nothing), then import. Never deletes a product or changes an address. Needs the right to change products.", {
     tasks: ["Upload a product file", "Import a Shopify product file", "Continue an open import", "See the recent imports"],
     keywords: ["import products", "csv", "upload products", "shopify", "migrate", "bulk add", "product file", "importer produkter"],

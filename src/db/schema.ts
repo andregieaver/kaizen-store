@@ -3141,6 +3141,34 @@ export const productVariants = commerce.table(
   ],
 );
 
+/**
+ * A product's Digital Product Passport (D554, ESPR, Regulation (EU) 2024/1781): what the product is made of, where, how to care for, repair and
+ * recycle it, its certifications and documents, kept as data checked by `passportInput` (`src/lib/product-passport.ts`). Published, it is read by
+ * anyone at a stable address (`/passport/{id}`, and as JSON) that the QR code on the product points to; the id never changes. Written only by
+ * `src/server/product-passports.ts`.
+ */
+export const productPassports = commerce.table(
+  "product_passports",
+  {
+    id: uuid("id").notNull().defaultRandom(),
+    storeId: storeId(),
+    productId: uuid("product_id").notNull(),
+    data: jsonb("data").notNull().default({}),
+    /** Null: a draft only the store's staff see. */
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.productId] }),
+    uniqueIndex("product_passports_id_key").on(t.id),
+    productRef("product_passports_product_fk", t),
+    index("product_passports_updated_by_idx").on(t.updatedBy),
+    check("product_passports_data", sql`jsonb_typeof(${t.data}) = 'object' and pg_column_size(${t.data}) < 65536`),
+  ],
+);
+
 const variantRef = (
   name: string,
   cols: { storeId: AnyPgColumn; variantId: AnyPgColumn },

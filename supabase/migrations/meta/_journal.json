@@ -5447,6 +5447,13 @@
       "when": 1794356715708,
       "tag": "20261111002515_supplier_api",
       "breakpoints": true
+    },
+    {
+      "idx": 778,
+      "version": "7",
+      "when": 1794358368704,
+      "tag": "20261111005248_product_passports",
+      "breakpoints": true
     }
   ]
 }

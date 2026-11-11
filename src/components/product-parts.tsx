@@ -17,6 +17,8 @@ import { ProductGrid } from "@/components/product-listing";
 import { PlanAmount, PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { RangePicker } from "@/components/range-picker";
 import { VariantChoice, VariantPurchase } from "@/components/variant-choice";
+import { passportPath } from "@/lib/product-passport";
+import { siteUrl } from "@/lib/site";
 import { OPTIONS_FROM } from "@/lib/variant-options";
 import type { ShopTrack } from "@/components/shop-track";
 import { toolCategories } from "@/lib/cookie-consent";
@@ -334,6 +336,13 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
         <section aria-labelledby={labelledBy} className="text-sm">
           {heading(m.safety)}
           {product.safetyInformation && <p className="mb-3">{product.safetyInformation}</p>}
+          {product.passportId && (
+            <p className="mb-3">
+              <a href={`${siteUrl()}${passportPath(product.passportId)}`} className="underline underline-offset-2">
+                {m.productPassport}
+              </a>
+            </p>
+          )}
           <dl className="grid gap-3">
             {product.manufacturer && <Operator label={m.manufacturer} operator={product.manufacturer} />}
             {product.responsiblePerson && <Operator label={m.euResponsiblePerson} operator={product.responsiblePerson} />}
@@ -607,7 +616,7 @@ async function GiftCardPurchase({ store, product, market, m }: { store: Store; p
 
 /** Whether the product safety part has anything to say: safety words, an operator, or a producer registration number to show (D342). */
 const safetyShows = (product: ProductDetail): boolean =>
-  Boolean(product.safetyInformation || product.manufacturer || product.responsiblePerson) || product.producerNumbers.length > 0;
+  Boolean(product.safetyInformation || product.manufacturer || product.responsiblePerson || product.passportId) || product.producerNumbers.length > 0;
 
 /** The line on the right of withdrawal: none for ordinary goods, which can be sent back. */
 function withdrawalText(product: ProductDetail, m: Messages): string | null {

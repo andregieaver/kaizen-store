@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { greenClaimsIn, textOfContent, type GreenFinding } from "@/lib/green-claims";
+import { readPassport } from "@/lib/product-passport";
 
 import { col, typedRows } from "./typed-rows";
 
@@ -31,7 +32,7 @@ const PRODUCT_FIELDS = [
 ] as const;
 
 export async function greenClaimsReport(storeId: string, limit = 300): Promise<{ places: GreenClaimPlace[]; claims: number }> {
-  const [products, pages] = await Promise.all([
+  const [products, pages, passports] = await Promise.all([
     typedRows(
       z.object({
         id: col.uuid,
@@ -52,6 +53,12 @@ export async function greenClaimsReport(storeId: string, limit = 300): Promise<{
       z.object({ id: col.uuid, type: col.text, published: z.unknown() }),
       sql`select id, type, published from commerce.pages where store_id = ${storeId}::uuid and published is not null order by created_at, id`,
     ),
+    // Published product passports (D554): their care, repair and end-of-life words are claims about the product too.
+    typedRows(
+      z.object({ product_id: col.uuid, title: col.textOrNull, data: z.unknown() }),
+      sql`select pp.product_id, (select t.title from commerce.product_translations t where t.store_id = pp.store_id and t.product_id = pp.product_id order by t.locale limit 1) as title, pp.data
+          from commerce.product_passports pp where pp.store_id = ${storeId}::uuid and pp.published_at is not null order by pp.created_at`,
+    ),
   ]);
   const places: GreenClaimPlace[] = [];
   let claims = 0;
@@ -69,6 +76,10 @@ export async function greenClaimsReport(storeId: string, limit = 300): Promise<{
     const published = (page.published ?? {}) as Record<string, unknown>;
     const title = typeof published.title === "string" ? published.title : "";
     push({ kind: page.type === "article" ? "article" : "page", id: page.id, title, where: "", findings: greenClaimsIn(textOfContent(published)) });
+  }
+  for (const passport of passports) {
+    const d = readPassport(passport.data);
+    push({ kind: "product", id: passport.product_id, title: passport.title ?? "", where: "passport", findings: greenClaimsIn([d.care, d.repair, d.endOfLife, d.substances].filter(Boolean).join("\n")) });
   }
   return { places, claims };
 }

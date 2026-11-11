@@ -350,6 +350,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   stock_transfer_lines: never("The lines of the original's stock transfers (D383)."),
   purchase_orders: never("What the original bought from its suppliers (D383): its own records, never a copy's."),
   purchase_order_lines: never("The lines of the original's purchase orders (D383)."),
+  product_passports: never("A product's passport (D554) has its own lasting address printed on the original's products; a copy's products make their own."),
   supplier_orders: never("What the original's drop-shipping suppliers were asked to send (D551): its own orders' records; suppliers are never copied."),
   supplier_order_lines: never("The lines of the original's supplier orders (D551)."),
   variant_cost_history: never("The history of the original's costs (D383); a copy's variants carry their cost and start their own history."),

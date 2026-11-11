@@ -195,6 +195,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Inventory (wave 3, D172, `docs/wave-3-inventory.md`)
 - Drop shipping (D550, D482, `docs/drop-shipping.md`, `src/lib/drop-shipping.ts`, `src/server/suppliers.ts`)
 - Environmental claims (D552, `src/lib/green-claims.ts`, `src/server/green-claims.ts`, `/admin/{store}/products/claims`)
+- Digital Product Passports (D554, `src/lib/product-passport.ts`, `src/server/product-passports.ts`, `/passport/{id}`)
 - Orders: list, tags, archive, drafts, gift (wave 3, D173, `docs/wave-3-orders.md`)
 - Request a quote and price on request (D431, `src/lib/quotes.ts`, `src/server/quote-requests.ts`, `src/lib/product-question.ts`, `src/server/product-questions.ts`)
 - Fulfilment and order editing (wave 3, D174, `docs/wave-3-fulfilment.md`)

@@ -1,6 +1,6 @@
 {
-  "id": "25c1659a-9ce1-4f01-aef1-1932e38586b6",
-  "prevId": "dd7f7f3c-9441-40f3-9718-73c1b9d5e223",
+  "id": "e4f51861-515e-4ace-8d98-d79738802592",
+  "prevId": "25c1659a-9ce1-4f01-aef1-1932e38586b6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -57264,6 +57264,146 @@
         "product_media_kind": {
           "name": "product_media_kind",
           "value": "case \"commerce\".\"product_media\".\"kind\"\n        when 'image' then \"commerce\".\"product_media\".\"source\" is null and \"commerce\".\"product_media\".\"media_url\" is null\n        when 'video' then \"commerce\".\"product_media\".\"source\" in ('upload', 'youtube', 'vimeo') and \"commerce\".\"product_media\".\"media_url\" is not null\n        when 'model' then \"commerce\".\"product_media\".\"source\" is null and \"commerce\".\"product_media\".\"media_url\" is not null\n        else false end"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.product_passports": {
+      "name": "product_passports",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "product_passports_id_key": {
+          "name": "product_passports_id_key",
+          "columns": [
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "product_passports_updated_by_idx": {
+          "name": "product_passports_updated_by_idx",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "product_passports_updated_by_accounts_id_fk": {
+          "name": "product_passports_updated_by_accounts_id_fk",
+          "tableFrom": "product_passports",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "product_passports_product_fk": {
+          "name": "product_passports_product_fk",
+          "tableFrom": "product_passports",
+          "tableTo": "products",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "product_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "product_passports_store_id_product_id_pk": {
+          "name": "product_passports_store_id_product_id_pk",
+          "columns": [
+            "store_id",
+            "product_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "product_passports_data": {
+          "name": "product_passports_data",
+          "value": "jsonb_typeof(\"commerce\".\"product_passports\".\"data\") = 'object' and pg_column_size(\"commerce\".\"product_passports\".\"data\") < 65536"
         }
       },
       "isRLSEnabled": false

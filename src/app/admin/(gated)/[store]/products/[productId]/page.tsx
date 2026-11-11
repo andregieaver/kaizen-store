@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -44,6 +45,11 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
       <AdminTextScope texts={adminTexts(lang, ["product", "products", "fields", "builder", "website"])}>
         <ProductEditor {...(await editorProps(store, context, lang))} productId={productId} initial={initial} fields={fields} />
       </AdminTextScope>
+      <p className="text-sm">
+        <Link href={`/admin/${store.slug}/products/${productId}/passport`} className="underline underline-offset-2">
+          {adminText(lang, "products").passport.link}
+        </Link>
+      </p>
       <form
         action={archiveProductAction.bind(null, store.slug, productId, !archived)}
         className="border-t border-line pt-4"

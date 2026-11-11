@@ -106,6 +106,8 @@ export type ProductDetail = {
   seoTitle: string;
   seoDescription: string;
   safetyInformation: string;
+  /** Its published Digital Product Passport's id (D554), or null. */
+  passportId?: string | null;
   withdrawalExclusion: string;
   /** In the owner's order; `thumbnailUrl` is the 480 px copy, or the picture itself. */
   /** The gallery in the owner's order (D325): every item's picture, and a video's or 3D model's own file or address. */
@@ -289,7 +291,9 @@ export async function getProduct(storeId: string, market: Market, handle: string
       coalesce(case when tl.product_id is null then tf.seo_description else tl.seo_description end, '') as seo_description,
       mf.name as mf_name, mf.postal_address as mf_postal, mf.electronic_address as mf_electronic,
       rp.name as rp_name, rp.postal_address as rp_postal, rp.electronic_address as rp_electronic,
-      (select h.name from commerce.hosts h where h.store_id = p.store_id and h.id = p.host_id) as host_name
+      (select h.name from commerce.hosts h where h.store_id = p.store_id and h.id = p.host_id) as host_name,
+      -- Its published Digital Product Passport (D554), linked beside the safety details.
+      (select pp.id::text from commerce.product_passports pp where pp.store_id = p.store_id and pp.product_id = p.id and pp.published_at is not null) as passport_id
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
     left join commerce.product_translations tl
@@ -361,6 +365,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     seoTitle: str(product.seo_title),
     seoDescription: str(product.seo_description),
     safetyInformation: str(product.safety_information),
+    passportId: product.passport_id ? str(product.passport_id) : null,
     withdrawalExclusion: str(product.withdrawal_exclusion),
     images: media.map((m) => ({
       url: str(m.url),
