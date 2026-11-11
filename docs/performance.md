@@ -184,7 +184,8 @@ not handed), so the fallback stays whole for now.
 down (`src/components/admin/admin-text-later.ts`); `common` and `signIn`, read outside the admin too, stay at hand. So that no screen waits
 for its words, a part that falls back notes it on the page (`window.__adminTextFallbacks`) and `e2e/signed-in/admin-text-fallbacks.spec.ts`
 visits every admin screen without an id in its address (the store's as its owner, the platform's and the account's as a platform admin)
-and fails on any. Its first run found one more, the platform's docs guide (`website`), now handed down. First scripts, raw:
+and fails on any. Its first runs found the platform's docs guide (`website`) and the content types' new type from a preset and their editors (`builder`,
+`website`), each now handed down; a part that waited there was the early Save of 31 October. First scripts, raw:
 
 | Screen | Before (last measured 4 to 10 November) | After | Budget |
 |---|---:|---:|---:|
@@ -196,4 +197,5 @@ and fails on any. Its first run found one more, the platform's docs guide (`webs
 | A page in the builder | 4.39 MB | 3.34 MB | 3.48 MB |
 | Settings | 2.34 MB | 1.23 MB | 1.28 MB |
 
-Screens with an id in their address (a product, an order) are not visited by the test; they hand down their areas as their lists do.
+Besides every screen without an id in its address, the test follows each screen's links to one screen of each kind behind them (an
+order, a product, a type made from a preset), at most 150 for each person.
