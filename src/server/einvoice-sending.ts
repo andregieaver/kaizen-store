@@ -35,6 +35,8 @@ export const EINVOICES_FROM = "2026-11-07";
 const WINDOW_DAYS = 2;
 const MAX_ATTEMPTS = 6;
 const BATCH = 50;
+/** Batches a run looks at, at most: 20 of up to 50 of each kind of document. */
+const PAGES = 20;
 
 export type DocType = "invoice" | "credit_note" | "work_invoice" | "work_credit_note";
 
@@ -52,7 +54,10 @@ type Candidate = z.infer<typeof candidate>;
 const peppolDocument = (type: DocType): PeppolDocument => (type === "invoice" || type === "work_invoice" ? "invoice" : "credit_note");
 
 /** Documents issued to a business within the window that the job has not looked at yet. */
-async function candidates(since: string): Promise<Candidate[]> {
+async function candidates(since: string, skip: readonly string[]): Promise<Candidate[]> {
+  // Those this run has looked at already: a business with no Peppol number is never recorded (it went by email), so without this it would
+  // keep its place in every batch, and past 50 such documents in the window the newer ones were never looked at.
+  const seen = skip.length > 0 ? sql`array[${sql.join(skip.map((id) => sql`${id}::uuid`), sql`, `)}]::uuid[]` : sql`'{}'::uuid[]`;
   return typedRows(
     candidate,
     sql`
@@ -62,6 +67,7 @@ async function candidates(since: string): Promise<Candidate[]> {
        from commerce.invoices i
        where i.issued_on >= ${since}::date and i.anonymised_at is null and i.snapshot -> 'buyer' ->> 'type' = 'business'
          and not exists (select 1 from commerce.einvoice_sends e where e.store_id = i.store_id and e.document_type = 'invoice' and e.document_id = i.id)
+         and not (i.id = any(${seen}))
        limit ${BATCH})
       union all
       (select 'credit_note', c.store_id, c.id,
@@ -70,18 +76,21 @@ async function candidates(since: string): Promise<Candidate[]> {
        from commerce.credit_notes c
        where c.issued_on >= ${since}::date and c.anonymised_at is null and c.snapshot -> 'buyer' ->> 'type' = 'business'
          and not exists (select 1 from commerce.einvoice_sends e where e.store_id = c.store_id and e.document_type = 'credit_note' and e.document_id = c.id)
+         and not (c.id = any(${seen}))
        limit ${BATCH})
       union all
       (select 'work_invoice', w.store_id, w.id, w.buyer ->> 'country', w.buyer ->> 'organisation_number', w.seller ->> 'country', w.seller ->> 'organisation_number'
        from commerce.work_invoices w
        where w.status <> 'draft' and not w.imported and w.issued_on >= ${since}::date and (w.buyer ->> 'business')::boolean is true
          and not exists (select 1 from commerce.einvoice_sends e where e.store_id = w.store_id and e.document_type = 'work_invoice' and e.document_id = w.id)
+         and not (w.id = any(${seen}))
        limit ${BATCH})
       union all
       (select 'work_credit_note', n.store_id, n.id, n.buyer ->> 'country', n.buyer ->> 'organisation_number', n.seller ->> 'country', n.seller ->> 'organisation_number'
        from commerce.work_credit_notes n
        where n.issued_on >= ${since}::date and (n.buyer ->> 'business')::boolean is true
          and not exists (select 1 from commerce.einvoice_sends e where e.store_id = n.store_id and e.document_type = 'work_credit_note' and e.document_id = n.id)
+         and not (n.id = any(${seen}))
        limit ${BATCH})
     `,
   );
@@ -234,10 +243,17 @@ export async function runEinvoiceSending(
   const from = deps.from ?? EINVOICES_FROM;
   const since = windowStart > from ? windowStart : from;
   const counts: Record<string, number> = { looked: 0, not_valid: 0, not_receiver: 0, waiting: 0, pending: 0, sent: 0, failed: 0, refused: 0, followed: 0 };
-  for (const c of await candidates(since)) {
-    const state = await decide(c, { lookup: deps.lookup, accessPoint, now });
-    counts.looked++;
-    if (state) counts[state] = (counts[state] ?? 0) + 1;
+  // Batch after batch until none is left in the window, each leaving out what this run has looked at (at most `PAGES` batches a run).
+  const looked: string[] = [];
+  for (let page = 0; page < PAGES; page++) {
+    const batch = await candidates(since, looked);
+    if (batch.length === 0) break;
+    for (const c of batch) {
+      looked.push(c.id);
+      const state = await decide(c, { lookup: deps.lookup, accessPoint, now });
+      counts.looked++;
+      if (state) counts[state] = (counts[state] ?? 0) + 1;
+    }
   }
   if (accessPoint) {
     const sent = await sendDue(accessPoint, now);
