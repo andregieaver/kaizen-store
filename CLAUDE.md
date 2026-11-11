@@ -222,6 +222,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - The subscriber list (wave 5 unit A, D295, `docs/wave-5-marketing.md` 3, `src/lib/marketing-consent.ts`, `src/server/marketing-subscribers.ts`)
 - Segments and customer tags (wave 5 unit B, D296, `docs/wave-5-marketing.md` 4, `src/lib/segments.ts`, `src/server/segments.ts`)
 - Broadcasts (wave 5 unit C, D297, `docs/wave-5-marketing.md` 5, `src/lib/broadcasts.ts`, `src/server/broadcasts.ts`)
+- SMS marketing (D565, `docs/sms-marketing.md`, `src/lib/sms.ts`, `src/server/sms.ts`, `/admin/{store}/text-messages`)
 - Marketing email from the store's own facts (wave 8 unit H, D352, `src/server/broadcast-facts.ts`)
 - Email automations (wave 5 unit D, D298, `docs/wave-5-marketing.md` 6, `src/lib/automations.ts`, `src/server/automations.ts`,…
 - Discounts in depth (wave 5 unit E, D299, `docs/wave-5-marketing.md` 7, `src/lib/discounts.ts`, `src/server/discounts.ts`)

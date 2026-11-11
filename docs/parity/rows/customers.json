@@ -355,11 +355,11 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "No SMS channel: no provider, no phone-number consent, no sender id (no SMS code in `src/`). Plan section 5, decision 5 is open: integrate one EU-hosted provider after email broadcasts, which now exist (D297), so the precondition is met. Shopify's own SMS marketing does not reach Norway. Decided on 29 October 2026 (D405): skipped for now, revisited when Nordic shops ask for it (criterion 1's decision recorded).",
+    "gap": "Built (D565, docs/sms-marketing.md): the store's own 46elks account (EU, processing in Sweden), consent of its own at checkout kept once the order is paid with the words, time and order, STOP replies and a stop link in every text, nothing texted to a number without consent (the database refuses it, tested), each text in its reader's hours (the country's zone, 09 to 20 unless narrowed, no Sundays in France), the same segments as email, 46elks's own price before sending and the owner's monthly cap (refused before, stopped during). Partial because it was built from 46elks's documentation and a stand-in, not tried against 46elks itself, public holidays are not known, the consent words need a legal reading, and there are no automations by text yet.",
     "bucket": "C",
     "wave": null,
     "criteria": [
@@ -368,14 +368,31 @@
       "Sends respect quiet hours in the recipient's time zone and the country's sender rules, go through the same segments as email, and show their cost, never above an owner-set cap."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/sms.ts",
+        "src/server/sms.ts",
+        "src/app/admin/(gated)/[store]/text-messages/page.tsx",
+        "src/app/api/sms/[key]/inbound/route.ts",
+        "src/app/sms/[token]/page.tsx"
+      ],
+      "tests": [
+        "src/lib/sms.test.ts",
+        "src/server/sms.int.test.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D405"
+      "D405",
+      "D565"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-11-11",
+        "from": "missing",
+        "to": "partial",
+        "why": "D565 built SMS marketing on the store's own 46elks account; not yet tried against 46elks itself."
+      }
+    ]
   },
   {
     "id": "customers.signup-forms-and-popups-building-a-list",

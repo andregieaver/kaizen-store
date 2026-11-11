@@ -147,6 +147,7 @@ export async function mergeCustomers(member: Membership, keep: string, remove: s
     // The subscriber row of the removed account keeps its address and consent, and is cut loose from the account (the rules allow it here only).
     await tx.execute(sql`select set_config('kaizen.customer_merge', ${remove}, true)`);
     await tx.execute(sql`update commerce.marketing_subscribers set customer_id = null where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);
+    await tx.execute(sql`update commerce.sms_subscribers set customer_id = ${keep}::uuid where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);
     // A copied order is history (D129): it may only lose its account.
     await tx.execute(sql`update commerce.orders set customer_id = null where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid and copied_from is not null`);
     await tx.execute(sql`update commerce.orders set customer_id = ${keep}::uuid where store_id = ${storeId}::uuid and customer_id = ${remove}::uuid`);

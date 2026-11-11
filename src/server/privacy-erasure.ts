@@ -865,6 +865,10 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   await tx.execute(sql`
     delete from commerce.marketing_subscribers where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid)
   `);
+  // Their numbers for marketing texts (D565), with their history and the texts sent to them.
+  await tx.execute(sql`
+    delete from commerce.sms_subscribers where store_id = ${sid}::uuid and (email = any(${addresses}) or customer_id = ${cid}::uuid)
+  `);
 
   // Support conversations of the account (D216): anonymised at once, by the same function as the retention step (an open one is ended first).
   if (cid) {

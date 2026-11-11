@@ -608,6 +608,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["newsletter", "email campaign", "email marketing", "mailing", "send email to customers", "nyhetsbrev"],
     tasks: ["Send a newsletter to everyone who wants my emails", "Email my best customers about the autumn collection"],
   }),
+  store("text-messages", "/text-messages", "Text messages", "Sales", "Text messages (SMS): offers by text to the numbers that asked for them at checkout, everyone or a segment's, each arriving in its reader's daytime and ending with a stop link; a STOP reply stops them too. The store's own 46elks account (connected by the owner), what each text message costs before it is sent and this month's cap, who gets texts, and staff stopping a number.", {
+    keywords: ["sms", "text message", "sms marketing", "texting", "46elks", "mobile marketing", "sms campaign", "tekstmelding"],
+    tasks: ["Send an offer by text message", "Connect an SMS account"],
+  }),
   store("email-automations", "/automations", "Email automations", "Sales", "Email automations: emails that go by themselves once switched on, to the people on the subscriber list who want them, once each: a welcome after they join, a thank-you some days after an order is delivered, a win-back after a time without orders, and back in stock (shoppers ask on a sold-out product and get one email when it is back). Each says how many it sent in the last 30 days.", {
     keywords: ["automation", "flow", "welcome email", "win-back", "winback", "back in stock", "notify me", "restock", "lifecycle email", "velkomstmail"],
     tasks: ["Send a welcome email to new subscribers", "Tell customers when a sold-out product is back"],
@@ -621,6 +625,8 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Show my products on Google Shopping", "Get a catalogue feed for Meta"],
   }),
   store("email-automation", "/automations/[kind]", "Email automation", "Sales", "One email automation: its days, its words per language, a test to yourself, and the switch."),
+  store("text-message.new", "/text-messages/new", "New text message", "Sales", "Writes a new text message: its name, who gets it and its words, with what each reader gets and how many texts it takes."),
+  store("text-message", "/text-messages/[campaignId]", "Text message", "Sales", "One text message: a draft priced by 46elks against the month's cap and sent; once started, how many wait for their readers' daytime, went, arrived, failed or were not sent, and what they cost."),
   store("broadcast.new", "/broadcasts/new", "New broadcast", "Sales", "Writes a new broadcast: its name, who it is for, and per language its subject and what it says."),
   store("broadcast", "/broadcasts/[broadcastId]", "Broadcast", "Sales", "One broadcast: its words, a test to yourself, send now or schedule; once sent, how many it went to, delivered, bounced, unsubscribed and presses on its links."),
   store("segment.new", "/segments/new", "New segment", "Sales", "Makes a segment from a ready one or from rules, with the count as they change."),
@@ -1479,10 +1485,21 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
   return null;
 }
 
+/**
+ * Pages kept out of the AI manager's prompt for one deploy (`docs/ci-migrations.md`, D391): they arrived on main in the same push as a
+ * migration, which deploys only once the agents' eval replay passes, and the replay can only be recorded again on production running the
+ * new prompt. The pages themselves are live; the manager learns of them in the next push, which takes this list out, and the eval is then
+ * recorded again on Platform → AI. Empty but for that.
+ */
+const NOT_YET_IN_PROMPT: ReadonlySet<string> = new Set(["store:text-messages", "store:text-message.new"]);
+
 /** The map as the AI reads it: every page without params, one line each, by group. */
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {
   const pages = pagesFor(area, flags).filter(
-    (page) => pageParams(page).length === 0 && (page.area === area || (page.area === "account" && page.group === "Work")),
+    (page) =>
+      pageParams(page).length === 0 &&
+      (page.area === area || (page.area === "account" && page.group === "Work")) &&
+      !NOT_YET_IN_PROMPT.has(`${page.area}:${page.id}`),
   );
   const groups = new Map<string, AdminPage[]>();
   for (const page of pages) groups.set(page.group, [...(groups.get(page.group) ?? []), page]);

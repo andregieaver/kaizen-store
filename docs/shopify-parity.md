@@ -10,11 +10,11 @@ D152 (the store analytics cockpit) and D153 (the EU withdrawal function and the 
 
 <!-- parity:generated:start since -->
 
-- **Headline now 89.3%** (first report 59.5%), **must-have 90.6%** (first report 69.1%), over 201 core rows (first report 232).
-- Where the change comes from: +29.5 points from the 151 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
+- **Headline now 89.5%** (first report 59.5%), **must-have 90.6%** (first report 69.1%), over 201 core rows (first report 232).
+- Where the change comes from: +29.7 points from the 152 rating moves on core rows recorded below, and +0.3 points because the re-read changed which rows count as core (the tracker has 233 rows, the first report 232 core ones).
 - 230 of 233 rows have their Shopify side read from a page; the others are listed under evidence debt.
 
-Rated higher (149):
+Rated higher (150):
 
 - Admin AI assistant that performs tasks (AI): partial to full. D350: notices for background work that finished or waits (page builds, follow-ups, autopilot questions and finished plans, changes kept for a yes, reports), written once each by the jobs, counted on the launcher and in the account menu, li…
 - Assistant memory and saved skills (AI): partial to full. D350: saved skills: Save as skill in the panel, a Skills tab to list, edit and delete, save_skill and delete_skill, use_skill loading them like the built-ins; owners share with the store; built-in keys, secrets, customers' details and mark…
@@ -88,6 +88,7 @@ Rated higher (149):
 - Customer segments and tags (Customers): missing to partial. D296 (wave 5 unit B): saved rule-based segments over customers and subscribers, counted live with a member list, and customer tags; read segments.ts and ran segments.test.ts, segments.int.test.ts (PGlite and integration, passed).
 - Customer segments and tags (Customers): partial to full. D380: bulk tagging of everyone a list's filter finds, a segment as the audience of a code or campaign (matched for the buyer at the cart and the order, kroner and euro scenario), and RFM types taken from the analytics page's own reader wit…
 - Email marketing: broadcasts and lifecycle automations (Customers): partial to full. D368: broadcast templates, hand-written in four languages, and the store's own saved templates (criterion 2); product blocks were D352.
+- SMS marketing (Customers): missing to partial. D565 built SMS marketing on the store's own 46elks account; not yet tried against 46elks itself.
 - Signup forms and popups building a list (Customers): partial to full. Every criterion holds: a confirmed newsletter sign-up keeps a subscriber with consent words, time, source form, language and confirmation (D295, `forms.ts` → `joinList()`, `marketing-subscribers.int.test.ts`); a form's incentive emails one…
 - Discount codes (Customers): partial to full. All four criteria hold (D299 E1, E2): codes reach products, categories and tags with a minimum number of items, are limited to customer groups or named customers, hand out single-use codes exported as CSV and counted under a row lock, and…
 - Automatic discounts (Customers): partial to full. D299 E3: campaigns of an amount off per market (with an optional threshold), free shipping (with an optional threshold) and tiers by items or spend, held together by `cartSummary()` and `placeOrder()` in NOK and euro scenarios, announced f…
@@ -199,7 +200,7 @@ Rated lower (24):
 
 <!-- parity:generated:start summary -->
 
-Kaizena Flow has **89.3%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 88.8% overall and 90.4% for must-haves. Counting app-only features gives 88.8%; counting Plus-only as well gives 88.5%. Kaizena Flow is strongest on catalogue and products (96.3%) and weakest on platform, extensibility and operations (75.8%), international, compliance and trust (77.7%), orders, shipping, fulfilment and returns (84.0%). Of the 201 core features, 161 are full, 35 partial and 5 missing, so half-built features, not absent ones, are the main shape of the gap.
+Kaizena Flow has **89.5%** weighted parity with what Shopify ships natively on its Basic, Grow and Advanced plans, across 201 core features weighted by importance to an EU small or mid-size merchant, and **90.6%** on the must-haves (the 83 features with weight 4 or 5). The unweighted figures are 89.1% overall and 90.4% for must-haves. Counting app-only features gives 89.0%; counting Plus-only as well gives 88.7%. Kaizena Flow is strongest on catalogue and products (96.3%) and weakest on platform, extensibility and operations (75.8%), international, compliance and trust (77.7%), orders, shipping, fulfilment and returns (84.0%). Of the 201 core features, 161 are full, 36 partial and 4 missing, so half-built features, not absent ones, are the main shape of the gap.
 
 <!-- parity:generated:end summary -->
 
@@ -209,10 +210,10 @@ The method is simple: a full match scores 1, a partial match 0.5, a missing feat
 
 | Measure | Features | Weighted parity | Unweighted parity | Full / partial / missing |
 | --- | --- | --- | --- | --- |
-| Headline: core (Shopify native, Basic to Advanced) | 201 | **89.3%** | 88.8% | 161 / 35 / 5 |
+| Headline: core (Shopify native, Basic to Advanced) | 201 | **89.5%** | 89.1% | 161 / 36 / 4 |
 | Must-have (core, weight 4 or 5) | 83 | **90.6%** | 90.4% | 67 / 16 / 0 |
-| Core plus app-only features | 227 | 88.8% | 88.5% | 180 / 42 / 5 |
-| Everything, including Plus-only | 233 | 88.5% | 87.8% | 183 / 43 / 7 |
+| Core plus app-only features | 227 | 89.0% | 88.8% | 180 / 43 / 4 |
+| Everything, including Plus-only | 233 | 88.7% | 88.0% | 183 / 44 / 6 |
 
 <!-- parity:generated:end headline -->
 
@@ -228,12 +229,12 @@ Counts are core features only. Weighted parity uses weights 1 to 5; must-have is
 | Storefront, themes and content | 32 | 29 | 3 | 0 | 96.3% | 15 | 100.0% |
 | Checkout and payments | 17 | 12 | 5 | 0 | 84.2% | 8 | 81.4% |
 | Orders, shipping, fulfilment and returns | 28 | 18 | 10 | 0 | 84.0% | 14 | 90.2% |
-| Customers, marketing and loyalty | 17 | 15 | 1 | 1 | 94.1% | 8 | 100.0% |
+| Customers, marketing and loyalty | 17 | 15 | 2 | 0 | 95.8% | 8 | 100.0% |
 | Analytics, reporting and finance | 24 | 22 | 1 | 1 | 95.5% | 11 | 94.6% |
 | International, compliance and trust | 16 | 10 | 6 | 0 | 77.7% | 10 | 70.2% |
 | Platform, extensibility and operations | 20 | 12 | 5 | 3 | 75.8% | 7 | 79.3% |
 | AI and automation | 21 | 19 | 2 | 0 | 94.4% | 2 | 100.0% |
-| **Total** | **201** | **161** | **35** | **5** | **89.3%** | **83** | **90.6%** |
+| **Total** | **201** | **161** | **36** | **4** | **89.5%** | **83** | **90.6%** |
 
 <!-- parity:generated:end domains -->
 
@@ -256,7 +257,7 @@ Untested Full rows: `ai.assistant-voice-mode`, `customers.abandoned-checkout-rec
 | --- | --- | ---: | ---: | ---: |
 | A | Build in-house | 15 | 11 | 2.9 |
 | B | Build, live only with a third party | 14 | 11 | 2.8 |
-| C | Strategy decision first | 7 | 6 | 1.6 |
+| C | Strategy decision first | 7 | 6 | 1.4 |
 | D | Not reachable by code | 14 | 12 | 3.4 |
 
 <!-- parity:generated:end evidence -->
@@ -267,21 +268,21 @@ The waves are those of `docs/parity-plan.md` section 3. This table is produced f
 
 <!-- parity:generated:start projection -->
 
-Now: **89.3%** core, 90.6% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 18 rows (13 core) have no wave yet and are not in them.
+Now: **89.5%** core, 90.6% must-have. The projections are what the score would be if the rows planned for those waves became Full: they are a plan's arithmetic, not a forecast. 18 rows (13 core) have no wave yet and are not in them.
 
 | Wave | Scope | Rows (core) | Core if every row of waves 1 to N is Full | Must-have | Adds (points) | Core if only bucket A rows are | Must-have |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | Compliance and money | 10 (7) | 91.4% | 94.1% | +2.1 | 90.8% | 93.0% |
-| 2 | Data in and out | 1 (0) | 91.4% | 94.1% | +0.0 | 90.8% | 93.0% |
-| 3 | Inventory and orders | 10 (10) | 93.9% | 95.8% | +2.4 | 91.5% | 93.5% |
-| 4 | Payments | 3 (2) | 94.4% | 96.3% | +0.5 | 91.5% | 93.5% |
-| 5 | Customers and marketing | 2 (2) | 94.8% | 96.3% | +0.5 | 91.7% | 93.5% |
-| 6 | Catalogue | 0 (0) | 94.8% | 96.3% | +0.0 | 91.7% | 93.5% |
-| 7 | Storefront and international | 2 (2) | 95.3% | 96.3% | +0.5 | 92.0% | 93.5% |
-| 8 | Analytics and AI | 2 (2) | 95.8% | 96.3% | +0.5 | 92.2% | 93.5% |
-| 9 | Platform and extensibility | 2 (2) | 96.3% | 96.9% | +0.5 | 92.2% | 93.5% |
+| 1 | Compliance and money | 10 (7) | 91.6% | 94.1% | +2.1 | 91.0% | 93.0% |
+| 2 | Data in and out | 1 (0) | 91.6% | 94.1% | +0.0 | 91.0% | 93.0% |
+| 3 | Inventory and orders | 10 (10) | 94.0% | 95.8% | +2.4 | 91.7% | 93.5% |
+| 4 | Payments | 3 (2) | 94.5% | 96.3% | +0.5 | 91.7% | 93.5% |
+| 5 | Customers and marketing | 2 (2) | 95.0% | 96.3% | +0.5 | 91.9% | 93.5% |
+| 6 | Catalogue | 0 (0) | 95.0% | 96.3% | +0.0 | 91.9% | 93.5% |
+| 7 | Storefront and international | 2 (2) | 95.4% | 96.3% | +0.5 | 92.1% | 93.5% |
+| 8 | Analytics and AI | 2 (2) | 95.9% | 96.3% | +0.5 | 92.3% | 93.5% |
+| 9 | Platform and extensibility | 2 (2) | 96.4% | 96.9% | +0.5 | 92.3% | 93.5% |
 
-Ceiling with every bucket A row Full and buckets B, C and D as they are: **92.2%** core, 93.5% must-have. With bucket B built and approved as well: 95.0% core, 95.8% must-have.
+Ceiling with every bucket A row Full and buckets B, C and D as they are: **92.3%** core, 93.5% must-have. With bucket B built and approved as well: 95.1% core, 95.8% must-have.
 
 <!-- parity:generated:end projection -->
 
@@ -514,7 +515,7 @@ Legend. **Shopify**: Native = included on Basic to Advanced and scored in the he
 | Customer segments and tags | Native. [page](https://help.shopify.com/en/manual/customers/customer-segmentation) | Full (was partial) | 3 |  | Built and held by tests (D296, D366, D380): staff tag people one by one on the customer page (by address, so guests too; also the AI manager's tag_customer) and in bulk, everyone the Customers list's search and tag find, at most 1,000 at once (tagMany(), one transaction, a person at 50 tags left as they were, one audit entry with counts), and the list filters by tag (D366); segments from rules (orders, money spent, first and last order, RFM type, country, language, customer group, company, account, tag, email consent) joined by all or any, counted live with a paged member list for staff with customers:read; a segment's customer types are the Customers analytics page's own (rfmGroups(), held for every type by segment-audiences.int.test.ts); a segment is the audience of a broadcast (D297), a code or a campaign (D380, matched for the signed-in buyer when the cart is read and again when the order is placed, so someone who stops matching leaves at once; checkout-kinds.int.test.ts in kroner and euros). Merged on 2026-10-25 (README rule 8): analytics.dynamic-segments-for-marketing was the same Shopify feature; its criteria and evidence are here. Evidence: `src/lib/analytics-customers.ts`, `src/server/analytics-customers-data.ts`, `src/components/admin/analytics/customers-view.tsx` and 18 more; 12 test files; D108, D152, D296, D297, D318, D380. |
 | Email marketing: broadcasts and lifecycle automations | Native. [page](https://apps.shopify.com/shopify-email) | Full (was partial) | 4 |  | D295 subscriber list (consent words, time, source, confirmation, language; one-click unsubscribe; export and erasure), D297 broadcasts (written per language from blocks, a test to staff, sent now or scheduled to everyone subscribed or a segment's subscribed people, once each, with List-Unsubscribe headers; hard bounces and complaints unsubscribe; a report of sent, delivered, bounced, complained, unsubscribed and link clicks; AI suggestions pass `findClaims()`), D298 lifecycle automations (welcome, after a delivered purchase, win-back: per store, words per language from hand-written starters, once per person and trigger, subscribed addresses only), and D318's AI manager tools, which save broadcasts as drafts and start or schedule them only behind the `send` gate. Since D352 a broadcast's product and campaign blocks are the store's own facts, drawn by code for each recipient's market. Since D368 a broadcast starts from one of five hand-written templates in nb, sv, da and en (no claim, `broadcast-templates.test.ts`) or from one of the store's own saved templates (`broadcast-templates.int.test.ts`), which closes criterion 2. Beyond the criteria and Shopify's own: drip sequences of several emails, browse abandonment and click counts for automation emails are not built. Evidence: `src/server/cart-reminders.ts`, `src/lib/cart-reminders.ts`, `src/server/forms.ts` and 24 more; 18 test files; D33, D93, D104, D295, D297, D298, D318, D352, D368. |
 | Abandoned checkout recovery emails | Native. [page](https://help.shopify.com/en/manual/orders/abandoned-checkouts) | Full | 4 |  | Caveat, not a gap: email only, like the article. Whether a reminder is marketing needs each store's own consent decision (D33 gives the notice and the opt-out). Evidence debt: the erasure after 60 days (`KEEP_DAYS` in `sendDueCartReminders()`) and the admin figures from `cartReminderStats()` are in the code but no listed test asserts them. Merged on 2026-10-26 (README rule 8): `checkout.abandoned-checkout-recovery` was the same Shopify feature (rated full); its criteria and evidence are here. Evidence: `src/server/cart-reminders.ts`, `src/lib/cart-reminders.ts`, `src/app/admin/(gated)/[store]/cart-reminders/page.tsx` and 5 more; **untested**; D33. |
-| SMS marketing | Native. [page](https://help.shopify.com/en/manual/promoting-marketing/create-marketing/shopify-messaging/sms/requirements) | Missing | 2 | C, no wave yet | No SMS channel: no provider, no phone-number consent, no sender id (no SMS code in `src/`). Plan section 5, decision 5 is open: integrate one EU-hosted provider after email broadcasts, which now exist (D297), so the precondition is met. Shopify's own SMS marketing does not reach Norway. Decided on 29 October 2026 (D405): skipped for now, revisited when Nordic shops ask for it (criterion 1's decision recorded). |
+| SMS marketing | Native. [page](https://help.shopify.com/en/manual/promoting-marketing/create-marketing/shopify-messaging/sms/requirements) | Partial (was missing) | 2 | C, no wave yet | Built (D565, docs/sms-marketing.md): the store's own 46elks account (EU, processing in Sweden), consent of its own at checkout kept once the order is paid with the words, time and order, STOP replies and a stop link in every text, nothing texted to a number without consent (the database refuses it, tested), each text in its reader's hours (the country's zone, 09 to 20 unless narrowed, no Sundays in France), the same segments as email, 46elks's own price before sending and the owner's monthly cap (refused before, stopped during). Partial because it was built from 46elks's documentation and a stand-in, not tried against 46elks itself, public holidays are not known, the consent words need a legal reading, and there are no automations by text yet. Code: `src/lib/sms.ts`, `src/server/sms.ts`. |
 | Signup forms and popups building a list | Native. [page](https://help.shopify.com/en/manual/promoting-marketing/create-marketing/forms-app) | Full (was partial) | 4 |  | Caveat: no report of a popup's own views and sign-ups (an A/B test's form goal, D148 phase 11, counts sends), and no welcome code when the owner switched the form's email confirmation off. Evidence: `src/lib/forms.ts`, `src/server/forms.ts`, `src/components/form-section.tsx` and 12 more; 10 test files; D93, D121, D295, D304, D296. |
 | Discount codes | Native. [page](https://help.shopify.com/en/manual/discounts) | Full (was partial) | 5 |  | Caveat: Buy X get Y is a campaign kind (D299 E4), not a code; a code cannot be limited to a segment (groups and named customers only). Whether a code combines with automatic campaigns is counted in `customers.automatic-discounts` (merged 2026-10-26). Evidence: `src/lib/discounts.ts`, `src/server/discounts.ts`, `src/components/admin/discount-editor.tsx` and 9 more; 5 test files; D31, D299. |
 | Automatic discounts | Native. [page](https://help.shopify.com/en/manual/discounts/discount-combinations) | Full (was partial) | 4 |  | Automatic campaigns (D114 to D116, D299 E3 and E4): percentage, buy N pay M, free product, an amount off per market, free shipping, tiers by items or spend and buy X get Y, for categories, tags and customer groups, each optionally stacking with other campaigns, announced from the cached `campaignNotices()`; all with scenarios in `checkout-kinds.int.test.ts`, euro included. An owner chooses whether a campaign combines with discount codes and a code with campaigns (D367, both on by default); where they do not, the basket takes whichever saves the shopper more, decided once by `campaignsAndCodes()` for `cartSummary()` and `placeOrder()`, and the cart says why of the other. Kaizena Flow's combinations are between campaigns and codes (and between codes, D299 E2), not Shopify's product, order and shipping classes for automatic discounts among themselves; campaigns among themselves compete or stack (D115). Merged on 2026-10-26 (README rule 8): `checkout.discount-codes-and-automatic-discounts` covered codes and automatic discounts together (rated partial for this); its code criteria are held by `customers.discount-codes`, its evidence is here. Evidence: `src/lib/campaigns.ts`, `src/server/campaigns.ts`, `src/components/admin/campaign-editor.tsx` and 19 more; 11 test files; D31, D38, D108, D114, D115, D116, D299, D367. |

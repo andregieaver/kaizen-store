@@ -913,6 +913,46 @@ async function loadMarketing(s: PrivacySubject): Promise<MarketingRow[]> {
   }));
 }
 
+/** The person's numbers for marketing texts (D565), by the account or the subject's addresses: consent, history and the texts sent. */
+async function loadSmsNumbers(s: PrivacySubject): Promise<NonNullable<ExportInput["smsNumbers"]>> {
+  const history = z.array(z.object({ kind: z.string(), source: z.string(), consentText: z.string().nullable(), at: z.string() }));
+  const rows = await typedRows(
+    z.object({
+      phone: col.text,
+      status: col.text,
+      source: col.text,
+      consent_text: col.text,
+      consented_at: col.timestamp,
+      unsubscribed_at: col.timestampOrNull,
+      unsubscribe_source: col.textOrNull,
+      history,
+      texts: z.array(z.object({ text: z.string(), sentAt: z.string().nullable() })),
+    }),
+    sql`
+      select n.phone, n.status, n.source, n.consent_text, n.consented_at, n.unsubscribed_at, n.unsubscribe_source,
+        (select coalesce(json_agg(json_build_object('kind', e.kind, 'source', e.source, 'consentText', e.consent_text, 'at', e.created_at) order by e.id), '[]')
+           from commerce.sms_consent_events e where e.store_id = n.store_id and e.subscriber_id = n.id) as history,
+        (select coalesce(json_agg(json_build_object('text', c.text, 'sentAt', m.sent_at) order by m.created_at), '[]')
+           from commerce.sms_messages m join commerce.sms_campaigns c on c.store_id = m.store_id and c.id = m.campaign_id
+           where m.store_id = n.store_id and m.subscriber_id = n.id and m.status in ('sent', 'delivered')) as texts
+      from commerce.sms_subscribers n
+      where n.store_id = ${s.storeId}::uuid and (n.customer_id = ${s.customerId}::uuid or n.email = any(${textList(s.addresses)}))
+      order by n.created_at, n.id
+    `,
+  );
+  return rows.map((r) => ({
+    phone: r.phone,
+    status: r.status,
+    source: r.source,
+    consentText: r.consent_text,
+    consentedAt: r.consented_at,
+    unsubscribedAt: r.unsubscribed_at,
+    unsubscribeSource: r.unsubscribe_source,
+    history: r.history.map((h) => ({ ...h, at: iso(h.at) ?? "" })),
+    texts: r.texts.map((t) => ({ text: t.text, sentAt: iso(t.sentAt) })),
+  }));
+}
+
 /** The broadcasts sent to the person's addresses (D297): the name staff gave each and when it went. */
 async function loadBroadcasts(s: PrivacySubject): Promise<{ broadcast: string; sentAt: string | null }[]> {
   const rows = await db().execute<Row>(sql`
@@ -1097,7 +1137,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments] = await Promise.all([
+  const [consents, customFields, support, marketing, customerTags, customerNotes, customerDeals, customerActivities, broadcasts, automations, stockRequests, reviews, savedAddresses, signupCodes, comments, smsNumbers] = await Promise.all([
     loadConsents(s, orders),
     loadCustomFields(s, orders, store.mainLocale),
     loadSupport(s),
@@ -1114,6 +1154,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadSignupCodes(s),
     // Comments on the store's articles (D341), by the person's proven addresses.
     commentsOf(s.storeId, s.addresses),
+    loadSmsNumbers(s),
   ]);
   const today = now.toISOString().slice(0, 10);
   return {
@@ -1154,6 +1195,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     broadcasts,
     automations,
     stockRequests,
+    smsNumbers,
     reviews,
     comments,
   };

@@ -1,4 +1,5 @@
 import { runEbayJobs } from "@/server/ebay";
+import { runSms } from "@/server/sms";
 import { runSupplierOrders } from "@/server/supplier-orders";
 import { revalidateTag } from "next/cache";
 import { connection } from "next/server";
@@ -190,6 +191,8 @@ async function dispatch() {
     supplierOrders: () => runSupplierOrders(),
     // eBay as a sales channel (D555): each connected store's new eBay orders fetched (drawing its stock) and its listings sent, ten stores a run.
     ebay: () => runEbayJobs(),
+    // SMS marketing (D565): checkout consents whose order was paid become subscriptions, and texts whose recipient's hours have come are sent.
+    sms: () => runSms({ deadline: Date.now() + 120_000 }),
     draftExpiry: () => expireDrafts(),
     // Company orders (D321 C.2) that waited for approval, or for payment after it, longer than the window: cancelled, their stock let go.
     approvalExpiry: () => expireApprovals(),

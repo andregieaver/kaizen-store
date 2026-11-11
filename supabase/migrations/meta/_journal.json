@@ -5496,6 +5496,20 @@
       "when": 1794410148848,
       "tag": "20261111151548_statement_timeouts",
       "breakpoints": true
+    },
+    {
+      "idx": 785,
+      "version": "7",
+      "when": 1794414422000,
+      "tag": "20261111152702_sms_marketing",
+      "breakpoints": true
+    },
+    {
+      "idx": 786,
+      "version": "7",
+      "when": 1794414458000,
+      "tag": "20261111152738_sms_marketing_rules",
+      "breakpoints": true
     }
   ]
 }

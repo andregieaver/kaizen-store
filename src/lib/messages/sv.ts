@@ -926,6 +926,17 @@ export const sv: Messages = {
     stripeLine: (number) => `Faktura för order ${number}`,
     dueShort: (day) => `Förfaller ${day}`,
   },
+  /** Sms-marknadsföring (D565): skrivet för hand, behöver juridisk granskning. */
+  // legal: needs review
+  sms: {
+    consent: (store: string) => `Skicka erbjudanden från ${store} via sms till det här numret. Jag kan sluta när som helst med länken i varje meddelande.`,
+    phone: "Mobilnummer",
+    phoneHint: "Bara för erbjudanden via sms.",
+    pageIntro: (store: string, phone: string) => `Sluta få sms med erbjudanden från ${store} till ${phone}?`,
+    stop: "Sluta få sms",
+    stopped: (store: string) => `Klart. ${store} skickar inga fler sms med erbjudanden till det här numret.`,
+    gone: "Vi hittade inte den här länken. Den kan vara för gammal.",
+  },
   /** Marknadsföring via e-post (D295): skriven för hand, aldrig maskinöversatt (`ui:news.`), behöver juridisk granskning. */
   // legal: needs review
   news: {

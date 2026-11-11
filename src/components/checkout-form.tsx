@@ -12,7 +12,7 @@ import {
 import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 
 import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions";
-import { captureCheckoutEmailAction, checkoutNewsAction, checkoutRemindersAction, deliveryReadyAction } from "@/app/s/[store]/[market]/checkout/actions";
+import { captureCheckoutEmailAction, checkoutNewsAction, checkoutRemindersAction, checkoutSmsAction, deliveryReadyAction } from "@/app/s/[store]/[market]/checkout/actions";
 import { recordTermsAction } from "@/app/s/[store]/[market]/checkout/terms-actions";
 import { stripeAppearance, stripeFonts, type CheckoutAppearance } from "@/lib/checkout-appearance";
 import { payHeld, payStep, type TermsDisplay } from "@/lib/checkout-terms";
@@ -55,6 +55,16 @@ export type CheckoutNewsOption = {
   store: string;
   market: string;
   labels: { consent: string };
+};
+
+/**
+ * Marketing texts (D565): an unticked box with the words the shopper agrees to, and their mobile number once ticked. Ticked, the pay press
+ * keeps the consent on the order, made a subscription once it is paid; it never holds up the payment. Shown only by a store with SMS on.
+ */
+export type CheckoutSmsOption = {
+  store: string;
+  market: string;
+  labels: { consent: string; phone: string; hint: string };
 };
 
 /** Opening an account with the order (D32), offered to shoppers who are not signed in. */
@@ -112,6 +122,7 @@ export function CheckoutForm({
   account = null,
   reminders = null,
   news = null,
+  sms = null,
   terms = null,
   termsSlot = null,
   delivery = null,
@@ -131,6 +142,7 @@ export function CheckoutForm({
   account?: CheckoutAccountOption | null;
   reminders?: CheckoutReminderOption | null;
   news?: CheckoutNewsOption | null;
+  sms?: CheckoutSmsOption | null;
   terms?: CheckoutTermsOption | null;
   /** The sentence and box for the terms (`CheckoutTerms`), drawn above the pay button; null where the page has its own piece. */
   termsSlot?: ReactNode;
@@ -159,6 +171,7 @@ export function CheckoutForm({
         account={account}
         reminders={reminders}
         news={news}
+        sms={sms}
         terms={terms}
         termsSlot={termsSlot}
         delivery={delivery}
@@ -185,6 +198,7 @@ function Form({
   account,
   reminders,
   news,
+  sms,
   terms,
   termsSlot,
   delivery,
@@ -195,6 +209,7 @@ function Form({
   account: CheckoutAccountOption | null;
   reminders: CheckoutReminderOption | null;
   news: CheckoutNewsOption | null;
+  sms: CheckoutSmsOption | null;
   terms: CheckoutTermsOption | null;
   termsSlot: ReactNode;
   delivery: CheckoutDeliveryCheck | null;
@@ -215,6 +230,8 @@ function Form({
   const id = useId();
   const [optedOut, setOptedOut] = useState(reminders?.optedOut ?? false);
   const [wantsNews, setWantsNews] = useState(false);
+  const [wantsSms, setWantsSms] = useState(false);
+  const smsPhone = useRef<HTMLInputElement>(null);
   // The last complete email typed, and the pause before keeping it.
   const typedEmail = useRef<string | null>(null);
   const captureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -315,6 +332,17 @@ function Form({
     }
   };
 
+  /** The SMS box ticked (D565): the number's consent kept on the order. Never stops the payment. */
+  const askForSms = async () => {
+    const phone = smsPhone.current?.value.trim() ?? "";
+    if (!sms || !wantsSms || !phone) return;
+    try {
+      await checkoutSmsAction(sms.store, sms.market, phone, typedEmail.current);
+    } catch {
+      // The payment goes on; the shopper is not texted.
+    }
+  };
+
   /** Whether the delivery is settled before anything is kept or paid (D237); a refusal is said and focused. */
   const deliverySettled = async (): Promise<boolean> => {
     if (!delivery) return true;
@@ -347,6 +375,7 @@ function Form({
     if (!(await saveAccount())) return;
     if (!(await recordTerms())) return;
     await askForNews();
+    await askForSms();
     // On success Stripe takes the shopper to the order page.
     const result = await checkout.confirm();
     if (result.type === "error") fail(result.error.message);
@@ -371,6 +400,7 @@ function Form({
               return;
             }
             await askForNews();
+            await askForSms();
             const result = await checkout.confirm({ expressCheckoutConfirmEvent: event });
             if (result.type === "error") fail(result.error.message);
           }}
@@ -400,6 +430,40 @@ function Form({
               className="mt-1 size-4"
             />
             <label htmlFor={`${id}-news`}>{news.labels.consent}</label>
+          </div>
+        )}
+        {sms && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start gap-3">
+              <input
+                id={`${id}-sms`}
+                type="checkbox"
+                checked={wantsSms}
+                onChange={(event) => setWantsSms(event.target.checked)}
+                className="mt-1 size-4"
+              />
+              <label htmlFor={`${id}-sms`}>{sms.labels.consent}</label>
+            </div>
+            {wantsSms && (
+              <div className="flex flex-col gap-1 pl-7">
+                <label htmlFor={`${id}-sms-phone`} className="text-sm font-medium">
+                  {sms.labels.phone}
+                </label>
+                <input
+                  id={`${id}-sms-phone`}
+                  ref={smsPhone}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={32}
+                  aria-describedby={`${id}-sms-hint`}
+                  className="min-h-11 max-w-xs rounded-md border border-line bg-card px-3"
+                />
+                <p id={`${id}-sms-hint`} className="text-sm text-muted">
+                  {sms.labels.hint}
+                </p>
+              </div>
+            )}
           </div>
         )}
         {account && (

@@ -167,6 +167,12 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "En forespørsel om å få beskjed én gang når en utsolgt variant er tilbake (D298): adressen, produktet og statusen, eksporteres med markedsføringsopplysningene og slettes når personens opplysninger slettes; ubekreftede slettes når lenken går ut, ventende etter 180 dager, sendte etter 30.",
   marketing_consent_events:
     "En abonnents samtykkehistorikk (D295): hver forespørsel, påmelding og avmelding med kilde og ordlyd; eksporteres med abonnenten og slettes med den.",
+  sms_subscribers:
+    "Et nummer som ba om butikkens markedsførings-SMS (D565), med ordlyden det godtok, når og hvor (bestillingen i kassen). Finnes via kontoen eller kontoens bekreftede e-post, eksporteres med historikken og SMS-ene som ble sendt til det, og slettes med dem når personens opplysninger slettes. Et samtykke fra kassen der bestillingen ikke ble betalt, slettes etter 7 dager.",
+  sms_consent_events:
+    "Et nummers samtykkehistorikk (D565): hver forespørsel, påmelding og stopp med kilde og ordlyd; eksporteres med nummeret og slettes med det.",
+  sms_messages:
+    "Hvilke markedsførings-SMS-er (D565) som gikk til et nummer, når og hva de kostet: listes i eksporten av markedsføringsopplysninger med ordlyden i hver, og slettes med nummeret når personens opplysninger slettes.",
   email_opt_outs:
     "En oppføring om reservasjon mot e-post: beholdes så butikken ikke sender personen e-post igjen (personens eget ønske); å slette den ville oppheve reservasjonen.",
   blog_comments:

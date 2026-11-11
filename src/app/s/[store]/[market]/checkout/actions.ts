@@ -23,6 +23,7 @@ import { addCartGiftCard, removeCartGiftCard } from "@/server/gift-card-cart";
 import { viesClientKey } from "@/server/vat-checks";
 import { codeProblemText } from "@/lib/code-words";
 import { joinList, setAccountSubscription } from "@/server/marketing-subscribers";
+import { keepCheckoutSms } from "@/server/sms";
 import { resolveSellingShop } from "@/server/shop";
 
 import { applyCreditsForm } from "../cart/bonus";
@@ -100,6 +101,29 @@ export async function checkoutNewsAction(storeSlug: string, marketSlug: string, 
     sourceRef: found.orderId,
     consentText: consent,
     proof: "link",
+  });
+}
+
+/**
+ * The pay press with the SMS box ticked (D565): the number's consent, with the words shown, kept on this checkout's order and made a
+ * subscription once the order is paid. Never holds up the payment.
+ */
+export async function checkoutSmsAction(storeSlug: string, marketSlug: string, typedPhone: string, typedEmail: string | null): Promise<void> {
+  const found = await openCheckout(storeSlug, marketSlug);
+  if (!found) return;
+  const { store, market } = found.shop;
+  const customer = await getCustomer(store.id);
+  const address = typedEmail ? email.safeParse(typedEmail.trim()) : null;
+  await keepCheckoutSms({
+    storeId: store.id,
+    orderId: found.orderId,
+    typed: String(typedPhone),
+    country: market.code,
+    locale: market.locale,
+    marketCode: market.code,
+    email: customer?.email ?? (address?.success ? address.data : null),
+    customerId: customer?.id ?? null,
+    consentText: t(market.lang).sms.consent(store.name),
   });
 }
 

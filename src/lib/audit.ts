@@ -112,6 +112,8 @@ const PREFIXES: Record<string, AuditArea> = {
   "segment.": "marketing",
   "broadcast.": "marketing",
   "broadcast_template.": "marketing",
+  // SMS marketing (D565): the account connected or its rules changed (never its password), a campaign started or stopped, a number stopped by staff.
+  "sms.": "marketing",
   // Marketing automations (D298); `automation.` is wave 3's order rules.
   "marketing_automation.": "marketing",
   // A sign-up form tagging confirmed addresses (D304 J3): the count, never an address.

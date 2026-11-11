@@ -278,7 +278,6 @@ describe("what the guards promise the scan test", () => {
       "currentRequest",
       "startRequest",
       "statusRequest",
-      // A store admin's server action (code review 1.4): `checkPermission()` with its key, then the handler inside a catch.
       "storeAction",
       "storeChangeRequest",
       "storeEditRequest",

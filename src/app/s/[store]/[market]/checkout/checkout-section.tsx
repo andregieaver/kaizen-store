@@ -40,6 +40,7 @@ import { readCartId } from "@/server/cart";
 import { getOpenCheckout } from "@/server/checkout";
 import { termsDisplayFor } from "@/server/checkout-terms";
 import { cartRemindersOn, checkoutOptedOut } from "@/server/cart-reminders";
+import { smsOffered } from "@/server/sms";
 import { getCustomer } from "@/server/customers";
 import { findFont } from "@/server/fonts";
 import { deliveryView } from "@/server/delivery-choice";
@@ -511,7 +512,7 @@ async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
 async function paymentForm(store: Store, market: Market, view: CheckoutView, drawTerms: boolean) {
   const { m, base, cartId, open, order } = view;
   const publishableKey = platformPublishableKey(open.mode);
-  const [customer, reminders, display] = await Promise.all([getCustomer(store.id), cartRemindersOn(store.id), termsDisplayFor(store, market)]);
+  const [customer, reminders, display, smsOn] = await Promise.all([getCustomer(store.id), cartRemindersOn(store.id), termsDisplayFor(store, market), smsOffered(store.id)]);
   const optedOut = reminders && !customer ? await checkoutOptedOut(store.id, cartId) : false;
   const money = moneyOf(view, market);
   const restart = open.expired || open.changed || !publishableKey;
@@ -611,6 +612,8 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
             }
             // Marketing email (D295): an unticked box; its words are what the shopper agrees to.
             news={{ store: store.slug, market: market.slug, labels: { consent: m.news.consent(store.name) } }}
+            // Marketing texts (D565): only a store with SMS on asks; an unticked box, the number asked once ticked.
+            sms={smsOn ? { store: store.slug, market: market.slug, labels: { consent: m.sms.consent(store.name), phone: m.sms.phone, hint: m.sms.phoneHint } } : null}
             // The terms (wave 1, 1e): drawn by the pay button unless the page has its own piece for them.
             termsSlot={drawTerms ? termsNode(store, market, view, display) : null}
             terms={display ? { store: store.slug, market: market.slug, display, labels: { hint: m.terms.hint, failed: m.terms.failed } } : null}
