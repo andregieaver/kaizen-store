@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_MENU_LOOK, drawerHasBackground, menuDrag, menuDragCloses, menuLook, menuLookAttrs, menuLookFrom, menuOverlayClass, menuPanelClass, menuSwipe } from "./menu-drawer";
+import { CART_DRAWER_LOOK, DEFAULT_MENU_LOOK, drawerHasBackground, ownDrawer, menuDrag, menuDragCloses, menuLook, menuLookAttrs, menuLookFrom, menuOverlayClass, menuPanelClass, menuSwipe } from "./menu-drawer";
 import { MENU_SIDES, MENU_TYPES, pageBlockSchema } from "./page-content";
+import { headerDrawer } from "./site-layout";
 
 const button = (drawer: unknown): unknown => ({ id: "b", type: "site", part: "menuButton", drawer });
 const parse = (drawer: unknown) => pageBlockSchema.safeParse(button(drawer));
@@ -55,8 +56,9 @@ describe("the phone menu's look", () => {
 });
 
 describe("a menu button's drawer in the page", () => {
-  it("keeps only what differs from the standard menu", () => {
-    expect(drawerOf({ type: "drawer", side: "left" })).toBeUndefined();
+  it("keeps what is set, and nothing for a drawer with nothing set", () => {
+    expect(drawerOf({})).toBeUndefined();
+    expect(drawerOf({ side: "left" })).toEqual({ side: "left" });
     expect(drawerOf({ type: "card", side: "right", background: { type: "color", color: "#112233", opacity: 80 }, backdropBlur: 12 })).toEqual({ type: "card", side: "right", background: { type: "color", color: "#112233", opacity: 80 }, backdropBlur: 12 });
   });
 
@@ -72,5 +74,32 @@ describe("a menu button's drawer in the page", () => {
     expect(drawerHasBackground({ type: "card" })).toBe(false);
     expect(drawerHasBackground({ background: { type: "color", color: "#000000" } })).toBe(true);
     expect(drawerHasBackground({ backdropBlur: 8 })).toBe(true);
+  });
+});
+
+describe("the slide-out cart's look (D571)", () => {
+  it("comes from the right unless set, and the builder keeps only what differs from each part's standard", () => {
+    expect(menuLook(undefined, CART_DRAWER_LOOK)).toEqual({ type: "drawer", side: "right" });
+    expect(menuLook({ side: "left" }, CART_DRAWER_LOOK)).toEqual({ type: "drawer", side: "left" });
+    expect(ownDrawer({ type: "drawer", side: "right" }, CART_DRAWER_LOOK)).toBeUndefined();
+    expect(ownDrawer({ type: "drawer", side: "left" }, CART_DRAWER_LOOK)).toEqual({ side: "left" });
+    expect(ownDrawer({ type: "drawer", side: "left" }, DEFAULT_MENU_LOOK)).toBeUndefined();
+    expect(ownDrawer({ type: "card", backgroundHue: undefined }, DEFAULT_MENU_LOOK)).toEqual({ type: "card" });
+  });
+
+  it("is a little wider than the menu from the left or right", () => {
+    expect(menuPanelClass(CART_DRAWER_LOOK, true, true)).toContain("w-[92%] max-w-md");
+    expect(menuPanelClass(menuLook({ type: "card" }, CART_DRAWER_LOOK), true, true)).toContain("w-[calc(92%-0.75rem)] max-w-md");
+    expect(menuPanelClass(CART_DRAWER_LOOK, true)).toContain("w-[85%] max-w-sm");
+  });
+
+  it("is read from the header's Cart component, not the menu button's", () => {
+    const site = (id: string, part: string, drawer?: unknown) => ({ id, type: "site", part, ...(drawer ? { drawer } : {}) });
+    const header = {
+      rows: [{ id: "r", type: "row", layout: "1", columns: [{ id: "c", blocks: [site("m", "menuButton", { type: "fullscreen" }), site("k", "cart", { type: "card", side: "bottom" })] }] }],
+    } as never;
+    expect(headerDrawer(header, "cart")).toEqual({ type: "card", side: "bottom" });
+    expect(headerDrawer(header, "menuButton")).toEqual({ type: "fullscreen" });
+    expect(headerDrawer(null, "cart")).toBeUndefined();
   });
 });

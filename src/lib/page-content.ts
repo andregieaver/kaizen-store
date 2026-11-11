@@ -19,6 +19,7 @@ import {
 } from "./motion";
 import { ANIMATION_SIDE_MIN, type AnimationFile } from "./animation";
 import { layersShow, type BackgroundLayer } from "./background-layers";
+import { MENU_SIDES, MENU_TYPES, type MenuSide, type MenuType } from "./menu-drawer";
 import { backgroundHueSchema, backgroundLayersSchema } from "./background-layers-schema";
 import { type CarouselSettings } from "./carousel-settings";
 import { carouselSettingsSchema } from "./carousel-settings-schema";
@@ -1185,16 +1186,14 @@ export type SiteBlock = PartBase & {
   switcher?: SwitcherLayout;
   langText?: SwitcherText;
   langFlag?: boolean;
-  /** The phone menu button's menu (`src/lib/menu-drawer.ts`): how it opens, from where, and on what background. */
+  /**
+   * The phone menu button's menu, or the Cart component's slide-out cart (D571), `src/lib/menu-drawer.ts`: how it opens, from where,
+   * and on what background.
+   */
   drawer?: MenuDrawer;
 };
 
-/** How the phone's menu is shown: a panel from an edge (the default), the whole screen, a panel dropping under the header, or a floating card. */
-export const MENU_TYPES = ["drawer", "fullscreen", "dropdown", "card"] as const;
-export type MenuType = (typeof MENU_TYPES)[number];
-/** The edge the phone's menu comes in from (left unless set); a dropdown always comes from under the header. */
-export const MENU_SIDES = ["left", "right", "top", "bottom"] as const;
-export type MenuSide = (typeof MENU_SIDES)[number];
+export { MENU_SIDES, MENU_TYPES, type MenuSide, type MenuType } from "./menu-drawer";
 
 /**
  * The phone menu a menu button opens: its kind, the edge it comes from and its background, which is a column's (a colour, picture or
@@ -3401,12 +3400,10 @@ const siteBlock = z.object({
       backdropBlur,
     })
     .optional()
-    // Only what differs from the standard menu is kept; a drawer with nothing set is left out.
+    // A drawer with nothing set is left out (the builder leaves out what equals the part's standard look, `ownDrawer()`).
     .transform((drawer) => {
       if (!drawer) return undefined;
-      const kept = Object.fromEntries(
-        Object.entries(drawer).filter(([key, value]) => value !== undefined && !(key === "type" && value === "drawer") && !(key === "side" && value === "left")),
-      ) as MenuDrawer;
+      const kept = Object.fromEntries(Object.entries(drawer).filter(([, value]) => value !== undefined)) as MenuDrawer;
       return Object.keys(kept).length > 0 ? kept : undefined;
     }),
   ...partBase,

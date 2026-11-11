@@ -55,7 +55,7 @@ import { ShopPartIcon } from "./shop-part-icons";
 import { MotionMark, MotionPreviewToggle, canvasBackground, canvasFx, useCanvasMotion } from "./motion-canvas";
 import { menuHoverStyle } from "@/lib/menu-hover";
 import { BLOCKS_MAX, LINE_COLUMNS_MAX, ROW_LAYOUT_KEYS, ROW_LAYOUTS, ROWS_MAX, rowLayouts, BUTTON_LABEL_MAX, HEADING_MAX, ROW_PADDING, CONTENT_MAX_MAX, CONTENT_MAX_MIN, blockFonts, pageFonts, bindingOf, blockHasContent, blockOwnContent, blockText, pageBlocks, ownProducts, nestedColumns, pageParts, columnsAsRow, richTextPlain, ALT_MAX, type BlockType, type ButtonBlock, type HeadingBlock, type RichTextBlock, type ContentGridBlock, type PartBase, type PageBlock, type PageColumn, type ImageBlock, type PageContent, type PageRow, type PageTranslation, type RowLayout, PRODUCT_PARTS, COLUMN_JUSTIFY, LOGO_HEIGHT, RELATED_MAX, type ProductBlock, type ProductPart, type MenuBlock, type PlansBlock, type DomainSearchBlock, type ThemeStoreBlock, type SearchBlock, type CustomFieldBlock, type FieldLoopBlock, type StorePartBlock, type SiteBlock, type SitePart, type ColumnJustify, type PageType, type MenuDrawer, MENU_TYPES, MENU_SIDES } from "@/lib/page-content";
-import { menuLook } from "@/lib/menu-drawer";
+import { DRAWER_PARTS, isDrawerPart, menuLook, ownDrawer, type DrawerPart } from "@/lib/menu-drawer";
 import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-apply";
 import { hasMotion, type EnterMotion } from "@/lib/motion";
 import { drawTarget, motionSignature, type MotionPart } from "@/lib/motion-edit";
@@ -5705,7 +5705,7 @@ function SiteFields({ block, onChange, context }: { block: SiteBlock; onChange: 
         />
       )}
       {block.part === "languages" && <LanguageSwitcherFields block={block} onChange={onChange} />}
-      {block.part === "menuButton" && <MenuDrawerFields drawer={block.drawer} upload={context.upload} onChange={(drawer) => onChange({ drawer })} />}
+      {isDrawerPart(block.part) && <MenuDrawerFields part={block.part} drawer={block.drawer} upload={context.upload} onChange={(drawer) => onChange({ drawer })} />}
       {lined && (
         <Choices
           legend={w.menu.linksLegend}
@@ -5726,24 +5726,31 @@ function SiteFields({ block, onChange, context }: { block: SiteBlock; onChange: 
 }
 
 /**
- * The phone menu a menu button opens: Homer picks its kind and the edge it comes in from; its background is a column's (a colour,
- * picture or gradient, a ready-made backdrop, layers and hue, D534), without effects, since the menu is only seen as it opens.
- * Only what differs from the standard menu (a side panel from the left on the site's background) is kept.
+ * The phone menu a menu button opens, or the slide-out cart of the Cart component (D571): Homer picks its kind and the edge it comes in
+ * from; its background is a column's (a colour, picture or gradient, a ready-made backdrop, layers and hue, D534), without effects,
+ * since it is only seen as it opens. Only what differs from the part's standard (a side panel on the site's background, the menu's from
+ * the left, the cart's from the right) is kept.
  */
-function MenuDrawerFields({ drawer, upload, onChange }: { drawer: MenuDrawer | undefined; upload: Upload | null; onChange: (drawer: MenuDrawer | undefined) => void }) {
+function MenuDrawerFields({
+  part,
+  drawer,
+  upload,
+  onChange,
+}: {
+  part: DrawerPart;
+  drawer: MenuDrawer | undefined;
+  upload: Upload | null;
+  onChange: (drawer: MenuDrawer | undefined) => void;
+}) {
   const dw = useAdminText("builder").site.drawer;
-  const look = menuLook(drawer);
-  const patch = (changes: Partial<MenuDrawer>) => {
-    const next: Record<string, unknown> = { ...drawer, ...changes };
-    if (next.type === "drawer") delete next.type;
-    if (next.side === "left") delete next.side;
-    for (const [key, value] of Object.entries(next)) if (value === undefined) delete next[key];
-    onChange(Object.keys(next).length > 0 ? (next as MenuDrawer) : undefined);
-  };
+  const words = dw.parts[part];
+  const standard = DRAWER_PARTS[part];
+  const look = menuLook(drawer, standard);
+  const patch = (changes: Partial<MenuDrawer>) => onChange(ownDrawer({ ...drawer, ...changes }, standard));
   return (
     <div className="flex flex-col gap-5 border-t border-border pt-4">
       <Choices
-        legend={dw.type}
+        legend={words.type}
         hint={dw.typeHint[look.type]}
         options={MENU_TYPES.map((value) => ({ value, label: dw.types[value] }))}
         value={look.type}
@@ -5758,8 +5765,8 @@ function MenuDrawerFields({ drawer, upload, onChange }: { drawer: MenuDrawer | u
         />
       )}
       <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
-        <legend className="float-left mb-1 w-full text-sm font-medium">{dw.background}</legend>
-        <p className="text-sm text-muted">{dw.backgroundHint}</p>
+        <legend className="float-left mb-1 w-full text-sm font-medium">{words.background}</legend>
+        <p className="text-sm text-muted">{words.backgroundHint}</p>
         <BackgroundFields
           value={drawer?.background}
           upload={upload}
@@ -5872,7 +5879,11 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
       case "wishlist":
         return icon("M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z");
       case "cart":
-        return icon("M6 7h12l-1 13H7L6 7zM9 7a3 3 0 0 1 6 0");
+        return block.drawer ? (
+          <MenuButtonStandIn block={block} icon={icon("M6 7h12l-1 13H7L6 7zM9 7a3 3 0 0 1 6 0")} phonesOnly={null} />
+        ) : (
+          icon("M6 7h12l-1 13H7L6 7zM9 7a3 3 0 0 1 6 0")
+        );
       case "markets":
         return block.display === "list" ? links(["Norge", "Sverige", "Danmark"]) : <span className="text-sm">{"Norge ▾"}</span>;
       case "buyerSwitch":
@@ -5906,13 +5917,13 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
   );
 }
 
-/** The menu button on the canvas: its icon, that it shows on phones only, and the menu it opens (its kind and edge). */
-function MenuButtonStandIn({ block, icon, phonesOnly }: { block: SiteBlock; icon: ReactNode; phonesOnly: string }) {
+/** The menu button (or a cart with a slide-out cart of its own) on the canvas: its icon, and the drawer it opens (its kind and edge). */
+function MenuButtonStandIn({ block, icon, phonesOnly }: { block: SiteBlock; icon: ReactNode; phonesOnly: string | null }) {
   const dw = useAdminText("builder").site.drawer;
-  const look = menuLook(block.drawer);
+  const look = menuLook(block.drawer, isDrawerPart(block.part) ? DRAWER_PARTS[block.part] : undefined);
   return (
     <span className="flex items-center gap-2 text-xs text-muted">
-      {icon} {phonesOnly} · {dw.types[look.type]}
+      {icon} {phonesOnly && `${phonesOnly} · `}{dw.types[look.type]}
       {look.type !== "dropdown" && ` · ${dw.sides[look.side]}`}
     </span>
   );

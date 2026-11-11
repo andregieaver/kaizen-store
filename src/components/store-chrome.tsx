@@ -3,8 +3,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 
 import type { HeaderStageLook } from "@/lib/header-stages";
-import { DEFAULT_MENU_LOOK, menuDrag, menuDragCloses, menuLookFrom, menuOverlayClass, menuPanelClass, menuSwipe, type MenuLook } from "@/lib/menu-drawer";
+import { DEFAULT_MENU_LOOK, menuLookFrom, type MenuLook } from "@/lib/menu-drawer";
 
+import { DrawerPanel } from "./drawer-panel";
 import { useHeaderThemeColor } from "./header-theme-color";
 
 /**
@@ -164,7 +165,6 @@ export function MobileMenu({
   children: ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [look, setLook] = useState<MenuLook>(DEFAULT_MENU_LOOK);
@@ -172,8 +172,6 @@ export function MobileMenu({
   // Frosted glass (D86): what is behind the menu blurred, the theme's background left out so it shows through.
   const [blur, setBlur] = useState(0);
   const [top, setTop] = useState(0);
-  const [drag, setDrag] = useState(0);
-  const touch = useRef<{ x: number; y: number; bar: boolean; along: boolean | null } | null>(null);
 
   const show = (opener: HTMLElement | null) => {
     const d = dialog.current;
@@ -196,7 +194,6 @@ export function MobileMenu({
   };
   const hide = () => {
     setOpen(false);
-    setDrag(0);
     document.documentElement.style.overflow = "";
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.setTimeout(() => dialog.current?.close(), reduced ? 0 : 300);
@@ -215,90 +212,36 @@ export function MobileMenu({
     };
   }, []);
 
-  const swipe = menuSwipe(look);
-  const dropdown = look.type === "dropdown";
-  const moved: CSSProperties = {
-    ...(blur > 0 && { backdropFilter: `blur(${blur}px)`, WebkitBackdropFilter: `blur(${blur}px)` }),
-    ...(drag !== 0 && { transform: swipe.axis === "x" ? `translateX(${drag}px)` : `translateY(${drag}px)`, transition: "none" }),
-  };
-
   return (
-    <>
-      <dialog
-        ref={dialog}
-        id="store-menu"
-        aria-label={labels.menu}
-        onCancel={(event) => {
-          event.preventDefault();
-          hide();
-        }}
-        onClick={(event) => {
-          // A link chosen, or a tap beside a dropdown (on the header it hangs from), closes it.
-          if (event.target === event.currentTarget || (event.target as Element).closest("a")) hide();
-        }}
-        style={{ "--menu-top": `${top}px` } as CSSProperties}
-        className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 backdrop:bg-transparent"
+    <dialog
+      ref={dialog}
+      id="store-menu"
+      aria-label={labels.menu}
+      onCancel={(event) => {
+        event.preventDefault();
+        hide();
+      }}
+      onClick={(event) => {
+        // A link chosen, or a tap beside a dropdown (on the header it hangs from), closes it.
+        if (event.target === event.currentTarget || (event.target as Element).closest("a")) hide();
+      }}
+      style={{ "--menu-top": `${top}px` } as CSSProperties}
+      className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 backdrop:bg-transparent"
+    >
+      <DrawerPanel
+        look={look}
+        open={open}
+        surface={surface}
+        blur={blur}
+        backgroundRef={backdrop}
+        // A dropdown hangs under the header, which already shows the logo.
+        bar={look.type !== "dropdown" && title}
+        closeLabel={labels.close}
+        onClose={hide}
+        bodyClassName="flex flex-col gap-6 px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
       >
-        <div
-          aria-hidden="true"
-          onClick={hide}
-          className={`fixed ${menuOverlayClass(look)} bg-black/40 transition-opacity duration-300 motion-reduce:transition-none ${
-            open ? "opacity-100" : "opacity-0"
-          }`}
-        />
-        <div
-          ref={panel}
-          data-menu-type={look.type}
-          data-menu-side={look.side}
-          style={moved}
-          onTouchStart={(event) => {
-            const t = event.touches[0];
-            touch.current = { x: t.clientX, y: t.clientY, bar: Boolean((event.target as Element).closest("[data-menu-bar]")), along: null };
-          }}
-          onTouchMove={(event) => {
-            const start = touch.current;
-            if (!start) return;
-            const t = event.touches[0];
-            const dx = t.clientX - start.x;
-            const dy = t.clientY - start.y;
-            if (start.along === null && Math.abs(dx) + Math.abs(dy) > 10) {
-              const sideways = Math.abs(dx) > Math.abs(dy);
-              // Up or down only from the top bar, so the links still scroll.
-              start.along = (swipe.axis === "x") === sideways && (swipe.axis === "x" || start.bar);
-            }
-            if (start.along) setDrag(menuDrag(look, dx, dy));
-          }}
-          onTouchEnd={() => {
-            const size = (swipe.axis === "x" ? panel.current?.offsetWidth : panel.current?.offsetHeight) ?? 300;
-            touch.current = null;
-            if (menuDragCloses(drag, size)) hide();
-            else setDrag(0);
-          }}
-          className={`fixed isolate flex flex-col overflow-hidden ${blur > 0 ? "" : "bg-background"} shadow-2xl transition-[translate,transform,opacity] duration-300 ease-out motion-reduce:transition-none ${surface} ${menuPanelClass(look, open)}`}
-        >
-          <div ref={backdrop} aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]" />
-          <div className="flex min-h-0 flex-auto flex-col overflow-y-auto overscroll-contain">
-            <div data-menu-bar="" className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border px-4">
-              {look.side === "bottom" && !dropdown && (
-                <span aria-hidden="true" className="absolute left-1/2 top-2 h-1 w-10 -translate-x-1/2 rounded-full bg-current/20" />
-              )}
-              {/* A dropdown hangs under the header, which already shows the logo. */}
-              <div className="min-w-0 truncate">{!dropdown && title}</div>
-              <button
-                type="button"
-                onClick={hide}
-                className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-full"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-                </svg>
-                <span className="sr-only">{labels.close}</span>
-              </button>
-            </div>
-            <div className="flex flex-1 flex-col gap-6 px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">{children}</div>
-          </div>
-        </div>
-      </dialog>
-    </>
+        {children}
+      </DrawerPanel>
+    </dialog>
   );
 }

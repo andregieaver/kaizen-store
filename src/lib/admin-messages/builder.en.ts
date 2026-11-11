@@ -893,7 +893,7 @@ export const builderEn = {
       search: "A link to the store's search.",
       account: "A link to the shopper's account (sign in on Kaizena Flow's site).",
       wishlist: "A link to the wishlist, with how many products are saved.",
-      cart: "A link to the cart, with how many products are in it.",
+      cart: "A link to the cart, with how many products are in it. On phones the cart slides out over the page, as you set below.",
       markets: "The countries the store sells to, to switch between. Shown only with two or more.",
       buyerSwitch: "For stores selling to both: whether prices are shown for a business or a private buyer.",
       colorMode: "A button for visitors to switch between light and dark colours. Shown while Let visitors choose light or dark is on under Design.",
@@ -908,18 +908,28 @@ export const builderEn = {
     leftOut: "A part with nothing to show is left out.",
     /** The phone menu button's menu: its kind, the edge it comes from, and its background. */
     drawer: {
-      type: "Menu type",
+      /** What the drawer is called for each part that has one: the menu button's menu, the Cart component's slide-out cart (D571). */
+      parts: {
+        menuButton: {
+          type: "Menu type",
+          background: "Menu background",
+          backgroundHint: "What the menu shows behind its links. None keeps the site's background.",
+        },
+        cart: {
+          type: "Slide-out cart on phones",
+          background: "Cart background",
+          backgroundHint: "What the slide-out cart shows behind its products. None keeps the site's background.",
+        },
+      },
       types: { drawer: "Side panel", fullscreen: "Full screen", dropdown: "Under the header", card: "Floating card" },
       typeHint: {
         drawer: "A panel slides in from the edge you choose.",
-        fullscreen: "The menu covers the whole screen.",
-        dropdown: "The menu drops down under the header, as tall as its links.",
+        fullscreen: "It covers the whole screen.",
+        dropdown: "It drops down under the header, as tall as what it holds.",
         card: "A rounded card slides in, with room around it.",
       },
       side: "Comes in from",
       sides: { left: "Left", right: "Right", top: "Top", bottom: "Bottom" },
-      background: "Menu background",
-      backgroundHint: "What the menu shows behind its links. None keeps the site's background.",
     },
     logoHeight: "pixels, {min} to {max}; empty: the usual size",
     shownAs: "Shown as",

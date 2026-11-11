@@ -8,7 +8,6 @@ import { motionNeeds } from "@/lib/motion-attrs";
 import { headerStageGradients, headerStageLook } from "@/lib/header-stages";
 import { rowShows, type HeaderOverlay, type MenuDrawer, type PageBlock, type PageContent, type SiteBlock } from "@/lib/page-content";
 import { drawerHasBackground, menuLookAttrs } from "@/lib/menu-drawer";
-import { huedBackground } from "@/lib/background-layers";
 import { surfaceClass } from "@/lib/background-surface";
 import { flowRows } from "@/lib/page-modal";
 import { localizePage } from "@/lib/page-translation";
@@ -30,7 +29,8 @@ import { StoreColorSwitch } from "./store-color-switch";
 import { CartLink, CartLinkShell } from "./cart-link";
 import { Icon } from "./icons";
 import { PageRowView } from "./page-article";
-import { GradientLayer, PartBackground } from "./page-parts";
+import { GradientLayer } from "./page-parts";
+import { DrawerBackground } from "./drawer-background";
 import { MotionSupport } from "./motion-support";
 import { builtIn, Brand as KaizenBrand, legalPages } from "./platform-layout";
 import { PLATFORM_LANG_FACTS, langOfLocale, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
@@ -129,15 +129,11 @@ function MenuButton({ label, block }: { label: string; block: SiteBlock }) {
   );
 }
 
-/** A drawer's own background, ready for the menu to copy behind its links: a colour, picture or gradient, the layers over it, its hue. */
+/** A drawer's own background, ready for the menu to copy behind its links as it opens (`DrawerBackground`). */
 function DrawerLook({ id, drawer }: { id: string; drawer: MenuDrawer }) {
-  const colour = huedBackground(drawer.background, drawer.backgroundHue);
   return (
     <div hidden id={id} data-menu-surface={surfaceClass(drawer) ?? ""} {...(drawer.backdropBlur && { "data-menu-blur": String(drawer.backdropBlur) })}>
-      {colour?.type === "color" && (
-        <div aria-hidden className="absolute inset-0 -z-10" style={{ backgroundColor: colour.color, opacity: (colour.opacity ?? 100) / 100 }} />
-      )}
-      <PartBackground background={drawer.background} hue={drawer.backgroundHue} layers={drawer.backgroundLayers} stillLayers />
+      <DrawerBackground drawer={drawer} />
     </div>
   );
 }
