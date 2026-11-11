@@ -16,6 +16,16 @@ account ran out of usage credits part-way: 14 areas were read, none was challeng
 phase 0; those carry a tick (✓). **The other 139 are one reviewer's reading.** Check one before starting its step (step 4.5). Savings
 marked as estimates are estimates; times measured on the review's machine say nothing certain about Vercel.
 
+**Read this first: the platform is not open yet (the owner, 11 November).** It opens to real store owners and shoppers soon. The 60
+stores and 102 orders in production are the team's own demo, test and template stores. So an empty table says only that nobody has
+tried the feature yet, and this review's first draft read too much into it. Three things follow. An unused feature is no reason to
+retire, park or hide it: where a finding or a step argued so, it has been rewritten (cause 3, phase 3 and the questions below), and
+the second reviewers re-weigh each such finding. What does count is what a feature costs a store that does not use it, because soon
+there will be many stores each using a few features: that is most of phases 0 and 2, and it matters more at opening, not less. And
+production's counts are scheduled work, builds, crawlers and the team's own testing, not shoppers: they show idle cost and what each
+deploy redoes; what shoppers will add is in the browser and build measurements. Before opening is also the cheapest time for
+structural change: there is no real data to move and nobody to disturb.
+
 **What it builds on.** `docs/audits/code-review-2026-11.md` (its steps are named where a finding is already one of them),
 `docs/performance.md` (the storefront's bundle rules, D211 and D212), `docs/build-memory.md`, `docs/capacity.md` and
 `docs/platform-parity-plan.md`. Nothing here replaces them.
@@ -79,15 +89,15 @@ commit as the fix.
 | 2.9 | A smaller AI manager round *(owner)* | AI-1, AI-3, AI-6, AI-8, AI-9, AI-11, AI-7 | M | Open | |
 | 2.10 | Jobs and lists find work without loading it | CR-4, DQ-6, DS-5, AI-5, DQ-3, DS-10, CR-10, CR-13, DS-13, DS-4, DQ-10, DQ-7 | L | Open | |
 
-**Phase 3: Features off until used**
+**Phase 3: Cost follows use, and one of each**
 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
-| 3.1 | A second tier of switches, off for new stores *(owner)* | FT-1, FT-4, FT-7, FT-14 | L | Open | |
+| 3.1 | A feature costs nothing until a store uses it *(owner)* | FT-1, FT-4, FT-7, FT-14 | L | Open | |
 | 3.2 | One Kaizena Flow site *(owner)* | FT-5, FM-3, DS-6 | L | Open | |
-| 3.3 | Build the platform's twin when the platform will use it *(owner)* | FT-10, FM-5, FM-4 | M | Open | |
+| 3.3 | One way to model the platform *(owner)* | FT-10, FM-5, FM-4 | M | Open | |
 | 3.4 | One engine for one job *(owner)* | FT-8, FT-9, FT-13, FT-12 | L | Open | |
-| 3.5 | Park or retire what has no user *(owner)* | FT-6, FT-11, FM-9 | M | Open | |
+| 3.5 | Decide what opens on day one *(owner)* | FT-6, FT-11, FM-9 | M | Open | |
 
 **Phase 4: Tidy, and finish the review**
 
@@ -116,15 +126,18 @@ another kind, and it has four causes that explain most of the 171 findings.
 2. **Work is found by asking, not by being told.** About 37,000 scheduled runs a day look for work that is almost never there, and
    the log of those runs is 564 MB of the 731 MB database. Pages are read whole to find a title; a picture's uses are found by
    searching every page's text; the same store slug is asked for 560,000 times.
-3. **Much of the platform exists ahead of its first use, and is switched on.** Half the tables have never held a row. 31 feature
-   groups that no store has used (about 100,000 lines) are in every menu, every AI call and every round of jobs. This is the part
-   only the owner can decide.
+3. **An idle feature is not free.** The platform is built ahead of its opening, so half the tables are empty, and that is as it
+   should be. What is not: a feature costs the same whether or not a store uses it. Its job runs every five minutes, its tools go to
+   the AI on every call, its code loads into every function. For one store that is little; it multiplies with every store that signs
+   up. A few things are also built twice (Kaizena Flow's site, two rule engines, two discount engines). What a new owner sees first
+   is the owner's choice, not waste.
 4. **Nothing weighs a change.** The storefront's first scripts have a budget and it shows: the storefront is the leanest part.
    Server code, the document, statements per page, scheduled work, an AI call, the tables and the standing rules have none, and
    each grew unseen. 21 findings are this one finding.
 
-Nothing is slow or broken today: at 60 stores and 102 orders the database is idle and pages answer quickly. What is paid now is
-cold starts, function time, tokens and the build; what is at stake is that all four causes grow with every feature and every visit.
+Nothing is slow or broken today: the platform is not open, the database is idle and pages answer quickly. What is paid now is cold
+starts, function time, tokens and the build. What is at stake at opening is that each cause grows with every store, every visit and
+every feature, and before opening is the cheapest time to remove them.
 
 | Area | Grade (A to E) | Why, in a line | The most useful change |
 |---|---|---|---|
@@ -135,7 +148,7 @@ cold starts, function time, tokens and the build; what is at stake is that all f
 | Scheduled work | D | 37,000 runs a day that find nothing; nine functions woken every minute; a 564 MB run log. | Wake routes only when work waits (0.3) and give jobs their own periods (0.4). |
 | The database | C | Careful table by table (1% dead columns, 15 redundant indexes, triggers gated, retention in place), but half of it is unused and the hottest reads cannot use their index. | Read one page, not all (0.6); let the index serve (0.7). |
 | AI calls | C | The shopper chat is lean (5,000 characters a call). The AI manager sends about 160,000 characters on every call, up to 11 times a turn. | A smaller default round (2.9, the code review's 3.18). |
-| The product's surface | D | 31 unused feature groups always on; 19 platform twins, 12 never used; two engines for several jobs; about six new admin pages a day. | A second tier of switches (3.1) and a budget for the surface (1.5). The owner's call. |
+| The product's surface | Not graded | Before opening every feature is unused, so use cannot be judged. What can: an idle feature is not free (the rows above), and a few things are built twice. | Make cost follow use (0.4, 3.1) and decide the duplicates (3.2 to 3.4). The owner's call. |
 | The written rules | C | Every session loads 11,000 tokens of which a typical change needs a few hundred; one decision costs up to 45 KB to look up. | A 7 KB core and rules loaded by path (4.4, the code review's 1.10). |
 | Not graded | | The page builder's model, styles, interface text, tests with CI and the build, functions as such: not audited (section 6). | Step 4.5. |
 
@@ -166,7 +179,7 @@ cold starts, function time, tokens and the build; what is at stake is that all f
 |---|---|---|
 | Size | 1,093,628 lines of TypeScript in `src`, 325,551 of them tests; 4,133 source files, 1,771 test files; about 28% of source lines are comments, blank or imports | |
 | Routes | 560 pages and 268 route handlers; 772 prerendered addresses: 508 static, 262 need a function on every view (all 148 of the demo store's) | CA-1 |
-| Use in production | 60 stores; 102 orders, all time | FT-1 |
+| Production today | not open yet: 60 demo, test and template stores of the team's own, 102 test orders | |
 | A storefront page's scripts | 808 to 1,098 KB loaded by the time the page is idle (268 to 329 KB compressed); 54 to 70% had not run. Empty cart: 938 KB, a third run | SC-2, SC-11 |
 | Kaizena Flow's front page | 1,173 KB of script, 77% not run; it loads the admin's words, zod and Supabase's client | step 0.10 |
 | An admin screen's scripts | 1.4 to 1.5 MB on every screen (about 490 KB compressed), 60 to 65% not run; product editor 2.6 MB; page builder 3.8 MB | AC-1, AC-2, AC-5 |
@@ -182,7 +195,7 @@ cold starts, function time, tokens and the build; what is at stake is that all f
 | The costliest statements, 78 days | the scheduler's calls 3,974 s; every published page with its content 781 s (79,778 calls, 2.3 million rows); a picture's uses 145 ms a call; `select slug from stores where id` 560,090 calls; an empty table polled 278,393 times; `cookie_scans` scanned 1.1 million times | DQ-2, DQ-3, DQ-9, DQ-12, DQ-8 |
 | A product view | 18 statements for an anonymous view of a prerendered product | SD-2 |
 | An AI manager call | 124 tool definitions, about 160,000 characters (about 40,000 tokens, an estimate), up to 11 calls a turn | AI-1 |
-| The surface | 449 admin pages; a new shop's Advanced menu 94 links; 254 store AI tools; 31 feature groups with no row in production | FT-1, FT-7 |
+| The surface | 449 admin pages; a new shop's Advanced menu 94 links; 254 store AI tools; 31 feature groups not yet tried in production | FT-1, FT-7 |
 | The standing rules | `CLAUDE.md` and `AGENTS.md` 44 KB in every session (about 11,000 tokens); `docs/decisions.md` 1.33 MB | DC-1, DC-2 |
 | Pace | 112 commits in two days; a deploy empties every cached read | CA-2, FT-2 |
 
@@ -471,7 +484,7 @@ The part every session pays for is bloated: CLAUDE.md plus AGENTS.md is 44 KB (a
 ## 5. The plan
 
 Five phases, in the order to do them. Phase 0 is small, safe and measured the day after from production; phase 1 keeps what phase 0
-wins; phase 2 is the structural work; phase 3 is the owner's decisions; phase 4 is tidying. Every finding is closed by exactly one
+wins; phase 2 is the structural work; phase 3 makes cost follow use and holds the owner's decisions; phase 4 is tidying. Every finding is closed by exactly one
 step. "Platform:" says what the step means for `/admin/platform` and Kaizena Flow's own site, by the house rule. A "done when" names
 a script of `bloat-review-2026-11/scripts/` (step 1.1 makes them commands) or a production figure from
 `evidence/production-database.md`.
@@ -513,7 +526,7 @@ a script of `bloat-review-2026-11/scripts/` (step 1.1 makes them commands) or a 
 2. **A budget for what a function loads.** A ratchet over the analyzer's export: modules and kilobytes loaded with one route of each kind (beacon, API, storefront, admin, cron), and megabytes traced beside it. An import-graph test in the style of `pay-routes.graph.test.ts`: `proxy.ts` and the beacons may not reach `auth.ts`, `pages.ts`, `admin-text.ts` or `schema.ts`. Closes AS-3, DP-6, SD-13, FM-13. M. Done when: raising a route's modules fails a test until the baseline is raised with a reason. Platform: one route of the platform admin is in the set.
 3. **Browser budgets for every route, and for the document.** The build already writes first-load bytes for all 560 routes (`.next/diagnostics/route-bundle-stats.json`): hold them per route group with a ratchet, in place of budgets on 7 of 449 admin routes and 2 storefront routes. Add document bytes for ten key pages. Extend the import guard of `storefront-bundle.scan.test.ts` to the admin's shell: no zod, no whole catalogue, no Supabase client. Closes AC-10, AC-11, SC-6. S. Done when: every route has a budget, and step 0.10's three imports cannot come back unseen. Platform: covered: the file lists every route.
 4. **Count statements per page and per round.** A test helper that counts the statements one render sends (a counting wrapper round `db()` in the integration tests), with budgets for the storefront home, a product, the admin's store home and orders list, an idle dispatcher round and an idle per-minute route. Once a month, read production's top statements as a routine: the query is in `evidence/production-database.md`. Closes DQ-11, AD-12, CR-14. M. Done when: the product view's 18 statements and the store home's 30 are numbers in a baseline file. Platform: the platform home (18 statements) is in the set.
-5. **A budget for the surface, and a list of what is in use.** A scan test over counts: `page.tsx` files, navigation links, AI tools, dispatcher jobs, tables, indexes, triggers and feature ids. A count rises only with a decision line that names the switch the feature sits behind, the gate of its job and who asked for it. At each quarterly squash, list the tables with no row and the indexes with no scan since the last one. Closes FT-2, DS-12. S. Done when: the baseline file exists and the first monthly look with the owner has happened. The owner's question 6. Platform: counted the same way.
+5. **A budget for the surface, and a list of what is in use.** A scan test over counts: `page.tsx` files, navigation links, AI tools, dispatcher jobs, tables, indexes, triggers and feature ids. A count rises only with a decision line that names the switch the feature sits behind and the gate of its job, so a new feature costs nothing until a store uses it. At each quarterly squash, list the tables with no row and the indexes with no scan since the last one. Closes FT-2, DS-12. S. Done when: the baseline file exists and a new table or job without a named gate fails the test. The owner's question 6. Platform: counted the same way.
 6. **Budgets for an AI call and for the always-loaded rules.** The default AI manager round's characters (prompt and tools, drawn as in `prompt-versions.ts`) may not rise above a baseline, with a cap per tool definition. `CLAUDE.md` and each rule file get a ceiling in bytes: today one test makes the always-loaded file grow with every feature. Closes AI-10, DC-3. S. Done when: both baselines exist and a larger round or a longer `CLAUDE.md` fails a test. Platform: the platform's 39 tools are in the count.
 
 ### Phase 2: Load on demand
@@ -531,15 +544,15 @@ a script of `bloat-review-2026-11/scripts/` (step 1.1 makes them commands) or a 
 9. **A smaller AI manager round.** Every model call carries about 160,000 characters (about 40,000 tokens, an estimate), 91% of it 124 tool definitions that do not depend on the question, and a turn makes up to 11 calls. This is the code review's step 3.18 with numbers: do it there. Send the core tools, the page's area and `load_tools`; load the autopilot, follow-up and skill tools as a group when needed; make the prompt cacheable (the minute out of its second line, a fixed tool order, cache markers, cached tokens counted); slim the two product tools' schemas; check ownership with one row; list playbooks by feature; and a quick model for small jobs (step 3.20 there). Closes AI-1 ✓, AI-3, AI-6, AI-8, AI-9, AI-11, AI-7. M. Done when: a default round is under 60,000 characters, the agents' safety eval passes and its recording is renewed. The owner's question 9. Platform: the platform's assistant runs the same loop.
 10. **Jobs and lists find work without loading it.** The knowledge job reads every page whole every five minutes to compare a date, and re-cuts pages with no text for ever (91,200 empty transactions): select ids and dates first, and record that a page was cut. "Where is this picture used" text-searches every page for each picture, again each day for every picture (145 ms a call): refresh on change. Give pages plain columns kept at publish (title, the kinds of parts) so lists and "does this site use a form" read facts, not documents. Write the docs index only for rows that changed (33 MB from 49,347 rewrites of 1,845 rows). Keep status checks as one row a day after the first week. Closes CR-4, DQ-6, DS-5, AI-5, DQ-3, DS-10, CR-10, CR-13, DS-13, DS-4, DQ-10, DQ-7. L. Done when: the dispatcher's AI upkeep jobs take tens of milliseconds on an idle round (about 2 s today), and the admin's Pages list reads no page content. Platform: the docs index and the status page are the platform's own.
 
-### Phase 3: Features off until used
+### Phase 3: Cost follows use, and one of each
 
-**Goal:** the product's surface. These are the owner's decisions: each row of `findings/features.md` and `findings/families.md` gives the evidence and what would be lost. Nothing here deletes a feature that a store uses; no store uses any of them yet. **A person will notice:** a new shop's menu a fifth shorter, an AI manager offered a third fewer tools, and one place to edit Kaizena Flow's site.
+**Goal:** make a feature cost nothing for a store that does not use it, and keep one of each thing. Nothing here retires a feature because it is unused: before opening they all are. Where a step is a product choice it says so, and the evidence is in `findings/features.md` and `findings/families.md`. **A person will notice:** a store that sells ten products and nothing else runs no job, loads no code and offers the AI no tool for what it has not switched on; and there is one place to edit Kaizena Flow's site.
 
-1. **A second tier of switches, off for new stores.** 31 feature groups that no store has ever used are always on: about 100,000 lines of code, 146 tables, their navigation, their AI tools and their jobs. Add them to the D178 registry as a second tier, off for new stores and on where a store has a row: email marketing, text messages, creators, automation, developer tools, ads and feeds, A/B tests, recommendations, price lists, purchasing, staging, content types, own books, the autopilot. Each id gates its navigation, its admin pages, its AI tools and its jobs. Nothing is deleted, and the Features page, the notice on a parked page and the AI manager's `set_feature` already lead back. Closes FT-1, FT-4, FT-7, FT-14. L. Done when: a new shop's Advanced menu has about 75 links (94 today), the AI manager is offered about 155 tools (234), and a checkout request loads one carrier's adapter, not ten. The owner's question 2. Platform: the registry is the store's; the platform's own second tier is step 3.3.
+1. **A feature costs nothing until a store uses it.** The D178 registry already takes a feature's navigation and AI tools away from a store that has it off. Give every optional feature group an id there (31 groups have none: email marketing, text messages, creators, automation, developer tools, ads and feeds, A/B tests, recommendations, price lists, purchasing, staging, content types, own books, the autopilot and more), and let the id also gate the group's jobs (step 0.4's check), its checkout code (ten carriers' adapters load for a checkout that uses one) and its tools. Whether a group starts on or off for a new store is the owner's product choice (the Homer rule: a new shop's Advanced menu has 94 links and 35 settings pages today), not a saving. Closes FT-1, FT-4, FT-7, FT-14. L. Done when: a store with only the shop on runs no job, loads no adapter and is offered no tool for a group it has not switched on, and the owner has chosen each group's starting state. The owner's question 2. Platform: the registry is the store's; the platform's own groups follow step 3.3.
 2. **One Kaizena Flow site.** Since the switch of 7 November kaizenaflow.com exists twice: the old pages without a store are still built, edited and read beside the store that now serves it (about 4,500 to 6,800 lines, 32 pages, 12 navigation links, 3 to 5 tables, and a null-store branch in 56 server modules). Finish step 7 of `docs/platform-parity-plan.md`: remove the null-store site paths. Closes FT-5, FM-3, DS-6. L. Done when: one place edits the site, and `/admin/platform` has no second set of page, header, footer and menu screens. The owner's question 3. Platform: this is the platform's step.
-3. **Build the platform's twin when the platform will use it.** The rule "whatever is built for stores is built for the platform too" made 19 `platform_*` tables (9 on 6 November); 12 have never held a row, and in 8 pairs neither side has. Keep the rule's aim and change its default: a store feature's decision says whether Kaizena Flow needs it now; if not, it is a row in `docs/platform-parity.md`, not code. Fold the platform's second event pipeline (5 modules, 7 tables, 2 per-minute runners, used by neither side) into the stores'. Closes FT-10, FM-5, FM-4. M. Done when: `CLAUDE.md`'s convention says so, and step 1.5's count of `platform_*` tables stops rising. The owner's question 1. Platform: this is the platform's rule.
-4. **One engine for one job.** Order rules and Workflows are two engines for the same job (about 1,900 lines and 2 tables to fold). Campaigns and discount codes are two discount engines with two editors. Four reward programmes (bonus, referrals, affiliates, creators) keep four ledgers, all empty. The unified theme concept still carries five older layers nobody used. Closes FT-8, FT-9, FT-13, FT-12. L. Done when: per pair, the owner has chosen which engine stays, and the other's screens, tables and tools are gone or folded. The owner's question 4. Platform: Kaizena Flow's own discounts and referrals follow the engine that stays.
-5. **Park or retire what has no user.** A whole developer platform is open with no user: the Admin API, the OAuth server, MCP, custom apps, webhook endpoints (20 or more public handlers, 576 job runs a day). Close it behind a switch until someone asks; no code is removed. Fiken is connected to no store while the stated aim is to make Fiken unnecessary (3,225 lines, a sync engine copied from Tripletex's). Closes FT-6, FT-11, FM-9. M. Done when: the public handlers answer 404 while the switch is off, and Fiken's future is decided. The owner's question 5. Platform: Kaizena Flow's own API (D518) is part of the same switch.
+3. **One way to model the platform.** The platform is modelled three ways: rows with a null store, `platform_*` twin tables (19 today, 9 on 6 November) and, since 7 November, a store of its own. Each new twin copies a store feature's tables, jobs and screens. Now that Kaizena Flow has a store, a store feature can serve the platform through it, and a twin is needed only where the platform's need has no store form (sign-ups, plans). The house rule's aim stays: the platform gets what stores get. Fold the platform's second event pipeline (5 modules, 7 tables, 2 per-minute runners that copy the stores') into the stores'. Closes FT-10, FM-5, FM-4. M. Done when: `CLAUDE.md`'s convention says which of the three ways a new feature uses, and step 1.5's count of `platform_*` tables stops rising. The owner's question 1. Platform: this is the platform's rule.
+4. **One engine for one job.** Order rules and Workflows are two engines for the same job (about 1,900 lines and 2 tables to fold). Campaigns and discount codes are two discount engines with two editors. Bonus, referrals, affiliates and creators keep four ledgers for four kinds of reward. The unified theme concept still carries older layers beside it. Each pair is two things to learn, test and keep in step. Which stays is the owner's choice, and before opening no data needs moving. Closes FT-8, FT-9, FT-13, FT-12. L. Done when: per pair, the owner has chosen which engine stays, and the other's screens, tables and tools are folded into it. The owner's question 4. Platform: Kaizena Flow's own discounts and referrals follow the engine that stays.
+5. **Decide what opens on day one.** The Admin API, the OAuth server, MCP, custom apps and webhook endpoints are 20 or more public handlers that will be open to the internet from the first day. That is a question of scope and of what must be watched at opening, not of waste: decide whether they open with the platform or behind a switch until someone asks. Fiken's sync engine is a copy of Tripletex's: give the two one core before a third accounting system arrives (the code review's step 3.12). Whether Fiken stays beside the own books is the owner's call. Closes FT-6, FT-11, FM-9. M. Done when: the owner has decided the opening scope, and the two accounting connectors share one sync core. The owner's question 5. Platform: Kaizena Flow's own API (D518) is part of the same decision.
 
 ### Phase 4: Tidy, and finish the review
 
@@ -570,16 +583,17 @@ real visitors' speed, and the admin on a slow connection.
 
 **The owner's questions.** Each stops a step until answered.
 
-1. **The parity rule (step 3.3).** May the default change to "the platform's twin is built when Kaizena Flow will use it"? Twelve of
-   19 platform tables have never held a row.
-2. **A second tier of switches (step 3.1).** Which of the 14 feature groups should be off for a new store? The list and each
-   group's size are in `findings/features.md`, FT-1.
+1. **One way to model the platform (step 3.3).** Kaizena Flow now has a store of its own. May a store feature serve the platform
+   through that store, with a `platform_*` twin built only where the platform's need has no store form?
+2. **A new store's starting state (step 3.1).** Which feature groups should a new store start with switched on? This is a product
+   choice (what Homer sees first), not a saving: step 3.1 makes a group cost nothing until it is used, either way.
 3. **One Kaizena Flow site (step 3.2).** May the old pages without a store be removed, now that the store serves the site?
 4. **One engine for one job (step 3.4).** For each pair (order rules and Workflows; campaigns and discount codes; the four reward
-   programmes; the theme layers), which stays?
-5. **No user yet (step 3.5).** Close the developer platform behind a switch until someone asks? Keep or retire Fiken?
-6. **A budget for the surface (step 1.5).** A new page, table, job or AI tool would need a line saying who asked for it and what
-   switch it sits behind. Is that the pace you want? The pause of 29 October did not hold: about 160 decisions followed in 13 days.
+   programmes; the theme layers), which stays? Before opening, no data needs moving.
+5. **What opens on day one (step 3.5).** Do the developer platform's public handlers open with the platform, or behind a switch
+   until someone asks? Does Fiken stay beside the own books?
+6. **A budget for the surface (step 1.5).** May a new table, job, page or AI tool have to name the gate that keeps it free for
+   stores that do not use it?
 7. **Deploys (step 2.7).** May pushes share a deploy, so dozens of deploys a day become a dozen and cached pages live longer? It changes
    D5's "at once" by a few minutes.
 8. **The standing rules (step 4.4).** May `CLAUDE.md` shrink to a 7 KB core with rules loaded by path? It changes how every session
