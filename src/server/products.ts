@@ -132,7 +132,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     `),
     db().execute<Row>(sql`
       select name from commerce.inventory_locations
-      where store_id = ${store.id}::uuid and active order by priority, created_at, id limit 1
+      where store_id = ${store.id}::uuid and active and supplier_id is null order by priority, created_at, id limit 1
     `),
     db().execute<Row>(sql`
       select id, name from commerce.inventory_locations where store_id = ${store.id}::uuid and active order by priority, created_at, id
@@ -1255,7 +1255,7 @@ async function saveMedia(
 async function stockLocation(tx: Tx, store: Store): Promise<string> {
   const [existing] = await tx.execute<Row>(sql`
     select id from commerce.inventory_locations
-    where store_id = ${store.id}::uuid and active order by priority, created_at, id limit 1
+    where store_id = ${store.id}::uuid and active and supplier_id is null order by priority, created_at, id limit 1
   `);
   if (existing) return String(existing.id);
   const country = store.details.country ?? store.markets[0]?.code ?? "NO";

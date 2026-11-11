@@ -371,7 +371,7 @@ export async function allocateStock(
   if (variantIds.length === 0) return { ok: true, holds: [], behind: new Map() };
   const ids = sql.join(variantIds.map((id) => sql`${id}::uuid`), sql`, `);
   const places = await tx.execute<Row>(sql`
-    select id, priority, created_at, country from commerce.inventory_locations
+    select id, priority, created_at, country, supplier_id is not null as supplier from commerce.inventory_locations
     where store_id = ${storeId}::uuid and active and fulfils_online
     order by priority, created_at, id
   `);
@@ -381,7 +381,7 @@ export async function allocateStock(
   const nearCountry = routing?.stock_routing === "nearest" ? options.country : null;
   // A variant that keeps selling past zero and has no level at any active location gets one at the first, so there is a row to lock and draw.
   const firstPlace = routingOrder(
-    places.map((l) => ({ id: String(l.id), priority: Number(l.priority), createdAt: new Date(String(l.created_at)).toISOString(), active: true, country: String(l.country) })),
+    places.map((l) => ({ id: String(l.id), priority: Number(l.priority), createdAt: new Date(String(l.created_at)).toISOString(), active: true, country: String(l.country), supplier: Boolean(l.supplier) })),
     nearCountry,
   )[0];
   const home = firstPlace ? firstPlace.id : null;
@@ -415,7 +415,7 @@ export async function allocateStock(
   `);
   const heldAt = new Map(holds.map((h) => [`${h.variant_id}:${h.location_id}`, Number(h.held)]));
   const outcome = allocate({
-    locations: places.map((l) => ({ id: String(l.id), priority: Number(l.priority), createdAt: new Date(String(l.created_at)).toISOString(), active: true, country: String(l.country) })),
+    locations: places.map((l) => ({ id: String(l.id), priority: Number(l.priority), createdAt: new Date(String(l.created_at)).toISOString(), active: true, country: String(l.country), supplier: Boolean(l.supplier) })),
     nearCountry,
     cells: levels.map((l) => ({
       variantId: String(l.variant_id),

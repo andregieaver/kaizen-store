@@ -29,6 +29,10 @@ export const PERSONAL_DATA_REASONS_NB: Readonly<Record<string, string>> = {
     "En pakkes fraktselskap og sporingsnummer, knyttet til en person bare gjennom bestillingen. Beholdes med den. Grunnen ansatte oppga for å angre en forsendelse (D174, oppfølging), er deres egen tekst (den kan inneholde et navn): den eksporteres med pakken og erstattes med en markør når bestillingen anonymiseres.",
   carrier_labels:
     "En fraktetikett et fraktselskap gir bare én gang (DHL Express, D458): en PDF med mottakerens navn og adresse, beholdt så ansatte kan skrive den ut. Slettes 30 dager etter at pakken ble booket (oppbevaringstypen carrier_labels) og når personens opplysninger slettes; eksporteres ikke (pakken og adressen dens eksporteres, med bestillingen).",
+  supplier_orders:
+    "Det en leverandør med direktelevering ble bedt om å sende for en ordre (D541): status, tidspunkter og hashen av lenken til siden dens; ordene leverandøren ga når den ikke kunne sende (dens egen tekst, som kan nevne kunden), eksporteres med ordren og beholdes med den. Leveringsadressen er ordrens, lest når leverandøren får e-post og på siden dens mens noe gjenstår å sende, aldri kopiert hit. Ingen egne personopplysninger utover dette; knyttet til en person bare gjennom ordren, og følger ordrens begrensning og anonymisering.",
+  supplier_order_lines:
+    "Hvilke ordrelinjer og enheter en leverandør ble bedt om å sende (D541); ingen personopplysninger. Knyttet til en person bare gjennom ordren, og følger ordrens begrensning og anonymisering.",
   shipment_tracking:
     "Fraktselskapets hendelser for en pakke (D238): tidspunkter, koder og fraktselskapets egne beskrivelser og steder, som kan navngi hvem som kvitterte for den. Eksporteres med pakken, og tømmes når bestillingen anonymiseres (commerce.anonymise_order(), en oppdatering) og 90 dager etter at pakken sluttet å bli fulgt.",
   order_rule_runs:

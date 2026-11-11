@@ -42,6 +42,7 @@ const OTHERS: Record<string, "any" | "owner" | string> = {
 
 /** Files that ask for the owner role where the map would let a member in: each says why (a new file, so the baseline cannot). */
 const OWNER_ONLY_EXTRA: Record<string, string> = {
+  "src/app/admin/(gated)/[store]/inventory/suppliers/actions.ts": "stopping a drop-shipping supplier (D540) closes its location and so takes the stock it said it had off sale: the owner's, as deactivating a location is (D172)",
   "src/app/admin/(gated)/[store]/integrations/endpoints/actions.ts": "an owner's own endpoints get customers' details and carry a signing secret (D354), so only an owner adds or changes them, as with the services (D41)",
   "src/app/admin/(gated)/[store]/integrations/tripletex/actions.ts": "a Tripletex connection keeps a token to the company's books and sends its invoices and customers there (D453), so only an owner connects, changes, starts, pauses or disconnects it, as with the services (D41)",
   "src/app/admin/(gated)/[store]/integrations/fiken/actions.ts": "a Fiken connection keeps a grant to the company's books and sends its invoices and customers there (D460), so only an owner connects, chooses the company, changes, starts, pauses or disconnects it, as with the services (D41)",
