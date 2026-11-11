@@ -570,7 +570,7 @@
         "src/server/checkout.ts",
         "src/server/campaign-notices.ts",
         "src/app/s/[store]/[market]/cart/cart-contents.tsx",
-        "supabase/migrations/20261021090105_campaigns_depth.sql",
+        "supabase/archive/20261111172838/20261021090105_campaigns_depth.sql",
         "src/lib/discounts.ts",
         "src/server/discounts.ts",
         "src/components/admin/generated-codes.tsx",
@@ -580,8 +580,8 @@
         "src/components/discount-code-form.tsx",
         "src/lib/discount-combinations.ts",
         "src/server/discount-combinations.ts",
-        "supabase/migrations/20261028172238_discount_combinations.sql",
-        "supabase/migrations/20261028172302_discount_combinations_copy.sql"
+        "supabase/archive/20261111172838/20261028172238_discount_combinations.sql",
+        "supabase/archive/20261111172838/20261028172302_discount_combinations_copy.sql"
       ],
       "tests": [
         "src/lib/campaigns.test.ts",
@@ -663,7 +663,7 @@
         "src/server/checkout.ts",
         "src/server/campaign-notices.ts",
         "src/lib/campaign-notices.ts",
-        "supabase/migrations/20261021104330_campaigns_bxgy.sql"
+        "supabase/archive/20261111172838/20261021104330_campaigns_bxgy.sql"
       ],
       "tests": [
         "src/lib/campaigns.test.ts",
@@ -852,7 +852,7 @@
         "src/lib/pricing.ts",
         "src/components/price.tsx",
         "src/server/catalog.ts",
-        "supabase/migrations/20260923235847_platform_rules.sql"
+        "supabase/archive/20261111172838/20260923235847_platform_rules.sql"
       ],
       "tests": [
         "src/lib/pricing.test.ts",
@@ -897,7 +897,7 @@
         "src/server/gift-cards-admin.ts",
         "src/lib/gift-card-admin.ts",
         "src/app/admin/(gated)/[store]/gift-cards/page.tsx",
-        "supabase/migrations/20261021135701_gift_cards_rules.sql"
+        "supabase/archive/20261111172838/20261021135701_gift_cards_rules.sql"
       ],
       "tests": [
         "src/server/gift-cards.int.test.ts",
@@ -1093,7 +1093,7 @@
         "src/components/admin/creators-admin.tsx",
         "src/app/admin/(gated)/[store]/creators/page.tsx",
         "src/app/s/[store]/[market]/account/creator/page.tsx",
-        "supabase/migrations/20261029024021_creators_rules.sql"
+        "supabase/archive/20261111172838/20261029024021_creators_rules.sql"
       ],
       "tests": [
         "src/lib/affiliates.test.ts",
@@ -1337,7 +1337,7 @@
         "src/components/product-reviews.tsx",
         "src/app/admin/(gated)/[store]/reviews/page.tsx",
         "src/app/s/[store]/[market]/account/reviews/page.tsx",
-        "supabase/migrations/20261021220512_product_reviews_rules.sql",
+        "supabase/archive/20261111172838/20261021220512_product_reviews_rules.sql",
         "src/server/review-requests.ts",
         "src/server/review-import.ts",
         "src/lib/review-import.ts",

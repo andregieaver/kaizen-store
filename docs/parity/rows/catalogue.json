@@ -29,7 +29,7 @@
       "files": [
         "src/lib/product-input.ts",
         "src/server/products.ts",
-        "supabase/migrations/20261025230656_variants_limit.sql",
+        "supabase/archive/20261111172838/20261025230656_variants_limit.sql",
         "src/lib/variant-grid.ts",
         "src/components/admin/virtual-rows.ts",
         "src/components/admin/product-editor.tsx",
@@ -220,7 +220,7 @@
         "src/server/taxonomy.ts",
         "src/components/admin/term-rules-fields.tsx",
         "src/server/category-tools.ts",
-        "supabase/migrations/20261025205409_collection_rules_sql.sql"
+        "supabase/archive/20261111172838/20261025205409_collection_rules_sql.sql"
       ],
       "tests": [
         "src/lib/term-rules.test.ts",
@@ -281,7 +281,7 @@
         "src/server/order-insert.ts",
         "src/server/stock-restock.ts",
         "src/components/admin/bundle-section.tsx",
-        "supabase/migrations/20261026102754_bundles_sql.sql"
+        "supabase/archive/20261111172838/20261026102754_bundles_sql.sql"
       ],
       "tests": [
         "src/db/commerce.test.ts",
@@ -396,9 +396,9 @@
         "src/lib/ui-catalog.ts",
         "src/lib/i18n.ts",
         "src/components/backorder-note.tsx",
-        "supabase/migrations/20261006081019_inventory_rules.sql",
-        "supabase/migrations/20261006121245_inventory_reservation_backorder.sql",
-        "supabase/migrations/20261006121317_inventory_draw_claims.sql"
+        "supabase/archive/20261111172838/20261006081019_inventory_rules.sql",
+        "supabase/archive/20261111172838/20261006121245_inventory_reservation_backorder.sql",
+        "supabase/archive/20261111172838/20261006121317_inventory_draw_claims.sql"
       ],
       "tests": [
         "src/server/checkout.int.test.ts",
@@ -466,7 +466,7 @@
         "src/components/product-card.tsx",
         "src/server/order-insert.ts",
         "src/server/order-list-sql.ts",
-        "supabase/migrations/20261029154228_preorders_rules.sql"
+        "supabase/archive/20261111172838/20261029154228_preorders_rules.sql"
       ],
       "tests": [
         "src/server/automations.int.test.ts",
@@ -654,8 +654,8 @@
         "src/components/admin/entry-editor.tsx",
         "src/app/s/[store]/[market]/[slug]/entry-page-view.tsx",
         "src/server/entry-targets.ts",
-        "supabase/migrations/20261027001040_content_types_sql.sql",
-        "supabase/migrations/20261027024913_entry_pages_sql.sql"
+        "supabase/archive/20261111172838/20261027001040_content_types_sql.sql",
+        "supabase/archive/20261111172838/20261027024913_entry_pages_sql.sql"
       ],
       "tests": [
         "src/lib/content-types.test.ts",
@@ -802,9 +802,9 @@
         "src/app/admin/(gated)/[store]/products/import/page.tsx",
         "src/app/admin/(gated)/[store]/products/import/[jobId]/page.tsx",
         "src/app/admin/(gated)/[store]/products/import/[jobId]/tick/route.ts",
-        "supabase/migrations/20261005112434_data_jobs.sql",
-        "supabase/migrations/20261005112442_data_jobs_rules.sql",
-        "supabase/migrations/20261005112449_data_buckets.sql",
+        "supabase/archive/20261111172838/20261005112434_data_jobs.sql",
+        "supabase/archive/20261111172838/20261005112442_data_jobs_rules.sql",
+        "supabase/archive/20261111172838/20261005112449_data_buckets.sql",
         "docs/wave-2-data.md"
       ],
       "tests": [
@@ -874,7 +874,7 @@
         "src/components/admin/products-grid.tsx",
         "src/components/admin/bulk-result.tsx",
         "src/components/admin/bulk-recent.tsx",
-        "supabase/migrations/20261005112434_data_jobs.sql"
+        "supabase/archive/20261111172838/20261005112434_data_jobs.sql"
       ],
       "tests": [
         "src/lib/bulk-edit.test.ts",
@@ -941,9 +941,9 @@
         "src/lib/analytics-inventory.ts",
         "src/server/control-center.ts",
         "src/db/schema.ts",
-        "supabase/migrations/20261006081000_inventory.sql",
-        "supabase/migrations/20261006081019_inventory_rules.sql",
-        "supabase/migrations/20261006121317_inventory_draw_claims.sql",
+        "supabase/archive/20261111172838/20261006081000_inventory.sql",
+        "supabase/archive/20261111172838/20261006081019_inventory_rules.sql",
+        "supabase/archive/20261111172838/20261006121317_inventory_draw_claims.sql",
         "src/server/stock-context.ts",
         "src/server/inventory.ts",
         "src/server/inventory-jobs.ts",
@@ -1039,11 +1039,11 @@
         "src/components/admin/inventory/stock-documents-view.tsx",
         "src/app/admin/(gated)/[store]/inventory/transfers/page.tsx",
         "src/app/admin/(gated)/[store]/inventory/purchase-orders/page.tsx",
-        "supabase/migrations/20261029002132_stock_transfers_purchase_orders.sql",
+        "supabase/archive/20261111172838/20261029002132_stock_transfers_purchase_orders.sql",
         "src/lib/stock-routing.ts",
         "src/app/admin/(gated)/[store]/inventory/transfers/[id]/csv/route.ts",
         "src/server/stock-tools.ts",
-        "supabase/migrations/20261029004946_stock_routing.sql"
+        "supabase/archive/20261111172838/20261029004946_stock_routing.sql"
       ],
       "tests": [
         "src/server/stock-documents.int.test.ts",
@@ -1340,7 +1340,7 @@
         "src/server/cart.ts",
         "src/server/price-breaks.ts",
         "src/server/price-lists.ts",
-        "supabase/migrations/20261026152908_price_breaks_sql.sql"
+        "supabase/archive/20261111172838/20261026152908_price_breaks_sql.sql"
       ],
       "tests": [
         "e2e/campaigns.spec.ts",

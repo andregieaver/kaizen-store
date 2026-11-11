@@ -42,7 +42,7 @@
         "src/components/admin/orders/filter-bar.tsx",
         "src/components/admin/orders/view-bar.tsx",
         "src/components/admin/orders/order-table.tsx",
-        "supabase/migrations/20261006151857_orders_ops_search.sql"
+        "supabase/archive/20261111172838/20261006151857_orders_ops_search.sql"
       ],
       "tests": [
         "src/server/order-list.int.test.ts",
@@ -158,8 +158,8 @@
         "src/server/order-bulk.ts",
         "src/app/admin/(gated)/[store]/orders/ops-actions.ts",
         "src/components/admin/orders/order-ops.tsx",
-        "supabase/migrations/20261006151839_orders_ops.sql",
-        "supabase/migrations/20261006151848_orders_ops_rules.sql"
+        "supabase/archive/20261111172838/20261006151839_orders_ops.sql",
+        "supabase/archive/20261111172838/20261006151848_orders_ops_rules.sql"
       ],
       "tests": [
         "src/lib/order-tags.test.ts",
@@ -230,7 +230,7 @@
         "src/app/s/[store]/[market]/account/change/[token]/page.tsx",
         "src/app/s/[store]/[market]/account/change/[token]/change-view.tsx",
         "src/components/documents/order-document-view.tsx",
-        "supabase/migrations/20261006235336_fulfilment_rules.sql",
+        "supabase/archive/20261111172838/20261006235336_fulfilment_rules.sql",
         "src/server/order-change-tools.ts"
       ],
       "tests": [
@@ -346,7 +346,7 @@
         "src/server/shopper-emails.ts",
         "src/server/order-returns.ts",
         "src/server/gift-card-delivery.ts",
-        "supabase/migrations/20261028151136_store_credit_refunds_rules.sql"
+        "supabase/archive/20261111172838/20261028151136_store_credit_refunds_rules.sql"
       ],
       "tests": [
         "src/server/order-admin.int.test.ts",
@@ -427,9 +427,9 @@
         "src/app/s/[store]/[market]/account/pay/[token]/pay-view.tsx",
         "src/components/admin/drafts/draft-editor.tsx",
         "src/components/admin/drafts/draft-send.tsx",
-        "supabase/migrations/20261006151839_orders_ops.sql",
-        "supabase/migrations/20261006151848_orders_ops_rules.sql",
-        "supabase/migrations/20261006185225_orders_ops_fix_rules.sql"
+        "supabase/archive/20261111172838/20261006151839_orders_ops.sql",
+        "supabase/archive/20261111172838/20261006151848_orders_ops_rules.sql",
+        "supabase/archive/20261111172838/20261006185225_orders_ops_fix_rules.sql"
       ],
       "tests": [
         "src/lib/draft-order.test.ts",
@@ -499,14 +499,14 @@
         "src/server/shopper-emails.ts",
         "src/server/return-sql.ts",
         "src/db/schema.ts",
-        "supabase/migrations/20261006235336_fulfilment_rules.sql",
+        "supabase/archive/20261111172838/20261006235336_fulfilment_rules.sql",
         "src/app/admin/(gated)/[store]/orders/actions.ts",
         "src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx",
         "src/components/admin/orders/send-parcel.tsx",
         "src/components/admin/orders/shipment-list.tsx",
         "src/components/order-shipments.tsx",
         "src/server/return-facts.ts",
-        "supabase/migrations/20261007042008_fulfilment_unsent_closures.sql",
+        "supabase/archive/20261111172838/20261007042008_fulfilment_unsent_closures.sql",
         "src/lib/shipment-undo.ts",
         "src/server/carrier-booking.ts"
       ],
@@ -548,7 +548,7 @@
         "on": "2026-10-07",
         "from": "full",
         "to": "partial",
-        "why": "Skeptic of the wave 3 run 3 re-rate. I re-ran the cited tests on my own database w3_wave_3_fulfilment_skeptic: fulfilment, order-bulk, packing-slips, pick-list, returns and order-edit-review-fixes integration tests (72 of 72), and the unit and view tests (146 passed, 1 skipped). All pass, but they never refund an unsent unit. A throwaway integration test (deleted afterwards) did what the cancel refusal tells staff to do on a partly sent order: an order of 3, 1 sent, the 2 unsent refunded through `refundOrder()` with restock. The order stayed paid and Partly sent with 2 to send. The slip and pick list printed the 2 refunded units, and bulk Mark as sent recorded a second parcel of them, after which the order was Sent with the units both restocked and shipped. I read `commerce.line_to_send()` (quantity − shipped − withdrawn) in supabase/migrations/20261006235336_fulfilment_rules.sql and `cancelOrder()`/`editBlock()`: a partly sent order has no other way to drop its remainder. So criterion 1's 'Sent after' cannot be reached honestly and criterion 3's bulk send ships refunded goods. This is the same class of defect as the fixed review finding about returns stranding a partly sent order. Also missing: spec 6.2 F2's carrier-booking parcel test (none of the three carrier integration tests books part of an order)."
+        "why": "Skeptic of the wave 3 run 3 re-rate. I re-ran the cited tests on my own database w3_wave_3_fulfilment_skeptic: fulfilment, order-bulk, packing-slips, pick-list, returns and order-edit-review-fixes integration tests (72 of 72), and the unit and view tests (146 passed, 1 skipped). All pass, but they never refund an unsent unit. A throwaway integration test (deleted afterwards) did what the cancel refusal tells staff to do on a partly sent order: an order of 3, 1 sent, the 2 unsent refunded through `refundOrder()` with restock. The order stayed paid and Partly sent with 2 to send. The slip and pick list printed the 2 refunded units, and bulk Mark as sent recorded a second parcel of them, after which the order was Sent with the units both restocked and shipped. I read `commerce.line_to_send()` (quantity − shipped − withdrawn) in supabase/archive/20261111172838/20261006235336_fulfilment_rules.sql and `cancelOrder()`/`editBlock()`: a partly sent order has no other way to drop its remainder. So criterion 1's 'Sent after' cannot be reached honestly and criterion 3's bulk send ships refunded goods. This is the same class of defect as the fixed review finding about returns stranding a partly sent order. Also missing: spec 6.2 F2's carrier-booking parcel test (none of the three carrier integration tests books part of an order)."
       }
     ]
   },
@@ -627,8 +627,8 @@
     ],
     "evidence": {
       "files": [
-        "supabase/migrations/20261014230143_shipping_methods.sql",
-        "supabase/migrations/20261014230201_shipping_methods_rules.sql",
+        "supabase/archive/20261111172838/20261014230143_shipping_methods.sql",
+        "supabase/archive/20261111172838/20261014230201_shipping_methods_rules.sql",
         "src/db/schema.ts",
         "src/lib/shipping-methods.ts",
         "src/lib/delivery-options.ts",
@@ -913,8 +913,8 @@
     ],
     "evidence": {
       "files": [
-        "supabase/migrations/20261014230143_shipping_methods.sql",
-        "supabase/migrations/20261014230201_shipping_methods_rules.sql",
+        "supabase/archive/20261111172838/20261014230143_shipping_methods.sql",
+        "supabase/archive/20261111172838/20261014230201_shipping_methods_rules.sql",
         "src/db/schema.ts",
         "src/lib/shipping-methods.ts",
         "src/lib/delivery-options.ts",
@@ -991,8 +991,8 @@
     ],
     "evidence": {
       "files": [
-        "supabase/migrations/20261014230143_shipping_methods.sql",
-        "supabase/migrations/20261014230201_shipping_methods_rules.sql",
+        "supabase/archive/20261111172838/20261014230143_shipping_methods.sql",
+        "supabase/archive/20261111172838/20261014230201_shipping_methods_rules.sql",
         "src/db/schema.ts",
         "src/lib/shipping-methods.ts",
         "src/lib/delivery-options.ts",
@@ -1002,7 +1002,7 @@
         "src/lib/local-delivery.ts",
         "src/lib/postal-patterns.ts",
         "src/server/local-delivery.ts",
-        "supabase/migrations/20261014230225_postal_points.sql",
+        "supabase/archive/20261111172838/20261014230225_postal_points.sql",
         "scripts/postal-points.mjs",
         "src/server/order-delivery.ts",
         "src/server/order-list-sql.ts",
@@ -1196,7 +1196,7 @@
         "src/components/order-shipments.tsx",
         "src/components/admin/orders/parcel-status.tsx",
         "src/app/api/cron/cart-reminders/route.ts",
-        "supabase/migrations/20261015001113_notifications_rules.sql",
+        "supabase/archive/20261111172838/20261015001113_notifications_rules.sql",
         "src/server/carrier-tracking.ts",
         "src/server/order-delivery.ts",
         "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
@@ -1292,9 +1292,9 @@
         "src/lib/email-text.ts",
         "src/lib/email-layout.ts",
         "src/server/email.ts",
-        "supabase/migrations/20261015001011_notifications.sql",
-        "supabase/migrations/20261015001113_notifications_rules.sql",
-        "supabase/migrations/20261015001242_notifications_copy.sql"
+        "supabase/archive/20261111172838/20261015001011_notifications.sql",
+        "supabase/archive/20261111172838/20261015001113_notifications_rules.sql",
+        "supabase/archive/20261111172838/20261015001242_notifications_copy.sql"
       ],
       "tests": [
         "src/lib/email-template.test.ts",
@@ -1375,7 +1375,7 @@
         "src/components/admin/automation/rule-log.tsx",
         "src/components/admin/orders/hold-panel.tsx",
         "src/app/api/cron/integrations/route.ts",
-        "supabase/migrations/20261015001113_notifications_rules.sql",
+        "supabase/archive/20261111172838/20261015001113_notifications_rules.sql",
         "src/server/integrations.ts",
         "src/lib/integrations.ts",
         "src/server/slack.ts",
@@ -1673,9 +1673,9 @@
         "src/components/admin/returns/exchange-card.tsx",
         "src/app/s/[store]/[market]/account/exchange/[token]/page.tsx",
         "src/app/s/[store]/[market]/account/exchange/[token]/exchange-view.tsx",
-        "supabase/migrations/20261015050012_exchanges.sql",
-        "supabase/migrations/20261015050226_exchanges_rules.sql",
-        "supabase/migrations/20261015083910_exchanges_bonus_base.sql",
+        "supabase/archive/20261111172838/20261015050012_exchanges.sql",
+        "supabase/archive/20261111172838/20261015050226_exchanges_rules.sql",
+        "supabase/archive/20261111172838/20261015083910_exchanges_bonus_base.sql",
         "src/server/exchange-tools.ts"
       ],
       "tests": [
@@ -1748,7 +1748,7 @@
         "src/server/api-tokens.ts",
         "src/server/integrations.ts",
         "src/server/webhook-endpoints.ts",
-        "supabase/migrations/20261028093849_api_tokens.sql"
+        "supabase/archive/20261111172838/20261028093849_api_tokens.sql"
       ],
       "tests": [
         "src/lib/admin-api.test.ts",
@@ -1898,8 +1898,8 @@
         "src/server/analytics-inventory-data.ts",
         "src/server/products.ts",
         "src/server/cart.ts",
-        "supabase/migrations/20261006081019_inventory_rules.sql",
-        "supabase/migrations/20261006121317_inventory_draw_claims.sql",
+        "supabase/archive/20261111172838/20261006081019_inventory_rules.sql",
+        "supabase/archive/20261111172838/20261006121317_inventory_draw_claims.sql",
         "src/lib/stock-routing.ts",
         "src/lib/stock-restock.ts",
         "src/server/stock-restock.ts",
@@ -2114,10 +2114,10 @@
         "src/server/returns.ts",
         "src/server/stripe-refunds.ts",
         "src/server/stripe-webhooks.ts",
-        "supabase/migrations/20261004125309_order_invoices.sql",
-        "supabase/migrations/20261004125337_order_invoices_rules.sql",
-        "supabase/migrations/20261004125343_order_invoices_audit.sql",
-        "supabase/migrations/20261004152302_order_invoices_fixes.sql"
+        "supabase/archive/20261111172838/20261004125309_order_invoices.sql",
+        "supabase/archive/20261111172838/20261004125337_order_invoices_rules.sql",
+        "supabase/archive/20261111172838/20261004125343_order_invoices_audit.sql",
+        "supabase/archive/20261111172838/20261004152302_order_invoices_fixes.sql"
       ],
       "tests": [
         "e2e/invoices.spec.ts",
@@ -2185,10 +2185,10 @@
     ],
     "evidence": {
       "files": [
-        "supabase/migrations/20261004125309_order_invoices.sql",
-        "supabase/migrations/20261004125337_order_invoices_rules.sql",
-        "supabase/migrations/20261004125343_order_invoices_audit.sql",
-        "supabase/migrations/20261004152302_order_invoices_fixes.sql",
+        "supabase/archive/20261111172838/20261004125309_order_invoices.sql",
+        "supabase/archive/20261111172838/20261004125337_order_invoices_rules.sql",
+        "supabase/archive/20261111172838/20261004125343_order_invoices_audit.sql",
+        "supabase/archive/20261111172838/20261004152302_order_invoices_fixes.sql",
         "docs/wave-1b-invoices.md",
         "src/lib/invoice-snapshot.ts",
         "src/lib/credit-allocation.ts",
@@ -2294,8 +2294,8 @@
         "src/app/s/[store]/[market]/cart/actions.ts",
         "src/components/admin/orders/gift-card.tsx",
         "src/components/admin/orders/packing-slip-view.tsx",
-        "supabase/migrations/20261006151839_orders_ops.sql",
-        "supabase/migrations/20261006151848_orders_ops_rules.sql"
+        "supabase/archive/20261111172838/20261006151839_orders_ops.sql",
+        "supabase/archive/20261111172838/20261006151848_orders_ops_rules.sql"
       ],
       "tests": [
         "src/lib/gift.test.ts",
