@@ -56,7 +56,7 @@ This report is a working document: the plan below is the list of work, and this 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
 | 1.1 | Type the money reads | FV1, FF9 | M | Done | 11 Nov 2026: every read in the twelve files FV1 names (checkout, order-insert, order-edits, returns, exchanges, draft-orders, stripe-refunds, billing, catalog, cart, listing, search; about 230 reads) goes through `typedRows()`/`typedRow()`: each money column `col.minor`/`col.minorOrNull`, each code `col.currency`. Small rows describe every column; the wide rows passed on as `Row` (a cart line with its product and plan, `select *` of an order, a return, a draft, an exchange) describe their id, money and currency columns and keep the rest as read (`looseObject`), which step 1.2's ratchet can tighten. A write that returns no row now throws instead of reading `undefined`. `money-reads.scan.test.ts` fails on an `execute<` in any of them. Checked by the type check, lint, the unit tests and the whole integration suite (4,931 passing; the two failures were not this change, see the change log). |
-| 1.2 | Ratchet the rest | FD6, FH11 | S (burn-down L) | Open | |
+| 1.2 | Ratchet the rest | FD6, FH11 | S (burn-down L) | Done | 11 Nov 2026: `src/server/ratchet.scan.test.ts` holds `src` (tests and test support aside) to `src/server/ratchet.baseline.json`: unchecked reads (`execute<…>(`) per file, 3,131 in 453 files after step 1.1, and `as unknown as` (122) and switched-off `no-explicit-any` (0) in total. A rise fails, a new file starts at none, and a fall fails too until the baseline is lowered with `node scripts/ratchet.mjs` (which refuses to raise a number), so the room is never spent again. Counting shared by both in `scripts/lib/ratchet-count.mjs`. The burn-down goes on as files are touched. FD6's "about 50 suppressed any" no longer matches the code: there are none (the matches were the word in comments). |
 | 1.3 | Carry the store in every write | FV5 | M | Open | |
 | 1.4 | One wrapper for server actions | FV9 | M | Open | |
 | 1.5 | Bound every query and webhook route | FD9 | S | Open | |
@@ -150,6 +150,7 @@ This report is a working document: the plan below is the list of work, and this 
 - 10 November 2026: step 0.11: Marketing, Analytics and Website in groups.
 - 10 November 2026: steps 0.3 and 0.4 done (D532).
 - 10 November 2026: step 0.8 built (D539): the AI manager's turn has a deadline and a cost ceiling; live the same evening.
+- 11 November 2026: step 1.2 done: the ratchet and its baseline; FD6's suppressed `any` corrected to none.
 - 11 November 2026: step 1.1 done. Its integration run found two failures on main that were not it: the agents' eval recording is older than the AI manager's prompt (it needs a new run on Platform → AI, which only a person with the platform's model can make), and e-invoices skipped new documents once more than 50 business documents without a Peppol number fell in the two-day window (fixed in the same change: each run pages through the window, `runEinvoiceSending()`, with a test).
 - 11 November 2026: step 0.9 done: the theme store's list has no cap.
 - 11 November 2026: step 0.7 done: its tests, and the plan lock moved before the Stripe account is made (FV11).
