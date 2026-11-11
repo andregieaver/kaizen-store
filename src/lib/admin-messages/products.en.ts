@@ -12,7 +12,7 @@ import type { Widen } from "./common.en";
 export const productsEn = {
   /** What `src/lib/bulk-admin.ts` says (`BULK_WORDS`), passed to its functions. */
   bulkLib: BULK_WORDS,
-  /** Settings, Products (D556): what a product's tile in a content grid shows. */
+  /** Settings, Products (D557): what a product's tile in a content grid shows. */
   settings: {
     title: "Products",
     intro: "What shoppers see of your products in grids across your site. Each grid can say otherwise for itself in the page builder.",

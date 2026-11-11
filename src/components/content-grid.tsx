@@ -44,7 +44,7 @@ export function ContentGridView({
   block: ContentGridBlock;
   data: GridData;
   /**
-   * What a store's product tiles may show besides the price (D556): the stock left and a quantity chooser with Add to cart, as the grid's
+   * What a store's product tiles may show besides the price (D557): the stock left and a quantity chooser with Add to cart, as the grid's
    * own choices allow (`tileAsk()`); the store's settings come with the facts. Null, as in the builder's canvas, shows neither.
    */
   tiles?: TileAsk | null;
@@ -77,7 +77,7 @@ export function ContentGridView({
   const plain = (text: string) => (own ? inlinePlain(text) : text);
   const button = buttonLook(block.button);
   const tile = block.tile;
-  // The facts a store's product tiles ask for (D556): only on its own pages, never for custom items or pages.
+  // The facts a store's product tiles ask for (D557): only on its own pages, never for custom items or pages.
   const shop = tiles && traits.products && data.shop ? { ask: tiles, where: { store: data.shop.store, market: data.shop.market }, cart: data.shop.cart } : null;
   const shopWords: TileShopWords | null = shop && {
     cart: { addToCart: m.addToCart, adding: m.adding, added: m.added, capped: m.capped, unavailable: m.unavailable, planConflict: m.planConflict, tryAgain: m.tryAgain, goToCart: m.goToCart },

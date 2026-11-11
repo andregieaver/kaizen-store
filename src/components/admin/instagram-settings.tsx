@@ -4,7 +4,7 @@ import type { AdminLang } from "@/lib/admin-lang";
 import type { InstagramStatus } from "@/server/instagram";
 
 /**
- * The owner's Instagram connection (D559), for a store and for Kaizena Flow: connect (off to Instagram), the account and how its posts were
+ * The owner's Instagram connection (D560), for a store and for Kaizena Flow: connect (off to Instagram), the account and how its posts were
  * last read, its latest posts (through the site's own proxy), and disconnect. Plain forms posting server actions; works without a script.
  */
 export function InstagramSettings({

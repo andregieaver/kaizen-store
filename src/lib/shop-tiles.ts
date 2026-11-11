@@ -1,5 +1,5 @@
 /**
- * What a product's tile in a content grid shows besides its picture, title and price (D556): the stock left and a quantity chooser with
+ * What a product's tile in a content grid shows besides its picture, title and price (D557): the stock left and a quantity chooser with
  * Add to cart. The store decides for every grid (Settings, Products: `commerce.product_settings`) and a grid may say otherwise for itself
  * (`ContentGridBlock.shopTiles`). Pure.
  *
@@ -92,7 +92,7 @@ export type TileVariant = {
 };
 
 /**
- * What a tile says about a product's stock, from its variants (D556): the one variant's own words, or for several, in stock while any can be
+ * What a tile says about a product's stock, from its variants (D557): the one variant's own words, or for several, in stock while any can be
  * offered (with the count when the sum is low), a pre-order or backorder when only those remain, sold out when none. Null for a product whose
  * variants all have no stock to tell (downloads, services): nothing is said.
  */

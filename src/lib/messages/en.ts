@@ -721,8 +721,8 @@ export const en = {
     businessOnly: "This product is sold to businesses only.",
     switchToBusiness: "Shop as a business",
   },
-  /** The shop's notes about a basket (D557): free shipping and what is saved today. A saving is against the 30-day lowest price only. */
-  /** The Instagram feed (D559): the owner's own posts, linking to Instagram. */
+  /** The shop's notes about a basket (D558): free shipping and what is saved today. A saving is against the 30-day lowest price only. */
+  /** The Instagram feed (D560): the owner's own posts, linking to Instagram. */
   instagram: {
     feed: (name: string) => `Instagram posts by @${name}`,
     follow: (name: string) => `Follow @${name} on Instagram`,

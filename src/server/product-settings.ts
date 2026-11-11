@@ -10,7 +10,7 @@ import { audit, type Membership } from "./auth";
 import { col, typedRows } from "./typed-rows";
 
 /**
- * The store's product settings (D556): what a product's tile in a content grid shows besides its picture, title and price. One row a
+ * The store's product settings (D557): what a product's tile in a content grid shows besides its picture, title and price. One row a
  * store, made when first saved (a store that never saved reads the defaults). Read per request, never in a `'use cache'` function: the
  * tiles' facts route reads it with the stock, so a change shows on the next page view without refreshing the catalogue.
  */

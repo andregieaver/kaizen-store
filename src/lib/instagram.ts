@@ -1,5 +1,5 @@
 /**
- * The Instagram feed (D559), pure: an owner's own posts as Instagram gives them (the API with Instagram Login, scope
+ * The Instagram feed (D560), pure: an owner's own posts as Instagram gives them (the API with Instagram Login, scope
  * `instagram_business_basic`), the hashtags in a caption, and the posts a feed component shows. The server is `src/server/instagram.ts`.
  *
  * A feed shows only the connected account's own posts, never strangers' (Meta's public hashtag search needs App Review, allows 30

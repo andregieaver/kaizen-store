@@ -33,7 +33,7 @@ export async function taxFactsOf(storeId: string): Promise<{ vatNumber: string |
  * null there and becomes a visible `[[Add: …]]` placeholder in the text, never an invented sentence.
  */
 export async function legalFacts(store: Store): Promise<LegalFacts> {
-  const [rates, methodMarkets, pickups, areas, carriers, returnSettings, tax, chat, noShow] = await Promise.all([
+  const [rates, methodMarkets, pickups, areas, carriers, returnSettings, tax, chat, noShow, recipients] = await Promise.all([
     db().execute<Row>(sql`
       select market_code, currency, amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${store.id}::uuid
     `),
@@ -58,6 +58,11 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
       join commerce.products p on p.store_id = a.store_id and p.id = a.product_id and p.status = 'active'
       where a.store_id = ${store.id}::uuid and a.payment = 'deposit' and a.no_show_percent > 0
       limit 1
+    `),
+    // Drop shipping (D550) and marketplaces (D555): suppliers that receive customers' delivery addresses, and connected marketplaces.
+    db().execute<Row>(sql`
+      select (select coalesce(array_agg(name order by lower(name)), '{}') from commerce.suppliers where store_id = ${store.id}::uuid and drop_ships) as suppliers,
+             (select coalesce(array_agg(channel order by channel), '{}') from commerce.marketplace_connections where store_id = ${store.id}::uuid and state = 'connected') as marketplaces
     `),
   ]);
   const main = store.markets[0];
@@ -106,6 +111,8 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
       })),
     // The carriers the store has connected: those whose agreement is complete.
     carrierNames: carriers.filter((c) => c.complete).map((c) => carrierInfo(c.carrier)?.name ?? c.carrier),
+    supplierNames: ((recipients[0]?.suppliers ?? []) as string[]).map(String),
+    marketplaceNames: ((recipients[0]?.marketplaces ?? []) as string[]).map((c) => (String(c) === "ebay" ? "eBay" : String(c))),
     returnSettings,
     chatOn: chat !== null,
     // What the chat's notice tells customers an AI does with their support messages (D391), said in the privacy starter too (PSI REG-08).

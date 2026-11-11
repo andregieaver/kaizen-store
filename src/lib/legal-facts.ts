@@ -32,6 +32,10 @@ export type LegalFacts = {
   local: { name: string; marketCode: string; currency: string; amountMinor: number; freeAboveMinor: number | null; minBasketMinor: number | null }[];
   /** The names of the carriers the store has connected. */
   carriers: string[];
+  /** Suppliers that send goods straight to customers (drop shipping, D550): they receive the customer's name and delivery address. */
+  suppliers: string[];
+  /** Marketplaces the store sells on (D555), where those customers' orders are placed. */
+  marketplaces: string[];
   returns: {
     windowDays: number;
     whoPays: "shopper" | "store";
@@ -95,6 +99,8 @@ export type LegalFactsInput = {
   pickupPlaces?: { name: string; town: string; marketCode: string; currency: string; amountMinor: number }[];
   localAreas?: { name: string; marketCode: string; currency: string; amountMinor: number; freeAboveMinor: number | null; minBasketMinor: number | null }[];
   carrierNames: string[];
+  supplierNames?: string[];
+  marketplaceNames?: string[];
   returnSettings: ReturnSettings | null;
   chatOn: boolean;
   /** What an AI does with customers' support messages besides answering (PSI REG-08); neither when left out. */
@@ -148,6 +154,8 @@ export function assembleLegalFacts(input: LegalFactsInput): LegalFacts {
       return name ? [{ ...a, name, marketCode: a.marketCode.toUpperCase(), currency: a.currency.toUpperCase() }] : [];
     }),
     carriers: [...new Set(input.carrierNames.map((n) => clean(n)).filter((n): n is string => n !== null))],
+    suppliers: [...new Set((input.supplierNames ?? []).map((n) => clean(n)).filter((n): n is string => n !== null))],
+    marketplaces: [...new Set((input.marketplaceNames ?? []).map((n) => clean(n)).filter((n): n is string => n !== null))],
     returns: {
       windowDays: Math.max(14, settings?.windowDays ?? 14),
       whoPays: settings?.whoPaysReturn ?? "shopper",

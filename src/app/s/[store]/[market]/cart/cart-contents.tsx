@@ -240,7 +240,7 @@ export async function CartContents({
   const view = await cartView(store, market, m);
   if (view.empty) return EMPTY_CART(view.home, m);
   const draw = { store, market, m, view };
-  // What goes with the cart (D558): in the standard cart and the slide-out cart while the store's recommendations are on.
+  // What goes with the cart (D559): in the standard cart and the slide-out cart while the store's recommendations are on.
   const upsell = (await getRecommendSettings(store.id)).enabled ? (
     <Suspense fallback={null}>
       <CartUpsell store={store} market={market} m={m} compact={drawer} />

@@ -12,7 +12,7 @@ import { AddToCart } from "./add-to-cart";
 import { Price } from "./price";
 
 /**
- * *Goes well with* (D558): products that go with what is in the shopper's cart, from the recommendations engine anchored on the cart
+ * *Goes well with* (D559): products that go with what is in the shopper's cart, from the recommendations engine anchored on the cart
  * (`recommendForCart()`: upsells, cross-sells and accessories by the owner's rules, never what is already in it), each with a button to add
  * it when it is bought without choosing anything first (the tile's own facts, `tileFacts()`), else a link to its page. Read per request,
  * so its caller wraps it in `<Suspense>`; nothing for an empty cart or when nothing goes with it. Bare, as the cart's pieces are.

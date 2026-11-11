@@ -285,7 +285,7 @@ export const STORE_PIECE_KEYS = Object.keys(STORE_PIECES) as StorePiece[];
 export const isStorePiece = (value: unknown): value is StorePiece => typeof value === "string" && Object.hasOwn(STORE_PIECES, value);
 
 /**
- * Notes about the shopper's basket (D557) for the pages built as templates of the shop: the cart, the checkout and the category and tag
+ * Notes about the shopper's basket (D558) for the pages built as templates of the shop: the cart, the checkout and the category and tag
  * pages (`routes`), and, as product parts of the same names (`PRODUCT_PARTS`), a product's page. Each draws only on those routes and,
  * like a piece, with no frame of its own; one with nothing to say (no threshold set, nothing saved) draws nothing. The builder offers them
  * only on a page chosen for one of those roles (`noteRolesOf()`), and in product layouts.
@@ -317,7 +317,7 @@ export const STORE_NOTE_KEYS = Object.keys(STORE_NOTES) as StoreNote[];
 
 export const isStoreNote = (value: unknown): value is StoreNote => typeof value === "string" && Object.hasOwn(STORE_NOTES, value);
 
-/** The roles a page is chosen for where the notes are offered (D557): the cart, checkout, category and tag pages. */
+/** The roles a page is chosen for where the notes are offered (D558): the cart, checkout, category and tag pages. */
 export const NOTE_ROLES: readonly StorePart[] = ["cart", "checkout", "category", "tag"];
 
 /** Whether a page chosen for these roles is offered the notes in the builder. */
@@ -327,7 +327,7 @@ export const noteRolesOf = (roles: readonly string[]): boolean => roles.some((ro
 export const notesForRoles = (roles: readonly string[]): StoreNote[] =>
   STORE_NOTE_KEYS.filter((note) => (STORE_NOTES[note].routes as readonly string[]).some((route) => roles.includes(route)));
 
-/** What a shop component can be: a working page as a whole, one piece of the cart, checkout or order page, or a note (D557). */
+/** What a shop component can be: a working page as a whole, one piece of the cart, checkout or order page, or a note (D558). */
 export type ShopPart = StorePart | StorePiece | StoreNote;
 
 export const SHOP_PART_KEYS: ShopPart[] = [...STORE_PART_KEYS, ...STORE_PIECE_KEYS, ...STORE_NOTE_KEYS];

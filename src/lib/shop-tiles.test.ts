@@ -5,7 +5,7 @@ import { cleanShopTiles, tileAsk, tileShows, tileStockFact, tileStockText, type 
 
 const v = (over: Partial<TileVariant> = {}): TileVariant => ({ inStock: 10, canOffer: true, backorderDays: null, preorderUntil: null, unlimited: false, ...over });
 
-describe("a grid's choices and the store's settings (D556)", () => {
+describe("a grid's choices and the store's settings (D557)", () => {
   it("follows the store unless the grid says otherwise", () => {
     expect(tileAsk(undefined)).toEqual({ stock: "store", quantity: "store" });
     expect(tileShows(tileAsk(undefined)!, { tileStock: true, tileQuantity: false })).toEqual({ stock: true, quantity: false });

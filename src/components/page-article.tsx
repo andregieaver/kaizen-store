@@ -371,7 +371,7 @@ function RowMarkup({
               ) : block.type === "emailForm" || block.type === "newsletter" ? (
                 <FormSection block={block} place={place} />
               ) : block.type === "instagram" ? (
-                // The owner's kept posts (D559), read with the page's cache; the rest of the page does not wait.
+                // The owner's kept posts (D560), read with the page's cache; the rest of the page does not wait.
                 <Suspense fallback={null}>
                   <InstagramSection block={block} place={place} />
                 </Suspense>

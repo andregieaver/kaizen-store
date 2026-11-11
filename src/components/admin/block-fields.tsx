@@ -887,7 +887,7 @@ function SeparatorFields({ block, onChange }: BlockEditorProps<SeparatorBlock>) 
 }
 
 /**
- * A countdown (D560): when it ends, in the owner's own time zone (kept as a moment in UTC), the words above it, and boxes or plain numbers.
+ * A countdown (D561): when it ends, in the owner's own time zone (kept as a moment in UTC), the words above it, and boxes or plain numbers.
  * It is gone at zero; a timer that starts again for each visitor is not offered (false urgency).
  */
 function CountdownFields({ block, onChange }: BlockEditorProps<CountdownBlock>) {
@@ -929,7 +929,7 @@ function CountdownFields({ block, onChange }: BlockEditorProps<CountdownBlock>) 
 }
 
 /**
- * Animated stats (D560): each figure as the owner types it (the number, its decimals, words before and after it, and a label), up to eight,
+ * Animated stats (D561): each figure as the owner types it (the number, its decimals, words before and after it, and a label), up to eight,
  * how many across on larger screens and how long a count takes.
  */
 function StatsFields({ block, onChange }: BlockEditorProps<StatsBlock>) {
@@ -995,7 +995,7 @@ function StatsFields({ block, onChange }: BlockEditorProps<StatsBlock>) {
 }
 
 /**
- * An Instagram feed (D559): the hashtags it keeps to (typed freely, cleaned as they are saved), whether a post needs any or all of them, how
+ * An Instagram feed (D560): the hashtags it keeps to (typed freely, cleaned as they are saved), whether a post needs any or all of them, how
  * many posts in how many columns, and the captions and Follow link. The account is connected under Integrations, Instagram.
  */
 function InstagramFields({ block, onChange }: BlockEditorProps<InstagramBlock>) {

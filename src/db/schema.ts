@@ -10743,7 +10743,7 @@ export const googlePlaces = commerce.table(
 );
 
 /**
- * An Instagram professional account connected for a feed (D559): a store's, or Kaizena Flow's with a null store, connected through Instagram
+ * An Instagram professional account connected for a feed (D560): a store's, or Kaizena Flow's with a null store, connected through Instagram
  * Login (scope `instagram_business_basic` only: it reads the account's own posts, nothing else). The long-lived token is encrypted like
  * payment secrets and refreshed before its 60 days run out; the account's latest posts are kept in `posts` (id, caption, kind, permalink,
  * time; the picture's address on Instagram's servers only for the proxy, `/api/instagram/…`, so visitors never load from Meta).
@@ -14478,7 +14478,7 @@ export const orderSettings = commerce.table(
 );
 
 /**
- * The store's product settings (D556), one row a store made when first saved (a store without one reads the defaults): what a product's tile
+ * The store's product settings (D557), one row a store made when first saved (a store without one reads the defaults): what a product's tile
  * in a content grid shows besides its picture, title and price: the stock left (`tile_stock`) and a quantity chooser with Add to cart
  * (`tile_quantity`), both off. A grid may override either (`ContentGridBlock.shopTiles`). A copy starts with the defaults (`never` in `COPY_RULES`).
  */

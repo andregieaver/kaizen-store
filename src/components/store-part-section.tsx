@@ -149,12 +149,12 @@ async function Part({
       return order && <OrderTerms {...order} />;
     case "order_continue":
       return order && <OrderContinue {...order} />;
-    // The basket's notes (D557): on the cart, checkout, category and tag pages.
+    // The basket's notes (D558): on the cart, checkout, category and tag pages.
     case "free_shipping":
       return <FreeShippingNote store={store} market={market} m={m} />;
     case "you_saved":
       return <CartSavedNote store={store} market={market} m={m} />;
-    // What goes with the cart (D558): on the cart and checkout pages.
+    // What goes with the cart (D559): on the cart and checkout pages.
     case "cart_upsell":
       return <CartUpsell store={store} market={market} m={m} />;
     case "cart":

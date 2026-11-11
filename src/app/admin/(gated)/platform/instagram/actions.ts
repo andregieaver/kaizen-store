@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { requirePlatform } from "@/server/auth";
 import { INSTAGRAM_COOKIE, INSTAGRAM_COOKIE_PATH, PLATFORM_INSTAGRAM, disconnectInstagram, instagramStart } from "@/server/instagram";
 
-/** Kaizena Flow's own Instagram account (D559), for the feeds on its own site: off to Instagram, as a store's owner does. */
+/** Kaizena Flow's own Instagram account (D560), for the feeds on its own site: off to Instagram, as a store's owner does. */
 export async function connectPlatformInstagramAction(): Promise<void> {
   const admin = await requirePlatform("settings");
   const start = instagramStart(PLATFORM_INSTAGRAM, admin.id);

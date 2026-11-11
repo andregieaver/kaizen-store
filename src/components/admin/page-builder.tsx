@@ -675,7 +675,7 @@ export function PageBuilder({
   siteParts?: SitePart[] | null;
   /** A store's page (D113): its palette offers the working pages' components, the cart, checkout and so on. */
   shopParts?: boolean;
-  /** The roles the page is chosen for (D557): a page for the cart, checkout, a category or a tag is offered the basket's notes that draw there. */
+  /** The roles the page is chosen for (D558): a page for the cart, checkout, a category or a tag is offered the basket's notes that draw there. */
   noteRoles?: readonly string[];
   /** The store's active custom field groups (D118), for the components that show them; null where the owner has none (Kaizen's). */
   fieldGroups?: FieldGroup[] | null;
@@ -1818,7 +1818,7 @@ function Sidebar({
   customFields: boolean;
   /** The store's working pages' components can be added (D113). */
   shop: boolean;
-  /** The basket's notes that can be added (D557): those that draw on the roles the page is chosen for. */
+  /** The basket's notes that can be added (D558): those that draw on the roles the page is chosen for. */
   notes: readonly StoreNote[];
   /** The store's features as kept (D178): parts of a feature that is off are not offered. Null offers every part. */
   features: readonly string[] | null;

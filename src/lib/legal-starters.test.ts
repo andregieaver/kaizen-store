@@ -56,6 +56,8 @@ const input = (over: Partial<LegalFactsInput> = {}): LegalFactsInput => ({
     { marketCode: "DE", currency: "EUR", rateMinor: 990, freeAboveMinor: null },
   ],
   carrierNames: ["Posten", "PostNord"],
+  supplierNames: ["Nordic Wool"],
+  marketplaceNames: ["eBay"],
   returnSettings: { ...DEFAULT_RETURN_SETTINGS, windowDays: 30, whoPaysReturn: "shopper", refundWhen: "received", acceptExcluded: true, instructions: "Pakk varene i originalemballasjen.", b2bReturns: true },
   chatOn: true,
   links: { withdraw: "/s/demo/no/withdraw", cookies: "/s/demo/no/cookies" },

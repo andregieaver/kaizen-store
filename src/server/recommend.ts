@@ -674,7 +674,7 @@ export async function recommendForChat(
 }
 
 /**
- * Recommendations around the shopper's cart (D558, the *Goes well with* component on the cart, checkout and slide-out cart): the same engine,
+ * Recommendations around the shopper's cart (D559, the *Goes well with* component on the cart, checkout and slide-out cart): the same engine,
  * rules and exclusions, anchored on what is in the cart (never one of those products again), with the plain ranking only: no session and
  * no AI, so it costs no tokens and is the same for a cart on every visit. Empty for an empty cart. It answers whether or not the store's
  * recommendations are on: a placed component is the owner's own choice; the standard cart asks only while they are on (`CartContents`).

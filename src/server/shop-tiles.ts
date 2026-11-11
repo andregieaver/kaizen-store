@@ -16,7 +16,7 @@ import { getProductSettings } from "./product-settings";
 import { col, typedRows } from "./typed-rows";
 
 /**
- * The facts a grid's product tiles show (D556, `src/lib/shop-tiles.ts`): each product's stock in words and, when it can be bought from its
+ * The facts a grid's product tiles show (D557, `src/lib/shop-tiles.ts`): each product's stock in words and, when it can be bought from its
  * tile, the variant to add and its quantity rule, with the store's settings. Per request: stock is never cached. Only the store's active
  * products with a price in the market are answered; any other id is left out.
  */

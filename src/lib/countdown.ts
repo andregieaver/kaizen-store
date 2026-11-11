@@ -1,5 +1,5 @@
 /**
- * The countdown timer (D560), pure: the time left until a fixed moment the owner chose, the same for every visitor. A timer that starts
+ * The countdown timer (D561), pure: the time left until a fixed moment the owner chose, the same for every visitor. A timer that starts
  * again for each visitor would announce an urgency that is not there, which EU consumer law forbids (Directive 2005/29/EC Annex I, 7), so
  * there is none: only an end that is real. At zero the timer is gone, so a past offer is never announced.
  */

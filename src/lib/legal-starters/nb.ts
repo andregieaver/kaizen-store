@@ -162,6 +162,8 @@ export const NB: StarterText = {
     "privacy.recipient.stripe": "Stripe, betalingsleverandøren vår, som håndterer betalinger",
     "privacy.recipient.email": "e-posttjenesten plattformen bruker til å sende ordrebekreftelser og andre meldinger til deg",
     "privacy.recipient.carriers": "fraktselskaper som leverer varene dine: {carriers}",
+    "privacy.recipient.suppliers": "leverandører som sender enkelte varer rett til deg på våre vegne, og som får navnet og leveringsadressen din til det: {suppliers}",
+    "privacy.recipient.marketplaces": "markedsplasser der du kan kjøpe varene våre, for ordrer du legger der: {marketplaces}",
     "privacy.recipient.carriers.none": "fraktselskaper som leverer varene dine: {check}",
     "privacy.recipient.tool": "{tool}, som butikken bare laster hvis du godtar de tilhørende informasjonskapslene",
     "privacy.recipient.authorities": "offentlige myndigheter, når loven krever at vi deler opplysninger",

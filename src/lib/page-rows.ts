@@ -130,7 +130,7 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
     case "newsletter":
       return { id: id(), type, recipients: [], placeholder: "", submitLabel: "", successMessage: "", consent: "" };
     case "countdown":
-      // Ends in a week, at the minute (D560); the owner sets the real end.
+      // Ends in a week, at the minute (D561); the owner sets the real end.
       return { id: id(), type, endsAt: null, title: "" };
     case "stats":
       return {
@@ -144,7 +144,7 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
         ],
       };
     case "instagram":
-      // The latest eight posts, four across, with a Follow link (D559).
+      // The latest eight posts, four across, with a Follow link (D560).
       return { id: id(), type, hashtags: [], limit: 8, columns: 4 };
     case "columns":
       // Two columns side by side (D294), as the Rows tab's first two-column row.
@@ -758,7 +758,7 @@ export const ON_UNLESS_OFF: ReadonlySet<string> = new Set([
   "controls",
   "showRating",
   "confirm",
-  // An Instagram feed's Follow link and its videos playing in place (D559).
+  // An Instagram feed's Follow link and its videos playing in place (D560).
   "follow",
   "videos",
 ]);

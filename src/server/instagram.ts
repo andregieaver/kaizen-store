@@ -18,7 +18,7 @@ import { encryptionKey } from "./settings";
 import { col, typedRows } from "./typed-rows";
 
 /**
- * The Instagram feed's connection (D559, pure parts in `src/lib/instagram.ts`): Kaizena Flow's Instagram app (`INSTAGRAM_APP_ID`,
+ * The Instagram feed's connection (D560, pure parts in `src/lib/instagram.ts`): Kaizena Flow's Instagram app (`INSTAGRAM_APP_ID`,
  * `INSTAGRAM_APP_SECRET`), Instagram Login with the one scope `instagram_business_basic`, a long-lived token per owner (a store, or Kaizena
  * Flow with a null store) kept encrypted, refreshed by the dispatcher before it runs out, and the account's latest posts read hourly and kept
  * in the row. A page reads the kept posts (`instagramPosts()`, cached under `instagramTag()`), never Instagram, so a visitor costs no call
@@ -158,7 +158,7 @@ export async function instagramStatus(storeId: string | null): Promise<Instagram
 }
 
 /**
- * The owner's kept posts, for a page (D559): newest first, cached under the owner's tag (refreshed when they are read again or the account
+ * The owner's kept posts, for a page (D560): newest first, cached under the owner's tag (refreshed when they are read again or the account
  * changes). Empty without a connection.
  */
 export async function instagramPosts(storeId: string | null): Promise<{ username: string; posts: InstagramPost[] } | null> {
@@ -182,7 +182,7 @@ export async function postMedia(storeId: string | null, postId: string, kind: "p
 }
 
 /**
- * The dispatcher's upkeep (D559, never throws): each connected account's token refreshed when under 30 days are left, and its posts read
+ * The dispatcher's upkeep (D560, never throws): each connected account's token refreshed when under 30 days are left, and its posts read
  * again once an hour. A failure is kept in the row's `problem` (the admin says it) and the posts kept are left as they were; an expired token
  * stays expired until the owner connects again. At most `limit` accounts a run, the longest unread first.
  */

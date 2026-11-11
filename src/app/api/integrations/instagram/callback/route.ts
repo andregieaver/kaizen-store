@@ -6,7 +6,7 @@ import { INSTAGRAM_COOKIE, INSTAGRAM_COOKIE_PATH, InstagramError, PLATFORM_INSTA
 import { log } from "@/server/log";
 import { checkPermission } from "@/server/permissions";
 
-/** Back from Instagram with the account the owner signed in with (D559): a store's, or Kaizena Flow's own for a platform admin. */
+/** Back from Instagram with the account the owner signed in with (D560): a store's, or Kaizena Flow's own for a platform admin. */
 export async function GET(request: Request) {
   const account = await requireAccount();
   const jar = await cookies();

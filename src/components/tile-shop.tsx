@@ -13,7 +13,7 @@ export type TileShopWords = { cart: AddToCartLabels; quantity: QuantityStepperLa
 type Where = { store: string; market: string };
 
 /*
- * One ask for every tile of a page (D556): each island names its product, and the ids gathered in the same tick go in one request, whose
+ * One ask for every tile of a page (D557): each island names its product, and the ids gathered in the same tick go in one request, whose
  * answer every island of that store and market reads. A later batch (a grid filtered afresh) asks again.
  */
 const batches = new Map<string, { ids: Set<string>; answer: Promise<TileFactsAnswer | null> }>();
@@ -41,7 +41,7 @@ function factsFor(where: Where, productId: string): Promise<TileFactsAnswer | nu
 }
 
 /**
- * What a product's tile shows besides its picture, title and price (D556): the stock left and, for a product that can be bought from
+ * What a product's tile shows besides its picture, title and price (D557): the stock left and, for a product that can be bought from
  * there, a quantity chooser with Add to cart, as the store's settings and the grid's own choices say. Nothing is drawn until the facts
  * arrive, and nothing at all without scripts: the tile still links to the product's page, where both are.
  */

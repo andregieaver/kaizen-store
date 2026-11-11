@@ -39,6 +39,8 @@ function fakeEbay() {
     if (url.includes("/inventory_item/")) return json(204, null);
     if (url.endsWith("/sell/inventory/v1/offer")) return json(201, { offerId: "offer-1" });
     if (url.includes("/offer/offer-1/publish")) return json(200, { listingId: "listing-1" });
+    if (url.includes("/offer/offer-1/withdraw")) return json(200, { listingId: "listing-1" });
+    if (init?.method === "PUT" && url.endsWith("/offer/offer-1")) return json(204, null);
     if (url.includes("/sell/fulfillment/v1/order?")) return json(200, { orders, total: orders.length });
     if (url.includes("/shipping_fulfillment")) return json(201, null);
     return json(404, { errors: [{ message: "Not found in the stand-in." }] });
@@ -134,6 +136,17 @@ describe("eBay as a sales channel (D555)", () => {
     const posted = fake.calls.find((c) => c.url.includes("/order/12-34567-89012/shipping_fulfillment"))!;
     expect(posted.body).toMatchObject({ lineItems: [{ lineItemId: "1000", quantity: 2 }], shippingCarrierCode: "DHL", trackingNumber: "JJD0001234567" });
     expect(await ebay.markEbayOrderSent(store.member, order.id, "DHL", "JJD0001234567", deps)).toMatchObject({ ok: false });
+  });
+
+  it("ends a listing at eBay when the owner stops listing it, and lists it again when chosen again", async () => {
+    expect(await ebay.chooseForEbay(store.member, [mug], false, deps)).toEqual({ ok: true, changed: 1 });
+    expect(fake.calls.some((c) => c.method === "POST" && c.url.endsWith("/offer/offer-1/withdraw"))).toBe(true);
+    const [ended] = await db().execute<Row>(sql`select state, listing_id from commerce.marketplace_listings where variant_id = ${mug}::uuid`);
+    expect(ended).toEqual({ state: "ended", listing_id: null });
+    expect(await ebay.chooseForEbay(store.member, [mug], true, deps)).toEqual({ ok: true, changed: 1 });
+    await ebay.syncEbayListings(store.storeId, deps);
+    const [again] = await db().execute<Row>(sql`select state, listing_id from commerce.marketplace_listings where variant_id = ${mug}::uuid`);
+    expect(again).toEqual({ state: "listed", listing_id: "listing-1" });
   });
 
   it("is the owner's alone, and asks to be connected again when eBay no longer takes the grant", async () => {

@@ -216,7 +216,7 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
           label: str(`${item.id}.label`, item.label, 120, `Figure ${n + 1}: label`),
         })),
       };
-    // Hashtags are the owner's keys to their posts, never translated (D559).
+    // Hashtags are the owner's keys to their posts, never translated (D560).
     case "instagram":
       return b;
     case "newsletter":

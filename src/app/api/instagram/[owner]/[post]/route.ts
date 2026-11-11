@@ -6,7 +6,7 @@ const PICTURE_MAX = 8 * 1024 * 1024;
 const VIDEO_MAX = 300 * 1024 * 1024;
 
 /**
- * One kept Instagram post's picture, or with `?video` a video post's file (D559), served by the site so a visitor's browser never loads
+ * One kept Instagram post's picture, or with `?video` a video post's file (D560), served by the site so a visitor's browser never loads
  * from Meta: `owner` is a store's id or `kaizen`, `post` one of that owner's kept posts. Fetched from Instagram's own hosts only
  * (`isInstagramPicture()`). A picture is at most 8 MB and cached by the CDN for a day; a video is streamed as asked (the browser's `Range`
  * passed on, so it starts at once and can be skipped through), at most 300 MB, and also cached. Instagram's addresses expire; the post's id

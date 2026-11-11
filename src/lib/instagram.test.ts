@@ -5,7 +5,7 @@ import { authorizeUrl, captionText, cleanHashtags, feedPosts, hashtagsOf, isInst
 const pic = "https://scontent-arn2-1.cdninstagram.com/v/t51/1.jpg?x=1";
 const post = (id: string, caption: string, at: string): InstagramPost => ({ id, caption, kind: "image", picture: pic, permalink: `https://www.instagram.com/p/${id}/`, at });
 
-describe("an account's posts (D559)", () => {
+describe("an account's posts (D560)", () => {
   it("keeps posts with a picture on Instagram's hosts and a permalink, a video by its cover, newest first", () => {
     const posts = parsePosts({
       data: [

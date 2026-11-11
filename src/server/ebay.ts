@@ -218,24 +218,46 @@ export async function disconnectEbay(member: Membership): Promise<EbayStep> {
   return { ok: true };
 }
 
-/** Chooses variants to list on eBay (`on`), or stops listing them (they are ended at eBay by the owner; here they are marked ended). */
-export async function chooseForEbay(member: Membership, variantIds: readonly string[], on: boolean): Promise<{ ok: true; changed: number } | { ok: false; problem: string }> {
+/**
+ * Chooses variants to list on eBay (`on`), or stops listing them: a published offer is withdrawn at eBay (`POST /offer/{offerId}/withdraw`, the
+ * listing ends) and the listing here marked ended; one eBay refuses to withdraw keeps its state with eBay's reason, to try again.
+ */
+export async function chooseForEbay(member: Membership, variantIds: readonly string[], on: boolean, deps: EbayDeps = {}): Promise<{ ok: true; changed: number } | { ok: false; problem: string }> {
   if (!memberCan(member, OWNER)) return { ok: false, problem: NO_ACCESS };
   const ids = [...new Set(variantIds)].filter((v) => /^[0-9a-f-]{36}$/i.test(v));
   if (ids.length === 0 || ids.length > 500) return { ok: false, problem: "Choose 1 to 500 variants." };
   const connection = await getEbayConnection(member.store.id);
   if (!connection) return { ok: false, problem: "Connect eBay first." };
   const list = sql.join(ids.map((v) => sql`${v}::uuid`), sql`, `);
-  const rows = on
-    ? await db().execute(sql`
-        insert into commerce.marketplace_listings (store_id, connection_id, variant_id, state)
-        select v.store_id, ${connection.id}::uuid, v.id, 'pending' from commerce.product_variants v
-        join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.kind = 'goods'
-        where v.store_id = ${member.store.id}::uuid and v.id in (${list}) and v.delivery = 'physical' and v.sku is not null
-        on conflict (connection_id, variant_id) do update set state = 'pending', error = null
-        returning variant_id`)
-    : await db().execute(sql`update commerce.marketplace_listings set state = 'ended' where store_id = ${member.store.id}::uuid and connection_id = ${connection.id}::uuid and variant_id in (${list}) returning variant_id`);
-  return { ok: true, changed: rows.length };
+  if (on) {
+    const rows = await db().execute(sql`
+      insert into commerce.marketplace_listings (store_id, connection_id, variant_id, state)
+      select v.store_id, ${connection.id}::uuid, v.id, 'pending' from commerce.product_variants v
+      join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.kind = 'goods'
+      where v.store_id = ${member.store.id}::uuid and v.id in (${list}) and v.delivery = 'physical' and v.sku is not null
+      on conflict (connection_id, variant_id) do update set state = 'pending', error = null
+      returning variant_id`);
+    return { ok: true, changed: rows.length };
+  }
+  const listed = await typedRows(
+    z.object({ variant_id: col.uuid, offer_id: col.textOrNull, listing_id: col.textOrNull }),
+    sql`select variant_id, offer_id, listing_id from commerce.marketplace_listings
+        where store_id = ${member.store.id}::uuid and connection_id = ${connection.id}::uuid and variant_id in (${list}) and state <> 'ended'`,
+  );
+  let changed = 0;
+  for (const row of listed) {
+    if (row.offer_id && row.listing_id) {
+      const withdrawn = await ebayCall(member.store.id, "POST", `/sell/inventory/v1/offer/${encodeURIComponent(row.offer_id)}/withdraw`, undefined, deps);
+      if (!withdrawn.ok && withdrawn.status !== 404) {
+        await db().execute(sql`update commerce.marketplace_listings set error = ${`Not ended on eBay: ${withdrawn.error}`.slice(0, 500)} where connection_id = ${connection.id}::uuid and variant_id = ${row.variant_id}::uuid`);
+        continue;
+      }
+    }
+    await db().execute(sql`update commerce.marketplace_listings set state = 'ended', listing_id = null, error = null, synced_at = now() where connection_id = ${connection.id}::uuid and variant_id = ${row.variant_id}::uuid`);
+    changed += 1;
+  }
+  if (changed > 0) await audit(member.account.id, member.store.id, "integration.ebay_listings_ended", { variants: changed });
+  return { ok: true, changed };
 }
 
 /** What the store sends for a variant on a marketplace: its words, pictures, stock and the price of a market in that currency. */

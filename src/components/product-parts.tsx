@@ -183,7 +183,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           large={block.large !== false}
         />
       );
-    // The basket's notes (D557): how far the shopper's cart is from free shipping (per request), and what this product saves today.
+    // The basket's notes (D558): how far the shopper's cart is from free shipping (per request), and what this product saves today.
     case "free_shipping":
       return (
         <Suspense fallback={null}>

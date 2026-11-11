@@ -4,7 +4,7 @@ import { ActionForm, SubmitButton, type FormState } from "@/components/admin/act
 import { useAdminText } from "@/components/admin/admin-text";
 import type { ProductSettings } from "@/lib/shop-tiles";
 
-/** The store's product settings (D556): two switches for what a product's tile shows. Works without a script; the server saves them. */
+/** The store's product settings (D557): two switches for what a product's tile shows. Works without a script; the server saves them. */
 export function ProductSettingsForm({
   settings,
   canEdit,

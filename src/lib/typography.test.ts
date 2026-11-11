@@ -73,7 +73,7 @@ function filled(type: PageBlock["type"]): PageBlock {
 const pattern = (key: string, block: PageBlock) =>
   key
     .replace(`block.${block.id}.`, "")
-    // A list made by `newBlock()` (animated stats, D560) names its items by the test's own ids.
+    // A list made by `newBlock()` (animated stats, D561) names its items by the test's own ids.
     .replace(/^(i1|p1|t1|l1|f1|x\d+)\./, "*.")
     .replace(/detail-d1\./, "detail-*.")
     .replace(/option\d+$/, "option*")

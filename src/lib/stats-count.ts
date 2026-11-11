@@ -1,5 +1,5 @@
 /**
- * Animated stats (D560), pure: each figure the owner typed counts up from zero when it comes into view, easing out, and rests on the figure
+ * Animated stats (D561), pure: each figure the owner typed counts up from zero when it comes into view, easing out, and rests on the figure
  * as typed. The figure is the owner's own claim, never looked up; the page's HTML already holds it, so without scripts, for search engines
  * and for visitors who prefer less motion it is simply there.
  */

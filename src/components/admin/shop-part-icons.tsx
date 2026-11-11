@@ -123,14 +123,14 @@ const padlock = (
   </>
 );
 
-/** A bar that fills (free shipping, D557). */
+/** A bar that fills (free shipping, D558). */
 const progress = (
   <>
     <rect x="3" y="9" width="18" height="6" rx="3" />
     {line("M6 12h7")}
   </>
 );
-/** A price tag with a minus (you saved, D557). */
+/** A price tag with a minus (you saved, D558). */
 const saved = (
   <>
     {line("M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z")}

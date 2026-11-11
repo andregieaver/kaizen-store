@@ -5,7 +5,7 @@ import { drawsOn, noteRolesOf } from "./store-parts";
 
 const rate = { amountMinor: 9900, freeOverMinor: 100_000 };
 
-describe("free shipping (D557)", () => {
+describe("free shipping (D558)", () => {
   it("says how much is left, with a bar short of full", () => {
     expect(freeShippingState(rate, 25_000, true, false)).toEqual({ kind: "short", thresholdMinor: 100_000, leftMinor: 75_000, percent: 25 });
     expect(freeShippingState(rate, 99_999, true, false)).toMatchObject({ kind: "short", leftMinor: 1, percent: 99 });
@@ -24,7 +24,7 @@ describe("free shipping (D557)", () => {
   });
 });
 
-describe("what is saved (D557)", () => {
+describe("what is saved (D558)", () => {
   it("counts only a genuine reduction against the 30-day lowest price", () => {
     expect(lineSaving({ unitPriceMinor: 24_900, quantity: 2, priorMinor: 29_900, ownPrice: false })).toBe(10_000);
     expect(lineSaving({ unitPriceMinor: 29_900, quantity: 2, priorMinor: 24_900, ownPrice: false })).toBe(0);

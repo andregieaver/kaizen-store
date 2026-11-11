@@ -45,7 +45,7 @@ export type GridData = {
   items: GridItem[];
   lang: string;
   locale: string;
-  /** A grid of a store's products (D556): the store's and market's address parts and its cart, for what a tile buys. */
+  /** A grid of a store's products (D557): the store's and market's address parts and its cart, for what a tile buys. */
   shop?: { store: string; market: string; cart: string };
 };
 
