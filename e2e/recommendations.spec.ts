@@ -81,6 +81,30 @@ test("the grid shows picks with a reason, leaves out what the shopper has looked
   }
 });
 
+test("a recommending grid's tiles show their stock and add to the cart, and an add from a tile is credited to the recommendation", async ({ page }) => {
+  const address = await storePageWith("rec-tiles", [{ ...grid, shopTiles: { stock: "show", quantity: "show" } }]);
+  const slug = address.split("/")[2];
+  const sql = testDb();
+  try {
+    const [store] = await sql`select id from commerce.stores where slug = ${slug}`;
+    await sql`insert into commerce.recommendation_settings (store_id, enabled, ai, holdout_percent) values (${store.id}, true, false, 0)`;
+    await page.goto(address);
+    // The shopper's own picks have arrived (the tab's ranking is reported) before a tile is pressed.
+    await expect.poll(async () => Number((await sql`select count(*)::int as n from commerce.recommendation_events where store_id = ${store.id} and event = 'impression'`)[0].n)).toBeGreaterThan(0);
+    const first = page.locator("li[data-item-id]").filter({ has: page.getByRole("button", { name: "Legg i handlekurven" }) }).first();
+    const id = await first.getAttribute("data-item-id");
+    // Held by its id: once it is in the cart the grid may leave it out.
+    const tile = page.locator(`li[data-item-id="${id}"]`);
+    await expect(tile.locator("[data-tile-stock]")).toBeVisible();
+    await tile.getByRole("button", { name: "Legg i handlekurven" }).click();
+    await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();
+    await expect.poll(async () => Number((await sql`select count(*)::int as n from commerce.recommendation_events where store_id = ${store.id} and event = 'click' and product_id = ${id!}`)[0].n)).toBe(1);
+    await expect.poll(async () => Number((await sql`select count(*)::int as n from commerce.recommendation_adds where store_id = ${store.id} and product_id = ${id!}`)[0].n)).toBe(1);
+  } finally {
+    await sql.end();
+  }
+});
+
 test("a store that has not switched recommendations on shows the grid as built, with no tab storage and no requests", async ({ page }) => {
   const address = await storePageWith("rec-off", [grid]);
   const requests: string[] = [];

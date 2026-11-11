@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import type { GridData } from "@/lib/content-grid";
 import { EMPTY_GRID } from "@/lib/content-grid";
 import type { ContentGridBlock } from "@/lib/page-content";
+import { marketPath } from "@/lib/paths";
 import type { RecommendBlock, RecommendPlace } from "@/lib/recommendations-schema";
 import { DEFAULT_MIX } from "@/lib/recommendations";
 import { tileFieldIds } from "@/lib/tile-fields";
@@ -78,5 +79,16 @@ export async function recommendingGrid(
   if (!shop) return null;
   const enabled = (await getRecommendSettings(owner)).enabled;
   const items = enabled ? await standInFor(owner, shop.market.slug, where, recommendBlockOf(block)) : [];
-  return { data: { items, lang: shop.market.lang, locale: shop.market.locale }, store: shop.store.slug, market: shop.market.slug, enabled };
+  return {
+    data: {
+      items,
+      lang: shop.market.lang,
+      locale: shop.market.locale,
+      // What a tile buys (D557): the store's and market's addresses and its cart, as a plain product grid's data has them.
+      shop: { store: shop.store.slug, market: shop.market.slug, cart: marketPath(shop.store.slug, shop.market.slug, "/cart") },
+    },
+    store: shop.store.slug,
+    market: shop.market.slug,
+    enabled,
+  };
 }

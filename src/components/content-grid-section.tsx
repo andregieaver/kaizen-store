@@ -135,7 +135,9 @@ async function RecommendingGrid({ block, place, owner, eager }: { block: Content
   const where = recommendPlaceOf(place);
   const [grid, notices] = await Promise.all([recommendingGrid(owner, place.market ?? null, block, where), campaignNoticesAt(owner, place.market ?? null)]);
   if (!grid) return null;
-  const fallback = <ContentGridView block={block} data={grid.data} notices={notices} eager={eager} />;
+  // The stock left and a quantity chooser on its tiles too (D557), as the grid allows.
+  const tiles = tileAsk(block.shopTiles);
+  const fallback = <ContentGridView block={block} data={grid.data} notices={notices} eager={eager} tiles={tiles} />;
   // While the store's recommendations are off there is nothing to ask for: the grid is as built (empty, or its own text).
   if (!grid.enabled) return fallback;
   return (
@@ -148,6 +150,7 @@ async function RecommendingGrid({ block, place, owner, eager }: { block: Content
         market={grid.market}
         place={where}
         ask={recommendBlockOf(block)}
+        tiles={tiles}
       >
         {fallback}
       </RecommendedGrid>
