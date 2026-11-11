@@ -45,6 +45,9 @@ commit as the fix.
 - If a finding proves wrong, say so in Notes and correct its row in the area's file; do not delete it. A finding without a tick is
   checked before its step starts, and gets its tick or its correction then.
 - Steps marked *owner* wait for the owner's answer to a question in section 6.
+- **The goal is grade A in every area** (the owner, 11 November). Section 1 says what an A is for each area, in numbers. When
+  verified fixes raise an area's grade, change it in the scorecard with the old grade and the date beside it, and show the owner the
+  new table. Raise a grade only for fixes seen working in production, measured with the script or the query the bar names.
 
 **Phase 0: Stop the work done for nobody**
 
@@ -151,6 +154,34 @@ every feature, and before opening is the cheapest time to remove them.
 | The product's surface | Not graded | Before opening every feature is unused, so use cannot be judged. What can: an idle feature is not free (the rows above), and a few things are built twice. | Make cost follow use (0.4, 3.1) and decide the duplicates (3.2 to 3.4). The owner's call. |
 | The written rules | C | Every session loads 11,000 tokens of which a typical change needs a few hundred; one decision costs up to 45 KB to look up. | A 7 KB core and rules loaded by path (4.4, the code review's 1.10). |
 | Not graded | | The page builder's model, styles, interface text, tests with CI and the build, functions as such: not audited (section 6). | Step 4.5. |
+
+### The goal: grade A in every area
+
+The plan is done when every area is an A, not when its steps are ticked. The grades mean the same in every area:
+
+- **A:** nothing in the area is loaded, fetched, run or shown without need, beyond a small stated tolerance, and a test or a
+  production figure holds each measure so it cannot slip back unseen.
+- **B:** the large causes are gone and budgets exist; small findings remain.
+- **C:** a sound base with real waste; some of it is held, most is not.
+- **D:** every page, function or run carries far more than its job needs, and nothing holds it.
+- **E:** waste that hurts people or costs money today. No area is an E.
+
+| Area | Today | Grade A when | Steps that get it there |
+|---|---|---|---|
+| The code itself | A | It stays so: no unreachable file, unused exports under 1%, exact copies under 1.5%, every package imported, and the two scans run as commands. | 1.1, 4.3 |
+| What a shopper's browser gets | C | A prerendered store page costs a visitor without a cart no function run. The home document is under 60 KB and nothing in it is sent twice. A page loads its own parts only: script not yet run when the page is idle under 45% (54 to 70% today). An idle visitor causes under 12 requests after load. The storefront has a stylesheet of its own under 130 KB. Every route has a script and a document budget. | 0.9, 0.11, 0.12, 2.2, 2.4, 1.3 |
+| What an owner's browser gets | D | A plain admin screen's first scripts are under 0.7 MB (1.4 to 1.5 MB loaded today) and its document under 100 KB. An editor's code loads when the editor is opened: the page builder under 2 MB at first paint (3.8 MB). A screen prefetches on intent: under 8 requests. Every one of the 449 routes has a budget. | 0.9, 0.10, 2.1, 2.5, 2.6, 1.3 |
+| What the server loads and asks | D | A function loads what its job needs: a beacon under 300 modules, a storefront page under 4 MB of server code, under 1 MB of files traced beside a function that draws no picture. The proxy loads under 300 modules and blocks on no read once warm. An anonymous product view asks 3 questions or fewer; the admin's home 10 before its first content. Budgets hold each. | 0.1, 0.2, 0.6, 0.8, 2.1, 2.3, 2.6, 2.8, 1.2, 1.4 |
+| Scheduled work | D | No function is woken to find nothing: under 1,000 route calls a day while nothing waits (12,960). A job runs at its own period and only where its feature is in use: under 3,000 job runs a day at today's use (24,192). An idle round sends under 20 statements. The run log is a week long. Every job has a gate and a budget. | 0.3, 0.4, 0.5, 2.10, 3.1, 1.4 |
+| The database | C | No hot read scans a table that has an index for it. No listed statement fetches whole documents to pick a field. No redundant index, and no dead schema, table or function. Every log has a retention rule that runs. A ratchet holds its growth. | 0.6, 0.7, 0.8, 2.10, 4.1, 1.5 |
+| AI calls | C | An AI manager round is under 60,000 characters (about 160,000) and its unchanging part is served from the provider's cache. Small jobs use a quick model. No page, poll or job that calls no model reads the AI connection. A test holds the round's size. | 0.8, 2.9, 1.6 |
+| The product's surface | Not graded | A feature a store has not switched on costs that store nothing: no job, no code in its requests, no AI tool, no query. There is one of each engine and one Kaizena Flow site. A new table, job or tool names its gate. | 0.4, 3.1 to 3.5, 1.5 |
+| The written rules | C | A session loads under 10 KB of standing rules (44 KB), and a file's rule when it opens the file. One decision costs under 2 KB to look up. Finished history stays out of default searches. A ceiling holds each. | 4.4, 1.6 |
+| The page builder's model, styles, interface text, tests with CI and the build, server functions | Being audited | Their grades and bars are set when their reviewers finish (step 4.5). | |
+
+These bars come from the measurements and the steps' own checks. A panel of reviewers is to test each one: is it truly an A, can
+the listed steps reach it, and what is missing. Where a bar proves too low or a step falls short, the bar or the plan changes, not
+the goal.
 
 ## 2. What is good and should stay
 

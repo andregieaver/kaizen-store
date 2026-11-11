@@ -1,8 +1,6 @@
 # What every AI call carries (AI)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The shopper chat is lean and well made: about 5,000 characters of prompt and tools a call. The AI manager is the bloated part: every model call carries about 160,000 characters (roughly 40,000 tokens, an estimate at 4 characters a token), 91% of it 124 tool definitions that do not depend on the question, and a turn makes up to 11 such calls; this is already step 3.18 of the code review, still Open, and nothing caches it. Around the AI, the helper that fetches the AI connection ran 237,563 times for 19,104 recorded AI calls, mostly to answer yes or no on pages, polls and five-minute jobs that call no model. The owner's browser also downloads the model's whole tool catalogue and admin map (half of a 496 KB script) to show 13 KB of labels.
 

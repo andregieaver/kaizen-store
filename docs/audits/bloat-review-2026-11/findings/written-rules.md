@@ -1,8 +1,6 @@
 # The written rules and the agents' context (DC)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The part every session pays for is bloated: CLAUDE.md plus AGENTS.md is 44 KB (about 11,000 tokens, estimate at 4 characters a token), 71% of it a 295-line feature index, and the median change of the last 65 code commits touched files named by 2 of those 295 rules. The docs read on demand are very large (7.9 MB of Markdown, about 2 million tokens; decisions.md alone 1.33 MB) but cost nothing until opened; their real fault is format: one decision ID costs 2 to 45 KB to look up, 885 lines over 1,000 characters hold 24% of all docs bytes, and 41% of the folder is finished history that a search returns beside the living rules. Nothing caps any of it: CLAUDE.md has regrown 35% in the 12 days since its last diet, docs/rules 51%, and one test requires a new always-loaded line for every new rule. Nothing from docs reaches the deployment, and source comments (13.8% of src bytes) are short, local and stripped from the build, so they are not the problem.
 

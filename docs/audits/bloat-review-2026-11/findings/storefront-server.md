@@ -1,8 +1,6 @@
 # What the server does for a storefront request (SD)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** A warm, cached storefront page is lean: a prerendered home page, store page or empty cart makes no database read of its own. The bloat sits around that page. The proxy that runs before every page view loads 1,311 modules (about 0.85 s cold, measured here) and asks the database on most views; a product page asks about 18 times per view where one answer (stock) changes; and every deploy (48 code commits on 11 Nov) throws all caches away with nothing to warm them, so most real visits to 59 of 60 stores take a cold path of about 30 statements, several of them one after another. Most of this is a handful of concrete knots (three imports, one page-list read, one start-up read of an empty table), not a rewrite.
 

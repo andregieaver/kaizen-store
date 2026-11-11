@@ -1,8 +1,6 @@
 # Files that ship or are stored (AS)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The files this repo stores are mostly lean: all 150 files in public/ are referenced, every script and small folder is in use, supabase/ was cleaned this week (one snapshot, 789 migrations squashed), and pictures and fonts are stored once and cached for a year with no resizing per request. The bloat is in what gets packed into server functions. Two assets, the image library (sharp with libvips, 19.8 MB) and the product taxonomy (13.3 MB of JSON), make up 33 MB of the median function's 52.8 MB, and both ride in the proxy that runs before every page; the image library is also loaded at every cold start of that proxy (measured on the built bundle). The rest is small: one image tag that asks for a picture Next refuses, public files with no cache lifetime, six oversize flags, and a Tailwind scan of 22.5 MB that holds no class.
 

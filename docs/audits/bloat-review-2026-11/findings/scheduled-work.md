@@ -1,8 +1,6 @@
 # Scheduled and background work (CR)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** Scheduled work is the platform's steadiest load, and almost all of it finds nothing to do. Supabase wakes a 47 to 125 MB Vercel function 13,250 times a day, and those runs send roughly 170,000 statements a day to the database; the call that wakes the cron routes is the most expensive statement the app's role runs (3,974 s in total). Two of the nine every-minute routes and 36 of the 83 five-minute jobs serve features whose tables have never held a row, and 31 jobs run every five minutes for work that is daily or slower. The parts are carefully built (claims, leases, a run ledger, alerts), so the bloat is in when things run, not how: one gated tick, a cadence per job and a handful of small fixes remove most of it.
 

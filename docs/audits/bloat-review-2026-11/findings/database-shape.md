@@ -1,8 +1,6 @@
 # The database's shape (DS)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The database is wide, not rotten. About half of it has never been used: 245 listed tables of 486 never held a row, and they carry 47% of all columns, 49% of all indexes, 50% of all foreign keys and 45% of the lines of schema.ts. Table by table the work is careful: almost no dead columns or functions, only 15 prefix-redundant indexes, triggers gated by column, and a retention rule for nearly every log. The running cost comes from a few habits: the whole schema file is loaded at every server start though no query uses it, work is found by polling and by re-reading whole JSON documents, unused features still run on every tick and write, and the platform itself is modelled three ways. The absolute load is small today (731 MB, the top statements cost about 81 s of database time a day), so the gain is in cold starts, function time and stopping growth, not in rescuing a struggling database.
 

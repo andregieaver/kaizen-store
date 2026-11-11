@@ -1,8 +1,6 @@
 # Families and twins (FM)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** Copy-paste is not this codebase's problem: 1.5% of code lines sit in 8-line clones, and a scan of 3,974 files finds only 41 twin pairs. Carriers, payment providers, emails and the AI tools each have one core. The bloat in this area is structural: the same capability is stood up again with its own tables, runner and screens for the platform (19 platform_* tables, 12 never used), for a second copy of kaizenaflow.com that production no longer serves, and for five CSV importers. The cost that reaches shoppers is a loading one: both languages of the admin's words (2.8 MB) load with 802 of 830 server entries, and one helper import makes the visit beacons load 11.4 MB of server code.
 

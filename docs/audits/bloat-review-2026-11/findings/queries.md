@@ -1,8 +1,6 @@
 # How data is asked for (DQ)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The database is not under load: the app statements that cost production the most add up to about 39 minutes of database time in 78 days, and the slowest averages 145 ms. The bloat is in how often data is asked for and how much comes back: most of the work is done for nobody. 63% of the listed database time is the scheduler calling routes that find nothing to do, 75% of all transactions are two idle polls, the most expensive app query reads every published page whole to find one page or a few titles, and reads marked "use cache" for hours still ran 500 to 1,000 times a day each because that cache lives in one function instance and every deploy empties it. None of this hurts at 60 stores, but several shapes grow with stores times ticks, and most are a day or a few days to fix.
 

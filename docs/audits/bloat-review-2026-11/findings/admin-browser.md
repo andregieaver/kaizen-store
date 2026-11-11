@@ -1,8 +1,6 @@
 # What an owner's browser loads in the admin (AC)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The admin's browser load is moderately bloated, not runaway, and most of the worst of it is cheap to fix. A plain admin screen loads 1.15 MB of script (0.35 MB gzip), down from 3.0 MB two weeks ago, but 43% of what every screen still loads (481 KB) is Supabase's whole client, zod and the builder's English text, pulled in by three stray imports. Beyond the shell, 26 screens load an editor they never draw, the page builder is 3.3 MB, one Work screen ships the entire two-language catalogue in a 1.7 MB chunk, and 36 to 81% of each page's HTML data is translated text handed down as whole areas. The script budget covers 7 of 449 admin routes and the import guard that protects shoppers leaves the admin out, which is why none of this was seen.
 

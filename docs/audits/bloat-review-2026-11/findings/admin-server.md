@@ -1,8 +1,6 @@
 # What the server does for an admin navigation (AD)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The admin's server side is moderately bloated, and the bloat is in the shell and the two home screens, not in the lists. At today's size (60 stores, 102 orders) no single query is slow; what is wasteful is how much is redone: the store shell costs 67 to 129 ms of pure CPU to rebuild its menu (measured), reads the same membership three times, and is redrawn in full after every save (599 refresh() calls) and every poll tick. The store Home fires at least 30 statements before its first content shows, six of them against tables that have never held a row in production and one whose result is thrown away. Lists, Suspense use and cache tags are mostly well made; the costs found grow with features built, not with use.
 

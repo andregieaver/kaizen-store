@@ -1,8 +1,6 @@
 # The product's surface (FT)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The surface is far larger than its use: 560 pages, 110 store navigation links, 254 AI manager tools, 83 five-minute jobs and 481 tables serve 60 stores and 102 orders. About 100,000 lines of code (13% of src, a lower bound by file name), 42,000 lines of tests and 146 tables belong to 31 feature groups in which no store has ever written a row; most were built in the last weeks, so they are unused so far, not proven unneeded. The switch system (D178) is well made but covers 14 features only, and a switch hides links, pages and tools while the feature's scheduled work keeps running. Nothing limits growth: 158 decisions were recorded in the 13 days after feature waves were paused on 29 October, and the platform parity rule adds a twin to each.
 

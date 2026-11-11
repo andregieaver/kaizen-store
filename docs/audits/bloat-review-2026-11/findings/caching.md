@@ -1,8 +1,6 @@
 # Caching and rendering (CA)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The caching code itself is not bloated: 85 cached reads, 82 of them tagged, tags per store, and Kaizena Flow's own site and the docs are truly static. The waste is in how it meets the platform it runs on. Every store page view still runs a function that sends the whole page again (98 KB of 138 KB on the demo home) to place two cart badges; cached reads live in one instance's memory and die with each deploy, and there were 101 commits in the last two days; links prefetch pages nobody opens (510 KB on a cart page, 32 to 46 requests per admin screen). At 60 stores and 102 orders the bill is small today (the costliest app query used 781 s of database time in 78 days), but every item here grows with each page view and each deploy.
 

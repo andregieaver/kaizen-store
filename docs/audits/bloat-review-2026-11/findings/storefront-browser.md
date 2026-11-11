@@ -1,8 +1,6 @@
 # What a shopper's browser loads (SC)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The storefront is leaner than the rest of the platform, but not lean. A cold home page sends 680 KB of scripts (213 KB gzipped); 63 % of that is React and Next themselves, and the store's own code is about 80 KB gzipped, with no zod, no whole-language texts, no third-party script and no large object passed into client components. The bloat is in how the rest is grouped: scripts are bundled per route, never per feature, so a store with every optional feature off downloads the same code as one with all on; eight working routes (listing, search, cart, checkout, account and more) share one 54-module bundle; about 16 KB gzipped of admin words and catalogues ride on every page; and after load each page spends another 33 to 190 KB prefetching pages nobody asked for. Chromium found 57 to 70 % of the script bytes loaded on a storefront page never ran, and the budgets meant to stop growth have 150 to 180 KB of slack and cover one storefront route besides home.
 

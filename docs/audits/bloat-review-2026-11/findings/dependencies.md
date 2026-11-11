@@ -1,8 +1,6 @@
 # Dependencies (DP)
 
-Part of `docs/audits/bloat-review-2026-11.md`. One reviewer's reading of this area, 11 November 2026, commit 0bd814c. A tick (✓) marks a
-finding checked a second time against the code, the build or production; the others were not (the second reviewers did not run: see
-the review's section 6). "Step" is the step of the plan that closes the finding.
+Part of `docs/audits/bloat-review-2026-11.md`, on commit 0bd814c. One reviewer's reading of this area. A tick (✓) marks a finding the lead checked a second time; the others were not checked. "Step" is the step of the plan that closes the finding.
 
 **In short.** The dependency list itself is lean: 51 runtime packages for 473,000 lines, none without an importer, and every heavy browser library (3D viewer, video and AVIF encoders, code editor, Stripe elements) is loaded only on the press that needs it, so a shopper's first scripts carry no third-party library beyond React and Next. The bloat is in when server packages load: the built output shows 89 to 98% of the 830 routes evaluate the same 11 MB of server code on their first request, and with it 481 table definitions nobody queries through, the Stripe and Supabase SDKs, a font parser and sharp's 18 MB native library; the page-view beacon evaluates 1,415 of its 1,456 modules. On the owner's side, supabase-js and zod are 29% of the admin shell's first scripts, and the rich text editor loads on 21 list and detail screens that may never show it. All of it is cheap to fix (mostly under a day each), and two of the items in the existing plan that touch dependencies (FH12) name the wrong package.
 
