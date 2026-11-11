@@ -5,76 +5,24 @@ import { useRouter } from "next/navigation";
 
 import { ADMIN_LANG_FACTS, ADMIN_LANG_KEY, ADMIN_LANGS, type AdminLang } from "@/lib/admin-lang";
 import { commonEn } from "@/lib/admin-messages/common.en";
-import { domainsEn } from "@/lib/admin-messages/domains.en";
-import { homeEn } from "@/lib/admin-messages/home.en";
-import { customersEn } from "@/lib/admin-messages/customers.en";
-import { privacyEn } from "@/lib/admin-messages/privacy.en";
-import { marketingEn } from "@/lib/admin-messages/marketing.en";
-import { discountsEn } from "@/lib/admin-messages/discounts.en";
-import { loyaltyEn } from "@/lib/admin-messages/loyalty.en";
-import { platformEn } from "@/lib/admin-messages/platform.en";
-import { platformSiteEn } from "@/lib/admin-messages/platform-site.en";
-import { platformToolsEn } from "@/lib/admin-messages/platform-tools.en";
-import { bookingsEn } from "@/lib/admin-messages/bookings.en";
-import { supportEn } from "@/lib/admin-messages/support.en";
-import { workEn } from "@/lib/admin-messages/work.en";
-import { assistantEn } from "@/lib/admin-messages/assistant.en";
-import { staffEmailsEn } from "@/lib/admin-messages/staff-emails.en";
-import { analyticsEn } from "@/lib/admin-messages/analytics.en";
-import { financeEn } from "@/lib/admin-messages/finance.en";
-import { taxReportsEn } from "@/lib/admin-messages/tax-reports.en";
-import { reportsEn } from "@/lib/admin-messages/reports.en";
-import { customReportsEn } from "@/lib/admin-messages/custom-reports.en";
-import { settingsEn } from "@/lib/admin-messages/settings.en";
-import { taxEn } from "@/lib/admin-messages/tax.en";
-import { paymentsEn } from "@/lib/admin-messages/payments.en";
-import { shippingEn } from "@/lib/admin-messages/shipping.en";
-import { notificationsEn } from "@/lib/admin-messages/notifications.en";
-import { legalEn } from "@/lib/admin-messages/legal.en";
-import { staffEn } from "@/lib/admin-messages/staff.en";
-import { billingEn } from "@/lib/admin-messages/billing.en";
-import { builderEn } from "@/lib/admin-messages/builder.en";
-import { blocksEn } from "@/lib/admin-messages/blocks.en";
-import { websiteEn } from "@/lib/admin-messages/website.en";
-import { designEn } from "@/lib/admin-messages/design.en";
-import { redirectsEn } from "@/lib/admin-messages/redirects.en";
-import { experimentsEn } from "@/lib/admin-messages/experiments.en";
-
-import { productsEn } from "@/lib/admin-messages/products.en";
-import { productEn } from "@/lib/admin-messages/product.en";
-import { inventoryEn } from "@/lib/admin-messages/inventory.en";
-import { giftCardsEn } from "@/lib/admin-messages/gift-cards.en";
-import { reviewsEn } from "@/lib/admin-messages/reviews.en";
-import { fieldsEn } from "@/lib/admin-messages/fields.en";
-
-import { ordersEn } from "@/lib/admin-messages/orders.en";
-import { orderEn } from "@/lib/admin-messages/order.en";
-import { draftsEn } from "@/lib/admin-messages/drafts.en";
-import { returnsEn } from "@/lib/admin-messages/returns.en";
-import { invoicesEn } from "@/lib/admin-messages/invoices.en";
-
-import { platformLegalEn } from "@/lib/admin-messages/platform-legal.en";
-import { capacityEn } from "@/lib/admin-messages/capacity.en";
 import { signInEn } from "@/lib/admin-messages/sign-in.en";
-import { contentEn } from "@/lib/admin-messages/content.en";
-import { blogEn } from "@/lib/admin-messages/blog.en";
-import { schedulesEn } from "@/lib/admin-messages/schedules.en";
-import { oauthEn } from "@/lib/admin-messages/oauth.en";
 import type { AdminAreaMessages, ClientArea, HandedArea } from "@/lib/admin-text";
 
 import { AdminTextContext } from "./admin-text-context";
-import { englishLater, isLater, type LaterArea } from "./admin-text-later";
+import { arrivedEnglish, englishLater, noteFallback, type LaterArea } from "./admin-text-later";
 
 /**
  * The admin's words in the browser (D312 A0, `docs/platform-admin-i18n.md` 3.3): the signed-in layout hands its client parts the account's
  * language and the slices of the catalogue they read (`adminTexts()`), and a part asks `useAdminText(area)`. An area not handed down is
- * read in English, so a part converted before its layout still draws.
+ * read in English, fetched then (`admin-text-later.ts`), so a part converted before its layout still draws.
  */
 
-
-/** Every other area a client part may read, in English; the server-only areas (`SERVER_AREAS`) are left out. */
-const ENGLISH: Pick<AdminAreaMessages, Exclude<ClientArea, LaterArea>> = { common: commonEn, domains: domainsEn, home: homeEn, customers: customersEn, privacy: privacyEn, marketing: marketingEn, discounts: discountsEn, loyalty: loyaltyEn, platform: platformEn, platformSite: platformSiteEn, platformTools: platformToolsEn, bookings: bookingsEn, support: supportEn, work: workEn, assistant: assistantEn, staffEmails: staffEmailsEn, analytics: analyticsEn, finance: financeEn, taxReports: taxReportsEn, reports: reportsEn, customReports: customReportsEn, settings: settingsEn, tax: taxEn, payments: paymentsEn, shipping: shippingEn, notifications: notificationsEn, legal: legalEn, staff: staffEn, billing: billingEn, capacity: capacityEn, builder: builderEn, blocks: blocksEn, website: websiteEn, design: designEn, redirects: redirectsEn, experiments: experimentsEn, products: productsEn, product: productEn, inventory: inventoryEn, giftCards: giftCardsEn, reviews: reviewsEn, fields: fieldsEn, content: contentEn, orders: ordersEn, order: orderEn, drafts: draftsEn, returns: returnsEn, invoices: invoicesEn, platformLegal: platformLegalEn, signIn: signInEn, blog: blogEn, schedules: schedulesEn, oauth: oauthEn };
-
+/**
+ * The two areas read outside the signed-in admin too (`useCommonText()`, `useSignInText()`), so their English is at hand at once. Every
+ * other area's English is fetched only when a part reads one that nothing handed down (`admin-text-later.ts`, PSI PERF-01).
+ */
+const ENGLISH = { common: commonEn, signIn: signInEn } as const;
+type AtHand = keyof typeof ENGLISH;
 
 export { AdminTextProvider } from "./admin-text-context";
 
@@ -94,8 +42,9 @@ export function useAdminText<A extends ClientArea>(area: A): AreaWords<A> {
   const { texts } = useContext(AdminTextContext);
   const handed = texts[area] as AreaWords<A> | undefined;
   if (handed) return handed;
-  const english = isLater(area) ? use(englishLater(area)) : ENGLISH[area as Exclude<ClientArea, LaterArea>];
-  return english as AreaWords<A>;
+  if (area in ENGLISH) return ENGLISH[area as AtHand] as AreaWords<A>;
+  noteFallback(area);
+  return (arrivedEnglish(area as LaterArea) ?? use(englishLater(area as LaterArea))) as AreaWords<A>;
 }
 
 /**
