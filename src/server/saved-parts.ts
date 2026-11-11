@@ -175,7 +175,7 @@ export async function updateSavedPart(account: Account, owner: Owner, id: string
         update commerce.saved_parts
            set name = ${name}, content = ${JSON.stringify(plainLayout(parsed.data.content))}::jsonb, sharing = ${shared},
                updated_at = now(), updated_by = ${account.id}::uuid
-         where id = ${id}::uuid
+         where id = ${id}::uuid and store_id is not distinct from ${owner}::uuid
       `);
       return { ok: true, id, parts: [] };
     }
@@ -187,7 +187,7 @@ export async function updateSavedPart(account: Account, owner: Owner, id: string
       update commerce.saved_parts
          set name = ${name}, content = ${JSON.stringify(ready.content)}::jsonb, global = ${global}, sharing = ${shared},
              translations = ${JSON.stringify(ready.translations)}::jsonb, updated_at = now(), updated_by = ${account.id}::uuid
-       where id = ${id}::uuid
+       where id = ${id}::uuid and store_id is not distinct from ${owner}::uuid
     `);
     const after: StoredPart = { ...before!, name, global, ...ready };
     const changed = global && before!.global && !sameGlobal(parsed.data.kind, ready, before!);
@@ -230,7 +230,7 @@ export async function deleteSavedPart(account: Account, owner: Owner, id: string
       if (layout) name = layout.name;
       return { ok: true, id, parts: [] };
     }
-    await tx.execute(sql`delete from commerce.saved_parts where id = ${id}::uuid`);
+    await tx.execute(sql`delete from commerce.saved_parts where id = ${id}::uuid and store_id is not distinct from ${owner}::uuid`);
     name = part.name;
     if (part.global) {
       const spread = await spreadGlobals(tx, {

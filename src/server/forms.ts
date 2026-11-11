@@ -177,7 +177,7 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
       { email: checked.replyTo, name: typeof typedName === "string" ? typedName : null },
     );
     if (inbox.kept && !inbox.emailToo) {
-      await db().execute(sql`update commerce.form_submissions set status = 'sent' where id = ${String(row.id)}::uuid`);
+      await db().execute(sql`update commerce.form_submissions set status = 'sent' where id = ${String(row.id)}::uuid and store_id is not distinct from ${owner.storeId}::uuid`);
       return { status: 200, body: { ok: true, outcome: "sent" } };
     }
     const status = await relay(
@@ -192,7 +192,7 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
       checked.replyTo,
       `form:${String(row.id)}`,
     );
-    await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${String(row.id)}::uuid`);
+    await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${String(row.id)}::uuid and store_id is not distinct from ${owner.storeId}::uuid`);
     return status === "failed" ? { status: 502, body: { ok: false, error: v.form.failed } } : { status: 200, body: { ok: true, outcome: "sent" } };
   }
 
@@ -230,7 +230,7 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
     const list = owner.storeId ?? (await houseStoreId());
     if (list) await keepOnList(list, block.id, checked.email, payload, request.lang, "unconfirmed");
     const status = await relaySignup(found, checked.email, payload, null, request.path, id);
-    await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${id}::uuid`);
+    await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${id}::uuid and store_id is not distinct from ${owner.storeId}::uuid`);
     return status === "failed" ? { status: 502, body: { ok: false, error: v.form.failed } } : { status: 200, body: done };
   }
 
@@ -374,14 +374,14 @@ export async function confirmSignup(token: string): Promise<{ location: string }
   const origin = found?.owner.origin ?? (await formOwner(storeId))?.origin ?? siteUrl();
   const back = (result: "confirmed" | "expired") => ({ location: `${origin}${returnPath(path, blockId, result)}` });
   if (!row.fresh || !found || !row.payload) {
-    await db().execute(sql`update commerce.form_submissions set status = 'expired', payload = null where id = ${String(row.id)}::uuid`);
+    await db().execute(sql`update commerce.form_submissions set status = 'expired', payload = null where id = ${String(row.id)}::uuid and store_id is not distinct from ${storeId}::uuid`);
     return back("expired");
   }
   const list = storeId ?? (await houseStoreId());
   if (list) await keepOnList(list, blockId, String(row.email), row.payload as SignupPayload, String(row.locale), "confirmed");
   if (storeId && found.block.type === "newsletter") await welcomeSignup(found, String(row.email), String(row.locale), String(row.id));
   const status = await relaySignup(found, String(row.email), row.payload as SignupPayload, new Date(String(row.confirmed_at)), path, String(row.id));
-  await db().execute(sql`update commerce.form_submissions set status = ${status}, payload = null where id = ${String(row.id)}::uuid`);
+  await db().execute(sql`update commerce.form_submissions set status = ${status}, payload = null where id = ${String(row.id)}::uuid and store_id is not distinct from ${storeId}::uuid`);
   return back("confirmed");
 }
 

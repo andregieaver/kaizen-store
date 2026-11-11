@@ -359,7 +359,7 @@ export async function createExperiment(account: Account, storeId: string, input:
   const id = String(made.id);
   const copy = await makeVersionPage(account, storeId, original, id, "b", `${original.title} (B)`, targetType);
   if (!copy.ok) {
-    await db().execute(sql`delete from commerce.experiments where id = ${id}::uuid`);
+    await db().execute(sql`delete from commerce.experiments where id = ${id}::uuid and store_id = ${storeId}::uuid`);
     return copy;
   }
   const [a, b] = evenSplit(2);

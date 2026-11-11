@@ -720,7 +720,7 @@ export async function deleteMedia(owner: MediaOwner, accountId: string, id: stri
   if (!(await removeStoredFiles(String(row.bucket), paths))) {
     return { ok: false, problem: "The file could not be removed from storage. Try again." };
   }
-  await db().execute(sql`delete from commerce.media where id = ${id}::uuid`);
+  await db().execute(sql`delete from commerce.media where id = ${id}::uuid and ${owned(owner.storeId)}`);
   await audit(accountId, owner.storeId, owner.storeId ? "store.media_deleted" : "platform.media_deleted", {
     mediaId: id,
     fileName: String(row.file_name),
