@@ -16067,6 +16067,7 @@ export const smsMessages = commerce.table(
   },
   (t) => [
     uniqueIndex("sms_messages_once_idx").on(t.campaignId, t.subscriberId),
+    index("sms_messages_campaign_idx").on(t.storeId, t.campaignId),
     uniqueIndex("sms_messages_provider_idx").on(t.storeId, t.providerId),
     index("sms_messages_due_idx").on(t.sendAfter).where(sql`${t.status} = 'queued'`),
     index("sms_messages_subscriber_idx").on(t.storeId, t.subscriberId),

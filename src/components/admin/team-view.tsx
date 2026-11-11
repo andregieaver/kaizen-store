@@ -107,8 +107,8 @@ export function TeamList({
                 </ActionForm>
               )}
             </div>
-            <div className="flex flex-wrap items-start gap-4">
-              <ActionForm action={actions.assign} className="flex flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-start gap-4">
+              <ActionForm action={actions.assign} className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
                 <input type="hidden" name="accountId" value={member.accountId} />
                 <label className="flex items-center gap-2">
                   <span className="sr-only">{fillWords(w.roleOf, { email: member.email })}</span>
@@ -172,7 +172,8 @@ export function InviteForms({
 }) {
   const w = (words ?? staffEn).invite;
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    // `minmax(0, 1fr)`: a card shrinks to a phone's width rather than holding the role choice's longest option.
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
       <Card title={w.title} compact>
         <p className="mb-3 text-sm text-muted">{w.staffNote}</p>
         <ActionForm action={actions.staff} className="flex flex-col gap-3 sm:max-w-md">

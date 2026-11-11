@@ -1,6 +1,6 @@
 {
-  "id": "45a8dc64-4e55-45d8-b8d7-030719c1f8ad",
-  "prevId": "b00d4bb4-83a0-42da-b6e3-06cc5411c277",
+  "id": "dbf4ebfa-7ee6-4ce7-b5b7-6fb7458f7bbf",
+  "prevId": "45a8dc64-4e55-45d8-b8d7-030719c1f8ad",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -71365,6 +71365,27 @@
             }
           ],
           "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sms_messages_campaign_idx": {
+          "name": "sms_messages_campaign_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "campaign_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}

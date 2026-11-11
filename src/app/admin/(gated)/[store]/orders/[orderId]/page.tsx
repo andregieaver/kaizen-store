@@ -340,11 +340,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           <section aria-labelledby="items" className={card}>
             <h2 id="items" className="mb-3 text-title text-ink">{w.items}</h2>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[28rem] text-left text-sm">
+              {/* On a phone the SKU goes under the product's name, so its quantity and total stay in view without scrolling sideways. */}
+              <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line">
                     <th scope="col" className="py-2 font-medium">{w.product}</th>
-                    <th scope="col" className="py-2 font-medium">{w.sku}</th>
+                    <th scope="col" className="hidden py-2 font-medium sm:table-cell">{w.sku}</th>
                     <th scope="col" className="py-2 text-right font-medium">{w.qty}</th>
                     <th scope="col" className="py-2 text-right font-medium">{w.total}</th>
                   </tr>
@@ -352,8 +353,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 <tbody>
                   {order.lines.map((line) => (
                     <tr key={line.id} className="border-b border-line">
-                      <td className="py-2">
+                      <td className="py-2 pr-3">
                         {line.title}
+                        {line.sku && <span className="block font-mono text-xs text-muted sm:hidden">{line.sku}</span>}
                         {line.delivery === "digital" && line.variantId && <span className="block text-xs text-muted">{w.digital}</span>}
                         {line.custom && <span className="block text-xs text-muted">{w.customItem}</span>}
                         {!line.custom && line.listPriceMinor !== null && line.listPriceMinor !== line.unitPriceMinor && (
@@ -391,7 +393,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                             </span>
                           ))}
                       </td>
-                      <td className="py-2 font-mono text-xs">{line.sku}</td>
+                      <td className="hidden py-2 font-mono text-xs sm:table-cell">{line.sku}</td>
                       <td className="py-2 text-right">{line.quantity}</td>
                       <td className="py-2 text-right">{money(line.unitPriceMinor * line.quantity)}{line.gift && <span className="block text-xs text-muted">{w.freeGift}</span>}</td>
                     </tr>

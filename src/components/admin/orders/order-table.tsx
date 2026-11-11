@@ -258,7 +258,8 @@ export function OrderTable({
       )}
 
       <div className={tableShell}>
-        <table className="w-full min-w-[40rem] text-left text-sm">
+        {/* On a phone a row is the order (with its customer and states under its number) and its total; the other columns from Small up. */}
+        <table className="w-full text-left text-sm sm:min-w-[40rem]">
           <thead>
             <tr className="border-b border-line">
               {canWrite && (
@@ -275,22 +276,22 @@ export function OrderTable({
                 </th>
               )}
               {col("customer") && (
-                <th scope="col" className={th}>
+                <th scope="col" className={`${th} hidden sm:table-cell`}>
                   {t.columns.customer}
                 </th>
               )}
               {col("market") && (
-                <th scope="col" className={th}>
+                <th scope="col" className={`${th} hidden sm:table-cell`}>
                   {t.columns.market}
                 </th>
               )}
               {col("payment") && (
-                <th scope="col" className={th}>
+                <th scope="col" className={`${th} hidden sm:table-cell`}>
                   {t.columns.payment}
                 </th>
               )}
               {col("fulfilment") && (
-                <th scope="col" className={th}>
+                <th scope="col" className={`${th} hidden sm:table-cell`}>
                   {t.columns.fulfilment}
                 </th>
               )}
@@ -310,7 +311,7 @@ export function OrderTable({
                 </th>
               )}
               {col("source") && (
-                <th scope="col" className={th}>
+                <th scope="col" className={`${th} hidden sm:table-cell`}>
                   {t.columns.source}
                 </th>
               )}
@@ -384,6 +385,16 @@ function OrderRow({
         {row.edited && <span className={badge}>{g.edited}</span>}
         {row.copied && <span className={badge}>{g.copied}</span>}
         {row.erased && <span className={badge}>{g.erased}</span>}
+        {/* A phone's row: who it is for, and its payment and sending, under the number (their own columns from Small up). */}
+        <span className="mt-0.5 block text-xs text-muted sm:hidden">
+          {[
+            row.erased ? t.erased : row.name || row.email || null,
+            t.pay[row.pay],
+            row.ship === "none" ? (row.status === "pending_payment" ? null : statusWords[row.status]) : shipCellWords(row, t),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
       </td>
       {col("placed") && (
         <td className={`${td} hidden sm:table-cell`}>
@@ -391,7 +402,7 @@ function OrderRow({
         </td>
       )}
       {col("customer") && (
-        <td className={td}>
+        <td className={`${td} hidden sm:table-cell`}>
           {row.erased ? (
             <span className="text-muted">{t.erased}</span>
           ) : row.email ? (
@@ -403,10 +414,10 @@ function OrderRow({
           )}
         </td>
       )}
-      {col("market") && <td className={td}>{row.marketCode}</td>}
-      {col("payment") && <td className={td}>{t.pay[row.pay]}</td>}
+      {col("market") && <td className={`${td} hidden sm:table-cell`}>{row.marketCode}</td>}
+      {col("payment") && <td className={`${td} hidden sm:table-cell`}>{t.pay[row.pay]}</td>}
       {col("fulfilment") && (
-        <td className={td}>
+        <td className={`${td} hidden sm:table-cell`}>
           {row.ship === "none" ? (row.status === "pending_payment" ? "–" : statusWords[row.status]) : shipCellWords(row, t)}
           {row.owed > 0 && (
             <span className="block text-xs">
@@ -440,7 +451,7 @@ function OrderRow({
           )}
         </td>
       )}
-      {col("source") && <td className={td}>{row.copied ? sources.copied : row.source === "draft" ? sources.draft : row.source === "exchange" ? sources.exchange : sources.checkout}</td>}
+      {col("source") && <td className={`${td} hidden sm:table-cell`}>{row.copied ? sources.copied : row.source === "draft" ? sources.draft : row.source === "exchange" ? sources.exchange : sources.checkout}</td>}
       {col("total") && <td className={`${td} text-right tabular-nums`}>{row.totalText}</td>}
     </tr>
   );

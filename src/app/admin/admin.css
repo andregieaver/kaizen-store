@@ -451,3 +451,29 @@ html[data-admin] details[open] > :not(summary):not(:is([data-theme-canvas], [dat
     animation-iteration-count: infinite !important;
   }
 }
+
+/*
+ * Words for screen readers only (`sr-only`) are placed absolutely where they would have stood. Inside a table that scrolls sideways in its
+ * card, that place is past the card's edge, and an absolute box escapes the card's clipping (its containing block is further out), so the
+ * whole page grew sideways on a phone (Inventory, 777 px on a 390 px screen). Pinned to the start of their containing block, they never do.
+ */
+html[data-admin] .sr-only:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  left: 0;
+}
+
+/*
+ * On a phone, a choice whose longest option is a long sentence (a role, a provider) made its select, and the form around it, wider than the
+ * screen; and a fieldset is as wide as its widest content by the browser's own default (`min-inline-size: min-content`). Neither may push
+ * the page wider than its space: the select shows what fits and opens its full list as ever.
+ */
+html[data-admin] select:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  max-width: 100%;
+}
+/* A select's own box (a label or a field's column, often a flex or grid item) shrinks with it rather than holding the longest option. */
+html[data-admin] :has(> select):not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  min-width: 0;
+  max-width: 100%;
+}
+html[data-admin] fieldset:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  min-inline-size: 0;
+}

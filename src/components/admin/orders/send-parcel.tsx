@@ -74,14 +74,16 @@ export function SendParcelForm({
       {!whole && <input type="hidden" name="parcel" value="lines" />}
       {rows.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[34rem] text-left text-sm">
+          {/* On a phone the units sent and withdrawn are left out (what is ordered and still to send say enough), so the parcel's own
+              numbers stay in view without scrolling sideways. */}
+          <table className="w-full text-left text-sm">
             <caption className="sr-only">{w.caption}</caption>
             <thead>
               <tr className="border-b border-line">
                 <th scope="col" className="py-2 font-medium">{w.item}</th>
                 <th scope="col" className="py-2 text-right font-medium">{w.ordered}</th>
-                <th scope="col" className="py-2 text-right font-medium">{w.sent}</th>
-                <th scope="col" className="py-2 text-right font-medium">{w.withdrawn}</th>
+                <th scope="col" className="hidden py-2 text-right font-medium sm:table-cell">{w.sent}</th>
+                <th scope="col" className="hidden py-2 text-right font-medium sm:table-cell">{w.withdrawn}</th>
                 <th scope="col" className="py-2 text-right font-medium">{w.toSend}</th>
                 <th scope="col" className="py-2 pl-3 text-right font-medium">{whole ? w.sentNow : w.inThisParcel}</th>
               </tr>
@@ -89,7 +91,7 @@ export function SendParcelForm({
             <tbody>
               {rows.map((row) => (
                 <tr key={row.lineId} className={`border-b border-line ${row.toSend === 0 ? "text-muted" : ""}`}>
-                  <td className="py-2">
+                  <td className="py-2 pr-2">
                     {row.title}
                     {row.sku && <span className="block font-mono text-xs text-muted">{row.sku}</span>}
                     {(row.closed ?? 0) > 0 && <span className="block text-xs text-muted">{fillWords(w.closedUnits, { n: row.closed ?? 0 })}</span>}
@@ -100,8 +102,8 @@ export function SendParcelForm({
                     )}
                   </td>
                   <td className="py-2 text-right tabular-nums">{row.ordered}</td>
-                  <td className="py-2 text-right tabular-nums">{row.sent}</td>
-                  <td className="py-2 text-right tabular-nums">{row.withdrawn}</td>
+                  <td className="hidden py-2 text-right tabular-nums sm:table-cell">{row.sent}</td>
+                  <td className="hidden py-2 text-right tabular-nums sm:table-cell">{row.withdrawn}</td>
                   <td className="py-2 text-right tabular-nums">{row.toSend}</td>
                   <td className="py-2 pl-3 text-right">
                     {row.toSend === 0 ? (

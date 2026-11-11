@@ -1,0 +1,1 @@
+CREATE INDEX "sms_messages_campaign_idx" ON "commerce"."sms_messages" USING btree ("store_id","campaign_id");
