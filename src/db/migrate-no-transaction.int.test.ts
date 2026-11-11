@@ -20,7 +20,7 @@ const suite = url ? describe : describe.skip;
 const run = promisify(execFile);
 const NAME = `kaizen_migrate_${process.pid}`;
 
-suite("db-migrate.mjs and -- kaizen:no-transaction", () => {
+suite("db-migrate.mjs: -- kaizen:no-transaction and baselines", () => {
   let admin: postgres.Sql;
   let scratch: postgres.Sql;
   let dir: string;
@@ -94,5 +94,16 @@ suite("db-migrate.mjs and -- kaizen:no-transaction", () => {
     expect((await migrate()).ok).toBe(true);
     expect(await index("busy_code_key")).toEqual({ valid: true });
     expect(await ledger()).toContain("20990104000000_unique_code.sql");
+  });
+
+  it("records a baseline of files it has applied without running it (code review FD3), and runs a baseline of files it has not", async () => {
+    // Run, this would fail: it stands for the files up to the cut, which this database has had.
+    write("20990105000000_baseline_1_schema.sql", "-- kaizen:baseline-through=20990104000000_unique_code.sql\nSELECT 1 / 0;\n");
+    write("20990105000001_baseline_of_elsewhere.sql", "-- kaizen:baseline-through=20990109000000_not_here.sql\nCREATE TABLE public.ran (id int);\n");
+    const result = await migrate();
+    expect(result.ok).toBe(true);
+    expect(result.out).toContain("recorded 20990105000000_baseline_1_schema.sql");
+    expect(await ledger()).toEqual(expect.arrayContaining(["20990105000000_baseline_1_schema.sql", "20990105000001_baseline_of_elsewhere.sql"]));
+    expect((await scratch.unsafe("SELECT to_regclass('public.ran') AS t"))[0].t).toBe("ran");
   });
 });

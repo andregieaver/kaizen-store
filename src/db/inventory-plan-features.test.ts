@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -7,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { INVENTORY_RETENTION_MONTHS } from "@/lib/inventory";
 
 import { createTestDatabase } from "./testing";
+import { readMigration } from "./migration-files";
 
 /**
  * The plan comparison's row for the inventory work of wave 3 (D172, `docs/wave-3-inventory.md` 5.5; migration `*_inventory_plan_features.sql`): described once,
@@ -17,7 +16,7 @@ import { createTestDatabase } from "./testing";
 let db: PGlite;
 
 const NAME = "Inventory page, stock history, backorders and low-stock warnings";
-const MIGRATION = readFileSync(path.join(process.cwd(), "supabase", "migrations", "20261006111639_inventory_plan_features.sql"), "utf8");
+const MIGRATION = readMigration("20261006111639_inventory_plan_features.sql");
 
 beforeAll(async () => {
   db = await createTestDatabase();

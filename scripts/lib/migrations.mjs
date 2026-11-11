@@ -65,3 +65,12 @@ export async function applyMigration(sql, text) {
 /** The indexes a marked file names (`create [unique] index concurrently [if not exists] name`). */
 export const indexNamesIn = (text) =>
   [...text.matchAll(/create\s+(?:unique\s+)?index\s+concurrently\s+(?:if\s+not\s+exists\s+)?("?)([a-z0-9_]+)\1/gi)].map((match) => match[2]);
+
+/**
+ * A baseline file's cut (code review FD3, D570): its first line is `-- kaizen:baseline-through=<file>`. It stands for every migration up
+ * to that file: run on an empty database, recorded without running where the ledger has that file (`scripts/db-migrate.mjs`).
+ */
+export const baselineThroughOf = (text) => text.replace(/^\uFEFF/, "").split("\n", 1)[0].match(/^-- kaizen:baseline-through=(\S+\.sql)\s*$/)?.[1] ?? null;
+
+/** Where squashed migrations are kept (`supabase/archive/<cut's version>/`): out of every path that applies migrations. */
+export const archiveDir = path.join(root, "archive");

@@ -13,15 +13,18 @@
 // row (a failure leaves the database as it was before that file), except a file whose first line is
 // `-- kaizen:no-transaction` (code review FD4): its statements run one by one outside a transaction,
 // as `create index concurrently` must, its ledger row follows the last, and an index it left half
-// built when one fails is dropped again, so the next run starts clean; a file already applied and
+// built when one fails is dropped again, so the next run starts clean; a baseline (first line
+// `-- kaizen:baseline-through=<file>`, code review FD3) is recorded without running where the ledger
+// has <file>, since it is the squashed files themselves; a file already applied and
 // edited since is refused (a new migration, never an edit of an applied one); one run at a time
 // (an advisory lock); MIGRATE_EXPECT, when set, must appear in the connection string, so a wrong
 // secret never reaches the wrong database.
-import { appendFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync } from "node:fs";
+import path from "node:path";
 
 import postgres from "postgres";
 
-import { migrationsDir, readMigrations, indexNamesIn, runsOutsideTransaction, statementsOf } from "./lib/migrations.mjs";
+import { archiveDir, baselineThroughOf, indexNamesIn, migrationsDir, readMigrations, runsOutsideTransaction, statementsOf } from "./lib/migrations.mjs";
 
 const args = new Set(process.argv.slice(2));
 const baselineThrough = process.argv.find((arg) => arg.startsWith("--baseline-through="))?.split("=")[1];
@@ -128,15 +131,20 @@ try {
   }
 
   const onDisk = new Set(files.map((entry) => entry.file));
+  // Squashed files (supabase/archive/<cut>/) are applied history, not missing ones.
+  const archived = new Set(
+    existsSync(archiveDir) ? readdirSync(archiveDir).flatMap((cut) => readdirSync(path.join(archiveDir, cut)).filter((file) => file.endsWith(".sql"))) : [],
+  );
   const edited = files.filter((entry) => recorded.has(entry.file) && recorded.get(entry.file) !== entry.checksum);
-  const missing = [...recorded.keys()].filter((file) => !onDisk.has(file));
+  const missing = [...recorded.keys()].filter((file) => !onDisk.has(file) && !archived.has(file));
   const pending = files.filter((entry) => !recorded.has(entry.file));
   const newest = [...recorded.keys()].sort().at(-1);
   const older = pending.filter((entry) => newest && entry.file < newest);
 
   const report = [
-    `Migrations in ${migrationsDir.split("/").slice(-3).join("/")}: ${files.length}, recorded ${recorded.size}, pending ${pending.length}.`,
-    ...pending.map((entry) => `  pending: ${entry.file}`),
+    `Migrations in ${migrationsDir.split("/").slice(-3).join("/")}: ${files.length}, recorded ${recorded.size}, pending ${pending.length}` +
+      `${archived.size ? `, squashed into a baseline ${archived.size}` : ""}.`,
+    ...pending.map((entry) => `  pending: ${entry.file}${recorded.has(baselineThroughOf(entry.sql) ?? "") ? " (a baseline of what is applied: recorded, not run)" : ""}`),
     ...older.map((entry) => `  note: ${entry.file} is older than the newest applied file (a lane merged late); it is applied now, in order.`),
     ...edited.map((entry) => `  EDITED after it was applied: ${entry.file}`),
     ...missing.map((file) => `  missing on disk: ${file}`),
@@ -165,6 +173,13 @@ try {
         entry.checksum,
         process.env.GITHUB_ACTIONS ? "ci" : "manual",
       ]);
+    const cut = baselineThroughOf(entry.sql);
+    if (cut && recorded.has(cut)) {
+      // The baseline is the squashed files, which this database has had: recorded so, never run over them.
+      await sql.unsafe(`INSERT INTO ${LEDGER} (file, checksum, applied_by) VALUES ($1, $2, 'baseline')`, [entry.file, entry.checksum]);
+      console.log(`recorded ${entry.file} (a baseline through ${cut}, which is applied) without running it`);
+      continue;
+    }
     if (runsOutsideTransaction(entry.sql)) {
       try {
         await applyOutsideTransaction(entry.sql);

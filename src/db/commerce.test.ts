@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -11,6 +9,7 @@ import { RESERVED_STORE_SLUGS } from "@/lib/paths";
 import { MODULES } from "@/lib/store-modules";
 
 import { createTestDatabase } from "./testing";
+import { readMigration } from "./migration-files";
 
 let db: PGlite;
 /** The store most tests work in: sells to Germany, Norway, Sweden, Denmark. */
@@ -6729,7 +6728,7 @@ describe("usage and limits (D314)", () => {
   });
 
   it("gives the four plans their recommended limits by name, keeps an admin's own, and sets no default", async () => {
-    const seed = readFileSync(path.join(process.cwd(), "supabase/migrations/20261023122903_capacity_plan_limits.sql"), "utf8");
+    const seed = readMigration("20261023122903_capacity_plan_limits.sql");
     // The migration ran before any plan existed here: nothing was written.
     expect(Number((await one<{ n: number }>("select count(*)::int as n from commerce.plan_limits where key = 'storage_bytes' and plan_id is not null")).n)).toBe(0);
     const { id: basic } = await one<{ id: string }>("insert into commerce.plans (name) values ('Basic') returning id");
@@ -7402,7 +7401,7 @@ describe("private mode (wave 7 unit E, D339)", () => {
     const setup = await createStore(`private-setup-${Date.now()}`, ["NO"]);
     await db.query("update commerce.stores set setup_completed_at = now() where id = $1", [open]);
     await db.query("update commerce.stores set starter = true where id = $1", [demo]);
-    const rule = readFileSync(path.join(process.cwd(), "supabase/migrations/20261027165146_private_mode_sql.sql"), "utf8").replace(
+    const rule = readMigration("20261027165146_private_mode_sql.sql").replace(
       "where ",
       "where id = any($1::uuid[]) and (",
     );
