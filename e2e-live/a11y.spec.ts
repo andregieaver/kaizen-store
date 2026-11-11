@@ -44,7 +44,8 @@ async function overOwnBackground(page: import("@playwright/test").Page, selector
     };
     let element = document.querySelector(target);
     while (element) {
-      if (element.querySelector(":scope > [data-fx-bgroot]")) return true;
+      // A row's background sits in its own wrapper since D533 (`<div data-row-bg class="contents">`), a part's directly under it.
+      if (element.querySelector(":scope > [data-fx-bgroot], :scope > [data-row-bg] > [data-fx-bgroot]")) return true;
       if (solid(element)) return false;
       element = element.parentElement;
     }
