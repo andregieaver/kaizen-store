@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 import Stripe from "stripe";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import type { PlatformDiscount } from "@/lib/discounts";
@@ -16,8 +17,41 @@ import { capturePlanCheckout, markPlanCheckoutRecovered, planRemindersOn, planRe
 import type { SaveResult } from "./settings";
 import { platformModes, platformStripe } from "./stripe";
 import { getStore } from "./stores";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
+
+const PLAN_ROW = z.object({
+  id: col.uuid,
+  name: col.text,
+  description: col.text,
+  sale_fee_bps: col.int,
+  position: col.int,
+  active: col.bool,
+  stores: col.int,
+});
+
+const PLAN_PRICE_ROW = z.object({
+  id: col.uuid,
+  plan_id: col.uuid,
+  currency: col.currency,
+  interval: col.text,
+  amount_minor: col.minor,
+  active: col.bool,
+  stores: col.int,
+});
+
+const SYNC_ROW = z.object({
+  mode: col.text,
+  kind: col.text,
+  local_id: col.text,
+  stripe_id: col.textOrNull,
+  error: col.textOrNull,
+});
+
+const ID_ROW = z.object({ id: col.uuid });
+
+const ACTIVE_PRICE_ROW = z.object({ id: col.uuid, currency: col.currency, interval: col.text, amount_minor: col.minor });
 
 /** The Stripe mode Kaizen bills stores in: live once live keys are set. */
 export function billingMode(): PaymentModeName | null {
@@ -60,19 +94,19 @@ export type Plan = {
 
 export async function listPlans(): Promise<Plan[]> {
   const [plans, prices, syncs] = await Promise.all([
-    db().execute<Row>(sql`
+    typedRows(PLAN_ROW, sql`
       select p.id, p.name, p.description, p.sale_fee_bps, p.position, p.active,
              (select count(*)::int from commerce.store_billing b
                where b.plan_id = p.id and b.status in ('trialing', 'active', 'past_due')) as stores
       from commerce.plans p order by p.active desc, p.position, lower(p.name)
     `),
-    db().execute<Row>(sql`
+    typedRows(PLAN_PRICE_ROW, sql`
       select pp.id, pp.plan_id, pp.currency, pp.interval, pp.amount_minor, pp.active,
              (select count(*)::int from commerce.store_billing b
                where b.price_id = pp.id and b.status in ('trialing', 'active', 'past_due')) as stores
       from commerce.plan_prices pp order by pp.currency, pp.interval, pp.created_at desc
     `),
-    db().execute<Row>(sql`
+    typedRows(SYNC_ROW, sql`
       select s.mode, s.kind, s.local_id, s.stripe_id, s.error from commerce.stripe_sync s
       where s.kind in ('product', 'price')
     `),
@@ -147,19 +181,28 @@ export async function savePlan(
         where id = ${id}::uuid
       `);
     } else {
-      const [row] = await tx.execute<Row>(sql`
+      const row = await typedRow(
+        ID_ROW,
+        sql`
         insert into commerce.plans (name, description, sale_fee_bps, position, active, updated_by)
         values (${input.name}, ${input.description}, ${input.saleFeeBps}, ${input.position}, ${input.active},
                 ${actor.id}::uuid)
         returning id
-      `);
-      id = String(row.id);
+      `,
+        tx,
+      );
+      if (!row) throw new Error("The plan was not written.");
+      id = row.id;
     }
 
-    const current = await tx.execute<Row>(sql`
+    const current = await typedRows(
+      ACTIVE_PRICE_ROW,
+      sql`
       select id, currency, interval, amount_minor from commerce.plan_prices
       where plan_id = ${id}::uuid and active
-    `);
+    `,
+      tx,
+    );
     const wanted = new Map(input.prices.map((p) => [`${p.currency}:${p.interval}`, p]));
     for (const row of current) {
       const want = wanted.get(`${row.currency}:${row.interval}`);
@@ -217,14 +260,14 @@ async function recordSync(
 }
 
 async function syncedId(mode: PaymentModeName, kind: string, localId: string): Promise<string | null> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(z.object({ stripe_id: col.textOrNull }), sql`
     select stripe_id from commerce.stripe_sync where mode = ${mode} and kind = ${kind} and local_id = ${localId}
   `);
   return row?.stripe_id ? String(row.stripe_id) : null;
 }
 
 async function isArchived(mode: PaymentModeName, localId: string): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(z.object({ archived: col.bool }), sql`
     select archived from commerce.stripe_sync where mode = ${mode} and kind = 'price' and local_id = ${localId}
   `);
   return Boolean(row?.archived);
