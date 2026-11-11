@@ -5,6 +5,9 @@ import { getWebhookSecrets } from "@/server/settings";
 import { stripeFor } from "@/server/stripe";
 import { handleStripeEvent } from "@/server/stripe-webhooks";
 
+/** A payment provider's event is answered within a minute, or the function stops and the provider sends it again (code review 1.5, FD9). */
+export const maxDuration = 60;
+
 /**
  * Stripe calls this for each store's payments. The event is only trusted if
  * its signature matches one of the store's own webhook secrets (test or

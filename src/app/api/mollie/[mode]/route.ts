@@ -1,6 +1,9 @@
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
 import { handleMollieWebhook } from "@/server/payment-providers/mollie";
 
+/** A payment provider's event is answered within a minute, or the function stops and the provider sends it again (code review 1.5, FD9). */
+export const maxDuration = 60;
+
 /**
  * Mollie's webhook for stores' Mollie payments (D292): Mollie posts only a payment's id, and Kaizena Flow fetches the payment from Mollie with the store's
  * own token before anything changes, so a forged call can at most make Kaizena Flow read a payment again. Mollie calls again on any answer but 200.

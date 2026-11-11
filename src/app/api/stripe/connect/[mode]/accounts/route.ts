@@ -6,6 +6,9 @@ import { refreshHostStripeAccount } from "@/server/host-payments";
 import { platformStripe } from "@/server/stripe";
 import { storeTag } from "@/server/stores";
 
+/** A payment provider's event is answered within a minute, or the function stops and the provider sends it again (code review 1.5, FD9). */
+export const maxDuration = 60;
+
 /**
  * Account events (Accounts v2 "thin" events) for stores' and hosts' Stripe accounts:
  * Stripe needs information, or the account can now take payments. The

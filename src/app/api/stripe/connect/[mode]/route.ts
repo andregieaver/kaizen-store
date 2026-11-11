@@ -5,6 +5,9 @@ import { getPlatformWebhookSecret, storeForAccount } from "@/server/connect";
 import { stripeFor } from "@/server/stripe";
 import { handleStripeEvent } from "@/server/stripe-webhooks";
 
+/** A payment provider's event is answered within a minute, or the function stops and the provider sends it again (code review 1.5, FD9). */
+export const maxDuration = 60;
+
 /**
  * Payment events from stores' own Stripe accounts (Stripe Connect), sent to
  * Kaizen's platform webhook. `event.account` says which store's account the

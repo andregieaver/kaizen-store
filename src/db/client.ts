@@ -1,7 +1,7 @@
 import "server-only";
 
 import { attachDatabasePool } from "@vercel/functions";
-import type { SQLWrapper } from "drizzle-orm";
+import { sql, type SQLWrapper } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { PgTransactionConfig } from "drizzle-orm/pg-core";
 import { Pool, type PoolConfig } from "pg";
@@ -80,6 +80,16 @@ function create(url: string = serverEnv().DATABASE_URL) {
 
 let instance: ReturnType<typeof create> | undefined;
 let replica: ReturnType<typeof create> | undefined;
+
+/**
+ * A longer limit for one transaction of a job that needs it (code review 1.5, FD9). In production every statement the app sends may run
+ * 15 seconds (the `postgres` role's `statement_timeout`, migration `statement_timeouts`); this raises it with `set local`, so it ends with
+ * the transaction and never reaches another request through the pooler. Supabase's `transaction_timeout` (60 s) still bounds the whole.
+ */
+export async function longerTimeout(tx: Pick<Db, "execute">, seconds: number): Promise<void> {
+  const limit = Math.max(1, Math.min(55, Math.round(seconds)));
+  await tx.execute(sql.raw(`set local statement_timeout = '${limit}s'`));
+}
 
 /** The server-side database connection, created on first use. */
 export function db(): Db {
