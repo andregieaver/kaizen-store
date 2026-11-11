@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { CART_DRAWER_LOOK, DEFAULT_MENU_LOOK, drawerHasBackground, ownDrawer, menuDrag, menuDragCloses, menuLook, menuLookAttrs, menuLookFrom, menuOverlayClass, menuPanelClass, menuSwipe } from "./menu-drawer";
 import { MENU_SIDES, MENU_TYPES, pageBlockSchema } from "./page-content";
-import { headerDrawer } from "./site-layout";
+import { headerDrawer, phoneMenuIds } from "./site-layout";
+import { partCss } from "./part-css";
+import { DEFAULT_BREAKPOINTS } from "./breakpoints";
 
 const button = (drawer: unknown): unknown => ({ id: "b", type: "site", part: "menuButton", drawer });
 const parse = (drawer: unknown) => pageBlockSchema.safeParse(button(drawer));
@@ -101,5 +103,31 @@ describe("the slide-out cart's look (D571)", () => {
     expect(headerDrawer(header, "cart")).toEqual({ type: "card", side: "bottom" });
     expect(headerDrawer(header, "menuButton")).toEqual({ type: "fullscreen" });
     expect(headerDrawer(null, "cart")).toBeUndefined();
+  });
+});
+
+describe("the phone menu's links and the button's place (D572)", () => {
+  const MENU_A = "00000000-0000-4000-8000-00000000000a";
+  const MENU_B = "00000000-0000-4000-8000-00000000000b";
+  const header = (blocks: unknown[]) => ({ rows: [{ id: "r", type: "row", layout: "1", columns: [{ id: "c", blocks }] }] }) as never;
+
+  it("shows the header's Menu component's menu, else the site's header menu, and each menu a button chooses", () => {
+    expect(phoneMenuIds(header([{ id: "m", type: "menu", menuId: MENU_A }]), MENU_B)).toEqual({ standard: MENU_A, chosen: [] });
+    expect(phoneMenuIds(header([{ id: "m", type: "menu" }]), MENU_B)).toEqual({ standard: MENU_B, chosen: [] });
+    expect(phoneMenuIds(null, null)).toEqual({ standard: null, chosen: [] });
+    const both = header([
+      { id: "m", type: "menu", menuId: MENU_A },
+      { id: "b", type: "site", part: "menuButton", drawer: { menuId: MENU_B } },
+      { id: "c", type: "site", part: "menuButton", drawer: { menuId: MENU_A } },
+    ]);
+    expect(phoneMenuIds(both, null)).toEqual({ standard: MENU_A, chosen: [MENU_B] });
+    expect(pageBlockSchema.safeParse(button({ menuId: "not-a-menu" })).success).toBe(false);
+  });
+
+  it("moves the button to the end of its column it is set to, on the site", () => {
+    const row = (align?: string) => ({ id: "r", type: "row", layout: "1", columns: [{ id: "c", blocks: [{ id: "b", type: "site", part: "menuButton", ...(align && { align }) }] }] }) as never;
+    expect(partCss([row("right")], "site", DEFAULT_BREAKPOINTS)).toMatch(/order:\s*99;[^}]*margin-left:\s*auto/);
+    expect(partCss([row("left")], "site", DEFAULT_BREAKPOINTS)).toMatch(/order:\s*-1;[^}]*margin-right:\s*auto/);
+    expect(partCss([row()], "site", DEFAULT_BREAKPOINTS)).not.toMatch(/order:/);
   });
 });

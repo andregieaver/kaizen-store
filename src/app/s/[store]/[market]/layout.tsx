@@ -208,7 +208,7 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
           <StoreBottomBar store={store} market={market} />
         </Suspense>
         <Suspense fallback={null}>
-          <StoreMenu store={store} market={market} />
+          <StoreMenu store={store} market={market} header={headerLayout?.content} />
         </Suspense>
         {/* The slide-out cart on phones, when the cart is opened from a page of the store. */}
         {drawer}

@@ -106,6 +106,19 @@ export const isSiteBlock = (block: PageBlock): block is SiteBlock => block.type 
 export const siteBlocks = (content: Pick<PageContent, "rows">): SiteBlock[] =>
   content.rows.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks).filter(isSiteBlock)));
 
+/**
+ * The menus the phone menu shows (D572): `standard`, what a menu button with none chosen opens (the header's first Menu component's menu,
+ * else the site's own header menu, `fallback`), and `chosen`, each other menu a menu button in the header names. A built header picks its
+ * menu with a Menu component, not the site's header menu, so the phone's had nothing to show while that was unset.
+ */
+export function phoneMenuIds(header: Pick<PageContent, "rows"> | null | undefined, fallback: string | null | undefined): { standard: string | null; chosen: string[] } {
+  const blocks = header ? header.rows.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks))) : [];
+  const fromHeader = blocks.find((block): block is MenuBlock => block.type === "menu" && Boolean(block.menuId))?.menuId;
+  const standard = fromHeader ?? fallback ?? null;
+  const chosen = [...new Set(siteBlocks(header ?? { rows: [] }).flatMap((block) => (block.part === "menuButton" && block.drawer?.menuId ? [block.drawer.menuId] : [])))];
+  return { standard, chosen: chosen.filter((id) => id !== standard) };
+}
+
 /** A header's drawer settings for a part: its first component of that part that has any (the cart's for the slide-out cart, D571). */
 export const headerDrawer = (header: Pick<PageContent, "rows"> | null | undefined, part: "menuButton" | "cart"): MenuDrawer | undefined =>
   header ? siteBlocks(header).find((block) => block.part === part && block.drawer)?.drawer : undefined;

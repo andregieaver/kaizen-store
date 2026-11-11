@@ -37,7 +37,7 @@ import { layoutOf, type PageLayout } from "@/lib/page-layout";
 import { partFromRows } from "@/lib/saved-part-canvas";
 import { blockingIssues, issueId, pageIssues, type PageIssue } from "@/lib/page-a11y";
 import { applyMotionPlan, type MotionPlan } from "@/lib/motion-plan";
-import { History, Redo2, Replace, Sparkles, Undo2, WandSparkles, X } from "lucide-react";
+import { ChevronDown, ChevronUp, History, Redo2, Replace, Sparkles, Undo2, WandSparkles, X } from "lucide-react";
 import { formatDualWith, withCopiedTranslations, type DualSide, type DualWith } from "@/lib/dual-page";
 import { DualCreateDialog, DualOpenDialog } from "./dual-page-dialogs";
 import { PAGE_TYPE_COPY } from "./page-type-copy";
@@ -255,6 +255,9 @@ export function PageEditor({
   const [versionsOpen, setVersionsOpen] = useState(false);
   // Find and replace (D307).
   const [findOpen, setFindOpen] = useState(false);
+  // On a phone the bar folds to its main buttons (D572), so the page being edited has the room; More shows the rest.
+  const [barOpen, setBarOpen] = useState(false);
+  const more = barOpen ? "" : "max-md:hidden";
   // The address follows the title until it is edited, and never once the page is live.
   const [slugFollows, setSlugFollows] = useState(
     !page || (!page.published && page.draft.slug === pageSlugFromTitle(page.draft.title, reserved)),
@@ -1173,10 +1176,16 @@ export function PageEditor({
               </button>
               {/* Publishing the draft at a set time and putting it back at another (D341, D340): once the page has been saved. */}
               {context.schedule && saved && (context.type === "page" || context.type === "article" || context.type === "header" || context.type === "footer") && (
-                <ScheduleButton pageId={saved.id} noun={context.type} schedule={context.schedule} dirty={dirty} saveDraft={() => save(false)} />
+                <span className={`contents ${more}`}>
+                  <ScheduleButton pageId={saved.id} noun={context.type} schedule={context.schedule} dirty={dirty} saveDraft={() => save(false)} />
+                </span>
               )}
               {/* Links that open the draft without signing in (D340). */}
-              {context.share && saved && (context.type === "page" || context.type === "article") && <ShareButton id={saved.id} noun={context.type} actions={context.share} />}
+              {context.share && saved && (context.type === "page" || context.type === "article") && (
+                <span className={`contents ${more}`}>
+                  <ShareButton id={saved.id} noun={context.type} actions={context.share} />
+                </span>
+              )}
             </>
           )}
           <div className="flex items-center" role="group" aria-label={ew.undoRedo}>
@@ -1207,11 +1216,24 @@ export function PageEditor({
             aria-haspopup="dialog"
             aria-label={ew.findReplace}
             title={ew.findReplaceKey}
-            className="flex size-11 items-center justify-center rounded-pill hover:bg-sunken"
+            className={`flex size-11 items-center justify-center rounded-pill hover:bg-sunken ${more}`}
           >
             <Replace aria-hidden className="size-5" />
           </button>
-          <p role="status" aria-live="polite" className="text-sm">
+          {/* Phones only: fold the bar to its main buttons, or show the rest. */}
+          <button
+            type="button"
+            onClick={() => setBarOpen((open) => !open)}
+            aria-expanded={barOpen}
+            aria-controls="editor-bar-more"
+            aria-label={barOpen ? ew.barLess : ew.barMore}
+            title={barOpen ? ew.barLess : ew.barMore}
+            data-editor-bar-toggle=""
+            className="ml-auto flex size-11 items-center justify-center rounded-pill border border-edge hover:bg-sunken md:hidden"
+          >
+            {barOpen ? <ChevronDown aria-hidden className="size-5" /> : <ChevronUp aria-hidden className="size-5" />}
+          </button>
+          <p role="status" aria-live="polite" className={`text-sm ${barOpen ? "" : "max-md:sr-only"}`}>
             {message ?? (dirty ? ew.unsaved : template ? w.dual.templateSaved : context.draftOnly ? (saved ? ew.savedInProfile : ew.notSavedYet) : state ? ew.states[state] : ew.notSavedYet)}
             {/* One undo, only while nothing else has been changed since. */}
             {coolUndo && coolUndo.after === content.rows && (
@@ -1226,7 +1248,7 @@ export function PageEditor({
               onClick={() => setCoolOpen(true)}
               aria-label={w.cool.label}
               title={w.cool.label}
-              className="flex size-11 items-center justify-center rounded-pill border border-edge hover:bg-sunken"
+              className={`flex size-11 items-center justify-center rounded-pill border border-edge hover:bg-sunken ${more}`}
             >
               <WandSparkles aria-hidden className="size-5" />
             </button>
@@ -1239,7 +1261,7 @@ export function PageEditor({
                 aria-label={w.aiChange.label}
                 title={w.aiChange.label}
                 data-open-ai-change=""
-                className="flex size-11 items-center justify-center rounded-pill border border-edge hover:bg-sunken"
+                className={`flex size-11 items-center justify-center rounded-pill border border-edge hover:bg-sunken ${more}`}
               >
                 <Sparkles aria-hidden className="size-5" />
               </button>
@@ -1267,21 +1289,21 @@ export function PageEditor({
             onClick={() => (dual ? dual.openCss() : setCssOpen((open) => !open))}
             aria-expanded={dual ? undefined : cssOpen}
             aria-controls="css-panel"
-            className="flex min-h-11 items-center gap-2 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
+            className={`flex min-h-11 items-center gap-2 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken ${more}`}
           >
             <span aria-hidden className="font-mono">{"{ }"}</span>
             {ew.customCss}
             {(content.css || siteCss.trim()) && <span className="size-2 rounded-full bg-insight-solid" title={ew.hasCss} />}
           </button>
           {context.draftOnly ? (
-            <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
+            <div id="editor-bar-more" className={`ml-auto flex flex-wrap items-center gap-3 text-sm ${more}`}>
               <span className="text-muted">{context.draftOnly.note}</span>
               <a href={context.draftOnly.preview} target="_blank" rel="noopener" className="underline">
                 {ew.previewTheDraft}{dirty ? ` ${ew.lastSaved}` : ""}
               </a>
             </div>
           ) : (
-          <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
+          <div id="editor-bar-more" className={`ml-auto flex flex-wrap items-center gap-3 text-sm ${more}`}>
             {context.dualPages && (
               <>
                 <button type="button" onClick={() => setBesideOpen(true)} aria-haspopup="dialog" className="underline" data-dual-open-beside="">

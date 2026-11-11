@@ -103,7 +103,7 @@ export async function PlatformRoot({ lang, children }: { lang: PlatformLang; chi
           <PlatformBottomBar lang={lang} />
         </Suspense>
         <Suspense fallback={null}>
-          <PlatformMenu chrome={chrome} lang={lang} />
+          <PlatformMenu chrome={chrome} lang={lang} header={headerLayout?.content} />
         </Suspense>
         {/* Kaizen's chat (D81, D216) and the consent banner (D58), never on a support conversation's email link, whose address holds its token. */}
         <Suspense fallback={null}>

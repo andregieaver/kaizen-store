@@ -10,6 +10,8 @@ import { languageSlug } from "@/lib/language-view";
 import { marketSlug } from "@/lib/market-slug";
 import type { AnimationFile } from "@/lib/animation";
 import type { Market } from "@/lib/markets";
+import type { PageContent } from "@/lib/page-content";
+import { phoneMenuIds } from "@/lib/site-layout";
 import { linkExists, menuHref, menuLabel, menuTree, shopLink, termNames, type MenuEntry, type MenuNode } from "@/lib/navigation";
 import { marketHome, marketLink, marketPath } from "@/lib/paths";
 import { featureOn } from "@/lib/store-features";
@@ -364,27 +366,32 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
   );
 }
 
-/** The phone's slide-out menu, placed after the page's content (see `MobileMenu`). */
-export function StoreMenu({ store, market }: Props) {
+/**
+ * The phone's slide-out menu, placed after the page's content (see `MobileMenu`). Its links are the header's menu (D572,
+ * `phoneMenuIds()`: a built header's Menu component's, else the store's header menu), and each other menu a menu button in the
+ * header opens, hidden until that button opens the menu (`data-menu-nav`).
+ */
+export function StoreMenu({ store, market, header }: Props & { header?: Pick<PageContent, "rows"> | null }) {
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
-  const header = storeMenu(store, store.headerMenuId);
+  const { standard, chosen } = phoneMenuIds(header, store.headerMenuId);
+  const nav = (id: string | null, own: boolean) => {
+    const items = storeMenu(store, id);
+    return (
+      items.length > 0 && (
+        <nav key={id ?? ""} aria-label={m.mainMenu} data-menu-nav={own ? id : ""} hidden={own}>
+          <MenuLinks items={items} store={store} market={market} layout="drawer" linkClassName="flex min-h-12 items-center border-b border-border text-lg" />
+        </nav>
+      )
+    );
+  };
   return (
     <MobileMenu
       title={<Brand store={store} market={market} size="header" place="page" />}
       labels={{ close: m.closeMenu, menu: m.menu }}
     >
-      {header.length > 0 && (
-        <nav aria-label={m.mainMenu}>
-          <MenuLinks
-            items={header}
-            store={store}
-            market={market}
-            layout="drawer"
-            linkClassName="flex min-h-12 items-center border-b border-border text-lg"
-          />
-        </nav>
-      )}
+      {nav(standard, false)}
+      {chosen.map((id) => nav(id, true))}
       {/* A website (D178 step 5: the online shop off) has no My account or cart to link to. */}
       {featureOn(store, "shop") && (
         <ul className="flex flex-col">

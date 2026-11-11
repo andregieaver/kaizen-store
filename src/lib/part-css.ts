@@ -580,6 +580,22 @@ export function blockStyle(block: PageBlock, mode: PartsMode): ElementStyle {
       });
     }
   }
+  if (block.type === "site" && block.part === "menuButton") {
+    // The phone menu button's Position (D572): to that end of its column, first or last in a column of components side by side
+    // (a header's logo and button), so Right puts it after the logo; text alignment cannot move a button.
+    rules.push({
+      selector: "&",
+      important: false,
+      where: true,
+      sizes: perSize((size) => {
+        const align = valueAt(block, "align", size);
+        if (align === "left") return { order: "-1", "margin-right": "auto" } as Decl;
+        if (align === "right") return { order: "99", "margin-left": "auto" } as Decl;
+        if (align === "center") return { "margin-inline": "auto" } as Decl;
+        return {} as Decl;
+      }),
+    });
+  }
   if (mode === "site") {
     // A site's phone menu button is for Small; a part set so is left out at its sizes, leaving no gap (D80).
     const hidden = block.type === "site" && block.part === "menuButton" ? (["xl", "lg", "md"] as Size[]) : SIZES.filter((size) => hiddenAt(block, size));
