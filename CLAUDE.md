@@ -73,7 +73,9 @@ stand-in is the only fake, and only it is told it is one.
   first**: CI would apply the file again. After the deploy, check the security and performance advisors
   (Supabase project `ybsozesfuxuitoacntfo`) and record the file's version in `docs/decisions.md` (Migration
   versions). A migration must keep the code that is still running working until the deploy finishes (add,
-  never rename or drop in the same change).
+  never rename or drop in the same change). On the hot tables (orders, order_lines, visits, products, product_variants, customers,
+  carts, cart_lines) an index is built `concurrently` in a file whose first line is `-- kaizen:no-transaction`, and a constraint is added
+  `not valid` and validated later (D569, `docs/ci-migrations.md`; `migration-safety.scan.test.ts`).
 - In production a statement may run 15 s and wait 5 s for a lock (the `postgres` role's limits, code review 1.5); a job that needs longer
   calls `longerTimeout(tx, seconds)` inside its transaction (`src/db/client.ts`, `set local`, never a plain `set` through the pooler).
 - `src/db/commerce.test.ts` applies every migration to PGlite and tests the
