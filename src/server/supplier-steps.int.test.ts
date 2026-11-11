@@ -33,15 +33,15 @@ let supplierId = "";
 let key = "";
 const mine = () => ({ storeId: store.storeId });
 
-const call = (method: "GET" | "POST", path: string[], body?: unknown, bearer = key) =>
-  (method === "GET" ? route.GET : route.POST)(
+const call = async (method: "GET" | "POST", path: string[], body?: unknown, bearer = key): Promise<Response> =>
+  (await (method === "GET" ? route.GET : route.POST)(
     new Request(`http://localhost/api/supply/v1/${path.join("/")}`, {
       method,
       headers: { authorization: `Bearer ${bearer}`, "content-type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
     { params: Promise.resolve({ path }) } as never,
-  );
+  )) as Response;
 
 beforeAll(async () => {
   store = await newStore("supplier-steps");
