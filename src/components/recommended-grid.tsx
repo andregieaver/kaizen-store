@@ -6,9 +6,10 @@ import { lazy, Suspense, useEffect, useRef, useState, type MouseEvent, type Reac
 import type { CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import type { ContentGridBlock } from "@/lib/page-content";
-import { readSession, recordClick, signalsOf } from "@/lib/recommend-session";
+import { attributionFor, readSession, recordClick, signalsOf } from "@/lib/recommend-session";
 import type { Placement } from "@/lib/recommendations";
 import type { RecommendBlock, RecommendPlace } from "@/lib/recommendations-schema";
+import type { TileAsk } from "@/lib/shop-tiles";
 
 // The grid's own view is loaded only when the shopper's products arrive: until then the server's stand-in is shown, and the
 // view (with the page model it reads) stays out of the page's first scripts.
@@ -48,8 +49,11 @@ export function RecommendedGrid({
   market,
   place,
   ask,
+  tiles = null,
   children,
 }: {
+  /** What its product tiles may show besides the price (D557): stock and a quantity chooser with Add to cart. */
+  tiles?: TileAsk | null;
   /** The grid as the server drew it with `initial`: shown until the shopper's own products replace it. */
   children: ReactNode;
   block: ContentGridBlock;
@@ -96,14 +100,25 @@ export function RecommendedGrid({
     // The request depends on where the grid is and, for a listing, on its filters.
   }, [store, market, place, ask, search]);
 
-  /** A product opened from the grid: remembered in the tab, so adding it to the cart is credited, and reported. */
+  /**
+   * A product opened from the grid, or added from its tile (D557): remembered in the tab, so adding it to the cart is credited, and reported.
+   * An add from the tile is credited by the form it sends: the click runs before the form is sent, so its `rec` field is set here.
+   */
   const clicked = (event: MouseEvent<HTMLDivElement>) => {
-    const tile = (event.target as HTMLElement).closest<HTMLElement>("li[data-item-id]");
-    if (!tile || !(event.target as HTMLElement).closest("a") || !outcome || !session.current) return;
+    const target = event.target as HTMLElement;
+    const tile = target.closest<HTMLElement>("li[data-item-id]");
+    const add = target.closest<HTMLButtonElement>('[data-tile-shop] button[type="submit"]');
+    if (!tile || !(target.closest("a") || add) || !outcome || !session.current) return;
     const id = tile.dataset.itemId;
     if (!id) return;
     try {
       recordClick(window.sessionStorage, id, outcome.placement, outcome.arm);
+      const form = add?.form;
+      const value = form ? attributionFor(window.sessionStorage) : null;
+      if (form && value) {
+        const field = form.querySelector<HTMLInputElement>('input[name="rec"]') ?? form.appendChild(Object.assign(document.createElement("input"), { type: "hidden", name: "rec" }));
+        field.value = value;
+      }
     } catch {
       // Without session storage the click is still reported.
     }
@@ -115,7 +130,7 @@ export function RecommendedGrid({
     <div onClick={clicked}>
       {outcome ? (
         <Suspense fallback={children}>
-          <ContentGridView block={block} data={data} notices={notices} />
+          <ContentGridView block={block} data={data} notices={notices} tiles={tiles} />
         </Suspense>
       ) : (
         children
