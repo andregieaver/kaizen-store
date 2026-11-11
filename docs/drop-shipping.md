@@ -2,7 +2,7 @@
 
 The owner (5 November 2026): "We haven't made a plan for how drop shipping should work. Do that as part of this [the
 `/selling-drop-shipping` page], but explain to me how this would work first." The plan below was explained first, and the owner chose the
-recommended answer to each of the three questions (section 11). **Steps 1 to 5 are built (D550, D551, D553, 10 and 11 November 2026), except the two parts D553 names: the customer's return address and the AI manager's own tools.**
+recommended answer to each of the three questions (section 11). **Steps 1 to 5 are built (D550, D551, D553, 10 and 11 November 2026), except the AI manager's own tools (D553); the customer's return address followed in D556.**
 Code, tests and texts follow it; where they disagree, this file is corrected first. Section 3 was corrected when step 1 was built: a
 supplier is the row its bills are already booked on, a location points at its supplier, and own stock always goes first.
 
@@ -137,7 +137,7 @@ refunds). A supplier's emails and notes reach the AI only as data under `UNTRUST
 | 1 | Suppliers, supplier locations (`supplier_id`), drop-shipped variants, the admin's supplier pages. **Built (D550)** | An owner adds a supplier, marks products, and a test order is allocated to the supplier's location (`suppliers.int.test.ts`, `e2e/signed-in/suppliers.spec.ts`) |
 | 2 | Supplier orders, the wait, the email, the supplier's page, tracking back to the customer, partial parcels. **Built (D551)**; the wait has no settings screen yet (30 minutes holds) | A paid test order reaches a supplier by email and its tracking reaches the customer's inbox |
 | 3 | Connected suppliers (a supplier key and `/api/supply/v1`, polled rather than a pushed event), stock by file and API, *Always available*, delivery estimates. **Built (D553)** | A connected test supplier reads only its lines, posts tracking and stock |
-| 4 | Late and problem handling, what the shop owes. **Built (D553)**; returns to the supplier's address not yet | A late supplier is reminded once and the owner told |
+| 4 | Late and problem handling, what the shop owes. **Built (D553)**; returns to the supplier's address **built (D556)**, the carrier's return label still to the store's | A late supplier is reminded once and the owner told |
 | 5 | On-time record per supplier and the checkup's `supplier_late` in the briefing. **Built (D553)**; the AI manager's own tools and a workflow trigger wait for an eval run | The briefing names a late supplier |
 
 Each step gets its parity row (a new row `orders.drop-shipping`, an app-tier feature on Shopify), its tests (PGlite rules, integration

@@ -14,6 +14,7 @@ import {
   type LineEligibility,
   type LineRight,
   type QuantityProblem,
+  type ReturnAddress,
   type ReturnReason,
   type WithdrawalWindow,
   orderRight,
@@ -642,7 +643,7 @@ async function writeConfirmation(
     insert into commerce.returns (store_id, order_id, withdrawal_request_id, kind, status, instructions, return_address, staff_note)
     values (${storeId}::uuid, ${facts.orderId}::uuid, ${requestId}::uuid, 'withdrawal', 'approved',
             ${facts.settings.instructions || null},
-            ${facts.settings.returnAddress ? JSON.stringify(facts.settings.returnAddress) : null}::jsonb, ${by.note ?? null})
+            ${jsonOrNull((await supplierReturnAddress(tx, storeId, declared.map((d) => String(d.order_line_id)))) ?? facts.settings.returnAddress)}::jsonb, ${by.note ?? null})
     returning id, number
   `);
   // A return on an archived order starts work again (D173): the order is back in the list.
@@ -940,7 +941,7 @@ export async function startReturnRequest(storeId: string, input: unknown, option
         insert into commerce.returns (store_id, order_id, kind, status, reason, reason_note, instructions, return_address)
         values (${storeId}::uuid, ${orderId}::uuid, 'return', 'requested', ${data.reason}, ${data.note},
                 ${facts.settings.instructions || null},
-                ${facts.settings.returnAddress ? JSON.stringify(facts.settings.returnAddress) : null}::jsonb)
+                ${jsonOrNull((await supplierReturnAddress(tx, storeId, data.lines.map((l) => l.lineId))) ?? facts.settings.returnAddress)}::jsonb)
         returning id, number, public_token
       `);
       // A return on an archived order starts work again (D173): the order is back in the list.
@@ -977,4 +978,27 @@ export async function startReturnRequest(storeId: string, input: unknown, option
     });
   }
   return floor(startedAt, options.floorMs, { ok: true, matched: true, order, created: made, problems: [] });
+}
+
+const jsonOrNull = (value: unknown): string | null => (value ? JSON.stringify(value) : null);
+
+/**
+ * Drop shipping (D550, `docs/drop-shipping.md` 6): where a return goes when every line returned was sent by one supplier that gave a return
+ * address: that supplier's, as it wrote it. Otherwise null, and the store's own (its return settings, else its postal address) is used.
+ */
+export async function supplierReturnAddress(tx: Tx, storeId: string, orderLineIds: readonly string[]): Promise<ReturnAddress | null> {
+  const ids = [...new Set(orderLineIds)].filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+  if (ids.length === 0) return null;
+  const rows = await tx.execute<Row>(sql`
+    select l.order_line_id, s.id as supplier_id, s.return_address
+    from commerce.supplier_order_lines l
+    join commerce.supplier_orders so on so.store_id = l.store_id and so.id = l.supplier_order_id and so.state <> 'cancelled'
+    join commerce.suppliers s on s.store_id = so.store_id and s.id = so.supplier_id
+    where l.store_id = ${storeId}::uuid and l.order_line_id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
+  `);
+  const lines = new Set(rows.map((r) => String(r.order_line_id)));
+  const suppliers = new Set(rows.map((r) => String(r.supplier_id)));
+  const text = String(rows[0]?.return_address ?? "").trim();
+  if (ids.some((id) => !lines.has(id)) || suppliers.size !== 1 || !text) return null;
+  return { name: "", street: text, postalCode: "", city: "", country: "" };
 }

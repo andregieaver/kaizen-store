@@ -162,6 +162,8 @@ export const SV: StarterText = {
     "privacy.recipient.stripe": "Stripe, vår betaltjänstleverantör, som hanterar betalningar",
     "privacy.recipient.email": "den e-posttjänst som plattformen använder för att skicka orderbekräftelser och andra meddelanden till dig",
     "privacy.recipient.carriers": "fraktbolag som levererar dina varor: {carriers}",
+    "privacy.recipient.suppliers": "leverantörer som skickar vissa varor direkt till dig för vår räkning och som får ditt namn och din leveransadress för det: {suppliers}",
+    "privacy.recipient.marketplaces": "marknadsplatser där du kan köpa våra varor, för beställningar du gör där: {marketplaces}",
     "privacy.recipient.carriers.none": "fraktbolag som levererar dina varor: {check}",
     "privacy.recipient.tool": "{tool}, som butiken bara laddar om du godkänner de tillhörande cookies",
     "privacy.recipient.authorities": "myndigheter, när lagen kräver att vi lämnar ut uppgifter",

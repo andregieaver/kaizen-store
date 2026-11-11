@@ -120,6 +120,19 @@ describe("supplier orders (D551, step 2)", () => {
     expect((await supplierOrderByToken(token))?.shipTo).toEqual([]);
   });
 
+  it("send a return of the supplier's goods to the supplier's return address, and a mixed one to the store", async () => {
+    const { supplierReturnAddress } = await import("./withdrawals");
+    const lines = await db().execute<Row>(sql`select id, sku from commerce.order_lines where order_id = ${first.orderId}::uuid order by sku`);
+    const mug = String(lines.find((l) => l.sku === "DEMO-MUG-WHITE")!.id);
+    const tote = String(lines.find((l) => l.sku === "DEMO-TOTE")!.id);
+    const within = (ids: string[]) => db().transaction((tx) => supplierReturnAddress(tx, store.storeId, ids));
+    expect(await within([mug])).toBeNull(); // no return address given yet
+    await db().execute(sql`update commerce.suppliers set return_address = 'Nordic Wool Retur\nLagervej 2\n8000 Aarhus\nDanmark' where id = ${supplierId}::uuid`);
+    expect(await within([mug])).toEqual({ name: "", street: "Nordic Wool Retur\nLagervej 2\n8000 Aarhus\nDanmark", postalCode: "", city: "", country: "" });
+    expect(await within([mug, tote])).toBeNull();
+    expect(await within([tote])).toBeNull();
+  });
+
   it("tell the owners once when the supplier cannot send, refunding nothing", async () => {
     const second = await paidOrder(1);
     await due(second.supplierOrderId);

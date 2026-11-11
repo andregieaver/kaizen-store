@@ -162,6 +162,8 @@ export const DA: StarterText = {
     "privacy.recipient.stripe": "Stripe, vores betalingsleverandør, som håndterer betalinger",
     "privacy.recipient.email": "den e-mailtjeneste, platformen bruger til at sende ordrebekræftelser og andre beskeder til dig",
     "privacy.recipient.carriers": "fragtfirmaer, der leverer dine varer: {carriers}",
+    "privacy.recipient.suppliers": "leverandører, der sender visse varer direkte til dig på vores vegne, og som får dit navn og din leveringsadresse til det: {suppliers}",
+    "privacy.recipient.marketplaces": "markedspladser, hvor du kan købe vores varer, for ordrer du afgiver der: {marketplaces}",
     "privacy.recipient.carriers.none": "fragtfirmaer, der leverer dine varer: {check}",
     "privacy.recipient.tool": "{tool}, som butikken kun indlæser, hvis du accepterer de tilhørende cookies",
     "privacy.recipient.authorities": "offentlige myndigheder, når loven kræver, at vi videregiver oplysninger",

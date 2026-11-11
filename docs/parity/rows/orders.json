@@ -2408,7 +2408,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "eBay only (D555), built against eBay's published OpenAPI documents and a stand-in, not yet against eBay itself (it needs Kaizena Flow's app at eBay: a bucket B credential). Amazon, Zalando and others are not connected; eBay's payouts and fees are not booked; listings are not ended at eBay from here.",
+    "gap": "eBay only (D555), built against eBay's published OpenAPI documents and a stand-in, not yet against eBay itself (it needs Kaizena Flow's app at eBay: a bucket B credential). Amazon, Zalando and others are not connected; eBay's payouts and fees are not booked (listings are ended at eBay since D556).",
     "bucket": "B",
     "wave": null,
     "criteria": [
@@ -2429,7 +2429,8 @@
       "untested": false
     },
     "decisions": [
-      "D555"
+      "D555",
+      "D556"
     ],
     "history": [
       {
