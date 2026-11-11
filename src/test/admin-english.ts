@@ -1,12 +1,7 @@
-import { settledEnglish } from "@/components/admin/admin-text-later";
-import { movingEn } from "@/lib/admin-messages/moving.en";
-import { setupEn } from "@/lib/admin-messages/setup.en";
-import { shellEn } from "@/lib/admin-messages/shell.en";
+import { englishLater, LATER_AREAS, settledEnglish } from "@/components/admin/admin-text-later";
 
 /**
- * The areas the layouts hand down, whose English a part outside them fetches when it first reads it (`admin-text-later.ts`): a unit
- * test draws a part on its own with `renderToStaticMarkup()`, which cannot wait, so their English is there already.
+ * Every area whose English a part fetches when nothing handed it down (`admin-text-later.ts`): a unit test draws a part on its own with
+ * `renderToStaticMarkup()`, which cannot wait, so their English is fetched and settled before any test runs.
  */
-settledEnglish("setup", setupEn);
-settledEnglish("shell", shellEn);
-settledEnglish("moving", movingEn);
+await Promise.all(LATER_AREAS.map(async (area) => settledEnglish(area, await englishLater(area))));

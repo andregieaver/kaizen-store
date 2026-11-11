@@ -3075,6 +3075,11 @@ export const productVariants = commerce.table(
      * unit sold is a pre-order, said with the date everywhere a shopper sees the variant and kept on the order line. Null: no pre-order.
      */
     preorderUntil: date("preorder_until", { mode: "string" }),
+    /**
+     * Drop shipping (D550, `docs/drop-shipping.md`): the supplier that sends this variant to the customer. Its stock is at the supplier's own
+     * location, which online orders take from after the store's own locations. Physical goods only. Null: the store sends it.
+     */
+    supplierId: uuid("supplier_id"),
     /** The owner's warning level (0 to 1,000,000): on hand over the active locations at or below it is one email per crossing. Null: no warning. */
     lowStockThreshold: integer("low_stock_threshold"),
     /**
@@ -3107,6 +3112,9 @@ export const productVariants = commerce.table(
     ),
     unique("product_variants_store_sku_key").on(t.storeId, t.sku),
     productRef("product_variants_product_fk", t),
+    foreignKey({ name: "product_variants_supplier_fk", columns: [t.storeId, t.supplierId], foreignColumns: [suppliers.storeId, suppliers.id] }),
+    index("product_variants_supplier_idx").on(t.storeId, t.supplierId).where(sql`${t.supplierId} is not null`),
+    check("product_variants_supplier_goods", sql`${t.supplierId} is null or ${t.delivery} = 'physical'`),
     index("product_variants_product_idx").on(t.storeId, t.productId),
     check("product_variants_gtin_digits", sql`${t.gtin} ~ '^[0-9]{8,14}$'`),
     check("product_variants_rental_period", sql`${t.rentalPeriod} in ('day', 'half_day', 'hour')`),
@@ -3130,6 +3138,34 @@ export const productVariants = commerce.table(
           or (${t.measureUnit} = 'm2' and ${t.measureBase} = 'm2')
           or (${t.measureUnit} = 'piece' and ${t.measureBase} = 'piece')))`,
     ),
+  ],
+);
+
+/**
+ * A product's Digital Product Passport (D554, ESPR, Regulation (EU) 2024/1781): what the product is made of, where, how to care for, repair and
+ * recycle it, its certifications and documents, kept as data checked by `passportInput` (`src/lib/product-passport.ts`). Published, it is read by
+ * anyone at a stable address (`/passport/{id}`, and as JSON) that the QR code on the product points to; the id never changes. Written only by
+ * `src/server/product-passports.ts`.
+ */
+export const productPassports = commerce.table(
+  "product_passports",
+  {
+    id: uuid("id").notNull().defaultRandom(),
+    storeId: storeId(),
+    productId: uuid("product_id").notNull(),
+    data: jsonb("data").notNull().default({}),
+    /** Null: a draft only the store's staff see. */
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.productId] }),
+    uniqueIndex("product_passports_id_key").on(t.id),
+    productRef("product_passports_product_fk", t),
+    index("product_passports_updated_by_idx").on(t.updatedBy),
+    check("product_passports_data", sql`jsonb_typeof(${t.data}) = 'object' and pg_column_size(${t.data}) < 65536`),
   ],
 );
 
@@ -3964,10 +4000,19 @@ export const inventoryLocations = commerce.table(
      * (`variant_availability`) nor allocated to an order (`allocate()`), as a shop's back room or a market stall's.
      */
     fulfilsOnline: boolean("fulfils_online").notNull().default(true),
+    /**
+     * A supplier's own location (drop shipping, D550): made with the supplier and never shown among the store's own places; its stock is what
+     * the supplier says it has, and routing takes from it after every own location. Null: one of the store's own places.
+     */
+    supplierId: uuid("supplier_id"),
     createdAt: createdAt(),
   },
   (t) => [
     unique("inventory_locations_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "inventory_locations_supplier_fk", columns: [t.storeId, t.supplierId], foreignColumns: [suppliers.storeId, suppliers.id] }),
+    uniqueIndex("inventory_locations_supplier_key").on(t.supplierId).where(sql`${t.supplierId} is not null`),
+    // The foreign key to its supplier, store first (the performance advisor found it uncovered, 11 November 2026).
+    index("inventory_locations_store_supplier_idx").on(t.storeId, t.supplierId).where(sql`${t.supplierId} is not null`),
     // Two active locations of one store cannot share a name (case-insensitively).
     uniqueIndex("inventory_locations_active_name_key")
       .on(t.storeId, sql`lower(${t.name})`)
@@ -10698,7 +10743,7 @@ export const googlePlaces = commerce.table(
 );
 
 /**
- * An Instagram professional account connected for a feed (D543): a store's, or Kaizena Flow's with a null store, connected through Instagram
+ * An Instagram professional account connected for a feed (D559): a store's, or Kaizena Flow's with a null store, connected through Instagram
  * Login (scope `instagram_business_basic` only: it reads the account's own posts, nothing else). The long-lived token is encrypted like
  * payment secrets and refreshed before its 60 days run out; the account's latest posts are kept in `posts` (id, caption, kind, permalink,
  * time; the picture's address on Instagram's servers only for the proxy, `/api/instagram/…`, so visitors never load from Meta).
@@ -14411,9 +14456,15 @@ export const orderSettings = commerce.table(
      * business (D63), or a signed-in customer of a company account or customer group, D108). A product priced on request offers it whatever this says.
      */
     quoteRequests: text("quote_requests").notNull().default("off"),
+    /**
+     * Drop shipping (D551, `docs/drop-shipping.md` 4): the minutes a paid order's supplier lines wait before they go to the supplier, so a
+     * quick cancellation or change never reaches it (30 unless changed, 0 to 24 hours).
+     */
+    dropShipWaitMinutes: integer("drop_ship_wait_minutes").notNull().default(30),
     updatedAt: updatedAt(),
   },
   (t) => [
+    check("order_settings_drop_ship_wait", sql`${t.dropShipWaitMinutes} between 0 and 1440`),
     check(
       "order_settings_auto_archive",
       sql`${t.autoArchiveDays} is null or ${t.autoArchiveDays} between ${lit(AUTO_ARCHIVE_MIN_DAYS)} and ${lit(AUTO_ARCHIVE_MAX_DAYS)}`,
@@ -14427,7 +14478,7 @@ export const orderSettings = commerce.table(
 );
 
 /**
- * The store's product settings (D540), one row a store made when first saved (a store without one reads the defaults): what a product's tile
+ * The store's product settings (D556), one row a store made when first saved (a store without one reads the defaults): what a product's tile
  * in a content grid shows besides its picture, title and price: the stock left (`tile_stock`) and a quantity chooser with Add to cart
  * (`tile_quantity`), both off. A grid may override either (`ContentGridBlock.shopTiles`). A copy starts with the defaults (`never` in `COPY_RULES`).
  */
@@ -14439,6 +14490,175 @@ export const productSettings = commerce.table("product_settings", {
   tileQuantity: boolean("tile_quantity").notNull().default(false),
   updatedAt: updatedAt(),
 });
+
+/**
+ * What a supplier is asked to send for one paid order (drop shipping, D551, `docs/drop-shipping.md` 4 and 5): one per order and supplier, made
+ * from the units the payment drew at the supplier's location (`inventory_movements` of reason `sale`). It waits until `send_after` (the
+ * store's wait), is then sent to the supplier with a link to its page (`/supply/{token}`, only the token's SHA-256 kept, valid 60 days), and
+ * is `shipped` when the supplier posts the parcel (its shipment), `problem` when it says it cannot send a line, `cancelled` when the order is
+ * cancelled first. Written only by `src/server/supplier-orders.ts`.
+ */
+export const supplierOrders = commerce.table(
+  "supplier_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    orderId: uuid("order_id").notNull(),
+    supplierId: uuid("supplier_id").notNull(),
+    /** `waiting`, `sent`, `shipped`, `problem` or `cancelled`. */
+    state: text("state").notNull().default("waiting"),
+    sendAfter: timestamp("send_after", { withTimezone: true }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    shippedAt: timestamp("shipped_at", { withTimezone: true }),
+    /** The parcel the supplier posted (`markSent()`). */
+    shipmentId: uuid("shipment_id"),
+    /** The SHA-256 (hex) of the supplier page's token, and when it ends. */
+    tokenHash: text("token_hash"),
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+    /** What the supplier said it cannot send, as it wrote it (data, never instructions). */
+    problem: text("problem"),
+    /** When the owners were told of the problem. */
+    problemNotifiedAt: timestamp("problem_notified_at", { withTimezone: true }),
+    /** A late supplier (D553): reminded once, and the owners told once, when it has not sent within its dispatch days. */
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("supplier_orders_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("supplier_orders_order_supplier_key").on(t.storeId, t.orderId, t.supplierId),
+    uniqueIndex("supplier_orders_token_key").on(t.tokenHash).where(sql`${t.tokenHash} is not null`),
+    orderRef("supplier_orders_order_fk", t),
+    foreignKey({ name: "supplier_orders_supplier_fk", columns: [t.storeId, t.supplierId], foreignColumns: [suppliers.storeId, suppliers.id] }),
+    index("supplier_orders_due_idx").on(t.sendAfter).where(sql`${t.state} = 'waiting'`),
+    index("supplier_orders_supplier_idx").on(t.storeId, t.supplierId, t.createdAt.desc()),
+    check("supplier_orders_state", sql`${t.state} in ('waiting', 'sent', 'shipped', 'problem', 'cancelled')`),
+    check("supplier_orders_token", sql`(${t.tokenHash} is null) = (${t.tokenExpiresAt} is null) and (${t.tokenHash} is null or ${t.tokenHash} ~ '^[0-9a-f]{64}$')`),
+    check("supplier_orders_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),
+  ],
+);
+
+export const supplierOrderLines = commerce.table(
+  "supplier_order_lines",
+  {
+    storeId: storeId(),
+    supplierOrderId: uuid("supplier_order_id").notNull(),
+    orderLineId: uuid("order_line_id").notNull(),
+    quantity: integer("quantity").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.supplierOrderId, t.orderLineId] }),
+    foreignKey({ name: "supplier_order_lines_order_fk", columns: [t.storeId, t.supplierOrderId], foreignColumns: [supplierOrders.storeId, supplierOrders.id] }).onDelete("cascade"),
+    orderLineRef("supplier_order_lines_line_fk", t),
+    index("supplier_order_lines_line_idx").on(t.storeId, t.orderLineId),
+    index("supplier_order_lines_order_idx").on(t.storeId, t.supplierOrderId),
+    check("supplier_order_lines_quantity", sql`${t.quantity} between 1 and 1000000`),
+  ],
+);
+
+/**
+ * A store's connection to a marketplace (D555, sales channels): today eBay, through its seller APIs with the owner's consent. The grant is kept
+ * encrypted with `SETTINGS_ENCRYPTION_KEY`; `settings` holds the marketplace (such as `EBAY_DE`) and the seller's business policies, location
+ * and category that eBay asks every offer to name. Written only by `src/server/ebay.ts`.
+ */
+export const marketplaceConnections = commerce.table(
+  "marketplace_connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    channel: text("channel").notNull(),
+    /** `connected` (the grant works), `refused` (the marketplace no longer takes it: connect again) or `off`. */
+    state: text("state").notNull().default("connected"),
+    accessTokenEncrypted: text("access_token_encrypted"),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }),
+    refreshTokenEncrypted: text("refresh_token_encrypted"),
+    settings: jsonb("settings").notNull().default({}),
+    ordersSince: timestamp("orders_since", { withTimezone: true }),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("marketplace_connections_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("marketplace_connections_channel_key").on(t.storeId, t.channel),
+    index("marketplace_connections_updated_by_idx").on(t.updatedBy),
+    check("marketplace_connections_channel", sql`${t.channel} in ('ebay')`),
+    check("marketplace_connections_state", sql`${t.state} in ('connected', 'refused', 'off')`),
+    check("marketplace_connections_error", sql`${t.lastError} is null or length(${t.lastError}) <= 500`),
+  ],
+);
+
+/** A variant listed on a marketplace (D555): its offer and listing there, and what was last sent (price, quantity) or why it failed. */
+export const marketplaceListings = commerce.table(
+  "marketplace_listings",
+  {
+    storeId: storeId(),
+    connectionId: uuid("connection_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    offerId: text("offer_id"),
+    listingId: text("listing_id"),
+    /** `pending` (to send), `listed`, `error` (see `error`) or `ended`. */
+    state: text("state").notNull().default("pending"),
+    priceMinor: bigint("price_minor", { mode: "number" }),
+    currency: char("currency", { length: 3 }),
+    quantity: integer("quantity"),
+    error: text("error"),
+    syncedAt: timestamp("synced_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.connectionId, t.variantId] }),
+    foreignKey({ name: "marketplace_listings_connection_fk", columns: [t.storeId, t.connectionId], foreignColumns: [marketplaceConnections.storeId, marketplaceConnections.id] }).onDelete("cascade"),
+    variantRef("marketplace_listings_variant_fk", t),
+    index("marketplace_listings_variant_idx").on(t.storeId, t.variantId),
+    index("marketplace_listings_connection_idx").on(t.storeId, t.connectionId),
+    check("marketplace_listings_state", sql`${t.state} in ('pending', 'listed', 'error', 'ended')`),
+    check("marketplace_listings_error", sql`${t.error} is null or length(${t.error}) <= 500`),
+  ],
+);
+
+/**
+ * An order a buyer placed on a marketplace (D555): kept as the marketplace sent it (its lines and the delivery address) with the stock it drew
+ * from the store's own locations, and marked sent with its tracking, which goes back to the marketplace. The marketplace takes the buyer's
+ * payment and gives the receipt; it is not a shop order.
+ */
+export const marketplaceOrders = commerce.table(
+  "marketplace_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    connectionId: uuid("connection_id").notNull(),
+    externalId: text("external_id").notNull(),
+    placedAt: timestamp("placed_at", { withTimezone: true }).notNull(),
+    totalMinor: bigint("total_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    buyerName: text("buyer_name").notNull().default(""),
+    buyerEmail: text("buyer_email"),
+    shipTo: jsonb("ship_to").notNull().default({}),
+    /** `[{ lineItemId, sku, title, quantity, variantId, totalMinor }]`, as the marketplace sent them, matched to variants by SKU. */
+    lines: jsonb("lines").notNull().default([]),
+    /** `open`, `sent` (tracking posted), or `cancelled` (by the marketplace). */
+    state: text("state").notNull().default("open"),
+    stockDrawn: boolean("stock_drawn").notNull().default(false),
+    carrier: text("carrier"),
+    trackingNumber: text("tracking_number"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    error: text("error"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("marketplace_orders_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("marketplace_orders_external_key").on(t.connectionId, t.externalId),
+    foreignKey({ name: "marketplace_orders_connection_fk", columns: [t.storeId, t.connectionId], foreignColumns: [marketplaceConnections.storeId, marketplaceConnections.id] }),
+    index("marketplace_orders_store_idx").on(t.storeId, t.placedAt.desc()),
+    index("marketplace_orders_connection_idx").on(t.storeId, t.connectionId),
+    check("marketplace_orders_state", sql`${t.state} in ('open', 'sent', 'cancelled')`),
+    check("marketplace_orders_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("marketplace_orders_texts", sql`length(${t.externalId}) between 1 and 100 and length(${t.buyerName}) <= 200 and coalesce(length(${t.error}) <= 500, true)`),
+  ],
+);
 
 /**
  * A draft order (D173): a staff-made, editable quote that becomes a real order when sent (`docs/wave-3-orders.md` 4.5). While `open` it holds
@@ -18703,6 +18923,34 @@ export const suppliers = commerce.table(
     name: text("name").notNull(),
     organisationNumber: text("organisation_number"),
     usualKind: text("usual_kind"),
+    /**
+     * Drop shipping (D550, `docs/drop-shipping.md` 3): the supplier sends some of the store's goods straight to its customers. With it on, the
+     * order email and the country it ships from are set, and the supplier has one location of its own (`inventory_locations.supplier_id`).
+     * Switched on and edited only by `src/server/suppliers.ts`; switched off, its variants go back to the store and its location is closed.
+     */
+    dropShips: boolean("drop_ships").notNull().default(false),
+    /** Where its orders are sent. */
+    orderEmail: text("order_email"),
+    /** The country it ships from (ISO 3166-1 alpha-2): outside the EU, customs and IOSS apply to its parcels. */
+    shipsFrom: char("ships_from", { length: 2 }),
+    /** The language its orders are written in. */
+    orderLanguage: text("order_language").notNull().default("en"),
+    /** The working days it promises to send an order within, added to the delivery estimate. */
+    dispatchDays: integer("dispatch_days").notNull().default(2),
+    /** `email` (an email with a page to answer on), `connected` (its own system through the API) or `file` (a daily file). */
+    orderMethod: text("order_method").notNull().default("email"),
+    /** Where its customers' returns go; empty: the store's own address. */
+    returnAddress: text("return_address").notNull().default(""),
+    /** Put on every order it gets, such as "Send without your own branding". */
+    orderNote: text("order_note").notNull().default(""),
+    /**
+     * Its key for the supplier API (D553, `/api/supply/v1`): the SHA-256 (hex) of the key, shown once when made, and its last four characters to
+     * tell keys apart. A supplier that takes orders through its own system or a daily file reads them and posts tracking and stock with it.
+     */
+    apiKeyHash: text("api_key_hash"),
+    apiKeyHint: text("api_key_hint"),
+    /** Its stock is never counted down to nothing (D553): its location's levels are kept topped up, for a supplier that always has the goods. */
+    alwaysAvailable: boolean("always_available").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -18712,6 +18960,15 @@ export const suppliers = commerce.table(
     check("suppliers_name", sql`char_length(trim(${t.name})) between 1 and 120`),
     check("suppliers_organisation_number", sql`${t.organisationNumber} is null or ${t.organisationNumber} ~ '^[0-9A-Za-z -]{4,30}$'`),
     check("suppliers_usual_kind", sql`${t.usualKind} is null or ${t.usualKind} ~ '^[a-z_]{2,30}$'`),
+    check("suppliers_drop_ship_set", sql`not ${t.dropShips} or (${t.orderEmail} is not null and ${t.shipsFrom} is not null)`),
+    check("suppliers_order_email", sql`${t.orderEmail} is null or (length(${t.orderEmail}) between 3 and 254 and ${t.orderEmail} ~ '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+$')`),
+    check("suppliers_ships_from", sql`${t.shipsFrom} is null or ${t.shipsFrom} ~ '^[A-Z]{2}$'`),
+    check("suppliers_order_language", sql`${t.orderLanguage} ~ '^[a-z]{2}$'`),
+    check("suppliers_dispatch_days", sql`${t.dispatchDays} between 1 and 30`),
+    check("suppliers_order_method", sql`${t.orderMethod} in ('email', 'connected', 'file')`),
+    check("suppliers_drop_ship_texts", sql`length(${t.returnAddress}) <= 500 and length(${t.orderNote}) <= 500`),
+    uniqueIndex("suppliers_api_key_key").on(t.apiKeyHash).where(sql`${t.apiKeyHash} is not null`),
+    check("suppliers_api_key", sql`(${t.apiKeyHash} is null) = (${t.apiKeyHint} is null) and (${t.apiKeyHash} is null or ${t.apiKeyHash} ~ '^[0-9a-f]{64}$')`),
   ],
 );
 

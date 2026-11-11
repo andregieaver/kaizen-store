@@ -179,3 +179,23 @@ its settings and its entry editor (`builder`). Each now hands its area down (`Ad
 own `AdminTextScope`), and the crawl found none left. Pages with an id the crawl could not reach from a list are not yet covered, and why
 the content type editor's early Save failed with the per-area fallback is not explained by these (the editor itself reads nothing it is
 not handed), so the fallback stays whole for now.
+
+**The fallback goes (10 November 2026, D540).** Each area's English is now fetched only when a part reads an area its page did not hand
+down (`src/components/admin/admin-text-later.ts`); `common` and `signIn`, read outside the admin too, stay at hand. So that no screen waits
+for its words, a part that falls back notes it on the page (`window.__adminTextFallbacks`) and `e2e/signed-in/admin-text-fallbacks.spec.ts`
+visits every admin screen without an id in its address (the store's as its owner, the platform's and the account's as a platform admin)
+and fails on any. Its first runs found the platform's docs guide (`website`) and the content types' new type from a preset and their editors (`builder`,
+`website`), each now handed down; a part that waited there was the early Save of 31 October. First scripts, raw:
+
+| Screen | Before (last measured 4 to 10 November) | After | Budget |
+|---|---:|---:|---:|
+| The store's home | 2.46 MB | 1.28 MB | 1.34 MB |
+| Products | 2.46 MB | 1.26 MB | 1.31 MB |
+| A new product (the editor) | 3.27 MB | 2.22 MB | 2.31 MB |
+| Orders | 2.46 MB | 1.28 MB | 1.33 MB |
+| Pages (the list) | 3.16 MB | 2.09 MB | 2.18 MB |
+| A page in the builder | 4.39 MB | 3.34 MB | 3.48 MB |
+| Settings | 2.34 MB | 1.23 MB | 1.28 MB |
+
+Besides every screen without an id in its address, the test follows each screen's links to one screen of each kind behind them (an
+order, a product, a type made from a preset), at most 150 for each person.

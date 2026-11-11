@@ -12,7 +12,7 @@ import { connectPlatformInstagramAction, disconnectPlatformInstagramAction } fro
 
 export const metadata: Metadata = { title: "Instagram" };
 
-/** Kaizena Flow's own Instagram account (D543), for the Instagram feeds on its own pages; stores connect their own. */
+/** Kaizena Flow's own Instagram account (D559), for the Instagram feeds on its own pages; stores connect their own. */
 export default async function PlatformInstagramPage({ searchParams }: PageProps<"/admin/platform/instagram">) {
   const admin = await requirePlatform("settings", "read");
   const lang = adminLangOf(admin.adminLocale);

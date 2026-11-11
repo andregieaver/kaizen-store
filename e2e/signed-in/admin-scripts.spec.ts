@@ -30,17 +30,19 @@ const MEASURE = process.env.E2E_MEASURE === "1";
  * settings 2.34. About 4 % of room. On 31 October they were 3.02, 3.02, 3.71, 3.02, 3.59 (4.71 before the page lists stopped importing
  * the builder), 4.70 and 3.00; by 4 November each had grown about 0.1 MB, and the docs guide's entry in the admin map took the builder
  * over (4,901,307 bytes, D444). The AI manager's chat, and the admin map it names the page from, is now fetched when its panel is first
- * opened, not with every screen (`ai-manager-launcher.tsx`): 0.51 to 0.76 MB off each.
+ * opened, not with every screen (`ai-manager-launcher.tsx`): 0.51 to 0.76 MB off each. On 10 November the admin's English, every area's,
+ * left the first scripts (`admin-text-later.ts`): about 1.1 MB off each.
  */
 const BUDGETS: Record<string, number> = {
-  "": 2_470_000,
-  // 2,460,009 bytes on 10 November 2026 with the pages' shared loading outline (code review FS1), whose words are one small script: the budget of Home and Orders.
-  "/products": 2_470_000,
-  "/products/new": 3_400_000,
-  "/orders": 2_470_000,
-  "/pages": 3_300_000,
-  "/pages/{page}": 4_570_000,
-  "/settings": 2_440_000,
+  // Measured 10 November 2026 once the admin's English was fetched per area (PSI PERF-01): home 1,284,745, products 1,257,183, a new
+  // product 2,221,325, orders 1,275,688, pages 2,093,288, a page in the builder 3,341,746, settings 1,229,972 bytes; about 4 % of room.
+  "": 1_340_000,
+  "/products": 1_310_000,
+  "/products/new": 2_310_000,
+  "/orders": 1_330_000,
+  "/pages": 2_180_000,
+  "/pages/{page}": 3_480_000,
+  "/settings": 1_280_000,
 };
 
 for (const [path, max] of Object.entries(BUDGETS)) {

@@ -11,6 +11,7 @@ import { requirePermission } from "@/server/permissions";
 import { listIntegrations } from "@/server/integrations";
 import { listEndpoints } from "@/server/webhook-endpoints";
 import { listCarriers } from "@/server/shipping-carriers";
+import { getEbayConnection } from "@/server/ebay";
 import { fikenCounts, getFikenConnection } from "@/server/fiken";
 import { getTripletexConnection, tripletexCounts } from "@/server/tripletex";
 import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
@@ -26,7 +27,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
   const carrierWords = adminText(lang, "carriers") as Record<string, { summary: string } | undefined>;
   const w = all.integrations;
   const k = w.carrier;
-  const [connected, carriers, endpoints, tripletex, tripletexSent, fiken, fikenSent] = await Promise.all([
+  const [connected, carriers, endpoints, tripletex, tripletexSent, fiken, fikenSent, ebay] = await Promise.all([
     listIntegrations(store.id),
     listCarriers(store.id),
     listEndpoints(store.id),
@@ -34,6 +35,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
     tripletexCounts(store.id),
     getFikenConnection(store.id),
     fikenCounts(store.id),
+    getEbayConnection(store.id),
   ]);
   // Tripletex is not a webhook (D453): its state is its own connection's.
   const tx = w.tripletex.listStatus;
@@ -76,7 +78,11 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                 ? fiken
                   ? { enabled: fiken.state === "on" }
                   : undefined
-                : connected.find((c) => c.provider === info.id);
+                : info.id === "ebay"
+                  ? ebay && ebay.state !== "off"
+                    ? { enabled: ebay.state === "connected" }
+                    : undefined
+                  : connected.find((c) => c.provider === info.id);
           const badge = info.id === "tripletex"
             ? tripletexBadge
             : info.id === "fiken"

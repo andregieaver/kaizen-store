@@ -1949,7 +1949,7 @@ export function ContentGridFields({
         </div>
       </fieldset>
       {products && own && !recommend && (
-        // The stock left and a quantity chooser on the tiles (D540): the store's setting unless this grid says otherwise.
+        // The stock left and a quantity chooser on the tiles (D556): the store's setting unless this grid says otherwise.
         <fieldset className="flex flex-col gap-3 border-t border-border pt-4" data-shop-tiles="">
           <legend className="float-left mb-1 w-full text-sm font-medium">{gw.shopTiles.legend}</legend>
           <p className="text-xs text-muted">{gw.shopTiles.hint}</p>

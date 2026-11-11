@@ -721,8 +721,8 @@ export const en = {
     businessOnly: "This product is sold to businesses only.",
     switchToBusiness: "Shop as a business",
   },
-  /** The shop's notes about a basket (D541): free shipping and what is saved today. A saving is against the 30-day lowest price only. */
-  /** The Instagram feed (D543): the owner's own posts, linking to Instagram. */
+  /** The shop's notes about a basket (D557): free shipping and what is saved today. A saving is against the 30-day lowest price only. */
+  /** The Instagram feed (D559): the owner's own posts, linking to Instagram. */
   instagram: {
     feed: (name: string) => `Instagram posts by @${name}`,
     follow: (name: string) => `Follow @${name} on Instagram`,
@@ -745,6 +745,8 @@ export const en = {
   /** A buyer's own price from their price list (D321): never a reduction, so no prior price beside it. */
   yourPrice: "Your price",
   inStock: "In stock",
+  productPassport: "Product passport",
+  fromSupplier: (days: number) => `In stock: sent within ${days} working ${days === 1 ? "day" : "days"}`,
   lowStock: (n: number) => `Only ${n} left`,
   outOfStock: "Sold out",
   checkingStock: "Checking stock …",

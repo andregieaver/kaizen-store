@@ -1,9 +1,10 @@
-# Drop shipping: a supplier ships it for you (D482 proposed)
+# Drop shipping: a supplier ships it for you (D482 planned; D550, D551 and D553 built)
 
 The owner (5 November 2026): "We haven't made a plan for how drop shipping should work. Do that as part of this [the
 `/selling-drop-shipping` page], but explain to me how this would work first." The plan below was explained first, and the owner chose the
-recommended answer to each of the three questions (section 11). **This file is a plan: nothing in it is built.** Code, tests and texts follow
-it; where they disagree, this file is corrected first.
+recommended answer to each of the three questions (section 11). **Steps 1 to 5 are built (D550, D551, D553, 10 and 11 November 2026), except the two parts D553 names: the customer's return address and the AI manager's own tools.**
+Code, tests and texts follow it; where they disagree, this file is corrected first. Section 3 was corrected when step 1 was built: a
+supplier is the row its bills are already booked on, a location points at its supplier, and own stock always goes first.
 
 ---
 
@@ -38,22 +39,33 @@ Most of what drop shipping needs is built and tested. The plan adds to it and re
 
 ## 3. The model
 
-- **A supplier** (`commerce.suppliers`, per store): name, order email, country it ships from, order language, the time it promises to send
-  within (*dispatch days*, 1 to 30), a return address, how orders reach it (`email`, `connected`, or `file`), and an optional note to put on
-  every order (*send without your own branding*). Written only by `src/server/suppliers.ts`; audited.
-- **A supplier's location.** Adding a supplier makes an `inventory_locations` row of kind `supplier` (a new column, `kind`, `own` for every
-  existing row) tied to it, `fulfils_online` on. It is never shown as a place of the owner's own and cannot be the store's first location.
-- **A drop-shipped variant** has its stock at the supplier's location. Two ways, chosen per variant:
-  - *Always from the supplier* (the default): only the supplier's location holds it.
-  - *My stock first, then the supplier*: the store's own locations come first in routing, the supplier's after them, by the existing
-    priority rule.
-- **The supplier's stock** is what the supplier says: posted by a connected supplier, uploaded as a file (SKU and quantity, with the
-  existing dry run), or *Always available* (a level the supplier location never runs down, shown to shoppers as in stock). A level not
-  refreshed in a set time is flagged, never guessed.
-- **Cost** is the supplier's price: changing it writes the cost history as a purchase order's receipt does, never rewriting old orders.
-- **A supplier order** (`commerce.supplier_orders` and its lines): one per customer order and supplier, made when the order is paid, from
-  the lines `allocate()` placed at that supplier's location. It carries the delivery address, the lines (SKU, name, quantity, cost), the
-  order number and its state: `waiting`, `sent_to_supplier`, `shipped`, `cancelled`, `problem`.
+- **A supplier** is a row of `commerce.suppliers`, the table its bills are already booked on (D492), with `drop_ships` on: one business,
+  one row, so a supplier added here that the store already pays bills to becomes that supplier. With `drop_ships` on it has an order
+  email, the country it ships from (anywhere in the world, `isCountryCode()`), the language its orders are written in (`nb`, `sv`, `da`,
+  `en`: the store's document languages), the working days it promises to send within (*dispatch days*, 1 to 30, 2 unless changed), how
+  orders reach it (`email`, `connected` or `file`), a return address (empty: the store's own) and a note put on every order (*Send without
+  your own branding*). At most 50 a store. Written only by `src/server/suppliers.ts`; audited (`products.supplier_*`).
+- **A supplier's location.** Adding a supplier makes an `inventory_locations` row pointing at it (`supplier_id`, one per supplier),
+  named after it, in the country it ships from, `fulfils_online` on, ranked above `SUPPLIER_PRIORITY_BASE` (100,000), so every reader
+  that takes stock by rank (`allocate()`, `draw_order_stock()`, a product's default location) takes the store's own places first. It is
+  left out of the Locations page and its changes (`src/server/inventory-locations.ts`), never the store's first location, and never
+  copied with the store (`clone_store()`, `duplicate_store()`, migration `drop_ship_rules`). It shows on the stock pages under the
+  supplier's name, where its stock is set.
+- **A drop-shipped variant** names its supplier (`product_variants.supplier_id`; physical goods only, a database check). There is one
+  rule, not the two modes first planned: **the store's own stock always goes first, the supplier sends the rest** (`routingOrder()` puts
+  supplier locations after every own one, nearest-first included, and `allocate()` keeps an order together at a supplier only when no
+  own location has a free unit of anything wanted). A variant always sent by the supplier is simply one the store keeps no stock of. Marking
+  a variant gives it a level of 0 at the supplier's location (an `opening` movement by the person who marked it).
+- **Stopping** a supplier (the owner's: it takes stock off sale) turns `drop_ships` off, gives its variants back to the store and closes
+  its location; the row stays for its bills and orders. Added again, it opens the same location.
+- **The supplier's stock** is what the supplier says. Step 1: set on the stock pages at its location. Step 3 adds posting by a connected
+  supplier, a file (SKU and quantity, with the existing dry run) and *Always available*. A level not refreshed in a set time is flagged,
+  never guessed.
+- **Cost** is the supplier's price: the variant's cost as today; changing it writes the cost history, never rewriting old orders.
+- **A supplier order** (step 2, built in D551, `commerce.supplier_orders` and its lines): one per customer order and supplier, made when the order is
+  paid, from the lines `allocate()` placed at that supplier's location. It carries the delivery address, the lines (SKU, name, quantity,
+  cost), the order number and its state: `waiting`, `sent`, `shipped`, `cancelled`, `problem`. It is made by the five-minute job from the units the
+  payment drew at the supplier's location (`inventory_movements` of reason `sale`), not inside the payment, so a payment never waits on it.
 
 ## 4. An order, from payment to the customer's door
 
@@ -107,9 +119,9 @@ The customer buys from the shop, and nothing tells them a supplier exists unless
 
 ## 8. Lisa, one step away
 
-On the supplier's page in the admin (Stock → Suppliers): how orders reach it, its language and note, dispatch days, the return address, the
+On the supplier's page in the admin (Inventory → Suppliers, `/admin/{store}/inventory/suppliers/{id}`; built in step 1 with its products, details and stop): how orders reach it, its language and note, dispatch days, the return address, the
 stock method and how old its stock is, its token for a connected system, and the supplier orders with their states. On the store's
-settings: the wait before sending. On a variant: *always from the supplier* or *my stock first*. Reports: supplier orders by state,
+settings: the wait before sending. Reports: supplier orders by state,
 on-time dispatch per supplier, what the shop owes each supplier at cost (a list and a file; paying it stays outside Flow).
 
 ## 9. The AI manager
@@ -122,11 +134,11 @@ refunds). A supplier's emails and notes reach the AI only as data under `UNTRUST
 
 | Step | Builds | Done when |
 |---|---|---|
-| 1 | Suppliers, supplier locations (`kind`), drop-shipped variants, cost from the supplier, the admin's supplier page | An owner adds a supplier, marks products, and a test order is allocated to the supplier's location |
-| 2 | Supplier orders, the wait, the email, the supplier's page, tracking back to the customer, partial parcels | A paid test order reaches a supplier by email and its tracking reaches the customer's inbox |
-| 3 | Connected suppliers (scoped token, `supplier_order.created`), stock by file and API, *Always available*, delivery estimates | A connected test supplier reads only its lines, posts tracking and stock |
-| 4 | Late and problem handling, returns to the supplier's address, what the shop owes | A late supplier is reminded once and the owner told |
-| 5 | Reports, workflows' trigger, the AI manager's tools and eval cases | The briefing names a late supplier |
+| 1 | Suppliers, supplier locations (`supplier_id`), drop-shipped variants, the admin's supplier pages. **Built (D550)** | An owner adds a supplier, marks products, and a test order is allocated to the supplier's location (`suppliers.int.test.ts`, `e2e/signed-in/suppliers.spec.ts`) |
+| 2 | Supplier orders, the wait, the email, the supplier's page, tracking back to the customer, partial parcels. **Built (D551)**; the wait has no settings screen yet (30 minutes holds) | A paid test order reaches a supplier by email and its tracking reaches the customer's inbox |
+| 3 | Connected suppliers (a supplier key and `/api/supply/v1`, polled rather than a pushed event), stock by file and API, *Always available*, delivery estimates. **Built (D553)** | A connected test supplier reads only its lines, posts tracking and stock |
+| 4 | Late and problem handling, what the shop owes. **Built (D553)**; returns to the supplier's address not yet | A late supplier is reminded once and the owner told |
+| 5 | On-time record per supplier and the checkup's `supplier_late` in the briefing. **Built (D553)**; the AI manager's own tools and a workflow trigger wait for an eval run | The briefing names a late supplier |
 
 Each step gets its parity row (a new row `orders.drop-shipping`, an app-tier feature on Shopify), its tests (PGlite rules, integration
 tests with a fake supplier, the signed-in supplier page), and its decision.

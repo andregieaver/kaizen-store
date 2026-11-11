@@ -5423,29 +5423,64 @@
     {
       "idx": 774,
       "version": "7",
-      "when": 1794350080117,
-      "tag": "20261110223440_product_settings",
+      "when": 1794352634206,
+      "tag": "20261110231714_drop_ship_suppliers",
       "breakpoints": true
     },
     {
       "idx": 775,
       "version": "7",
-      "when": 1794351051092,
-      "tag": "20261110225051_product_settings_rules",
+      "when": 1794352671857,
+      "tag": "20261110231751_drop_ship_rules",
       "breakpoints": true
     },
     {
       "idx": 776,
       "version": "7",
-      "when": 1794353238051,
-      "tag": "20261110232718_instagram_accounts",
+      "when": 1794353860023,
+      "tag": "20261110233739_supplier_orders",
       "breakpoints": true
     },
     {
       "idx": 777,
       "version": "7",
-      "when": 1794353240174,
-      "tag": "20261110232720_instagram_accounts_rules",
+      "when": 1794356715708,
+      "tag": "20261111002515_supplier_api",
+      "breakpoints": true
+    },
+    {
+      "idx": 778,
+      "version": "7",
+      "when": 1794358368704,
+      "tag": "20261111005248_product_passports",
+      "breakpoints": true
+    },
+    {
+      "idx": 779,
+      "version": "7",
+      "when": 1794359543858,
+      "tag": "20261111011223_marketplace_channels",
+      "breakpoints": true
+    },
+    {
+      "idx": 780,
+      "version": "7",
+      "when": 1794360652388,
+      "tag": "20261111013052_supplier_location_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 781,
+      "version": "7",
+      "when": 1794382579562,
+      "tag": "20261111073619_product_settings_and_instagram",
+      "breakpoints": true
+    },
+    {
+      "idx": 782,
+      "version": "7",
+      "when": 1794382581486,
+      "tag": "20261111073621_product_settings_and_instagram_rules",
       "breakpoints": true
     }
   ]

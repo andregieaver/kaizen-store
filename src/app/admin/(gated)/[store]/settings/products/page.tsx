@@ -14,7 +14,7 @@ import { saveProductSettingsAction } from "./actions";
 export const metadata: Metadata = { title: "Product settings" };
 
 /**
- * The store's product settings (D540): what a product's tile in a content grid shows besides its picture, title and price. Everyone who
+ * The store's product settings (D556): what a product's tile in a content grid shows besides its picture, title and price. Everyone who
  * may read settings sees them; `settings:write` changes them.
  */
 export default async function ProductSettingsPage({ params }: PageProps<"/admin/[store]/settings/products">) {

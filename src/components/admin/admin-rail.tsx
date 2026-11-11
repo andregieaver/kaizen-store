@@ -9,7 +9,7 @@ import { RAIL_NAMES_EVENT, railNamesShown, setRailNames } from "@/lib/admin-rail
 
 import { useAdminText } from "./admin-text";
 import { NavIcon } from "./nav-icons";
-import { useIsCurrent, type NavItem } from "./store-admin-nav";
+import { LinkPending, useIsCurrent, type NavItem } from "./store-admin-nav";
 
 /** Whether the rail shows its names (`<html data-rail="names">`, D262), followed as it changes; none on the server. */
 function useRailNames(): boolean {
@@ -64,6 +64,7 @@ export function AdminRail({ items, home, label, collapseOn }: { items: NavItem[]
               {item.badge > 99 ? "99+" : item.badge}
             </span>
           ) : null}
+          <LinkPending className="inset-x-2 bottom-0.5" />
           <span
             aria-hidden
             className={`pointer-events-none absolute left-full z-50 ml-3 rounded-pill bg-inverse px-2.5 py-1 text-caption whitespace-nowrap text-inverse-ink opacity-0 shadow-[var(--shadow-float)] transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 ${collapsed ? "" : "[[data-rail=names]_&]:hidden"}`}

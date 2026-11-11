@@ -29,12 +29,14 @@ export function releaseDate(date: string, locale: string): string {
 /** The line under a variant in the picker and the buy part. */
 export function stockNote(
   stock: VariantStock | undefined,
-  m: Pick<Messages, "inStock" | "lowStock" | "outOfStock" | "backorder" | "preorder">,
+  m: Pick<Messages, "inStock" | "lowStock" | "outOfStock" | "backorder" | "preorder"> & Partial<Pick<Messages, "fromSupplier">>,
   locale = "en-GB",
 ): string {
   if (!stock || !canOffer(stock)) return m.outOfStock;
   if (stock.preorderUntil) return m.preorder.page(releaseDate(stock.preorderUntil, locale));
   if (availabilityOf(stock) === "backorder") return m.backorder.page(stock.backorderDays as number);
+  // Sent by a drop-shipping supplier (D553): the honest promise carries its days.
+  if (stock.supplierDays && m.fromSupplier) return m.fromSupplier(stock.supplierDays);
   const level = stockLevel(stock.inStock);
   return level === "low" ? m.lowStock(stock.inStock) : m.inStock;
 }

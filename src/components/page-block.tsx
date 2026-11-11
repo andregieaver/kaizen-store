@@ -67,7 +67,7 @@ export function PageBlockView({
 }: {
   block: PageBlock;
   renderChildren?: ChildRenderer;
-  /** In the page builder's canvas: a countdown that has ended shows zeros there instead of nothing (D544). */
+  /** In the page builder's canvas: a countdown that has ended shows zeros there instead of nothing (D560). */
   preview?: boolean;
   /** In a row that may be on the first screen: its picture loads at once and before the others, never lazily. */
   eager?: boolean;
@@ -92,10 +92,10 @@ export function PageBlockView({
       // Its links are looked up where it is shown (`MenuSection`, D85); the editor shows a stand-in.
       return null;
     case "instagram":
-      // The owner's posts are read where the page is shown (`InstagramSection`, D543); the editor shows squares where they go.
+      // The owner's posts are read where the page is shown (`InstagramSection`, D559); the editor shows squares where they go.
       return <InstagramStandIn block={block} />;
     case "countdown":
-      // Drawn in the browser, ticking, gone at zero (D544); the editor (`preview`) shows zeros for one that has ended.
+      // Drawn in the browser, ticking, gone at zero (D560); the editor (`preview`) shows zeros for one that has ended.
       return <CountdownView endsAt={block.endsAt} title={block.title} boxes={block.look !== "plain"} preview={preview} />;
     case "stats":
       return (
@@ -520,7 +520,7 @@ function Testimonials({ block }: { block: TestimonialsBlock }) {
   );
 }
 
-/** Where an Instagram feed's posts go (D543), in the builder: as many squares as it shows, in its columns, with the hashtags it keeps to. */
+/** Where an Instagram feed's posts go (D559), in the builder: as many squares as it shows, in its columns, with the hashtags it keeps to. */
 function InstagramStandIn({ block }: { block: Extract<PageBlock, { type: "instagram" }> }) {
   return (
     <div className="flex flex-col gap-2" data-instagram-stand-in="">

@@ -12,7 +12,7 @@ import { connectInstagramAction, disconnectInstagramAction } from "./actions";
 
 export const metadata: Metadata = { title: "Instagram" };
 
-/** The store's Instagram account (D543), whose own posts its Instagram feed components show. */
+/** The store's Instagram account (D559), whose own posts its Instagram feed components show. */
 export default async function StoreInstagramPage({ params, searchParams }: PageProps<"/admin/[store]/integrations/instagram">) {
   const member = await requirePermission((await params).store, "settings:read");
   const { store } = member;

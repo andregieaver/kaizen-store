@@ -10,7 +10,7 @@ export type StatShown = { id: string; value: number; decimals: number; prefix: s
 const useBeforePaint = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /**
- * Animated stats (D544, `src/lib/stats-count.ts`): each of the owner's figures counts up from zero, easing out, once it comes into view, and
+ * Animated stats (D560, `src/lib/stats-count.ts`): each of the owner's figures counts up from zero, easing out, once it comes into view, and
  * rests on the figure as typed. The server's HTML holds the figures, so without scripts, for search engines and for visitors who prefer less
  * motion they are there as typed; a screen reader is given the figure, never the count.
  */

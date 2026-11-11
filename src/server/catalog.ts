@@ -106,6 +106,8 @@ export type ProductDetail = {
   seoTitle: string;
   seoDescription: string;
   safetyInformation: string;
+  /** Its published Digital Product Passport's id (D554), or null. */
+  passportId?: string | null;
   withdrawalExclusion: string;
   /** In the owner's order; `thumbnailUrl` is the 480 px copy, or the picture itself. */
   /** The gallery in the owner's order (D325): every item's picture, and a video's or 3D model's own file or address. */
@@ -289,7 +291,9 @@ export async function getProduct(storeId: string, market: Market, handle: string
       coalesce(case when tl.product_id is null then tf.seo_description else tl.seo_description end, '') as seo_description,
       mf.name as mf_name, mf.postal_address as mf_postal, mf.electronic_address as mf_electronic,
       rp.name as rp_name, rp.postal_address as rp_postal, rp.electronic_address as rp_electronic,
-      (select h.name from commerce.hosts h where h.store_id = p.store_id and h.id = p.host_id) as host_name
+      (select h.name from commerce.hosts h where h.store_id = p.store_id and h.id = p.host_id) as host_name,
+      -- Its published Digital Product Passport (D554), linked beside the safety details.
+      (select pp.id::text from commerce.product_passports pp where pp.store_id = p.store_id and pp.product_id = p.id and pp.published_at is not null) as passport_id
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
     left join commerce.product_translations tl
@@ -361,6 +365,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     seoTitle: str(product.seo_title),
     seoDescription: str(product.seo_description),
     safetyInformation: str(product.safety_information),
+    passportId: product.passport_id ? str(product.passport_id) : null,
     withdrawalExclusion: str(product.withdrawal_exclusion),
     images: media.map((m) => ({
       url: str(m.url),
@@ -449,7 +454,14 @@ export async function variantStockOf(
 ): Promise<Map<string, VariantStock>> {
   if (variantIds.length === 0) return new Map();
   const rows = await reader.execute<Row>(sql`
-    select va.variant_id, va.delivery, va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, va.can_buy, va.preorder_until::text as preorder_until
+    select va.variant_id, va.delivery, va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, va.can_buy, va.preorder_until::text as preorder_until,
+      -- Drop shipping (D553): the supplier's days, when the store's own stock of it is gone.
+      (select s.dispatch_days from commerce.product_variants v
+         join commerce.suppliers s on s.store_id = v.store_id and s.id = v.supplier_id and s.drop_ships
+        where v.store_id = va.store_id and v.id = va.variant_id
+          and not exists (select 1 from commerce.inventory_levels l
+                            join commerce.inventory_locations loc on loc.store_id = l.store_id and loc.id = l.location_id and loc.active and loc.fulfils_online and loc.supplier_id is null
+                           where l.store_id = va.store_id and l.variant_id = va.variant_id and l.on_hand > 0)) as supplier_days
     from commerce.variant_availability va
     where va.store_id = ${storeId}::uuid and va.variant_id in (${sql.join(
       variantIds.map((id) => sql`${id}::uuid`),
@@ -457,19 +469,19 @@ export async function variantStockOf(
     )})
   `);
   return new Map(
-    rows.map((r) => [
-      str(r.variant_id),
-      r.delivery === "physical"
-        ? stockOf({
-            in_stock: num(r.in_stock),
-            raw_available: num(r.raw_available),
-            stock_policy: str(r.stock_policy),
-            backorder_days: r.backorder_days === null ? null : num(r.backorder_days),
-            can_buy: Boolean(r.can_buy),
-            preorder_until: r.preorder_until === null || r.preorder_until === undefined ? null : str(r.preorder_until),
-          })
-        : UNLIMITED,
-    ]),
+    rows.map((r): [string, VariantStock] => {
+      if (r.delivery !== "physical") return [str(r.variant_id), UNLIMITED];
+      const stock = stockOf({
+        in_stock: num(r.in_stock),
+        raw_available: num(r.raw_available),
+        stock_policy: str(r.stock_policy),
+        backorder_days: r.backorder_days === null ? null : num(r.backorder_days),
+        can_buy: Boolean(r.can_buy),
+        preorder_until: r.preorder_until === null || r.preorder_until === undefined ? null : str(r.preorder_until),
+      });
+      const supplierDays = r.supplier_days === null || r.supplier_days === undefined ? null : num(r.supplier_days);
+      return [str(r.variant_id), supplierDays && stock.inStock > 0 ? { ...stock, supplierDays } : stock];
+    }),
   );
 }
 

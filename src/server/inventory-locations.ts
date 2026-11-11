@@ -19,6 +19,9 @@ type Row = Record<string, unknown>;
  * rank is the order an order's units are taken in, `allocate()`), and deactivated or reactivated by the OWNER only, because that takes stock off sale or
  * puts it back. A location is never deleted: levels, movements and refunds refer to it. The database holds the rules that cannot be raced (one active
  * location always, no deactivation while a checkout holds stock there, no two active locations with one name); this module gives the sentences.
+ *
+ * A drop-shipping supplier's own location (D550, `supplier_id` set) is not one of the store's places: it is left out of every list and change
+ * here and written only by `src/server/suppliers.ts`.
  */
 
 export type StockLocation = {
@@ -42,7 +45,7 @@ export async function listLocations(storeId: string): Promise<StockLocation[]> {
            coalesce(sum(greatest(l.on_hand, 0)), 0)::int as units, count(l.variant_id) filter (where l.on_hand > 0)::int as variants
     from commerce.inventory_locations loc
     left join commerce.inventory_levels l on l.store_id = loc.store_id and l.location_id = loc.id
-    where loc.store_id = ${storeId}::uuid
+    where loc.store_id = ${storeId}::uuid and loc.supplier_id is null
     group by loc.id
     order by loc.active desc, loc.priority, loc.created_at, loc.id
   `);
@@ -85,11 +88,11 @@ export async function saveLocation(member: Membership, raw: unknown, id: string 
       if (id) {
         const [row] = await tx.execute<Row>(sql`
           update commerce.inventory_locations set name = ${name}, country = ${country}
-          where store_id = ${storeId}::uuid and id = ${id}::uuid returning id
+          where store_id = ${storeId}::uuid and id = ${id}::uuid and supplier_id is null returning id
         `);
         return row ? { ok: true, id: String(row.id) } : { ok: false, problem: "This location is not in this store." };
       }
-      const [counted] = await tx.execute<Row>(sql`select count(*)::int as n, coalesce(max(priority), 0) as top from commerce.inventory_locations where store_id = ${storeId}::uuid`);
+      const [counted] = await tx.execute<Row>(sql`select count(*)::int as n, coalesce(max(priority), 0) as top from commerce.inventory_locations where store_id = ${storeId}::uuid and supplier_id is null`);
       if (Number(counted?.n ?? 0) >= LOCATIONS_MAX) return { ok: false, problem: `A store has at most ${LOCATIONS_MAX} stock locations.` };
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.inventory_locations (store_id, name, country, priority)
@@ -123,7 +126,7 @@ export async function moveLocation(member: Membership, id: string, direction: "u
   const moved = await db().transaction(async (tx) => {
     await tx.execute(sql`select id from commerce.stores where id = ${storeId}::uuid for no key update`);
     const rows = await tx.execute<Row>(sql`
-      select id, active from commerce.inventory_locations where store_id = ${storeId}::uuid order by active desc, priority, created_at, id
+      select id, active from commerce.inventory_locations where store_id = ${storeId}::uuid and supplier_id is null order by active desc, priority, created_at, id
     `);
     const active = rows.filter((r) => r.active).map((r) => String(r.id));
     const inactive = rows.filter((r) => !r.active).map((r) => String(r.id));
@@ -163,7 +166,7 @@ export async function deactivateLocation(member: Membership, id: string, confirm
   // With other active locations, one of them must still take online orders (D383); the last active one is the database's refusal below.
   const [others] = await db().execute<Row>(sql`
     select count(*)::int as active, (count(*) filter (where fulfils_online))::int as online
-    from commerce.inventory_locations where store_id = ${storeId}::uuid and active and id <> ${id}::uuid
+    from commerce.inventory_locations where store_id = ${storeId}::uuid and active and supplier_id is null and id <> ${id}::uuid
   `);
   if (Number(others.active) > 0 && Number(others.online) === 0) {
     return { ok: false, problem: "Online orders need at least one active location to take stock from. Turn it on for another one first.", impact };
@@ -171,7 +174,7 @@ export async function deactivateLocation(member: Membership, id: string, confirm
   try {
     const [row] = await db().execute<Row>(sql`
       update commerce.inventory_locations set active = false
-      where store_id = ${storeId}::uuid and id = ${id}::uuid and active
+      where store_id = ${storeId}::uuid and id = ${id}::uuid and supplier_id is null and active
       returning id
     `);
     if (!row) return { ok: false, problem: "This location is already inactive." };
@@ -195,7 +198,7 @@ export async function reactivateLocation(member: Membership, id: string): Promis
   try {
     const [row] = await db().execute<Row>(sql`
       update commerce.inventory_locations set active = true
-      where store_id = ${storeId}::uuid and id = ${id}::uuid and not active
+      where store_id = ${storeId}::uuid and id = ${id}::uuid and supplier_id is null and not active
       returning id
     `);
     if (!row) return { ok: false, problem: "This location is not in this store, or it is already active." };
@@ -220,12 +223,12 @@ export async function setFulfilsOnline(member: Membership, id: string, on: boole
   const storeId = member.store.id;
   const outcome = await db().transaction(async (tx): Promise<LocationResult> => {
     await tx.execute(sql`select id from commerce.stores where id = ${storeId}::uuid for no key update`);
-    const [row] = await tx.execute<Row>(sql`select active, fulfils_online from commerce.inventory_locations where store_id = ${storeId}::uuid and id = ${id}::uuid`);
+    const [row] = await tx.execute<Row>(sql`select active, fulfils_online from commerce.inventory_locations where store_id = ${storeId}::uuid and id = ${id}::uuid and supplier_id is null`);
     if (!row) return { ok: false, problem: "This location is not in this store." };
     if (Boolean(row.fulfils_online) === on) return { ok: true, id };
     if (!on) {
       const [others] = await tx.execute<Row>(sql`
-        select count(*)::int as n from commerce.inventory_locations where store_id = ${storeId}::uuid and active and fulfils_online and id <> ${id}::uuid
+        select count(*)::int as n from commerce.inventory_locations where store_id = ${storeId}::uuid and active and fulfils_online and supplier_id is null and id <> ${id}::uuid
       `);
       if (Number(others.n) === 0) return { ok: false, problem: "Online orders need at least one active location to take stock from. Turn it on for another one first." };
     }

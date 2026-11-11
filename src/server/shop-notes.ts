@@ -21,7 +21,7 @@ export async function emptyFreeShipping(storeId: string, market: Market): Promis
 }
 
 /**
- * What a cart saves today (D541): each line against its variant's lowest price of the last 30 days in the market (`current_prices`,
+ * What a cart saves today (D557): each line against its variant's lowest price of the last 30 days in the market (`current_prices`,
  * converted to the currency shown as prices are), never for a line priced by a list, a break, a subscription, a booking or a gift card,
  * plus `discountMinor`, the cart's discounts as `cartSummary()` worked them out.
  */

@@ -5,6 +5,7 @@ const TONES: Record<string, string> = {
   slack: "bg-fuchsia-900 text-white",
   tripletex: "bg-sky-800 text-white",
   fiken: "bg-indigo-700 text-white",
+  ebay: "bg-blue-800 text-white",
   bring: "bg-red-700 text-white",
   postnord: "bg-blue-700 text-white",
   porterbuddy: "bg-emerald-700 text-white",

@@ -1,5 +1,5 @@
 /**
- * The shop's notes about a basket (D541, `STORE_NOTES` in `src/lib/store-parts.ts`): how far it is from free shipping, and what the
+ * The shop's notes about a basket (D557, `STORE_NOTES` in `src/lib/store-parts.ts`): how far it is from free shipping, and what the
  * shopper saves today. Pure: the server gives the amounts, already in the currency shown; the arithmetic is here, in whole minor units.
  *
  * Free shipping follows the checkout's own rule (`shippingCost()`): the market's flat rate is free from its threshold, compared with the

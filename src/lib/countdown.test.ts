@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { cleanEnd, timeLeft } from "./countdown";
 import { countAt, easeOut, statText } from "./stats-count";
 
-describe("the countdown (D544)", () => {
+describe("the countdown (D560)", () => {
   const end = "2026-11-29T22:59:00.000Z";
 
   it("says what is left in whole days, hours, minutes and seconds", () => {
@@ -23,7 +23,7 @@ describe("the countdown (D544)", () => {
   });
 });
 
-describe("animated stats (D544)", () => {
+describe("animated stats (D560)", () => {
   it("counts up easing out and rests on the figure as typed", () => {
     expect(countAt(12_000, 0, 0, 2000)).toBe(0);
     expect(countAt(12_000, 0, 1000, 2000)).toBe(10_500);

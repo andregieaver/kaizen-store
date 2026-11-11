@@ -715,6 +715,8 @@ export const sv: Messages = {
   fromPrice: "Från",
   yourPrice: "Ditt pris",
   inStock: "I lager",
+  productPassport: "Produktpass",
+  fromSupplier: (days: number) => `I lager: skickas inom ${days} ${days === 1 ? "arbetsdag" : "arbetsdagar"}`,
   lowStock: (n: number) => `Endast ${n} kvar`,
   outOfStock: "Slutsåld",
   checkingStock: "Kontrollerar lager …",

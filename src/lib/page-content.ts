@@ -938,7 +938,7 @@ export type ContentGridBlock = PartBase & {
    */
   filters?: boolean;
   /**
-   * A product grid's own choice for its tiles' stock left and quantity chooser with Add to cart (D540): absent, each follows the store's
+   * A product grid's own choice for its tiles' stock left and quantity chooser with Add to cart (D556): absent, each follows the store's
    * product settings (Settings, Products); `show` or `hide` says otherwise for this grid.
    */
   shopTiles?: ShopTiles;
@@ -2001,7 +2001,7 @@ export type NewsletterLayout = keyof typeof NEWSLETTER_LAYOUTS;
  * with the words consented to and when.
  */
 /**
- * An Instagram feed (D543, `src/lib/instagram.ts`): the owner's own latest posts (a store's connected account, or Kaizena Flow's), as square
+ * An Instagram feed (D559, `src/lib/instagram.ts`): the owner's own latest posts (a store's connected account, or Kaizena Flow's), as square
  * pictures linking to each post on Instagram, narrowed by hashtags in their captions (`hashtags`, any of them unless `match` is `all`).
  * Nothing shows without a connected account or a matching post. The pictures come through the site, so visitors load nothing from Meta.
  */
@@ -2033,7 +2033,7 @@ export type InstagramBlock = PartBase & {
 };
 
 /**
- * A countdown timer (D544, `src/lib/countdown.ts`): days, hours, minutes and seconds left until a fixed moment the owner chose (`endsAt`,
+ * A countdown timer (D560, `src/lib/countdown.ts`): days, hours, minutes and seconds left until a fixed moment the owner chose (`endsAt`,
  * an ISO moment in UTC), the same for every visitor, with the owner's words above it. Gone at zero. In boxes unless `look` is `plain`.
  */
 export type CountdownBlock = PartBase & {
@@ -2044,11 +2044,11 @@ export type CountdownBlock = PartBase & {
   look?: "plain";
 };
 
-/** One of the animated stats' figures (D544): the owner's own number, with words before and after it and a label under it. */
+/** One of the animated stats' figures (D560): the owner's own number, with words before and after it and a label under it. */
 export type StatItem = { id: string; value: number; decimals?: number; prefix: string; suffix: string; label: string };
 
 /**
- * Animated stats (D544, `src/lib/stats-count.ts`): the owner's figures ("12 000+ happy customers") counting up from zero as they come
+ * Animated stats (D560, `src/lib/stats-count.ts`): the owner's figures ("12 000+ happy customers") counting up from zero as they come
  * into view, `columns` across on larger screens (at most two on phones), in `duration` seconds.
  */
 export type StatsBlock = PartBase & {
@@ -2356,10 +2356,10 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "emailForm":
     case "newsletter":
       return formShows(block);
-    // The owner's posts are known only when the page is shown (D543).
+    // The owner's posts are known only when the page is shown (D559).
     case "instagram":
       return true;
-    // A countdown with an end, and stats with a figure (D544); a countdown past its end is gone in the browser.
+    // A countdown with an end, and stats with a figure (D560); a countdown past its end is gone in the browser.
     case "countdown":
       return block.endsAt !== null;
     case "stats":
@@ -2446,10 +2446,10 @@ export function blockText(block: PageBlock): string {
     case "newsletter":
     // Its words are in its own frame, not the page's.
     case "html":
-    // The posts' captions are Instagram's, not the page's (D543).
+    // The posts' captions are Instagram's, not the page's (D559).
     case "instagram":
       return "";
-    // A countdown's words say what ends; they are about the offer, not the page (D544).
+    // A countdown's words say what ends; they are about the offer, not the page (D560).
     case "countdown":
       return block.title;
     case "stats":

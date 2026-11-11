@@ -479,5 +479,8 @@ The re-score ([psi-2026-11-01.md](psi-2026-11-01.md)) put the overall at 80.0 (8
       the grouped minor and patch updates (Next.js 16.4.3, React 19.3.1, axe-core 4.14), motion 14, unpdf 2 and the Actions update merged
       green; opentype.js 2 (named exports, no default: `font-outlines.ts` imports `parse` and `Font`) and TypeScript 6 (two `??` whose right
       side could never be reached) upgraded on main; Vercel no longer builds Dependabot's branches (the preview has no database).
-- [ ] **PERF-01** The admin's p75 LCP (3.93 s): cut the shared scripts, the English fallback first.
+- [ ] **PERF-01** The admin's p75 LCP (3.93 s): cut the shared scripts, the English fallback first. The English fallback is out (10 November
+      2026, D540): each area's English is fetched only where a page did not hand it down, which a signed-in test now fails on; every admin
+      screen's first scripts about 1.1 MB smaller (home 2.46 to 1.28 MB, the builder 4.39 to 3.34 MB). Left: read the admin's p75 again
+      from the speed beacon once a month of loads is in, and tick this when it is under 2.5 s.
 - [x] **AST-09, AGT-14** Record the eval again with DSA and Dream Factory cases, its recording carrying `tools`. Done: recorded 2 November 2026 on Platform → AI's model (gpt-4.1-mini, 17 of 17, run `9a725030`) after the filter took out lines addressed to a reviewer or a "system override" and the brief stopped guessing the business's country (683e9a13); the recording carries `tools` and is `src/data/agent-eval-recording.json`.

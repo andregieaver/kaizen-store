@@ -488,7 +488,7 @@ export function LayoutPreview({ layout }: { layout: RowLayout }) {
   );
 }
 
-/** A camera's outline (the Instagram feed, D543), drawn as the other tiles' pictures are; not Instagram's own logo. */
+/** A camera's outline (the Instagram feed, D559), drawn as the other tiles' pictures are; not Instagram's own logo. */
 function InstagramIcon() {
   return (
     <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
@@ -501,7 +501,7 @@ function InstagramIcon() {
   );
 }
 
-/** A stroke icon on the tile's dark face (the countdown's clock and the stats' bars, D544). */
+/** A stroke icon on the tile's dark face (the countdown's clock and the stats' bars, D560). */
 function StrokeIcon({ d, circle = false }: { d: string[]; circle?: boolean }) {
   return (
     <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">

@@ -38,6 +38,7 @@ describe("the Inventory pages' addresses", () => {
       locations: "/admin/shop/inventory/locations",
       transfers: "/admin/shop/inventory/transfers",
       purchase_orders: "/admin/shop/inventory/purchase-orders",
+      suppliers: "/admin/shop/inventory/suppliers",
       import: "/admin/shop/inventory/import",
       export: "/admin/shop/inventory/export",
     });

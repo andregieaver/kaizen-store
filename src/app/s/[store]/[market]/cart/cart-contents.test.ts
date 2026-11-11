@@ -59,7 +59,7 @@ vi.mock("./cart-gift", () => ({
 const cartSummary = vi.fn();
 vi.mock("@/server/cart-summary", () => ({ cartSummary: (...a: unknown[]) => cartSummary(...a) }));
 vi.mock("@/server/customers", () => ({ getCustomer: async () => null }));
-// What goes with the cart (D542) is drawn only while the store's recommendations are on; its own read is not this test's.
+// What goes with the cart (D558) is drawn only while the store's recommendations are on; its own read is not this test's.
 vi.mock("@/server/recommend-settings", () => ({ getRecommendSettings: async () => ({ enabled: false }) }));
 vi.mock("@/components/cart-upsell", () => ({ CartUpsell: () => null }));
 const checkoutButton = vi.hoisted(() => vi.fn());

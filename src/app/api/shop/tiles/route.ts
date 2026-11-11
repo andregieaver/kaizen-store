@@ -7,7 +7,7 @@ import { resolveSellingShop } from "@/server/shop";
 import { tileFacts } from "@/server/shop-tiles";
 
 /**
- * The facts a page's product tiles show (D540): `?store=&market=&ids=a,b,…` answers each product's stock in words and, when it can be
+ * The facts a page's product tiles show (D556): `?store=&market=&ids=a,b,…` answers each product's stock in words and, when it can be
  * bought from its tile, its variant and quantity rule, with the store's product settings. Never cached, as stock never is; no cookie is
  * read or set. A website (the online shop off) and a private store's locked page answer nothing.
  */

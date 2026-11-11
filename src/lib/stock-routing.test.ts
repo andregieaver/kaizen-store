@@ -310,3 +310,34 @@ describe("properties of the rule (4.3)", () => {
     }
   });
 });
+
+describe("a drop-shipping supplier's location (D550)", () => {
+  const own = { id: "own", priority: 2, createdAt: "2026-01-02T00:00:00.000Z", active: true, country: "NO" };
+  const far = { id: "far", priority: 3, createdAt: "2026-01-03T00:00:00.000Z", active: true, country: "SE" };
+  // Ranked first by number, and in the delivery country: still after every own place.
+  const supplier = { id: "sup", priority: 1, createdAt: "2026-01-01T00:00:00.000Z", active: true, country: "DK", supplier: true };
+
+  it("comes after every own location, in rank order and nearest first", () => {
+    expect(routingOrder([supplier, far, own]).map((l) => l.id)).toEqual(["own", "far", "sup"]);
+    expect(routingOrder([supplier, far, own], "DK").map((l) => l.id)).toEqual(["own", "far", "sup"]);
+    expect(routingOrder([supplier, far, own], "SE").map((l) => l.id)).toEqual(["far", "own", "sup"]);
+  });
+
+  it("sends own stock first and asks the supplier for the rest", () => {
+    const cells = [
+      { variantId: "v", locationId: "own", onHand: 2, reserved: 0 },
+      { variantId: "v", locationId: "sup", onHand: 50, reserved: 0 },
+    ];
+    const result = allocate({ locations: [supplier, own], cells, lines: [{ variantId: "v", quantity: 5, policy: "deny" }] });
+    expect(result).toEqual({
+      ok: true,
+      wholeOrderAt: null,
+      takes: [
+        { variantId: "v", locationId: "own", quantity: 2, backordered: 0 },
+        { variantId: "v", locationId: "sup", quantity: 3, backordered: 0 },
+      ],
+    });
+    // With no own stock, all of it from the supplier.
+    expect(allocate({ locations: [supplier, own], cells: [cells[1]], lines: [{ variantId: "v", quantity: 5, policy: "deny" }] })).toMatchObject({ ok: true, wholeOrderAt: "sup" });
+  });
+});

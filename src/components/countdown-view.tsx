@@ -26,7 +26,7 @@ function unitWord(locale: string, unit: (typeof UNITS)[number], n: number): stri
 }
 
 /**
- * A countdown to a fixed moment (D544, `src/lib/countdown.ts`): days, hours, minutes and seconds left, ticking each second, the same for
+ * A countdown to a fixed moment (D560, `src/lib/countdown.ts`): days, hours, minutes and seconds left, ticking each second, the same for
  * every visitor. Drawn only in the browser (the time left is the visitor's clock's), and gone at zero, so a past offer is never announced.
  * A screen reader hears the end as a date once, not every second. In the builder (`preview`) an ended or unset timer shows zeros.
  */

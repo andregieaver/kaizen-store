@@ -13,7 +13,7 @@ import { Carousel } from "./carousel";
 const GAP = 8;
 
 /**
- * An Instagram feed on the site (D543): the owner's kept posts (a store's account, or Kaizena Flow's on its own pages), narrowed by the
+ * An Instagram feed on the site (D559): the owner's kept posts (a store's account, or Kaizena Flow's on its own pages), narrowed by the
  * block's hashtags, as a grid or a carousel of squares: `columns` across on larger screens (a grid's columns, a carousel's posts at a time),
  * `phoneColumns` on phones, `limit` in all. A picture links to its post on Instagram; a video plays in place when pressed (controls, never by
  * itself, nothing loaded before), or with `videos` off shows its cover linking to Instagram. Pictures and videos come through

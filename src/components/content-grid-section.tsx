@@ -33,7 +33,7 @@ export async function ContentGridSection({ block, place, eager = false }: { bloc
   if (recommends(block, place) && place.owner) return <RecommendingGrid block={block} place={place} owner={place.owner} eager={eager} />;
   const data = await gridData(block, place);
   const { listing } = place;
-  // The stock left and a quantity chooser on a store's own product tiles (D540), as the grid allows; the store's settings come with the facts.
+  // The stock left and a quantity chooser on a store's own product tiles (D556), as the grid allows; the store's settings come with the facts.
   const tiles = place.owner ? tileAsk(block.shopTiles) : null;
   const products = sourceTraits(block.source).products;
   const notices = products && place.owner ? await campaignNoticesAt(place.owner, place.market ?? null) : undefined;

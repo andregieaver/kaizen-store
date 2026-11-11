@@ -8,7 +8,7 @@ import { cartSavingOf, emptyFreeShipping } from "@/server/shop-notes";
 import type { Store } from "@/server/stores";
 
 /**
- * The shop's notes about a basket (D541), drawn on the cart, checkout, category and tag pages (`STORE_NOTES`) and as product parts. Read per
+ * The shop's notes about a basket (D557), drawn on the cart, checkout, category and tag pages (`STORE_NOTES`) and as product parts. Read per
  * request (the cart is the shopper's), so each sits in its caller's `<Suspense>`; the cart's figures are `cartView()`'s, read once a request
  * with the cart's own pieces. Bare, as pieces are: the block's frame and spacing decide how it looks.
  */
