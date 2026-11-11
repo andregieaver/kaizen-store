@@ -176,6 +176,11 @@ export const commonEn = {
     children_goods: { label: "Children's goods", hint: "Children's clothing, footwear and car seats, where the country has a reduced rate." },
   } as Record<string, { label: string; hint: string }>,
   /** The search snippet fields (`SearchSnippetFields`): a product, a page, a category, the store's and Kaizena Flow's front page. */
+  /** What a server action says when it may not run, or failed in a way nobody planned for (code review 1.4, `storeAction()`). */
+  action: {
+    noAccess: "You do not have access to this.",
+    failed: "That did not go through. Try again, and if it keeps happening, contact Kaizena Flow support.",
+  },
   snippet: {
     count: "{length} of about {advice} characters",
     cut: ": search engines may cut the end",

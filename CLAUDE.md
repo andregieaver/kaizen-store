@@ -139,6 +139,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Shipping is one flat rate per market (`commerce.shipping_rates`), optionally free above a basket value; a store with a carrier connected can also…
 - `src/server/*.int.test.ts` are integration tests against a real database (`pnpm test:int`, after `scripts/db-setup.mjs --seed`); CI runs them
 - Forms use `ActionForm`, which keeps what was typed when validation fails
+- Server actions run through `storeAction()` / `platformAction()` (code review 1.4, `src/server/store-action.ts`): guard, language, one logged failure as a plain line
 - Stripe Connect (`src/server/connect.ts`, `src/server/stripe.ts`)
 - Plans and billing (`src/server/billing.ts`, decision D18)
 - Free trials and their end (D420, `src/server/store-trial.ts`)

@@ -40,6 +40,31 @@ vi.mock("@/server/auth", async (original) => {
   };
 });
 
+// One unplanned failure on demand (code review 1.4): the next approval throws, as a database that went away would.
+const fault = vi.hoisted(() => ({ next: false, logged: [] as { event: string; fields: Record<string, unknown> }[] }));
+vi.mock("./returns", async (original) => {
+  const real = await original<typeof import("./returns")>();
+  return {
+    ...real,
+    approveReturn: async (...args: Parameters<typeof real.approveReturn>) => {
+      if (fault.next) {
+        fault.next = false;
+        throw new Error("connection terminated unexpectedly");
+      }
+      return real.approveReturn(...args);
+    },
+  };
+});
+vi.mock("./log", async (original) => {
+  const real = await original<typeof import("./log")>();
+  return {
+    ...real,
+    log: (level: string, event: string, fields: Record<string, unknown> = {}) => {
+      if (level === "error") fault.logged.push({ event, fields });
+    },
+  };
+});
+
 // An email provider that accepts everything: an acknowledgement only counts as sent once it was handed to one.
 process.env.RESEND_API_KEY = "re_test_key";
 process.env.EMAIL_FROM = "butikk@example.com";
@@ -252,11 +277,13 @@ describe("working a return through the forms' actions", () => {
 });
 
 describe("who can do what", () => {
-  it("is a 404 for a store the account is not a member of, and 'no longer exists' for another store's return", async () => {
+  it("refuses in the form for a store the account is not a member of, and says 'no longer exists' for another store's return", async () => {
     const mine = await voluntaryReturn();
-    await expect(actions.approveReturnAction("not-a-store", mine.id, idle, form({}))).rejects.toThrow("NEXT_NOT_FOUND");
+    // `storeAction()` (code review 1.4): a refusal is answered in the form, never a 404.
+    expect(await actions.approveReturnAction("not-a-store", mine.id, idle, form({}))).toEqual({ status: "error", messages: ["You do not have access to this."] });
     const theirs = await voluntaryReturn(otherStoreId);
     // Called as a member of the first store, with the other store's return: the return is looked up by this store's id.
+    // (Unchanged by storeAction(): a return of another store is "no longer exists", not a refusal.)
     expect(await actions.approveReturnAction(slug, theirs.id, idle, form({}))).toMatchObject({ status: "error", messages: ["That return no longer exists."] });
     expect(await actions.refundReturnAction(slug, theirs.id, idle, form({ amount: "1" }))).toEqual({ status: "error", messages: ["This return no longer exists."] });
     expect(await actions.recalculateRefundAction(slug, theirs.id, "")).toEqual({ ok: false, problem: "This return no longer exists." });
@@ -317,5 +344,19 @@ describe("the return rules' action", () => {
     expect(await settingsActions.saveReturnSettingsAction(slug, idle, rules({ "instructions:sv-SE": "" }))).toMatchObject({ status: "ok" });
     expect((await rs.getReturnSettings(storeId)).returnAddress).toBeNull();
     expect(await rs.getInstructionTranslations(storeId)).toEqual({});
+  });
+});
+
+describe("an action that fails in a way nobody planned for (code review 1.4, storeAction())", () => {
+  it("answers with a plain line in the form, logs it once by the action's name and the store, and changes nothing", async () => {
+    const { id } = await voluntaryReturn();
+    fault.logged = [];
+    fault.next = true;
+    const answered = await actions.approveReturnAction(slug, id, idle, form({ instructions: "Pack it well." }));
+    expect(answered).toEqual({ status: "error", messages: ["That did not go through. Try again, and if it keeps happening, contact Kaizena Flow support."] });
+    expect(fault.logged).toEqual([{ event: "action.failed", fields: { action: "return.approve", storeId } }]);
+    // Nothing moved, and the next try goes through.
+    expect(await r.getReturn(storeId, id)).toMatchObject({ status: "requested" });
+    expect(await actions.approveReturnAction(slug, id, idle, form({}))).toMatchObject({ status: "ok" });
   });
 });

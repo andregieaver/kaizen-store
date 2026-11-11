@@ -84,6 +84,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
   Server actions that change a store call `updateTag()` for its store and
   catalogue tags.
 
+## Server actions run through `storeAction()` / `platformAction()` (code review 1.4, `src/server/store-action.ts`): guard, language, one logged failure as a plain line
+
+- A server action runs through `storeAction({ store, key, action, answer }, handler)` (or, on the platform, `platformAction({ area, access, action, answer }, handler)`; `src/server/store-action.ts`, code review 1.4): the key is checked (a member without it gets *You do not have access to this.* in their language, never a 404), the handler runs in the person's language, and anything it throws that nobody planned for is logged once (`action.failed`, the action's name and the store) and answered with a plain line in the form, never Next's error page; `redirect()`, `notFound()` and `refresh()` pass through. `answer` turns a message into the action's own result shape. The orders, returns and books actions use it; other `actions.ts` files move onto it when touched.
+
 ## Plans and billing (`src/server/billing.ts`, decision D18)
 
 - Plans and billing (`src/server/billing.ts`, decision D18): `plans` and
