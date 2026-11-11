@@ -5755,6 +5755,7 @@ function MenuDrawerFields({
   part,
   drawer,
   upload,
+  menus,
   onChange,
 }: {
   part: DrawerPart;
