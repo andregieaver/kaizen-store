@@ -37,3 +37,31 @@ export function withDatabase(url, name) {
   next.pathname = `/${name}`;
   return next.toString();
 }
+
+/**
+ * A migration whose first line is this marker runs outside a transaction, one statement at a time (code review FD4): what Postgres
+ * refuses inside one, above all `create index concurrently`, which builds an index on a busy table without blocking its writes.
+ * Its statements are separated as Drizzle separates them (`--> statement-breakpoint`). `docs/ci-migrations.md` has the rule.
+ */
+export const NO_TRANSACTION = "-- kaizen:no-transaction";
+
+/** Whether a migration's text asks to run outside a transaction: the marker is its first line. */
+export const runsOutsideTransaction = (text) => text.replace(/^﻿/, "").split("\n", 1)[0].trim() === NO_TRANSACTION;
+
+/** The statements to send one by one: a marked file's, split at its breakpoints (parts that are only comments left out), else the whole text. */
+export function statementsOf(text) {
+  if (!runsOutsideTransaction(text)) return [text];
+  return text
+    .split(/^-->\s*statement-breakpoint\s*$/m)
+    .map((part) => part.trim())
+    .filter((part) => part.split("\n").some((line) => line.trim() !== "" && !line.trim().startsWith("--")));
+}
+
+/** Applies one migration's text: a marked file statement by statement on `sql` itself, any other in one call (`sql` may be a transaction). */
+export async function applyMigration(sql, text) {
+  for (const statement of statementsOf(text)) await sql.unsafe(statement);
+}
+
+/** The indexes a marked file names (`create [unique] index concurrently [if not exists] name`). */
+export const indexNamesIn = (text) =>
+  [...text.matchAll(/create\s+(?:unique\s+)?index\s+concurrently\s+(?:if\s+not\s+exists\s+)?("?)([a-z0-9_]+)\1/gi)].map((match) => match[2]);

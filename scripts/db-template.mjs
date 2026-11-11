@@ -20,7 +20,7 @@ import { createHash } from "node:crypto";
 
 import postgres from "postgres";
 
-import { readMigrations, readSeed, root, withDatabase } from "./lib/migrations.mjs";
+import { applyMigration, readMigrations, readSeed, root, runsOutsideTransaction, withDatabase } from "./lib/migrations.mjs";
 
 // One template per checkout (a lane in its own worktree has its own migrations, and two trees
 // sharing one template would rebuild it back and forth); TEMPLATE_DB overrides.
@@ -93,7 +93,8 @@ async function build({ fresh }) {
       await stop(TEMPLATE);
       await applyOn(TEMPLATE, async (db) => {
         for (const entry of pending) {
-          await db.begin((tx) => tx.unsafe(entry.sql));
+          if (runsOutsideTransaction(entry.sql)) await applyMigration(db, entry.sql);
+          else await db.begin((tx) => tx.unsafe(entry.sql));
           console.log(`applied ${entry.file}`);
         }
       });
@@ -111,7 +112,7 @@ async function build({ fresh }) {
   await admin.unsafe(`CREATE DATABASE ${quote(TEMPLATE)}`);
   const started = Date.now();
   await applyOn(TEMPLATE, async (db) => {
-    for (const entry of migrations) await db.unsafe(entry.sql);
+    for (const entry of migrations) await applyMigration(db, entry.sql);
     await db.unsafe(seed.sql);
   });
   await writeState({ files: want, seed: seed.checksum.slice(0, 12) });

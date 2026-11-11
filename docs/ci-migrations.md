@@ -12,10 +12,33 @@ and the run stops there. Rules it enforces:
 
 - a file that was applied and edited since is refused (a new migration, never an edit);
 - one run at a time (an advisory lock), `lock_timeout` 30 s and `statement_timeout` 10 min per file;
+- a file whose first line is `-- kaizen:no-transaction` runs outside a transaction (below);
 - `MIGRATE_EXPECT` (the project ref) must appear in the connection string, so a wrong secret never
   reaches another database;
 - the ledger must have rows before anything is applied (the baseline below), so a first run can never
   replay history.
+
+### Migrations that keep the busiest tables writable (code review FD4, D569)
+
+A plain `create index` blocks every insert and update on its table until the index is built, and `add constraint … foreign key`
+or `check` reads the whole table under a lock as strong: nothing while the tables are small, a checkout that stalls once they are
+not. On the hot tables (`orders`, `order_lines`, `visits`, `products`, `product_variants`, `customers`, `carts`, `cart_lines`), a
+migration therefore:
+
+- builds an index `concurrently` (`create index concurrently if not exists …`), in a file of its own whose **first line is
+  `-- kaizen:no-transaction`**. Postgres refuses a concurrent build inside a transaction, so `db-migrate.mjs` (and `db-setup.mjs`,
+  `db-template.mjs` and the tests' PGlite) run such a file statement by statement, split at `--> statement-breakpoint`, outside a
+  transaction, with `lock_timeout` 30 s and `statement_timeout` 30 min; its ledger row follows the last statement. When one fails,
+  the statements before it stay applied (so each is written to run again: `if not exists`), and an index the file names that was
+  left half built (invalid) is dropped again, concurrently, so the next run starts clean. `pnpm db:generate` writes a plain
+  `create index`: move it out of the generated file into a custom one (`pnpm exec drizzle-kit generate --custom --name …`) with the
+  marker and `concurrently`.
+- adds a constraint `not valid` (it holds for new rows at once) and checks the old rows with `alter table … validate constraint …`
+  in a later file, or later in a marked one, so the first lock is let go before the long read (validating lets writes through).
+
+A table the same file creates is empty, and anything goes there. `src/db/migration-safety.scan.test.ts` holds every migration after
+`20261111172838_sms_campaign_index.sql` to this; `src/db/migrate-no-transaction.int.test.ts` runs the marker on a scratch database.
+It sits beside the other rule for a migration: add, never rename or drop in the same change.
 
 A push to `main` takes one of two paths, chosen by reading production's ledger (the `pending` job runs
 `db-migrate.mjs --status` on the checked-out commit):

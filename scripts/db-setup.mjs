@@ -8,6 +8,8 @@ import path from "node:path";
 
 import postgres from "postgres";
 
+import { applyMigration } from "./lib/migrations.mjs";
+
 const url = process.env.DATABASE_URL;
 if (!url) {
   console.error("DATABASE_URL is not set");
@@ -22,7 +24,7 @@ try {
     .filter((file) => file.endsWith(".sql"))
     .sort();
   for (const file of migrations) {
-    await sql.unsafe(await readFile(path.join(root, "migrations", file), "utf8"));
+    await applyMigration(sql, await readFile(path.join(root, "migrations", file), "utf8"));
     console.log(`applied ${file}`);
   }
   if (process.argv.includes("--seed")) {

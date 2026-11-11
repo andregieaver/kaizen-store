@@ -7,6 +7,8 @@ import { PGlite } from "@electric-sql/pglite";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { vector } from "@electric-sql/pglite-pgvector";
 
+import { statementsOf } from "../../scripts/lib/migrations.mjs";
+
 const migrationsDir = path.join(process.cwd(), "supabase", "migrations");
 const cacheDir = path.join(process.cwd(), "node_modules", ".cache", "kaizen-test-db");
 
@@ -21,7 +23,8 @@ async function migrationFiles(): Promise<string[]> {
 async function migrated(): Promise<PGlite> {
   const db = new PGlite({ extensions });
   for (const file of await migrationFiles()) {
-    await db.exec(await readFile(path.join(migrationsDir, file), "utf8"));
+    // A file marked to run outside a transaction (code review FD4) goes statement by statement, as `scripts/db-migrate.mjs` sends it.
+    for (const statement of statementsOf(await readFile(path.join(migrationsDir, file), "utf8"))) await db.exec(statement);
   }
   return db;
 }

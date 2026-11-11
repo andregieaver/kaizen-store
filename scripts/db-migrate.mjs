@@ -10,7 +10,10 @@
 //       including <file> as applied without running it (refused when the ledger already has rows)
 //
 // Rules: files are applied in name order, each in its own transaction together with its ledger
-// row (a failure leaves the database as it was before that file); a file already applied and
+// row (a failure leaves the database as it was before that file), except a file whose first line is
+// `-- kaizen:no-transaction` (code review FD4): its statements run one by one outside a transaction,
+// as `create index concurrently` must, its ledger row follows the last, and an index it left half
+// built when one fails is dropped again, so the next run starts clean; a file already applied and
 // edited since is refused (a new migration, never an edit of an applied one); one run at a time
 // (an advisory lock); MIGRATE_EXPECT, when set, must appear in the connection string, so a wrong
 // secret never reaches the wrong database.
@@ -18,7 +21,7 @@ import { appendFileSync } from "node:fs";
 
 import postgres from "postgres";
 
-import { migrationsDir, readMigrations } from "./lib/migrations.mjs";
+import { migrationsDir, readMigrations, indexNamesIn, runsOutsideTransaction, statementsOf } from "./lib/migrations.mjs";
 
 const args = new Set(process.argv.slice(2));
 const baselineThrough = process.argv.find((arg) => arg.startsWith("--baseline-through="))?.split("=")[1];
@@ -50,6 +53,42 @@ if (!url) {
 if (process.env.MIGRATE_EXPECT && !url.includes(process.env.MIGRATE_EXPECT)) {
   console.error(`DATABASE_URL does not contain MIGRATE_EXPECT (${process.env.MIGRATE_EXPECT}); refusing to run.`);
   process.exit(1);
+}
+
+/**
+ * A marked file's statements, each on its own (outside a transaction, as `create index concurrently` must run). The limits are the
+ * session's, set for these statements and put back after: a concurrent build blocks no writes, so it may take longer than a file in a
+ * transaction, and it still gives up waiting for a lock after 30 s.
+ */
+async function applyOutsideTransaction(text) {
+  await sql.unsafe("SET lock_timeout = '30s'");
+  await sql.unsafe("SET statement_timeout = '30min'");
+  try {
+    for (const statement of statementsOf(text)) await sql.unsafe(statement);
+  } finally {
+    await sql.unsafe("RESET lock_timeout");
+    await sql.unsafe("RESET statement_timeout");
+  }
+}
+
+/**
+ * A concurrent build that fails leaves its index behind, invalid: still updated on every write, used by no read, and in the way of the
+ * file's `if not exists` when it runs again. Those the file names are dropped (concurrently too), and their names returned.
+ */
+async function dropHalfBuilt(text) {
+  const names = indexNamesIn(text);
+  if (names.length === 0) return [];
+  try {
+    const invalid = await sql.unsafe(
+      `SELECT n.nspname AS schema, c.relname AS name FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+         JOIN pg_namespace n ON n.oid = c.relnamespace WHERE NOT i.indisvalid AND c.relname = ANY($1)`,
+      [names],
+    );
+    for (const row of invalid) await sql.unsafe(`DROP INDEX CONCURRENTLY IF EXISTS "${row.schema}"."${row.name}"`);
+    return invalid.map((row) => row.name);
+  } catch {
+    return [];
+  }
 }
 
 const sql = postgres(url, { max: 1, onnotice: () => {}, connect_timeout: 30 });
@@ -120,21 +159,40 @@ try {
 
   for (const entry of pending) {
     const started = Date.now();
-    try {
-      await sql.begin(async (tx) => {
-        await tx.unsafe("SET LOCAL lock_timeout = '30s'");
-        await tx.unsafe("SET LOCAL statement_timeout = '10min'");
-        await tx.unsafe(entry.sql);
-        await tx.unsafe(`INSERT INTO ${LEDGER} (file, checksum, applied_by) VALUES ($1, $2, $3)`, [
-          entry.file,
-          entry.checksum,
-          process.env.GITHUB_ACTIONS ? "ci" : "manual",
+    const record = (executor) =>
+      executor.unsafe(`INSERT INTO ${LEDGER} (file, checksum, applied_by) VALUES ($1, $2, $3)`, [
+        entry.file,
+        entry.checksum,
+        process.env.GITHUB_ACTIONS ? "ci" : "manual",
+      ]);
+    if (runsOutsideTransaction(entry.sql)) {
+      try {
+        await applyOutsideTransaction(entry.sql);
+        await record(sql);
+      } catch (error) {
+        failed = true;
+        const dropped = await dropHalfBuilt(entry.sql);
+        summary([
+          ...report,
+          "",
+          `FAILED ${entry.file} (run outside a transaction: statements before the failing one stay applied, and are written to run again; ` +
+            `${dropped.length ? `dropped the half-built ${dropped.join(", ")}` : "no half-built index was left"}): ${error instanceof Error ? error.message : error}`,
         ]);
-      });
-    } catch (error) {
-      failed = true;
-      summary([...report, "", `FAILED ${entry.file} (rolled back, nothing from it is applied): ${error instanceof Error ? error.message : error}`]);
-      break;
+        break;
+      }
+    } else {
+      try {
+        await sql.begin(async (tx) => {
+          await tx.unsafe("SET LOCAL lock_timeout = '30s'");
+          await tx.unsafe("SET LOCAL statement_timeout = '10min'");
+          await tx.unsafe(entry.sql);
+          await record(tx);
+        });
+      } catch (error) {
+        failed = true;
+        summary([...report, "", `FAILED ${entry.file} (rolled back, nothing from it is applied): ${error instanceof Error ? error.message : error}`]);
+        break;
+      }
     }
     // Keep Supabase's own history in step where it can be (its versions are timestamps).
     try {
