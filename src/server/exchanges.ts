@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db, type Db } from "@/db/client";
 import { adjustmentOf } from "@/lib/credit-allocation";
@@ -62,10 +63,64 @@ import { getCheckoutAccount } from "./settings";
 import { sendOrderConfirmation, type EmailStore } from "./shopper-emails";
 import { uuidList } from "./sql-arrays";
 import { decideTax, loadTaxFacts, type TaxOutcome } from "./tax-treatment";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<Db, "execute">;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/**
+ * The rows this module reads (code review FV1): every column that carries money is checked (`col.minor`, `col.currency`). The wide rows (an exchange with
+ * `x.*`, a variant with its product, the original order's `*`) keep their other columns as read (`looseObject`), as before.
+ */
+const EXCHANGE_ROW = z.looseObject({
+  id: col.uuid,
+  currency: col.currency,
+  shipping_minor: col.minor,
+  credit_minor: col.minor,
+  total_minor: col.minor,
+  difference_minor: col.minor,
+  credit_at_processing: col.minorOrNull,
+  difference_at_processing: col.minorOrNull,
+});
+const EXCHANGE_LINE_ROW = z.object({
+  exchange_id: col.uuid,
+  n: col.int,
+  variant_id: col.uuid,
+  sku: col.text,
+  title: col.text,
+  quantity: col.int,
+  list_price_minor: col.minor,
+  unit_price_minor: col.minor,
+});
+const VARIANT_ROW = z.looseObject({ id: col.uuid, amount_minor: col.minorOrNull, cost_minor: col.minorOrNull });
+const ORIGINAL_ORDER_ROW = z.looseObject({ id: col.uuid, currency: col.currency, total_minor: col.minor });
+const ORDER_EXCHANGE_ROW = z.object({ exchange_id: col.uuid.nullable() });
+const BLOCK_ROW = z.object({ block: col.textOrNull, proposals: col.int, paid_mode: col.textOrNull, refundable: col.bool });
+const SHIPPING_RATE_ROW = z.object({ amount_minor: col.minor, free_over_minor: col.minorOrNull });
+const STATUS_ROW = z.object({ status: col.text });
+const LOCKED_ROW = z.object({ status: col.text, expires_at: col.timestampOrNull });
+const RETURN_ROW = z.object({ id: col.uuid, order_id: col.uuid, kind: col.text, status: col.text, refund_deadline: col.timestampOrNull, number: col.text });
+const OPEN_ROW = z.object({ id: col.uuid, status: col.text });
+const ID_ROW = z.object({ id: col.uuid });
+const CHANGED_ROW = z.object({ changed: col.bool });
+const ZONE_ROW = z.object({ time_zone: col.textOrNull });
+const COUNT_ROW = z.object({ count: col.int });
+const N_ROW = z.object({ n: col.int });
+const WISH_ROW = z.object({ id: col.uuid, exchange_wish_at: col.timestampOrNull });
+const WISH_OFFER_ROW = z.object({ id: col.uuid, exchange_wish_at: col.timestampOrNull, proposed: col.bool });
+const BLOCKED_ROW = z.object({ blocked: col.bool.nullable() });
+const ORDER_ID_ROW = z.object({ order_id: col.uuid });
+const NOTHING_SENT_ROW = z.object({ nothing_sent: col.bool.nullable() });
+const RETURN_RULES_ROW = z.object({ who_pays_return: col.textOrNull });
+const EXCHANGE_ORDER_ROW = z.object({ total_minor: col.minor, currency: col.currency, status: col.text });
+const RESTOCK_ROW = z.object({ order_line_id: col.uuid, quantity: col.int });
+const PAYMENT_LEFT_ROW = z.object({ id: col.uuid, provider: col.text, currency: col.currency, left_minor: col.minor });
+const EXCHANGE_PAYMENT_ROW = z.object({ id: col.uuid, order_id: col.uuid, exchange_id: col.uuid.nullable(), status: col.text, amount_minor: col.minor });
+const FOUND_ROW = z.object({ found: col.int });
+const DAY_ROW = z.object({ today: col.textOrNull, earliest: col.textOrNull });
+const MARKET_CODE_ROW = z.object({ market_code: col.text });
+const DUE_ROW = z.object({ store_id: col.uuid, id: col.uuid });
 
 /**
  * Exchanges (wave 3, D239, `docs/wave-3-exchanges.md` 2.2, 4.2 to 4.6): the server side. An exchange is a D153 return whose credit pays a new order.
@@ -268,10 +323,14 @@ const EXCHANGE_SELECT = sql`
 async function linesOf(runner: Runner, storeId: string, exchangeIds: readonly string[]): Promise<Map<string, ExchangeLineView[]>> {
   const out = new Map<string, ExchangeLineView[]>();
   if (exchangeIds.length === 0) return out;
-  const rows = await runner.execute<Row>(sql`
+  const rows = await typedRows(
+    EXCHANGE_LINE_ROW,
+    sql`
     select exchange_id, n, variant_id, sku, title, quantity, list_price_minor, unit_price_minor from commerce.return_exchange_lines
     where store_id = ${storeId}::uuid and exchange_id = any(${uuidList(exchangeIds)}) order by exchange_id, n
-  `);
+  `,
+    runner,
+  );
   for (const l of rows) {
     const list = out.get(String(l.exchange_id)) ?? [];
     list.push({
@@ -337,7 +396,7 @@ const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 /** One exchange of the store, with its replacements; null when it is not this store's. */
 export async function exchangeView(storeId: string, exchangeId: string, runner: Runner = db()): Promise<ExchangeView | null> {
   if (!isUuid(storeId) || !isUuid(exchangeId)) return null;
-  const [row] = await runner.execute<Row>(sql`${EXCHANGE_SELECT} where x.store_id = ${storeId}::uuid and x.id = ${exchangeId}::uuid`);
+  const row = await typedRow(EXCHANGE_ROW, sql`${EXCHANGE_SELECT} where x.store_id = ${storeId}::uuid and x.id = ${exchangeId}::uuid`, runner);
   if (!row) return null;
   return viewOf(row, (await linesOf(runner, storeId, [exchangeId])).get(exchangeId) ?? []);
 }
@@ -345,7 +404,7 @@ export async function exchangeView(storeId: string, exchangeId: string, runner: 
 /** Every exchange of a return, newest first (the return's page shows the open one and the history). */
 export async function exchangesOfReturn(storeId: string, returnId: string): Promise<ExchangeView[]> {
   if (!isUuid(storeId) || !isUuid(returnId)) return [];
-  const rows = await db().execute<Row>(sql`${EXCHANGE_SELECT} where x.store_id = ${storeId}::uuid and x.return_id = ${returnId}::uuid order by x.seq desc`);
+  const rows = await typedRows(EXCHANGE_ROW, sql`${EXCHANGE_SELECT} where x.store_id = ${storeId}::uuid and x.return_id = ${returnId}::uuid order by x.seq desc`);
   const lines = await linesOf(db(), storeId, rows.map((r) => String(r.id)));
   return rows.map((r) => viewOf(r, lines.get(String(r.id)) ?? []));
 }
@@ -358,7 +417,7 @@ export async function openExchangeOf(storeId: string, returnId: string): Promise
 /** The exchange an order was made for (an exchange order's page), or null. */
 export async function exchangeOfOrder(storeId: string, orderId: string): Promise<ExchangeView | null> {
   if (!isUuid(storeId) || !isUuid(orderId)) return null;
-  const [row] = await db().execute<Row>(sql`select exchange_id from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid`);
+  const row = await typedRow(ORDER_EXCHANGE_ROW, sql`select exchange_id from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid`);
   return row?.exchange_id ? exchangeView(storeId, String(row.exchange_id)) : null;
 }
 
@@ -373,7 +432,9 @@ export async function exchangeOfOrder(storeId: string, orderId: string): Promise
 export async function exchangeBlockFor(storeId: string, returnId: string, options: { claimedOk?: boolean; runner?: Runner } = {}): Promise<ExchangeBlock | null> {
   if (!isUuid(storeId) || !isUuid(returnId)) return "ended";
   const runner = options.runner ?? db();
-  const [row] = await runner.execute<Row>(sql`
+  const row = await typedRow(
+    BLOCK_ROW,
+    sql`
     select commerce.exchange_block(r.id, ${options.claimedOk ?? false}) as block,
       (select count(*)::int from commerce.return_exchanges x where x.store_id = r.store_id and x.return_id = r.id) as proposals,
       (select a.mode from commerce.payments p join commerce.connected_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account
@@ -382,7 +443,9 @@ export async function exchangeBlockFor(storeId: string, returnId: string, option
         where p.store_id = r.store_id and p.order_id = r.order_id and p.status = 'captured'
           and (p.provider = 'manual' or (p.provider = 'stripe' and a.mode is not null))) as refundable
     from commerce.returns r where r.store_id = ${storeId}::uuid and r.id = ${returnId}::uuid
-  `);
+  `,
+    runner,
+  );
   if (!row) return "ended";
   if (row.block) return String(row.block) as ExchangeBlock;
   const account = row.paid_mode ? await getCheckoutAccount(storeId) : null;
@@ -439,7 +502,9 @@ async function variantFacts(runner: Runner, storeId: string, market: Market, var
   const out = new Map<string, VariantFacts>();
   const ids = [...new Set(variantIds)].filter(isUuid);
   if (ids.length === 0) return out;
-  const rows = await runner.execute<Row>(sql`
+  const rows = await typedRows(
+    VARIANT_ROW,
+    sql`
     select v.id, v.sku, v.options, v.delivery, v.active, v.cost_minor, v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
       p.status, p.kind, p.host_id, p.subscription_only, p.withdrawal_exclusion, coalesce(v.tax_code, p.tax_code) as tax_code,
       commerce.vat_rate(${market.code}, p.vat_category) as vat_rate, cp.amount_minor,
@@ -451,7 +516,9 @@ async function variantFacts(runner: Runner, storeId: string, market: Market, var
     left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
     left join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     where v.store_id = ${storeId}::uuid and v.id = any(${uuidList(ids)})
-  `);
+  `,
+    runner,
+  );
   const messages = t(market.lang);
   for (const row of rows) {
     const options = (row.options ?? {}) as Record<string, string>;
@@ -514,7 +581,11 @@ async function priceReplacements(
   creditMinor: number,
 ): Promise<Priced> {
   const facts = await variantFacts(runner, storeId, market, lines.map((l) => l.variantId));
-  const [rate] = await runner.execute<Row>(sql`select amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${storeId}::uuid and market_code = ${market.code}`);
+  const rate = await typedRow(
+    SHIPPING_RATE_ROW,
+    sql`select amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${storeId}::uuid and market_code = ${market.code}`,
+    runner,
+  );
   const flat = rate ? { amountMinor: shown(market, Number(rate.amount_minor)), freeOverMinor: rate.free_over_minor === null ? null : shown(market, Number(rate.free_over_minor)) } : null;
   const taxFacts = await loadTaxFacts(runner, { storeId, market, cartId: null });
   const result = priceExchange(
@@ -583,7 +654,7 @@ export type ExchangeCredit = {
 export async function creditOf(storeId: string, returnId: string): Promise<ExchangeCredit | null> {
   const preview = await previewRefund(storeId, returnId);
   if (!preview) return null;
-  const [ret] = await db().execute<Row>(sql`select status::text as status from commerce.returns where store_id = ${storeId}::uuid and id = ${returnId}::uuid`);
+  const ret = await typedRow(STATUS_ROW, sql`select status::text as status from commerce.returns where store_id = ${storeId}::uuid and id = ${returnId}::uuid`);
   return {
     amountMinor: preview.refund.amountMinor,
     working: preview.refund.working,
@@ -617,10 +688,12 @@ type ReturnRow = { id: string; orderId: string; kind: "withdrawal" | "return"; s
 
 async function loadReturn(runner: Runner, storeId: string, returnId: string, lock = false): Promise<ReturnRow | null> {
   if (!isUuid(storeId) || !isUuid(returnId)) return null;
-  const [r] = await runner.execute<Row>(
+  const r = await typedRow(
+    RETURN_ROW,
     lock
       ? sql`select id, order_id, kind, status::text as status, refund_deadline, number from commerce.returns where store_id = ${storeId}::uuid and id = ${returnId}::uuid for update`
       : sql`select id, order_id, kind, status::text as status, refund_deadline, number from commerce.returns where store_id = ${storeId}::uuid and id = ${returnId}::uuid`,
+    runner,
   );
   if (!r) return null;
   return {
@@ -744,10 +817,14 @@ export async function saveExchangeDraft(storeId: string, actor: OrderActor, retu
   const done = await guarded(() =>
     db().transaction(async (tx) => {
       await loadReturn(tx, storeId, ret.id, true);
-      const [open] = await tx.execute<Row>(sql`
+      const open = await typedRow(
+        OPEN_ROW,
+        sql`
         select id, status from commerce.return_exchanges where store_id = ${storeId}::uuid and return_id = ${ret.id}::uuid
           and status in ('draft', 'proposed', 'confirmed', 'processed') for update
-      `);
+      `,
+        tx,
+      );
       if (open && open.status !== "draft") return refuse("open", "This return has a proposal out with the customer. Withdraw it to change the replacements.");
       let id: string;
       if (open) {
@@ -760,14 +837,19 @@ export async function saveExchangeDraft(storeId: string, actor: OrderActor, retu
           where store_id = ${storeId}::uuid and id = ${id}::uuid
         `);
       } else {
-        const [row] = await tx.execute<Row>(sql`
+        const row = await typedRow(
+          ID_ROW,
+          sql`
           insert into commerce.return_exchanges (store_id, return_id, order_id, seq, status, currency, market_slug, shipping_kind, shipping_minor, delivery_address,
             credit_minor, total_minor, difference_minor, made_by)
           values (${storeId}::uuid, ${ret.id}::uuid, ${ret.orderId}::uuid, 0, 'draft', ${market.currency}, ${market.slug}, ${input.shipping.kind}, ${priced.pricing.shippingMinor},
             ${addressJson(input.deliveryAddress)}::jsonb, ${credit.amountMinor}, ${priced.totalMinor}, ${priced.totalMinor - credit.amountMinor}, ${actor.accountId}::uuid)
           returning id
-        `);
-        id = String(row.id);
+        `,
+          tx,
+        );
+        if (!row) throw new Error("The exchange was not written.");
+        id = row.id;
       }
       await writeLines(tx, storeId, id, priced, input.lines);
       return { ok: true as const, id };
@@ -782,14 +864,17 @@ export async function saveExchangeDraft(storeId: string, actor: OrderActor, retu
  * then goes to an address the customer did not give, and anyone reading it could press Confirm as the customer (CRD Art. 13(1); D239 review). Refused.
  */
 async function emailChangedSinceReturn(storeId: string, returnId: string): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    CHANGED_ROW,
+    sql`
     select exists (
       select 1 from commerce.returns r
       join commerce.order_events e on e.store_id = r.store_id and e.order_id = r.order_id
       where r.store_id = ${storeId}::uuid and r.id = ${returnId}::uuid
         and e.type = 'order.edited' and coalesce(e.data -> 'fields', '[]'::jsonb) ? 'email' and e.created_at > r.created_at
     ) as changed
-  `);
+  `,
+  );
   return Boolean(row?.changed);
 }
 
@@ -814,17 +899,21 @@ export async function proposeExchange(
   // and have it recorded as the customer's. The proposal reaches the customer only by the email to the order's own address.
   if (options.createLink && ret.kind === "withdrawal") return refuse("link_withdrawal");
   if (ret.kind === "withdrawal" && (await emailChangedSinceReturn(storeId, returnId))) return refuse("email_changed");
-  const [zone] = await db().execute<Row>(sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
+  const zone = await typedRow(ZONE_ROW, sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
   const end = exchangeDeadline({ kind: ret.kind, step: "proposal", now: options.now ?? new Date(), refundDeadline: ret.refundDeadline, timeZone: String(zone?.time_zone ?? "Europe/Oslo") });
   if (!end.ok) return refuse("deadline_near");
   const { token, hash } = newExchangeToken();
   const done = await guarded(() =>
     db().transaction(async (tx) => {
       await loadReturn(tx, storeId, ret.id, true);
-      const [open] = await tx.execute<Row>(sql`
+      const open = await typedRow(
+        OPEN_ROW,
+        sql`
         select id, status from commerce.return_exchanges where store_id = ${storeId}::uuid and return_id = ${ret.id}::uuid
           and status in ('draft', 'proposed', 'confirmed', 'processed') for update
-      `);
+      `,
+        tx,
+      );
       if (open?.status === "processed") return refuse("open");
       if (open && open.status !== "draft") {
         await tx.execute(sql`update commerce.return_exchanges set status = 'cancelled' where store_id = ${storeId}::uuid and id = ${String(open.id)}::uuid`);
@@ -846,15 +935,20 @@ export async function proposeExchange(
           where store_id = ${storeId}::uuid and id = ${id}::uuid
         `);
       } else {
-        const [row] = await tx.execute<Row>(sql`
+        const row = await typedRow(
+          ID_ROW,
+          sql`
           insert into commerce.return_exchanges (store_id, return_id, order_id, seq, status, currency, market_slug, shipping_kind, shipping_minor, delivery_address,
             credit_minor, total_minor, difference_minor, token_hash, expires_at, made_by)
           values (${storeId}::uuid, ${ret.id}::uuid, ${ret.orderId}::uuid, 0, 'proposed', ${market.currency}, ${market.slug}, ${input.shipping.kind}, ${priced.pricing.shippingMinor},
             ${addressJson(input.deliveryAddress)}::jsonb, ${credit.amountMinor}, ${priced.totalMinor}, ${priced.totalMinor - credit.amountMinor},
             ${hash}, ${end.expiresAt.toISOString()}::timestamptz, ${actor.accountId}::uuid)
           returning id
-        `);
-        id = String(row.id);
+        `,
+          tx,
+        );
+        if (!row) throw new Error("The exchange was not written.");
+        id = row.id;
         await writeLines(tx, storeId, id, priced, input.lines);
       }
       await writeOrderEvent(
@@ -879,12 +973,15 @@ export async function proposeExchange(
 
 /** One send of an exchange's link today (`chat_usage` bucket `exchange:send:{id}`, one row a day). */
 async function takeSend(storeId: string, exchangeId: string): Promise<{ ok: boolean; n: number }> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    COUNT_ROW,
+    sql`
     insert into commerce.chat_usage (store_id, bucket, "window", count)
     values (${storeId}::uuid, ${`exchange:send:${exchangeId}`}, date_trunc('day', now()), 1)
     on conflict (store_id, bucket, "window") do update set count = commerce.chat_usage.count + 1
     returning count
-  `);
+  `,
+  );
   const n = Number(row?.count ?? 0);
   return { ok: n <= EXCHANGE_SENDS_PER_DAY, n };
 }
@@ -905,10 +1002,13 @@ export async function resendExchange(storeId: string, actor: OrderActor, exchang
   const taken = await takeSend(storeId, exchangeId);
   if (!taken.ok) return refuse("sends_limit");
   const { token, hash } = newExchangeToken();
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(
+    ID_ROW,
+    sql`
     update commerce.return_exchanges set token_hash = ${hash}
     where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid and status in ('proposed', 'confirmed', 'processed') returning id
-  `);
+  `,
+  );
   if (rows.length === 0) return refuse("lifecycle");
   await audit(actor.accountId, storeId, "return.exchange_proposed", { returnId: x.returnId, exchange: exchangeId, again: true, share: Boolean(options.createLink) }, { target: { type: "return", id: x.returnId } });
   const view = await marketOfOrder(storeId, x.orderId);
@@ -929,9 +1029,13 @@ export async function withdrawProposal(storeId: string, actor: OrderActor, excha
   if (!["draft", "proposed", "confirmed"].includes(x.status)) return refuse(x.status === "processed" ? "open" : "lifecycle");
   const done = await guarded(() =>
     db().transaction(async (tx) => {
-      const rows = await tx.execute<Row>(sql`
+      const rows = await typedRows(
+        ID_ROW,
+        sql`
         update commerce.return_exchanges set status = 'cancelled' where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid and status in ('draft', 'proposed', 'confirmed') returning id
-      `);
+      `,
+        tx,
+      );
       if (rows.length === 0) return refuse("lifecycle");
       await writeOrderEvent(tx, storeId, x.orderId, "return.exchange_cancelled", { returnId: x.returnId, exchange: exchangeId, by: actor.accountId }, "staff");
       return { ok: true as const };
@@ -956,10 +1060,14 @@ export async function recordExchangeAgreement(storeId: string, actor: OrderActor
   const data = parsed.data;
   const done = await guarded(() =>
     db().transaction(async (tx) => {
-      const rows = await tx.execute<Row>(sql`
+      const rows = await typedRows(
+        ID_ROW,
+        sql`
         update commerce.return_exchanges set status = 'confirmed', confirmed_by = 'staff', confirmed_channel = ${data.channel}
         where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid and status = 'proposed' returning id
-      `);
+      `,
+        tx,
+      );
       if (rows.length === 0) return refuse("lifecycle");
       await writeOrderEvent(
         tx,
@@ -986,11 +1094,14 @@ export async function recordExchangeAgreement(storeId: string, actor: OrderActor
  */
 export async function wishOfferedFor(storeId: string, returnToken: string): Promise<boolean> {
   if (!isUuid(storeId) || !/^[0-9a-f]{32,128}$/.test(returnToken)) return false;
-  const [ret] = await db().execute<Row>(sql`
+  const ret = await typedRow(
+    WISH_OFFER_ROW,
+    sql`
     select r.id, r.exchange_wish_at,
       exists (select 1 from commerce.return_exchanges x where x.store_id = r.store_id and x.return_id = r.id and x.status in ('proposed', 'confirmed', 'processed', 'settled')) as proposed
     from commerce.returns r where r.store_id = ${storeId}::uuid and r.public_token = ${returnToken}
-  `);
+  `,
+  );
   if (!ret || ret.exchange_wish_at || ret.proposed) return false;
   return (await exchangeBlockFor(storeId, String(ret.id))) === null;
 }
@@ -1005,7 +1116,7 @@ export async function recordExchangeWish(storeId: string, returnToken: string, r
   const parsed = exchangeWishInput.safeParse(raw);
   if (!parsed.success) return refuse("invalid", parsed.error.issues[0]?.message);
   if (!/^[0-9a-f]{32,128}$/.test(returnToken)) return refuse("not_found");
-  const [ret] = await db().execute<Row>(sql`select id, exchange_wish_at from commerce.returns where store_id = ${storeId}::uuid and public_token = ${returnToken}`);
+  const ret = await typedRow(WISH_ROW, sql`select id, exchange_wish_at from commerce.returns where store_id = ${storeId}::uuid and public_token = ${returnToken}`);
   if (!ret) return refuse("not_found");
   if (ret.exchange_wish_at) return refuse("wish_made");
   const block = await exchangeBlockFor(storeId, String(ret.id));
@@ -1013,7 +1124,9 @@ export async function recordExchangeWish(storeId: string, returnToken: string, r
   // `exchange_block()` answers `requested` before the checks after it, so a wish made with a request asks those itself: every accepted line physical goods
   // of a product, and no change to the order waiting for payment (`exchange_block()`'s order; the refund cannot be recorded on a request just made).
   if (block === "requested") {
-    const [later] = await db().execute<Row>(sql`
+    const later = await typedRow(
+      BLOCKED_ROW,
+      sql`
       select exists (
           select 1 from commerce.return_lines rl join commerce.order_lines ol on ol.store_id = rl.store_id and ol.id = rl.order_line_id
           where rl.store_id = ${storeId}::uuid and rl.return_id = ${String(ret.id)}::uuid and rl.decision = 'accept' and (ol.delivery <> 'physical' or ol.variant_id is null)
@@ -1021,13 +1134,17 @@ export async function recordExchangeWish(storeId: string, returnToken: string, r
           select 1 from commerce.order_edits e join commerce.returns r on r.store_id = e.store_id and r.order_id = e.order_id
           where r.store_id = ${storeId}::uuid and r.id = ${String(ret.id)}::uuid and e.status = 'awaiting_payment'
         ) as blocked
-    `);
+    `,
+    );
     if (later?.blocked) return refuse("wish_off");
   }
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(
+    ORDER_ID_ROW,
+    sql`
     update commerce.returns set exchange_wish_at = now(), exchange_wish_note = ${parsed.data.note}
     where store_id = ${storeId}::uuid and id = ${String(ret.id)}::uuid and exchange_wish_at is null returning order_id
-  `);
+  `,
+  );
   if (rows.length === 0) return refuse("wish_made");
   await writeOrderEvent(db(), storeId, String(rows[0].order_id), "return.exchange_wished", { returnId: String(ret.id) }, "customer");
   const { sendExchangeWished } = await import("./exchange-emails");
@@ -1073,7 +1190,7 @@ export async function processExchange(storeId: string, actor: OrderActor, exchan
   // The refund is offered from in transit on when the store withholds until the goods are back (Art. 13(3)): the exchange waits as the refund would.
   const [{ refundWhen }, [sent]] = await Promise.all([
     getReturnSettings(storeId),
-    db().execute<Row>(sql`select ${NOTHING_SENT_SQL} as nothing_sent from commerce.returns r where r.store_id = ${storeId}::uuid and r.id = ${x.returnId}::uuid`),
+    typedRows(NOTHING_SENT_ROW, sql`select ${NOTHING_SENT_SQL} as nothing_sent from commerce.returns r where r.store_id = ${storeId}::uuid and r.id = ${x.returnId}::uuid`),
   ]);
   const hold = { holds: refundWhen === "received" && !sent?.nothing_sent };
   if (hold?.holds && !["in_transit", "received", "inspected"].includes(ret.status)) return refuse("not_received");
@@ -1084,7 +1201,7 @@ export async function processExchange(storeId: string, actor: OrderActor, exchan
   if (!credit || !view) return refuse("not_offered");
   const outcome = exchangeOutcome(credit.amountMinor, x.totalMinor);
   if (!creditStillHolds(x.differenceMinor, outcome.differenceMinor)) return refuse("credit_changed");
-  const [zone] = await db().execute<Row>(sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
+  const zone = await typedRow(ZONE_ROW, sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
   const payEnd = exchangeDeadline({ kind: ret.kind, step: "pay", now, refundDeadline: ret.refundDeadline, timeZone: String(zone?.time_zone ?? "Europe/Oslo") });
   if (outcome.toPayMinor > 0 && !payEnd.ok) return refuse("deadline_near");
   const holdUntil: { at: Date } | { minutes: number } = outcome.toPayMinor > 0 && payEnd.ok ? { at: payEnd.expiresAt } : { minutes: EXCHANGE_SETTLE_HOLD_MINUTES };
@@ -1098,16 +1215,24 @@ export async function processExchange(storeId: string, actor: OrderActor, exchan
         throw new RolledBack(refused);
       };
       await tx.execute(sql`select set_config('kaizen.exchange', ${exchangeId}, true)`);
-      const [original] = await tx.execute<Row>(sql`select * from commerce.orders where store_id = ${storeId}::uuid and id = ${x.orderId}::uuid for update`);
+      const original = await typedRow(ORIGINAL_ORDER_ROW, sql`select * from commerce.orders where store_id = ${storeId}::uuid and id = ${x.orderId}::uuid for update`, tx);
       await loadReturn(tx, storeId, x.returnId, true);
-      const [locked] = await tx.execute<Row>(sql`select status, expires_at from commerce.return_exchanges where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid for update`);
+      const locked = await typedRow(
+        LOCKED_ROW,
+        sql`select status, expires_at from commerce.return_exchanges where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid for update`,
+        tx,
+      );
       if (!original || locked?.status !== "confirmed") return stop(refuse("lifecycle"));
       // The refund's claim (D153): no other member's refund is under way, and none can start while this exchange is processed (the database's rule).
-      const claimed = await tx.execute<Row>(sql`
+      const claimed = await typedRows(
+        ID_ROW,
+        sql`
         update commerce.returns set refund_claimed_at = now()
         where store_id = ${storeId}::uuid and id = ${x.returnId}::uuid and refund_minor is null
           and (refund_claimed_at is null or refund_claimed_at < now() - interval '2 minutes') returning id
-      `);
+      `,
+        tx,
+      );
       if (claimed.length === 0) return stop(refuse("busy"));
       // Priced again in the transaction, with the prices frozen on the proposal and the VAT of the day: what the order is made of.
       const priced = await priceReplacements(tx, storeId, view.market, lines, shipping, credit.amountMinor);
@@ -1119,8 +1244,12 @@ export async function processExchange(storeId: string, actor: OrderActor, exchan
       if (!plan.ok) return stop(refuse("stock_short"));
       const behind = new Map(plan.behind);
       const tax = priced.pricing.tax!;
-      const [rules] = await tx.execute<Row>(sql`select who_pays_return from commerce.return_settings where store_id = ${storeId}::uuid`);
-      const [rate] = await tx.execute<Row>(sql`select amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${storeId}::uuid and market_code = ${view.market.code}`);
+      const rules = await typedRow(RETURN_RULES_ROW, sql`select who_pays_return from commerce.return_settings where store_id = ${storeId}::uuid`, tx);
+      const rate = await typedRow(
+        SHIPPING_RATE_ROW,
+        sql`select amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${storeId}::uuid and market_code = ${view.market.code}`,
+        tx,
+      );
       const goodsTotal = lines.reduce((sum, l) => sum + l.unitPriceMinor * l.quantity, 0);
       // The cheapest standard delivery (D153's `standard_shipping_minor`): the market's flat rate on these goods, as checkout judges it; none for a free exchange shipping.
       const standard = x.shippingKind === "free" ? 0 : rate ? (rate.free_over_minor !== null && goodsTotal >= shown(view.market, Number(rate.free_over_minor)) ? 0 : shown(view.market, Number(rate.amount_minor))) : null;
@@ -1256,7 +1385,10 @@ export async function settleExchange(storeId: string, exchangeId: string, option
   if (x.status === "settled") return { ok: true, already: true };
   if (x.status !== "processed" || !x.exchangeOrderId || x.creditAtProcessingMinor === null) return refuse("lifecycle");
   const credit = x.creditAtProcessingMinor;
-  const [order] = await db().execute<Row>(sql`select total_minor, currency, status::text as status from commerce.orders where store_id = ${storeId}::uuid and id = ${x.exchangeOrderId}::uuid`);
+  const order = await typedRow(
+    EXCHANGE_ORDER_ROW,
+    sql`select total_minor, currency, status::text as status from commerce.orders where store_id = ${storeId}::uuid and id = ${x.exchangeOrderId}::uuid`,
+  );
   if (!order || order.status !== "pending_payment") return refuse("lifecycle");
   const total = Number(order.total_minor);
   const outcome = exchangeOutcome(credit, total);
@@ -1265,37 +1397,49 @@ export async function settleExchange(storeId: string, exchangeId: string, option
   if (!preview) return refuse("not_found");
   const refund = preview.refund;
   // The returned units go back to stock as inspected (the lines staff marked as going back), never more than is left to put back.
-  const lines = await db().execute<Row>(sql`
+  const lines = await typedRows(
+    RESTOCK_ROW,
+    sql`
     select rl.order_line_id, rl.quantity from commerce.return_lines rl
     where rl.store_id = ${storeId}::uuid and rl.return_id = ${x.returnId}::uuid and rl.decision = 'accept' and rl.restock
-  `);
+  `,
+  );
   const restock = lines.map((l) => ({ lineId: String(l.order_line_id), quantity: Number(l.quantity) }));
   const reason = `Exchange for return ${x.returnNumber}`;
   let settledHere = false;
 
   const write = async (tx: Tx, remainderId: string | null, remainderParts: string[] = []) => {
     await tx.execute(sql`select set_config('kaizen.exchange', ${exchangeId}, true)`);
-    const [locked] = await tx.execute<Row>(sql`select status from commerce.return_exchanges where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid for update`);
+    const locked = await typedRow(STATUS_ROW, sql`select status from commerce.return_exchanges where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid for update`, tx);
     if (locked?.status !== "processed") return;
     // The transfer, split over the original's captured payments (Stripe's first, then money taken outside), each part a refund row with its exchange payment.
-    const payments = await tx.execute<Row>(sql`
+    const payments = await typedRows(
+      PAYMENT_LEFT_ROW,
+      sql`
       select p.id, p.provider, p.currency,
         p.amount_minor - coalesce((select sum(r.amount_minor) from commerce.refunds r where r.store_id = p.store_id and r.payment_id = p.id and r.status::text <> 'failed'), 0) as left_minor
       from commerce.payments p
       where p.store_id = ${storeId}::uuid and p.order_id = ${x.orderId}::uuid and p.status = 'captured' and p.provider in ('stripe', 'manual')
       order by (p.provider <> 'stripe'), p.created_at, p.id
-    `);
+    `,
+      tx,
+    );
     const parts = splitRefund(payments.map((p) => ({ id: String(p.id), provider: p.provider === "manual" ? "manual" : "stripe", leftMinor: Number(p.left_minor) })), outcome.transferMinor);
     if (parts === null) throw new TransferShort();
     const transfers: string[] = [];
     for (const part of parts) {
       const currency = String(payments.find((p) => String(p.id) === part.paymentId)?.currency ?? x.currency).trim();
-      const [rf] = await tx.execute<Row>(sql`
+      const rf = await typedRow(
+        ID_ROW,
+        sql`
         insert into commerce.refunds (store_id, payment_id, amount_minor, reason, status, kind, exchange_id, created_by)
         values (${storeId}::uuid, ${part.paymentId}::uuid, ${part.amountMinor}, ${reason}, 'succeeded', 'transfer', ${exchangeId}::uuid, ${options.accountId}::uuid)
         returning id
-      `);
-      transfers.push(String(rf.id));
+      `,
+        tx,
+      );
+      if (!rf) throw new Error("The transfer refund was not written.");
+      transfers.push(rf.id);
       await tx.execute(sql`
         insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status, kaizen_fee_minor, exchange_id, transfer_refund_id)
         values (${storeId}::uuid, ${x.exchangeOrderId}::uuid, 'exchange', ${`exchange:${String(rf.id)}`}, ${part.amountMinor}, ${currency}, 'captured', 0, ${exchangeId}::uuid, ${String(rf.id)}::uuid)
@@ -1348,10 +1492,13 @@ export async function settleExchange(storeId: string, exchangeId: string, option
   let result: RefundOutcome | null = null;
   try {
     if (outcome.refundMinor > 0 || restock.length > 0) {
-      const [failedBefore] = await db().execute<Row>(sql`
+      const failedBefore = await typedRow(
+        N_ROW,
+        sql`
         select count(*)::int as n from commerce.order_events
         where store_id = ${storeId}::uuid and order_id = ${x.orderId}::uuid and type = 'exchange.refund_failed' and data ->> 'exchange' = ${exchangeId}
-      `);
+      `,
+      );
       result = await refundOrder(storeId, x.orderId, { amountMinor: outcome.refundMinor, reason, restock }, options.accountId, {
         idempotencyKey: `exchange-refund:${exchangeId}:${Number(failedBefore?.n ?? 0)}`,
         returnId: x.returnId,
@@ -1361,7 +1508,7 @@ export async function settleExchange(storeId: string, exchangeId: string, option
         // twice), and never when another call settled the exchange first (the row is locked here, as `write()` locks it, and must still be `processed`).
         restockIf: async (tx, status) => {
           if (status === "failed") return false;
-          const [locked] = await tx.execute<Row>(sql`select status from commerce.return_exchanges where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid for update`);
+          const locked = await typedRow(STATUS_ROW, sql`select status from commerce.return_exchanges where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid for update`, tx);
           return locked?.status === "processed";
         },
         inTransaction: async (tx, out) => {
@@ -1417,16 +1564,19 @@ export type ExchangePaymentOutcome = "settled" | "already" | "refunded" | "not_e
  * Stripe was processing) is captured and refunded in full at once from itself (2.8), event `exchange.payment_refunded`.
  */
 export async function completeExchangePayment(storeId: string, sessionId: string): Promise<ExchangePaymentOutcome> {
-  const [payment] = await db().execute<Row>(sql`
+  const payment = await typedRow(
+    EXCHANGE_PAYMENT_ROW,
+    sql`
     select id, order_id, exchange_id, status, amount_minor from commerce.payments where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${sessionId}
-  `);
+  `,
+  );
   if (!payment?.exchange_id) return "not_exchange";
   const exchangeId = String(payment.exchange_id);
   const paymentId = String(payment.id);
   const x = await exchangeView(storeId, exchangeId);
   if (!x) return "not_exchange";
   if (x.status === "settled") {
-    const [mine] = await db().execute<Row>(sql`select status from commerce.payments where store_id = ${storeId}::uuid and id = ${paymentId}::uuid`);
+    const mine = await typedRow(STATUS_ROW, sql`select status from commerce.payments where store_id = ${storeId}::uuid and id = ${paymentId}::uuid`);
     if (mine?.status === "captured") return "already";
   }
   if (x.status === "processed") {
@@ -1435,7 +1585,7 @@ export async function completeExchangePayment(storeId: string, sessionId: string
   }
   // The money arrived for an exchange that cannot settle: captured and given back in full, from this payment (the exchange order's).
   await db().execute(sql`update commerce.payments set status = 'captured', updated_at = now() where store_id = ${storeId}::uuid and id = ${paymentId}::uuid and status <> 'captured'`);
-  const [done] = await db().execute<Row>(sql`select 1 from commerce.refunds where store_id = ${storeId}::uuid and payment_id = ${paymentId}::uuid and status::text <> 'failed'`);
+  const done = await typedRow(FOUND_ROW, sql`select 1 as found from commerce.refunds where store_id = ${storeId}::uuid and payment_id = ${paymentId}::uuid and status::text <> 'failed'`);
   if (done) return "refunded";
   const back = await refundOrder(
     storeId,
@@ -1463,11 +1613,14 @@ export async function completeExchangePayment(storeId: string, sessionId: string
 
 /** A Stripe session of an exchange's difference that expired or failed: only its payment row is marked (the exchange job decides what becomes of the order). */
 export async function markExchangeSessionEnded(storeId: string, sessionId: string, status: "cancelled" | "failed"): Promise<boolean> {
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(
+    ID_ROW,
+    sql`
     update commerce.payments set status = ${status}, updated_at = now()
     where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${sessionId} and exchange_id is not null and status = 'pending'
     returning id
-  `);
+  `,
+  );
   return rows.length > 0;
 }
 
@@ -1493,14 +1646,17 @@ export async function recordExchangePaidOutside(
   if (x.outcome.toPayMinor <= 0) return refuse("nothing_to_pay");
   if (input.receivedOn) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.receivedOn)) return refuse("received_on");
-    const [day] = await db().execute<Row>(sql`
+    const day = await typedRow(
+      DAY_ROW,
+      sql`
       select commerce.store_day(${storeId}::uuid, now())::text as today, (commerce.store_day(${storeId}::uuid, now()) - ${MANUAL_RECEIVED_DAYS_MAX}::int)::text as earliest
-    `);
+    `,
+    );
     if (input.receivedOn > String(day?.today) || input.receivedOn < String(day?.earliest)) return refuse("received_on");
   }
   let cashWarning = false;
   if (input.method === "cash") {
-    const [m] = await db().execute<Row>(sql`select market_code from commerce.orders where store_id = ${storeId}::uuid and id = ${x.exchangeOrderId}::uuid`);
+    const m = await typedRow(MARKET_CODE_ROW, sql`select market_code from commerce.orders where store_id = ${storeId}::uuid and id = ${x.exchangeOrderId}::uuid`);
     const code = String(m?.market_code ?? "").trim();
     const check = checkCash(code, x.outcome.toPayMinor, x.currency, await cashLimitInCurrency(storeId, code, x.currency));
     if (check.kind === "refuse") return refuse("cash_limit");
@@ -1544,12 +1700,12 @@ async function endExchange(
   const done = await guarded(() =>
     db().transaction(async (tx) => {
       if (x.exchangeOrderId) await tx.execute(sql`select id from commerce.orders where store_id = ${storeId}::uuid and id = ${x.exchangeOrderId}::uuid for update`);
-      const [locked] = await tx.execute<Row>(sql`select status from commerce.return_exchanges where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid for update`);
+      const locked = await typedRow(STATUS_ROW, sql`select status from commerce.return_exchanges where store_id = ${storeId}::uuid and id = ${exchangeId}::uuid for update`, tx);
       const status = String(locked?.status ?? "");
       if (!["draft", "proposed", "confirmed", "processed"].includes(status)) return refuse("lifecycle");
       const target = status === "draft" ? "cancelled" : to;
       if (status === "processed" && x.exchangeOrderId) {
-        const [o] = await tx.execute<Row>(sql`select status::text as status from commerce.orders where store_id = ${storeId}::uuid and id = ${x.exchangeOrderId}::uuid`);
+        const o = await typedRow(STATUS_ROW, sql`select status::text as status from commerce.orders where store_id = ${storeId}::uuid and id = ${x.exchangeOrderId}::uuid`, tx);
         if (o?.status !== "pending_payment" && o?.status !== "cancelled") return refuse("paid");
         if (o?.status === "pending_payment") await tx.execute(sql`select commerce.cancel_unpaid_order(${x.exchangeOrderId}::uuid, ${`exchange ${to}`})`);
         await tx.execute(sql`
@@ -1596,11 +1752,14 @@ export type ExpireExchangesRun = { expired: number; waiting: number; paid: numbe
  */
 export async function expireExchanges(now: Date = new Date(), options: { limit?: number } = {}): Promise<ExpireExchangesRun> {
   const run: ExpireExchangesRun = { expired: 0, waiting: 0, paid: 0, failed: 0 };
-  const due = await db().execute<Row>(sql`
+  const due = await typedRows(
+    DUE_ROW,
+    sql`
     select x.store_id, x.id from commerce.return_exchanges x
     where x.status in ('proposed', 'confirmed', 'processed') and x.expires_at <= ${now.toISOString()}::timestamptz and commerce.store_is_active(x.store_id)
     order by x.expires_at limit ${options.limit ?? 100}
-  `);
+  `,
+  );
   for (const row of due) {
     const storeId = String(row.store_id);
     const id = String(row.id);
@@ -1625,9 +1784,12 @@ export async function expireExchanges(now: Date = new Date(), options: { limit?:
 
 /** A store being closed (D171): every open exchange ends `cancelled` (its order cancelled, its stock released); the customers are refunded as usual by staff. */
 export async function cancelExchangesForClosure(storeId: string, accountId: string | null): Promise<{ cancelled: number; left: number }> {
-  const open = await db().execute<Row>(sql`
+  const open = await typedRows(
+    ID_ROW,
+    sql`
     select id from commerce.return_exchanges where store_id = ${storeId}::uuid and status in ('draft', 'proposed', 'confirmed', 'processed')
-  `);
+  `,
+  );
   let cancelled = 0;
   for (const row of open) {
     const done = await endExchange(storeId, String(row.id), "cancelled", accountId ? staffActor(accountId) : { accountId: null, kind: "system" }).catch(() => null);
@@ -1638,9 +1800,12 @@ export async function cancelExchangesForClosure(storeId: string, accountId: stri
 
 /** Open exchanges of a store (the closure screen's warning; never a blocker). */
 export async function openExchangeCount(storeId: string): Promise<number> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    N_ROW,
+    sql`
     select count(*)::int as n from commerce.return_exchanges where store_id = ${storeId}::uuid and status in ('proposed', 'confirmed', 'processed')
-  `);
+  `,
+  );
   return Number(row?.n ?? 0);
 }
 
@@ -1651,12 +1816,15 @@ export async function openExchangeCount(storeId: string): Promise<number> {
 /** Clears an ended exchange's token hash `EXCHANGE_TOKEN_KEEP_DAYS` after it ended (or was settled). */
 export async function pruneExchangeTokens(now: Date = new Date()): Promise<number> {
   const cutoff = new Date(now.getTime() - EXCHANGE_TOKEN_KEEP_DAYS * 86_400_000).toISOString();
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(
+    ID_ROW,
+    sql`
     update commerce.return_exchanges set token_hash = null
     where token_hash is not null and status in ('settled', 'declined_by_customer', 'cancelled', 'expired', 'superseded')
       and coalesce(ended_at, settled_at) < ${cutoff}::timestamptz
     returning id
-  `);
+  `,
+  );
   return rows.length;
 }
 
@@ -1667,12 +1835,16 @@ export async function pruneExchangeWishes(now: Date = new Date()): Promise<numbe
   return db().transaction(async (tx) => {
     // The return's rules keep a wish as it was made; only the anonymising may blank it, as it blanks the other notes.
     await tx.execute(sql`select set_config('commerce.anonymising', 'on', true)`);
-    const rows = await tx.execute<Row>(sql`
+    const rows = await typedRows(
+      ID_ROW,
+      sql`
       update commerce.returns set exchange_wish_note = '[removed]'
       where exchange_wish_note is not null and exchange_wish_note <> '[removed]' and exchange_wish_note <> ''
         and status::text in ('closed', 'declined', 'cancelled') and coalesce(closed_at, updated_at) < ${cutoff.toISOString()}::timestamptz
       returning id
-    `);
+    `,
+      tx,
+    );
     await tx.execute(sql`select set_config('commerce.anonymising', '', true)`);
     return rows.length;
   });
@@ -1685,7 +1857,7 @@ export async function pruneExchangeWishes(now: Date = new Date()): Promise<numbe
 /** The exchange behind a token, within this store: null for any token that is not the current one of one of its exchanges. */
 export async function exchangeIdForToken(storeId: string, token: string): Promise<string | null> {
   if (!EXCHANGE_TOKEN.test(token) || !isUuid(storeId)) return null;
-  const [row] = await db().execute<Row>(sql`select id from commerce.return_exchanges where store_id = ${storeId}::uuid and token_hash = ${hashExchangeToken(token)}`);
+  const row = await typedRow(ID_ROW, sql`select id from commerce.return_exchanges where store_id = ${storeId}::uuid and token_hash = ${hashExchangeToken(token)}`);
   return row ? String(row.id) : null;
 }
 

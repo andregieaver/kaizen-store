@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { sql, type SQL } from "drizzle-orm";
 import { after } from "next/server";
 import type Stripe from "stripe";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { formatClock, formatRangeDates, parseRentalPeriod, rangeEndsAt } from "@/lib/booking-ranges";
@@ -60,9 +61,64 @@ import { openPaymentSession, paymentConnection } from "./payment-session";
 import { prepareCapture } from "./payment-capture";
 import { decideTerms, recordOrderTerms, termsFacts } from "./payment-terms";
 import { buyerFacts } from "./company-locations";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/**
+ * The rows checkout reads (code review FV1): every column that carries money is checked (`col.minor`, `col.currency`), so a changed column
+ * throws `RowShapeError` naming it instead of pricing with NaN or 0. The wide rows (a cart line with its product, plan and booking, the
+ * cart with its buyer) keep their other columns as read (`looseObject`), as before.
+ */
+const ORDER_LINE_ROW = z.looseObject({
+  quantity: col.int,
+  signup_fee: col.minor,
+  amount_minor: col.minorOrNull,
+  cost_minor: col.minorOrNull,
+});
+const CART_ROW = z.looseObject({
+  id: col.uuid,
+  bonus_request_minor: col.minorOrNull,
+  offered: col.bool,
+  is_gift: col.bool.nullable(),
+  gift_to: col.textOrNull,
+  gift_from: col.textOrNull,
+  gift_message: col.textOrNull,
+});
+const SHIPPING_RATE_ROW = z.object({ amount_minor: col.minor, free_over_minor: col.minorOrNull });
+const RETURN_RULES_ROW = z.object({ who_pays_return: col.textOrNull });
+const COUNT_ROW = z.object({ n: col.int });
+const ID_ROW = z.object({ id: col.uuid });
+const REFERENCE_ROW = z.object({ provider_reference: col.text });
+const CLOSED_ROW = z.object({ closed: col.bool.nullable() });
+const ACTIVE_MODE_ROW = z.object({ active_mode: col.text });
+const CANCELLED_ROW = z.object({ cancelled: col.bool.nullable() });
+const COMPLETED_ROW = z.object({ completed: col.bool.nullable() });
+const OPEN_CHECKOUT_ROW = z.object({
+  id: col.uuid,
+  provider_reference: col.textOrNull,
+  provider_account: col.textOrNull,
+  client_secret: col.textOrNull,
+  mode: col.text,
+  expired: col.bool.nullable(),
+  seconds_left: col.int,
+  changed: col.bool.nullable(),
+  ships: col.bool.nullable(),
+  digital: col.bool.nullable(),
+  service_request: col.bool,
+  interval: col.textOrNull,
+  interval_count: col.int.nullable(),
+  renewal_minor: col.minorOrNull,
+});
+const EARLIER_ROW = z.object({
+  id: col.uuid,
+  payment_id: col.uuid.nullable(),
+  provider: col.textOrNull,
+  provider_reference: col.textOrNull,
+  provider_account: col.textOrNull,
+  test_mode: col.bool.nullable(),
+});
 
 export type CheckoutShop = { storeId: string; storeSlug: string; market: Market };
 
@@ -218,7 +274,9 @@ function orderLineRows(
   /** The buyer whose price lists price the lines (D321, `commerce.line_price()` with the line's price breaks, D323, as the cart reads it); null for the market price. */
   customerId: string | null,
 ) {
-  return tx.execute<Row>(sql`
+  return typedRows(
+    ORDER_LINE_ROW,
+    sql`
       select
         cl.variant_id, cl.quantity, v.sku, v.options, v.delivery, p.id as product_id, p.audience,
         cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
@@ -267,7 +325,9 @@ function orderLineRows(
       left join commerce.appointment_settings aps on aps.store_id = p.store_id and aps.product_id = p.id
       where ${where}
       order by p.handle, v.sku, cl.selling_plan_id nulls first, cl.starts_at
-  `);
+  `,
+    tx,
+  );
 }
 
 /**
@@ -298,7 +358,9 @@ export async function placeOrder(
 ): Promise<PlaceResult> {
   const { storeId, market } = shop;
   return inTransaction(async (tx): Promise<PlaceResult> => {
-    const [cart] = await tx.execute<Row>(sql`
+    const cart = await typedRow(
+      CART_ROW,
+      sql`
       -- A company is bought for only where the store sells to businesses (B2B; D178: never with Sell to businesses off).
       select c.id, c.discount_code, c.more_codes, ${STORE_AUDIENCE} as store_audience, s.time_zone, s.customer_accounts,
         case when ${STORE_AUDIENCE} <> 'consumers' then c.company_name end as company_name,
@@ -311,7 +373,9 @@ export async function placeOrder(
       where c.store_id = ${storeId}::uuid and c.id = ${cartId}::uuid and c.market_code = ${market.code}
         and c.status = 'open' and c.expires_at > now()
       for update of c
-    `);
+    `,
+      tx,
+    );
     if (!cart) return { ok: false, problem: "empty" };
     // A store that requires an account (D365) sells only to a signed-in customer; every way to an order that has none comes through here.
     if (cart.customer_accounts === "required" && !customerId) return { ok: false, problem: "sign_in_required" };
@@ -386,10 +450,14 @@ export async function placeOrder(
         String(cart.time_zone ?? "Europe/Oslo"),
       );
 
-    const [rate] = await tx.execute<Row>(sql`
+    const rate = await typedRow(
+      SHIPPING_RATE_ROW,
+      sql`
       select amount_minor, free_over_minor from commerce.shipping_rates
       where store_id = ${storeId}::uuid and market_code = ${market.code}
-    `);
+    `,
+      tx,
+    );
     const ships = physical.length > 0;
     // Which VAT the order carries (D157) rests on facts read here, with the cart's stored check of its VAT number: VIES is
     // never asked while an order is placed. Each line takes its product's rate (D65); a fee without one, the standard rate.
@@ -764,7 +832,7 @@ export async function placeOrder(
           : null
         : shipping;
     // Who pays for sending a withdrawn item back, as the store's setting stands now: the shopper is told of it before buying.
-    const [returnRules] = await tx.execute<Row>(sql`select who_pays_return from commerce.return_settings where store_id = ${storeId}::uuid`);
+    const returnRules = await typedRow(RETURN_RULES_ROW, sql`select who_pays_return from commerce.return_settings where store_id = ${storeId}::uuid`, tx);
     const returnCostPayer = returnRules?.who_pays_return === "store" ? "store" : "shopper";
     const discountTotal = priced.reduce((sum, p) => sum + p.discount, 0) + shippingDiscount;
     const memberTotal = priced.reduce((sum, p) => sum + p.member, 0);
@@ -884,7 +952,7 @@ export async function placeOrder(
       const waits = place ? needsApproval(place.role, buyer.limit, { minor: limitTotal, currency: buyer.limit?.currency ?? market.currency }) : false;
       if (waits) {
         const goodsOnly = !rhythm && !hostId && balance === 0 && fees.length === 0 && priced.every((p) => (p.line.kind === "goods" || p.line.kind === "bundle") && !p.startsAt);
-        const [cards] = await tx.execute<Row>(sql`select count(*)::int as n from commerce.cart_gift_cards where store_id = ${storeId}::uuid and cart_id = ${cartId}::uuid`);
+        const cards = await typedRow(COUNT_ROW, sql`select count(*)::int as n from commerce.cart_gift_cards where store_id = ${storeId}::uuid and cart_id = ${cartId}::uuid`, tx);
         if (!goodsOnly || Number(cards?.n ?? 0) > 0) return { ok: false, problem: "approval" };
       }
       purchase = { locationId: place?.id ?? null, poNumber: po.po, approval: waits ? "waiting" : null };
@@ -1030,7 +1098,9 @@ export async function placeOrder(
       const renewalSubtotal = renewing.reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
       const renewalTax =
         renewing.reduce((sum, p) => sum + vatIncluded(p.renewUnit * p.quantity, p.rate), 0) + vatIncluded(basket.renewal, taxOutcome.shippingRate);
-      const [row] = await tx.execute<Row>(sql`
+      const row = await typedRow(
+        ID_ROW,
+        sql`
         insert into commerce.subscriptions (
           store_id, number, market_code, currency, locale, interval, interval_count, min_cycles,
           subtotal_minor, shipping_minor, total_minor, tax_minor, first_order_id, manage_token, customer_id
@@ -1041,8 +1111,11 @@ export async function placeOrder(
           replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''), ${customerId}::uuid
         )
         returning id
-      `);
-      const subscriptionId = String(row.id);
+      `,
+        tx,
+      );
+      if (!row) throw new Error("The subscription was not written.");
+      const subscriptionId = row.id;
       for (const p of renewing) {
         await tx.execute(sql`
           insert into commerce.subscription_lines (
@@ -1258,12 +1331,16 @@ async function confirmAtVenue(storeId: string, order: PlacedOrder, contact: Chec
  * reference is the order page's key, as a Stripe session's id is. Returns it.
  */
 async function confirmPaidByGiftCards(storeId: string, order: PlacedOrder): Promise<string> {
-  const [first] = await db().execute<Row>(sql`
+  const first = await typedRow(
+    REFERENCE_ROW,
+    sql`
     select provider_reference from commerce.payments
     where store_id = ${storeId}::uuid and order_id = ${order.orderId}::uuid and provider = 'gift_card' and status = 'pending'
     order by created_at, id limit 1
-  `);
-  const token = String(first.provider_reference);
+  `,
+  );
+  if (!first) throw new Error("The order has no gift card payment waiting.");
+  const token = first.provider_reference;
   await completeOrderPayment(order.orderId, token);
   const notify = () => sendOrderConfirmation(storeId, order.orderId);
   try {
@@ -1306,14 +1383,17 @@ export async function confirmOnTerms(storeId: string, order: Pick<PlacedOrder, "
  */
 /** A store still private with its setup not completed (D369): not open for live payments. */
 async function notOpenYet(storeId: string): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`select private_mode and setup_completed_at is null as closed from commerce.stores where id = ${storeId}::uuid`);
+  const row = await typedRow(CLOSED_ROW, sql`select private_mode and setup_completed_at is null as closed from commerce.stores where id = ${storeId}::uuid`);
   return Boolean(row?.closed);
 }
 
 async function mollieCheckoutMode(storeId: string): Promise<PaymentModeName | null> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    ACTIVE_MODE_ROW,
+    sql`
     select active_mode from commerce.payment_providers where store_id = ${storeId}::uuid and provider = 'stripe' and enabled
-  `);
+  `,
+  );
   if (!row) return null;
   const mode = row.active_mode as PaymentModeName;
   return (await checkoutProviderOf(storeId, mode)) === "mollie" ? mode : null;
@@ -1336,9 +1416,12 @@ async function writePayer(storeId: string, orderId: string, payer: PayerDetails,
 
 /** Cancels an unpaid order and releases its stock. */
 export async function cancelUnpaidOrder(orderId: string, reason: string): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    CANCELLED_ROW,
+    sql`
     select commerce.cancel_unpaid_order(${orderId}::uuid, ${reason}) as cancelled
-  `);
+  `,
+  );
   // A subscription that never got its first payment never started (D25).
   await db().execute(sql`
     update commerce.subscriptions set status = 'expired', updated_at = now()
@@ -1349,9 +1432,12 @@ export async function cancelUnpaidOrder(orderId: string, reason: string): Promis
 
 /** Marks an order paid and draws its items from stock. False if it already was. */
 export async function completeOrderPayment(orderId: string, reference: string): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    COMPLETED_ROW,
+    sql`
     select commerce.complete_order_payment(${orderId}::uuid, ${reference}) as completed
-  `);
+  `,
+  );
   return Boolean(row?.completed);
 }
 
@@ -1429,12 +1515,15 @@ export async function startCheckout(
 
   // A shopper who went back from Stripe and checks out again: the earlier
   // session is closed first, so the same basket cannot be paid twice.
-  const earlier = await db().execute<Row>(sql`
+  const earlier = await typedRows(
+    EARLIER_ROW,
+    sql`
     select o.id, pay.id as payment_id, pay.provider, pay.provider_reference, pay.provider_account, pay.test_mode
     from commerce.orders o
     left join commerce.payments pay on pay.order_id = o.id and pay.provider in ('stripe', 'mollie')
     where o.store_id = ${shop.storeId}::uuid and o.cart_id = ${cartId}::uuid and o.status = 'pending_payment'
-  `);
+  `,
+  );
   for (const row of earlier) {
     const orderId = String(row.id);
     if (row.provider === "stripe" && row.provider_reference && row.provider_account && connected) {
@@ -1592,7 +1681,9 @@ export type OpenCheckout = {
  * gets here, so no one else sees the order or its client secret.
  */
 export async function getOpenCheckout(storeId: string, cartId: string): Promise<OpenCheckout | null> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(
+    OPEN_CHECKOUT_ROW,
+    sql`
     select o.id, pay.provider_reference, pay.provider_account, pay.client_secret, a.mode,
       o.placed_at < now() - make_interval(mins => ${CHECKOUT_MINUTES}) as expired,
       greatest(0, floor(extract(epoch from o.placed_at + make_interval(mins => ${CHECKOUT_MINUTES}) - now())))::int as seconds_left,
@@ -1657,7 +1748,8 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
       and pay.client_secret is not null
     order by o.placed_at desc
     limit 1
-  `);
+  `,
+  );
   return row
     ? {
         orderId: String(row.id),

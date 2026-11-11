@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db, type Db } from "@/db/client";
 import { organisationNumber } from "@/lib/b2b";
@@ -46,9 +47,90 @@ import { getCheckoutInfo } from "./orders";
 import { settleOrderSessions } from "./draft-sessions";
 import { decideTax, loadTaxFacts, type TaxOutcome } from "./tax-treatment";
 import { uuidList } from "./sql-arrays";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<Db, "execute">;
+
+/**
+ * The rows drafts read (code review FV1): every column that carries money is checked (`col.minor`, `col.currency`), so a changed column
+ * throws `RowShapeError` naming it instead of pricing with NaN or 0. The wide rows (a draft's own `*`, a list row, a variant with its
+ * product) keep their other columns as read (`looseObject`), as before.
+ */
+const DRAFT_ROW = z.looseObject({
+  id: col.uuid,
+  currency: col.currency,
+  discount_value: col.minorOrNull,
+  shipping_minor: col.minorOrNull,
+  customer_id: col.uuid.nullable(),
+  order_id: col.uuid.nullable(),
+});
+const DRAFT_LINE_ROW = z.object({
+  id: col.uuid,
+  position: col.int,
+  variant_id: col.uuid.nullable(),
+  title: col.text,
+  sku: col.text,
+  quantity: col.int,
+  unit_price_minor: col.minor,
+  list_price_minor: col.minorOrNull,
+  vat_category: col.textOrNull,
+  delivery: col.text,
+  price_requested: col.bool,
+  on_request: col.bool.nullable(),
+});
+const DRAFT_LIST_ROW = z.looseObject({
+  id: col.uuid,
+  currency: col.currency,
+  order_id: col.uuid.nullable(),
+  order_total: col.minorOrNull,
+  line_count: col.int,
+});
+const OPEN_DRAFTS_ROW = z.object({ n: col.int, quotes: col.int });
+const OFFERED_ROW = z.object({ offered: col.bool.nullable(), languages: col.bool.nullable() });
+const CODE_ROW = z.object({ code: col.textOrNull });
+const VARIANT_FACTS_ROW = z.looseObject({
+  id: col.uuid,
+  product_id: col.uuid,
+  cost_minor: col.minorOrNull,
+  vat_rate: col.decimal.nullable(),
+  amount_minor: col.minorOrNull,
+});
+const VAT_RATE_ROW = z.object({ rate: col.decimal.nullable() });
+const SHIPPING_RATE_ROW = z.object({ amount_minor: col.minor, free_over_minor: col.minorOrNull });
+const COUNT_ROW = z.object({ n: col.int });
+const ID_ROW = z.object({ id: col.uuid });
+const FOUND_ROW = z.object({ found: col.int });
+const VAT_CATEGORY_ROW = z.object({ code: col.text });
+const LOCKED_DRAFT_ROW = z.object({ id: col.uuid, status: col.text, version: col.int, market_slug: col.text, currency: col.currency });
+const STATUS_ROW = z.object({ status: col.text });
+const VARIANT_CHOICE_ROW = z.object({
+  id: col.uuid,
+  sku: col.text,
+  options: z.unknown(),
+  amount_minor: col.minor,
+  title: col.text,
+  in_stock: col.minor,
+});
+const CUSTOMER_CHOICE_ROW = z.object({ id: col.uuid, name: col.textOrNull, email: col.text });
+const CUSTOMER_DETAILS_ROW = z.object({
+  name: col.textOrNull,
+  email: col.text,
+  phone: col.textOrNull,
+  address: z.unknown(),
+  company_name: col.textOrNull,
+  organisation_number: col.textOrNull,
+});
+const LOCKED_SEND_ROW = z.object({ status: col.text, created_by: col.uuid.nullable() });
+const ACTIVE_ROW = z.object({ open: col.bool.nullable() });
+const RETURN_RULES_ROW = z.object({ who_pays_return: col.textOrNull });
+const SEND_COUNT_ROW = z.object({ count: col.int });
+const ORDER_POINTER_ROW = z.object({ order_id: col.uuid.nullable() });
+const DRAFT_STATE_ROW = z.object({ status: col.text, order_id: col.uuid.nullable() });
+const STORE_DAY_ROW = z.object({ today: col.textOrNull, earliest: col.textOrNull });
+const PAYABLE_ORDER_ROW = z.object({ number: col.text, status: col.text, total_minor: col.minor, currency: col.currency });
+const MARKET_CODE_ROW = z.object({ market_code: col.textOrNull });
+const DUE_DRAFT_ROW = z.object({ store_id: col.uuid, id: col.uuid, order_id: col.uuid.nullable() });
 
 /**
  * Draft orders (wave 3, run 2, D173, `docs/wave-3-orders.md` 2.4 and 4.5): a staff-made, editable quote that becomes a REAL order when it is sent. While `open` a draft holds no stock and uses no number;
@@ -220,13 +302,21 @@ const LINE_COLUMNS = sql`id, position, variant_id, title, sku, quantity, unit_pr
 /** One of the store's drafts with its lines; null for an id that is not this store's. */
 export async function getDraft(storeId: string, draftId: string, runner: Runner = db(), { lock = false }: { lock?: boolean } = {}): Promise<DraftView | null> {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(draftId)) return null;
-  const [row] = await runner.execute<Row>(sql`
-    select * from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid ${lock ? sql`for update` : sql``}
-  `);
+  const row = await typedRow(
+    DRAFT_ROW,
+    sql`
+      select * from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid ${lock ? sql`for update` : sql``}
+    `,
+    runner,
+  );
   if (!row) return null;
-  const lines = await runner.execute<Row>(sql`
-    select ${LINE_COLUMNS} from commerce.draft_order_lines where store_id = ${storeId}::uuid and draft_id = ${draftId}::uuid order by position, id
-  `);
+  const lines = await typedRows(
+    DRAFT_LINE_ROW,
+    sql`
+      select ${LINE_COLUMNS} from commerce.draft_order_lines where store_id = ${storeId}::uuid and draft_id = ${draftId}::uuid order by position, id
+    `,
+    runner,
+  );
   return viewOf(row, lines);
 }
 
@@ -276,7 +366,7 @@ export async function listDrafts(
 ): Promise<DraftListPage> {
   const pageSize = options.pageSize ?? 50;
   const cursor = decodeDraftCursor(options.after);
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(DRAFT_LIST_ROW, sql`
     select d.id, d.number, d.status, d.email, d.currency, d.order_id, d.expires_at, d.created_at, d.created_at::text as created_key, d.updated_at,
       d.source, d.quote_declined_at is not null as declined,
       coalesce((select name from commerce.customers c where c.store_id = d.store_id and c.id = d.customer_id),
@@ -293,7 +383,7 @@ export async function listDrafts(
     limit ${pageSize + 1}
   `);
   const page = rows.slice(0, pageSize);
-  const [open] = await db().execute<Row>(sql`
+  const open = await typedRow(OPEN_DRAFTS_ROW, sql`
     select count(*)::int as n, (count(*) filter (where source = 'quote' and quote_declined_at is null))::int as quotes
     from commerce.draft_orders where store_id = ${storeId}::uuid and status = 'open'
   `);
@@ -343,7 +433,7 @@ export async function listDrafts(
 async function marketOf(store: EmailStore, slug: string): Promise<Market | null> {
   const market = findMarket(store.markets, slug, { locales: store.localization.locales, conversion: (from, to) => conversionFor(store.localization, from, to) });
   if (!market) return null;
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(OFFERED_ROW, sql`
     select commerce.market_offered(${store.id}::uuid, ${market.code}, ${market.currency}) and commerce.feature_on(${store.id}::uuid, 'shop') as offered,
       commerce.feature_on(${store.id}::uuid, 'languages') as languages
   `);
@@ -353,7 +443,7 @@ async function marketOf(store: EmailStore, slug: string): Promise<Market | null>
 
 /** The store's own country in its own language and currency (D178: `commerce.home_market()`), where a new draft starts. */
 async function homeMarketOf(store: EmailStore): Promise<Market | null> {
-  const [row] = await db().execute<Row>(sql`select commerce.home_market(${store.id}::uuid) as code`);
+  const row = await typedRow(CODE_ROW, sql`select commerce.home_market(${store.id}::uuid) as code`);
   return row?.code ? (store.markets.find((m) => m.code === String(row.code)) ?? null) : null;
 }
 
@@ -383,7 +473,7 @@ type VariantFacts = {
 async function variantFacts(runner: Runner, storeId: string, market: Market, variantIds: readonly string[]): Promise<Map<string, VariantFacts>> {
   const out = new Map<string, VariantFacts>();
   if (variantIds.length === 0) return out;
-  const rows = await runner.execute<Row>(sql`
+  const rows = await typedRows(VARIANT_FACTS_ROW, sql`
     select v.id, v.sku, v.options, v.delivery, v.active, v.cost_minor, v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
       p.id as product_id, p.status, p.kind, p.host_id, p.subscription_only, p.withdrawal_exclusion, coalesce(v.tax_code, p.tax_code) as tax_code, p.price_on_request,
       commerce.vat_rate(${market.code}, p.vat_category) as vat_rate, cp.amount_minor,
@@ -395,7 +485,7 @@ async function variantFacts(runner: Runner, storeId: string, market: Market, var
     left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
     left join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     where v.store_id = ${storeId}::uuid and v.id = any(${uuidList(variantIds)})
-  `);
+  `, runner);
   const messages = t(market.lang);
   for (const row of rows) {
     const options = (row.options ?? {}) as Record<string, string>;
@@ -507,12 +597,16 @@ export async function computeDraft(runner: Runner, storeId: string, draftId: str
       else if (facts?.listMinor != null && !line.customPrice && !facts.priceOnRequest && facts.listMinor !== line.unitPriceMinor) stale.push(line.id);
       pricedLines.push({ key: line.id, kind: "goods", unitPriceMinor: line.unitPriceMinor, quantity: line.quantity, rate: facts?.rate ?? 0, physical: true });
     } else {
-      const [vat] = await runner.execute<Row>(sql`select commerce.vat_rate(${market.code}, ${line.vatCategory}) as rate`);
+      const vat = await typedRow(VAT_RATE_ROW, sql`select commerce.vat_rate(${market.code}, ${line.vatCategory}) as rate`, runner);
       pricedLines.push({ key: line.id, kind: "custom", unitPriceMinor: line.unitPriceMinor, quantity: line.quantity, rate: Number(vat?.rate ?? 0), physical: false });
     }
   }
   const ships = pricedLines.some((l) => l.physical);
-  const [rate] = await runner.execute<Row>(sql`select amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${storeId}::uuid and market_code = ${market.code}`);
+  const rate = await typedRow(
+    SHIPPING_RATE_ROW,
+    sql`select amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${storeId}::uuid and market_code = ${market.code}`,
+    runner,
+  );
   const flat = rate ? { amountMinor: shown(market, Number(rate.amount_minor)), freeOverMinor: rate.free_over_minor === null ? null : shown(market, Number(rate.free_over_minor)) } : null;
   const facts = await loadTaxFacts(runner, { storeId, market, cartId: null });
   const discount = draft.discount
@@ -652,14 +746,19 @@ export async function createDraft(storeId: string, actor: OrderActor, options: {
     // The store's settings row is the lock of the open count and of the counter: two staff making a draft at once take turns.
     await tx.execute(sql`insert into commerce.order_settings (store_id) values (${storeId}::uuid) on conflict (store_id) do nothing`);
     await tx.execute(sql`select 1 from commerce.order_settings where store_id = ${storeId}::uuid for update`);
-    const [open] = await tx.execute<Row>(sql`select count(*)::int as n from commerce.draft_orders where store_id = ${storeId}::uuid and status = 'open'`);
-    if (Number(open?.n ?? 0) >= DRAFTS_OPEN_MAX) return null;
-    const [row] = await tx.execute<Row>(sql`
-      insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, created_by)
-      values (${storeId}::uuid, commerce.next_draft_number(${storeId}::uuid), ${market.code}, ${market.slug}, ${market.currency}, ${market.locale}, ${actor.accountId}::uuid)
-      returning id
-    `);
-    return String(row.id);
+    const open = await typedRow(COUNT_ROW, sql`select count(*)::int as n from commerce.draft_orders where store_id = ${storeId}::uuid and status = 'open'`, tx);
+    if ((open?.n ?? 0) >= DRAFTS_OPEN_MAX) return null;
+    const row = await typedRow(
+      ID_ROW,
+      sql`
+        insert into commerce.draft_orders (store_id, number, market_code, market_slug, currency, locale, created_by)
+        values (${storeId}::uuid, commerce.next_draft_number(${storeId}::uuid), ${market.code}, ${market.slug}, ${market.currency}, ${market.locale}, ${actor.accountId}::uuid)
+        returning id
+      `,
+      tx,
+    );
+    if (!row) throw new Error("The draft was not written.");
+    return row.id;
   });
   if (!id) return { ok: false, problem: "too_many_open_drafts" };
   await audit(actor.accountId, storeId, ORDER_AUDIT_ACTIONS.draftCreated, {}, { target: { type: "draft_order", id } });
@@ -716,7 +815,7 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
     }
   }
   if (input.customerId) {
-    const [known] = await db().execute<Row>(sql`select 1 from commerce.customers where store_id = ${storeId}::uuid and id = ${input.customerId}::uuid`);
+    const known = await typedRow(FOUND_ROW, sql`select 1 as found from commerce.customers where store_id = ${storeId}::uuid and id = ${input.customerId}::uuid`);
     if (!known) problem("customerId", "That customer does not exist.");
   }
 
@@ -724,7 +823,7 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
   const variantIds = input.lines.flatMap((l) => (l.kind === "goods" && l.variantId ? [l.variantId] : []));
   const facts = await variantFacts(db(), storeId, market, variantIds);
   const categories = new Set(
-    (await db().execute<Row>(sql`select code from commerce.vat_categories`)).map((r) => String(r.code)),
+    (await typedRows(VAT_CATEGORY_ROW, sql`select code from commerce.vat_categories`)).map((r) => r.code),
   );
   const rows: {
     id: string | null;
@@ -786,14 +885,22 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
   if (fields.length > 0) return { ok: false, problem: "invalid", fields };
 
   return db().transaction(async (tx): Promise<SaveDraftResult> => {
-    const [locked] = await tx.execute<Row>(sql`select id, status, version, market_slug, currency from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid for update`);
+    const locked = await typedRow(
+      LOCKED_DRAFT_ROW,
+      sql`select id, status, version, market_slug, currency from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid for update`,
+      tx,
+    );
     if (!locked) return { ok: false, problem: "not_found" };
     if (locked.status !== "open") return { ok: false, problem: "not_open" };
     if (Number(locked.version) !== input.version) return { ok: false, problem: "conflict" };
     // Changing the market: what happened to the prices (the new values are the ones the lines were just read at).
     let marketChange: Extract<SaveDraftResult, { ok: true }>["marketChange"] = null;
     if (String(locked.market_slug) !== market.slug) {
-      const before = await tx.execute<Row>(sql`select ${LINE_COLUMNS} from commerce.draft_order_lines where store_id = ${storeId}::uuid and draft_id = ${draftId}::uuid`);
+      const before = await typedRows(
+        DRAFT_LINE_ROW,
+        sql`select ${LINE_COLUMNS} from commerce.draft_order_lines where store_id = ${storeId}::uuid and draft_id = ${draftId}::uuid`,
+        tx,
+      );
       // A line still waiting for its price (D431) has none to follow or keep.
       const prior = before.map(lineOf).filter((line) => !line.priceRequested);
       const listPrices: Record<string, number | null> = {};
@@ -802,7 +909,7 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
       const re = repriceForMarket(prior.map((l) => ({ key: l.id, kind: l.kind, unitPriceMinor: l.unitPriceMinor, listPriceMinor: l.listPriceMinor })), listPrices);
       marketChange = { changed: re.changed.map((c) => ({ lineId: c.key, from: c.from, to: c.to })), kept: re.kept, unavailable: re.unavailable };
     }
-    const [row] = await tx.execute<Row>(sql`
+    const row = await typedRow(ID_ROW, sql`
       update commerce.draft_orders set
         market_code = ${market.code}, market_slug = ${market.slug}, currency = ${market.currency}, locale = ${market.locale},
         customer_id = ${input.customerId ?? null}::uuid, email = ${input.email}, phone = ${input.phone},
@@ -814,7 +921,7 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
         version = version + 1, edited_at = now(), updated_at = now()
       where store_id = ${storeId}::uuid and id = ${draftId}::uuid
       returning id
-    `);
+    `, tx);
     if (!row) return { ok: false, problem: "not_found" };
     await tx.execute(sql`delete from commerce.draft_order_lines where store_id = ${storeId}::uuid and draft_id = ${draftId}::uuid`);
     for (const [position, line] of rows.entries()) {
@@ -830,7 +937,7 @@ export async function saveDraft(storeId: string, actor: OrderActor, draftId: str
 /** Deletes a draft that is not sent (an open one, or one that ended). A sent draft is reopened first. */
 export async function deleteDraft(storeId: string, actor: OrderActor, draftId: string): Promise<{ ok: true } | { ok: false; problem: "not_found" | "sent" }> {
   const done = await db().transaction(async (tx): Promise<"ok" | "not_found" | "sent"> => {
-    const [row] = await tx.execute<Row>(sql`select status from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid for update`);
+    const row = await typedRow(STATUS_ROW, sql`select status from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid for update`, tx);
     if (!row) return "not_found";
     if (!isDraftDeletable(row.status as DraftStatus)) return "sent";
     await tx.execute(sql`delete from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid`);
@@ -854,7 +961,7 @@ export async function searchDraftVariants(storeId: string, marketSlug: string, q
   const q = query.trim().slice(0, 80);
   if (!store || !market || q.length < 2) return [];
   const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(VARIANT_CHOICE_ROW, sql`
     select v.id, v.sku, v.options, cp.amount_minor, coalesce(tl.title, tf.title, p.handle) as title, coalesce(va.in_stock, 0) as in_stock
     from commerce.product_variants v
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
@@ -885,7 +992,7 @@ export async function searchDraftCustomers(storeId: string, query: string, limit
   const q = query.trim().slice(0, 80);
   if (q.length < 2) return [];
   const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(CUSTOMER_CHOICE_ROW, sql`
     select id, name, email from commerce.customers
     where store_id = ${storeId}::uuid and (lower(email) like lower(${like}) or lower(name) like lower(${like}))
     order by lower(email) limit ${limit}
@@ -896,7 +1003,10 @@ export async function searchDraftCustomers(storeId: string, query: string, limit
 /** What choosing a customer fills in: their name, email, phone, address and company, as they keep them. Null for a customer that is not this store's. */
 export async function draftCustomerDetails(storeId: string, customerId: string): Promise<{ email: string; phone: string | null; shippingAddress: DraftAddress; companyName: string | null; organisationNumber: string | null } | null> {
   if (!/^[0-9a-f-]{36}$/i.test(customerId)) return null;
-  const [row] = await db().execute<Row>(sql`select name, email, phone, address, company_name, organisation_number from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid`);
+  const row = await typedRow(
+    CUSTOMER_DETAILS_ROW,
+    sql`select name, email, phone, address, company_name, organisation_number from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid`,
+  );
   if (!row) return null;
   const address = addressOf({ ...(row.address as object), name: (row.address as Record<string, unknown> | null)?.name ?? row.name });
   return {
@@ -934,9 +1044,9 @@ export async function placeDraftOrder(
   input: { storeId: string; draftId: string; actor: OrderActor; validDays: number; tokenHash: string | null },
 ): Promise<PlaceDraftResult> {
   const { storeId, draftId, actor } = input;
-  const [locked] = await tx.execute<Row>(sql`select status, created_by from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid for update`);
+  const locked = await typedRow(LOCKED_SEND_ROW, sql`select status, created_by from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid for update`, tx);
   if (!locked || locked.status !== "open") return { ok: false, problems: [], notOpen: true };
-  const [open] = await tx.execute<Row>(sql`select commerce.store_is_active(${storeId}::uuid) as open`);
+  const open = await typedRow(ACTIVE_ROW, sql`select commerce.store_is_active(${storeId}::uuid) as open`, tx);
   if (!open?.open) return { ok: false, problems: [problemOf("store_closed")] };
   const computed = await computeDraft(tx, storeId, draftId);
   if (!computed || !computed.market || !computed.pricing) return { ok: false, problems: computed?.problems ?? [problemOf("market_gone")] };
@@ -965,8 +1075,12 @@ export async function placeDraftOrder(
   }
 
   // Who pays for sending a withdrawn item back, and the cheapest standard delivery (D153): as the store's settings and flat rate stand now.
-  const [returnRules] = await tx.execute<Row>(sql`select who_pays_return from commerce.return_settings where store_id = ${storeId}::uuid`);
-  const [rate] = await tx.execute<Row>(sql`select amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${storeId}::uuid and market_code = ${market.code}`);
+  const returnRules = await typedRow(RETURN_RULES_ROW, sql`select who_pays_return from commerce.return_settings where store_id = ${storeId}::uuid`, tx);
+  const rate = await typedRow(
+    SHIPPING_RATE_ROW,
+    sql`select amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${storeId}::uuid and market_code = ${market.code}`,
+    tx,
+  );
   const flatShipping = rate
     ? rateShipping(
         draft.lines.map((l) => ({ key: l.id, kind: l.kind, unitPriceMinor: l.unitPriceMinor, quantity: l.quantity, rate: 0, physical: l.kind === "goods" })),
@@ -1070,7 +1184,7 @@ export function payLinkFor(store: Pick<EmailStore, "slug">, marketSlug: string, 
 
 /** The store's sends of a pay link in an hour (the abuse brake of a staff-typed address, `DRAFT_SENDS_PER_HOUR_STORE`): one atomic counter, `chat_usage` bucket `draft:send`. */
 export async function takeStoreSend(storeId: string, limit: number): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(SEND_COUNT_ROW, sql`
     insert into commerce.chat_usage (store_id, bucket, "window", count)
     values (${storeId}::uuid, 'draft:send', date_trunc('hour', now()), 1)
     on conflict (store_id, bucket, "window") do update set count = commerce.chat_usage.count + 1
@@ -1092,7 +1206,7 @@ export async function sendDraft(storeId: string, actor: OrderActor, draftId: str
   if (!draft) return { ok: false, problem: "not_found" };
   if (draft.status !== "open") return { ok: false, problem: "not_open" };
   if (draft.version !== options.version) return { ok: false, problem: "conflict" };
-  const [open] = await db().execute<Row>(sql`select commerce.store_is_active(${storeId}::uuid) as open`);
+  const open = await typedRow(ACTIVE_ROW, sql`select commerce.store_is_active(${storeId}::uuid) as open`);
   if (!open?.open) return { ok: false, problem: "closed" };
   const info = await getCheckoutInfo(storeId, draft.marketCode);
   if (!info.paymentsOn) return { ok: false, problem: "payments_off" };
@@ -1125,12 +1239,12 @@ export async function resendDraftLink(storeId: string, actor: OrderActor, draftI
   if (!draft) return { ok: false, problem: "not_found" };
   if (draft.status !== "sent" || !draft.orderId) return { ok: false, problem: "not_sent" };
   if (draft.expiresAt && new Date(draft.expiresAt).getTime() <= Date.now()) return { ok: false, problem: "expired" };
-  const [open] = await db().execute<Row>(sql`select commerce.store_is_active(${storeId}::uuid) as open`);
+  const open = await typedRow(ACTIVE_ROW, sql`select commerce.store_is_active(${storeId}::uuid) as open`);
   if (!open?.open) return { ok: false, problem: "closed" };
   if (!(await takeStoreSend(storeId, DRAFT_SENDS_PER_HOUR_STORE))) return { ok: false, problem: "limit" };
   const { token, hash } = newPayToken();
   // The day's count: one statement, on the store's own day, so two clicks at once cannot both take the last send.
-  const [taken] = await db().execute<Row>(sql`
+  const taken = await typedRow(ID_ROW, sql`
     update commerce.draft_orders d set
       pay_token_hash = ${hash},
       pay_sends_today = case when d.pay_sent_on = (now() at time zone s.time_zone)::date then d.pay_sends_today + 1 else 1 end,
@@ -1171,16 +1285,20 @@ export async function reopenDraft(storeId: string, actor: OrderActor, draftId: s
     if (settled === "processing") return { ok: false, problem: "processing" };
   }
   const reopened = await db().transaction(async (tx): Promise<"ok" | "not_found" | "not_reopenable" | "changed"> => {
-    const [pointer] = await tx.execute<Row>(sql`select order_id from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid`);
+    const pointer = await typedRow(ORDER_POINTER_ROW, sql`select order_id from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid`, tx);
     if (!pointer) return "not_found";
     if (pointer.order_id) await tx.execute(sql`select id from commerce.orders where store_id = ${storeId}::uuid and id = ${String(pointer.order_id)}::uuid for update`);
-    const [draft] = await tx.execute<Row>(sql`select status, order_id from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid for update`);
+    const draft = await typedRow(
+      DRAFT_STATE_ROW,
+      sql`select status, order_id from commerce.draft_orders where store_id = ${storeId}::uuid and id = ${draftId}::uuid for update`,
+      tx,
+    );
     if (!draft) return "not_found";
     if (!canReopenDraft(draft.status as DraftStatus)) return "not_reopenable";
     const orderId = draft.order_id ? String(draft.order_id) : null;
     // A draft whose payment arrived meanwhile has its order paid: it is not reopened (the order's own trigger made the draft paid in that transaction).
     if (orderId) {
-      const [order] = await tx.execute<Row>(sql`select status from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid`);
+      const order = await typedRow(STATUS_ROW, sql`select status from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid`, tx);
       if (order && order.status !== "pending_payment" && order.status !== "cancelled") return "changed";
     }
     // The draft first (so the order's own trigger finds no draft naming it), then the order: cancelled, its stock released, its number kept.
@@ -1235,7 +1353,7 @@ export async function recordDraftPaidOutside(
   if (draft.status !== "open" && draft.status !== "sent") return { ok: false, problem: draft.status === "paid" ? "already_paid" : "not_payable" };
   if (draft.version !== input.version && draft.status === "open") return { ok: false, problem: "conflict" };
   if (!draft.email || draft.email.trim() === "") return { ok: false, problem: "no_email" };
-  const [open] = await db().execute<Row>(sql`select commerce.store_is_active(${storeId}::uuid) as open`);
+  const open = await typedRow(ACTIVE_ROW, sql`select commerce.store_is_active(${storeId}::uuid) as open`);
   if (!open?.open) return { ok: false, problem: "closed" };
 
   // A sent draft's Stripe session is closed first: paid meanwhile means this is not done (the webhook completes the order), processing means wait.
@@ -1247,7 +1365,7 @@ export async function recordDraftPaidOutside(
 
   // The day the money was received decides the invoice's supply date and so the VAT period: not in the future (the store's own day) and not far back.
   if (input.receivedOn) {
-    const [day] = await db().execute<Row>(sql`
+    const day = await typedRow(STORE_DAY_ROW, sql`
       select commerce.store_day(${storeId}::uuid, now())::text as today, (commerce.store_day(${storeId}::uuid, now()) - ${MANUAL_RECEIVED_DAYS_MAX}::int)::text as earliest
     `);
     if (input.receivedOn > String(day?.today) || input.receivedOn < String(day?.earliest)) return { ok: false, problem: "received_on" };
@@ -1266,13 +1384,17 @@ export async function recordDraftPaidOutside(
       orderId = placed.orderId;
     }
     if (!orderId) return { ok: false, problem: "not_payable" };
-    const [order] = await tx.execute<Row>(sql`
-      select number, status, total_minor, currency from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid for update
-    `);
+    const order = await typedRow(
+      PAYABLE_ORDER_ROW,
+      sql`
+        select number, status, total_minor, currency from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid for update
+      `,
+      tx,
+    );
     if (!order || order.status !== "pending_payment") return { ok: false, problem: "not_payable" };
     // Cash above a country's ceiling is not recorded (data in `src/lib/cash-limits.ts`): thrown, so an order this call placed from an open draft is rolled back with it.
     if (input.method === "cash") {
-      const [market] = await tx.execute<Row>(sql`select market_code from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid`);
+      const market = await typedRow(MARKET_CODE_ROW, sql`select market_code from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid`, tx);
       const code = String(market?.market_code ?? "").trim();
       const currency = String(order.currency).trim();
       const check = checkCash(code, Number(order.total_minor), currency, await cashLimitInCurrency(storeId, code, currency));
@@ -1281,7 +1403,11 @@ export async function recordDraftPaidOutside(
     }
     // The buyer's pay link may have opened a session after the step above closed the earlier ones (it checks the order again under this same lock, so one of the two sees the other): a payable session still pending here
     // means money could arrive for an order paid outside, so nothing is recorded now.
-    const [openSession] = await tx.execute<Row>(sql`select count(*)::int as n from commerce.payments where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider = 'stripe' and status = 'pending'`);
+    const openSession = await typedRow(
+      COUNT_ROW,
+      sql`select count(*)::int as n from commerce.payments where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider = 'stripe' and status = 'pending'`,
+      tx,
+    );
     if (Number(openSession?.n ?? 0) > 0) return { ok: false, problem: "processing" };
     await tx.execute(sql`
       insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status, kaizen_fee_minor, method, recorded_by, received_on)
@@ -1325,7 +1451,7 @@ export type ExpireRun = { expired: number; paid: number; waiting: number };
  */
 export async function expireDrafts(now: Date = new Date(), options: { limit?: number } = {}): Promise<ExpireRun> {
   const run: ExpireRun = { expired: 0, paid: 0, waiting: 0 };
-  const due = await db().execute<Row>(sql`
+  const due = await typedRows(DUE_DRAFT_ROW, sql`
     select d.store_id, d.id, d.order_id from commerce.draft_orders d
     where d.status = 'sent' and d.expires_at <= ${now.toISOString()}::timestamptz and commerce.store_is_active(d.store_id)
     order by d.expires_at limit ${options.limit ?? 200}
@@ -1365,7 +1491,7 @@ export async function expireDrafts(now: Date = new Date(), options: { limit?: nu
  */
 export async function pruneDraftOrders(now: Date = new Date()): Promise<number> {
   const cutoffs = draftPruneCutoffs(now);
-  const gone = await db().execute<Row>(sql`
+  const gone = await typedRows(ID_ROW, sql`
     delete from commerce.draft_orders
     where (status = 'open' and edited_at < ${cutoffs.open.toISOString()}::timestamptz)
        or (status in ('paid', 'expired', 'cancelled') and coalesce(paid_at, updated_at) < ${cutoffs.done.toISOString()}::timestamptz)

@@ -40,9 +40,90 @@ import { NOTHING_SENT_SQL, OVERDUE_SQL, SETTLED_SQL } from "./return-sql";
 import { loadFacts, writeEvent, type OrderFacts } from "./return-facts";
 import { getReturnSettings } from "./return-settings";
 import { sendReturnApproved, sendReturnDeclined, sendReturnReceived, sendReturnRefunded } from "./return-emails";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/**
+ * The rows returns read (code review FV1): every column that carries money is checked (`col.minor`, `col.currency`), so a changed
+ * column throws `RowShapeError` naming it instead of refunding NaN or 0. The wide rows (a return's own `r.*`, a queue row) keep their
+ * other columns as read (`looseObject`), as before.
+ */
+const RETURN_ROW = z.looseObject({
+  id: col.uuid,
+  order_id: col.uuid,
+  refund_computed_minor: col.minorOrNull,
+  refund_minor: col.minorOrNull,
+  return_shipping_minor: col.minor,
+  shipping_refund_minor: col.minor,
+  label_cost_minor: col.minorOrNull,
+});
+const EXCHANGE_STATE_ROW = z.object({
+  id: col.uuid,
+  status: col.text,
+  credit: col.minor,
+  total_minor: col.minor,
+  difference: col.minor,
+  expires_at: col.timestampOrNull,
+  exchange_order_id: col.uuid.nullable(),
+  order_number: col.textOrNull,
+});
+const RETURN_LINE_ROW = z.object({
+  order_line_id: col.uuid,
+  title: col.text,
+  sku: col.text,
+  ordered: col.int,
+  quantity: col.int,
+  decision: col.text,
+  decline_reason: col.textOrNull,
+  condition: col.textOrNull,
+  restock: col.bool,
+  deduction_minor: col.minor,
+  deduction_note: col.textOrNull,
+  reason: col.textOrNull,
+  unit_price_minor: col.minor,
+  total_minor: col.minor,
+  delivery: col.text,
+  withdrawal_exclusion: col.text,
+});
+const SHIPPING_RATE_ROW = z.object({ amount_minor: col.minor, free_over_minor: col.minorOrNull, currency: col.currency });
+const LINE_QUANTITY_ROW = z.object({ order_line_id: col.uuid, q: col.int });
+const OTHER_REFUNDS_ROW = z.object({ n: col.minor, shipping: col.minor });
+const RETURN_EVENT_ROW = z.object({ type: col.text, data: z.unknown(), actor: col.text, created_at: col.timestamp });
+const REQUEST_ROW = z.object({
+  id: col.uuid,
+  name: col.text,
+  email: col.text,
+  submitted_at: col.timestamp,
+  confirmed_at: col.timestampOrNull,
+  acknowledged_at: col.timestampOrNull,
+  acknowledgement_reference: col.textOrNull,
+});
+const SHOPPER_REQUEST_ROW = z.object({ confirmed_at: col.timestampOrNull, acknowledgement_reference: col.textOrNull });
+const QUEUE_ROW = z.looseObject({
+  id: col.uuid,
+  order_id: col.uuid,
+  refund_minor: col.minorOrNull,
+  currency: col.currency,
+  units: col.int,
+  total: col.int,
+});
+const TIME_ZONE_ROW = z.object({ time_zone: col.textOrNull });
+const COUNTS_ROW = z.object({ open: col.int, requested: col.int, overdue: col.int, ack: col.int });
+const DECLINE_LINE_ROW = z.object({ decision: col.text, withdrawal_exclusion: col.text, sku: col.text });
+const MISSING_ROW = z.object({ missing: col.int });
+const ID_ROW = z.object({ id: col.uuid });
+const COUNT_ROW = z.object({ n: col.int });
+const OUTCOME_ROW = z.object({ outcome: col.textOrNull });
+const ORDER_RETURN_ROW = z.object({
+  id: col.uuid,
+  number: col.text,
+  kind: col.text,
+  status: col.text,
+  public_token: col.text,
+  created_at: col.timestamp,
+});
 
 /**
  * The store's side of returns (D153, `docs/returns.md`): the queue, a return's detail, and every step the store takes
@@ -150,7 +231,7 @@ export type ReturnExchangeState = {
 };
 
 async function exchangeStateOf(storeId: string, returnId: string): Promise<ReturnExchangeState | null> {
-  const [x] = await db().execute<Row>(sql`
+  const x = await typedRow(EXCHANGE_STATE_ROW, sql`
     select x.id, x.status, coalesce(x.credit_at_processing, x.credit_minor) as credit, x.total_minor,
       coalesce(x.difference_at_processing, x.difference_minor) as difference, x.expires_at, x.exchange_order_id, o.number as order_number
     from commerce.return_exchanges x left join commerce.orders o on o.store_id = x.store_id and o.id = x.exchange_order_id
@@ -219,10 +300,12 @@ function toRet(r: Row): Ret {
 
 async function loadRet(storeId: string, returnId: string, tx: Tx | ReturnType<typeof db> = db(), lock = false): Promise<Ret | null> {
   if (!z.uuid().safeParse(returnId).success) return null;
-  const [row] = await tx.execute<Row>(
+  const row = await typedRow(
+    RETURN_ROW,
     lock
       ? sql`select r.*, ${NOTHING_SENT_SQL} as nothing_sent from commerce.returns r where r.store_id = ${storeId}::uuid and r.id = ${returnId}::uuid for update of r`
       : sql`select r.*, ${NOTHING_SENT_SQL} as nothing_sent from commerce.returns r where r.store_id = ${storeId}::uuid and r.id = ${returnId}::uuid`,
+    tx,
   );
   return row ? toRet(row) : null;
 }
@@ -250,7 +333,7 @@ export type DetailLine = {
 };
 
 async function loadLines(storeId: string, returnId: string): Promise<DetailLine[]> {
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(RETURN_LINE_ROW, sql`
     select rl.order_line_id, ol.title, ol.sku, ol.quantity as ordered, rl.quantity, rl.decision, rl.decline_reason, rl.condition,
       rl.restock, rl.deduction_minor, rl.deduction_note, rl.reason, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.withdrawal_exclusion
     from commerce.return_lines rl
@@ -294,7 +377,7 @@ async function standardShipping(storeId: string, facts: OrderFacts): Promise<num
   if (facts.standardShippingMinor !== null) return facts.standardShippingMinor;
   // A carrier's service the shopper chose may cost more than the standard one: the flat rate is the standard offer.
   if (!facts.chosenDelivery) return null;
-  const [rate] = await db().execute<Row>(sql`
+  const rate = await typedRow(SHIPPING_RATE_ROW, sql`
     select amount_minor, free_over_minor, currency from commerce.shipping_rates
     where store_id = ${storeId}::uuid and market_code = ${facts.marketCode}
   `);
@@ -324,7 +407,7 @@ async function workOut(storeId: string, ret: Ret, lines: DetailLine[], returnShi
   const [facts, admin] = await Promise.all([loadFacts(storeId, ret.orderId), getOrderAdmin(storeId, ret.orderId)]);
   if (!facts || !admin) return null;
   const [priors, settled, others] = await Promise.all([
-    db().execute<Row>(sql`
+    typedRows(LINE_QUANTITY_ROW, sql`
       select rl.order_line_id, sum(rl.quantity)::int as q from commerce.return_lines rl
       join commerce.returns r on r.store_id = rl.store_id and r.id = rl.return_id
       where rl.store_id = ${storeId}::uuid and r.order_id = ${ret.orderId}::uuid and rl.decision = 'accept'
@@ -335,14 +418,14 @@ async function workOut(storeId: string, ret: Ret, lines: DetailLine[], returnShi
       group by 1
     `),
     // The order's other withdrawals, earlier or later, whose goods are back, refunded or never sent: what completes the order.
-    db().execute<Row>(sql`
+    typedRows(LINE_QUANTITY_ROW, sql`
       select rl.order_line_id, sum(rl.quantity)::int as q from commerce.return_lines rl
       join commerce.returns r on r.store_id = rl.store_id and r.id = rl.return_id
       where rl.store_id = ${storeId}::uuid and r.order_id = ${ret.orderId}::uuid and rl.decision = 'accept' and r.kind = 'withdrawal'
         and r.status::text not in ('declined', 'cancelled') and r.id <> ${ret.id}::uuid and ${SETTLED_SQL}
       group by 1
     `),
-    db().execute<Row>(sql`
+    typedRows(OTHER_REFUNDS_ROW, sql`
       select coalesce(sum(refund_minor), 0)::bigint as n, coalesce(sum(shipping_refund_minor), 0)::bigint as shipping from commerce.returns
       where store_id = ${storeId}::uuid and order_id = ${ret.orderId}::uuid and id <> ${ret.id}::uuid
     `),
@@ -485,17 +568,17 @@ export async function getReturn(storeId: string, returnId: string, now = new Dat
     loadLines(storeId, returnId),
     loadFacts(storeId, ret.orderId),
     getReturnSettings(storeId),
-    db().execute<Row>(sql`
+    typedRows(RETURN_EVENT_ROW, sql`
       select type, data, actor, created_at from commerce.order_events
       where store_id = ${storeId}::uuid and order_id = ${ret.orderId}::uuid and type like 'return.%' and data ->> 'returnId' = ${ret.id}
       order by id
     `),
     ret.withdrawalRequestId
-      ? db().execute<Row>(sql`
+      ? typedRows(REQUEST_ROW, sql`
           select id, name, email, submitted_at, confirmed_at, acknowledged_at, acknowledgement_reference
           from commerce.withdrawal_requests where store_id = ${storeId}::uuid and id = ${ret.withdrawalRequestId}::uuid
         `)
-      : Promise.resolve([] as Row[]),
+      : Promise.resolve([]),
   ]);
   if (!facts) return null;
   const working = isEnded(ret.status) || lines.every((l) => l.decision !== "accept") ? null : await workOut(storeId, ret, lines, ret.returnShippingMinor);
@@ -681,7 +764,7 @@ export async function listReturns(
   const size = Math.min(100, Math.max(1, Math.trunc(pageSize)));
   const at = Math.max(1, Math.trunc(page));
   const [rows, settings, zone] = await Promise.all([
-    db().execute<Row>(sql`
+    typedRows(QUEUE_ROW, sql`
       select r.id, r.number, r.kind, r.status, r.order_id, r.created_at, r.refund_deadline, r.refund_minor, r.shipped_at, r.received_at,
         ${NOTHING_SENT_SQL} as nothing_sent, ${EXCHANGE_MARK_SQL} as exchange_mark, r.exchange_wish_at,
         (r.kind = 'withdrawal' and r.label_source is null and r.label_tries > 0) as label_failed,
@@ -697,9 +780,9 @@ export async function listReturns(
       limit ${size} offset ${(at - 1) * size}
     `),
     getReturnSettings(storeId),
-    db().execute<Row>(sql`select time_zone from commerce.stores where id = ${storeId}::uuid`),
+    typedRow(TIME_ZONE_ROW, sql`select time_zone from commerce.stores where id = ${storeId}::uuid`),
   ]);
-  const timeZone = String(zone[0]?.time_zone ?? "Europe/Oslo");
+  const timeZone = String(zone?.time_zone ?? "Europe/Oslo");
   return {
     rows: rows.map((r) => {
       const refunded = r.refund_minor !== null && r.refund_minor !== undefined;
@@ -757,7 +840,7 @@ export type ReturnCounts = {
 
 /** The numbers the Orders section, the store Home alerts and the control center count. */
 export async function returnCounts(storeId: string): Promise<ReturnCounts> {
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(COUNTS_ROW, sql`
     select
       count(*) filter (where r.status::text in ('requested', 'approved', 'in_transit', 'received', 'inspected'))::int as open,
       count(*) filter (where r.status::text = 'requested')::int as requested,
@@ -867,11 +950,15 @@ export async function declineReturnLine(storeId: string, input: unknown, account
   const data = parsed.data;
   return inTransition(storeId, data.returnId, async (tx, ret) => {
     if (isEnded(ret.status)) return refusal("ended", "This return has ended, so it cannot be changed.");
-    const [line] = await tx.execute<Row>(sql`
-      select rl.decision, ol.withdrawal_exclusion, ol.sku from commerce.return_lines rl
-      join commerce.order_lines ol on ol.store_id = rl.store_id and ol.id = rl.order_line_id
-      where rl.store_id = ${storeId}::uuid and rl.return_id = ${ret.id}::uuid and rl.order_line_id = ${data.lineId}::uuid
-    `);
+    const line = await typedRow(
+      DECLINE_LINE_ROW,
+      sql`
+        select rl.decision, ol.withdrawal_exclusion, ol.sku from commerce.return_lines rl
+        join commerce.order_lines ol on ol.store_id = rl.store_id and ol.id = rl.order_line_id
+        where rl.store_id = ${storeId}::uuid and rl.return_id = ${ret.id}::uuid and rl.order_line_id = ${data.lineId}::uuid
+      `,
+      tx,
+    );
     if (!line) return refusal("not_found", "That line is not on this return.");
     if (line.decision === "decline") return refusal("already", "That line is already declined.");
     if (ret.kind === "withdrawal" && line.withdrawal_exclusion === "none") {
@@ -908,7 +995,7 @@ export async function setReturnInstructions(storeId: string, input: unknown, acc
 /** The day a step happened, as a time: noon of the store's day, never in the future and never before `floor`. */
 async function stepTime(storeId: string, on: string | null, floor: Date | null): Promise<Date | null> {
   if (!on) return null;
-  const [zone] = await db().execute<Row>(sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
+  const zone = await typedRow(TIME_ZONE_ROW, sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
   let at = noonOf(on, String(zone?.time_zone ?? "Europe/Oslo"));
   const now = new Date();
   if (at.getTime() > now.getTime()) at = now;
@@ -1001,11 +1088,15 @@ export async function inspectReturn(storeId: string, input: unknown, accountId: 
         where store_id = ${storeId}::uuid and return_id = ${ret.id}::uuid and order_line_id = ${item.lineId}::uuid
       `);
     }
-    const after = await tx.execute<Row>(sql`
-      select count(*)::int as missing from commerce.return_lines
-      where store_id = ${storeId}::uuid and return_id = ${ret.id}::uuid and decision = 'accept' and condition is null
-    `);
-    if (Number(after[0]?.missing ?? 0) > 0) throw new InspectionIncomplete();
+    const after = await typedRow(
+      MISSING_ROW,
+      sql`
+        select count(*)::int as missing from commerce.return_lines
+        where store_id = ${storeId}::uuid and return_id = ${ret.id}::uuid and decision = 'accept' and condition is null
+      `,
+      tx,
+    );
+    if ((after?.missing ?? 0) > 0) throw new InspectionIncomplete();
     if (ret.status === "received") {
       await tx.execute(sql`update commerce.returns set status = 'inspected' where store_id = ${storeId}::uuid and id = ${ret.id}::uuid`);
     }
@@ -1175,7 +1266,7 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
   };
 
   // The refund is claimed on the return first: of two members pressing Refund at once, one pays it.
-  const claimed = await db().execute<Row>(sql`
+  const claimed = await typedRows(ID_ROW, sql`
     update commerce.returns set refund_claimed_at = now()
     where store_id = ${storeId}::uuid and id = ${ret.id}::uuid and refund_minor is null
       and status::text in ('approved', 'in_transit', 'received', 'inspected')
@@ -1195,7 +1286,7 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
   // Stripe's key is the return's own, with the number of refunds of it Stripe reported as failed (a failed refund is replayed
   // by its key, so a new attempt needs a new one). It carries neither the amount nor the order's other refunds: a retry after
   // Stripe took the refund and the database did not replays the same refund, and a second member's different amount is refused by Stripe.
-  const [failedBefore] = await db().execute<Row>(sql`
+  const failedBefore = await typedRow(COUNT_ROW, sql`
     select count(*)::int as n from commerce.order_events
     where store_id = ${storeId}::uuid and order_id = ${ret.orderId}::uuid and type = 'order.refunded'
       and data ->> 'returnId' = ${ret.id} and data ->> 'status' = 'failed'
@@ -1279,7 +1370,7 @@ export async function closeReturn(
         staff_note = case when ${data.note}::text is null then staff_note else concat_ws(E'\\n', staff_note, ${data.note}::text) end
       where store_id = ${storeId}::uuid and id = ${ret.id}::uuid
     `);
-    const [after] = await tx.execute<Row>(sql`select outcome from commerce.returns where store_id = ${storeId}::uuid and id = ${ret.id}::uuid`);
+    const after = await typedRow(OUTCOME_ROW, sql`select outcome from commerce.returns where store_id = ${storeId}::uuid and id = ${ret.id}::uuid`, tx);
     await writeEvent(tx, storeId, ret.orderId, "return.closed", eventData(ret, accountId, { outcome: after?.outcome ?? null }), "staff");
     return { ok: true, status: "closed", outcome: String(after?.outcome ?? "") };
   });
@@ -1365,7 +1456,7 @@ export type ShopperReturn = {
  */
 export async function getShopperReturn(storeId: string, token: string): Promise<ShopperReturn | null> {
   if (!/^[0-9a-f]{32,128}$/.test(token)) return null;
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(ID_ROW, sql`
     select id from commerce.returns where store_id = ${storeId}::uuid and public_token = ${token}
   `);
   if (!row) return null;
@@ -1375,11 +1466,11 @@ export async function getShopperReturn(storeId: string, token: string): Promise<
     loadLines(storeId, ret.id),
     loadFacts(storeId, ret.orderId),
     ret.withdrawalRequestId
-      ? db().execute<Row>(sql`
+      ? typedRows(SHOPPER_REQUEST_ROW, sql`
           select confirmed_at, acknowledgement_reference from commerce.withdrawal_requests
           where store_id = ${storeId}::uuid and id = ${ret.withdrawalRequestId}::uuid
         `)
-      : Promise.resolve([] as Row[]),
+      : Promise.resolve([]),
   ]);
   if (!facts) return null;
   const confirmedAt = request[0]?.confirmed_at ? new Date(String(request[0].confirmed_at)) : null;
@@ -1418,7 +1509,7 @@ export type OrderReturnRow = { id: string; number: string; kind: ReturnKind; sta
 
 /** The returns of one order, for its order page and My account (the caller has checked the order is the shopper's). */
 export async function listOrderReturns(storeId: string, orderId: string): Promise<OrderReturnRow[]> {
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(ORDER_RETURN_ROW, sql`
     select id, number, kind, status, public_token, created_at from commerce.returns
     where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid order by created_at, id
   `);

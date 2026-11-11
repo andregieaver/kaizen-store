@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 import type Stripe from "stripe";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { REFUND_REASON_DASHBOARD, REFUND_REASON_RECORDED } from "@/lib/refund-adopted";
@@ -13,8 +14,16 @@ import { reverseHostCommission } from "./host-payments";
 import { log } from "./log";
 import { sendCreditNoteNotice } from "./invoice-notices";
 import { platformStripe } from "./stripe";
+import { col, typedRow, typedRows } from "./typed-rows";
 
-type Row = Record<string, unknown>;
+const PAYMENT_ROW = z.object({ id: col.uuid, order_id: col.uuid, currency: col.currency });
+const ID_ROW = z.object({ id: col.uuid });
+const ONE_ROW = z.object({ one: col.int });
+const EDIT_REFUND_ROW = z.object({ amount_minor: col.minor, edit_id: col.uuid, seq: col.int });
+const EXISTING_ROW = z.object({ id: col.uuid, status: col.text, order_id: col.uuid });
+const STATUS_ROW = z.object({ id: col.uuid, status: col.text });
+const MODE_ROW = z.object({ mode: col.textOrNull });
+const PENDING_ROW = z.object({ id: col.uuid, store_id: col.uuid, provider_reference: col.text, provider_account: col.text, mode: col.textOrNull });
 
 /**
  * Refunds that Stripe reports (D159, `docs/wave-1b-invoices.md` 2.6, paths P6 and P7). Until now Kaizen wrote a refund row only when staff
@@ -85,12 +94,15 @@ export async function paymentOfIntent(
   deps: Pick<RefundDeps, "stripe" | "account">,
 ): Promise<{ id: string; orderId: string; currency: string } | null> {
   const lookup = async (reference: string) => {
-    const [p] = await db().execute<Row>(sql`
-      select id, order_id, currency from commerce.payments
-      where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${reference}
-      order by created_at limit 1
-    `);
-    return p ? { id: String(p.id), orderId: String(p.order_id), currency: String(p.currency).trim() } : null;
+    const p = await typedRow(
+      PAYMENT_ROW,
+      sql`
+        select id, order_id, currency from commerce.payments
+        where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${reference}
+        order by created_at limit 1
+      `,
+    );
+    return p ? { id: p.id, orderId: p.order_id, currency: p.currency } : null;
   };
   // A charge made on its own (a no-show fee, D66) is kept by its PaymentIntent.
   const direct = await lookup(intent);
@@ -130,8 +142,8 @@ async function event(storeId: string, orderId: string, type: string, data: Recor
 }
 
 async function creditNoteOf(storeId: string, refundId: string): Promise<string | null> {
-  const [c] = await db().execute<Row>(sql`select id from commerce.credit_notes where store_id = ${storeId}::uuid and refund_id = ${refundId}::uuid`);
-  return c ? String(c.id) : null;
+  const c = await typedRow(ID_ROW, sql`select id from commerce.credit_notes where store_id = ${storeId}::uuid and refund_id = ${refundId}::uuid`);
+  return c ? c.id : null;
 }
 
 async function announce(storeId: string, refundId: string, deps: Pick<RefundDeps, "notify">) {
@@ -161,17 +173,23 @@ async function stillFailed(refund: Stripe.Refund, deps: RefundDeps): Promise<boo
  * control center show it (`EDIT_REFUND_OWED_SQL`) until staff refund the customer again. Nothing else changes (the change, its documents and the order stand).
  */
 async function flagFailedEditRefund(storeId: string, orderId: string, refundId: string, actor = "stripe"): Promise<void> {
-  const [row] = await db().execute<Row>(sql`
-    select r.amount_minor, e.id as edit_id, e.seq from commerce.refunds r
-    join commerce.order_edits e on e.store_id = r.store_id and e.id = r.order_edit_id
-    where r.store_id = ${storeId}::uuid and r.id = ${refundId}::uuid and e.status = 'applied' and e.difference_minor < 0
-  `);
+  const row = await typedRow(
+    EDIT_REFUND_ROW,
+    sql`
+      select r.amount_minor, e.id as edit_id, e.seq from commerce.refunds r
+      join commerce.order_edits e on e.store_id = r.store_id and e.id = r.order_edit_id
+      where r.store_id = ${storeId}::uuid and r.id = ${refundId}::uuid and e.status = 'applied' and e.difference_minor < 0
+    `,
+  );
   if (!row) return;
-  const [said] = await db().execute<Row>(sql`
-    select 1 as one from commerce.order_events where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and type = ${FULFILMENT_EVENTS.editRefundFailed} and data ->> 'refundId' = ${refundId}
-  `);
+  const said = await typedRow(
+    ONE_ROW,
+    sql`
+      select 1 as one from commerce.order_events where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and type = ${FULFILMENT_EVENTS.editRefundFailed} and data ->> 'refundId' = ${refundId}
+    `,
+  );
   if (said) return;
-  await event(storeId, orderId, FULFILMENT_EVENTS.editRefundFailed, { refundId, edit: String(row.edit_id), label: editLabel(Number(row.seq)), amount: Number(row.amount_minor) }, actor);
+  await event(storeId, orderId, FULFILMENT_EVENTS.editRefundFailed, { refundId, edit: row.edit_id, label: editLabel(row.seq), amount: row.amount_minor }, actor);
 }
 
 /** Brings the store's refund row for this Stripe refund up to date, or records it. */
@@ -214,16 +232,19 @@ export type RefundReport = {
 /** Brings the store's refund row for a provider's refund up to date, or records it (the one writer for refunds a provider reports, Stripe's and Mollie's). */
 export async function applyRefundReport(storeId: string, report: RefundReport, deps: Pick<RefundDeps, "now" | "notify"> = {}): Promise<RefundApplied> {
   const status = report.status;
-  const [existing] = await db().execute<Row>(sql`
-    select r.id, r.status, p.order_id from commerce.refunds r
-    join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
-    where r.store_id = ${storeId}::uuid and r.provider_reference = ${report.reference}
-  `);
+  const existing = await typedRow(
+    EXISTING_ROW,
+    sql`
+      select r.id, r.status, p.order_id from commerce.refunds r
+      join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
+      where r.store_id = ${storeId}::uuid and r.provider_reference = ${report.reference}
+    `,
+  );
 
   if (existing) {
-    const refundId = String(existing.id);
-    const orderId = String(existing.order_id);
-    const before = String(existing.status) as RefundStatus;
+    const refundId = existing.id;
+    const orderId = existing.order_id;
+    const before = existing.status as RefundStatus;
     if (before === status) return { outcome: "unchanged", refundId, status, orderId };
     // Providers do not send events in order, and Kaizen refuses the first `refund.created` of its own refunds on purpose, so Stripe sends it
     // again later with the status it had then. `pending` is the first state of a refund: an event that says it never moves a row that is
@@ -233,10 +254,13 @@ export async function applyRefundReport(storeId: string, report: RefundReport, d
       // Final in the database: the credit note may stand for it. Only a refund the provider itself still says failed is a reversal (an event
       // may be older than the row), confirmed with the provider when it can be asked, and said once, for the checkup.
       if (!(await report.stillFailed())) return { outcome: "unchanged", refundId, status: "succeeded", orderId };
-      const [said] = await db().execute<Row>(sql`
-        select 1 as one from commerce.order_events
-        where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and type = 'refund.reversed_after_success' and data ->> 'refundId' = ${refundId}
-      `);
+      const said = await typedRow(
+        ONE_ROW,
+        sql`
+          select 1 as one from commerce.order_events
+          where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and type = 'refund.reversed_after_success' and data ->> 'refundId' = ${refundId}
+        `,
+      );
       if (!said) await event(storeId, orderId, "refund.reversed_after_success", { refundId, reportedStatus: status }, report.provider);
       return { outcome: "unchanged", refundId, status: "succeeded", orderId };
     }
@@ -257,18 +281,21 @@ export async function applyRefundReport(storeId: string, report: RefundReport, d
   if (!payment) return { outcome: "unmatched", reason: "no_payment" };
   if (report.currency && report.currency.toUpperCase() !== payment.currency.toUpperCase()) return { outcome: "unmatched", reason: "other_currency" };
   const reason = report.own ? REFUND_REASON_RECORDED : REFUND_REASON_DASHBOARD;
-  const [row] = await db().execute<Row>(sql`
-    insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, restocked, created_by)
-    values (${storeId}::uuid, ${payment.id}::uuid, ${report.amountMinor}, ${reason}, ${report.reference}, ${status}::commerce.refund_status, '[]'::jsonb, null)
-    on conflict (store_id, provider_reference) do nothing
-    returning id
-  `);
+  const row = await typedRow(
+    ID_ROW,
+    sql`
+      insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, restocked, created_by)
+      values (${storeId}::uuid, ${payment.id}::uuid, ${report.amountMinor}, ${reason}, ${report.reference}, ${status}::commerce.refund_status, '[]'::jsonb, null)
+      on conflict (store_id, provider_reference) do nothing
+      returning id
+    `,
+  );
   if (!row) {
     // Written by another request in the meantime: that one's outcome stands.
-    const [again] = await db().execute<Row>(sql`select id, status from commerce.refunds where store_id = ${storeId}::uuid and provider_reference = ${report.reference}`);
+    const again = await typedRow(STATUS_ROW, sql`select id, status from commerce.refunds where store_id = ${storeId}::uuid and provider_reference = ${report.reference}`);
     return { outcome: "unchanged", refundId: String(again?.id), status: refundStatusOf(String(again?.status)), orderId: payment.orderId };
   }
-  const refundId = String(row.id);
+  const refundId = row.id;
   await event(storeId, payment.orderId, "order.refunded", { amount: report.amountMinor, reason, restocked: [], ...(status === "failed" ? { status } : {}) }, report.provider);
   if (status !== "failed") await reverseHostCommission(storeId, payment.id).catch(() => undefined);
   if (status === "succeeded") await announce(storeId, refundId, deps);
@@ -280,7 +307,7 @@ export const isRefundEvent = (type: string): boolean => ["refund.created", "refu
 
 /** The connected account's mode (`test` or `live`), from the table of accounts, or null when the account is not known to this store. */
 export async function modeOfAccount(storeId: string, account: string): Promise<PaymentModeName | null> {
-  const [a] = await db().execute<Row>(sql`select mode from commerce.connected_accounts where store_id = ${storeId}::uuid and account_id = ${account} limit 1`);
+  const a = await typedRow(MODE_ROW, sql`select mode from commerce.connected_accounts where store_id = ${storeId}::uuid and account_id = ${account} limit 1`);
   return a?.mode === "test" || a?.mode === "live" ? a.mode : null;
 }
 
@@ -302,9 +329,9 @@ export async function reconcilePendingRefunds(limit = 20, deps: { stripeFor?: (m
   const result: ReconcileResult = { checked: 0, updated: 0, failed: 0 };
   const clock = deps.now ?? Date.now;
   const bucket = Math.floor(clock() / 300_000) % 12;
-  let rows: Row[];
+  let rows: z.output<typeof PENDING_ROW>[];
   try {
-    rows = await db().execute<Row>(sql`
+    rows = await typedRows(PENDING_ROW, sql`
       select r.id, r.store_id, r.provider_reference, p.provider_account, a.mode
       from commerce.refunds r
       join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
@@ -324,11 +351,11 @@ export async function reconcilePendingRefunds(limit = 20, deps: { stripeFor?: (m
     if (!stripe) continue;
     result.checked += 1;
     try {
-      const refund = await stripe.refunds.retrieve(String(row.provider_reference), {}, { stripeAccount: String(row.provider_account) });
-      const applied = await applyStripeRefund(String(row.store_id), refund, { stripe, account: String(row.provider_account), now: clock });
+      const refund = await stripe.refunds.retrieve(row.provider_reference, {}, { stripeAccount: row.provider_account });
+      const applied = await applyStripeRefund(row.store_id, refund, { stripe, account: row.provider_account, now: clock });
       if (applied.outcome === "updated") result.updated += 1;
     } catch (error) {
-      log("warn", "refunds.pending_check_failed", { storeId: String(row.store_id), refund: String(row.provider_reference) }, error);
+      log("warn", "refunds.pending_check_failed", { storeId: row.store_id, refund: row.provider_reference }, error);
       result.failed += 1;
     }
   }

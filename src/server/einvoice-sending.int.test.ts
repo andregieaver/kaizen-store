@@ -48,6 +48,18 @@ describe("e-invoices through Peppol (D463)", () => {
     expect(await stateOf(store.storeId, consumerInvoice.id)).toBeNull();
   });
 
+  it("still reaches an invoice after more than a batch of invoices to businesses that are not on Peppol, which are never recorded", async () => {
+    const store = await fx.makeStore("einv-many");
+    await db().execute(sql`update commerce.stores set organisation_number = '923609016' where id = ${store.storeId}::uuid`);
+    // 55 invoices to a business whose number is not one (its check digit fails): each is looked at and left, as it went by email.
+    for (let i = 0; i < 55; i++) await fx.paidOrder(store, [["DEMO-MUG-WHITE", 1]], { company: { name: `Ikke AS ${i}`, number: "123456789" } });
+    const business = await fx.paidOrder(store, [["DEMO-MUG-WHITE", 1]], { company: { name: "Kunde AS", number: BUYER } });
+    const invoice = (await fx.invoiceOf(store.storeId, business.orderId))!;
+    await db().execute(sql`delete from commerce.peppol_receivers where participant = ${`0192:${BUYER}`}`);
+    await runEinvoiceSending({ from: today, lookup: receives(true), accessPoint: null });
+    expect(await stateOf(store.storeId, invoice.id)).toEqual({ state: "waiting", problem: null });
+  }, 120_000);
+
   it("looks at a Work invoice to a business too, by the organisation numbers its parties were issued with", async () => {
     const store = await fx.makeStore("einv-work");
     await db().execute(sql`update commerce.stores set organisation_number = '923609016', modules = array['work'] where id = ${store.storeId}::uuid`);

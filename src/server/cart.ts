@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 import { cookies } from "next/headers";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { buyerCookie, parseBuyer, parseProductAudience, type ProductAudience } from "@/lib/b2b";
@@ -26,6 +27,7 @@ import { LIST_PRICED, STORE_AUDIENCE, offeredTo, plansOffered } from "./product-
 import { checkRange, linePrice, rangePricing } from "./ranges";
 import { refreshTag } from "./refresh";
 import { storeTag } from "./stores";
+import { col, typedRow, typedRows } from "./typed-rows";
 import { checkCartVatNumber, type CartVatDeps, type CartVatOutcome } from "./vat-checks";
 
 /** Where a cart belongs: one market of one store. */
@@ -42,6 +44,65 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Row = Record<string, unknown>;
 export type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/** A cart line as the cart page reads it (`getCart()`): wide, read as `Row`; the ids and the money described. */
+const CART_LINE_ROW = z.looseObject({
+  variant_id: col.uuid,
+  product_id: col.uuid,
+  quantity: col.int,
+  amount_minor: col.minorOrNull,
+  signup_fee: col.minor,
+  // The cart's gift (D173), the line's quantity rule (D323) and its gift card (D300), read by helpers that take these columns by name.
+  is_gift: col.bool.nullable(),
+  gift_to: col.textOrNull,
+  gift_from: col.textOrNull,
+  gift_message: col.textOrNull,
+  min_quantity: col.int.nullable(),
+  max_quantity: col.int.nullable(),
+  quantity_step: col.int.nullable(),
+  gift_card_to: col.textOrNull,
+  gift_card_to_name: col.textOrNull,
+  gift_card_from: col.textOrNull,
+  gift_card_message: col.textOrNull,
+  gift_card_send_on: z.union([z.date(), z.string()]).nullable(),
+});
+
+const GIFT_SETTING_ROW = z.object({ gift_messages: col.bool });
+
+const CART_GIFT_ROW = z.object({
+  is_gift: col.bool,
+  gift_to: col.textOrNull,
+  gift_from: col.textOrNull,
+  gift_message: col.textOrNull,
+});
+
+const SELLABLE_ROW = z.object({
+  product_id: col.uuid,
+  kind: col.text,
+  rental_period: col.text,
+  delivery: col.text,
+  in_stock: col.int,
+  stock_policy: col.text,
+  backorder_days: col.int.nullable(),
+  preorder_until: col.textOrNull,
+  min_quantity: col.int.nullable(),
+  max_quantity: col.int.nullable(),
+  quantity_step: col.int.nullable(),
+});
+
+const CART_ID_ROW = z.object({ id: col.uuid });
+
+const CURRENT_LINE_ROW = z.object({
+  quantity: col.int,
+  gift_card_to: col.textOrNull,
+  gift_card_to_name: col.textOrNull,
+  gift_card_from: col.textOrNull,
+  gift_card_message: col.textOrNull,
+  // A `date`: the driver may give a Date or a string; `giftCardRecipientOfRow()` reads either.
+  gift_card_send_on: z.union([z.date(), z.string()]).nullable(),
+});
+
+const RHYTHM_ROW = z.object({ interval: col.text, interval_count: col.int, trial_days: col.int, chosen: col.bool });
 
 /**
  * `quantity`: the line's quantity breaks its variant's rule (D323), which changed after it was added; it blocks checkout until changed.
@@ -201,7 +262,7 @@ export async function getCart(
   if (!cartId) return { lines: [], currency: market.currency, company: null, gift: NO_GIFT, companyPurchase: { locationId: null, poNumber: null } };
   const customerId = who.customerId !== undefined ? who.customerId : ((await getCustomer(storeId))?.id ?? null);
 
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(CART_LINE_ROW, sql`
     select
       cl.variant_id, cl.quantity, v.options, v.delivery, p.handle, p.id as product_id, p.audience,
       v.measure_amount, v.measure_unit, v.measure_base,
@@ -416,12 +477,12 @@ export async function setCartCompany(shop: Shop, given: CartCompany | null): Pro
 
 /** Whether the store offers gift messages, and what the cart holds: what the cart page's gift box is drawn from (the store's switch is `order_settings.gift_messages`). */
 export async function getCartGift(shop: Shop): Promise<{ enabled: boolean; gift: GiftFields }> {
-  const [setting] = await db().execute<Row>(sql`select gift_messages from commerce.order_settings where store_id = ${shop.storeId}::uuid`);
+  const setting = await typedRow(GIFT_SETTING_ROW, sql`select gift_messages from commerce.order_settings where store_id = ${shop.storeId}::uuid`);
   const enabled = Boolean(setting?.gift_messages);
   if (!enabled) return { enabled, gift: NO_GIFT };
   const cartId = await readCartId(shop);
   if (!cartId) return { enabled, gift: NO_GIFT };
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(CART_GIFT_ROW, sql`
     select is_gift, gift_to, gift_from, gift_message from commerce.carts
     where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and market_code = ${shop.market.code} and status = 'open' and expires_at > now()
   `);
@@ -440,7 +501,7 @@ export type SetCartGiftResult =
  * is no gift). Sets no cookie and keeps nothing outside the cart; the cart's own cookie already exists.
  */
 export async function setCartGift(shop: Shop, input: { isGift?: unknown; to?: unknown; from?: unknown; message?: unknown }): Promise<SetCartGiftResult> {
-  const [setting] = await db().execute<Row>(sql`select gift_messages from commerce.order_settings where store_id = ${shop.storeId}::uuid`);
+  const setting = await typedRow(GIFT_SETTING_ROW, sql`select gift_messages from commerce.order_settings where store_id = ${shop.storeId}::uuid`);
   if (!setting?.gift_messages) return { ok: true, gift: NO_GIFT };
   const cartId = await readCartId(shop);
   if (!cartId) return { ok: false, problem: "no_cart" };
@@ -471,7 +532,7 @@ export async function setCartVatNumber(
   const cartId = await readCartId(shop);
   if (!cartId) return { ok: false, problem: "no_cart" };
   if (company) await setCartCompany(shop, company);
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(z.object({ company_name: col.textOrNull, organisation_number: col.textOrNull }), sql`
     select company_name, organisation_number from commerce.carts
     where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open'
   `);
@@ -483,7 +544,7 @@ export async function setCartVatNumber(
 export async function getCartCount(shop: Shop): Promise<number> {
   const cartId = await readCartId(shop);
   if (!cartId) return 0;
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(z.object({ count: col.int }), sql`
     select coalesce(sum(case when cl.starts_at is null then cl.quantity else 1 end), 0)::int as count
     from commerce.cart_lines cl
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
@@ -497,7 +558,11 @@ export async function getCartCount(shop: Shop): Promise<number> {
 /** Whether the shopper has chosen to buy for a business (B2B). */
 /** Whether the store sells to businesses as shoppers see it (B2B, D178: its chosen audience is not consumers and Sell to businesses is on). */
 export async function sellsToBusinesses(storeId: string, runner: Pick<ReturnType<typeof db>, "execute"> = db()): Promise<boolean> {
-  const [row] = await runner.execute<Row>(sql`select ${STORE_AUDIENCE} <> 'consumers' as yes from commerce.stores s where s.id = ${storeId}::uuid`);
+  const row = await typedRow(
+    z.object({ yes: col.bool.nullable() }),
+    sql`select ${STORE_AUDIENCE} <> 'consumers' as yes from commerce.stores s where s.id = ${storeId}::uuid`,
+    runner,
+  );
   return Boolean(row?.yes);
 }
 
@@ -538,7 +603,9 @@ export async function sellableQuantity(
   // A subscription renews at a price kept in the country's own currency, so it is bought in it only (D109).
   if (sellingPlanId && !isNative(market)) return null;
   const customerId = (await getCustomer(storeId))?.id ?? null;
-  const [row] = await tx.execute<Row>(sql`
+  const row = await typedRow(
+    SELLABLE_ROW,
+    sql`
     select v.product_id, p.kind, v.rental_period, v.delivery, va.in_stock, va.stock_policy, va.backorder_days, va.preorder_until::text as preorder_until,
       qr.min_quantity, qr.max_quantity, qr.quantity_step
     from commerce.product_variants v
@@ -573,7 +640,9 @@ export async function sellableQuantity(
             )`
           : sql`not p.subscription_only`
       }
-  `);
+  `,
+    tx,
+  );
   if (!row) return null;
   const physical = String(row.delivery) === "physical";
   const stock = physical
@@ -611,7 +680,9 @@ async function openCart(tx: Tx, shop: Shop): Promise<string> {
   const { storeId, market } = shop;
   const existing = await readCartId(shop);
   if (existing) {
-    const [row] = await tx.execute<Row>(sql`
+    const row = await typedRow(
+      CART_ID_ROW,
+      sql`
       update commerce.carts
          set updated_at = now(),
              expires_at = now() + make_interval(days => ${CART_TTL_DAYS})
@@ -619,16 +690,23 @@ async function openCart(tx: Tx, shop: Shop): Promise<string> {
          and market_code = ${market.code}
          and status = 'open' and expires_at > now()
       returning id
-    `);
+    `,
+      tx,
+    );
     if (row) return String(row.id);
   }
-  const [row] = await tx.execute<Row>(sql`
+  const row = await typedRow(
+    CART_ID_ROW,
+    sql`
     insert into commerce.carts (store_id, market_code, currency, locale, expires_at)
     values (${storeId}::uuid, ${market.code}, ${market.currency}, ${market.locale},
             now() + make_interval(days => ${CART_TTL_DAYS}))
     returning id
-  `);
-  const id = String(row.id);
+  `,
+    tx,
+  );
+  if (!row) throw new Error("The cart was not written.");
+  const id = row.id;
   // Which visit made the cart, for the analytics' channel of its order (D152); never in the way of adding to it.
   await attachVisitToCart(tx, storeId, id);
   await setCartCookie(shop, id);
@@ -703,11 +781,15 @@ export async function changeLine(
     if (sellingPlanId && (await otherRhythm(tx, cartId, sellingPlanId))) {
       return { outcome: "plan_conflict" as const, quantity: 0 };
     }
-    const [current] = await tx.execute<Row>(sql`
+    const current = await typedRow(
+      CURRENT_LINE_ROW,
+      sql`
       select quantity, gift_card_to, gift_card_to_name, gift_card_from, gift_card_message, gift_card_send_on from commerce.cart_lines
       where cart_id = ${cartId}::uuid and variant_id = ${variantId}::uuid and ${samePlan}
       for update
-    `);
+    `,
+      tx,
+    );
     // A line named by its key alone (the cart's own forms) is changed as it is, with whoever its cards are for.
     if (key !== null && !recipient) {
       if (!current) return { outcome: "unavailable" as const, quantity: 0 };
@@ -743,15 +825,19 @@ export async function changeLine(
 
 /** Whether the cart holds a subscription that renews on another schedule than this option. */
 async function otherRhythm(tx: Tx, cartId: string, sellingPlanId: string): Promise<boolean> {
-  const rows = await tx.execute<Row>(sql`
+  const rows = await typedRows(
+    RHYTHM_ROW,
+    sql`
     select sp.interval, sp.interval_count, sp.trial_days, (sp.id = ${sellingPlanId}::uuid) as chosen
     from commerce.selling_plans sp
     where sp.id = ${sellingPlanId}::uuid
        or sp.id in (select selling_plan_id from commerce.cart_lines where cart_id = ${cartId}::uuid)
-  `);
+  `,
+    tx,
+  );
   const chosen = rows.find((r) => r.chosen);
   if (!chosen) return false;
-  const terms = (r: Row) => ({
+  const terms = (r: z.output<typeof RHYTHM_ROW>) => ({
     interval: r.interval as PlanInterval,
     intervalCount: Number(r.interval_count),
     trialDays: Number(r.trial_days),

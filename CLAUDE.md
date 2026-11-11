@@ -405,7 +405,8 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
   another shape throws `RowShapeError`, naming the column, never the value; rows another runner fetched, such as analytics'
   `setBased()`, through `checkedRows()`); `coalesce()` a sum that may meet no rows. A writer of `commerce.stores` refreshes the store's
   tag itself (`refreshTag(storeTag(slug))`, `refreshStoreById()`; `store-writers.scan.test.ts`), which does nothing outside Next. Older
-  `execute<Row>()` reads move over when touched (`gift-cards-admin.ts` is the first).
+  `execute<Row>()` reads move over when touched (`gift-cards-admin.ts` is the first); `ratchet.scan.test.ts` fails when unchecked reads or
+  `as unknown as` rise anywhere, and when they fall until `node scripts/ratchet.mjs` lowers `src/server/ratchet.baseline.json` (code review 1.2).
 - New server code logs through `log(level, event, fields, error)` (`src/server/log.ts`: one JSON line, ids and counts, never a
   person's data or a secret, D400: no `console.error` is left in `src/server` but `log.ts`). Every cron route has a `maxDuration` and runs
   inside `trackedRoute()`/`tracked()`, and the five-minute dispatcher runs each job through `runJobs()` (`src/server/cron-runs.ts`):

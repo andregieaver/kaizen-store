@@ -10,9 +10,16 @@ import type { GiftCardRecipient } from "@/lib/gift-card-line";
 import { historyNumber, type HistoryAddress, type HistoryOrder } from "@/lib/order-history";
 import { allocate, routingOrder, totalsOf } from "@/lib/stock-routing";
 
-import { col, typedRow } from "./typed-rows";
+import { col, typedRow, typedRows } from "./typed-rows";
 
-type Row = Record<string, unknown>;
+/** The rows this module reads (code review FV1). */
+const NUMBER_ROW = z.object({ number: col.text });
+const ID_ROW = z.object({ id: col.uuid });
+const PLACE_ROW = z.object({ id: col.uuid, priority: col.int, created_at: col.timestamp, country: col.text, supplier: col.bool });
+const ROUTING_ROW = z.object({ stock_routing: col.textOrNull });
+const LEVEL_ROW = z.object({ variant_id: col.uuid, location_id: col.uuid, on_hand: col.int });
+const HOLD_ROW = z.object({ variant_id: col.uuid, location_id: col.uuid, held: col.int });
+
 
 /**
  * The one place an order is written and numbered (D141, wave 3 run 2, D173, `docs/wave-3-orders.md` 4.5). `insertOrder()` takes the next number from the
@@ -107,12 +114,17 @@ export type OrderInsert = {
 
 /** The order's own number, as `{prefix}{n}`, from the store's series (D141). Called only by `insertOrder()`. */
 async function nextOrderNumber(tx: Db, storeId: string): Promise<string> {
-  const [numbered] = await tx.execute<Row>(sql`
+  const numbered = await typedRow(
+    NUMBER_ROW,
+    sql`
     select s.prefix || commerce.next_document_number(${storeId}::uuid, 'order')::text as number
     from commerce.document_series s
     where s.store_id = ${storeId}::uuid and s.series = 'order'
-  `);
-  return String(numbered.number);
+  `,
+    tx,
+  );
+  if (!numbered) throw new Error("The store has no order series.");
+  return numbered.number;
 }
 
 /** Numbers and inserts an order waiting for payment. The caller's transaction holds both, so a failure later gives the number back. */
@@ -120,7 +132,9 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
   const number = await nextOrderNumber(tx, input.storeId);
   const gift = input.gift?.isGift ? input.gift : null;
   const consent = input.digitalConsentAt === "now" ? sql`now()` : sql`${input.digitalConsentAt ?? null}::timestamptz`;
-  const [order] = await tx.execute<Row>(sql`
+  const order = await typedRow(
+    ID_ROW,
+    sql`
     insert into commerce.orders (
       store_id, number, market_code, currency, locale, cart_id, email, status,
       subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
@@ -161,7 +175,10 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       ${input.serviceRequestAt === "now" ? sql`now()` : sql`null`}
     )
     returning id
-  `);
+  `,
+    tx,
+  );
+  if (!order) throw new Error("The order was not written.");
   const codes = (input.discountCodes ?? []).slice(0, 5);
   if (codes.length > 0) {
     await tx.execute(sql`
@@ -170,7 +187,7 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       from jsonb_array_elements(${JSON.stringify(codes)}::jsonb) with ordinality as t(c, n)
     `);
   }
-  return { orderId: String(order.id), number };
+  return { orderId: order.id, number };
 }
 
 const addressJson = (a: HistoryAddress | null) => (a ? { name: a.name, line1: a.line1, ...(a.line2 ? { line2: a.line2 } : {}), postalCode: a.postalCode, city: a.city, country: a.country } : {});
@@ -280,7 +297,9 @@ export type OrderLineInsert = {
 
 /** Writes one order line and returns its id. */
 export async function insertOrderLine(tx: Db, storeId: string, orderId: string, line: OrderLineInsert): Promise<string> {
-  const [row] = await tx.execute<Row>(sql`
+  const row = await typedRow(
+    ID_ROW,
+    sql`
     insert into commerce.order_lines (
       store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, member_discount_minor,
       total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
@@ -311,8 +330,11 @@ export async function insertOrderLine(tx: Db, storeId: string, orderId: string, 
         where v.store_id = ${storeId}::uuid and v.id = ${line.variantId}::uuid and v.stock_policy = 'continue' and v.preorder_until > current_date)
     )
     returning id
-  `);
-  const lineId = String(row.id);
+  `,
+    tx,
+  );
+  if (!row) throw new Error("The order line was not written.");
+  const lineId = row.id;
   if (line.components && line.components.length > 0) {
     const rows = line.components.map((c, position) => ({ variant_id: c.variantId, sku: c.sku, title: c.title, quantity: c.quantity, position }));
     await tx.execute(sql`
@@ -370,14 +392,16 @@ export async function allocateStock(
   const variantIds = [...new Set(wants.map((w) => w.variantId))].sort();
   if (variantIds.length === 0) return { ok: true, holds: [], behind: new Map() };
   const ids = sql.join(variantIds.map((id) => sql`${id}::uuid`), sql`, `);
-  const places = await tx.execute<Row>(sql`
+  const places = await typedRows(
+    PLACE_ROW,
+    sql`
     select id, priority, created_at, country, supplier_id is not null as supplier from commerce.inventory_locations
     where store_id = ${storeId}::uuid and active and fulfils_online
     order by priority, created_at, id
-  `);
-  const [routing] = options.country
-    ? await tx.execute<Row>(sql`select stock_routing from commerce.order_settings where store_id = ${storeId}::uuid`)
-    : [];
+  `,
+    tx,
+  );
+  const routing = options.country ? await typedRow(ROUTING_ROW, sql`select stock_routing from commerce.order_settings where store_id = ${storeId}::uuid`, tx) : null;
   const nearCountry = routing?.stock_routing === "nearest" ? options.country : null;
   // A variant that keeps selling past zero and has no level at any active location gets one at the first, so there is a row to lock and draw.
   const firstPlace = routingOrder(
@@ -399,20 +423,28 @@ export async function allocateStock(
       `);
     }
   }
-  const levels = await tx.execute<Row>(sql`
+  const levels = await typedRows(
+    LEVEL_ROW,
+    sql`
     select l.variant_id, l.location_id, l.on_hand
     from commerce.inventory_levels l
     where l.store_id = ${storeId}::uuid and l.variant_id in (${ids})
     order by l.variant_id, l.location_id
     for update of l
-  `);
-  const holds = await tx.execute<Row>(sql`
+  `,
+    tx,
+  );
+  const holds = await typedRows(
+    HOLD_ROW,
+    sql`
     select variant_id, location_id, sum(quantity)::int as held
     from commerce.inventory_reservations
     where store_id = ${storeId}::uuid and variant_id in (${ids})
       and released_at is null and expires_at > now()
     group by variant_id, location_id
-  `);
+  `,
+    tx,
+  );
   const heldAt = new Map(holds.map((h) => [`${h.variant_id}:${h.location_id}`, Number(h.held)]));
   const outcome = allocate({
     locations: places.map((l) => ({ id: String(l.id), priority: Number(l.priority), createdAt: new Date(String(l.created_at)).toISOString(), active: true, country: String(l.country), supplier: Boolean(l.supplier) })),
