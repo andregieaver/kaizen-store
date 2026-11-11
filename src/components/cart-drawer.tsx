@@ -3,29 +3,41 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { CART_DRAWER_LOOK, type MenuLook } from "@/lib/menu-drawer";
+
+import { DrawerPanel } from "./drawer-panel";
+
 const DESKTOP = "(min-width: 768px)";
 
 /**
  * The slide-out cart on phones: the cart, opened over the page the shopper
  * was on (the intercepted `/cart`, `@drawer/(.)cart`). Closing goes back to
  * that page. On larger screens the cart is a page of its own, so there the
- * address, which is already the cart's, is loaded as one.
+ * address, which is already the cart's, is loaded as one. It lies as the
+ * header's Cart component says (D571, `src/lib/menu-drawer.ts`): a side panel
+ * from the right unless set, the whole screen, under the header or a floating
+ * card, on its own background (`background`, with `surface` and `blur`).
  */
 export function CartDrawer({
   title,
   labels,
+  look = CART_DRAWER_LOOK,
+  surface,
+  blur,
+  background,
   children,
 }: {
   title: string;
   labels: { close: string };
+  look?: MenuLook;
+  surface?: string;
+  blur?: number;
+  background?: ReactNode;
   children: ReactNode;
 }) {
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [drag, setDrag] = useState(0);
-  const touch = useRef<{ x: number; y: number; sideways: boolean | null } | null>(null);
   const closing = useRef(false);
 
   useEffect(() => {
@@ -41,11 +53,17 @@ export function CartDrawer({
     // left by a link hidden, which takes the dialog out of the top layer; coming back
     // (the browser's back button) runs this again.
     const d = dialog.current;
+    // Under the header (a dropdown): from the bottom of the page's header as it is now, the top of the screen if it has slid away.
+    const header = document.querySelector("header");
+    d?.style.setProperty("--menu-top", `${header ? Math.max(0, Math.round(header.getBoundingClientRect().bottom)) : 0}px`);
     if (d?.open && !d.matches(":modal")) d.close();
     if (d && !d.open) d.showModal();
     closing.current = false;
     document.documentElement.style.overflow = "hidden";
-    const frame = requestAnimationFrame(() => setOpen(true));
+    // Drawn closed first, then opened, so it moves in from its own edge.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => setOpen(true));
+    });
     return () => {
       wide.removeEventListener("change", onChange);
       cancelAnimationFrame(frame);
@@ -60,7 +78,6 @@ export function CartDrawer({
     if (closing.current) return;
     closing.current = true;
     setOpen(false);
-    setDrag(0);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.setTimeout(() => router.back(), reduced ? 0 : 300);
   };
@@ -73,56 +90,30 @@ export function CartDrawer({
         event.preventDefault();
         close();
       }}
+      onClick={(event) => {
+        // A tap beside a dropdown, on the header it hangs from, closes it.
+        if (event.target === event.currentTarget) close();
+      }}
       className="fixed inset-0 z-[100] m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 backdrop:bg-transparent md:hidden"
     >
-      <div
-        aria-hidden="true"
-        onClick={close}
-        className={`fixed inset-0 bg-black/40 transition-opacity duration-300 motion-reduce:transition-none ${
-          open ? "opacity-100" : "opacity-0"
-        }`}
-      />
-      <div
-        ref={panel}
-        style={drag ? { transform: `translateX(${drag}px)`, transition: "none" } : undefined}
-        onTouchStart={(event) => {
-          const t = event.touches[0];
-          touch.current = { x: t.clientX, y: t.clientY, sideways: null };
-        }}
-        onTouchMove={(event) => {
-          const start = touch.current;
-          if (!start) return;
-          const t = event.touches[0];
-          const dx = t.clientX - start.x;
-          const dy = t.clientY - start.y;
-          if (start.sideways === null && Math.abs(dx) + Math.abs(dy) > 10) start.sideways = Math.abs(dx) > Math.abs(dy);
-          if (start.sideways) setDrag(Math.max(0, dx));
-        }}
-        onTouchEnd={() => {
-          const width = panel.current?.offsetWidth ?? 300;
-          touch.current = null;
-          if (drag > width / 4) close();
-          else setDrag(0);
-        }}
-        className={`fixed inset-y-0 right-0 flex w-[92%] max-w-md flex-col bg-background shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border px-4">
+      <DrawerPanel
+        look={look}
+        open={open}
+        wide
+        surface={surface}
+        blur={blur}
+        background={background}
+        bar={
           <h2 id="cart-drawer-title" className="text-xl font-heading">
             {title}
           </h2>
-          <button type="button" onClick={close} className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-full">
-            <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-            </svg>
-            <span className="sr-only">{labels.close}</span>
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          {children}
-        </div>
-      </div>
+        }
+        closeLabel={labels.close}
+        onClose={close}
+        bodyClassName="px-4 py-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
+      >
+        {children}
+      </DrawerPanel>
     </dialog>
   );
 }

@@ -1,6 +1,6 @@
 -- kaizen:baseline-through=20261111172838_sms_campaign_index.sql
 -- The schema: types, tables, functions and views.
--- Made by scripts/squash-migrations.mjs from every migration up to 20261111172838_sms_campaign_index.sql (code review FD3, D570); the squashed
+-- Made by scripts/squash-migrations.mjs from every migration up to 20261111172838_sms_campaign_index.sql (code review FD3, D572); the squashed
 -- files are in supabase/archive/20261111172838/. Never edit this file: production recorded it without running it.
 --
 --

@@ -19,7 +19,7 @@ and the run stops there. Rules it enforces:
 - the ledger must have rows before anything is applied (the baseline below), so a first run can never
   replay history.
 
-### The baseline: squashed migrations (code review FD3, D570)
+### The baseline: squashed migrations (code review FD3, D572)
 
 `supabase/migrations` starts with a baseline, not with every file ever written. The 789 files up to
 `20261111172838_sms_campaign_index.sql` (47 days of work, 9.2 MB) became four, 3.9 MB:

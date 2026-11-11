@@ -1,4 +1,4 @@
-// Squashes the migrations up to a cut into a baseline (code review step 1.7, finding FD3, D570). Repeat it each quarter.
+// Squashes the migrations up to a cut into a baseline (code review step 1.7, finding FD3, D572). Repeat it each quarter.
 //
 //   DATABASE_URL=postgres://postgres:…@127.0.0.1:5432/postgres node scripts/squash-migrations.mjs --through=<file>          check only
 //   DATABASE_URL=postgres://postgres:…@127.0.0.1:5432/postgres node scripts/squash-migrations.mjs --through=<file> --write  write it
@@ -90,7 +90,7 @@ function asMigration(section, purpose) {
     .filter((line) => !/^-- (Dumped (from|by)|PostgreSQL database dump)/.test(line) && !line.startsWith("\\"));
   const settings = [...new Set(lines.map((line) => line.match(/^SET (\w+) =/)?.[1]).filter(Boolean))];
   const resets = [...settings, "search_path"].map((name) => `RESET ${name};`).join("\n");
-  return `-- kaizen:baseline-through=${through}\n-- ${purpose}\n-- Made by scripts/squash-migrations.mjs from every migration up to ${through} (code review FD3, D570); the squashed\n-- files are in supabase/archive/${version}/. Never edit this file: production recorded it without running it.\n${lines.join("\n").trim()}\n\n${resets}\n`;
+  return `-- kaizen:baseline-through=${through}\n-- ${purpose}\n-- Made by scripts/squash-migrations.mjs from every migration up to ${through} (code review FD3, D572); the squashed\n-- files are in supabase/archive/${version}/. Never edit this file: production recorded it without running it.\n${lines.join("\n").trim()}\n\n${resets}\n`;
 }
 
 let failed = false;

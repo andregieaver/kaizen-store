@@ -19,6 +19,7 @@ import {
 } from "./motion";
 import { ANIMATION_SIDE_MIN, type AnimationFile } from "./animation";
 import { layersShow, type BackgroundLayer } from "./background-layers";
+import { MENU_SIDES, MENU_TYPES, type MenuSide, type MenuType } from "./menu-drawer";
 import { backgroundHueSchema, backgroundLayersSchema } from "./background-layers-schema";
 import { type CarouselSettings } from "./carousel-settings";
 import { carouselSettingsSchema } from "./carousel-settings-schema";
@@ -1185,6 +1186,27 @@ export type SiteBlock = PartBase & {
   switcher?: SwitcherLayout;
   langText?: SwitcherText;
   langFlag?: boolean;
+  /**
+   * The phone menu button's menu, or the Cart component's slide-out cart (D571), `src/lib/menu-drawer.ts`: how it opens, from where,
+   * and on what background.
+   */
+  drawer?: MenuDrawer;
+};
+
+export { MENU_SIDES, MENU_TYPES, type MenuSide, type MenuType } from "./menu-drawer";
+
+/**
+ * The phone menu a menu button opens: its kind, the edge it comes from and its background, which is a column's (a colour, picture or
+ * gradient, with layers over it and a hue, D534). Each is left out while it is the default, so a button with none set opens the menu as before.
+ */
+export type MenuDrawer = {
+  type?: MenuType;
+  side?: MenuSide;
+  background?: Background;
+  backgroundLayers?: BackgroundLayer[];
+  backgroundHue?: number;
+  /** What is behind the menu blurred, in pixels (D86): with no background or a see-through colour, the page shows through as frosted glass. */
+  backdropBlur?: number;
 };
 
 /**
@@ -3368,6 +3390,22 @@ const siteBlock = z.object({
   switcher: z.enum(["row", "column", "dropdown"]).optional(),
   langText: z.enum(["name", "code", "none"]).optional(),
   langFlag: z.boolean().optional(),
+  drawer: z
+    .object({
+      type: z.enum(MENU_TYPES).optional(),
+      side: z.enum(MENU_SIDES).optional(),
+      background,
+      backgroundLayers: backgroundLayersSchema,
+      backgroundHue: backgroundHueSchema,
+      backdropBlur,
+    })
+    .optional()
+    // A drawer with nothing set is left out (the builder leaves out what equals the part's standard look, `ownDrawer()`).
+    .transform((drawer) => {
+      if (!drawer) return undefined;
+      const kept = Object.fromEntries(Object.entries(drawer).filter(([, value]) => value !== undefined)) as MenuDrawer;
+      return Object.keys(kept).length > 0 ? kept : undefined;
+    }),
   ...partBase,
 });
 

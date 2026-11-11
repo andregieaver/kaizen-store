@@ -1,5 +1,5 @@
 -- kaizen:baseline-through=20261111172838_sms_campaign_index.sql
--- What a dump of one database cannot carry (code review FD3, D570), kept by hand and carried to each new cut by
+-- What a dump of one database cannot carry (code review FD3, D572), kept by hand and carried to each new cut by
 -- scripts/squash-migrations.mjs: the `postgres` role's limits, and what exists only on Supabase (Storage buckets, the scheduler, its
 -- secret). Written from production as it stood on 11 November 2026; each step guarded, so plain Postgres (CI, local databases, PGlite)
 -- skips what it has not got. A later migration that adds such a step is folded in here at the next squash.

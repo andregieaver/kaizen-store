@@ -4,7 +4,7 @@ import path from "node:path";
 import { baselineThroughOf } from "../../scripts/lib/migrations.mjs";
 
 /**
- * The migrations as production lived them (code review FD3, D570): the squashed files in `supabase/archive/<cut>/`, oldest first, then
+ * The migrations as production lived them (code review FD3, D572): the squashed files in `supabase/archive/<cut>/`, oldest first, then
  * the live ones in `supabase/migrations`, a baseline left out (it stands for the squashed files). For tests that read what one migration
  * said, or replay history up to a point; a database is built from the live folder alone (`src/db/testing.ts`).
  */

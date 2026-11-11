@@ -292,6 +292,7 @@ export function BackgroundFields({
   onFixed,
   align,
   onAlign,
+  still = false,
 }: {
   /** The layers over the background and the hue of the whole (D534), and what changing them does; left out, neither is offered. */
   backdrop?: {
@@ -322,6 +323,8 @@ export function BackgroundFields({
   onMotion: (motion: BackgroundMotion | undefined) => void;
   /** After the legend: its device icon (D179; a colour can differ by screen size). */
   mark?: ReactNode;
+  /** A background that does not move (the phone menu's): no effects are offered. */
+  still?: boolean;
 }) {
   // A picture or video chosen as the kind waits for its upload before it is kept.
   const [kind, setKind] = useState<"none" | RowBackground["type"]>(value?.type ?? "none");
@@ -495,7 +498,7 @@ export function BackgroundFields({
         />
       )}
       {/* A picture, video or gradient can move; a colour cannot. */}
-      {backgroundMoves(value) && !fixed && <BackgroundMotionFields target={target} value={motion} onChange={onMotion} />}
+      {backgroundMoves(value) && !fixed && !still && <BackgroundMotionFields target={target} value={motion} onChange={onMotion} />}
       {backdrop && <LayerFields layers={backdrop.layers} hue={backdrop.hue} upload={upload} onLayers={backdrop.onLayers} />}
     </div>
   );

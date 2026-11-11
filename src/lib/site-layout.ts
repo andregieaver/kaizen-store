@@ -9,6 +9,7 @@ import {
   type PageType,
   type HeaderOverlay,
   type MenuBlock,
+  type MenuDrawer,
   type SiteBlock,
   type SitePart,
   withChildren,
@@ -104,6 +105,10 @@ export const isSiteBlock = (block: PageBlock): block is SiteBlock => block.type 
 /** The site components a page holds; a page that is not a header or footer must hold none. */
 export const siteBlocks = (content: Pick<PageContent, "rows">): SiteBlock[] =>
   content.rows.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks).filter(isSiteBlock)));
+
+/** A header's drawer settings for a part: its first component of that part that has any (the cart's for the slide-out cart, D571). */
+export const headerDrawer = (header: Pick<PageContent, "rows"> | null | undefined, part: "menuButton" | "cart"): MenuDrawer | undefined =>
+  header ? siteBlocks(header).find((block) => block.part === part && block.drawer)?.drawer : undefined;
 
 /**
  * What a footer must show on every page (who runs the site, by e-commerce law; the cookie choices, D58; and in a store the

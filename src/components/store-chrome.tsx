@@ -3,7 +3,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 
 import type { HeaderStageLook } from "@/lib/header-stages";
+import { DEFAULT_MENU_LOOK, menuLookFrom, type MenuLook } from "@/lib/menu-drawer";
 
+import { DrawerPanel } from "./drawer-panel";
 import { useHeaderThemeColor } from "./header-theme-color";
 
 /**
@@ -147,11 +149,11 @@ export function HidingBottomBar({ children, product = false }: { children: React
 }
 
 /**
- * The phone menu: slides in from the left over a dimmed page. A modal
- * dialog, so focus stays inside and Escape closes it; tapping outside,
- * choosing a link or swiping it left closes it too. It sits at the end of
- * the page, so its links come after the page's own content; any button
- * marked `data-open-menu` opens it.
+ * The phone menu: a modal dialog over a dimmed page, so focus stays inside and Escape closes it; tapping outside, choosing a link or
+ * swiping it back towards its edge closes it too. It sits at the end of the page, so its links come after the page's own content; any
+ * button marked `data-open-menu` opens it, in the look that button asks for (`src/lib/menu-drawer.ts`): a panel from the left (the
+ * standard), the right, the top or the bottom, the whole screen, a panel dropping under the header or a floating card, and the
+ * background a menu button carries for it (`data-menu-look`), copied behind the links as it opens.
  */
 export function MobileMenu({
   title,
@@ -163,21 +165,35 @@ export function MobileMenu({
   children: ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
+  const backdrop = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [drag, setDrag] = useState(0);
-  const touch = useRef<{ x: number; y: number; sideways: boolean | null } | null>(null);
+  const [look, setLook] = useState<MenuLook>(DEFAULT_MENU_LOOK);
+  const [surface, setSurface] = useState("");
+  // Frosted glass (D86): what is behind the menu blurred, the theme's background left out so it shows through.
+  const [blur, setBlur] = useState(0);
+  const [top, setTop] = useState(0);
 
-  const show = () => {
+  const show = (opener: HTMLElement | null) => {
     const d = dialog.current;
     if (!d || d.open) return;
+    const next = opener ? menuLookFrom(opener.dataset) : DEFAULT_MENU_LOOK;
+    setLook(next);
+    // The opener's own background for the menu, if it carries one; none leaves the theme's.
+    const holder = opener?.dataset.menuLook ? document.getElementById(opener.dataset.menuLook) : null;
+    backdrop.current?.replaceChildren(...(holder ? Array.from((holder.cloneNode(true) as HTMLElement).childNodes) : []));
+    setSurface(holder?.dataset.menuSurface ?? "");
+    setBlur(Number(holder?.dataset.menuBlur) || 0);
+    // A dropdown hangs from the bottom of the header the button is in.
+    if (next.type === "dropdown" && opener) {
+      setTop(Math.max(0, Math.round((opener.closest("header") ?? opener).getBoundingClientRect().bottom)));
+    }
     d.showModal();
     document.documentElement.style.overflow = "hidden";
-    requestAnimationFrame(() => setOpen(true));
+    // Drawn closed in its new look first, then opened, so it moves in from its own edge.
+    requestAnimationFrame(() => requestAnimationFrame(() => setOpen(true)));
   };
   const hide = () => {
     setOpen(false);
-    setDrag(0);
     document.documentElement.style.overflow = "";
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.setTimeout(() => dialog.current?.close(), reduced ? 0 : 300);
@@ -186,7 +202,8 @@ export function MobileMenu({
   // Any button marked `data-open-menu` opens it, such as the bottom bar's Menu.
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
-      if ((event.target as Element | null)?.closest?.("[data-open-menu]")) show();
+      const opener = (event.target as Element | null)?.closest?.("[data-open-menu]");
+      if (opener) show(opener as HTMLElement);
     };
     document.addEventListener("click", onClick);
     return () => {
@@ -196,69 +213,35 @@ export function MobileMenu({
   }, []);
 
   return (
-    <>
-      <dialog
-        ref={dialog}
-        id="store-menu"
-        aria-label={labels.menu}
-        onCancel={(event) => {
-          event.preventDefault();
-          hide();
-        }}
-        onClick={(event) => {
-          if ((event.target as Element).closest("a")) hide();
-        }}
-        className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 backdrop:bg-transparent"
+    <dialog
+      ref={dialog}
+      id="store-menu"
+      aria-label={labels.menu}
+      onCancel={(event) => {
+        event.preventDefault();
+        hide();
+      }}
+      onClick={(event) => {
+        // A link chosen, or a tap beside a dropdown (on the header it hangs from), closes it.
+        if (event.target === event.currentTarget || (event.target as Element).closest("a")) hide();
+      }}
+      style={{ "--menu-top": `${top}px` } as CSSProperties}
+      className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 backdrop:bg-transparent"
+    >
+      <DrawerPanel
+        look={look}
+        open={open}
+        surface={surface}
+        blur={blur}
+        backgroundRef={backdrop}
+        // A dropdown hangs under the header, which already shows the logo.
+        bar={look.type !== "dropdown" && title}
+        closeLabel={labels.close}
+        onClose={hide}
+        bodyClassName="flex flex-col gap-6 px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
       >
-        <div
-          aria-hidden="true"
-          onClick={hide}
-          className={`fixed inset-0 bg-black/40 transition-opacity duration-300 motion-reduce:transition-none ${
-            open ? "opacity-100" : "opacity-0"
-          }`}
-        />
-        <div
-          ref={panel}
-          style={drag ? { transform: `translateX(${drag}px)`, transition: "none" } : undefined}
-          onTouchStart={(event) => {
-            const t = event.touches[0];
-            touch.current = { x: t.clientX, y: t.clientY, sideways: null };
-          }}
-          onTouchMove={(event) => {
-            const start = touch.current;
-            if (!start) return;
-            const t = event.touches[0];
-            const dx = t.clientX - start.x;
-            const dy = t.clientY - start.y;
-            if (start.sideways === null && Math.abs(dx) + Math.abs(dy) > 10) start.sideways = Math.abs(dx) > Math.abs(dy);
-            if (start.sideways) setDrag(Math.min(0, dx));
-          }}
-          onTouchEnd={() => {
-            const width = panel.current?.offsetWidth ?? 300;
-            touch.current = null;
-            if (drag < -width / 4) hide();
-            else setDrag(0);
-          }}
-          className={`fixed inset-y-0 left-0 flex w-[85%] max-w-sm flex-col overflow-y-auto overscroll-contain bg-background shadow-2xl transition-transform duration-300 ease-out motion-reduce:transition-none ${
-            open ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border px-4">
-            <div className="min-w-0 truncate">{title}</div>
-            <button
-              type="button"
-              onClick={hide}
-              className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-full"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-              </svg>
-              <span className="sr-only">{labels.close}</span>
-            </button>
-          </div>
-          <div className="flex flex-1 flex-col gap-6 px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">{children}</div>
-        </div>
-      </dialog>
-    </>
+        {children}
+      </DrawerPanel>
+    </dialog>
   );
 }
