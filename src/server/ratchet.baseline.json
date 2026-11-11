@@ -493,7 +493,7 @@
     "src/server/domain-move.ts": 3,
     "src/server/domain-purchases.ts": 20,
     "src/server/domains.ts": 3,
-    "src/server/dream-factory.ts": 8,
+    "src/server/dream-factory.ts": 7,
     "src/server/ebay.ts": 5,
     "src/server/einvoice-sending.ts": 5,
     "src/server/email.ts": 3,

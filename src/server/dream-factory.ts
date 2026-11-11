@@ -450,9 +450,10 @@ export type DreamDeps = {
 
 /**
  * The minute's work: the runs due, one at a time, while there is time. Never throws: a run that breaks is logged and the others go on.
- * Returns how many steps moved and how many runs threw, so the cron can keep the minute as failed.
+ * Returns how many steps moved and how many runs threw, so the cron can keep the minute as failed. `storeId` keeps it to one store's runs: the
+ * cron passes none; a test passes its own store, so it never moves (with its stand-ins) a run another test file left due.
  */
-export async function advanceDreamRuns({ deadline, deps = {} }: { deadline: number; deps?: DreamDeps }): Promise<{ moved: number; failed: number }> {
+export async function advanceDreamRuns({ deadline, deps = {}, storeId }: { deadline: number; deps?: DreamDeps; storeId?: string }): Promise<{ moved: number; failed: number }> {
   let moved = 0;
   let failed = 0;
   // Every AI that acts on its own waits while a platform admin has paused them (PSI AST-07).
@@ -463,6 +464,7 @@ export async function advanceDreamRuns({ deadline, deps = {} }: { deadline: numb
       where id = (
         select id from commerce.dream_runs
         where status in ('running', 'asking', 'ready') and finished_at is null and (claimed_until is null or claimed_until < now())
+          ${storeId ? sql`and store_id = ${storeId}::uuid` : sql``}
         order by claimed_until nulls first, updated_at limit 1 for update skip locked
       )
       returning id

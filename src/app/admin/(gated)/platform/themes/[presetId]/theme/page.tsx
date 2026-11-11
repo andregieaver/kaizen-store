@@ -23,7 +23,6 @@ export default async function DesignThemePage({ params }: PageProps<"/admin/plat
             when the theme is published. Saved versions stay with the theme.
           </p>
           <ThemeEditor
-            key={JSON.stringify(page.store.theme)}
             storeName={page.store.name}
             current={page.store.theme}
             saved={await listSavedThemes(page.store.id)}

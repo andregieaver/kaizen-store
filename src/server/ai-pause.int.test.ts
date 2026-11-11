@@ -54,7 +54,7 @@ describe("pausing every AI that acts on its own", () => {
       throw new Error("a paused runner must not work");
     };
 
-    expect(await advanceDreamRuns({ deadline: Date.now() + 10_000, deps: { turn: never } as never })).toEqual({ moved: 0, failed: 0 });
+    expect(await advanceDreamRuns({ deadline: Date.now() + 10_000, deps: { turn: never } as never, storeId: store.id })).toEqual({ moved: 0, failed: 0 });
     const [after] = await db().execute<Row>(sql`select claimed_until from commerce.dream_runs where id = ${String(run.id)}::uuid`);
     expect(after.claimed_until).toBeNull();
 

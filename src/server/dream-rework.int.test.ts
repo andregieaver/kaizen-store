@@ -54,7 +54,7 @@ async function openStore(name: string): Promise<TestStore> {
 
 async function minute(storeId: string, deps: Parameters<typeof advanceDreamRuns>[0]["deps"]) {
   await db().execute(sql`update commerce.dream_runs set claimed_until = null where store_id = ${storeId}::uuid`);
-  return advanceDreamRuns({ deadline: Date.now() + 200_000, deps });
+  return advanceDreamRuns({ deadline: Date.now() + 200_000, deps, storeId });
 }
 
 const planJson = (store: TestStore, over: Record<string, unknown> = {}) =>

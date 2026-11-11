@@ -50,6 +50,15 @@ const card = "flex flex-col gap-4 rounded-lg border border-border bg-background 
 const button = "min-h-10 rounded-md px-4 text-sm font-medium disabled:opacity-50";
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
+/** The same value whatever order its keys were written in (a theme read back from the database has its keys in jsonb's order). */
+const sorted = (value: unknown): unknown =>
+  Array.isArray(value)
+    ? value.map(sorted)
+    : value && typeof value === "object"
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k, v]) => [k, sorted(v)]))
+      : value;
+const sameTheme = (a: unknown, b: unknown) => JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
+
 /** One of a few choices, as a row of buttons over radio buttons. */
 function Choice<T extends string>({
   legend,
@@ -438,6 +447,21 @@ export function ThemeEditor({
   const [previewMode, setPreviewMode] = useState<"light" | "dark">(current.settings.mode === "dark" ? "dark" : "light");
   const [naming, setNaming] = useState<string | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
+  // A theme applied, switched to or put back elsewhere changes the store's settings under the editor: it starts again from them. Its own
+  // save comes back the same way (the page is refreshed with the saved theme), and that is not a change: the editor keeps its state, and
+  // with it the *Saved* message (re-keying the editor on the theme lost the message whenever the refresh landed after it, CI run 1212).
+  const [seen, setSeen] = useState<StoreTheme>(current);
+  if (!sameTheme(current, seen)) {
+    setSeen(current);
+    if (!sameTheme(current, live)) {
+      setTheme(current);
+      setLive(current);
+      setSaved(initialSaved);
+      setMessage(null);
+      setNaming(null);
+      setPreviewMode(current.settings.mode === "dark" ? "dark" : "light");
+    }
+  }
   const versionWords = useAdminText("schedules").versions;
   const [pending, startTransition] = useTransition();
 

@@ -42,7 +42,7 @@ const briefJson = (business: Record<string, string>, countries: string[] = ["NO"
 /** Moves the run on as the minute's cron would, as if a minute had passed since the last time. */
 async function minute(storeId: string, deps: Parameters<typeof advanceDreamRuns>[0]["deps"]) {
   await db().execute(sql`update commerce.dream_runs set claimed_until = null where store_id = ${storeId}::uuid`);
-  return advanceDreamRuns({ deadline: Date.now() + 200_000, deps });
+  return advanceDreamRuns({ deadline: Date.now() + 200_000, deps, storeId });
 }
 
 let test: { id: string; slug: string; owner: string };

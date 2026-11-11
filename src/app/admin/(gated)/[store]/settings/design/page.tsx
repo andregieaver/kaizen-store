@@ -124,8 +124,6 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         lang={lang}
       />
       <ThemeEditor
-        // A theme applied, switched to or put back changes the settings under the editor: it starts again from the store's.
-        key={JSON.stringify(store.theme)}
         storeName={store.name}
         current={store.theme}
         saved={saved}
