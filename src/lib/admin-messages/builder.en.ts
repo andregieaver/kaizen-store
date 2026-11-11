@@ -45,6 +45,8 @@ export const builderEn = {
     emailForm: "Email form",
     newsletter: "Newsletter",
     instagram: "Instagram feed",
+    countdown: "Countdown",
+    stats: "Animated stats",
   },
   /** A component as the question before deleting it names it. */
   blockThis: {
@@ -83,6 +85,8 @@ export const builderEn = {
     emailForm: "this form",
     newsletter: "this newsletter sign-up",
     instagram: "this Instagram feed",
+    countdown: "this countdown",
+    stats: "these stats",
   },
   /** `PRODUCT_PARTS`. */
   productParts: {
@@ -378,6 +382,8 @@ export const builderEn = {
     table: "An empty table: write in its cells.",
     emailForm: "An email form: it needs its questions and where to send.",
     newsletter: "A newsletter sign-up: it needs where to send.",
+    countdown: "A countdown: it needs when it ends.",
+    stats: "Animated stats: add a figure.",
     instagram: "No Instagram account is connected yet: connect it under Integrations, Instagram. The feed then shows your posts here.",
   },
   /** How a component gets what it lacks, said after what it lacks on the canvas (`OPENED_TO_FILL` in the page builder). */

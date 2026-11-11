@@ -67,6 +67,9 @@ import {
   type FormFieldKind,
   type NewsletterBlock,
   type InstagramBlock,
+  type CountdownBlock,
+  type StatsBlock,
+  type StatItem,
   SIGNUP_TAGS_MAX,
   ICON_LIST_LAYOUTS,
   ICON_LIST_TEXT_MAX,
@@ -180,6 +183,8 @@ import { fillWords } from "@/lib/admin-fill";
 
 import { ADMIN_LANG_FACTS } from "@/lib/admin-lang";
 import { cleanHashtags, FEED_MAX } from "@/lib/instagram";
+import { cleanEnd, endFieldValue } from "@/lib/countdown";
+import { STAT_DURATION_DEFAULT, STAT_ITEMS_MAX } from "@/lib/stats-count";
 import { useAdminLang, useAdminText } from "./admin-text";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { AnimationBlockFields, AnimationStyleFields } from "./animation-fields";
@@ -236,6 +241,8 @@ export const BLOCK_EDITORS: Editors = {
   },
   separator: { title: "Separator line", General: SeparatorFields },
   instagram: { title: "Instagram feed", General: InstagramFields },
+  countdown: { title: "Countdown", General: CountdownFields },
+  stats: { title: "Animated stats", General: StatsFields },
   accordion: {
     title: "Accordion",
     font: { label: "Font", fallback: "The site's body font" },
@@ -875,6 +882,114 @@ function SeparatorFields({ block, onChange }: BlockEditorProps<SeparatorBlock>) 
       {(block.width ?? 100) < 100 && (
         <Choices legend={w.separator.position} options={optionsOf(SEPARATOR_POSITIONS, w.lists.positions)} value={block.position ?? "center"} onChange={(position) => onChange({ position })} />
       )}
+    </>
+  );
+}
+
+/**
+ * A countdown (D544): when it ends, in the owner's own time zone (kept as a moment in UTC), the words above it, and boxes or plain numbers.
+ * It is gone at zero; a timer that starts again for each visitor is not offered (false urgency).
+ */
+function CountdownFields({ block, onChange }: BlockEditorProps<CountdownBlock>) {
+  const w = useAdminText("blocks").countdown;
+  return (
+    <>
+      <p className="text-sm text-muted">{w.intro}</p>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        {w.endsAt}
+        <input
+          type="datetime-local"
+          value={endFieldValue(block.endsAt)}
+          onChange={(event) => onChange({ endsAt: event.target.value ? cleanEnd(event.target.value) : null })}
+          className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal"
+        />
+        <span className="text-xs font-normal text-muted">{w.endsAtHint}</span>
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        {w.title}
+        <input
+          value={block.title}
+          maxLength={HEADING_MAX}
+          placeholder={w.titleExample}
+          onChange={(event) => onChange({ title: event.target.value })}
+          className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal"
+        />
+      </label>
+      <Choices
+        legend={w.look}
+        options={[
+          { value: "boxes", label: w.boxes },
+          { value: "plain", label: w.plain },
+        ]}
+        value={block.look ?? "boxes"}
+        onChange={(look) => onChange({ look: look === "plain" ? "plain" : undefined })}
+      />
+    </>
+  );
+}
+
+/**
+ * Animated stats (D544): each figure as the owner types it (the number, its decimals, words before and after it, and a label), up to eight,
+ * how many across on larger screens and how long a count takes.
+ */
+function StatsFields({ block, onChange }: BlockEditorProps<StatsBlock>) {
+  const w = useAdminText("blocks").stats;
+  const id = useId();
+  const setItem = (index: number, patch: Partial<StatItem>) => onChange({ items: block.items.map((item, i) => (i === index ? { ...item, ...patch } : item)) });
+  const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
+  return (
+    <>
+      <p className="text-sm text-muted">{w.intro}</p>
+      <ol className="flex flex-col gap-4">
+        {block.items.map((item, index) => (
+          <li key={item.id} className="flex flex-col gap-2 rounded-md border border-line p-3">
+            <div className="grid grid-cols-[4rem_minmax(0,1fr)_5rem] gap-2">
+              <label className="flex flex-col gap-1 text-xs font-medium">
+                {w.prefix}
+                <input value={item.prefix} maxLength={10} onChange={(event) => setItem(index, { prefix: event.target.value })} className={field} />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-medium">
+                {w.value}
+                <input
+                  type="number"
+                  step="any"
+                  value={item.value}
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    const value = Number(raw);
+                    if (raw === "" || !Number.isFinite(value)) return;
+                    const decimals = Math.min(2, (raw.split(".")[1] ?? "").length);
+                    setItem(index, { value, decimals: decimals || undefined });
+                  }}
+                  className={field}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-medium">
+                {w.suffix}
+                <input value={item.suffix} maxLength={20} onChange={(event) => setItem(index, { suffix: event.target.value })} className={field} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1 text-xs font-medium" htmlFor={`${id}-${item.id}`}>
+              {w.label}
+            </label>
+            <input id={`${id}-${item.id}`} value={item.label} maxLength={120} placeholder={w.labelExample} onChange={(event) => setItem(index, { label: event.target.value })} className={field} />
+            <button type="button" onClick={() => onChange({ items: block.items.filter((_, i) => i !== index) })} className="self-start text-xs text-danger-text underline">
+              {w.remove}
+            </button>
+          </li>
+        ))}
+      </ol>
+      {block.items.length < STAT_ITEMS_MAX && (
+        <button
+          type="button"
+          onClick={() => onChange({ items: [...block.items, { id: crypto.randomUUID().slice(0, 8), value: 100, prefix: "", suffix: "", label: "" }] })}
+          className="inline-flex min-h-10 w-fit items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
+        >
+          {w.add}
+        </button>
+      )}
+      <NumberField label={w.columns} value={block.columns} min={1} max={6} onChange={(columns) => onChange({ columns })} />
+      <NumberField label={w.duration} value={block.duration ?? STAT_DURATION_DEFAULT} min={1} max={6} unit={w.seconds} onChange={(duration) => onChange({ duration: duration === STAT_DURATION_DEFAULT ? undefined : duration })} />
     </>
   );
 }

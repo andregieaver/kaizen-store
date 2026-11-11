@@ -510,6 +510,9 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   storePart: { "the shop's words": "text" },
   // An Instagram feed (D543): its posts' captions and the Follow link.
   instagram: { "captions and the Follow link": "text" },
+  // A countdown's words, numbers and units, and the stats' figures and labels (D544), sized and coloured as the component's text.
+  countdown: { title: "text", "the numbers and units": "text" },
+  stats: { "*.prefix": "text", "*.suffix": "text", "*.label": "text", "the figures": "text" },
 };
 
 /**

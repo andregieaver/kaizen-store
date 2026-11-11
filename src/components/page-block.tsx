@@ -35,7 +35,8 @@ import { fixedSizes } from "@/lib/picture-sizes";
 import { embedUrl } from "@/lib/video-embed";
 
 import { SHAPES, buttonLook } from "./button-look";
-import { AnimationPlayer, BeforeAfterSlider, EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo } from "./lazy/blocks";
+import { AnimationPlayer, BeforeAfterSlider, EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo, CountdownView, StatsView } from "./lazy/blocks";
+import { STAT_DURATION_DEFAULT } from "@/lib/stats-count";
 import { blockBox } from "./page-parts";
 import { IconListView } from "./icon-list-view";
 import { TimelineView } from "./timeline-view";
@@ -62,9 +63,12 @@ export function PageBlockView({
   block,
   renderChildren,
   eager = false,
+  preview = false,
 }: {
   block: PageBlock;
   renderChildren?: ChildRenderer;
+  /** In the page builder's canvas: a countdown that has ended shows zeros there instead of nothing (D544). */
+  preview?: boolean;
   /** In a row that may be on the first screen: its picture loads at once and before the others, never lazily. */
   eager?: boolean;
 }) {
@@ -90,6 +94,17 @@ export function PageBlockView({
     case "instagram":
       // The owner's posts are read where the page is shown (`InstagramSection`, D543); the editor shows squares where they go.
       return <InstagramStandIn block={block} />;
+    case "countdown":
+      // Drawn in the browser, ticking, gone at zero (D544); the editor (`preview`) shows zeros for one that has ended.
+      return <CountdownView endsAt={block.endsAt} title={block.title} boxes={block.look !== "plain"} preview={preview} />;
+    case "stats":
+      return (
+        <StatsView
+          items={block.items.map((item) => ({ ...item, decimals: item.decimals ?? 0 }))}
+          columns={block.columns}
+          duration={block.duration ?? STAT_DURATION_DEFAULT}
+        />
+      );
     case "search":
       // The store's search is looked up where it is shown (`SearchSection`, D112); the editor shows a stand-in.
       return null;

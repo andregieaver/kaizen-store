@@ -348,6 +348,7 @@ Each rule is in full under the same words in one file of `docs/rules/admin/` by 
 - Basket notes: free shipping and you saved (D541, `src/lib/shop-notes.ts`, `src/server/shop-notes.ts`, `src/components/shop-notes.tsx`)
 - Goes well with: upsells from the cart (D542, `recommendForCart()`, `src/components/cart-upsell.tsx`)
 - An Instagram feed (D543, `src/lib/instagram.ts`, `src/server/instagram.ts`, `InstagramBlock`, `InstagramSection`)
+- A countdown timer and animated stats (D544, `src/lib/countdown.ts`, `src/lib/stats-count.ts`, `CountdownView`, `StatsView`)
 - Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`, `src/server/product-layouts.ts`)
 - Custom fields (D118, `docs/custom-fields.md`, `src/lib/custom-fields.ts`, `src/server/custom-fields.ts`)
 - Modals (D121, `src/lib/page-modal.ts`, `src/components/page-modal.tsx`, `ModalFields`)

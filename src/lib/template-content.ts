@@ -66,6 +66,8 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   emailForm: "email form",
   newsletter: "newsletter",
   instagram: "Instagram feed",
+  countdown: "countdown",
+  stats: "stats",
 };
 
 /** The blocks a saved part holds, in reading order. */

@@ -78,6 +78,10 @@ export function BlockIcon({ type }: { type: BlockType }) {
       return <NewsletterIcon />;
     case "instagram":
       return <InstagramIcon />;
+    case "countdown":
+      return <StrokeIcon d={["M12 8v5l3 2", "M9 2h6"]} circle />;
+    case "stats":
+      return <StrokeIcon d={["M4 20V12", "M10 20V6", "M16 20v-9", "M22 20H2"]} />;
     default:
       return <LetterIcon letter="T" />;
   }
@@ -492,6 +496,20 @@ function InstagramIcon() {
         <rect x="3" y="3" width="18" height="18" rx="5" />
         <circle cx="12" cy="12" r="4" />
         <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+      </svg>
+    </span>
+  );
+}
+
+/** A stroke icon on the tile's dark face (the countdown's clock and the stats' bars, D544). */
+function StrokeIcon({ d, circle = false }: { d: string[]; circle?: boolean }) {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {circle && <circle cx="12" cy="13" r="8" />}
+        {d.map((path) => (
+          <path key={path} d={path} />
+        ))}
       </svg>
     </span>
   );

@@ -735,3 +735,7 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - An Instagram feed (D543, `src/lib/instagram.ts`, `src/server/instagram.ts`, `InstagramBlock`, `InstagramSection`): only the connected account's own posts (one per store, or Kaizena Flow's with a null store), never a public hashtag search; a page reads the posts kept in `instagram_accounts` (never Instagram), refreshed by the dispatcher's `instagram` job; every picture goes through `/api/instagram/…` from Instagram's hosts only (`isInstagramPicture()`), so a visitor's browser never loads from Meta; the token stays encrypted and is never logged or audited.
 
+## A countdown timer and animated stats (D544, `src/lib/countdown.ts`, `src/lib/stats-count.ts`, `CountdownView`, `StatsView`)
+
+- A countdown timer and animated stats (D544, `src/lib/countdown.ts`, `src/lib/stats-count.ts`, `CountdownView`, `StatsView`): a countdown only ever counts to a fixed moment the owner chose, the same for every visitor, and draws nothing once it has passed; never add one that starts again per visitor (false urgency). Stats' figures are the owner's own, in the server's HTML as typed; the count is decoration only, never under reduced motion and never read to a screen reader.
+

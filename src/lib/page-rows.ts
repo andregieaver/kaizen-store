@@ -129,6 +129,20 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       };
     case "newsletter":
       return { id: id(), type, recipients: [], placeholder: "", submitLabel: "", successMessage: "", consent: "" };
+    case "countdown":
+      // Ends in a week, at the minute (D544); the owner sets the real end.
+      return { id: id(), type, endsAt: null, title: "" };
+    case "stats":
+      return {
+        id: id(),
+        type,
+        columns: 3,
+        items: [
+          { id: id(), value: 1000, prefix: "", suffix: "+", label: "" },
+          { id: id(), value: 98, prefix: "", suffix: " %", label: "" },
+          { id: id(), value: 24, prefix: "", suffix: "/7", label: "" },
+        ],
+      };
     case "instagram":
       // The latest eight posts, four across, with a Follow link (D543).
       return { id: id(), type, hashtags: [], limit: 8, columns: 4 };

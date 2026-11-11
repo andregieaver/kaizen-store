@@ -204,6 +204,18 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         successMessage: str("successMessage", b.successMessage, 500, "Thank-you message"),
         ...(b.consent !== undefined && { consent: str("consent", b.consent, 500, "Tick box") }),
       };
+    case "countdown":
+      return { ...b, title: str("title", b.title, 200, "Countdown's words") };
+    case "stats":
+      return {
+        ...b,
+        items: b.items.map((item, n) => ({
+          ...item,
+          prefix: str(`${item.id}.prefix`, item.prefix, 10, `Figure ${n + 1}: before it`),
+          suffix: str(`${item.id}.suffix`, item.suffix, 20, `Figure ${n + 1}: after it`),
+          label: str(`${item.id}.label`, item.label, 120, `Figure ${n + 1}: label`),
+        })),
+      };
     // Hashtags are the owner's keys to their posts, never translated (D543).
     case "instagram":
       return b;

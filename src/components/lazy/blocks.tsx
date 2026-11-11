@@ -27,3 +27,8 @@ export const SearchBox = lazyView(dynamic(() => import("../search-box").then((m)
 export const DomainSearchBox = lazyView(dynamic(() => import("../domain-search-box").then((m) => m.DomainSearchBox)));
 /** A product tile's stock and Add to cart (D540): loaded only on a page whose grids show them; nothing is drawn until the facts arrive. */
 export const TileShop = lazyView(dynamic(() => import("../tile-shop").then((m) => m.TileShop)));
+/** A countdown to a fixed moment (D544): drawn in the browser only, gone at zero. */
+export const CountdownView = lazyView(dynamic(() => import("../countdown-view").then((m) => m.CountdownView)));
+/** Figures that count up as they come into view (D544); the server's HTML holds them as typed. */
+export const StatsView = lazyView(dynamic(() => import("../stats-view").then((m) => m.StatsView)));
+

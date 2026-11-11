@@ -2032,6 +2032,34 @@ export type InstagramBlock = PartBase & {
   follow?: boolean;
 };
 
+/**
+ * A countdown timer (D544, `src/lib/countdown.ts`): days, hours, minutes and seconds left until a fixed moment the owner chose (`endsAt`,
+ * an ISO moment in UTC), the same for every visitor, with the owner's words above it. Gone at zero. In boxes unless `look` is `plain`.
+ */
+export type CountdownBlock = PartBase & {
+  id: string;
+  type: "countdown";
+  endsAt: string | null;
+  title: string;
+  look?: "plain";
+};
+
+/** One of the animated stats' figures (D544): the owner's own number, with words before and after it and a label under it. */
+export type StatItem = { id: string; value: number; decimals?: number; prefix: string; suffix: string; label: string };
+
+/**
+ * Animated stats (D544, `src/lib/stats-count.ts`): the owner's figures ("12 000+ happy customers") counting up from zero as they come
+ * into view, `columns` across on larger screens (at most two on phones), in `duration` seconds.
+ */
+export type StatsBlock = PartBase & {
+  id: string;
+  type: "stats";
+  items: StatItem[];
+  columns: number;
+  /** Seconds a count takes; two unless set. */
+  duration?: number;
+};
+
 export type NewsletterBlock = PartBase & {
     id: string;
     type: "newsletter";
@@ -2096,6 +2124,8 @@ export type PageBlock =
   | EmailFormBlock
   | NewsletterBlock
   | InstagramBlock
+  | CountdownBlock
+  | StatsBlock
   | ColumnsBlock;
 export type BlockType = PageBlock["type"];
 
@@ -2329,6 +2359,11 @@ export function blockOwnContent(block: PageBlock): boolean {
     // The owner's posts are known only when the page is shown (D543).
     case "instagram":
       return true;
+    // A countdown with an end, and stats with a figure (D544); a countdown past its end is gone in the browser.
+    case "countdown":
+      return block.endsAt !== null;
+    case "stats":
+      return block.items.length > 0;
     case "testimonials":
       // Google's reviews are known only when the page is shown.
       return block.source === "google" || block.items.some(testimonialShows);
@@ -2414,6 +2449,11 @@ export function blockText(block: PageBlock): string {
     // The posts' captions are Instagram's, not the page's (D543).
     case "instagram":
       return "";
+    // A countdown's words say what ends; they are about the offer, not the page (D544).
+    case "countdown":
+      return block.title;
+    case "stats":
+      return block.items.map((item) => `${item.prefix}${item.value}${item.suffix} ${item.label}`.trim()).join(". ");
   }
 }
 
@@ -3870,6 +3910,37 @@ const instagramBlock = z.object({
   ...partBase,
 });
 
+const countdownBlock = z.object({
+  id: itemId,
+  type: z.literal("countdown"),
+  endsAt: z.iso.datetime({ offset: true, error: "Choose when the countdown ends." }).nullable(),
+  title: z.string().trim().max(HEADING_MAX, `Keep a countdown's words under ${HEADING_MAX} characters.`).default(""),
+  look: z.literal("plain").optional(),
+  ...partBase,
+});
+
+const statText = (what: string, max: number) => z.string().trim().max(max, `Keep a figure's ${what} under ${max} characters.`).default("");
+
+const statsBlock = z.object({
+  id: itemId,
+  type: z.literal("stats"),
+  items: z
+    .array(
+      z.object({
+        id: itemId,
+        value: z.number().finite().min(-1e12).max(1e12, "A figure is at most a trillion."),
+        decimals: z.number().int().min(0).max(2).optional(),
+        prefix: statText("words before it", 10),
+        suffix: statText("words after it", 20),
+        label: statText("label", 120),
+      }),
+    )
+    .max(8, "Animated stats show at most eight figures."),
+  columns: z.number().int().min(1).max(6),
+  duration: z.number().min(0.5).max(6).optional(),
+  ...partBase,
+});
+
 const newsletterBlock = z.object({
   id: itemId,
   type: z.literal("newsletter"),
@@ -3923,6 +3994,8 @@ const BLOCK_KINDS = [
   emailFormBlock,
   newsletterBlock,
   instagramBlock,
+  countdownBlock,
+  statsBlock,
 ] as const;
 
 /**

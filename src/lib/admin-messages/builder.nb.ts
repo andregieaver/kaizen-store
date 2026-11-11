@@ -38,6 +38,8 @@ export const builderNb: BuilderMessages = {
     emailForm: "E-postskjema",
     newsletter: "Nyhetsbrev",
     instagram: "Instagram-feed",
+    countdown: "Nedtelling",
+    stats: "Animerte tall",
   },
   blockThis: {
     richText: "denne teksten",
@@ -75,6 +77,8 @@ export const builderNb: BuilderMessages = {
     emailForm: "dette skjemaet",
     newsletter: "denne påmeldingen til nyhetsbrev",
     instagram: "denne Instagram-feeden",
+    countdown: "denne nedtellingen",
+    stats: "disse tallene",
   },
   productParts: {
     back: "Tilbakelenke",
@@ -356,6 +360,8 @@ export const builderNb: BuilderMessages = {
     table: "En tom tabell: skriv i cellene.",
     emailForm: "Et e-postskjema: det trenger spørsmål og hvor det skal sendes.",
     newsletter: "En påmelding til nyhetsbrev: den trenger hvor det skal sendes.",
+    countdown: "En nedtelling: den trenger når den slutter.",
+    stats: "Animerte tall: legg til et tall.",
     instagram: "Ingen Instagram-konto er koblet til ennå: koble den til under Integrasjoner, Instagram. Feeden viser da innleggene dine her.",
   },
   emptyHow: "Dobbeltklikk eller bruk skiftenøkkelen.",
