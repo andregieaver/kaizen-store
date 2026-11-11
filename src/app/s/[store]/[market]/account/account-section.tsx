@@ -33,8 +33,9 @@ import { hasBuyerCatalogue } from "@/server/price-lists";
 import type { Store } from "@/server/stores";
 
 import { accountSubscription } from "@/server/marketing-subscribers";
+import { accountSms } from "@/server/sms";
 
-import { avatarAction, newsAction } from "./actions";
+import { avatarAction, newsAction, smsAction } from "./actions";
 import { featureOn } from "@/lib/store-features";
 
 /**
@@ -64,7 +65,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     );
   }
 
-  const [orders, subscriptions, lastAddress, mine, bonus, referrals, news, catalogue, creators, q] = await Promise.all([
+  const [orders, subscriptions, lastAddress, mine, bonus, referrals, news, catalogue, creators, q, sms] = await Promise.all([
     listCustomerOrders(store.id, customer.id),
     // Subscriptions (D178): the list is there while the feature is on; switching it off waits until none runs, and each one's own link
     // from its emails keeps working.
@@ -79,6 +80,8 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     // The creator programme (D386): a card to apply or to one's own page while it works.
     creatorProgramOn(store.id),
     query,
+    // Marketing texts (D565): offered only by a store with SMS on.
+    accountSms(store.id, customer.id),
   ]);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
   const base = marketPath(store.slug, market.slug);
@@ -296,6 +299,35 @@ async function Account({ store, market, query }: { store: Store; market: Market;
           </button>
         </form>
       </section>
+
+      {/* Marketing texts (D565): the customer's own number, agreed to or stopped in one press, with the words they agree to. */}
+      {sms.offered && (
+        <section aria-labelledby="sms-heading" className="flex flex-col gap-3">
+          <h2 id="sms-heading" className="text-xl font-heading">{m.sms.heading}</h2>
+          <p role="status" className="text-sm text-muted">
+            {sms.status === "subscribed" && sms.phone ? m.sms.on(sms.phone) : m.sms.off}
+          </p>
+          {q.sms === "number" && sms.status !== "subscribed" && (
+            <p role="alert" className="text-sm">
+              {m.sms.badPhone}
+            </p>
+          )}
+          <form action={smsAction.bind(null, store.slug, market.slug, sms.status !== "subscribed")} className="flex flex-col gap-3">
+            {sms.status !== "subscribed" && (
+              <>
+                <p className="text-sm">{m.sms.consent(store.name)}</p>
+                <label className="flex flex-col gap-1 text-sm">
+                  {m.sms.phone}
+                  <input name="phone" type="tel" inputMode="tel" autoComplete="tel" required maxLength={32} defaultValue={customer.phone} className="min-h-11 max-w-xs rounded-md border border-border bg-background px-3" />
+                </label>
+              </>
+            )}
+            <button type="submit" className="min-h-11 self-start rounded-button border border-border px-5">
+              {sms.status === "subscribed" ? m.sms.unsubscribe : m.sms.subscribe}
+            </button>
+          </form>
+        </section>
+      )}
 
       <PrivacyCard text={shopperPrivacyText(market.lang)} storeName={store.name} href={`${base}/account/privacy`} />
     </>

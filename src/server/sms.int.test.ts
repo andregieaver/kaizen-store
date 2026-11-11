@@ -203,3 +203,22 @@ describe("SMS marketing (D565)", () => {
     expect(await sms.smsOffered(store.storeId)).toBe(false);
   });
 });
+
+describe("My account's switch (D565)", () => {
+  const stand = elks();
+
+  it("is offered only with SMS on, and a signed-in customer's number agrees at once and stops with one press", async () => {
+    const [customer] = await db().execute<Row>(sql`
+      insert into commerce.customers (store_id, email, name) values (${store.storeId}::uuid, 'ola@example.com', 'Ola') returning id`);
+    const id = String(customer.id);
+    const input = { storeId: store.storeId, customerId: id, email: "Ola@Example.com", country: "NO", locale: "nb-NO", marketCode: "NO", consentText: "Send meg tilbud på SMS." };
+    expect(await sms.accountSms(store.storeId, id)).toEqual({ offered: false, status: null, phone: null });
+    expect(await sms.connectSms(store.member, { username: "u_test", password: "p_test", sender: "Nordlys" }, stand.fetcher)).toEqual({ ok: true });
+    expect(await sms.setAccountSms({ ...input, on: true, typed: "nope" })).toBe(false);
+    expect(await sms.setAccountSms({ ...input, on: true, typed: "912 00 333" })).toBe(true);
+    expect(await sms.accountSms(store.storeId, id)).toEqual({ offered: true, status: "subscribed", phone: "+47 ••• 333" });
+    expect(await subscriber("+4791200333")).toMatchObject({ status: "subscribed", source: "account", consent_text: "Send meg tilbud på SMS." });
+    expect(await sms.setAccountSms({ ...input, on: false, typed: "" })).toBe(true);
+    expect(await subscriber("+4791200333")).toMatchObject({ status: "unsubscribed", unsubscribe_source: "account" });
+  });
+});

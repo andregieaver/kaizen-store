@@ -939,6 +939,12 @@ export const nb: Messages = {
   /** SMS-markedsføring (D565): skrevet for hånd, trenger juridisk gjennomlesing. */
   // legal: needs review
   sms: {
+    heading: "SMS med tilbud",
+    on: (phone: string) => `Du får SMS med tilbud på ${phone}.`,
+    off: "Du får ikke SMS med tilbud.",
+    subscribe: "Send meg tilbud på SMS",
+    unsubscribe: "Stopp SMS",
+    badPhone: "Sjekk mobilnummeret. Et nummer fra et annet land starter med + og landskoden.",
     consent: (store: string) => `Send meg tilbud fra ${store} på SMS til dette nummeret. Jeg kan når som helst stoppe med lenken i hver melding.`,
     phone: "Mobilnummer",
     phoneHint: "Bare for tilbud på SMS.",

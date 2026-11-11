@@ -42,8 +42,15 @@ the store's provider, processing in Sweden.
   as the month's real cost reaches the cap.
 - A text is at most 4 parts (the store's name first and the stop link last are counted).
 
-## 5. Not built yet
+## 5. My account (11 November 2026)
 
-My account's own SMS switch; a sign-up form's phone field; automations by text (abandoned checkout, back in stock); public holidays per
+A signed-in customer turns texts on or off under My account → Text messages, shown while the store has SMS connected: their number
+(their saved phone filled in) and the store's consent words; on is a subscription at once with source `account` (they are signed in, so no
+confirming text), off stops the number as a STOP reply does (`accountSms()`, `setAccountSms()` in `src/server/sms.ts`).
+
+## 6. Not built yet
+
+A sign-up form's phone field; automations by text (back in stock; an abandoned-checkout text was weighed on 11 November 2026 and left
+out: checkout's box only counts once the order is paid, so almost no abandoned checkout has a number that may be texted); public holidays per
 country; the AI manager's tools for texts (a new tool needs a new safety-eval run). Not tried against 46elks itself (no account in the
 sandbox): built from its documentation and a stand-in.
