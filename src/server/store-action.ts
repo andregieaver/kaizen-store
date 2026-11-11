@@ -24,7 +24,8 @@ import { checkPermission } from "./permissions";
  *     return storeAction({ store, key: "orders:write", action: "order.send", answer: failed }, async (member) => { … });
  *   }
  */
-export type ActionAnswer<T> = (message: string) => T;
+/** The action's result for a refusal or a failure: the line to show, and which it is (a form that shows no line can still tell them apart). */
+export type ActionAnswer<T> = (message: string, kind: "refused" | "failed") => T;
 
 type Common = { noAccess: string; failed: string };
 const wordsIn = (lang: AdminLang): Common => adminText(lang, "common").action;
@@ -35,14 +36,14 @@ export async function storeAction<T>(
   run: (member: Membership, lang: AdminLang) => Promise<T>,
 ): Promise<T> {
   const member = await checkPermission(options.store, options.key);
-  if (!member) return options.answer(wordsIn(await actionAdminLang()).noAccess);
+  if (!member) return options.answer(wordsIn(await actionAdminLang()).noAccess, "refused");
   const lang = adminLangOf(member.account.adminLocale);
   try {
     return await run(member, lang);
   } catch (error) {
     unstable_rethrow(error);
     log("error", "action.failed", { action: options.action, storeId: member.store.id }, error);
-    return options.answer(wordsIn(lang).failed);
+    return options.answer(wordsIn(lang).failed, "failed");
   }
 }
 
@@ -52,13 +53,13 @@ export async function platformAction<T>(
   run: (account: Account, lang: AdminLang) => Promise<T>,
 ): Promise<T> {
   const account = await getAccount();
-  if (!account || !platformCan(account, options.area, options.access ?? "write")) return options.answer(wordsIn(await actionAdminLang()).noAccess);
+  if (!account || !platformCan(account, options.area, options.access ?? "write")) return options.answer(wordsIn(await actionAdminLang()).noAccess, "refused");
   const lang = adminLangOf(account.adminLocale);
   try {
     return await run(account, lang);
   } catch (error) {
     unstable_rethrow(error);
     log("error", "action.failed", { action: options.action, platform: true }, error);
-    return options.answer(wordsIn(lang).failed);
+    return options.answer(wordsIn(lang).failed, "failed");
   }
 }

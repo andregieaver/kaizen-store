@@ -40,8 +40,9 @@ import { addOwnThreshold, removeOwnThreshold } from "@/server/turnover-watch";
 
 /** A refusal or a failure in the books' forms; the *Read* presses answer as refused, which shows nothing. */
 const failed = (message: string): FormState => ({ status: "error", messages: [message] });
-const readRefused = (): ReceiptReadResult => ({ ok: false, reason: "refused" });
-const billRefused = (): BillReadResult => ({ ok: false, reason: "refused" });
+/** A refusal, or a failure nobody planned for (the picture could not be read). */
+const readRefused = (_message: string, kind: "refused" | "failed" = "refused"): ReceiptReadResult => ({ ok: false, reason: kind === "failed" ? "unread" : "refused" });
+const billRefused = (_message: string, kind: "refused" | "failed" = "refused"): BillReadResult => ({ ok: false, reason: kind === "failed" ? "unread" : "refused" });
 
 /** *Open the books* from a day: the store's books open with Norway's chart, and the documents of their days are posted at once. */
 export async function openBooksAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
@@ -455,7 +456,7 @@ export async function dismissInboxAction(storeSlug: string, _state: FormState, f
  * all nought removes it.
  */
 export async function saveBudgetAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  return storeAction({ store: storeSlug, key: "books:write", action: "books.budget", answer: failed }, async (member, lang) => {
+  return storeAction({ store: storeSlug, key: "books:write", action: "books.budget", answer: failed }, async (member, lang): Promise<FormState> => {
     const w = adminText(lang, "books");
     const book = await openBookOf(member.store.id);
     if (!book) return { status: "error", messages: [w.bills.problems.book] };
