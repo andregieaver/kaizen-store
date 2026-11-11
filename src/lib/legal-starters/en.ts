@@ -166,6 +166,8 @@ export const EN: StarterText = {
     "privacy.recipient.stripe": "Stripe, our payment provider, which handles payments",
     "privacy.recipient.email": "the email service the platform uses to send order confirmations and other messages to you",
     "privacy.recipient.carriers": "carriers that deliver your goods: {carriers}",
+    "privacy.recipient.suppliers": "suppliers that send some goods straight to you on our behalf, who receive your name and delivery address for that: {suppliers}",
+    "privacy.recipient.marketplaces": "marketplaces where you may buy our goods, for orders you place there: {marketplaces}",
     "privacy.recipient.carriers.none": "carriers that deliver your goods: {check}",
     "privacy.recipient.tool": "{tool}, which the store loads only if you accept the matching cookies",
     "privacy.recipient.authorities": "public authorities, where the law requires us to share information",

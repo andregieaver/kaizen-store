@@ -187,6 +187,8 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
               item("privacy.recipient.stripe"),
               item("privacy.recipient.email"),
               f.carriers.length > 0 ? item("privacy.recipient.carriers", { carriers: h.list(f.carriers) }) : item("privacy.recipient.carriers.none", { check: h.add("carriers") }),
+              ...(f.suppliers.length > 0 ? [item("privacy.recipient.suppliers", { suppliers: h.list(f.suppliers) })] : []),
+              ...(f.marketplaces.length > 0 ? [item("privacy.recipient.marketplaces", { marketplaces: h.list(f.marketplaces) })] : []),
               ...f.trackingTools.map((tool) => item("privacy.recipient.tool", { tool })),
               item("privacy.recipient.authorities"),
             ),
