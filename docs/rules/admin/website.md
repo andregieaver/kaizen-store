@@ -436,6 +436,10 @@ CLAUDE.md keeps one line per rule pointing here; each rule is under that line as
 
 - Duplicating pages (D126, `src/lib/page-duplicate.ts`, `src/server/page-duplicate.ts`, `DuplicateButton`): a copy goes through `savePage` as an unpublished draft (never anything but that), from the builder with the editor's current content minus `globalEdits`/`fields`; anything new kept per page (like custom field values) is copied there too.
 
+## Combined listings (D566, `docs/combined-listings.md`, `src/server/product-groups.ts`, `/admin/{store}/products/{id}/listing`)
+
+- **Combined listings (D566, `docs/combined-listings.md`, `src/server/product-groups.ts`, `/admin/{store}/products/{id}/listing`)**: separate products are shown as one listing only through `product_groups` and the products' `group_*` columns, written only by `src/server/product-groups.ts` (`products:write`). A product is in one listing at most; a listing of fewer than two products is dissolved. Shoppers see a listing only through `groupsFor()` in `src/server/catalog.ts`, inside the cached catalogue reads: offered, active products only (`OFFERED`), and nothing for a listing with fewer than two of them. Each product keeps its own page, canonical, price, stock and reviews; never merge them into one product or redirect between them.
+
 ## Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`, `src/server/product-layouts.ts`)
 
 - Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`,

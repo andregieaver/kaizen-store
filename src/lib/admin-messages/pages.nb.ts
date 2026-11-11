@@ -73,6 +73,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["eksporter produkter", "csv", "last ned produkter", "regneark", "excel", "sikkerhetskopi", "produktfil"],
   },
   "store:products.claims": { title: "Miljøpåstander", keywords: ["miljøpåstander", "grønnvasking", "miljøvennlig", "bærekraftig", "klimanøytral"] },
+  "store:products.listing": { title: "Vist sammen", keywords: ["samlet visning", "produktgruppe", "farger", "fargeprikker", "vis sammen"] },
   "store:products.passport": { title: "Produktpass", keywords: ["produktpass", "digitalt produktpass", "qr-kode", "materialer", "reparasjon"] },
   "store:products.import": {
     title: "Importer produkter",

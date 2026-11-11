@@ -358,6 +358,7 @@ export const NOT_PERSONAL: Record<string, string> = {
   capacity_events: "A store's busy times it told Kaizena Flow about (D314): dates, how busy and a short note about the sale.",
   order_discount_codes:
     "The discount codes an order used (D299 E2): a code's text, its ids and what it took off; the order's own row holds who bought, and erasure anonymises that.",
+  product_groups: "A store's combined listing (D566): the name of the option its products share, by language; never a person.",
   sms_campaigns: "A store's marketing text (D565): its name, its words and the segment it was for; never a person (who got it is in `sms_messages`).",
   sms_settings: "A store's 46elks account for marketing texts (D565): its API username, an encrypted password, the sender name, the store's reply number, its hours and the month's cap, and the staff account that changed them; never a shopper's data.",
   broadcasts: "A store's broadcast (D297): its name, its words in each language and who it was for in words (a segment's name and rules); never a person.",

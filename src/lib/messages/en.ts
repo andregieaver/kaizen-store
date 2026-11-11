@@ -963,6 +963,10 @@ export const en = {
     stripeLine: (number: string) => `Invoice for order ${number}`,
     dueShort: (day: string) => `Due ${day}`,
   },
+  /** Combined listings (D566): the shared option's chooser on a product's card and page. */
+  group: {
+    choose: (option: string) => `Choose: ${option}`,
+  },
   /** SMS marketing (D565): hand-written, never machine-translated, needs legal review. */
   // legal: needs review
   sms: {

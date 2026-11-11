@@ -29,6 +29,8 @@ export type GridItem = {
   audience?: ProductAudience;
   /** Products only (D396): the earliest release date of its variants on pre-order, shown under the price. */
   preorderUntil?: string;
+  /** Products only (D566): its combined listing, each product's value, colour and address, shown as links under the price. */
+  group?: { option: string; items: { href: string; value: string; swatch: string | null }[] };
   /** Articles only (D57): when it was first published, shown on its tile. */
   date?: string;
   /** The custom fields the grid's tiles show under the title (D120), as label and words. */

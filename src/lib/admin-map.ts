@@ -230,6 +230,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["green claims", "greenwashing", "eco-friendly", "sustainable", "climate neutral", "ecgt", "miljøpåstander", "grønnvasking", "miljøvennlig", "bærekraftig"],
     feature: "shop",
   }),
+  store("products.listing", "/products/[productId]/listing", "Shown together", "Main", "A product's combined listing: this product and others shown as one, chosen by a shared option such as colour, each keeping its own page, price, stock and reviews. Start one with what tells them apart and this product's value, add others with theirs and an optional colour dot, or take one out.", {
+    tasks: ["Show these shirts as one product with colours", "Combine products into one listing"],
+    keywords: ["combined listing", "product group", "colour variants as products", "siblings", "swatches", "samlet visning"],
+  }),
   store("products.passport", "/products/[productId]/passport", "Product passport", "Main", "A product's Digital Product Passport: its materials with their recycled share, care, repair and spare parts, end of life, origin, substances of concern, durability, certifications, carbon footprint and documents, saved as a draft or published at a lasting address, with the QR code to print on the product. The identifiers, manufacturer and responsible person come from the product.", {
     tasks: ["Make a product passport", "Get the QR code for a product's passport", "Publish a product passport"],
     keywords: ["digital product passport", "dpp", "espr", "product passport", "qr code", "materials", "recycled", "repair", "produktpass"],

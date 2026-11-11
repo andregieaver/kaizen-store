@@ -2543,6 +2543,28 @@ export const postalPoints = commerce.table(
 // Catalogue
 // ---------------------------------------------------------------------------
 
+
+/**
+ * A combined listing (D566, `docs/combined-listings.md`): separate products shown as one, chosen between by a shared option (`option`, its
+ * name per language, "Colour"). Each member keeps its own page, price, stock and reviews; its own value is on the product (`group_value`).
+ * Written only by `src/server/product-groups.ts`.
+ */
+export const productGroups = commerce.table(
+  "product_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** The shared option's name by locale, `{ "nb-NO": "Farge" }`. */
+    option: jsonb("option").notNull().default({}),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("product_groups_store_id_key").on(t.storeId, t.id),
+    check("product_groups_option", sql`jsonb_typeof(${t.option}) = 'object' and length(${t.option}::text) <= 2000`),
+  ],
+);
+
 /**
  * A manufacturer, importer or EU responsible person, as named on a listing
  * under the General Product Safety Regulation (EU) 2023/988, Art. 19.
@@ -2622,6 +2644,11 @@ export const products = commerce.table(
      * price it keeps per market is the staff's guide on a quote, never shown to a shopper.
      */
     priceOnRequest: boolean("price_on_request").notNull().default(false),
+    /** Its combined listing (D566), or null; `group_value` its own value of the shared option by locale, `group_swatch` a colour for it. */
+    groupId: uuid("group_id"),
+    groupValue: jsonb("group_value").notNull().default({}),
+    groupSwatch: text("group_swatch"),
+    groupPosition: integer("group_position").notNull().default(0),
     /**
      * When the product first became active (wave 2, D168): set by a trigger and never cleared. A handle that changes leaves a redirect only for a
      * product that was ever live (`OLD.status <> 'draft'` or this set). No backfill: a product active or archived today counts as ever live.
@@ -2639,6 +2666,10 @@ export const products = commerce.table(
     index("products_host_idx").on(t.storeId, t.hostId),
     unique("products_store_id_key").on(t.storeId, t.id),
     unique("products_store_handle_key").on(t.storeId, t.handle),
+    foreignKey({ name: "products_group_fk", columns: [t.storeId, t.groupId], foreignColumns: [productGroups.storeId, productGroups.id] }),
+    index("products_group_idx").on(t.storeId, t.groupId),
+    check("products_group_value", sql`jsonb_typeof(${t.groupValue}) = 'object' and length(${t.groupValue}::text) <= 1000`),
+    check("products_group_swatch", sql`${t.groupSwatch} is null or ${t.groupSwatch} ~ '^#[0-9a-f]{6}$'`),
     foreignKey({
       name: "products_manufacturer_fk",
       columns: [t.storeId, t.manufacturerId],

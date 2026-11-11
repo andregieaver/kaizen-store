@@ -194,6 +194,25 @@ export function ContentGridView({
             </p>
           )}
           {block.show.price && item.preorderUntil && <p className="text-sm text-muted" data-preorder>{m.preorder.page(releaseDate(item.preorderUntil, data.locale))}</p>}
+          {item.group && (
+            // Its combined listing (D566): the other products as links of their own, above the tile's link.
+            <ul className="relative z-[2] flex flex-wrap items-center gap-1.5" aria-label={m.group.choose(item.group.option)} data-group-swatches>
+              {item.group.items.slice(0, 6).map((g) => (
+                <li key={g.href}>
+                  <a
+                    href={g.href}
+                    aria-label={`${item.group!.option}: ${g.value}`}
+                    title={g.value}
+                    className={g.swatch ? "block size-5 rounded-full border border-line focus-visible:outline-2" : "block rounded-full border border-line px-2 text-xs leading-5 focus-visible:outline-2"}
+                    style={g.swatch ? { backgroundColor: g.swatch } : undefined}
+                  >
+                    {g.swatch ? null : g.value}
+                  </a>
+                </li>
+              ))}
+              {item.group.items.length > 6 && <li className="text-xs text-muted">+{item.group.items.length - 6}</li>}
+            </ul>
+          )}
           {block.show.price && item.priceText && (
             // A custom item's price is the owner's own words (D155): plain text, no VAT label, no reference price, nothing to buy.
             <p className="font-medium" data-kz-text="price">

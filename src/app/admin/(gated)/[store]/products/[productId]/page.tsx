@@ -45,7 +45,10 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
       <AdminTextScope texts={adminTexts(lang, ["product", "products", "fields", "builder", "website"])}>
         <ProductEditor {...(await editorProps(store, context, lang))} productId={productId} initial={initial} fields={fields} />
       </AdminTextScope>
-      <p className="text-sm">
+      <p className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        <Link href={`/admin/${store.slug}/products/${productId}/listing`} className="underline underline-offset-2">
+          {adminText(lang, "products").listing.link}
+        </Link>
         <Link href={`/admin/${store.slug}/products/${productId}/passport`} className="underline underline-offset-2">
           {adminText(lang, "products").passport.link}
         </Link>

@@ -82,11 +82,40 @@ export function ProductCard({
       ) : (
         <Price price={product.price} locale={market.locale} m={m} from={product.priceVaries} />
       )}
+      {product.group && <GroupSwatches group={product.group} base={base} m={m} />}
       {product.preorderUntil && (
         <p className="text-sm text-muted" data-preorder>
           {m.preorder.page(releaseDate(product.preorderUntil, market.locale))}
         </p>
       )}
     </li>
+  );
+}
+
+/** The other products of its combined listing (D566), each a link of its own above the card's link: a dot of its colour, or its value. */
+export function GroupSwatches({ group, base, m }: { group: NonNullable<ProductSummary["group"]>; base: string; m: Messages }) {
+  const shown = group.items.slice(0, 6);
+  const more = group.items.length - shown.length;
+  return (
+    <ul className="relative z-10 flex flex-wrap items-center gap-1.5" aria-label={m.group.choose(group.option)} data-group-swatches>
+      {shown.map((item) => (
+        <li key={item.handle}>
+          <Link
+            href={`${base}/p/${item.handle}`}
+            aria-label={`${group.option}: ${item.value}`}
+            title={item.value}
+            className={
+              item.swatch
+                ? "block size-5 rounded-full border border-line focus-visible:outline-2"
+                : "block rounded-full border border-line px-2 text-xs leading-5 focus-visible:outline-2"
+            }
+            style={item.swatch ? { backgroundColor: item.swatch } : undefined}
+          >
+            {item.swatch ? null : item.value}
+          </Link>
+        </li>
+      ))}
+      {more > 0 && <li className="text-xs text-muted">+{more}</li>}
+    </ul>
   );
 }

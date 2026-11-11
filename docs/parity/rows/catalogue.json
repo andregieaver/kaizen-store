@@ -1734,11 +1734,11 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "No way to show separate products as one listing with a shared option (verified 2026-10-25: variants live inside one product only, no product group or sibling table). Not planned: decision 6 of `docs/wave-6-catalogue.md` leaves it (Plus only on Shopify, weight 1; unit B's 2,048 variants cover most of the need).",
+    "gap": "Built (D566, docs/combined-listings.md): separate products grouped into one listing with a shared option (its name and each product's value, an optional colour dot); the product page shows every offered product of the listing as a link, this one marked, and a listing card links to up to six of them; each product keeps its own page, canonical, price, stock and reviews, so search, feeds and the cart list it once. Partial because the option's words are kept in the main language only, the product CSV and content grids' own tiles do not carry the listing, and a listing is never one card.",
     "bucket": "A",
     "wave": null,
     "criteria": [
@@ -1747,11 +1747,28 @@
       "Search and feeds list the products once, with the canonical pointing to the right address."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/server/product-groups.ts",
+        "src/server/catalog.ts",
+        "src/components/product-card.tsx",
+        "src/components/product-parts.tsx",
+        "src/app/admin/(gated)/[store]/products/[productId]/listing/page.tsx"
+      ],
+      "tests": [
+        "src/server/product-groups.int.test.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D566"
+    ],
+    "history": [
+      {
+        "on": "2026-11-11",
+        "from": "missing",
+        "to": "partial",
+        "why": "D566 built combined listings: grouping, the product page's chooser and the cards' links."
+      }
+    ]
   }
 ]

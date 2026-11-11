@@ -24,6 +24,8 @@ type Row = Record<string, unknown>;
 
 /** The tables the file holds, each the store's rows (`store_id`), in the order the file lists them. A new store-owned table of settings or site goes here. */
 export const STORE_EXPORT_TABLES = [
+  // Combined listings (D566): the shared option's names; which products are in each is on the products.
+  "product_groups",
   "pages",
   "page_roles",
   "page_redirects",
