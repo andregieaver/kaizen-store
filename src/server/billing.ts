@@ -765,15 +765,22 @@ export async function assignPlan(
   trialDays: number,
   origin: string,
 ): Promise<SaveResult> {
-  const prepared = await prepare(actor, storeSlug, priceId, origin);
-  if (!prepared.ok) return prepared;
-  const p = prepared.prepared;
+  return oneAtATime(storeSlug, async () => {
+    const prepared = await prepare(actor, storeSlug, priceId, origin);
+    if (!prepared.ok) return prepared;
+    return startOrChangePlan(actor, prepared.prepared, priceId, trialDays);
+  });
+}
 
-  // One at a time per store (code review FV11): a second call in flight waits here, then finds the first one's subscription
-  // below and changes it instead of starting another. The lock is held on its own connection until this function is done.
+/**
+ * One plan change at a time per store (code review FV11): a second call in flight waits here, then finds the store's Stripe account
+ * and the first one's subscription, and changes it instead of making another of either. Keyed by the address, which names one store;
+ * the lock is held on its own connection until `work` is done, so `prepare()` (which makes the account) is inside it.
+ */
+function oneAtATime<T>(storeSlug: string, work: () => Promise<T>): Promise<T> {
   return db().transaction(async (tx) => {
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('plan_subscribe'), hashtext(${p.store.id}))`);
-    return startOrChangePlan(actor, p, priceId, trialDays);
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('plan_subscribe'), hashtext(${storeSlug}))`);
+    return work();
   });
 }
 
@@ -822,6 +829,16 @@ async function startOrChangePlan(actor: Account, p: Prepared, priceId: string, t
  * one, it is moved to the new price at once, with prorated charges.
  */
 export async function choosePlan(
+  owner: Account,
+  storeSlug: string,
+  priceId: string,
+  origin: string,
+): Promise<{ ok: true; checkoutUrl?: string } | { ok: false; problems: string[] }> {
+  return oneAtATime(storeSlug, () => chooseUnderLock(owner, storeSlug, priceId, origin));
+}
+
+/** The work of `choosePlan()`, under its lock: a second press waits, then finds the account the first one made. */
+async function chooseUnderLock(
   owner: Account,
   storeSlug: string,
   priceId: string,

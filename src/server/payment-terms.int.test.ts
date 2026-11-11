@@ -173,6 +173,35 @@ describe("buying on payment terms", () => {
     ]);
   });
 
+  it("leaves no payment row behind when completing the order fails after it is written (code review FV7)", async () => {
+    const customerId = await buyer();
+    // The order's move to paid, inside complete_order_payment(), is refused for this store for the length of the test.
+    await db().execute(sql.raw(`
+      create or replace function public.fv7_refuse_paid() returns trigger language plpgsql as $$
+      begin
+        if new.status = 'paid' and old.status is distinct from 'paid' and new.store_id = '${storeId}'::uuid then
+          raise exception 'fv7: refused';
+        end if;
+        return new;
+      end $$;
+      create trigger fv7_refuse_paid before update on commerce.orders for each row execute function public.fv7_refuse_paid();
+    `));
+    try {
+      const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId, onTerms: true, payer }).catch(
+        (error: unknown) => ({ ok: false as const, thrown: error }),
+      );
+      expect(started.ok).toBe(false);
+    } finally {
+      await db().execute(sql.raw(`drop trigger if exists fv7_refuse_paid on commerce.orders; drop function if exists public.fv7_refuse_paid();`));
+    }
+    // The payment row and the completion are one: neither was kept, so no order of this buyer is left with a terms key and no completion.
+    const [left] = await db().execute<Row>(sql`
+      select count(*)::int as n from commerce.payments p join commerce.orders o on o.id = p.order_id
+      where o.store_id = ${storeId}::uuid and o.customer_id = ${customerId}::uuid and p.provider = 'terms'
+    `);
+    expect(left.n).toBe(0);
+  });
+
   it("refuses a customer who is not in a company, a company without terms and a company switched off, before anything is placed", async () => {
     const outsider = await buyer({ role: null });
     expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: outsider, onTerms: true, payer })).toEqual({ ok: false, problem: "terms" });

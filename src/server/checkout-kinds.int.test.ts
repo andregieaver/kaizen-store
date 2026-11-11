@@ -4617,6 +4617,38 @@ describe("a booking paid wholly at the venue (D379)", () => {
       expect(refused).toEqual({ ok: false, problem: "consent" });
       const [left] = await db().execute<Row>(sql`select status from commerce.orders where cart_id = ${cartId()}::uuid order by placed_at desc limit 1`);
       expect(left.status).toBe("cancelled");
+
+      // Completing it fails after the shopper's details are written (code review FV7): the details, the venue payment and the completion
+      // are one, so none of them is kept and the order still waits, clean.
+      jar.clear();
+      await addAppointment();
+      await db().execute(sql.raw(`
+        create or replace function public.fv7_refuse_paid() returns trigger language plpgsql as $$
+        begin
+          if new.status <> 'pending_payment' and old.status = 'pending_payment' and new.store_id = '${storeId}'::uuid then
+            raise exception 'fv7: refused';
+          end if;
+          return new;
+        end $$;
+        create trigger fv7_refuse_paid before update on commerce.orders for each row execute function public.fv7_refuse_paid();
+      `));
+      try {
+        const failed = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, {
+          customerId: null,
+          contact: { ...contact, email: `venue-failed-${run}@example.com` },
+          recordTerms: async () => ({ ok: true }),
+        }).catch(() => ({ ok: false }));
+        expect(failed.ok).toBe(false);
+      } finally {
+        await db().execute(sql.raw(`drop trigger if exists fv7_refuse_paid on commerce.orders; drop function if exists public.fv7_refuse_paid();`));
+      }
+      const [waiting] = await db().execute<Row>(sql`
+        select o.status, o.email, (select count(*)::int from commerce.payments p where p.order_id = o.id and p.provider = 'venue') as venue_payments
+        from commerce.orders o where o.cart_id = ${cartId()}::uuid order by o.placed_at desc limit 1
+      `);
+      expect(waiting.status).toBe("pending_payment");
+      expect(waiting.venue_payments).toBe(0);
+      expect(waiting.email).not.toBe(`venue-failed-${run}@example.com`);
     } finally {
       await db().execute(sql`
         update commerce.appointment_settings set payment = 'now' where store_id = ${storeId}::uuid and product_id = ${product["demo-massasje"]}::uuid
