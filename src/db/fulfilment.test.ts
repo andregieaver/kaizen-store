@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- rows and snapshots are JSON and the tests read them as such */
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -16,6 +14,7 @@ import { createInvoiceStore, one as q1, placeOrder, refund, scalar as q0, type O
 import * as fx from "./order-edit-fixture";
 import { tax, tokenHash, writeChange, type Tx } from "./order-edit-fixture";
 import { createTestDatabase } from "./testing";
+import { readMigration } from "./migration-files";
 
 /**
  * Sending in parts and changing an order after purchase (wave 3, run 3, D174, docs/wave-3-fulfilment.md 3.3): every rule the database holds, against every
@@ -189,8 +188,7 @@ describe("parcels name their lines (3.3 point 1)", () => {
   it("marks a parcel the old code recorded during the deploy legacy and back-fills its order's lines, by the follow-up migration's own statements", async () => {
     const o = await paid({ lines: [{ sku: "A", quantity: 2, unit: 1000 }, { sku: "DL", unit: 500, delivery: "digital" }] });
     const sent = await paid();
-    const file = readdirSync(path.join(process.cwd(), "supabase", "migrations")).find((f) => f.endsWith("_shipment_lines_required_rule.sql"))!;
-    const text = readFileSync(path.join(process.cwd(), "supabase", "migrations", file), "utf8");
+    const text = readMigration(/_shipment_lines_required_rule\.sql$/);
     const statements = text.slice(text.indexOf("UPDATE commerce.shipments"), text.indexOf("CREATE FUNCTION"));
     // Written before the rule existed (so, here, in the transaction that runs the migration's statements, which leave it legacy before commit).
     await db.transaction(async (tx) => {
@@ -216,8 +214,7 @@ describe("parcels name their lines (3.3 point 1)", () => {
 describe("the parcels from before parcels named their lines (3.3 point 2)", () => {
   it("marks them legacy and writes the order's physical lines into its first parcel, by the migration's own statements", async () => {
     const o = await paid({ lines: [{ sku: "A", quantity: 2, unit: 1000 }, { sku: "DL", unit: 500, delivery: "digital" }, { sku: "B", unit: 700 }] });
-    const file = readdirSync(path.join(process.cwd(), "supabase", "migrations")).find((f) => f.endsWith("_fulfilment_rules.sql"))!;
-    const text = readFileSync(path.join(process.cwd(), "supabase", "migrations", file), "utf8");
+    const text = readMigration(/_fulfilment_rules\.sql$/);
     const update = text.match(/UPDATE commerce\.shipments SET legacy = true WHERE NOT legacy;/)![0];
     const insert = text.match(/INSERT INTO commerce\.shipment_lines[\s\S]*?;\n/)![0];
     // Two parcels as the old markSent() wrote them: no lines, not legacy. The migration ran before the rule that a parcel names its lines

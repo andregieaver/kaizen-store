@@ -367,7 +367,7 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
 }
 
 /**
- * The phone's slide-out menu, placed after the page's content (see `MobileMenu`). Its links are the header's menu (D572,
+ * The phone's slide-out menu, placed after the page's content (see `MobileMenu`). Its links are the header's menu (D573,
  * `phoneMenuIds()`: a built header's Menu component's, else the store's header menu), and each other menu a menu button in the
  * header opens, hidden until that button opens the menu (`data-menu-nav`).
  */

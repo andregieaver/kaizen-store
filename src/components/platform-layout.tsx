@@ -150,7 +150,7 @@ export function PlatformHeader({ chrome, lang = "en" }: Props) {
 /** The phone's slide-out menu, placed after the page's content (see `MobileMenu`). */
 export function PlatformMenu({ chrome, lang = "en", header }: Props & { header?: Pick<PageContent, "rows"> | null }) {
   const { m, nav } = words(lang);
-  // The header's menu and each other menu a menu button in it opens (D572), as a store's (`StoreMenu`).
+  // The header's menu and each other menu a menu button in it opens (D573), as a store's (`StoreMenu`).
   const { standard, chosen } = phoneMenuIds(header, chrome.headerMenuId);
   const menuNav = (id: string | null, own: boolean) => {
     const items = platformMenu(chrome, id);

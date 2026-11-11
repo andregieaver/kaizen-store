@@ -255,7 +255,7 @@ export function PageEditor({
   const [versionsOpen, setVersionsOpen] = useState(false);
   // Find and replace (D307).
   const [findOpen, setFindOpen] = useState(false);
-  // On a phone the bar folds to its main buttons (D572), so the page being edited has the room; More shows the rest.
+  // On a phone the bar folds to its main buttons (D573), so the page being edited has the room; More shows the rest.
   const [barOpen, setBarOpen] = useState(false);
   const more = barOpen ? "" : "max-md:hidden";
   // The address follows the title until it is edited, and never once the page is live.

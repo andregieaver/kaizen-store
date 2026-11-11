@@ -402,14 +402,14 @@ describe("the history is append-only", () => {
   });
 
   it("keeps a variant's movements in its own store and location (composite keys)", async () => {
-    const loc = await location();
+    await location();
     const v = await variant();
     const foreignLocation = await location(other);
     await expect(
       db.query("insert into commerce.inventory_movements (store_id, variant_id, location_id, delta, on_hand_after, reason, source) values ($1, $2, $3, 1, 1, 'correction', 'system')", [shop, v, foreignLocation]),
     ).rejects.toThrow(/inventory_movements_location_fk/);
     await expect(
-      db.query("insert into commerce.inventory_movements (store_id, variant_id, location_id, delta, on_hand_after, reason, source) values ($1, $2, $3, 1, 1, 'correction', 'system')", [other, v, loc]),
+      db.query("insert into commerce.inventory_movements (store_id, variant_id, location_id, delta, on_hand_after, reason, source) values ($1, $2, $3, 1, 1, 'correction', 'system')", [other, v, foreignLocation]),
     ).rejects.toThrow(/inventory_movements_variant_fk/);
   });
 

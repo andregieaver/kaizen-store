@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -13,6 +11,7 @@ import { OWNER_TOOLS } from "./owner-tools";
 import { ADMIN_API, ADMIN_API_BY_NAME, API_ROUTES, bodyProblems, discountBody, errorsOf, fieldUpdateBody, routeOf, ruleUpdateBody, tagBody } from "./admin-api-routes";
 import { jsonSchemaOf, pathParams } from "./openapi";
 import { isPermissionKey } from "./permission-keys";
+import { readMigration } from "@/db/migration-files";
 
 const ID = "5c2c8f0e-3a9d-4c7b-9e21-0d6f1a2b3c4d";
 const sample = (path: string) => path.replace("{tag}", "vip").replace(/\{\w+\}/g, ID).split("/").filter(Boolean);
@@ -240,7 +239,7 @@ describe("the scopes a token holds (D440 review)", () => {
   });
 
   it("gives picture uploads a bucket of their own, whose limit is the API's", () => {
-    const sql = readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261103201100_api_review.sql"), "utf8");
+    const sql = readMigration("20261103201100_api_review.sql");
     const bucket = /VALUES \('api-uploads', 'api-uploads', false, (\d+), ARRAY\[([^\]]+)\]\)/.exec(sql);
     expect(bucket).not.toBeNull();
     expect(Number(bucket![1])).toBe(UPLOAD_MAX_BYTES);

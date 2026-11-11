@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runsOutsideTransaction } from "../../scripts/lib/migrations.mjs";
+import { baselineThroughOf, runsOutsideTransaction } from "../../scripts/lib/migrations.mjs";
 
 /**
  * Migrations that leave the busiest tables writable (code review step 1.6, finding FD4). A plain `create index` holds a lock that blocks
@@ -48,7 +48,8 @@ export function blockingStatements(text: string): string[] {
 
 const dir = path.join(process.cwd(), "supabase", "migrations");
 const newer = readdirSync(dir)
-  .filter((file) => file.endsWith(".sql") && file > BEFORE_THE_RULE)
+  // A baseline (code review FD3) restores what the squashed files made, on an empty database only: production records it without running it.
+  .filter((file) => file.endsWith(".sql") && file > BEFORE_THE_RULE && baselineThroughOf(readFileSync(path.join(dir, file), "utf8")) === null)
   .sort();
 
 describe("migrations keep the busiest tables writable (code review FD4)", () => {

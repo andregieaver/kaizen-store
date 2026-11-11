@@ -13,10 +13,38 @@ and the run stops there. Rules it enforces:
 - a file that was applied and edited since is refused (a new migration, never an edit);
 - one run at a time (an advisory lock), `lock_timeout` 30 s and `statement_timeout` 10 min per file;
 - a file whose first line is `-- kaizen:no-transaction` runs outside a transaction (below);
+- a file whose first line is `-- kaizen:baseline-through=<file>` is recorded without running where the ledger has `<file>` (below);
 - `MIGRATE_EXPECT` (the project ref) must appear in the connection string, so a wrong secret never
   reaches another database;
 - the ledger must have rows before anything is applied (the baseline below), so a first run can never
   replay history.
+
+### The baseline: squashed migrations (code review FD3, D572)
+
+`supabase/migrations` starts with a baseline, not with every file ever written. The 789 files up to
+`20261111172838_sms_campaign_index.sql` (47 days of work, 9.2 MB) became four, 3.9 MB:
+
+- `20261111172839_baseline_1_schema.sql`, `…40_baseline_2_data.sql`, `…41_baseline_3_rules.sql`: the three sections of a `pg_dump`
+  of a database built from all of them (types, tables and functions; the reference data they wrote; keys, indexes, triggers and row
+  security), made by `scripts/squash-migrations.mjs`. Never edited.
+- `20261111172842_baseline_4_roles_and_supabase.sql`: what one database's dump cannot carry, kept by hand: the `postgres` role's
+  limits, and what exists only on Supabase (Storage's buckets, the scheduled jobs, the scheduler's Vault secret), written from
+  production as it stood and guarded so plain Postgres skips it.
+
+Each starts `-- kaizen:baseline-through=20261111172838_sms_campaign_index.sql`. On an empty database (CI, a lane, `db-setup.mjs`,
+the tests' PGlite) they run like any file. In production `db-migrate.mjs` sees the ledger already has the file they name, and records
+them (`applied_by = 'baseline'`) without running them. The squashed files are in `supabase/archive/20261111172838/`, outside every
+path that applies migrations. A test that reads what an old migration said, or replays history to a point, finds it through
+`src/db/migration-files.ts` (`readMigration()`, `migrationHistory()`), and the runner counts the archive as applied history.
+
+The script checks before it writes. It builds one database from the files and one from the baseline, and compares a `pg_dump` of each:
+the schema line by line (a line may differ only in a check's parentheses, which Postgres regroups on reading `(a AND b) AND c`; 63 did)
+and the data row by row. On 11 November 2026 both were the same.
+
+**Repeat it each quarter**, on a local server (never production):
+`DATABASE_URL=postgres://…/postgres node scripts/squash-migrations.mjs --through=<newest file>`, then again with `--write` once
+the check passes. It carries `baseline_4` forward and lists the squashed files with a Storage, scheduler or role step: fold any it
+lacks into it first. Push it alone, with no other migration: CI's `release` job records the four files, and the deploy follows.
 
 ### Migrations that keep the busiest tables writable (code review FD4, D569)
 

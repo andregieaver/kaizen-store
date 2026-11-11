@@ -67,6 +67,9 @@ stand-in is the only fake, and only it is told it is one.
   express (functions, triggers, reference data) go in a custom migration:
   `pnpm exec drizzle-kit generate --custom --name <name>`. Only the newest snapshot in `supabase/migrations/meta` is kept (D532): `pnpm db:generate` prunes
   them, and after a custom migration run `node scripts/prune-snapshots.mjs`.
+- The folder starts with a baseline (D572, `docs/ci-migrations.md`): four files made by `scripts/squash-migrations.mjs` from the 789 up to
+  11 November 2026, which are kept in `supabase/archive/`; never edit a baseline, and read an old migration in a test through
+  `src/db/migration-files.ts`. Squash again each quarter.
 - New migrations reach production through CI (`docs/ci-migrations.md`): push the file with the change; the
   `release` job applies it (a direct Postgres connection, so `DROP` and `DELETE` inside functions run as
   written) after the checks pass, and the deploy follows. **Never apply a migration to production by hand

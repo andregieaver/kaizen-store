@@ -363,7 +363,7 @@
         "src/server/seo.ts",
         "src/server/blog-tools.ts",
         "src/lib/personal-data.ts",
-        "supabase/migrations/20261027161403_blogs_sql.sql"
+        "supabase/archive/20261111172838/20261027161403_blogs_sql.sql"
       ],
       "tests": [
         "e2e/blog.spec.ts",
@@ -994,7 +994,7 @@
         "src/app/api/cron/cart-reminders/route.ts",
         "src/server/schedule-tools.ts",
         "src/db/schema.ts",
-        "supabase/migrations/20261027181510_schedules_and_sharing_sql.sql"
+        "supabase/archive/20261111172838/20261027181510_schedules_and_sharing_sql.sql"
       ],
       "tests": [
         "src/server/schedules.int.test.ts",
@@ -1504,7 +1504,7 @@
         "src/server/segments.ts",
         "src/server/support-forms.ts",
         "src/components/admin/support/conversation-view.tsx",
-        "supabase/migrations/20261028233738_support_form_messages.sql"
+        "supabase/archive/20261111172838/20261028233738_support_form_messages.sql"
       ],
       "tests": [
         "src/lib/forms.test.ts",
@@ -1772,7 +1772,7 @@
         "src/lib/store-drafts.ts",
         "src/server/store-drafts.ts",
         "src/components/admin/store-drafts.tsx",
-        "supabase/migrations/20261028031326_store_drafts.sql"
+        "supabase/archive/20261111172838/20261028031326_store_drafts.sql"
       ],
       "tests": [
         "src/lib/page-ai.test.ts",
@@ -1873,8 +1873,8 @@
         "src/server/redirect-resolve.ts",
         "src/server/seo.ts",
         "src/server/stores.ts",
-        "supabase/migrations/20261027165126_private_mode.sql",
-        "supabase/migrations/20261027165146_private_mode_sql.sql"
+        "supabase/archive/20261111172838/20261027165126_private_mode.sql",
+        "supabase/archive/20261111172838/20261027165146_private_mode_sql.sql"
       ],
       "tests": [
         "e2e/private-mode.spec.ts",

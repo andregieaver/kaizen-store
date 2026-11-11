@@ -567,8 +567,8 @@
         "src/app/admin/(gated)/[store]/analytics/tax/page.tsx",
         "src/app/admin/(gated)/[store]/analytics/tax/actions.ts",
         "src/app/admin/(gated)/[store]/analytics/tax/export/route.ts",
-        "supabase/migrations/20261004164607_tax_reports.sql",
-        "supabase/migrations/20261004164617_tax_reports_rules.sql",
+        "supabase/archive/20261111172838/20261004164607_tax_reports.sql",
+        "supabase/archive/20261111172838/20261004164617_tax_reports_rules.sql",
         "docs/wave-1c-reports.md",
         "docs/analytics.md"
       ],
@@ -643,7 +643,7 @@
         "src/server/analytics-totals.ts",
         "src/lib/analytics-finance.ts",
         "src/components/admin/analytics/payouts-view.tsx",
-        "supabase/migrations/20261019194258_payouts_rules.sql"
+        "supabase/archive/20261111172838/20261019194258_payouts_rules.sql"
       ],
       "tests": [
         "src/server/payouts.int.test.ts",

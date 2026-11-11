@@ -1,5 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 
 import { PGlite } from "@electric-sql/pglite";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
@@ -9,6 +8,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { COPY_RULES } from "@/lib/store-copy-rules";
 
 import { createTestDatabase } from "./testing";
+import { statementsOf } from "../../scripts/lib/migrations.mjs";
+import { migrationHistory } from "./migration-files";
 
 /**
  * The VAT engine's rules in the database (D157, docs/wave-1a-tax.md section 3), against every migration applied to a real
@@ -809,15 +810,20 @@ describe("the tax migrations on a database that has data", () => {
 
   beforeAll(async () => {
     old = new PGlite({ extensions: { pg_trgm, vector } });
-    const dir = path.join(process.cwd(), "supabase", "migrations");
-    const files = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort();
+    // The history from the archive and the live folder, baselines left out (code review FD3); a file marked to run outside a transaction
+    // goes statement by statement.
+    const history = migrationHistory();
+    const files = history.map((f) => f.name);
+    const apply = async (name: string) => {
+      for (const statement of statementsOf(await readFile(history.find((f) => f.name === name)!.path, "utf8"))) await old.exec(statement);
+    };
     const tax = files.filter((f) => /_tax_engine(_rules)?\.sql$/.test(f));
     expect(tax).toHaveLength(2);
     // The history as production lived it: every migration before the tax ones, then the data, then the tax ones, then the migrations after them
     // (a later migration may patch what the tax ones made, as the privacy rules of unit 1g do with the VAT freeze).
     const before = files.filter((f) => f < tax[0]);
     const after = files.filter((f) => f > tax[1]);
-    for (const file of before) await old.exec(await readFile(path.join(dir, file), "utf8"));
+    for (const file of before) await apply(file);
 
     const q = async <T>(sql: string, params: unknown[] = []) => (await old.query<T>(sql, params)).rows[0];
     const store = (await q<{ id: string }>("insert into commerce.stores (slug, name, country) values ('old-shop', 'Old', 'SE') returning id")).id;
@@ -839,9 +845,9 @@ describe("the tax migrations on a database that has data", () => {
     await order("1001", "DE");
     await order("1002", "NO");
     await order("C-1003", "SE", { copied: true });
-    await old.exec(await readFile(path.join(dir, tax[0]), "utf8"));
-    await old.exec(await readFile(path.join(dir, tax[1]), "utf8"));
-    for (const file of after) await old.exec(await readFile(path.join(dir, file), "utf8"));
+    await apply(tax[0]);
+    await apply(tax[1]);
+    for (const file of after) await apply(file);
   });
 
   afterAll(async () => {

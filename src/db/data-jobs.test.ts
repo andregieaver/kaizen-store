@@ -5,6 +5,7 @@ import { JOB_STATUSES, canMove, statusesOf, type JobStatus } from "@/lib/data-jo
 import { COPY_RULES } from "@/lib/store-copy-rules";
 
 import { createTestDatabase } from "./testing";
+import { migrationHistory } from "./migration-files";
 
 /**
  * Data in and out (D165, `docs/wave-2-data.md` 3): the rules the database itself holds, run against real Postgres (PGlite) with every
@@ -546,12 +547,13 @@ describe("the bulk editor's record", () => {
 
 describe("the migrations of this unit", () => {
   it("put no DELETE or DROP inside a function (the Supabase tool cancels such statements)", async () => {
-    const { readFile, readdir } = await import("node:fs/promises");
-    const dir = `${process.cwd()}/supabase/migrations`;
-    const files = (await readdir(dir)).filter((f) => /_(data_jobs|data_jobs_rules|data_buckets)\.sql$/.test(f));
+    const { readFile } = await import("node:fs/promises");
+    const found = migrationHistory().filter((f) => /_(data_jobs|data_jobs_rules|data_buckets)\.sql$/.test(f.name));
+    const files = found.map((f) => f.name);
+    const pathOf = (name: string) => found.find((f) => f.name === name)!.path;
     expect(files).toHaveLength(3);
     for (const file of files) {
-      const text = await readFile(`${dir}/${file}`, "utf8");
+      const text = await readFile(pathOf(file), "utf8");
       const bodies = [...text.matchAll(/\$\$([\s\S]*?)\$\$/g)].map((m) => m[1]);
       for (const body of bodies) expect([file, /\b(delete|drop)\b/i.test(body)]).toEqual([file, false]);
     }

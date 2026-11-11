@@ -183,7 +183,7 @@ export function MobileMenu({
     backdrop.current?.replaceChildren(...(holder ? Array.from((holder.cloneNode(true) as HTMLElement).childNodes) : []));
     setSurface(holder?.dataset.menuSurface ?? "");
     setBlur(Number(holder?.dataset.menuBlur) || 0);
-    // The menu the button chose (D572), else the header's; one the page does not have shows the header's.
+    // The menu the button chose (D573), else the header's; one the page does not have shows the header's.
     const navs = Array.from(d.querySelectorAll<HTMLElement>("[data-menu-nav]"));
     const asked = opener?.dataset.menuNav ?? "";
     const shown = navs.some((nav) => nav.dataset.menuNav === asked) ? asked : "";

@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- rows and snapshots are JSON and the tests read them as such */
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -11,6 +9,7 @@ import { COPIED_ORDER_EVENTS } from "@/lib/order-ops-events";
 
 import { createInvoiceStore, one as q1, placeOrder, scalar as q0 } from "./invoice-fixture";
 import { createTestDatabase } from "./testing";
+import { readMigration } from "./migration-files";
 
 /**
  * Order search, tags, archive, draft orders and gift messages (wave 3, run 2, D173, docs/wave-3-orders.md 3.3): the rules the database holds, against every
@@ -1197,8 +1196,7 @@ describe("duplicating a store", () => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 describe("the patched functions", () => {
-  const dir = path.join(process.cwd(), "supabase", "migrations");
-  const migration = readFileSync(path.join(dir, readdirSync(dir).find((f) => f.endsWith("_orders_ops_rules.sql"))!), "utf8");
+  const migration = readMigration(/_orders_ops_rules\.sql$/);
   const patches = [...migration.matchAll(/DO \$patch\$[\s\S]*?\$patch\$;/g)].map((m) => m[0]);
 
   it("are four, each one anchored replacement that raises when its anchor is gone and does nothing the second time", async () => {

@@ -679,7 +679,7 @@
         "src/server/payment-session.ts",
         "src/server/stripe-webhooks.ts",
         "src/components/admin/payment-methods-card.tsx",
-        "supabase/migrations/20261019205502_payment_methods_rules.sql"
+        "supabase/archive/20261111172838/20261019205502_payment_methods_rules.sql"
       ],
       "tests": [
         "src/server/payment-methods.int.test.ts",
@@ -797,7 +797,7 @@
         "src/server/order-admin.ts",
         "src/components/admin/orders/capture-card.tsx",
         "src/components/admin/orders/settings-form.tsx",
-        "supabase/migrations/20261019184550_capture_later_rules.sql"
+        "supabase/archive/20261111172838/20261019184550_capture_later_rules.sql"
       ],
       "tests": [
         "src/server/payment-capture.int.test.ts",
@@ -913,7 +913,7 @@
         "src/server/staff-alerts.ts",
         "src/server/analytics-totals.ts",
         "src/lib/analytics-finance.ts",
-        "supabase/migrations/20261019172135_payment_facts_rules.sql"
+        "supabase/archive/20261111172838/20261019172135_payment_facts_rules.sql"
       ],
       "tests": [
         "src/server/checkout.int.test.ts",
@@ -978,10 +978,10 @@
         "src/db/schema.ts",
         "src/components/admin/vat-category-field.tsx",
         "src/app/admin/(gated)/platform/vat/page.tsx",
-        "supabase/migrations/20261003193641_tax_engine.sql",
-        "supabase/migrations/20261003193902_tax_engine_rules.sql",
-        "supabase/migrations/20260926205250_vat_categories.sql",
-        "supabase/migrations/20260926205252_vat_categories_rules.sql",
+        "supabase/archive/20261111172838/20261003193641_tax_engine.sql",
+        "supabase/archive/20261111172838/20261003193902_tax_engine_rules.sql",
+        "supabase/archive/20261111172838/20260926205250_vat_categories.sql",
+        "supabase/archive/20261111172838/20260926205252_vat_categories_rules.sql",
         "docs/wave-1a-tax.md"
       ],
       "tests": [
@@ -1055,8 +1055,8 @@
         "src/components/order-vat.tsx",
         "src/app/admin/(gated)/[store]/settings/tax/page.tsx",
         "src/db/schema.ts",
-        "supabase/migrations/20261003193641_tax_engine.sql",
-        "supabase/migrations/20261003193902_tax_engine_rules.sql",
+        "supabase/archive/20261111172838/20261003193641_tax_engine.sql",
+        "supabase/archive/20261111172838/20261003193902_tax_engine_rules.sql",
         "docs/wave-1a-tax.md",
         "src/lib/tax-periods.ts",
         "src/lib/ecb-history.ts",
@@ -1077,8 +1077,8 @@
         "src/app/admin/(gated)/[store]/analytics/tax/page.tsx",
         "src/app/admin/(gated)/[store]/analytics/tax/actions.ts",
         "src/app/admin/(gated)/[store]/analytics/tax/export/route.ts",
-        "supabase/migrations/20261004164607_tax_reports.sql",
-        "supabase/migrations/20261004164617_tax_reports_rules.sql",
+        "supabase/archive/20261111172838/20261004164607_tax_reports.sql",
+        "supabase/archive/20261111172838/20261004164617_tax_reports_rules.sql",
         "docs/wave-1c-reports.md"
       ],
       "tests": [
@@ -1170,8 +1170,8 @@
         "src/components/order-vat.tsx",
         "src/components/admin/vat-treatment-panel.tsx",
         "src/db/schema.ts",
-        "supabase/migrations/20261003193641_tax_engine.sql",
-        "supabase/migrations/20261003193902_tax_engine_rules.sql",
+        "supabase/archive/20261111172838/20261003193641_tax_engine.sql",
+        "supabase/archive/20261111172838/20261003193902_tax_engine_rules.sql",
         "e2e/vat-reverse-charge.spec.ts",
         "e2e/fixtures/vies-stub.mjs",
         "docs/wave-1a-tax.md"
@@ -1249,8 +1249,8 @@
         "src/components/checkout-button.tsx",
         "src/app/s/[store]/[market]/order/terms-actions.ts",
         "src/components/admin/analytics/terms-owed-view.tsx",
-        "supabase/migrations/20261020001647_payment_terms_rules.sql",
-        "supabase/migrations/20261029032141_orders_sold_at_rules.sql",
+        "supabase/archive/20261111172838/20261020001647_payment_terms_rules.sql",
+        "supabase/archive/20261111172838/20261029032141_orders_sold_at_rules.sql",
         "src/server/analytics-sql.ts"
       ],
       "tests": [

@@ -3941,7 +3941,7 @@ function Dialogs({
             }
             style={
               <>
-                {/* The phone menu button's place in its column (D572): left, centre or right on phones. */}
+                {/* The phone menu button's place in its column (D573): left, centre or right on phones. */}
                 {block.part === "menuButton" && (
                   <TextAlignFields what={dw.position} value={block} onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))} />
                 )}
@@ -5761,7 +5761,7 @@ function MenuDrawerFields({
   part: DrawerPart;
   drawer: MenuDrawer | undefined;
   upload: Upload | null;
-  /** The owner's menus, for the menu button's choice of which it opens (D572). */
+  /** The owner's menus, for the menu button's choice of which it opens (D573). */
   menus?: MenuPreview[];
   onChange: (drawer: MenuDrawer | undefined) => void;
 }) {

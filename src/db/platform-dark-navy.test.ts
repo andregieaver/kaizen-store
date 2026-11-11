@@ -1,10 +1,9 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createTestDatabase } from "./testing";
+import { readMigration } from "./migration-files";
 
 /**
  * Kaizena Flow's site in dark mode (D472), against real Postgres (PGlite): the migration turns D408's dark-mode colour, set to the site's
@@ -12,7 +11,7 @@ import { createTestDatabase } from "./testing";
  * without the rule as it is. Run again, it changes nothing.
  */
 
-const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261106140451_platform_dark_navy.sql"), "utf8");
+const MIGRATION = readMigration("20261106140451_platform_dark_navy.sql");
 
 /** The site's CSS as production held it (D408's rule, its colour changed to the navy on 4 November 2026). */
 const BEFORE = `.white-bg div{background:#fff}

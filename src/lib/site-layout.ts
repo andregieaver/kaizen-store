@@ -107,7 +107,7 @@ export const siteBlocks = (content: Pick<PageContent, "rows">): SiteBlock[] =>
   content.rows.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks).filter(isSiteBlock)));
 
 /**
- * The menus the phone menu shows (D572): `standard`, what a menu button with none chosen opens (the header's first Menu component's menu,
+ * The menus the phone menu shows (D573): `standard`, what a menu button with none chosen opens (the header's first Menu component's menu,
  * else the site's own header menu, `fallback`), and `chosen`, each other menu a menu button in the header names. A built header picks its
  * menu with a Menu component, not the site's header menu, so the phone's had nothing to show while that was unset.
  */

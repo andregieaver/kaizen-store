@@ -581,7 +581,7 @@ export function blockStyle(block: PageBlock, mode: PartsMode): ElementStyle {
     }
   }
   if (block.type === "site" && block.part === "menuButton") {
-    // The phone menu button's Position (D572): to that end of its column, first or last in a column of components side by side
+    // The phone menu button's Position (D573): to that end of its column, first or last in a column of components side by side
     // (a header's logo and button), so Right puts it after the logo; text alignment cannot move a button.
     rules.push({
       selector: "&",

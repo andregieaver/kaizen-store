@@ -1,5 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
+import { readFileSync } from "node:fs";
 
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -10,6 +9,7 @@ import { RETENTION_KINDS, RETENTION_SEED, periodFor, retentionCutoff } from "@/l
 
 import { createInvoiceStore, one as q1, placeOrder, refund, scalar as q0, type OrderSpec } from "./invoice-fixture";
 import { createTestDatabase } from "./testing";
+import { migrationHistory } from "./migration-files";
 
 /**
  * GDPR export, erasure and retention (D162, docs/wave-1g-gdpr.md): the rules that live in SQL, against every migration applied to a real
@@ -709,8 +709,8 @@ describe("copying a store", () => {
 // ---------------------------------------------------------------------------------------------------------------------------------
 
 describe("what the migrations and the registries say", () => {
-  const dir = path.join(process.cwd(), "supabase", "migrations");
-  const files = readdirSync(dir).filter((f) => /_gdpr(_rules|_audit)?\.sql$/.test(f));
+  const found = migrationHistory().filter((f) => /_gdpr(_rules|_audit)?\.sql$/.test(f.name));
+  const files = found.map((f) => f.name);
 
   it("has three migration files of this unit", () => {
     expect(files).toHaveLength(3);
@@ -718,7 +718,7 @@ describe("what the migrations and the registries say", () => {
 
   it("has no DELETE, TRUNCATE or DROP in anything it adds (the production migration tool cancels them): deletion is application code", () => {
     for (const file of files) {
-      const sql = readFileSync(path.join(dir, file), "utf8")
+      const sql = readFileSync(found.find((f) => f.name === file)!.path, "utf8")
         .split("\n")
         .filter((line) => !line.trim().startsWith("--"))
         .join("\n");

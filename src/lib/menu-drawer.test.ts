@@ -106,7 +106,7 @@ describe("the slide-out cart's look (D571)", () => {
   });
 });
 
-describe("the phone menu's links and the button's place (D572)", () => {
+describe("the phone menu's links and the button's place (D573)", () => {
   const MENU_A = "00000000-0000-4000-8000-00000000000a";
   const MENU_B = "00000000-0000-4000-8000-00000000000b";
   const header = (blocks: unknown[]) => ({ rows: [{ id: "r", type: "row", layout: "1", columns: [{ id: "c", blocks }] }] }) as never;

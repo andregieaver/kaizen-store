@@ -89,7 +89,7 @@
         "src/server/api-tokens.ts",
         "src/server/owner-tools.ts",
         "src/server/store-mcp.ts",
-        "supabase/migrations/20261028093849_api_tokens.sql"
+        "supabase/archive/20261111172838/20261028093849_api_tokens.sql"
       ],
       "tests": [
         "src/lib/admin-api.test.ts",
@@ -244,7 +244,7 @@
         "src/server/endpoint-emails.ts",
         "src/app/admin/(gated)/[store]/integrations/endpoints/page.tsx",
         "src/components/admin/webhook-endpoints.tsx",
-        "supabase/migrations/20261028084018_webhook_endpoints.sql"
+        "supabase/archive/20261111172838/20261028084018_webhook_endpoints.sql"
       ],
       "tests": [
         "src/server/integrations.int.test.ts",
@@ -393,7 +393,7 @@
         "src/server/slack.ts",
         "src/server/workflow-subjects.ts",
         "src/server/workflows.ts",
-        "supabase/migrations/20261028101023_workflows.sql"
+        "supabase/archive/20261111172838/20261028101023_workflows.sql"
       ],
       "tests": [
         "e2e/signed-in/automation.spec.ts",
@@ -539,9 +539,9 @@
         "src/server/store-roles.ts",
         "src/server/team.ts",
         "src/server/two-step.ts",
-        "supabase/migrations/20261003195103_staff_security.sql",
-        "supabase/migrations/20261003195109_staff_security_rules.sql",
-        "supabase/migrations/20261003203141_store_role_templates.sql"
+        "supabase/archive/20261111172838/20261003195103_staff_security.sql",
+        "supabase/archive/20261111172838/20261003195109_staff_security_rules.sql",
+        "supabase/archive/20261111172838/20261003203141_store_role_templates.sql"
       ],
       "tests": [
         "src/components/admin/team-and-roles.test.ts",
