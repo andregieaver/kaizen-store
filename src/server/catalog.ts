@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { connection } from "next/server";
+import { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import { attributeName, categoryPath, googleCategory, isCategory, valueName } from "@/lib/product-taxonomy";
@@ -25,6 +26,7 @@ import { shownRegistrationNumbers, type ShownRegistration } from "./producer-reg
 import { bundleItemsOf } from "./bundles";
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
 import { OFFERED, STORE_AUDIENCE, inTerms, manualPlace, plansOffered } from "./product-conditions";
+import { col, typedRow, typedRows } from "./typed-rows";
 
 /**
  * Cache tags. Revalidate a store's catalogue tag after any product or price
@@ -151,6 +153,57 @@ export type ProductDetail = {
 
 type Row = Record<string, unknown>;
 
+/** A product card's row (`listProducts()`, `listGridProducts()`): wide, read as `Row`; the id and the money described. */
+const SUMMARY_ROW = z.looseObject({
+  id: col.uuid,
+  min_amount: col.minor,
+  max_amount: col.minor,
+  currency: col.currency,
+  prior_30d: col.minorOrNull,
+});
+
+/** A product page's product (`getProduct()`): wide, read as `Row`; it carries no money. */
+const PRODUCT_ROW = z.looseObject({ id: col.uuid });
+
+const MEDIA_ROW = z.object({
+  url: col.text,
+  thumbnail_url: col.textOrNull,
+  kind: col.text,
+  source: col.textOrNull,
+  media_url: col.textOrNull,
+  alt: col.text,
+});
+
+/** A product page's variant: wide, read as `Row` (its measure and quantity rule); the id and the price described. */
+const VARIANT_ROW = z.looseObject({
+  id: col.uuid,
+  amount_minor: col.minor,
+  currency: col.currency,
+  prior_30d_minor: col.minorOrNull,
+});
+
+const SELLING_PLAN_ROW = z.object({
+  id: col.uuid,
+  interval: col.text,
+  interval_count: col.int,
+  discount_percent: col.int,
+  trial_days: col.int,
+  min_cycles: col.int,
+  signup_fee: col.minor,
+});
+
+const AVAILABILITY_ROW = z.object({
+  variant_id: col.uuid,
+  delivery: col.text,
+  in_stock: col.int,
+  raw_available: col.int,
+  stock_policy: col.text,
+  backorder_days: col.int.nullable(),
+  can_buy: col.bool,
+  preorder_until: col.textOrNull,
+  supplier_days: col.int.nullable(),
+});
+
 // Postgres bigint arrives as a string; amounts in minor units fit a JS number.
 const num = (value: unknown): number => Number(value);
 const numOrNull = (value: unknown): number | null =>
@@ -190,7 +243,9 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
   cacheTag(CATALOG_TAG, catalogTag(storeId));
   const { code: marketCode, locale } = market;
 
-  const rows = await readDb().execute<Row>(sql`
+  const rows = await typedRows(
+    SUMMARY_ROW,
+    sql`
     select
       p.id,
       p.handle,
@@ -236,7 +291,9 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
     ) pr on pr.min_amount is not null
     where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
     order by p.created_at, p.handle
-  `);
+  `,
+    readDb(),
+  );
 
   return rows.map((row) => {
     // Sold only by subscription: the best subscriber's price, as "from".
@@ -271,7 +328,9 @@ export async function getProduct(storeId: string, market: Market, handle: string
   cacheTag(CATALOG_TAG, catalogTag(storeId), fieldsTag(storeId));
   const { code: marketCode, locale } = market;
 
-  const [product] = await readDb().execute<Row>(sql`
+  const product = await typedRow(
+    PRODUCT_ROW,
+    sql`
     select
       p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind, p.standard_category, p.standard_attributes, p.price_on_request,
       p.audience, p.price_words, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
@@ -308,20 +367,28 @@ export async function getProduct(storeId: string, market: Market, handle: string
     left join commerce.economic_operators rp
       on rp.store_id = p.store_id and rp.id = p.responsible_person_id
     where p.store_id = ${storeId}::uuid and p.handle = ${handle} and p.status = 'active' and ${OFFERED}
-  `);
+  `,
+    readDb(),
+  );
   if (!product) return null;
   // A bundle's components (D322), in the page's language, each linked where its own product is offered to shoppers.
   const bundleItems = product.kind === "bundle" ? await bundleItemsOf(readDb(), storeId, String(product.id), locale) : [];
 
   const [media, variants, plans, fields, variantFields, storeFields, producerNumbers] = await Promise.all([
-    readDb().execute<Row>(sql`
+    typedRows(
+      MEDIA_ROW,
+      sql`
       select url, thumbnail_url, kind, source, media_url,
         coalesce(nullif(alt ->> ${locale}, ''), commerce.media_alt(url, ${locale}), '') as alt
       from commerce.product_media
       where product_id = ${product.id}
       order by position
-    `),
-    readDb().execute<Row>(sql`
+    `,
+      readDb(),
+    ),
+    typedRows(
+      VARIANT_ROW,
+      sql`
       select v.id, v.sku, v.gtin, v.options, v.delivery, v.rental_period, v.image_url, v.image_thumbnail_url,
         v.measure_amount, v.measure_unit, v.measure_base, v.min_quantity, v.max_quantity, v.quantity_step,
         coalesce(commerce.media_alt(v.image_url, ${locale}), '') as image_alt,
@@ -331,15 +398,21 @@ export async function getProduct(storeId: string, market: Market, handle: string
         on cp.variant_id = v.id and cp.market_code = ${marketCode}
       where v.product_id = ${product.id} and v.active
       order by cp.amount_minor, v.sku
-    `),
-    readDb().execute<Row>(sql`
+    `,
+      readDb(),
+    ),
+    typedRows(
+      SELLING_PLAN_ROW,
+      sql`
       select id, interval, interval_count, discount_percent, trial_days, min_cycles,
         coalesce((signup_fee ->> ${marketCode})::bigint, 0) as signup_fee
       from commerce.selling_plans sp
       -- Purchase options are offered while Subscriptions is on (D178); the product is then sold once only.
       where sp.product_id = ${product.id} and sp.active and ${plansOffered(sql`sp.store_id`)}
       order by sp.position, sp.created_at
-    `),
+    `,
+      readDb(),
+    ),
     shownFieldsFor(storeId, "product", str(product.id), locale, market.lang, market.slug),
     shownFieldsForVariants(storeId, str(product.id), locale, market.lang, market.slug),
     shownFieldsFor(storeId, "store", storeId, locale, market.lang, market.slug),
@@ -453,7 +526,9 @@ export async function variantStockOf(
   variantIds: readonly string[],
 ): Promise<Map<string, VariantStock>> {
   if (variantIds.length === 0) return new Map();
-  const rows = await reader.execute<Row>(sql`
+  const rows = await typedRows(
+    AVAILABILITY_ROW,
+    sql`
     select va.variant_id, va.delivery, va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, va.can_buy, va.preorder_until::text as preorder_until,
       -- Drop shipping (D553): the supplier's days, when the store's own stock of it is gone.
       (select s.dispatch_days from commerce.product_variants v
@@ -467,7 +542,9 @@ export async function variantStockOf(
       variantIds.map((id) => sql`${id}::uuid`),
       sql`, `,
     )})
-  `);
+  `,
+    reader,
+  );
   return new Map(
     rows.map((r): [string, VariantStock] => {
       if (r.delivery !== "physical") return [str(r.variant_id), UNLIMITED];
@@ -536,7 +613,9 @@ export async function listGridProducts(
             ? sql`pr.min_amount desc, p.handle`
             : sql`p.created_at desc, p.handle`;
 
-  const rows = await readDb().execute<Row>(sql`
+  const rows = await typedRows(
+    SUMMARY_ROW,
+    sql`
     select
       p.id,
       p.handle,
@@ -588,7 +667,9 @@ export async function listGridProducts(
       and ${given ? sql`p.id = any(${given}::uuid[])` : sql`true`}
     order by ${order}
     limit ${Math.max(1, Math.min(GRID_PRODUCTS_MAX, filter.limit))}
-  `);
+  `,
+    readDb(),
+  );
 
   return rows.map((row) => {
     const discount = numOrNull(row.subscriber_discount);

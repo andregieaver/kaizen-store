@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db, type Db } from "@/db/client";
 import { minChargeMinor } from "@/lib/bonus";
@@ -54,9 +55,105 @@ import { storeById, type EmailStore } from "./shopper-emails";
 import { uuidList } from "./sql-arrays";
 import { applyRestock, planRestock, type RestockItem } from "./stock-restock";
 import { decideTax, loadTaxFacts, type TaxOutcome } from "./tax-treatment";
+import { col, typedRow, typedRows } from "./typed-rows";
 
-type Row = Record<string, unknown>;
 type Runner = Pick<Db, "execute">;
+
+/** The order as the edit reads it: its money and currency checked, the rest as read. */
+const EDIT_ORDER_ROW = z.looseObject({
+  id: col.uuid,
+  currency: col.currency,
+  balance_minor: col.minor,
+  subtotal_minor: col.minor,
+  shipping_minor: col.minor,
+  discount_minor: col.minor,
+  tax_minor: col.minor,
+  total_minor: col.minor,
+  member_discount_minor: col.minor,
+  campaign_discount_minor: col.minor,
+  credit_minor: col.minor,
+  referral_discount_minor: col.minor,
+  staff_discount_minor: col.minor,
+  vat_relief_minor: col.minor,
+});
+/** An order line, whole (`ol.*`): its money checked, the rest as read. */
+const EDIT_LINE_ROW = z.looseObject({
+  id: col.uuid,
+  unit_price_minor: col.minor,
+  total_minor: col.minor,
+  tax_minor: col.minor,
+  discount_minor: col.minor,
+  member_discount_minor: col.minor,
+  campaign_discount_minor: col.minor,
+  bonus_discount_minor: col.minor,
+  referral_discount_minor: col.minor,
+  staff_discount_minor: col.minor,
+  vat_relief_minor: col.minor,
+});
+const EDIT_FACTS_ROW = z.object({
+  shipped: col.bool,
+  weekly_box: col.bool,
+  booking: col.bool,
+  returned: col.bool,
+  unsent_closed: col.bool,
+  bundle: col.bool,
+  terms_unpaid: col.bool,
+  edits: col.int,
+  awaiting: z.unknown().nullable(),
+  stripe_paid: col.bool,
+  manual_paid: col.bool,
+  test_mode: col.bool,
+  refundable: col.minor,
+  invoice_number: col.textOrNull,
+  eligibility: col.textOrNull,
+});
+/** An added variant's facts: its prices checked, the rest as read. */
+const VARIANT_FACTS_ROW = z.looseObject({ id: col.uuid, cost_minor: col.minorOrNull, amount_minor: col.minorOrNull });
+const ACTIVE_MODE_ROW = z.object({ active_mode: col.text });
+const LINE_JSON_ROW = z.object({ id: col.uuid, row: z.unknown() });
+const SHORT_ROW = z.object({ short: col.int.nullable() });
+const NOTIFY_ROW = z.object({ notify: col.bool });
+const COUNT_ROW = z.object({ count: col.int });
+const EDIT_STATE_ROW = z.object({ order_id: col.uuid, status: col.text, seq: col.int });
+const ID_ROW = z.object({ id: col.uuid });
+const ENDED_ROW = z.object({ order_id: col.uuid, seq: col.int });
+const N_ROW = z.object({ n: col.int });
+const CASH_ROW = z.object({ market_code: col.text, cash: col.minor });
+const STORE_DAY_ROW = z.object({ today: col.textOrNull, earliest: col.textOrNull });
+const EDIT_DIFFERENCE_ROW = z.object({ order_id: col.uuid, status: col.text, seq: col.int, difference_minor: col.minor, currency: col.currency });
+/** A change, whole (`select *`): its money, currency and ids checked, the rest as read. */
+const EDIT_ROW = z.looseObject({
+  id: col.uuid,
+  order_id: col.uuid,
+  seq: col.int,
+  status: col.text,
+  currency: col.currency,
+  base: z.unknown(),
+  total_before: col.minor,
+  total_after: col.minor,
+  shipping_before: col.minor,
+  shipping_after: col.minor,
+  difference_minor: col.minor,
+});
+/** A change's line, whole (`select *`): its money checked, the rest as read. */
+const EDIT_LINE_FULL_ROW = z.looseObject({ n: col.int, kind: col.text, quantity: col.int, unit_price_minor: col.minor, total_minor: col.minor, tax_minor: col.minor });
+const EDIT_PAYMENT_ROW = z.object({ id: col.uuid, order_id: col.uuid, order_edit_id: col.uuid.nullable(), status: col.text });
+const EDIT_PAID_ROW = z.object({ status: col.text, payment_id: col.uuid.nullable(), seq: col.int });
+const STATUS_ROW = z.object({ status: col.text });
+const EDIT_PAYMENT_ID_ROW = z.object({ status: col.text, payment_id: col.uuid.nullable() });
+const AMOUNT_ROW = z.object({ amount_minor: col.minor });
+const ONE_ROW = z.object({ one: col.int });
+const DUE_ROW = z.object({ store_id: col.uuid, id: col.uuid });
+const EDIT_LINE_VIEW_ROW = z.object({
+  n: col.int,
+  kind: col.text,
+  sku: col.text,
+  title: col.text,
+  quantity: col.int,
+  unit_price_minor: col.minor,
+  total_minor: col.minor,
+  tax_minor: col.minor,
+});
 
 /**
  * Changing a paid order after purchase (wave 3, run 3, D174, `docs/wave-3-fulfilment.md` 2.2, 4.3 to 4.6). Staff add goods, take lines off and lower
@@ -109,7 +206,9 @@ export type EditableOrder = {
 };
 
 async function loadOrder(runner: Runner, storeId: string, orderId: string, options: { lock?: boolean } = {}): Promise<EditableOrder | null> {
-  const [o] = await runner.execute<Row>(sql`
+  const o = await typedRow(
+    EDIT_ORDER_ROW,
+    sql`
     select o.id, o.number, o.status::text as status, o.copied_from is not null as copied, o.host_id is not null as host, o.vat_kind, trim(o.currency) as currency,
       trim(o.market_code) as market_code, o.locale, o.email, o.restricted_at is not null as restricted, o.balance_minor, o.subscription_id is not null as renewal,
       o.subtotal_minor, o.shipping_minor, o.discount_minor, o.tax_minor, o.total_minor, o.member_discount_minor, o.campaign_discount_minor, o.credit_minor,
@@ -117,13 +216,21 @@ async function loadOrder(runner: Runner, storeId: string, orderId: string, optio
       commerce.store_is_active(o.store_id) as store_open
     from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
     ${options.lock ? sql`for update of o` : sql``}
-  `);
+  `,
+    runner,
+  );
   if (!o) return null;
   const [lines, [facts]] = await Promise.all([
-    runner.execute<Row>(sql`
+    typedRows(
+      EDIT_LINE_ROW,
+      sql`
       select ol.* from commerce.order_lines ol where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid order by ol.id
-    `),
-    runner.execute<Row>(sql`
+    `,
+      runner,
+    ),
+    typedRows(
+      EDIT_FACTS_ROW,
+      sql`
       select
         exists (select 1 from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.order_id = ${orderId}::uuid and sh.undone_at is null) as shipped,
         exists (select 1 from commerce.standing_deliveries sd where sd.store_id = ${storeId}::uuid and sd.order_id = ${orderId}::uuid) as weekly_box,
@@ -149,7 +256,9 @@ async function loadOrder(runner: Runner, storeId: string, orderId: string, optio
            where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and r.status::text <> 'failed') as refundable,
         (select i.document_number from commerce.invoices i where i.store_id = ${storeId}::uuid and i.order_id = ${orderId}::uuid and i.kind = 'order') as invoice_number,
         commerce.invoice_eligibility(${orderId}::uuid) as eligibility
-    `),
+    `,
+      runner,
+    ),
   ]);
   const sold: SoldLine[] = lines.map((l) => ({
     lineId: String(l.id),
@@ -283,7 +392,9 @@ type VariantFacts = {
 async function variantFacts(runner: Runner, storeId: string, market: Market, variantIds: readonly string[]): Promise<Map<string, VariantFacts>> {
   const out = new Map<string, VariantFacts>();
   if (variantIds.length === 0) return out;
-  const rows = await runner.execute<Row>(sql`
+  const rows = await typedRows(
+    VARIANT_FACTS_ROW,
+    sql`
     select v.id, v.sku, v.options, v.delivery, v.active, v.cost_minor, v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
       p.status, p.kind, p.host_id, p.subscription_only, p.withdrawal_exclusion, coalesce(v.tax_code, p.tax_code) as tax_code,
       commerce.vat_rate(${market.code}, p.vat_category) as vat_rate, cp.amount_minor,
@@ -295,7 +406,9 @@ async function variantFacts(runner: Runner, storeId: string, market: Market, var
     left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
     left join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     where v.store_id = ${storeId}::uuid and v.id = any(${uuidList(variantIds)})
-  `);
+  `,
+    runner,
+  );
   const messages = t(market.lang);
   for (const row of rows) {
     const options = (row.options ?? {}) as Record<string, string>;
@@ -500,7 +613,7 @@ async function compute(runner: Runner, storeId: string, orderId: string, input: 
 
 /** The mode the store's Stripe is in now (`test` or `live`), or null when payments are off. */
 async function storeTestMode(storeId: string): Promise<boolean | null> {
-  const [row] = await db().execute<Row>(sql`select active_mode from commerce.payment_providers where store_id = ${storeId}::uuid and provider = 'stripe' and enabled`);
+  const row = await typedRow(ACTIVE_MODE_ROW, sql`select active_mode from commerce.payment_providers where store_id = ${storeId}::uuid and provider = 'stripe' and enabled`);
   return row ? row.active_mode === "test" : null;
 }
 
@@ -573,8 +686,8 @@ type WriteArgs = {
 
 /** The order line as it is now, whole (kept in `order_edit_lines.before` for a line taken off or lowered). */
 async function lineRows(tx: Runner, storeId: string, orderId: string): Promise<Map<string, unknown>> {
-  const rows = await tx.execute<Row>(sql`select ol.id, to_jsonb(ol.*) as row from commerce.order_lines ol where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid`);
-  return new Map(rows.map((r) => [String(r.id), r.row]));
+  const rows = await typedRows(LINE_JSON_ROW, sql`select ol.id, to_jsonb(ol.*) as row from commerce.order_lines ol where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid`, tx);
+  return new Map(rows.map((r) => [r.id, r.row]));
 }
 
 /**
@@ -685,7 +798,7 @@ async function applyPriced(tx: Db, args: WriteArgs & { priced: PricedEdit<TaxOut
   }
   // Stock: the added units are drawn (the change's own holds first); a variant that stops at zero and is short refuses the whole change.
   if (priced.added.length > 0) {
-    const [drawn] = await tx.execute<Row>(sql`select commerce.draw_edit_stock(${editId}::uuid) as short`);
+    const drawn = await typedRow(SHORT_ROW, sql`select commerce.draw_edit_stock(${editId}::uuid) as short`, tx);
     if (Number(drawn?.short ?? 0) > 0) throw new EditRefused("stock");
   }
   // The units taken off go back to where they came from (D172), unless staff said they are damaged.
@@ -813,7 +926,7 @@ async function refundChange(storeId: string, orderId: string, editId: string, la
 
 /** The change email after a change was applied, once (`order-changed:{edit}`), when the change says to tell the customer. Never throws. */
 async function notifyApplied(storeId: string, editId: string): Promise<string | null> {
-  const [edit] = await db().execute<Row>(sql`select notify from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
+  const edit = await typedRow(NOTIFY_ROW, sql`select notify from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
   if (!edit?.notify) return null;
   const { sendOrderChanged } = await import("./order-edit-emails");
   return sendOrderChanged(storeId, editId).catch(() => "failed");
@@ -836,12 +949,15 @@ export type SendEditResult =
   | { ok: false; problems: EditProblem[] };
 
 async function takeBucket(storeId: string, bucket: string, limit: number, window: "hour" | "day"): Promise<boolean> {
-  const [row] = await db().execute<Row>(sql`
-    insert into commerce.chat_usage (store_id, bucket, "window", count)
-    values (${storeId}::uuid, ${bucket}, date_trunc(${window}, now()), 1)
-    on conflict (store_id, bucket, "window") do update set count = commerce.chat_usage.count + 1
-    returning count
-  `);
+  const row = await typedRow(
+    COUNT_ROW,
+    sql`
+      insert into commerce.chat_usage (store_id, bucket, "window", count)
+      values (${storeId}::uuid, ${bucket}, date_trunc(${window}, now()), 1)
+      on conflict (store_id, bucket, "window") do update set count = commerce.chat_usage.count + 1
+      returning count
+    `,
+  );
   return Number(row?.count ?? 0) <= limit;
 }
 
@@ -908,7 +1024,7 @@ export type ResendEditResult = { ok: true; link: string; emailed: string | null;
  * `EDIT_SENDS_PER_DAY` emails a day per change.
  */
 export async function resendOrderEdit(storeId: string, editId: string, actor: OrderActor, options: { email: boolean }): Promise<ResendEditResult> {
-  const [edit] = await db().execute<Row>(sql`select order_id, status, seq from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
+  const edit = await typedRow(EDIT_STATE_ROW, sql`select order_id, status, seq from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
   if (!edit) return { ok: false, problem: "not_found" };
   if (edit.status !== "awaiting_payment") return { ok: false, problem: "not_waiting" };
   const orderId = String(edit.order_id);
@@ -919,10 +1035,14 @@ export async function resendOrderEdit(storeId: string, editId: string, actor: Or
   const { token, hash } = newEditToken();
   const expiresAt = new Date(Date.now() + EDIT_PAY_DAYS * 86_400_000);
   const moved = await db().transaction(async (tx) => {
-    const [row] = await tx.execute<Row>(sql`
-      update commerce.order_edits set pay_token_hash = ${hash}, expires_at = ${expiresAt.toISOString()}::timestamptz
-      where store_id = ${storeId}::uuid and id = ${editId}::uuid and status = 'awaiting_payment' returning id
-    `);
+    const row = await typedRow(
+      ID_ROW,
+      sql`
+        update commerce.order_edits set pay_token_hash = ${hash}, expires_at = ${expiresAt.toISOString()}::timestamptz
+        where store_id = ${storeId}::uuid and id = ${editId}::uuid and status = 'awaiting_payment' returning id
+      `,
+      tx,
+    );
     if (!row) return false;
     await tx.execute(sql`
       update commerce.inventory_reservations set expires_at = ${expiresAt.toISOString()}::timestamptz
@@ -939,7 +1059,7 @@ export async function resendOrderEdit(storeId: string, editId: string, actor: Or
   const link = editPayLink({ slug: store?.slug ?? "" }, market?.slug ?? (order?.marketCode ?? "").toLowerCase(), token);
   let emailed: string | null = null;
   if (options.email) {
-    const [n] = await db().execute<Row>(sql`select count(*)::int as n from commerce.order_events where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and type = ${FULFILMENT_EVENTS.editSent} and data ->> 'edit' = ${editId}`);
+    const n = await typedRow(N_ROW, sql`select count(*)::int as n from commerce.order_events where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and type = ${FULFILMENT_EVENTS.editSent} and data ->> 'edit' = ${editId}`);
     const { sendOrderChangePayLink } = await import("./order-edit-emails");
     emailed = await sendOrderChangePayLink(storeId, editId, token, Number(n?.n ?? 1)).catch(() => "failed");
   }
@@ -962,7 +1082,7 @@ export type CancelEditResult = { ok: true } | { ok: false; problem: "not_found" 
  * or `expired` and its held units are released, with the history event. The order was never changed, so nothing else moves.
  */
 export async function endOrderEdit(storeId: string, editId: string, how: "cancelled" | "expired", actor: OrderActor, options: { force?: boolean } = {}): Promise<CancelEditResult> {
-  const [edit] = await db().execute<Row>(sql`select order_id, status, seq from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
+  const edit = await typedRow(EDIT_STATE_ROW, sql`select order_id, status, seq from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
   if (!edit) return { ok: false, problem: "not_found" };
   if (edit.status !== "awaiting_payment") return { ok: false, problem: edit.status === "applied" ? "paid" : "not_waiting" };
   const orderId = String(edit.order_id);
@@ -982,10 +1102,14 @@ export const cancelOrderEdit = (storeId: string, editId: string, actor: OrderAct
 
 /** The database half of ending a change, in the caller's transaction: the status, the holds released, the event. False when it was not waiting. */
 async function endInTransaction(tx: Runner, storeId: string, editId: string, how: "cancelled" | "expired", actor: OrderActor): Promise<boolean> {
-  const [row] = await tx.execute<Row>(sql`
-    update commerce.order_edits set status = ${how} where store_id = ${storeId}::uuid and id = ${editId}::uuid and status = 'awaiting_payment'
-    returning order_id, seq
-  `);
+  const row = await typedRow(
+    ENDED_ROW,
+    sql`
+      update commerce.order_edits set status = ${how} where store_id = ${storeId}::uuid and id = ${editId}::uuid and status = 'awaiting_payment'
+      returning order_id, seq
+    `,
+    tx,
+  );
   if (!row) return false;
   await tx.execute(sql`update commerce.inventory_reservations set released_at = now() where store_id = ${storeId}::uuid and order_edit_id = ${editId}::uuid and released_at is null`);
   await writeOrderEvent(
@@ -1005,7 +1129,7 @@ async function endInTransaction(tx: Runner, storeId: string, editId: string, how
  * `completeEditPayment()` (2.7).
  */
 export async function cancelEditsForWithdrawal(tx: Runner, storeId: string, orderId: string): Promise<string[]> {
-  const rows = await tx.execute<Row>(sql`select id from commerce.order_edits where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and status = 'awaiting_payment'`);
+  const rows = await typedRows(ID_ROW, sql`select id from commerce.order_edits where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and status = 'awaiting_payment'`, tx);
   const ended: string[] = [];
   for (const r of rows) if (await endInTransaction(tx, storeId, String(r.id), "cancelled", { accountId: null, kind: "system" })) ended.push(String(r.id));
   return ended;
@@ -1025,12 +1149,16 @@ export type PaidOutsideEditResult = { ok: true; editId: string; label: string; /
  * returns true for a `warn` one. Payments by bank transfer or other means are not cash and are not checked.
  */
 async function checkEditCash(tx: Runner, storeId: string, orderId: string, differenceMinor: number, currency: string): Promise<boolean> {
-  const [order] = await tx.execute<Row>(sql`
-    select trim(o.market_code) as market_code,
-      (select coalesce(sum(p.amount_minor), 0) from commerce.payments p
-        where p.store_id = o.store_id and p.order_id = o.id and p.provider = 'manual' and p.method = 'cash' and p.status = 'captured') as cash
-    from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid for update of o
-  `);
+  const order = await typedRow(
+    CASH_ROW,
+    sql`
+      select trim(o.market_code) as market_code,
+        (select coalesce(sum(p.amount_minor), 0) from commerce.payments p
+          where p.store_id = o.store_id and p.order_id = o.id and p.provider = 'manual' and p.method = 'cash' and p.status = 'captured') as cash
+      from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid for update of o
+    `,
+    tx,
+  );
   if (!order) throw new EditRefused("not_found");
   const code = String(order.market_code);
   const check = checkCash(code, Number(order.cash ?? 0) + differenceMinor, currency, await cashLimitInCurrency(storeId, code, currency));
@@ -1053,9 +1181,12 @@ export async function recordEditPaidOutside(
   if (!outside.success) return refused(problem("invalid"));
   if (!actor.accountId || !(await accountMayRecordOutside(storeId, actor.accountId))) return refused(problem("not_allowed"));
   if (outside.data.receivedOn) {
-    const [day] = await db().execute<Row>(sql`
-      select commerce.store_day(${storeId}::uuid, now())::text as today, (commerce.store_day(${storeId}::uuid, now()) - ${MANUAL_RECEIVED_DAYS_MAX}::int)::text as earliest
-    `);
+    const day = await typedRow(
+      STORE_DAY_ROW,
+      sql`
+        select commerce.store_day(${storeId}::uuid, now())::text as today, (commerce.store_day(${storeId}::uuid, now()) - ${MANUAL_RECEIVED_DAYS_MAX}::int)::text as earliest
+      `,
+    );
     if (outside.data.receivedOn > String(day?.today) || outside.data.receivedOn < String(day?.earliest)) {
       return refused({ code: "invalid", text: `The day received is not in the future and at most ${MANUAL_RECEIVED_DAYS_MAX} days back.` });
     }
@@ -1068,7 +1199,7 @@ export async function recordEditPaidOutside(
   let cashWarning = false;
   try {
     if ("editId" in target) {
-      const [edit] = await db().execute<Row>(sql`select order_id, status, seq, difference_minor, currency from commerce.order_edits where store_id = ${storeId}::uuid and id = ${target.editId}::uuid`);
+      const edit = await typedRow(EDIT_DIFFERENCE_ROW, sql`select order_id, status, seq, difference_minor, currency from commerce.order_edits where store_id = ${storeId}::uuid and id = ${target.editId}::uuid`);
       if (!edit) return refused(problem("not_found"));
       if (edit.status !== "awaiting_payment") return refused({ code: "invalid", text: "This change is not waiting for payment." });
       orderId = String(edit.order_id);
@@ -1139,13 +1270,18 @@ async function insertManualPayment(
   input: { method: string; receivedOn?: string },
   accountId: string,
 ): Promise<string> {
-  const [row] = await tx.execute<Row>(sql`
-    insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status, kaizen_fee_minor, method, recorded_by, received_on, order_edit_id)
-    values (${storeId}::uuid, ${orderId}::uuid, 'manual', ${`manual_edit_${randomUUID()}`}, ${amountMinor}, ${currency}, 'captured', 0, ${input.method}, ${accountId}::uuid,
-            ${input.receivedOn ?? null}::date, ${editId}::uuid)
-    returning id
-  `);
-  return String(row.id);
+  const row = await typedRow(
+    ID_ROW,
+    sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status, kaizen_fee_minor, method, recorded_by, received_on, order_edit_id)
+      values (${storeId}::uuid, ${orderId}::uuid, 'manual', ${`manual_edit_${randomUUID()}`}, ${amountMinor}, ${currency}, 'captured', 0, ${input.method}, ${accountId}::uuid,
+              ${input.receivedOn ?? null}::date, ${editId}::uuid)
+      returning id
+    `,
+    tx,
+  );
+  if (!row) throw new Error("The change's payment was not written.");
+  return row.id;
 }
 
 /** A new change written applied with a payment made inside the same transaction (the payment names the change, so the change is written first). */
@@ -1166,10 +1302,10 @@ async function writeEditApplied(tx: Db, args: WriteArgs, pay: () => Promise<stri
  * same added lines at the price and VAT shown) and held equal to it, then written as applied with its payment. Throws `EditRefused` when the order moved.
  */
 async function applyAwaiting(tx: Db, storeId: string, editId: string, paymentId: string, actor: OrderActor): Promise<void> {
-  const [edit] = await tx.execute<Row>(sql`select * from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid for update`);
+  const edit = await typedRow(EDIT_ROW, sql`select * from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid for update`, tx);
   if (!edit || edit.status !== "awaiting_payment") throw new EditRefused("changed");
   const orderId = String(edit.order_id);
-  const lines = await tx.execute<Row>(sql`select * from commerce.order_edit_lines where store_id = ${storeId}::uuid and order_edit_id = ${editId}::uuid order by n`);
+  const lines = await typedRows(EDIT_LINE_FULL_ROW, sql`select * from commerce.order_edit_lines where store_id = ${storeId}::uuid and order_edit_id = ${editId}::uuid order by n`, tx);
   const base = (edit.base ?? {}) as ReturnType<typeof editBase> & { noRestock?: string[] };
   const quantities: Record<string, number> = {};
   for (const l of lines) {
@@ -1215,20 +1351,23 @@ export type EditPaymentOutcome = "applied" | "already" | "refunded" | "not_edit"
  * at once from that payment (2.7), with the event `order.edit_payment_refunded`; nothing else changes.
  */
 export async function completeEditPayment(storeId: string, sessionId: string): Promise<EditPaymentOutcome> {
-  const [payment] = await db().execute<Row>(sql`
-    select id, order_id, order_edit_id, status from commerce.payments where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${sessionId}
-  `);
+  const payment = await typedRow(
+    EDIT_PAYMENT_ROW,
+    sql`
+      select id, order_id, order_edit_id, status::text as status from commerce.payments where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${sessionId}
+    `,
+  );
   if (!payment?.order_edit_id) return "not_edit";
   const paymentId = String(payment.id);
   const editId = String(payment.order_edit_id);
   const orderId = String(payment.order_id);
-  const [edit] = await db().execute<Row>(sql`select status, payment_id, seq from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
+  const edit = await typedRow(EDIT_PAID_ROW, sql`select status, payment_id, seq from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
   if (edit?.status === "applied" && String(edit.payment_id) === paymentId) return "already";
   let applied = false;
   try {
     applied = await db().transaction(async (tx) => {
       await tx.execute(sql`select id from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid for update`);
-      const [locked] = await tx.execute<Row>(sql`select status from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid for update`);
+      const locked = await typedRow(STATUS_ROW, sql`select status from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid for update`, tx);
       if (locked?.status !== "awaiting_payment") return false;
       await tx.execute(sql`update commerce.payments set status = 'captured', updated_at = now() where store_id = ${storeId}::uuid and id = ${paymentId}::uuid`);
       await applyAwaiting(tx, storeId, editId, paymentId, { accountId: null, kind: "system" });
@@ -1243,12 +1382,12 @@ export async function completeEditPayment(storeId: string, sessionId: string): P
     return "applied";
   }
   // Already applied by a concurrent call with this payment?
-  const [now] = await db().execute<Row>(sql`select status, payment_id from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
+  const now = await typedRow(EDIT_PAYMENT_ID_ROW, sql`select status, payment_id from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
   if (now?.status === "applied" && String(now.payment_id) === paymentId) return "already";
   // The money arrived for a change that cannot be applied: given back in full, from this payment.
   await db().execute(sql`update commerce.payments set status = 'captured', updated_at = now() where store_id = ${storeId}::uuid and id = ${paymentId}::uuid and status <> 'captured'`);
-  const [amount] = await db().execute<Row>(sql`select amount_minor from commerce.payments where store_id = ${storeId}::uuid and id = ${paymentId}::uuid`);
-  const [done] = await db().execute<Row>(sql`select 1 from commerce.refunds where store_id = ${storeId}::uuid and payment_id = ${paymentId}::uuid and status::text <> 'failed'`);
+  const amount = await typedRow(AMOUNT_ROW, sql`select amount_minor from commerce.payments where store_id = ${storeId}::uuid and id = ${paymentId}::uuid`);
+  const done = await typedRow(ONE_ROW, sql`select 1 as one from commerce.refunds where store_id = ${storeId}::uuid and payment_id = ${paymentId}::uuid and status::text <> 'failed'`);
   if (done) return "refunded";
   const refund = await refundOrder(
     storeId,
@@ -1277,11 +1416,14 @@ export async function completeEditPayment(storeId: string, sessionId: string): P
 
 /** A Stripe session of a change's difference that expired or failed: only its payment row is marked (the order is paid; nothing is cancelled). */
 export async function markEditSessionEnded(storeId: string, sessionId: string, status: "cancelled" | "failed"): Promise<boolean> {
-  const rows = await db().execute<Row>(sql`
-    update commerce.payments set status = ${status}, updated_at = now()
-    where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${sessionId} and order_edit_id is not null and status = 'pending'
-    returning id
-  `);
+  const rows = await typedRows(
+    ID_ROW,
+    sql`
+      update commerce.payments set status = ${status}, updated_at = now()
+      where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${sessionId} and order_edit_id is not null and status = 'pending'
+      returning id
+    `,
+  );
   return rows.length > 0;
 }
 
@@ -1293,10 +1435,13 @@ export type ExpireEditsRun = { expired: number; waiting: number; paid: number };
  */
 export async function expireOrderEdits(now: Date = new Date(), options: { limit?: number } = {}): Promise<ExpireEditsRun> {
   const run: ExpireEditsRun = { expired: 0, waiting: 0, paid: 0 };
-  const due = await db().execute<Row>(sql`
-    select store_id, id from commerce.order_edits where status = 'awaiting_payment' and expires_at <= ${now.toISOString()}::timestamptz
-    order by expires_at limit ${options.limit ?? 100}
-  `);
+  const due = await typedRows(
+    DUE_ROW,
+    sql`
+      select store_id, id from commerce.order_edits where status = 'awaiting_payment' and expires_at <= ${now.toISOString()}::timestamptz
+      order by expires_at limit ${options.limit ?? 100}
+    `,
+  );
   for (const row of due) {
     try {
       const done = await endOrderEdit(String(row.store_id), String(row.id), "expired", { accountId: null, kind: "system" });
@@ -1312,7 +1457,7 @@ export async function expireOrderEdits(now: Date = new Date(), options: { limit?
 
 /** A store that closes (D171) cancels its changes waiting for payment: their sessions closed first, their units released. Never throws. */
 export async function cancelEditsForClosure(storeId: string): Promise<number> {
-  const rows = await db().execute<Row>(sql`select id from commerce.order_edits where store_id = ${storeId}::uuid and status = 'awaiting_payment'`);
+  const rows = await typedRows(ID_ROW, sql`select id from commerce.order_edits where store_id = ${storeId}::uuid and status = 'awaiting_payment'`);
   let n = 0;
   for (const r of rows) {
     const done = await endOrderEdit(storeId, String(r.id), "cancelled", { accountId: null, kind: "system" }, { force: true }).catch(() => null);
@@ -1355,9 +1500,13 @@ export type OrderEditView = {
 };
 
 export async function getOrderEdit(storeId: string, editId: string, runner: Runner = db()): Promise<OrderEditView | null> {
-  const [e] = await runner.execute<Row>(sql`select * from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`);
+  const e = await typedRow(EDIT_ROW, sql`select * from commerce.order_edits where store_id = ${storeId}::uuid and id = ${editId}::uuid`, runner);
   if (!e) return null;
-  const lines = await runner.execute<Row>(sql`select n, kind, sku, title, quantity, unit_price_minor, total_minor, tax_minor from commerce.order_edit_lines where store_id = ${storeId}::uuid and order_edit_id = ${editId}::uuid order by n`);
+  const lines = await typedRows(
+    EDIT_LINE_VIEW_ROW,
+    sql`select n, kind, sku, title, quantity, unit_price_minor, total_minor, tax_minor from commerce.order_edit_lines where store_id = ${storeId}::uuid and order_edit_id = ${editId}::uuid order by n`,
+    runner,
+  );
   const iso = (v: unknown) => (v ? new Date(String(v)).toISOString() : null);
   return {
     id: String(e.id),

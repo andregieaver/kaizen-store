@@ -53,6 +53,15 @@ const ID_ROW = z.object({ id: col.uuid });
 
 const ACTIVE_PRICE_ROW = z.object({ id: col.uuid, currency: col.currency, interval: col.text, amount_minor: col.minor });
 
+/** A store's billing (`billingQuery`): wide, read as `Row` by `toBilling()`; the id and the price described. */
+const BILLING_ROW = z.looseObject({
+  store_id: col.uuid,
+  currency: col.currency.nullable(),
+  amount_minor: col.minorOrNull,
+});
+
+const PRICE_PLAN_ROW = z.object({ id: col.uuid, plan_id: col.uuid });
+
 /** The Stripe mode Kaizen bills stores in: live once live keys are set. */
 export function billingMode(): PaymentModeName | null {
   if (platformStripe("live")) return "live";
@@ -480,7 +489,7 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
 export async function listStoreBilling({ includeClosed = false }: { includeClosed?: boolean } = {}): Promise<StoreBilling[]> {
   const [rows, defaultBps] = await Promise.all([
     // Store templates (D175) have no plan: they are listed under Store templates, not here. Nor has Kaizena Flow's own store (D466).
-    db().execute<Row>(billingQuery(includeClosed ? sql`not s.starter and not s.sandbox and not s.house` : sql`s.status <> 'closed' and not s.starter and not s.sandbox and not s.house`)),
+    typedRows(BILLING_ROW, billingQuery(includeClosed ? sql`not s.starter and not s.sandbox and not s.house` : sql`s.status <> 'closed' and not s.starter and not s.sandbox and not s.house`)),
     getSaleFeeBps(),
   ]);
   return rows.map((row) => toBilling(row, defaultBps));
@@ -488,7 +497,7 @@ export async function listStoreBilling({ includeClosed = false }: { includeClose
 
 export async function getStoreBilling(storeId: string): Promise<StoreBilling | null> {
   const [[row], defaultBps] = await Promise.all([
-    db().execute<Row>(billingQuery(sql`s.id = ${storeId}::uuid`)),
+    typedRows(BILLING_ROW, billingQuery(sql`s.id = ${storeId}::uuid`)),
     getSaleFeeBps(),
   ]);
   return row ? toBilling(row, defaultBps) : null;
@@ -524,7 +533,7 @@ async function codeTypedAtStripe(subscription: Stripe.Subscription, mode: Paymen
   }
   const ids = promotions.filter((id): id is string => id !== null);
   if (ids.length === 0) return null;
-  const [row] = await db().execute<Row>(sql`
+  const row = await typedRow(z.object({ local_id: col.text }), sql`
     select local_id from commerce.stripe_sync
     where mode = ${mode} and kind = 'promotion_code' and stripe_id in (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
     limit 1
@@ -543,7 +552,7 @@ export async function applySubscription(
 ): Promise<boolean> {
   let storeId: string | null = subscription.metadata?.kaizen_store_id ?? null;
   if (!storeId) {
-    const [row] = await db().execute<Row>(sql`
+    const row = await typedRow(z.object({ store_id: col.uuid }), sql`
       select store_id from commerce.store_billing where mode = ${mode} and subscription_id = ${subscription.id}
     `);
     storeId = row ? String(row.store_id) : null;
@@ -551,13 +560,13 @@ export async function applySubscription(
   if (!storeId) return false;
 
   const item = subscription.items.data[0];
-  const [price] = item
-    ? await db().execute<Row>(sql`
+  const price = item
+    ? await typedRow(PRICE_PLAN_ROW, sql`
         select pp.id, pp.plan_id from commerce.stripe_sync s
         join commerce.plan_prices pp on pp.id::text = s.local_id
         where s.mode = ${mode} and s.kind = 'price' and s.stripe_id = ${item.price.id}
       `)
-    : [];
+    : null;
   const periodEnd = item?.current_period_end ? new Date(item.current_period_end * 1000).toISOString() : null;
   // Kaizen's code on the plan (D31): set when a code was applied, and gone
   // once Stripe no longer gives the discount. A code still waiting for a
@@ -640,7 +649,7 @@ async function prepare(
   // The country decides the plan's VAT: never assumed (a store gives it with its business details).
   if (!store.details.country) return { ok: false, problems: [NO_COUNTRY] };
 
-  const [price] = await db().execute<Row>(sql`
+  const price = await typedRow(z.object({ id: col.uuid, plan_id: col.uuid, plan_name: col.text }), sql`
     select pp.id, pp.plan_id, p.name as plan_name from commerce.plan_prices pp
     join commerce.plans p on p.id = pp.plan_id
     where pp.id = ${priceId}::uuid and pp.active and p.active
@@ -704,7 +713,7 @@ async function waitingDiscount(
   p: Prepared,
 ): Promise<{ ok: true; promotionCode: string | null; metadata: Record<string, string> } | { ok: false; problem: string }> {
   const billing = await getStoreBilling(p.store.id);
-  const [price] = await db().execute<Row>(sql`select currency from commerce.plan_prices where id = ${p.price.id}::uuid`);
+  const price = await typedRow(z.object({ currency: col.currency }), sql`select currency from commerce.plan_prices where id = ${p.price.id}::uuid`);
   const currency = price ? String(price.currency).trim() : null;
   if (!billing?.discount || billing.discount.appliedAt) {
     // No code saved: a campaign running for the plan (D524) gives its coupon without one being typed.
@@ -938,7 +947,8 @@ async function chooseUnderLock(
 
 /** A store's trial end (D359) in Unix seconds while it is at least two days away (Stripe's least for Checkout), else null. */
 export async function trialEndFor(storeId: string): Promise<number | null> {
-  const [row] = await db().execute<Record<string, unknown>>(sql`
+  // A `bigint` of seconds, not money: read as a finite number.
+  const row = await typedRow(z.object({ at: col.decimal }), sql`
     select extract(epoch from trial_ends_at)::bigint as at from commerce.store_billing
     where store_id = ${storeId}::uuid and trial_ends_at > now() + interval '2 days'
   `);
@@ -1036,7 +1046,7 @@ export async function portalUrl(
 
 /** The currencies plans can be priced in: those of the markets Kaizen launched, its own country's first. */
 export async function planCurrencies(): Promise<string[]> {
-  const rows = await db().execute<Row>(sql`
+  const rows = await typedRows(z.object({ currency: col.currency, own: col.bool.nullable() }), sql`
     select m.currency, bool_or(m.code = s.country) as own from commerce.markets m
     join commerce.stores s on s.id = m.store_id
     where s.is_template and m.active
