@@ -66,7 +66,7 @@ async function Body({ params, searchParams }: Pick<Props, "params" | "searchPara
         <table className="w-full text-left">
           <thead>
             <tr className="border-b border-line">
-              <th scope="col" className="py-2">{w.send}</th>
+              <th scope="col" className="py-2"><span className="sr-only">{w.send}</span></th>
               <th scope="col" className="py-2">SKU</th>
               <th scope="col" className="py-2 text-right">{w.quantity}</th>
             </tr>
