@@ -190,3 +190,30 @@ withdrawal_request_lines, withdrawal_requests, work_timers, workflow_runs, workf
 
 (An empty table is not proof the feature is unwanted: several were built in the last weeks. It is proof that no store has
 used it yet, and that any work done for it on every request or every five minutes is, today, done for nobody.)
+
+## The queries
+
+Read-only, on statistics views. Run them again to check a step's "done when".
+
+```sql
+-- Tables: rows, size, how they are read.
+select relname, n_live_tup, n_tup_ins, seq_scan, seq_tup_read, idx_scan, pg_total_relation_size(relid) as bytes
+from pg_stat_user_tables where schemaname = 'commerce' order by bytes desc;
+
+-- Indexes never scanned.
+select relname, indexrelname, pg_relation_size(indexrelid) as bytes
+from pg_stat_user_indexes where schemaname = 'commerce' and idx_scan = 0 order by bytes desc;
+
+-- Size by schema (the scheduler's log is the cron schema).
+select n.nspname, count(*), pg_size_pretty(sum(pg_total_relation_size(c.oid)))
+from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relkind in ('r', 'm') group by 1 order by sum(pg_total_relation_size(c.oid)) desc;
+
+-- The app's statements by total time; order by calls for the most-called.
+select calls, round(total_exec_time::numeric) as total_ms, round(mean_exec_time::numeric, 2) as mean_ms, rows, left(regexp_replace(query, '\s+', ' ', 'g'), 260) as query
+from extensions.pg_stat_statements s join pg_roles r on r.oid = s.userid
+where r.rolname = 'postgres' order by total_exec_time desc limit 40;
+
+-- The schedule, and what each job did last.
+select jobname, schedule, active from cron.job order by jobname;
+select job, every_seconds, runs, failures, last_duration_ms from commerce.cron_jobs order by runs desc;
+```
