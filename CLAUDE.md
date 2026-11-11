@@ -74,6 +74,8 @@ stand-in is the only fake, and only it is told it is one.
   (Supabase project `ybsozesfuxuitoacntfo`) and record the file's version in `docs/decisions.md` (Migration
   versions). A migration must keep the code that is still running working until the deploy finishes (add,
   never rename or drop in the same change).
+- In production a statement may run 15 s and wait 5 s for a lock (the `postgres` role's limits, code review 1.5); a job that needs longer
+  calls `longerTimeout(tx, seconds)` inside its transaction (`src/db/client.ts`, `set local`, never a plain `set` through the pooler).
 - `src/db/commerce.test.ts` applies every migration to PGlite and tests the
   invariants. Add a test with any new rule.
 - Money is integer minor units plus an ISO 4217 code (`src/lib/money.ts`).

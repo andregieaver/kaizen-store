@@ -11,6 +11,9 @@ import { applyThemeInvoiceEvent } from "@/server/theme-prices";
 import { applyPlatformSaleEvent } from "@/server/platform-sales";
 import { log } from "@/server/log";
 
+/** A payment provider's event is answered within a minute, or the function stops and the provider sends it again (code review 1.5, FD9). */
+export const maxDuration = 60;
+
 /**
  * Events about Kaizen's own subscriptions to stores (Stripe Billing on
  * Kaizen's account): started, renewed, overdue, cancelled; and about their

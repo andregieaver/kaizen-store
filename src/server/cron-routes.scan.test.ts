@@ -47,3 +47,30 @@ describe("cron routes", () => {
     expect(source, `${name} should run inside trackedRoute() or tracked()`).toMatch(new RegExp(`tracked(Route)?\\("route\\.${name}"`));
   });
 });
+
+/**
+ * A payment provider's or another service's webhook has a time limit too (code review 1.5, FD9): one held up by a slow query would keep
+ * one of the instance's five database connections until the platform killed the function. Every route under `api/stripe` and
+ * `api/mollie`, and every route in a `webhook` or `webhooks` folder, says its own.
+ */
+describe("webhook routes", () => {
+  const API = join(process.cwd(), "src/app/api");
+  const routeFiles = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory() ? routeFiles(join(dir, entry.name)) : entry.name === "route.ts" ? [join(dir, entry.name)] : [],
+    );
+  const webhooks = routeFiles(API)
+    .map((file) => file.slice(API.length + 1))
+    .filter((path) => /^(stripe|mollie)\//.test(path) || /(^|\/)webhooks?\//.test(path))
+    // A document about webhooks (`webhooks/v1/topics.json`, the topics a developer can choose) receives none.
+    .filter((path) => !/\.json\/route\.ts$/.test(path));
+
+  it("finds the payment providers' webhooks", () => {
+    expect(webhooks).toEqual(expect.arrayContaining(["stripe/webhook/[storeId]/route.ts", "stripe/billing/[mode]/route.ts", "mollie/[mode]/route.ts"]));
+  });
+
+  it.each(webhooks)("%s has a time limit", (path) => {
+    expect(readFileSync(join(API, path), "utf8")).toMatch(/^export const maxDuration = \d+;$/m);
+  });
+});
+
