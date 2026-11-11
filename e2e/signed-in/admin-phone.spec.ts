@@ -4,7 +4,7 @@ import { testDb } from "../db";
 import { OWNER } from "./accounts";
 
 /**
- * The admin on a phone (D567; row platform.mobile-admin-app, criterion 4): at 390 px wide an owner opens the orders list, one order, the
+ * The admin on a phone (D568; row platform.mobile-admin-app, criterion 4): at 390 px wide an owner opens the orders list, one order, the
  * products, the inventory and the team, and nothing on them scrolls the page sideways or is cut off at the screen's edge. The orders list
  * shows each order's number, customer, payment and sending under it and its total; an order's items show their quantity and total.
  */

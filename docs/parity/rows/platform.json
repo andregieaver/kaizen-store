@@ -1140,7 +1140,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "An admin shell with a few responsive classes (`admin-frame.tsx`) and an AI manager with voice and live voice that works from a phone (D104, D105). Since D361 the admin is installable: a web app manifest (`/admin/manifest.webmanifest`, Kaizena Flow's icon) and a service worker scoped to `/admin/` (`/admin/sw.js`, `src/lib/admin-sw.ts`) that keeps only an offline page and answers a page load it cannot fetch with it; and Web Push with VAPID keys from the environment: on Your account a person switches notifications on per device and store (only where they read orders), a paid order rings each device with its number and total only and opens that order, a device the push service says is gone is removed, and one whose person no longer reads the store's orders is removed at the next send (`src/server/push.ts`). Still short: offline it shows a page saying so, not the signed-in shell (criterion 1 asks for the shell; the admin's pages are per request and hold an account's data, so none is kept in the browser); and notifications need the VAPID keys set in production. Since D567 the admin is checked at 390 px: every page without parameters fits a phone's width (the page builder's canvas aside, a desktop tool), the orders list shows each order's number, customer, payment, sending and total, and an order's items their quantity and total; `e2e/signed-in/admin-phone.spec.ts` holds criterion 4.",
+    "gap": "An admin shell with a few responsive classes (`admin-frame.tsx`) and an AI manager with voice and live voice that works from a phone (D104, D105). Since D361 the admin is installable: a web app manifest (`/admin/manifest.webmanifest`, Kaizena Flow's icon) and a service worker scoped to `/admin/` (`/admin/sw.js`, `src/lib/admin-sw.ts`) that keeps only an offline page and answers a page load it cannot fetch with it; and Web Push with VAPID keys from the environment: on Your account a person switches notifications on per device and store (only where they read orders), a paid order rings each device with its number and total only and opens that order, a device the push service says is gone is removed, and one whose person no longer reads the store's orders is removed at the next send (`src/server/push.ts`). Still short: offline it shows a page saying so, not the signed-in shell (criterion 1 asks for the shell; the admin's pages are per request and hold an account's data, so none is kept in the browser); and notifications need the VAPID keys set in production. Since D568 the admin is checked at 390 px: every page without parameters fits a phone's width (the page builder's canvas aside, a desktop tool), the orders list shows each order's number, customer, payment, sending and total, and an order's items their quantity and total; `e2e/signed-in/admin-phone.spec.ts` holds criterion 4.",
     "bucket": "C",
     "wave": 9,
     "criteria": [
@@ -1180,7 +1180,7 @@
       "D105",
       "D238",
       "D361",
-      "D567"
+      "D568"
     ],
     "history": [
       {
