@@ -474,6 +474,19 @@ export const productsEn = {
   },
   /** A job's state in words (`STATUS_WORDS`). */
   jobStatus: { ...STATUS_WORDS },
+  /** Environmental claims on the live site (D552, the ECGT). */
+  greenClaims: {
+    title: "Environmental claims",
+    intro: "Since 27 September 2026 EU law bans vague environmental claims such as \"eco-friendly\", \"sustainable\" or \"climate neutral\" unless you can prove recognised excellent environmental performance, and bans claims that rest on offsetting emissions outright. These are the words on your live site to look at.",
+    none: "No vague environmental claims found on your live products, pages or articles.",
+    count: { one: "{n} claim to look at", many: "{n} claims to look at" },
+    how: "Say what is true and can be checked instead: \"made of 80 % recycled plastic\", \"EU Ecolabel\", \"packed in paper without plastic\". A colour (\"green\") is fine; a certified label may be too.",
+    offset: "Rests on offsetting: banned in every case.",
+    kinds: { product: "Product", page: "Page", article: "Article" },
+    edit: "Edit",
+    untitled: "(untitled)",
+    more: "Only the first {n} are listed.",
+  },
   importNotes: { compareAt: COMPARE_AT_NOTE, confirmation: IMPORT_CONFIRMATION },
 };
 

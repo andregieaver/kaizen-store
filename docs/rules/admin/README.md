@@ -7,7 +7,7 @@ Read the rule of the part you change before changing it; a rule changes in its f
 
 - [`platform.md`](platform.md): The admin's frame, accounts, security and the platform (35 rules)
 - [`ai.md`](ai.md): The AI manager, the autopilot and AI that builds (23 rules)
-- [`commerce.md`](commerce.md): Orders, payments, tax, shipping and selling (48 rules)
+- [`commerce.md`](commerce.md): Orders, payments, tax, shipping and selling (49 rules)
 - [`marketing.md`](marketing.md): Customers, marketing and analytics (25 rules)
 - [`website.md`](website.md): The website, the builder, themes and the docs portal (76 rules)
 - [`integrations.md`](integrations.md): Data in and out, APIs and integrations (29 rules)

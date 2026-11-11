@@ -41,6 +41,9 @@ const STEMS: Record<Exclude<ClaimKind, "price">, string[]> = {
     "eco-friendly", "ecofriendly", "eco friendly", "environmentally friendly", "environment-friendly",
     "sustainable", "sustainably", "climate neutral", "climate-neutral", "carbon neutral", "carbon-neutral",
     "planet-friendly", "planet friendly", "earth-friendly", "umweltfreundlich", "nachhaltig", "klimafreundlich",
+    // Claims of a neutral or reduced impact from offsetting emissions, banned outright by the ECGT (Annex I, point 4c).
+    "klimakompensert", "klimakompenserad", "klimakompenseret", "co2-kompensert", "co2-kompenserad", "co2-kompenseret",
+    "carbon offset", "co2-offset", "offset emissions", "climate compensated", "klimakompensiert", "co2-kompensiert",
   ],
   urgency: [
     "kun i dag", "bare i dag", "endast idag", "endast i dag", "kun i dag", "kun få igjen", "bare få igjen", "få igjen",

@@ -72,6 +72,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Eksporter produkter",
     keywords: ["eksporter produkter", "csv", "last ned produkter", "regneark", "excel", "sikkerhetskopi", "produktfil"],
   },
+  "store:products.claims": { title: "Miljøpåstander", keywords: ["miljøpåstander", "grønnvasking", "miljøvennlig", "bærekraftig", "klimanøytral"] },
   "store:products.import": {
     title: "Importer produkter",
     keywords: ["importer produkter", "csv", "last opp produkter", "shopify", "flytte butikken", "produktfil"],

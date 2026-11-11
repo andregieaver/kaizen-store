@@ -508,6 +508,18 @@ export const productsNb: ProductsMessages = {
     cancelled: "Avbrutt",
     expired: "Filene er fjernet",
   },
+  greenClaims: {
+    title: "Miljøpåstander",
+    intro: "Siden 27. september 2026 forbyr EU-retten vage miljøpåstander som «miljøvennlig», «bærekraftig» eller «klimanøytral» med mindre du kan dokumentere anerkjent fremragende miljøprestasjon, og påstander som bygger på klimakompensasjon er forbudt uansett. Dette er ordene på det publiserte nettstedet ditt du bør se på.",
+    none: "Ingen vage miljøpåstander funnet i publiserte produkter, sider eller artikler.",
+    count: { one: "{n} påstand å se på", many: "{n} påstander å se på" },
+    how: "Si heller det som er sant og kan sjekkes: «laget av 80 % resirkulert plast», «EU Ecolabel», «pakket i papir uten plast». En farge («grønn») er greit; et sertifisert merke kan også være det.",
+    offset: "Bygger på klimakompensasjon: alltid forbudt.",
+    kinds: { product: "Produkt", page: "Side", article: "Artikkel" },
+    edit: "Rediger",
+    untitled: "(uten tittel)",
+    more: "Bare de første {n} vises.",
+  },
   importNotes: {
     compareAt:
       "En sammenligningspris i en fil importeres aldri: en rabatt vises bare for kundene målt mot den laveste prisen de siste 30 dagene, som Kaizena Flow henter fra sin egen prishistorikk.",

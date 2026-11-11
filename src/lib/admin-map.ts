@@ -225,6 +225,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["export products", "csv", "download products", "spreadsheet", "excel", "backup", "product file", "eksporter produkter"],
     feature: "shop",
   }),
+  store("products.claims", "/products/claims", "Environmental claims", "Main", "Lists every vague environmental claim (eco-friendly, sustainable, climate neutral, carbon offset) in the store's live products, published pages and articles, with the words around it and a link to edit it. EU law (the Empowering Consumers Directive) bans such claims since 27 September 2026 unless proven, and claims that rest on offsetting outright. Read-only.", {
+    tasks: ["Find vague green claims on my site", "Check my product texts for greenwashing", "See which pages say eco-friendly"],
+    keywords: ["green claims", "greenwashing", "eco-friendly", "sustainable", "climate neutral", "ecgt", "miljøpåstander", "grønnvasking", "miljøvennlig", "bærekraftig"],
+    feature: "shop",
+  }),
   store("products.import", "/products/import", "Import products", "Main", "Brings products in from a CSV file: Kaizena Flow's own file or a Shopify product file. Upload the file, choose what the import does, check it (a dry run that lists every row's problem and changes nothing), then import. Never deletes a product or changes an address. Needs the right to change products.", {
     tasks: ["Upload a product file", "Import a Shopify product file", "Continue an open import", "See the recent imports"],
     keywords: ["import products", "csv", "upload products", "shopify", "migrate", "bulk add", "product file", "importer produkter"],
