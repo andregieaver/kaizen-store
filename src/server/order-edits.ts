@@ -1354,7 +1354,7 @@ export async function completeEditPayment(storeId: string, sessionId: string): P
   const payment = await typedRow(
     EDIT_PAYMENT_ROW,
     sql`
-      select id, order_id, order_edit_id, status::text as status from commerce.payments where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${sessionId}
+      select id, order_id, order_edit_id, status from commerce.payments where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${sessionId}
     `,
   );
   if (!payment?.order_edit_id) return "not_edit";
