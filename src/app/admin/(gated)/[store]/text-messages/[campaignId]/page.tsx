@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { notFound } from "next/navigation";
 
 import { SmsCampaignEditor, SmsStopButton } from "@/components/admin/sms-views";
 import { Card, Chip, PageHeader } from "@/components/admin/ui";
 import { fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { SMS_MESSAGE_STATUSES } from "@/lib/sms";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
@@ -34,6 +36,7 @@ export default async function TextMessagePage({ params }: PageProps<"/admin/[sto
   if (campaign.status === "draft") {
     const [segments, settings] = await Promise.all([listSegments(store.id), getSmsSettings(store.id)]);
     return (
+      <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={campaign.title} back={back} actions={<Chip>{w.statuses.draft}</Chip>} />
         <Card>
@@ -51,12 +54,14 @@ export default async function TextMessagePage({ params }: PageProps<"/admin/[sto
           />
         </Card>
       </div>
+      </AdminTextScope>
     );
   }
 
   const settings = await getSmsSettings(store.id);
   const money = (v: number) => v.toLocaleString(numbers, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return (
+    <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
     <div className="flex flex-col gap-6">
       <PageHeader title={campaign.title} back={back} actions={<Chip signal={campaign.status === "sent" ? "positive" : campaign.status === "sending" ? "warning" : "neutral"}>{w.statuses[campaign.status]}</Chip>} />
       <Card>
@@ -78,5 +83,6 @@ export default async function TextMessagePage({ params }: PageProps<"/admin/[sto
         )}
       </Card>
     </div>
+    </AdminTextScope>
   );
 }

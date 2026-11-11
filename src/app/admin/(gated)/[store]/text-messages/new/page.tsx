@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+
+import { AdminTextScope } from "@/components/admin/admin-text";
 import { redirect } from "next/navigation";
 
 import { SmsCampaignEditor } from "@/components/admin/sms-views";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSegments } from "@/server/segments";
 import { smsOffered } from "@/server/sms";
@@ -22,6 +24,7 @@ export default async function NewTextMessagePage({ params }: PageProps<"/admin/[
   const w = adminText(lang, "marketing").sms;
   const segments = await listSegments(store.id);
   return (
+    <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
     <div className="flex flex-col gap-6">
       <PageHeader title={w.newText} back={{ href: `/admin/${store.slug}/text-messages`, label: w.title }} />
       <Card>
@@ -39,5 +42,6 @@ export default async function NewTextMessagePage({ params }: PageProps<"/admin/[
         />
       </Card>
     </div>
+    </AdminTextScope>
   );
 }

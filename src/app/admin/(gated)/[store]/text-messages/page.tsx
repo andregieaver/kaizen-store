@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 
+import { AdminTextScope } from "@/components/admin/admin-text";
+
 import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 import { SmsConnectForm, SmsSettingsForm, StopNumberButton } from "@/components/admin/sms-views";
 import { countWords, fillWords } from "@/lib/admin-fill";
 import { ADMIN_LANG_FACTS, adminLangOf } from "@/lib/admin-lang";
-import { adminText } from "@/lib/admin-text";
+import { adminText, adminTexts } from "@/lib/admin-text";
 import type { SmsCampaignStatus } from "@/lib/sms";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getSmsSettings, listSmsCampaigns, listSmsSubscribers, smsSubscriberCounts } from "@/server/sms";
@@ -32,10 +34,12 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
 
   if (!settings.connected) {
     return (
+      <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
       <div className="flex flex-col gap-6">
         <PageHeader title={w.title} description={w.description} />
         <Card title={w.connectTitle}>{owner ? <SmsConnectForm connect={connectSmsAction.bind(null, store.slug)} /> : <p className="text-body text-muted">{w.ownerOnly}</p>}</Card>
       </div>
+      </AdminTextScope>
     );
   }
 
@@ -45,6 +49,7 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
   const n = (v: number) => ({ n: v.toLocaleString(numbers) });
 
   return (
+    <AdminTextScope texts={adminTexts(lang, ["marketing"])}>
     <div className="flex flex-col gap-6">
       <PageHeader
         title={w.title}
@@ -101,5 +106,6 @@ export default async function TextMessagesPage({ params }: PageProps<"/admin/[st
         )}
       </Card>
     </div>
+    </AdminTextScope>
   );
 }
