@@ -70,6 +70,11 @@ test("the owner publishes a product's passport, and anyone reads it at its addre
   await expect(page.getByText("Tåler oppvaskmaskin.")).toBeVisible();
   const json = await page.request.get(`${passport}/json`);
   expect(await json.json()).toMatchObject({ schema: "kaizenaflow.passport/1", recycledShare: 30 });
+  // An address with no published passport is a real 404 (D562), page and data alike.
+  const missing = await page.goto("/passport/00000000-0000-4000-8000-000000000000");
+  expect(missing?.status()).toBe(404);
+  expect((await page.request.get("/passport/not-an-id")).status()).toBe(404);
+  expect((await page.request.get("/passport/00000000-0000-4000-8000-000000000000/json")).status()).toBe(404);
 });
 
 test("the owner sees the environmental claims on the live site, with a link to the product", async ({ page }) => {

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import { passportInput, publishProblem, readPassport, type Passport } from "@/lib/product-passport";
@@ -37,6 +38,9 @@ export async function passportForEdit(storeId: string, productId: string): Promi
 
 export type PassportSave = { ok: true; id: string; published: boolean } | { ok: false; problem: string };
 
+/** The tag of one passport's public read (D562): refreshed when it is saved, so a draft read before publishing is not kept as missing. */
+const passportTag = (id: string) => `passport:${id}`;
+
 /**
  * Saves a product's passport, and publishes it (`publish: true`) or keeps it a draft (`false`). Publishing needs something to show
  * (`publishProblem()`); the address stays the same for the passport's life. `products:write`; audited.
@@ -63,6 +67,7 @@ export async function savePassport(member: Membership, productId: string, raw: u
   if (!row) return { ok: false, problem: "This product is not in this store." };
   // The product page links a published passport (its detail is cached under the catalogue's tag).
   refreshTag(catalogTag(storeId));
+  refreshTag(passportTag(row.id));
   await audit(member.account.id, storeId, publish ? "products.passport_published" : "products.passport_saved", { materials: parsed.data.materials.length }, { area: "products", target: { type: "product", id: productId } }).catch(
     (error) => log("error", "passports.save_audit_failed", {}, error),
   );
@@ -84,12 +89,30 @@ export type PublicPassport = {
 
 const operator = z.object({ name: col.text, postal_address: col.textOrNull, electronic_address: col.textOrNull }).nullable();
 
-/** A published passport, as anyone reads it at its address; null for one that is not published (or not there). */
+/**
+ * A published passport, as anyone reads it at its address; null for one that is not published (or not there). Cached (D562), so its page can answer a
+ * real 404 before it streams: under the passport's own tag and its store's catalogue tag (a product's title, variants and economic operators change
+ * with it), for hours at most. Only a well-formed id reaches the cache.
+ */
 export async function publicPassport(id: string): Promise<PublicPassport | null> {
   if (!UUID.test(id)) return null;
+  return cachedPassport(id.toLowerCase());
+}
+
+async function cachedPassport(id: string): Promise<PublicPassport | null> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(passportTag(id));
+  const found = await readPublicPassport(id);
+  if (found) cacheTag(catalogTag(found.storeId));
+  return found ? found.passport : null;
+}
+
+async function readPublicPassport(id: string): Promise<{ storeId: string; passport: PublicPassport } | null> {
   const row = await typedRow(
     z.object({
       id: col.uuid,
+      store_id: col.uuid,
       updated_at: col.timestamp,
       data: z.unknown(),
       store_name: col.text,
@@ -100,7 +123,7 @@ export async function publicPassport(id: string): Promise<PublicPassport | null>
       manufacturer: operator,
       responsible: operator,
     }),
-    sql`select pp.id, pp.updated_at, pp.data, coalesce(nullif(st.legal_name, ''), st.name) as store_name, st.postal_address as store_address,
+    sql`select pp.id, pp.store_id, pp.updated_at, pp.data, coalesce(nullif(st.legal_name, ''), st.name) as store_name, st.postal_address as store_address,
                m.default_locale as locale,
                coalesce((select t.title from commerce.product_translations t where t.store_id = p.store_id and t.product_id = p.id and t.locale = m.default_locale),
                         (select t.title from commerce.product_translations t where t.store_id = p.store_id and t.product_id = p.id order by t.locale limit 1)) as title,
@@ -116,7 +139,7 @@ export async function publicPassport(id: string): Promise<PublicPassport | null>
   );
   if (!row) return null;
   const who = (o: z.output<typeof operator>) => (o ? { name: o.name, address: o.postal_address ?? "", contact: o.electronic_address ?? "" } : null);
-  return {
+  const passport: PublicPassport = {
     id: row.id,
     updatedAt: row.updated_at,
     storeName: row.store_name,
@@ -128,6 +151,7 @@ export async function publicPassport(id: string): Promise<PublicPassport | null>
     responsible: who(row.responsible),
     passport: readPassport(row.data),
   };
+  return { storeId: row.store_id, passport };
 }
 
 /** A published passport's address for a product, for the product page's link; null when it has none. */

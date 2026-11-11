@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
-import { Suspense } from "react";
 
 import { countryName } from "@/lib/drop-shipping";
 import { passportWords, recycledShare } from "@/lib/product-passport";
-import { publicPassport } from "@/server/product-passports";
+import { publicPassport, type PublicPassport } from "@/server/product-passports";
 
 export const metadata: Metadata = { title: "Product passport" };
 
@@ -13,18 +11,20 @@ type Props = PageProps<"/passport/[id]">;
 
 /**
  * A product's Digital Product Passport (D554), as anyone who scans the code on the product reads it: the product, its identifiers, who made it
- * and who answers for it in the EU, then the passport's facts. Only a published passport; read per request. Everything is the store's text,
+ * and who answers for it in the EU, then the passport's facts. Only a published passport; read through the cache, so a missing one is a real 404. Everything is the store's text,
  * shown as text.
  */
-export default function PassportPage({ params }: Props) {
+export default async function PassportPage({ params }: Props) {
+  // The layout read it first (the same cached read, D562) and answered 404 for one not published.
+  const p = await publicPassport((await params).id);
+  if (!p) notFound();
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10">
-      <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface" />}>
-        <Body params={params} />
-      </Suspense>
+      <Body p={p} />
     </main>
   );
 }
+
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -35,11 +35,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-async function Body({ params }: Pick<Props, "params">) {
-  await connection();
-  const { id } = await params;
-  const p = await publicPassport(id);
-  if (!p) notFound();
+function Body({ p }: { p: PublicPassport }) {
   const w = passportWords(p.lang);
   const d = p.passport;
   const share = recycledShare(d);
