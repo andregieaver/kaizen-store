@@ -17,6 +17,7 @@ vi.mock("@/server/checkout", () => ({ getOpenCheckout: async () => ({ orderId: "
 const getOrder = vi.fn();
 vi.mock("@/server/orders", () => ({ getOrder: (...a: unknown[]) => getOrder(...a) }));
 vi.mock("@/server/cart-reminders", () => ({ cartRemindersOn: async () => false, checkoutOptedOut: async () => false }));
+vi.mock("@/server/sms", () => ({ smsOffered: async () => false }));
 vi.mock("@/server/customers", () => ({ getCustomer: async () => null }));
 vi.mock("@/server/discounts", () => ({ orderCodeOutcomes: async () => null }));
 vi.mock("@/server/gift-card-cart", () => ({ checkoutGiftCards: async () => [] }));

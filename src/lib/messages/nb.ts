@@ -932,6 +932,17 @@ export const nb: Messages = {
     stripeLine: (number) => `Faktura for ordre ${number}`,
     dueShort: (day) => `Forfaller ${day}`,
   },
+  /** SMS-markedsføring (D565): skrevet for hånd, trenger juridisk gjennomlesing. */
+  // legal: needs review
+  sms: {
+    consent: (store: string) => `Send meg tilbud fra ${store} på SMS til dette nummeret. Jeg kan når som helst stoppe med lenken i hver melding.`,
+    phone: "Mobilnummer",
+    phoneHint: "Bare for tilbud på SMS.",
+    pageIntro: (store: string, phone: string) => `Stoppe SMS med tilbud fra ${store} til ${phone}?`,
+    stop: "Stopp SMS",
+    stopped: (store: string) => `Ferdig. ${store} sender ikke flere SMS med tilbud til dette nummeret.`,
+    gone: "Vi fant ikke denne lenken. Den kan være for gammel.",
+  },
   /** Markedsføring på e-post (D295): skrevet for hånd, aldri maskinoversatt (`ui:news.`), må gjennomgås juridisk. */
   // legal: needs review
   news: {

@@ -95,6 +95,8 @@ export const NAV_NB: Record<string, string> = {
   Subscribers: "Abonnenter",
   "People who asked for your emails with news and offers, with what they agreed to and when.":
     "Personer som har bedt om e-poster med nyheter og tilbud, med hva de samtykket til og når.",
+  "Text messages": "SMS",
+  "Offers by text message to the numbers that asked for them at checkout, in their daytime.": "Tilbud på SMS til numrene som ba om det i kassen, på dagtid hos dem.",
   "Cart reminders": "Påminnelser om handlekurv",
   "Emails to people who left items in their cart.": "E-poster til folk som har lagt igjen varer i handlekurven.",
   "Bonus credits": "Bonuspoeng",

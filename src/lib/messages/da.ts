@@ -926,6 +926,17 @@ export const da: Messages = {
     stripeLine: (number) => `Faktura for ordre ${number}`,
     dueShort: (day) => `Forfalder ${day}`,
   },
+  /** Sms-markedsføring (D565): skrevet i hånden, kræver juridisk gennemlæsning. */
+  // legal: needs review
+  sms: {
+    consent: (store: string) => `Send mig tilbud fra ${store} på sms til dette nummer. Jeg kan altid stoppe med linket i hver besked.`,
+    phone: "Mobilnummer",
+    phoneHint: "Kun til tilbud på sms.",
+    pageIntro: (store: string, phone: string) => `Stop sms med tilbud fra ${store} til ${phone}?`,
+    stop: "Stop sms",
+    stopped: (store: string) => `Færdig. ${store} sender ikke flere sms med tilbud til dette nummer.`,
+    gone: "Vi kunne ikke finde dette link. Det kan være for gammelt.",
+  },
   /** Markedsføring på e-mail (D295): skrevet i hånden, aldrig maskinoversat (`ui:news.`), skal gennemgås juridisk. */
   // legal: needs review
   news: {

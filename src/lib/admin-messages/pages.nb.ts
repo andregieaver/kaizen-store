@@ -332,6 +332,7 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     title: "Nyhetsbrev",
     keywords: ["utsendelser", "nyhetsbrev", "e-postkampanje", "e-postmarkedsføring", "send e-post til kunder"],
   },
+  "store:text-messages": { title: "SMS", keywords: ["sms", "tekstmelding", "sms-markedsføring", "sms-kampanje", "46elks", "mobilmarkedsføring"] },
   "store:email-automations": {
     title: "Automatiske e-poster",
     keywords: ["automatisering", "velkomst-e-post", "velkomstmail", "gjenvinning", "tilbake på lager", "gi meg beskjed", "flyt"],
@@ -345,6 +346,8 @@ export const PAGES_NB: Record<string, { title: string; keywords: string[] }> = {
     keywords: ["produktfeed", "google shopping", "merchant center", "meta-katalog", "facebook-butikk", "instagram shopping", "tiktok-katalog", "pinterest-katalog", "xml-feed", "csv-feed"],
   },
   "store:email-automation": { title: "E-postautomatisering", keywords: ["e-postautomatisering", "automatisering", "test-e-post", "slå på"] },
+  "store:text-message.new": { title: "Ny SMS", keywords: ["ny sms", "skriv sms", "sms-utsendelse"] },
+  "store:text-message": { title: "SMS-utsendelse", keywords: ["sms-utsendelse", "sms", "send", "pris"] },
   "store:broadcast.new": { title: "Ny utsendelse", keywords: ["ny utsendelse", "nytt nyhetsbrev", "skriv e-post", "utsendelse"] },
   "store:broadcast": { title: "Utsendelse", keywords: ["utsendelse", "nyhetsbrev", "send nå", "planlegg", "test-e-post"] },
   "store:segment.new": { title: "Nytt segment", keywords: ["nytt segment", "opprett segment", "regler", "målgruppe"] },

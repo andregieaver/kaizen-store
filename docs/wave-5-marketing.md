@@ -12,7 +12,8 @@ cannot be used for anything.
 
 **SMS (the plan's decision).** Not built in this wave. Kaizena Flow has no SMS vendor that processes in the EU and is chosen; a text message needs
 its own consent, its own sender rules per country and its own costs. The row `customers.sms-marketing` stays missing with this reason, and
-everything here keeps email as the only channel so a second one is a new sender, not a new model.
+everything here keeps email as the only channel so a second one is a new sender, not a new model. *Later:* built on 11 November 2026 as D565
+(`docs/sms-marketing.md`), with 46elks as the store's own provider.
 
 ## 1. The units, in the order they are built
 

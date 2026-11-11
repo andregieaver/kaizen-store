@@ -163,6 +163,8 @@ export const STORE_EXPORT_LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   tripletex_connections: "secret",
   tripletex_sync: "record",
   fiken_connections: "secret",
+  sms_settings: "secret",
+  sms_campaigns: "record",
   fiken_sync: "record",
   // Which documents went as e-invoices, and their state (D463).
   einvoice_sends: "record",

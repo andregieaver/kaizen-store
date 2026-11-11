@@ -42,6 +42,7 @@ const OTHERS: Record<string, "any" | "owner" | string> = {
 
 /** Files that ask for the owner role where the map would let a member in: each says why (a new file, so the baseline cannot). */
 const OWNER_ONLY_EXTRA: Record<string, string> = {
+  "src/app/admin/(gated)/[store]/text-messages/actions.ts": "the store's SMS account (D565) holds a password and spends money at 46elks, so only an owner connects it, sets its cap and hours, or disconnects it; writing and sending texts is `marketing:write`",
   "src/app/admin/(gated)/[store]/integrations/ebay/actions.ts": "an eBay connection keeps a grant that sells in the store's name and brings its buyers' addresses here (D555), so only an owner connects, sets it up, lists, marks sent or disconnects it, as with the services (D41)",
   "src/app/admin/(gated)/[store]/inventory/suppliers/actions.ts": "stopping a drop-shipping supplier (D550) closes its location and so takes the stock it said it had off sale: the owner's, as deactivating a location is (D172)",
   "src/app/admin/(gated)/[store]/integrations/endpoints/actions.ts": "an owner's own endpoints get customers' details and carry a signing secret (D354), so only an owner adds or changes them, as with the services (D41)",

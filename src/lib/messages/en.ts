@@ -963,6 +963,17 @@ export const en = {
     stripeLine: (number: string) => `Invoice for order ${number}`,
     dueShort: (day: string) => `Due ${day}`,
   },
+  /** SMS marketing (D565): hand-written, never machine-translated, needs legal review. */
+  // legal: needs review
+  sms: {
+    consent: (store: string) => `Text me offers from ${store} at this number. I can stop at any time with the link in each message.`,
+    phone: "Mobile number",
+    phoneHint: "For offers by text message only.",
+    pageIntro: (store: string, phone: string) => `Stop text messages with offers from ${store} to ${phone}?`,
+    stop: "Stop text messages",
+    stopped: (store: string) => `Done. ${store} will send no more text messages with offers to this number.`,
+    gone: "We could not find this link. It may be too old.",
+  },
   /** Marketing email (D295): hand-written, never machine-translated (`ui:news.`), needs legal review. */
   // legal: needs review
   news: {

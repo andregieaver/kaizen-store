@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
  */
 const RAW_USES: Record<string, { uses: number; from: string }> = {
   "src/app/admin/(gated)/platform/themes/[presetId]/workspace-actions.ts": { uses: 1, from: "header_id, footer_id or product_layout_id, chosen in code by kind" },
+  "src/db/client.ts": { uses: 1, from: "longerTimeout(): a whole number of seconds, rounded and held between 1 and 55 in code (SET takes no bound value)" },
   "src/db/schema.ts": { uses: 13, from: "check constraints built from the code's own constant lists and numbers" },
   "src/server/activity.ts": { uses: 1, from: "readableAreas(): the code's area keys" },
   "src/server/after-sale.ts": { uses: 1, from: "the code's list of ended statuses" },

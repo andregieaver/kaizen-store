@@ -62,6 +62,7 @@ import { PAYOUT_LINE_KINDS, PAYOUT_STATUSES } from "../lib/payouts";
 import { CARRIER_IDS } from "../lib/shipping-carriers";
 import { LEGAL_ROLES } from "../lib/legal-roles";
 import { DRAFT_STATUSES } from "../lib/draft-status";
+import { SMS_CAMPAIGN_STATUSES, SMS_MESSAGE_STATUSES, SMS_SOURCES, SMS_STOP_SOURCES, SMS_SUBSCRIBER_STATUSES } from "../lib/sms";
 import { ORDER_EDIT_DOCUMENTS, ORDER_EDIT_LINE_KINDS, ORDER_EDIT_REASONS, ORDER_EDIT_STATUSES } from "../lib/order-edit-status";
 import {
   DRAFT_DISCOUNT_LABEL_MAX,
@@ -15862,6 +15863,188 @@ export const marketingConsentEvents = commerce.table(
     }).onDelete("cascade"),
     index("marketing_consent_events_subscriber_idx").on(t.storeId, t.subscriberId, t.createdAt),
     check("marketing_consent_events_kind", sql`${t.kind} in (${sqlList(CONSENT_EVENT_KINDS)})`),
+  ],
+);
+
+/**
+ * SMS marketing (D565, `docs/sms-marketing.md`): a store's 46elks account and its rules. One row a store (Kaizena Flow's own texts go through
+ * its house store). The API password is kept encrypted (`SETTINGS_ENCRYPTION_KEY`) and read only to send; the inbound key names the store in
+ * the addresses 46elks posts replies and delivery reports to. Written only by `src/server/sms.ts`.
+ */
+export const smsSettings = commerce.table(
+  "sms_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    apiUsername: text("api_username").notNull(),
+    apiPasswordEncrypted: text("api_password_encrypted").notNull(),
+    /** The account's currency at 46elks (`GET /me`): what costs and the cap are in. */
+    currency: char("currency", { length: 3 }).notNull(),
+    sender: text("sender").notNull(),
+    /** The store's 46elks number replies come to (E.164), or null for a sender name only. */
+    replyNumber: text("reply_number"),
+    /** 32 random bytes, base64url: the path segment of the store's inbound addresses. */
+    inboundKey: text("inbound_key").notNull(),
+    quietFrom: integer("quiet_from").notNull().default(9),
+    quietUntil: integer("quiet_until").notNull().default(20),
+    /** The most a calendar month's texts may cost, in 46elks's units (ten-thousandths of the currency). */
+    monthlyCapUnits: bigint("monthly_cap_units", { mode: "number" }).notNull().default(5_000_000),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("sms_settings_inbound_key").on(t.inboundKey),
+    index("sms_settings_updated_by_idx").on(t.updatedBy),
+    check("sms_settings_sender", sql`${t.sender} ~ '^[A-Za-z][A-Za-z0-9]{0,10}$'`),
+    check("sms_settings_reply", sql`${t.replyNumber} is null or ${t.replyNumber} ~ '^[+][1-9][0-9]{7,14}$'`),
+    check("sms_settings_inbound", sql`${t.inboundKey} ~ '^[A-Za-z0-9_-]{43}$'`),
+    check("sms_settings_quiet", sql`${t.quietFrom} between 8 and 20 and ${t.quietUntil} between 9 and 21 and ${t.quietFrom} < ${t.quietUntil}`),
+    check("sms_settings_cap", sql`${t.monthlyCapUnits} >= 0`),
+    check("sms_settings_texts", sql`char_length(${t.apiUsername}) between 1 and 100 and char_length(${t.apiPasswordEncrypted}) <= 500`),
+  ],
+);
+
+/**
+ * A number that agreed to a store's marketing texts (D565): its own consent, apart from email, with the words, when and where. `pending` is
+ * checkout's box waiting for its order to be paid; only `subscribed` numbers are texted (`sms_messages` refuses any other). The token is the
+ * stop link's. Its history is in `sms_consent_events`, written by the table's trigger.
+ */
+export const smsSubscribers = commerce.table(
+  "sms_subscribers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** E.164. */
+    phone: text("phone").notNull(),
+    /** Two letters: the number's country (`phoneCountry()`), for its quiet hours and price. */
+    country: char("country", { length: 2 }).notNull(),
+    customerId: uuid("customer_id"),
+    /** Lower case: the address of the order or account it came with, so segments (by address) reach it. */
+    email: text("email"),
+    locale: text("locale").notNull(),
+    marketCode: text("market_code"),
+    status: text("status").notNull(),
+    source: text("source").notNull(),
+    /** The order's id for checkout. */
+    sourceRef: text("source_ref"),
+    consentText: text("consent_text").notNull(),
+    consentedAt: timestamp("consented_at", { withTimezone: true }).notNull(),
+    token: text("token").notNull(),
+    unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+    unsubscribeSource: text("unsubscribe_source"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("sms_subscribers_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("sms_subscribers_phone_idx").on(t.storeId, t.phone),
+    uniqueIndex("sms_subscribers_token_idx").on(t.token),
+    index("sms_subscribers_list_idx").on(t.storeId, t.status, t.createdAt),
+    index("sms_subscribers_customer_idx").on(t.storeId, t.customerId),
+    index("sms_subscribers_email_idx").on(t.storeId, t.email),
+    foreignKey({ name: "sms_subscribers_customer_fk", columns: [t.storeId, t.customerId], foreignColumns: [customers.storeId, customers.id] }),
+    check("sms_subscribers_status", sql`${t.status} in (${sqlList(SMS_SUBSCRIBER_STATUSES)})`),
+    check("sms_subscribers_source", sql`${t.source} in (${sqlList(SMS_SOURCES)})`),
+    check("sms_subscribers_stop_source", sql`${t.unsubscribeSource} is null or ${t.unsubscribeSource} in (${sqlList(SMS_STOP_SOURCES)})`),
+    check("sms_subscribers_phone", sql`${t.phone} ~ '^[+][1-9][0-9]{7,14}$'`),
+    check("sms_subscribers_country", sql`${t.country} ~ '^[A-Z]{2}$'`),
+    check("sms_subscribers_email", sql`${t.email} is null or (${t.email} = lower(${t.email}) and char_length(${t.email}) <= 254)`),
+    check("sms_subscribers_token", sql`${t.token} ~ '^[A-Za-z0-9_-]{22}$'`),
+    check("sms_subscribers_texts", sql`char_length(${t.consentText}) between 1 and 1000 and char_length(${t.locale}) <= 20`),
+  ],
+);
+
+/** A number's consent history (D565): every change of status with its source and the words, written only by the subscribers' trigger. */
+export const smsConsentEvents = commerce.table(
+  "sms_consent_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: storeId().references(() => stores.id),
+    subscriberId: uuid("subscriber_id").notNull(),
+    kind: text("kind").notNull(),
+    source: text("source").notNull(),
+    consentText: text("consent_text"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ name: "sms_consent_events_subscriber_fk", columns: [t.storeId, t.subscriberId], foreignColumns: [smsSubscribers.storeId, smsSubscribers.id] }).onDelete("cascade"),
+    index("sms_consent_events_subscriber_idx").on(t.storeId, t.subscriberId, t.createdAt),
+    check("sms_consent_events_kind", sql`${t.kind} in ('requested', 'subscribed', 'unsubscribed')`),
+  ],
+);
+
+/**
+ * A marketing text (D565): its words, who it is for (every SMS subscriber, or a segment's), and what it cost. A draft is sent once: its
+ * messages are made at the start, each waiting for its recipient's hours. Written only by `src/server/sms.ts`.
+ */
+export const smsCampaigns = commerce.table(
+  "sms_campaigns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    title: text("title").notNull(),
+    text: text("text").notNull(),
+    /** A saved segment, not a foreign key: a segment deleted after the draft was written leaves it asking for another (`startSmsCampaign()`). */
+    segmentId: uuid("segment_id"),
+    status: text("status").notNull().default("draft"),
+    /** The estimate when it started, in units; what it really cost is the sum of its messages. */
+    estimateUnits: bigint("estimate_units", { mode: "number" }),
+    /** Why it stopped: `staff` or `cap`. */
+    stopReason: text("stop_reason"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("sms_campaigns_store_id_key").on(t.storeId, t.id),
+    index("sms_campaigns_list_idx").on(t.storeId, t.createdAt),
+    index("sms_campaigns_sending_idx").on(t.status).where(sql`${t.status} = 'sending'`),
+    index("sms_campaigns_created_by_idx").on(t.createdBy),
+    index("sms_campaigns_segment_idx").on(t.storeId, t.segmentId),
+    check("sms_campaigns_status", sql`${t.status} in (${sqlList(SMS_CAMPAIGN_STATUSES)})`),
+    check("sms_campaigns_stop", sql`${t.stopReason} is null or ${t.stopReason} in ('staff', 'cap')`),
+    check("sms_campaigns_texts", sql`char_length(${t.title}) between 1 and 120 and char_length(${t.text}) between 1 and 600`),
+  ],
+);
+
+/**
+ * One text to one number (D565): waiting for its recipient's hours (`send_after`), then sent, delivered or failed, with 46elks's id and
+ * cost. Made only for a `subscribed` number (the table's trigger refuses any other), and skipped at sending if the number stopped since.
+ */
+export const smsMessages = commerce.table(
+  "sms_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    campaignId: uuid("campaign_id").notNull(),
+    subscriberId: uuid("subscriber_id").notNull(),
+    status: text("status").notNull().default("queued"),
+    sendAfter: timestamp("send_after", { withTimezone: true }).notNull(),
+    parts: integer("parts"),
+    providerId: text("provider_id"),
+    costUnits: bigint("cost_units", { mode: "number" }),
+    /** A failure's key, never 46elks's own words. */
+    error: text("error"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("sms_messages_once_idx").on(t.campaignId, t.subscriberId),
+    uniqueIndex("sms_messages_provider_idx").on(t.storeId, t.providerId),
+    index("sms_messages_due_idx").on(t.sendAfter).where(sql`${t.status} = 'queued'`),
+    index("sms_messages_subscriber_idx").on(t.storeId, t.subscriberId),
+    index("sms_messages_month_idx").on(t.storeId, t.sentAt),
+    foreignKey({ name: "sms_messages_campaign_fk", columns: [t.storeId, t.campaignId], foreignColumns: [smsCampaigns.storeId, smsCampaigns.id] }).onDelete("cascade"),
+    foreignKey({ name: "sms_messages_subscriber_fk", columns: [t.storeId, t.subscriberId], foreignColumns: [smsSubscribers.storeId, smsSubscribers.id] }).onDelete("cascade"),
+    check("sms_messages_status", sql`${t.status} in (${sqlList(SMS_MESSAGE_STATUSES)})`),
+    check("sms_messages_cost", sql`${t.costUnits} is null or ${t.costUnits} >= 0`),
+    check("sms_messages_error", sql`${t.error} is null or char_length(${t.error}) <= 40`),
   ],
 );
 

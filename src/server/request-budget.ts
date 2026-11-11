@@ -32,6 +32,9 @@ export const BUDGETS = {
   api: { window: "minute", visitor: 120, store: 1200 },
   // The supplier API (D553): a drop-shipping supplier's system polls its orders and posts tracking and stock (the visitor is the supplier's id).
   supply: { window: "minute", visitor: 60, store: 600 },
+  // 46elks posting a store's replies and delivery reports (D565): the visitor is the start of the store's inbound key; a campaign's reports
+  // come at 46elks's pace (100 texts a minute an account), the whole platform's under one ceiling.
+  sms: { window: "minute", visitor: 600, store: 6000 },
   // The storefront API (D362): a headless site's calls, its visitors' together under one token (the visitor is the token's id).
   storefront: { window: "minute", visitor: 1200, store: 6000 },
   // A cookie choice (D58, D389 SEC-10): a visitor makes a few; the store's ceiling stops a flood of records from many.
