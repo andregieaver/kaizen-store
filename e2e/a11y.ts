@@ -13,8 +13,18 @@ export const FAILING_IMPACTS = ["serious", "critical"];
 
 export type Finding = { rule: string; impact: string; help: string; targets: string[] };
 
-/** The serious and critical violations on the page as it is now, with where they are. */
-export async function violationsOn(page: Page, options: { exclude?: string[] } = {}): Promise<Finding[]> {
+/** Until no finite animation or transition runs on the page (a spinner's infinite one is left), for five seconds at most. */
+async function settled(page: Page): Promise<void> {
+  await page
+    .waitForFunction(
+      () => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity),
+      undefined,
+      { timeout: 5_000, polling: 100 },
+    )
+    .catch(() => {});
+}
+
+async function scan(page: Page, options: { exclude?: string[] }): Promise<Finding[]> {
   let builder = new AxeBuilder({ page }).withTags(WCAG_TAGS);
   for (const selector of options.exclude ?? []) builder = builder.exclude(selector);
   const { violations } = await builder.analyze();
@@ -26,6 +36,21 @@ export async function violationsOn(page: Page, options: { exclude?: string[] } =
       help: violation.help,
       targets: violation.nodes.slice(0, 4).map((node) => node.target.join(" ")),
     }));
+}
+
+/**
+ * The serious and critical violations on the page as it is now, with where they are. Colours are measured at rest: the admin eases each
+ * page in (`admin-enter`, opacity from 0 over 0.2 s, and again for a part that streams in later) and its links ease their colours, and
+ * text read halfway through is a contrast finding that is not there (CI run 1212). So the scan waits for the page to settle, and a page
+ * with findings is settled and scanned once more: what is wrong at rest is found both times, and only the second scan's findings count.
+ */
+export async function violationsOn(page: Page, options: { exclude?: string[] } = {}): Promise<Finding[]> {
+  await settled(page);
+  const first = await scan(page, options);
+  if (first.length === 0) return first;
+  await page.waitForLoadState("networkidle").catch(() => {});
+  await settled(page);
+  return scan(page, options);
 }
 
 /** The findings as lines a failing test prints. */

@@ -21,8 +21,16 @@ test.describe.configure({ mode: "serial" });
 const STORE = "e2e-checkout-look";
 
 const design = `/admin/${STORE}/settings/design`;
-const LIGHT = "#1d4ed8";
-const DARK = "#93c5fd";
+// The colours this attempt saves: the first pair the editor does not already show. The editor reads the store through its cache, which
+// the reset in beforeAll (straight to the database) does not refresh, so a retry or a second run finds the last attempt's colours there,
+// and asking for them again leaves nothing to save (CI run 1212).
+const COLOURS = [
+  ["#1d4ed8", "#93c5fd"],
+  ["#1e40af", "#bfdbfe"],
+  ["#1e3a8a", "#dbeafe"],
+] as const;
+let LIGHT: string = COLOURS[0][0];
+let DARK: string = COLOURS[0][1];
 let themeBefore: unknown = null;
 let marketSlug = "";
 
@@ -65,6 +73,8 @@ test.afterAll(async () => {
 });
 
 test("the owner sets the checkout's look in Design settings, and the theme keeps it", async ({ page }) => {
+  // Its own waits (the card opening, the choices taking, the save) are up to 80 seconds on a busy machine, past the 30 a test has by default.
+  test.setTimeout(120_000);
   await page.goto(design);
   const card = page.getByRole("region", { name: "Checkout look", exact: true });
   await expect(card.getByText("The checkout follows this theme", { exact: false })).toBeVisible();
@@ -78,9 +88,14 @@ test("the owner sets the checkout's look in Design settings, and the theme keeps
   // A choice made before the editor's scripts hold the card is lost (the field shows it, the editor never heard): make them again until
   // the editor has a change to save.
   const save = page.getByRole("button", { name: "Save", exact: true }).first();
+  let picked = false;
   await expect(async () => {
     await panel.click();
     await card.getByText("A colour of its own", { exact: true }).click();
+    const shown = (await card.getByLabel("Pay button in light colours").inputValue()).toLowerCase();
+    // Chosen once, from what the editor showed before this attempt typed anything.
+    if (!picked) [LIGHT, DARK] = COLOURS.find(([light]) => light !== shown) ?? COLOURS[0];
+    picked = true;
     await card.getByLabel("Pay button in light colours").fill(LIGHT);
     await card.getByLabel("Pay button in dark colours").fill(DARK);
     await card.getByRole("group", { name: "Pay button corners" }).getByText("Square", { exact: true }).click();
@@ -128,8 +143,9 @@ test("the store's pay routes carry the checkout's colour and corners, which the 
   const seen = await read();
   expect(seen.accent).toBe(LIGHT);
   expect(seen.radius).toBe("0");
-  // #1d4ed8 as the browser writes it, unless the theme's buttons are outlined.
-  expect(["rgb(29, 78, 216)", "rgba(0, 0, 0, 0)"]).toContain(seen.background);
+  // The colour as the browser writes it, unless the theme's buttons are outlined.
+  const rgb = `rgb(${[1, 3, 5].map((i) => parseInt(LIGHT.slice(i, i + 2), 16)).join(", ")})`;
+  expect([rgb, "rgba(0, 0, 0, 0)"]).toContain(seen.background);
   expect(seen.corners).toBe("0px");
 
   await page.emulateMedia({ colorScheme: "dark" });

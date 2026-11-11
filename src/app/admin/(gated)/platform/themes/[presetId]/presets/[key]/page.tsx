@@ -50,7 +50,6 @@ export default async function DesignPresetPage({ params }: PageProps<"/admin/pla
         <>
           <p className="max-w-3xl text-sm text-muted">{p.editorNote}</p>
           <ThemeEditor
-            key={JSON.stringify(preset.storeTheme)}
             storeName={page.store.name}
             current={preset.storeTheme}
             saved={[]}
