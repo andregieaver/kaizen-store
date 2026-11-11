@@ -906,6 +906,21 @@ export const builderEn = {
         "The language switcher: a link to this page in each of the site's languages. Shown while a visitor has more than one to choose. Nothing is added to the header or footer by itself: place it where visitors should find it.",
     },
     leftOut: "A part with nothing to show is left out.",
+    /** The phone menu button's menu: its kind, the edge it comes from, and its background. */
+    drawer: {
+      type: "Menu type",
+      types: { drawer: "Side panel", fullscreen: "Full screen", dropdown: "Under the header", card: "Floating card" },
+      typeHint: {
+        drawer: "A panel slides in from the edge you choose.",
+        fullscreen: "The menu covers the whole screen.",
+        dropdown: "The menu drops down under the header, as tall as its links.",
+        card: "A rounded card slides in, with room around it.",
+      },
+      side: "Comes in from",
+      sides: { left: "Left", right: "Right", top: "Top", bottom: "Bottom" },
+      background: "Menu background",
+      backgroundHint: "What the menu shows behind its links. None keeps the site's background.",
+    },
     logoHeight: "pixels, {min} to {max}; empty: the usual size",
     shownAs: "Shown as",
     dropdown: "A list to open",

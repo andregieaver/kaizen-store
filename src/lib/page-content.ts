@@ -1185,6 +1185,29 @@ export type SiteBlock = PartBase & {
   switcher?: SwitcherLayout;
   langText?: SwitcherText;
   langFlag?: boolean;
+  /** The phone menu button's menu (`src/lib/menu-drawer.ts`): how it opens, from where, and on what background. */
+  drawer?: MenuDrawer;
+};
+
+/** How the phone's menu is shown: a panel from an edge (the default), the whole screen, a panel dropping under the header, or a floating card. */
+export const MENU_TYPES = ["drawer", "fullscreen", "dropdown", "card"] as const;
+export type MenuType = (typeof MENU_TYPES)[number];
+/** The edge the phone's menu comes in from (left unless set); a dropdown always comes from under the header. */
+export const MENU_SIDES = ["left", "right", "top", "bottom"] as const;
+export type MenuSide = (typeof MENU_SIDES)[number];
+
+/**
+ * The phone menu a menu button opens: its kind, the edge it comes from and its background, which is a column's (a colour, picture or
+ * gradient, with layers over it and a hue, D534). Each is left out while it is the default, so a button with none set opens the menu as before.
+ */
+export type MenuDrawer = {
+  type?: MenuType;
+  side?: MenuSide;
+  background?: Background;
+  backgroundLayers?: BackgroundLayer[];
+  backgroundHue?: number;
+  /** What is behind the menu blurred, in pixels (D86): with no background or a see-through colour, the page shows through as frosted glass. */
+  backdropBlur?: number;
 };
 
 /**
@@ -3368,6 +3391,24 @@ const siteBlock = z.object({
   switcher: z.enum(["row", "column", "dropdown"]).optional(),
   langText: z.enum(["name", "code", "none"]).optional(),
   langFlag: z.boolean().optional(),
+  drawer: z
+    .object({
+      type: z.enum(MENU_TYPES).optional(),
+      side: z.enum(MENU_SIDES).optional(),
+      background,
+      backgroundLayers: backgroundLayersSchema,
+      backgroundHue: backgroundHueSchema,
+      backdropBlur,
+    })
+    .optional()
+    // Only what differs from the standard menu is kept; a drawer with nothing set is left out.
+    .transform((drawer) => {
+      if (!drawer) return undefined;
+      const kept = Object.fromEntries(
+        Object.entries(drawer).filter(([key, value]) => value !== undefined && !(key === "type" && value === "drawer") && !(key === "side" && value === "left")),
+      ) as MenuDrawer;
+      return Object.keys(kept).length > 0 ? kept : undefined;
+    }),
   ...partBase,
 });
 

@@ -6,7 +6,10 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { motionNeeds } from "@/lib/motion-attrs";
 import { headerStageGradients, headerStageLook } from "@/lib/header-stages";
-import { rowShows, type HeaderOverlay, type PageBlock, type PageContent, type SiteBlock } from "@/lib/page-content";
+import { rowShows, type HeaderOverlay, type MenuDrawer, type PageBlock, type PageContent, type SiteBlock } from "@/lib/page-content";
+import { drawerHasBackground, menuLookAttrs } from "@/lib/menu-drawer";
+import { huedBackground } from "@/lib/background-layers";
+import { surfaceClass } from "@/lib/background-surface";
 import { flowRows } from "@/lib/page-modal";
 import { localizePage } from "@/lib/page-translation";
 import { languageSwitchStyle } from "@/lib/part-css";
@@ -27,7 +30,7 @@ import { StoreColorSwitch } from "./store-color-switch";
 import { CartLink, CartLinkShell } from "./cart-link";
 import { Icon } from "./icons";
 import { PageRowView } from "./page-article";
-import { GradientLayer } from "./page-parts";
+import { GradientLayer, PartBackground } from "./page-parts";
 import { MotionSupport } from "./motion-support";
 import { builtIn, Brand as KaizenBrand, legalPages } from "./platform-layout";
 import { PLATFORM_LANG_FACTS, langOfLocale, pageLocaleOf, platformPath, type PlatformLang } from "@/lib/platform-lang";
@@ -99,19 +102,43 @@ export function SitePartView({ block, ctx }: { block: SiteBlock; ctx: SiteContex
   return ctx.kind === "store" ? <StorePart block={block} ctx={ctx} /> : <KaizenPart block={block} ctx={ctx} />;
 }
 
-function MenuButton({ label }: { label: string }) {
-  // The slide-out menu opens on any `data-open-menu` button.
+/**
+ * The phone menu button: the slide-out menu opens on any `data-open-menu` button, in the look this one asks for (`menuLookAttrs()`:
+ * its kind and edge). A drawer with a background of its own carries it here, hidden, for the menu to draw behind its links as it opens
+ * (`data-menu-look`); its pictures are not loaded until then.
+ */
+function MenuButton({ label, block }: { label: string; block: SiteBlock }) {
+  const drawer = block.drawer;
+  const look = drawerHasBackground(drawer) ? `menu-look-${block.id}` : undefined;
   return (
-    <button
-      type="button"
-      data-open-menu
-      aria-haspopup="dialog"
-      aria-controls="store-menu"
-      className="flex size-11 items-center justify-center rounded-full kzb-md-hidden"
-    >
-      <Icon name="menu" />
-      <span className="sr-only">{label}</span>
-    </button>
+    <>
+      <button
+        type="button"
+        data-open-menu
+        {...menuLookAttrs(drawer)}
+        {...(look && { "data-menu-look": look })}
+        aria-haspopup="dialog"
+        aria-controls="store-menu"
+        className="flex size-11 items-center justify-center rounded-full kzb-md-hidden"
+      >
+        <Icon name="menu" />
+        <span className="sr-only">{label}</span>
+      </button>
+      {look && drawer && <DrawerLook id={look} drawer={drawer} />}
+    </>
+  );
+}
+
+/** A drawer's own background, ready for the menu to copy behind its links: a colour, picture or gradient, the layers over it, its hue. */
+function DrawerLook({ id, drawer }: { id: string; drawer: MenuDrawer }) {
+  const colour = huedBackground(drawer.background, drawer.backgroundHue);
+  return (
+    <div hidden id={id} data-menu-surface={surfaceClass(drawer) ?? ""} {...(drawer.backdropBlur && { "data-menu-blur": String(drawer.backdropBlur) })}>
+      {colour?.type === "color" && (
+        <div aria-hidden className="absolute inset-0 -z-10" style={{ backgroundColor: colour.color, opacity: (colour.opacity ?? 100) / 100 }} />
+      )}
+      <PartBackground background={drawer.background} hue={drawer.backgroundHue} layers={drawer.backgroundLayers} stillLayers />
+    </div>
   );
 }
 
@@ -126,7 +153,7 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
     case "logo":
       return <StoreBrand store={store} market={market} size={place} height={logoHeight(block)} animation={block.animation} />;
     case "menuButton":
-      return <MenuButton label={m.openMenu} />;
+      return <MenuButton label={m.openMenu} block={block} />;
     case "search":
       return (
         <Link href={`${base}/search`} className={ICON_LINK}>
@@ -231,7 +258,7 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
     case "logo":
       return <KaizenBrand chrome={chrome} size={place} height={logoHeight(block)} animation={block.animation} lang={lang} />;
     case "menuButton":
-      return <MenuButton label={m.openMenu} />;
+      return <MenuButton label={m.openMenu} block={block} />;
     case "account":
       return (
         <Link href="/admin" className={ICON_LINK}>
