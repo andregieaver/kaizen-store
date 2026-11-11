@@ -180,6 +180,10 @@ const VARIANT_ROW = z.looseObject({
   amount_minor: col.minor,
   currency: col.currency,
   prior_30d_minor: col.minorOrNull,
+  // The variant's quantity rule (D323), read by `ruleForKind()` by name.
+  min_quantity: col.int.nullable(),
+  max_quantity: col.int.nullable(),
+  quantity_step: col.int.nullable(),
 });
 
 const SELLING_PLAN_ROW = z.object({

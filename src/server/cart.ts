@@ -52,6 +52,19 @@ const CART_LINE_ROW = z.looseObject({
   quantity: col.int,
   amount_minor: col.minorOrNull,
   signup_fee: col.minor,
+  // The cart's gift (D173), the line's quantity rule (D323) and its gift card (D300), read by helpers that take these columns by name.
+  is_gift: col.bool.nullable(),
+  gift_to: col.textOrNull,
+  gift_from: col.textOrNull,
+  gift_message: col.textOrNull,
+  min_quantity: col.int.nullable(),
+  max_quantity: col.int.nullable(),
+  quantity_step: col.int.nullable(),
+  gift_card_to: col.textOrNull,
+  gift_card_to_name: col.textOrNull,
+  gift_card_from: col.textOrNull,
+  gift_card_message: col.textOrNull,
+  gift_card_send_on: z.union([z.date(), z.string()]).nullable(),
 });
 
 const GIFT_SETTING_ROW = z.object({ gift_messages: col.bool });
