@@ -1,5 +1,5 @@
 {
- "at": "2026-11-12T01:31:29.271Z",
+ "at": "2026-11-12T01:34:31.920Z",
  "status": [
   {
    "key": "storefront-client",
@@ -137,7 +137,7 @@
    "key": "prefetch",
    "audit": true,
    "verify": true,
-   "plan": false
+   "plan": true
   },
   {
    "key": "unused-code",
@@ -154,8 +154,7 @@
  ],
  "relaunch": {
   "keys": [
-   "functions",
-   "prefetch"
+   "functions"
   ],
   "audited": [
    "storefront-client",
