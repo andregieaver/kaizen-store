@@ -1,0 +1,41 @@
+# SC-2 ✓ Listing, search, cart, checkout, account, wishlist and cookies pages all load one bundle of every working part
+
+What a shopper's browser loads (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
+
+- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 2.5.
+- **Second check:** confirmed.
+- **Where:** `src/components/role-page.tsx:6`, `src/components/role-page.tsx:55`, `src/components/store-part-section.tsx:3`, `src/components/store-part-section.tsx:47`, `src/components/store-part-section.tsx:97`, `src/app/s/[store]/[market]/term-listing.tsx:8`, `src/app/s/[store]/[market]/term-listing.tsx:124`, `src/app/s/[store]/[market]/search/page.tsx:42`, `src/lib/store-parts.ts:341`, `src/components/consent/cookie-policy.tsx:4`, `src/components/consent/consent-manager.tsx:468`, `src/lib/pay-routes.graph.test.ts:114`, `docs/performance.md:103`
+- **Evidence:** Re-run in this pass for every storefront route (work/skeptic-sc/route.mjs on the client manifests): category, tag, search, cart, checkout, account, order, wishlist, cookies, deliveries and subscription each list the same 54 client modules and 340,039 raw / 113,140 gzip of route chunks; a built page lists 35 and 242,137 / 83,120. The difference is 97,902 raw / 30,020 gzip. The 19 extra modules: cart-gift, account-sign-in, add-to-cart, booking-changes, cart-quantity, checkout-button, checkout-code-form, checkout-terms, consent-manager, copy-link-button, delivery-choice, discount-code-form, express-area, gift-card-form, hold-clock, klarna-message, lazy/shop, quote-request, refresh-while. Cause, read in code: RolePage imports StorePartSection (role-page.tsx:6), whose one switch imports every working page's sections (store-part-section.tsx:3-47, 97-185). The search page passes no route, so it draws no part at all, yet imports RolePage and so the whole set (search/page.tsx:42). The category and tag pages come through term-listing.tsx:8. The cookie list imports its settings button from consent-manager.tsx (cookie-policy.tsx:4), so the consent manager, with the cookie catalogue, is a static part of this bundle although extras.tsx loads it lazily. drawsOn() already says a part draws only on its own routes (store-parts.ts:341).
+- **Cost today:** 97,902 bytes raw / 30,020 gzip more route chunks than a built page on each of those routes, whatever the page draws and whatever the store has switched on. Paid on a shopper's first listing, search or cart page, and again after a deploy changes the chunks. Paid by: A shopper's browser on its first listing, search or cart page
+- **Saving:** Estimate: up to 97,902 bytes raw / 30,020 gzip off the first scripts of category, tag and search pages; less on cart, checkout, account, order, wishlist and cookies, which keep their own part. For a shopper who goes on to the cart the bytes come later rather than vanish.
+- **Risk:** Low to medium. A part left out of a route's parts file draws nothing on an owner's built working page: the new scan test and e2e/page-roles.spec.ts catch it. A form whose script is missing on its own route loses presses: the cart, VAT, bookings and wishlist specs catch it. An import cycle shows at the type check.
+- **Already tracked:** Partly: D461 (docs/performance.md:103-108, done 5 November 2026) moved these parts from every built page to the RolePage routes. Splitting them per route is not a step anywhere.
+
+## The fix
+
+1. Do SC-4 step 1 first (cartView out of cart-contents.tsx), or the category and tag bundles would still pull the cart's forms through the basket notes.
+2. New server file src/components/store-part-frame.tsx with no section imports. Move the shell of StorePartSection there as storePartDrawer(draw): it returns a StorePartDrawer (the type at src/components/page-article.tsx:47) that keeps today's checks in the same order: place.route, drawsOn(block.part, route.part), place.owner, the Suspense with the same fallback, storeAndMarket(), requirementMet(store, shopPartFeature(part)) or shopPartAfterSale(part). Then it calls draw({ part, store, market, route, query, m, holdsTerms, holdsGift }) and draws nothing for a part that draw does not know.
+3. One small server module beside each working route's page, each a switch that holds only the cases moved out of store-part-section.tsx:97-185: cart/cart-parts.tsx (cart, the cart_ pieces, cart_upsell, free_shipping, you_saved), checkout/checkout-parts.tsx (checkout, the checkout_ pieces, cart_upsell, the two notes), order/[orderId]/order-parts.tsx, account/account-parts.tsx (account, sign_in), wishlist/wishlist-parts.tsx, subscription/[token]/subscription-parts.tsx, deliveries/deliveries-parts.tsx, cookies/cookies-parts.tsx, src/app/s/[store]/private/[market]/private-parts.tsx, and term-parts.tsx beside term-listing.tsx (category, tag, the two notes).
+4. src/components/role-page.tsx: remove the import at line 6; take a prop storePart?: StorePartDrawer and hand it on at line 55 (storePart={route ? storePart : undefined}). Each page passes its own: cart/page.tsx:47, checkout/page.tsx:35, order/[orderId]/page.tsx:37, account/page.tsx:42 and 48, wishlist/page.tsx:37, subscription/[token]/page.tsx:33, deliveries/page.tsx:39, cookies/page.tsx:33, private/[market]/page.tsx:32, term-listing.tsx:124. search/page.tsx:42 passes none.
+5. term-listing.tsx is both the listing component the drawer draws and the page wrapper that calls RolePage. If the type check shows an import cycle with term-parts.tsx, split the wrapper from the listing component into two files.
+6. Delete src/components/store-part-section.tsx. Add src/lib/store-part-drawers.scan.test.ts: for every key of SHOP_PART_KEYS (src/lib/store-parts.ts:333) and every route it draws on (drawsOn), that route's parts file holds a case for it. A new part can then not be left out of a route.
+7. Cookie settings button: move CookieSettingsButton (consent-manager.tsx:467-481) to a new client file src/components/consent/cookie-settings-button.tsx, and the two names it shares with the manager (PENDING_OPEN, OPEN_CONSENT_EVENT) to src/lib/consent-open.ts, which both import. cookie-policy.tsx:4 imports the button from the new file.
+8. src/lib/pay-routes.graph.test.ts:114-119: the door 'components/store-part-section.tsx' is gone. Walk each pay route without that stop (its drawer now imports only its own sections) and keep the extras' door.
+9. e2e/performance.spec.ts: first-scripts budgets for /s/demo/no/category/belysning, /s/demo/no/search?q=lampe, /s/demo/no/cart, /s/demo/no/checkout and /s/demo/no/account at the new measure plus 3 % (SC-6).
+10. Docs: docs/performance.md:103-108 (each working route now carries only its own parts), docs/rules/admin/website.md:88-98 ('a case in StorePartSection' becomes 'a case in the route's parts file'), a decision line in docs/decisions.md.
+
+**Done when:** work/skeptic-sc/route.mjs lists at most 37 client modules for /s/[store]/[market]/category/[slug], /tag/[slug] and /search (54 today, 35 on a built page), and the category page's first scripts (script tags of the server's HTML, nomodule left out) are at most 701,000 bytes raw (778,166 today).
+
+**Tests and rules that hold today's behaviour, and change with it:**
+
+- src/lib/pay-routes.graph.test.ts (stops at store-part-section.tsx today)
+- src/lib/store-parts.test.ts
+- e2e/page-roles.spec.ts (every working page built in the builder)
+- e2e/cart.spec.ts, e2e/vat-reverse-charge.spec.ts, e2e/bookings.spec.ts, e2e/wishlist.spec.ts, e2e/custom-fields-ranges.spec.ts
+- e2e/shop-components.spec.ts (the basket notes on cart, checkout, category and tag pages)
+- Rule docs/performance.md:38-51: forms stay in a page's first scripts. Kept: each form stays in its own route's bundle.
+- Rule docs/performance.md:103-108 (D461) and docs/rules/admin/website.md:88-98 name StorePartSection and change with it. D113, D117 and D558 in docs/decisions.md describe the one switch.
+
+**Comes after:** SC-4
+
+**Notes:** Before opening is the cheap time: no owner has built working pages to re-test. Do it in one sitting with SC-8's folder move, so the new parts files are created in their final folders and imports are rewritten once.

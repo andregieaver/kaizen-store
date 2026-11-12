@@ -1,0 +1,32 @@
+# FM-2 ✓ One import of sameSite through the chat module makes the four visit beacons, and five admin export routes, load the whole server core
+
+Families and twins (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
+
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.3.
+- **Second check:** confirmed.
+- **Where:** `src/app/api/visit/route.ts:3`, `src/app/api/visit/touch/route.ts:4`, `src/app/api/visit/speed/route.ts:3`, `src/app/api/visit/speed/own/route.ts:3`, `src/server/chat-route.ts:7`, `src/server/chat-route.ts:38`, `src/lib/same-site.ts:6`, `src/lib/visit-beacon.ts:11`, `src/app/admin/(gated)/[store]/invoices/export/route.ts:1`, `src/app/admin/(gated)/[store]/customers/[customerId]/export/route.test.ts:9`, `.next/server/app/api/visit/route.js`
+- **Evidence:** sameSite is one pure function of nine lines in src/lib/same-site.ts. chat-route.ts:38 re-exports it; its own comment says it is 'kept here for the routes that import it from here'. 57 files take it from chat-route.ts, 39 of them take nothing else, 17 already import the pure file. chat-route.ts imports ai.ts, chat-agent.ts and support.ts, and 1,307 modules follow. By static import reach (the planner's own graph): each of the four routes under /api/visit reaches 1,308 or 1,309 of 4,136 modules and 20.4 MB of source, admin-text.ts and auth.ts included; with the import pointed at the pure file they reach 146 to 150 modules and 2.7 MB, and none of the three. The bundler does not drop the re-export: the built /api/visit entry lists 117 chunks, 11.40 MB; /api/health, with 54 modules, lists 16 chunks, 1.16 MB. Requiring the beacon's chunks took 202 to 249 ms here (3 runs), health's 29 to 42 ms. New in this pass: five admin export routes are in the core for the same one line (invoices/export, reviews/export, redirects/404s/export, creators/csv, settings/close/export: about 1,308 modules today, 325 to 336 without it). For 46 of the 57 files the change is tidying: they reach the core through their real work (two of those are freed by FM-14). A scan of every re-export in src found no other that moves an entry by more than 100 modules, bar visitorKey (FM-14).
+- **Cost today:** 11.4 MB of server JS and about 0.2 s of loading at each cold start of a beacon function, where 1.2 to 1.6 MB and 30 to 45 ms is what a route of that size takes here. Every counted page view sends a beacon, also for a page served from the cache, so these are the functions shoppers will call most. Paid by: The server at each cold start of the beacon routes, so the database write of a visit waits for it. It grows with shoppers' page views and with each deploy, not with the number of stores.
+- **Saving:** Nine entries leave the core. The four beacons go from 1,308 reachable modules to 146 to 150 and from 20.4 MB of source to 2.7 MB (measured by import reach). Built size per beacon from 11.4 MB to about 2 MB (estimate: /api/ab/assign reaches 113 modules and is 1.59 MB built). Loading time here from 200 to 250 ms to about 40 ms (estimate by the same comparison). Five admin export routes go from about 1,308 modules to about 330.
+- **Risk:** Low: it is the same function, moved by import path only. What could break: a file that still imports sameSite from chat-route.ts after the re-export is deleted, which the type check catches at once. The bundler may still place some modules in shared chunks, so read the entry's chunk list after the change. Whether a beacon shares a warm instance with other routes on Vercel was not checked; if it does, fewer requests meet a cold start but the load is still not needed.
+
+## The fix
+
+1. In the 39 files whose only import from chat-route.ts is sameSite (rg -l 'import \{ sameSite \} from "(@/server|\.)/chat-route"' src), change the import to '@/lib/same-site'. The four that carry the saving are the routes under src/app/api/visit; the five admin export routes named in the evidence gain too.
+2. In the 18 files that take sameSite with other names (rg -n 'sameSite' src | rg 'chat-route'), split the import: sameSite from '@/lib/same-site', the rest stays.
+3. Delete the re-export and its comment at src/server/chat-route.ts:37-38.
+4. src/app/admin/(gated)/[store]/customers/[customerId]/export/route.test.ts:9 mocks '@/server/chat-route' only to supply sameSite: delete that vi.mock line (the route no longer imports the module).
+5. Add the server-side import walk of FM-13 step 1 with these entries: src/app/api/visit/route.ts, visit/touch/route.ts, visit/speed/route.ts, visit/speed/own/route.ts and src/app/api/health/route.ts may not reach server/chat-route.ts, server/chat-agent.ts, server/auth.ts or lib/admin-text.ts, and may reach at most 200 modules.
+6. After the next build, read the entry's chunk list again (node a scratch script /home/user/kaizen-store api/visit/route.js) and put the two numbers in docs/performance.md under a new heading 'What a server route loads'.
+
+**Done when:** node a scratch script (or the new scan test) reports at most 200 modules for each of the four routes under src/app/api/visit (1,308 today); rg -c sameSite src/server/chat-route.ts prints nothing; after a build the entry .next/server/app/api/visit/route.js lists under 3 MB of chunks (11.40 MB today).
+
+**Tests and rules that hold today's behaviour, and change with it:**
+
+- src/app/admin/(gated)/[store]/customers/[customerId]/export/route.test.ts: the mock at line 9 goes; the test must still pass.
+- src/lib/security-routes.scan.test.ts and src/lib/api-routes.scan.test.ts do not pin where sameSite comes from (rg finds no 'chat-route' in either): they pass unchanged.
+- src/server/support.int.test.ts and support-tools.int.test.ts import chat-route for chatContext and takeTurn, not sameSite: unchanged.
+- No written rule names the import path (rg 'sameSite' over docs/rules, docs/security.md and CLAUDE.md finds prose about the check, not the module). docs/analytics.md:126 describes the endpoint as same-site: add there that the check comes from src/lib/same-site.ts and that a beacon route stays light.
+- New: src/lib/server-reach.scan.test.ts (FM-13).
+
+**Notes:** Do with FM-14 (two more public routes with the same fault) and FM-13 (the check) in one change. The same fault is reported in other areas of this review (server graph SG-3, functions SF-4, dependencies DP-10): one fix serves all. The larger tangle, 179 of 265 route handlers reaching more than 1,000 modules through the module that does their real work, is the server-graph area's subject, not this fix.

@@ -1,0 +1,30 @@
+# PM-4 ✓ Page reads filter the owner with `is not distinct from`, which no index can serve
+
+The page builder's model and a built page's render (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
+
+- **Kind:** oversize. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.18.
+- **Second check:** corrected.
+- **Where:** `src/server/pages.ts:71`, `src/server/pages.ts:694`, `src/server/pages.ts:728`, `src/server/page-modals.ts:23`, `src/server/content-grid.ts:266`, `src/server/saved-parts.ts:40`, `src/server/global-parts.ts:49`, `src/server/global-parts.ts:140`, `src/server/menus.ts:233`, `src/server/page-versions.ts:53`, `src/db/schema.ts:8806`, `src/server/knowledge.ts:29`, `docs/rules/storefront.md:179`
+- **Evidence:** ownedBy() is `store_id is not distinct from $1 and type = $2` (pages.ts:71); findPublishedPage(), publishedPageNames(), usesRememberedModals() and the grid of pages use the same form. The skeptic proved it on PostgreSQL 18.6 (PGlite) with a pages table of the same two unique keys and 2,000 owners of 30 pages: with `is not distinct from` the list query is a Seq Scan that removes 59,973 rows to return 27; with `store_id = $1` it is an index scan on (store_id, type, slug) touching 27. My rg: 122 uses on store_id in 40 files of src/server, none outside it. Two are column against column and need their own wording: saved-parts.ts:40 counts a global part's uses with `p.store_id is not distinct from sp.store_id` and a text search of every page's draft and published copy, once per global part, on every opening of the page editor; menus.ts:233 joins pages to menus the same way. A page save locks the store's saved parts through the same filter (global-parts.ts:49). Seven files already write the indexable form with a private helper of their own (knowledge.ts:29, media-library.ts:77, media-compress.ts:51, chat-agent.ts:71, google-reviews.ts:38, ai.ts:137, instagram.ts:140).
+- **Cost today:** Invisible at 1,389 rows. Every page lookup that misses the cache reads every store's page rows: 300,000 rows a lookup at 10,000 stores of 30 pages; the modal check walks the whole table to find one store's pages; opening the page editor scans the whole table once per global part. Paid by: The database
+- **Saving:** Measured on the test table: 60,000 rows read falls to 27 for the list, and 1,204 buffer pages to about 30. Nothing today at 1,389 rows; the saving arrives with stores.
+- **Risk:** Low: both forms mean the same for a null and for a non-null owner. The one way to get it wrong is to pass null into `=`, which returns nothing; the helper branches in code and takes string | null. A read that stops returning Kaizena Flow's own rows would show as an empty menu or page list on its site; each moved read has a test with a null owner.
+
+## The fix
+
+1. New src/server/owned.ts: export const owned = (storeId: string | null, column = sql`store_id`) => (storeId ? sql`${column} = ${storeId}::uuid` : sql`${column} is null`), with a comment that it is the one way to filter a store's or Kaizena Flow's own rows. Replace the private copies of the same shape with the import. CLAUDE.md says the write ratchet accepts a file's owned(): check that scripts/lib/ratchet-count.mjs still counts a write filtered through the imported helper as naming the store, and teach it the import if not.
+2. The page path first: pages.ts:71 (ownedBy becomes owned(owner) and type), :694 and :697, :728 and :733; page-modals.ts:23; content-grid.ts:257 and :266; page-versions.ts:53 and :71; global-parts.ts:49 and :140; menus.ts:73, :85, :211 and :235; taxonomy.ts:60.
+3. Column against column, where the owner is also a parameter: saved-parts.ts:40 becomes owned(owner, sql`p.store_id`) inside the sub-select (the outer row is already the owner's); menus.ts:233 the same with the menu's owner. Where both sides are columns and no parameter exists (src/server/support-email.ts:267), write the stores' branch and the null branch as a union all, or keep the wording with a comment on the line saying why.
+4. The other files, most uses first: content-types.ts (10), site-tools.ts (9), saved-parts.ts (8), forms.ts (8), support-email.ts, page-jobs.ts, custom-fields.ts, then the rest.
+5. Hold it: count 'store_id is not distinct from' per file in scripts/lib/ratchet-count.mjs, keep the counts in src/server/ratchet.baseline.json through scripts/ratchet.mjs, and let src/server/ratchet.scan.test.ts fail on a rise or on a new file with any.
+6. docs/rules/storefront.md:179 says every content-type query asks `store_id is not distinct from`: reword to 'filters with owned(storeId): the store's rows, or the rows with no store for Kaizena Flow'. The rule's reason (one query serves a store and the platform) is kept.
+
+**Done when:** rg -c 'store_id is not distinct from' src/server --glob '!*.test.ts' sums to at most the commented column-to-column lines left (122 in 40 files today), the ratchet holds that number, and the skeptic's EXPLAIN (work/pmsk/pg.mjs) run with pages.ts's new list statement shows an index scan on the store's rows.
+
+**Tests and rules that hold today's behaviour, and change with it:**
+
+- Integration tests that run each moved read for a store and for the null owner: src/server/pages.int.test.ts, redirect-resolve.int.test.ts, country-content.int.test.ts, page-duplicate.int.test.ts, the saved parts, menus, forms and content type tests in src/server and src/db.
+- src/server/ratchet.scan.test.ts with scripts/ratchet.mjs (the new count, and the existing by-id-writes count, which must not rise when a private helper becomes an import); src/lib/sql-raw.scan.test.ts (the helper uses sql templates, never sql.raw).
+- Rule docs/rules/storefront.md:179 asks for today's wording; step 6 changes the wording and keeps the reason.
+
+**Notes:** The same change as DQ-8 (queries) and DS-7 (schema); do it once, and first, because PM-2, PM-3, PM-5 and PM-6 write new reads that should use the helper from birth. It is the clearest cost in this dimension that grows with the number of stores, and with no real data there is nothing to get wrong now.
