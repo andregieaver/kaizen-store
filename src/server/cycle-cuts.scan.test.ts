@@ -24,6 +24,8 @@ describe("the cuts of the server's import cycle (bloat review step 0.6)", () => 
     ["src/server/visibility.ts", "./customer-admin"],
     ["src/server/wishlist-admin.ts", "./customer-admin"],
     ["src/server/customer-timeline.ts", "./customer-admin"],
+    ["src/components/page-article.tsx", "./theme-store-section"],
+    ["src/server/seo.ts", "./theme-store"],
   ])("%s has no static import from %s", (file, from) => {
     expect(importsFrom(file, from)).toBe(false);
   });

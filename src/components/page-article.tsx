@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 
-import { blockFonts, blockHasContent, blockShowsUnbound, columnLines, columnsAsRow, partFonts, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageContent, type PageRow, type StorePartBlock } from "@/lib/page-content";
+import { blockFonts, blockHasContent, blockShowsUnbound, columnLines, columnsAsRow, partFonts, rowShows, type ColumnsBlock, type PageBlock, type PageColumn, type PageContent, type PageRow, type StorePartBlock, type ThemeStoreBlock } from "@/lib/page-content";
 import { inlineMarkOf } from "@/lib/inline-edit";
 
 import { withoutBindings } from "@/lib/field-binding";
@@ -32,7 +32,6 @@ import { PageModal } from "./lazy/blocks";
 import { DomainSearchSection } from "./domain-search-section";
 import { PlansSection } from "./plans-section";
 import { TableSection } from "./table-section";
-import { ThemeStoreSection } from "./theme-store-section";
 import { themePartDraws } from "@/lib/theme-store-parts";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelClass, rowBox, rowGrid, rowInnerClass } from "./page-parts";
 import { PartStyles } from "./part-styles";
@@ -145,6 +144,12 @@ export const pageRoomClass = (content: Pick<PageContent, "rows">, top: string, b
   const rows = flowRows(content.rows.filter(rowShows));
   return [rows[0]?.background ? "" : top, rows.at(-1)?.background ? "" : bottom].filter(Boolean).join(" ");
 };
+
+/** The theme store's parts are Kaizena Flow's own (D285): their server code is loaded where one is drawn, not with every page of every store (bloat review step 0.6). */
+async function ThemeStorePart(props: { block: ThemeStoreBlock; place: GridPlace }) {
+  const { ThemeStoreSection } = await import("./theme-store-section");
+  return <ThemeStoreSection {...props} />;
+}
 
 /** A theme store part with nothing for the theme the address names (D285), which is left out. */
 const themePartLeftOut = (block: PageBlock, place: GridPlace) => block.type === "themeStore" && !themePartDraws(block.part, place);
@@ -360,7 +365,7 @@ function RowMarkup({
               ) : block.type === "domainSearch" ? (
                 <DomainSearchSection block={block} place={place} />
               ) : block.type === "themeStore" ? (
-                <ThemeStoreSection block={block} place={place} />
+                <ThemeStorePart block={block} place={place} />
               ) : block.type === "customField" ? (
                 <CustomFieldSection block={block} place={place} />
               ) : block.type === "fieldLoop" ? (

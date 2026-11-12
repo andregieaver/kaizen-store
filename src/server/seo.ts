@@ -45,7 +45,6 @@ import type { ShippingFacts, StoreFacts } from "@/lib/structured-data";
 import { featureOn, normaliseFeatures } from "@/lib/store-features";
 import { parseTermSeo, type TermSeo } from "@/lib/term-seo";
 
-import { themeStoreCards } from "./theme-store";
 import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
 import { storeBlogs } from "./blogs";
@@ -591,6 +590,7 @@ export async function sitemapIndex(): Promise<string> {
 
 /** Kaizen's own pages: the front page, sign-up and every published page and article open to search engines (D42, D57). */
 export async function platformSitemap(): Promise<string> {
+  const { themeStoreCards } = await import("./theme-store");
   const origin = siteUrl();
   // While Kaizena Flow's site is served from its own store (D484), its pages are the store's: listed as the store lists them, beside the
   // platform's own routes that stay (sign-up, the theme store).
@@ -646,6 +646,7 @@ export async function platformSitemap(): Promise<string> {
  * every address of the store's own sitemap, which are on Kaizena Flow's host now.
  */
 async function platformSitemapFromStore(slug: string): Promise<string> {
+  const { themeStoreCards } = await import("./theme-store");
   const origin = siteUrl();
   const [langs, themes, store] = await Promise.all([getPlatformLangs(), themeStoreCards(), storeSitemapUrls(slug)]);
   const inEvery = (path: string) => {
@@ -980,6 +981,7 @@ function themeStoreEntries(themes: readonly { slug: string }[], langs: readonly 
 
 /** The theme store's own host's sitemap (`docs/theme-phase-3.md` step 3): its list and each theme's page; null while it has no host. */
 export async function themeStoreSitemap(): Promise<string | null> {
+  const { themeStoreCards } = await import("./theme-store");
   if (!themesHost()) return null;
   const [themes, langs] = await Promise.all([themeStoreCards(), getPlatformLangs()]);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${themeStoreEntries(themes, langs).join("\n")}\n</urlset>\n`;
