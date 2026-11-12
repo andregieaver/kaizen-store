@@ -74,31 +74,31 @@ commit as the fix.
 
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| 0.1 | Put the review's scripts and lists in the repo | GAP-code-1 | S | strong |  | Open | |
+| 0.1 | Put the review's scripts and lists in the repo | GAP-code-1 | S | review |  | Open | |
 | 0.2 | Store a daily reading of production, so every later step has a 'before' |  | S | review |  | Open | |
 | 0.3 | Let the deploy job, not a visitor, meet the first cold page | SD-3, GAP-server-2 | S | review |  | Open | |
-| 0.4 | Cut the two import hubs: the unused schema and the chat module's helpers | DD-1, DP-1, DP-9, SG-6, SF-6, DS-1, TC-5, DP-10, FM-2, FM-14, SG-3, SF-4, GAP-server-s2 | S | review | 0.1, 0.3 | Open | |
-| 0.5 | Load sharp, the font parser and the AI manager's engine when they are used | AS-1, DP-2, SG-7, SF-9, DP-11, SG-15, SG-10 | S | review | 0.1, 0.3 | Open | |
+| 0.4 | Cut the two import hubs: the unused schema and the chat module's helpers | DD-1, DP-1, DP-9, SG-6, SF-6, DS-1, TC-5, DP-10, FM-2, FM-14, SG-3, SF-4, GAP-server-s2 | S | cheap | 0.1, 0.3 | Open | |
+| 0.5 | Load sharp, the font parser and the AI manager's engine when they are used | AS-1, DP-2, SG-7, SF-9, DP-11, SG-15, SG-10 | S | cheap | 0.1, 0.3 | Open | |
 | 0.6 | Cut the import cycle of 229 server files | SG-1, SF-1, TC-2, SG-18, SG-17 | M | strong | 0.1, 0.3, 0.4 | Open | |
 | 0.7 | Give code outside the admin its own small word modules, so the admin's words leave shoppers' routes | FM-1, SF-5, TX-1, GAP-text-s2 | M | review | 0.1, 0.3 | Open | |
-| 0.8 | Make a language translated by AI cost what it uses: at start, per document and per minute | SG-5, SF-3, SD-7, TX-3, TX-12, TX-6, SC-13, PL-9, DQ-12, DS-2, CA-12, GAP-text-s7 | M | strong | 0.1, 0.3, 0.4 | Open | |
+| 0.8 | Make a language translated by AI cost what it uses: at start, per document and per minute | SG-5, SF-3, SD-7, TX-3, TX-12, TX-6, SC-13, PL-9, DQ-12, DS-2, CA-12, GAP-text-s7 | M | review | 0.1, 0.3, 0.4 | Open | |
 | 0.9 | Take Supabase's client, zod and the builder's English off every signed-in screen | AC-1, BN-1, BN-3, BN-4, DP-4, TX-4, GAP-owner-browser-s4, GAP-text-s6 | S | review |  | Open | |
 | 0.10 | Keep the page builder and the rich text editor off screens that do not edit a page | AC-2, BN-14, AC-3, BN-5, DP-5 | M | review | 0.9 | Open | |
 | 0.11 | Take two whole tables out of client scripts: the Work invoice's words and the AI manager's tool definitions | AC-7, BN-7, AC-8, BN-15, AI-4 | S | review | 0.9, 0.10 | Open | |
 | 0.12 | Stop prefetching what a press cannot use on stores and on Kaizena Flow's site | PF-2, PL-3, SC-1, PF-11, PL-4, BN-2, CA-4, CS-8 | S | cheap |  | Open | |
-| 0.13 | Fetch the admin's rail and list rows when a link is pointed at | CA-5, PF-5, PF-6, AC-12, GAP-owner-browser-s3 | M | review | 0.12 | Open | |
+| 0.13 | Fetch the admin's rail and list rows when a link is pointed at | CA-5, PF-5, PF-6, AC-12, GAP-owner-browser-s3 | M | cheap | 0.12 | Open | |
 | 0.14 | End the prefetch loop on /s/ addresses, and write both router settings down | PF-1, SC-9, CA-6, CA-7 | S | cheap |  | Open | |
 | 0.15 | Make no server call after load for a visitor with nothing to fetch | SC-10, PL-7, SD-15, SC-12, PL-8, SD-14, PL-14 | M | review |  | Open | |
-| 0.16 | Send shoppers' first scripts only what the page draws | SC-3, PL-10, BN-10, TX-5, TX-8, SC-11, SC-4, PM-11, GAP-shopper-browser-s4 | M | strong |  | Open | |
+| 0.16 | Send shoppers' first scripts only what the page draws | SC-3, PL-10, BN-10, TX-5, TX-8, SC-11, SC-4, PM-11, GAP-shopper-browser-s4 | M | strong | 0.1 | Open | |
 | 0.17 | Cut what a menu and a progress poll cost in the admin | AD-1, AD-9 | S | review |  | Open | |
 | 0.18 | Draw the route once per save | AD-13 | M | review |  | Open | |
 | 0.19 | Read the products, customers and stores lists a page at a time | AD-7, AC-14, AD-10 | M | review |  | Open | |
-| 0.20 | Stop asking for what does not change: a store's slug, the theme cards, the hosts list | CP-2, SD-10, CA-9, DQ-9, CA-13, SF-12 | S | cheap |  | Open | |
+| 0.20 | Stop asking for what does not change: a store's slug, the theme cards, the hosts list | CP-2, SD-10, CA-9, DQ-9, CA-13, SF-12 | S | review |  | Open | |
 | 0.21 | Read the AI connection only to call a model, and give search a ceiling | AI-2, DQ-4, GAP-ai-1, SD-16, CA-11, GAP-ai-s5 | M | strong | 0.2 | Open | |
 | 0.22 | Work the cart and a shopper's facts out once per request, with no read for a feature that is off | SD-11, FT-15, GAP-surface-s1 | S | review |  | Open | |
 | 0.23 | Filter a store's rows the way its index can serve | DQ-8, DS-7, PM-4, CR-6, GAP-database-s4 | M | review | 0.2 | Open | |
 | 0.24 | Read one page, not all of them | CA-3, SD-4, DQ-2, PM-2 | M | review | 0.23, 0.1 | Open | |
-| 0.25 | Prune the scheduler's own log | CR-5, DS-8 | S | cheap |  | Open | |
+| 0.25 | Prune the scheduler's own log | CR-5, DS-8 | S | review |  | Open | |
 | 0.26 | Drop the 13 duplicate indexes, and add the test that stops the next one | DS-9, DS-15 | S | review |  | Open | |
 | 0.27 | Let the knowledge job read no document when nothing was published | DQ-6, DS-5, PM-3 | M | review |  | Open | |
 | 0.28 | Make picture, alt-text and product upkeep cost one statement when nothing changed | CR-4, DQ-3, DS-10, AI-13, AI-5, GAP-ai-s6 | M | review | 0.27 | Open | |
@@ -125,24 +125,24 @@ commit as the fix.
 
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| 1.1 | Give every budget one home, and hold the written rules first | DC-3, GAP-rules-1, GAP-rules-s4 | M | review | 0.43, 0.40, 0.41 | Open | |
+| 1.1 | Give every budget one home, and hold the written rules first | DC-3, GAP-rules-1, GAP-rules-s4 | M | cheap | 0.43, 0.40, 0.41 | Open | |
 | 1.2 | Hold every route's first scripts | AC-10, BN-11 | S | cheap | 0.9, 0.16, 1.1 | Open | |
-| 1.3 | Hold documents, stylesheets and requests on real store pages | SC-6, PL-13, PM-14, CS-3, GAP-shopper-browser-s2 | M | review | 0.12, 0.16, 1.1 | Open | |
+| 1.3 | Hold documents, stylesheets and requests on real store pages | SC-6, PL-13, PM-14, CS-3, GAP-shopper-browser-s2 | M | review | 0.12, 0.16, 1.1, 0.43 | Open | |
 | 1.4 | Put the admin under the import walk, and hold where the words go | AC-11, TX-9, GAP-text-s5 | M | review | 0.7, 0.9, 0.36, 1.1 | Open | |
-| 1.5 | Hold what a signed-in screen is handed, in English and in Norwegian | GAP-text-2 | M | review | 0.9, 0.13, 0.1, 1.1 | Open | |
-| 1.6 | Put a launch-theme store into the measured set | GAP-shopper-browser-1, GAP-page-model-3, GAP-styles-1, GAP-shopper-browser-s5 | M | strong | 1.3, 0.33, 0.44, 0.46, 0.1 | Open | |
+| 1.5 | Hold what a signed-in screen is handed, in English and in Norwegian | GAP-text-2 | M | cheap | 0.9, 0.13, 0.1, 1.1 | Open | |
+| 1.6 | Put a launch-theme store into the measured set | GAP-shopper-browser-1, GAP-page-model-3, GAP-styles-1, GAP-shopper-browser-s5 | M | strong | 1.3, 0.33, 0.44, 0.46, 0.1, 0.43 | Open | |
 | 1.7 | Put a cart with products and the checkout's payment step into the measured set | GAP-shopper-browser-2 | M | strong | 1.3, 0.1 | Open | |
 | 1.8 | Hold what a server entry loads and carries | SG-14, SF-7, DP-6, AS-3, SG-16, GAP-server-s3 | M | review | 0.1, 0.4, 0.36, 1.1 | Open | |
 | 1.9 | Count statements: one counter, and the admin's five screens | AD-12 | M | review | 1.1 | Open | |
-| 1.10 | Count the statements and rows of scheduled work and of a cold frame | DQ-11, GAP-database-2, GAP-scheduled-s5, GAP-database-s2 | M | strong | 1.9, 1.1 | Open | |
+| 1.10 | Count the statements and rows of scheduled work and of a cold frame | DQ-11, GAP-database-2, GAP-scheduled-s5, GAP-database-s2 | M | strong | 1.9, 1.1, 0.31 | Open | |
 | 1.11 | Hold the storefront's server side: statements per page, cached reads and render modes | SD-13, CA-16, GAP-page-model-s2 | M | review | 1.9, 0.1, 0.3, 1.1 | Open | |
 | 1.12 | Count a shop-only store's journey, and what one placed order writes | GAP-surface-1, GAP-database-3, GAP-database-s1, GAP-surface-s2 | M | strong | 1.9, 1.10, 1.1 | Open | |
 | 1.13 | Flag in production what a test cannot see in the database | GAP-database-1, GAP-database-s5 | M | review | 0.2, 0.25, 1.9 | Open | |
-| 1.14 | Hold time on a slow phone with a nightly production figure | GAP-shopper-browser-3 | M | review | 1.6, 1.3 | Open | |
+| 1.14 | Hold time on a slow phone with a nightly production figure | GAP-shopper-browser-3 | M | cheap | 1.6, 1.3 | Open | |
 | 1.15 | Hold the admin's speed with a line in the morning briefing | GAP-owner-browser-3 | S | cheap |  | Open | |
-| 1.16 | Show cold starts as a production figure | GAP-server-3 | M | review | 0.8, 1.8 | Open | |
-| 1.17 | Hold unused code, copies and the admin's repeats with ratchets of exact lists | DD-4, GAP-code-2, CP-14, FM-13, FM-7, FM-8, GAP-code-3, GAP-code-s2 | M | review | 0.1, 0.36, 1.1, 1.10 | Open | |
-| 1.18 | Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows | FT-2, DS-12, GAP-surface-3, GAP-surface-s3 | S | cheap | 1.1, 0.26, 0.31, 0.42 | Open | |
+| 1.16 | Show cold starts as a production figure | GAP-server-3 | M | review | 0.8, 1.8, 1.11 | Open | |
+| 1.17 | Hold unused code, copies and the admin's repeats with ratchets of exact lists | DD-4, GAP-code-2, CP-14, FM-13, FM-7, FM-8, GAP-code-3, GAP-code-s2 | M | cheap | 0.1, 0.36, 1.1, 1.10 | Open | |
+| 1.18 | Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows | FT-2, DS-12, GAP-surface-3, GAP-surface-s3 | S | cheap | 1.1, 0.26, 0.31, 0.42, 1.10 | Open | |
 | 1.19 | Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool | AI-10, AI-14, GAP-ai-3, GAP-ai-s2, GAP-ai-s3 | M | strong | 0.1, 1.1, 0.21 | Open | |
 | 1.20 | Record every check's seconds and the build's peak memory, with ceilings | TC-8, AS-10, GAP-build-1, GAP-build-s1 | M | review | 0.38, 1.8, 1.11, 1.1 | Open | |
 | 1.21 | Give the production build room, and fail a run before it runs out | GAP-build-2, GAP-build-s3 | M | review | 1.20, 0.38 | Open | |
@@ -150,9 +150,9 @@ commit as the fix.
 | 1.23 | Count what is in the stylesheet, and read the style text owners write | GAP-styles-2, GAP-styles-3, GAP-styles-s2, GAP-styles-s3 | S | review | 1.8, 0.1, 1.1 | Open | |
 | 1.24 | Measure what a session really loads, and hold source file size | GAP-rules-3, GAP-rules-s2 | M | cheap | 0.1, 0.40 | Open | |
 | 1.25 | Count tag refreshes and store page draws in production | GAP-server-s6 | S | review | 1.9 | Open | |
-| 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22 | Open | |
+| 1.26 | Let no job swallow its own failure | GAP-scheduled-s2 | M | review | 1.22, 1.10, 0.31 | Open | |
 | 1.27 | Hold by name what a store page's first scripts may hold | GAP-page-model-s4, GAP-text-s3 | S | cheap | 0.16 | Open | |
-| 1.28 | Count handed against named words at every hand-down site, without a browser | GAP-text-s4 | M | review |  | Open | |
+| 1.28 | Count handed against named words at every hand-down site, without a browser | GAP-text-s4 | M | cheap |  | Open | |
 
 **Phase 2: Load on demand**
 
@@ -160,18 +160,18 @@ commit as the fix.
 |---|---|---|---|---|---|---|---|
 | 2.1 | Leave a map in CLAUDE.md, and bring the always-loaded core under 10.5 KB | DC-1 | M | review | 1.1, 0.43, 0.41, 0.40 | Open | |
 | 2.2 | Send the store's layout once | SC-8, PL-2, PM-1, CS-5, SC-7, PF-7, GAP-page-model-s6 | M | review | 0.1, 1.3 | Open | |
-| 2.3 | Draw each fixed style sheet once per document | CS-4, PM-7 | S | review | 2.2, 1.3, 1.6 | Open | |
-| 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3 | Open | |
+| 2.3 | Draw each fixed style sheet once per document | CS-4, PM-7 | S | review | 2.2, 1.3, 1.6, 0.34 | Open | |
+| 2.4 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17 | M | strong | 0.15, 1.11, 2.2, 1.3, 0.4 | Open | |
 | 2.5 | Give crawlers on Next's bot list the cached page | CA-15 | S | cheap | 2.4, 1.11 | Open | |
 | 2.6 | Route every link through one wrapper with a stated policy | PF-3, PF-8, PF-12, PF-10 | M | review | 0.13, 1.3, 2.2 | Open | |
-| 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3 | Open | |
+| 2.7 | Keep a press on a built page's tile inside the app | PF-4 | M | review | 2.6, 1.3, 0.12 | Open | |
 | 2.8 | Bound what a real listing fetches ahead, and decide partial prefetching by trial | PF-13, PL-5, PF-9 | M | review | 2.6, 0.14, 1.3 | Open | |
 | 2.9 | Let each working route load its own parts | SC-2, BN-9, GAP-shopper-browser-s3 | M | review | 0.16, 2.2, 1.2, 1.3 | Open | |
 | 2.10 | Let a recommending grid bring its own words | BN-16 | M | strong | 1.27, 2.7 | Open | |
 | 2.11 | Give the storefront a stylesheet of its own | SC-5, CS-1, BN-12, GAP-styles-s5 | M | review | 1.21, 1.23, 1.3, 0.35, 0.34, 0.12 | Open | |
 | 2.12 | Draw a listing's grid once and read its list once | PL-6, PM-8 | M | review | 2.10, 2.2 | Open | |
 | 2.13 | Ask the database for stock only on a product view | SD-2, GAP-server-s5 | M | review | 1.11, 1.12, 0.22 | Open | |
-| 2.14 | Let a publish make only its own page stale | PM-15, PM-16, GAP-page-model-2, GAP-page-model-s3 | M | strong | 0.24, 1.11, 0.28 | Open | |
+| 2.14 | Let a publish make only its own page stale | PM-15, PM-16, GAP-page-model-2, GAP-page-model-s3 | M | strong | 0.24, 1.11, 0.28, 1.9 | Open | |
 | 2.15 | Let tagged reads live until their tag is refreshed | SD-8, CA-10 | M | strong | 2.14, 1.11, 1.25 | Open | |
 | 2.16 | Keep a page's title and flags in columns | DS-4, PM-6 | M | review | 0.24, 0.23 | Open | |
 | 2.17 | Let page lists, pickers and grids open no document | AD-14, PM-5, GAP-page-model-1, GAP-page-model-s1 | M | strong | 2.16, 0.24, 1.9, 0.19 | Open | |
@@ -180,15 +180,15 @@ commit as the fix.
 | 2.20 | Turn the proxy's readers into leaf modules | SD-1, SD-6, SG-2, SF-2, SG-8 | L | review | 1.8, 0.4, 0.6, 0.7 | Open | |
 | 2.21 | Read a page without importing the code that saves pages | PM-12 | M | strong | 2.20, 0.24, 2.17, 1.8, 0.6 | Open | |
 | 2.22 | Read a store without the Stripe SDK and without the whole page model | SG-9, DP-12 | M | strong | 1.8, 0.4, 0.5, 0.6, 2.21 | Open | |
-| 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20 | Open | |
-| 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4 | Open | |
-| 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | strong | 0.7, 1.4, 1.8, 0.6 | Open | |
+| 2.23 | Trace the product taxonomy only beside routes that can read it | SF-8, SG-13, AS-2 | M | review | 1.8, 0.6, 0.5, 2.20, 1.10 | Open | |
+| 2.24 | Shrink the server-reference manifest | GAP-server-s4 | L | strong | 1.8, 0.6, 2.20, 2.21, 0.4, 1.11 | Open | |
+| 2.25 | Load the admin's words by area on admin routes too | SG-4 | L | review | 0.7, 1.4, 1.8, 0.6 | Open | |
 | 2.26 | Take English catalogues out of the admin's client code | AC-9, BN-8 | M | strong | 0.9, 1.4, 1.2 | Open | |
 | 2.27 | Hand each admin page only the words its parts read | AC-4, PL-1, TX-2, PM-10, GAP-text-1 | L | strong | 0.9, 1.5, 1.28, 2.26, 0.10 | Open | |
 | 2.28 | Do not send the words again with a save | AD-5, GAP-text-3 | M | strong | 1.5, 2.27, 0.17 | Open | |
-| 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | review | 0.10, 1.4, 1.2, 2.26 | Open | |
-| 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5 | Open | |
-| 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5 | Open | |
+| 2.29 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | cheap | 0.10, 1.4, 1.2, 2.26 | Open | |
+| 2.30 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1, GAP-owner-browser-s2 | L | strong | 0.1, 2.29, 2.27, 2.28, 1.5, 1.4 | Open | |
+| 2.31 | Keep the session without the whole Supabase client | GAP-owner-browser-2 | M | review | 0.9, 1.5, 1.4 | Open | |
 | 2.32 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8 | M | review | 1.9, 0.17 | Open | |
 | 2.33 | Make no Supabase Auth call per request for an account without a second factor | AD-3 | S | review |  | Open | |
 | 2.34 | Let an untouched tab ask for notices less often | AC-13, PL-11, AI-12 | S | cheap | 0.17 | Open | |
@@ -197,28 +197,28 @@ commit as the fix.
 | 2.37 | Slim the tool schemas, so no first round is over 56,000 characters | AI-8 | M | strong | 1.19, 2.36 | Open | |
 | 2.38 | Use cached input | AI-3 | M | strong | 1.19, 2.36, 2.37 | Open | |
 | 2.39 | Give small jobs a quick model | AI-7, GAP-ai-s4 | M | strong | 1.19, 2.38 | Open | |
-| 2.40 | Keep one file per decision, with a generated index | DC-2, AS-8 | M | review | 0.41, 1.1 | Open | |
-| 2.41 | Retire the frozen Migration versions list and the order to add to it | DC-10 | S | cheap | 2.40, 2.1, 1.1 | Open | |
+| 2.40 | Keep one file per decision, with a generated index | DC-2, AS-8 | M | cheap | 0.41, 1.1 | Open | |
+| 2.41 | Retire the frozen Migration versions list and the order to add to it | DC-10 | S | cheap | 2.40, 2.1, 1.1, 0.43 | Open | |
 | 2.42 | Shorten the gate's type check | TC-4, TC-9 | M | review | 0.38, 1.20 | Open | |
 | 2.43 | Add a related test run for the push | TC-6, GAP-build-s4 | S | review | 0.38, 0.39, 1.20, 2.42 | Open | |
-| 2.44 | Show by trial whether component and database tests need a fresh worker | GAP-build-3 | S | cheap | 0.39, 1.20 | Open | |
-| 2.45 | Cut what the largest paint waits for on a themed page | GAP-shopper-browser-s1 | M | strong | 1.14, 1.6, 1.3 | Open | |
-| 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | review | 0.9, 1.4, 1.2 | Open | |
+| 2.44 | Show by trial whether component and database tests need a fresh worker | GAP-build-3 | S | cheap | 0.38, 0.39, 1.20 | Open | |
+| 2.45 | Cut what the largest paint waits for on a themed page | GAP-shopper-browser-s1 | M | strong | 1.14, 1.6, 1.3, 0.12 | Open | |
+| 2.46 | Keep schemas apart from the helpers beside them, so zod loads only where a screen runs one | GAP-owner-browser-s1 | L | strong | 0.9, 1.4, 1.2 | Open | |
 | 2.47 | Take the order writer off pages that only show products | GAP-server-s1 | L | strong | 1.8, 2.9, 2.22 | Open | |
-| 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | review | 1.12, 1.9 | Open | |
+| 2.48 | Give a placed order a ceiling, and stage placeOrder where the first figures are over it | GAP-database-s7, GAP-surface-s5 | M | strong | 1.12, 1.9 | Open | |
 | 2.49 | Load motion.css where a page uses it | GAP-styles-s4, CS-2 | M | strong | 1.23, 2.11, 1.3 | Open | |
-| 2.50 | Let a catalogue file be imported by its area module only, and import no code | GAP-text-s1 | M | review | 2.25, 2.26, 1.4, 1.8 | Open | |
+| 2.50 | Let a catalogue file be imported by its area module only, and import no code | GAP-text-s1 | M | strong | 2.25, 2.26, 1.4, 1.8, 0.7 | Open | |
 
 **Phase 3: One of each**
 
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
 | 3.1 | Run one tick a minute, and call a route only when work waits | CR-1, CR-7, DQ-1, DP-7, SF-10, GAP-scheduled-s1 | L | review | 0.23, 1.10, 1.26, 1.22 | Open | |
-| 3.2 | Let the three feature routes follow what is due | CR-3, GAP-scheduled-1 | M | strong | 3.1, 1.10 | Open | |
-| 3.3 | Run the dispatcher from a registry: a cadence and a time budget per job | CR-2, CR-8, DQ-5, GAP-scheduled-3, CR-14, GAP-scheduled-s3 | L | strong | 0.45, 1.26, 1.10, 0.28 | Open | |
-| 3.4 | Give every daily function a ledger row of its own | CR-17, GAP-scheduled-s6 | M | review | 3.3, 3.1, 1.22, 1.26 | Open | |
-| 3.5 | Give every table that grows by time a delete rule | DS-13, CR-10, GAP-database-s6 | M | strong | 0.2 | Open | |
-| 3.6 | Let per-store jobs find due work by a mark, and look hourly | DQ-15, CR-16 | M | review | 3.3, 1.10, 0.28 | Open | |
+| 3.2 | Let the three feature routes follow what is due | CR-3, GAP-scheduled-1 | M | strong | 3.1, 1.10, 1.9 | Open | |
+| 3.3 | Run the dispatcher from a registry: a cadence and a time budget per job | CR-2, CR-8, DQ-5, GAP-scheduled-3, CR-14, GAP-scheduled-s3 | L | strong | 0.45, 1.26, 1.10, 0.28, 0.31, 0.2, 1.13, 1.18 | Open | |
+| 3.4 | Give every daily function a ledger row of its own | CR-17, GAP-scheduled-s6 | M | review | 3.3, 3.1, 1.22, 1.26, 0.31 | Open | |
+| 3.5 | Give every table that grows by time a delete rule | DS-13, CR-10, GAP-database-s6 | M | strong | 0.2, 3.4 | Open | |
+| 3.6 | Let per-store jobs find due work by a mark, and look hourly | DQ-15, CR-16 | M | strong | 3.3, 1.10, 0.28 | Open | |
 | 3.7 | Call the PDF route when a document waits | CR-11, DD-12 | S | review | 3.1 | Open | |
 | 3.8 | Drop the duplicate idempotency table and the leftover schema, after a verified dump | DS-14 | S | review | 0.2 | Open | |
 | 3.9 | Keep one kaizenaflow.com | FM-3, FT-5, DS-6 | L | strong |  | Open | |
@@ -228,20 +228,20 @@ commit as the fix.
 | 3.13 | Give the five file imports one core | CP-1, FM-6 | M | strong | 1.17 | Open | |
 | 3.14 | Draw Work once for store and account, and keep one Domains move page | CP-5, FM-10, GAP-code-s5 | M | review | 1.17, 3.13 | Open | |
 | 3.15 | Keep one of each small thing: helpers, SQL fragments, English word lists | CP-8, CP-16, FM-12, CP-9, DD-7, CP-13 | M | review | 1.17, 3.13 | Open | |
-| 3.16 | Draw an order's totals from one part | CP-12 | S | review |  | Open | |
+| 3.16 | Draw an order's totals from one part | CP-12 | S | review | 2.2 | Open | |
 | 3.17 | Keep one stored page shape | PM-9, DD-9 | M | strong | 0.46 | Open | |
 | 3.18 | Build twice per push, and lint and type-check once | TC-7 | M | strong | 0.38, 1.20 | Open | |
-| 3.19 | Let a burst of pushes share one deploy | CA-2 | S | review | 0.38, 1.21 | Open | |
+| 3.19 | Let a burst of pushes share one deploy | CA-2 | S | review | 0.38, 1.21, 0.43 | Open | |
 | 3.20 | Show how long due work waits, and say so when it is too long | GAP-scheduled-s4 | S | review | 3.1, 1.22 | Open | |
 
 **Phase 4: Tidy**
 
 | Step | What | Closes | Effort | Who | After | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| 4.1 | Build the admin kit and move action files onto the shared wrapper, area by area | CP-3, CP-7 | L | strong | 1.17, 3.14 | Open | |
+| 4.1 | Build the admin kit and move action files onto the shared wrapper, area by area | CP-3, CP-7 | L | review | 1.17, 3.14 | Open | |
 | 4.2 | Fold the remaining twins | CP-6, FM-9, CP-11, FM-11, GAP-code-s6 | M | strong | 1.17, 3.16, 3.10, 4.1 | Open | |
 | 4.3 | Tidy the tests' side: exports only a test keeps alive, shared mocks and one tree walker | DD-2, CP-15, TC-11, TC-10 | M | strong | 1.17, 3.15 | Open | |
-| 4.4 | Make the last reads fetch what they show | AD-6, AD-11, AD-15, DQ-10, DS-11 | M | review | 1.9, 2.32 | Open | |
+| 4.4 | Make the last reads fetch what they show | AD-6, AD-11, AD-15, DQ-10, DS-11 | M | strong | 1.9, 2.32 | Open | |
 | 4.5 | Measure everything again, and read each area against its bar | SG-11, SF-11, GAP-surface-s4 | M | strong | 4.1, 4.2, 4.3, 4.4, 1.20, 1.8, 1.21 | Open | |
 | 4.6 | Let a logged time entry be corrected in Work, and delete two invoice actions no screen uses |  | S | cheap |  | Open | |
 | 4.7 | Say that live drills are a console tool |  | S | cheap |  | Open | |
@@ -253,6 +253,9 @@ Change log:
   panel. Nothing started.
 - 12 Nov 2026: the panel's challengers and critic closed every gap to an A (151 steps); the owner's answers written into
   the steps; a brief per step written for a smaller model to carry out. Nothing started.
+- 12 Nov 2026: every brief's rating checked by a blind second reviewer (agreed on 129 of 151; a judge settled 22), and each
+  brief checked against the code and the briefs before it: 539 errors fixed in the briefs, 79 reported ones found not to be
+  errors. Ratings now 29 cheap, 72 review, 50 strong. Nothing started.
 
 ## 1. The headline
 

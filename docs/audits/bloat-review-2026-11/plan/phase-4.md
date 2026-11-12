@@ -12,7 +12,7 @@ Admin form fields, tables and loading skeletons are spelled out per file (284 cl
 - **Effort:** L. **Areas it moves:** The code itself.
 - **Done when:** The kit's field, table and skeleton parts exist; a per-file ratchet in src/server/ratchet.baseline.json fails a new file that declares a class constant or a hand-made table and lets each file's count only fall; no 'use server' file under src/app/admin defines a local guard wrapper (23 today), before step 4.5; and unwrappedActionFiles is 209 or lower (232 today).
 - **Platform:** The platform admin's screens use the same kit and platformAction(), and convert with their areas.
-- **To carry it out:** [steps/4.1.md](steps/4.1.md) (strong)
+- **To carry it out:** [steps/4.1.md](steps/4.1.md) (review)
 
 ## 4.2 Fold the remaining twins
 
@@ -42,7 +42,7 @@ Three screens read more than they draw: the platform Home holds its first paint 
 - **Effort:** M. **Areas it moves:** What the server loads and asks; The database.
 - **Done when:** Before step 4.5, src/server/admin-statements.baseline.json holds the platform Home's loaders at 11 or fewer (18 today), the Payments page at 7 or fewer in 2 waves and the orders list at 2 fewer than its first figure; theme-store.int.test.ts asserts that loadCards() reads no snapshot key; and src/server/sandbox.int.test.ts has a case where two purges started together both finish.
 - **Platform:** The platform Home is the first of the three screens: the platform gets what the store Home got in step 2.32.
-- **To carry it out:** [steps/4.4.md](steps/4.4.md) (review)
+- **To carry it out:** [steps/4.4.md](steps/4.4.md) (strong)
 
 ## 4.5 Measure everything again, and read each area against its bar
 

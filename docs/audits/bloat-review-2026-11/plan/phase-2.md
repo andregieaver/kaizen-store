@@ -256,7 +256,7 @@ Every admin page and action loads all 67 areas in both languages: 3.46 MB of cat
 - **Done when:** admin-text-reach.scan.test.ts holds every admin entry to a median of at most 30 areas and 1.31 MB of catalogue source (67 areas and 3.46 MB today), src/lib/admin-text.ts holds no table of every area, and the server code of /admin/[store]/orders in a next analyze export is lower than before the step, with its figure in the baseline of step 1.8. The lines of 18 areas, 0.9 MB and 6.5 MB are step 2.50's.
 - **Platform:** The platform's areas are among the 67 and move in the same codemod, and the platform home is one of the admin entries held.
 - **Decided (the owner, 12 November: the recommended way):** No third admin language is planned for the first half year, so this step and step 2.50 stay in phase 2. If one is wanted sooner, both steps land before the language is added. *Asked:* Is a third language for the admin (Swedish or Danish) wanted in the first half year? If yes, this step and step 2.50 move before opening: until they are done each language adds about 1.5 MB to every function.
-- **To carry it out:** [steps/2.25.md](steps/2.25.md) (strong)
+- **To carry it out:** [steps/2.25.md](steps/2.25.md) (review)
 
 ## 2.26 Take English catalogues out of the admin's client code
 
@@ -296,7 +296,7 @@ The page builder loads 3.3 MB of script before its first paint, the rich text ed
 - **Effort:** M. **Areas it moves:** What an owner's browser gets; Interface text.
 - **Done when:** After a build, route-bundle-stats.json shows /admin/[store]/pages/[pageId] at or under 2,300,000 bytes (3,303,372 today) with no 'ProseMirror' chunk in its first load, and no admin route's first-load chunks hold 'Det gäller alla beställningar vännen gör.' (40 routes today).
 - **Platform:** The platform's builder at /admin/platform/pages is the same editor and paints first the same way.
-- **To carry it out:** [steps/2.29.md](steps/2.29.md) (review)
+- **To carry it out:** [steps/2.29.md](steps/2.29.md) (cheap)
 
 ## 2.30 Load the builder's dialogs and each block's field form when they are opened
 
@@ -409,7 +409,7 @@ docs/decisions.md is one 1.33 MB file: 548 lines hold 97.8% of it in lines the s
 - **Effort:** M. **Areas it moves:** The written rules; The code itself.
 - **Done when:** ls docs/decisions/D*.md | wc -l prints 564, awk 'length($0)>500' docs/decisions.md docs/decisions/D*.md | wc -l prints 0 (548 today), no index row is over 200 characters, and src/lib/decisions.scan.test.ts passes.
 - **Platform:** The platform's decisions are files like the stores'.
-- **To carry it out:** [steps/2.40.md](steps/2.40.md) (review)
+- **To carry it out:** [steps/2.40.md](steps/2.40.md) (cheap)
 
 ## 2.41 Retire the frozen Migration versions list and the order to add to it
 
@@ -471,7 +471,7 @@ After step 0.9 zod (116,870 bytes) is still on about 144 admin routes, though on
 - **Effort:** L. **Areas it moves:** What an owner's browser gets.
 - **Done when:** After pnpm build, 'ZodError' is in the first-load chunks of at most 60 routes (432 today, about 144 after step 0.9), /admin/[store]/products/[productId] is at or under 1,100,000 bytes in .next/diagnostics/route-bundle-stats.json (2,130,796 today), and admin-bundle.scan.test.ts names each client module that may reach zod with the schema it runs and fails for a new one.
 - **Platform:** The platform admin's screens are among the routes counted, and the shared src/lib files are split once for both.
-- **To carry it out:** [steps/2.46.md](steps/2.46.md) (review)
+- **To carry it out:** [steps/2.46.md](steps/2.46.md) (strong)
 
 ## 2.47 Take the order writer off pages that only show products
 
@@ -491,7 +491,7 @@ Step 1.12 counts what one placed order writes, but the count has no ceiling and 
 - **Effort:** M. **Areas it moves:** The database; The product's surface; What the server loads and asks.
 - **Done when:** The write budget of step 1.12 asserts the four ceilings and the 2 ms line and passes in pnpm test:int, and it fails on a scratch per-line statement added to insertOrderLine() in src/server/order-insert.ts.
 - **Platform:** placeOrder serves every store, Kaizena Flow's own store among them; the platform's plan billing goes through Stripe and writes no shop order.
-- **To carry it out:** [steps/2.48.md](steps/2.48.md) (review)
+- **To carry it out:** [steps/2.48.md](steps/2.48.md) (strong)
 
 ## 2.49 Load motion.css where a page uses it
 
@@ -511,4 +511,4 @@ After step 2.25's codemod, 218 modules still import a file of src/lib/admin-mess
 - **Effort:** M. **Areas it moves:** Interface text; What the server loads and asks.
 - **Done when:** admin-text-reach.scan.test.ts lists no importer of src/lib/admin-messages but the area modules, the common words' context file and tests (218 today); the proxy and every beacon reach 0 catalogue files and the storefront layout at most 8 files and 0.21 MB; a median admin page reaches at most 18 areas and 0.9 MB and none over 28 areas and 1.66 MB; a next analyze export shows /admin/[store]/orders at or under 6.5 MB of server code (12,068 KB today); and the walk of src/lib/admin-messages/imports.scan.test.ts from every catalogue file reaches no zod, no component and no file of src/server.
 - **Platform:** The platform admin's pages and Kaizena Flow's own site read the same catalogues, so their entries are in the same scan and fall with the stores'.
-- **To carry it out:** [steps/2.50.md](steps/2.50.md) (review)
+- **To carry it out:** [steps/2.50.md](steps/2.50.md) (strong)
