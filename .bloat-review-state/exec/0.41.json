@@ -1,0 +1,299 @@
+{
+ "id": "0.41",
+ "goal": "CLAUDE.md points at docs/platform.md and at the three working plans in one line, the rules cite only code names that exist, the trackers' rows are short with the open PSI items in one section, all 564 decision rows sit in one table, a decision's number is claimed on main by a script before it is cited, and the parity-wave workflow caps a spec at 30,000 characters.",
+ "why": "Today CLAUDE.md sends architectural work to a 73 KB plan from before multi-tenancy, 5 cited code names do not exist, 17 Progress rows of the code review are over 300 characters (15 over 500), 197 decision rows sit outside the table, and 5 of 24 merges renumbered a decision. After: 0 stale names, 0 rows over 300 characters, 564 rows in one table, and a number is taken by one push that runs no CI and no deploy.",
+ "read_first": [
+  "CLAUDE.md",
+  "docs/decisions.md",
+  "docs/audits/code-review-2026-11.md",
+  "docs/audits/psi-followups.md",
+  ".claude/workflows/parity-wave.js",
+  "src/lib/rules-index.test.ts",
+  ".github/workflows/ci.yml",
+  "vercel.json"
+ ],
+ "depends_on": [
+  {
+   "id": "0.43",
+   "why": "its test src/lib/docs-budget.scan.test.ts holds CLAUDE.md's bytes outside the index; this step's edit of CLAUDE.md is sized to pass it, and the name check is added to that test file"
+  },
+  {
+   "id": "0.40",
+   "why": "it wrapped the long prose lines of docs/audits/code-review-2026-11.md and docs/audits/psi-followups.md; edit those files as it left them"
+  },
+  {
+   "id": "0.1",
+   "why": "it commits docs/audits/bloat-review-2026-11.md with a Progress table, which CLAUDE.md's new shared line names"
+  }
+ ],
+ "commits": [
+  {
+   "title": "The rules cite code that exists: five stale names corrected, the features list named, and a check",
+   "changes": [
+    {
+     "file": "docs/rules/admin/commerce.md",
+     "action": "edit",
+     "how": "Two names. (1) In the rule about custom fields (search for the text `CustomFieldsView`; one hit) replace `CustomFieldsView` with `CustomFieldView` (the component exported at src/components/custom-fields-view.tsx). (2) In the bookings rule (search for `freeUnitsFor()`; one hit) replace `freeUnitsFor()` with `freeUnits()` (exported from src/lib/booking-ranges.ts). Change nothing else on those lines. Line numbers moved when step 0.40 wrapped the file: find by the text."
+    },
+    {
+     "file": "docs/rules/admin/website.md",
+     "action": "edit",
+     "how": "Three names. (1) Search for `revertGrids()` (one hit, in the rule 'Custom grid items and the carousel'): replace `revertGrids()` with `columnsBeatGrid()` (exported from src/lib/replicate-grid.ts and used with weakGrids() in src/server/replicate.ts). (2) Search for `TemplatesPreview`: it is in the heading '## Page layouts and preview (D127, ...' and in the first line of the bullet under it: replace both with `TemplatePreviewDialog` (exported from src/components/admin/templates-preview.tsx). (3) Search for `modalPanelStyle()` (one hit, in the Modals rule): replace with `modalPanelClass()` (exported from src/components/page-parts.tsx)."
+    },
+    {
+     "file": "CLAUDE.md",
+     "action": "edit",
+     "how": "One word in the Admin index: in the line that starts '- Page layouts and preview (D127,' replace `TemplatesPreview` with `TemplatePreviewDialog`, so the line still equals the start of the heading in docs/rules/admin/website.md (src/lib/rules-index.test.ts compares them). The line must stay at 200 characters or fewer: if it would pass 200, cut words from its end and keep the trailing '…'."
+    },
+    {
+     "file": "docs/rules/admin/platform.md",
+     "action": "edit",
+     "how": "In the rule 'Store features (D178, ...' the first sentence lists the switches in brackets: '(`subscriptions`, `boxes`, `appointments`, `bookings`, `countries`, `languages`, `currencies`, `business`, `bonus`, `referrals`)'. Replace that bracket and its list with '(the ids are `FEATURE_IDS` in `src/lib/store-features.ts`)'. Keep the words before and after."
+    },
+    {
+     "file": "docs/store-features.md",
+     "action": "edit",
+     "how": "In the table of section '## 1. The features' add two rows, in the order of FEATURE_IDS in src/lib/store-features.ts: after the `bookings` row add '| `gift_cards` | Gift cards | Selling | `shop` | new (D300) |', and after the `referrals` row add '| `reviews` | Product reviews | Customers | `shop` | new (D301) |'. Directly under the table add one sentence: 'The list in code is the truth: `FEATURE_IDS` in `src/lib/store-features.ts` (14 ids); this table describes them.'"
+    },
+    {
+     "file": "docs/wave-6-catalogue.md",
+     "action": "edit",
+     "how": "One hit of `CustomFieldsView` (search for it): replace with `CustomFieldView`. This is a spec, not a rule, but it is the only other doc outside docs/audits that cites one of the five names."
+    },
+    {
+     "file": "scripts/lib/rule-names.mjs",
+     "action": "create",
+     "how": "Plain Node ESM, node built-ins only. Export staleRuleNames(root): the cited names the code does not have, as sorted strings 'file: name'. Build the code's vocabulary once: walk src, scripts, e2e and wordpress-plugin under root (skip folders named node_modules and .next), read every file with the extension .ts, .tsx, .mjs, .js, .cjs, .css, .sql, .json or .php that is under 2,000,000 bytes, plus every .sql file directly in supabase/migrations and package.json, and add every match of /[A-Za-z_$][\\w$]*/g to one Set. Then read CLAUDE.md, docs/rules/storefront.md and every .md file in docs/rules/admin. In each take every span between single backticks on one line (/`([^`\\n]+)`/g). Check a span only when it is (a) a function name, /^(?:[\\w$]+\\.)*([A-Za-z_$][\\w$]*)\\(\\)$/ : the last identifier must be in the Set; or (b) a component or type name, /^[A-Z][a-z0-9]+(?:[A-Z][A-Za-z0-9]*)+$/ : the span must be in the Set. Anything else is not checked. On 12 November 2026 this found exactly six lines for five names (TemplatesPreview in two files, CustomFieldsView, freeUnitsFor(), modalPanelStyle(), revertGrids()) in under two seconds. Step 1.1 widens this function to paths, constants and SQL names: keep the export's name."
+    },
+    {
+     "file": "src/lib/docs-budget.scan.test.ts",
+     "action": "create",
+     "how": "Marked create only because the file is not in the repo today: step 0.43 makes it. It must exist when you start (if it is missing, stop): EDIT it and never overwrite it. Add, and keep everything that is there: import { staleRuleNames } from '../../scripts/lib/rule-names.mjs'; a case 'the rules cite only functions and components that exist': expect(staleRuleNames(process.cwd())).toEqual([]) with the message 'A rule cites a name the code no longer has: read the code and correct the rule.'; and a planted case: make a temp folder with fs.mkdtempSync(path.join(os.tmpdir(), 'names-')), write CLAUDE.md with the text 'x', docs/rules/storefront.md with the text 'Drawn by `NoSuchPartView`, see `noSuchHelper()` and `realHelper()`.', an empty folder docs/rules/admin, and src/x.ts with 'export function realHelper() {}', then expect staleRuleNames(tmp) to equal ['docs/rules/storefront.md: NoSuchPartView', 'docs/rules/storefront.md: noSuchHelper()'], and remove the folder in a finally. The function must not throw when scripts, e2e, wordpress-plugin, supabase/migrations or package.json are missing in the temp folder: skip what does not exist."
+    }
+   ],
+   "checks": [
+    "rg -n 'CustomFieldsView|freeUnitsFor|revertGrids|TemplatesPreview|modalPanelStyle' CLAUDE.md docs --glob '!docs/audits/**' --glob '!docs/decisions.md': prints nothing",
+    "rg -c FEATURE_IDS docs/store-features.md docs/rules/admin/platform.md: prints 1 or more for each file",
+    "pnpm exec vitest run src/lib/docs-budget.scan.test.ts src/lib/rules-index.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Decisions: the 197 rows after Migration versions go back in the Settled table, and a test fails on a number used twice",
+   "changes": [
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "The Settled table starts at the line '| # | Decision | Date | Consequence |' and its rows run to the row that starts '| D369 |' (line 378 today), followed by a blank line and '### Selling from Norway to Sweden and Denmark'. A second block of 197 rows, from the row that starts '| D366 |' to the row that starts '| D573 |' (lines 708 to 904 today), stands directly after the last sentence of '### Migration versions' ('...run `supabase migration repair` once to align the history.') with no table header, so Markdown does not draw it as a table. Move that whole block, unchanged and in its order, to directly after the '| D369 |' row (no blank line between). Leave exactly one blank line between the end of the Migration versions text and '## Open'. Do the move with a short node one-liner or the editor's cut and paste of whole lines; never retype a row. If rows were added after D573 since this was written, they are part of the block: the block is every line that starts '| D' after the heading '### Migration versions'."
+    },
+    {
+     "file": "src/lib/decisions.scan.test.ts",
+     "action": "create",
+     "how": "A Vitest test that reads docs/decisions.md from process.cwd(). Three cases. (1) 'every decision row is in the Settled table': take the indexes of all lines matching /^\\| D\\d+ \\|/; they must be one unbroken run of consecutive lines, and the two lines before the first must be '| # | Decision | Date | Consequence |' and '|---|---|---|---|'. (2) 'no decision number is used twice': collect the ids with /^\\| (D\\d+) \\|/gm and expect the list of ids that appear more than once to equal []; the message: 'Two decisions share a number: the later one takes a new number with node scripts/claim-decision.mjs.' (3) 'a claimed number gets its text within 14 days': for every row that contains '(claimed ' and 'text follows)', read the date in /\\(claimed (\\d{4}-\\d{2}-\\d{2}), text follows\\)/ and expect it to be less than 14 days before today; a row without that marker is not looked at. Do not hard-code the count 564 in the test: decisions are added every day."
+    }
+   ],
+   "checks": [
+    "grep -c '^| D[0-9]' docs/decisions.md: prints the same number as before the move (564 on 12 November)",
+    "awk '/^## Open/{o=1} o && /^\\| D[0-9]/' docs/decisions.md | wc -l and awk '/^### Migration versions/{m=1} m && /^\\| D[0-9]/' docs/decisions.md | wc -l: both print 0",
+    "git diff --stat docs/decisions.md: the same number of insertions and deletions (rows moved, none changed)",
+    "pnpm exec vitest run src/lib/decisions.scan.test.ts src/lib/docs-content.test.ts src/lib/parity.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "A decision's number is claimed on main before it is cited: scripts/claim-decision.mjs",
+   "changes": [
+    {
+     "file": "scripts/lib/claim-decision.mjs",
+     "action": "create",
+     "how": "The pure part, node built-ins only. Export: (1) nextDecision(text): the highest n over all matches of /^\\| D(\\d+) \\|/gm, plus one; gaps (D541 to D549 are unused) are never reused; throw an Error('No decision rows found') when there is no match. (2) stubRow(id, title, date): the string '| D' + id + ' | **' + title + '** (claimed ' + date + ', text follows) | ' + date + ' | |' where date is YYYY-MM-DD and title has every '|' and line break removed and is cut to 120 characters. (3) withStub(text, id, title, date): throws Error('D' + id + ' is taken') when the text already has a row '| D<id> |'; else returns the text with stubRow inserted as a new line directly after the last line that matches /^\\| D\\d+ \\|/. (4) async claimWith(io, title, date, tries = 5): io is { read: async () => text of docs/decisions.md on origin/main, push: async (newText, message) => true when the push was accepted and false when it was refused because main moved }. Loop up to tries times: text = await io.read(); id = nextDecision(text); ok = await io.push(withStub(text, id, title, date), 'Decision D' + id + ' claimed: ' + title); if ok return id. After the last try throw Error('main kept moving: no number claimed')."
+    },
+    {
+     "file": "scripts/claim-decision.mjs",
+     "action": "create",
+     "how": "The command: node scripts/claim-decision.mjs \"short title\". Uses child_process.execFileSync('git', [...]) only; no force, no checkout, and the working tree and the session's branch are never touched. It refuses with exit 1 and one line when no title is given. Before anything it runs git fetch origin main and checks, on origin/main, the two facts that make a claim free: git show origin/main:.github/workflows/ci.yml must contain the line '      - \"!docs/**\"' and git show origin/main:vercel.json parsed as JSON must have git.deploymentEnabled.main === false; if either is not so, print 'A docs push would run CI or deploy: claim by hand and tell the owner.' and exit 1. Then it calls claimWith with this io. read(): git fetch origin main, remember base = output of git rev-parse origin/main, return the output of git show <base>:docs/decisions.md. push(newText, message): blob = git hash-object -w --stdin with newText as input; make a temporary index file path in os.tmpdir(); with the environment GIT_INDEX_FILE set to it run git read-tree <base>, then git update-index --cacheinfo 100644,<blob>,docs/decisions.md, then git write-tree to get tree; commit = git commit-tree <tree> -p <base> -m <message>; then git push origin <commit>:refs/heads/main inside a try: on success return true; on failure fetch again and return false when origin/main is no longer <base> (main moved), and rethrow when it is still <base> (no right to push, no network). Delete the temporary index in a finally. On success print exactly one line: 'D<id>' and nothing else on standard output (notes go to standard error), so a caller can read the number. The date is today's in UTC, new Date().toISOString().slice(0, 10). When step 2.40 has split the decisions into files it changes this script; do not build that now."
+    },
+    {
+     "file": "src/lib/claim-decision.test.ts",
+     "action": "create",
+     "how": "A Vitest unit test importing nextDecision, stubRow, withStub and claimWith from '../../scripts/lib/claim-decision.mjs'. Cases: (a) nextDecision of a text with rows D1, D540 and D550 is 551 (gaps are not reused); (b) withStub puts the stub directly after the last decision row and leaves every other line as it was; (c) withStub throws 'D551 is taken' when the text already has '| D551 |': a second claim of a taken number is refused; (d) claimWith with an io whose first push returns false and whose read then returns a text in which another session's D551 row has appeared returns 552, and the text handed to the second push holds both D551 and D552; (e) claimWith throws after five refused pushes and has called push five times; (f) stubRow removes a '|' from a title."
+    },
+    {
+     "file": "docs/parity/WAVES.md",
+     "action": "edit",
+     "how": "In the numbered step '3. **Record.**' replace 'Add the decision row (D154 onward)' with 'Claim the decision's number first (`node scripts/claim-decision.mjs \"title\"`), then write its row (D154 onward)'. In the same sentence replace 'add the CLAUDE.md\\n   bullet (drafts are in the `rerate` report)' with 'add the rule under its heading in `docs/rules` and its one index line in CLAUDE.md (drafts are in the `rerate` report)'."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/claim-decision.test.ts: all six cases pass",
+    "node scripts/claim-decision.mjs: exits 1 with the line that asks for a title, and git status shows no change",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Trackers: a row is one line, the open PSI items stand first, and CLAUDE.md names the three plans in one line",
+   "changes": [
+    {
+     "file": "docs/audits/code-review-2026-11.md",
+     "action": "edit",
+     "how": "Between '## Progress' and '**Change log**' 17 table rows are over 300 characters (list them with awk 'NR>26 && /^\\|/ && length($0)>300 {print NR, length($0)}' docs/audits/code-review-2026-11.md after finding the section; the ids on 12 November: 0.1 to 0.11 without 0.3 being short, and 1.1 to 1.7). For each such row do this, and lose no word: (1) Cut the whole text of its Notes cell (the sixth cell). (2) Leave in the cell only: the dates the note names (as 'D Mon YYYY', comma separated), the decision ids it names (D526, D532, ...), and the words 'see Notes below'. Example: '| 0.2 | Put a cheap gate before the fast deploy, and go back by itself | FH1 | M | In progress | 9 Nov 2026, D526; see Notes below |'. Do not change the Status cell or any other cell. (3) Add a new part directly under the last line of the change log's list and before the heading '## 1. The headline': a line '**Notes on the steps**', a blank line, and for every moved note one paragraph that starts '**Step <id>.** ' followed by the note's text unchanged, wrapped to lines of at most 130 characters (run node scripts/wrap-docs.mjs afterwards; it wraps anything over 500, and wrap the rest by hand at spaces only). Then make the table's own rule exact: in the bullet list under '## Progress' replace the bullet that starts '- When a step is done, set Done and put the date and the commit in Notes.' with '- When a step is done, set Done and put the date, the commit and the decision's id in Notes: at most 200 characters. What was found goes in the decision and in one paragraph under **Notes on the steps** below. Check the step's \"done when\" before ticking it.' Wrap the bullet in that list that is over 300 characters (it starts '- The grades in the headline's scorecard') to lines of at most 130 characters with a two-space continuation indent. Add one line to the change log: '- <today>: notes moved out of the table into Notes on the steps; a row is at most 300 characters (bloat review step 0.41).'"
+    },
+    {
+     "file": "docs/audits/psi-followups.md",
+     "action": "edit",
+     "how": "The file has 12 unticked items (rg -n '^\\s*- \\[ \\]' lists them; their ids on 12 November: AGT-14; REL-04; REG-06, REG-07, REG-08; REG-02 (legal review); ACC-09, UX-12; SEC-05, SEC-07 (4); AST-09, AST-01, AGT-14 (6); REL-09, REL-02, DATA-03 (7); REG-02 (the notice names the AI); REG-11 (C2PA); REL-06; PERF-01) among 93 ticked ones. Add a section directly under the introduction paragraph and before '## Decided': the heading '## Open', a blank line, the sentence 'A new deferred item goes here and moves to its dated section when it is ticked.', a blank line, then the 12 items. An item is its '- [ ]' line plus every following line that is indented, up to the next line that starts with '- ' at the item's own indent, a blank line or a heading. Cut each item whole from where it stands and paste it under Open, in the file's order, with its indent reduced so '- [ ]' starts at column 1 and its later lines start with six spaces. Change no word. Then make every line of the file above '## Done (2026-10-24)' at most 300 characters by breaking at spaces (later lines of an item indented six spaces). Leave the 93 ticked items where they are. In the introduction paragraph add after its last sentence: ' Open items are under **Open**.'"
+    },
+    {
+     "file": "CLAUDE.md",
+     "action": "edit",
+     "how": "Two edits, and the file must not grow (wc -c before and after; step 0.43's test holds the bytes outside the index). Edit 1, lines 5 and 6: replace the text \"The research and\\nphased build plan are in `docs/plan.md`; read it before architectural work.\" (it spans the line break after 'The research and') with \"How it is\\nbuilt is in `docs/platform.md`: read it before architectural work (`docs/plan.md` is older research: open a cited section only).\" (shown here as JSON strings: \\n is a real line break). Edit 2, the last three bullets of the file: replace everything from '- Deferred work from the PSI audit' to the end of the file (488 bytes: the PSI bullet and the code review bullet with its three lines) with these four lines, then one newline at the end of the file: \"- Working plans: `docs/audits/psi-followups.md` (Open section), `docs/audits/code-review-2026-11.md` and\\n  `docs/audits/bloat-review-2026-11.md`. Find a step's row by id; in the same change set it to Done with date and commit.\\n- Claim a decision's number with `node scripts/claim-decision.mjs \\\"title\\\"` before citing it, never from the file.\\n- Searches skip dated reports, evidence folders and `supabase/archive`: name the path to search one.\". Together the two edits change the file by -1 bytes. The words 'Read that table' and 'read it before architectural work' after docs/plan.md are gone; 'bloat-review-2026-11' is on exactly one line."
+    },
+    {
+     "file": "README.md",
+     "action": "edit",
+     "how": "In '## Start here', item 2 reads 'Skim [`docs/plan.md`](docs/plan.md) (why it is built this way) and [`docs/platform.md`](docs/platform.md) (stores,\\n   members, plans: how one deployment serves many stores).' Replace it with '2. Read [`docs/platform.md`](docs/platform.md) (stores, members, plans: how one deployment serves many stores).\\n   [`docs/plan.md`](docs/plan.md) is the research behind the first build, written before the platform was\\n   multi-tenant: open the section a doc cites, not the whole.'"
+    }
+   ],
+   "checks": [
+    "awk '/^## Progress/{p=1} /^\\*\\*Change log\\*\\*/{p=0} p && /^\\|/ && length($0)>300' docs/audits/code-review-2026-11.md | wc -l: prints 0 (17 before)",
+    "awk '/^## Done/{exit} length($0)>300' docs/audits/psi-followups.md | wc -l: prints 0",
+    "awk '/^## Done/{exit} /^- \\[ \\]/' docs/audits/psi-followups.md | wc -l: prints 12, and rg -c '^\\s*- \\[ \\]' docs/audits/psi-followups.md prints 12 (every open item is before the first Done heading)",
+    "rg -c '^\\s*- \\[x\\]' docs/audits/psi-followups.md: prints 93 (no ticked item was lost)",
+    "rg -n 'plan\\.md`; read it before architectural work|Read that table' CLAUDE.md: prints nothing",
+    "rg -c 'bloat-review-2026-11' CLAUDE.md: prints 1; rg -c 'docs/platform.md' CLAUDE.md: prints 2 or more",
+    "wc -c CLAUDE.md: not above the figure before this commit",
+    "rg -c 'Skim \\[`docs/plan.md`\\]' README.md: prints nothing",
+    "pnpm exec vitest run src/lib/docs-budget.scan.test.ts src/lib/rules-index.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "The parity-wave workflow caps a spec at 30,000 characters and each agent reads its own part",
+   "changes": [
+    {
+     "file": ".claude/workflows/parity-wave.js",
+     "action": "edit",
+     "how": "Three edits of prompt strings; change no code around them. (1) In the string that starts 'The contract is ' (line 74 today) replace 'read it completely before anything else' with 'read its sections 1 to 5 and the part for your area before anything else'. (2) In the string that starts \"'Write ' + SPEC + ' with these sections:\" (line 188 today): directly after 'with these sections' insert ', at most 30,000 characters in all (put long tables of evidence in the rows, not in the spec)'; and at its end replace 'advisors to check, drafts of the decision row and the CLAUDE.md bullet.' with 'advisors to check. The drafts of the decision row and of the rule go in your final report, not in the spec.' (3) Two places name 'the CLAUDE.md bullet': the schema field near line 175, claudeMdDraft: { type: 'string', description: 'the CLAUDE.md bullet for the lead; empty if the skeptic step' }, and the string near line 271 'drafts of the decision row and the CLAUDE.md bullet (what, where it lives, the rules: in the style of the existing bullets)'. Keep the property name claudeMdDraft (other code may read it) and change only the words: the description becomes 'the rule for docs/rules (its heading and its bullet) and its one index line of at most 200 characters for CLAUDE.md, for the lead; empty if the skeptic step', and the string becomes 'drafts of the decision row and of the rule for docs/rules with its one index line for CLAUDE.md (what, where it lives, the rules: in the style of the existing rules)'. Check the file still parses: node --check .claude/workflows/parity-wave.js."
+    },
+    {
+     "file": "docs/parity/WAVES.md",
+     "action": "edit",
+     "how": "Where the file describes the Spec phase (the line that starts 'Phases: **Spec** (contract from the rows, the plan and CLAUDE.md)') add after that paragraph one sentence: 'A spec is at most 30,000 characters; each later agent reads its sections 1 to 5 and the part for its own area.'"
+    }
+   ],
+   "checks": [
+    "rg -c 'read it completely' .claude/workflows/parity-wave.js: prints nothing (1 before)",
+    "rg -c '30,000 characters' .claude/workflows/parity-wave.js docs/parity/WAVES.md: prints 1 for each",
+    "rg -c 'CLAUDE.md bullet' .claude/workflows/parity-wave.js: prints nothing",
+    "node --check .claude/workflows/parity-wave.js: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  },
+  {
+   "title": "Decision claimed for real: the row of this step",
+   "changes": [
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "After the four commits above are pushed, run node scripts/claim-decision.mjs \"Rules say what is so, and a decision's number is claimed on main\" from the cloud session. It prints a number, for example D574, and has pushed one commit to main that adds the stub row. Open the repository's Actions page and Vercel's deployments: that commit must have started no CI run and no deployment. Then git pull, and replace the stub row's text with the decision's text (see docs), keeping the number, and push. This is the 'one decision number claimed for real' of the step's done-when."
+    }
+   ],
+   "checks": [
+    "node scripts/claim-decision.mjs \"...\": prints one line 'D<number>' and exits 0",
+    "gh run list --branch main --limit 3 (or the Actions page): no run for the claim's commit",
+    "git log origin/main -1 --stat after the claim: one file changed, docs/decisions.md, 1 insertion",
+    "pnpm exec vitest run src/lib/decisions.scan.test.ts: exits 0 after the stub's text is written"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/docs-budget.scan.test.ts",
+   "proves": "fails when CLAUDE.md or docs/rules cites a function or a component the code does not have (5 names today, 0 after)"
+  },
+  {
+   "file": "src/lib/decisions.scan.test.ts",
+   "proves": "fails when a decision number appears twice, when a decision row stands outside the Settled table, and when a claimed stub is older than 14 days"
+  },
+  {
+   "file": "src/lib/claim-decision.test.ts",
+   "proves": "fails when a taken number can be claimed again, when a gap is reused, or when a refused push does not lead to the next number"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg -n 'plan\\.md`; read it before architectural work' CLAUDE.md",
+   "expect": "prints nothing, and CLAUDE.md line 6 names docs/platform.md"
+  },
+  {
+   "check": "pnpm exec vitest run src/lib/docs-budget.scan.test.ts",
+   "expect": "passes, with the case that finds 0 cited names missing from the code (5 before this step) and the planted case"
+  },
+  {
+   "check": "awk '/^## Progress/{p=1} /^\\*\\*Change log\\*\\*/{p=0} p && /^\\|/ && length($0)>300' docs/audits/code-review-2026-11.md | wc -l",
+   "expect": "0"
+  },
+  {
+   "check": "pnpm exec vitest run src/lib/claim-decision.test.ts",
+   "expect": "passes; the case 'D551 is taken' shows a second claim of a taken number refused"
+  },
+  {
+   "check": "awk '/^## Done/{exit} /^- \\[ \\]/' docs/audits/psi-followups.md | wc -l",
+   "expect": "12, the same as rg -c '^\\s*- \\[ \\]' over the whole file"
+  },
+  {
+   "check": "grep -c '^| D[0-9]' docs/decisions.md and pnpm exec vitest run src/lib/decisions.scan.test.ts",
+   "expect": "564 plus the decisions added since 12 November, all in one unbroken run of lines in the Settled table (rows D366 to D573 are back in it); the test passes"
+  },
+  {
+   "check": "rg -c FEATURE_IDS docs/store-features.md",
+   "expect": "1 or more (none before)"
+  },
+  {
+   "check": "The claim of commit 6, then the Actions page and Vercel's deployment list",
+   "expect": "one number printed, one commit on main that changes only docs/decisions.md, no CI run and no deployment for it"
+  },
+  {
+   "check": "rg -c '30,000 characters' .claude/workflows/parity-wave.js",
+   "expect": "1"
+  }
+ ],
+ "after_deploy": [
+  "Nothing to read in production: the step changes docs, tests and scripts only. The claim's commit must show no deployment in Vercel."
+ ],
+ "docs": [
+  "docs/decisions.md: the row claimed in commit 6. It records: CLAUDE.md's first pointer is docs/platform.md; the three working plans are named in one line and a step's row is found by its id; a tracker row is at most 300 characters with notes under 'Notes on the steps'; open PSI items stand under Open; a decision's number is claimed with scripts/claim-decision.mjs (a docs-only push: no CI, no deploy) and a test fails on a number used twice; the rules' cited functions and components are checked; a wave spec is at most 30,000 characters. Keep the row under 4,000 bytes.",
+  "docs/rules/budgets.md: add under its list of checks one line each for src/lib/decisions.scan.test.ts (no number twice, rows in one table, stubs under 14 days) and the name check in src/lib/docs-budget.scan.test.ts.",
+  "docs/audits/bloat-review-2026-11/findings/written-rules/DC-9.md: note that its three edits were made now by the plan's choice, not on the day a wave is next run.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.41 to Done with the date and the commit hash, in the last commit of the step. Keep the row at 300 characters or fewer. If the table has no row for 0.41 (steps 0.43 to 0.46 were added after the table was first committed), add the row in id order with the step's title from this brief."
+ ],
+ "do_not": [
+  "Do not move, shorten or delete docs/plan.md: 12 docs link it by path.",
+  "Do not retype or reword a decision row, a tracker note or a PSI item: they are moved whole.",
+  "Do not drop a fact from a Progress note: the whole note goes under 'Notes on the steps'.",
+  "Do not renumber any existing decision, and do not reuse the gap D541 to D549.",
+  "Do not let scripts/claim-decision.mjs force-push, check out a branch, or touch the working tree; it pushes one new commit on top of origin/main.",
+  "Do not add 'docs/**' back to CI's paths or switch on Vercel's own deploys of main: a claim would then run CI or deploy.",
+  "Do not rename the property claudeMdDraft in .claude/workflows/parity-wave.js, and do not change the workflow's steps or its limit of waves 0 to 9.",
+  "Do not add any other sentence to CLAUDE.md, and do not add a line of its own for the bloat review there (the owner's answer): it is named once, in the shared line.",
+  "Do not replace `revertGrids()` by a name you have not seen exported in src/lib/replicate-grid.ts.",
+  "Do not change src/lib/rules-index.test.ts."
+ ],
+ "stop_if": [
+  "One of the five replacement names is not exported where the brief says (rg -n 'export function (CustomFieldView|TemplatePreviewDialog|freeUnits|weakGrids|columnsBeatGrid|modalPanelClass)\\b|export const freeUnits' src): report it; do not guess another name.",
+  "staleRuleNames() finds more than the five names before the fixes, or any after them: report the list; do not add an exception list.",
+  "wc -c CLAUDE.md is larger after commit 4, or src/lib/docs-budget.scan.test.ts fails on the bytes outside the index: report the two figures; do not cut other text from CLAUDE.md.",
+  "The text to replace in CLAUDE.md is not there as quoted (another step changed the last bullets): stop and report what is there.",
+  "The count of rows that start '| D' changes during the move in docs/decisions.md.",
+  "The claim's push is refused for a reason other than main having moved (no right to push from this session): stop and tell the owner; do not push the stub another way.",
+  "The claim's commit starts a CI run or a deployment: stop, tell the owner, and do not claim again.",
+  "A PSI item cannot be told apart from the next (its later lines are not indented): report the item."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "Every edit is specified, but the step moves 197 decision rows, rewrites 17 tracker rows, edits CLAUDE.md and adds a script that pushes to main, so a stronger model should read the diff of commits 2 to 4 and the script before the first real claim.",
+ "checked_in_code": "I opened CLAUDE.md, docs/decisions.md, both trackers, the workflow file, ci.yml and vercel.json. The decisions file is as the step says: 367 rows in the table (lines 12 to 378), 197 rows (D366 to D573) after the Migration versions text at lines 708 to 904, 564 in all, no number twice. I ran the name check as specified: it finds exactly the five names (TemplatesPreview is also in CLAUDE.md's index line, so heading and line change together), and I looked up each replacement in src: CustomFieldView, freeUnits, columnsBeatGrid (the function that took revertGrids' job beside weakGrids), TemplatePreviewDialog and modalPanelClass. Corrections: the code review has 17 rows over 300 characters, not 96; DC-6's rewrite of each note needs judgement, so the brief moves every note whole under a new heading; DC-9's 'drop the CLAUDE.md bullet draft' becomes 'draft the rule and its index line', because CLAUDE.md still keeps one line per rule until step 2.1; and the new CLAUDE.md text was sized here to change the file by -1 bytes, since step 0.43 holds its size."
+}

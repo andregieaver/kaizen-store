@@ -174,7 +174,7 @@
     "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts src/server/blogs.int.test.ts src/server/seo.int.test.ts: pass (find the feed's and the sitemap's tests with rg -l 'blogFeed|sitemap' src -g '*.test.ts'); they hold the feed's entries and the sitemap's lines unchanged",
     "pnpm exec vitest run src/server/pages-list.scan.test.ts src/lib/page-list-facts.test.ts src/server/use-cache.scan.test.ts: pass",
     "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
-    "pnpm build && pnpm exec playwright test e2e/blog.spec.ts e2e/sitemap.spec.ts e2e/store-pages.spec.ts: pass (find the sitemap and llms specs with rg -l 'sitemap|llms' e2e)"
+    "pnpm build && pnpm exec playwright test e2e/blog.spec.ts e2e/blog-feed.spec.ts e2e/smoke.spec.ts e2e/legal-pages.spec.ts e2e/store-pages.spec.ts: pass (smoke.spec.ts and legal-pages.spec.ts read the sitemap and llms.txt: rg -l 'sitemap|llms' e2e)"
    ]
   },
   {

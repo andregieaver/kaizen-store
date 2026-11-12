@@ -1,0 +1,89 @@
+{
+ "id": "0.43",
+ "goal": "A test holds the bytes of CLAUDE.md outside its Storefront and Admin index at today's figure or less and every index line at 200 characters or fewer, and docs/rules/budgets.md exists as the home for the sentences this plan would otherwise add to CLAUDE.md.",
+ "why": "CLAUDE.md is 43,361 bytes (448 lines), of which 12,555 are outside the index, and nothing stops it growing; steps 0.6, 0.9 and 0.38 each want to add a sentence, about 1 KB together. After: the 12,555 can only fall, and those sentences go to docs/rules/budgets.md.",
+ "read_first": [
+  "CLAUDE.md",
+  "src/lib/rules-index.test.ts",
+  "src/server/ratchet.scan.test.ts",
+  "src/server/ratchet.baseline.json",
+  "docs/rules/admin/README.md",
+  "docs/rules/storefront.md"
+ ],
+ "depends_on": [],
+ "commits": [
+  {
+   "title": "CLAUDE.md's core is held from today, and docs/rules/budgets.md opens for the budgets' own sentences",
+   "changes": [
+    {
+     "file": "docs/rules/budgets.md",
+     "action": "create",
+     "how": "A new rule file beside docs/rules/storefront.md (not in docs/rules/admin: src/lib/rules-index.test.ts fails on a file there that its README does not name). Use no line that starts with '## ' followed by words that a CLAUDE.md index line would need; this file is not part of the index. Content, every line at most 130 characters: a title '# Rules: Budgets and checks'; a paragraph: 'Numbers the repository holds, and the checks that hold them. A sentence about a budget, a check or how CI runs goes here, never in CLAUDE.md: CLAUDE.md is loaded by every session and is held at its size (below). Step 1.1 of the bloat review (docs/audits/bloat-review-2026-11.md) adds the table of every baseline file.'; then '## CLAUDE.md' with three lines: 'The bytes of CLAUDE.md outside its Storefront and Admin sections only fall: src/lib/docs-budget.scan.test.ts fails when they rise above src/lib/docs-budget.baseline.json (key claudeOutsideIndex).' 'Inside the two sections a new rule adds one line, at most 200 characters, that equals the start of its heading in docs/rules (src/lib/rules-index.test.ts pairs them).' 'When the figure falls, lower the baseline in the same change: the test says so.'; then '## Sentences from the plan' with one line: 'Steps of the bloat review write their sentence under a heading of their own below this line.' Leave the rest empty."
+    },
+    {
+     "file": "src/lib/docs-budget.baseline.json",
+     "action": "create",
+     "how": "One key, written by hand this once: { \"claudeOutsideIndex\": <n> } followed by a newline, where <n> is what this command prints on the commit you start from: node -e \"const t=require('fs').readFileSync('CLAUDE.md','utf8');const s=t.indexOf('\\n## Storefront\\n'),c=t.indexOf('\\n## Conventions\\n');console.log(Buffer.byteLength(t.slice(0,s))+Buffer.byteLength(t.slice(c)))\". On 12 November 2026 it prints 12555. If it prints less (an earlier step already trimmed CLAUDE.md) write that figure; if it prints more, see stop_if. Step 1.1 adds its own keys to this file with a script and keeps this key."
+    },
+    {
+     "file": "src/lib/docs-budget.scan.test.ts",
+     "action": "create",
+     "how": "A Vitest test, no database, in the style of src/lib/rules-index.test.ts (read files from process.cwd() with node:fs). Export nothing. Write two pure helpers at the top of the file: outsideIndex(text): start = text.indexOf('\\n## Storefront\\n'); end = text.indexOf('\\n## Conventions\\n'); throw an Error('CLAUDE.md has no Storefront or Conventions section') when either is below 0 or end is before start; return Buffer.byteLength(text.slice(0, start)) + Buffer.byteLength(text.slice(end)). indexLines(text): the lines of text.slice(start, end) that start with '- '. Import the baseline JSON (import baseline from './docs-budget.baseline.json'). Cases. (1) 'CLAUDE.md outside its index does not grow': const now = outsideIndex(read CLAUDE.md); expect(now, 'CLAUDE.md outside its Storefront and Admin index grew from ' + baseline.claudeOutsideIndex + ' to ' + now + ' bytes. Put the sentence in docs/rules/budgets.md or in the rule's own file under docs/rules.').toBeLessThanOrEqual(baseline.claudeOutsideIndex). (2) 'the baseline is as low as the file': expect(baseline.claudeOutsideIndex, 'CLAUDE.md shrank: set claudeOutsideIndex in src/lib/docs-budget.baseline.json to ' + now + ' in this change.').toBe(now). (3) 'an index line is at most 200 characters': expect(indexLines(text).filter((l) => [...l].length > 200)).toEqual([]). (4) 'the index holds only rule lines and its two introductions': the lines of text.slice(start, end) that are not empty, do not start with '- ' and do not start with '## ' must number exactly 2 (today: the sentence under '## Storefront' and the one under '## Admin'), so prose cannot be added inside the index to get round case 1. (5) A planted case, on strings only: take the real text, insert the sentence '- A planted sentence of forty bytes or so.\\n' directly after the line '## Conventions\\n', and expect outsideIndex(planted) to be greater than baseline.claudeOutsideIndex. (6) A second planted case: insert the line '- A new rule (D999, `src/lib/new-rule.ts`)\\n' directly before '\\n\\n## Admin\\n' (inside the Storefront section) and expect outsideIndex(planted) to equal outsideIndex(text): a new rule's index line does not count. Add a comment at the top: what the file holds, that step 1.1 of docs/audits/bloat-review-2026-11.md adds the other numbers, and that step 2.1 replaces case 1 when the index leaves CLAUDE.md."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/lib/docs-budget.scan.test.ts: 6 cases pass",
+    "Plant by hand, then undo: add the line '- Planted.' under '## Conventions' in CLAUDE.md and run the test: case 1 fails with the two figures; git checkout CLAUDE.md and it passes again",
+    "pnpm exec vitest run src/lib/rules-index.test.ts: exits 0 (docs/rules/budgets.md is outside docs/rules/admin and is not read by it)",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/docs-budget.scan.test.ts",
+   "proves": "fails when a sentence is added to CLAUDE.md outside the Storefront and Admin index, when prose is added inside the index, when an index line passes 200 characters, and when CLAUDE.md shrank without the baseline being lowered; passes when a new rule adds its one index line"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm test src/lib/docs-budget.scan.test.ts",
+   "expect": "passes at 12,555 bytes outside the index (or the lower figure of the day), with the planted sentence in Conventions failing and the planted index line passing among its cases"
+  },
+  {
+   "check": "ls docs/rules/budgets.md src/lib/docs-budget.baseline.json",
+   "expect": "both exist; the baseline holds the one key claudeOutsideIndex"
+  },
+  {
+   "check": "At the end of phase 0 (not part of this commit): rg -l 'TC-1|TC-2|TC-12|BN-1|BN-4' is not the test; read docs/rules/budgets.md and CLAUDE.md",
+   "expect": "the sentences steps 0.6, 0.9 and 0.38 wrote are under docs/rules, and wc -c CLAUDE.md minus its index is at or under the baseline"
+  }
+ ],
+ "after_deploy": [],
+ "docs": [
+  "docs/decisions.md: one new row with the next free D-number. Take the number with node scripts/claim-decision.mjs \"<title>\" if that script exists (step 0.41 makes it); if it does not, pull main and use the highest number plus one (rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1). Put the row directly after the last row that starts '| D' in the Settled table. It records: CLAUDE.md's bytes outside its Storefront and Admin index are held at 12,555 and only fall; an index line is at most 200 characters; sentences about budgets and checks go to docs/rules/budgets.md; step 1.1 adds the other numbers and step 2.1 the hard ceiling for the whole file.",
+  "docs/rules/budgets.md: created in this step.",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.43 to Done with the date and the commit hash, in the last commit of the step. Keep the row at 300 characters or fewer. If the table has no row for 0.43 (steps 0.43 to 0.46 were added after the table was first committed), add the row in id order with the step's title from this brief."
+ ],
+ "do_not": [
+  "Do not edit CLAUDE.md in this step, not even to wrap its one long line (step 1.1 does that) or to mention the new rule file (step 1.1 writes the one sentence).",
+  "Do not put the baseline number in the test file as a constant: step 1.1's script rewrites the JSON file and keeps the key claudeOutsideIndex.",
+  "Do not hold the whole file's bytes here: the index grows by one line with every new rule until step 2.1 moves it.",
+  "Do not change src/lib/rules-index.test.ts.",
+  "Do not create docs/rules/budgets.md inside docs/rules/admin, and do not add a CLAUDE.md index line for it.",
+  "Do not raise the baseline to make a later change pass: the sentence moves to docs/rules instead."
+ ],
+ "stop_if": [
+  "The command prints more than 12,555: another change has already added to CLAUDE.md's core. Report the figure and the diff of CLAUDE.md since commit d60cb14; do not write the higher number without the owner's word.",
+  "CLAUDE.md has no line '## Storefront' or '## Conventions' (step 2.1 has already moved the index): this step is overtaken; report it.",
+  "Case 4 finds more than two prose lines inside the index today: report the lines; do not change the count to fit.",
+  "src/lib/docs-budget.scan.test.ts or docs/rules/budgets.md already exists: read it and add what is missing; do not overwrite it."
+ ],
+ "executor": "cheap",
+ "executor_why": "One small test, one JSON number and one short rule file, all specified; the planted cases show at once whether the test holds.",
+ "checked_in_code": "I measured CLAUDE.md as it is now: 43,361 bytes and 448 lines; the text before '\\n## Storefront\\n' plus the text from '\\n## Conventions\\n' is exactly 12,555 bytes, as the step says. The index between them has 295 lines that start with '- ' (the longest is 193 characters, none over 200) and two introduction sentences, which is what cases 3 and 4 hold. src/lib/rules-index.test.ts already pairs each index line with one heading in docs/rules/storefront.md or docs/rules/admin/*.md and reads nothing else, so a new file docs/rules/budgets.md does not touch it. Neither docs/rules/budgets.md nor any docs-budget file exists yet; step 1.1's brief expects exactly these names (the rule file, the test, and the baseline with a key it keeps)."
+}

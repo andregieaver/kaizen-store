@@ -118,7 +118,7 @@
    "checks": [
     "pnpm exec vitest run --config vitest.integration.config.mts src/server/catalog.int.test.ts: passes with a new case: product.markets equals the indexed product's markets for a product priced in two markets (find the catalogue's int test with rg -l 'getProduct' src -g '*.int.test.ts')",
     "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
-    "pnpm build && pnpm exec playwright test e2e/store-pages.spec.ts e2e/seo.spec.ts: pass (hreflang alternates and the home's JSON-LD; find the spec with rg -l 'hreflang|ld\\+json' e2e)",
+    "pnpm build && pnpm exec playwright test e2e/store-pages.spec.ts e2e/smoke.spec.ts e2e/store-features-world.spec.ts: pass (hreflang alternates and the home's JSON-LD; the specs that read them: rg -l 'hreflang|ld\\+json' e2e)",
     "node scripts/server-budget.mjs: the cold home and product page of the 500-product store return no more rows than the page of 48 allows; print both stores' rows"
    ]
   },
@@ -172,7 +172,7 @@
     "pnpm exec vitest run --config vitest.integration.config.mts src/server/checkout.int.test.ts src/server/express-checkout.int.test.ts: pass",
     "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
     "pnpm test:int: exits 0",
-    "pnpm build && pnpm exec playwright test e2e/checkout.spec.ts e2e/cart.spec.ts e2e/shop-components.spec.ts: pass (find the pay-path specs: rg -l 'checkout' e2e -g '*.spec.ts')",
+    "pnpm build && pnpm exec playwright test e2e/cart.spec.ts e2e/shop-components.spec.ts e2e/pickup.spec.ts e2e/preorder.spec.ts e2e/vat-reverse-charge.spec.ts e2e/marketless.spec.ts e2e/draft-pay.spec.ts: pass (the pay-path specs; the full list: rg -l 'checkout' e2e -g '*.spec.ts')",
     "node scripts/server-budget.mjs: passes; it prints the waves of the cart and the checkout (2 or fewer each). Trial: add a second 'await cartSummary(...)' call that bypasses perRequest in cart-contents.tsx, rebuild, run: it must fail naming the cart and the statement. Remove the trial."
    ]
   },

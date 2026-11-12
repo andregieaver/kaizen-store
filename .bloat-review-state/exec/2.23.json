@@ -1,0 +1,220 @@
+{
+ "id": "2.23",
+ "goal": "The 13 MB product taxonomy and sharp's native library are traced only beside routes whose code can reach their reader, from a committed list a test derives again on every run; and a product page shows its standard category from words kept on the product's row, without opening the taxonomy files.",
+ "why": "Today 6 taxonomy files (12.7 MB) ride in 830 of 830 function traces, the health check's included (82% of its 15.5 MB), and a product page with a standard category parses three of them (about 40 ms and 22.6 MB once per instance) to show one category path. After: /api/health's trace lists no taxonomy file, every route that cannot reach the reader loses them, and the product page reads the path from the product's row.",
+ "read_first": [
+  "node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/output.md",
+  "docs/rules/storefront.md",
+  "docs/ci-migrations.md",
+  "next.config.ts",
+  "src/server/product-taxonomy.ts",
+  "src/server/catalog.ts",
+  "src/lib/chromium-trace.test.ts",
+  "scripts/product-taxonomy.mjs"
+ ],
+ "depends_on": [
+  {
+   "id": "1.8",
+   "why": "scripts/lib/import-walk.mjs (the walker that follows static and dynamic imports), src/server/route-load.graph.test.ts and scripts/trace-sizes.mjs with its budgets are what this step derives its list with and lowers"
+  },
+  {
+   "id": "0.6",
+   "why": "until the import cycle is cut nearly every route reaches the reader and the list would free only the 87 smallest traces"
+  },
+  {
+   "id": "0.5",
+   "why": "it loads sharp with import() only where a picture is drawn, which is what lets a route be proved unable to reach it"
+  },
+  {
+   "id": "2.20",
+   "why": "after it the proxy cannot reach catalog.ts, so the proxy's entry joins the list"
+  }
+ ],
+ "commits": [
+  {
+   "title": "The taxonomy and sharp are traced only beside routes that can reach them",
+   "changes": [
+    {
+     "file": "scripts/{route-load.mjs}",
+     "action": "edit",
+     "how": "The file is scripts/route-load.mjs, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Step 1.8's script. Add a switch --trace-lists that, with the walker of scripts/lib/import-walk.mjs following static AND dynamic imports (reach(SRC, entry, { dynamic: true })), walks every route entry under src/app (each page.tsx and route.ts, together with every layout.tsx, template.tsx, loading.tsx, error.tsx and not-found.tsx in the folders above it up to src/app, and default.tsx of parallel routes) plus src/proxy.ts and src/instrumentation.ts, and writes src/data/trace-free-routes.json: { taxonomyFree: [route keys], sharpFree: [route keys] }, each sorted. A route is taxonomyFree when none of its files reaches src/server/product-taxonomy.ts; sharpFree when none reaches an import of the package 'sharp' (static or import('sharp')). A route key is the route as Next names it in .next/app-path-routes-manifest.json: the folder path under src/app with route groups '(name)' and parallel slots '@name' removed and '/page' or '/route' cut (src/app/api/health/route.ts is '/api/health'; 'src/app/s/[store]/[market]/page.tsx' is '/s/[store]/[market]'). Export the function that computes the two lists from scripts/lib/route-load.mjs so the test below can call it."
+    },
+    {
+     "file": "src/data/trace-free-routes.json",
+     "action": "create",
+     "how": "Written by node scripts/route-load.mjs --trace-lists, never by hand. Expect at least 87 taxonomy-free routes (the count before the cycle was cut) with /api/health and the four /api/visit routes among them."
+    },
+    {
+     "file": "next.config.ts",
+     "action": "edit",
+     "how": "Keep the include at line 69 ('/**': ['./src/data/product-taxonomy/*']) and extend its comment: every route carries it except those in src/data/trace-free-routes.json, which cannot reach the reader (src/server/route-load.graph.test.ts holds the list). Above nextConfig add: import traceFree from './src/data/trace-free-routes.json'; const escaped = (route: string) => route.replace(/[[\\]()]/g, '\\\\$&'); const SHARP_FILES = ['./node_modules/.pnpm/sharp@*/**', './node_modules/.pnpm/@img+sharp-*/**', './node_modules/sharp/**', './node_modules/@img/**']; and add to nextConfig: outputFileTracingExcludes: Object.fromEntries([...new Set([...traceFree.taxonomyFree, ...traceFree.sharpFree])].map((route) => [escaped(route), [...(traceFree.taxonomyFree.includes(route) ? ['./src/data/product-taxonomy/*'] : []), ...(traceFree.sharpFree.includes(route) ? SHARP_FILES : [])]])). Next applies a route's excludes after its includes (node_modules/next/dist/build/collect-build-traces.js, the block that reads outputFileTracingExcludes), so the exclude wins over the '/**' include. The brackets of dynamic segments are escaped as the guide shows (output.md line 105). Before committing, build once and confirm the form of key that matches: open .next/server/app/api/health/route.js.nft.json and a dynamic route's trace from the list; if dynamic routes keep the files, the key form is wrong: try the route with its groups (as the Chromium keys in this file do with globs) and use the form that works for all listed routes. For the proxy and the start hook find how the build names their traces (ls .next/server/*.nft.json) and whether a key reaches them; if no key does, leave them out and say so in the comment."
+    },
+    {
+     "file": "src/server/{route-load.graph.test.ts}",
+     "action": "edit",
+     "how": "The file is src/server/route-load.graph.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Add two tests. (1) 'the trace lists are what the code says': the two lists computed now equal the committed src/data/trace-free-routes.json exactly; the failure message says 'a route gained or lost a path to src/server/product-taxonomy.ts or to sharp: run node scripts/route-load.mjs --trace-lists and commit the file'. So a listed route that is given an import of the reader fails the test until the list is written again, which gives the route its files back. (2) 'next.config.ts builds its excludes from the list': the config's text contains 'trace-free-routes.json' and 'outputFileTracingExcludes', and still contains the include for './src/data/product-taxonomy/*'."
+    },
+    {
+     "file": "scripts/{trace-budgets.json}",
+     "action": "edit",
+     "how": "The file is scripts/trace-budgets.json, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). After pnpm build run node scripts/trace-sizes.mjs --write: the count of traces that carry the taxonomy and the count that carry sharp fall; their budgets are stored by the script. Do not type numbers."
+    },
+    {
+     "file": "docs/rules/storefront.md",
+     "action": "edit",
+     "how": "The standard product taxonomy rule (about lines 190 to 193, D327) says the files are 'traced into every route': reword to 'traced into every route whose code can reach src/server/product-taxonomy.ts; the routes that cannot are listed in src/data/trace-free-routes.json and lose the files, and a test rewrites the list's truth on every run'."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/route-load.graph.test.ts src/lib/chromium-trace.test.ts: pass",
+    "Trial: add 'import { taxonomy } from \"@/server/product-taxonomy\";' and a use of it to src/app/api/health/route.ts: the graph test fails saying the list changed. Remove the trial.",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build, then: node -e \"const t=require('./.next/server/app/api/health/route.js.nft.json');console.log(t.files.filter(f=>f.includes('product-taxonomy')).length, t.files.filter(f=>/sharp/.test(f)).length)\" prints 0 0 (6 and more than 0 before)",
+    "The same one-liner on a product page's trace (find it: ls '.next/server/app/s/[store]/[market]/p/[handle]/') prints 6 for the taxonomy: a route that can read the files still has them",
+    "node scripts/trace-sizes.mjs --check: passes with the lowered counts",
+    "pnpm exec playwright test e2e/store-pages.spec.ts, and on the signed-in build E2E_SIGNED_IN=1 pnpm exec playwright test e2e/signed-in/standard-taxonomy.spec.ts: pass (the editor's category picker and a product page with a category still read the files)"
+   ]
+  },
+  {
+   "title": "A product keeps the words its page shows for its standard category",
+   "changes": [
+    {
+     "file": "src/db/schema.ts",
+     "action": "edit",
+     "how": "In the table 'products', after standardAttributes (about line 2635), add: /** What the shop shows of the standard category, derived from the taxonomy release when the product is saved or by the dispatcher (bloat review step 2.23): { for: <key>, paths: { en, nb, sv, da }, google: number | null, english: { <attribute handle>: [value names] } }; null until derived. Never typed by a person. */ standardShown: jsonb('standard_shown'), Then pnpm db:generate: one 'alter table commerce.products add column standard_shown jsonb'. Open the SQL: it must contain only that."
+    },
+    {
+     "file": "src/server/product-taxonomy.ts",
+     "action": "edit",
+     "how": "Add export async function standardShownOf(category: string | null, attributes: unknown): Promise<StandardShown | null>: null when category is null or not a category of the release (isCategory); else { for: shownKey(category, attributes), paths: { en, nb, sv, da } each categoryPath(await taxonomyWords(<that language>), category), google: googleCategory(t, category), english: the same object standardOf() builds in src/server/catalog.ts lines 549 to 556 (move that loop here as a pure helper and call it from both) }. Add export function shownKey(category: string, attributes: unknown): string = category + '|' + JSON.stringify(sortedAttributes(attributes)) + '|' + TAXONOMY_RELEASE, with TAXONOMY_RELEASE a new constant: export const TAXONOMY_RELEASE = 'v2026-10' in src/lib/product-taxonomy.ts (structure.json carries the same value in its field 'release', type TaxonomyStructure line 22; getProduct() must not open the file to learn it, hence the constant). Add to src/lib/product-taxonomy.test.ts one case that reads src/data/product-taxonomy/structure.json and expects its release to equal TAXONOMY_RELEASE, and make scripts/product-taxonomy.mjs print 'set TAXONOMY_RELEASE in src/lib/product-taxonomy.ts to <tag>' when it writes a release. Add export async function refreshStandardShown(limit = 200): Promise<number>: selects up to 'limit' products with standard_category is not null and (standard_shown is null or standard_shown ->> 'for' is distinct from the key) — compute the key in code: select id, store_id, standard_category, standard_attributes, standard_shown ->> 'for' as shown_for from commerce.products where standard_category is not null order by updated_at desc limit ${limit * 5}, filter in code to those whose key differs, take 'limit', and update each: update commerce.products set standard_shown = ${json}::jsonb where id = ${id}::uuid and store_id = ${storeId}::uuid (no updated_at change). It returns how many it wrote and the store ids, so the caller can refresh their catalogue tags."
+    },
+    {
+     "file": "src/server/products.ts",
+     "action": "edit",
+     "how": "In saveProduct(), in the statement(s) that write standard_category and standard_attributes (rg -n 'standard_category' src/server/products.ts), also write standard_shown = ${JSON.stringify(await standardShownOf(category, attributes))}::jsonb (null when there is no category). The file already imports taxonomy from './product-taxonomy'. Other writers of standard_category (src/server/product-tools.ts, src/server/owner-tools.ts, the import, store copies, content packs) are not changed: the dispatcher's job below fills what they wrote within five minutes."
+    },
+    {
+     "file": "src/server/{dispatcher-jobs.ts}",
+     "action": "edit",
+     "how": "The file is src/server/dispatcher-jobs.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Add one job to DISPATCHER_JOBS (step 1.10 moved the dispatcher's job list here; if the file does not exist, the list is in src/app/api/cron/cart-reminders/route.ts): standardShown: () => refreshStandardShown(200), run through runJobs() like its neighbours, at the cadence of the alt-text job. After it, refresh catalogListsTag/catalogTag of each returned store with revalidateTag(tag, 'max') in the route, as the altTexts result is handled. An idle run is one statement that returns no row to write: make the first select cheap by adding 'and (standard_shown is null or standard_shown ->> 'for' not like ${'%|' + TAXONOMY_RELEASE})' so that, once every product is derived, only products changed by another writer are found by the null/key check in code. If step 3.1 or 3.3 (the job registry) is already done, register the job there with a cadence of five minutes instead."
+    },
+    {
+     "file": "src/server/catalog.ts",
+     "action": "edit",
+     "how": "getProduct(): add p.standard_shown to the select at line 382. Replace 'standard: await standardOf(product.standard_category, product.standard_attributes, locale)' (line 539) by a pure read: const shown = product.standard_shown as StandardShown | null; standard = product.standard_category && shown && shown.for === shownKey(product.standard_category, product.standard_attributes) ? { id: product.standard_category, path: shown.paths[taxonomyLang(locale)] ?? shown.paths.en, google: shown.google, english: shown.english } : null. Import shownKey and taxonomyLang from '@/lib/product-taxonomy' (move shownKey there if it needs nothing from the server file: it is pure). Delete standardOf() and remove the import of './product-taxonomy' from catalog.ts if nothing else in the file uses it (rg -n 'taxonomy\\(|taxonomyWords\\(' src/server/catalog.ts). src/server/listing.ts keeps its use for attribute facets."
+    },
+    {
+     "file": "src/server/product-taxonomy.int.test.ts",
+     "action": "edit",
+     "how": "Add cases: (1) saveProduct() with a category and two attribute values writes standard_shown whose paths.nb equals categoryPath(await taxonomyWords('nb-NO'), id), google equals googleCategory(), english equals what standardOf() returned before (write the expected object from the fixture). (2) getProduct() returns the same 'standard' object as before for locales nb-NO, sv-SE, da-DK and en-GB, and, with countStatements() and a spy on the module's file reader (vi.spyOn(fs.promises, 'readFile') or the module's own read through a test-only export), reads no taxonomy file. (3) A product whose category was written directly by SQL (as another writer would) has standard null from getProduct() until refreshStandardShown() runs, then the right value; a second run writes 0 rows. (4) A product with a category id the release does not know has standard null."
+    },
+    {
+     "file": "src/db/commerce.test.ts",
+     "action": "edit",
+     "how": "One case: a product row accepts standard_shown null and a JSON object, and a store copy (the copy function the file already tests for products) carries the column or leaves it null without failing."
+    }
+   ],
+   "checks": [
+    "pnpm db:check: exits 0",
+    "pnpm exec vitest run src/db/commerce.test.ts src/db/snapshots.scan.test.ts src/db/migration-safety.scan.test.ts src/db/privacy.test.ts src/server/store-export.scan.test.ts src/server/cron-routes.scan.test.ts: pass (register the new column where a scan asks: it holds no personal data)",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/product-taxonomy.int.test.ts src/server/product-tools.int.test.ts src/server/query-budget.int.test.ts: pass; the query budget's new job entry is written with UPDATE_BASELINE=1 and its idle count is 1 statement",
+    "pnpm exec vitest run src/lib/product-taxonomy.test.ts src/server/route-load.graph.test.ts: pass; if catalog.ts no longer imports the reader, more routes are taxonomy-free: run node scripts/route-load.mjs --trace-lists and commit the list",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build && pnpm exec playwright test e2e/store-pages.spec.ts e2e/cart.spec.ts: pass, and on the signed-in build e2e/signed-in/standard-taxonomy.spec.ts (the product page's structured data category and the feed's Google category: rg -l 'google_product_category' e2e src -g '*.spec.ts' -g '*.int.test.ts' names the tests that read them)"
+   ]
+  },
+  {
+   "title": "Docs: where the taxonomy is traced and what a product keeps of it",
+   "changes": [
+    {
+     "file": "docs/rules/storefront.md",
+     "action": "edit",
+     "how": "In the standard taxonomy rule add: a product keeps what its page shows of its category in products.standard_shown (paths by language, Google's id, the chosen attributes' English names), written by saveProduct() and by the dispatcher's standardShown job for every other writer; getProduct() reads it and never opens the files; the key in it carries the release, so a new release (scripts/product-taxonomy.mjs and TAXONOMY_RELEASE) re-derives every product within a few runs."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1): the derived exclude list for the taxonomy and sharp and the test that holds it; products.standard_shown, who writes it and that it is derived, never typed; the migration version; the traces before and after (count carrying the taxonomy, /api/health's megabytes)."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "In 'What a server route loads' add the two counts from scripts/trace-sizes.mjs (traces carrying the taxonomy, traces carrying sharp) before and after, and the rule: a new route that reads the taxonomy or draws a picture needs nothing by hand; the graph test asks for the list to be written again."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress table: row 2.23 to Done with the date, the commits, the migration version and /api/health's traced megabytes (15.5 before); one change-log line."
+    }
+   ],
+   "checks": [
+    "pnpm lint: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/route-load.graph.test.ts",
+   "proves": "It fails when a route on the taxonomy-free or sharp-free list gains an import path to src/server/product-taxonomy.ts or to sharp (or a route off the list loses its path) until the committed list is written again, and when next.config.ts stops building its excludes from the list."
+  },
+  {
+   "file": "src/server/product-taxonomy.int.test.ts",
+   "proves": "It fails when a product page's category differs from what the taxonomy gives, when getProduct() opens a taxonomy file, or when a category written by another writer is not derived by the job."
+  },
+  {
+   "file": "scripts/trace-budgets.json",
+   "proves": "CI's e2e job fails when more traces carry the taxonomy or sharp than the stored counts."
+  }
+ ],
+ "migration": {
+  "needed": true,
+  "notes": "Generated by pnpm db:generate from src/db/schema.ts: alter table commerce.products add column standard_shown jsonb (nullable, no default). commerce.products is a hot table, but the hot-table rule is about indexes (built concurrently in a '-- kaizen:no-transaction' file) and constraints (added not valid): this change adds neither. Adding a nullable column without a default does not rewrite the table and holds its lock for an instant, within the 5 s lock wait. Add only, so the running code keeps working until the deploy finishes: old code never names the column, and every insert into products names its columns. No backfill in SQL: the dispatcher's job fills rows after the deploy. CI's release job applies the file; never by hand. After the deploy check the advisors and record the version in the decision row."
+ },
+ "done_when": [
+  {
+   "check": "pnpm build, then node -e \"const t=require('./.next/server/app/api/health/route.js.nft.json');console.log(t.files.filter(f=>f.includes('src/data/product-taxonomy')).length)\"",
+   "expect": "0 (6 files and 12.7 MB before)."
+  },
+  {
+   "check": "pnpm exec vitest run src/server/route-load.graph.test.ts, with a trial import of src/server/product-taxonomy.ts in a route on the list",
+   "expect": "Fails with the trial, passes without it."
+  },
+  {
+   "check": "pnpm exec vitest run --config vitest.integration.config.mts src/server/product-taxonomy.int.test.ts",
+   "expect": "Passes: a product page reads its category's name from the product's row and opens no taxonomy file."
+  },
+  {
+   "check": "node scripts/trace-sizes.mjs --check",
+   "expect": "Passes with the count of traces carrying the taxonomy below 831 and stored."
+  }
+ ],
+ "after_deploy": [
+  "Vercel's deployment summary (free plan view): the health function's size is about 3 MB, not 15.5.",
+  "An hour after the deploy: select count(*) from commerce.products where standard_category is not null and standard_shown is null returns 0 (ask the owner to run it in the Supabase SQL editor, or read it from step 0.2's daily reading if added there); a product page with a standard category shows its category in the page's structured data.",
+  "Runtime logs: no 'ENOENT ... product-taxonomy' and no 'Cannot find module ... sharp' on any route for a day. If one appears, that route was listed wrongly: revert the list entry and report."
+ ],
+ "docs": [
+  "docs/rules/storefront.md, docs/decisions.md, docs/performance.md and the Progress row, as the last commit says.",
+  "docs/platform-parity.md: nothing to tick; Kaizena Flow has no products, and its routes lose the same traces."
+ ],
+ "do_not": [
+  "Do not replace the '/**' include with a hand-written list of route globs: a missed route fails in production the first time it reads a file. The exclude list is derived and tested.",
+  "Do not put a route on the list by hand, and do not edit src/data/trace-free-routes.json: write it with the script.",
+  "Do not count only static imports when deriving the lists: a route that reaches the reader or sharp through import() still reads the files at run time.",
+  "Do not exclude sharp for a route that the walker says can reach it, however unlikely the path looks.",
+  "Do not compress the taxonomy files or move them into the database.",
+  "Do not let a person or an import write standard_shown: it is derived.",
+  "Do not use a larger or paid build machine for the build's trace step."
+ ],
+ "stop_if": [
+  "After the build a route on the list still carries the files, or a route off the list lost them: the key form is wrong; report what .nft.json shows for three routes.",
+  "The walker cannot follow some import form used on the path to the reader or to sharp (a computed import(), a require with a variable): report the file; that route must not be listed.",
+  "pnpm db:generate writes more than the one added column.",
+  "getProduct()'s 'standard' differs from before for any fixture product or locale.",
+  "The signed-in spec of the standard taxonomy or the feeds' spec fails."
+ ],
+ "executor": "cheap-then-review",
+ "executor_why": "The list is derived by a script and held by a test, and the column's writers are named, but a wrong exclude breaks a route only in production and the change adds a column to a hot table, so a stronger model should read the built traces and the generated SQL before the push.",
+ "checked_in_code": "I opened next.config.ts (the '/**' include at line 69 and its comment), src/server/product-taxonomy.ts (files read lazily from disk and kept), src/server/catalog.ts (getProduct() calls standardOf() at line 539, which loads the structure and two languages) and src/lib/chromium-trace.test.ts. rg finds eight non-test files importing the server reader, as SG-13 says. The three findings disagree on the way: SG-13 and AS-2 replace the '/**' key with globs of route families, FN-8 keeps it and adds derived excludes; the brief takes FN-8's, because a missed family fails only in production and Next applies excludes after includes. FN-8 leaves the stored category name for later; the plan's done-when asks for it now, so the brief adds products.standard_shown with a self-healing job, since six other modules also write standard_category."
+}

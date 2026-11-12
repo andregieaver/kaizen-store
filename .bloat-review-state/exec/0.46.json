@@ -1,0 +1,117 @@
+{
+ "id": "0.46",
+ "goal": "The six signature themes, the content packs and the seed write a product grid's columns in today's stored shape (a number, with the smaller sizes under `at`), and a unit test fails when any page they make differs from its own parse.",
+ "why": "Six lines in five source files and two pages of supabase/seed.sql (4 places) still write `columns: { mobile, tablet, desktop }`, the shape from before D179, so every store made from a theme or a pack adds old-shaped documents to the one-off rewrite of step 3.17. After: rg finds 0 such lines (6 today) and every theme, pack and seed page equals its parse.",
+ "read_first": [
+  "docs/rules/admin/website.md",
+  "src/lib/responsive.ts",
+  "src/lib/signature/kit.ts",
+  "src/lib/content-pack-pages.ts",
+  "src/lib/content-pack-pages.test.ts",
+  "src/lib/pack-designs.ts",
+  "src/lib/launch-themes.ts",
+  "supabase/seed.sql"
+ ],
+ "depends_on": [],
+ "commits": [
+  {
+   "title": "Themes, content packs and the seed write a grid's columns in today's shape, and a test parses every page they make",
+   "changes": [
+    {
+     "file": "src/lib/signature/kit.ts",
+     "action": "edit",
+     "how": "In productGrid() (line 77 today) replace the line `columns: { mobile: 2, tablet: 2, desktop: 4 },` with two lines: `columns: 4,` and `at: { md: { columns: 2 } },`. That is what upgradeBlock() in src/lib/responsive.ts makes of the old value: columns is the desktop number; `at.md.columns` is the tablet number when it differs from desktop; `at.sm.columns` is the phone number when it differs from tablet (here both are 2, so there is no sm). Keep `...extra` last, so a caller's own columns and at replace these."
+    },
+    {
+     "file": "src/lib/signature/atelier.ts",
+     "action": "edit",
+     "how": "Line 284 today: `productGrid(6, { columns: { mobile: 2, tablet: 2, desktop: 3 }, gap: 40 })` becomes `productGrid(6, { columns: 3, at: { md: { columns: 2 } }, gap: 40 })`."
+    },
+    {
+     "file": "src/lib/signature/meridian.ts",
+     "action": "edit",
+     "how": "Line 371 today: `productGrid(6, { columns: { mobile: 1, tablet: 2, desktop: 3 }, gap: 32 })` becomes `productGrid(6, { columns: 3, at: { md: { columns: 2 }, sm: { columns: 1 } }, gap: 32 })`."
+    },
+    {
+     "file": "src/lib/signature/kinetic.ts",
+     "action": "edit",
+     "how": "Line 311 today: `productGrid(8, { columns: { mobile: 2, tablet: 3, desktop: 4 }, gap: 24 })` becomes `productGrid(8, { columns: 4, at: { md: { columns: 3 }, sm: { columns: 2 } }, gap: 24 })`."
+    },
+    {
+     "file": "src/lib/content-pack-pages.ts",
+     "action": "edit",
+     "how": "Two places (lines 77 and 162 today, in packHomePage() and packProductsPage()): replace each `columns: { mobile: 2, tablet: 3, desktop: 4 },` with the two lines `columns: 4,` and `at: { md: { columns: 3 }, sm: { columns: 2 } },`. If TypeScript now reports an error where there was a cast for the old shape, remove the cast; do not add `as` casts."
+    },
+    {
+     "file": "supabase/seed.sql",
+     "action": "edit",
+     "how": "Four places, two on each of the lines that insert the pages 'forside' (line 273 today) and 'alle-produkter' (line 279 today), once in the draft JSON and once in the published JSON: replace every occurrence of the exact text \"columns\": {\"mobile\": 2, \"tablet\": 3, \"desktop\": 4} with \"columns\": 4, \"at\": {\"md\": {\"columns\": 3}, \"sm\": {\"columns\": 2}} . Use one replace-all on the file (for example node -e with String.prototype.replaceAll) and check the count is 4. Neither grid block has an `at` key today, so no key is doubled. Change nothing else in the file: it is applied only to an empty database (node scripts/db-setup.mjs --seed) and is not a migration."
+    },
+    {
+     "file": "src/lib/page-shapes.test.ts",
+     "action": "create",
+     "how": "A Vitest unit test, no database. Imports: pageInput and pageRowSchema from './page-content'; CONTENT_PACKS from './content-packs'; packAboutPage, packHomePage, packProductsPage from './content-pack-pages'; PACK_DESIGNS from './pack-designs'; LAUNCH_THEMES from './launch-themes'; readFileSync from 'node:fs'. A helper same(value, schema): const plain = JSON.parse(JSON.stringify(value)); const parsed = schema.safeParse(plain); expect(parsed.success, name + ': ' + (parsed.success ? '' : parsed.error.issues.map((i) => i.path.join('.') + ' ' + i.message).join('; '))).toBe(true); expect(JSON.parse(JSON.stringify(parsed.data)), name + ' is written in an old shape: the parse changed it').toEqual(plain). A picture for the tests: { url: 'https://x.supabase.co/storage/v1/object/public/product-media/s/hero.webp', width: 1600, height: 1067, alt: 'A shop' }. Cases. (1) 'every content pack's pages': for each pack of CONTENT_PACKS: packHomePage(pack, { hero: picture, story: picture }), packHomePage(pack, { hero: null, story: null }), packAboutPage(pack, picture), packAboutPage(pack, null) and packProductsPage(pack), each through same(page, pageInput). (2) 'every signature theme's designed pages': for each [key, design] of Object.entries(PACK_DESIGNS): the pack is CONTENT_PACKS.find((p) => p.key === LAUNCH_THEMES.find((t) => t.key === key)?.content); expect it to exist; then design.home(pack, () => picture), design.home(pack, () => null), design.about(pack, () => picture) through same(page, pageInput). Also expect Object.keys(PACK_DESIGNS).length to be 6. (3) 'every launch theme's header, footer and product page': for each theme of LAUNCH_THEMES and each of the keys 'header', 'footer', 'productLayout' of theme.snapshot that is set: same(theme.snapshot[key].rows, pageRowSchema.array()). (4) 'every theme's sections': for each theme with theme.sections: same(theme.sections(() => picture).map((section) => section.row), pageRowSchema.array()). (5) 'the seed's pages': read supabase/seed.sql from process.cwd(); take every match of /'(\\{\"title\".*?\\})'::jsonb/g; expect at least 10 matches (10 today: the draft and the published copy of om-oss, forside, alle-produkter, the article nye-produkter and the platform's welcome article); for each, JSON.parse(match[1].replaceAll(\"''\", \"'\")) through same(page, pageInput). (6) 'would notice': a copy of packProductsPage(CONTENT_PACKS[0]) in which the grid block's columns is set back to { mobile: 2, tablet: 3, desktop: 4 } and its `at` removed parses, and the parsed page does NOT equal the input (so the test can fail)."
+    }
+   ],
+   "checks": [
+    "rg 'mobile: ?[0-9], ?tablet' src/lib/content-pack-pages.ts src/lib/signature: prints nothing (6 lines before)",
+    "rg -c '\"mobile\": 2, \"tablet\"' supabase/seed.sql: prints nothing (it printed 2 lines, 4 places)",
+    "pnpm exec vitest run src/lib/page-shapes.test.ts src/lib/content-pack-pages.test.ts src/lib/signature-themes.test.ts src/lib/launch-themes-nb.test.ts: exits 0",
+    "pnpm lint && pnpm typecheck && pnpm test: exits 0",
+    "node scripts/db-setup.mjs --seed on an empty DATABASE_URL, then pnpm test:int: exits 0 (the seed is read by the integration tests' database; a broken JSON string fails the seed at once)",
+    "pnpm build && pnpm exec playwright test e2e/store-pages.spec.ts e2e/products-page.spec.ts e2e/listing.spec.ts: exits 0 (the demo store's front page and All products draw the seeded grids)"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/lib/page-shapes.test.ts",
+   "proves": "fails when any page or row that a signature theme, a content pack or the seed writes is changed by its own parse, which is what an old stored shape does"
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "rg 'mobile: ?[0-9], ?tablet' src/lib/content-pack-pages.ts src/lib/signature",
+   "expect": "prints nothing (6 lines today)"
+  },
+  {
+   "check": "pnpm exec vitest run src/lib/page-shapes.test.ts",
+   "expect": "passes: the pages of the six signature themes (home, about, header, footer, product page, sections), of every content pack and the 10 page documents of the seed all equal their parse; the 'would notice' case passes"
+  },
+  {
+   "check": "node scripts/db-setup.mjs --seed on an empty database, then open /s/demo/no and /s/demo/no/alle-produkter in the built site at 390 px, 800 px and 1280 px",
+   "expect": "2, 3 and 4 product columns, as before the change"
+  }
+ ],
+ "after_deploy": [
+  "Nothing changes for stored pages: production's existing demo store keeps its old-shaped rows until step 3.17's rewrite, and they are read as before. Open kaizenaflow.com/s/demo/no once and see the product grid as before.",
+  "Send the owner one screenshot of a signature theme's home (for example Kinetic's product grid at phone and desktop width) from the local build, before and after: the columns must be the same."
+ ],
+ "docs": [
+  "docs/decisions.md: one new row with the next free D-number. Take the number with node scripts/claim-decision.mjs \"<title>\" if that script exists (step 0.41 makes it); if it does not, pull main and use the highest number plus one (rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1). Put the row directly after the last row that starts '| D' in the Settled table. It records: every writer of pages in source (signature themes, content packs, the seed) writes a grid's columns as a number with `at` for smaller sizes; src/lib/page-shapes.test.ts holds it; stored pages and the upgraders are step 3.17's.",
+  "docs/audits/bloat-review-2026-11/plan/phase-3.md, the section of step 3.17: add the line 'First part done in step 0.46 (date, commit): the writers.'",
+  "docs/audits/bloat-review-2026-11.md, Progress table: set the row of step 0.46 to Done with the date and the commit hash, in the last commit of the step. Keep the row at 300 characters or fewer. If the table has no row for 0.46 (steps 0.43 to 0.46 were added after the table was first committed), add the row in id order with the step's title from this brief."
+ ],
+ "do_not": [
+  "Do not remove or change upgradeRow(), upgradeBlock(), upgradeLegacy(), upgradeResponsive() or the type GridColumns: stored pages in production still have the old shape until step 3.17.",
+  "Do not change the old shapes in e2e specs (e2e/pages.spec.ts, shop-components.spec.ts, components.spec.ts, page-roles.spec.ts, custom-fields-loop.spec.ts, responsive-parity.spec.ts, recommendations.spec.ts) or in the tests of the upgraders (src/lib/responsive.test.ts, page-content.test.ts, template-content.test.ts, product-layout.test.ts): they prove old pages still read.",
+  "Do not change the constants OLD_COLUMNS_MAX in src/lib/responsive.ts and GRID_COLUMNS_MAX in src/lib/page-content.ts, or columnsView() in src/lib/replicate-grid.ts: they are not page writers.",
+  "Do not write a migration or a script that rewrites stored pages.",
+  "Do not change how many columns any grid shows at any size: the new values are exactly what the parse makes of the old ones.",
+  "Do not raise a theme's `version` in src/lib/signature/*.ts for this: the drawn result is the same, and a new version would be published to every store."
+ ],
+ "stop_if": [
+  "src/lib/page-shapes.test.ts fails for a page after the six edits with a difference that is not about `columns` and `at`: another old shape is being written. Report the path and the two values; do not edit the test to skip it.",
+  "The seed's regular expression finds fewer than 10 documents, or one does not parse as JSON.",
+  "pnpm typecheck fails in a signature file because a function's return type no longer fits: report the error; do not add a cast.",
+  "A test in src/lib/signature-themes.test.ts or src/lib/content-pack-pages.test.ts must be changed to pass.",
+  "A grid shows a different number of columns at some width than before."
+ ],
+ "executor": "cheap",
+ "executor_why": "Six one-line edits and one replace-all with exact new text, held by a test whose expected result I ran.",
+ "checked_in_code": "I ran the comparison this brief asks for, outside the test runner, on the code as it is: every content pack's home and products page, every signature theme's home page and every theme's sections differ from their parse in exactly two paths, `columns` (an object where the parse gives a number) and `at` (missing), and nothing else; about pages, headers, footers and product layouts already equal their parse (18 snapshot parts checked, 0 differ). The six lines are where the step says (content-pack-pages.ts 77 and 162; kit.ts 85; meridian.ts 371; atelier.ts 284; kinetic.ts 311) and the new values in the brief are the parse's own output for each. The seed holds 10 page documents; the four old-shaped places are the draft and published copies of 'forside' and 'alle-produkter' (lines 273 and 279), and neither grid has an `at` key yet. Arcade, Botanica and Orbit call productGrid() without columns, so the kit's default fixes them."
+}

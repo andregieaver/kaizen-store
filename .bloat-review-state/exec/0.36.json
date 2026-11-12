@@ -1,0 +1,255 @@
+{
+  "id": "0.36",
+  "goal": "The three files only tests reach are gone, the 34 interface texts no code reads are gone, the simple-icons package is replaced by the 27 paths used, and no export is left that nothing uses, apart from a written list of server code kept for a feature that only lacks a screen.",
+  "why": "Today 331 exports are used by nothing (262 by the script's count, plus 69 that no test names), three files of about 950 lines are reached only by tests, 34 texts are read by no code, a rule still describes one of the dead files, and a 26 MB package with a 5.25 MB entry module is parsed at every build for 20 KB of icons. After: 0 unused exports reported, the three files gone, and simple-icons out of package.json.",
+  "read_first": [
+    "docs/audits/bloat-review-2026-11/evidence/unused-code.md",
+    "docs/audits/bloat-review-2026-11/findings/unused-code/DD-3.md",
+    "docs/audits/bloat-review-2026-11/scripts/unused-code.mjs",
+    "docs/rules/admin/website.md:302",
+    "docs/rules/admin/marketing.md:81",
+    "src/components/brand-icon.tsx",
+    "src/server/ratchet.scan.test.ts"
+  ],
+  "depends_on": [],
+  "commits": [
+    {
+      "title": "Three files only tests reached are deleted, and the rule names the editor the product uses",
+      "changes": [
+        {
+          "file": "src/components/inline-edit/heading-editor.tsx",
+          "action": "delete",
+          "how": "First confirm: `rg -n -w 'InlineHeadingEditor' src --glob '!*.test.*'` prints only its own definition in this file. Then delete the file. Do not touch cleanHeadingText() in src/lib/inline-edit.ts: markup-editor.tsx and the editor's text route use it."
+        },
+        {
+          "file": "src/components/inline-edit/inline-edit.test.ts",
+          "action": "delete",
+          "how": "Delete the whole file: its three cases are all about InlineHeadingEditor. The real editors stay covered by e2e/inline-edit-hosts.spec.ts and e2e/signed-in/text-styles.spec.ts."
+        },
+        {
+          "file": "docs/rules/admin/website.md",
+          "action": "edit",
+          "how": "In the rule 'Editing words where they are (D191, D192, D193)' (line 302): replace both mentions of `InlineHeadingEditor` (and its path src/components/inline-edit/heading-editor.tsx where given) with `InlineMarkupEditor` (`src/components/inline-edit/markup-editor.tsx`). Read that file's header comment and keep in the rule only what it says holds for a heading today (one line, a paste is plain text held by cleanHeadingText(), Escape puts back what it was). Change no other sentence of the rule."
+        },
+        {
+          "file": "src/components/admin/work/coming-soon.tsx",
+          "action": "delete",
+          "how": "First confirm: `rg -n -w 'WorkComingSoon' src --glob '!*.test.*'` prints only its definition. Delete the file."
+        },
+        {
+          "file": "src/components/admin/work/work-pages.test.ts",
+          "action": "edit",
+          "how": "Delete the import `import { WorkComingSoon } from \"./coming-soon\";` (line 8). In describe('the stand-ins') (about line 246) rename the case to 'point to the switch when Work is off' and delete its last three lines (the `soon` constant and its two expectations); keep the three lines about WorkOff."
+        },
+        {
+          "file": "src/lib/admin-messages/work.en.ts",
+          "action": "edit",
+          "how": "In the `off` object delete the two keys `comingSoon: \"Coming in the next step.\",` (line 44) and `backToWork: \"Back to Work\",` (line 45). First confirm with `rg -n 'off\\.backToWork|off\\.comingSoon|words\\.comingSoon|words\\.backToWork' src` that coming-soon.tsx was the only reader. Do NOT delete the other `backToWork` at about line 96 or the `comingSoon` object at about line 1170: other pages read them."
+        },
+        {
+          "file": "src/lib/admin-messages/work.nb.ts",
+          "action": "edit",
+          "how": "The same two keys in the `off` object (lines 40 and 41: 'Kommer i neste steg.' and 'Tilbake til Arbeid'). Leave line 91 and the object at about line 1193."
+        },
+        {
+          "file": "src/lib/store-modules.ts",
+          "action": "delete",
+          "how": "Delete the file (MODULES is read by one test; isModule and StoreModule by nothing)."
+        },
+        {
+          "file": "src/db/commerce.test.ts",
+          "action": "edit",
+          "how": "Delete `import { MODULES } from \"@/lib/store-modules\";` (line 9). In the case 'is a module a store can switch on, and only the listed ones' (about line 3817) change `for (const name of MODULES) {` to `for (const name of [\"bookings\", \"deliveries\", \"work\"]) {`. The rejects line below it stays."
+        },
+        {
+          "file": "docs/work.md",
+          "action": "edit",
+          "how": "At line 1365 the text names `MODULES` / `StoreModule` (`src/lib/store-modules.ts`): say instead that the names a store can hold are the database check `stores_modules` (bookings, deliveries, work) and that the file was deleted in bloat review step 0.36."
+        }
+      ],
+      "checks": [
+        "rg -n -w 'InlineHeadingEditor|WorkComingSoon|store-modules' src docs --glob '!docs/audits/**' : prints nothing",
+        "pnpm exec vitest run src/components/admin/work/work-pages.test.ts src/db/commerce.test.ts src/lib/ui-catalog.test.ts : pass",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0"
+      ]
+    },
+    {
+      "title": "34 interface texts that no code reads are deleted",
+      "changes": [
+        {
+          "file": "src/lib/admin-messages/*.en.ts and *.nb.ts",
+          "action": "edit",
+          "how": "Delete these 17 keys in the English file and the Norwegian file of their area (find each by its last name inside the object path given; the path's first word is the catalogue's area): domains.checkout.priceChanged; platformTools.aiActions.noTemplate; analytics.settings.targets.startCustom; inventory.documents.linesCol; inventory.suppliers.sentWithin; reviews.import.submitCheck; order.messages.refundReason; order.messages.cancelReason; blog.editor.blogHeading; oauth.store.cutDone; customers.saved.schema.wholePercent; customers.saved.schema.oneAccount; marketing.segments.firstBy; assistant.autopilot.plans.pausedNow; content.entry.publishFirstSave; product.media.tooManyVideos; product.media.tooManyModels. For each key, before deleting, run `rg -n -w '<last name>' src e2e scripts wordpress-plugin --glob '!src/lib/admin-messages/**' --glob '!*.test.*'` and read the hits: delete the key only when no hit reads this key (a hit on another object's key of the same name does not count). The two product.media keys are settled by deleting them: the server now refuses with one sentence for pictures, videos and 3D models together (src/lib/product-input.ts line 308, 'Use at most N pictures, videos and 3D models.'), so no code can say the two old ones. If an area has more languages than en and nb, delete the key in each."
+        },
+        {
+          "file": "src/lib/messages/{en,nb,sv,da}*.ts",
+          "action": "edit",
+          "how": "Delete these 17 storefront keys in every language file that holds them (en.ts, nb.ts, sv.ts, da.ts; the two returns keys are in en-returns.ts, nb-returns.ts, sv-returns.ts and da-returns.ts): returns.chooseLines; returns.returnRequest.pickLines; workInvoice.creditPageTitle; deliveryChoice.deliveryLine; affiliate.cartApplied; affiliate.signInToRefer; creator.ordersLabel; companyAccount.decidedAlready; tracking.followAt; nothingHere; allArticles; subscriptionOrders; account.resetFor; account.passwordShort; stay.tooSoon; stay.tooFar; giftCardLine.notDiscounted. The same rg check first, with `--glob '!src/lib/messages/**'`. If src/lib/messages has a type or an interface that lists the keys (rg -n 'cartApplied' src/lib), delete the key there too."
+        },
+        {
+          "file": "src/lib/affiliate-text.test.ts",
+          "action": "edit",
+          "how": "Delete the one line `expect(a.cartApplied(\"P1\"), lang).toContain(\"P1\");` (about line 27). Nothing else."
+        }
+      ],
+      "checks": [
+        "pnpm typecheck : exits 0 (a deleted key that is read after all does not compile)",
+        "pnpm exec vitest run src/lib/ui-catalog.test.ts src/lib/affiliate-text.test.ts src/lib/admin-messages : pass (the catalogue tests compare languages key by key)",
+        "rg -n 'priceChanged|noTemplate|startCustom|linesCol|sentWithin|submitCheck|blogHeading|cutDone|wholePercent|oneAccount|pausedNow|publishFirstSave|tooManyVideos|tooManyModels' src/lib/admin-messages : read each hit; none is one of the 17 key paths (the same last name under another object may remain)",
+        "pnpm lint && pnpm test : exits 0"
+      ]
+    },
+    {
+      "title": "The social marks are 27 paths kept in the code, and the simple-icons package is gone",
+      "changes": [
+        {
+          "file": "src/components/brand-marks-data.ts",
+          "action": "create",
+          "how": "Make it with a one-off node command BEFORE removing the package (do not commit the command): `node -e \"const si=require('simple-icons');const names={facebook:'siFacebook',instagram:'siInstagram',x:'siX',tiktok:'siTiktok',youtube:'siYoutube',pinterest:'siPinterest',threads:'siThreads',bluesky:'siBluesky',mastodon:'siMastodon',snapchat:'siSnapchat',whatsapp:'siWhatsapp',telegram:'siTelegram',messenger:'siMessenger',discord:'siDiscord',spotify:'siSpotify',soundcloud:'siSoundcloud',vimeo:'siVimeo',twitch:'siTwitch',reddit:'siReddit',tumblr:'siTumblr',medium:'siMedium',substack:'siSubstack',github:'siGithub',behance:'siBehance',dribbble:'siDribbble',tripadvisor:'siTripadvisor'};const out={};for(const [k,v] of Object.entries(names))out[k]={path:si[v].path,hex:'#'+si[v].hex};console.log(JSON.stringify(out,null,2))\"`. The file: a header comment 'The social networks' own marks (D91): 26 paths and colours copied from simple-icons <the installed version from pnpm-lock.yaml> on <date> (licence CC0-1.0), and LinkedIn's, which that package no longer carries. Kept here since bloat review step 0.36: the package was 26 MB with a 5.25 MB entry module, parsed at every build for these 20 KB. A network that redraws its mark is updated here by hand.' then `import type { SocialNetwork } from \"@/lib/social-links\";` `export type BrandMark = { path: string; hex: string | null };` and `export const BRAND_MARKS: Partial<Record<SocialNetwork, BrandMark>> = { ...the 26 entries printed..., linkedin: { path: \"<the LINKEDIN string from brand-icon.tsx lines 35-36>\", hex: \"#0A66C2\" } };`. The keys and their order are those of the list in brand-icon.tsx lines 49 to 74."
+        },
+        {
+          "file": "src/components/brand-icon.tsx",
+          "action": "edit",
+          "how": "Delete the whole `import { siBehance, ... } from \"simple-icons\";` block (lines 1 to 28), the `LINKEDIN` constant and its comment, the `const BRANDS ... = Object.fromEntries(...)` block (lines 46 to 77) and the line `BRANDS.linkedin = { path: LINKEDIN, hex: \"#0A66C2\" };`. Add `import { BRAND_MARKS as BRANDS } from \"./brand-marks-data\";`. If the local `type Mark` is still used, keep it; otherwise delete it. STROKED, brandColor() and BrandIcon stay exactly as they are."
+        },
+        {
+          "file": "package.json",
+          "action": "edit",
+          "how": "Remove the line `\"simple-icons\": \"^16.36.0\",` from dependencies, then run `pnpm install` so pnpm-lock.yaml follows; commit both files. If patches or pnpm settings mention simple-icons (rg -n 'simple-icons' . --glob '!node_modules' --glob '!pnpm-lock.yaml'), remove that mention too."
+        },
+        {
+          "file": "src/lib/social-links.test.ts",
+          "action": "edit",
+          "how": "Add a case 'every network has a mark': import BRAND_MARKS from '@/components/brand-marks-data' and the list of networks this file already uses for SocialNetwork (read the top of src/lib/social-links.ts for the exported list). Expect: BRAND_MARKS has exactly 27 keys; every path starts with 'M' and is longer than 50 characters; every hex matches /^#[0-9A-F]{6}$/i; and every network is either a key of BRAND_MARKS or one of 'email', 'phone', 'website' (the stroked marks in brand-icon.tsx)."
+        }
+      ],
+      "checks": [
+        "rg -n 'simple-icons' src package.json : prints nothing",
+        "pnpm install --frozen-lockfile : exits 0 (the lockfile matches package.json)",
+        "pnpm exec vitest run src/lib/social-links.test.ts : pass",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm build && pnpm exec playwright test e2e/a11y.spec.ts : pass; open a page with social links in the footer (the demo store's or Kaizena Flow's) and compare the icons with production: the same marks and colours. Send the owner a screenshot."
+      ]
+    },
+    {
+      "title": "Exports nothing uses are deleted: types, constants, helpers and re-exports",
+      "changes": [
+        {
+          "file": "src/**/*.{ts,tsx}",
+          "action": "edit",
+          "how": "Get the list: `node docs/audits/bloat-review-2026-11/scripts/unused-code.mjs /tmp/unused` writes /tmp/unused/unused-code.json; its `deadExports` (file, name, line, kind) is the first list. The second list is the entries of `testOnlyExports` whose name no test file contains: for each, `rg -l -w '<name>' src e2e --glob '*.test.*' --glob '*.spec.*'` prints nothing. In THIS commit treat only entries that are not a function in src/server and not a server action: kinds type, const, named, re-export, and functions outside src/server and outside files named actions.ts. For each entry, in the order the script lists them: (1) run `rg -n -w '<name>' src scripts e2e e2e-live wordpress-plugin`. If the only hit is the definition, delete the declaration with its doc comment. If the name is used inside its own file, the script would not list it; if you see such a use, remove only the word `export`. If any other file names it (in a string, a comment that is a rule, a dynamic key), leave it and note it. (2) Keep `register` in src/instrumentation.ts (Next reads it) and every export of a Next convention file. (3) Of the two `isTargetMetric`, keep src/lib/platform-briefing.ts and delete the one in src/lib/analytics-targets.ts. (4) After every twenty deletions run `pnpm lint`: with --max-warnings 0 it names each import or private helper the deletions left unused; delete those too, and run it again until clean. (5) Then `pnpm typecheck`. Work area by area (src/lib, src/components, src/app, then the non-function exports of src/server) and commit once at the end of this list."
+        },
+        {
+          "file": "src/server/ratchet.baseline.json",
+          "action": "edit",
+          "how": "Do not edit by hand: run `node scripts/ratchet.mjs` after the deletions; it lowers the numbers of files that lost an unchecked read. If src/lib/sql-raw.scan.test.ts or src/lib/payment-readers.scan.test.ts holds a count per file that fell, lower that number in the test to the new count (never raise one)."
+        }
+      ],
+      "checks": [
+        "node docs/audits/bloat-review-2026-11/scripts/unused-code.mjs /tmp/unused && node -e \"const d=require('/tmp/unused/unused-code.json');console.log(d.deadExports.filter(e=>!(e.kind==='function'&&(/^src\\/server\\//.test(e.file)||/actions\\.ts$/.test(e.file)))).map(e=>e.file+' '+e.name).join('\\n'))\" : prints only `src/instrumentation.ts register` and entries noted as kept with their reason",
+        "pnpm exec vitest run src/server/ratchet.scan.test.ts src/lib/sql-raw.scan.test.ts src/lib/payment-readers.scan.test.ts src/lib/brand.scan.test.ts : pass",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0",
+        "pnpm build : exits 0"
+      ]
+    },
+    {
+      "title": "Unused server functions are deleted where superseded, and kept on a list where a feature only lacks its screen",
+      "changes": [
+        {
+          "file": "src/server/*.ts",
+          "action": "edit",
+          "how": "The server functions the review found with no caller (line numbers of 11 November 2026): forgetStandingOrders (standing-orders.ts:1135), setDeliveryNote (delivery-options.ts:829), applyCode (discounts.ts:418), orderContentTypes (content-types.ts:261), dealOfThing (deals.ts:715), appWebhook (developer-apps.ts:275), isCreator (creators.ts:420), previewStarters (design-presets.ts:1525), platformSiteApprovalWords (site-tools.ts:1025), usageHistory (usage.ts:133), runNextScan (cookie-scan-runner.ts:41), clientById (oauth-clients.ts:123), getRedirect (redirects.ts:468), accountingSystem (accounting.ts:16), articlePlace (blogs.ts:125), replicaAbilities (replicate.ts:1138), siteFromStoreNow (house-switch.ts:45), jobBelongs (data-job-store.ts:462), methodLabel (payment-methods.ts:113), referralProgramOn (referrals.ts:69), storeDesk (support-desk.ts:100), findOrderFor (withdrawals.ts:180), forgetSupportedTlds (registrars/index.ts:47), and the server action updateTimeEntryAction (src/app/admin/(gated)/(owner)/account/work/s/[store]/actions.ts:254). Take the current list from the script (the entries the fourth commit left). For EACH, read the function, its doc comment, the decision or doc that names it (rg -n -w '<name>' docs CLAUDE.md) and what replaced it, and put it in one of two groups. DELETE (superseded or orphaned): another function does the same work and is the one called (for example applyCode: the cart and checkout use previewCartCodes() and stackForBasket(); forgetStandingOrders: the erasure job has its own code, which throws where this copy swallowed a Stripe error; a one-line helper nothing calls). KEEP (built, not yet wired): it is the server side of a feature whose decision or doc describes a screen, tool or route that does not exist yet (updateTimeEntryAction: the time-entry edit has its action and no form; the live drills' request, which has no screen). When in doubt, keep. Delete the first group with their doc comments, then run pnpm lint and delete what it names, as in the fourth commit."
+        },
+        {
+          "file": "docs/audits/bloat-review-2026-11/unwired.md",
+          "action": "create",
+          "how": "A short file: a heading 'Server code kept though nothing calls it yet', one paragraph (unused is never a reason to retire a feature; each entry is the server side of a feature that only lacks its screen; the owner decides to build the screen or to retire the code; the unused-code script will keep listing these names), and a table: name, file, what feature it is the server side of (with its D-number), what is missing (the form, the page, the tool), and the date. One row per function kept in this commit, and one row for anything the fourth commit left with a reason."
+        },
+        {
+          "file": "docs/rules/admin/marketing.md",
+          "action": "edit",
+          "how": "Line 81 says a code is applied through applyCode(): when applyCode is deleted, say previewCartCodes() and stackForBasket() (src/server/cart-summary.ts and src/server/checkout.ts import them: check the names there). For every other deleted name run `rg -n -w '<name>' docs/rules CLAUDE.md` and correct a hit to the function that is used. Older design docs (docs/wave-*.md and the like) are history: leave them."
+        },
+        {
+          "file": "docs/decisions.md",
+          "action": "edit",
+          "how": "Append one row with the next free D-number (pull main first; `rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1`, plus 1). It records: the three files deleted and the rule corrected; the 34 texts deleted (the two product.media texts because the server's one sentence replaced them); simple-icons replaced by 27 kept paths with version and licence; how many exports were deleted by kind; the names of the server functions deleted with what supersedes each; the list of what was kept and why (docs/audits/bloat-review-2026-11/unwired.md), which waits for the owner. Platform: the platform's exports and texts were in the same lists."
+        },
+        {
+          "file": "docs/audits/bloat-review-2026-11.md",
+          "action": "edit",
+          "how": "Progress table: set the row of step 0.36 to Done with the date and the five commits (rg -n '^\\| 0\\.36 ' docs/audits/bloat-review-2026-11.md), and name unwired.md in Notes with the count of names kept."
+        }
+      ],
+      "checks": [
+        "node docs/audits/bloat-review-2026-11/scripts/unused-code.mjs /tmp/unused : every name in deadExports is `register` or a row of docs/audits/bloat-review-2026-11/unwired.md",
+        "node scripts/ratchet.mjs && pnpm exec vitest run src/server/ratchet.scan.test.ts : pass",
+        "pnpm lint && pnpm typecheck && pnpm test : exits 0",
+        "pnpm test:int : exits 0"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "src/lib/social-links.test.ts",
+      "proves": "Fails when a social network has no mark, a path is empty or a colour is malformed."
+    }
+  ],
+  "migration": {
+    "needed": false,
+    "notes": ""
+  },
+  "done_when": [
+    {
+      "check": "node docs/audits/bloat-review-2026-11/scripts/unused-code.mjs /tmp/unused, then read deadExports in /tmp/unused/unused-code.json",
+      "expect": "0 unused exports (262 before) apart from src/instrumentation.ts register and the names listed in docs/audits/bloat-review-2026-11/unwired.md, each with its reason; and none of the 69 names that no test names is in testOnlyExports, apart from the same list"
+    },
+    {
+      "check": "rg -n -w 'InlineHeadingEditor|WorkComingSoon|store-modules' src docs --glob '!docs/audits/**'",
+      "expect": "prints nothing"
+    },
+    {
+      "check": "rg -n 'simple-icons' src package.json",
+      "expect": "prints nothing"
+    },
+    {
+      "check": "pnpm lint && pnpm typecheck && pnpm test",
+      "expect": "exits 0"
+    }
+  ],
+  "after_deploy": [
+    "Each of the five commits deploys on its own: after each, /api/health reports the commit and Vercel's build passed.",
+    "A page with social links (a store's footer and Kaizena Flow's own) shows the same marks as before.",
+    "Tell the owner that docs/audits/bloat-review-2026-11/unwired.md waits for an answer: build the screen or retire the code, entry by entry."
+  ],
+  "docs": [
+    "docs/rules/admin/website.md line 302: InlineMarkupEditor.",
+    "docs/rules/admin/marketing.md line 81: the functions that apply a code.",
+    "docs/work.md line 1365.",
+    "docs/audits/bloat-review-2026-11/unwired.md: the kept list.",
+    "docs/decisions.md: one D-row.",
+    "docs/audits/bloat-review-2026-11.md Progress row 0.36."
+  ],
+  "do_not": [
+    "Do not delete a feature because nothing uses it yet: the platform is not open. Only superseded or orphaned code goes; the server side of a feature that lacks a screen stays, on the list.",
+    "Do not delete the 8 matching-table texts: marketing.problems.saveWords, headingLong, paragraphEmpty, paragraphLong, buttonEmpty, buttonLong and payments.problems.finishLive, finishTest. They are matched against the server's sentences at run time; nothing would fail, an owner would just read English.",
+    "Do not delete an export only tests use when a test names it (the other 586 tests-only exports): that is another step.",
+    "Do not delete `register` in src/instrumentation.ts, any export of a Next convention file (page, layout, route, generateMetadata, maxDuration and the like), or anything the script's notes call a blind spot: files read from disk by path, names reached by a string, members of exported objects.",
+    "Do not delete cleanHeadingText(), the second backToWork key or the comingSoon object in the Work catalogue.",
+    "Do not rewrite older design docs (docs/wave-*.md) for deleted names.",
+    "Do not raise a number in ratchet.baseline.json or in a scan test.",
+    "Do not add another icon package in place of simple-icons."
+  ],
+  "stop_if": [
+    "The script lists a number of unused exports far from 262 (more than 300 or fewer than 200): main has moved; report the count before deleting.",
+    "A name on a list has a second hit that is a string, a registry key, an SQL text or a rule in docs/rules: leave it and report it.",
+    "pnpm typecheck fails after a deletion and the fix is not 'delete an import the deletion left unused': put the declaration back and report it.",
+    "A test must be changed to pass, other than the three edits named (work-pages.test.ts, commerce.test.ts, affiliate-text.test.ts) and lowered per-file counts.",
+    "For a server function you cannot tell superseded from not yet wired after reading its doc and decision: keep it, list it with 'undecided', and go on.",
+    "The printed simple-icons data has fewer than 26 entries or an undefined path (the installed version renamed an icon): report which."
+  ],
+  "executor": "strong",
+  "executor_why": "The first three commits are mechanical and fully specified, but the last two delete about 300 declarations in 200 files, and telling a superseded server function from the server side of a feature that only lacks its screen is a judgement on each of 24 functions that the brief cannot make in advance.",
+  "checked_in_code": "I confirmed the three dead files with rg: InlineHeadingEditor is named only by its own file and inline-edit.test.ts, WorkComingSoon only by coming-soon.tsx and work-pages.test.ts lines 8 and 251, and src/lib/store-modules.ts only by src/db/commerce.test.ts line 9 and docs/work.md line 1365. brand-icon.tsx imports 26 icons and keeps LinkedIn's by hand, so the count is 27 paths as the step says (the finding's title says 26). One correction: TX-10 says the server refuses with 'Use at most N videos.' and 'Use at most N 3D models.' in src/server/product-media.ts; that file no longer exists and the only sentence left is 'Use at most N pictures, videos and 3D models.' (src/lib/product-input.ts:308), so the two product.media texts cannot be wired to anything and are deleted with the other 32. The finding's scripts/unused.mjs (DD-4) is not in the repo; the review's own script docs/audits/bloat-review-2026-11/scripts/unused-code.mjs writes unused-code.json, which the brief uses. The review's list has 24 server-side functions, not 23; the live drills' requestDrills() has no caller in src/app, which is the 'no screen yet' case the step names."
+}

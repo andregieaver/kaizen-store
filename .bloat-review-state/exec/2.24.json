@@ -1,0 +1,220 @@
+{
+ "id": "2.24",
+ "goal": "The server-reference manifest that every cold function reads is under 5 MB and 40,000 entries: a cached read or a server action is listed only by routes that can use it, because cached reads live in reader files no writer imports, the admin shell's actions live in small files of their own, and the visit beacons reach no cached read and no action.",
+ "why": "Today .next/server/server-reference-manifest.json is 10,397,955 bytes with 81,027 entries (80 to 91 ms and 20 to 24 MB to load before a function's first request). 74 cached reads are each listed by more than 500 of the 807 routes (54,977 entries), an admin route lists 115 at the median, and /api/visit lists 74 it never calls. After: under 5 MB and 40,000 entries, an admin route's median at 60 or fewer, /api/visit at 0, and the loader's time on CI's machine under 45 ms.",
+ "read_first": [
+  "docs/performance.md",
+  "node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache.md",
+  "node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-server.md",
+  "src/app/admin/(gated)/actions.ts",
+  "src/components/admin/admin-shell-parts.tsx",
+  "src/server/analytics-visits.ts"
+ ],
+ "depends_on": [
+  {
+   "id": "1.8",
+   "why": "scripts/route-budget.mjs prints the manifest's bytes, entries, entries per route and load time and holds them in scripts/route-budget.json; this step adds a per-reference table to it and lowers its budgets"
+  },
+  {
+   "id": "0.6",
+   "why": "the import cycle makes every route reach every cached read; the manifest can only be read meaningfully after it is cut"
+  },
+  {
+   "id": "2.20",
+   "why": "src/lib/cache-tags.ts, the tag leaf that writers import in place of reader files, and src/server/store-facts.ts, a store read with no cached function, come from it"
+  },
+  {
+   "id": "2.21",
+   "why": "page reads are already a reader file (src/server/page-reads.ts); the same pattern is applied here to the other features"
+  },
+  {
+   "id": "0.4",
+   "why": "it takes the chat module off the beacons, which is most of what /api/visit lists"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Route budget: name every reference by file, function and how many routes list it",
+   "changes": [
+    {
+     "file": "scripts/{route-budget.mjs}",
+     "action": "edit",
+     "how": "The file is scripts/route-budget.mjs, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). The file is step 1.8's script (if it is missing, that step is not done: stop). In its manifest part add a switch --references that reads .next/server/server-reference-manifest.json (its shape: { node: { <id>: { workers: { <route>: {...} }, exportedName, filename } } }) and prints two Markdown tables: (1) per source file: the number of references it defines, how many are cached reads (exportedName starts with '$$RSC_SERVER_CACHE') and how many are actions, the number of routes that list at least one of them, and entries = the sum of routes over its references; sorted by entries, top 60. (2) per route kind (storefront under app/s, admin under app/admin, platform site, api, the five beacons each by name): routes, median and maximum references per route. Also print the references listed by more than 500 routes as 'file: count'. No budget in this commit."
+    }
+   ],
+   "checks": [
+    "pnpm build && node scripts/route-budget.mjs --references: prints both tables. On the review's build the first rows were src/app/admin/(gated)/actions.ts 7,980 entries, src/app/admin/(gated)/(owner)/account/actions.ts 4,620, src/server/custom-fields.ts 4,440, src/server/seo.ts 4,440, src/server/experiments.ts 3,715; after phase 0 they will be lower. Save the output to paste into the decision row.",
+    "pnpm lint: exits 0"
+   ]
+  },
+  {
+   "title": "The admin shell imports only the actions it calls",
+   "changes": [
+    {
+     "file": "src/app/admin/(gated)/shell-actions.ts",
+     "action": "create",
+     "how": "A 'use server' file. Every export of a 'use server' file is a reference listed by every route that imports the file, and src/components/admin/admin-shell-parts.tsx (line 19) imports signOut from 'src/app/admin/(gated)/actions.ts', a file of 19 actions: so each of about 420 admin routes lists 19. Move into this new file exactly the actions the admin's shell imports: find them with rg -n \"from \\\"@/app/admin/\\(gated\\)/actions\\\"\" src/components/admin src/app/admin -g '!*.test.*' and keep those whose importer is drawn by the admin's layouts (src/app/admin/(gated)/layout.tsx, 'src/app/admin/(gated)/[store]/layout.tsx', src/app/admin/(gated)/platform/layout.tsx and the components they import: admin-shell-parts.tsx and its children); signOut is one. Move each function's text unchanged, with the imports it needs."
+    },
+    {
+     "file": "src/app/admin/(gated)/actions.ts",
+     "action": "edit",
+     "how": "Delete the moved functions. Do NOT re-export them from this file (a re-export from a 'use server' file would list them again). Change every importer of a moved name to the new file (rg -n 'signOut' src -g '!*.test.*' for each moved name). Test files that import a moved action change their import path too; that is the one sanctioned test edit of this commit."
+    },
+    {
+     "file": "src/app/admin/(gated)/(owner)/account/actions.ts",
+     "action": "edit",
+     "how": "The same split for this file (11 actions listed by about 420 routes): find which of its actions a shell component imports (rg -n \"account/actions\" src/components/admin src/app/admin -g '!*.test.*'), move those to 'src/app/admin/(gated)/(owner)/account/shell-actions.ts' and change their importers. Then the same for 'src/app/admin/(gated)/[store]/assistant/actions.ts' (8 actions on about 264 routes) and 'src/app/admin/(gated)/platform/assistant/actions.ts': the AI manager's launcher in the shell needs only the action(s) that open it; the chat panel's actions should be imported by the panel, which loads when it is opened. If the launcher statically imports the whole panel, stop: that is step 2.32's or 2.36's cut, not this one."
+    }
+   ],
+   "checks": [
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build && node scripts/route-budget.mjs --references: the four action files' entries fall to (actions left in the shell file) x (admin routes); the admin routes' median references per route is printed",
+    "On the signed-in build: E2E_SIGNED_IN=1 pnpm exec playwright test e2e/signed-in/admin-phone.spec.ts e2e/signed-in/ai-manager-panel.spec.ts e2e/signed-in/a11y.spec.ts: pass (sign-out, the store switcher, the AI manager's launcher)"
+   ]
+  },
+  {
+   "title": "The visit beacons reach no cached read and no action",
+   "changes": [
+    {
+     "file": "src/server/analytics-visits.ts",
+     "action": "edit",
+     "how": "It imports getOpenStore from './stores' (line 25), whose module holds three cached reads, so /api/visit lists them. Read what recordVisit() uses of the store (open the function: the id, the status, visit counting and the fields it passes on). Replace getOpenStore() by a small uncached read in a leaf file: add to src/server/store-facts.ts (step 2.20) an exported function visitStoreOf(slug) that selects exactly the columns recordVisit() needs from commerce.stores where slug = the slug and the store is open (copy the open-store conditions from getOpenStore()), remembered for FACTS_MS with remembered() from './short-memory', keyed slug + '|visit'. recordVisit() calls it. The beacon is a write that runs per view; a 10-second memory of the store's row is the same freshness the proxy has (D339's bound). If recordVisit() needs something getStore() computes in code (not a column), stop."
+    },
+    {
+     "file": "src/server/{route-load.graph.test.ts}",
+     "action": "edit",
+     "how": "The file is src/server/route-load.graph.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). For the five beacon entries add a rule: the entry reaches no file that contains a line that is exactly the directive 'use cache' or 'use server' (scan the reached files' text; allow-list nothing). The failure message names the entry, the file and the import chain. Run it and cut what it prints for each of the five beacons (src/app/api/visit/route.ts, visit/touch, visit/speed, visit/speed/own, and src/app/api/recommendations/events/route.ts) with the same three moves, in this order: a tag-only import goes to '@/lib/cache-tags'; a small pure helper moves to a leaf file and is re-exported from where it was; a cached store or settings read the beacon really calls is replaced by an uncached leaf read like visitStoreOf(), remembered for a few seconds. Lower the baseline with node scripts/route-load.mjs --write."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/route-load.graph.test.ts: passes with the five beacons reaching no 'use cache' and no 'use server' file",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/analytics-visits.int.test.ts: passes unchanged (find the visit tests with rg -l 'recordVisit' src -g '*.test.ts')",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm build && node scripts/route-budget.mjs --references: /api/visit lists 0 references (74 before), and so do the other four beacons",
+    "pnpm exec playwright test e2e/performance.spec.ts e2e/csp.spec.ts e2e/a11y.spec.ts: pass (the specs that meet /api/visit: rg -l '/api/visit' e2e)"
+   ]
+  },
+  {
+   "title": "Cached reads listed by more than 500 routes move to reader files that no writer imports",
+   "changes": [
+    {
+     "file": "src/server/*-read.ts",
+     "action": "create",
+     "how": "One reader file per feature file that node scripts/route-budget.mjs --references still shows with a cached read listed by more than 500 routes, worked through in the order of the table (most entries first), ONE FEATURE PER COMMIT. On the review's build the list was: stores.ts (3 cached reads, 804 routes), fonts.ts (2), experiments.ts (5), referrals.ts (1), theme-store.ts (3), design-presets.ts (2), catalog.ts (3), custom-fields.ts (6), seo.ts (6), content-grid.ts (4), pages.ts (3: done by step 2.21), content-site.ts (3), blogs.ts (3), site-cookies.ts (2), chat-agent.ts (2), campaign-notices.ts (2), docs-guide-settings.ts (2), redirect-resolve.ts, house-customers.ts, text-styles.ts, taxonomy.ts, product-layouts.ts, affiliates.ts, platform-navigation.ts, recommend-settings.ts, field-tiles.ts, recommend.ts, platform-roles.ts, site-store.ts, page-modals.ts, after-sale.ts, blog-comments.ts, languages.ts, menus.ts, site-layouts.ts, sandbox.ts, self-signup.ts, store-starters.ts, brreg.ts. For a feature x: create src/server/x-read.ts (for stores.ts: src/server/store-read.ts) holding the feature's 'use cache' functions and the private helpers and row types only they use, text unchanged; it imports the database client, typed-rows, the log, '@/lib/cache-tags' and pure src/lib modules, plus other *-read.ts files; never './auth', './audit', a writer file or a file with 'use server'. In x.ts delete the moved text, import what its writers call, and re-export the moved names (export { ... } from './x-read') so no importer breaks. Then change the import path of every importer that takes only reads or tags from x.ts to './x-read' or '@/lib/cache-tags' (list them: rg -n \"from \\\"(@/server/x|\\./x)\\\"\" src -g '!*.test.*'; an importer that also takes a writer splits its import line). A re-export alone cuts nothing: the listing falls only when importers' paths change. The first feature, fully specified: experiments. src/server/experiments-read.ts takes experimentsTag's import from '@/lib/cache-tags', runningTests() (or the four cached questions, if step 2.18 is not done) and siteVersionContent(), with their imports ('./media-alts', '@/lib/page-content', '@/lib/experiments'); experiments.ts keeps the assignment, exposure and event writers and re-exports; importers of only experimentOfPage, storeHasExperiments, siteTests, runningExperimentIds or siteVersionContent change path (rg -n 'server/experiments\"' src -g '!*.test.*')."
+    },
+    {
+     "file": "src/server/{route-load.graph.test.ts}",
+     "action": "edit",
+     "how": "The file is src/server/route-load.graph.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Add one rule that holds the pattern from now on: a file named *-read.ts or page-reads.ts under src/server reaches no file that contains the directive 'use server', and not src/server/auth.ts, src/server/audit.ts or src/server/pages.ts. And one rule for the admin: the entry for the admin's store layout ('src/app/admin/(gated)/[store]/layout.tsx') reaches at most N files that contain 'use cache', with N stored in src/server/route-load.baseline.json and only allowed to fall."
+    },
+    {
+     "file": "src/server/{use-cache.scan.test.ts}",
+     "action": "edit",
+     "how": "The file is src/server/use-cache.scan.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Its list names each cached read with its file: update the file names as reads move (the test's own update switch, as step 1.11's header says). No life or tag may change in this commit."
+    }
+   ],
+   "checks": [
+    "After each feature: pnpm typecheck && pnpm exec vitest run src/server/route-load.graph.test.ts src/server/use-cache.scan.test.ts src/server/store-writers.scan.test.ts src/server/tag-writers.scan.test.ts src/server/ratchet.scan.test.ts: pass (run node scripts/ratchet.mjs when per-file counts moved; a scan that names a file by path gets the reader's path)",
+    "After each feature: pnpm lint && pnpm test: exit 0; pnpm test:int: exits 0",
+    "After every third feature and at the end: pnpm build && node scripts/route-budget.mjs --references: the moved file's entries fall; stop moving features when the manifest is under 5,000,000 bytes and 40,000 entries and the admin routes' median is 60 or fewer",
+    "At the end: pnpm test:e2e and the signed-in suite on its build: pass"
+   ]
+  },
+  {
+   "title": "Hold the manifest, and write the per-route cost up for Next",
+   "changes": [
+    {
+     "file": "scripts/{route-budget.json}",
+     "action": "edit",
+     "how": "The file is scripts/route-budget.json, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Run pnpm build && node scripts/route-budget.mjs --write: it stores the manifest's bytes and entries (they may only fall). Then set, with the script's own switches or by adding fields the script reads: manifest.maxBytes 5000000, manifest.maxEntries 40000, manifest.adminMedianMax 60, manifest.beaconMax 0, manifest.loadMsMax 45. Make scripts/route-budget.mjs fail on each (one line naming the figure and the budget). The load time is the median of five fresh-process runs of the manifest timer (docs/audits/bloat-review-2026-11/scripts/manifest-time.cjs); on a breach rerun the five once before failing, as the script does for cold loads. The 45 ms is for CI's machine: set it only after reading three CI runs' printed figure; if CI's median is above 45 with the manifest under 5 MB, keep the figure CI prints plus 25% and say so in the decision row and here."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11/next-manifest-report.md",
+     "action": "create",
+     "how": "A short report the owner can post to Next.js's issue tracker, written with no name, domain or data of this project: what was measured (a manifest of N bytes and M entries for R routes; every route's function parses the whole file before its first request; the time and memory to load it in a fresh process, from the manifest timer), why it grows (each 'use cache' function and each export of a 'use server' file is listed once per route whose module graph reaches it, whether or not the route calls it), what helped here (reader files, small action files; the before and after figures), and the request: a per-route manifest, or lazy loading of the workers map. Add the exact Next version from package.json. Do not post it: the owner decides."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "In 'What a server route loads' add a part 'The server-reference manifest': what lists a reference, the two rules (cached reads live in x-read.ts files that import no writer and no action; a shell or layout imports actions from a small file of its own, never from a feature's whole actions file), the budgets, and the figures before and after."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1): the reader-file rule and the list of features split, the shell's action files, the beacons' uncached store read with its 10-second memory, the budgets, the figures before and after, and that the report for Next is in the repo for the owner to post."
+    },
+    {
+     "file": "docs/audits/code-review-2026-11.md",
+     "action": "edit",
+     "how": "In the Progress table's note on step 3.13 (Domain folders, Open) add: 'cached reads are in *-read.ts files since bloat review step 2.24; a feature's folder keeps reads and writes apart'. Add a change-log line."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress table: row 2.24 to Done with the date, the commits and the manifest's bytes, entries, the admin median, /api/visit's count and the load time on CI; one change-log line."
+    }
+   ],
+   "checks": [
+    "pnpm build && node scripts/route-budget.mjs: passes with the manifest under 5 MB and 40,000 entries, the admin median at 60 or fewer, the five beacons at 0, and the load time printed",
+    "Trial: import a cached read into src/app/api/visit/route.ts, rebuild, run: it fails naming /api/visit. Remove the trial.",
+    "pnpm lint: exits 0"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "scripts/route-budget.json",
+   "proves": "CI's e2e job fails when the manifest passes 5 MB or 40,000 entries, when an admin route's median passes 60 references, when a beacon lists any reference, or when the loader's time passes its figure."
+  },
+  {
+   "file": "src/server/route-load.graph.test.ts",
+   "proves": "It fails when a beacon reaches a file with 'use cache' or 'use server', when a reader file reaches a writer, auth or an action file, and when the admin's store layout reaches more cached-read files than its stored number."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm build && node scripts/route-budget.mjs",
+   "expect": "The manifest under 5 MB and 40,000 entries (10.4 MB and 81,027 before); an admin route lists a median of 60 references or fewer (115 before); /api/visit lists 0 (74 before)."
+  },
+  {
+   "check": "CI's e2e job, step 'What a route loads', on three runs",
+   "expect": "The manifest's load time under 45 ms on CI's machine (80 to 91 ms on the review's machine), held in scripts/route-budget.json."
+  },
+  {
+   "check": "pnpm exec vitest run src/server/route-load.graph.test.ts",
+   "expect": "Passes with the beacon, reader-file and admin-layout rules."
+  }
+ ],
+ "after_deploy": [
+  "Platform, Usage and limits (step 1.16): cold-start p50 by kind of entry falls for every kind, the health check's included (it reads the same manifest).",
+  "Sign out and in, switch store, open the AI manager's panel and save a product on a test store in production: each action works (an action left out of a route's list fails with 'Failed to find Server Action')."
+ ],
+ "docs": [
+  "docs/performance.md, docs/decisions.md, docs/audits/code-review-2026-11.md, the report file and the Progress row, as the last commit says.",
+  "CLAUDE.md, Conventions, if the size budget of step 2.1 allows, else docs/performance.md only: a feature's cached reads live in x-read.ts; a layout imports actions from a small file of its own."
+ ],
+ "do_not": [
+  "Do not re-export an action from a 'use server' file to keep an old import path: it lists the action again for every importer of that file.",
+  "Do not turn a cached read into an uncached one to shrink the manifest, except the store read of the visit beacons named above.",
+  "Do not change any cached read's tags, life, SQL or name while moving it.",
+  "Do not delete the re-exports of moved reads from the feature files: tests and writers import them there.",
+  "Do not move more than one feature per commit: a wrong move must be easy to find and revert.",
+  "Do not edit the built manifest, post-process .next, or patch Next to split it.",
+  "Do not post the report to Next's tracker yourself, and put no project name, domain or customer data in it."
+ ],
+ "stop_if": [
+  "After phase 0 and steps 2.20 to 2.22 the --references table shows no file above 500 routes and the manifest is still over 5 MB: report the table; the remaining weight is then actions, and the cut is the admin's action files route by route, which needs a new plan.",
+  "A moved cached read needs an import from a writer file, auth or an action file to compile.",
+  "An action moved out of a shell file is called by a form on a route that no longer lists it (the e2e shows 'Failed to find Server Action' or a form that does nothing).",
+  "recordVisit() needs a value getStore() computes in code.",
+  "The AI manager's launcher statically imports the chat panel and all its actions.",
+  "CI's load time is above 45 ms with the manifest under 5 MB: record the figure as the brief says and report; do not keep cutting for the time alone."
+ ],
+ "executor": "strong",
+ "executor_why": "Which reads to move and where each feature's reader ends is decided from the manifest table after earlier steps have changed it, across about 40 feature files; the first commit (the table) and the experiments reader are specified for the cheap model.",
+ "checked_in_code": "I read the built manifest of the review's build (.next/server/server-reference-manifest.json: 10,397,955 bytes, 1,454 references, 81,027 entries over 807 routes) with a one-off script: 55,974 entries are cached reads and 25,053 are actions; 74 references are each listed by more than 500 routes (54,977 entries), all of them 'use cache' functions of feature files inside the import cycle; the admin's 547 routes list 115 at the median, of which src/app/admin/(gated)/actions.ts gives 19 (the shell imports signOut from that file of 19 actions), account/actions.ts 11 and the assistant's 8; /api/visit lists 74, three of them from stores.ts through getOpenStore() in src/server/analytics-visits.ts line 25. No finding covers this step (it closes a gap), so the brief is built on those counts. Corrected against the plan's text: moving cached readers alone cannot bring /api/visit to 0 while recordVisit() calls a cached store read, so the brief gives the beacon an uncached leaf read; and the action half (25,053 entries) is not named in the step, but the admin median of 60 cannot be met without splitting the shell's action files."
+}

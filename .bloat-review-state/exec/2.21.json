@@ -1,0 +1,167 @@
+{
+ "id": "2.21",
+ "goal": "The reads of published pages live in src/server/page-reads.ts, which imports only the database client, the tag leaf, the page model and the media library's alt texts; src/server/pages.ts keeps the writers and re-exports the reads; the files that only read import the new module; and the graph test forbids the reader and the page renderer the code for saving, designing and AI-writing pages.",
+ "why": "Today reading a page imports src/server/pages.ts, which reaches 1,307 modules and 20.5 MB of source (savePage, the checker, fonts, audit, redirects), and the page renderer reaches 1,396. After: page-reads.ts reaches 130 modules or fewer with no path to pages.ts, and page-article.tsx reaches none of pages.ts, design-presets.ts, page-ai.ts or src/lib/signature.",
+ "read_first": [
+  "docs/performance.md",
+  "src/server/pages.ts",
+  "src/components/page-article.tsx",
+  "src/server/media-alts.ts",
+  "src/lib/pay-routes.graph.test.ts",
+  "src/lib/store-features.ts",
+  "docs/audits/code-review-2026-11.md:100"
+ ],
+ "depends_on": [
+  {
+   "id": "2.20",
+   "why": "it creates src/lib/cache-tags.ts with pagesTag, PAGES_TAG and pageTag, the leaf the reader imports its tags from"
+  },
+  {
+   "id": "0.24",
+   "why": "publishedPageById() and publishedPageIndex() are written into pages.ts there and move here"
+  },
+  {
+   "id": "2.17",
+   "why": "it adds articleCards() and changes the index; move the reads after it so they move once"
+  },
+  {
+   "id": "1.8",
+   "why": "src/server/route-load.graph.test.ts and its baseline hold the new entries"
+  },
+  {
+   "id": "0.6",
+   "why": "the import cycle of src/server must be cut first, or every path from the renderer still reaches pages.ts through the cycle"
+  }
+ ],
+ "commits": [
+  {
+   "title": "Page reads move to src/server/page-reads.ts; pages.ts re-exports them",
+   "changes": [
+    {
+     "file": "src/server/page-reads.ts",
+     "action": "create",
+     "how": "Server-only. Move from src/server/pages.ts, text unchanged: the types PageOwner (line 64) and PublishedPage (642); the helpers the reads use and nothing else uses differently: iso() (line 110), ownedBy() (line 71, export it), published() (the row mapper above line 660); and the cached reads listPublishedPages, findPublishedPage, publishedPageNames, publishedPageById, publishedPageIndex, articleCards, productsPageOf, pageForRole, and the types PublishedPage, PublishedPageEntry and PageOwner (lines 664 to 737, 797 to 800, 859 to 863 today, plus the ones steps 0.24 and 2.17 added). Its imports are exactly: sql from 'drizzle-orm'; cacheLife and cacheTag from 'next/cache'; readDb (and db only if a moved function uses it) from '@/db/client'; pagesTag, PAGES_TAG and pageTag from '@/lib/cache-tags'; parsePageContent and the types it needs from '@/lib/page-content'; indexTitle or other pure helpers from src/lib that the moved functions call; withPageAlts from './media-alts'; col, typedRow, typedRows from './typed-rows' if the moved reads use them; type-only imports (import type) for PageRole and PageType. It must import nothing else from src/server: not './pages', './auth', './stores', './taxonomy', './visibility', './fonts' or './redirects'. productsPageOf() and pageForRole() take a store object as an argument already and call only the reads, so they move as they are. If a function in this list calls something that is not in the list of allowed imports, leave that one function in pages.ts and say so in the commit message."
+    },
+    {
+     "file": "src/server/pages.ts",
+     "action": "edit",
+     "how": "Delete the moved text. Add at the top: import { ownedBy, type PageOwner, type PublishedPage, <the reads the writers below still call> } from './page-reads'; and re-export every moved name so existing importers keep working: export { listPublishedPages, findPublishedPage, publishedPageNames, publishedPageById, publishedPageIndex, articleCards, productsPageOf, pageForRole, type PublishedPage, type PublishedPageEntry, type PageOwner } from './page-reads'; pagesTag, PAGES_TAG and pageTag stay re-exported from '@/lib/cache-tags' as step 2.20 left them. Everything else in the file (listPages, getPageForEdit, savePage, unpublishPage, deletePage, ownerLanguages, setFrontPage, setProductsPage, setPageRole, listMenuPages, the checker's gate) stays."
+    },
+    {
+     "file": "src/server/{route-load.graph.test.ts}",
+     "action": "edit",
+     "how": "The file is src/server/route-load.graph.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Add the entry 'page-reads' (src/server/page-reads.ts) to the entries of scripts/lib/route-load.mjs (step 1.8's ENTRIES object) with the forbidden list: src/server/pages.ts, src/server/auth.ts, src/server/design-presets.ts, src/server/page-ai.ts, every file under src/lib/signature/. Add one assertion: its count is at most 130. Write the baseline with node scripts/route-load.mjs --write."
+    }
+   ],
+   "checks": [
+    "pnpm typecheck: exits 0",
+    "pnpm exec vitest run src/server/route-load.graph.test.ts: passes; it prints page-reads at 130 files or fewer. If it is above 130, print what it reaches by folder (node scripts/route-load.mjs) : the page model (src/lib/page-content and what it imports) is the expected bulk; see stop_if.",
+    "pnpm exec vitest run src/server/use-cache.scan.test.ts src/server/pages-list.scan.test.ts src/server/ratchet.scan.test.ts: pass after their file lists are updated for the moved reads (run node scripts/ratchet.mjs if per-file counts moved)",
+    "pnpm exec vitest run --config vitest.integration.config.mts src/server/pages.int.test.ts src/server/blogs.int.test.ts src/server/product-layouts.int.test.ts: pass unchanged (tests import the reads from '@/server/pages' and keep working through the re-export)",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
+   ]
+  },
+  {
+   "title": "Files that only read pages import the reader, and files that only need a tag import the tag leaf",
+   "changes": [
+    {
+     "file": "src/**/*.{ts,tsx}",
+     "action": "edit",
+     "how": "List the importers: rg -n \"from \\\"(@/server/pages|\\./pages)\\\"\" src -g '!*.test.*' (115 lines today). For each import line split the names in three groups and rewrite the line(s): (a) tag names (pagesTag, PAGES_TAG, pageTag) come from '@/lib/cache-tags'; (b) read names (listPublishedPages, findPublishedPage, publishedPageNames, publishedPageById, publishedPageIndex, articleCards, productsPageOf, pageForRole, and the types PublishedPage, PublishedPageEntry and PageOwner) come from '@/server/page-reads' (or './page-reads' inside src/server); (c) every other name (savePage, getPageForEdit, listPages, deletePage, unpublishPage, ownerLanguages, listMenuPages, setFrontPage, setProductsPage, setPageRole, pageTitles, countPages, the types EditablePage, PageSummary, PageState, PageResult) stays on '@/server/pages'. A file whose names are all in (a) and (b) then no longer imports pages.ts: that is the point. Today's counts by name, to check you found them all: pagesTag 39 lines, listPublishedPages 21, PublishedPage 7, PAGES_TAG 5, findPublishedPage 4, publishedPageNames 3, pageForRole 3, productsPageOf 2. Keep 'import type' where the line had it. Do not touch test files: the re-exports serve them."
+    }
+   ],
+   "checks": [
+    "rg -n \"import \\{[^}]*\\b(pagesTag|PAGES_TAG|listPublishedPages|findPublishedPage|publishedPageNames|publishedPageById|publishedPageIndex|productsPageOf|pageForRole)\\b[^}]*\\} from \\\"(@/server/pages|\\./pages)\\\"\" src -g '!*.test.*': prints no line",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build: exits 0 (a cycle between page-reads.ts and pages.ts would show as an undefined import at build or in pnpm test)"
+   ]
+  },
+  {
+   "title": "The page renderer may not reach the code that saves, designs or AI-writes pages",
+   "changes": [
+    {
+     "file": "src/server/{route-load.graph.test.ts}",
+     "action": "edit",
+     "how": "The file is src/server/route-load.graph.test.ts, made by an earlier step of the plan (it does not exist before that step; if it is missing, that step is not done: stop). Add the entry 'page-article' (src/components/page-article.tsx) with the forbidden list: src/server/pages.ts, src/server/design-presets.ts, src/server/page-ai.ts and every file under src/lib/signature/. Run the test: for each forbidden module it still reaches, the test prints the import path (step 1.8's walker prints 'entry > a > b > forbidden'). Cut each printed path at its cheapest edge, in this order of preference, then run again: (1) an import of only tag names: point it at '@/lib/cache-tags'; (2) an import of only page reads: point it at '@/server/page-reads'; (3) an import of a type used as a value import: make it 'import type'; (4) src/lib/store-features.ts line 14 imports the admin's common words (src/lib/admin-messages/common.en) for labels: if step 0.7 has not already moved them, change the functions that need words to take them as an argument and move the default to the admin's side (src/lib/store-features-words.ts imported only by admin code); (5) a small pure helper that lives in a heavy file (for example linksToRemoved from src/lib/demo-content.ts, used by pages.ts's writers only: it stays with the writers and needs no change): move the helper to its own file in the same folder and re-export it from the old one. Do not use a lazy import() to hide a path, and do not move a writer. Write the baseline with node scripts/route-load.mjs --write when the test passes."
+    },
+    {
+     "file": "docs/performance.md",
+     "action": "edit",
+     "how": "In 'What a server route loads' add: page reads are in src/server/page-reads.ts and never import src/server/pages.ts; the renderer (src/components/page-article.tsx) may not reach pages.ts, design-presets.ts, page-ai.ts or src/lib/signature; the two counts before and after."
+    },
+    {
+     "file": "docs/audits/code-review-2026-11.md",
+     "action": "edit",
+     "how": "In the Progress table's notes on steps 3.13 (Domain folders) and 3.14 (Split schema.ts), both Open, add: 'page reads and writes are two files since bloat review step 2.21, <date>, <commit>'. Add a change-log line."
+    },
+    {
+     "file": "docs/decisions.md",
+     "action": "edit",
+     "how": "Append one row with the next free D-number (pull main first; rg -o '^\\| D[0-9]+' docs/decisions.md | tr -dc '0-9\\n' | sort -n | tail -1, plus 1): page-reads.ts and what it may import, the re-exports kept in pages.ts for tests, the graph test's two new entries with their forbidden lists and counts, and each edge that was cut in the last commit."
+    },
+    {
+     "file": "docs/audits/bloat-review-2026-11.md",
+     "action": "edit",
+     "how": "Progress table: row 2.21 to Done with the date, the commits and the two counts (page-reads.ts, page-article.tsx); one change-log line."
+    }
+   ],
+   "checks": [
+    "pnpm exec vitest run src/server/route-load.graph.test.ts src/lib/pay-routes.graph.test.ts src/lib/storefront-bundle.scan.test.ts: pass",
+    "Trial: add 'import { savePage } from \"./pages\";' to src/server/page-reads.ts: the graph test fails naming page-reads and src/server/pages.ts. Remove the trial.",
+    "pnpm lint && pnpm typecheck && pnpm test: each exits 0",
+    "pnpm test:int: exits 0",
+    "pnpm build && pnpm exec playwright test e2e/store-pages.spec.ts e2e/pages.spec.ts e2e/blog.spec.ts e2e/menus.spec.ts: pass"
+   ]
+  }
+ ],
+ "tests": [
+  {
+   "file": "src/server/route-load.graph.test.ts",
+   "proves": "It fails when src/server/page-reads.ts reaches more than 130 files or has any path to src/server/pages.ts, and when src/components/page-article.tsx reaches pages.ts, design-presets.ts, page-ai.ts or a file of src/lib/signature."
+  }
+ ],
+ "migration": {
+  "needed": false,
+  "notes": ""
+ },
+ "done_when": [
+  {
+   "check": "pnpm exec vitest run src/server/route-load.graph.test.ts",
+   "expect": "Passes with src/server/page-reads.ts at 130 modules or fewer (pages.ts reached 1,307) and no path from it to src/server/pages.ts, and src/components/page-article.tsx reaching none of src/server/pages.ts, design-presets.ts, page-ai.ts or src/lib/signature."
+  },
+  {
+   "check": "rg -n 'from \"\\./pages\"|from \"@/server/pages\"' src/server/page-reads.ts src/server/media-alts.ts",
+   "expect": "No line."
+  },
+  {
+   "check": "pnpm build && node scripts/route-budget.mjs",
+   "expect": "Passes; the store home's chunk bytes do not rise (they should fall)."
+  }
+ ],
+ "after_deploy": [
+  "Platform, Usage and limits (step 1.16): a store page's cold-start p50 does not rise; pages, menus and the blog on a test store read as before."
+ ],
+ "docs": [
+  "docs/performance.md, docs/audits/code-review-2026-11.md, docs/decisions.md and the Progress row, as the last commit says.",
+  "docs/platform-parity.md: nothing to tick; the platform's pages are read through page-reads.ts with a null owner."
+ ],
+ "do_not": [
+  "Do not change any moved function's SQL, tags or cache life.",
+  "Do not delete the re-exports in src/server/pages.ts: test files and the writers' callers import the reads from there.",
+  "Do not move listPages(), getPageForEdit() or any writer into page-reads.ts.",
+  "Do not make page-reads.ts import pages.ts, and do not import it lazily to pass the graph test.",
+  "Do not split src/lib/page-content.ts here (step 2.22 and the code review's step 3.2 do).",
+  "Do not edit test files in the second commit."
+ ],
+ "stop_if": [
+  "page-reads.ts is above 130 files and the surplus is the page model itself (src/lib/page-content.ts and its imports) or zod: report the count by folder; the cut of the page model is step 2.22's, and the bar may need that step first.",
+  "A printed path from page-article.tsx to a forbidden module goes through a function the renderer really calls at render time (not a tag, a read, a type or a helper): report the path; that is a design question.",
+  "A moved read calls a writer or a helper that needs auth, stores or taxonomy.",
+  "pnpm build or pnpm test shows an undefined import (a cycle).",
+  "An int or e2e test must be changed to pass."
+ ],
+ "executor": "strong",
+ "executor_why": "The first two commits are mechanical moves the cheap model can do, but the last one means reading import paths from the renderer and choosing where to cut each, which the brief cannot list before the earlier steps have changed the graph.",
+ "checked_in_code": "I opened src/server/pages.ts: its imports at lines 31 to 49 bring auth, fonts, global parts, page rules, page versions, text styles, taxonomy, stores, visibility and redirects, and the three cached reads sit at 664 to 737 beside savePage(); 115 import lines in src take names from it, 39 of them pagesTag. src/components/page-article.tsx imports no page function itself: it reaches pages.ts through its sections and through src/server modules that take a tag or a read. src/lib/store-features.ts line 14 imports the admin's common words, as PM-12 says. Corrected: PM-12 puts the tag leaf at src/server/tags.ts; step 2.20 makes it src/lib/cache-tags.ts, and this brief uses that. The finding's bar was 400 modules; the plan's is 130, which rests on the page model's own size, so the brief stops and reports if the model alone is larger."
+}

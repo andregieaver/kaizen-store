@@ -85,7 +85,7 @@
     }
    ],
    "checks": [
-    "pnpm exec vitest run src/server/short-memory.test.ts src/lib/redirect-live.test.ts src/lib/holding.test.ts src/proxy.test.ts: pass",
+    "pnpm exec vitest run src/server/short-memory.test.ts src/server/redirect-live.test.ts src/lib/holding.test.ts src/proxy.test.ts: pass",
     "rg -n 'async function remembered' src/server: prints one line, in src/server/short-memory.ts (three before)",
     "pnpm exec vitest run --config vitest.integration.config.mts src/server/redirect-resolve.int.test.ts src/server/experiments.int.test.ts src/server/private-mode.int.test.ts src/server/store-address.int.test.ts: pass",
     "pnpm lint && pnpm typecheck && pnpm test: each exits 0"
