@@ -36,4 +36,4 @@ Families and twins (`README.md` beside this file), part of `docs/audits/bloat-re
 
 **Comes after:** The owner's word that the switch of 7 November is final; The media library's rows moved to the store (parity plan, still to do)
 
-**Notes:** The owner's choice is only when: the plan already decided that it happens. Step 6 of the same plan (one support desk) would also remove the platform's support, chat and assistant screens that repeat the stores' (about 225 identical lines of 546 in 15 files, measured by work/fm/twins.mjs); it is a separate decision in the plan and not counted here. The same duplicate is reported by the features area (FT-5) and the schema area (DS-6).
+**Notes:** The owner's choice is only when: the plan already decided that it happens. Step 6 of the same plan (one support desk) would also remove the platform's support, chat and assistant screens that repeat the stores' (about 225 identical lines of 546 in 15 files, measured by the review's working files (not kept)); it is a separate decision in the plan and not counted here. The same duplicate is reported by the features area (FT-5) and the schema area (DS-6).

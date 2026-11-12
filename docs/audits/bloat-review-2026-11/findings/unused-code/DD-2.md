@@ -31,4 +31,4 @@ Code nothing uses (`README.md` beside this file), part of `docs/audits/bloat-rev
 
 **Comes after:** DD-4; DD-3
 
-**Notes:** Lists: scratchpad/work/ddplan/T2.txt and T3.txt, largest first, with the test files that name each. Do it folder by folder when the area is next touched; nothing here costs a visitor anything. The skeptic's corrections are kept: 298 files, about 330 exports, validateExport is an oracle.
+**Notes:** Lists: the review's working files (not kept) and T3.txt, largest first, with the test files that name each. Do it folder by folder when the area is next touched; nothing here costs a visitor anything. The skeptic's corrections are kept: 298 files, about 330 exports, validateExport is an oracle.

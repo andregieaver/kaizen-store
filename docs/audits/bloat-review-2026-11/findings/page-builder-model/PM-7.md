@@ -17,7 +17,7 @@ The page builder's model and a built page's render (`README.md` beside this file
 3. The same for a header's or footer's rows (src/components/site-parts.tsx:345): one sheet for the layout's rows.
 4. Resolve the theme layers and the link base once per article and hand them down on `place` (GridPlace already has `theme`; add `linkBase`), so StoreRowView awaits nothing when both are there.
 
-**Done when:** node work/pmsk/trows.mjs on a capture of a seeded six-row page (PM-14's page) counts the 1,760-byte breakpoint sheet once (the layout's), whatever the number of rows; today it is the layout's, the layout's second copy and one more per row.
+**Done when:** the review's working files (not kept) on a capture of a seeded six-row page (PM-14's page) counts the 1,760-byte breakpoint sheet once (the layout's), whatever the number of rows; today it is the layout's, the layout's second copy and one more per row.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

@@ -29,4 +29,4 @@ Code nothing uses (`README.md` beside this file), part of `docs/audits/bloat-rev
 
 **Comes after:** DD-4
 
-**Notes:** The full list, largest first, is in scratchpad/work/ddplan/T0.txt (made by tiers.mjs from the skeptic's index); the scan regenerates it. This is code with no caller, not an unused feature, so the owner's clarification does not change it.
+**Notes:** The full list, largest first, is in the review's working files (not kept) (made by tiers.mjs from the skeptic's index); the scan regenerates it. This is code with no caller, not an unused feature, so the owner's clarification does not change it.

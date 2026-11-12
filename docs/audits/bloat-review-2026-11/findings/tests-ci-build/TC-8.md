@@ -13,7 +13,7 @@ Tests, CI and the build (`README.md` beside this file), part of `docs/audits/blo
 
 ## The fix
 
-1. scripts/next-build.mjs: after `next build` returns, print one line with the wall seconds and the peak memory. Read the peak from /sys/fs/cgroup/memory.peak where it exists; where it does not, run the build with spawn and sample /proc/meminfo every 2 s, as this review's scratchpad/m/run-build.sh did. On Vercel the line lands in the build log, so every deploy shows its margin to 8 GB.
+1. scripts/next-build.mjs: after `next build` returns, print one line with the wall seconds and the peak memory. Read the peak from /sys/fs/cgroup/memory.peak where it exists; where it does not, run the build with spawn and sample /proc/meminfo every 2 s, as this review's the review's working files (not kept) did. On Vercel the line lands in the build log, so every deploy shows its margin to 8 GB.
 2. New scripts/timed.mjs: `node scripts/timed.mjs <label> -- <command>` runs the command, appends label and seconds (and the peak, as above) to $GITHUB_STEP_SUMMARY when set, exits with the command's code, and fails when the seconds pass the label's ceiling in a new scripts/ci-budgets.json. Start each ceiling at the first recorded value plus 25%.
 3. .github/workflows/ci.yml: wrap `pnpm lint`, `pnpm typecheck` and `pnpm test` in static (55-57), the gate's three steps (299-305) and `pnpm build` in the e2e job (152) with it.
 4. The third budget is the import ratchet of TC-2 (largest cycle, reach of catalog.ts).

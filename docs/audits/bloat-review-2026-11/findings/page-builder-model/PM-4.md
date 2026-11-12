@@ -19,7 +19,7 @@ The page builder's model and a built page's render (`README.md` beside this file
 5. Hold it: count 'store_id is not distinct from' per file in scripts/lib/ratchet-count.mjs, keep the counts in src/server/ratchet.baseline.json through scripts/ratchet.mjs, and let src/server/ratchet.scan.test.ts fail on a rise or on a new file with any.
 6. docs/rules/storefront.md:179 says every content-type query asks `store_id is not distinct from`: reword to 'filters with owned(storeId): the store's rows, or the rows with no store for Kaizena Flow'. The rule's reason (one query serves a store and the platform) is kept.
 
-**Done when:** rg -c 'store_id is not distinct from' src/server --glob '!*.test.ts' sums to at most the commented column-to-column lines left (122 in 40 files today), the ratchet holds that number, and the skeptic's EXPLAIN (work/pmsk/pg.mjs) run with pages.ts's new list statement shows an index scan on the store's rows.
+**Done when:** rg -c 'store_id is not distinct from' src/server --glob '!*.test.ts' sums to at most the commented column-to-column lines left (122 in 40 files today), the ratchet holds that number, and the skeptic's EXPLAIN (the review's working files (not kept)) run with pages.ts's new list statement shows an index scan on the store's rows.
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

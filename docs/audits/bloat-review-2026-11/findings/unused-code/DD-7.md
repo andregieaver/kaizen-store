@@ -12,7 +12,7 @@ Code nothing uses (`README.md` beside this file), part of `docs/audits/bloat-rev
 
 ## The fix
 
-1. List them: from node scripts/unused.mjs take the unused and tests-only exports whose names end WORDS, LABELS, TEXT, TEXTS, NOTE, COPY, NAMES, TITLES, or Words, Text, Label, Sentence (scratchpad/work/ddplan/words.txt holds today's 121).
+1. List them: from node scripts/unused.mjs take the unused and tests-only exports whose names end WORDS, LABELS, TEXT, TEXTS, NOTE, COPY, NAMES, TITLES, or Words, Text, Label, Sentence (the review's working files (not kept) holds today's 121).
 2. Where nothing but a test reads the constant (the usual case: PAYOUT_STATUS_WORDS, PAYOUT_LINE_KIND_WORDS, PAYOUT_STATE_WORDS, TERMS_STATE_LABELS, TERMS_REFUSAL_WORDS, CAPTURE_PROBLEM_WORDS, CARRIER_FEATURE_LABELS, CONTENT_SOURCE_WORDS, the marketing-consent lists): delete the constant and the assertion that holds the catalogue equal to it. The catalogue's English is then the one copy; the test that Norwegian has every English key stays.
 3. Where production code with no language still reads the constant (an assistant's tool, a log line): keep one copy by letting the catalogue file import the constant, and delete the equality assertion.
 4. In exported word objects, delete the members nothing reads (STAFF_TEXT in src/lib/privacy-text.ts:720, redirectSentences in src/lib/redirects.ts:283): confirm each with rg of X.member first. Leave KIND_TITLES (src/lib/data-admin.ts:179) and LIFECYCLE_WORDS (src/lib/lifecycle.ts:27) whole: they are typed as a full Record, and the catalogue already imports KIND_TITLES (inventory.en.ts:327), which is the one-copy pattern of step 3.

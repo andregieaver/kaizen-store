@@ -22,7 +22,7 @@ Families and twins (`README.md` beside this file), part of `docs/audits/bloat-re
 7. When that count is 0, delete CATALOGUES, adminText() and adminTexts() from admin-text.ts and keep its types (AdminArea, AdminAreaMessages, SERVER_AREAS, ClientArea, HandedArea). src/lib/admin-lang.test.ts walks every area: give it a test-only list (src/lib/admin-words/all.test-helper.ts) that imports the 67.
 8. Write it down: docs/platform-admin-i18n.md 3.3 (line 86: how server code reads an area), a server-side paragraph in docs/performance.md beside line 167, docs/rules/admin/website.md where it names adminText(), and a decision in docs/decisions.md.
 
-**Done when:** The scan test's list of files outside the admin folders that import @/lib/admin-text at run time is empty (35 today), and by the walk no page or route entry outside src/app/admin reaches src/lib/admin-text.ts (254 of 278 today). After a build, node work/fmp/words-in-entries.mjs with a sentence of builder.nb.ts reports 0 entries outside the admin (255 of 282 today). For steps 6 and 7: the ratchet's count of run-time importers of @/lib/admin-text is 0 (596 today).
+**Done when:** The scan test's list of files outside the admin folders that import @/lib/admin-text at run time is empty (35 today), and by the walk no page or route entry outside src/app/admin reaches src/lib/admin-text.ts (254 of 278 today). After a build, node docs/audits/bloat-review-2026-11/scripts/words-in-entries.mjs with a sentence of builder.nb.ts reports 0 entries outside the admin (255 of 282 today). For steps 6 and 7: the ratchet's count of run-time importers of @/lib/admin-text is 0 (596 today).
 
 **Tests and rules that hold today's behaviour, and change with it:**
 

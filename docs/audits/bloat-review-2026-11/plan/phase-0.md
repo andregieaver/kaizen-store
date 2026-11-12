@@ -10,7 +10,7 @@ The detectors this plan's checks name exist only in the review's scratch folder:
 
 - **Closes:** GAP-code-1
 - **Effort:** S. **Areas it moves:** The code itself; What the server loads and asks; The page builder's model and a built page; The written rules; What a shopper's browser gets; Interface text.
-- **Done when:** Each script, run with node from a fresh checkout, gives its number again (41 twin pairs, 4,098 exact copied lines across files, 1,308 files reached by /api/visit), no bar and no done-when names a path under the scratchpad or work/ (rg -n 'scratchpad|work/' over this plan, its cards and the findings files prints nothing), and the plan's tracker under docs/audits/bloat-review-2026-11 has one Progress row and one section for each step.
+- **Done when:** Each script, run with node from a fresh checkout, gives its number again (41 twin pairs, 4,098 exact copied lines across files, 1,308 files reached by /api/visit), no bar and no done-when names a path in the review's working folder or under work/ (a search of this plan, its cards and the findings files for the working folder's name or for work/ prints nothing), and the plan's tracker under docs/audits/bloat-review-2026-11 has one Progress row and one section for each step.
 - **Platform:** The scripts read the whole of src, so the platform's files and routes are counted with the stores'.
 - **To carry it out:** [steps/0.1.md](steps/0.1.md) (review)
 
