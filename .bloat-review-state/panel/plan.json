@@ -3,16 +3,23 @@
     {
       "n": 0,
       "title": "Before the doors open",
-      "goal": "Remove what costs something on every request, cold start, scheduled run or agent session, with small and safe changes, and make the changes that are cheapest while no real store, order or picture exists. Steps 0.1 and 0.2 go first; after them no step waits for another.",
+      "goal": "Remove what costs something on every request, cold start, scheduled run or agent session, with small and safe changes, and make the changes that are cheapest while no real store, order or picture exists. Steps 0.1 and 0.2 go first, and 0.18 comes before 0.19; otherwise no step waits for another.",
       "notice": "Almost nothing on a screen changes, apart from two faults a shopper would have met on day one (empty search thumbnails, and a button with no fill on the status and report pages). Cold pages answer sooner, an admin screen loads about half the script, a store page stops asking the server for a wishlist and stock nobody has, the database falls from 731 MB to about 230 MB, and an agent session starts with a third of today's standing rules.",
       "steps": [
         {
           "id": "0.1",
           "title": "Keep the 'before': put the review's scripts in the repo and store a daily reading of production",
           "what": "The detectors the plan's checks name (the copy and twin counters, the import-reach walker, the trace summers) and four deletion lists exist only in the review's scratch folder. Copy them to docs/audits/bloat-review-2026-11/scripts/ and lists/, and point every done-when at the repo path. Add one statement to the daily route that writes a dated reading into a small platform table, kept 90 days: the 40 costliest and the 40 most-called statements, each commerce table's rows, size and scan counters, and size by schema. Platform, Usage and limits shows the day's difference with four flags (a newcomer among the 25 top statements, a table over 1,000 rows read whole more than 10 times a day, a write that changed a row in under 1 of 10 calls, the cron schema over 80 MB). Do this first, so every later step has a 'before' to be measured against.",
-          "closes": ["GAP-code-1", "GAP-database-1"],
+          "closes": [
+            "GAP-code-1",
+            "GAP-database-1"
+          ],
           "from": [],
-          "areas": ["code", "database", "scheduled"],
+          "areas": [
+            "code",
+            "database",
+            "scheduled"
+          ],
           "effort": "M",
           "done_when": "Each script, run with node from a fresh checkout, gives its number again (41 twin pairs, 4,098 exact copied lines across files, 1,308 files reached by /api/visit), and Platform, Usage and limits lists flags from two stored days, with an int test that scans a seeded 2,000-row table 20 times and sees its flag.",
           "platform": "The reading is the platform's own table, shown in /admin/platform, and it counts Kaizena Flow's store and its null-store rows with every other.",
@@ -22,9 +29,16 @@
           "id": "0.2",
           "title": "Let the deploy job, not a visitor, meet the first cold page",
           "what": "scripts/await-deploy.mjs waits for /api/health and stops. Add page checks from SMOKE_PAGES (Kaizena Flow's home and one page of the template store), so the job pays the first draw and a page that answers 500 fails the run. prerenderedShops() also returns the house store's markets while the switch is on, so kaizenaflow.com is built with each deploy, and CI seeds a house store with the switch on. Land it before steps 0.3 to 0.7: each of them changes what loads cold, and this is the check that catches a missed import in production.",
-          "closes": ["SD-3", "GAP-server-2"],
-          "from": ["W-server-1"],
-          "areas": ["server"],
+          "closes": [
+            "SD-3",
+            "GAP-server-2"
+          ],
+          "from": [
+            "W-server-1"
+          ],
+          "areas": [
+            "server"
+          ],
           "effort": "S",
           "done_when": "The release job's log lists each page check with status 200 and its cache header after a deploy, src/lib/await-deploy.test.ts shows that a page answering 500 fails the job, and the first request for Kaizena Flow's home after a deploy answers from a prerendered shell.",
           "platform": "Kaizena Flow's own front page is the first page checked, and it is prerendered with every deploy.",
@@ -34,9 +48,34 @@
           "id": "0.3",
           "title": "Cut the two import hubs: the unused schema and the chat module's helpers",
           "what": "src/db/client.ts hands the 19,614-line Drizzle schema to a query builder nobody calls, so 481 table definitions are built at every cold start: make the import type-only and call drizzle({ client: pool }), three lines. The four /api/visit beacons, /api/recommendations/events and /api/docs/feedback take sameSite and two more small helpers through src/server/chat-route.ts, which brings the chat, the AI layer and the support desk with it: import them from the files that define them. In the same change correct the note on the Postgres driver in the code review's dependency item.",
-          "closes": ["DD-1", "DP-1", "DP-9", "SG-6", "SF-6", "DS-1", "TC-5", "DP-10", "FM-2", "FM-14", "SG-3", "SF-4"],
-          "from": ["W-code-14", "W-server-7", "W-database-4", "W-build-4", "W-code-13", "W-server-6"],
-          "areas": ["server", "database", "build", "code"],
+          "closes": [
+            "DD-1",
+            "DP-1",
+            "DP-9",
+            "SG-6",
+            "SF-6",
+            "DS-1",
+            "TC-5",
+            "DP-10",
+            "FM-2",
+            "FM-14",
+            "SG-3",
+            "SF-4"
+          ],
+          "from": [
+            "W-code-14",
+            "W-server-7",
+            "W-database-4",
+            "W-build-4",
+            "W-code-13",
+            "W-server-6"
+          ],
+          "areas": [
+            "server",
+            "database",
+            "build",
+            "code"
+          ],
           "effort": "S",
           "done_when": "After pnpm build, rg -l --no-ignore -F orders_store_placed_idx .next/server -g '*.js' | wc -l prints 0 (6 today), pnpm db:check exits 0, and a next analyze export shows /api/visit at or under 710 modules (1,890 today).",
           "platform": "The same client and beacons serve the platform admin and Kaizena Flow's site, so their cold starts lose the same 115 to 135 ms.",
@@ -46,9 +85,26 @@
           "id": "0.4",
           "title": "Load sharp, the font parser and the AI manager's engine when they are used",
           "what": "Thirteen server modules import sharp or opentype.js at the top, so the image library loads with the proxy and about 740 routes that draw no picture: one helper, src/server/sharp-load.ts, returns the module on first use, as browser.ts does for Chromium. Two admin action files load the AI manager's whole server side with every admin page: load src/server/owner-tools.ts when the assistant is first used. Build the tool catalogue's JSON Schema when tools are first listed, not at import (MCP_TOOLS goes).",
-          "closes": ["AS-1", "DP-2", "SG-7", "SF-9", "DP-11", "SG-15", "SG-10"],
-          "from": ["W-code-15", "W-server-11", "W-code-17", "W-server-12", "W-server-49"],
-          "areas": ["server", "code"],
+          "closes": [
+            "AS-1",
+            "DP-2",
+            "SG-7",
+            "SF-9",
+            "DP-11",
+            "SG-15",
+            "SG-10"
+          ],
+          "from": [
+            "W-code-15",
+            "W-server-11",
+            "W-code-17",
+            "W-server-12",
+            "W-server-49"
+          ],
+          "areas": [
+            "server",
+            "code"
+          ],
           "effort": "S",
           "done_when": "src/server/lazy-packages.scan.test.ts passes with 0 static value imports of sharp or opentype.js outside tests and sharp-load.ts (13 today), a next analyze export shows /admin/[store]/orders without src/server/owner-tools.ts at or under 2,050 modules (2,349 today), and rg -n 'MCP_TOOLS' src prints nothing.",
           "platform": "The platform admin's pages drop the same engine, and its assistant loads it on first use like a store's.",
@@ -58,9 +114,22 @@
           "id": "0.5",
           "title": "Cut the import cycle of 229 server files",
           "what": "229 files of src/server import each other in one cycle, so almost every route loads everything; 12 import lines close it. Start with the edges where shoppers' pages enter: customers.ts loads privacy-erasure inside deleteCustomer, the bought SQL fragment and storeObligations() move to small files of their own, and orders.ts loads providerOf at its one use. Then the rest, one file's edges per commit: four pure helpers move to src/lib and the async calls become lazy imports. In the same pass take two more edges off every store page: the three-line key reader that brings Stripe (encryptionKey leaves settings.ts) and the theme store section that brings sharp.",
-          "closes": ["SG-1", "SF-1", "TC-2", "SG-18", "SG-17"],
-          "from": ["W-server-8", "W-server-13", "W-build-8"],
-          "areas": ["server", "build"],
+          "closes": [
+            "SG-1",
+            "SF-1",
+            "TC-2",
+            "SG-18",
+            "SG-17"
+          ],
+          "from": [
+            "W-server-8",
+            "W-server-13",
+            "W-build-8"
+          ],
+          "areas": [
+            "server",
+            "build"
+          ],
           "effort": "M",
           "done_when": "src/server/ratchet.baseline.json holds largestCycle 20 or less and catalogReach 417 or less (229 and 1,305 today), and a next analyze export shows /s/[store]/[market] at or under 1,800 modules and 8.2 MB with no stripe module and no src/server/theme-store.ts (2,419 modules and 11,944 KB today).",
           "platform": "The cycle is one graph: the platform's pages and routes leave it in the same commits.",
@@ -70,9 +139,21 @@
           "id": "0.6",
           "title": "Give code outside the admin its own small word modules, so the admin's words leave shoppers' routes",
           "what": "src/lib/admin-text.ts imports all 136 catalogue files in both languages, and 35 files outside the admin import it. So 802 of 830 server entries, the proxy and every storefront page load 2.8 MB of words. Add one module per area that outside code reads (18 areas, src/lib/admin-words/{stem}.ts) and move the 35 importers to them. A scan test keeps the registry out of everything but src/app/admin and src/components/admin.",
-          "closes": ["FM-1", "SF-5", "TX-1"],
-          "from": ["W-code-16", "W-server-10", "W-text-4"],
-          "areas": ["server", "text", "code"],
+          "closes": [
+            "FM-1",
+            "SF-5",
+            "TX-1"
+          ],
+          "from": [
+            "W-code-16",
+            "W-server-10",
+            "W-text-4"
+          ],
+          "areas": [
+            "server",
+            "text",
+            "code"
+          ],
           "effort": "M",
           "done_when": "src/lib/admin-text-reach.scan.test.ts passes with no value import of lib/admin-text outside src/app/admin and src/components/admin (35 files today) and at most 37 catalogue files in the closure of src/proxy.ts, /api/visit and the storefront layout (135 today).",
           "platform": "Kaizena Flow's public site and sign-in pages read their areas through the same small modules, and the platform's areas are among the 18.",
@@ -82,9 +163,32 @@
           "id": "0.7",
           "title": "Make a language translated by AI cost what it uses: at start, per document and per minute",
           "what": "The start hook (src/instrumentation.ts) loads 856 modules, among them the translating tools, ai.ts and auth.ts, then reads every AI-translated language whole before the first request, and each instance polls the table every minute. Split the interface-text reader from the translating tools, read at start with two statements whatever the number of languages, build a language on first read, and poll a one-row version stamp every ten minutes, only where such a language is served. uiTextsFor() sends the browser its 114 texts, not all 1,673: 93 KB to under 9 KB in every document of such a store. The search-cache prune leaves the five-minute list with step 0.22.",
-          "closes": ["SG-5", "SF-3", "SD-7", "TX-3", "TX-12", "TX-6", "SC-13", "PL-9", "DQ-12", "DS-2", "CA-12"],
-          "from": ["W-server-9", "W-text-3", "W-shopper-browser-9", "W-database-19", "W-server-46"],
-          "areas": ["server", "text", "shopper-browser", "database"],
+          "closes": [
+            "SG-5",
+            "SF-3",
+            "SD-7",
+            "TX-3",
+            "TX-12",
+            "TX-6",
+            "SC-13",
+            "PL-9",
+            "DQ-12",
+            "DS-2",
+            "CA-12"
+          ],
+          "from": [
+            "W-server-9",
+            "W-text-3",
+            "W-shopper-browser-9",
+            "W-database-19",
+            "W-server-46"
+          ],
+          "areas": [
+            "server",
+            "text",
+            "shopper-browser",
+            "database"
+          ],
           "effort": "M",
           "done_when": "In src/server/languages.int.test.ts uiTextsFor(lang) holds exactly the 114 browser keys in under 9,000 bytes for a fully translated language (92,809 today), a unit test shows startUi() issuing 2 statements, and the review's import walk (step 0.1) counts 60 source files or fewer behind src/instrumentation.ts (383 today) with no src/server/ai.ts.",
           "platform": "Kaizena Flow's own site in more than one language (D312) reads through the same reader, so it gains the same start and the same document.",
@@ -94,9 +198,24 @@
           "id": "0.8",
           "title": "Take Supabase's client, zod and the builder's English off every signed-in screen",
           "what": "Three stray imports put 481 KB on 432 of 449 admin routes: typingIn() and AdminServiceWorker sit in files that pull in zod and the builder's English catalogue, and session.tsx imports the whole Supabase client for a listener. Move the two helpers to files of their own, take the English default of responsive-edit.tsx out of the keyboard sheet, and load the Supabase client with import() once the page is idle. Drop the 'setup' words area that every admin document carries and nothing reads. Kaizena Flow's public front page loads the same three through its sign-in link: check it in the same change.",
-          "closes": ["AC-1", "BN-1", "BN-3", "BN-4", "DP-4", "TX-4"],
-          "from": ["W-owner-browser-2", "W-code-11", "W-text-1"],
-          "areas": ["owner-browser", "text", "code"],
+          "closes": [
+            "AC-1",
+            "BN-1",
+            "BN-3",
+            "BN-4",
+            "DP-4",
+            "TX-4"
+          ],
+          "from": [
+            "W-owner-browser-2",
+            "W-code-11",
+            "W-text-1"
+          ],
+          "areas": [
+            "owner-browser",
+            "text",
+            "code"
+          ],
           "effort": "S",
           "done_when": "After pnpm build, .next/diagnostics/route-bundle-stats.json shows /admin/[store] at or under 700,000 bytes (1,194,862 today), no route's first-load chunks hold 'GoTrueClient' (432 routes today), 'Set for {size}' is only on the builder's routes (423 today), and 'ZodError' is in at most 160 routes (432 today).",
           "platform": "The frame is shared: every /admin/platform screen drops the same 481 KB.",
@@ -106,9 +225,32 @@
           "id": "0.9",
           "title": "Load an editor, a catalogue or the AI's tool tables only on the screens that draw them",
           "what": "Lists, previews and editors share one views file, so 13 previews and the page lists load the 3.3 MB builder. Orders, customers, deals and the product editor load the rich text editor for custom fields the store may not have: 34 screens outside the builder. Split the views file, and load the custom-field editor with next/dynamic where a screen draws it. The Work invoice screen takes its words as props, not the whole admin catalogue in one 1.7 MB chunk. The AI manager's chat keeps tool labels and page names only, not every tool definition and the admin map.",
-          "closes": ["AC-2", "BN-14", "AC-3", "BN-5", "DP-5", "AC-7", "BN-7", "AC-8", "BN-15", "AI-4"],
-          "from": ["W-owner-browser-3", "W-owner-browser-4", "W-code-12", "W-owner-browser-5", "W-owner-browser-6", "W-ai-1"],
-          "areas": ["owner-browser", "ai", "code", "text"],
+          "closes": [
+            "AC-2",
+            "BN-14",
+            "AC-3",
+            "BN-5",
+            "DP-5",
+            "AC-7",
+            "BN-7",
+            "AC-8",
+            "BN-15",
+            "AI-4"
+          ],
+          "from": [
+            "W-owner-browser-3",
+            "W-owner-browser-4",
+            "W-code-12",
+            "W-owner-browser-5",
+            "W-owner-browser-6",
+            "W-ai-1"
+          ],
+          "areas": [
+            "owner-browser",
+            "ai",
+            "code",
+            "text"
+          ],
           "effort": "M",
           "done_when": "After pnpm build, route-bundle-stats.json shows no route outside the builder's family with 'ProseMirror' in its first-load chunks (34 today, and 13 previews), no first-load chunk over 600,000 bytes (one of 1,704,595 today), and e2e/signed-in/ai-manager-panel.spec.ts counts at most 130,000 bytes of script on first opening the AI manager (496,206 today).",
           "platform": "The platform's page lists, previews, builder and AI manager are the same files, and Work's account-level invoice screen is the one named.",
@@ -118,9 +260,35 @@
           "id": "0.10",
           "title": "Stop prefetching what a press cannot use: other views, links that leave their layout, the admin's rail",
           "what": "Set prefetch off on the language, currency and country links (src/components/view-menu.tsx: a press never opens the page they fetch), on links that leave their root layout, on the footer's legal links and on the six links from Kaizena Flow's pages to /admin and to stores. In the admin, the rail and the rows of every list fetch when the pointer or focus reaches a link, and View store never. Today a phone home page read to the footer makes 47 router requests, 24 of them for other views; an admin screen makes 23 to 46, and about 25 again after every save.",
-          "closes": ["PF-2", "PL-3", "SC-1", "PF-11", "PL-4", "BN-2", "CA-4", "CS-8", "CA-5", "PF-5", "PF-6", "AC-12"],
-          "from": ["W-shopper-browser-3", "W-owner-browser-8", "W-server-20", "W-styles-3", "W-server-21", "W-shopper-browser-17", "W-owner-browser-13"],
-          "areas": ["shopper-browser", "owner-browser", "server", "styles"],
+          "closes": [
+            "PF-2",
+            "PL-3",
+            "SC-1",
+            "PF-11",
+            "PL-4",
+            "BN-2",
+            "CA-4",
+            "CS-8",
+            "CA-5",
+            "PF-5",
+            "PF-6",
+            "AC-12"
+          ],
+          "from": [
+            "W-shopper-browser-3",
+            "W-owner-browser-8",
+            "W-server-20",
+            "W-styles-3",
+            "W-server-21",
+            "W-shopper-browser-17",
+            "W-owner-browser-13"
+          ],
+          "areas": [
+            "shopper-browser",
+            "owner-browser",
+            "server",
+            "styles"
+          ],
           "effort": "S",
           "done_when": "e2e/prefetch.spec.ts passes with 0 router prefetch requests for another view on the phone home read to the footer (24 today) and at most 23 in all (47), and 0 requests to /admin after loading / (2 and one stylesheet today); e2e/signed-in/prefetch.spec.ts counts 0 in the 3 s after the admin home loads (28 today) and at most 2 after hovering one rail link.",
           "platform": "The platform admin's rail is the same component, and Kaizena Flow's own front page is the page that stops fetching /admin.",
@@ -130,9 +298,22 @@
           "id": "0.11",
           "title": "End the prefetch loop on /s/ addresses, and write both router settings down",
           "what": "On the local build and in CI, listing and search pages at /s/{store} addresses ask for one link's @drawer/[...rest] segment about 165 times a second without end. Set optimisticRouting: false in next.config.ts, with the reason and when it may go, and hold it with a spec that counts requests after load. Write partialPrefetching: false beside it as a recorded choice: unset, Next warns on every build and start, and the next major release will choose for the app. Step 2.4 decides whether to adopt it.",
-          "closes": ["PF-1", "SC-9", "CA-6", "CA-7"],
-          "from": ["W-shopper-browser-2", "W-server-22", "W-server-23"],
-          "areas": ["shopper-browser", "server", "build"],
+          "closes": [
+            "PF-1",
+            "SC-9",
+            "CA-6",
+            "CA-7"
+          ],
+          "from": [
+            "W-shopper-browser-2",
+            "W-server-22",
+            "W-server-23"
+          ],
+          "areas": [
+            "shopper-browser",
+            "server",
+            "build"
+          ],
           "effort": "S",
           "done_when": "e2e/prefetch.spec.ts 'a store page goes quiet' passes in CI's e2e job on its three pages (fewer than 60 router prefetch requests in the 3 s after load and none in the next 2 s; the search page makes 624 in 4 s today), and pnpm build prints no partialPrefetching warning.",
           "platform": "The platform has no listing at an /s/ address of its own; load the theme store's list in the same spec.",
@@ -142,9 +323,27 @@
           "id": "0.12",
           "title": "Make no server call after load for a visitor with nothing to fetch",
           "what": "Every store page asks /wishlist/saved, a function call and a proxy run for a 15-byte answer: ask only when a marker cookie says the visitor has saved something, and list the cookie in KNOWN_COOKIES. Every page with a product grid loads the tile island and asks /api/shop/tiles for stock with three statements, though both tile switches are off by default: draw no island and make no call while they are off. The search results page posts for suggestions nobody typed for: ask after a key or a focus.",
-          "closes": ["SC-10", "PL-7", "SD-15", "SC-12", "PL-8", "SD-14", "PL-14"],
-          "from": ["W-shopper-browser-4", "W-server-17", "W-shopper-browser-5", "W-server-16", "W-shopper-browser-6"],
-          "areas": ["shopper-browser", "server", "surface"],
+          "closes": [
+            "SC-10",
+            "PL-7",
+            "SD-15",
+            "SC-12",
+            "PL-8",
+            "SD-14",
+            "PL-14"
+          ],
+          "from": [
+            "W-shopper-browser-4",
+            "W-server-17",
+            "W-shopper-browser-5",
+            "W-server-16",
+            "W-shopper-browser-6"
+          ],
+          "areas": [
+            "shopper-browser",
+            "server",
+            "surface"
+          ],
           "effort": "S",
           "done_when": "docs/audits/bloat-review-2026-11/scripts/measure-routes.mjs shows 0 requests to /wishlist/saved on all 12 store pages for a new visitor (1 on each today), 0 to /api/shop/tiles on /s/demo/no and /s/demo/no/products with the tile switches off, and 0 POST before a press on /s/demo/no/search?q=lampe, each held by an assertion in e2e/wishlist.spec.ts, e2e/shop-components.spec.ts and e2e/search.spec.ts.",
           "platform": "Store-only by the house rule's exception: Kaizena Flow sells plans, not goods, so its site has no wishlist, tile stock or product search to call for.",
@@ -154,9 +353,29 @@
           "id": "0.13",
           "title": "Send shoppers' first scripts only what the page draws",
           "what": "Every store route's first scripts carry the admin's common words, the features table, the purposes of 38 cookies in four languages, an unused library, and small parts a plain page never draws (the theme preview stage, the platform's language switch). Split the cookie patterns from their texts (src/lib/cookie-patterns.ts), keep the admin's words and the features table on the server, and load the filter dialog only where a listing draws it. On the product page move cartView() to a server file, so the cart's forms leave its scripts, and load a picker only for the product's own kind.",
-          "closes": ["SC-3", "PL-10", "BN-10", "TX-5", "TX-8", "SC-11", "SC-4", "PM-11"],
-          "from": ["W-shopper-browser-7", "W-owner-browser-10", "W-text-2", "W-shopper-browser-23", "W-shopper-browser-8", "W-page-model-5"],
-          "areas": ["shopper-browser", "text", "page-model"],
+          "closes": [
+            "SC-3",
+            "PL-10",
+            "BN-10",
+            "TX-5",
+            "TX-8",
+            "SC-11",
+            "SC-4",
+            "PM-11"
+          ],
+          "from": [
+            "W-shopper-browser-7",
+            "W-owner-browser-10",
+            "W-text-2",
+            "W-shopper-browser-23",
+            "W-shopper-browser-8",
+            "W-page-model-5"
+          ],
+          "areas": [
+            "shopper-browser",
+            "text",
+            "page-model"
+          ],
           "effort": "M",
           "done_when": "The script tags of the server's HTML, nomodule left out, total at most 615,000 bytes raw for /s/demo/no (680,264 today) and at most 735,000 for /s/demo/no/p/demo-keramikkopp (777,785), and none of them holds 'Sell to businesses', 'Waiting for payment' or 'Kommer ihåg om du valde ljusa'.",
           "platform": "Kaizena Flow's site pages share these first scripts and lose the same 48 to 65 KB.",
@@ -166,22 +385,49 @@
           "id": "0.14",
           "title": "Cut what an idle tab, a save and a menu cost in the admin",
           "what": "The store menu is rebuilt with 220 permission lookups on every shell render, 125 ms of blocking CPU: memoise the answers in src/lib/store-nav.ts. At least 39 saves draw the route twice, because the browser calls router.refresh() after an action that already refreshed: remove the second. Progress polls (refresh-while.tsx, pack-pictures.tsx) stop in hidden tabs and ask their job, not for a whole redraw. The notice badge's count runs two statements, not four, and asks less often after an answer of zero.",
-          "closes": ["AD-1", "AD-13", "AD-9", "AC-13", "PL-11", "AI-12"],
-          "from": ["W-server-25", "W-server-26", "W-server-27", "W-owner-browser-7", "W-shopper-browser-10", "W-ai-7"],
-          "areas": ["server", "owner-browser"],
+          "closes": [
+            "AD-1",
+            "AD-13",
+            "AD-9",
+            "AC-13",
+            "PL-11",
+            "AI-12"
+          ],
+          "from": [
+            "W-server-25",
+            "W-server-26",
+            "W-server-27",
+            "W-owner-browser-7",
+            "W-shopper-browser-10",
+            "W-ai-7"
+          ],
+          "areas": [
+            "server",
+            "owner-browser"
+          ],
           "effort": "S",
           "done_when": "The count test in src/lib/store-nav.test.ts shows 110 lookups per menu build (220 today), a scan test holds client router.refresh() calls in the admin at about 50 (90 today) with 0 after an action that always refreshes, and a signed-in spec with a clock sees at most 2 requests to /admin/account/notices/feed in ten minutes from an untouched tab (10 today).",
           "platform": "The platform admin uses the same shell, menu builder and notice feed.",
           "owner_question": "May the notice badge in a tab nobody touches be up to ten minutes late (60 requests an hour become 6)? The statement cuts need no answer."
-        }
-        ,
+        },
         {
           "id": "0.15",
           "title": "Read the products, customers and stores lists a page at a time",
           "what": "The Products list sends every product of the store to the browser (about 0.9 KB a product, no limit in listAdminProducts()), and it reads the whole editor context and a per-product check it does not show: 16 or more statements. The customers list groups every order before it cuts to 100, and the platform's Stores list loads everything. Give each a page of 100 with a count and a next page (code review steps 1.13 and 2.10), and let the products list read only what it shows.",
-          "closes": ["AD-7", "AC-14", "AD-10"],
-          "from": ["W-server-28", "W-owner-browser-9", "W-server-42"],
-          "areas": ["server", "owner-browser"],
+          "closes": [
+            "AD-7",
+            "AC-14",
+            "AD-10"
+          ],
+          "from": [
+            "W-server-28",
+            "W-owner-browser-9",
+            "W-server-42"
+          ],
+          "areas": [
+            "server",
+            "owner-browser"
+          ],
           "effort": "M",
           "done_when": "With a store seeded with 500 products the Products document is under 300,000 characters and says '100 of 500', rg -c getEditorContext 'src/app/admin/(gated)/[store]/products/page.tsx' prints nothing, and an integration test shows listCustomers() for a store with 150 customers returning 100 rows and the count.",
           "platform": "The platform's Stores list is one of the three lists and pages the same way.",
@@ -191,9 +437,35 @@
           "id": "0.16",
           "title": "Stop asking for what does not change: the store's slug, the AI connection, the theme cards, the hosts list",
           "what": "select slug from commerce.stores where id is written by hand in 27 places and is production's most-called statement (560,090 calls in 78 days): use one cached helper, refreshed when a sandbox is kept. Screens and polls that only draw a button fetch the whole AI connection, key and month's cost included (12.4 reads per AI call): give them aiAbilities() from a 60-second memo with no key, sum the month's AI cost from daily rows plus today, and let search read the memo, with a search_ai budget taken only on a cache miss. A store's AI settings refresh that store's tag, not AI_TAG for every store (319 cached entries today). A theme's neighbours read the cached card list, and the hosts list is parsed once per instance, not once per link.",
-          "closes": ["CP-2", "SD-10", "CA-9", "DQ-9", "AI-2", "DQ-4", "GAP-ai-1", "SD-16", "CA-11", "CA-13", "SF-12"],
-          "from": ["W-code-5", "W-server-14", "W-database-7", "W-ai-4", "W-database-8", "W-server-18", "W-server-24", "W-server-29"],
-          "areas": ["database", "server", "ai", "code"],
+          "closes": [
+            "CP-2",
+            "SD-10",
+            "CA-9",
+            "DQ-9",
+            "AI-2",
+            "DQ-4",
+            "GAP-ai-1",
+            "SD-16",
+            "CA-11",
+            "CA-13",
+            "SF-12"
+          ],
+          "from": [
+            "W-code-5",
+            "W-server-14",
+            "W-database-7",
+            "W-ai-4",
+            "W-database-8",
+            "W-server-18",
+            "W-server-24",
+            "W-server-29"
+          ],
+          "areas": [
+            "database",
+            "server",
+            "ai",
+            "code"
+          ],
           "effort": "M",
           "done_when": "rg -c 'select slug from commerce[.]stores where id' src --glob '!*.test.ts' sums to at most 3 (27 today), after a build grep -rl 'ai-providers' .next/server/app --include='*.meta' | wc -l prints 0 (319 today), and an int test sends 200 different searches from one visitor in a minute and counts at most the budget's model calls, with 0 reads of commerce.ai_providers for a repeated search.",
           "platform": "The provider read keeps its platform branch, and the platform's own AI settings refresh the platform's tag only.",
@@ -203,9 +475,18 @@
           "id": "0.17",
           "title": "Work the cart and a shopper's facts out once per request, with no read for a feature that is off",
           "what": "The cart page calls cartSummary() twice per view, and each call sends 5 statements to learn that bonus, referrals and checkout rules are not in use. getCustomer(), getCartCount() and stock are read two to four times in one render. Run them through perRequest() (src/server/request-memo.ts), and skip the bonus, referral and rule reads while the store's features do not include them.",
-          "closes": ["SD-11", "FT-15"],
-          "from": ["W-server-15", "W-surface-1"],
-          "areas": ["server", "surface"],
+          "closes": [
+            "SD-11",
+            "FT-15"
+          ],
+          "from": [
+            "W-server-15",
+            "W-surface-1"
+          ],
+          "areas": [
+            "server",
+            "surface"
+          ],
           "effort": "S",
           "done_when": "cart-contents.test.ts asserts cartSummary is called once per cart render and ./bonus is not called for a store with features ['shop'], and with a cart cookie one GET of a store's home reads commerce.cart_lines once (twice today).",
           "platform": "Store-only by the house rule's exception: Kaizena Flow sells plans through Stripe and draws no cart.",
@@ -213,37 +494,77 @@
         },
         {
           "id": "0.18",
-          "title": "Read one page, not all of them",
-          "what": "listPublishedPages() (src/server/pages.ts) selects every published page of a store with its whole content. It has 35 callers; 13 keep one page by id and most of the rest want slugs or titles. It is 781 s of the app's listed statement time: 29 documents a call, 79,778 calls in 78 days. Add publishedPageById(owner, id), cached per page, and a page index (id, slug, titles, dates, flags), and move the find-by-id callers, the legal links, the platform's frame, robots, the sitemaps and llms.txt to them.",
-          "closes": ["CA-3", "SD-4", "DQ-2", "PM-2"],
-          "from": ["W-server-19", "W-database-10", "W-page-model-3"],
-          "areas": ["server", "database", "page-model"],
-          "effort": "M",
-          "done_when": "rg -c 'listPublishedPages(' over src without tests gives at most 14 lines (37 today) with no caller that picks one page by id after it, and after a build no prerendered entry of the demo store keeps the page list (45 of 261 today).",
-          "platform": "Kaizena Flow's own pages are read through the same two functions with a null owner, and src/server/platform-navigation.ts is one of the callers moved.",
-          "owner_question": null
-        },
-        {
-          "id": "0.19",
           "title": "Filter a store's rows the way its index can serve",
-          "what": "Postgres cannot answer store_id is not distinct from $1 from an index, so the hottest reads scan every store's rows: about 1.2 billion rows in 78 days on pages, cookie_scans and terms (122 uses in 40 files). One owned() helper writes store_id = $1 for a store and store_id is null for the platform, and the ratchet counts the old wording per file. The cookie scan's every-minute due check gets two indexes on the expression it filters by, and a failing site backs off. Do it before the new page reads of 0.18 and 2.19 are written, so they are born right.",
-          "closes": ["DQ-8", "DS-7", "PM-4", "CR-6"],
-          "from": ["W-database-1", "W-page-model-2", "W-scheduled-6"],
-          "areas": ["database", "page-model", "scheduled"],
+          "what": "Postgres cannot answer store_id is not distinct from $1 from an index, so the hottest reads scan every store's rows: about 1.2 billion rows in 78 days on pages, cookie_scans and terms (122 uses in 40 files). One owned() helper writes store_id = $1 for a store and store_id is null for the platform, and the ratchet counts the old wording per file. The cookie scan's every-minute due check gets two indexes on the expression it filters by, and a failing site backs off. Do it before the new page reads of 0.19 and 2.19 are written, so they are born right.",
+          "closes": [
+            "DQ-8",
+            "DS-7",
+            "PM-4",
+            "CR-6"
+          ],
+          "from": [
+            "W-database-1",
+            "W-page-model-2",
+            "W-scheduled-6"
+          ],
+          "areas": [
+            "database",
+            "page-model",
+            "scheduled"
+          ],
           "effort": "M",
           "done_when": "The ratchet's count of 'store_id is not distinct from' in src/server is at most 3 commented column-to-column lines (122 today), a plan test on a seeded table of 200 owners shows an index scan for one owner's pages, and in production seq_tup_read on commerce.cookie_scans grows by under 1 M a day (about 21 M today).",
           "platform": "The is-null branch of owned() is the platform's: its pages, terms and cookie scans are found by index too.",
           "owner_question": null
         },
         {
+          "id": "0.19",
+          "title": "Read one page, not all of them",
+          "what": "listPublishedPages() (src/server/pages.ts) selects every published page of a store with its whole content. It has 35 callers; 13 keep one page by id and most of the rest want slugs or titles. It is 781 s of the app's listed statement time: 29 documents a call, 79,778 calls in 78 days. Add publishedPageById(owner, id), cached per page, and a page index (id, slug, titles, dates, flags), and move the find-by-id callers, the legal links, the platform's frame, robots, the sitemaps and llms.txt to them.",
+          "closes": [
+            "CA-3",
+            "SD-4",
+            "DQ-2",
+            "PM-2"
+          ],
+          "from": [
+            "W-server-19",
+            "W-database-10",
+            "W-page-model-3"
+          ],
+          "areas": [
+            "server",
+            "database",
+            "page-model"
+          ],
+          "effort": "M",
+          "done_when": "rg -c 'listPublishedPages(' over src without tests gives at most 14 lines (37 today) with no caller that picks one page by id after it, and after a build no prerendered entry of the demo store keeps the page list (45 of 261 today).",
+          "platform": "Kaizena Flow's own pages are read through the same two functions with a null owner, and src/server/platform-navigation.ts is one of the callers moved.",
+          "owner_question": null
+        },
+        {
           "id": "0.20",
           "title": "Shed the database's dead weight: the scheduler's log, 13 duplicate indexes and the dead objects",
           "what": "pg_cron's run log is 564 MB of the 731 MB database and nothing prunes it: a daily pg_cron job deletes rows older than seven days, and the backlog is emptied once. Thirteen indexes duplicate another (orders carries 34, five of them starting with store_id, placed_at): drop them, concurrently on the hot tables as D569 says, and add src/db/index-duplicates.test.ts, which compares the two places indexes are declared. Drop the unused idempotency_keys table and its enum. The leftover commerce_legacy schema (34 tables named by no code) goes after a last dump, on the owner's word. All of it is cheapest while the tables are small.",
-          "closes": ["CR-5", "DS-8", "DS-9", "DS-15", "DS-14"],
-          "from": ["W-scheduled-1", "W-database-3", "W-database-5", "W-database-23"],
-          "areas": ["database", "scheduled"],
+          "closes": [
+            "CR-5",
+            "DS-8",
+            "DS-9",
+            "DS-15",
+            "DS-14"
+          ],
+          "from": [
+            "W-scheduled-1",
+            "W-database-3",
+            "W-database-5",
+            "W-database-23"
+          ],
+          "areas": [
+            "database",
+            "scheduled"
+          ],
           "effort": "M",
-          "done_when": "In production select min(end_time) from cron.job_run_details is never older than 8 days and the size-by-schema query of m/prod-db-stats.md shows the cron schema under 80 MB (564 MB today), and src/db/index-duplicates.test.ts returns 0 rows (11 today) with 32 indexes on orders.",
+          "done_when": "In production select min(end_time) from cron.job_run_details is never older than 8 days and the size by schema in the daily reading of step 0.1 shows the cron schema under 80 MB (564 MB today), and src/db/index-duplicates.test.ts returns 0 rows (11 today) with 32 indexes on orders.",
           "platform": "One database: the platform's tables are in the duplicate test, and the prune covers the platform's jobs.",
           "owner_question": "May the commerce_legacy schema, kept since 24 September as a renamed copy of the single-store tables, be dropped after a last dump?"
         },
@@ -251,9 +572,30 @@
           "id": "0.21",
           "title": "Make AI upkeep cost one statement when nothing changed: knowledge, pictures, alt texts, product vectors",
           "what": "Four jobs walk every store every five minutes to find nothing. The knowledge job reads about 40 whole pages a call and re-cuts wordless pages for ever (91,200 empty transactions in 78 days): a small commerce.knowledge_sources table records what was cut, and changed pages are chosen in SQL before any document is fetched. The picture job re-checks where each picture is used every day by text-searching every page (13,414 date-only updates on 468 rows): use one change stamp per site. The alt-text job lists a site only while a picture is due, and gives up after five tries. The product index embeds on save and scans hourly.",
-          "closes": ["CR-4", "DQ-6", "DS-5", "PM-3", "DQ-3", "DS-10", "AI-13", "AI-5"],
-          "from": ["W-scheduled-3", "W-database-9", "W-page-model-4", "W-database-11", "W-ai-5", "W-ai-6"],
-          "areas": ["scheduled", "database", "ai", "page-model"],
+          "closes": [
+            "CR-4",
+            "DQ-6",
+            "DS-5",
+            "PM-3",
+            "DQ-3",
+            "DS-10",
+            "AI-13",
+            "AI-5"
+          ],
+          "from": [
+            "W-scheduled-3",
+            "W-database-9",
+            "W-page-model-4",
+            "W-database-11",
+            "W-ai-5",
+            "W-ai-6"
+          ],
+          "areas": [
+            "scheduled",
+            "database",
+            "ai",
+            "page-model"
+          ],
           "effort": "M",
           "done_when": "A new case in src/server/chat.int.test.ts runs syncPageKnowledge twice over a store with a wordless published page and counts zero transactions and zero rows read from published on the second run, sitesDueForAltText() in src/server/alt-texts.int.test.ts returns no row for a finished site, and in production a day after the deploy n_tup_upd on commerce.media_embeddings rises by fewer than 100 with no content change.",
           "platform": "Kaizena Flow's own site has chat and pictures on null-store rows: the same jobs serve it and go idle the same way.",
@@ -263,9 +605,23 @@
           "id": "0.22",
           "title": "Stop three jobs re-asking on every run: invoices, the listings' check and the prunes",
           "what": "The invoice job re-asks the same waiting stores every five minutes for 120 days (about 127 calls a day): list a store only when commerce.invoice_eligibility and commerce.invoice_readiness say something can be issued now, the longest-waiting first. The listings' check hashes every product each run and asks the model again for a listing it could not answer: record a try, stop at the first provider error, and read only reworded products. Seven prunes move from the five-minute list to the daily route as tracked('daily.<name>', 86400), two run-log prunes go hourly, and the delivery prune leaves the every-minute route.",
-          "closes": ["CR-9", "DS-3", "CR-15", "FT-3"],
-          "from": ["W-scheduled-4", "W-database-12", "W-scheduled-5", "W-surface-3"],
-          "areas": ["scheduled", "database", "surface"],
+          "closes": [
+            "CR-9",
+            "DS-3",
+            "CR-15",
+            "FT-3"
+          ],
+          "from": [
+            "W-scheduled-4",
+            "W-database-12",
+            "W-scheduled-5",
+            "W-surface-3"
+          ],
+          "areas": [
+            "scheduled",
+            "database",
+            "surface"
+          ],
           "effort": "M",
           "done_when": "The runJobs() block of src/app/api/cron/cart-reminders/route.ts has 69 entries (78 today), the new cases in invoice-issue.int.test.ts and content-moderation.int.test.ts pass, and in production calls of select commerce.issue_waiting_invoices($1, $2) rise by fewer than 10 a day (about 127 today).",
           "platform": "The listings' check is the platform's own duty under the DSA, and the daily prunes cover the platform's tables.",
@@ -275,9 +631,22 @@
           "id": "0.23",
           "title": "Fix pictures and files before real ones are stored: thumbnails, an 800 px copy, long lifetimes",
           "what": "Search suggestions ask Next's image service for uploaded pictures and get a 400, so real stores would show empty thumbnails: set images: { unoptimized: true } in next.config.ts, which also closes the open /_next/image endpoint. Keep an 800 px copy of every picture, so a 3x phone does not take the 1,600 px file for a tile (about 53 KB less per tile). Give every file with a fixed address a long lifetime: cacheControl on all 9 uploadToSignedUrl calls, the font file route kept at the CDN, public files a day. Fetch no hidden flag, and slim the six flags to under 20 KB. A lifetime and a size are fixed when a file is stored, so this is cheapest before any library exists.",
-          "closes": ["AS-4", "AS-9", "AS-12", "AS-5", "AS-11"],
-          "from": ["W-code-8", "W-code-9", "W-code-29"],
-          "areas": ["code", "shopper-browser"],
+          "closes": [
+            "AS-4",
+            "AS-9",
+            "AS-12",
+            "AS-5",
+            "AS-11"
+          ],
+          "from": [
+            "W-code-8",
+            "W-code-9",
+            "W-code-29"
+          ],
+          "areas": [
+            "code",
+            "shopper-browser"
+          ],
           "effort": "M",
           "done_when": "On the built app /_next/image answers 404 (200 today), the new assertion in e2e/search.spec.ts shows a suggested product's uploaded thumbnail, the new test in e2e/performance.spec.ts shows the first tile's currentSrc is the 800 px file at 390 px and 3x, and rg -n 'uploadToSignedUrl' src/components shows cacheControl on all 9 calls (0 today).",
           "platform": "Kaizena Flow's own media library and the theme photographs are stored through the same uploads and get the same sizes and lifetimes.",
@@ -287,9 +656,16 @@
           "id": "0.24",
           "title": "Give the admin's colour names a value on public pages",
           "what": "Thirteen colour roles exist only inside the admin, yet 20 uses in seven shop and site files and 125 in eleven admin parts drawn on public pages read them. The visible fault: the main button on Kaizena Flow's status and report pages has no fill. Replace the role names with the site's own in the seven files (border-line becomes border-border, and so on), and give each role a value under html:not([data-admin]) in the site's CSS, in light and in dark. This also clears the two blockers of the stylesheet split in step 2.6.",
-          "closes": ["CS-7", "CS-9"],
-          "from": ["W-styles-2"],
-          "areas": ["styles"],
+          "closes": [
+            "CS-7",
+            "CS-9"
+          ],
+          "from": [
+            "W-styles-2"
+          ],
+          "areas": [
+            "styles"
+          ],
           "effort": "S",
           "done_when": "rg with the role pattern counts 0 uses in src/components and src/app outside the admin folders (20 today), and on the built app the submit buttons of /report and /status have a computed background-color other than rgba(0, 0, 0, 0), held by an e2e check.",
           "platform": "The status and report pages are Kaizena Flow's own: this is where the fault shows today.",
@@ -299,9 +675,26 @@
           "id": "0.25",
           "title": "Delete what nothing uses and what is kept from before",
           "what": "331 exports are used by nothing and three files are reached only by tests (about 950 lines), 34 interface texts are read by no code, and a rule still describes one of the dead files. Delete them from the review's lists, after checking each against the scan's blind spots. Remove the eight old admin redirects (LEGACY_WORK_REDIRECTS, LEGACY_THEME_REDIRECTS), the bookings and deliveries twin switch, and the daily job's second schedule in vercel.json, which can run 40 functions twice in the same minute. Replace the 26 MB simple-icons package with the 27 paths it is used for.",
-          "closes": ["DD-3", "DD-8", "TX-11", "DD-11", "CR-12", "DP-8"],
-          "from": ["W-code-2", "W-text-5", "W-code-6", "W-scheduled-2", "W-code-30"],
-          "areas": ["code", "text", "scheduled"],
+          "closes": [
+            "DD-3",
+            "DD-8",
+            "TX-11",
+            "DD-11",
+            "CR-12",
+            "DP-8"
+          ],
+          "from": [
+            "W-code-2",
+            "W-text-5",
+            "W-code-6",
+            "W-scheduled-2",
+            "W-code-30"
+          ],
+          "areas": [
+            "code",
+            "text",
+            "scheduled"
+          ],
           "effort": "M",
           "done_when": "node docs/audits/bloat-review-2026-11/scripts/unused-code.mjs reports 0 unused exports (262 today), rg -n 'LEGACY_(WORK|THEME)_REDIRECTS|legacyModule|setBookingsModule|setDeliveriesModule|simple-icons' src next.config.ts package.json prints nothing, and vercel.json no longer schedules the daily job.",
           "platform": "The platform's exports and texts are in the same lists; the redirects removed are store admin paths, and the platform has none of them.",
@@ -311,9 +704,25 @@
           "id": "0.26",
           "title": "Run each check once, and let a test load only what it uses",
           "what": "One push type-checks the same commit five times (three hide inside CI's builds), checks the schema in three shards and lints 6,213 files with no cache. Turn the type check off in the e2e, hosts and signed-in builds, run the schema check in one shard, and give lint a cache in package.json and in the static and pending jobs. Split the unit tests into three Vitest projects, so the admin's English loads only where parts are drawn, the test database only where it is opened, and plain files share a worker (0.48 s to 0.14 s a file). Pre-bundle Drizzle for the tests. Stop replaying and quoting the 789 archived migrations: src/db/migration-files.ts goes, and the rule in CLAUDE.md that names it is corrected.",
-          "closes": ["TC-1", "TC-12", "TC-3", "TC-13", "DD-13", "DD-10"],
-          "from": ["W-build-1", "W-build-2", "W-build-3", "W-build-5", "W-code-7"],
-          "areas": ["build", "code"],
+          "closes": [
+            "TC-1",
+            "TC-12",
+            "TC-3",
+            "TC-13",
+            "DD-13",
+            "DD-10"
+          ],
+          "from": [
+            "W-build-1",
+            "W-build-2",
+            "W-build-3",
+            "W-build-5",
+            "W-code-7"
+          ],
+          "areas": [
+            "build",
+            "code"
+          ],
           "effort": "M",
           "done_when": "On the next push without a migration tsc runs in two jobs only and 'Migrations match the schema' in one, a second pnpm lint on an unchanged tree finishes in under 15 s, pnpm test passes with the same 1,215 files and setup under 10% of Vitest's duration line (40% today), and rg -l 'readMigration|findMigration|migrationHistory' src --glob '*.test.ts' | wc -l prints 0 (17 today).",
           "platform": "CI and the test suites are one for stores and platform: nothing is separate.",
@@ -323,9 +732,20 @@
           "id": "0.27",
           "title": "Leave a map in CLAUDE.md, wrap the rules' long lines and keep history out of searches",
           "what": "Every session and subagent loads CLAUDE.md's 295-line feature index (43,361 bytes in all), of which a change needs two to four lines. Replace it with a map of the seven rule files and a three-line look-up, and change src/lib/rules-index.test.ts so it no longer asks for a line per rule. 156 lines of docs/rules hold 52% of the rules' bytes in lines over 500 characters, which the search tool cannot show: wrap them with a script that proves no word changed. Three ignore files keep 22 dated docs and 791 archived migration files out of default searches.",
-          "closes": ["DC-1", "DC-4", "DC-7", "DC-13"],
-          "from": ["W-rules-3", "W-rules-2", "W-rules-4"],
-          "areas": ["rules"],
+          "closes": [
+            "DC-1",
+            "DC-4",
+            "DC-7",
+            "DC-13"
+          ],
+          "from": [
+            "W-rules-3",
+            "W-rules-2",
+            "W-rules-4"
+          ],
+          "areas": [
+            "rules"
+          ],
           "effort": "M",
           "done_when": "wc -c -l CLAUDE.md prints under 15,000 bytes and 200 lines (43,361 and 448 today), awk 'length($0)>500' docs/rules/storefront.md docs/rules/admin/*.md | wc -l prints 0 (156 today), and rg --files supabase | wc -l prints 5 (796 today).",
           "platform": "The rules cover stores and platform alike, and the map names the file that holds the platform's rules.",
@@ -335,15 +755,29 @@
           "id": "0.28",
           "title": "Make the rules say what is so, and claim a decision's number on main before citing it",
           "what": "CLAUDE.md sends architectural work to docs/plan.md, a 73 KB plan from before multi-tenancy: point it at docs/platform.md, fix the five stale code names and the one drifted list, and add a name check to the docs scan. Keep every tracker to a line a step (15 Progress rows are over 500 characters), with the open PSI items in one section. Retire the Migration versions list, frozen since 4 October, and the order to add to it. Sessions working at once take the same decision number (5 of 24 merges renumbered one): scripts/claim-decision.mjs claims the number on main first, and the 197 stray rows go back in the table.",
-          "closes": ["DC-5", "DC-8", "DC-6", "DC-10", "DC-12"],
-          "from": ["W-rules-6", "W-rules-7", "W-rules-8", "W-rules-5"],
-          "areas": ["rules"],
+          "closes": [
+            "DC-5",
+            "DC-8",
+            "DC-6",
+            "DC-10",
+            "DC-12"
+          ],
+          "from": [
+            "W-rules-6",
+            "W-rules-7",
+            "W-rules-8",
+            "W-rules-5"
+          ],
+          "areas": [
+            "rules"
+          ],
           "effort": "M",
           "done_when": "rg finds neither the docs/plan.md instruction in CLAUDE.md nor the order to record a migration's version in CLAUDE.md, README.md, docs/capacity.md and docs/ci-migrations.md (1 and 3 today), no Progress row of docs/audits/code-review-2026-11.md is over 300 characters, and over the next 100 commits on main git log --merges --format=%s | rg -ci 'renumber|taken on main|decision is D' prints nothing.",
           "platform": "docs/platform.md becomes the first pointer, so a session starts from the multi-tenant picture that includes the platform.",
           "owner_question": "After a migration, should 'advisors checked, nothing new' still be written down, and where? The check itself stays either way; today 205 of 564 decision rows carry the note."
         }
-      ]},
+      ]
+    },
     {
       "n": 1,
       "title": "Budgets, so it stays removed",
@@ -354,9 +788,17 @@
           "id": "1.1",
           "title": "Give every budget one home, and hold the written rules first",
           "what": "This plan's own checks would add about 27 sentences to CLAUDE.md. Write one rule in docs/rules that lists every baseline file with its test and its script. A scan test fails when a *.baseline.json under src is not named there, CLAUDE.md gets one sentence for all budgets, and each scan's failure message says what to do. Then hold the rules themselves: src/lib/docs-budget.scan.test.ts with src/lib/docs-budget.baseline.json (CLAUDE.md's bytes and lines, long lines per folder, rules over 4,000 bytes), checked on docs-only pushes too by .github/workflows/docs-budget.yml. Do it before any other budget step.",
-          "closes": ["DC-3", "GAP-rules-1"],
-          "from": ["W-rules-1", "W-rules-9"],
-          "areas": ["rules"],
+          "closes": [
+            "DC-3",
+            "GAP-rules-1"
+          ],
+          "from": [
+            "W-rules-1",
+            "W-rules-9"
+          ],
+          "areas": [
+            "rules"
+          ],
           "effort": "S",
           "done_when": "pnpm test src/lib/docs-budget.scan.test.ts passes at the figures phase 0 left, node scripts/docs-ratchet.mjs --check runs on a docs-only push, and a scan test fails for a *.baseline.json under src that the budgets rule does not name.",
           "platform": "One rule for all budgets: the platform's routes, jobs and tables are counted in the same baselines.",
@@ -366,9 +808,29 @@
           "id": "1.2",
           "title": "Hold every route's first scripts, and documents, stylesheets and after-load requests on real pages",
           "what": "Budgets watch 15 of 560 routes, the visitor's one counts a legacy file no modern browser loads, and no document, stylesheet or request count is held. scripts/bundle-budget.mjs reads .next/diagnostics/route-bundle-stats.json after each build against a baseline of all 560 routes, with 15,000 bytes of room each. e2e/performance.spec.ts, edited once, counts the server's script tags without nomodule on 8 store routes within 3%, and holds document and payload bytes (one of them a six-row, 31-block page made from Orbit's home), stylesheet bytes on 3 routes within 4%, inline style text, and the fetches a page makes after load. Tailwind's @source lines point at code only, not at tests, message files and SQL, held by src/lib/stylesheet-sources.scan.test.ts. The ratchet gains two counts: list statements that select a whole document, and what one publish makes stale.",
-          "closes": ["AC-10", "BN-11", "SC-6", "PL-13", "PM-14", "CS-3", "CS-6", "AS-7"],
-          "from": ["W-owner-browser-1", "W-shopper-browser-1", "W-page-model-1", "W-styles-1", "W-code-39"],
-          "areas": ["owner-browser", "shopper-browser", "page-model", "styles"],
+          "closes": [
+            "AC-10",
+            "BN-11",
+            "SC-6",
+            "PL-13",
+            "PM-14",
+            "CS-3",
+            "CS-6",
+            "AS-7"
+          ],
+          "from": [
+            "W-owner-browser-1",
+            "W-shopper-browser-1",
+            "W-page-model-1",
+            "W-styles-1",
+            "W-code-39"
+          ],
+          "areas": [
+            "owner-browser",
+            "shopper-browser",
+            "page-model",
+            "styles"
+          ],
           "effort": "M",
           "done_when": "node scripts/bundle-budget.mjs exits 0 in CI with a baseline of all 560 routes and fails on a branch that adds a 20 KB import to one admin route, and e2e/performance.spec.ts holds first-scripts budgets for 8 storefront routes within 3%, document budgets on 5 routes and stylesheet budgets on 3.",
           "platform": "The baseline lists every route, so /admin/platform's screens and Kaizena Flow's public pages are held like a store's.",
@@ -378,9 +840,19 @@
           "id": "1.3",
           "title": "Put the admin under the import walk, and hold where the words go",
           "what": "The import guard that keeps zod and whole catalogues out of shoppers' scripts leaves the admin out, and 6 of the 8 ways words can leak have no test. Add src/components/admin/admin-bundle.scan.test.ts (no Supabase client and no zod in the frame, no whole catalogue), a dead-key scan (src/lib/message-keys.scan.test.ts), a rule that catalogue files hold text only (src/lib/admin-messages/imports.scan.test.ts), and document budgets in e2e/signed-in/admin-scripts.spec.ts. auth.setup.ts signs in a second owner whose admin language is Norwegian, through the stand-in as the others are, so every words budget runs in both languages.",
-          "closes": ["AC-11", "TX-9", "GAP-text-2"],
-          "from": ["W-owner-browser-1", "W-text-6"],
-          "areas": ["owner-browser", "text"],
+          "closes": [
+            "AC-11",
+            "TX-9",
+            "GAP-text-2"
+          ],
+          "from": [
+            "W-owner-browser-1",
+            "W-text-6"
+          ],
+          "areas": [
+            "owner-browser",
+            "text"
+          ],
           "effort": "M",
           "done_when": "pnpm test runs admin-bundle.scan.test.ts, admin-text-reach.scan.test.ts, src/lib/admin-messages/imports.scan.test.ts and src/lib/message-keys.scan.test.ts green and each fails on its planted case, and e2e/signed-in/admin-scripts.spec.ts holds an English and a Norwegian figure for each budgeted screen.",
           "platform": "The platform admin's client modules are walked by the same scan, and its home is one of the budgeted screens.",
@@ -390,9 +862,18 @@
           "id": "1.4",
           "title": "Put the pages real shoppers get into the measured set: a launch-theme store and a paying cart",
           "what": "All 12 measured store pages are the bare template: no font file, one-row pages, pictures of about 1 KB and an empty cart. Seed one store in CI through the real preset path (Orbit with its content pack, header, footer and product layout, photographs through the upload pipeline, its two font families as fixture rows), and hold its home, a product page, a listing and a built page: document, payload, style text, font files, picture bytes on a 3x phone and router requests. Add a fixture store with payments on and a payment stand-in in the style of e2e/fixtures/auth-stub.mjs (the only fake, told it is one, no bypass in the app), and hold a cart with two lines and the checkout at its payment step. No finding covers this; three stewards asked for it, and without it no budget sees what a new owner's shoppers load.",
-          "closes": ["GAP-shopper-browser-1", "GAP-page-model-3", "GAP-styles-1", "GAP-shopper-browser-2"],
+          "closes": [
+            "GAP-shopper-browser-1",
+            "GAP-page-model-3",
+            "GAP-styles-1",
+            "GAP-shopper-browser-2"
+          ],
           "from": [],
-          "areas": ["shopper-browser", "page-model", "styles"],
+          "areas": [
+            "shopper-browser",
+            "page-model",
+            "styles"
+          ],
           "effort": "L",
           "done_when": "e2e/performance.spec.ts prints and holds, each within 5% of its first figure, the themed home's font files (at most 2 files and 80 KB), stylesheets (at most 3), document and router requests, and for the two-line cart and the checkout at its payment step first scripts, the document, router requests after load (0 while the form shows) and third-party bytes; all six pages are in measure-routes.mjs.",
           "platform": "Kaizena Flow's own site runs on a theme in its own store, so the themed store's budgets are the nearest held figure for it; its home has a document budget from the house store seeded in step 0.2.",
@@ -402,9 +883,22 @@
           "id": "1.5",
           "title": "Hold what a server entry loads and carries",
           "what": "Nothing counts what a route's function loads, so the cycle grew to 229 files unseen. Build one import walker and three checks on it: src/server/route-load.graph.test.ts with src/server/route-load.baseline.json (source files reached per entry, forbidden modules, the largest cycle), scripts/trace-sizes.mjs --check in CI's e2e job (megabytes traced beside a function), and scripts/route-budget.mjs (chunk bytes per kind of entry, repeated chunks, and the 10.4 MB server-reference manifest every cold function reads). src/lib/dependencies.scan.test.ts fails on a package with no importer. Three planners named three tests: build it once.",
-          "closes": ["SG-14", "SF-7", "DP-6", "AS-3", "SG-16"],
-          "from": ["W-server-2", "W-code-18", "W-server-37"],
-          "areas": ["server", "code"],
+          "closes": [
+            "SG-14",
+            "SF-7",
+            "DP-6",
+            "AS-3",
+            "SG-16"
+          ],
+          "from": [
+            "W-server-2",
+            "W-code-18",
+            "W-server-37"
+          ],
+          "areas": [
+            "server",
+            "code"
+          ],
           "effort": "M",
           "done_when": "pnpm test runs route-load.graph.test.ts and dependencies.scan.test.ts green, a trial import of '@/server/chat-route' into a beacon fails the graph test naming the route, and scripts/route-budget.mjs prints the manifest's bytes and entries on every CI build and fails when either rises (10.4 MB and 81,027 today).",
           "platform": "The baseline's entries include the platform admin's layout and one of its pages, the public site's front page and the docs' feedback route.",
@@ -414,9 +908,22 @@
           "id": "1.6",
           "title": "Count statements and rows: admin screens, the idle tick, the minute routes and the cold frame",
           "what": "Nothing counts queries, so the store Home grew to 30 statements and the scheduler to about 170,000 idle statements a day unseen. Put one counter in the database client. src/server/admin-statements.int.test.ts holds five screens (store shell, store Home, orders list, products list, platform Home), and one log line per admin render gives the production figure. src/server/query-budget.int.test.ts holds the idle dispatcher tick, each minute route and the cold frame, with 1 and with 20 seeded stores, and also records rows read (seq_tup_read plus idx_tup_fetch), so a read that grows with other stores' rows fails. pruneVisits() asks only stores older than the retention period.",
-          "closes": ["DQ-11", "AD-12", "CR-14", "GAP-database-2"],
-          "from": ["W-database-2", "W-server-3", "W-scheduled-8"],
-          "areas": ["database", "server", "scheduled"],
+          "closes": [
+            "DQ-11",
+            "AD-12",
+            "CR-14",
+            "GAP-database-2"
+          ],
+          "from": [
+            "W-database-2",
+            "W-server-3",
+            "W-scheduled-8"
+          ],
+          "areas": [
+            "database",
+            "server",
+            "scheduled"
+          ],
           "effort": "M",
           "done_when": "pnpm test:int runs admin-statements.int.test.ts with five screens in its baseline and query-budget.int.test.ts with its counts in src/server/ratchet.baseline.json, and the second fails when a scratch change writes 'store_id is not distinct from' back into listPublishedPages or adds a per-store statement to a daily prune.",
           "platform": "The platform Home is one of the five screens, and the idle tick that is counted includes the platform's own jobs.",
@@ -426,9 +933,22 @@
           "id": "1.7",
           "title": "Hold the storefront's server side: statements per page, cached reads, render modes, a shop-only journey and a placed order's writes",
           "what": "The browser's side has budgets; the server's has none that can see these costs. scripts/server-budget.mjs in CI's e2e job counts statements for the home, a product, All products, a category, search, and home with a cart cookie (first budgets are today's numbers plus 2). src/server/use-cache.scan.test.ts lists every cached read's life and tags, and scripts/render-modes.mjs holds compute mode and holes per route, so one cookies() read in a shared part cannot move every store page to per-request unseen. An int test walks a store with features ['shop'] from home to checkout and fails when a statement names a table of a switched-off feature. The budget also keeps what one guest order of three lines and one counted visit write: statements, and rows inserted and updated.",
-          "closes": ["SD-13", "CA-16", "GAP-surface-1", "GAP-database-3"],
-          "from": ["W-server-4", "W-server-5", "W-surface-4"],
-          "areas": ["server", "surface", "database"],
+          "closes": [
+            "SD-13",
+            "CA-16",
+            "GAP-surface-1",
+            "GAP-database-3"
+          ],
+          "from": [
+            "W-server-4",
+            "W-server-5",
+            "W-surface-4"
+          ],
+          "areas": [
+            "server",
+            "surface",
+            "database"
+          ],
           "effort": "M",
           "done_when": "node scripts/render-modes.mjs passes on CI's build and fails, naming /s/demo/no, on a trial cookies() read in the store's footer; scripts/server-budget.mjs holds six pages; the shop-only journey case passes in pnpm test:int; and a scratch trigger on commerce.orders that writes a row fails the write budget.",
           "platform": "The house store's home is in the render-mode and statement baselines (seeded in step 0.2), so Kaizena Flow's front page cannot leave the static shell unseen.",
@@ -438,9 +958,17 @@
           "id": "1.8",
           "title": "Hold with production figures what a test cannot: a slow phone, the admin's speed, a cold start",
           "what": "No figure of time is measured or held, and no finding covers it. measure-routes.mjs gains a run with the CPU slowed four times (blocking time, script bytes run by idle), with the run bytes budgeted in e2e/performance.spec.ts; a nightly workflow beside live-a11y.yml runs scripts/perf.mjs --form=mobile --min=90 against a launch-theme demo store and Kaizena Flow's front page. The morning briefing gets a line when the admin's LCP or INP at p75 over 28 days is not 'good' for a kind of screen with 100 loads, and the beacon tells the builder from the product editor. Each instance logs one instance.start line through log() (kind of entry, milliseconds to the end of register() and to the first answer, resident memory), shown as cold starts a day with p50 and p95 by kind. If production puts the server-reference manifest above 30 ms per cold start, give the most-listed cached readers their own files until it is under 5 MB.",
-          "closes": ["GAP-shopper-browser-3", "GAP-owner-browser-3", "GAP-server-3"],
+          "closes": [
+            "GAP-shopper-browser-3",
+            "GAP-owner-browser-3",
+            "GAP-server-3"
+          ],
           "from": [],
-          "areas": ["shopper-browser", "owner-browser", "server"],
+          "areas": [
+            "shopper-browser",
+            "owner-browser",
+            "server"
+          ],
           "effort": "L",
           "done_when": "The nightly job has run green for a week with its table in docs/performance.md, a unit test of the briefing shows the line for a seeded slow kind of screen, and Platform, Usage and limits shows a week of cold-start figures with a beacon within 150 ms of the health check.",
           "platform": "All three figures live in /admin/platform (the briefing and Usage and limits), and Kaizena Flow's front page is one of the two pages measured each night.",
@@ -449,10 +977,24 @@
         {
           "id": "1.9",
           "title": "Hold unused code, copies and the admin's repeats with ratchets of exact lists",
-          "what": "Lint sees unused locals only, and no test counts copies, twins, public files or route handlers nothing calls. src/server/unused.scan.test.ts holds today's lists of unused and test-only exports, so they can only shrink, and adds two cases: every file under public/ and every route.ts under src/app/api is referenced, or listed with its reason. One copy counter and one twin counter (scripts/lib/copy-count.mjs) run against src/lib/copies.baseline.json: 4,098 exact copied lines across files, 705 inside files, 41 twin pairs, each kept pair with a reason. src/server/ratchet.baseline.json gains the admin's repeat counts: action files off the shared wrapper (232), tables 154, native selects 436, files with Europe/Oslo 67, files with confirm( 42.",
-          "closes": ["DD-4", "GAP-code-2", "CP-14", "FM-13", "FM-7", "FM-8", "GAP-code-3"],
-          "from": ["W-code-1", "W-code-3", "W-code-4"],
-          "areas": ["code"],
+          "what": "Lint sees unused locals only, and no test counts copies, twins, public files or route handlers nothing calls. src/server/unused.scan.test.ts, with scripts/unused.mjs to print and lower its lists, holds today's unused and test-only exports, so they can only shrink, and adds two cases: every file under public/ and every route.ts under src/app/api is referenced, or listed with its reason. One copy counter and one twin counter (scripts/lib/copy-count.mjs) run against src/lib/copies.baseline.json: 4,098 exact copied lines across files, 705 inside files, 41 twin pairs, each kept pair with a reason. src/server/ratchet.baseline.json gains the admin's repeat counts: action files off the shared wrapper (232), tables 154, native selects 436, files with Europe/Oslo 67, files with confirm( 42.",
+          "closes": [
+            "DD-4",
+            "GAP-code-2",
+            "CP-14",
+            "FM-13",
+            "FM-7",
+            "FM-8",
+            "GAP-code-3"
+          ],
+          "from": [
+            "W-code-1",
+            "W-code-3",
+            "W-code-4"
+          ],
+          "areas": [
+            "code"
+          ],
           "effort": "M",
           "done_when": "pnpm test fails on each planted case: export const NEVER_USED = 1 in a file under src/lib, public/unused.png, an empty src/app/api/never/route.ts, and a 30-line block pasted into another file or twice inside one.",
           "platform": "The platform's twins (its second engines and the modules of its 19 platform_* tables) are in the twin baseline with their reason until step 3.6 folds them.",
@@ -462,9 +1004,19 @@
           "id": "1.10",
           "title": "Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows",
           "what": "One of 14 surface counts has a budget, and orders went from 24 to 34 indexes unseen. src/lib/surface-budget.scan.test.ts with src/lib/surface-budget.baseline.json holds dispatcher jobs, every-minute routes, pages, navigation links per section, AI tools, tables, platform_* tables and the rest. The same file carries index and trigger counts for the eight hot tables (orders 32 and 27 after step 0.20) and the rows the database writes for a new store (8 today, counted by a case in src/db/commerce.test.ts). A count rises only with --raise and a decision row that carries an 'Idle cost:' line: what the feature costs a store that does not use it. One paragraph in docs/store-features.md says switches are for what an owner sees, not for cost.",
-          "closes": ["FT-2", "DS-12", "GAP-surface-3"],
-          "from": ["W-surface-2", "W-database-6"],
-          "areas": ["surface", "database"],
+          "closes": [
+            "FT-2",
+            "DS-12",
+            "GAP-surface-3"
+          ],
+          "from": [
+            "W-surface-2",
+            "W-database-6"
+          ],
+          "areas": [
+            "surface",
+            "database"
+          ],
           "effort": "S",
           "done_when": "pnpm test src/lib/surface-budget.scan.test.ts passes with 14 counts and the hot tables' counts in its baseline, and fails when a scratch migration adds a trigger on commerce.orders or one more job joins the dispatcher's list without --raise.",
           "platform": "The 19 platform_* tables and the platform's pages and jobs are counts of their own, so a new platform twin must state its idle cost too.",
@@ -474,9 +1026,18 @@
           "id": "1.11",
           "title": "Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool",
           "what": "The only AI budget is a tool count set at the provider's cap. src/server/ai-round.scan.test.ts with src/server/ai-round.baseline.json draws the AI manager's default round (161,661 characters today) and the seven fixed prompts with their tool sets: the shopper chat with and without support, the docs guide, the Dream Factory's steps and the autopilot's events. A log line per round and Platform, AI show input, cached and output tokens per call by feature, median and 90th percentile. Add at least 8 lean eval cases (six that need a tool outside the core 12, two that must load nothing), commit a first recording as the 'before', and try reasoning_effort 'low' on the two tool loops in one eval run.",
-          "closes": ["AI-10", "AI-14", "GAP-ai-3"],
-          "from": ["W-ai-2", "W-ai-3"],
-          "areas": ["ai"],
+          "closes": [
+            "AI-10",
+            "AI-14",
+            "GAP-ai-3"
+          ],
+          "from": [
+            "W-ai-2",
+            "W-ai-3"
+          ],
+          "areas": [
+            "ai"
+          ],
           "effort": "M",
           "done_when": "ai-round.scan.test.ts fails when 2,000 characters are added to list_orders' description or 500 to the shopper chat's prompt, src/data/agent-eval-recording.json holds at least 8 lean cases and agent-eval-replay.int.test.ts passes on it, and Platform, AI shows output tokens per call.",
           "platform": "The platform's assistant and its 39 tools are a line in the baseline, and the panel is Platform, AI.",
@@ -485,10 +1046,20 @@
         {
           "id": "1.12",
           "title": "Record every check's seconds and the build's peak memory, with ceilings",
-          "what": "Not one number of the checks is held, while the production build peaks at about 7.2 GB of 8. scripts/timed.mjs wraps lint, the type check, the unit run, each integration shard, each Playwright run and each build, with ceilings in scripts/ci-budgets.json (25% above the median of the last ten runs; the slowest job a release waits for at 8 minutes). scripts/next-build.mjs prints seconds and peak memory after every build, Vercel's included. scripts/await-deploy.mjs writes the seconds from push to live, and Playwright's JSON reporter gives the tests that passed only on a retry. Turn source maps off in the Vercel build's page worker if a capped build shows it pays (about 4.7 MB of heap per MB of server code), and write both peaks into docs/build-memory.md. pnpm check runs the pre-push rule through the recorder.",
-          "closes": ["TC-8", "AS-10", "GAP-build-1"],
-          "from": ["W-build-6", "W-code-10", "W-build-12"],
-          "areas": ["build"],
+          "what": "Not one number of the checks is held, while the production build peaks at about 7.2 GB of 8. scripts/timed.mjs wraps lint, the type check, the unit run, each integration shard, each Playwright run and each build, with ceilings in scripts/ci-budgets.json (25% above the median of the last ten runs; the slowest job a release waits for at 8 minutes). scripts/next-build.mjs prints seconds and peak memory after every build, Vercel's included; scripts/await-deploy.mjs writes the seconds from push to live, and Playwright's JSON reporter gives the tests that passed only on a retry. Turn source maps off in the Vercel build's page worker if a capped build shows it pays (about 4.7 MB of heap per MB of server code), and write both peaks into docs/build-memory.md. pnpm check runs the pre-push rule through the recorder.",
+          "closes": [
+            "TC-8",
+            "AS-10",
+            "GAP-build-1"
+          ],
+          "from": [
+            "W-build-6",
+            "W-code-10",
+            "W-build-12"
+          ],
+          "areas": [
+            "build"
+          ],
           "effort": "M",
           "done_when": "Every CI run's summary lists seconds for lint, the type check, the unit run, each shard, each browser job and the build, the build's peak memory, the seconds from push to live and the retried tests; a run fails above a ceiling in scripts/ci-budgets.json; and docs/build-memory.md has a row for each source-map setting.",
           "platform": "One CI and one build serve stores and platform.",
@@ -498,15 +1069,26 @@
           "id": "1.13",
           "title": "Give the production build room, and fail a run before it runs out",
           "what": "The build has 0.8 GB of room on Vercel's 8 GB machine and was killed once on 11 November, and nothing in this plan is measured to give it a quarter of the machine. Either pay for the 16 GB build machine, with the build cache and the workers back on, or run vercel build in CI and vercel deploy --prebuilt, which makes the deployed build the checked one. Either way a run goes red with the number when the peak passes 75% of the machine. After the cuts of phases 0 and 2, measure again under a memory cap and report repeated server chunks with scripts/route-budget.mjs: 123.6 MiB of 195.5 MiB is the same three chunks written many times.",
-          "closes": ["GAP-build-2", "SG-11", "SF-11"],
-          "from": ["W-build-13", "W-server-51"],
-          "areas": ["build", "server"],
+          "closes": [
+            "GAP-build-2",
+            "SG-11",
+            "SF-11"
+          ],
+          "from": [
+            "W-build-13",
+            "W-server-51"
+          ],
+          "areas": [
+            "build",
+            "server"
+          ],
           "effort": "M",
           "done_when": "Ten production builds running peak at 75% of their machine or less with a failing check above it, scripts/route-budget.mjs reports under 40 MiB of repeated server chunk bytes on a CI build, and code review step 1.8 is Done.",
           "platform": "One build makes the platform admin and Kaizena Flow's site with the stores.",
           "owner_question": "Pay for Vercel's 16 GB build machine, or build in CI and deploy the prebuilt output? Without one of the two the build area stops at a B."
         }
-      ]},
+      ]
+    },
     {
       "n": 2,
       "title": "Load on demand",
@@ -517,9 +1099,29 @@
           "id": "2.1",
           "title": "Send the store's layout and its fixed style sheets once",
           "what": "The cart drawer's slot (@drawer) sits on the root layout, so every storefront document renders and ships the whole layout twice, with the store's 404 page inside: 35 rows and about 26 KB a document. Move the slot off the root layout and read the cart count once per render. On a screen 768 px or wider the cart link then opens the cart page directly: no drawer rendered and thrown away, and no prefetch of it. Draw the 1,760-byte breakpoint sheet once per document, not once per row (PreviewBreakpoints covers the admin's canvases).",
-          "closes": ["SC-8", "PL-2", "PM-1", "CS-5", "SC-7", "PF-7", "CS-4", "PM-7"],
-          "from": ["W-shopper-browser-11", "W-page-model-6", "W-styles-6", "W-shopper-browser-13", "W-styles-4", "W-page-model-13"],
-          "areas": ["shopper-browser", "page-model", "styles"],
+          "closes": [
+            "SC-8",
+            "PL-2",
+            "PM-1",
+            "CS-5",
+            "SC-7",
+            "PF-7",
+            "CS-4",
+            "PM-7"
+          ],
+          "from": [
+            "W-shopper-browser-11",
+            "W-page-model-6",
+            "W-styles-6",
+            "W-shopper-browser-13",
+            "W-styles-4",
+            "W-page-model-13"
+          ],
+          "areas": [
+            "shopper-browser",
+            "page-model",
+            "styles"
+          ],
           "effort": "M",
           "done_when": "The served /s/demo/no document opens one html element in its inline payload (two today), holds under 2,000 bytes of duplicate rows (26,534 today) and is under 112,000 bytes raw (138,523); the theme sheet's and the breakpoint sheet's hrefs each appear 2 times, whatever the number of rows; and at 1280 px a press on the cart link makes one document request and no router request for /cart, all held in e2e/performance.spec.ts and e2e/cart.spec.ts.",
           "platform": "Kaizena Flow's own store pages carry the same layout and lose the same second copy; / and /admin already send one.",
@@ -529,9 +1131,19 @@
           "id": "2.2",
           "title": "Serve store pages with nothing per visitor as static files, and let Add to cart answer a number",
           "what": "Every prerendered store page is 'resuming': a render function runs on each view to place two cart badges and a country hint. One small per-visitor answer (src/app/api/shop/mine/route.ts: the cart count, the saved ids and the hint), asked only when a marker cookie says there is something, lets home, built, blog and info pages become static. addToCart returns the new count and drops its refresh(), so one press no longer redraws the page and re-fetches every prefetched link. After opening, count page runs by user agents on Next's bot list in Vercel's logs; if the share is not small, narrow htmlLimitedBots so crawlers get the cached page.",
-          "closes": ["CA-1", "CA-17", "CA-15"],
-          "from": ["W-server-32", "W-server-35"],
-          "areas": ["server", "shopper-browser"],
+          "closes": [
+            "CA-1",
+            "CA-17",
+            "CA-15"
+          ],
+          "from": [
+            "W-server-32",
+            "W-server-35"
+          ],
+          "areas": [
+            "server",
+            "shopper-browser"
+          ],
           "effort": "M",
           "done_when": "After pnpm build, .next/prerender-manifest.json gives compute 'static' for /s/demo/no, /s/demo/no/om-oss and the blog routes (all 'resuming' today), held in scripts/render-modes.baseline.json, and e2e/cart.spec.ts shows the Add to cart answer carrying the count with no redraw of the route.",
           "platform": "Kaizena Flow's front page, served from its own store, becomes a static file with the rest; its baseline entry from step 0.2 moves to static.",
@@ -541,9 +1153,21 @@
           "id": "2.3",
           "title": "Route every link through one wrapper with a stated policy, and keep built pages' presses inside the app",
           "what": "947 links have no stated policy, and 400 files import next/link directly. Three wrappers (a PolicyLink with policy sight, intent or never) make header tools, the bottom bar, footers, menus and closed sub-menus fetch on intent; a ratchet count, directLinks, only lets direct next/link imports fall. Built pages' tiles, buttons and pictures use a BlockLink that stays in the app for an address of the app and keeps the plain anchor for pay paths, files and outside links: a tile press today is a whole document and 42 requests. The first Add to cart then asks again for at most 10 links, not 32.",
-          "closes": ["PF-3", "PF-8", "PF-12", "PF-10", "PF-4"],
-          "from": ["W-shopper-browser-14", "W-shopper-browser-18", "W-shopper-browser-16"],
-          "areas": ["shopper-browser"],
+          "closes": [
+            "PF-3",
+            "PF-8",
+            "PF-12",
+            "PF-10",
+            "PF-4"
+          ],
+          "from": [
+            "W-shopper-browser-14",
+            "W-shopper-browser-18",
+            "W-shopper-browser-16"
+          ],
+          "areas": [
+            "shopper-browser"
+          ],
           "effort": "L",
           "done_when": "e2e/prefetch.spec.ts passes with at most 6 router prefetch requests on the phone home read to the footer (47 today), 0 documents and at most 8 requests after a tap on a built page's tile (1 and 42 today) and at most 10 after the first add to cart, and pnpm test fails for a new file that imports next/link directly.",
           "platform": "The platform admin and Kaizena Flow's site use the same three wrappers, and the pay-routes graph test still forbids app navigation into a pay path.",
@@ -553,9 +1177,19 @@
           "id": "2.4",
           "title": "Bound what a real listing fetches ahead, and decide partial prefetching by trial",
           "what": "A real listing prefetches every product tile and up to six swatch links under each: about 96 requests for 48 products, and the test stores are too small to show it. Seed a 48-product category and bound it at 20 router requests read to the end, with swatches on intent. Run the partial-prefetching trial on the product page, the seeded listing, the store home and the admin's orders page, and write its table into docs/performance.md and the decision into docs/decisions.md: either all links to one route share one shell, or the first screen of tiles is fetched on sight and the rest on touch. The next major Next release forces the choice.",
-          "closes": ["PF-13", "PL-5", "PF-9"],
-          "from": ["W-shopper-browser-15", "W-shopper-browser-19"],
-          "areas": ["shopper-browser", "owner-browser"],
+          "closes": [
+            "PF-13",
+            "PL-5",
+            "PF-9"
+          ],
+          "from": [
+            "W-shopper-browser-15",
+            "W-shopper-browser-19"
+          ],
+          "areas": [
+            "shopper-browser",
+            "owner-browser"
+          ],
           "effort": "M",
           "done_when": "e2e/prefetch.spec.ts holds the seeded 48-product category read to the end on a phone at no more than 20 router requests, and docs/performance.md holds the trial's before-and-after table with the decision recorded in docs/decisions.md.",
           "platform": "The trial's fourth page is an admin page, so the choice is made for /admin/platform's lists too.",
@@ -565,9 +1199,19 @@
           "id": "2.5",
           "title": "Let each working route and each recommending grid load its own parts",
           "what": "Listing, search, cart, checkout, account, order, wishlist and cookies pages share one bundle of every working part, 98 KB larger than a built page's. Move the shell of StorePartSection to a server file with no section imports (src/components/store-part-frame.tsx), and give each route a small module that imports its own sections. A store page with a recommending grid downloads 650 KB more once recommendations answer (zod, the page model and all four languages): the grid takes its words as a prop, from the browser files of src/lib/messages.",
-          "closes": ["SC-2", "BN-9", "BN-16"],
-          "from": ["W-shopper-browser-12", "W-owner-browser-14", "W-owner-browser-15"],
-          "areas": ["shopper-browser"],
+          "closes": [
+            "SC-2",
+            "BN-9",
+            "BN-16"
+          ],
+          "from": [
+            "W-shopper-browser-12",
+            "W-owner-browser-14",
+            "W-owner-browser-15"
+          ],
+          "areas": [
+            "shopper-browser"
+          ],
           "effort": "M",
           "done_when": "After pnpm build, route-bundle-stats.json shows /category/[slug], /tag/[slug] and /search at or under 715,000 bytes (785,994 today) with at most 37 client modules by the review's route.mjs (54 today), and e2e/recommendations.spec.ts counts at most 335,000 bytes of script after /api/recommendations answers (649,561 today).",
           "platform": "Kaizena Flow's site draws no cart or listing; its blog and theme-store pages already load their own parts, and the baseline of step 1.2 holds them.",
@@ -577,9 +1221,22 @@
           "id": "2.6",
           "title": "Give the storefront a stylesheet of its own, and count what is in it",
           "what": "One 183 KB sheet serves stores, the site, the docs and the admin: 28% of it styles only the admin, and 3,480 of the 5,931 files Tailwind reads can rename it though no public page draws them. Make two Tailwind entries: the site's reads the site's code and the 11 admin parts a public page imports, each named on a line of its own. A script (stylesheet-audiences.mjs) prints the bytes each audience alone names, with a stated tolerance of 15 KB raw of classes no store page can draw; a third entry is weighed only above it. A second script, or a line on Platform, Usage and limits, reports per store the bytes of owner-written style text and the share of pages that need motion.css, with the two trigger lines written into docs/performance.md. No finding covers the two reports; they are what take styles from a B to an A.",
-          "closes": ["SC-5", "CS-1", "BN-12", "GAP-styles-2", "GAP-styles-3"],
-          "from": ["W-shopper-browser-20", "W-styles-5", "W-owner-browser-17"],
-          "areas": ["styles", "shopper-browser"],
+          "closes": [
+            "SC-5",
+            "CS-1",
+            "BN-12",
+            "GAP-styles-2",
+            "GAP-styles-3"
+          ],
+          "from": [
+            "W-shopper-browser-20",
+            "W-styles-5",
+            "W-owner-browser-17"
+          ],
+          "areas": [
+            "styles",
+            "shopper-browser"
+          ],
           "effort": "M",
           "done_when": "The stylesheet that /s/demo/no links is at most 135,000 bytes raw (183,124 today) with the site budgets lowered to it, src/lib/stylesheet-sources.scan.test.ts passes, the build's peak before and after is in docs/build-memory.md (no more than about 150 MB higher), and docs/performance.md holds the audiences figure and the first style-text reading.",
           "platform": "Kaizena Flow's public site and docs get the site's sheet; the admin, /admin/platform included, keeps its own two.",
@@ -589,9 +1246,18 @@
           "id": "2.7",
           "title": "Draw a listing's grid once and read its list once",
           "what": "A product grid with Filter and sort is sent twice when nothing is chosen: the built grid is the Suspense fallback and the streamed copy replaces it, so each product is 18 times in the markup and 18 in the payload, and a category asks the database again for the list it already drew. In src/components/content-grid-section.tsx keep the built grid in the shell and stream only the controls and the Show more link; memoise the grid's loader per request.",
-          "closes": ["PL-6", "PM-8"],
-          "from": ["W-shopper-browser-21", "W-page-model-9"],
-          "areas": ["shopper-browser", "page-model"],
+          "closes": [
+            "PL-6",
+            "PM-8"
+          ],
+          "from": [
+            "W-shopper-browser-21",
+            "W-page-model-9"
+          ],
+          "areas": [
+            "shopper-browser",
+            "page-model"
+          ],
           "effort": "M",
           "done_when": "The served /s/demo/no/products document holds each product's data-item-id once in its markup and once in its payload (18 and 18 for 9 products today) and is under 150,000 bytes raw (170,329 today), held in e2e/listing.spec.ts.",
           "platform": "Kaizena Flow's site has no filterable product grid; its grids of articles and themes draw through the same section and are sent once.",
@@ -601,9 +1267,16 @@
           "id": "2.8",
           "title": "Ask the database for stock only on a product view",
           "what": "An anonymous view of a prerendered product sends about 18 statements. One answer, stock, changes per view, and it is read twice. Put what only an owner sets (checkout's look, payment state, checkout fields, quote mode, back in stock, price breaks, producer schemes) in one cached read per store and market, src/server/buy-facts.ts, tagged so its writers refresh it, and carry it in the prerendered page. The buy button then no longer waits for payment facts.",
-          "closes": ["SD-2"],
-          "from": ["W-server-31"],
-          "areas": ["server", "surface"],
+          "closes": [
+            "SD-2"
+          ],
+          "from": [
+            "W-server-31"
+          ],
+          "areas": [
+            "server",
+            "surface"
+          ],
           "effort": "M",
           "done_when": "One anonymous GET of a prerendered goods product on a warm production build commits 3 statements or fewer beyond the proxy's (about 16 today) and reads only the inventory tables, by scripts/server-budget.mjs with its budget at 4.",
           "platform": "Store-only by the house rule's exception: Kaizena Flow sells plans through Stripe and has no stock.",
@@ -613,9 +1286,21 @@
           "id": "2.9",
           "title": "Let cached reads follow their tags, and let a publish make only its own page stale",
           "what": "71 of 85 cached reads expire after an hour though every writer refreshes a tag, and home and All products redraw every 15 minutes. Give a read whose every writer refreshes a tag a week's life, and keep the clock only where the answer holds one (the 30-day reference price). One tag, pages:{store}, covers all of a store's pages, so one publish makes all 261 built pages of the demo stale: add page:{id} for reads of one page's document, and cache a product layout once per store, not once per product. The alt-text job refreshes a store's tags once when its queue is empty, then only the pages that hold the picture.",
-          "closes": ["SD-8", "CA-10", "PM-15", "PM-16", "GAP-page-model-2"],
-          "from": ["W-server-33", "W-page-model-7"],
-          "areas": ["server", "page-model"],
+          "closes": [
+            "SD-8",
+            "CA-10",
+            "PM-15",
+            "PM-16",
+            "GAP-page-model-2"
+          ],
+          "from": [
+            "W-server-33",
+            "W-page-model-7"
+          ],
+          "areas": [
+            "server",
+            "page-model"
+          ],
           "effort": "L",
           "done_when": "pnpm build's route table shows no storefront route at 15m (6 today) and .next/prerender-manifest.json shows a store's own pages at 604800, a unit test of the save action with next/cache stubbed sees a body-only publish call updateTag with page:{id} and not pages:{store}, and a unit test of the alt-text route sees at most one store-wide refresh across 10 runs (10 today).",
           "platform": "The platform's pages take page:{id} with a null owner, and the docs routes (251 at 3,600 s today) get the week's life.",
@@ -624,10 +1309,22 @@
         {
           "id": "2.10",
           "title": "Read a cold store page, the cart and the checkout in one wave, with nothing that grows with the catalogue",
-          "what": "A cold frame asks about 20 statements, some one after another and one per optional feature whether the store uses it or not; siteCookies() alone asks 8 or 9 in a row. Start the independent reads together, fold the feature questions into one site-facts read, and take menu titles from the page index of step 0.18. No finding covers the catalogue's reads or the cart and checkout, so the plan brings code review steps 3.8 to 3.10 in with numbers: the front page's JSON-LD from a small cached read of handles, a tag per product and a lists tag, and the cart's and checkout's independent reads in one wave. Seed one test store with 500 products, so a read that grows with the catalogue fails a budget.",
-          "closes": ["SD-5", "SD-9", "DQ-7", "GAP-server-1"],
-          "from": ["W-server-34", "W-database-15"],
-          "areas": ["server", "database", "surface"],
+          "what": "A cold frame asks about 20 statements, some one after another and one per optional feature whether the store uses it or not; siteCookies() alone asks 8 or 9 in a row. Start the independent reads together, fold the feature questions into one site-facts read, and take menu titles from the page index of step 0.19. No finding covers the catalogue's reads or the cart and checkout, so the plan brings code review steps 3.8 to 3.10 in with numbers: the front page's JSON-LD from a small cached read of handles, a tag per product and a lists tag, and the cart's and checkout's independent reads in one wave. Seed one test store with 500 products, so a read that grows with the catalogue fails a budget.",
+          "closes": [
+            "SD-5",
+            "SD-9",
+            "DQ-7",
+            "GAP-server-1"
+          ],
+          "from": [
+            "W-server-34",
+            "W-database-15"
+          ],
+          "areas": [
+            "server",
+            "database",
+            "surface"
+          ],
           "effort": "L",
           "done_when": "scripts/server-budget.mjs counts 20 statements or fewer for the first request of a store's home after a restart (30 to 35 today) and holds cart and checkout in at most two waves; query-budget.int.test.ts counts at most 4 statements for siteCookies() (8 or 9 today); and a cold home and product page of the 500-product store read no more rows than those of a 10-product store.",
           "platform": "Kaizena Flow's own frame (21 statements cold today) is read through the same loaders with a null owner and falls with them.",
@@ -637,9 +1334,22 @@
           "id": "2.11",
           "title": "Turn the proxy's and the page's readers into leaf modules",
           "what": "The proxy runs before every page and prefetch and reaches 1,309 source files to do six small reads. Reading a page pulls in the code for saving pages and most of the server, because reader and writer share a file. Move the proxy's readers to leaf modules, with one file of tag names and one short-memory helper, so it answers from memory and refreshes in the background. Move page reads to src/server/page-reads.ts, which may not reach src/server/pages.ts. The graph test of step 1.5 holds both.",
-          "closes": ["SD-1", "SD-6", "SG-2", "SF-2", "SG-8", "PM-12"],
-          "from": ["W-server-30", "W-page-model-14"],
-          "areas": ["server", "page-model"],
+          "closes": [
+            "SD-1",
+            "SD-6",
+            "SG-2",
+            "SF-2",
+            "SG-8",
+            "PM-12"
+          ],
+          "from": [
+            "W-server-30",
+            "W-page-model-14"
+          ],
+          "areas": [
+            "server",
+            "page-model"
+          ],
           "effort": "L",
           "done_when": "src/server/route-load.graph.test.ts passes with src/proxy.ts at 120 source files or fewer by static value imports (1,309 today), reaching none of auth.ts, pages.ts, catalog.ts, stores.ts, seo.ts, stripe.ts or src/lib/admin-text.ts, and src/server/page-reads.ts at 130 modules or fewer (pages.ts reaches 1,307 today).",
           "platform": "One proxy stands before the platform admin and Kaizena Flow's site too, and the platform's pages are read through page-reads.ts.",
@@ -649,9 +1359,23 @@
           "id": "2.12",
           "title": "Let nothing ride with a function that cannot use it: Stripe, the page model, the taxonomy",
           "what": "getStore() imports the Stripe SDK to learn whether two keys exist, and every route that reads a store builds the whole page model, 468 schemas for a theme's few fields. Read the key facts without the SDK, and cut the page model so that src/server/stores.ts reaches no block schema (a constraint on code review step 3.2). The 13 MB product taxonomy is traced into every function, the health check included, and a product page parses it to show one category: trace it only beside routes that can read it, held by a scan test, and store on a product the category name the shop shows.",
-          "closes": ["SG-9", "DP-12", "SF-8", "SG-13", "AS-2"],
-          "from": ["W-server-48", "W-code-38", "W-server-50", "W-code-37"],
-          "areas": ["server", "code"],
+          "closes": [
+            "SG-9",
+            "DP-12",
+            "SF-8",
+            "SG-13",
+            "AS-2"
+          ],
+          "from": [
+            "W-server-48",
+            "W-code-38",
+            "W-server-50",
+            "W-code-37"
+          ],
+          "areas": [
+            "server",
+            "code"
+          ],
           "effort": "M",
           "done_when": "A next analyze export shows /api/visit with no stripe module at or under 500 modules and 1.0 MB, the graph test shows src/server/stores.ts reaching no file that defines a block schema, and after pnpm build .next/server/app/api/health/route.js.nft.json lists no file under src/data/product-taxonomy (6 files and 12.7 MB today).",
           "platform": "The platform reads its settings and stores through the same getStore() path, and its routes lose the same traces.",
@@ -661,22 +1385,54 @@
           "id": "2.13",
           "title": "Load the admin's words by area on admin routes too, and take English defaults out of the code",
           "what": "Every admin page and action loads all 67 areas in both languages: 3.46 MB of catalogue source, where its code names a median of 15. Give every area its module and move the admin's adminText() calls by codemod (561 to 688 files), until src/lib/admin-text.ts holds no table of every area. Where a function took English words as a default, the words become a required argument. On the server the proxy and the storefront then reach 16 catalogue files or fewer (37 after step 0.6). In the browser the 38 import sites that compile an English catalogue into client scripts go, leaving common and sign-in.",
-          "closes": ["SG-4", "AC-9", "BN-8"],
-          "from": ["W-server-36", "W-text-10", "W-text-9", "W-owner-browser-16", "W-text-11"],
-          "areas": ["server", "text", "owner-browser"],
+          "closes": [
+            "SG-4",
+            "AC-9",
+            "BN-8"
+          ],
+          "from": [
+            "W-server-36",
+            "W-text-10",
+            "W-text-9",
+            "W-owner-browser-16",
+            "W-text-11"
+          ],
+          "areas": [
+            "server",
+            "text",
+            "owner-browser"
+          ],
           "effort": "L",
           "done_when": "admin-text-reach.scan.test.ts holds its five named admin entries to at most 28 areas and 1.66 MB of catalogue source each (67 and 3.46 MB today) and the proxy to 16 catalogue files, a next analyze export shows /admin/[store]/orders at or under 6.5 MB of server code (12,068 KB today), and admin-bundle.scan.test.ts finds no path from an admin client module to a catalogue other than common.en and sign-in.en (38 import sites today).",
           "platform": "The platform's areas are among the 67 and move in the same codemod, and the platform home is one of the five named entries.",
           "owner_question": "Is a third language for the admin (Swedish or Danish) wanted in the first half year? If yes, this step moves before opening: until it is done each language adds about 1.5 MB to every function."
-        }
-        ,
+        },
         {
           "id": "2.14",
           "title": "Hand each admin page only the words its parts read, and do not send them again with a save",
           "what": "Admin documents hand whole areas of words to the browser: the product editor is handed 238 KB and reads about 79 KB, every screen carries 34 KB of shell words and reads 12, and each save or poll re-sends 51 to 66 KB of unchanged shell words and menu. Hand down typed cuts of the big areas, and the assistant's button apart from its chat. Record per screen the bytes handed and the bytes in groups read, as a baseline beside the spec, and work down every site that hands over 50 KB until it hands at most 1.25 times what its parts read. Record the bytes a save answers with on the product editor and the builder, and end the repeat: the two big areas as content-hashed client modules, or a save that answers without drawing the route again. The stewards' findings stop at the measured pages; the per-screen baseline and the save's answer are the added parts an A needs.",
-          "closes": ["AC-4", "PL-1", "TX-2", "AD-5", "PM-10", "GAP-text-1", "GAP-text-3"],
-          "from": ["W-owner-browser-11", "W-shopper-browser-22", "W-text-7", "W-server-41", "W-page-model-11"],
-          "areas": ["owner-browser", "text", "server", "page-model"],
+          "closes": [
+            "AC-4",
+            "PL-1",
+            "TX-2",
+            "AD-5",
+            "PM-10",
+            "GAP-text-1",
+            "GAP-text-3"
+          ],
+          "from": [
+            "W-owner-browser-11",
+            "W-shopper-browser-22",
+            "W-text-7",
+            "W-server-41",
+            "W-page-model-11"
+          ],
+          "areas": [
+            "owner-browser",
+            "text",
+            "server",
+            "page-model"
+          ],
           "effort": "L",
           "done_when": "measure-routes.mjs writes html/admin-product-editor.html under 290,000 bytes (426,497 today) and the page editor's texts object is at most 205,000 bytes (276,922), e2e/signed-in/admin-text-fallbacks.spec.ts reports no fallback, no screen in the words baseline is under 80% read, and a builder save answers with under 20 KB of interface words.",
           "platform": "The platform admin's screens are in the words baseline, and its shell hands down the same cut words in both languages.",
@@ -686,9 +1442,20 @@
           "id": "2.15",
           "title": "Let the builder paint first: the rich text editor and a store language load after",
           "what": "The page builder loads 3.3 MB of script before its first paint, the rich text editor and all four storefront languages among it; the draft-order editor carries the four languages too. Load the rich text editor after first paint, load one storefront language when a preview needs it, and none in the draft-order editor. The admin's import walk then forbids lib/i18n and lib/messages in admin client code.",
-          "closes": ["AC-5", "AC-6", "BN-6", "TX-7"],
-          "from": ["W-owner-browser-12", "W-text-8"],
-          "areas": ["owner-browser", "text"],
+          "closes": [
+            "AC-5",
+            "AC-6",
+            "BN-6",
+            "TX-7"
+          ],
+          "from": [
+            "W-owner-browser-12",
+            "W-text-8"
+          ],
+          "areas": [
+            "owner-browser",
+            "text"
+          ],
           "effort": "M",
           "done_when": "After a build, route-bundle-stats.json shows /admin/[store]/pages/[pageId] at or under 2,300,000 bytes (3,303,372 today) with no 'ProseMirror' chunk in its first load, and no admin route's first-load chunks hold 'Det gäller alla beställningar vännen gör.' (40 routes today).",
           "platform": "The platform's builder at /admin/platform/pages is the same editor and paints first the same way.",
@@ -698,9 +1465,16 @@
           "id": "2.16",
           "title": "Load the builder's dialogs and each block's field form when they are opened",
           "what": "The stewards' items stop at about 2.2 MB for the builder. The bar for an A is 1,800,000 bytes and no finding carries the last step, so the plan adds it. This is code review step 3.4 with a number, after its steps 3.1 and 3.2: next/dynamic for the template, saved-layout, translation, theme, dual-frame and find-and-replace dialogs, and one field module per block type that brings its own words. The words that travel with a dialog (150 to 200 KB) then leave the editor's document too.",
-          "closes": ["GAP-owner-browser-1"],
-          "from": ["W-page-model-15"],
-          "areas": ["owner-browser", "page-model"],
+          "closes": [
+            "GAP-owner-browser-1"
+          ],
+          "from": [
+            "W-page-model-15"
+          ],
+          "areas": [
+            "owner-browser",
+            "page-model"
+          ],
           "effort": "L",
           "done_when": "/admin/[store]/pages/[pageId] is at or under 1,800,000 bytes in route-bundle-stats.json, the page editor's document holds a texts object of at most 130,000 bytes in the budget of e2e/signed-in/admin-scripts.spec.ts, and the signed-in builder specs pass.",
           "platform": "The platform's page builder loads the same dialogs and field modules on demand.",
@@ -710,9 +1484,13 @@
           "id": "2.17",
           "title": "Keep the session without the whole Supabase client, and hold what a screen has loaded by idle",
           "what": "After step 0.8 Supabase's client still loads on every admin screen once it is idle (259 KB), and no budget counts script fetched after the HTML's own. The stewards' items leave an idle store home near 930,000 bytes against a bar of 800,000, so the plan adds this step. Try two ways and keep one: the auth client alone with the same cookie storage (about 117 KB), or a small refresh route called before the token expires (0 KB; it changes the rule in docs/platform.md and how two tabs share a refresh token). Uploads keep importing the full client on the press. Add a case to e2e/signed-in/admin-scripts.spec.ts that sums every script response until the page is idle.",
-          "closes": ["GAP-owner-browser-2"],
+          "closes": [
+            "GAP-owner-browser-2"
+          ],
           "from": [],
-          "areas": ["owner-browser"],
+          "areas": [
+            "owner-browser"
+          ],
           "effort": "M",
           "done_when": "The new case in e2e/signed-in/admin-scripts.spec.ts shows an idle store home with at most 800,000 bytes of script (1,428,740 today) and none of Supabase's realtime, storage or database client in it.",
           "platform": "The platform admin signs in through the same session part, and its two-step page keeps the stand-in's test.",
@@ -722,9 +1500,21 @@
           "id": "2.18",
           "title": "Lighten the admin's shell and the store Home",
           "what": "The store Home runs 29 to 46 statements before it shows anything: put the setup checklist and the demo card behind Suspense, so first content comes after 14. The shell reads one thing after another and checks Stripe's set-up on every render: read in one wave after the guard, read memberships once per request (four shapes today), and make no Stripe check per render. Every admin request from a session without two-step calls Supabase Auth: keep the answer, and clear it when a factor is added or removed (code review step 3.8; security-sensitive).",
-          "closes": ["AD-2", "AD-4", "AD-8", "AD-3"],
-          "from": ["W-server-38", "W-server-39", "W-server-40"],
-          "areas": ["server", "surface"],
+          "closes": [
+            "AD-2",
+            "AD-4",
+            "AD-8",
+            "AD-3"
+          ],
+          "from": [
+            "W-server-38",
+            "W-server-39",
+            "W-server-40"
+          ],
+          "areas": [
+            "server",
+            "surface"
+          ],
           "effort": "M",
           "done_when": "src/server/admin-statements.baseline.json holds controlCenter() at 14 statements or fewer (22 or more today) and the store shell at 2 for the guard plus one wave, and with trust-fixtures an aal1 account with no factor makes 0 getUser calls across two readSession() runs while an account with a factor is still held at the challenge.",
           "platform": "The shell is shared with /admin/platform; the platform Home's own loaders follow in step 4.4, named here as the house rule asks.",
@@ -734,9 +1524,24 @@
           "id": "2.19",
           "title": "Keep a page's facts in columns, so lists, menus and grids open no document",
           "what": "A page's title, its titles by language and its remembered-modal flag live only inside its content JSON, so menus, the modal check, the admin's page lists, pickers and AI tools read and parse whole documents, two per page in the admin (the draft and the published copy). Add stored generated columns on commerce.pages, read them in publishedPageNames() and usesRememberedModals(), and let listPages() read list fields and page at 100. A grid of pages or articles selects its cards' facts in SQL and fetches a document only for a row with neither an excerpt nor a description.",
-          "closes": ["DS-4", "PM-6", "AD-14", "PM-5", "GAP-page-model-1"],
-          "from": ["W-database-16", "W-page-model-8", "W-server-43", "W-page-model-10"],
-          "areas": ["database", "page-model", "server"],
+          "closes": [
+            "DS-4",
+            "PM-6",
+            "AD-14",
+            "PM-5",
+            "GAP-page-model-1"
+          ],
+          "from": [
+            "W-database-16",
+            "W-page-model-8",
+            "W-server-43",
+            "W-page-model-10"
+          ],
+          "areas": [
+            "database",
+            "page-model",
+            "server"
+          ],
           "effort": "M",
           "done_when": "rg for JSON operators and jsonb_path_exists on published prints no line inside publishedPageNames() or usesRememberedModals(), 'select id, slug, draft, published' is in src/server/pages.ts only inside getPageForEdit(), and an integration test draws a 24-article grid whose articles have excerpts and reads no published document.",
           "platform": "The platform's pages are rows of the same table with a null owner, so /admin/platform/pages and Kaizena Flow's blog grid read the columns too.",
@@ -745,10 +1550,16 @@
         {
           "id": "2.20",
           "title": "Answer a store's own domain without a deployment",
-          "what": "Every store domain is compiled into each deployment: 4 to 8 routing rules per domain against Vercel's cap of 2,048, of which the app's own routes take about 705, and a full production deploy per domain change. That is a ceiling near 270 stores with a domain. First, with no decision needed, show the count of routing rules on Platform, Usage and limits and print it from scripts/route-budget.mjs. Then resolve the host at request time from the cached hosts list, so .next/routes-manifest.json is the same with 0 or 300 domains. It replaces decision P8 and is every store's front door: a mistake takes stores off the air where today it is caught at build.",
-          "closes": ["SF-13"],
-          "from": ["W-server-44"],
-          "areas": ["server"],
+          "what": "Every store domain is compiled into each deployment: 4 to 8 routing rules per domain against Vercel's cap of 2,048, of which the app's own routes take about 705, and a full production deploy per domain change. That is a ceiling near 270 stores with a domain. First, with no decision needed, show the count of routing rules on Platform, Usage and limits and print it from scripts/route-budget.mjs. Then, with the owner's yes and after step 2.11, look the host up when the request arrives and keep the answer in the proxy's short memory, so .next/routes-manifest.json is the same with 0 or 300 domains. It replaces decision P8 for own domains and is every store's front door: a mistake takes stores off the air where today it is caught at build.",
+          "closes": [
+            "SF-13"
+          ],
+          "from": [
+            "W-server-44"
+          ],
+          "areas": [
+            "server"
+          ],
           "effort": "L",
           "done_when": "In CI's hosts job a domain activated after the build serves its store's front page, and .next/routes-manifest.json holds the same number of redirects and rewrites whether the database has 0 or 300 active store domains.",
           "platform": "kaizenaflow.com and the docs host stay compiled routes of the app, and the count of rules is shown in /admin/platform.",
@@ -758,9 +1569,21 @@
           "id": "2.21",
           "title": "Send the AI manager a lean default round",
           "what": "Every AI manager call sends 124 tool definitions and a prompt that lists every playbook and the admin map: 161,661 characters whatever the question, up to 11 times a turn. This is code review step 3.18 with numbers: send the core tools, the page's area and one routed area, with the rest one load_tools call away; list playbooks by feature; make no embedding request before the first model call for a person's few memories. Set the turn's ceiling of 400,000 tokens again in the same change. The eval cases of step 1.11 show whether the model still finds its tools.",
-          "closes": ["AI-1", "AI-9", "AI-11", "FT-4", "AI-6"],
-          "from": ["W-ai-8", "W-surface-8"],
-          "areas": ["ai", "surface"],
+          "closes": [
+            "AI-1",
+            "AI-9",
+            "AI-11",
+            "FT-4",
+            "AI-6"
+          ],
+          "from": [
+            "W-ai-8",
+            "W-surface-8"
+          ],
+          "areas": [
+            "ai",
+            "surface"
+          ],
           "effort": "M",
           "done_when": "src/server/ai-round.scan.test.ts draws the default round of a shop-only store under 52,000 characters with no page and under 80,000 on an orders page (161,661 today), agent-eval-replay.int.test.ts passes on a new recording that holds the lean cases, and a case in src/lib/tool-budget.test.ts shows chooseTools() sending at most 40 store tools when no area is asked.",
           "platform": "The platform's assistant runs the same loop, and its 39 tools get the same core-and-area cut.",
@@ -770,9 +1593,16 @@
           "id": "2.22",
           "title": "Slim the tool schemas and send one page group, so no round is over 70,000 characters",
           "what": "After the lean round a turn on a settings, website or products page is still 75,000 to 97,000 characters. The bar is 70,000 and the stewards' findings do not reach it, so the plan adds page groups. Drop maxLength, minLength and pattern from the schemas the model sees (5,562 characters in a lean orders round), cut a long tool result so that it is still valid JSON, and split update_product. Give the four largest areas (settings, website, marketing, products) page groups taken from the admin map's sections: the page's group is sent, and the rest of its area is one load_tools call away. The scan draws no page and the largest page of each of the nine working areas, for a shop-only store and for one with every feature on.",
-          "closes": ["AI-8", "GAP-ai-2"],
-          "from": ["W-ai-10"],
-          "areas": ["ai"],
+          "closes": [
+            "AI-8",
+            "GAP-ai-2"
+          ],
+          "from": [
+            "W-ai-10"
+          ],
+          "areas": [
+            "ai"
+          ],
           "effort": "M",
           "done_when": "src/server/ai-round.scan.test.ts shows no default round over 70,000 characters and no maxLength, minLength or pattern key in the round's tools, the int test of a cut result passes, and the lean eval cases pass in a new recording.",
           "platform": "The platform's tools are grouped by the platform admin's sections in the same map.",
@@ -782,9 +1612,17 @@
           "id": "2.23",
           "title": "Pay less per token: count and use cached input, and give small jobs a quick model",
           "what": "No request asks for prompt caching, cached tokens are not read, stored or priced, and a store is charged the full price either way. Count cached_input_tokens in commerce.ai_usage, price them at their own rate and show them; then put the fixed part of the round first and the time last, with a fixed tool order and cache markers. One text model does every job: move the 8 named small jobs (the memory pass, tone, the support summary, recommendation order, search understanding, the listing check and two more) to a quick model (code review step 3.20), and give the memory pass a feature name of its own.",
-          "closes": ["AI-3", "AI-7"],
-          "from": ["W-ai-9", "W-ai-11"],
-          "areas": ["ai"],
+          "closes": [
+            "AI-3",
+            "AI-7"
+          ],
+          "from": [
+            "W-ai-9",
+            "W-ai-11"
+          ],
+          "areas": [
+            "ai"
+          ],
           "effort": "M",
           "done_when": "In production a week after the change, select sum(cached_input_tokens)::float / nullif(sum(input_tokens), 0) from commerce.ai_usage where feature = 'ai_manager' gives at least 0.5, and select model, count(*) from commerce.ai_usage where feature in ('support_tone', 'support_summary', 'recommendations') group by 1 shows the quick model on those rows.",
           "platform": "The platform's provider settings gain the quick model beside the text model, and the platform's own AI usage is priced with cached tokens too.",
@@ -794,9 +1632,18 @@
           "id": "2.24",
           "title": "Keep one file per decision, with a generated index",
           "what": "docs/decisions.md is one 1.33 MB file: 548 lines hold 97.8% of it in lines the search tool cannot show, and a row runs to 18 KB. Split it into docs/decisions/D{n}.md with a generated index of 564 rows that each start with the id, every line under 500 characters. src/lib/decisions.scan.test.ts holds that no id appears twice and that no decisions file is over 200 KB. The frozen Migration versions list moves to a file of its own.",
-          "closes": ["DC-2", "AS-8"],
-          "from": ["W-rules-10", "W-code-33"],
-          "areas": ["rules", "code"],
+          "closes": [
+            "DC-2",
+            "AS-8"
+          ],
+          "from": [
+            "W-rules-10",
+            "W-code-33"
+          ],
+          "areas": [
+            "rules",
+            "code"
+          ],
           "effort": "M",
           "done_when": "ls docs/decisions/D*.md | wc -l prints 564, awk 'length($0)>500' docs/decisions.md docs/decisions/D*.md | wc -l prints 0 (548 today), and src/lib/decisions.scan.test.ts passes.",
           "platform": "The platform's decisions are files like the stores'.",
@@ -805,10 +1652,20 @@
         {
           "id": "2.25",
           "title": "Bring the always-loaded core under 10.5 KB, make every living doc searchable, and measure what a session loads",
-          "what": "After step 0.27 CLAUDE.md is under 15 KB; the bar is 10,500 bytes and 160 lines. Move the database, e2e, typed-row and AI-eval how-to into .claude/rules files loaded by path, where a fresh session and a subagent are shown to receive them; otherwise they sit in docs/rules as rules read on demand. Wrap the long prose lines of every living doc (321 lines in 61 files), and hold table rows over 500 characters at 410 and falling. scripts/session-load.mjs reads session transcripts and prints what a session loaded and read: sample 20 working sessions, and hold source file size with two counts in the code ratchet. Shorten each rule over 4,000 bytes when it is next changed (24 today). No finding covers the wrap of other docs or the measurement; an A needs both.",
-          "closes": ["GAP-rules-2", "GAP-rules-3"],
-          "from": ["W-rules-11", "W-rules-12", "W-rules-13", "W-rules-14"],
-          "areas": ["rules"],
+          "what": "After step 0.27 CLAUDE.md is under 15 KB; the bar is 10,500 bytes and 160 lines. Move the database, e2e, typed-row and AI-eval how-to into .claude/rules files loaded by path, where a fresh session and a subagent are shown to receive them; otherwise they sit in docs/rules as rules read on demand. Wrap the long prose lines of every living doc (321 lines in 61 files), hold table rows over 500 characters at 410 and falling, and shorten each rule over 4,000 bytes when it is next changed (24 today). scripts/session-load.mjs reads session transcripts and prints what a session loaded and read: sample 20 working sessions, and hold source file size with two counts in the code ratchet. No finding covers the wrap of other docs or the measurement; an A needs both.",
+          "closes": [
+            "GAP-rules-2",
+            "GAP-rules-3"
+          ],
+          "from": [
+            "W-rules-11",
+            "W-rules-12",
+            "W-rules-13",
+            "W-rules-14"
+          ],
+          "areas": [
+            "rules"
+          ],
           "effort": "M",
           "done_when": "wc -c -l CLAUDE.md prints under 10,500 bytes and 160 lines with every never-sentence still in it, the docs budget shows 0 prose lines over 500 characters in living docs, and node scripts/session-load.mjs over 20 sessions shows at most 25 KB of written rules and docs read per code change at the median.",
           "platform": "The same core and rule files guide work on the platform.",
@@ -817,16 +1674,28 @@
         {
           "id": "2.26",
           "title": "Shorten the gate: a type check without tests, a related test run, and a fresh worker only where a trial needs it",
-          "what": "The type check is one 8,003-file program: about 3 minutes and a 7 GB heap limit. Give the gate tsconfig.app.json without tests, try the native TypeScript 7 compiler beside tsc for a week, and keep restored build info as the fallback (CI keeps nothing between runs but pnpm's store). Add pnpm test:changed, with every directory-reading test named *.scan.test.ts so it always runs. Run two trials in the Vitest config of step 0.26: the components project with isolate off, and one database file's time split into worker start, PGlite start, template load and tests. Lower the unit run's ceiling to the result. No finding examined the 281 component and database files that are three quarters of the unit run; the trials are the added part.",
-          "closes": ["TC-4", "TC-9", "TC-6", "GAP-build-3"],
-          "from": ["W-build-7", "W-build-10", "W-build-14"],
-          "areas": ["build"],
+          "what": "The type check is one 8,003-file program: about 3 minutes and a 7 GB heap limit. Give the gate tsconfig.app.json without tests, try the native TypeScript 7 compiler beside tsc for a week, and keep restored build info as the fallback (CI keeps nothing between runs but pnpm's store). Add pnpm test:changed, with every directory-reading test named *.scan.test.ts so it always runs. Run two trials in the Vitest config of step 0.26: the components project with isolate off, and one database file's time split into worker start, PGlite start, template load and tests; then lower the unit run's ceiling to the result. No finding examined the 281 component and database files that are three quarters of the unit run; the trials are the added part.",
+          "closes": [
+            "TC-4",
+            "TC-9",
+            "TC-6",
+            "GAP-build-3"
+          ],
+          "from": [
+            "W-build-7",
+            "W-build-10",
+            "W-build-14"
+          ],
+          "areas": [
+            "build"
+          ],
           "effort": "M",
           "done_when": "The gate's type check has a median of 60 s or less over ten runs in scripts/ci-budgets.json (about 3 minutes today), pnpm test:changed after a one-line change in src/lib runs fewer than 250 files (1,215 in a full run), and the full unit run takes 3 min 30 s or less where it took 5 min 34 s, with both trials' results in a decision row.",
           "platform": "One gate for stores and platform.",
           "owner_question": "What must run before a push? A: everything, as today (about 5 minutes after these fixes; 11 to 12 now). B: lint, the type check and the tests the change touches, with the whole unit suite in the deploy gate, so each deploy waits about 3.5 minutes more (the planner's advice). C: as B before the push with the gate unchanged, so a failing unit test outside the six money files can be live until someone reads the red run."
         }
-      ]},
+      ]
+    },
     {
       "n": 3,
       "title": "One of each",
@@ -837,9 +1706,27 @@
           "id": "3.1",
           "title": "Run one tick a minute, and call a route only when work waits or is due",
           "what": "Nine routes are called every minute whether or not anything waits: 12,960 calls a day of full-application functions, three of them carrying Chromium. One pg_cron job runs commerce.cron_due() each minute: one indexed exists() per queue, net.http_post only for a queue that holds a row, and every route once in 15 minutes as a net. The theme-shots route keeps its wanted list between runs. The three feature routes (integrations, broadcasts, autopilot) get their 'is anything due' statement as one SQL function that both the tick and the route read, so automations, ad conversions and support emails stop costing stores times kinds every minute. The stewards' tick alone leaves about 5,200 calls a day against a bar of 1,200; the shared due function is the added part that reaches it.",
-          "closes": ["CR-1", "CR-7", "DQ-1", "DP-7", "SF-10", "CR-3", "GAP-scheduled-1"],
-          "from": ["W-scheduled-7", "W-database-13", "W-code-32", "W-server-45", "W-scheduled-9"],
-          "areas": ["scheduled", "database", "server"],
+          "closes": [
+            "CR-1",
+            "CR-7",
+            "DQ-1",
+            "DP-7",
+            "SF-10",
+            "CR-3",
+            "GAP-scheduled-1"
+          ],
+          "from": [
+            "W-scheduled-7",
+            "W-database-13",
+            "W-code-32",
+            "W-server-45",
+            "W-scheduled-9"
+          ],
+          "areas": [
+            "scheduled",
+            "database",
+            "server"
+          ],
           "effort": "L",
           "done_when": "In production select count(*) from cron.job where schedule = '* * * * *' returns 1 (9 today); over one quiet day commerce.cron_jobs.runs for route.page-jobs, route.integrations, route.broadcasts and route.autopilot each rise by no more than 100 (1,440 today); and a case in src/server/automations.int.test.ts counts 4 statements or fewer for an idle runAutomations() with 20 stores (at least 61 today).",
           "platform": "The same routes carry Kaizena Flow's own queues (its broadcasts, integrations and briefing), and cron_due() counts null-store rows.",
@@ -848,10 +1735,22 @@
         {
           "id": "3.2",
           "title": "Run the dispatcher from a registry: a cadence and a time budget per job, four at a time",
-          "what": "All 83 dispatcher jobs share one five-minute cadence, 78 start at once on a pool of 5 connections, and each writes the ledger on every run. One registry names each job's cadence (300, 3,600 or 86,400 s) with a one-line reason and a budget in milliseconds. runJobs() runs four at a time, starts no job after 240 s, writes one ledger row for idle jobs, and re-hashes nothing on a tick where nothing changed. Kaizena Flow's own payouts are read from Stripe daily, not every five minutes. src/server/cron-routes.scan.test.ts fails a registry job without a cadence, a reason and a budget, and cron-health gains 'slow' beside late and failing. The time budgets are the part no finding covers.",
-          "closes": ["CR-2", "CR-8", "DQ-5", "GAP-scheduled-3"],
-          "from": ["W-scheduled-8", "W-database-14"],
-          "areas": ["scheduled", "database", "surface"],
+          "what": "All 83 dispatcher jobs share one five-minute cadence, 78 start at once on a pool of 5 connections, and each writes the ledger on every run. One registry names each job's cadence (300, 3,600 or 86,400 s) with a one-line reason and a budget in milliseconds (the budgets are the part no finding covers). runJobs() runs four at a time, starts no job after 240 s, writes one ledger row for idle jobs, and re-hashes nothing on a tick where nothing changed. Kaizena Flow's own payouts are read from Stripe by an hourly job of their own, not every five minutes. src/server/cron-routes.scan.test.ts fails a registry job without a cadence, a reason and a budget, and cron-health gains 'slow' beside late and failing.",
+          "closes": [
+            "CR-2",
+            "CR-8",
+            "DQ-5",
+            "GAP-scheduled-3"
+          ],
+          "from": [
+            "W-scheduled-8",
+            "W-database-14"
+          ],
+          "areas": [
+            "scheduled",
+            "database",
+            "surface"
+          ],
           "effort": "L",
           "done_when": "A day after the deploy select count(*) from commerce.cron_jobs where job like 'dispatcher.%' and every_seconds = 300 is 58 or fewer (83 today), query-budget.int.test.ts counts the same idle-tick statements for 1 and for 20 seeded stores, and a unit test of runJobs() shows never more than 4 running and a job that never returns leaving the others' rows written.",
           "platform": "The platform's jobs (the briefing, the books, payouts, plan campaigns) are registry entries with a cadence of their own.",
@@ -861,9 +1760,21 @@
           "id": "3.3",
           "title": "Give every scheduled function a ledger row and a watcher from outside, and every growing table a delete rule",
           "what": "The 40 daily functions share 2 ledger rows and 19 of them catch their error to the console, so a prune that fails is not seen: each becomes tracked('daily.<name>', 86400) with a row of its own. pg_cron's own SQL jobs get a ledger row too, and one Vercel cron calls a small route that emails the admins when the tick's or the dispatcher's row is over 15 minutes old, so the scheduler is no longer watched only from inside itself. Seven tables grow by time with no delete (guest carts, processed webhook events and old page versions among them): each gets a period in src/lib/retention.ts and a delete step. The status prune stops scanning on every tick, and the docs index rewrites only the rows that changed.",
-          "closes": ["CR-17", "GAP-scheduled-2", "DS-13", "CR-10"],
-          "from": ["W-scheduled-10", "W-database-18", "W-scheduled-13"],
-          "areas": ["scheduled", "database"],
+          "closes": [
+            "CR-17",
+            "GAP-scheduled-2",
+            "DS-13",
+            "CR-10"
+          ],
+          "from": [
+            "W-scheduled-10",
+            "W-database-18",
+            "W-scheduled-13"
+          ],
+          "areas": [
+            "scheduled",
+            "database"
+          ],
           "effort": "M",
           "done_when": "select count(*) from commerce.cron_jobs where job like 'daily.%' and every_seconds = 86400 is 38 or more, rg -c 'console.error' src/app/api/cron sums to 0, stopping the tick on a test database sends the email within the hour, src/lib/retention.test.ts finds a delete step for every table that grows by time, and a deploy that changes one docs article raises n_tup_upd of commerce.docs_index by fewer than 50 (1,845 before).",
           "platform": "The status page, the docs index and the platform's webhook events are the platform's own tables and get their periods in the same file.",
@@ -873,9 +1784,22 @@
           "id": "3.4",
           "title": "Let per-store jobs find due work by a mark, and call the PDF route when a document waits",
           "what": "Five document jobs find due work by re-checking every store's orders of 120 days, invoices and refunds on each tick: add the partial indexes that fit their windows, and a mark for what is done. Six more five-minute jobs (the books, Tripletex, Fiken, auto-archive, autopilot budgets, recurring costs) re-check every store that has the feature on, and the ledger's order never rotates: they look hourly, and every book gets its turn. The PDF route is deployed with Chromium and nothing calls it, so the 'Try again' owners see is not true: call it from the tick when a document waits. The finished backfill of AI picture marks is retired once a copied picture keeps its mark.",
-          "closes": ["DQ-15", "CR-16", "CR-11", "DD-12"],
-          "from": ["W-database-17", "W-scheduled-11", "W-scheduled-12"],
-          "areas": ["scheduled", "database", "code"],
+          "closes": [
+            "DQ-15",
+            "CR-16",
+            "CR-11",
+            "DD-12"
+          ],
+          "from": [
+            "W-database-17",
+            "W-scheduled-11",
+            "W-scheduled-12"
+          ],
+          "areas": [
+            "scheduled",
+            "database",
+            "code"
+          ],
           "effort": "M",
           "done_when": "A new int test seeds 2,000 paid, invoiced orders in one store, runs one invoice tick, one email check and one e-invoice check, and the rows read from commerce.orders and commerce.invoices stay under the bound it states; the ledger rows dispatcher.auto-archive, dispatcher.autopilot-budgets and dispatcher.recurring have every_seconds 3600; and cron-routes.scan.test.ts passes with document-pdfs out of NOT_SCHEDULED.",
           "platform": "Kaizena Flow's own books and plan invoices are found by the same marks, and Work's invoices at account level use the same PDF route.",
@@ -885,9 +1809,20 @@
           "id": "3.5",
           "title": "Keep one kaizenaflow.com",
           "what": "Since 7 November kaizenaflow.com is served from Kaizena Flow's own store (D484), yet the old no-store site is still built, edited and read beside it: 20 route pages in two languages, 23 to 32 admin pages, 3 twin tables and up to 4,400 lines. Finish step 7 of the parity plan: remove the null-store site paths (the front page, [slug], blog, category, tag and cookies under src/app/(platform) and src/app/(platform-nb), with platform-theme-installs.ts, platform-roles.ts and platform-page.tsx), after the media library's rows move to the store. scripts/site-compare.mjs against a copy taken before shows no lost address. This removes the way back, so it waits for the owner's word.",
-          "closes": ["FM-3", "FT-5", "DS-6"],
-          "from": ["W-code-24", "W-surface-6"],
-          "areas": ["code", "surface", "database"],
+          "closes": [
+            "FM-3",
+            "FT-5",
+            "DS-6"
+          ],
+          "from": [
+            "W-code-24",
+            "W-surface-6"
+          ],
+          "areas": [
+            "code",
+            "surface",
+            "database"
+          ],
           "effort": "L",
           "done_when": "rg -l 'platform_theme_installs' src --glob '!*.test.*' | wc -l prints 0, find 'src/app/(platform)' 'src/app/(platform-nb)' -name page.tsx lists no front page and nothing under [slug], blog, category, tag or cookies (20 files today), and node scripts/site-compare.mjs https://kaizenaflow.com --against before.json passes.",
           "platform": "This is the platform's own step: one place edits Kaizena Flow's site, and /admin/platform loses its second set of page, header, footer and menu screens.",
@@ -897,9 +1832,18 @@
           "id": "3.6",
           "title": "Run the platform's workflows, own endpoints and integration deliveries on the stores' engine with a scope",
           "what": "The platform console has a second engine beside the stores' for workflows, own endpoints and integration deliveries: 26 to 55% of its lines are the stores' own, so a fix to retry or signing is made twice. Move the claim, the retry and the signing into src/server/workflow-engine.ts with a scope argument; separate tables and addresses stay. It needs one sentence in CLAUDE.md's parity rule: where the platform's version does the same job on its own rows, it uses the store's module with a scope, not a copy.",
-          "closes": ["CP-4", "FM-4", "FM-5"],
-          "from": ["W-code-22"],
-          "areas": ["code", "surface"],
+          "closes": [
+            "CP-4",
+            "FM-4",
+            "FM-5"
+          ],
+          "from": [
+            "W-code-22"
+          ],
+          "areas": [
+            "code",
+            "surface"
+          ],
           "effort": "M",
           "done_when": "rg -c 'for update skip locked' src/server/workflows.ts src/server/platform-workflows.ts prints nothing (the claim lives in workflow-engine.ts only), and the five platform and store pairs share under 60 lines in runs of three or more by the twin counter of step 1.9.",
           "platform": "This is the platform's own engine: it keeps every feature and its own tables, and runs them on shared code.",
@@ -909,9 +1853,19 @@
           "id": "3.7",
           "title": "Keep one engine for one job: order rules fold into Workflows, and an own look is saved in the theme library",
           "what": "Order rules ('Automation') and Workflows are two engines for what happens when an order is paid: about 1,900 lines, 4 pages, 2 tables and 1 AI tool fold into Workflows, which gains the hold action, 'any' matching and the order facts (the hold must not be capped at 100 runs an hour). An owner's own look can be saved in two places: 'Save as new theme' writes to commerce.store_theme_installs, and store_themes goes in a second migration. Before either, compare by job the two pairs of engines nobody compared (order invoices beside Work invoices, and orders on payment terms beside Work's unpaid invoices), and write a finding with a fix or a tolerated line for each. Cheapest now: no owner has a rule or a saved look to convert.",
-          "closes": ["FT-8", "FT-12", "GAP-surface-2"],
-          "from": ["W-surface-5", "W-surface-7", "W-surface-9"],
-          "areas": ["surface"],
+          "closes": [
+            "FT-8",
+            "FT-12",
+            "GAP-surface-2"
+          ],
+          "from": [
+            "W-surface-5",
+            "W-surface-7",
+            "W-surface-9"
+          ],
+          "areas": [
+            "surface"
+          ],
           "effort": "M",
           "done_when": "find src -iname '*order-rule*' | wc -l prints 0, rg -n 'store_themes' src --glob '!*.test.*' | wc -l prints 0 after the second migration, src/server/workflows.int.test.ts has a case where a paid order over an amount is put on hold and the staff email says so, and docs/audits/bloat-review-2026-11/findings/features.md holds a verdict for each of the two compared pairs.",
           "platform": "The platform's theme workspace changes in the same change, and the platform's workflows gain the hold action through the shared engine of step 3.6.",
@@ -921,9 +1875,19 @@
           "id": "3.8",
           "title": "Give each family one core: the five file imports, Work's two sets of screens, the Domains move page",
           "what": "Five CSV imports each repeat the upload, register, check, apply and cursor code, the browser flow and the pages: one import definition with one job writer, and 15 tick and problems routes become 2 (18 twin pairs, about 1,300 to 1,600 lines). Work's account-level screens are copies of the store-level ones (29 to 77% the same), and 58 Work actions are wrapped in a seven-line shell: one Work view for store and account, the actions on the shared wrapper, and one Domains move page.",
-          "closes": ["CP-1", "FM-6", "CP-5", "FM-10"],
-          "from": ["W-code-21", "W-code-23"],
-          "areas": ["code"],
+          "closes": [
+            "CP-1",
+            "FM-6",
+            "CP-5",
+            "FM-10"
+          ],
+          "from": [
+            "W-code-21",
+            "W-code-23"
+          ],
+          "areas": [
+            "code"
+          ],
           "effort": "L",
           "done_when": "rg -l 'insert into commerce[.]data_jobs' src/server --glob '!*.test.ts' prints one file (five today), rg --files src/components/admin | rg 'import-flow' lists one file (four today), wc -l of the five owner-time, owner-invoices, owner-clients, owner-report and owner-overview files totals under 800 (1,209 today), and src/lib/copies.baseline.json holds at most 16 twin pairs (41 today).",
           "platform": "The platform has no file import of its own to fold; Work at account level is the second set of screens named, and it keeps every screen.",
@@ -933,9 +1897,24 @@
           "id": "3.9",
           "title": "Keep one of each small thing: helpers, SQL fragments, order totals, English word lists",
           "what": "fail() is declared in 43 server files, isUuid in 23, isUniqueViolation in 9, and the day and country helpers 31 times with different bodies: give each one home, kept by a lint rule. The product title with its fallback, the usage counter and the order event are typed out in dozens of files: one fragment each (nine reads lack the title's fallback today). An order's totals are drawn in two order pages and again in checkout: one OrderTotals part, and one product-card query. English word lists kept twice (old constants beside the catalogues, held equal by 37 assertions) get one source.",
-          "closes": ["CP-8", "CP-16", "FM-12", "CP-9", "CP-12", "DD-7", "CP-13"],
-          "from": ["W-code-26", "W-code-27", "W-code-25", "W-code-20"],
-          "areas": ["code"],
+          "closes": [
+            "CP-8",
+            "CP-16",
+            "FM-12",
+            "CP-9",
+            "CP-12",
+            "DD-7",
+            "CP-13"
+          ],
+          "from": [
+            "W-code-26",
+            "W-code-27",
+            "W-code-25",
+            "W-code-20"
+          ],
+          "areas": [
+            "code"
+          ],
           "effort": "M",
           "done_when": "rg -c '^(export )?(const|function) (isUuid|isUniqueViolation)' src --glob '!*.test.ts' sums to 2 (32 today), rg -c 'insert into commerce[.]order_events' src --glob '!*.test.ts' sums to 1 (34 today), the two order page files total under 900 lines (988 today), and no test holds a catalogue section equal to a words constant (37 such assertions today).",
           "platform": "The helpers and fragments are shared code, and the platform's files are among those that lose a private copy.",
@@ -945,9 +1924,17 @@
           "id": "3.10",
           "title": "Keep one stored page shape",
           "what": "Every read of a stored page runs the editor's whole input schema and the upgraders for three old shapes, and six source files and the seed still write the old grid shape. First make every writer (the themes, the content packs, the seed) write the current shape. Then scripts/page-shapes.mjs counts the documents that differ from their parse and rewrites them once, and the upgraders go (about 240 lines) with the rule and the spec that pin them. Reads then parse with a small read schema.",
-          "closes": ["PM-9", "DD-9"],
-          "from": ["W-page-model-12"],
-          "areas": ["page-model", "code"],
+          "closes": [
+            "PM-9",
+            "DD-9"
+          ],
+          "from": [
+            "W-page-model-12"
+          ],
+          "areas": [
+            "page-model",
+            "code"
+          ],
           "effort": "M",
           "done_when": "node scripts/page-shapes.mjs prints 0 documents that differ from their parse on a freshly seeded database and on production, and rg for upgradeRow, upgradeBlock, upgradeLegacy and upgradeResponsive in src outside tests prints nothing.",
           "platform": "The platform's pages and the launch themes' snapshots are rewritten by the same script.",
@@ -957,15 +1944,26 @@
           "id": "3.11",
           "title": "Build twice per push, and deploy only what changes the app",
           "what": "A push builds the app three times in CI, and a push that changes only tests deploys production again (about 8% of deploys). The unsigned and the signed-in browser suites share one build, with the specs that assumed Supabase was not configured adjusted; hosts keeps its own. The deploy job skips a push that changes only tests, and lint and the type check run once per push. Each deploy empties every store's cached pages and starts every function cold (up to 52 deploys on 11 November): with the owner's yes, a run skips its deploy when a newer commit is already on main, so a burst of pushes shares one.",
-          "closes": ["TC-7", "TC-14", "CA-2"],
-          "from": ["W-build-9", "W-build-11"],
-          "areas": ["build", "server"],
+          "closes": [
+            "TC-7",
+            "TC-14",
+            "CA-2"
+          ],
+          "from": [
+            "W-build-9",
+            "W-build-11"
+          ],
+          "areas": [
+            "build",
+            "server"
+          ],
           "effort": "M",
           "done_when": "A push to main runs pnpm build in two CI jobs at most, held by src/lib/ci-once.scan.test.ts, and a push that changes one *.test.ts file shows pending green with the deploy step skipped while /api/health still reports the previous commit.",
           "platform": "One deploy serves stores and platform, and Kaizena Flow's own pages keep their cache through a skipped deploy like a store's.",
           "owner_question": "Once stores are open, may a CI run skip its deploy when a newer commit is already on main, so a burst of pushes shares one deploy? It changes D5's 'at once' by a few minutes."
         }
-      ]},
+      ]
+    },
     {
       "n": 4,
       "title": "Tidy",
@@ -976,9 +1974,17 @@
           "id": "4.1",
           "title": "Build the admin kit and move action files onto the shared wrapper, area by area",
           "what": "Admin form fields, tables and loading skeletons are spelled out per file (284 class constants in 171 files) because the UI kit has no piece for them: build the field, table and skeleton parts (code review step 1.12), and convert an area when it is next touched. The one wrapper for server actions carries 3 of 235 action files: first move the 23 files that have a guard wrapper of their own (asOwner, member, guarded and the like), then the rest when touched. The ratchet of step 1.9 holds both counts.",
-          "closes": ["CP-3", "CP-7"],
-          "from": ["W-code-34", "W-code-28"],
-          "areas": ["code"],
+          "closes": [
+            "CP-3",
+            "CP-7"
+          ],
+          "from": [
+            "W-code-34",
+            "W-code-28"
+          ],
+          "areas": [
+            "code"
+          ],
           "effort": "L",
           "done_when": "rg -c '^const (input|field|control|card|label|hint) = ' src/app/admin src/components/admin sums below 100 (284 today), no 'use server' file under src/app/admin defines a local guard wrapper (23 today), and unwrappedActionFiles in src/server/ratchet.baseline.json is 209 or lower (232 today).",
           "platform": "The platform admin's screens use the same kit and platformAction(), and convert with their areas.",
@@ -988,9 +1994,19 @@
           "id": "4.2",
           "title": "Fold the remaining twins as each is opened",
           "what": "Tripletex and Fiken are twins (the sync runner, the settings page and the actions; 143 shared lines in the two sync files): one accounting sync core and one afterOrNow (code review step 3.12). Ten small pairs share about 840 lines: the bonus and affiliate settings forms, the campaign and discount editors, the two agent forms, the reminders, the speed recorders. The three provider blocks of ai-provider-form.tsx become one ProviderFields part. Until each is opened, the twin baseline keeps it with its reason.",
-          "closes": ["CP-6", "FM-9", "CP-11", "FM-11"],
-          "from": ["W-code-35", "W-code-36"],
-          "areas": ["code"],
+          "closes": [
+            "CP-6",
+            "FM-9",
+            "CP-11",
+            "FM-11"
+          ],
+          "from": [
+            "W-code-35",
+            "W-code-36"
+          ],
+          "areas": [
+            "code"
+          ],
           "effort": "M",
           "done_when": "The twin counter lists at most 8 pairs, none over 50 shared lines, each with its reason in src/lib/copies.baseline.json, and rg -c 'for update skip locked' src/server/fiken-sync.ts src/server/tripletex-sync.ts prints nothing.",
           "platform": "The platform's AI provider form is the same ai-provider-form.tsx, and the platform's affiliate programme shares the folded settings form.",
@@ -1000,11 +2016,24 @@
           "id": "4.3",
           "title": "Tidy the tests' side: exports only a test keeps alive, shared mocks and one tree walker",
           "what": "About 330 exports in production files are kept alive only by a test (443 names, 2,959 lines): delete each, or name it in keptForTests with a reason. 579 test files mock server-only, which the config already stubs, and next/cache is stubbed in five spellings: one setup file and shared store-makers. 86 test files read the source tree with 67 private walkers: one helper, src/test/source-files.ts, walks and reads it once per worker.",
-          "closes": ["DD-2", "CP-15", "TC-11", "TC-10"],
-          "from": ["W-code-19", "W-code-31", "W-build-16", "W-build-15"],
-          "areas": ["code", "build"],
+          "closes": [
+            "DD-2",
+            "CP-15",
+            "TC-11",
+            "TC-10"
+          ],
+          "from": [
+            "W-code-19",
+            "W-code-31",
+            "W-build-16",
+            "W-build-15"
+          ],
+          "areas": [
+            "code",
+            "build"
+          ],
           "effort": "M",
-          "done_when": "node docs/audits/bloat-review-2026-11/scripts/unused-code.mjs shows testOnlyExports empty with 100 to 130 reasoned names in keptForTests, no test file mocks server-only (579 today), fewer than 60 integration tests stub next/cache themselves (465 today), and rg -l readdirSync src --glob '*.test.ts' | wc -l prints 20 or less (86 today).",
+          "done_when": "node scripts/unused.mjs (the scan of step 1.9) shows testOnlyExports empty with 100 to 130 reasoned names in keptForTests, no test file mocks server-only (579 today), fewer than 60 integration tests stub next/cache themselves (465 today), and rg -l readdirSync src --glob '*.test.ts' | wc -l prints 20 or less (86 today).",
           "platform": "Test code only: nothing differs for the platform.",
           "owner_question": null
         },
@@ -1012,17 +2041,428 @@
           "id": "4.4",
           "title": "Make the last reads fetch what they show",
           "what": "Three screens read more than they draw: the platform Home holds its first paint for 18 statements and reads whole lists to show a number, the orders list re-reads store facts it already holds, and the Payments page reads one table three or four times and waits on Stripe and Mollie before it paints. Some reads fetch whole JSON documents where a card or a count is needed (the theme cards read every snapshot, the speed report every sample), and six lists have no limit. The catalogue's listing calls a VAT function and an alt-text function once per product row: ask each VAT rate once and join the alt text. Ending a sandbox runs 800 deletes and holds about 2,100 locks: purge one at a time, and write the lock arithmetic into docs/builder-sandbox.md.",
-          "closes": ["AD-6", "AD-11", "AD-15", "DQ-10", "DQ-14", "DQ-16", "DS-11"],
-          "from": ["W-server-47", "W-database-21", "W-database-22", "W-database-20"],
-          "areas": ["server", "database"],
+          "closes": [
+            "AD-6",
+            "AD-11",
+            "AD-15",
+            "DQ-10",
+            "DQ-14",
+            "DQ-16",
+            "DS-11"
+          ],
+          "from": [
+            "W-server-47",
+            "W-database-21",
+            "W-database-22",
+            "W-database-20"
+          ],
+          "areas": [
+            "server",
+            "database"
+          ],
           "effort": "M",
           "done_when": "src/server/admin-statements.baseline.json holds the platform Home's loaders at 11 or fewer (18 today) and the Payments page at 7 or fewer in 2 waves, theme-store.int.test.ts asserts that loadCards() reads no snapshot key, and on a database seeded with 2,000 products one listProducts() raises the scans of commerce.countries by at most 10 (at least 2,000 today).",
           "platform": "The platform Home is the first of the three screens: the platform gets what the store Home got in step 2.18.",
           "owner_question": null
         }
-      ]}
+      ]
+    }
   ],
-  "tolerated": [],
-  "owner_choices": [],
-  "ladders": {}
+  "tolerated": [
+    {
+      "finding_id": "CP-10",
+      "why": "Eleven hand-written claim-with-a-lease statements, about 130 lines in all. Each has another table, join and retry column: an idiom, not a copy. Tolerance: the 11 are held as a count by the copy baseline of step 1.9 and may not rise."
+    },
+    {
+      "finding_id": "DP-3",
+      "why": "The Stripe and Supabase SDKs load with 97% of routes: 18 to 28 ms and about 1 MB of heap on a lean route, nothing a person sees. Step 2.12 takes Stripe off the read of a store, the graph test of step 1.5 shows the edges that are left, and they are cut when stores.ts or stripe.ts is next changed."
+    },
+    {
+      "finding_id": "AS-6",
+      "why": "All of react-dom (8.1 MB) rides in four PDF traces of 107 to 140 MB: 5 to 7% of them and nothing a person feels, and a wrong glob would break invoices. The trace report of step 1.5 shows the number; act only if a function nears Vercel's size limit."
+    },
+    {
+      "finding_id": "PL-12",
+      "why": "The default icon is 26 KB raw, about 9 KB on the wire, fetched at low priority after load, once per site, and only by a store with no icon of its own. It delays nothing a shopper sees, and it gets a day's cache lifetime with the public files in step 0.23."
+    },
+    {
+      "finding_id": "BN-13",
+      "why": "40% of the built client files are second copies of modules, but a browser meets about 14% of that while moving around the admin, and it is the chunker working as designed. The only lever is an experimental flag on a build with no memory to spare. The plan's other steps remove about 1.5 MB of the 6.89 MB of copies. Measure again after them, and adopt the flag only if a 59-screen tour falls by 10% or more with no budget raised."
+    },
+    {
+      "finding_id": "SD-12",
+      "why": "Every one of these reads is cached and tagged, and together they cost about 1.5 s of database time a day. The uncached part, the AI provider row, is closed by step 0.16, and the modal scan by steps 2.9 and 2.19. Tolerance: a cached, tagged read may fetch a row wider than it shows while the row is under about 10 KB."
+    },
+    {
+      "finding_id": "SG-12",
+      "why": "About 290 KB and 10 ms per cold instance, and the only cut in the set that could show a shopper the wrong language. Tolerance: all four hand-written storefront languages load with a page, 0.4 MB of its 4 MB budget. Look again when a fifth hand-written language is added."
+    },
+    {
+      "finding_id": "CA-8",
+      "why": "A crawler asks for each store's robots.txt, sitemap, llms.txt and feed about once a day, so a one-hour CDN window would save almost nothing. What a cold sitemap costs is what it reads, and step 0.19 removes most of that. Add the header when the handlers are next opened."
+    },
+    {
+      "finding_id": "CR-13",
+      "why": "Raw status checks kept for 91 days are bounded: about 131,000 rows and 20 MB at steady state, in the platform's own table, pruned, and not growing with stores. Its one-line fix (bound the newest-check read to one day) is made when status.ts is opened for step 3.3."
+    },
+    {
+      "finding_id": "DQ-13",
+      "why": "It names a pattern, not a cost of its own: 341 loops hold a database call. All but the per-site job loops run over a parent's few rows, and their cost follows use. The per-site loops are closed by steps 0.21, 3.2 and 3.4, and the budget of step 1.6 holds the tolerance as a number: at most 2 more statements a tick for each added store with chat and pictures on."
+    },
+    {
+      "finding_id": "FT-1",
+      "why": "53 of 110 store links and 133 of 254 AI tools stand behind no switch. That is fine: a switch changes what an owner sees, not what a store costs. Links hide in Basic, a round is capped whatever is switched, and jobs are set-based. Where a feature does cost an idle store the fix is at the read (step 0.17), and the surface budget of step 1.10 asks each new feature for its idle cost. No second tier of switches."
+    },
+    {
+      "finding_id": "FT-9",
+      "why": "Campaigns (7 kinds) and discount codes (3 kinds) are two mechanisms with a shared edge, not one job built twice: about 100 to 200 lines of parallel helpers, in code that decides money. Fold the helpers into one small module when pricing code is next opened. The one Discounts page is already code review step 2.4."
+    },
+    {
+      "finding_id": "DC-9",
+      "why": "The parity-wave workflow has not run since feature waves were paused on 29 October, so no session pays for it. Its fix is three edits (cap the spec at 30,000 characters, tell agents to read sections 1 to 5 and their own part, drop the draft of a CLAUDE.md bullet), to make on the day a wave is next run."
+    },
+    {
+      "finding_id": "CS-2",
+      "why": "motion.css stays in the sheet: 18.7 KB raw, 3.8 KB Brotli on a first visit, also for a store with no builder motion. Taking it out needs a build step and a second render-blocking request on every page that does use motion, and nobody can know the share before opening. The stylesheet budget holds it. Look again when the reading of step 2.6 shows under half of published pages need it."
+    },
+    {
+      "finding_id": "TX-10",
+      "why": "A deliberate, written design (D312 A6 and A8): the server answers in English because the AI manager and the tests read it, and about 300 refusals are matched back to their Norwegian. It costs 16.7 KB of source kept twice and no measurable time. The one real mismatch, the product.media pair, is settled in step 0.25. Add the coverage test when a validator is next changed."
+    }
+  ],
+  "owner_choices": [
+    {
+      "finding_ids": [
+        "DD-5"
+      ],
+      "question": "Should a logged time entry's hours be editable in Work (the server side is built and tested; an afternoon's work), or is delete and log again the intended way (then about 130 lines go)? Either way two invoice actions no screen uses are deleted.",
+      "areas": [
+        "code"
+      ]
+    },
+    {
+      "finding_ids": [
+        "DD-6"
+      ],
+      "question": "Should live drills get a Run drills button on the platform's store page, or stay a console tool asked for by SQL, with the rule saying so?",
+      "areas": [
+        "code"
+      ]
+    },
+    {
+      "finding_ids": [
+        "FT-7"
+      ],
+      "question": "A new shop shows 29 links in Basic and 94 in Advanced, 35 of them under Settings. Is that what Lisa should meet, or should the moves already planned (code review step 2.4: about 85 links, 20 under Settings) be made before opening? It changes reading time, not running cost; the surface budget of step 1.10 holds whichever number you choose.",
+      "areas": [
+        "surface"
+      ]
+    },
+    {
+      "finding_ids": [
+        "FT-10"
+      ],
+      "question": "The platform has its own copy of four store engines (workflows, integrations, own endpoints, the read-only API: about 2,100 lines and 8 tables), built on the parity rule. Keep them as twins on shared code (step 3.6), or serve Kaizena Flow's events through its own store's engines once the site is one (step 3.5)? The idle cost is a few polls a minute either way.",
+      "areas": [
+        "surface",
+        "code"
+      ]
+    },
+    {
+      "finding_ids": [
+        "FT-13"
+      ],
+      "question": "Creators earn money commission (1,411 lines, 5 tables); referrals pay in bonus credits. Keep creators as a programme of their own, as built, or make a creator a kind of referrer who is paid in money? No running cost either way.",
+      "areas": [
+        "surface"
+      ]
+    },
+    {
+      "finding_ids": [
+        "DC-11"
+      ],
+      "question": "Do you read the parity report's detail tables on GitHub? If not, docs/shopify-parity.md can keep its five summary blocks (under 30 KB; 289 KB today) and pnpm parity prints the rest. If you do, it stays as it is and only leaves default searches (step 0.27).",
+      "areas": [
+        "rules"
+      ]
+    },
+    {
+      "finding_ids": [
+        "PM-13"
+      ],
+      "question": "Should the builder's palette show each of these near-twins as one entry, with the second as a switch: FAQ and accordion, button and dual button, email form and newsletter? Yes or no per pair. Nothing stored changes either way, and no visitor, request or build pays for the second entry.",
+      "areas": [
+        "page-model"
+      ]
+    }
+  ],
+  "ladders": {
+    "code": {
+      "to_b": [
+        "0.1",
+        "0.3",
+        "0.4",
+        "0.6",
+        "0.8",
+        "0.9",
+        "0.16",
+        "0.23",
+        "0.25",
+        "0.26",
+        "1.5",
+        "1.9",
+        "1.12"
+      ],
+      "to_a": [
+        "1.2",
+        "2.12",
+        "2.24",
+        "3.1",
+        "3.4",
+        "3.5",
+        "3.6",
+        "3.8",
+        "3.9",
+        "3.10",
+        "4.1",
+        "4.2",
+        "4.3"
+      ]
+    },
+    "shopper-browser": {
+      "to_b": [
+        "0.7",
+        "0.10",
+        "0.11",
+        "0.12",
+        "0.13",
+        "0.14",
+        "0.23",
+        "1.2",
+        "2.1",
+        "2.3",
+        "2.4",
+        "2.5",
+        "2.6",
+        "2.7",
+        "2.14"
+      ],
+      "to_a": [
+        "1.4",
+        "1.8",
+        "2.2"
+      ]
+    },
+    "owner-browser": {
+      "to_b": [
+        "0.8",
+        "0.9",
+        "0.10",
+        "0.13",
+        "0.14",
+        "0.15",
+        "1.2",
+        "1.3",
+        "2.5",
+        "2.14",
+        "2.15"
+      ],
+      "to_a": [
+        "1.8",
+        "2.6",
+        "2.13",
+        "2.16",
+        "2.17"
+      ]
+    },
+    "server": {
+      "to_b": [
+        "0.2",
+        "0.3",
+        "0.4",
+        "0.5",
+        "0.6",
+        "0.7",
+        "0.10",
+        "0.11",
+        "0.12",
+        "0.14",
+        "0.15",
+        "0.16",
+        "0.17",
+        "0.19",
+        "1.5",
+        "1.6",
+        "1.7",
+        "2.2",
+        "2.8",
+        "2.9",
+        "2.10",
+        "2.11",
+        "2.13",
+        "2.14",
+        "2.18",
+        "2.19"
+      ],
+      "to_a": [
+        "1.8",
+        "1.13",
+        "2.12",
+        "2.20",
+        "3.1",
+        "3.11",
+        "4.4"
+      ]
+    },
+    "scheduled": {
+      "to_b": [
+        "0.1",
+        "0.18",
+        "0.20",
+        "0.21",
+        "0.22",
+        "0.25",
+        "1.6",
+        "3.1",
+        "3.2"
+      ],
+      "to_a": [
+        "3.3",
+        "3.4"
+      ]
+    },
+    "database": {
+      "to_b": [
+        "0.1",
+        "0.3",
+        "0.7",
+        "0.16",
+        "0.18",
+        "0.19",
+        "0.20",
+        "0.21",
+        "0.22",
+        "1.6",
+        "1.10"
+      ],
+      "to_a": [
+        "1.7",
+        "2.10",
+        "2.19",
+        "3.1",
+        "3.2",
+        "3.3",
+        "3.4",
+        "3.5",
+        "4.4"
+      ]
+    },
+    "ai": {
+      "to_b": [
+        "0.9",
+        "0.14",
+        "0.16",
+        "0.21",
+        "1.11",
+        "2.21"
+      ],
+      "to_a": [
+        "2.22",
+        "2.23"
+      ]
+    },
+    "surface": {
+      "to_b": [
+        "0.12",
+        "0.17",
+        "0.22",
+        "1.10"
+      ],
+      "to_a": [
+        "1.7",
+        "2.8",
+        "2.10",
+        "2.18",
+        "2.21",
+        "3.2",
+        "3.5",
+        "3.6",
+        "3.7"
+      ]
+    },
+    "rules": {
+      "to_b": [
+        "0.27",
+        "0.28",
+        "1.1"
+      ],
+      "to_a": [
+        "2.24",
+        "2.25"
+      ]
+    },
+    "page-model": {
+      "to_b": [
+        "0.13",
+        "0.18",
+        "0.19",
+        "0.21",
+        "1.2",
+        "2.1",
+        "2.7",
+        "2.9",
+        "2.14",
+        "2.19"
+      ],
+      "to_a": [
+        "1.4",
+        "2.11",
+        "2.16",
+        "3.10"
+      ]
+    },
+    "styles": {
+      "to_b": [
+        "0.10",
+        "0.24",
+        "1.2",
+        "2.1",
+        "2.6"
+      ],
+      "to_a": [
+        "1.4"
+      ]
+    },
+    "text": {
+      "to_b": [
+        "0.6",
+        "0.7",
+        "0.8",
+        "0.9",
+        "0.13",
+        "0.25",
+        "1.3",
+        "2.15"
+      ],
+      "to_a": [
+        "2.13",
+        "2.14"
+      ]
+    },
+    "build": {
+      "to_b": [
+        "0.3",
+        "0.5",
+        "0.11",
+        "0.26",
+        "1.12"
+      ],
+      "to_a": [
+        "1.13",
+        "2.26",
+        "3.11",
+        "4.3"
+      ]
+    }
+  }
 }
