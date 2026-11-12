@@ -1,0 +1,35 @@
+# AI-5 ✓ The knowledge, product and picture index jobs rescan per store to find nothing
+
+What every AI call carries (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
+
+- **Kind:** eager. **Priority:** P1. **Effort:** M. **Confidence:** high. **Step:** 0.21.
+- **Second check:** corrected.
+- **Where:** `src/server/knowledge.ts:167-194`, `src/server/knowledge.ts:248-256`, `src/server/knowledge.ts:297-309`, `src/server/embeddings.ts:31-52`, `src/server/embeddings.ts:109-122`, `src/server/media-library.ts:798-830`, `src/server/media-library.ts:860-873`, `src/server/product-tools.ts:221`, `src/server/content-packs.ts:417`, `src/app/api/cron/cart-reminders/route.ts:143-154`
+- **Evidence:** Knowledge: every five minutes, for each site with a chat agent, the job selects every published page and article with its whole published JSON to compare one timestamp (about 40 pages a call, 24,134 calls). A published page that yields no passages has no chunk row, so it is cut and 'replaced' again on every run: 91,200 delete calls removed 782 rows in all. Products: every run one statement computes an md5 over the title, terms and description of every active product translation of every store on the platform's AI (embeddings.ts:31-52; 10,201 calls, 14.5 ms with about 300 products). Products are embedded when saved in the editor, the translator, a bulk edit, an import and a store copy, but not when the AI manager or a content pack saves one (product-tools.ts:221 and content-packs.ts:417 call saveProduct() with no refresh after it), so the scan is also how those reach search by meaning. Pictures: every run, for each site with media, the job fetches the AI connection, deletes vectors of undescribed pictures and selects stale ones (media-library.ts:860-873, 798-812; 49,842 calls at 0.4 ms); once a day per picture it looks up where each is used (145 ms mean) and usually only moves the date on (13,414 updates on 468 rows).
+- **Cost today:** Database time in 78 days from the statements the skeptic matched: page reads for knowledge 42 s, picture uses 266 s, the product md5 scan 148 s, the stale-picture select 19 s: roughly 480 s, about 6 s a day. Small today, with one or two sites in each loop. What grows: knowledge and pictures loop per store, one after another, every five minutes; the product scan reads every product's text on the platform every five minutes as one statement under the 15 s limit (at 14.5 ms for about 300 products, a million product translations would be tens of seconds: an estimate by simple proportion). Paid by: The database and the dispatcher's function, every five minutes; more with every store that opens.
+- **Saving:** Estimate: the product scan runs 12 times less often; on an idle run the knowledge job falls to one small query per site and the picture job to one query in all. In today's terms a few seconds of database time a day; the gain is that these jobs stop growing with every store, page and product.
+- **Risk:** Knowledge is refreshed only by its job, so the five-minute cadence stays: only what is read changes. A product changed outside the save paths (a renamed category, a status change) waits up to an hour for search by meaning: noticed as a search that misses a just-published product; the editor's own save is not affected. A missed change stamp leaves a stale picture vector until the daily pass.
+- **Already tracked:** No step in the code review. In this review the knowledge part is DQ-6 and the picture part DQ-3 of the queries dimension: do them once, there.
+
+## The fix
+
+1. Knowledge: do DQ-6 of this review as written (record a page that cut to nothing; choose changed pages in SQL before fetching documents; skip aiFor() when nothing was cut and no chunk lacks a vector). Its second step alone ends the 91,200-style empty transactions.
+2. Pictures: do DQ-3's first step (a change stamp in place of the daily clause in embedMedia(), src/server/media-library.ts:810). Then in refreshMediaEmbeddings() (lines 860-873) replace the list of every site with media by one query that lists only sites with a described picture that has no vector, or whose vector is older than the picture or than the stamp; call aiFor() only for those. A changed embedding model is picked up when the site's stamp next moves, or by a daily pass.
+3. Products, the writers: after saveProduct() in src/server/product-tools.ts:221 and src/server/content-packs.ts:417 and 428 call `refreshStoreEmbeddings(store.id).catch(() => undefined)`, as src/server/bulk-edit.ts:456 does, so no product saver depends on the scan.
+4. Products, the scan: run refreshEmbeddings() (src/server/embeddings.ts:109-122) hourly, not every five minutes: with DQ-5's job cadences, or until then a guard in src/app/api/cron/cart-reminders/route.ts:143 that runs it only when the minute of the hour is below 5. It stays the safety net for a renamed category or tag and a product whose status changed.
+5. When the catalogue is large enough that the hourly scan nears a second (watch it in commerce.cron_jobs), slice it: scan the stores in turn, a fixed number a run, ordered by when each was last scanned. Not needed before opening; write the threshold in docs/capacity.md.
+6. docs/rules/storefront.md (Search, D72, D74: 'the five-minute cron keeps every store current') and the comment at src/server/embeddings.ts:19-20: say that saving embeds at once and the scan is hourly.
+
+**Done when:** In production a day after the deploy the calls of the statement starting 'with docs as (select t.store_id, t.product_id' grow by about 24 a day (about 130 a day today: 10,201 in 78 days), and DQ-6's and DQ-3's own checks pass.
+
+**Tests and rules that hold today's behaviour, and change with it:**
+
+- src/server/embeddings.int.test.ts: add that a product made through the AI manager's create_product has a vector without the cron's run.
+- src/server/media-library.int.test.ts: refreshMediaEmbeddings() on a second run with nothing changed reports 0 sites with work and writes no row.
+- src/server/chat.int.test.ts (DQ-6's case: a second tick with nothing published makes no transaction).
+- src/server/cron-routes.scan.test.ts holds the dispatcher's jobs to runJobs(): a cadence guard must stay inside it.
+- docs/rules/storefront.md:407-411 (knowledge) and its Search rule; docs/media-compression.md:59 and docs/rules/admin/website.md:676 (the daily re-check of picture uses, a written design: DQ-3 keeps its purpose with the stamp).
+
+**Comes after:** DQ-6; DQ-3 (step 1); DQ-5 (job cadences; a minute guard until then)
+
+**Notes:** The skeptic withdrew the draft's job timings (sums of overlapping waits) and I keep them out. Two things I changed: alt texts are no longer called 'already narrowed' here (the site list is not narrow once a site has an AI-written alt text; see AI-13), and the product scan cannot simply go hourly until the two savers that skip the refresh call it. Before opening is the cheap time to add DQ-6's table and change cadences: no real content is waiting on them.

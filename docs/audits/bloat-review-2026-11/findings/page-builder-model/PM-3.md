@@ -1,0 +1,32 @@
+# PM-3 ✓ The five-minute knowledge job reads and parses every published page of every site with chat on, and re-cuts wordless pages for ever
+
+The page builder's model and a built page's render (`README.md` beside this file), part of `docs/audits/bloat-review-2026-11.md`.
+
+- **Kind:** eager. **Priority:** P0. **Effort:** S. **Confidence:** high. **Step:** 0.21.
+- **Second check:** confirmed.
+- **Where:** `src/server/knowledge.ts:167`, `src/server/knowledge.ts:182`, `src/server/knowledge.ts:187`, `src/server/knowledge.ts:249`, `src/server/knowledge.ts:297`, `src/lib/knowledge.ts:63`, `src/lib/blogs.ts:54`, `src/app/api/cron/cart-reminders/route.ts:145`, `docs/rules/storefront.md:407`
+- **Evidence:** syncPageKnowledge() selects `p.published` for every published page and article with two sub-selects each (knowledge.ts:170-176), runs the full schema on each (:182) and only then compares versions (:187). A page that cuts to no passage (cutPassages returns [] for no text, lib/knowledge.ts:63-65) never gets a row to carry its version, so every run cuts it again: a transaction with a delete and no insert (:248-256). Production: that delete ran 91,200 times and removed 782 rows in all; the page statement ran about 24,100 times at about 40 whole pages a call; the job's last run took 542 ms, fourth slowest of 84. Read in this pass: an article's address needs only its blogId (blogOfArticle, lib/blogs.ts:54), so the comparison can be made without the document. A re-cut deletes the page's passages with their vectors, which the store's AI then makes again, so a change here must not re-cut what is already cut.
+- **Cost today:** 542 ms of each five-minute run today, for one or two sites. It grows with sites with chat on times published pages, every 300 s, changed or not: 1,000 such stores of 30 pages would pull about 30,000 documents and spend about 25 s in zod each run (estimate from 0.9 ms a page), on top of about 7,000 statements run one after another. Paid by: The database; the server per scheduled run
+- **Saving:** Estimate: on a run where nothing was published the job's page work falls to two light statements a site (pages, entries) and no document; the empty transactions stop (91,200 in 78 days, measured).
+- **Risk:** Low. A page whose words changed is always a new publish, which the version sees. A site's languages changing does not re-cut pages today either. The fill in step 2 matters: without it the first run would re-cut every page and the store's AI would pay for the vectors again. Noticed by the new test cases and the admin's knowledge status.
+
+## The fix
+
+1. src/db/schema.ts, then pnpm db:generate: a table commerce.knowledge_sources (store_id uuid null references stores on delete cascade; page_id uuid null unique references pages on delete cascade; entry_id uuid null unique references content_entries on delete cascade; version text not null; path text null; cut_at timestamptz not null default now(); a check that exactly one of page_id and entry_id is set), with row level security as every commerce table has (src/db/commerce.test.ts:3500 fails without it).
+2. A custom migration after it (pnpm exec drizzle-kit generate --custom --name knowledge_sources_fill, then node scripts/prune-snapshots.mjs): insert a row for each page and each entry that has passages today (version = min(c.version), path = min(c.path) from commerce.knowledge_chunks), so the first run after the deploy cuts nothing again and no vector is thrown away.
+3. src/server/knowledge.ts replacePassages(): inside the same transaction upsert the source's knowledge_sources row (version, path, cut_at = now()), also when there are no passages. This alone ends the empty re-cuts.
+4. syncPageKnowledge(): replace the statement at :170-176 with one that selects no document: p.id, p.type, p.slug, p.published_at, p.published ->> 'blogId' as blog_id, k.version, k.path from commerce.pages p left join commerce.knowledge_sources k on k.page_id = p.id, same where. Work out version and path in code as today (blogOfArticle(blogs, { blogId })). For the ids whose version or path differ, and only then, select id, published where id = any(the ids) (uuidList() from src/server/sql-arrays.ts), parse, cut and replace as today.
+5. The same for entries (:198-204): first e.id, e.slug, e.published_at, t.slug, t.has_pages, the md5 as type_version and k.version; fetch e.published, t.fields and t.title_field only for those that differ.
+6. The delete of dropped passages (:222-228) also deletes the knowledge_sources rows of pages and entries no longer published (an unpublished page is not deleted, so the cascade does not do it).
+7. docs/rules/storefront.md:407-411: add the new table to the sentence about knowledge_chunks; the five-minute cadence stays. Record the migration versions in docs/decisions.md and check the advisors after the deploy.
+
+**Done when:** A new case in src/server/chat.int.test.ts runs syncPageKnowledge twice over a store with a wordless published page and counts zero rows read from `published` and zero transactions on the second run; on production a day after the deploy, the calls of 'delete from commerce.knowledge_chunks where page_id = $1' grow by fewer than 20 a day (91,200 in the 78 days measured, about 1,170 a day).
+
+**Tests and rules that hold today's behaviour, and change with it:**
+
+- src/server/chat.int.test.ts is the test that runs syncPageKnowledge and refreshKnowledge: add cases that a published page with no text is cut once and not on the next run, that a page published again is cut again, that a changed slug or a moved blog changes the passages' path, and that an unpublished page's passages and source row go.
+- src/db/commerce.test.ts (every migration on PGlite, the new table's check, cascades and row level security); pnpm db:check.
+- Rule docs/rules/storefront.md:407-411 (knowledge is knowledge_chunks; pages are cut by syncPageKnowledge() in the five-minute cron): kept, with the table added.
+- src/db/privacy.test.ts walks the commerce tables for personal data: the new table holds ids, dates and addresses only.
+
+**Notes:** The same job as DQ-6 (queries), DS-5 (schema), CR-4 (cron) and AI-5 (AI); the table's name is theirs. This version needs no hourly net, because the address is worked out from the blogId without the document. Step 3 alone is a few lines and removes the empty transactions. Chat is off by default, so a store without chat pays nothing either way.

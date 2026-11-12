@@ -1,635 +1,447 @@
 # Bloat review: Kaizena Flow (November 2026)
 
-Written 11 November 2026, on commit `0bd814c`. The owner asked whether the platform is becoming bloated, and for a plan to remove all
-bloat and to make sure the rest is fetched and loaded so that nothing is loaded, used or shown without need.
+Written 11 and 12 November 2026, on commit `0bd814c`. The owner asked whether the platform is becoming bloated, and for a plan to
+remove all bloat and to make sure the rest is fetched and loaded so that nothing is loaded, used or shown without need. The owner
+then set the plan's goal: **grade A in every area**.
 
-**How it was done.** Measured first, then read. A production build was made and served with the demo catalogue; 32 real pages were
-opened in a browser with an empty cache and each asked what it transferred and which bytes of its scripts ran; Next's bundle analyzer
-listed the source modules behind 19 routes; production's own statistics (Postgres's counters since 25 August, the scheduler's table,
-the job ledger) were read, with no personal data; and two scans written for this review looked for unused and copied code. Then 14
-reviewers each took one area, with those numbers in hand. Their reports are in `bloat-review-2026-11/findings/`, the measurements in
-`bloat-review-2026-11/evidence/`, the scripts in `bloat-review-2026-11/scripts/`.
+**How it was done.** Measured first, then read, then challenged.
 
-**Its limits.** The review was planned as 25 areas, each read by one reviewer, challenged by a second and planned by a third. The
-account ran out of usage credits part-way: 14 areas were read, none was challenged by a second reviewer, and 11 areas were not read
-(section 6). The lead then checked 32 of the 171 findings against the code, the build or production, among them every finding behind
-phase 0; those carry a tick (✓). **The other 139 are one reviewer's reading.** Check one before starting its step (step 4.5). Savings
-marked as estimates are estimates; times measured on the review's machine say nothing certain about Vercel.
+1. *Measured.* A production build was made and served with the demo catalogue; 32 real pages were opened in a browser with an empty
+   cache and each asked what it transferred and which bytes of its scripts ran; Next's bundle analyzer listed the source modules
+   behind 19 routes; production's own statistics were read (Postgres's counters since 25 August, the scheduler's table, the job
+   ledger), with no personal data; two scans written for the review looked for unused and copied code.
+2. *Read, challenged, planned.* 25 areas of the system each had three reviewers: an auditor who read the code with the numbers in
+   hand; a skeptic who re-opened every citation, re-measured every number and tried to refute each finding; and a planner who turned
+   what survived into fix steps with a check, and looked for what was missed.
+3. *Graded.* For each of 13 areas of the scorecard a steward set the bar for an A in numbers and grouped its findings into work,
+   and one weaver merged all areas' work into one plan. **Not finished as this is written:** the plan's reviewer (steps may still be split, joined or moved between phases); a challenger per area (is the bar truly an A; can the plan's steps reach it); the critic who compares grades across areas. Until then the grades and bars below are the stewards' own.
+
+**What came out.** 353 findings stand: 128 confirmed as first written, 174 corrected by the skeptic (real, but
+the numbers, the place or the scope were wrong) and 51 added by the planners. 22 claims of the first reading were
+refuted and dropped, among them several of the lead's own first figures. A tick (✓) marks a finding that passed its second check;
+a planner's addition has none.
+
+**Its limits.** Times and megabytes measured on the review's machine say what is large and what is small; they do not say what
+Vercel will show. Real cold starts, function invocations and visitors' speed in production were not measured (the hosting metrics
+need a plan the team does not have). The planners' 51 additions were read by one reviewer. Savings marked as estimates are
+estimates.
 
 **Read this first: the platform is not open yet (the owner, 11 November).** It opens to real store owners and shoppers soon. The 60
-stores and 102 orders in production are the team's own demo, test and template stores. So an empty table says only that nobody has
-tried the feature yet, and this review's first draft read too much into it. Three things follow. An unused feature is no reason to
-retire, park or hide it: where a finding or a step argued so, it has been rewritten (cause 3, phase 3 and the questions below), and
-the second reviewers re-weigh each such finding. What does count is what a feature costs a store that does not use it, because soon
-there will be many stores each using a few features: that is most of phases 0 and 2, and it matters more at opening, not less. And
-production's counts are scheduled work, builds, crawlers and the team's own testing, not shoppers: they show idle cost and what each
-deploy redoes; what shoppers will add is in the browser and build measurements. Before opening is also the cheapest time for
-structural change: there is no real data to move and nobody to disturb.
+stores and 102 orders in production are the team's own demo, test and template stores. So an unused feature or an empty table is
+expected and is not a finding: the first draft of this review read too much into that, and every reviewer since was told so. What
+counts is what something costs per request, per cold start, per scheduled run, per AI call, per push or per agent session; what
+grows with stores, pages, products, orders and visits once the doors open; and what is truly built twice. Production's counts are
+scheduled work, builds, crawlers and the team's own testing, not shoppers. And before opening is the cheapest time for structural
+change: there is no real data to move and nobody to disturb.
 
 **What it builds on.** `docs/audits/code-review-2026-11.md` (its steps are named where a finding is already one of them),
 `docs/performance.md` (the storefront's bundle rules, D211 and D212), `docs/build-memory.md`, `docs/capacity.md` and
 `docs/platform-parity-plan.md`. Nothing here replaces them.
 
+**Where things are.** Beside this file, the folder `bloat-review-2026-11/`: `findings/` has a folder per area and a small file per
+finding (where, evidence, cost today, the fix in steps, the tests and rules that hold today's behaviour, done-when, risk);
+`grade-a-bars.md` has each area's bar in full; `evidence/` the measurements; `scripts/` what made them. A step of the plan names
+the findings it closes: open those files, not the folder.
+
 **Words.** Six kinds of bloat: *dead* (nothing uses it), *duplicate* (built more than once), *eager* (loaded, fetched or run before
-it is needed, or for someone who will never need it), *oversize* (bigger than its job), *ahead of use* (built before any use and
-paying a running cost today) and *no check* (nothing stops it growing). Effort: S under a day, M a few days, L a week or more.
-Sizes are before compression unless a line says otherwise.
+it is needed, or for someone who will never need it), *oversize* (bigger than its job), *ahead of use* (paying a running cost before
+any use) and *no check* (nothing stops it growing). Priority, from the planners: P0 small and safe, do first; P1 a large saving
+with more work or risk; P2 when the area is next touched; P3 true but not worth doing now. Effort: S under a day, M a few days, L a
+week or more. Sizes are before compression unless a line says otherwise.
 
 ## Progress
 
 This is a working document, kept as `code-review-2026-11.md` is: the table says where each step stands. Keep it true in the same
 commit as the fix.
 
+- **The goal is grade A in every area** (the owner, 11 November). The plan is done when every area is an A, not when its steps are
+  ticked. Section 1 gives each area's bar; `bloat-review-2026-11/grade-a-bars.md` gives it in full with how each number is measured.
 - **Status** is one of: Open, In progress, Done, Dropped (with the reason in Notes).
-- When a step is done, set Done with the date and the commit, in a line. Check its "done when" first, with the script it names.
-- If a finding proves wrong, say so in Notes and correct its row in the area's file; do not delete it. A finding without a tick is
-  checked before its step starts, and gets its tick or its correction then.
+- When a step is done, set Done with the date and the commit, in a line. Check its "done when" first, with the script, query or
+  test it names.
+- When verified fixes raise an area's grade, change it in the scorecard with the old grade and the date beside it, and show the
+  owner the new table. Raise a grade only for fixes seen working in production, measured as the bar says.
+- If a finding proves wrong, say so in Notes and correct it in its area's file; do not delete it.
 - Steps marked *owner* wait for the owner's answer to a question in section 6.
-- **The goal is grade A in every area** (the owner, 11 November). Section 1 says what an A is for each area, in numbers. When
-  verified fixes raise an area's grade, change it in the scorecard with the old grade and the date beside it, and show the owner the
-  new table. Raise a grade only for fixes seen working in production, measured with the script or the query the bar names.
 
-**Phase 0: Stop the work done for nobody**
+**Phase 0: Before the doors open**
 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
-| 0.1 | Cut the two import hubs | FM-2, DS-1, DP-1 | S | Open | |
-| 0.2 | Load the image library when a picture is drawn | AS-1, DP-2 | S | Open | |
-| 0.3 | Wake the per-minute routes only when work waits | CR-1, DQ-1, DP-7, CR-6, CR-7, CR-12 | M | Open | |
-| 0.4 | Give each dispatcher job its own period, and skip what no store uses | CR-2, CR-3, DQ-5, FT-3, DS-3, CR-8, CR-9, CR-11 | M | Open | |
-| 0.5 | Prune the scheduler's own log | CR-5, DS-8 | S | Open | |
-| 0.6 | Read one page, not all of them | DQ-2, CA-3, SD-4 | M | Open | |
-| 0.7 | Let the store's index serve the hottest reads | DQ-8, DS-7 | S | Open | |
-| 0.8 | Stop asking for what does not change | DQ-9, CA-9, SD-10, DQ-12, DS-2, SD-7, CA-12, DQ-4, AI-2 | M | Open | |
-| 0.9 | Stop prefetching what nobody opens | CA-4, SC-1, CA-5, AC-12, SC-10 | S | Open | |
-| 0.10 | Take Supabase's client, zod and the builder's words off every admin screen | AC-1, DP-4 | S | Open | |
-| 0.11 | End the prefetch loop on `/s/` addresses | SC-9, CA-6 | M | Open | |
-| 0.12 | Let the CDN keep what is the same for everyone | CA-8, AS-5, AS-4 | S | Open | |
+| 0.1 | Keep the 'before': put the review's scripts in the repo and store a daily reading of production | GAP-code-1, GAP-database-1 | M | Open | |
+| 0.2 | Let the deploy job, not a visitor, meet the first cold page | SD-3, GAP-server-2 | S | Open | |
+| 0.3 | Cut the two import hubs: the unused schema and the chat module's helpers | DD-1, DP-1, DP-9, SG-6, SF-6, DS-1, TC-5, DP-10, FM-2, FM-14, SG-3, SF-4 | S | Open | |
+| 0.4 | Load sharp, the font parser and the AI manager's engine when they are used | AS-1, DP-2, SG-7, SF-9, DP-11, SG-15, SG-10 | S | Open | |
+| 0.5 | Cut the import cycle of 229 server files | SG-1, SF-1, TC-2, SG-18, SG-17 | M | Open | |
+| 0.6 | Give code outside the admin its own small word modules, so the admin's words leave shoppers' routes | FM-1, SF-5, TX-1 | M | Open | |
+| 0.7 | Make a language translated by AI cost what it uses: at start, per document and per minute | SG-5, SF-3, SD-7, TX-3, TX-12, TX-6, SC-13, PL-9, DQ-12, DS-2, CA-12 | M | Open | |
+| 0.8 | Take Supabase's client, zod and the builder's English off every signed-in screen | AC-1, BN-1, BN-3, BN-4, DP-4, TX-4 | S | Open | |
+| 0.9 | Load an editor, a catalogue or the AI's tool tables only on the screens that draw them | AC-2, BN-14, AC-3, BN-5, DP-5, AC-7, BN-7, AC-8, BN-15, AI-4 | M | Open | |
+| 0.10 | Stop prefetching what a press cannot use: other views, links that leave their layout, the admin's rail | PF-2, PL-3, SC-1, PF-11, PL-4, BN-2, CA-4, CS-8, CA-5, PF-5, PF-6, AC-12 | S | Open | |
+| 0.11 | End the prefetch loop on /s/ addresses, and write both router settings down | PF-1, SC-9, CA-6, CA-7 | S | Open | |
+| 0.12 | Make no server call after load for a visitor with nothing to fetch | SC-10, PL-7, SD-15, SC-12, PL-8, SD-14, PL-14 | S | Open | |
+| 0.13 | Send shoppers' first scripts only what the page draws | SC-3, PL-10, BN-10, TX-5, TX-8, SC-11, SC-4, PM-11 | M | Open | |
+| 0.14 | Cut what an idle tab, a save and a menu cost in the admin *(owner)* | AD-1, AD-13, AD-9, AC-13, PL-11, AI-12 | S | Open | |
+| 0.15 | Read the products, customers and stores lists a page at a time | AD-7, AC-14, AD-10 | M | Open | |
+| 0.16 | Stop asking for what does not change: the store's slug, the AI connection, the theme cards, the hosts list | CP-2, SD-10, CA-9, DQ-9, AI-2, DQ-4, GAP-ai-1, SD-16, CA-11, CA-13, SF-12 | M | Open | |
+| 0.17 | Work the cart and a shopper's facts out once per request, with no read for a feature that is off | SD-11, FT-15 | S | Open | |
+| 0.18 | Filter a store's rows the way its index can serve | DQ-8, DS-7, PM-4, CR-6 | M | Open | |
+| 0.19 | Read one page, not all of them | CA-3, SD-4, DQ-2, PM-2 | M | Open | |
+| 0.20 | Shed the database's dead weight: the scheduler's log, 13 duplicate indexes and the dead objects *(owner)* | CR-5, DS-8, DS-9, DS-15, DS-14 | M | Open | |
+| 0.21 | Make AI upkeep cost one statement when nothing changed: knowledge, pictures, alt texts, product vectors | CR-4, DQ-6, DS-5, PM-3, DQ-3, DS-10, AI-13, AI-5 | M | Open | |
+| 0.22 | Stop three jobs re-asking on every run: invoices, the listings' check and the prunes | CR-9, DS-3, CR-15, FT-3 | M | Open | |
+| 0.23 | Fix pictures and files before real ones are stored: thumbnails, an 800 px copy, long lifetimes | AS-4, AS-9, AS-12, AS-5, AS-11 | M | Open | |
+| 0.24 | Give the admin's colour names a value on public pages | CS-7, CS-9 | S | Open | |
+| 0.25 | Delete what nothing uses and what is kept from before | DD-3, DD-8, TX-11, DD-11, CR-12, DP-8 | M | Open | |
+| 0.26 | Run each check once, and let a test load only what it uses | TC-1, TC-12, TC-3, TC-13, DD-13, DD-10 | M | Open | |
+| 0.27 | Leave a map in CLAUDE.md, wrap the rules' long lines and keep history out of searches *(owner)* | DC-1, DC-4, DC-7, DC-13 | M | Open | |
+| 0.28 | Make the rules say what is so, and claim a decision's number on main before citing it *(owner)* | DC-5, DC-8, DC-6, DC-10, DC-12 | M | Open | |
 
 **Phase 1: Budgets, so it stays removed**
 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
-| 1.1 | Make the measurements commands | (the base for 1.2 to 1.6) | S | Open | |
-| 1.2 | A budget for what a function loads | AS-3, DP-6, SD-13, FM-13 | M | Open | |
-| 1.3 | Browser budgets for every route, and for the document | AC-10, AC-11, SC-6 | S | Open | |
-| 1.4 | Count statements per page and per round | DQ-11, AD-12, CR-14 | M | Open | |
-| 1.5 | A budget for the surface, and a list of what is in use *(owner)* | FT-2, DS-12 | S | Open | |
-| 1.6 | Budgets for an AI call and for the always-loaded rules | AI-10, DC-3 | S | Open | |
+| 1.1 | Give every budget one home, and hold the written rules first *(owner)* | DC-3, GAP-rules-1 | S | Open | |
+| 1.2 | Hold every route's first scripts, and documents, stylesheets and after-load requests on real pages | AC-10, BN-11, SC-6, PL-13, PM-14, CS-3, CS-6, AS-7 | M | Open | |
+| 1.3 | Put the admin under the import walk, and hold where the words go | AC-11, TX-9, GAP-text-2 | M | Open | |
+| 1.4 | Put the pages real shoppers get into the measured set: a launch-theme store and a paying cart | GAP-shopper-browser-1, GAP-page-model-3, GAP-styles-1, GAP-shopper-browser-2 | L | Open | |
+| 1.5 | Hold what a server entry loads and carries | SG-14, SF-7, DP-6, AS-3, SG-16 | M | Open | |
+| 1.6 | Count statements and rows: admin screens, the idle tick, the minute routes and the cold frame | DQ-11, AD-12, CR-14, GAP-database-2 | M | Open | |
+| 1.7 | Hold the storefront's server side: statements per page, cached reads, render modes, a shop-only journey and a placed order's writes | SD-13, CA-16, GAP-surface-1, GAP-database-3 | M | Open | |
+| 1.8 | Hold with production figures what a test cannot: a slow phone, the admin's speed, a cold start | GAP-shopper-browser-3, GAP-owner-browser-3, GAP-server-3 | L | Open | |
+| 1.9 | Hold unused code, copies and the admin's repeats with ratchets of exact lists | DD-4, GAP-code-2, CP-14, FM-13, FM-7, FM-8, GAP-code-3 | M | Open | |
+| 1.10 | Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows *(owner)* | FT-2, DS-12, GAP-surface-3 | S | Open | |
+| 1.11 | Hold every agent's round, show real tokens per call, and let the eval see whether the model finds a tool | AI-10, AI-14, GAP-ai-3 | M | Open | |
+| 1.12 | Record every check's seconds and the build's peak memory, with ceilings | TC-8, AS-10, GAP-build-1 | M | Open | |
+| 1.13 | Give the production build room, and fail a run before it runs out *(owner)* | GAP-build-2, SG-11, SF-11 | M | Open | |
 
 **Phase 2: Load on demand**
 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
-| 2.1 | Give each area its own words | FM-1, SC-3, AC-4, AC-6, AC-7, AC-9 | L | Open | |
-| 2.2 | Serve store pages from their static shell | CA-1, SC-8, SC-7 | M | Open | |
-| 2.3 | A product view asks the database for what changes per view | SD-2, SD-5, SD-9, SD-11, SD-12 | M | Open | |
-| 2.4 | Each storefront route loads its own parts and its own styles | SC-2, SC-4, SC-11, SC-5, AS-7 | M | Open | |
-| 2.5 | Editors load when they are drawn | AC-2, AC-3, DP-5, AC-5, AC-8, AI-4 | M | Open | |
-| 2.6 | A lighter admin shell and home | AD-1, AD-2, AD-3, AD-4, AD-5, AD-6, AD-7, AD-8, AD-9, AD-11, AI-12 | M | Open | |
-| 2.7 | Caches that outlive a deploy and follow tags, not the clock | CA-2, CA-10, SD-8, SD-3, CA-11, CA-13, CA-14, CA-7 | M | Open | |
-| 2.8 | Untangle the remaining import hubs, then narrow what is traced | SD-1, SD-6, DP-3, AS-2 | L | Open | |
-| 2.9 | A smaller AI manager round *(owner)* | AI-1, AI-3, AI-6, AI-8, AI-9, AI-11, AI-7 | M | Open | |
-| 2.10 | Jobs and lists find work without loading it | CR-4, DQ-6, DS-5, AI-5, DQ-3, DS-10, CR-10, CR-13, DS-13, DS-4, DQ-10, DQ-7 | L | Open | |
+| 2.1 | Send the store's layout and its fixed style sheets once | SC-8, PL-2, PM-1, CS-5, SC-7, PF-7, CS-4, PM-7 | M | Open | |
+| 2.2 | Serve store pages with nothing per visitor as static files, and let Add to cart answer a number | CA-1, CA-17, CA-15 | M | Open | |
+| 2.3 | Route every link through one wrapper with a stated policy, and keep built pages' presses inside the app | PF-3, PF-8, PF-12, PF-10, PF-4 | L | Open | |
+| 2.4 | Bound what a real listing fetches ahead, and decide partial prefetching by trial *(owner)* | PF-13, PL-5, PF-9 | M | Open | |
+| 2.5 | Let each working route and each recommending grid load its own parts | SC-2, BN-9, BN-16 | M | Open | |
+| 2.6 | Give the storefront a stylesheet of its own, and count what is in it *(owner)* | SC-5, CS-1, BN-12, GAP-styles-2, GAP-styles-3 | M | Open | |
+| 2.7 | Draw a listing's grid once and read its list once | PL-6, PM-8 | M | Open | |
+| 2.8 | Ask the database for stock only on a product view | SD-2 | M | Open | |
+| 2.9 | Let cached reads follow their tags, and let a publish make only its own page stale | SD-8, CA-10, PM-15, PM-16, GAP-page-model-2 | L | Open | |
+| 2.10 | Read a cold store page, the cart and the checkout in one wave, with nothing that grows with the catalogue | SD-5, SD-9, DQ-7, GAP-server-1 | L | Open | |
+| 2.11 | Turn the proxy's and the page's readers into leaf modules | SD-1, SD-6, SG-2, SF-2, SG-8, PM-12 | L | Open | |
+| 2.12 | Let nothing ride with a function that cannot use it: Stripe, the page model, the taxonomy | SG-9, DP-12, SF-8, SG-13, AS-2 | M | Open | |
+| 2.13 | Load the admin's words by area on admin routes too, and take English defaults out of the code *(owner)* | SG-4, AC-9, BN-8 | L | Open | |
+| 2.14 | Hand each admin page only the words its parts read, and do not send them again with a save | AC-4, PL-1, TX-2, AD-5, PM-10, GAP-text-1, GAP-text-3 | L | Open | |
+| 2.15 | Let the builder paint first: the rich text editor and a store language load after | AC-5, AC-6, BN-6, TX-7 | M | Open | |
+| 2.16 | Load the builder's dialogs and each block's field form when they are opened | GAP-owner-browser-1 | L | Open | |
+| 2.17 | Keep the session without the whole Supabase client, and hold what a screen has loaded by idle | GAP-owner-browser-2 | M | Open | |
+| 2.18 | Lighten the admin's shell and the store Home | AD-2, AD-4, AD-8, AD-3 | M | Open | |
+| 2.19 | Keep a page's facts in columns, so lists, menus and grids open no document | DS-4, PM-6, AD-14, PM-5, GAP-page-model-1 | M | Open | |
+| 2.20 | Answer a store's own domain without a deployment *(owner)* | SF-13 | L | Open | |
+| 2.21 | Send the AI manager a lean default round *(owner)* | AI-1, AI-9, AI-11, FT-4, AI-6 | M | Open | |
+| 2.22 | Slim the tool schemas and send one page group, so no round is over 70,000 characters | AI-8, GAP-ai-2 | M | Open | |
+| 2.23 | Pay less per token: count and use cached input, and give small jobs a quick model | AI-3, AI-7 | M | Open | |
+| 2.24 | Keep one file per decision, with a generated index | DC-2, AS-8 | M | Open | |
+| 2.25 | Bring the always-loaded core under 10.5 KB, make every living doc searchable, and measure what a session loads *(owner)* | GAP-rules-2, GAP-rules-3 | M | Open | |
+| 2.26 | Shorten the gate: a type check without tests, a related test run, and a fresh worker only where a trial needs it *(owner)* | TC-4, TC-9, TC-6, GAP-build-3 | M | Open | |
 
-**Phase 3: Cost follows use, and one of each**
+**Phase 3: One of each**
 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
-| 3.1 | A feature costs nothing until a store uses it *(owner)* | FT-1, FT-4, FT-7, FT-14 | L | Open | |
-| 3.2 | One Kaizena Flow site *(owner)* | FT-5, FM-3, DS-6 | L | Open | |
-| 3.3 | One way to model the platform *(owner)* | FT-10, FM-5, FM-4 | M | Open | |
-| 3.4 | One engine for one job *(owner)* | FT-8, FT-9, FT-13, FT-12 | L | Open | |
-| 3.5 | Decide what opens on day one *(owner)* | FT-6, FT-11, FM-9 | M | Open | |
+| 3.1 | Run one tick a minute, and call a route only when work waits or is due | CR-1, CR-7, DQ-1, DP-7, SF-10, CR-3, GAP-scheduled-1 | L | Open | |
+| 3.2 | Run the dispatcher from a registry: a cadence and a time budget per job, four at a time | CR-2, CR-8, DQ-5, GAP-scheduled-3 | L | Open | |
+| 3.3 | Give every scheduled function a ledger row and a watcher from outside, and every growing table a delete rule *(owner)* | CR-17, GAP-scheduled-2, DS-13, CR-10 | M | Open | |
+| 3.4 | Let per-store jobs find due work by a mark, and call the PDF route when a document waits *(owner)* | DQ-15, CR-16, CR-11, DD-12 | M | Open | |
+| 3.5 | Keep one kaizenaflow.com *(owner)* | FM-3, FT-5, DS-6 | L | Open | |
+| 3.6 | Run the platform's workflows, own endpoints and integration deliveries on the stores' engine with a scope *(owner)* | CP-4, FM-4, FM-5 | M | Open | |
+| 3.7 | Keep one engine for one job: order rules fold into Workflows, and an own look is saved in the theme library *(owner)* | FT-8, FT-12, GAP-surface-2 | M | Open | |
+| 3.8 | Give each family one core: the five file imports, Work's two sets of screens, the Domains move page | CP-1, FM-6, CP-5, FM-10 | L | Open | |
+| 3.9 | Keep one of each small thing: helpers, SQL fragments, order totals, English word lists | CP-8, CP-16, FM-12, CP-9, CP-12, DD-7, CP-13 | M | Open | |
+| 3.10 | Keep one stored page shape | PM-9, DD-9 | M | Open | |
+| 3.11 | Build twice per push, and deploy only what changes the app *(owner)* | TC-7, TC-14, CA-2 | M | Open | |
 
-**Phase 4: Tidy, and finish the review**
+**Phase 4: Tidy**
 
 | Step | What | Closes | Effort | Status | Notes |
 |---|---|---|---|---|---|
-| 4.1 | The database's loose ends | DS-9, DS-14, DS-11, DQ-13, DQ-14, AD-10, L-1 | M | Open | |
-| 4.2 | Families: one core each | FM-6, FM-7, FM-8, FM-10, FM-11, FM-12 | L | Open | |
-| 4.3 | Unused code, packages and files | DP-8, DP-9, AS-6, L-2 | S | Open | |
-| 4.4 | Written rules a session can afford *(owner)* | DC-1, DC-2, DC-4, DC-5, DC-6, DC-7, DC-8, DC-9, DC-10, DC-11, AS-8 | M | Open | |
-| 4.5 | Finish the review | (section 6) | M | Open | |
+| 4.1 | Build the admin kit and move action files onto the shared wrapper, area by area | CP-3, CP-7 | L | Open | |
+| 4.2 | Fold the remaining twins as each is opened | CP-6, FM-9, CP-11, FM-11 | M | Open | |
+| 4.3 | Tidy the tests' side: exports only a test keeps alive, shared mocks and one tree walker | DD-2, CP-15, TC-11, TC-10 | M | Open | |
+| 4.4 | Make the last reads fetch what they show | AD-6, AD-11, AD-15, DQ-10, DQ-14, DQ-16, DS-11 | M | Open | |
 
 Change log:
 
-- 11 Nov 2026: written. Nothing started.
+- 11 Nov 2026: first draft, on unverified findings from 14 of 25 areas. Nothing started.
+- 12 Nov 2026: rewritten on the verified findings of all 25 areas, with the plan woven and each area's bar for an A set by the
+  panel. Nothing started.
 
 ## 1. The headline
 
-**The code is tidy; the weight is in what is loaded and run without need.** The usual suspects came back clean: no source file is
-unreachable, 1% of exports are unused, 1.1% of code lines are exact copies, and all 51 runtime packages are imported. The bloat is of
-another kind, and it has four causes that explain most of the 171 findings.
+**The platform is carefully built, and it is not open yet. Its waste is in how it loads, asks and checks, not in what it is; almost
+all of it is cheap to remove before the doors open.** The usual suspects came back clean: 0.35% of the code is dead, 1% is an exact
+copy, every package is used, the tests do not repeat each other, the page model stores 340 bytes a block, and a feature a store
+does not use costs it close to nothing. What the reviewers found instead comes down to five causes.
 
-1. **A few imports tie everything to everything.** Almost every route's server code loads the same 10 to 12 MB in 1,900 to 2,500
-   modules, whatever its job; the visit beacon, called on every page view, loads the admin's whole interface text, the AI manager's
-   tools and the database schema. Two one-line edits, tried in a copy, took it from 1,890 modules to 639 (step 0.1). The browser has
-   the same disease in a milder form: every admin screen loads Supabase's client, zod and the page builder's words.
-2. **Work is found by asking, not by being told.** About 37,000 scheduled runs a day look for work that is almost never there, and
-   the log of those runs is 564 MB of the 731 MB database. Pages are read whole to find a title; a picture's uses are found by
-   searching every page's text; the same store slug is asked for 560,000 times.
-3. **An idle feature is not free.** The platform is built ahead of its opening, so half the tables are empty, and that is as it
-   should be. What is not: a feature costs the same whether or not a store uses it. Its job runs every five minutes, its tools go to
-   the AI on every call, its code loads into every function. For one store that is little; it multiplies with every store that signs
-   up. A few things are also built twice (Kaizena Flow's site, two rule engines, two discount engines). What a new owner sees first
-   is the owner's choice, not waste.
-4. **Nothing weighs a change.** The storefront's first scripts have a budget and it shows: the storefront is the leanest part.
-   Server code, the document, statements per page, scheduled work, an AI call, the tables and the standing rules have none, and
-   each grew unseen. 21 findings are this one finding.
+1. **One import cycle ties the server together.** 229 server modules import each other in one cycle, so 559 of 562 pages, 181 of
+   268 route handlers and the proxy each load the same 10 to 11 MB of server code whatever their job. On the review's machine such
+   an entry takes 0.84 to 1.09 s and 71 to 83 MB to start cold, against 0.16 s and 14 MB for a route outside the cycle, and every
+   instance first spends 0.33 s in a start hook. It grows with stores and traffic, because quiet stores meet cold instances. A few
+   dozen small import changes cure it and remove no feature: on the build's own module graph the visit beacon falls from 10.4 to
+   1.9 MB with one import path, a storefront page from 11.3 to about 3.5 MB, the proxy from 9.2 to 2.4 MB.
+2. **Pages are drawn and sent more often than anyone needs.** Every store page view runs a function whose only job, on home, built
+   and blog pages, is two cart badges and a country hint (98 of the demo home's 138 KB). The store's layout is rendered and sent
+   twice in every page for a 404 nobody sees. A visitor who does nothing causes 11 to 50 prefetches and one or two server calls
+   that answer "nothing". One Add to cart redraws the whole page and fetches 15 links again (193 KB).
+3. **Every admin screen loads about twice the script it needs.** The median of the 432 signed-in routes is 1.16 MB; seven small
+   import changes take it to about 0.6 MB in a simulation on the built chunks. Three stray imports put Supabase's client, zod and
+   the page builder's English on every screen; 13 preview screens load the whole builder to draw a page; and Kaizena Flow's public
+   front page fetches 437 KB of admin scripts it cannot use.
+4. **Work is found by asking, and data is fetched whole.** The scheduler calls the app 13,250 times a day and those calls send about
+   170,000 statements, nearly all finding nothing; its own log, never pruned, is 564 MB of the 731 MB database. Finding one page
+   reads every published page of the store with its whole content. 122 store filters are written so the store's index cannot serve
+   them. The same store slug was looked up 560,090 times with no shoppers. A product view asks the database 18 times where one
+   answer changes; the admin's store Home runs 29 to 46 statements before its first content.
+5. **Nothing holds the numbers.** 43 of the 353 findings are the same finding: no check, budget or test would notice
+   this growing. The storefront's first scripts have a budget and the storefront is the leanest part; even there the budgets watch
+   2 of 56 routes. One push type-checks the same commit five times and builds it four, yet none of it checks weight.
 
-Nothing is slow or broken today: the platform is not open, the database is idle and pages answer quickly. What is paid now is cold
-starts, function time, tokens and the build. What is at stake at opening is that each cause grows with every store, every visit and
-every feature, and before opening is the cheapest time to remove them.
+Nothing is slow or broken today: the database is idle and pages answer quickly. What is paid now is cold starts, function time,
+tokens, pushes and the build. What is at stake at opening is that causes 1, 2 and 4 grow with every store, page, product, order and
+visit.
 
-| Area | Grade (A to E) | Why, in a line | The most useful change |
-|---|---|---|---|
-| The code itself: unused, copied, packages, files | A | No unreachable file, 1% unused exports, 1.1% copies, every package used, public files all referenced. | Keep it so: step 1.1's scans as commands. |
-| What a shopper's browser gets | C | No zod, no third-party script, budgets held. But 54 to 70% of the script has not run when the page is idle, every view runs a function that sends the page twice, and links prefetch pages nobody opens. | Serve store pages from their static shell (step 2.2). |
-| What an owner's browser gets | D | Every admin screen loads 1.4 MB, the page builder 3.8 MB with a 572 KB document; three stray imports put 481 KB on every screen. | Take them off (step 0.10), then load editors when drawn (2.5). |
-| What the server loads and asks | D | 10 to 12 MB and 34 MB of traced files per function whatever its job; 18 statements for a product view, 30 before the admin's home shows. | Cut the import hubs (0.1, 2.8) and count statements (1.4). |
-| Scheduled work | D | 37,000 runs a day that find nothing; nine functions woken every minute; a 564 MB run log. | Wake routes only when work waits (0.3) and give jobs their own periods (0.4). |
-| The database | C | Careful table by table (1% dead columns, 15 redundant indexes, triggers gated, retention in place), but half of it is unused and the hottest reads cannot use their index. | Read one page, not all (0.6); let the index serve (0.7). |
-| AI calls | C | The shopper chat is lean (5,000 characters a call). The AI manager sends about 160,000 characters on every call, up to 11 times a turn. | A smaller default round (2.9, the code review's 3.18). |
-| The product's surface | Not graded | Before opening every feature is unused, so use cannot be judged. What can: an idle feature is not free (the rows above), and a few things are built twice. | Make cost follow use (0.4, 3.1) and decide the duplicates (3.2 to 3.4). The owner's call. |
-| The written rules | C | Every session loads 11,000 tokens of which a typical change needs a few hundred; one decision costs up to 45 KB to look up. | A 7 KB core and rules loaded by path (4.4, the code review's 1.10). |
-| Not graded | | The page builder's model, styles, interface text, tests with CI and the build, functions as such: not audited (section 6). | Step 4.5. |
+One thing the reviewers met that is not bloat but matters before opening: every store's own domain is compiled into each
+deployment as 4 to 8 routing rules, against the host's limit of 2,048 a deployment. That is a wall near 270 stores with a domain
+(SF-13, and a question for the owner in section 6).
 
 ### The goal: grade A in every area
 
-The plan is done when every area is an A, not when its steps are ticked. The grades mean the same in every area:
+The grades mean the same in every area:
 
-- **A:** nothing in the area is loaded, fetched, run or shown without need, beyond a small stated tolerance, and a test or a
-  production figure holds each measure so it cannot slip back unseen.
+- **A:** nothing in the area is loaded, fetched, run or shown without need, beyond a small tolerance stated in numbers, and a test
+  or a production figure holds each measure so it cannot slip back unseen. An A is what a strict senior engineer who knows this
+  stack would call excellent, not merely "the findings are closed".
 - **B:** the large causes are gone and budgets exist; small findings remain.
 - **C:** a sound base with real waste; some of it is held, most is not.
 - **D:** every page, function or run carries far more than its job needs, and nothing holds it.
 - **E:** waste that hurts people or costs money today. No area is an E.
 
-| Area | Today | Grade A when | Steps that get it there |
-|---|---|---|---|
-| The code itself | A | It stays so: no unreachable file, unused exports under 1%, exact copies under 1.5%, every package imported, and the two scans run as commands. | 1.1, 4.3 |
-| What a shopper's browser gets | C | A prerendered store page costs a visitor without a cart no function run. The home document is under 60 KB and nothing in it is sent twice. A page loads its own parts only: script not yet run when the page is idle under 45% (54 to 70% today). An idle visitor causes under 12 requests after load. The storefront has a stylesheet of its own under 130 KB. Every route has a script and a document budget. | 0.9, 0.11, 0.12, 2.2, 2.4, 1.3 |
-| What an owner's browser gets | D | A plain admin screen's first scripts are under 0.7 MB (1.4 to 1.5 MB loaded today) and its document under 100 KB. An editor's code loads when the editor is opened: the page builder under 2 MB at first paint (3.8 MB). A screen prefetches on intent: under 8 requests. Every one of the 449 routes has a budget. | 0.9, 0.10, 2.1, 2.5, 2.6, 1.3 |
-| What the server loads and asks | D | A function loads what its job needs: a beacon under 300 modules, a storefront page under 4 MB of server code, under 1 MB of files traced beside a function that draws no picture. The proxy loads under 300 modules and blocks on no read once warm. An anonymous product view asks 3 questions or fewer; the admin's home 10 before its first content. Budgets hold each. | 0.1, 0.2, 0.6, 0.8, 2.1, 2.3, 2.6, 2.8, 1.2, 1.4 |
-| Scheduled work | D | No function is woken to find nothing: under 1,000 route calls a day while nothing waits (12,960). A job runs at its own period and only where its feature is in use: under 3,000 job runs a day at today's use (24,192). An idle round sends under 20 statements. The run log is a week long. Every job has a gate and a budget. | 0.3, 0.4, 0.5, 2.10, 3.1, 1.4 |
-| The database | C | No hot read scans a table that has an index for it. No listed statement fetches whole documents to pick a field. No redundant index, and no dead schema, table or function. Every log has a retention rule that runs. A ratchet holds its growth. | 0.6, 0.7, 0.8, 2.10, 4.1, 1.5 |
-| AI calls | C | An AI manager round is under 60,000 characters (about 160,000) and its unchanging part is served from the provider's cache. Small jobs use a quick model. No page, poll or job that calls no model reads the AI connection. A test holds the round's size. | 0.8, 2.9, 1.6 |
-| The product's surface | Not graded | A feature a store has not switched on costs that store nothing: no job, no code in its requests, no AI tool, no query. There is one of each engine and one Kaizena Flow site. A new table, job or tool names its gate. | 0.4, 3.1 to 3.5, 1.5 |
-| The written rules | C | A session loads under 10 KB of standing rules (44 KB), and a file's rule when it opens the file. One decision costs under 2 KB to look up. Finished history stays out of default searches. A ceiling holds each. | 4.4, 1.6 |
-| The page builder's model, styles, interface text, tests with CI and the build, server functions | Being audited | Their grades and bars are set when their reviewers finish (step 4.5). | |
+No area is an A today, the tidy ones included, because an A needs each number held by a check and almost none is. For several
+areas closing every finding reached only a B: their stewards named what an A still needs (a launch-theme store measured and held, a
+checkout with a payment form, a speed figure with an alarm, production's statistics kept daily), and those are steps of the plan.
 
-These bars come from the measurements and the steps' own checks. A panel of reviewers is to test each one: is it truly an A, can
-the listed steps reach it, and what is missing. Where a bar proves too low or a step falls short, the bar or the plan changes, not
-the goal.
+| Area | Today | Why | Grade A when | Steps that get it there |
+|---|---|---|---|---|
+| What a shopper's browser gets | C | The base is sound: a default store's first load has no zod, no third-party script and no font file, the extras are lazy and gated on the server, and two script budgets exist. But every page sends the store's layout twice, makes one or two server calls that answer nothing and 11 to 47 router requests for pages nobody asked for; eleven working routes share one bundle 98 KB larger than a built page's, and a press on a built page's product tile reloads the whole document. | First scripts and stylesheet of a first visit, by route: Built page at most 615,000 bytes raw (own share 168 KB, about 55 KB gzip). Listing and…. The store document: its size and what is in it twice: Nothing twice: under 2,000 bytes of duplicate rows and one html element in the payload.…. Requests the router makes unasked, for a phone visitor who…: At most 6 on the home, a product page, a content page and the cart, at the top and read…. Server calls a view makes for nothing: 0 fetches of the page's own after load on all 12 measured pages for such a visitor. The…. What a press costs: Tile press: 0 documents and at most 8 requests. Cart press on a wide screen: 1 document,… | 0.7, 0.10, 0.11, 0.12, 0.13, 0.14, 0.23, 1.2, 2.1, 2.3, 2.4, 2.5, 2.6, 2.7, 2.14, 1.4, 1.8, 2.2 |
+| What an owner's browser gets | D | D, on the build's own figures, recomputed here from route-bundle-stats.json. Every signed-in screen loads about twice the script it needs (median 1,152,953 bytes where about 650,000 will do; 481 KB of it is three stray imports), 27 screens load an editor or a catalogue they never draw (up to 4.27 MB), a product editor's document is two thirds words that no part reads, and each screen makes 23 to 46 background requests. | First scripts of a plain signed-in screen: Median at or under 650,000 bytes raw. The store home, orders, products, settings and the…. Script a plain screen has loaded by the time it is idle: At or under 800,000 bytes raw five seconds after load, with Supabase's realtime, storage…. The page builder's first scripts, and the ceiling for every…: The builder at or under 1,800,000 bytes raw (about 555 KB gzip), with the rich text…. Code a screen downloads for something it does not draw: Supabase on 0 routes. The rich text editor on 0. A whole storefront language on 0. Any…. Words in a document that no part of the page reads: Unread words at or under 10% of the words handed, on each budgeted screen. Documents:… | 0.8, 0.9, 0.10, 0.13, 0.14, 0.15, 1.2, 1.3, 2.5, 2.14, 2.15, 1.8, 2.6, 2.13, 2.16, 2.17 |
+| What the server loads and asks | D | 559 of 562 pages, 181 of 268 route handlers and the proxy each load the same 10 to 12 MB of server code whatever their job: 0.84 to 1.3 s and 71 to 97 MB to start cold on the review machine, against 0.16 to 0.24 s and 14 to 26 MB for the health check. A product view asks the database about 18 times where one answer changes per view, every store page load makes one or two more function calls for nothing, and each admin shell render spends 125 ms building its menu. | Server code a cold function loads, by kind of entry: A beacon (the four /api/visit routes, /api/recommendations/events): 1.0 MB and 500…. What every instance pays before its first request: Start hook: 60 source files or fewer by static imports and under 0.7 MB of chunks, with…. Database statements per storefront view, warm: Product page: 3 or fewer beyond the proxy's, all on the inventory tables (4 for a store…. Function runs a store page view causes beyond its document: For a visitor with no cart, wishlist or account, on a store with tile stock off: 0…. Statements before an admin screen shows its first content: Store Home: first content after 14 statements or fewer in at most 2 waves. Shell: 2 for… | 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.10, 0.11, 0.12, 0.14, 0.15, 0.16, 0.17, 0.19, 1.5, 1.6, 1.7, 2.2, 2.8, 2.9, 2.10, 2.11, 2.13, 2.14, 2.18, 2.19, 1.8, 1.13, 2.12, 2.20, 3.1, 3.11, 4.4 |
+| Scheduled work | D | D, at the top of the band. Nearly all of the scheduler's 13,250 function calls a day find nothing, all 83 dispatcher jobs share one five-minute cadence with 78 started at once on five connections, at least 13 jobs and 3 minute routes do work per store on every run, and the scheduler's own log is 564 MB, 77% of the database. | Function calls a day by the scheduler when nothing waits: At most 1,200 on a quiet day: 288 dispatcher runs, 2 daily runs and a 15-minute safety…. Statements a day sent by scheduled work that finds nothing: Under 40,000 a day. An ordinary idle dispatcher run, with no hourly or daily job due,…. Jobs whose idle run does work per store, site or product: 0. An idle run sends the same number of statements with 1 store and with 20. A job that…. Jobs that run more often than their work changes: 0. Every job names its cadence (300, 3,600 or 86,400 s) and a one-line reason in one…. pg_cron's own run log: The oldest row is at most 8 days old and the cron schema is under 60 MB. About 1,750 new… | 0.1, 0.18, 0.20, 0.21, 0.22, 0.25, 1.6, 3.1, 3.2, 3.3, 3.4 |
+| The database | C | The base is sound: one small pool, statement and lock limits, queues claimed with skip locked, triggers gated by column, retention for nearly every log, and the app's listed statements cost about 30 s of database time a day. The waste is real and measured all the same: pg_cron's run log is 564 MB of the 731 MB database, 162,622 of 216,877 transactions changed nothing, three whole-page reads are 41% of the app's listed statement time, and 122 store filters are written so the store index cannot serve them. | Rows read by scan where an index exists: No commerce table with more than 1,000 rows is read whole more than 10 times a day in…. Whole documents fetched where a field would do: Among production's 40 costliest and 40 most-called statements, none that selects a…. What scheduled work asks per added store: The idle tick's statements and rows read are the same for 1 and for 20 seeded stores. At…. Statements that can change or learn nothing: Under 100 empty transactions a day. Among the 25 most-called statements none fetches a…. Round trips before a cold page's own content: At most 5 statements for a store's cold frame (siteCookies at most 4), none waiting on… | 0.1, 0.3, 0.7, 0.16, 0.18, 0.19, 0.20, 0.21, 0.22, 1.6, 1.10, 1.7, 2.10, 2.19, 3.1, 3.2, 3.3, 3.4, 3.5, 4.4 |
+| The page builder's model and a built page | C | The stored model and a block's markup are lean and partly held: a stored page is 340 bytes a block, blocks and rows are capped, interactive parts load where drawn, and first scripts have a budget. But every storefront document carries the layout twice, one publish makes all 261 built pages of a store stale, finding one page reads every page, the owner filter cannot use its index, and no budget sees any of this. | 1. Copies of the store's layout in one storefront document: 1 html tree. 0 bytes reachable only through a not-found copy. The om-oss document at most…. 2. Whole page documents read for something other than…: A cold render reads only the documents it draws: 3 on a store's home, built page and…. 3. Built pages one publish makes stale: A publish that changes only a page's body makes that page's own entries stale: 3 of 261…. 4. Rows read to find one owner's pages: Every read of an owner's pages touches only that owner's rows: an index scan, 27 of 27.…. 5. Parts of a built page sent twice, on a realistic page: Each grid item once in the markup and once in the payload. Each stylesheet text once per… | 0.13, 0.18, 0.19, 0.21, 1.2, 2.1, 2.7, 2.9, 2.14, 2.19, 1.4, 2.11, 2.16, 3.10 |
+| Styles | C | The base is sound: hand-written CSS has almost no dead weight, a built page carries under 5 KB of inline style, fonts and style generation are cached, and the admin's own CSS is already a file apart. But the one render-blocking sheet every shopper loads is 28% the admin's (183 KB raw / 25.8 KB Brotli, against 130 KB / 19.8 KB when compiled without it), fixed sheets are copied once per row and a third time per document, and no test or number holds the sheet's size, its sources or the style text. | The stylesheet every store, site and docs page loads before…: At most 135,000 bytes raw and 20,600 Brotli, with no class that only admin, test,…. Files that can rename the shoppers' stylesheet though no…: 0. The site's entry reads the site's code (2,451 files) and the admin parts a public page…. Copies of one style sheet in a store document: Each sheet 2 times, whatever the number of rows: once in the HTML and once in the payload…. Classes on public pages that read a colour with no value…: 0. Every colour name a public page can meet has a value in light and in dark, and shop…. Admin styles and answers a visitor of kaizenaflow.com…: 0 requests and 0 bytes. | 0.10, 0.24, 1.2, 2.1, 2.6, 1.4 |
+| Interface text | C | The words themselves are in excellent order: every language is complete and held by the compiler, 34 of 31,359 keys are dead, and a shopper's document carries 7 to 32 texts. How they are loaded is not: 802 of 830 server entries and the proxy evaluate every admin area in both languages at each cold start, admin documents hand two to three times the words their parts read, and 423 of 449 admin routes and 97 of 111 visitor routes carry text for someone else in their first scripts. | Admin words that code outside the admin loads: No value import of src/lib/admin-text.ts outside src/app/admin and src/components/admin…. Admin words an admin function loads: An admin entry reaches only the areas its code names: a median of at most 15 areas and…. Words handed to the browser against words read, admin…: On every signed-in screen the words handed are at most 1.25 times the words its parts…. Routes whose first scripts carry text the page cannot show: 0 routes for each of the five texts, and 0 client import sites of an area's catalogue…. What a language translated by AI costs: per document, per…: A document carries exactly the browser's keys (114 today) in under 9,000 bytes. An… | 0.6, 0.7, 0.8, 0.9, 0.13, 0.25, 1.3, 2.15, 2.13, 2.14 |
+| AI calls | C | C, in its lower half. The base is sound: the shopper chat sends about 5,100 characters a call, the writers and the docs guide are small, search answers are kept, a turn has a ceiling of time and tokens, and tools of switched-off features are dropped. | What a default AI manager round sends: prompt and tool…: At most 50,000 characters with no page open and at most 70,000 on any admin page, for a…. Real input tokens per AI manager call and per turn, and…: Median call at most 15,000 input tokens, 90th percentile at most 25,000, median turn at…. Share of AI manager input served from the provider's cache: At least 50% of the input tokens of feature ai_manager over a week, and at least 80% on…. Small jobs on a quick model: All 8 named small jobs run on the quick model: memory pass, tone, support summary,…. Reads of the AI connection per recorded AI call: At most 2 reads per recorded AI call over a week, and under 300 reads on a day with no AI… | 0.9, 0.14, 0.16, 0.21, 1.11, 2.21, 2.22, 2.23 |
+| The product's surface | C | The base is sound and part of it is held: one switch registry kept in step with the navigation, the admin map and the AI tools by tests; a new store starts with the shop alone, 29 Basic links and 8 rows of its own; almost every scheduled job is one statement for the whole platform. But 'an unused feature costs close to nothing' fails in five named places per view (the cart, which also works the basket out twice; product tiles; the product page; the page frame; the owner's Home) and in the AI manager's round; three jobs have two engines (4,150 to 6,450 lines); and 1 of 14 surface counts has a budget. | Summaries per cart view, and statements a cart or checkout…: 1 summary per render. 0 statements for a feature that is switched off. A guest's cart in…. Places where a shop-only store pays per view for features…: 0. On the journey home, listing, product, cart, checkout of a store with features…. Scheduled work that does not follow use: No job whose work can wait an hour or a day runs every five minutes: runJobs() has 69…. Surface counts held by a budget: 14 of 14. Each count has a baseline. A test fails when a count rises without a decision…. Jobs that have two engines: 0. find src -iname '*order-rule*' \| wc -l prints 0. rg -l platform_theme_installs src… | 0.12, 0.17, 0.22, 1.10, 1.7, 2.8, 2.10, 2.18, 2.21, 3.2, 3.5, 3.6, 3.7 |
+| The code itself | C | The base is the tidiest in the review: about 2,700 of 772,000 lines are dead (0.35%), 0.87% are exact copies across files, no package is unused and all 150 public files are referenced. But not one of those numbers is held by a test (lint sees unused locals only), so by the scale it cannot be an A, and without budgets it is not a B either: the draft's A rested on the counts alone. | Dead code: exports nothing uses, and production code only a…: 0 exports used by nothing. 0 files only tests reach outside named test support and a list…. Copied lines: Exact copies across files at most 0.6% (2,850 lines), failing the test above that.…. Things built twice: twin file pairs: At most 8 pairs, none over 50 shared lines, each with its reason in the baseline. One…. Hand-made repeats too small for a copy detector: helpers…: Each helper declared once (isUuid and isUniqueViolation 2 declarations in all; the day…. Packages: 0 packages without an importer, held by a test. No package over 5 MB installed for under… | 0.1, 0.3, 0.4, 0.6, 0.8, 0.9, 0.16, 0.23, 0.25, 0.26, 1.5, 1.9, 1.12, 1.2, 2.12, 2.24, 3.1, 3.4, 3.5, 3.6, 3.8, 3.9, 3.10, 4.1, 4.2, 4.3 |
+| Tests, CI and the build | C | The base is sound: 325,579 lines of tests with no snapshots, a browser suite that does not repeat the unit tests, a test database built once, a docs-only push that runs nothing, and a gate before each deploy. The waste is in how the checks run: one push type-checks the same commit five times (about 9 runner-minutes of repeats) and builds it three times, a plain unit test file spends 0.34 of its 0.48 s on the admin's English and a fresh worker it cannot use, and lint re-reads 6,213 files for an answer a cache gives in a second. | How often one commit is checked and built on a push: 1 lint, 1 schema check and 1 full type check per push; at most 2 builds in CI; no deploy…. The deploy gate: lint, type check and tests before a deploy…: 120 s or less: lint 15 s with its cache restored, type check 60 s, the six money test…. The unit run (pnpm test): 3 min 30 s or less on the machine where it took 5 min 34 s. Setup under 10% of Vitest's…. The integration and browser jobs a migration release waits…: Every required job's seconds recorded on every run and held by a ceiling. The slowest at…. The production build: peak memory against its machine: 75% of the build machine's memory or less on every production build (6.0 GB of 8, or 12… | 0.3, 0.5, 0.11, 0.26, 1.12, 1.13, 2.26, 3.11, 4.3 |
+| The written rules | C | The base is sound: the rules in full already sit in files read on demand and a test keeps them out of the always-loaded file, 99.84% of the 3,145 code names they cite exist, and no doc reaches a deployment or a CI run. The waste is real: every session and subagent loads 44 KB where about 10 KB is needed (71% is an index of which a change needs 2 to 4 lines), the search tool cannot show 52% of the rules or 98% of the decisions, and 5 of 24 merges in 35 hours renumbered a decision. | Loaded into every session and every subagent: CLAUDE.md at most 10,500 bytes and 160 lines (about 2,600 tokens). AGENTS.md as Next.js…. Text a search cannot show (lines over 500 characters): 0 in CLAUDE.md, docs/rules and docs/decisions. 0 prose lines in every other living doc.…. Growth, and what checks it: Every number on this card is in one baseline file and checked on every push, docs-only…. History and generated files in a default search: rg --files supabase lists 5 files. A default search of docs skips the 22 files. A…. Rules that are no longer true: 0 cited names missing, held by a scan test over every backticked name followed by a… | 0.27, 0.28, 1.1, 2.24, 2.25 |
+
+How each area climbs, by the phases of the plan. An area cannot be an A before the step that holds its numbers:
+
+| Area | Today | After phase 0 | After phase 1 | After phase 2 | After all |
+|---|---|---|---|---|---|
+| What a shopper's browser gets | C | C | | B | B |
+| What an owner's browser gets | D | C | | B | B |
+| What the server loads and asks | D | C | | B | B |
+| Scheduled work | D | C | | B | B |
+| The database | C | B | | B | B |
+| The page builder's model and a built page | C | C | | B | B |
+| Styles | C | C | | B | B |
+| Interface text | C | C | | B | B |
+| AI calls | C | C | | B | B |
+| The product's surface | C | B | | A | A |
+| The code itself | C | B | | B | A |
+| Tests, CI and the build | C | B | | A | A |
+| The written rules | C | B | | A | A |
+
+Each area's measures, today's values, the targets and how each is measured are in `bloat-review-2026-11/grade-a-bars.md`.
 
 ## 2. What is good and should stay
 
-- **There is almost no dead or copied code.** Of 4,133 source files none is unreachable and 42 are reached only by tests; 263 of
-  25,753 exports are imported by nothing; 5,423 of 472,550 code lines sit in an exact copy. Carriers, payment providers, emails and
-  the AI tools each have one core.
+- **There is almost no dead or copied code.** About 2,700 of 772,000 source lines have no caller (0.35%); 1.0% of code is an exact
+  copy and 4.75% a near-copy with every name normalised; carriers, payment providers, emails, CSV, PDF and the AI tools each have
+  one core.
 - **The dependency list is lean.** 51 runtime packages, none without an importer; every heavy browser library (the 3D viewer, the
   video and AVIF encoders, the code editor, Stripe's elements) loads on the press that needs it.
-- **The storefront's bundle discipline works.** No zod, no whole language, no third-party script and no large object in a shopper's
-  first scripts; `lazyView()` stand-ins; budgets in `e2e/performance.spec.ts`. It is the one place with a budget and the leanest
-  place in the product. That is the argument for phase 1.
-- **A warm storefront page asks the database nothing of its own.** Tags are per store on 82 of 85 cached reads, and Kaizena Flow's
-  own site and the docs are truly static.
-- **The database is careful table by table.** 59 of 5,806 columns are named by no code; 7 of 617 functions are called by nothing;
-  triggers fire only when their columns change; nearly every log has a retention rule; `platform_settings` is never read whole.
-- **The shopper chat is a model of a small AI call:** six tools, a 2,500-character prompt, history and results capped.
-- **Store features already switch things off.** Tools of features that are off are not offered, their navigation is hidden, and
-  Basic hides links without hiding pages. Phase 3 extends a mechanism that exists.
-- **Files are stored once.** All 150 files in `public/` are referenced; pictures and fonts are stored once and cached for a year;
-  the migrations were squashed this week.
+- **The storefront's bundle discipline works.** A cold home page sends 680 KB of scripts of which 447 KB is React and Next; no zod,
+  no whole language, no third-party script, no font file on a default store. It is the one place with a budget and the leanest
+  place in the product: the argument for phase 1.
+- **A warm storefront page asks the database nothing of its own**, and the caching code is sound: 82 of 85 cached reads are tagged
+  per store, and Kaizena Flow's own site and docs are truly static.
+- **The surface is built with care.** One switch registry held by tests; a new shop's Basic view has 29 links; none of the 288
+  fixed-address admin screens is orphaned; a feature a store does not use costs it close to nothing in navigation, an AI round or
+  scheduled work.
+- **The database is careful table by table.** Dead objects are rare (one table, five columns, a leftover schema), triggers fire
+  only when their columns change, and nearly every log has a retention rule.
+- **The page model is lean** (340 bytes a block; a two-block page's own markup is 1.6 KB), **the words are complete** (2,003
+  storefront keys in four languages and 29,040 admin texts in two, none missing, 34 unread) and **styles are among the leaner
+  areas**.
+- **The tests are not bloat.** 325,579 lines of tests against 768,202 of source, no snapshots, and the browser suite does not
+  repeat the unit tests.
+- **The shopper chat is a model of a small AI call:** about 5,100 characters of prompt and tools.
 - **The house knows how to hold a number.** `ratchet.scan.test.ts`, the scan tests and the byte budgets are the tools phase 1 needs.
 
 ## 3. Measured
 
+Verified figures; each area's file has the rest, with how each was measured.
+
 | Measure | Figure | Findings |
 |---|---|---|
-| Size | 1,093,628 lines of TypeScript in `src`, 325,551 of them tests; 4,133 source files, 1,771 test files; about 28% of source lines are comments, blank or imports | |
-| Routes | 560 pages and 268 route handlers; 772 prerendered addresses: 508 static, 262 need a function on every view (all 148 of the demo store's) | CA-1 |
-| Production today | not open yet: 60 demo, test and template stores of the team's own, 102 test orders | |
-| A storefront page's scripts | 808 to 1,098 KB loaded by the time the page is idle (268 to 329 KB compressed); 54 to 70% had not run. Empty cart: 938 KB, a third run | SC-2, SC-11 |
-| Kaizena Flow's front page | 1,173 KB of script, 77% not run; it loads the admin's words, zod and Supabase's client | step 0.10 |
-| An admin screen's scripts | 1.4 to 1.5 MB on every screen (about 490 KB compressed), 60 to 65% not run; product editor 2.6 MB; page builder 3.8 MB | AC-1, AC-2, AC-5 |
-| First-load scripts by route (the build's own figure) | storefront: median 0.66 MB, most 0.75; store admin: median 1.10, most 3.15; the heaviest route 4.08 MB (a Work invoice) | AC-7, AC-10 |
-| A document | storefront 104 to 166 KB, about 70% of it the page again as data; production's are 162 to 338 KB with the same share; product editor 416 KB, page builder 572 KB | CA-1, SC-8, AC-4 |
-| Requests after load, visitor idle | storefront: 11 to 50 prefetches (cart 42, checkout 50); admin: 24 to 46 | CA-4, CA-5 |
-| A prefetch loop | category and search pages on `/s/` addresses: about 160 requests a second without end, on a local build | SC-9, CA-6 |
-| Server code per route | 10.5 to 14.9 MB in 1,890 to 2,852 modules for every route measured but the health check (1.2 MB, 308); plus 34 MB of traced files each | FM-2, DS-1, AS-1, AS-2, SD-1 |
-| The two hub edits, in a copy | visit beacon 10,475 KB / 1,890 modules to 1,188 KB / 639; health check 1,155 to 417 KB; each other route about 600 KB less | step 0.1 |
-| The build | 263 s here (type check 3.0 min; 1,426 pages in 29 s); peak memory 10.2 GB cold, 7.6 GB warm; `.next/server` 1.3 GB; one stylesheet of 183 KB for stores, site and admin | SC-5, FH10 |
-| The database | 731 MB: the scheduler's log 564 MB, the app's schema 124 MB. 486 tables, 245 never held a row; 1,989 indexes, 1,006 never scanned (966 of them on the unused tables); 617 functions; 391 triggers | CR-5, DS-3, DS-9 |
-| Scheduled work | nine routes woken every minute (12,960 calls a day; seven last ran 0 to 1 ms); 84 jobs every five minutes (24,192 runs a day, about 12.5 s of database work a round) | CR-1, CR-2 |
-| The costliest statements, 78 days | the scheduler's calls 3,974 s; every published page with its content 781 s (79,778 calls, 2.3 million rows); a picture's uses 145 ms a call; `select slug from stores where id` 560,090 calls; an empty table polled 278,393 times; `cookie_scans` scanned 1.1 million times | DQ-2, DQ-3, DQ-9, DQ-12, DQ-8 |
-| A product view | 18 statements for an anonymous view of a prerendered product | SD-2 |
-| An AI manager call | 124 tool definitions, about 160,000 characters (about 40,000 tokens, an estimate), up to 11 calls a turn | AI-1 |
-| The surface | 449 admin pages; a new shop's Advanced menu 94 links; 254 store AI tools; 31 feature groups not yet tried in production | FT-1, FT-7 |
-| The standing rules | `CLAUDE.md` and `AGENTS.md` 44 KB in every session (about 11,000 tokens); `docs/decisions.md` 1.33 MB | DC-1, DC-2 |
-| Pace | 112 commits in two days; a deploy empties every cached read | CA-2, FT-2 |
+| Size | 768,202 lines of source and 325,579 of tests in `src`; 560 pages, 268 route handlers, 481 tables, 83 five-minute jobs, 254 store AI tools | |
+| Production today | not open: 60 demo, test and template stores of the team's own; 102 test orders | |
+| Server code per route | one cycle of 229 modules; 559 of 562 pages, 181 of 268 handlers and the proxy load 10 to 11 MB; cold start 0.84 to 1.09 s and 71 to 83 MB against 0.16 s and 14 MB outside the cycle; a start hook of 0.33 s | SG-1, SG-3, SG-5 |
+| The proxy | runs before every page; 1,311 modules, 0.8 to 0.95 s and 168 MB to load cold here | SD-1, SG-2 |
+| A storefront page | 680 KB of first scripts (213 KB gzip), 447 KB of it the framework; document 104 to 166 KB, about 70% the page again as data; the layout twice (25 to 30 KB) | SC-8, PL-2, PM-1 |
+| A store page view | one function run for two cart badges and a country hint (98 of 138 KB on the demo home); 11 to 50 prefetches; one or two empty server calls | CA-1, PF-2, SC-10, SC-12 |
+| An admin screen | median 1,155,530 bytes of first scripts over 432 signed-in routes; 481 KB from three imports; previews 3.2 MB; one Work screen 4.27 MB; the builder 3.3 MB | BN-1, BN-3, BN-4, BN-7, BN-14 |
+| An admin document | the product editor hands 238.5 KB of words to the browser and reads 78.9 KB; the builder 311.6 KB against 195.4 KB | PL-1 |
+| The admin's server side | menu rebuilt with 220 permission lookups, 125 ms of CPU per shell render (0.1 ms kept in a map); store Home 29 to 46 statements before first content; 39 saves draw the whole route twice | AD-1, AD-2, AD-13 |
+| A product view | 18 statements for an anonymous view of a prerendered product; stock is the one answer that changes | SD-2 |
+| Scheduled work | 13,250 calls a day sending about 170,000 statements, nearly all finding nothing; 83 jobs on one five-minute cadence (a whole round takes about 1.3 s); the scheduler's log 564 MB of the 731 MB database | CR-1, CR-2, CR-5 |
+| How data is asked for | every published page read whole to find one: 79,778 calls, 781 s; 122 store filters no index can serve; one slug lookup 560,090 times; 91,200 of 216,877 transactions changed nothing | DQ-2, DQ-8, DQ-9, DQ-6 |
+| A publish | one cache tag covers a store's pages: publishing one page makes all 261 of the demo store's built entries stale | PM-15 |
+| An AI manager round | 161,661 characters (124 tool definitions) where a lean round is about 48,600; up to 11 rounds a turn; 237,563 reads of the AI connection for 19,104 AI calls | AI-1, AI-2 |
+| Styles | one stylesheet of 183 KB (25.8 KB Brotli) for stores, site and admin; split, shoppers get 130 KB | CS-1 |
+| Interface text | 802 of 830 server entries load every admin area in both languages at each cold start (80 to 105 ms, 13 MB) | TX-1, FM-1 |
+| A push | the same commit type-checked five times (183 s each here) and built four times; lint re-reads about 6,200 files (about 3 minutes; 1 s with a cache); the production build runs at 90% of its 8 GB machine | TC-1, TC-3, TC-5 |
+| The standing rules | 44 KB in every session and subagent (about 11,000 tokens), 71% a 295-line index of which a change needs 2 to 4 lines; the search tool shows nothing of a line over 500 characters: 98% of the decisions, 52% of the rules | DC-1, DC-2 |
+| The code | about 2,700 dead lines of 772,000; 1.0% exact copies; 51 runtime packages, all used | |
+| A prefetch loop | local builds and CI only: 624 router requests in 4 s on the search page, 55 with route guessing off | PF-1 |
+| Store domains | 4 to 8 routing rules per store in each deployment, against a limit of 2,048 | SF-13 |
 
 ## 4. Findings
 
-171 findings in 14 areas: 65 eager, 39 oversize, 27 duplicate, 21 no check, 12 ahead of use, 7 dead. 101 are small, 63 medium, 7 large.
-Each area's file under `bloat-review-2026-11/findings/` gives every finding in full: where, the evidence, the cost today, the fix, the
-saving and the risk. A tick (✓) means the lead checked it a second time. *(owner)* means it needs the owner's decision. Two more
-findings are the lead's own, from production and the scans:
+353 findings in 25 areas: 163 eager, 66 oversize, 63 duplicate, 43 no check, 0 ahead
+of use, 18 dead. By priority: 103 P0, 119 P1, 97 P2, 34 P3. By effort: 227 small, 116 medium, 10
+large. They are not listed here: `bloat-review-2026-11/findings/README.md` lists every one by area with the step that closes it,
+and each has a small file of its own (`findings/<area>/<ID>.md`) with the evidence, the fix in steps, the tests and rules that
+change with it and its check. Open the files of the step you are doing, not the folder.
 
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| L-1 ✓ | `commerce_legacy`, the single-store schema renamed on 24 September, is still in production: 34 tables, 96 rows, named by no code | dead | S | 4.1 |
-| L-2 | The scan's suspects: 42 files and 655 exports that only tests reach (12,751 lines), 263 exports nothing imports, 2,205 exported though only their own file uses them | dead | S | 4.3 |
+| Area | Findings | P0 | P1 | P2 | P3 | Refuted | In full |
+|---|---|---|---|---|---|---|---|
+| What a shopper's browser loads | 13 | 6 | 4 | 3 | 0 | 0 | `findings/storefront-browser/` |
+| The built client bundles, by page | 16 | 8 | 5 | 2 | 1 | 0 | `findings/client-bundles/` |
+| What a page sends: document, payload and requests | 14 | 7 | 5 | 1 | 1 | 0 | `findings/page-payload/` |
+| Prefetching: what the router asks for unasked | 13 | 3 | 5 | 5 | 0 | 0 | `findings/prefetching/` |
+| Styles | 9 | 4 | 2 | 1 | 2 | 3 | `findings/styles/` |
+| What an owner's browser loads in the admin | 14 | 6 | 6 | 2 | 0 | 0 | `findings/admin-browser/` |
+| What the server does for a storefront request | 16 | 5 | 4 | 5 | 2 | 0 | `findings/storefront-server/` |
+| What the server does for an admin navigation | 15 | 5 | 6 | 4 | 0 | 0 | `findings/admin-server/` |
+| The server code every route loads | 18 | 6 | 5 | 4 | 3 | 0 | `findings/server-module-graph/` |
+| Server functions: size, cold start, per-request overhead | 13 | 6 | 4 | 1 | 2 | 0 | `findings/server-functions/` |
+| Caching and rendering | 16 | 5 | 5 | 4 | 2 | 1 | `findings/caching/` |
+| The page builder's model and a built page's render | 16 | 5 | 6 | 3 | 2 | 0 | `findings/page-builder-model/` |
+| Scheduled and background work | 17 | 2 | 7 | 7 | 1 | 6 | `findings/scheduled-work/` |
+| How data is asked for | 16 | 6 | 5 | 5 | 0 | 0 | `findings/queries/` |
+| The database's shape | 15 | 3 | 9 | 2 | 1 | 5 | `findings/database-shape/` |
+| What every AI call carries | 14 | 1 | 8 | 5 | 0 | 0 | `findings/ai-calls/` |
+| Interface text | 12 | 2 | 6 | 2 | 2 | 4 | `findings/interface-text/` |
+| The product's surface | 12 | 1 | 4 | 3 | 4 | 3 | `findings/features/` |
+| Families and twins | 14 | 4 | 2 | 6 | 2 | 0 | `findings/families/` |
+| Dependencies | 12 | 4 | 3 | 4 | 1 | 0 | `findings/dependencies/` |
+| Files that ship or are stored | 12 | 4 | 2 | 3 | 3 | 0 | `findings/files/` |
+| Code nothing uses | 13 | 1 | 3 | 7 | 2 | 0 | `findings/unused-code/` |
+| Copied code | 16 | 2 | 5 | 8 | 1 | 0 | `findings/copied-code/` |
+| Tests, CI and the build | 14 | 4 | 5 | 5 | 0 | 0 | `findings/tests-ci-build/` |
+| The written rules and the agents' context | 13 | 3 | 3 | 5 | 2 | 0 | `findings/written-rules/` |
 
-### What a shopper's browser loads (SC)
+### What an A lives with
 
-The storefront is leaner than the rest of the platform, but not lean. A cold home page sends 680 KB of scripts (213 KB gzipped); 63 % of that is React and Next themselves, and the store's own code is about 80 KB gzipped, with no zod, no whole-language texts, no third-party script and no large object passed into client components. In full: `bloat-review-2026-11/findings/storefront-browser.md`.
+15 findings are true and not worth fixing. This is the tolerance the bars allow, stated:
 
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| SC-1 ✓ | Every page prefetches the pages behind its links, including language and currency views nobody opens | eager | S | 0.9 |
-| SC-2 | Listing, search, cart, checkout, account, wishlist and cookies pages all load one bundle of every working part | eager | M | 2.4 |
-| SC-3 ✓ | Admin words and whole catalogues ride in every shopper's first scripts | oversize | S | 2.1 |
-| SC-4 | The product page loads the cart's forms and every product kind's picker | eager | S | 2.4 |
-| SC-5 | One stylesheet for stores, site and admin: shoppers download the admin's utility classes | oversize | M | 2.4 |
-| SC-6 | The byte budgets are loose, count a file no modern browser loads, and cover one storefront route besides home | no check | S | 1.3 |
-| SC-7 | On a wide screen the cart is rendered twice: once as a drawer that is thrown away, then as a full page | duplicate | S | 2.2 |
-| SC-8 | The whole store layout is rendered and sent twice in every page, because the cart drawer's slot sits on the root layout | duplicate | M | 2.2 |
-| SC-9 ✓ | Listing and search pages ask for one prefetch about 160 times a second on /s/ addresses | eager | M | 0.11 |
-| SC-10 | Every page view asks the server for the wishlist, also for visitors who have none | eager | S | 0.9 |
-| SC-11 | Parts no shopper sees, for staff or for features no store uses, are in every page's first scripts | ahead of use | S | 2.4 |
-
-### What the server does for a storefront request (SD)
-
-A warm, cached storefront page is lean: a prerendered home page, store page or empty cart makes no database read of its own. The bloat sits around that page. In full: `bloat-review-2026-11/findings/storefront-server.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| SD-1 | Three imports pull most of the server into the proxy and into every storefront page | eager | M | 2.8 |
-| SD-2 | A product page asks the database about 18 times per view; one answer changes per view | eager | M | 2.3 |
-| SD-3 | Every deploy empties the caches and nothing warms them, so most real visits are cold | no check | S | 2.7 |
-| SD-4 ✓ | Every published page is read whole to pick one page or a few titles | oversize | M | 0.6 |
-| SD-5 | A cold page waits on reads one after another before its first byte | eager | S | 2.3 |
-| SD-6 | The proxy asks the database before most page views, static pages included | eager | S | 2.8 |
-| SD-7 ✓ | Every instance starts by reading an empty table, then polls it each minute | ahead of use | S | 0.8 |
-| SD-8 | Tagged reads still expire by the clock: 1 hour for 71 of them, 15 minutes for the home page | eager | M | 2.7 |
-| SD-9 | Pages ask about features no store uses | ahead of use | M | 2.3 |
-| SD-10 | The store is looked up by its id again and again | duplicate | M | 0.8 |
-| SD-11 | The same shopper facts are read several times in one request | duplicate | S | 2.3 |
-| SD-12 | Whole rows and documents are read for one fact | oversize | S | 2.3 |
-| SD-13 | The browser's side has budgets; the server's side has none | no check | M | 1.2 |
-
-### What an owner's browser loads in the admin (AC)
-
-The admin's browser load is moderately bloated, not runaway, and most of the worst of it is cheap to fix. A plain admin screen loads 1.15 MB of script (0.35 MB gzip), down from 3.0 MB two weeks ago, but 43% of what every screen still loads (481 KB) is Supabase's whole client, zod and the builder's English text, pulled in by three stray imports. In full: `bloat-review-2026-11/findings/admin-browser.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| AC-1 ✓ | Three stray imports put Supabase, zod and the builder's English on every admin screen | eager | S | 0.10 |
-| AC-2 | 26 screens load an editor they never draw, because lists, previews and editors share one views file | eager | S | 2.5 |
-| AC-3 | Order, customer and deal screens load the rich text editor and the builder's schema for custom fields no store has filled in | eager | S | 2.5 |
-| AC-4 | Pages hand whole text areas to the browser where their parts read a few branches; one area on every screen is read by nothing | oversize | M | 2.1 |
-| AC-5 | The page builder loads everything at once: 3.3 MB of script before the first paint | eager | M | 2.5 |
-| AC-6 | The builder and the draft order editor load the storefront's text in all four languages to read two branches | oversize | S | 2.1 |
-| AC-7 | The Work invoice screen ships the whole admin catalogue, both languages, in one 1.7 MB chunk | oversize | S | 2.1 |
-| AC-8 | The AI manager's chat downloads every tool definition, the admin map and the Norwegian page names to label a tool call | oversize | S | 2.5 |
-| AC-9 | English text for 23 areas is still compiled into client scripts and then handed down again in the HTML | duplicate | M | 2.1 |
-| AC-10 | The script budget covers 7 of 449 admin routes and none of the HTML | no check | S | 1.3 |
-| AC-11 | The import guard that keeps zod and whole catalogues out of shoppers' scripts leaves the admin out | no check | S | 1.3 |
-| AC-12 | Every navigation link in view is prefetched with Next's defaults, and what that costs is unmeasured | eager | S | 0.9 |
-
-### What the server does for an admin navigation (AD)
-
-The admin's server side is moderately bloated, and the bloat is in the shell and the two home screens, not in the lists. At today's size (60 stores, 102 orders) no single query is slow; what is wasteful is how much is redone: the store shell costs 67 to 129 ms of pure CPU to rebuild its menu (measured), reads the same membership three times, and is redrawn in full after every save (599 refresh() calls) and every poll tick. In full: `bloat-review-2026-11/findings/admin-server.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| AD-1 | The store menu is rebuilt with 220 slow permission lookups on every shell render | eager | S | 2.6 |
-| AD-2 | The store Home runs 30 or more statements before it shows anything, some for nothing | eager | M | 2.6 |
-| AD-3 | Every admin request from an account without two-step calls Supabase Auth, and may write | eager | S | 2.6 |
-| AD-4 | The store shell reads one thing after another, and checks Stripe set-up on every render | eager | S | 2.6 |
-| AD-5 | Every save and poll re-sends 51 to 63 KB of unchanged shell words and menu | oversize | M | 2.6 |
-| AD-6 | The platform Home holds its first paint for 18 statements and reads whole lists to show a number | oversize | S | 2.6 |
-| AD-7 | The products list reads the whole editor context and a per-product check it does not need | oversize | S | 2.6 |
-| AD-8 | An account's memberships are read three or four times per request, in four shapes | duplicate | M | 2.6 |
-| AD-9 | Progress polls redraw the whole admin, and a notice poll runs in every owner tab | eager | S | 2.6 |
-| AD-10 | Three lists load everything; the customers list also groups every order before it cuts to 100 | oversize | M | 4.1 |
-| AD-11 | The orders list re-reads store facts it already holds and waits in a row for the count | duplicate | S | 2.6 |
-| AD-12 | Nothing counts what a screen costs the server, so the Home grew to 30 statements unseen | no check | M | 1.4 |
-
-### Caching and rendering (CA)
-
-The caching code itself is not bloated: 85 cached reads, 82 of them tagged, tags per store, and Kaizena Flow's own site and the docs are truly static. The waste is in how it meets the platform it runs on. In full: `bloat-review-2026-11/findings/caching.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| CA-1 ✓ | Every store page view runs a function that sends the whole page again, for two cart badges | eager | M | 2.2 |
-| CA-2 | Cached reads live in one instance and one deploy, and the site deploys many times a day *(owner)* | no check | M | 2.7 |
-| CA-3 ✓ | To read one page, the code loads every published page with its whole content | oversize | M | 0.6 |
-| CA-4 ✓ | Language and currency links prefetch whole front pages that their click never opens | eager | S | 0.9 |
-| CA-5 ✓ | Each admin screen prefetches 15 to 22 other screens, and the storefront, on sight | eager | S | 0.9 |
-| CA-6 ✓ | A prefetch loop on listing and search pages at /s/{store} addresses | eager | M | 0.11 |
-| CA-7 | partialPrefetching is unset: Next treats it as off, warns on every build and start, and will remove the choice | no check | S | 2.7 |
-| CA-8 | A store's robots.txt, sitemap, llms.txt, blog feed and favicon are computed on every request with no HTTP cache | eager | S | 0.12 |
-| CA-9 ✓ | Three tiny facts that almost never change are asked of the database 11,000 times a day | duplicate | S | 0.8 |
-| CA-10 | Pages are rebuilt every hour and dropped after a quiet day, though every write already refreshes a tag | eager | S | 2.7 |
-| CA-11 | One store owner saving their AI key refreshes every page of every store | oversize | S | 2.7 |
-| CA-12 ✓ | Timers that poll and prune for nobody | ahead of use | S | 0.8 |
-| CA-13 | The theme store's list is drawn twice and per request; a theme's neighbours reload every theme's snapshot | eager | S | 2.7 |
-| CA-14 | Cache entries keyed by lists of ids are almost never asked for twice | oversize | S | 2.7 |
-
-### Scheduled and background work (CR)
-
-Scheduled work is the platform's steadiest load, and almost all of it finds nothing to do. Supabase wakes a 47 to 125 MB Vercel function 13,250 times a day, and those runs send roughly 170,000 statements a day to the database; the call that wakes the cron routes is the most expensive statement the app's role runs (3,974 s in total). In full: `bloat-review-2026-11/findings/scheduled-work.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| CR-1 ✓ | Nine routes are woken every minute whether or not anything waits | eager | M | 0.3 |
-| CR-2 ✓ | The dispatcher runs all 83 jobs every five minutes: one cadence for everything, one ledger write per job | eager | M | 0.4 |
-| CR-3 | Two every-minute routes and 36 dispatcher jobs poll features no store has ever used | ahead of use | S | 0.4 |
-| CR-4 | AI upkeep re-reads whole catalogues every five minutes to learn nothing changed | eager | M | 2.10 |
-| CR-5 ✓ | pg_cron's own run log is never pruned | dead | S | 0.5 |
-| CR-6 | The cookie scan's due check runs per site every minute and is the database's largest source of sequential scans | eager | S | 0.3 |
-| CR-7 | The theme-shots route rebuilds its whole wanted list every minute | eager | S | 0.3 |
-| CR-8 | Kaizena Flow's own payouts are read from Stripe every five minutes | eager | S | 0.4 |
-| CR-9 | The invoice job asks to issue the same waiting invoices every five minutes, and none has ever been issued *(owner)* | eager | S | 0.4 |
-| CR-10 | The docs search index is rewritten row by row on every docs change | oversize | S | 2.10 |
-| CR-11 | Finished or orphaned scheduled pieces are still deployed and polled | dead | S | 0.4 |
-| CR-12 | The daily job is scheduled twice, at the same minute | duplicate | S | 0.3 |
-| CR-13 | Status checks are kept raw for 91 days though the page shows one bar a day | oversize | S | 2.10 |
-| CR-14 | Nothing limits or measures scheduled work, so each feature adds a poll | no check | S | 1.4 |
-
-### How data is asked for (DQ)
-
-The database is not under load: the app statements that cost production the most add up to about 39 minutes of database time in 78 days, and the slowest averages 145 ms. The bloat is in how often data is asked for and how much comes back: most of the work is done for nobody. In full: `bloat-review-2026-11/findings/queries.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| DQ-1 ✓ | Nine routes are called every minute to ask the database whether there is work, and there almost never is | eager | M | 0.3 |
-| DQ-2 ✓ | Every published page is read whole to find one page or a few titles | oversize | M | 0.6 |
-| DQ-3 | "Where is this picture used" scans every page's text for each picture, and the job re-checks every picture daily | eager | M | 2.10 |
-| DQ-4 | Each request for an AI connection sums the store's whole month of AI usage | eager | S | 0.8 |
-| DQ-5 | The five-minute dispatcher runs 84 jobs at once on 5 connections, and several redo real work every tick | eager | M | 0.4 |
-| DQ-6 | The knowledge job reads every page whole every five minutes and re-cuts pages that have no text, forever | eager | S | 2.10 |
-| DQ-7 | A page's frame asks about 20 questions each time its cache is cold, and the cache is cold far more often than the code assumes | eager | M | 2.10 |
-| DQ-8 ✓ | "is not distinct from" on store_id keeps the index from serving the hottest reads | oversize | S | 0.7 |
-| DQ-9 ✓ | The store's slug is looked up by id again and again: the most-called statement in production | duplicate | S | 0.8 |
-| DQ-10 | Whole JSON documents are fetched where a field or a count is needed (61 page reads, 14 theme reads) | oversize | M | 2.10 |
-| DQ-11 | Nothing counts queries: no budget per page or per tick, and production's statement statistics are not part of any routine | no check | S | 1.4 |
-| DQ-12 ✓ | Every server instance polls an empty translations table at start and each minute | ahead of use | S | 0.8 |
-| DQ-13 | 341 loops hold a database call in their body; the costly ones are jobs that loop over sites | eager | M | 4.1 |
-| DQ-14 | 387 list reads have no limit by a heuristic count; a handful read a whole store's documents or samples | oversize | M | 4.1 |
-
-### The database's shape (DS)
-
-The database is wide, not rotten. About half of it has never been used: 245 listed tables of 486 never held a row, and they carry 47% of all columns, 49% of all indexes, 50% of all foreign keys and 45% of the lines of schema.ts. In full: `bloat-review-2026-11/findings/database-shape.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| DS-1 ✓ | Every server start loads the whole schema file, which no query uses | eager | S | 0.1 |
-| DS-2 ✓ | Each server start waits for a database read of an empty table, then asks again every minute | eager | S | 0.8 |
-| DS-3 | Unused features still run in the database on every write and every tick | ahead of use | M | 0.4 |
-| DS-4 | A page's title, parts and flags live only inside its content JSON, so lists read and parse whole pages | oversize | M | 2.10 |
-| DS-5 | The knowledge job re-cuts pages that have no text every five minutes, and reads every page's content to compare a date | eager | S | 2.10 |
-| DS-6 | The platform is modelled three ways: null-store rows, platform_* twin tables and its own store *(owner)* | duplicate | L | 3.2 |
-| DS-7 ✓ | `store_id is not distinct from` keeps Postgres from using the store indexes | oversize | S | 0.7 |
-| DS-8 ✓ | 607 MB of the 731 MB database is outside the app's schema, and the scheduler's own run log has no pruning job | oversize | S | 0.5 |
-| DS-9 | orders has 34 indexes, four of them starting (store_id, placed_at); 15 indexes in all are redundant | oversize | S | 4.1 |
-| DS-10 | Where each picture is used is found by text-searching every page's JSON, again every day for every picture | eager | S | 2.10 |
-| DS-11 | Ending one sandbox runs at least 800 deletes, one per store table per round | oversize | M | 4.1 |
-| DS-12 | Nothing limits or reviews the schema's growth *(owner)* | no check | S | 1.5 |
-| DS-13 | Three small retention gaps remain *(owner)* | oversize | S | 2.10 |
-| DS-14 | A short list of dead database objects | dead | S | 4.1 |
-
-### Dependencies (DP)
-
-The dependency list itself is lean: 51 runtime packages for 473,000 lines, none without an importer, and every heavy browser library (3D viewer, video and AVIF encoders, code editor, Stripe elements) is loaded only on the press that needs it, so a shopper's first scripts carry no third-party library beyond React and Next. The bloat is in when server packages load: the built output shows 89 to 98% of the 830 routes evaluate the same 11 MB of server code on their first request, and with it 481 table definitions nobody queries through, the Stripe and Supabase SDKs, a font parser and sharp's 18 MB native library; the page-view beacon evaluates 1,415 of its 1,456 modules. In full: `bloat-review-2026-11/findings/dependencies.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| DP-1 ✓ | 481 table definitions are loaded and indexed in every function for a query API nobody calls | eager | S | 0.1 |
-| DP-2 | sharp's native library, a font parser and a bzip reader load on nearly every cold start | eager | S | 0.2 |
-| DP-3 | The Stripe and Supabase SDKs are evaluated by 97% of routes; reading a store builds a Stripe client to see if keys exist | eager | M | 2.8 |
-| DP-4 ✓ | supabase-js and zod are 29% of the first scripts of every admin page | eager | S | 0.10 |
-| DP-5 | The rich text editor loads on 21 admin lists and detail pages that may never show it | eager | S | 2.5 |
-| DP-6 | Nothing limits what a route's server function loads, so every route came to load everything | no check | S | 1.2 |
-| DP-7 | Three 125 MB Chromium functions are woken every minute and almost always find nothing | eager | S | 0.3 |
-| DP-8 | A 26 MB icon package is installed and parsed each build for 26 paths | oversize | S | 4.3 |
-| DP-9 | The existing plan's dependency item (FH12) names the wrong package twice | no check | S | 4.3 |
-
-### Files that ship or are stored (AS)
-
-The files this repo stores are mostly lean: all 150 files in public/ are referenced, every script and small folder is in use, supabase/ was cleaned this week (one snapshot, 789 migrations squashed), and pictures and fonts are stored once and cached for a year with no resizing per request. The bloat is in what gets packed into server functions. In full: `bloat-review-2026-11/findings/files.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| AS-1 ✓ | The image library (sharp, 19.8 MB) rides in 742 of 832 functions and in the proxy, and is loaded at every cold start | eager | S | 0.2 |
-| AS-2 ✓ | The product taxonomy (13.3 MB of JSON) is packed into every function, the proxy and the health check included | oversize | M | 2.8 |
-| AS-3 | Nothing checks what a server function carries | no check | S | 1.2 |
-| AS-4 | Search suggestions ask Next's image service for pictures it refuses | dead | S | 0.12 |
-| AS-5 | Public files are checked again on every page view, and six flags and two textures are far bigger than their job | oversize | S | 0.12 |
-| AS-6 | The PDF routes carry all of react-dom (8.1 MB) to use one server renderer | oversize | S | 4.3 |
-| AS-7 | Tailwind reads 22.5 MB that cannot hold a class: the migrations' SQL and the test files | dead | S | 2.4 |
-| AS-8 | The decisions log is one 1.33 MB file and grew 7% in two days | oversize | M | 4.4 |
-
-### What every AI call carries (AI)
-
-The shopper chat is lean and well made: about 5,000 characters of prompt and tools a call. The AI manager is the bloated part: every model call carries about 160,000 characters (roughly 40,000 tokens, an estimate at 4 characters a token), 91% of it 124 tool definitions that do not depend on the question, and a turn makes up to 11 such calls; this is already step 3.18 of the code review, still Open, and nothing caches it. In full: `bloat-review-2026-11/findings/ai-calls.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| AI-1 ✓ | Every AI manager call sends 124 tool definitions, whatever the question or screen *(owner)* | eager | M | 2.9 |
-| AI-2 | The AI connection is fetched on pages, polls and jobs that call no model | eager | M | 0.8 |
-| AI-3 | Prompts are not cacheable and cached tokens are never counted | eager | M | 2.9 |
-| AI-4 | The owner's browser downloads the model's whole tool catalogue and admin map | oversize | S | 2.5 |
-| AI-5 | The five-minute knowledge and embedding jobs rescan everything to find nothing | eager | M | 2.10 |
-| AI-6 | Autopilot, follow-up and saved-skill tools ride on every round, though nobody has used them | ahead of use | S | 2.9 |
-| AI-7 | One text model does every job, small ones included | oversize | M | 2.9 |
-| AI-8 | Tool schemas say more than the model needs | oversize | M | 2.9 |
-| AI-9 | A turn does needless work before the first model call | eager | S | 2.9 |
-| AI-10 | Nothing limits how large an AI call may grow | no check | S | 1.6 |
-| AI-11 | The prompt lists every playbook, whatever the store has switched on | eager | S | 2.9 |
-| AI-12 | Every open admin tab asks for AI manager notices once a minute | eager | S | 2.6 |
-
-### The product's surface (FT)
-
-The surface is far larger than its use: 560 pages, 110 store navigation links, 254 AI manager tools, 83 five-minute jobs and 481 tables serve 60 stores and 102 orders. About 100,000 lines of code (13% of src, a lower bound by file name), 42,000 lines of tests and 146 tables belong to 31 feature groups in which no store has ever written a row; most were built in the last weeks, so they are unused so far, not proven unneeded. In full: `bloat-review-2026-11/findings/features.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| FT-1 | 31 feature groups that no store has ever used are always on, with no switch *(owner)* | ahead of use | L | 3.1 |
-| FT-2 | Nothing limits how fast the surface grows, and the pause of 29 October did not hold *(owner)* | no check | S | 1.5 |
-| FT-3 | A feature's scheduled work runs whether or not any store uses it; the switch does not reach it | eager | M | 0.4 |
-| FT-4 | The AI manager is offered 234 tools in a shop with nothing else on; about 80 are for features no store has used | eager | S | 3.1 |
-| FT-5 | Kaizena Flow's site is kept twice since the switch of 7 November | duplicate | M | 3.2 |
-| FT-6 | A whole developer platform is open with no user: API, OAuth server, MCP, apps, endpoints *(owner)* | ahead of use | M | 3.5 |
-| FT-7 | A new shop's Advanced admin has 94 links and 35 settings; Basic lists two pages no store has ever used *(owner)* | oversize | M | 3.1 |
-| FT-8 | Order rules ('Automation') and Workflows are two engines for the same job *(owner)* | duplicate | M | 3.4 |
-| FT-9 | Campaigns and discount codes are two discount engines with two editors *(owner)* | duplicate | L | 3.4 |
-| FT-10 | The parity rule builds platform twins nobody uses: 12 of 19 platform tables are empty *(owner)* | no check | S | 3.3 |
-| FT-11 | Fiken is connected to no store while the stated aim is to make Fiken unnecessary *(owner)* | ahead of use | S | 3.5 |
-| FT-12 | The unified theme concept still carries its older layers, five of them never used *(owner)* | duplicate | M | 3.4 |
-| FT-13 | Four reward programmes with separate ledgers, all empty *(owner)* | duplicate | L | 3.4 |
-| FT-14 | Ten carriers are built and none is connected; checkout's delivery code imports all ten | ahead of use | S | 3.1 |
-
-### Families and twins (FM)
-
-Copy-paste is not this codebase's problem: 1.5% of code lines sit in 8-line clones, and a scan of 3,974 files finds only 41 twin pairs. Carriers, payment providers, emails and the AI tools each have one core. In full: `bloat-review-2026-11/findings/families.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| FM-1 | Both languages of the admin's words (2.8 MB) load with 802 of 830 server entries, the storefront's included | eager | M | 2.1 |
-| FM-2 ✓ | One import of sameSite through the chat module makes the four visit beacons load the whole server core | eager | S | 0.1 |
-| FM-3 | kaizenaflow.com exists twice: the old no-store site is still built, edited and read beside the store that now serves it *(owner)* | duplicate | M | 3.2 |
-| FM-4 | The platform's events have a second pipeline: 5 modules, 7 tables and 2 per-minute runners that copy the stores', and neither side has been used *(owner)* | duplicate | M | 3.3 |
-| FM-5 | The parity rule makes a twin by default and nothing counts them: 9 platform tables on 6 November, 19 today *(owner)* | no check | S | 3.3 |
-| FM-6 | Five CSV imports are five copies of one engine, screen and tick route | duplicate | M | 4.2 |
-| FM-7 | 1,266 server actions, 50 on the shared wrapper; the rest repeat guard, language and failure handling | duplicate | L | 4.2 |
-| FM-8 | Lists, tables, dates and selects are still hand-made per screen, and the counts are not held while the kit waits | duplicate | L | 4.2 |
-| FM-9 | Fiken's sync engine is a copy of Tripletex's; a third accounting system would be a third copy | duplicate | M | 3.5 |
-| FM-10 | Work and Domains have a second set of screens at account level, 29 to 77% the same as the store's | duplicate | M | 4.2 |
-| FM-11 | Ten small pairs of near-copies, about 840 identical lines | duplicate | M | 4.2 |
-| FM-12 | Small helpers are rewritten per file: 437 names appear in three or more files | duplicate | M | 4.2 |
-| FM-13 | No check holds duplication or import reach, so twins and heavy imports arrive unseen | no check | S | 1.2 |
-
-### The written rules and the agents' context (DC)
-
-The part every session pays for is bloated: CLAUDE.md plus AGENTS.md is 44 KB (about 11,000 tokens, estimate at 4 characters a token), 71% of it a 295-line feature index, and the median change of the last 65 code commits touched files named by 2 of those 295 rules. The docs read on demand are very large (7.9 MB of Markdown, about 2 million tokens; decisions.md alone 1.33 MB) but cost nothing until opened; their real fault is format: one decision ID costs 2 to 45 KB to look up, 885 lines over 1,000 characters hold 24% of all docs bytes, and 41% of the folder is finished history that a search returns beside the living rules. In full: `bloat-review-2026-11/findings/written-rules.md`.
-
-| ID | Finding | Kind | Effort | Step |
-|---|---|---|---|---|
-| DC-1 ✓ | Every session loads a 295-line feature index; a typical change needs 2 of its lines *(owner)* | eager | M | 4.4 |
-| DC-2 | One decision costs 2 to 45 KB to look up, and the newest 196 decisions sit under the wrong heading | oversize | M | 4.4 |
-| DC-3 | Nothing caps the written rules, and one test makes the always-loaded file grow with every feature | no check | S | 1.6 |
-| DC-4 | The six rule files are too big to open and are written as walls of text | oversize | M | 4.4 |
-| DC-5 | CLAUDE.md sends agents to a 73 KB plan written before the platform was multi-tenant | eager | S | 4.4 |
-| DC-6 | The code review's Progress table must be read before every fix and grows by about 0.9 KB a step | oversize | S | 4.4 |
-| DC-7 | 41% of the docs is finished history that a search returns beside the living rules | dead | S | 4.4 |
-| DC-8 | A feature's facts are restated in four to six places, in different words, and the copies drift | duplicate | L | 4.4 |
-| DC-9 | The saved parity-wave workflow writes 120 KB specs and tells twelve agents to read them whole | no check | S | 4.4 |
-| DC-10 | The Migration versions list has been frozen since 4 October, but CLAUDE.md still tells agents to record versions there | dead | S | 4.4 |
-| DC-11 | The parity report commits 270 KB of generated tables beside the rows they are made from *(owner)* | duplicate | S | 4.4 |
-
+- **CP-10.** Eleven hand-written claim-with-a-lease statements, about 130 lines in all. Each has another table, join and retry column: an idiom, not a copy. Tolerance: the 11 are held as a count by the copy baseline of step 1.9 and may not rise.
+- **DP-3.** The Stripe and Supabase SDKs load with 97% of routes: 18 to 28 ms and about 1 MB of heap on a lean route, nothing a person sees. Step 2.12 takes Stripe off the read of a store, the graph test of step 1.5 shows the edges that are left, and they are cut when stores.ts or stripe.ts is next changed.
+- **AS-6.** All of react-dom (8.1 MB) rides in four PDF traces of 107 to 140 MB: 5 to 7% of them and nothing a person feels, and a wrong glob would break invoices. The trace report of step 1.5 shows the number; act only if a function nears Vercel's size limit.
+- **PL-12.** The default icon is 26 KB raw, about 9 KB on the wire, fetched at low priority after load, once per site, and only by a store with no icon of its own. It delays nothing a shopper sees, and it gets a day's cache lifetime with the public files in step 0.23.
+- **BN-13.** 40% of the built client files are second copies of modules, but a browser meets about 14% of that while moving around the admin, and it is the chunker working as designed. The only lever is an experimental flag on a build with no memory to spare. The plan's other steps remove about 1.5 MB of the 6.89 MB of copies. Measure again after them, and adopt the flag only if a 59-screen tour falls by 10% or more with no budget raised.
+- **SD-12.** Every one of these reads is cached and tagged, and together they cost about 1.5 s of database time a day. The uncached part, the AI provider row, is closed by step 0.16, and the modal scan by steps 2.9 and 2.19. Tolerance: a cached, tagged read may fetch a row wider than it shows while the row is under about 10 KB.
+- **SG-12.** About 290 KB and 10 ms per cold instance, and the only cut in the set that could show a shopper the wrong language. Tolerance: all four hand-written storefront languages load with a page, 0.4 MB of its 4 MB budget. Look again when a fifth hand-written language is added.
+- **CA-8.** A crawler asks for each store's robots.txt, sitemap, llms.txt and feed about once a day, so a one-hour CDN window would save almost nothing. What a cold sitemap costs is what it reads, and step 0.19 removes most of that. Add the header when the handlers are next opened.
+- **CR-13.** Raw status checks kept for 91 days are bounded: about 131,000 rows and 20 MB at steady state, in the platform's own table, pruned, and not growing with stores. Its one-line fix (bound the newest-check read to one day) is made when status.ts is opened for step 3.3.
+- **DQ-13.** It names a pattern, not a cost of its own: 341 loops hold a database call. All but the per-site job loops run over a parent's few rows, and their cost follows use. The per-site loops are closed by steps 0.21, 3.2 and 3.4, and the budget of step 1.6 holds the tolerance as a number: at most 2 more statements a tick for each added store with chat and pictures on.
+- **FT-1.** 53 of 110 store links and 133 of 254 AI tools stand behind no switch. That is fine: a switch changes what an owner sees, not what a store costs. Links hide in Basic, a round is capped whatever is switched, and jobs are set-based. Where a feature does cost an idle store the fix is at the read (step 0.17), and the surface budget of step 1.10 asks each new feature for its idle cost. No second tier of switches.
+- **FT-9.** Campaigns (7 kinds) and discount codes (3 kinds) are two mechanisms with a shared edge, not one job built twice: about 100 to 200 lines of parallel helpers, in code that decides money. Fold the helpers into one small module when pricing code is next opened. The one Discounts page is already code review step 2.4.
+- **DC-9.** The parity-wave workflow has not run since feature waves were paused on 29 October, so no session pays for it. Its fix is three edits (cap the spec at 30,000 characters, tell agents to read sections 1 to 5 and their own part, drop the draft of a CLAUDE.md bullet), to make on the day a wave is next run.
+- **CS-2.** motion.css stays in the sheet: 18.7 KB raw, 3.8 KB Brotli on a first visit, also for a store with no builder motion. Taking it out needs a build step and a second render-blocking request on every page that does use motion, and nobody can know the share before opening. The stylesheet budget holds it. Look again when the reading of step 2.6 shows under half of published pages need it.
+- **TX-10.** A deliberate, written design (D312 A6 and A8): the server answers in English because the AI manager and the tests read it, and about 300 refusals are matched back to their Norwegian. It costs 16.7 KB of source kept twice and no measurable time. The one real mismatch, the product.media pair, is settled in step 0.25. Add the coverage test when a validator is next changed.
 
 ## 5. The plan
 
-Five phases, in the order to do them. Phase 0 is small, safe and measured the day after from production; phase 1 keeps what phase 0
-wins; phase 2 is the structural work; phase 3 makes cost follow use and holds the owner's decisions; phase 4 is tidying. Every finding is closed by exactly one
-step. "Platform:" says what the step means for `/admin/platform` and Kaizena Flow's own site, by the house rule. A "done when" names
-a script of `bloat-review-2026-11/scripts/` (step 1.1 makes them commands) or a production figure from
-`evidence/production-database.md`.
+82 steps in 5 phases, in the order to do them. The Progress table at the top lists every step; each phase has a file
+with its steps in full (`bloat-review-2026-11/plan/phase-N.md`): what to change, the findings it closes, the check that says it is
+done, and what it means for `/admin/platform` and Kaizena Flow's own site, by the house rule that the platform gets what stores get.
+Every finding is closed by exactly one step, tolerated above, or a choice for the owner. A step's "done when" names a script of
+`bloat-review-2026-11/scripts/`, a production figure (`evidence/production-database.md` has the queries), a test or a file.
 
-**How this sits beside the code review's plan.** That plan stays. Where the two meet:
+**How this sits beside the code review's plan.** That plan stays. Where a step here is one of its steps, the step says so (among
+them 1.4 server actions, 1.8 the build's room, 1.10 the written rules, 3.9 and 3.10 the catalogue's reads and tags, 3.14 the schema
+file, 3.15 lean tables, 3.18 and 3.20 the AI manager's rounds): do it once, there or here, and tick both.
 
-| Code review's step | Here |
-|---|---|
-| 1.4 one wrapper for server actions; 1.12 to 1.15 the admin kit | Step 4.2 counts what is left (50 of 1,266 actions) |
-| 1.8 give the build room (FH10) | Not re-audited: the build's area did not run (step 4.5). Step 2.7's shared deploys touch it |
-| 1.10 make the written rules cheap to read (FH4, FH5) | Step 4.4 gives it numbers and step 1.6 a standing check |
-| 3.9 and 3.10 the catalogue's reads and tags (FF2, FF3, FF5) | Untouched. Step 0.6 is the same fault for pages, which no step there covers |
-| 3.14 split `schema.ts` (FD5) | Step 0.1 does the half that costs at run time, in two lines |
-| 3.15 keep the big tables lean (FD7, FD8) | Step 4.1 |
-| 3.18 cheaper AI rounds and 3.20 a quick model (FA1, FA8, FA9) | Step 2.9: do it there, with these numbers |
+### Phase 0: Before the doors open
 
-### Phase 0: Stop the work done for nobody
-
-**Goal:** remove what costs something every minute, every request or every cold start, with small changes that move no behaviour. **A person will notice:** nothing, which is the point: the same screens, a database a quarter of its size, colder pages that answer sooner, and a scheduler that sleeps when there is nothing to do. Twelve steps, nine of them small; none depends on another, so they can run side by side.
-
-1. **Cut the two import hubs.** In the four visit beacons (`src/app/api/visit/**/route.ts`) import `sameSite` from `@/lib/same-site`, not through `src/server/chat-route.ts`, which brings the chat, the AI layer and the support desk with it. In `src/db/client.ts` make the schema import type-only and call `drizzle({ client: pool })`: nothing uses the query builder (0 `findMany`, 1,182 files import only `sql`), yet 481 table definitions are loaded and indexed at every cold start. Closes FM-2 ✓, DS-1 ✓, DP-1 ✓. S. Done when: `server-graph.mjs` reports `/api/visit` under 700 modules and 1.3 MB (1,890 and 10.5 MB today), and `src/db/schema.ts` at 0 KB for every route. Measured in a throwaway copy with exactly these two edits: the beacon fell to 639 modules and 1,188 KB, the health check from 1,155 to 417 KB, and every other route lost about 600 KB (`evidence/spike.md`). Platform: the same code serves it.
-2. **Load the image library when a picture is drawn.** One helper, `src/server/sharp.ts`, returns `(await import("sharp")).default`, as `browser.ts` does for Chromium. The twelve server modules that import `sharp` at the top keep its types and call the helper where they draw. A scan test fails on a static import of `sharp` anywhere else. Closes AS-1 ✓, DP-2. S. Done when: in the analyzer's export `sharp` is no longer among the modules loaded with `/api/visit`, a storefront page or the proxy. Its 19 MB native file stays traced beside each function until step 2.8 untangles the imports. Platform: the same code.
-3. **Wake the per-minute routes only when work waits.** Replace the nine every-minute pg_cron schedules with one job that runs a small SQL function each minute: one `exists()` per queue, `net.http_post` only when it is true, and every route once in 15 minutes as a net for work that comes due by the clock. CR-1 names each route's gate. Take the `crons` block out of `vercel.json` (the daily job is scheduled twice). Give the cookie scan's due check an index it can use, and let the theme-shots route keep its wanted list between runs. Closes CR-1 ✓, DQ-1 ✓, DP-7, CR-6, CR-7, CR-12. M. Done when: `commerce.cron_jobs` shows under 1,500 route runs a day while nothing waits (12,960 today); an integration test proves each kind of due work makes its gate true; a queued page job still starts within a minute. A new migration: it unschedules the nine and schedules the one. Platform: the same routes carry Kaizena Flow's own work.
-4. **Give each dispatcher job its own period, and skip what no store uses.** `runJobs()` takes a period per job (300, 3,600 or 86,400 seconds), decided from one read of `cron_jobs` at the start. The nine prunes move to the daily route; jobs tied to a day or an hour run hourly. One statement of `exists()` per queue table marks the jobs of features nobody uses as skipped (the first row makes the job run; nothing is switched off for owners). One ledger write per round, not per job. Read Stripe's payouts daily, ask to issue invoices only where one waits, retire the finished `aiPictureMarks` backfill and decide `document-pdfs`. Closes CR-2 ✓, CR-3, DQ-5, FT-3, DS-3, CR-8, CR-9, CR-11. M. Done when: job runs a day fall from 24,192 to under 9,000 (`cron_jobs.runs`), the dispatcher writes the ledger 288 times a day, and a test proves a feature's first row makes its job run on the next round. Platform: its jobs (briefing, books, payouts) get periods too.
-5. **Prune the scheduler's own log.** pg_cron writes a row with the whole command for every run and nothing deletes them. Add a daily pg_cron job that deletes `cron.job_run_details` older than seven days, in a new migration. Closes CR-5 ✓, DS-8 ✓. S. Done when: the `cron` schema is under 20 MB (564 MB of the 731 MB database today) and the database under 200 MB. Platform: one database.
-6. **Read one page, not all of them.** `listPublishedPages()` (`src/server/pages.ts:664`) selects the whole content of every published page and has 37 call sites; nine want one page and most of the rest want slugs or titles. Add `publishedPageById(owner, id)`, cached per page, and `publishedPageHeads(owner, type)` (id, slug, titles, dates, flags), and move the find-by-id callers, the legal links, the platform's frame, robots, the sitemaps and llms.txt to them. Closes DQ-2 ✓, CA-3 ✓, SD-4 ✓. M. Done when: in production's statement statistics the read of `published` for every page of a type falls from about 1,000 calls a day to the few that draw every page (it is the costliest app statement today: 781 s, 2.3 million rows returned in 78 days). Platform: Kaizena Flow's own pages are read through the same function with a null owner.
-7. **Let the store's index serve the hottest reads.** Postgres cannot answer `store_id is not distinct from $1` from an index, so each such read scans the table (145 uses in 52 files). One shared helper writes `store_id = $1` for a store and `store_id is null` for the platform; the owner helpers use it; a scan test fails on a new one in a `where`. Closes DQ-8 ✓, DS-7 ✓. S. Done when: a day apart, `pg_stat_user_tables.seq_scan` for `cookie_scans`, `pages`, `terms` and `menus` has risen by under 1,000 each (`cookie_scans` alone: 1.1 million scans of 1,945 rows in 78 days). Platform: the `is null` branch is the platform's.
-8. **Stop asking for what does not change.** Three things. One `storeSlugOf(id)` backed by a map for the 20 copies of `select slug from commerce.stores where id` (560,090 calls, production's most-called statement). No read of `commerce.ui_translations` before an instance may take requests, and no per-minute timer while the table is empty (278,393 calls on a table that has never held a row). A light `aiAbilities(storeId)` for the places that only draw a button, and the month's AI cost kept as a running figure, not summed again on each call (237,563 provider reads and 8,514 sums for 19,104 AI calls). Closes DQ-9 ✓, CA-9 ✓, SD-10, DQ-12 ✓, DS-2 ✓, SD-7 ✓, CA-12 ✓, DQ-4, AI-2. M. Done when: each of the three statements' calls a day in `pg_stat_statements` is down by nine tenths. Platform: the provider read has a platform branch; keep it.
-9. **Stop prefetching what nobody opens.** `prefetch={false}` on the language and currency links (`src/components/view-menu.tsx:56`: their click goes elsewhere, so the page they prefetch is never opened) and on footer and legal links. In the admin, prefetch the rail and the menu when the pointer or focus reaches a link, and never *View store*. Ask for the wishlist only when a marker cookie says the visitor has one. Closes CA-4 ✓, SC-1 ✓, CA-5 ✓, AC-12, SC-10. S. Done when: `measure-routes.mjs` shows the empty cart's requests after load under 15 (42 today; 81% of its prefetch bytes are language and currency views), the admin's orders list under 8 (32), and no `wishlist/saved` request for a new visitor. Platform: the platform admin's rail is the same component.
-10. **Take Supabase's client, zod and the builder's words off every admin screen.** Three stray imports put 481 KB on 420 to 432 of 449 admin routes: move `typingIn()` and `AdminServiceWorker` into files of their own, and let `session.tsx` load the Supabase client with `import()` once the page is idle. The same imports reach Kaizena Flow's public front page, which loads 145 KB of the admin's words, 113 KB of zod and Supabase's client (`evidence/scripts-by-page.md`, site-home): check it in the same change. Closes AC-1 ✓, DP-4 ✓. S. Done when: the admin home's first scripts are under 0.8 MB before compression (1.28 MB today), the front page's under 0.7 MB (1.15 MB loaded today), and the budgets in `e2e/signed-in/admin-scripts.spec.ts` and `e2e/performance.spec.ts` are lowered to the new figures. Platform: yes: the platform admin and the public site are named in the check.
-11. **End the prefetch loop on `/s/` addresses.** On a local build a category page and the search page ask for one link's `@drawer/[...rest]` segment about 160 times a second without end (`evidence/prefetch-storm.md`). Production on store hosts did not when checked, but CI's end-to-end jobs use exactly these addresses. Reproduce with `storm.mjs`, try the drawer slot without its catch-all page, and hold the fix with a spec that counts requests on a listing. Step 2.2 removes the slot from the root layout altogether. Closes SC-9 ✓, CA-6 ✓. M. Done when: a category page and the search page make under 100 requests in 8 s after load (2,686 today). Platform: no listing of its own; check the theme store's list.
-12. **Let the CDN keep what is the same for everyone.** `Cache-Control` with `s-maxage` on a store's sitemap, llms.txt, blog feed and favicon redirects, and 300 s on robots.txt: all are computed on every request today. A long cache on public files that never change. Stop search suggestions asking Next's image service for pictures it refuses. Closes CA-8, AS-5, AS-4. S. Done when: `curl -I` shows the headers and a second request inside the window is a CDN hit. Platform: Kaizena Flow's own sitemap and robots already answer from the cache; check the feed.
+**Goal:** Remove what costs something on every request, cold start, scheduled run or agent session, with small and safe changes, and make the changes that are cheapest while no real store, order or picture exists. Steps 0.1 and 0.2 go first, and 0.18 comes before 0.19; otherwise no step waits for another. **A person will notice:** Almost nothing on a screen changes, apart from two faults a shopper would have met on day one (empty search thumbnails, and a button with no fill on the status and report pages). Cold pages answer sooner, an admin screen loads about half the script, a store page stops asking the server for a wishlist and stock nobody has, the database falls from 731 MB to about 230 MB, and an agent session starts with a third of today's standing rules. 28 steps (10 S, 18 M, 0 L), in full in `bloat-review-2026-11/plan/phase-0.md`.
 
 ### Phase 1: Budgets, so it stays removed
 
-**Goal:** turn each measure of this review into a number a test holds and only lets fall. 21 of the 171 findings are the same finding: nothing checks this. The house already has the tool (`ratchet.scan.test.ts`); this phase points it at weight. **A person will notice:** a change that makes a page, a function, a round of jobs or an AI call heavier fails a check and has to say why.
-
-1. **Make the measurements commands.** Move the scripts in `docs/audits/bloat-review-2026-11/scripts/` to `scripts/bloat/` with `pnpm bloat:routes`, `bloat:server`, `bloat:unused` and `bloat:copies`, each writing a small JSON beside a kept baseline. Run them in a nightly CI job against the build and post what moved. Closes (the base for 1.2 to 1.6). S. Done when: one command each reproduces the tables of section 3 on a fresh checkout. Platform: the page list includes the platform admin and the public site.
-2. **A budget for what a function loads.** A ratchet over the analyzer's export: modules and kilobytes loaded with one route of each kind (beacon, API, storefront, admin, cron), and megabytes traced beside it. An import-graph test in the style of `pay-routes.graph.test.ts`: `proxy.ts` and the beacons may not reach `auth.ts`, `pages.ts`, `admin-text.ts` or `schema.ts`. Closes AS-3, DP-6, SD-13, FM-13. M. Done when: raising a route's modules fails a test until the baseline is raised with a reason. Platform: one route of the platform admin is in the set.
-3. **Browser budgets for every route, and for the document.** The build already writes first-load bytes for all 560 routes (`.next/diagnostics/route-bundle-stats.json`): hold them per route group with a ratchet, in place of budgets on 7 of 449 admin routes and 2 storefront routes. Add document bytes for ten key pages. Extend the import guard of `storefront-bundle.scan.test.ts` to the admin's shell: no zod, no whole catalogue, no Supabase client. Closes AC-10, AC-11, SC-6. S. Done when: every route has a budget, and step 0.10's three imports cannot come back unseen. Platform: covered: the file lists every route.
-4. **Count statements per page and per round.** A test helper that counts the statements one render sends (a counting wrapper round `db()` in the integration tests), with budgets for the storefront home, a product, the admin's store home and orders list, an idle dispatcher round and an idle per-minute route. Once a month, read production's top statements as a routine: the query is in `evidence/production-database.md`. Closes DQ-11, AD-12, CR-14. M. Done when: the product view's 18 statements and the store home's 30 are numbers in a baseline file. Platform: the platform home (18 statements) is in the set.
-5. **A budget for the surface, and a list of what is in use.** A scan test over counts: `page.tsx` files, navigation links, AI tools, dispatcher jobs, tables, indexes, triggers and feature ids. A count rises only with a decision line that names the switch the feature sits behind and the gate of its job, so a new feature costs nothing until a store uses it. At each quarterly squash, list the tables with no row and the indexes with no scan since the last one. Closes FT-2, DS-12. S. Done when: the baseline file exists and a new table or job without a named gate fails the test. The owner's question 6. Platform: counted the same way.
-6. **Budgets for an AI call and for the always-loaded rules.** The default AI manager round's characters (prompt and tools, drawn as in `prompt-versions.ts`) may not rise above a baseline, with a cap per tool definition. `CLAUDE.md` and each rule file get a ceiling in bytes: today one test makes the always-loaded file grow with every feature. Closes AI-10, DC-3. S. Done when: both baselines exist and a larger round or a longer `CLAUDE.md` fails a test. Platform: the platform's 39 tools are in the count.
+**Goal:** Turn every measure of this plan into a number that a test or a production figure holds and only lets fall. Each budget starts at the figure phase 0 leaves, with its tolerance stated, and each later step lowers its own. An A needs every measure held, so no area's budget is left for later. **A person will notice:** A change that makes a page, a function, a scheduled run, an AI call, a build or the standing rules heavier fails a check that names the number and says what to do. Platform, Usage and limits shows cold starts, the day's costliest statements and the admin's speed. 13 steps (2 S, 9 M, 2 L), in full in `bloat-review-2026-11/plan/phase-1.md`.
 
 ### Phase 2: Load on demand
 
-**Goal:** the structural half: each page, function, job and AI call loads what it uses, when it uses it. **A person will notice:** a store page that arrives from the CDN with no function run; admin screens at about half their weight; a product view that asks the database three questions, not eighteen; an AI manager that answers sooner for a third of the tokens.
+**Goal:** The structural half: each page, function, document and AI call loads what it uses, when it uses it. Before opening is the cheapest time for it, and phase 1's budgets show each step as a number that falls. **A person will notice:** A store page arrives as a static file with nothing in it twice. A product view asks the database for stock and nothing else. A publish redraws one page, not the whole store. Admin screens hand the browser only the words they show, and the builder paints before its editors load. The AI manager answers on a third of the tokens. A session reads a 10 KB core. 26 steps (0 S, 18 M, 8 L), in full in `bloat-review-2026-11/plan/phase-2.md`.
 
-1. **Give each area its own words.** `src/lib/admin-text.ts` imports all 136 catalogue files into one object that 602 files import, 35 of them outside the admin. So 802 of 830 server entries load 2.8 MB of words, the storefront's and the beacons' included. Give each area a small module that exports its words by language; move the 35 non-admin importers first and hold them with a scan test; then the admin, by codemod. In the browser: hand client parts the branches they read, stop compiling English into scripts and sending it again in the HTML, give the builder and the draft-order editor two branches of the storefront's text (not four languages of it), and break up the Work invoice screen's 1.66 MB chunk. Closes FM-1, SC-3 ✓, AC-4, AC-6, AC-7, AC-9. L. Done when: `src/lib/admin-messages` is 0 KB in the server code of a storefront page and of the beacons (2.9 MB today) and under 300 KB for an admin page; the storefront home loads none of it (35 KB today). Platform: the platform's areas move with the rest.
-2. **Serve store pages from their static shell.** Every prerendered store page is marked `resuming`: a function runs on each view and sends the page again as data (98 KB of the demo home's 138 KB) to place two cart badges and a country hint. Give the cart count to the browser the way the wishlist hearts get theirs: one small "mine" answer, asked only when a marker cookie says there is a cart or a wishlist. Take the cart drawer's slot off the root layout, so the layout is not rendered and sent twice in every page and the cart is not drawn twice on a wide screen. Closes CA-1 ✓, SC-8, SC-7. M. Done when: `.next/prerender-manifest.json` marks the demo store's home, built pages and blog `static` (all 148 are `resuming` today); the home document is under 60 KB before compression (135 KB here, 203 KB in production); a visitor without a cart causes no function run on a prerendered page. Platform: Kaizena Flow's front page is already static; its store's pages gain the same.
-3. **A product view asks the database for what changes per view.** An anonymous view of a prerendered product sends 18 statements; one answer (stock) changes per view, and stock is read twice. Read stock once per request. Put what only the owner changes (checkout's look, payment state, checkout fields, quote mode, back in stock, price breaks, producer schemes) in one cached read per store and market that its writers refresh. Run the reads before the first byte together, and skip those of features that are off. Closes SD-2, SD-5, SD-9, SD-11, SD-12. M. Done when: step 1.4's counter shows three statements or fewer for an anonymous product view. Platform: no products of its own.
-4. **Each storefront route loads its own parts and its own styles.** Listing, search, cart, checkout, account, wishlist and cookies pages share one bundle of every working part: give each route a small server module that imports only its own sections. Take the cart's forms and every product kind's picker off the product page, and staff-only parts out of every page's first scripts. Split the one 183 KB stylesheet that serves stores, site and admin by route group, and point Tailwind's `@source` at code only (it reads 22.5 MB of migrations and tests that cannot hold a class). Closes SC-2, SC-4, SC-11, SC-5, AS-7. M. Done when: a category page's first scripts are the home page's plus its listing; the storefront's stylesheet is under 130 KB before compression. Platform: the public site gets its own stylesheet group.
-5. **Editors load when they are drawn.** Lists, previews and editors share one views file, so 26 screens load an editor they never draw. Order, customer and deal screens load the rich text editor for custom fields no store has filled in. The page builder loads 3.3 MB before its first paint: load a block's fields when the block is opened. The AI manager's chat downloads every tool definition and the admin map to label a tool call. Closes AC-2, AC-3, DP-5, AC-5, AC-8, AI-4. M. Done when: first scripts before compression: page lists and previews under 1.4 MB (2.0 to 3.3 MB today), an order screen under 1.4 MB (2.0), the builder under 2.2 MB (3.3), the chat's chunk under 200 KB (496). Platform: the platform's page lists and builder are the same files.
-6. **A lighter admin shell and home.** Keep the menu's permission answers in a map (220 lookups and 65 to 130 ms of CPU per shell render today). Read the shell's facts together, and not Stripe's set-up on every render. Answer the two-step question without a call to Supabase Auth per request (security-sensitive: clear the kept answer when a factor is added or removed). Read an account's memberships once per request. Show the store home after about 8 statements, not 30, and the platform home after 11, not 18. Stop re-sending 51 to 63 KB of shell with every save and poll, and send the unread count with the layout, not by a poll in every tab. Closes AD-1, AD-2, AD-3, AD-4, AD-5, AD-6, AD-7, AD-8, AD-9, AD-11, AI-12. M. Done when: step 1.4's counter: the store home shows its first content after 10 statements or fewer, and a shell render spends under 5 ms on the menu. Platform: the platform home is named above; the shell is shared.
-7. **Caches that outlive a deploy and follow tags, not the clock.** A cached read lives in one instance's memory and dies with each deploy, and main took 112 commits in two days. Let pushes share a deploy (skip when a newer commit waits, or deploy at most every few minutes): the owner's question 7. Use `use cache: remote` for the one or two reads every request needs. Give reads whose every writer refreshes a tag a long-lived profile (70 of 85 expire by the hour today). Warm the main pages in the deploy job. Let a store's AI key refresh that store, not all 60. Make `/themes` static. Write `partialPrefetching: false` now to record the choice, and adopt it per segment later. Closes CA-2, CA-10, SD-8, SD-3, CA-11, CA-13, CA-14, CA-7. M. Done when: after a deploy the first view of the demo home is warm, and background redraws of an unchanged store page fall from hourly to none. Platform: its settings read is one of the two reads worth a remote cache.
-8. **Untangle the remaining import hubs, then narrow what is traced.** The proxy runs before every page view and its imports reach 1,311 modules (0.85 s and 167 MB to load cold, measured here). Move its five reads to leaf modules; stop `customers.ts` importing the erase path at the top; give `two-step.ts` its few words without `admin-text.ts`. Answer the proxy from memory and refresh in the background. Stop `stores.ts` building a Stripe client to learn whether keys exist, and put the Stripe and Supabase SDKs behind `await import()`. Then replace the `"/**"` trace of the 13 MB taxonomy with the routes that read it, held by a scan test. Closes SD-1, SD-6, DP-3, AS-2 ✓. L. Done when: the proxy loads under 300 modules; a storefront page's server code is under 4 MB (11.9 MB today); the files traced beside the visit beacon are under 1 MB (34 MB). Platform: the same proxy.
-9. **A smaller AI manager round.** Every model call carries about 160,000 characters (about 40,000 tokens, an estimate), 91% of it 124 tool definitions that do not depend on the question, and a turn makes up to 11 calls. This is the code review's step 3.18 with numbers: do it there. Send the core tools, the page's area and `load_tools`; load the autopilot, follow-up and skill tools as a group when needed; make the prompt cacheable (the minute out of its second line, a fixed tool order, cache markers, cached tokens counted); slim the two product tools' schemas; check ownership with one row; list playbooks by feature; and a quick model for small jobs (step 3.20 there). Closes AI-1 ✓, AI-3, AI-6, AI-8, AI-9, AI-11, AI-7. M. Done when: a default round is under 60,000 characters, the agents' safety eval passes and its recording is renewed. The owner's question 9. Platform: the platform's assistant runs the same loop.
-10. **Jobs and lists find work without loading it.** The knowledge job reads every page whole every five minutes to compare a date, and re-cuts pages with no text for ever (91,200 empty transactions): select ids and dates first, and record that a page was cut. "Where is this picture used" text-searches every page for each picture, again each day for every picture (145 ms a call): refresh on change. Give pages plain columns kept at publish (title, the kinds of parts) so lists and "does this site use a form" read facts, not documents. Write the docs index only for rows that changed (33 MB from 49,347 rewrites of 1,845 rows). Keep status checks as one row a day after the first week. Closes CR-4, DQ-6, DS-5, AI-5, DQ-3, DS-10, CR-10, CR-13, DS-13, DS-4, DQ-10, DQ-7. L. Done when: the dispatcher's AI upkeep jobs take tens of milliseconds on an idle round (about 2 s today), and the admin's Pages list reads no page content. Platform: the docs index and the status page are the platform's own.
+### Phase 3: One of each
 
-### Phase 3: Cost follows use, and one of each
+**Goal:** Keep one of each thing that was built twice, and add the gates that make cost follow use: scheduled work runs when something waits, at the pace its work changes. Nothing is retired because it is unused. Each fold is of a true duplicate, and before opening no data needs moving. **A person will notice:** On a quiet day the scheduler makes about 1,200 function calls, not 13,250, and the platform home shows every scheduled function with a row of its own. There is one place to edit Kaizena Flow's site, one engine for what happens when an order is paid, one import flow, and one deploy for a burst of pushes. 11 steps (0 S, 7 M, 4 L), in full in `bloat-review-2026-11/plan/phase-3.md`.
 
-**Goal:** make a feature cost nothing for a store that does not use it, and keep one of each thing. Nothing here retires a feature because it is unused: before opening they all are. Where a step is a product choice it says so, and the evidence is in `findings/features.md` and `findings/families.md`. **A person will notice:** a store that sells ten products and nothing else runs no job, loads no code and offers the AI no tool for what it has not switched on; and there is one place to edit Kaizena Flow's site.
+### Phase 4: Tidy
 
-1. **A feature costs nothing until a store uses it.** The D178 registry already takes a feature's navigation and AI tools away from a store that has it off. Give every optional feature group an id there (31 groups have none: email marketing, text messages, creators, automation, developer tools, ads and feeds, A/B tests, recommendations, price lists, purchasing, staging, content types, own books, the autopilot and more), and let the id also gate the group's jobs (step 0.4's check), its checkout code (ten carriers' adapters load for a checkout that uses one) and its tools. Whether a group starts on or off for a new store is the owner's product choice (the Homer rule: a new shop's Advanced menu has 94 links and 35 settings pages today), not a saving. Closes FT-1, FT-4, FT-7, FT-14. L. Done when: a store with only the shop on runs no job, loads no adapter and is offered no tool for a group it has not switched on, and the owner has chosen each group's starting state. The owner's question 2. Platform: the registry is the store's; the platform's own groups follow step 3.3.
-2. **One Kaizena Flow site.** Since the switch of 7 November kaizenaflow.com exists twice: the old pages without a store are still built, edited and read beside the store that now serves it (about 4,500 to 6,800 lines, 32 pages, 12 navigation links, 3 to 5 tables, and a null-store branch in 56 server modules). Finish step 7 of `docs/platform-parity-plan.md`: remove the null-store site paths. Closes FT-5, FM-3, DS-6. L. Done when: one place edits the site, and `/admin/platform` has no second set of page, header, footer and menu screens. The owner's question 3. Platform: this is the platform's step.
-3. **One way to model the platform.** The platform is modelled three ways: rows with a null store, `platform_*` twin tables (19 today, 9 on 6 November) and, since 7 November, a store of its own. Each new twin copies a store feature's tables, jobs and screens. Now that Kaizena Flow has a store, a store feature can serve the platform through it, and a twin is needed only where the platform's need has no store form (sign-ups, plans). The house rule's aim stays: the platform gets what stores get. Fold the platform's second event pipeline (5 modules, 7 tables, 2 per-minute runners that copy the stores') into the stores'. Closes FT-10, FM-5, FM-4. M. Done when: `CLAUDE.md`'s convention says which of the three ways a new feature uses, and step 1.5's count of `platform_*` tables stops rising. The owner's question 1. Platform: this is the platform's rule.
-4. **One engine for one job.** Order rules and Workflows are two engines for the same job (about 1,900 lines and 2 tables to fold). Campaigns and discount codes are two discount engines with two editors. Bonus, referrals, affiliates and creators keep four ledgers for four kinds of reward. The unified theme concept still carries older layers beside it. Each pair is two things to learn, test and keep in step. Which stays is the owner's choice, and before opening no data needs moving. Closes FT-8, FT-9, FT-13, FT-12. L. Done when: per pair, the owner has chosen which engine stays, and the other's screens, tables and tools are folded into it. The owner's question 4. Platform: Kaizena Flow's own discounts and referrals follow the engine that stays.
-5. **Decide what opens on day one.** The Admin API, the OAuth server, MCP, custom apps and webhook endpoints are 20 or more public handlers that will be open to the internet from the first day. That is a question of scope and of what must be watched at opening, not of waste: decide whether they open with the platform or behind a switch until someone asks. Fiken's sync engine is a copy of Tripletex's: give the two one core before a third accounting system arrives (the code review's step 3.12). Whether Fiken stays beside the own books is the owner's call. Closes FT-6, FT-11, FM-9. M. Done when: the owner has decided the opening scope, and the two accounting connectors share one sync core. The owner's question 5. Platform: Kaizena Flow's own API (D518) is part of the same decision.
-
-### Phase 4: Tidy, and finish the review
-
-**Goal:** smaller things, done when their area is next touched, and the part of this review that did not run. **A person will notice:** little. Sessions start with a quarter of today's standing instructions; a search of the docs returns rules, not history.
-
-1. **The database's loose ends.** Drop the 15 redundant indexes (on orders and visits concurrently, as D569 says); `idempotency_keys` and the seven functions nothing calls; the `commerce_legacy` schema, kept since 24 September as a renamed copy of the single-store schema (34 tables, 96 rows, named by no code). End a sandbox in one pass in foreign-key order, not 800 deletes. Bound the three admin lists that load everything, and the worst of the 341 loops with a database call in their body. With the code review's step 3.15. Closes DS-9, DS-14, DS-11, DQ-13, DQ-14, AD-10, L-1. M. Done when: the advisors show no duplicate index, and `\dn` shows no `commerce_legacy`. Platform: one database.
-2. **Families: one core each.** Five CSV imports are five copies of one engine, screen and tick route (about 2,200 lines). 50 of 1,266 server actions are on `storeAction()` (the code review's step 1.4 goes on as files are touched). Lists, tables, dates and selects are hand-made per screen (its steps 1.12 to 1.15). Work and Domains have a second set of screens at account level. 437 helper names are defined in three or more files. Closes FM-6, FM-7, FM-8, FM-10, FM-11, FM-12. L. Done when: per family, the count in `findings/families.md` has fallen and a ratchet holds it. Platform: the platform's screens use the same kit.
-3. **Unused code, packages and files.** Delete by tier after checking each list against the scan's blind spots (`evidence/unused-code.md`): 263 exports nothing imports; 655 exports and 42 files only tests reach (12,751 lines with their tests' subjects). Replace the 26 MB icon package installed for 26 paths. Give the PDF routes React's server renderer without all of `react-dom`. Correct FH12 in the code review, which names the wrong package twice. Closes DP-8, DP-9, AS-6, L-2. S. Done when: `unused-code.mjs` reports under 100 unused exports and no file only tests reach, and the type check and the scan tests pass. Platform: nothing separate.
-4. **Written rules a session can afford.** With the code review's step 1.10, which this gives numbers. Every session loads 44 KB (about 11,000 tokens), 71% of it a 295-line feature index of which a typical change needs two lines: keep a core of about 7 KB and load a rule when its files are opened. One file per decision (a lookup costs 2 to 45 KB today, and the newest 196 decisions sit under the wrong heading). Rule files of 4 KB, not 49 to 163 KB. Point `CLAUDE.md` at `docs/platform.md`, not the 73 KB plan from before multi-tenancy. Keep Progress notes to a line. Keep finished history (41% of the docs) out of default searches. Stop recording migration versions in a list frozen since 4 October. Closes DC-1 ✓, DC-2, DC-4, DC-5, DC-6, DC-7, DC-8, DC-9, DC-10, DC-11, AS-8. M. Done when: `CLAUDE.md` is under 10 KB and step 1.6's ceiling holds it. The owner's question 8. Platform: the same rules.
-5. **Finish the review.** Five areas were not audited: the page builder's model and how a built page is rendered, styles, interface text, tests with CI and the build, and server functions as such. Six more rest on this review's measurements alone. And 139 findings were read by one reviewer only. Run the five audits, and give a finding its second check before its step starts. Closes (section 6). M. Done when: section 6's list is empty and every finding in section 4 carries a tick or a correction. Platform: the same audits cover it.
+**Goal:** Smaller things, each done when its area is next touched. The ratchets of phase 1 hold every count until then, so nothing here can grow while it waits, and the last small findings close. **A person will notice:** Little. Admin forms and tables come from one kit, the last small twins are folded, tests share their scaffolding, and three more screens read less. 4 steps (0 S, 3 M, 1 L), in full in `bloat-review-2026-11/plan/phase-4.md`.
 
 
-## 6. Not reviewed, and the owner's questions
+## 6. The owner's questions, and what was not measured
 
-**Not reviewed.** These areas had a reviewer who did not finish before the credits ran out. What is known comes from the measurements only.
+**Questions.** Each stops the step it names until answered. The ones without a step are product choices the reviewers met: none
+is waste, and no step of the plan depends on them.
 
-| Area | What is known | Where |
-|---|---|---|
-| The page builder's model and a built page's render | The builder loads 3.8 MB and a 572 KB document; whether a page's JSON is checked per request, and what the model stores twice, was not read | `evidence/routes.md` |
-| Styles | One 183 KB stylesheet for everything, 21 to 36% of it unused on a page by the browser's count | SC-5, AS-7 |
-| Interface text | The admin's words load with 802 of 830 server entries; unused keys and the type check's cost were not read | FM-1, AC-9 |
-| Tests, CI and the build | 1,771 test files; the build's time and memory above; FH10 open in the code review | section 3 |
-| Server functions as such | Covered in part by the import findings; cold-start time on Vercel is not measured | step 0.1, 2.8 |
-| Client bundles, the document, prefetching, unused and copied code, the server's module graph | Measured, and partly covered by other areas' findings; no reviewer read them as areas of their own | `evidence/` |
+1. **Step 0.14, Cut what an idle tab, a save and a menu cost in the admin.** May the notice badge in a tab nobody touches be up to ten minutes late (60 requests an hour become 6)? The statement cuts need no answer.
+2. **Step 0.20, Shed the database's dead weight: the scheduler's log, 13 duplicate indexes and the dead objects.** May the commerce_legacy schema, kept since 24 September as a renamed copy of the single-store tables, be dropped after a last dump?
+3. **Step 0.27, Leave a map in CLAUDE.md, wrap the rules' long lines and keep history out of searches.** CLAUDE.md is your instruction file: may its 295-line feature index go, leaving a map of the seven rule files and a three-line look-up (44 KB to under 15 KB per session)? Without a yes the rules area cannot reach an A.
+4. **Step 0.28, Make the rules say what is so, and claim a decision's number on main before citing it.** After a migration, should 'advisors checked, nothing new' still be written down, and where? The check itself stays either way; today 205 of 564 decision rows carry the note.
+5. **Step 1.1, Give every budget one home, and hold the written rules first.** Should this plan get lines of its own in CLAUDE.md, as the code review has? Proposed: no. One shared line names the trackers, and each tracker keeps its rules at its own top.
+6. **Step 1.10, Hold the surface: fourteen counts, the hot tables' indexes and triggers, and a new store's rows.** May a test refuse a new table, trigger, scheduled job, navigation link or AI tool until its decision row states what it costs a store that does not use it?
+7. **Step 1.13, Give the production build room, and fail a run before it runs out.** Pay for Vercel's 16 GB build machine, or build in CI and deploy the prebuilt output? Without one of the two the build area stops at a B.
+8. **Step 2.4, Bound what a real listing fetches ahead, and decide partial prefetching by trial.** On a full listing, may only the first screen of product tiles be fetched ahead on sight, and the rest when touched (or all through one shared product shell)? A yes lets the shopper's browser reach an A.
+9. **Step 2.6, Give the storefront a stylesheet of its own, and count what is in it.** After the split, a Tailwind class typed in a part's Advanced tab can show on the builder's canvas and not on the live site. Is it enough to say in the docs that only classes styled by the owner's own CSS are promised, or should the site's sheet keep a short fixed list of utility names owners may type?
+10. **Step 2.13, Load the admin's words by area on admin routes too, and take English defaults out of the code.** Is a third language for the admin (Swedish or Danish) wanted in the first half year? If yes, this step moves before opening: until it is done each language adds about 1.5 MB to every function.
+11. **Step 2.20, Answer a store's own domain without a deployment.** May a store's own domain be resolved at request time, replacing decision P8's compiled routing rules? If P8 stays, the ceiling still needs an answer before about 250 stores have a domain, and the server area stops at a B.
+12. **Step 2.21, Send the AI manager a lean default round.** What should the AI manager offer unprompted (question 8 of the code review)? In particular: always carry its 17 plan, reminder and saved-skill tools at about 3,800 tokens a round, or load them when the talk turns to them or the store has a plan, goal or reminder alive (a round with no page then falls to about 33,000 characters)?
+13. **Step 2.25, Bring the always-loaded core under 10.5 KB, make every living doc searchable, and measure what a session loads.** May the database, e2e, typed-row and AI-eval how-to load only when those folders are opened (CLAUDE.md to under 10.5 KB)? It can be declined on its own; the core then stays at the 15 KB ceiling.
+14. **Step 2.26, Shorten the gate: a type check without tests, a related test run, and a fresh worker only where a trial needs it.** What must run before a push? A: everything, as today (about 5 minutes after these fixes; 11 to 12 now). B: lint, the type check and the tests the change touches, with the whole unit suite in the deploy gate, so each deploy waits about 3.5 minutes more (the planner's advice). C: as B before the push with the gate unchanged, so a failing unit test outside the six money files can be live until someone reads the red run.
+15. **Step 3.3, Give every scheduled function a ledger row and a watcher from outside, and every growing table a delete rule.** How long are guest carts, processed webhook events and old page versions kept (the code review's question 6)? The privacy text states the same periods.
+16. **Step 3.4, Let per-store jobs find due work by a mark, and call the PDF route when a document waits.** Should invoice PDFs be made ahead by the scheduled job, so that 'Try again' is true (recommended), or made on the first download, with the route nothing calls and its 102 MB function removed?
+17. **Step 3.5, Keep one kaizenaflow.com.** Is the switch of 7 November final, so that the old no-store site and its twin tables can be removed before opening (or kept as a fallback for some weeks, as the parity plan first said)? And one desk for support and chat (parity plan step 6), or two?
+18. **Step 3.6, Run the platform's workflows, own endpoints and integration deliveries on the stores' engine with a scope.** May the parity rule in CLAUDE.md say: where the platform's version does the same job on its own rows, it uses the store's module with a scope, not a copy? Separate tables stay.
+19. **Step 3.7, Keep one engine for one job: order rules fold into Workflows, and an own look is saved in the theme library.** May order rules fold into Workflows, and may an own look be saved only in the theme library? Yes or no for each.
+20. **Step 3.11, Build twice per push, and deploy only what changes the app.** Once stores are open, may a CI run skip its deploy when a newer commit is already on main, so a burst of pushes shares one deploy? It changes D5's 'at once' by a few minutes.
+21. Should a logged time entry's hours be editable in Work (the server side is built and tested; an afternoon's work), or is delete and log again the intended way (then about 130 lines go)? Either way two invoice actions no screen uses are deleted. (DD-5)
+22. Should live drills get a Run drills button on the platform's store page, or stay a console tool asked for by SQL, with the rule saying so? (DD-6)
+23. A new shop shows 29 links in Basic and 94 in Advanced, 35 of them under Settings. Is that what Lisa should meet, or should the moves already planned (code review step 2.4: about 85 links, 20 under Settings) be made before opening? It changes reading time, not running cost; the surface budget of step 1.10 holds whichever number you choose. (FT-7)
+24. The platform has its own copy of four store engines (workflows, integrations, own endpoints, the read-only API: about 2,100 lines and 8 tables), built on the parity rule. Keep them as twins on shared code (step 3.6), or serve Kaizena Flow's events through its own store's engines once the site is one (step 3.5)? The idle cost is a few polls a minute either way. (FT-10)
+25. Creators earn money commission (1,411 lines, 5 tables); referrals pay in bonus credits. Keep creators as a programme of their own, as built, or make a creator a kind of referrer who is paid in money? No running cost either way. (FT-13)
+26. Do you read the parity report's detail tables on GitHub? If not, docs/shopify-parity.md can keep its five summary blocks (under 30 KB; 289 KB today) and pnpm parity prints the rest. If you do, it stays as it is and only leaves default searches (step 0.27). (DC-11)
+27. Should the builder's palette show each of these near-twins as one entry, with the second as a switch: FAQ and accordion, button and dual button, email form and newsletter? Yes or no per pair. Nothing stored changes either way, and no visitor, request or build pays for the second entry. (PM-13)
 
-Not measured at all: real cold-start times and function invocations on Vercel (its metrics need a plan the team does not have),
-real visitors' speed, and the admin on a slow connection.
-
-**The owner's questions.** Each stops a step until answered.
-
-1. **One way to model the platform (step 3.3).** Kaizena Flow now has a store of its own. May a store feature serve the platform
-   through that store, with a `platform_*` twin built only where the platform's need has no store form?
-2. **A new store's starting state (step 3.1).** Which feature groups should a new store start with switched on? This is a product
-   choice (what Homer sees first), not a saving: step 3.1 makes a group cost nothing until it is used, either way.
-3. **One Kaizena Flow site (step 3.2).** May the old pages without a store be removed, now that the store serves the site?
-4. **One engine for one job (step 3.4).** For each pair (order rules and Workflows; campaigns and discount codes; the four reward
-   programmes; the theme layers), which stays? Before opening, no data needs moving.
-5. **What opens on day one (step 3.5).** Do the developer platform's public handlers open with the platform, or behind a switch
-   until someone asks? Does Fiken stay beside the own books?
-6. **A budget for the surface (step 1.5).** May a new table, job, page or AI tool have to name the gate that keeps it free for
-   stores that do not use it?
-7. **Deploys (step 2.7).** May pushes share a deploy, so dozens of deploys a day become a dozen and cached pages live longer? It changes
-   D5's "at once" by a few minutes.
-8. **The standing rules (step 4.4).** May `CLAUDE.md` shrink to a 7 KB core with rules loaded by path? It changes how every session
-   starts.
-9. **The AI manager's default tools (step 2.9).** The same question as the code review's question 8: may a round start with the
-   core tools and the page's area, and load the rest on need?
-10. **This plan in `CLAUDE.md`.** The code review has a three-line pointer there. Should this plan have one, or should sessions be
-    sent to it by hand?
+**Not measured.** Real cold-start times, function invocations and cost on Vercel; real visitors' speed; the admin on a slow
+connection; a store on a launch theme with fonts; a checkout with a payment form open. The plan has steps that measure the last
+three and hold them.
